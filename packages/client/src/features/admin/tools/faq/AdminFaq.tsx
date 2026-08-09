@@ -53,6 +53,9 @@ import { EditFaqModal } from "./components/modals/EditFaqModal";
 import { DeleteFaqModal } from "./components/modals/DeleteFaqModal";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
+import { RowActions } from "@/components/row-actions";
+
+const FAQ_ACTIONS = 2;
 
 type FaqEntry = RouterOutput["admin"]["faq"]["list"]["entries"][number];
 
@@ -346,7 +349,7 @@ export function AdminFaq() {
                           {renderSortIcon("createdAt")}
                         </button>
                       </TableHead>
-                      <TableHead actions={2} className="text-right">
+                      <TableHead actions={FAQ_ACTIONS} className="text-right">
                         Actions
                       </TableHead>
                     </TableRow>
@@ -397,26 +400,24 @@ export function AdminFaq() {
                           </p>
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() =>
-                                setEditModal({ open: true, entry })
-                              }
-                            >
-                              <Pencil className="size-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() =>
-                                setDeleteModal({ open: true, entry })
-                              }
-                            >
-                              <Trash2 className="size-4" />
-                            </Button>
-                          </div>
+                          <RowActions
+                            max={FAQ_ACTIONS}
+                            actions={[
+                              {
+                                label: "Edit entry",
+                                icon: Pencil,
+                                onClick: () =>
+                                  setEditModal({ open: true, entry }),
+                              },
+                              {
+                                label: "Delete entry",
+                                icon: Trash2,
+                                variant: "destructive",
+                                onClick: () =>
+                                  setDeleteModal({ open: true, entry }),
+                              },
+                            ]}
+                          />
                         </TableCell>
                       </TableRow>
                     ))}

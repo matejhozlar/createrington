@@ -5,23 +5,14 @@ import {
   FlaskConical,
   Heart,
   Lightbulb,
-  Loader2,
-  MoreHorizontal,
   Undo2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { RouterOutput } from "@/lib/trpc";
 import { Paginator } from "@/components/paginator";
+import { RowActions } from "@/components/row-actions";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Table,
   TableBody,
@@ -55,6 +46,7 @@ export type AdminWorkshopMod =
 
 const REQUIRED_DEPENDENCY = 3;
 const SUGGESTIONS_PER_PAGE = 10;
+const MOD_ACTIONS = 4;
 
 function DependencyCell({ mod }: { mod: AdminWorkshopMod }) {
   const required = mod.dependencies.filter(
@@ -206,7 +198,7 @@ export function SuggestionsCard({
                 </TableHead>
                 <TableHead col="statusWide">Status</TableHead>
                 <TableHead col="date">Date</TableHead>
-                <TableHead actions={1} className="text-right">
+                <TableHead actions={MOD_ACTIONS} className="text-right">
                   Actions
                 </TableHead>
               </TableRow>
@@ -274,75 +266,66 @@ export function SuggestionsCard({
                       {formatDate(mod.createdAt)}
                     </TableCell>
                     <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="size-8"
-                            disabled={busy}
-                          >
-                            {busy ? (
-                              <Loader2 className="size-4 animate-spin" />
-                            ) : (
-                              <MoreHorizontal className="size-4" />
-                            )}
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => onView(mod.id)}>
-                            <Eye className="size-4" />
-                            View Details
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          {(mod.status === "pending" ||
-                            mod.status === "rejected") && (
-                            <DropdownMenuItem
-                              onClick={() => onReview(mod.id, "approve")}
-                            >
-                              <Check className="size-4 text-green-500" />
-                              Approve
-                            </DropdownMenuItem>
-                          )}
-                          {mod.status === "approved" && (
-                            <DropdownMenuItem
-                              onClick={() => onReview(mod.id, "start_testing")}
-                            >
-                              <FlaskConical className="size-4 text-amber-400" />
-                              Start Testing
-                            </DropdownMenuItem>
-                          )}
-                          {mod.status === "testing" && (
-                            <DropdownMenuItem
-                              onClick={() => onReview(mod.id, "approve")}
-                            >
-                              <Check className="size-4 text-green-500" />
-                              Approve for Next Update
-                            </DropdownMenuItem>
-                          )}
-                          {(mod.status === "testing" ||
-                            mod.status === "next_update") && (
-                            <DropdownMenuItem
-                              onClick={() => onReview(mod.id, "send_back")}
-                            >
-                              <Undo2 className="size-4 text-muted-foreground" />
-                              Send Back a Stage
-                            </DropdownMenuItem>
-                          )}
-                          <DropdownMenuItem
-                            className="text-destructive focus:text-destructive"
-                            onClick={() =>
+                      <RowActions
+                        max={MOD_ACTIONS}
+                        busy={busy}
+                        actions={[
+                          {
+                            label: "View details",
+                            icon: Eye,
+                            onClick: () => onView(mod.id),
+                          },
+                          ...(((mod.status === "pending" ||
+                            mod.status === "rejected") as boolean)
+                            ? [
+                                {
+                                  label: "Approve",
+                                  icon: Check,
+                                  onClick: () => onReview(mod.id, "approve"),
+                                },
+                              ]
+                            : []),
+                          ...(mod.status === "approved"
+                            ? [
+                                {
+                                  label: "Start testing",
+                                  icon: FlaskConical,
+                                  onClick: () =>
+                                    onReview(mod.id, "start_testing"),
+                                },
+                              ]
+                            : []),
+                          ...(mod.status === "testing"
+                            ? [
+                                {
+                                  label: "Approve for next update",
+                                  icon: Check,
+                                  onClick: () => onReview(mod.id, "approve"),
+                                },
+                              ]
+                            : []),
+                          ...(mod.status === "testing" ||
+                          mod.status === "next_update"
+                            ? [
+                                {
+                                  label: "Send back a stage",
+                                  icon: Undo2,
+                                  onClick: () => onReview(mod.id, "send_back"),
+                                },
+                              ]
+                            : []),
+                          {
+                            label: "Reject",
+                            icon: Ban,
+                            variant: "destructive" as const,
+                            onClick: () =>
                               onReject({
                                 workshopModId: mod.id,
                                 name: mod.project.name,
-                              })
-                            }
-                          >
-                            <Ban className="size-4" />
-                            Reject
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                              }),
+                          },
+                        ]}
+                      />
                     </TableCell>
                   </TableRow>
                 );

@@ -30,9 +30,14 @@ const ACTION_GAP = 8;
 const CELL_PADDING = 24;
 const ACTIONS_LABEL_WIDTH = 98;
 
-function actionsColumnWidth(count: number, labelled: boolean) {
+// beyond three the group collapses to a primary action plus an overflow menu,
+// so the column never needs more than two slots
+const INLINE_ACTION_LIMIT = 3;
+
+function actionsColumnWidth(max: number, labelled: boolean) {
+  const slots = max <= INLINE_ACTION_LIMIT ? max : 2;
   const buttons =
-    CELL_PADDING + count * ACTION_BUTTON + Math.max(count - 1, 0) * ACTION_GAP;
+    CELL_PADDING + slots * ACTION_BUTTON + Math.max(slots - 1, 0) * ACTION_GAP;
   return Math.max(buttons, labelled ? ACTIONS_LABEL_WIDTH : 0);
 }
 
