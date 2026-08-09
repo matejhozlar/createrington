@@ -860,3 +860,51 @@ describe("ModpackService release diff with multi-file mods", () => {
     expect(diff.unchanged).toBe(1);
   });
 });
+
+describe("ModpackService.recordRelease durability", () => {
+  it("leaves no release behind when the membership write fails", async () => {
+    const modpack = await seedModpack(ctx, { curseforgeProjectId: 5008 });
+    const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const good = await seedPackMod(ctx, workshop);
+    const bad = await seedPackMod(ctx, workshop);
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      manifest({
+        version: "1.0.0",
+        modIds: new Set([good.curseforgeProjectId, bad.curseforgeProjectId]),
+        entries: [
+          { projectId: good.curseforgeProjectId, fileId: 630_001 },
+          // out of int4 range, so the membership insert dies mid-transaction
+          { projectId: bad.curseforgeProjectId, fileId: 9_999_999_999 },
+        ],
+      }),
+    );
+
+    await expect(modpackService.reconcile(modpack.id)).rejects.toThrow();
+
+    expect(await modpackService.listReleases(modpack.id)).toHaveLength(0);
+  });
+
+  it("tolerates a manifest repeating the same project and file", async () => {
+    const modpack = await seedModpack(ctx, { curseforgeProjectId: 5009 });
+    const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const member = await seedPackMod(ctx, workshop);
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      manifest({
+        version: "1.0.0",
+        modIds: new Set([member.curseforgeProjectId]),
+        entries: [
+          { projectId: member.curseforgeProjectId, fileId: 620_001 },
+          { projectId: member.curseforgeProjectId, fileId: 620_001 },
+        ],
+      }),
+    );
+
+    await modpackService.reconcile(modpack.id);
+
+    const [release] = await modpackService.listReleases(modpack.id);
+    expect(release.modCount).toBe(1);
+    expect(
+      await Q.modpack.release.mod.listForReleases([release.id]),
+    ).toHaveLength(1);
+  });
+});

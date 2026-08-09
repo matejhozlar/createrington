@@ -1,4 +1,4 @@
-import { Q } from "@/db";
+import { Q, db } from "@/db";
 import {
   BadRequestError,
   ConflictError,
@@ -97,6 +97,18 @@ function groupByProject(
     files.sort((a, b) => a.fileId - b.fileId);
   }
   return grouped;
+}
+
+function firstPerProject<T extends { curseforgeProjectId: number }>(
+  rows: T[],
+): T[] {
+  const held = new Map<number, T>();
+  for (const row of rows) {
+    if (!held.has(row.curseforgeProjectId)) {
+      held.set(row.curseforgeProjectId, row);
+    }
+  }
+  return [...held.values()];
 }
 
 function sameFiles(a: ReleaseModRow[], b: ReleaseModRow[]): boolean {
@@ -296,7 +308,7 @@ export class ModpackService {
   async listReleases(modpackId: number): Promise<ModpackRelease[]> {
     return Q.modpack.release.findAll(
       { modpackId },
-      { orderBy: "createdAt", orderDirection: "desc" },
+      { orderBy: "id", orderDirection: "desc" },
     );
   }
 
@@ -379,7 +391,16 @@ export class ModpackService {
         )
       ).map((project) => project.id),
     );
-    const entries = manifest.entries.filter((e) => cached.has(e.projectId));
+    // A manifest can repeat a (project, file) pair, which the unique index
+    // would reject and take the whole release down with it
+    const seen = new Set<string>();
+    const entries = manifest.entries.filter((entry) => {
+      if (!cached.has(entry.projectId)) return false;
+      const key = `${entry.projectId}:${entry.fileId}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
     if (entries.length === 0) return;
 
     const details = new Map(
@@ -389,82 +410,50 @@ export class ModpackService {
       ]),
     );
 
-    let release;
+    const rows = entries.map((entry) => {
+      const detail = details.get(entry.fileId);
+      return {
+        curseforgeProjectId: entry.projectId,
+        fileId: entry.fileId,
+        fileName: detail?.fileName ?? null,
+        displayName: detail?.displayName ?? null,
+        fileReleaseType: detail?.releaseType ?? null,
+        fileDate: detail?.fileDate ? new Date(detail.fileDate) : null,
+      };
+    });
+
+    // A half-written release would be permanent: the guard above sees the
+    // release row and never repairs the missing membership
     try {
-      release = await Q.modpack.release.createAndReturn({
-        modpackId: modpack.id,
-        curseforgeFileId: manifest.fileId,
-        version: manifest.version,
-        displayName: manifest.displayName,
-        minecraftVersion: manifest.minecraftVersion,
-        modLoader: manifest.modLoader,
-        modCount: new Set(entries.map((entry) => entry.projectId)).size,
-        publishedAt: manifest.publishedAt
-          ? new Date(manifest.publishedAt)
-          : null,
+      await db.inTransaction(async (tx) => {
+        const release = await tx.modpack.release.createAndReturn({
+          modpackId: modpack.id,
+          curseforgeFileId: manifest.fileId,
+          version: manifest.version,
+          displayName: manifest.displayName,
+          minecraftVersion: manifest.minecraftVersion,
+          modLoader: manifest.modLoader,
+          modCount: new Set(rows.map((row) => row.curseforgeProjectId)).size,
+          publishedAt: manifest.publishedAt
+            ? new Date(manifest.publishedAt)
+            : null,
+        });
+        await tx.modpack.release.mod.insertMany(release.id, rows);
+        await tx.modpack.mod.applyManifestFiles(
+          modpack.id,
+          firstPerProject(rows),
+        );
       });
     } catch (error) {
       if (error instanceof ConstraintViolationError) return;
       throw error;
     }
 
-    for (const entry of entries) {
-      const detail = details.get(entry.fileId);
-      try {
-        await Q.modpack.release.mod.create({
-          releaseId: release.id,
-          curseforgeProjectId: entry.projectId,
-          fileId: entry.fileId,
-          fileName: detail?.fileName ?? null,
-          displayName: detail?.displayName ?? null,
-          fileReleaseType: detail?.releaseType ?? null,
-          fileDate: detail?.fileDate ? new Date(detail.fileDate) : null,
-        });
-      } catch (error) {
-        if (!(error instanceof ConstraintViolationError)) throw error;
-      }
-    }
-
-    await this.refreshMemberFiles(modpack.id, entries, details);
-
     logger.info(
       `Recorded modpack #${modpack.id} release ${
         manifest.version ?? manifest.fileId
       } with ${entries.length} mods`,
     );
-  }
-
-  /** Point current membership at the files the newest release actually ships. */
-  private async refreshMemberFiles(
-    modpackId: number,
-    entries: ModpackManifest["entries"],
-    details: Map<
-      number,
-      { fileName: string | null; releaseType: number | null }
-    >,
-  ): Promise<void> {
-    const byProject = new Map<number, number>();
-    for (const entry of entries) {
-      if (!byProject.has(entry.projectId)) {
-        byProject.set(entry.projectId, entry.fileId);
-      }
-    }
-
-    const rows = await Q.modpack.mod.findAll({ modpackId });
-    for (const row of rows) {
-      const fileId = byProject.get(row.curseforgeProjectId);
-      if (fileId === undefined || row.fileId === fileId) continue;
-      const detail = details.get(fileId);
-      await Q.modpack.mod.updateAll(
-        {
-          fileId,
-          fileName: detail?.fileName ?? null,
-          fileReleaseType: detail?.releaseType ?? null,
-          updatedAt: new Date(),
-        },
-        { id: row.id },
-      );
-    }
   }
 
   /** Reconcile variant for sweeps and background kicks: logs failures, never throws. */
