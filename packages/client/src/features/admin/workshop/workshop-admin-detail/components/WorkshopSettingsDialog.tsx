@@ -12,15 +12,12 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { loaderName } from "@/features/workshop/format";
 import { workshopFormError } from "../../validation";
 
 interface WorkshopSettings {
   id: number;
   name: string;
   description: string | null;
-  gameVersion: string;
-  modLoaderType: number;
   maxModsPerUser: number;
   maxUpvotesPerUser: number;
   discordForumChannelId: string | null;
@@ -113,13 +110,6 @@ export function WorkshopSettingsDialog({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
-          </div>
-          <div className="space-y-2">
-            <Label>Target</Label>
-            <p className="text-sm text-muted-foreground">
-              {workshop.gameVersion} · {loaderName(workshop.modLoaderType)}, set
-              when the workshop was created.
-            </p>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">

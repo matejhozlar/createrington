@@ -14,7 +14,7 @@ import {
 import { Loading } from "@/components/loading-spinner";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { ModDetailDialog } from "@/features/workshop/workshop-detail/components/ModDetailDialog";
-import { WORKSHOP_STATUS_STYLES, loaderName } from "@/features/workshop/format";
+import { WORKSHOP_STATUS_STYLES } from "@/features/workshop/format";
 import {
   WORKSHOP_STATUS_TRANSITIONS,
   type WorkshopModReviewAction,
@@ -171,14 +171,7 @@ export function AdminWorkshopDetail() {
 
       <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-semibold">{workshop.name}</h1>
-            <p className="text-sm text-muted-foreground">
-              /{workshop.slug} · {workshop.gameVersion} ·{" "}
-              {loaderName(workshop.modLoaderType)} · {workshop.maxModsPerUser}{" "}
-              suggestions per player
-            </p>
-          </div>
+          <h1 className="text-2xl font-semibold">{workshop.name}</h1>
           <div className="flex items-center gap-2">
             <Select
               value={workshop.status}
@@ -258,9 +251,11 @@ export function AdminWorkshopDetail() {
         <PackMembersCard
           rows={packModsQuery.data ?? []}
           workshopId={workshopId}
+          modpackId={workshop.modpackId}
           isLoading={packModsQuery.isLoading}
           error={packModsQuery.error?.message ?? null}
           onRetry={() => packModsQuery.refetch()}
+          onReconciled={invalidate}
         />
       </div>
 

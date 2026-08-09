@@ -1,9 +1,12 @@
-import { Package } from "lucide-react";
+import { Loader2, Package, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { RouterOutput } from "@/lib/trpc";
+import { trpc, type RouterOutput } from "@/lib/trpc";
+import { useToastActions } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -86,16 +89,30 @@ function Credit({ row }: { row: PackMod }) {
 export function PackMembersCard({
   rows,
   workshopId,
+  modpackId,
   isLoading,
   error,
   onRetry,
+  onReconciled,
 }: {
   rows: PackMod[];
   workshopId: number;
+  modpackId: number;
   isLoading: boolean;
   error: string | null;
   onRetry: () => void;
+  onReconciled: () => void;
 }) {
+  const toast = useToastActions();
+
+  const reconcileMutation = trpc.admin.modpacks.reconcile.useMutation({
+    onSuccess: () => {
+      toast.success("Checked against the published pack");
+      onReconciled();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
   return (
     <Card className="gap-0">
       <CardHeader className="gap-0 border-b">
@@ -105,6 +122,21 @@ export function PackMembersCard({
           manifest. Mods staged for the next update appear here once you publish
           a build that includes them.
         </CardDescription>
+        <CardAction>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={reconcileMutation.isPending}
+            onClick={() => reconcileMutation.mutate({ modpackId })}
+          >
+            {reconcileMutation.isPending ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <RefreshCw className="size-4" />
+            )}
+            Check Published Pack
+          </Button>
+        </CardAction>
       </CardHeader>
 
       {isLoading ? (
