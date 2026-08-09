@@ -239,7 +239,7 @@ export class ModpackService {
   }
 
   /**
-   * Remove a directly-added member (admin, dependency, or import origin).
+   * Remove a directly-added member (dependency or import origin).
    * Suggestion-origin members are removed by rejecting their suggestion.
    */
   async removePackMod(modpackModId: number): Promise<void> {

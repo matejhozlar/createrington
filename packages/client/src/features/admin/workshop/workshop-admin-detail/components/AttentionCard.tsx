@@ -4,7 +4,13 @@ import { CardError } from "@/features/admin/components/CardState";
 
 type AttentionItem = RouterOutput["admin"]["workshops"]["getAttention"][number];
 
-const ATTENTION_MESSAGES: Record<string, string> = {
+// The dependency types render inline because they name a second mod
+type SimpleAttention = Exclude<
+  AttentionItem["type"],
+  "rejected_dependency" | "unpromoted_dependency"
+>;
+
+const ATTENTION_MESSAGES: Record<SimpleAttention, string> = {
   dropped_from_pack: "was live but is missing from the latest published pack.",
   shipped_unreviewed:
     "shipped in the pack but its suggestion never finished review, so the suggester is uncredited.",

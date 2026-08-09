@@ -902,6 +902,10 @@ export class WorkshopService {
    * Add mods on the team's behalf. They enter as ordinary suggestions credited
    * to the acting admin and already approved, so they still walk testing and
    * next_update before reaching the pack.
+   *
+   * Unlike suggesting, this works on draft and closed workshops. Threads are
+   * only ever posted for open ones: a draft workshop's adds pick theirs up from
+   * the daily sweep once it opens, a closed workshop's never get one.
    */
   async addModsAsAdmin(
     workshopId: number,

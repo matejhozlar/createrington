@@ -45,6 +45,7 @@ export type AdminWorkshopMod =
 export function SuggestionsCard({
   mods,
   total,
+  filtered,
   isLoading,
   error,
   onRetry,
@@ -55,6 +56,7 @@ export function SuggestionsCard({
 }: {
   mods: AdminWorkshopMod[];
   total: number;
+  filtered: boolean;
   isLoading: boolean;
   error: string | null;
   onRetry: () => void;
@@ -66,7 +68,13 @@ export function SuggestionsCard({
   return (
     <Card className="gap-0">
       <CardHeader className="gap-0 border-b">
-        <CardTitle>Suggestions ({total.toLocaleString()})</CardTitle>
+        <CardTitle>
+          Suggestions (
+          {filtered
+            ? `${mods.length.toLocaleString()} of ${total.toLocaleString()}`
+            : total.toLocaleString()}
+          )
+        </CardTitle>
       </CardHeader>
 
       {isLoading ? (

@@ -263,6 +263,7 @@ export function AdminWorkshopDetail() {
         <SuggestionsCard
           mods={filtered}
           total={mods.length}
+          filtered={filtered.length !== mods.length}
           isLoading={modsQuery.isLoading}
           error={modsQuery.error?.message ?? null}
           onRetry={() => modsQuery.refetch()}
@@ -353,6 +354,7 @@ export function AdminWorkshopDetail() {
       />
 
       <RejectModDialog
+        key={rejectTarget?.workshopModId ?? "none"}
         target={rejectTarget}
         onOpenChange={(open) => {
           if (!open) setRejectTarget(null);
