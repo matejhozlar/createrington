@@ -15,6 +15,7 @@ const COLUMN_WIDTHS = {
   duration: "w-[110px]",
   tag: "w-[116px]",
   status: "w-[116px]",
+  statusWide: "w-[168px]",
   date: "w-[120px]",
   dateTime: "w-[156px]",
   discordId: "w-[180px]",
@@ -111,7 +112,7 @@ function TableCell({ className, ...props }: React.ComponentProps<"td">) {
     <td
       data-slot="table-cell"
       className={cn(
-        "truncate px-3 py-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+        "truncate px-3 py-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[data-slot=badge]]:max-w-full [&>[role=checkbox]]:translate-y-[2px]",
         className,
       )}
       {...props}

@@ -161,13 +161,13 @@ export function PackMembersCard({
         <CardEmpty icon={Package} message="Nothing published yet" />
       ) : (
         <CardContent className="px-0">
-          <Table className="min-w-[630px]">
+          <Table className="min-w-[682px]">
             <TableHeader>
               <TableRow>
                 <TableHead>Mod</TableHead>
                 <TableHead col="md">Origin</TableHead>
                 <TableHead className="w-[180px]">Credit</TableHead>
-                <TableHead col="status">Publish State</TableHead>
+                <TableHead col="statusWide">Publish State</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
