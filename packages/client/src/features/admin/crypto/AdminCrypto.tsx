@@ -4,12 +4,6 @@ import { useToastActions } from "@/hooks/use-toast";
 import { Loading } from "@/components/loading-spinner";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import {
-  Breadcrumb,
-  BreadcrumbList,
-  BreadcrumbItem,
-  BreadcrumbPage,
-} from "@/components/ui/breadcrumb";
-import {
   Card,
   CardContent,
   CardDescription,
@@ -621,7 +615,7 @@ export function AdminCrypto() {
           trail={[
             { label: "Admin", href: "/admin/dashboard" },
             { label: "Tools", href: "/admin/tools" },
-            { label: "Crypto Market" },
+            { label: "Crypto" },
           ]}
         />
         <div className="flex flex-1 items-center justify-center">
@@ -633,24 +627,20 @@ export function AdminCrypto() {
 
   return (
     <div className="flex flex-1 flex-col gap-4">
-      {/* Header */}
-      <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-border bg-sidebar px-4">
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbPage>Crypto Market</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
-        <div className="flex items-center gap-2">
-          <TriggerEventDialog
-            tokens={tokens
-              .filter((t) => !t.isCrashed && !t.delistedAt)
-              .map((t) => ({ id: t.id, symbol: t.symbol, name: t.name }))}
-          />
-          <CreateTokenDialog />
-        </div>
-      </header>
+      <AdminPageHeader
+        trail={[
+          { label: "Admin", href: "/admin/dashboard" },
+          { label: "Tools", href: "/admin/tools" },
+          { label: "Crypto" },
+        ]}
+      >
+        <TriggerEventDialog
+          tokens={tokens
+            .filter((t) => !t.isCrashed && !t.delistedAt)
+            .map((t) => ({ id: t.id, symbol: t.symbol, name: t.name }))}
+        />
+        <CreateTokenDialog />
+      </AdminPageHeader>
 
       <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
         <Tabs defaultValue="market" className="flex flex-col gap-4">

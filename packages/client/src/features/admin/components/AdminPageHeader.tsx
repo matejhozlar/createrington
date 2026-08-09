@@ -45,7 +45,9 @@ export function AdminPageHeader({
           })}
         </BreadcrumbList>
       </Breadcrumb>
-      {children}
+      {children && (
+        <div className="ml-auto flex items-center gap-2">{children}</div>
+      )}
     </header>
   );
 }
