@@ -137,19 +137,21 @@ export function WorkshopPack() {
         <header className="mt-5 flex flex-wrap items-center justify-between gap-6">
           <div className="max-w-[620px] min-w-0">
             <div className="flex flex-wrap items-center gap-3.5">
-              <h1 className="text-[38px] leading-[42px] font-bold text-shadow-[0_2px_8px_rgb(0_0_0/0.4)]">
+              <h1 className="text-4xl font-semibold text-shadow-[0_2px_8px_rgb(0_0_0/0.4)]">
                 The full pack
               </h1>
-              <Badge variant="outline">{workshop.gameVersion}</Badge>
-              <Badge variant="outline">
-                {loaderName(workshop.modLoaderType)}
-              </Badge>
+              <div className="flex gap-2">
+                <Badge variant="outline">{workshop.gameVersion}</Badge>
+                <Badge variant="outline">
+                  {loaderName(workshop.modLoaderType)}
+                </Badge>
+              </div>
             </div>
-            <p className="mt-3 text-[15px] leading-6 text-zinc-200 text-shadow-[0_1px_4px_rgb(0_0_0/0.4)]">
+            <p className="mt-4 max-w-2xl text-base text-zinc-200 text-shadow-[0_1px_4px_rgb(0_0_0/0.4)]">
               {modpack?.description ?? FALLBACK_DESCRIPTION}
             </p>
             {modpack && isHttpUrl(modpack.curseforgeUrl) && (
-              <div className="mt-5">
+              <div className="mt-6">
                 <Button size="lg" asChild>
                   <a
                     href={modpack.curseforgeUrl}
@@ -180,7 +182,7 @@ export function WorkshopPack() {
             />
           ) : (
             <>
-              <h2 className="text-2xl leading-[30px] font-semibold">
+              <h2 className="text-2xl font-semibold">
                 {filtering
                   ? `${visible.length} ${visible.length === 1 ? "mod" : "mods"}`
                   : `All ${mods.length} ${mods.length === 1 ? "mod" : "mods"}`}

@@ -57,7 +57,9 @@ export function Workshop() {
       <section className="relative px-5 pb-16 pt-2 md:px-8">
         <div className="mx-auto flex max-w-7xl flex-col gap-12">
           <div>
-            <h2 className="mb-4 text-3xl font-semibold">Active workshop</h2>
+            <h2 className="mb-4 text-2xl font-semibold md:text-3xl">
+              Active workshop
+            </h2>
             {workshopsQuery.isLoading ? (
               <Loading
                 size="large"
@@ -101,12 +103,10 @@ function ActiveWorkshopCard({ workshop }: { workshop: WorkshopListItem }) {
   return (
     <Card className="grid gap-0 overflow-hidden py-0 lg:grid-cols-[minmax(0,1fr)_360px]">
       <div className="flex flex-col gap-6 p-8">
-        <div className="flex flex-col gap-2.5">
-          <h3 className="text-[28px] leading-[34px] font-semibold">
-            {workshop.name}
-          </h3>
+        <div className="flex flex-col gap-2">
+          <h3 className="text-3xl font-semibold">{workshop.name}</h3>
           {workshop.description && (
-            <p className="max-w-[560px] text-[15px] leading-6 text-muted-foreground">
+            <p className="max-w-[560px] text-base text-muted-foreground">
               {workshop.description}
             </p>
           )}
@@ -240,7 +240,9 @@ function WorkshopStat({
 function EarlierWorkshops({ workshops }: { workshops: WorkshopListItem[] }) {
   return (
     <div>
-      <h2 className="mb-4 text-3xl font-semibold">Earlier workshops</h2>
+      <h2 className="mb-4 text-2xl font-semibold md:text-3xl">
+        Earlier workshops
+      </h2>
       <div className="flex flex-col gap-3">
         {workshops.map((workshop) => (
           <Link

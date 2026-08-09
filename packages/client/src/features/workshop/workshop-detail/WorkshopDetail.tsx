@@ -276,20 +276,22 @@ export function WorkshopDetail() {
         <header className="mt-5 flex flex-wrap items-center justify-between gap-6">
           <div className="max-w-[620px] min-w-0">
             <div className="flex flex-wrap items-center gap-3.5">
-              <h1 className="text-[38px] leading-[42px] font-bold text-shadow-[0_2px_8px_rgb(0_0_0/0.4)]">
+              <h1 className="text-4xl font-semibold text-shadow-[0_2px_8px_rgb(0_0_0/0.4)]">
                 {workshop.name}
               </h1>
-              <Badge variant="outline">{workshop.gameVersion}</Badge>
-              <Badge variant="outline">
-                {loaderName(workshop.modLoaderType)}
-              </Badge>
+              <div className="flex gap-2">
+                <Badge variant="outline">{workshop.gameVersion}</Badge>
+                <Badge variant="outline">
+                  {loaderName(workshop.modLoaderType)}
+                </Badge>
+              </div>
             </div>
             {workshop.description && (
-              <p className="mt-3 text-[15px] leading-6 text-zinc-200 text-shadow-[0_1px_4px_rgb(0_0_0/0.4)]">
+              <p className="mt-4 max-w-2xl text-base text-zinc-200 text-shadow-[0_1px_4px_rgb(0_0_0/0.4)]">
                 {workshop.description}
               </p>
             )}
-            <div className="mt-5">
+            <div className="mt-6">
               {isOpen ? (
                 <Button size="lg" asChild>
                   <Link to={`/workshop/${slug}/suggest`}>Suggest mods</Link>
@@ -326,7 +328,7 @@ export function WorkshopDetail() {
           )}
 
           <div className="flex flex-wrap items-baseline justify-between gap-3">
-            <h2 className="text-2xl leading-[30px] font-semibold">
+            <h2 className="text-2xl font-semibold">
               {searching ? "Suggestions" : "Top suggested mods"}
             </h2>
             {isOpen && budget && votesLeft !== null && (

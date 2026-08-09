@@ -43,9 +43,7 @@ export function ActiveSlots({
   return (
     <section>
       <div className="flex items-baseline gap-3">
-        <h2 className="text-[22px] leading-7 font-semibold">
-          My active suggestions
-        </h2>
+        <h2 className="text-2xl font-semibold">My active suggestions</h2>
         <span
           className="text-sm whitespace-nowrap text-primary"
           style={{ fontFamily: SLOT_FONT }}
@@ -53,7 +51,7 @@ export function ActiveSlots({
           {pending.length} / {workshop.maxModsPerUser}
         </span>
       </div>
-      <p className="mt-1.5 text-[13px] text-muted-foreground">
+      <p className="mt-1 text-sm text-muted-foreground">
         Only suggestions in review use a slot. Approved and ruled-out ones free
         it back up.
       </p>

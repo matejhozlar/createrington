@@ -115,7 +115,7 @@ export function PackMembersCard({
 
   return (
     <Card className="gap-0">
-      <CardHeader className="gap-0 border-b">
+      <CardHeader className="border-b">
         <CardTitle>Published Pack ({rows.length.toLocaleString()})</CardTitle>
         <CardDescription>
           What the published CurseForge pack actually contains, read from its
