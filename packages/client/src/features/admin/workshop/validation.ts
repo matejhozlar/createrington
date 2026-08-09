@@ -3,6 +3,7 @@ export function workshopFormError(fields: {
   maxUpvotes: string;
   basePackId: string;
   forumChannelId: string;
+  publishedPackId?: string;
 }): string | null {
   const maxMods = Number(fields.maxMods);
   if (!Number.isInteger(maxMods) || maxMods < 1 || maxMods > 25) {
@@ -18,6 +19,13 @@ export function workshopFormError(fields: {
     (!Number.isInteger(Number(basePackId)) || Number(basePackId) <= 0)
   ) {
     return "Base modpack ID must be a positive number";
+  }
+  const publishedPackId = fields.publishedPackId?.trim() ?? "";
+  if (
+    publishedPackId &&
+    (!Number.isInteger(Number(publishedPackId)) || Number(publishedPackId) <= 0)
+  ) {
+    return "Published modpack project ID must be a positive number";
   }
   const forumChannelId = fields.forumChannelId.trim();
   if (forumChannelId && !/^\d{17,20}$/.test(forumChannelId)) {

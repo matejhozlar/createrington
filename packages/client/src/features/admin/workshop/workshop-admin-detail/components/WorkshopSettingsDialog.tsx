@@ -12,12 +12,14 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import { workshopFormError } from "../../validation";
 
 interface WorkshopSettings {
   id: number;
   name: string;
   description: string | null;
+  modpackId: number;
   maxModsPerUser: number;
   maxUpvotesPerUser: number;
   discordForumChannelId: string | null;
@@ -35,6 +37,49 @@ export function WorkshopSettingsDialog({
   workshop: WorkshopSettings;
   hasMods: boolean;
 }) {
+  const modpacksQuery = trpc.admin.modpacks.list.useQuery(undefined, {
+    enabled: open,
+  });
+  const modpack = modpacksQuery.data?.find(
+    (row) => row.id === workshop.modpackId,
+  );
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent onOpenAutoFocus={(event) => event.preventDefault()}>
+        <DialogHeader>
+          <DialogTitle>Workshop Settings</DialogTitle>
+        </DialogHeader>
+        {modpacksQuery.isLoading ? (
+          <div className="space-y-4">
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-16 w-full" />
+          </div>
+        ) : (
+          <SettingsForm
+            workshop={workshop}
+            hasMods={hasMods}
+            publishedPackId={modpack?.curseforgeProjectId ?? null}
+            onOpenChange={onOpenChange}
+          />
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function SettingsForm({
+  workshop,
+  hasMods,
+  publishedPackId: currentPublishedPackId,
+  onOpenChange,
+}: {
+  workshop: WorkshopSettings;
+  hasMods: boolean;
+  publishedPackId: number | null;
+  onOpenChange: (open: boolean) => void;
+}) {
   const toast = useToastActions();
   const utils = trpc.useUtils();
 
@@ -50,91 +95,135 @@ export function WorkshopSettingsDialog({
   const [basePackId, setBasePackId] = useState(
     workshop.baseModpackProjectId ? String(workshop.baseModpackProjectId) : "",
   );
+  const [publishedPackId, setPublishedPackId] = useState(
+    currentPublishedPackId ? String(currentPublishedPackId) : "",
+  );
 
-  const updateMutation = trpc.admin.workshops.update.useMutation({
-    onSuccess: () => {
-      toast.success("Workshop settings saved");
-      utils.admin.workshops.list.invalidate();
-      utils.user.workshops.list.invalidate();
-      utils.user.workshops.get.invalidate();
-      onOpenChange(false);
-    },
-    onError: (err) => toast.error(err.message),
-  });
+  const updateMutation = trpc.admin.workshops.update.useMutation();
+  const updateModpackMutation = trpc.admin.modpacks.update.useMutation();
+  const pending = updateMutation.isPending || updateModpackMutation.isPending;
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const validationError = workshopFormError({
       maxMods,
       maxUpvotes,
-      basePackId,
+      basePackId: hasMods ? "" : basePackId,
       forumChannelId,
+      publishedPackId,
     });
     if (validationError) {
       toast.error(validationError);
       return;
     }
-    updateMutation.mutate({
-      workshopId: workshop.id,
-      patch: {
-        name: name.trim(),
-        description: description.trim() || null,
-        maxModsPerUser: Number(maxMods),
-        maxUpvotesPerUser: Number(maxUpvotes),
-        discordForumChannelId: forumChannelId.trim() || null,
-        baseModpackProjectId: basePackId.trim() ? Number(basePackId) : null,
-      },
-    });
+
+    const nextPublishedPackId = publishedPackId.trim()
+      ? Number(publishedPackId)
+      : null;
+
+    try {
+      await updateMutation.mutateAsync({
+        workshopId: workshop.id,
+        patch: {
+          name: name.trim(),
+          description: description.trim() || null,
+          maxModsPerUser: Number(maxMods),
+          maxUpvotesPerUser: Number(maxUpvotes),
+          discordForumChannelId: forumChannelId.trim() || null,
+          ...(hasMods
+            ? {}
+            : {
+                baseModpackProjectId: basePackId.trim()
+                  ? Number(basePackId)
+                  : null,
+              }),
+        },
+      });
+
+      if (nextPublishedPackId !== currentPublishedPackId) {
+        await updateModpackMutation.mutateAsync({
+          modpackId: workshop.modpackId,
+          patch: { curseforgeProjectId: nextPublishedPackId },
+        });
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not save settings",
+      );
+      return;
+    }
+
+    toast.success("Workshop settings saved");
+    utils.admin.workshops.list.invalidate();
+    utils.admin.modpacks.list.invalidate();
+    utils.admin.workshops.listPackMods.invalidate();
+    utils.admin.workshops.getAttention.invalidate();
+    utils.user.workshops.list.invalidate();
+    utils.user.workshops.get.invalidate();
+    onOpenChange(false);
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent onOpenAutoFocus={(event) => event.preventDefault()}>
-        <DialogHeader>
-          <DialogTitle>Workshop Settings</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
+    <>
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="settings-name">Name</Label>
+          <Input
+            id="settings-name"
+            maxLength={120}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="settings-desc">Description</Label>
+          <Input
+            id="settings-desc"
+            maxLength={2000}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="settings-name">Name</Label>
+            <Label htmlFor="settings-max">Suggestions per Player</Label>
             <Input
-              id="settings-name"
-              maxLength={120}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              id="settings-max"
+              type="number"
+              min={1}
+              max={25}
+              value={maxMods}
+              onChange={(e) => setMaxMods(e.target.value)}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="settings-desc">Description</Label>
+            <Label htmlFor="settings-max-upvotes">Upvotes per Player</Label>
             <Input
-              id="settings-desc"
-              maxLength={2000}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              id="settings-max-upvotes"
+              type="number"
+              min={1}
+              max={100}
+              value={maxUpvotes}
+              onChange={(e) => setMaxUpvotes(e.target.value)}
             />
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="settings-max">Suggestions per Player</Label>
-              <Input
-                id="settings-max"
-                type="number"
-                min={1}
-                max={25}
-                value={maxMods}
-                onChange={(e) => setMaxMods(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="settings-max-upvotes">Upvotes per Player</Label>
-              <Input
-                id="settings-max-upvotes"
-                type="number"
-                min={1}
-                max={100}
-                value={maxUpvotes}
-                onChange={(e) => setMaxUpvotes(e.target.value)}
-              />
-            </div>
-          </div>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="settings-published">
+            Published Modpack Project ID (Optional)
+          </Label>
+          <Input
+            id="settings-published"
+            type="number"
+            placeholder="CurseForge project the pack is published under"
+            value={publishedPackId}
+            onChange={(e) => setPublishedPackId(e.target.value)}
+          />
+          <p className="text-xs text-muted-foreground">
+            Set this once the pack is on CurseForge. It is what "Check Published
+            Pack" reads, and it applies to every workshop feeding this modpack.
+          </p>
+        </div>
+        {!hasMods && (
           <div className="space-y-2">
             <Label htmlFor="settings-basepack">
               Base Modpack ID (Optional)
@@ -142,40 +231,29 @@ export function WorkshopSettingsDialog({
             <Input
               id="settings-basepack"
               type="number"
-              disabled={hasMods}
               value={basePackId}
               onChange={(e) => setBasePackId(e.target.value)}
             />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="settings-forum">
-              Discord Forum Channel ID (Optional)
-            </Label>
-            <Input
-              id="settings-forum"
-              placeholder="Forum for per-suggestion discussion threads"
-              value={forumChannelId}
-              onChange={(e) => setForumChannelId(e.target.value)}
-            />
-          </div>
-          {hasMods && (
-            <p className="text-xs text-muted-foreground">
-              The base modpack is locked because this workshop already has mods.
-            </p>
-          )}
+        )}
+        <div className="space-y-2">
+          <Label htmlFor="settings-forum">
+            Discord Forum Channel ID (Optional)
+          </Label>
+          <Input
+            id="settings-forum"
+            placeholder="Forum for per-suggestion discussion threads"
+            value={forumChannelId}
+            onChange={(e) => setForumChannelId(e.target.value)}
+          />
         </div>
-        <DialogFooter>
-          <Button
-            onClick={handleSave}
-            disabled={updateMutation.isPending || !name.trim()}
-          >
-            {updateMutation.isPending && (
-              <Loader2 className="size-4 animate-spin" />
-            )}
-            Save
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      </div>
+      <DialogFooter>
+        <Button onClick={handleSave} disabled={pending || !name.trim()}>
+          {pending && <Loader2 className="size-4 animate-spin" />}
+          Save
+        </Button>
+      </DialogFooter>
+    </>
   );
 }
