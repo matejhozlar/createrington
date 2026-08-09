@@ -38,14 +38,14 @@ export function PackModsDialog({
           <DialogTitle className="text-white">{packName}</DialogTitle>
           <DialogDescription className="text-white/55">
             {mods.length} {mods.length === 1 ? "mod" : "mods"} included in this
-            pack
+            dimension
           </DialogDescription>
         </DialogHeader>
 
         {mods.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-white/50">
             <Package className="mb-2 size-8 opacity-50" />
-            <p className="text-sm">No mods in this pack yet</p>
+            <p className="text-sm">No mods in this dimension yet</p>
           </div>
         ) : (
           <div className="max-h-[60vh] divide-y divide-white/10 overflow-y-auto rounded-xl border border-white/10 bg-white/[0.02]">

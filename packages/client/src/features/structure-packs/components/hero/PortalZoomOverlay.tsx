@@ -407,7 +407,7 @@ function OverlayBody({
       ) : sortedPool.length === 0 ? (
         <div className="rounded-xl border border-white/10 bg-white/[0.02] p-10 text-center text-white/50">
           <Package className="mx-auto mb-2 size-8 opacity-50" />
-          <p>No packs are available for voting right now.</p>
+          <p>No dimensions are available for voting right now.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-x-6 gap-y-5 md:grid-cols-2 lg:grid-cols-3">

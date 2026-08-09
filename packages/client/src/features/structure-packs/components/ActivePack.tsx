@@ -82,7 +82,7 @@ export function ActivePack({ onOpenPortal }: ActivePackProps) {
 
   return (
     <>
-      <h2 className={HEADING_CLASSES}>Active Pack</h2>
+      <h2 className={HEADING_CLASSES}>Active Dimension</h2>
 
       <div className="relative">
         <div className={PANEL_CLASSES}>
@@ -245,7 +245,7 @@ function Stat({ label, value, mono, emphasis }: StatProps) {
 function ActivePackLoading() {
   return (
     <>
-      <h2 className={HEADING_CLASSES}>Active Pack</h2>
+      <h2 className={HEADING_CLASSES}>Active Dimension</h2>
       <div className={PANEL_CLASSES}>
         <div className="relative z-10 grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-8 p-8 md:p-10">
           <div className="flex flex-col gap-6">
@@ -285,7 +285,7 @@ function ActivePackLoading() {
 function ActivePackEmpty({ onOpenPortal }: { onOpenPortal?: () => void }) {
   return (
     <>
-      <h2 className={HEADING_CLASSES}>Active Pack</h2>
+      <h2 className={HEADING_CLASSES}>Active Dimension</h2>
       <div className="relative">
         <div className={PANEL_CLASSES}>
           <div aria-hidden className="absolute inset-0 z-0 overflow-hidden">
@@ -305,7 +305,7 @@ function ActivePackEmpty({ onOpenPortal }: { onOpenPortal?: () => void }) {
           <div className="relative z-10 flex flex-col items-center text-center gap-4 p-10 md:p-14">
             <Package className="size-10 text-muted-foreground" />
             <div className="text-[10px] font-semibold uppercase tracking-[0.28em] text-[oklch(0.62_0.19_255/0.9)]">
-              No active pack
+              No active dimension
             </div>
             <h3 className="text-3xl md:text-4xl font-bold tracking-[-0.02em]">
               Portal is cooling down
