@@ -197,78 +197,70 @@ export function ModDetailDialog({
               <div className="space-y-2">
                 <div className="text-sm font-medium">Dependencies</div>
                 <div className="space-y-1.5">
-                  {data.mod.dependencies.map((dep) => (
-                    <div
-                      key={dep.curseforgeProjectId}
-                      className="flex items-center gap-2.5 rounded-lg border p-2 text-sm"
-                    >
-                      <ProjectThumb
-                        name={dep.name ?? ""}
-                        thumbnailUrl={dep.thumbnailUrl}
-                        className="size-7 rounded text-[10px]"
-                      />
-                      <span className="min-w-0 flex-1 truncate">
-                        {dep.name ?? `Project #${dep.curseforgeProjectId}`}
-                      </span>
-                      <Badge
-                        variant={
-                          dep.relationType === REQUIRED_DEPENDENCY
-                            ? "outline"
-                            : "secondary"
-                        }
-                        className="text-xs"
+                  {data.mod.dependencies.map((dep) => {
+                    const coverage =
+                      dep.coverage === "missing"
+                        ? null
+                        : DEPENDENCY_COVERAGE_STYLES[dep.coverage];
+                    return (
+                      <div
+                        key={dep.curseforgeProjectId}
+                        className="flex items-center gap-2.5 rounded-lg border p-2 text-sm"
                       >
-                        {dep.relationType === REQUIRED_DEPENDENCY
-                          ? "Required"
-                          : "Optional"}
-                      </Badge>
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          "text-xs",
-                          DEPENDENCY_COVERAGE_STYLES[dep.coverage]?.className,
+                        <ProjectThumb
+                          name={dep.name ?? ""}
+                          thumbnailUrl={dep.thumbnailUrl}
+                          className="size-7 rounded text-[10px]"
+                        />
+                        <span className="min-w-0 flex-1 truncate">
+                          {dep.name ?? `Project #${dep.curseforgeProjectId}`}
+                        </span>
+                        <Badge
+                          variant={
+                            dep.relationType === REQUIRED_DEPENDENCY
+                              ? "outline"
+                              : "secondary"
+                          }
+                          className="text-xs"
+                        >
+                          {dep.relationType === REQUIRED_DEPENDENCY
+                            ? "Required"
+                            : "Optional"}
+                        </Badge>
+                        {coverage && (
+                          <Badge
+                            variant="outline"
+                            className={cn("text-xs", coverage.className)}
+                          >
+                            {coverage.label}
+                          </Badge>
                         )}
-                      >
-                        {DEPENDENCY_COVERAGE_STYLES[dep.coverage]?.label ??
-                          dep.coverage}
-                      </Badge>
-                    </div>
-                  ))}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
 
             {screenshots.length === 1 && (
-              <a
-                href={screenshots[0].url}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <img
-                  src={screenshots[0].url}
-                  alt={screenshots[0].title}
-                  className="aspect-video w-full rounded-lg object-cover transition-opacity hover:opacity-80"
-                  loading="lazy"
-                />
-              </a>
+              <img
+                src={screenshots[0].url}
+                alt={screenshots[0].title}
+                className="aspect-video w-full rounded-lg object-cover"
+                loading="lazy"
+              />
             )}
             {screenshots.length > 1 && (
               <Carousel className="w-full">
                 <CarouselContent>
                   {screenshots.map((shot) => (
                     <CarouselItem key={shot.url}>
-                      <a
-                        href={shot.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <img
-                          src={shot.url}
-                          alt={shot.title}
-                          className="aspect-video w-full rounded-lg object-cover"
-                          loading="lazy"
-                        />
-                      </a>
+                      <img
+                        src={shot.url}
+                        alt={shot.title}
+                        className="aspect-video w-full rounded-lg object-cover"
+                        loading="lazy"
+                      />
                     </CarouselItem>
                   ))}
                 </CarouselContent>
@@ -285,7 +277,7 @@ export function ModDetailDialog({
                   rel="noopener noreferrer"
                 >
                   <ExternalLink className="size-4" />
-                  View full description on CurseForge
+                  View on CurseForge
                 </a>
               </Button>
             )}
@@ -298,7 +290,7 @@ export function ModDetailDialog({
                   rel="noopener noreferrer"
                 >
                   <MessageSquare className="size-4" />
-                  Discuss on Discord
+                  View on Discord
                 </a>
               </Button>
             )}
