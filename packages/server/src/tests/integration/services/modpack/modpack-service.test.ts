@@ -31,12 +31,19 @@ vi.mock("@/services/curseforge", async (importOriginal) => {
     }),
     getMods: vi.fn(async () => []),
     getModpackManifest: vi.fn(async () => ({
+      fileId: 1,
+      displayName: null,
       version: null,
+      minecraftVersion: null,
+      modLoader: null,
+      publishedAt: null,
+      entries: [],
       modIds: new Set<number>(),
     })),
     getModpackModIds: vi.fn(async () => new Set<number>()),
     searchMods: vi.fn(async () => []),
     getFilesDependencies: vi.fn(async () => []),
+    getFilesDetails: vi.fn(async () => []),
   };
 });
 
@@ -49,7 +56,11 @@ vi.mock("@/services/curseforge/ingest", () => ({
 import pool, { Q } from "@/db";
 import { modpackService } from "@/services/modpack";
 import { workshopService } from "@/services/workshop";
-import { getModpackManifest } from "@/services/curseforge";
+import {
+  getFilesDetails,
+  getModpackManifest,
+  type ModpackManifest,
+} from "@/services/curseforge";
 import {
   announcePackDropOut,
   announceReview,
@@ -67,6 +78,31 @@ import {
 
 const USER_A = "999900000000000002";
 const ADMIN = "999900000000000001";
+
+let manifestFileId = 0;
+
+// Test project ids are ~992_000_000, so a derived file id has to stay in int4
+const fileIdFor = (projectId: number) => 700_000 + (projectId % 100_000);
+
+function manifest(
+  overrides: Partial<ModpackManifest> & { modIds?: Set<number> } = {},
+): ModpackManifest {
+  const modIds = overrides.modIds ?? new Set<number>();
+  return {
+    fileId: ++manifestFileId,
+    displayName: null,
+    version: null,
+    minecraftVersion: null,
+    modLoader: null,
+    publishedAt: null,
+    entries: [...modIds].map((projectId) => ({
+      projectId,
+      fileId: fileIdFor(projectId),
+    })),
+    ...overrides,
+    modIds,
+  };
+}
 
 const ctx = createWorkshopTestContext(992_000_000);
 
@@ -185,10 +221,9 @@ describe("ModpackService.getWorkshopAttention", () => {
       liveAt: new Date(),
       liveInVersion: "2.0.0",
     });
-    vi.mocked(getModpackManifest).mockResolvedValue({
-      version: "2.0.0",
-      modIds: new Set([depProjectId]),
-    });
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      manifest({ version: "2.0.0", modIds: new Set([depProjectId]) }),
+    );
 
     const items = await modpackService.getWorkshopAttention(workshop);
 
@@ -214,13 +249,26 @@ describe("ModpackService.reconcile", () => {
       fileName: "shipped.jar",
       fileReleaseType: 1,
     });
-    vi.mocked(getModpackManifest).mockResolvedValue({
-      version: "3.0.0",
-      modIds: new Set([mod.curseforgeProjectId]),
-    });
+    vi.mocked(getFilesDetails).mockResolvedValue([
+      {
+        fileId: fileIdFor(mod.curseforgeProjectId),
+        projectId: mod.curseforgeProjectId,
+        displayName: "Shipped 2.0",
+        fileName: "shipped-2.0.jar",
+        fileDate: null,
+        releaseType: 1,
+      },
+    ]);
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      manifest({
+        version: "3.0.0",
+        modIds: new Set([mod.curseforgeProjectId]),
+      }),
+    );
 
     await modpackService.reconcile(modpack.id);
 
+    // The manifest wins over the file the suggester happened to link
     expect(
       await Q.modpack.mod.find({
         modpackId: modpack.id,
@@ -229,9 +277,13 @@ describe("ModpackService.reconcile", () => {
     ).toMatchObject({
       origin: "suggestion",
       workshopModId: mod.id,
+      fileId: fileIdFor(mod.curseforgeProjectId),
+      fileName: "shipped-2.0.jar",
+      liveInVersion: "3.0.0",
+    });
+    expect(await Q.workshop.mod.get({ id: mod.id })).toMatchObject({
       fileId: 123,
       fileName: "shipped.jar",
-      liveInVersion: "3.0.0",
     });
     expect(await Q.workshop.mod.get({ id: mod.id })).toMatchObject({
       status: "in_pack",
@@ -247,10 +299,9 @@ describe("ModpackService.reconcile", () => {
       submittedBy: USER_A,
       status: "next_update",
     });
-    vi.mocked(getModpackManifest).mockResolvedValue({
-      version: "3.0.0",
-      modIds: new Set<number>(),
-    });
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      manifest({ version: "3.0.0", modIds: new Set<number>() }),
+    );
 
     await modpackService.reconcile(modpack.id);
 
@@ -267,10 +318,12 @@ describe("ModpackService.reconcile", () => {
     const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
     const member = await seedPackMod(ctx, workshop);
     const stowawayId = await seedProject(ctx);
-    vi.mocked(getModpackManifest).mockResolvedValue({
-      version: "2.0.0",
-      modIds: new Set([member.curseforgeProjectId, stowawayId]),
-    });
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      manifest({
+        version: "2.0.0",
+        modIds: new Set([member.curseforgeProjectId, stowawayId]),
+      }),
+    );
 
     await modpackService.reconcile(modpack.id);
 
@@ -307,10 +360,12 @@ describe("ModpackService.reconcile", () => {
       workshopModId: mod.id,
       addedBy: null,
     });
-    vi.mocked(getModpackManifest).mockResolvedValue({
-      version: "2.0.0",
-      modIds: new Set([member.curseforgeProjectId]),
-    });
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      manifest({
+        version: "2.0.0",
+        modIds: new Set([member.curseforgeProjectId]),
+      }),
+    );
 
     await modpackService.reconcile(modpack.id);
     expect((await Q.workshop.mod.get({ id: mod.id })).status).toBe("in_pack");
@@ -320,10 +375,9 @@ describe("ModpackService.reconcile", () => {
     await modpackService.reconcile(modpack.id);
     expect(vi.mocked(announceReview)).toHaveBeenCalledTimes(1);
 
-    vi.mocked(getModpackManifest).mockResolvedValue({
-      version: "2.1.0",
-      modIds: new Set<number>(),
-    });
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      manifest({ version: "2.1.0", modIds: new Set<number>() }),
+    );
     await modpackService.reconcile(modpack.id);
 
     expect((await Q.workshop.mod.get({ id: mod.id })).status).toBe(
@@ -349,10 +403,12 @@ describe("ModpackService.reconcile", () => {
       liveAt: new Date(),
       liveInVersion: "1.0.0",
     });
-    vi.mocked(getModpackManifest).mockResolvedValue({
-      version: "1.0.0",
-      modIds: new Set([mod.curseforgeProjectId]),
-    });
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      manifest({
+        version: "1.0.0",
+        modIds: new Set([mod.curseforgeProjectId]),
+      }),
+    );
 
     await workshopService.reviewMod(mod.id, "reject", ADMIN, {
       reason: "incompatible",
@@ -392,10 +448,9 @@ describe("ModpackService.reconcile", () => {
       liveAt: new Date(),
       liveInVersion: "1.0.0",
     });
-    vi.mocked(getModpackManifest).mockResolvedValue({
-      version: "2.0.0",
-      modIds: new Set<number>(),
-    });
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      manifest({ version: "2.0.0", modIds: new Set<number>() }),
+    );
 
     await modpackService.reconcile(modpack.id);
 
@@ -416,10 +471,12 @@ describe("ModpackService.reconcile", () => {
       liveInVersion: "1.0.0",
       droppedFromManifestAt: new Date(),
     });
-    vi.mocked(getModpackManifest).mockResolvedValue({
-      version: "2.0.0",
-      modIds: new Set([member.curseforgeProjectId]),
-    });
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      manifest({
+        version: "2.0.0",
+        modIds: new Set([member.curseforgeProjectId]),
+      }),
+    );
 
     await modpackService.reconcile(modpack.id);
 
@@ -435,10 +492,12 @@ describe("ModpackService.reconcile", () => {
     });
     const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
     const pending = await seedMod(ctx, workshop, { submittedBy: USER_A });
-    vi.mocked(getModpackManifest).mockResolvedValue({
-      version: "2.0.0",
-      modIds: new Set([pending.curseforgeProjectId]),
-    });
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      manifest({
+        version: "2.0.0",
+        modIds: new Set([pending.curseforgeProjectId]),
+      }),
+    );
 
     await modpackService.reconcile(modpack.id);
 
@@ -470,10 +529,12 @@ describe("ModpackService.reconcile", () => {
       mod.curseforgeProjectId,
       depProjectId,
     );
-    vi.mocked(getModpackManifest).mockResolvedValue({
-      version: "2.0.0",
-      modIds: new Set([mod.curseforgeProjectId, depProjectId, strangerId]),
-    });
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      manifest({
+        version: "2.0.0",
+        modIds: new Set([mod.curseforgeProjectId, depProjectId, strangerId]),
+      }),
+    );
 
     await modpackService.reconcile(modpack.id);
 
@@ -530,5 +591,320 @@ describe("ModpackService.getPackMods", () => {
       suggestionWorkshopId: null,
       suggestionWorkshopName: null,
     });
+  });
+});
+
+describe("ModpackService release history", () => {
+  it("freezes each mod's file when a published pack is read", async () => {
+    const modpack = await seedModpack(ctx, { curseforgeProjectId: 5001 });
+    const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const member = await seedPackMod(ctx, workshop);
+    vi.mocked(getFilesDetails).mockResolvedValue([
+      {
+        fileId: fileIdFor(member.curseforgeProjectId),
+        projectId: member.curseforgeProjectId,
+        displayName: "Cool Mod 1.2.3",
+        fileName: "coolmod-1.2.3.jar",
+        fileDate: "2026-01-01T00:00:00.000Z",
+        releaseType: 1,
+      },
+    ]);
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      manifest({
+        version: "1.0.0",
+        minecraftVersion: "1.21.1",
+        modLoader: "neoforge-21.1.236",
+        modIds: new Set([member.curseforgeProjectId]),
+      }),
+    );
+
+    await modpackService.reconcile(modpack.id);
+
+    const [release] = await modpackService.listReleases(modpack.id);
+    expect(release).toMatchObject({
+      version: "1.0.0",
+      minecraftVersion: "1.21.1",
+      modLoader: "neoforge-21.1.236",
+      modCount: 1,
+    });
+    const rows = await Q.modpack.release.mod.listForReleases([release.id]);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      curseforgeProjectId: member.curseforgeProjectId,
+      fileId: fileIdFor(member.curseforgeProjectId),
+      fileName: "coolmod-1.2.3.jar",
+    });
+  });
+
+  it("records a published file only once across repeated reconciles", async () => {
+    const modpack = await seedModpack(ctx, { curseforgeProjectId: 5002 });
+    const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const member = await seedPackMod(ctx, workshop);
+    const published = manifest({
+      version: "1.0.0",
+      modIds: new Set([member.curseforgeProjectId]),
+    });
+    vi.mocked(getModpackManifest).mockResolvedValue(published);
+
+    await modpackService.reconcile(modpack.id);
+    await modpackService.reconcile(modpack.id);
+
+    expect(await modpackService.listReleases(modpack.id)).toHaveLength(1);
+  });
+
+  it("keeps an older release readable after a newer one lands", async () => {
+    const modpack = await seedModpack(ctx, { curseforgeProjectId: 5003 });
+    const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const kept = await seedPackMod(ctx, workshop);
+    const dropped = await seedPackMod(ctx, workshop);
+    const arrival = await seedProject(ctx, "Arrival");
+
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      manifest({
+        version: "1.0.0",
+        modIds: new Set([
+          kept.curseforgeProjectId,
+          dropped.curseforgeProjectId,
+        ]),
+      }),
+    );
+    await modpackService.reconcile(modpack.id);
+
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      manifest({
+        version: "1.1.0",
+        modIds: new Set([kept.curseforgeProjectId, arrival]),
+        entries: [
+          { projectId: kept.curseforgeProjectId, fileId: 777 },
+          { projectId: arrival, fileId: 888 },
+        ],
+      }),
+    );
+    await modpackService.reconcile(modpack.id);
+
+    const releases = await modpackService.listReleases(modpack.id);
+    expect(releases.map((r) => r.version)).toEqual(["1.1.0", "1.0.0"]);
+
+    const old = releases[1];
+    const oldRows = await Q.modpack.release.mod.listForReleases([old.id]);
+    expect(oldRows.map((row) => row.curseforgeProjectId).sort()).toEqual(
+      [kept.curseforgeProjectId, dropped.curseforgeProjectId].sort(),
+    );
+    expect(
+      oldRows.find(
+        (row) => row.curseforgeProjectId === kept.curseforgeProjectId,
+      )?.fileId,
+    ).toBe(fileIdFor(kept.curseforgeProjectId));
+  });
+
+  it("diffs a release against the one before it", async () => {
+    const modpack = await seedModpack(ctx, { curseforgeProjectId: 5004 });
+    const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const kept = await seedPackMod(ctx, workshop);
+    const bumped = await seedPackMod(ctx, workshop);
+    const dropped = await seedPackMod(ctx, workshop);
+    const arrival = await seedProject(ctx, "Arrival");
+
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      manifest({
+        version: "1.0.0",
+        modIds: new Set([
+          kept.curseforgeProjectId,
+          bumped.curseforgeProjectId,
+          dropped.curseforgeProjectId,
+        ]),
+      }),
+    );
+    await modpackService.reconcile(modpack.id);
+
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      manifest({
+        version: "1.1.0",
+        modIds: new Set([
+          kept.curseforgeProjectId,
+          bumped.curseforgeProjectId,
+          arrival,
+        ]),
+        entries: [
+          {
+            projectId: kept.curseforgeProjectId,
+            fileId: fileIdFor(kept.curseforgeProjectId),
+          },
+          { projectId: bumped.curseforgeProjectId, fileId: 999_001 },
+          { projectId: arrival, fileId: 999_002 },
+        ],
+      }),
+    );
+    await modpackService.reconcile(modpack.id);
+
+    const [latest] = await modpackService.listReleases(modpack.id);
+    const diff = await modpackService.getReleaseDiff(latest.id);
+
+    expect(diff.previous?.version).toBe("1.0.0");
+    expect(diff.added.map((e) => e.curseforgeProjectId)).toEqual([arrival]);
+    expect(diff.updated.map((e) => e.curseforgeProjectId)).toEqual([
+      bumped.curseforgeProjectId,
+    ]);
+    expect(diff.updated[0].previousFile?.fileId).toBe(
+      fileIdFor(bumped.curseforgeProjectId),
+    );
+    expect(diff.removed.map((e) => e.curseforgeProjectId)).toEqual([
+      dropped.curseforgeProjectId,
+    ]);
+    expect(diff.unchanged).toBe(1);
+  });
+
+  it("treats the first recorded release as a baseline, not an all-added diff", async () => {
+    const modpack = await seedModpack(ctx, { curseforgeProjectId: 5005 });
+    const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const member = await seedPackMod(ctx, workshop);
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      manifest({
+        version: "1.0.0",
+        modIds: new Set([member.curseforgeProjectId]),
+      }),
+    );
+    await modpackService.reconcile(modpack.id);
+
+    const [release] = await modpackService.listReleases(modpack.id);
+    const diff = await modpackService.getReleaseDiff(release.id);
+
+    expect(diff.previous).toBeNull();
+    expect(diff.added).toHaveLength(0);
+    expect(diff.unchanged).toBe(1);
+  });
+
+  it("points current membership at the newest published file", async () => {
+    const modpack = await seedModpack(ctx, { curseforgeProjectId: 5006 });
+    const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const member = await seedPackMod(ctx, workshop, {
+      fileId: 1,
+      fileName: "old.jar",
+    });
+    vi.mocked(getFilesDetails).mockResolvedValue([
+      {
+        fileId: 4242,
+        projectId: member.curseforgeProjectId,
+        displayName: "New 2.0",
+        fileName: "new-2.0.jar",
+        fileDate: null,
+        releaseType: 1,
+      },
+    ]);
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      manifest({
+        version: "2.0.0",
+        modIds: new Set([member.curseforgeProjectId]),
+        entries: [{ projectId: member.curseforgeProjectId, fileId: 4242 }],
+      }),
+    );
+
+    await modpackService.reconcile(modpack.id);
+
+    expect(await Q.modpack.mod.get({ id: member.id })).toMatchObject({
+      fileId: 4242,
+      fileName: "new-2.0.jar",
+    });
+  });
+});
+
+describe("ModpackService release diff with multi-file mods", () => {
+  it("counts a project shipping several files once, and only as changed when its files change", async () => {
+    const modpack = await seedModpack(ctx, { curseforgeProjectId: 5007 });
+    const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const twin = await seedPackMod(ctx, workshop);
+    const solo = await seedPackMod(ctx, workshop);
+
+    const twinEntries = [
+      { projectId: twin.curseforgeProjectId, fileId: 610_001 },
+      { projectId: twin.curseforgeProjectId, fileId: 610_002 },
+    ];
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      manifest({
+        version: "1.0.0",
+        modIds: new Set([twin.curseforgeProjectId, solo.curseforgeProjectId]),
+        entries: [
+          ...twinEntries,
+          { projectId: solo.curseforgeProjectId, fileId: 610_003 },
+        ],
+      }),
+    );
+    await modpackService.reconcile(modpack.id);
+
+    const [first] = await modpackService.listReleases(modpack.id);
+    expect(first.modCount).toBe(2);
+    expect(
+      await Q.modpack.release.mod.listForReleases([first.id]),
+    ).toHaveLength(3);
+
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      manifest({
+        version: "1.1.0",
+        modIds: new Set([twin.curseforgeProjectId, solo.curseforgeProjectId]),
+        entries: [
+          ...twinEntries,
+          { projectId: solo.curseforgeProjectId, fileId: 610_099 },
+        ],
+      }),
+    );
+    await modpackService.reconcile(modpack.id);
+
+    const [latest] = await modpackService.listReleases(modpack.id);
+    const diff = await modpackService.getReleaseDiff(latest.id);
+
+    expect(diff.updated.map((e) => e.curseforgeProjectId)).toEqual([
+      solo.curseforgeProjectId,
+    ]);
+    expect(diff.added).toHaveLength(0);
+    expect(diff.removed).toHaveLength(0);
+    expect(diff.unchanged).toBe(1);
+  });
+});
+
+describe("ModpackService.recordRelease durability", () => {
+  it("leaves no release behind when the membership write fails", async () => {
+    const modpack = await seedModpack(ctx, { curseforgeProjectId: 5008 });
+    const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const good = await seedPackMod(ctx, workshop);
+    const bad = await seedPackMod(ctx, workshop);
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      manifest({
+        version: "1.0.0",
+        modIds: new Set([good.curseforgeProjectId, bad.curseforgeProjectId]),
+        entries: [
+          { projectId: good.curseforgeProjectId, fileId: 630_001 },
+          // out of int4 range, so the membership insert dies mid-transaction
+          { projectId: bad.curseforgeProjectId, fileId: 9_999_999_999 },
+        ],
+      }),
+    );
+
+    await expect(modpackService.reconcile(modpack.id)).rejects.toThrow();
+
+    expect(await modpackService.listReleases(modpack.id)).toHaveLength(0);
+  });
+
+  it("tolerates a manifest repeating the same project and file", async () => {
+    const modpack = await seedModpack(ctx, { curseforgeProjectId: 5009 });
+    const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const member = await seedPackMod(ctx, workshop);
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      manifest({
+        version: "1.0.0",
+        modIds: new Set([member.curseforgeProjectId]),
+        entries: [
+          { projectId: member.curseforgeProjectId, fileId: 620_001 },
+          { projectId: member.curseforgeProjectId, fileId: 620_001 },
+        ],
+      }),
+    );
+
+    await modpackService.reconcile(modpack.id);
+
+    const [release] = await modpackService.listReleases(modpack.id);
+    expect(release.modCount).toBe(1);
+    expect(
+      await Q.modpack.release.mod.listForReleases([release.id]),
+    ).toHaveLength(1);
   });
 });

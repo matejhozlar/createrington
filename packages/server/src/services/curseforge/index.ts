@@ -137,6 +137,15 @@ const rawFileDependenciesSchema = z.object({
     .nullish(),
 });
 
+const rawFileDetailSchema = z.object({
+  id: z.number(),
+  modId: z.number(),
+  displayName: z.string().nullish(),
+  fileName: z.string().nullish(),
+  fileDate: z.string().nullish(),
+  releaseType: z.number().nullish(),
+});
+
 const rawDependencyModSchema = z.object({
   id: z.number(),
   name: z.string(),
@@ -590,6 +599,55 @@ export async function resolveDependencies(
  *
  * Only optional (relationType 2) and required (relationType 3) dependencies are returned.
  */
+export interface CurseForgeFileDetail {
+  fileId: number;
+  projectId: number;
+  displayName: string | null;
+  fileName: string | null;
+  fileDate: string | null;
+  releaseType: number | null;
+}
+
+/** Identity of specific mod files, batched. Unknown ids are simply absent. */
+export async function getFilesDetails(
+  fileIds: number[],
+): Promise<CurseForgeFileDetail[]> {
+  ensureApiKey();
+  if (fileIds.length === 0) return [];
+
+  const results: CurseForgeFileDetail[] = [];
+  for (const batch of toBatches(fileIds)) {
+    const res = await fetch(`${CURSEFORGE_API}/v1/mods/files`, {
+      method: "POST",
+      headers: { ...cfHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({ fileIds: batch }),
+      signal: AbortSignal.timeout(CF_FETCH_TIMEOUT_MS),
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(`Failed to fetch file details (${res.status}): ${text}`);
+    }
+
+    const body = parseCfResponse(
+      z.object({ data: z.array(rawFileDetailSchema) }),
+      await res.json(),
+      "getFilesDetails",
+    );
+
+    results.push(
+      ...body.data.map((f) => ({
+        fileId: f.id,
+        projectId: f.modId,
+        displayName: f.displayName ?? null,
+        fileName: f.fileName ?? null,
+        fileDate: f.fileDate ?? null,
+        releaseType: f.releaseType ?? null,
+      })),
+    );
+  }
+  return results;
+}
+
 export async function getFilesDependencies(fileIds: number[]): Promise<
   Array<{
     fileId: number;
@@ -638,8 +696,20 @@ export async function getFilesDependencies(fileIds: number[]): Promise<
   return results;
 }
 
+export interface ModpackManifestEntry {
+  projectId: number;
+  fileId: number;
+}
+
 export interface ModpackManifest {
+  /** The pack archive the entries were read from; identity of the release. */
+  fileId: number;
+  displayName: string | null;
   version: string | null;
+  minecraftVersion: string | null;
+  modLoader: string | null;
+  publishedAt: string | null;
+  entries: ModpackManifestEntry[];
   modIds: Set<number>;
 }
 
@@ -710,7 +780,12 @@ async function fetchModpackManifest(
   const filesBody = parseCfResponse(
     z.object({
       data: z.array(
-        z.object({ id: z.number(), serverPackFileId: z.number().nullish() }),
+        z.object({
+          id: z.number(),
+          displayName: z.string().nullish(),
+          fileDate: z.string().nullish(),
+          serverPackFileId: z.number().nullish(),
+        }),
       ),
     }),
     await filesRes.json(),
@@ -752,14 +827,37 @@ async function fetchModpackManifest(
   const manifest = parseCfResponse(
     z.object({
       version: z.string().optional(),
-      files: z.array(z.object({ projectID: z.number() })),
+      minecraft: z
+        .object({
+          version: z.string().optional(),
+          modLoaders: z
+            .array(
+              z.object({ id: z.string(), primary: z.boolean().optional() }),
+            )
+            .optional(),
+        })
+        .optional(),
+      files: z.array(
+        z.object({ projectID: z.number(), fileID: z.number().optional() }),
+      ),
     }),
     JSON.parse(await manifestFile.async("text")),
     "modpack manifest",
   );
 
+  const loaders = manifest.minecraft?.modLoaders ?? [];
   const result: ModpackManifest = {
+    fileId,
+    displayName: latestFile.displayName ?? null,
     version: manifest.version ?? null,
+    minecraftVersion: manifest.minecraft?.version ?? null,
+    modLoader: (loaders.find((l) => l.primary) ?? loaders[0])?.id ?? null,
+    publishedAt: latestFile.fileDate ?? null,
+    entries: manifest.files.flatMap((f) =>
+      f.fileID === undefined
+        ? []
+        : [{ projectId: f.projectID, fileId: f.fileID }],
+    ),
     modIds: new Set(manifest.files.map((f) => f.projectID)),
   };
   modpackCache.set(packProjectId, { manifest: result, fetchedAt: Date.now() });

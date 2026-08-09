@@ -23,6 +23,7 @@ import type { WorkshopModStatus } from "@createrington/shared/db";
 import { AddModsDialog } from "./components/AddModsDialog";
 import { AttentionCard } from "./components/AttentionCard";
 import { PackMembersCard } from "./components/PackMembersCard";
+import { ReleaseHistoryCard } from "./components/ReleaseHistoryCard";
 import { RejectModDialog } from "./components/RejectModDialog";
 import { SuggestionsCard } from "./components/SuggestionsCard";
 import {
@@ -266,6 +267,8 @@ export function AdminWorkshopDetail() {
           onRetry={() => packModsQuery.refetch()}
           onReconciled={invalidate}
         />
+
+        <ReleaseHistoryCard modpackId={workshop.modpackId} />
       </div>
 
       <ModDetailDialog

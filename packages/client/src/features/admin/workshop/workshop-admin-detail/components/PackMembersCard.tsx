@@ -108,6 +108,7 @@ export function PackMembersCard({
   onReconciled: () => void;
 }) {
   const toast = useToastActions();
+  const utils = trpc.useUtils();
   const [requestedPage, setRequestedPage] = useState(0);
 
   const totalPages = Math.ceil(rows.length / PACK_MODS_PER_PAGE);
@@ -121,6 +122,7 @@ export function PackMembersCard({
     onSuccess: () => {
       toast.success("Checked against the published pack");
       onReconciled();
+      utils.admin.modpacks.listReleases.invalidate({ modpackId });
     },
     onError: (err) => toast.error(err.message),
   });
