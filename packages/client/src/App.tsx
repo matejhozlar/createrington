@@ -560,7 +560,7 @@ function AppContent() {
                         element={<AdminWorkshop />}
                       />
                       <Route
-                        path="tools/workshop/:id"
+                        path="tools/workshop/:slug"
                         element={<AdminWorkshopDetail />}
                       />
                       <Route path="tools" element={<AdminTools />} />
