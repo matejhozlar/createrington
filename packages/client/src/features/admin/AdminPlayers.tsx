@@ -442,27 +442,27 @@ export function AdminPlayers() {
             <>
               {/* Table */}
               <CardContent className="px-0">
-                <Table>
-                  <TableHeader className="bg-sidebar-accent/50">
+                <Table className="min-w-[790px]">
+                  <TableHeader>
                     <TableRow>
-                      <TableHead className="px-4">
+                      <TableHead>
                         <button
                           type="button"
                           onClick={() => handleSort("minecraftUsername")}
-                          className="inline-flex items-center gap-1 text-sm font-medium"
+                          className="inline-flex cursor-pointer items-center gap-1 uppercase"
                         >
                           Player
                           {renderSortIcon("minecraftUsername")}
                         </button>
                       </TableHead>
-                      <TableHead className="px-4">Discord ID</TableHead>
-                      <TableHead className="px-4">Status</TableHead>
-                      <TableHead className="px-4">Server</TableHead>
-                      <TableHead className="px-4">
+                      <TableHead col="discordId">Discord ID</TableHead>
+                      <TableHead col="status">Status</TableHead>
+                      <TableHead col="label">Server</TableHead>
+                      <TableHead col="dateTime">
                         <button
                           type="button"
                           onClick={() => handleSort("lastSeen")}
-                          className="inline-flex items-center gap-1 text-sm font-medium"
+                          className="inline-flex cursor-pointer items-center gap-1 uppercase"
                         >
                           Last Seen
                           {renderSortIcon("lastSeen")}
@@ -498,7 +498,7 @@ export function AdminPlayers() {
                             navigate(`/admin/players/${player.minecraftUuid}`)
                           }
                         >
-                          <TableCell className="px-4">
+                          <TableCell>
                             <div className="flex items-center gap-3">
                               <div className="relative">
                                 <MinecraftAvatar
@@ -543,7 +543,7 @@ export function AdminPlayers() {
                               </div>
                             </div>
                           </TableCell>
-                          <TableCell className="px-4">
+                          <TableCell>
                             <button
                               type="button"
                               onClick={(e) => handleCopy(e, player.discordId)}
@@ -553,7 +553,7 @@ export function AdminPlayers() {
                               <Copy className="size-3 opacity-0 transition-opacity group-hover/copy:opacity-100" />
                             </button>
                           </TableCell>
-                          <TableCell className="px-4">
+                          <TableCell>
                             <Badge
                               variant={isOnline ? "default" : "outline"}
                               className={cn(
@@ -564,7 +564,7 @@ export function AdminPlayers() {
                               {isOnline ? "Online" : "Offline"}
                             </Badge>
                           </TableCell>
-                          <TableCell className="px-4">
+                          <TableCell>
                             {isOnline && serverName ? (
                               <p className="text-sm text-foreground">
                                 {serverName}
@@ -573,7 +573,7 @@ export function AdminPlayers() {
                               <p className="text-sm text-muted-foreground">—</p>
                             )}
                           </TableCell>
-                          <TableCell className="px-4">
+                          <TableCell>
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <span className="text-sm text-muted-foreground cursor-default">

@@ -112,31 +112,25 @@ export function TradeHistory() {
         </div>
         <Card className="overflow-hidden">
           <CardContent className="p-0">
-            <Table>
+            <Table className="min-w-[1020px]">
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead className="text-[11px] font-medium uppercase tracking-wider">
-                    Date
-                  </TableHead>
-                  <TableHead className="text-[11px] font-medium uppercase tracking-wider">
-                    Token
-                  </TableHead>
-                  <TableHead className="text-[11px] font-medium uppercase tracking-wider">
-                    Type
-                  </TableHead>
-                  <TableHead className="text-right text-[11px] font-medium uppercase tracking-wider">
+                  <TableHead col="dateTime">Date</TableHead>
+                  <TableHead>Token</TableHead>
+                  <TableHead col="status">Type</TableHead>
+                  <TableHead col="amount" className="text-right">
                     Amount
                   </TableHead>
-                  <TableHead className="text-right text-[11px] font-medium uppercase tracking-wider">
+                  <TableHead col="amount" className="text-right">
                     Price
                   </TableHead>
-                  <TableHead className="text-right text-[11px] font-medium uppercase tracking-wider">
+                  <TableHead col="amount" className="text-right">
                     Fee
                   </TableHead>
-                  <TableHead className="text-right text-[11px] font-medium uppercase tracking-wider">
+                  <TableHead col="amount" className="text-right">
                     Total
                   </TableHead>
-                  <TableHead className="text-right text-[11px] font-medium uppercase tracking-wider">
+                  <TableHead col="amount" className="text-right">
                     P&L
                   </TableHead>
                 </TableRow>

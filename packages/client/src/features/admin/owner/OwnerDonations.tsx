@@ -363,35 +363,35 @@ export function OwnerDonations() {
           ) : (
             <>
               <CardContent className="px-0">
-                <Table>
-                  <TableHeader className="bg-sidebar-accent/50">
+                <Table className="min-w-[730px]">
+                  <TableHeader>
                     <TableRow>
-                      <TableHead className="px-4">ID</TableHead>
-                      <TableHead className="px-4">Discord</TableHead>
-                      <TableHead className="px-4">Type</TableHead>
-                      <TableHead className="px-4">Amount</TableHead>
-                      <TableHead className="px-4">Status</TableHead>
-                      <TableHead className="px-4">Date</TableHead>
+                      <TableHead col="id">ID</TableHead>
+                      <TableHead>Discord</TableHead>
+                      <TableHead col="status">Type</TableHead>
+                      <TableHead col="amount">Amount</TableHead>
+                      <TableHead col="status">Status</TableHead>
+                      <TableHead col="date">Date</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {donations.map((d: Donation) => (
                       <TableRow key={d.id}>
-                        <TableCell className="px-4 font-mono text-sm">
+                        <TableCell className="font-mono text-sm">
                           {d.id}
                         </TableCell>
-                        <TableCell className="px-4 font-mono text-xs text-muted-foreground">
+                        <TableCell className="font-mono text-xs text-muted-foreground">
                           {d.playerDiscordId}
                         </TableCell>
-                        <TableCell className="px-4">
+                        <TableCell>
                           <Badge variant="outline" className="text-xs">
                             {TYPE_LABELS[d.type] ?? d.type}
                           </Badge>
                         </TableCell>
-                        <TableCell className="px-4 font-semibold">
+                        <TableCell className="font-semibold">
                           {formatAmount(d.amountCents, d.currency)}
                         </TableCell>
-                        <TableCell className="px-4">
+                        <TableCell>
                           <span
                             className={cn(
                               "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium capitalize",
@@ -401,7 +401,7 @@ export function OwnerDonations() {
                             {d.status}
                           </span>
                         </TableCell>
-                        <TableCell className="px-4 text-muted-foreground text-sm">
+                        <TableCell className="text-muted-foreground text-sm">
                           {formatDate(d.createdAt)}
                         </TableCell>
                       </TableRow>

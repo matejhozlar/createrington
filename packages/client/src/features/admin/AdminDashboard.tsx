@@ -254,14 +254,14 @@ export function AdminDashboard() {
                   No recent bans
                 </p>
               ) : (
-                <Table>
+                <Table className="min-w-[800px]">
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Player</TableHead>
-                      <TableHead>Type</TableHead>
+                      <TableHead col="player">Player</TableHead>
+                      <TableHead col="status">Type</TableHead>
                       <TableHead>Reason</TableHead>
-                      <TableHead>By</TableHead>
-                      <TableHead>Date</TableHead>
+                      <TableHead col="player">By</TableHead>
+                      <TableHead col="date">Date</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>

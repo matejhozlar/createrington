@@ -149,15 +149,17 @@ export function AdminWorkshop() {
             </CardContent>
           ) : (
             <CardContent className="px-0">
-              <Table>
-                <TableHeader className="bg-sidebar-accent/50">
+              <Table className="min-w-[790px]">
+                <TableHeader>
                   <TableRow>
-                    <TableHead className="px-4">Name</TableHead>
-                    <TableHead className="px-4">Status</TableHead>
-                    <TableHead className="px-4">Version</TableHead>
-                    <TableHead className="px-4">Loader</TableHead>
-                    <TableHead className="px-4">Created</TableHead>
-                    <TableHead className="px-4 text-right">Actions</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead col="status">Status</TableHead>
+                    <TableHead col="status">Version</TableHead>
+                    <TableHead col="status">Loader</TableHead>
+                    <TableHead col="date">Created</TableHead>
+                    <TableHead col="actions" className="text-right">
+                      Actions
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -178,13 +180,18 @@ export function AdminWorkshop() {
                         }
                       }}
                     >
-                      <TableCell className="px-4">
-                        <p className="font-medium">{workshop.name}</p>
-                        <p className="text-xs text-muted-foreground">
+                      <TableCell>
+                        <p
+                          className="truncate font-medium"
+                          title={workshop.name}
+                        >
+                          {workshop.name}
+                        </p>
+                        <p className="truncate text-xs text-muted-foreground">
                           /{workshop.slug}
                         </p>
                       </TableCell>
-                      <TableCell className="px-4">
+                      <TableCell>
                         <Badge
                           variant="outline"
                           className={
@@ -195,17 +202,17 @@ export function AdminWorkshop() {
                             workshop.status}
                         </Badge>
                       </TableCell>
-                      <TableCell className="px-4 text-sm">
+                      <TableCell className="text-sm">
                         {workshop.gameVersion}
                       </TableCell>
-                      <TableCell className="px-4 text-sm">
+                      <TableCell className="text-sm">
                         {loaderName(workshop.modLoaderType)}
                       </TableCell>
-                      <TableCell className="px-4 text-sm text-muted-foreground">
+                      <TableCell className="text-sm text-muted-foreground">
                         {formatDate(workshop.createdAt)}
                       </TableCell>
                       <TableCell
-                        className="px-4 text-right"
+                        className="text-right"
                         onClick={(event) => event.stopPropagation()}
                       >
                         <div className="flex justify-end gap-2">

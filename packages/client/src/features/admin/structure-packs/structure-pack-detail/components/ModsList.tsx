@@ -48,12 +48,12 @@ export function ModsList({
           <p>No mods added yet</p>
         </div>
       ) : (
-        <Table>
+        <Table className="min-w-[430px]">
           <TableHeader>
             <TableRow>
               <TableHead>Mod</TableHead>
-              <TableHead>File</TableHead>
-              <TableHead className="w-[80px]" />
+              <TableHead className="w-[180px]">File</TableHead>
+              <TableHead col="icon" />
             </TableRow>
           </TableHeader>
           <TableBody>

@@ -59,19 +59,19 @@ export function SessionsTab({ serverId }: SessionsTabProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <Table>
-        <TableHeader className="bg-sidebar-accent/50">
+      <Table className="min-w-[620px]">
+        <TableHeader>
           <TableRow>
-            <TableHead className="px-4">Player</TableHead>
-            <TableHead className="px-4">Joined</TableHead>
-            <TableHead className="px-4">Left</TableHead>
-            <TableHead className="px-4">Duration</TableHead>
+            <TableHead>Player</TableHead>
+            <TableHead col="dateTime">Joined</TableHead>
+            <TableHead col="dateTime">Left</TableHead>
+            <TableHead col="duration">Duration</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {sessions.map((session) => (
             <TableRow key={session.id}>
-              <TableCell className="px-4">
+              <TableCell>
                 <Link
                   to={`/admin/players/${session.playerMinecraftUuid}`}
                   className="group flex items-center gap-3 rounded"
@@ -85,15 +85,15 @@ export function SessionsTab({ serverId }: SessionsTabProps) {
                   </span>
                 </Link>
               </TableCell>
-              <TableCell className="px-4 text-sm text-muted-foreground">
+              <TableCell className="text-sm text-muted-foreground">
                 {new Date(session.sessionStart).toLocaleString()}
               </TableCell>
-              <TableCell className="px-4 text-sm text-muted-foreground">
+              <TableCell className="text-sm text-muted-foreground">
                 {session.sessionEnd
                   ? new Date(session.sessionEnd).toLocaleString()
                   : "Active"}
               </TableCell>
-              <TableCell className="px-4 text-sm">
+              <TableCell className="text-sm">
                 {formatDuration(session.secondsPlayed)}
               </TableCell>
             </TableRow>

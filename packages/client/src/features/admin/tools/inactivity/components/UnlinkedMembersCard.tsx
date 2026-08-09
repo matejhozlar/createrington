@@ -208,12 +208,12 @@ export function UnlinkedMembersCard() {
       ) : (
         <>
           <CardContent className="px-0">
-            <Table>
-              <TableHeader className="bg-sidebar-accent/50">
+            <Table className="min-w-[500px]">
+              <TableHeader>
                 <TableRow>
-                  <TableHead className="px-4">Member</TableHead>
-                  <TableHead className="px-4">Discord ID</TableHead>
-                  <TableHead className="px-4">Joined</TableHead>
+                  <TableHead>Member</TableHead>
+                  <TableHead col="discordId">Discord ID</TableHead>
+                  <TableHead col="date">Joined</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -224,7 +224,7 @@ export function UnlinkedMembersCard() {
 
                   return (
                     <TableRow key={member.discordId}>
-                      <TableCell className="px-4">
+                      <TableCell>
                         <div>
                           <button
                             type="button"
@@ -244,7 +244,7 @@ export function UnlinkedMembersCard() {
                           </button>
                         </div>
                       </TableCell>
-                      <TableCell className="px-4">
+                      <TableCell>
                         <button
                           type="button"
                           onClick={(e) => handleCopy(e, member.discordId)}
@@ -254,7 +254,7 @@ export function UnlinkedMembersCard() {
                           <Copy className="size-3 opacity-0 transition-opacity group-hover/copy:opacity-100" />
                         </button>
                       </TableCell>
-                      <TableCell className="px-4">
+                      <TableCell>
                         {joinedIso ? (
                           <Tooltip>
                             <TooltipTrigger asChild>

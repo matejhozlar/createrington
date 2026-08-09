@@ -70,27 +70,21 @@ export function TransactionsTab({ playerId }: TransactionsTabProps) {
       ) : (
         <>
           <div className="-mx-6 overflow-x-auto">
-            <Table>
+            <Table className="min-w-[800px]">
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead className="text-[11px] font-medium uppercase tracking-wider">
-                    Date
-                  </TableHead>
-                  <TableHead className="text-[11px] font-medium uppercase tracking-wider">
-                    Type
-                  </TableHead>
-                  <TableHead className="text-right text-[11px] font-medium uppercase tracking-wider">
+                  <TableHead col="dateTime">Date</TableHead>
+                  <TableHead col="status">Type</TableHead>
+                  <TableHead col="amount" className="text-right">
                     Amount
                   </TableHead>
-                  <TableHead className="text-right text-[11px] font-medium uppercase tracking-wider">
+                  <TableHead col="amount" className="text-right">
                     Before
                   </TableHead>
-                  <TableHead className="text-right text-[11px] font-medium uppercase tracking-wider">
+                  <TableHead col="amount" className="text-right">
                     After
                   </TableHead>
-                  <TableHead className="text-[11px] font-medium uppercase tracking-wider">
-                    Description
-                  </TableHead>
+                  <TableHead>Description</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -107,7 +101,7 @@ export function TransactionsTab({ playerId }: TransactionsTabProps) {
                           : "bg-destructive/[0.02]",
                       )}
                     >
-                      <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                      <TableCell className="text-sm text-muted-foreground">
                         {new Date(tx.createdAt).toLocaleString()}
                       </TableCell>
                       <TableCell>

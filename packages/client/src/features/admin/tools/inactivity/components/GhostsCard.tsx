@@ -238,14 +238,16 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
         ) : (
           <>
             <CardContent className="px-0">
-              <Table>
-                <TableHeader className="bg-sidebar-accent/50">
+              <Table className="min-w-[710px]">
+                <TableHeader>
                   <TableRow>
-                    <TableHead className="px-4">Player</TableHead>
-                    <TableHead className="px-4">Discord ID</TableHead>
-                    <TableHead className="px-4">Registered</TableHead>
-                    <TableHead className="px-4">Last Seen</TableHead>
-                    <TableHead className="px-4 text-right">Actions</TableHead>
+                    <TableHead>Player</TableHead>
+                    <TableHead col="discordId">Discord ID</TableHead>
+                    <TableHead col="date">Registered</TableHead>
+                    <TableHead col="date">Last Seen</TableHead>
+                    <TableHead col="actionsMenu" className="text-right">
+                      Actions
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -255,7 +257,7 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
 
                     return (
                       <TableRow key={ghost.discordId}>
-                        <TableCell className="px-4">
+                        <TableCell>
                           <div>
                             <button
                               type="button"
@@ -279,7 +281,7 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
                             </button>
                           </div>
                         </TableCell>
-                        <TableCell className="px-4">
+                        <TableCell>
                           <button
                             type="button"
                             onClick={(e) => handleCopy(e, ghost.discordId)}
@@ -289,7 +291,7 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
                             <Copy className="size-3 opacity-0 transition-opacity group-hover/copy:opacity-100" />
                           </button>
                         </TableCell>
-                        <TableCell className="px-4">
+                        <TableCell>
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <span className="text-sm text-muted-foreground cursor-default">
@@ -301,7 +303,7 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
                             </TooltipContent>
                           </Tooltip>
                         </TableCell>
-                        <TableCell className="px-4">
+                        <TableCell>
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <span className="text-sm text-muted-foreground cursor-default">
@@ -313,7 +315,7 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
                             </TooltipContent>
                           </Tooltip>
                         </TableCell>
-                        <TableCell className="px-4 text-right">
+                        <TableCell className="text-right">
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <span>

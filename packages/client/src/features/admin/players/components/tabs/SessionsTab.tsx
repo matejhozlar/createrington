@@ -133,13 +133,15 @@ export function SessionsTab({ playerId, getServerName }: SessionsTabProps) {
       ) : (
         <>
           {/* Table */}
-          <Table>
-            <TableHeader className="bg-sidebar-accent/50">
+          <Table className="min-w-[620px]">
+            <TableHeader>
               <TableRow>
-                <TableHead className="px-4 py-3">Server</TableHead>
-                <TableHead className="px-4 py-3">Joined</TableHead>
-                <TableHead className="px-4 py-3">Left</TableHead>
-                <TableHead className="px-4 py-3 text-right">Duration</TableHead>
+                <TableHead>Server</TableHead>
+                <TableHead col="dateTime">Joined</TableHead>
+                <TableHead col="dateTime">Left</TableHead>
+                <TableHead col="duration" className="text-right">
+                  Duration
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -158,7 +160,7 @@ export function SessionsTab({ playerId, getServerName }: SessionsTabProps) {
                     key={session.id}
                     className="hover:bg-sidebar-accent/30"
                   >
-                    <TableCell className="px-4 py-3">
+                    <TableCell>
                       <div className="flex items-center gap-2">
                         <p className="font-medium">{serverName}</p>
                         {!leftAt && (
@@ -171,7 +173,7 @@ export function SessionsTab({ playerId, getServerName }: SessionsTabProps) {
                         )}
                       </div>
                     </TableCell>
-                    <TableCell className="px-4 py-3">
+                    <TableCell>
                       <p className="text-sm text-foreground">
                         {joinedAt.toLocaleDateString()}
                       </p>
@@ -179,7 +181,7 @@ export function SessionsTab({ playerId, getServerName }: SessionsTabProps) {
                         {joinedAt.toLocaleTimeString()}
                       </p>
                     </TableCell>
-                    <TableCell className="px-4 py-3">
+                    <TableCell>
                       {leftAt ? (
                         <>
                           <p className="text-sm text-foreground">
@@ -193,7 +195,7 @@ export function SessionsTab({ playerId, getServerName }: SessionsTabProps) {
                         <p className="text-sm text-muted-foreground">—</p>
                       )}
                     </TableCell>
-                    <TableCell className="px-4 py-3 text-right">
+                    <TableCell className="text-right">
                       <p className="font-semibold">
                         {duration > 0
                           ? formatDuration(Number(duration))
