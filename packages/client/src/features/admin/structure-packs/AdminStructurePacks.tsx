@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useStickyValue } from "@/hooks/use-sticky-value";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { Loading } from "@/components/loading-spinner";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";

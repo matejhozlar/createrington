@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { ChevronRight, Heart } from "lucide-react";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { cn } from "@/lib/utils";

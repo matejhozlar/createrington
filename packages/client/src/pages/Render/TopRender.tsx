@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router";
 import { loadSkin, randomPose } from "./skin-utils";
 
 interface PlayerEntry {

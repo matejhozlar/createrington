@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "@/contexts/auth";
 import { Button } from "@/components/ui/button";
-import { NavLink } from "react-router-dom";
+import { NavLink } from "react-router";
 import { ArrowRight, Download } from "lucide-react";
 import {
   Carousel,

@@ -1,4 +1,4 @@
-import { useParams, NavLink } from "react-router-dom";
+import { useParams, NavLink } from "react-router";
 import { Loading } from "@/components/loading-spinner";
 import {
   Breadcrumb,

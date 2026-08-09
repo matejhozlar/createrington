@@ -1,7 +1,7 @@
 import { CheckCircle, Clock, ExternalLink } from "lucide-react";
 import { DISCORD_INVITE_URL } from "@/lib/external-urls";
 import { useMemo } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink } from "react-router";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { buildWaitlistFormSchema } from "@createrington/shared/api";

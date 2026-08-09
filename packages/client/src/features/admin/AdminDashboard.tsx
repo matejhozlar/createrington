@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { useAuth } from "@/contexts/auth";
 import { trpc } from "@/lib/trpc";
 import { Loading } from "@/components/loading-spinner";

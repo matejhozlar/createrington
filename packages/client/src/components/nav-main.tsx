@@ -11,7 +11,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { NavLink } from "react-router-dom";
+import { NavLink } from "react-router";
 import { Badge, IconBadge } from "./ui/badge";
 import { cn } from "@/lib/utils";
 import React from "react";

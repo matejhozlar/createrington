@@ -5,7 +5,7 @@ import {
   Route,
   Outlet,
   useLocation,
-} from "react-router-dom";
+} from "react-router";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { trpc, trpcClient, queryClient } from "./lib/trpc";
 import { lazyNamed } from "./lib/lazy";

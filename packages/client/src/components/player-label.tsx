@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { Loader2, UserSearch } from "lucide-react";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import { useAuth } from "@/contexts/auth";
