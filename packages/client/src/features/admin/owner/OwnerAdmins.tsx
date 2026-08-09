@@ -17,6 +17,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
 import { Copy, UserMinus, UserPlus } from "lucide-react";
 import { PlayerLabel } from "@/components/player-label";
 import { trpc } from "@/lib/trpc";
@@ -139,14 +144,19 @@ export function OwnerAdmins() {
                           : "—"}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => setDemoteTarget(admin)}
-                        >
-                          <UserMinus className="mr-1 size-3" />
-                          Demote
-                        </Button>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              aria-label={`Demote ${admin.minecraftUsername ?? admin.discordId}`}
+                              onClick={() => setDemoteTarget(admin)}
+                            >
+                              <UserMinus className="size-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Demote</TooltipContent>
+                        </Tooltip>
                       </TableCell>
                     </TableRow>
                   ))

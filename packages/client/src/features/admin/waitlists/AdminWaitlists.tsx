@@ -437,7 +437,7 @@ export function AdminWaitlists() {
           ) : (
             <>
               <CardContent className="px-0">
-                <Table className="min-w-[920px]">
+                <Table className="min-w-[956px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead col="id">ID</TableHead>
@@ -473,7 +473,7 @@ export function AdminWaitlists() {
                           {renderSortIcon("submittedAt")}
                         </button>
                       </TableHead>
-                      <TableHead col="actions" className="text-right">
+                      <TableHead col="actionsWide" className="text-right">
                         Actions
                       </TableHead>
                     </TableRow>
@@ -584,15 +584,21 @@ export function AdminWaitlists() {
                             )}
                           </TableCell>
                           <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
+                            <div className="flex flex-wrap justify-end gap-2">
                               {isPending && (
-                                <Button
-                                  size="sm"
-                                  variant="default"
-                                  onClick={() => handleInvite(entry)}
-                                >
-                                  Invite
-                                </Button>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      size="sm"
+                                      variant="default"
+                                      aria-label="Send invite"
+                                      onClick={() => handleInvite(entry)}
+                                    >
+                                      <Mail className="size-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Send invite</TooltipContent>
+                                </Tooltip>
                               )}
                               {isAccepted && (
                                 <Badge variant="default">Invited</Badge>
@@ -605,13 +611,19 @@ export function AdminWaitlists() {
                                   Auto-Accepted
                                 </Badge>
                               )}
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => handleDelete(entry)}
-                              >
-                                <Trash2 className="size-4" />
-                              </Button>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    aria-label="Delete entry"
+                                    onClick={() => handleDelete(entry)}
+                                  >
+                                    <Trash2 className="size-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Delete entry</TooltipContent>
+                              </Tooltip>
                             </div>
                           </TableCell>
                         </TableRow>
