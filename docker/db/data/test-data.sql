@@ -1384,17 +1384,11 @@ INSERT INTO workshop_project_dependency (workshop_id, curseforge_project_id, dep
   (1, 688231, 328085, 3),
   (1, 398521, 248787, 2);
 
--- Season 3 pack membership: promoted suggestions from both season 3 workshops
--- (including the admin-added Create) and an auto-promoted required dependency.
--- Nothing is live because the pack has no published CurseForge project yet.
-INSERT INTO modpack_mod (modpack_id, curseforge_project_id, origin, workshop_mod_id, added_by, file_id, file_name, file_release_type) VALUES
-  (1, 328085, 'suggestion', 18, NULL, 7963363, 'create-1.21.1-6.0.10.jar', 1),
-  (1, 398521, 'suggestion', 9, NULL, 5915749, 'FarmersDelight-1.21.1-1.2.8.jar', 1),
-  (1, 422301, 'suggestion', 10, NULL, 5625757, 'sophisticatedbackpacks-1.21.1-3.20.5.jar', 1),
-  (1, 420905, 'dependency', NULL, NULL, 5625744, 'sophisticatedcore-1.21.1-1.2.10.jar', 1),
-  (1, 250398, 'suggestion', 13, NULL, 5623160, 'Controlling-neoforge-1.21.1-19.0.5.jar', 1);
+-- The season 3 pack has never been published, so it has no membership at all.
+-- What is coming lives on the suggestions themselves, at next_update.
 
--- Season 2 pack membership: fully shipped, so members carry live state.
+-- Season 2 pack membership: published, so every row carries live state. Rows
+-- only ever come from a manifest, which is why they are all live here.
 INSERT INTO modpack_mod (modpack_id, curseforge_project_id, origin, workshop_mod_id, added_by, file_id, file_name, file_release_type, live_at, live_in_version) VALUES
   (3, 238222, 'suggestion', 19, NULL, 4712868, 'jei-1.20.1-forge-15.20.0.106.jar', 1, NOW() - INTERVAL '380 days', '2.4.1'),
   (3, 245755, 'suggestion', 15, NULL, 4959986, 'waystones-forge-1.20.1-14.1.3.jar', 1, NOW() - INTERVAL '380 days', '2.4.1'),

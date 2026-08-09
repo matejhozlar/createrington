@@ -82,27 +82,6 @@ export const adminModpacksRouter = router({
       }
     }),
 
-  removeMod: adminProcedure
-    .meta({
-      description:
-        "Remove a directly-added member; suggestion members are removed by rejecting the suggestion",
-    })
-    .input(z.object({ modpackModId: id() }))
-    .mutation(async ({ ctx, input }) => {
-      try {
-        await modpackService.removePackMod(input.modpackModId);
-        await Q.admin.log.action.logAction({
-          ...auditActor(ctx),
-          actionType: "modpack_mod_remove",
-          description: `Removed modpack mod #${input.modpackModId}`,
-          metadata: { modpackModId: input.modpackModId },
-        });
-        return { removed: true };
-      } catch (error) {
-        rethrowTrpc(error);
-      }
-    }),
-
   reconcile: adminProcedure
     .meta({
       description:

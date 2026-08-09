@@ -35,9 +35,7 @@ export function PackSearchResults({ mods }: { mods: PackMod[] }) {
         Already in the pack
       </h3>
       {mods.map((row) => {
-        const status = row.liveAt
-          ? MOD_STATUS_STYLES.in_pack
-          : MOD_STATUS_STYLES.next_update;
+        const status = MOD_STATUS_STYLES.in_pack;
         const content = (
           <>
             <ProjectThumb

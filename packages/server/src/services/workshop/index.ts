@@ -7,7 +7,6 @@ import {
 import { ConstraintViolationError, DatabaseError } from "@/db/utils/errors";
 import type {
   CurseforgeProject,
-  ModpackMod,
   Workshop,
   WorkshopMod,
   WorkshopModRejectReason,
@@ -39,11 +38,10 @@ import {
   discordThreadUrl,
 } from "./discord";
 import {
-  OPTIONAL_DEPENDENCY,
-  promoteRequiredDependencies,
-  pruneOrphanedDependencies,
+  loadDependencyContext,
   pruneStaleDependencyEdges,
   resolveProjectDependencies,
+  type DependencyCoverage,
 } from "./dependencies";
 
 export type WorkshopProjectSummary = Pick<
@@ -67,7 +65,8 @@ export interface WorkshopModDependencyInfo {
   name: string | null;
   slug: string | null;
   thumbnailUrl: string | null;
-  rejected: boolean;
+  coverage: DependencyCoverage;
+  requiredByCount: number;
 }
 
 export interface WorkshopModListItem extends WorkshopMod {
@@ -91,19 +90,6 @@ export interface WorkshopPackView {
     curseforgeUrl: string | null;
   };
   mods: ModpackModListItem[];
-}
-
-export interface WorkshopDependencyReport {
-  pulled: ModpackModListItem[];
-  optional: Array<{
-    curseforgeProjectId: number;
-    name: string | null;
-    slug: string | null;
-    thumbnailUrl: string | null;
-    rejected: boolean;
-    inWorkshop: boolean;
-    wantedBy: Array<{ curseforgeProjectId: number; name: string }>;
-  }>;
 }
 
 export interface WorkshopModEntry {
@@ -312,10 +298,7 @@ export class WorkshopService {
           curseforgeProjectId: mod.curseforgeProjectId,
         }),
       ]);
-    const depsByProject = await this.buildDependencyInfo(
-      mod.workshopId,
-      depRows,
-    );
+    const depsByProject = await this.buildDependencyInfo(workshop, depRows);
     return {
       mod: {
         ...mod,
@@ -773,16 +756,11 @@ export class WorkshopService {
       throw new BadRequestError("Cannot review mods in an archived workshop");
     }
 
-    if (action === "approve" && mod.status === "next_update") {
-      const packRow = await this.ensurePackRow(workshop, mod);
-      if (packRow) {
-        await promoteRequiredDependencies(workshop, packRow, adminId);
-      }
-      return mod;
-    }
     if (
       action === "approve" &&
-      (mod.status === "approved" || mod.status === "in_pack")
+      (mod.status === "approved" ||
+        mod.status === "next_update" ||
+        mod.status === "in_pack")
     ) {
       return mod;
     }
@@ -802,38 +780,24 @@ export class WorkshopService {
       );
     }
 
-    const { changed, removedPackRows } = await db.inTransaction(async (tx) => {
-      const count = await tx.workshop.mod.updateAll(
-        target === "rejected"
-          ? {
-              status: "rejected",
-              rejectReason: options.reason,
-              rejectNote: options.note?.trim() || null,
-              reviewedBy: adminId,
-              reviewedAt: new Date(),
-            }
-          : {
-              status: target,
-              rejectReason: null,
-              rejectNote: null,
-              reviewedBy: adminId,
-              reviewedAt: new Date(),
-            },
-        { id: workshopModId, status: mod.status },
-      );
-      // Only next_update and in_pack hold a pack row, so a mod leaving either
-      // for anything but the other drops it
-      const heldPackRow =
-        mod.status === "next_update" || mod.status === "in_pack";
-      if (count === 0 || !heldPackRow || target === "next_update") {
-        return { changed: count, removedPackRows: 0 };
-      }
-      const removed = await tx.modpack.mod.deleteAll({
-        modpackId: workshop.modpackId,
-        workshopModId,
-      });
-      return { changed: count, removedPackRows: removed };
-    });
+    const changed = await Q.workshop.mod.updateAll(
+      target === "rejected"
+        ? {
+            status: "rejected",
+            rejectReason: options.reason,
+            rejectNote: options.note?.trim() || null,
+            reviewedBy: adminId,
+            reviewedAt: new Date(),
+          }
+        : {
+            status: target,
+            rejectReason: null,
+            rejectNote: null,
+            reviewedBy: adminId,
+            reviewedAt: new Date(),
+          },
+      { id: workshopModId, status: mod.status },
+    );
     if (changed === 0) {
       throw new ConflictError(
         "This mod was just reviewed by someone else, refresh and try again",
@@ -842,60 +806,8 @@ export class WorkshopService {
     const updated = await Q.workshop.mod.get({ id: workshopModId });
 
     void announceReview(updated, target);
-    if (target === "next_update") {
-      const packRow = await this.ensurePackRow(workshop, updated);
-      if (packRow) {
-        await promoteRequiredDependencies(workshop, packRow, adminId);
-      }
-    } else {
-      if (removedPackRows > 0) {
-        await pruneOrphanedDependencies(workshop.modpackId);
-      }
-      if (target === "rejected") await pruneStaleDependencyEdges(workshop);
-    }
+    if (target === "rejected") await pruneStaleDependencyEdges(workshop);
     return updated;
-  }
-
-  /**
-   * Create the promoted suggestion's modpack row, or claim an existing row
-   * for the same project (a manifest import that arrived first).
-   */
-  private async ensurePackRow(
-    workshop: Workshop,
-    mod: WorkshopMod,
-  ): Promise<ModpackMod | null> {
-    try {
-      return await Q.modpack.mod.createAndReturn({
-        modpackId: workshop.modpackId,
-        curseforgeProjectId: mod.curseforgeProjectId,
-        origin: "suggestion",
-        workshopModId: mod.id,
-        addedBy: null,
-        fileId: mod.fileId,
-        fileName: mod.fileName,
-        fileReleaseType: mod.fileReleaseType,
-      });
-    } catch (error) {
-      if (!(error instanceof ConstraintViolationError)) throw error;
-      await Q.modpack.mod.updateAll(
-        {
-          origin: "suggestion",
-          workshopModId: mod.id,
-          addedBy: null,
-          fileId: mod.fileId,
-          fileName: mod.fileName,
-          fileReleaseType: mod.fileReleaseType,
-        },
-        {
-          modpackId: workshop.modpackId,
-          curseforgeProjectId: mod.curseforgeProjectId,
-        },
-      );
-      return Q.modpack.mod.find({
-        modpackId: workshop.modpackId,
-        curseforgeProjectId: mod.curseforgeProjectId,
-      });
-    }
   }
 
   /**
@@ -957,79 +869,6 @@ export class WorkshopService {
       { orderBy: "reviewedAt", orderDirection: "desc" },
     );
     return this.decorateMods(workshop, mods);
-  }
-
-  /** Dependency-pulled pack mods and aggregated optional deps, for the admin report. */
-  async getDependencyReport(
-    workshopId: number,
-  ): Promise<WorkshopDependencyReport> {
-    const workshop = await this.getWorkshop(workshopId);
-    const [packRows, suggestions, edges] = await Promise.all([
-      Q.modpack.mod.findAll({ modpackId: workshop.modpackId }),
-      Q.workshop.mod.findAll({ workshopId }),
-      Q.workshop.project.dependency.findAll({ workshopId }),
-    ]);
-
-    const pulled = await modpackService.decoratePackMods(
-      workshop.modpackId,
-      packRows.filter((row) => row.origin === "dependency"),
-    );
-
-    const subjectProjectIds = new Set([
-      ...packRows.map((row) => row.curseforgeProjectId),
-      ...suggestions
-        .filter((m) => USER_VISIBLE_MOD_STATUSES.includes(m.status))
-        .map((m) => m.curseforgeProjectId),
-    ]);
-    const optionalRows = edges.filter(
-      (edge) =>
-        edge.relationType === OPTIONAL_DEPENDENCY &&
-        subjectProjectIds.has(edge.curseforgeProjectId),
-    );
-
-    const optionalIds = [
-      ...new Set(optionalRows.map((edge) => edge.dependsOnProjectId)),
-    ];
-    const namedIds = [
-      ...new Set([
-        ...optionalIds,
-        ...optionalRows.map((edge) => edge.curseforgeProjectId),
-      ]),
-    ];
-    const projects =
-      namedIds.length > 0
-        ? await Q.curseforge.project.findAll({ id: { $in: namedIds } })
-        : [];
-    const projectById = new Map(projects.map((p) => [p.id, p]));
-    const rejectedProjectIds = new Set(
-      suggestions
-        .filter((m) => m.status === "rejected")
-        .map((m) => m.curseforgeProjectId),
-    );
-
-    const optional = optionalIds
-      .map((id) => {
-        const project = projectById.get(id);
-        return {
-          curseforgeProjectId: id,
-          name: project?.name ?? null,
-          slug: project?.slug ?? null,
-          thumbnailUrl: project?.thumbnailUrl ?? null,
-          rejected: rejectedProjectIds.has(id),
-          inWorkshop: subjectProjectIds.has(id),
-          wantedBy: optionalRows
-            .filter((edge) => edge.dependsOnProjectId === id)
-            .map((edge) => ({
-              curseforgeProjectId: edge.curseforgeProjectId,
-              name:
-                projectById.get(edge.curseforgeProjectId)?.name ??
-                `#${edge.curseforgeProjectId}`,
-            })),
-        };
-      })
-      .sort((a, b) => b.wantedBy.length - a.wantedBy.length);
-
-    return { pulled, optional };
   }
 
   private async getWorkshopSummary(
@@ -1159,7 +998,7 @@ export class WorkshopService {
     const packByProjectId = new Map(
       packRows.map((row) => [row.curseforgeProjectId, row]),
     );
-    const depsByProject = await this.buildDependencyInfo(workshop.id, depRows);
+    const depsByProject = await this.buildDependencyInfo(workshop, depRows);
 
     return mods.flatMap((mod) => {
       const project = byId.get(mod.curseforgeProjectId);
@@ -1182,7 +1021,7 @@ export class WorkshopService {
   }
 
   private async buildDependencyInfo(
-    workshopId: number,
+    workshop: Workshop,
     depRows: WorkshopProjectDependency[],
   ): Promise<Map<number, WorkshopModDependencyInfo[]>> {
     const byProject = new Map<number, WorkshopModDependencyInfo[]>();
@@ -1191,16 +1030,11 @@ export class WorkshopService {
     const depProjectIds = [
       ...new Set(depRows.map((d) => d.dependsOnProjectId)),
     ];
-    const [depProjects, rejectedRows] = await Promise.all([
+    const [depProjects, context] = await Promise.all([
       Q.curseforge.project.findAll({ id: { $in: depProjectIds } }),
-      Q.workshop.mod.findAll({
-        workshopId,
-        status: "rejected",
-        curseforgeProjectId: { $in: depProjectIds },
-      }),
+      loadDependencyContext(workshop),
     ]);
     const projectById = new Map(depProjects.map((p) => [p.id, p]));
-    const rejectedIds = new Set(rejectedRows.map((r) => r.curseforgeProjectId));
 
     for (const dep of depRows) {
       const project = projectById.get(dep.dependsOnProjectId);
@@ -1210,7 +1044,8 @@ export class WorkshopService {
         name: project?.name ?? null,
         slug: project?.slug ?? null,
         thumbnailUrl: project?.thumbnailUrl ?? null,
-        rejected: rejectedIds.has(dep.dependsOnProjectId),
+        coverage: context.coverage.get(dep.dependsOnProjectId) ?? "missing",
+        requiredByCount: context.demand.get(dep.dependsOnProjectId) ?? 0,
       };
       const list = byProject.get(dep.curseforgeProjectId) ?? [];
       list.push(info);

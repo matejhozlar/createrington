@@ -1,8 +1,7 @@
-import { Package, Trash2 } from "lucide-react";
+import { Package } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { RouterOutput } from "@/lib/trpc";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -90,25 +89,21 @@ export function PackMembersCard({
   isLoading,
   error,
   onRetry,
-  onRemove,
-  removing,
 }: {
   rows: PackMod[];
   workshopId: number;
   isLoading: boolean;
   error: string | null;
   onRetry: () => void;
-  onRemove: (target: { modpackModId: number; name: string }) => void;
-  removing: boolean;
 }) {
   return (
     <Card className="gap-0">
       <CardHeader className="gap-0 border-b">
-        <CardTitle>Modpack Members ({rows.length.toLocaleString()})</CardTitle>
+        <CardTitle>Published Pack ({rows.length.toLocaleString()})</CardTitle>
         <CardDescription>
-          Everything in the modpack this workshop feeds, including required
-          dependencies, mods imported from the published pack, and suggestions
-          from other workshops that share it.
+          What the published CurseForge pack actually contains, read from its
+          manifest. Mods staged for the next update appear here once you publish
+          a build that includes them.
         </CardDescription>
       </CardHeader>
 
@@ -117,7 +112,7 @@ export function PackMembersCard({
       ) : error ? (
         <CardError message={error} onRetry={onRetry} />
       ) : rows.length === 0 ? (
-        <CardEmpty icon={Package} message="Nothing in the pack yet" />
+        <CardEmpty icon={Package} message="Nothing published yet" />
       ) : (
         <CardContent className="px-0">
           <Table>
@@ -127,7 +122,6 @@ export function PackMembersCard({
                 <TableHead className="px-4">Origin</TableHead>
                 <TableHead className="px-4">Credit</TableHead>
                 <TableHead className="px-4">Publish State</TableHead>
-                <TableHead className="px-4 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -173,25 +167,6 @@ export function PackMembersCard({
                       >
                         {state.label}
                       </Badge>
-                    </TableCell>
-                    <TableCell className="px-4 text-right">
-                      {row.origin !== "suggestion" && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          aria-label={`Remove ${row.project.name} from the pack`}
-                          className="text-destructive hover:text-destructive"
-                          disabled={removing}
-                          onClick={() =>
-                            onRemove({
-                              modpackModId: row.id,
-                              name: row.project.name,
-                            })
-                          }
-                        >
-                          <Trash2 className="size-4" />
-                        </Button>
-                      )}
                     </TableCell>
                   </TableRow>
                 );

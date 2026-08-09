@@ -246,20 +246,6 @@ export const adminWorkshopsRouter = router({
       }
     }),
 
-  dependencyReport: adminProcedure
-    .meta({
-      description:
-        "Dependency-pulled mods and optional dependencies for a workshop",
-    })
-    .input(z.object({ workshopId: id() }))
-    .query(async ({ input }) => {
-      try {
-        return await workshopService.getDependencyReport(input.workshopId);
-      } catch (error) {
-        rethrowTrpc(error);
-      }
-    }),
-
   listForumChannels: adminProcedure
     .meta({ description: "Forum channels available for workshop threads" })
     .query(() => listForumChannels()),
@@ -275,7 +261,7 @@ export const adminWorkshopsRouter = router({
     }),
 
   listPackMods: adminProcedure
-    .meta({ description: "Members of the workshop's modpack" })
+    .meta({ description: "The published pack's contents" })
     .input(z.object({ workshopId: id() }))
     .query(async ({ input }) => {
       try {

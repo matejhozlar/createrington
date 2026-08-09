@@ -1,14 +1,7 @@
 import { db, Q } from "@/db";
-import { ConstraintViolationError } from "@/db/utils/errors";
-import type { Workshop, ModpackMod } from "@createrington/shared/db";
-import {
-  getFilesDependencies,
-  getMods,
-  getModpackModIds,
-  type CurseForgeProjectData,
-} from "@/services/curseforge";
+import type { Workshop, WorkshopModStatus } from "@createrington/shared/db";
+import { getFilesDependencies, getModpackModIds } from "@/services/curseforge";
 import { refreshProjects } from "@/services/curseforge/ingest";
-import { announcePulledDependencies } from "./discord";
 
 export const OPTIONAL_DEPENDENCY = 2;
 export const REQUIRED_DEPENDENCY = 3;
@@ -93,200 +86,71 @@ export async function resolveProjectDependencies(
 }
 
 /**
- * Auto-add the missing required dependencies of a modpack mod as
- * 'dependency'-origin rows. Dependencies with a suggestion row are left to
- * normal review; rejected and incompatible ones are skipped with a warning.
- * When no stored edges exist the mod's file is re-resolved against the API
- * first; pass resolveIfEmpty false when resolution just ran, since a mod with
- * zero dependencies is indistinguishable from an unresolved one. Never throws.
+ * Where a dependency stands relative to the pack: already published, staged
+ * for the next update, still in review, ruled out, or nowhere yet. Only
+ * `missing` and `rejected` mean the pack cannot ship complete.
  */
-export async function promoteRequiredDependencies(
-  workshop: Workshop,
-  packMod: ModpackMod,
-  actorId: string,
-  options: { resolveIfEmpty?: boolean } = {},
-): Promise<void> {
-  try {
-    let deps = await Q.workshop.project.dependency.findAll({
-      workshopId: workshop.id,
-      curseforgeProjectId: packMod.curseforgeProjectId,
-      relationType: REQUIRED_DEPENDENCY,
-    });
-    if (
-      deps.length === 0 &&
-      packMod.fileId !== null &&
-      (options.resolveIfEmpty ?? true)
-    ) {
-      await resolveProjectDependencies(workshop, [packMod]);
-      deps = await Q.workshop.project.dependency.findAll({
-        workshopId: workshop.id,
-        curseforgeProjectId: packMod.curseforgeProjectId,
-        relationType: REQUIRED_DEPENDENCY,
-      });
-    }
-    if (deps.length === 0) return;
+export type DependencyCoverage =
+  "published" | "staged" | "in_review" | "rejected" | "missing";
 
-    const depIds = deps.map((dep) => dep.dependsOnProjectId);
-    const [claimedRows, suggestions] = await Promise.all([
-      Q.modpack.mod.findAll({
-        modpackId: workshop.modpackId,
-        curseforgeProjectId: { $in: depIds },
-      }),
-      Q.workshop.mod.findAll({
-        workshopId: workshop.id,
-        curseforgeProjectId: { $in: depIds },
-      }),
-    ]);
-    const claimedIds = new Set(
-      claimedRows.map((row) => row.curseforgeProjectId),
-    );
-    const suggestedIds = new Set(
-      suggestions.map((row) => row.curseforgeProjectId),
-    );
-    for (const row of suggestions) {
-      if (row.status === "rejected") {
-        logger.warn(
-          `Required dependency #${row.curseforgeProjectId} of modpack mod #${packMod.id} is rejected in this workshop and cannot ship`,
-        );
-      }
-    }
-
-    const missing = depIds.filter(
-      (id) => !claimedIds.has(id) && !suggestedIds.has(id),
-    );
-    if (missing.length === 0) return;
-
-    const projects = await getMods(missing);
-    const created: ModpackMod[] = [];
-    for (const data of projects) {
-      if (data.classId !== workshop.classId) {
-        logger.warn(
-          `Required dependency "${data.name}" is not the right kind of project, skipped`,
-        );
-        continue;
-      }
-      const file = pickCompatibleFile(workshop, data);
-      if (!file) {
-        logger.warn(
-          `Required dependency "${data.name}" has no file for ${workshop.gameVersion}, skipped`,
-        );
-        continue;
-      }
-      try {
-        const row = await Q.modpack.mod.createAndReturn({
-          modpackId: workshop.modpackId,
-          curseforgeProjectId: data.id,
-          origin: "dependency",
-          workshopModId: null,
-          addedBy: actorId,
-          fileId: file.fileId,
-          fileName: file.filename,
-          fileReleaseType: file.releaseType,
-        });
-        created.push(row);
-      } catch (error) {
-        if (!(error instanceof ConstraintViolationError)) throw error;
-      }
-    }
-    if (created.length > 0) {
-      logger.info(
-        `Pulled ${created.length} required dependencies into modpack #${workshop.modpackId}`,
-      );
-      await resolveProjectDependencies(workshop, created);
-      if (packMod.workshopModId) {
-        const suggestion = await Q.workshop.mod.find({
-          id: packMod.workshopModId,
-        });
-        if (suggestion) {
-          const nameById = new Map(
-            projects.map((data) => [data.id, data.name]),
-          );
-          void announcePulledDependencies(
-            suggestion,
-            created.map(
-              (row) =>
-                nameById.get(row.curseforgeProjectId) ??
-                `#${row.curseforgeProjectId}`,
-            ),
-          );
-        }
-      }
-    }
-  } catch (error) {
-    logger.warn(
-      `Dependency promotion failed for modpack mod #${packMod.id}:`,
-      error,
-    );
-  }
+export interface DependencyContext {
+  coverage: Map<number, DependencyCoverage>;
+  demand: Map<number, number>;
 }
 
+const COVERAGE_BY_STATUS: Record<WorkshopModStatus, DependencyCoverage> = {
+  pending: "in_review",
+  approved: "in_review",
+  testing: "in_review",
+  next_update: "staged",
+  in_pack: "published",
+  rejected: "rejected",
+};
+
 /**
- * Delete dependency-origin modpack rows that no remaining member requires,
- * transitively. Requirement edges come from every workshop feeding the
- * modpack; only rows reachable from non-dependency roots survive, so cycles
- * of dependencies keeping each other alive are collected too. Never throws.
+ * Resolve every dependency's coverage and how many shipping mods want it, so
+ * a suggestion can show what it still drags in without any of those
+ * dependencies needing a row of their own.
  */
-export async function pruneOrphanedDependencies(
-  modpackId: number,
-): Promise<void> {
-  try {
-    const workshops = await Q.workshop.findAll(
-      { modpackId },
-      { select: ["id"] },
-    );
-    const workshopIds = workshops.map((w) => w.id);
+export async function loadDependencyContext(
+  workshop: Workshop,
+): Promise<DependencyContext> {
+  const [packRows, suggestions, edges] = await Promise.all([
+    Q.modpack.mod.findAll(
+      { modpackId: workshop.modpackId },
+      { select: ["curseforgeProjectId"] },
+    ),
+    Q.workshop.mod.findAll(
+      { workshopId: workshop.id },
+      { select: ["curseforgeProjectId", "status"] },
+    ),
+    Q.workshop.project.dependency.findAll({
+      workshopId: workshop.id,
+      relationType: REQUIRED_DEPENDENCY,
+    }),
+  ]);
 
-    const rows = await Q.modpack.mod.findAll({ modpackId });
-    const projectIds = rows.map((row) => row.curseforgeProjectId);
-    const required =
-      projectIds.length > 0 && workshopIds.length > 0
-        ? await Q.workshop.project.dependency.findAll({
-            workshopId: { $in: workshopIds },
-            curseforgeProjectId: { $in: projectIds },
-            relationType: REQUIRED_DEPENDENCY,
-          })
-        : [];
-    const requiresByProject = new Map<number, number[]>();
-    for (const dep of required) {
-      const list = requiresByProject.get(dep.curseforgeProjectId) ?? [];
-      list.push(dep.dependsOnProjectId);
-      requiresByProject.set(dep.curseforgeProjectId, list);
-    }
-
-    // Live rows are in the published manifest and stay until a publish
-    // drops them, no matter what the dependency graph says
-    const memberIds = new Set(projectIds);
-    const queue = rows
-      .filter((row) => row.origin !== "dependency" || row.liveAt !== null)
-      .map((row) => row.curseforgeProjectId);
-    const reachable = new Set(queue);
-    while (queue.length > 0) {
-      const projectId = queue.pop()!;
-      for (const depId of requiresByProject.get(projectId) ?? []) {
-        if (memberIds.has(depId) && !reachable.has(depId)) {
-          reachable.add(depId);
-          queue.push(depId);
-        }
-      }
-    }
-
-    const orphans = rows.filter(
-      (row) =>
-        row.origin === "dependency" &&
-        row.liveAt === null &&
-        !reachable.has(row.curseforgeProjectId),
-    );
-    if (orphans.length === 0) return;
-
-    await Q.modpack.mod.deleteAll({
-      id: { $in: orphans.map((row) => row.id) },
-    });
-    logger.info(
-      `Pruned ${orphans.length} orphaned dependencies from modpack #${modpackId}`,
-    );
-  } catch (error) {
-    logger.warn(`Dependency pruning failed for modpack #${modpackId}:`, error);
+  const coverage = new Map<number, DependencyCoverage>();
+  for (const row of suggestions) {
+    coverage.set(row.curseforgeProjectId, COVERAGE_BY_STATUS[row.status]);
   }
+  for (const row of packRows) {
+    coverage.set(row.curseforgeProjectId, "published");
+  }
+
+  const wanters = new Map<number, Set<number>>();
+  for (const edge of edges) {
+    const subject = coverage.get(edge.curseforgeProjectId);
+    if (subject !== "published" && subject !== "staged") continue;
+    const set = wanters.get(edge.dependsOnProjectId) ?? new Set<number>();
+    set.add(edge.curseforgeProjectId);
+    wanters.set(edge.dependsOnProjectId, set);
+  }
+  const demand = new Map(
+    [...wanters].map(([projectId, subjects]) => [projectId, subjects.size]),
+  );
+
+  return { coverage, demand };
 }
 
 /**
@@ -322,20 +186,4 @@ export async function pruneStaleDependencyEdges(
       error,
     );
   }
-}
-
-// Deps prefer the workshop's exact loader but fall back to any file for the game
-// version: the chosen file is re-resolved at pack build time anyway
-function pickCompatibleFile(workshop: Workshop, data: CurseForgeProjectData) {
-  return (
-    data.latestFilesIndexes.find(
-      (idx) =>
-        idx.gameVersion === workshop.gameVersion &&
-        idx.modLoader === workshop.modLoaderType,
-    ) ??
-    data.latestFilesIndexes.find(
-      (idx) => idx.gameVersion === workshop.gameVersion,
-    ) ??
-    null
-  );
 }

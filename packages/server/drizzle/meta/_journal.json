@@ -288,6 +288,13 @@
       "when": 1786276223518,
       "tag": "0040_mighty_gressill",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1786278460272,
+      "tag": "0041_modpack-published-only",
+      "breakpoints": true
     }
   ]
 }
