@@ -142,8 +142,8 @@ export function AdminWorkshop() {
                   <TableRow>
                     <TableHead className="px-4">Name</TableHead>
                     <TableHead className="px-4">Status</TableHead>
-                    <TableHead className="px-4">Target</TableHead>
-                    <TableHead className="px-4">Cap</TableHead>
+                    <TableHead className="px-4">Version</TableHead>
+                    <TableHead className="px-4">Loader</TableHead>
                     <TableHead className="px-4">Created</TableHead>
                     <TableHead className="px-4" />
                   </TableRow>
@@ -184,11 +184,10 @@ export function AdminWorkshop() {
                         </Badge>
                       </TableCell>
                       <TableCell className="px-4 text-sm">
-                        {workshop.gameVersion} ·{" "}
-                        {loaderName(workshop.modLoaderType)}
+                        {workshop.gameVersion}
                       </TableCell>
                       <TableCell className="px-4 text-sm">
-                        {workshop.maxModsPerUser} mods
+                        {loaderName(workshop.modLoaderType)}
                       </TableCell>
                       <TableCell className="px-4 text-sm text-muted-foreground">
                         {formatDate(workshop.createdAt)}
