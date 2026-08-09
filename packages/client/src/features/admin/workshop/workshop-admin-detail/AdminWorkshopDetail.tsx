@@ -92,6 +92,12 @@ export function AdminWorkshopDetail() {
     workshopModId: number;
     name: string;
   } | null>(null);
+  const [rejectKey, setRejectKey] = useState(0);
+
+  const openReject = (target: { workshopModId: number; name: string }) => {
+    setRejectKey((key) => key + 1);
+    setRejectTarget(target);
+  };
   const [removeTarget, setRemoveTarget] = useState<{
     modpackModId: number;
     name: string;
@@ -248,6 +254,7 @@ export function AdminWorkshopDetail() {
 
         <AttentionCard
           items={attentionQuery.data ?? []}
+          isLoading={attentionQuery.isLoading}
           error={attentionQuery.error?.message ?? null}
           onRetry={() => attentionQuery.refetch()}
         />
@@ -263,7 +270,7 @@ export function AdminWorkshopDetail() {
         <SuggestionsCard
           mods={filtered}
           total={mods.length}
-          filtered={filtered.length !== mods.length}
+          filtered={statusFilter !== "all" || search.trim() !== ""}
           isLoading={modsQuery.isLoading}
           error={modsQuery.error?.message ?? null}
           onRetry={() => modsQuery.refetch()}
@@ -276,7 +283,7 @@ export function AdminWorkshopDetail() {
           onReview={(id, action: WorkshopModReviewAction) =>
             reviewMutation.mutate({ workshopModId: id, action })
           }
-          onReject={setRejectTarget}
+          onReject={openReject}
         />
 
         <PackMembersCard
@@ -291,6 +298,7 @@ export function AdminWorkshopDetail() {
 
         <DependenciesCard
           report={depReportQuery.data}
+          isLoading={depReportQuery.isLoading}
           error={depReportQuery.error?.message ?? null}
           onRetry={() => depReportQuery.refetch()}
         />
@@ -354,7 +362,7 @@ export function AdminWorkshopDetail() {
       />
 
       <RejectModDialog
-        key={rejectTarget?.workshopModId ?? "none"}
+        key={rejectKey}
         target={rejectTarget}
         onOpenChange={(open) => {
           if (!open) setRejectTarget(null);

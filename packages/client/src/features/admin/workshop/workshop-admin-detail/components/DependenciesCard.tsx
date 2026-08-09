@@ -3,27 +3,33 @@ import type { RouterOutput } from "@/lib/trpc";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProjectThumb } from "@/features/workshop/components/ProjectThumb";
-import { CardError } from "@/features/admin/components/CardState";
+import { CardError, CardLoading } from "@/features/admin/components/CardState";
 import { MOD_STATUS_STYLES } from "@/features/workshop/format";
 
 type DependencyReport = RouterOutput["admin"]["workshops"]["dependencyReport"];
 
 export function DependenciesCard({
   report,
+  isLoading,
   error,
   onRetry,
 }: {
   report: DependencyReport | undefined;
+  isLoading: boolean;
   error: string | null;
   onRetry: () => void;
 }) {
-  if (error) {
+  if (isLoading || error) {
     return (
       <Card className="gap-0">
         <CardHeader className="gap-0 border-b">
           <CardTitle>Dependencies</CardTitle>
         </CardHeader>
-        <CardError message={error} onRetry={onRetry} />
+        {isLoading ? (
+          <CardLoading text="Loading dependencies..." />
+        ) : (
+          <CardError message={error!} onRetry={onRetry} />
+        )}
       </Card>
     );
   }

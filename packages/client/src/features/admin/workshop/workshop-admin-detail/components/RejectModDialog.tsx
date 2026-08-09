@@ -41,19 +41,12 @@ export function RejectModDialog({
 }) {
   const [reason, setReason] = useState<RejectReason | "">("");
   const [note, setNote] = useState("");
+  // Held so the mod's name survives the close animation, since the parent
+  // clears the target the moment the reject succeeds
   const displayTarget = useStickyValue(target);
 
   return (
-    <Dialog
-      open={target !== null}
-      onOpenChange={(open) => {
-        if (!open) {
-          setReason("");
-          setNote("");
-        }
-        onOpenChange(open);
-      }}
-    >
+    <Dialog open={target !== null} onOpenChange={onOpenChange}>
       <DialogContent onOpenAutoFocus={(event) => event.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Reject {displayTarget?.name}?</DialogTitle>

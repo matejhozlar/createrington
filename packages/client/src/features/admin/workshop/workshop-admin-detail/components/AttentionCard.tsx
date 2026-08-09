@@ -1,6 +1,6 @@
 import type { RouterOutput } from "@/lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CardError } from "@/features/admin/components/CardState";
+import { CardError, CardLoading } from "@/features/admin/components/CardState";
 
 type AttentionItem = RouterOutput["admin"]["workshops"]["getAttention"][number];
 
@@ -19,20 +19,26 @@ const ATTENTION_MESSAGES: Record<SimpleAttention, string> = {
 
 export function AttentionCard({
   items,
+  isLoading,
   error,
   onRetry,
 }: {
   items: AttentionItem[];
+  isLoading: boolean;
   error: string | null;
   onRetry: () => void;
 }) {
-  if (error) {
+  if (isLoading || error) {
     return (
       <Card className="gap-0">
         <CardHeader className="gap-0 border-b">
           <CardTitle>Needs Attention</CardTitle>
         </CardHeader>
-        <CardError message={error} onRetry={onRetry} />
+        {isLoading ? (
+          <CardLoading text="Checking for problems..." />
+        ) : (
+          <CardError message={error!} onRetry={onRetry} />
+        )}
       </Card>
     );
   }
