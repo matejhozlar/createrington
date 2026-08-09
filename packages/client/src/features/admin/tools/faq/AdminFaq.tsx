@@ -309,7 +309,7 @@ export function AdminFaq() {
           ) : (
             <>
               <CardContent className="px-0">
-                <Table className="min-w-[1020px]">
+                <Table className="min-w-[1008px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead col="id">ID</TableHead>
@@ -346,7 +346,7 @@ export function AdminFaq() {
                           {renderSortIcon("createdAt")}
                         </button>
                       </TableHead>
-                      <TableHead col="actions" className="text-right">
+                      <TableHead actions={2} className="text-right">
                         Actions
                       </TableHead>
                     </TableRow>

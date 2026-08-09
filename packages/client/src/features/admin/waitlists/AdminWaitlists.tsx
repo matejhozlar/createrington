@@ -473,7 +473,7 @@ export function AdminWaitlists() {
                           {renderSortIcon("submittedAt")}
                         </button>
                       </TableHead>
-                      <TableHead col="actionsWide" className="text-right">
+                      <TableHead className="w-[156px] text-right">
                         Actions
                       </TableHead>
                     </TableRow>

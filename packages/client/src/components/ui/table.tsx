@@ -7,9 +7,6 @@ const COLUMN_WIDTHS = {
   index: "w-[64px]",
   icon: "w-[56px]",
   id: "w-[64px]",
-  actionsMenu: "w-[92px]",
-  actions: "w-[120px]",
-  actionsWide: "w-[156px]",
   count: "w-[100px]",
   amount: "w-[110px]",
   duration: "w-[110px]",
@@ -27,6 +24,17 @@ const COLUMN_WIDTHS = {
 } as const;
 
 type TableColumn = keyof typeof COLUMN_WIDTHS;
+
+const ACTION_BUTTON = 38;
+const ACTION_GAP = 8;
+const CELL_PADDING = 24;
+const ACTIONS_LABEL_WIDTH = 98;
+
+function actionsColumnWidth(count: number, labelled: boolean) {
+  const buttons =
+    CELL_PADDING + count * ACTION_BUTTON + Math.max(count - 1, 0) * ACTION_GAP;
+  return Math.max(buttons, labelled ? ACTIONS_LABEL_WIDTH : 0);
+}
 
 function Table({ className, ...props }: React.ComponentProps<"table">) {
   return (
@@ -92,8 +100,11 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
 function TableHead({
   className,
   col,
+  actions,
+  children,
+  style,
   ...props
-}: React.ComponentProps<"th"> & { col?: TableColumn }) {
+}: React.ComponentProps<"th"> & { col?: TableColumn; actions?: number }) {
   return (
     <th
       data-slot="table-head"
@@ -102,8 +113,15 @@ function TableHead({
         col && COLUMN_WIDTHS[col],
         className,
       )}
+      style={
+        actions === undefined
+          ? style
+          : { width: actionsColumnWidth(actions, children != null), ...style }
+      }
       {...props}
-    />
+    >
+      {children}
+    </th>
   );
 }
 

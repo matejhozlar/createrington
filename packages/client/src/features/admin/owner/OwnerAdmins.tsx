@@ -82,13 +82,13 @@ export function OwnerAdmins() {
             </Button>
           </CardHeader>
           <CardContent className="p-0">
-            <Table className="min-w-[590px]">
+            <Table className="min-w-[596px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>Player</TableHead>
                   <TableHead col="discordId">Discord ID</TableHead>
                   <TableHead col="date">Since</TableHead>
-                  <TableHead col="actionsMenu" className="text-right">
+                  <TableHead actions={1} className="text-right">
                     Actions
                   </TableHead>
                 </TableRow>

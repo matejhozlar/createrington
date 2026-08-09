@@ -779,7 +779,7 @@ export function AdminCrypto() {
               </CardHeader>
               <CardContent className="p-0">
                 <div className="overflow-auto">
-                  <Table className="min-w-[860px]">
+                  <Table className="min-w-[866px]">
                     <TableHeader>
                       <TableRow>
                         <TableHead>Token</TableHead>
@@ -794,7 +794,7 @@ export function AdminCrypto() {
                           24h
                         </TableHead>
                         <TableHead col="status">Status</TableHead>
-                        <TableHead col="actionsMenu" className="text-right">
+                        <TableHead actions={1} className="text-right">
                           Actions
                         </TableHead>
                       </TableRow>

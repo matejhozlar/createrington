@@ -311,14 +311,14 @@ export function AdminStructurePacks() {
             </CardContent>
           ) : (
             <CardContent className="px-0">
-              <Table className="min-w-[630px]">
+              <Table className="min-w-[636px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead col="status">Status</TableHead>
                     <TableHead col="count">Mods</TableHead>
                     <TableHead col="date">Last Active</TableHead>
-                    <TableHead col="actionsMenu" className="text-right">
+                    <TableHead actions={1} className="text-right">
                       Actions
                     </TableHead>
                   </TableRow>

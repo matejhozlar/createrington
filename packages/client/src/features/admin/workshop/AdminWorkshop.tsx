@@ -149,7 +149,7 @@ export function AdminWorkshop() {
             </CardContent>
           ) : (
             <CardContent className="px-0">
-              <Table className="min-w-[790px]">
+              <Table className="min-w-[778px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Name</TableHead>
@@ -157,7 +157,7 @@ export function AdminWorkshop() {
                     <TableHead col="tag">Version</TableHead>
                     <TableHead col="tag">Loader</TableHead>
                     <TableHead col="date">Created</TableHead>
-                    <TableHead col="actions" className="text-right">
+                    <TableHead actions={2} className="text-right">
                       Actions
                     </TableHead>
                   </TableRow>

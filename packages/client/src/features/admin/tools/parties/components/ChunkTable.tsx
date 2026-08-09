@@ -131,7 +131,7 @@ export function ChunkTable({
   }
 
   return (
-    <Table className="min-w-[560px]">
+    <Table className="min-w-[548px]">
       <TableHeader>
         <TableRow>
           <TableHead>
@@ -172,7 +172,7 @@ export function ChunkTable({
               {renderSortIcon("active")}
             </button>
           </TableHead>
-          <TableHead col="actions" className="text-right">
+          <TableHead actions={2} className="text-right">
             Actions
           </TableHead>
         </TableRow>

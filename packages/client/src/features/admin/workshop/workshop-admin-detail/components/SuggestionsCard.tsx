@@ -192,7 +192,7 @@ export function SuggestionsCard({
         <CardEmpty icon={Lightbulb} message="No suggestions match this view" />
       ) : (
         <CardContent className="px-0">
-          <Table className="min-w-[1112px]">
+          <Table className="min-w-[1118px]">
             <TableHeader>
               <TableRow>
                 <TableHead>Mod</TableHead>
@@ -206,7 +206,7 @@ export function SuggestionsCard({
                 </TableHead>
                 <TableHead col="statusWide">Status</TableHead>
                 <TableHead col="date">Date</TableHead>
-                <TableHead col="actionsMenu" className="text-right">
+                <TableHead actions={1} className="text-right">
                   Actions
                 </TableHead>
               </TableRow>

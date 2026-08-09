@@ -238,14 +238,14 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
         ) : (
           <>
             <CardContent className="px-0">
-              <Table className="min-w-[710px]">
+              <Table className="min-w-[716px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Player</TableHead>
                     <TableHead col="discordId">Discord ID</TableHead>
                     <TableHead col="date">Registered</TableHead>
                     <TableHead col="date">Last Seen</TableHead>
-                    <TableHead col="actionsMenu" className="text-right">
+                    <TableHead actions={1} className="text-right">
                       Actions
                     </TableHead>
                   </TableRow>

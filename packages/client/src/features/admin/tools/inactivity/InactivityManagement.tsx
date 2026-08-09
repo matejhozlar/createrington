@@ -406,7 +406,7 @@ export function InactivityManagement() {
           ) : (
             <>
               <CardContent className="px-0">
-                <Table className="min-w-[800px]">
+                <Table className="min-w-[788px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Player</TableHead>
@@ -414,7 +414,7 @@ export function InactivityManagement() {
                       <TableHead col="date">Warned</TableHead>
                       <TableHead col="date">Deadline</TableHead>
                       <TableHead col="date">Last Seen</TableHead>
-                      <TableHead col="actions" className="text-right">
+                      <TableHead actions={2} className="text-right">
                         Actions
                       </TableHead>
                     </TableRow>
