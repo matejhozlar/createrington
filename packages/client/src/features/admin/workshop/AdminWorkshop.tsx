@@ -156,13 +156,13 @@ export function AdminWorkshop() {
                       tabIndex={0}
                       className="cursor-pointer"
                       onClick={() =>
-                        navigate(`/admin/tools/workshop/${workshop.id}`)
+                        navigate(`/admin/tools/workshop/${workshop.slug}`)
                       }
                       onKeyDown={(event) => {
                         if (event.target !== event.currentTarget) return;
                         if (event.key === "Enter" || event.key === " ") {
                           event.preventDefault();
-                          navigate(`/admin/tools/workshop/${workshop.id}`);
+                          navigate(`/admin/tools/workshop/${workshop.slug}`);
                         }
                       }}
                     >

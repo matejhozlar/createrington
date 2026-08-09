@@ -59,7 +59,7 @@ export function CreateWorkshopDialog({
       utils.admin.workshops.list.invalidate();
       utils.admin.modpacks.list.invalidate();
       onOpenChange(false);
-      navigate(`/admin/tools/workshop/${workshop.id}`);
+      navigate(`/admin/tools/workshop/${workshop.slug}`);
     },
     onError: (err) => toast.error(err.message),
   });

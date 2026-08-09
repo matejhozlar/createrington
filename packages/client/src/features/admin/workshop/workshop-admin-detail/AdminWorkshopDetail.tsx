@@ -44,15 +44,15 @@ const SEND_BACK_TOASTS: Partial<Record<WorkshopModStatus, string>> = {
 };
 
 export function AdminWorkshopDetail() {
-  const { id } = useParams<{ id: string }>();
-  const workshopId = Number(id);
+  const { slug } = useParams<{ slug: string }>();
   const toast = useToastActions();
   const utils = trpc.useUtils();
 
   const workshopsQuery = trpc.admin.workshops.list.useQuery();
-  const workshop = workshopsQuery.data?.find((row) => row.id === workshopId);
+  const workshop = workshopsQuery.data?.find((row) => row.slug === slug);
 
-  const enabled = Number.isFinite(workshopId);
+  const workshopId = workshop?.id ?? 0;
+  const enabled = workshopId > 0;
   const modsQuery = trpc.admin.workshops.listMods.useQuery(
     { workshopId },
     { enabled },
@@ -278,7 +278,7 @@ export function AdminWorkshopDetail() {
       />
 
       <WorkshopSettingsDialog
-        key={settingsKey}
+        key={`settings-${settingsKey}`}
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
         workshop={workshop}
@@ -286,7 +286,7 @@ export function AdminWorkshopDetail() {
       />
 
       <RejectModDialog
-        key={rejectKey}
+        key={`reject-${rejectKey}`}
         target={rejectTarget}
         onOpenChange={(open) => {
           if (!open) setRejectTarget(null);

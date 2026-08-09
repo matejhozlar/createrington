@@ -53,11 +53,8 @@ function AdminSubRow({
   item: AdminNavItem;
   isActive: boolean;
 }) {
-  const [hoverRef, hoverHandlers] = useAnimatedHover();
-  const Icon = item.icon;
-
   return (
-    <SidebarMenuSubItem {...hoverHandlers}>
+    <SidebarMenuSubItem>
       <SidebarMenuSubButton asChild>
         <NavLink
           to={item.url}
@@ -66,13 +63,6 @@ function AdminSubRow({
             isActive && "text-destructive bg-destructive/10",
           )}
         >
-          {Icon && (
-            <Icon
-              ref={hoverRef}
-              size={16}
-              className="block shrink-0 transition-colors"
-            />
-          )}
           <span>{item.title}</span>
         </NavLink>
       </SidebarMenuSubButton>
@@ -131,7 +121,6 @@ export function NavAdmin({ items }: { items: AdminNavItem[] }) {
   } = useAdminChat();
 
   const [triggerRef, triggerHandlers] = useAnimatedHover();
-  const [assistantRef, assistantHandlers] = useAnimatedHover();
   const [assistantCollapsedRef, assistantCollapsedHandlers] =
     useAnimatedHover();
 
@@ -145,9 +134,14 @@ export function NavAdmin({ items }: { items: AdminNavItem[] }) {
     if (isMobile) setOpenMobile(false);
   };
 
-  const isAdminActive = items.some((item) =>
-    location.pathname.startsWith(item.url),
-  );
+  const isPathActive = (url: string) =>
+    location.pathname === url || location.pathname.startsWith(`${url}/`);
+
+  const isAdminActive = items.some((item) => isPathActive(item.url));
+
+  const activeUrl = items
+    .filter((item) => isPathActive(item.url))
+    .sort((a, b) => b.url.length - a.url.length)[0]?.url;
 
   const [isOpen, setIsOpen] = useState(isAdminActive);
 
@@ -203,14 +197,11 @@ export function NavAdmin({ items }: { items: AdminNavItem[] }) {
                 <AdminSubRow
                   key={item.title}
                   item={item}
-                  isActive={location.pathname.startsWith(item.url)}
+                  isActive={item.url === activeUrl}
                 />
               ))}
               {assistantEnabled && (
-                <SidebarMenuSubItem
-                  className="group/assistant relative"
-                  {...assistantHandlers}
-                >
+                <SidebarMenuSubItem className="group/assistant relative">
                   <SidebarMenuSubButton asChild>
                     <button
                       type="button"
@@ -220,11 +211,6 @@ export function NavAdmin({ items }: { items: AdminNavItem[] }) {
                         assistantOpen && "text-destructive bg-destructive/10",
                       )}
                     >
-                      <SparklesIcon
-                        ref={assistantRef}
-                        size={16}
-                        className="block shrink-0 transition-colors"
-                      />
                       <span>Assistant</span>
                     </button>
                   </SidebarMenuSubButton>
@@ -271,7 +257,7 @@ export function NavAdmin({ items }: { items: AdminNavItem[] }) {
                 <AdminSubCollapsed
                   key={item.title}
                   item={item}
-                  isActive={location.pathname.startsWith(item.url)}
+                  isActive={item.url === activeUrl}
                 />
               ))}
               {assistantEnabled && (
