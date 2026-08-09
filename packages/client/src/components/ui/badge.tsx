@@ -31,6 +31,7 @@ function Badge({
   className,
   variant = "default",
   asChild = false,
+  children,
   ...props
 }: React.ComponentProps<"span"> &
   VariantProps<typeof badgeVariants> & { asChild?: boolean }) {
@@ -42,7 +43,13 @@ function Badge({
       data-variant={variant}
       className={cn(badgeVariants({ variant }), className)}
       {...props}
-    />
+    >
+      {!asChild && typeof children === "string" ? (
+        <span className="truncate">{children}</span>
+      ) : (
+        children
+      )}
+    </Comp>
   );
 }
 

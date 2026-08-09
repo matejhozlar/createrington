@@ -143,7 +143,7 @@ export function ChunkPartiesTable({
 
   return (
     <div className="px-0">
-      <Table className="min-w-[920px]">
+      <Table className="min-w-[952px]">
         <TableHeader>
           <TableRow>
             <TableHead col="icon" />

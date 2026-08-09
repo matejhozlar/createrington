@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 const COLUMN_WIDTHS = {
   // sized by what the column holds
   index: "w-[64px]",
-  icon: "w-[48px]",
+  icon: "w-[56px]",
   id: "w-[64px]",
   actionsMenu: "w-[92px]",
   actions: "w-[120px]",
@@ -17,7 +17,7 @@ const COLUMN_WIDTHS = {
   status: "w-[116px]",
   statusWide: "w-[168px]",
   date: "w-[120px]",
-  dateTime: "w-[156px]",
+  dateTime: "w-[180px]",
   discordId: "w-[180px]",
   player: "w-[184px]",
   // neutral sizes for plain text columns with no more specific name

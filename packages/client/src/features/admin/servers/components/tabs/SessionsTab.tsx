@@ -59,7 +59,7 @@ export function SessionsTab({ serverId }: SessionsTabProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <Table className="min-w-[620px]">
+      <Table className="min-w-[668px]">
         <TableHeader>
           <TableRow>
             <TableHead>Player</TableHead>

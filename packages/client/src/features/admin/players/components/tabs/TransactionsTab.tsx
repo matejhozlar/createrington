@@ -70,7 +70,7 @@ export function TransactionsTab({ playerId }: TransactionsTabProps) {
       ) : (
         <>
           <div className="-mx-6 overflow-x-auto">
-            <Table className="min-w-[800px]">
+            <Table className="min-w-[824px]">
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   <TableHead col="dateTime">Date</TableHead>

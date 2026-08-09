@@ -112,7 +112,7 @@ export function TradeHistory() {
         </div>
         <Card className="overflow-hidden">
           <CardContent className="p-0">
-            <Table className="min-w-[1020px]">
+            <Table className="min-w-[1044px]">
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   <TableHead col="dateTime">Date</TableHead>

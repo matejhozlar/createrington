@@ -48,7 +48,7 @@ export function ModsList({
           <p>No mods added yet</p>
         </div>
       ) : (
-        <Table className="min-w-[430px]">
+        <Table className="min-w-[438px]">
           <TableHeader>
             <TableRow>
               <TableHead>Mod</TableHead>

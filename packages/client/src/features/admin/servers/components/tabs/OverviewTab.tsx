@@ -85,7 +85,7 @@ export function OverviewTab({ serverId, serverData }: OverviewTabProps) {
         {leaderboard.length === 0 ? (
           <p className="text-sm text-muted-foreground">No playtime data yet</p>
         ) : (
-          <Table className="min-w-[620px]">
+          <Table className="min-w-[644px]">
             <TableHeader>
               <TableRow>
                 <TableHead col="index">#</TableHead>

@@ -133,7 +133,7 @@ export function SessionsTab({ playerId, getServerName }: SessionsTabProps) {
       ) : (
         <>
           {/* Table */}
-          <Table className="min-w-[620px]">
+          <Table className="min-w-[668px]">
             <TableHeader>
               <TableRow>
                 <TableHead>Server</TableHead>

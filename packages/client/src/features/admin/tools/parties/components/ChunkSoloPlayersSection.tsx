@@ -92,7 +92,7 @@ export function ChunkSoloPlayersSection({
 
   return (
     <div className="flex flex-col gap-3 px-0 pb-3">
-      <Table className="min-w-[820px]">
+      <Table className="min-w-[852px]">
         <TableHeader>
           <TableRow>
             <TableHead col="icon" />

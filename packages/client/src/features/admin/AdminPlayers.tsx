@@ -442,7 +442,7 @@ export function AdminPlayers() {
             <>
               {/* Table */}
               <CardContent className="px-0">
-                <Table className="min-w-[790px]">
+                <Table className="min-w-[814px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead>

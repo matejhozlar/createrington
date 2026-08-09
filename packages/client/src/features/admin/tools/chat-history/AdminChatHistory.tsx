@@ -148,7 +148,7 @@ export function AdminChatHistory() {
         ) : (
           <>
             <div className="rounded-lg border border-border bg-card">
-              <Table className="min-w-[730px]">
+              <Table className="min-w-[778px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Title</TableHead>

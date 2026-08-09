@@ -290,7 +290,7 @@ export function AdminLogs() {
           ) : (
             <>
               <CardContent className="px-0">
-                <Table className="min-w-[980px]">
+                <Table className="min-w-[1100px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead col="dateTime">
@@ -313,7 +313,7 @@ export function AdminLogs() {
                           {renderSortIcon("adminUsername")}
                         </button>
                       </TableHead>
-                      <TableHead col="md">
+                      <TableHead>
                         <button
                           type="button"
                           onClick={() => handleSort("actionType")}
@@ -324,8 +324,8 @@ export function AdminLogs() {
                         </button>
                       </TableHead>
                       <TableHead>Description</TableHead>
-                      <TableHead col="count">Changes</TableHead>
-                      <TableHead className="w-[160px]">Reason</TableHead>
+                      <TableHead>Changes</TableHead>
+                      <TableHead>Reason</TableHead>
                       <TableHead col="icon" />
                     </TableRow>
                   </TableHeader>
@@ -339,15 +339,17 @@ export function AdminLogs() {
                           {action.adminUsername}
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline">{action.actionType}</Badge>
+                          <Badge variant="outline" title={action.actionType}>
+                            {action.actionType}
+                          </Badge>
                         </TableCell>
-                        <TableCell className="text-sm max-w-[300px] truncate">
+                        <TableCell className="text-sm">
                           <span title={getDescription(action)}>
                             {getDescription(action)}
                           </span>
                         </TableCell>
                         <TableCell>
-                          <div className="flex flex-col gap-1 text-xs max-w-[200px]">
+                          <div className="flex flex-col gap-1 text-xs">
                             {action.oldValue != null && (
                               <code
                                 className="bg-destructive/10 text-destructive px-1.5 py-0.5 rounded truncate block"
@@ -371,7 +373,7 @@ export function AdminLogs() {
                           </div>
                         </TableCell>
                         <TableCell
-                          className="text-sm text-muted-foreground max-w-[150px] truncate"
+                          className="text-sm text-muted-foreground"
                           title={action.reason ?? undefined}
                         >
                           {action.reason ?? "—"}
