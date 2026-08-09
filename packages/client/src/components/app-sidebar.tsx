@@ -104,6 +104,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         icon: ServerIcon,
       },
       {
+        title: "Workshop",
+        url: "/admin/tools/workshop",
+        icon: HammerIcon,
+      },
+      {
         title: "Tools",
         url: "/admin/tools",
         icon: WrenchIcon,
