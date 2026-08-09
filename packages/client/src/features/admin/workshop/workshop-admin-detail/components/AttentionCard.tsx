@@ -4,7 +4,13 @@ import { CardError } from "@/features/admin/components/CardState";
 
 type AttentionItem = RouterOutput["admin"]["workshops"]["getAttention"][number];
 
-const DEPENDENCY_GAP_MESSAGES: Record<string, string> = {
+// These render inline because they name a second mod
+type DependencyGap = Extract<
+  AttentionItem["type"],
+  "rejected_dependency" | "unpromoted_dependency" | "missing_dependency"
+>;
+
+const DEPENDENCY_GAP_MESSAGES: Record<DependencyGap, string> = {
   rejected_dependency: "but is ruled out in this workshop.",
   unpromoted_dependency:
     "but is still in review, so the pack would ship without it.",
@@ -12,7 +18,10 @@ const DEPENDENCY_GAP_MESSAGES: Record<string, string> = {
     "but is not in the workshop at all, so it has to be installed by hand when you build the pack.",
 };
 
-const ATTENTION_MESSAGES: Record<string, string> = {
+const ATTENTION_MESSAGES: Record<
+  Exclude<AttentionItem["type"], DependencyGap>,
+  string
+> = {
   dropped_from_pack: "was live but is missing from the latest published pack.",
   shipped_unreviewed:
     "shipped in the pack but its suggestion never finished review, so the suggester is uncredited.",

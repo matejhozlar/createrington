@@ -28,7 +28,7 @@ import {
 export type PackMod =
   RouterOutput["admin"]["workshops"]["listPackMods"][number];
 
-const ORIGIN_LABELS: Record<string, string> = {
+const ORIGIN_LABELS: Record<PackMod["origin"], string> = {
   suggestion: "Suggestion",
   dependency: "Dependency",
   import: "Pack Import",
@@ -130,7 +130,7 @@ export function PackMembersCard({
                 const otherWorkshop =
                   row.suggestionWorkshopId !== null &&
                   row.suggestionWorkshopId !== workshopId
-                    ? row.suggestionWorkshopName
+                    ? (row.suggestionWorkshopName ?? "another workshop")
                     : null;
                 return (
                   <TableRow key={row.id}>
@@ -150,7 +150,7 @@ export function PackMembersCard({
                       </div>
                     </TableCell>
                     <TableCell className="px-4 text-sm">
-                      <p>{ORIGIN_LABELS[row.origin] ?? row.origin}</p>
+                      <p>{ORIGIN_LABELS[row.origin]}</p>
                       {otherWorkshop && (
                         <p className="text-xs text-muted-foreground">
                           from {otherWorkshop}
