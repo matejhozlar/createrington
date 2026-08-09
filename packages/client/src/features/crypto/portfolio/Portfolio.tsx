@@ -355,25 +355,23 @@ export function Portfolio() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              <Table>
+              <Table className="min-w-[750px]">
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
-                    <TableHead className="text-[11px] font-medium uppercase tracking-wider">
-                      Token
-                    </TableHead>
-                    <TableHead className="text-right text-[11px] font-medium uppercase tracking-wider">
+                    <TableHead>Token</TableHead>
+                    <TableHead col="amount" className="text-right">
                       Amount
                     </TableHead>
-                    <TableHead className="text-right text-[11px] font-medium uppercase tracking-wider">
+                    <TableHead col="amount" className="text-right">
                       Avg Buy
                     </TableHead>
-                    <TableHead className="text-right text-[11px] font-medium uppercase tracking-wider">
+                    <TableHead col="amount" className="text-right">
                       Current
                     </TableHead>
-                    <TableHead className="text-right text-[11px] font-medium uppercase tracking-wider">
+                    <TableHead col="amount" className="text-right">
                       Value
                     </TableHead>
-                    <TableHead className="text-right text-[11px] font-medium uppercase tracking-wider">
+                    <TableHead col="amount" className="text-right">
                       P&L
                     </TableHead>
                   </TableRow>
@@ -402,9 +400,9 @@ export function Portfolio() {
                                 dotColor,
                               )}
                             />
-                            <div>
-                              <p className="font-medium">{h.name}</p>
-                              <p className="text-xs text-muted-foreground font-mono">
+                            <div className="min-w-0">
+                              <p className="truncate font-medium">{h.name}</p>
+                              <p className="truncate text-xs text-muted-foreground font-mono">
                                 {h.symbol}
                               </p>
                             </div>

@@ -48,12 +48,12 @@ export function ModsList({
           <p>No mods added yet</p>
         </div>
       ) : (
-        <Table>
+        <Table className="min-w-[430px]">
           <TableHeader>
             <TableRow>
               <TableHead>Mod</TableHead>
-              <TableHead>File</TableHead>
-              <TableHead className="w-[80px]" />
+              <TableHead className="w-[180px]">File</TableHead>
+              <TableHead col="icon" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -65,11 +65,11 @@ export function ModsList({
                       <img
                         src={mod.thumbnailUrl}
                         alt=""
-                        className="size-8 rounded"
+                        className="size-8 shrink-0 rounded"
                       />
                     )}
-                    <div>
-                      <div className="font-medium">{mod.modName}</div>
+                    <div className="min-w-0">
+                      <div className="truncate font-medium">{mod.modName}</div>
                       {mod.modUrl && (
                         <a
                           href={mod.modUrl}

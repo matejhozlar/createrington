@@ -437,43 +437,45 @@ export function AdminWaitlists() {
           ) : (
             <>
               <CardContent className="px-0">
-                <Table>
-                  <TableHeader className="bg-sidebar-accent/50">
+                <Table className="min-w-[920px]">
+                  <TableHeader>
                     <TableRow>
-                      <TableHead className="px-4">ID</TableHead>
-                      <TableHead className="px-4">
+                      <TableHead col="id">ID</TableHead>
+                      <TableHead>
                         <button
                           type="button"
                           onClick={() => handleSort("email")}
-                          className="inline-flex items-center gap-1 text-sm font-medium"
+                          className="inline-flex cursor-pointer items-center gap-1 uppercase"
                         >
                           Email
                           {renderSortIcon("email")}
                         </button>
                       </TableHead>
-                      <TableHead className="px-4">
+                      <TableHead col="player">
                         <button
                           type="button"
                           onClick={() => handleSort("discordName")}
-                          className="inline-flex items-center gap-1 text-sm font-medium"
+                          className="inline-flex cursor-pointer items-center gap-1 uppercase"
                         >
                           Discord Name
                           {renderSortIcon("discordName")}
                         </button>
                       </TableHead>
-                      <TableHead className="px-4">Status</TableHead>
-                      <TableHead className="px-4">Progress</TableHead>
-                      <TableHead className="px-4">
+                      <TableHead col="status">Status</TableHead>
+                      <TableHead col="status">Progress</TableHead>
+                      <TableHead col="date">
                         <button
                           type="button"
                           onClick={() => handleSort("submittedAt")}
-                          className="inline-flex items-center gap-1 text-sm font-medium"
+                          className="inline-flex cursor-pointer items-center gap-1 uppercase"
                         >
                           Submitted
                           {renderSortIcon("submittedAt")}
                         </button>
                       </TableHead>
-                      <TableHead className="px-4 text-right">Actions</TableHead>
+                      <TableHead col="actions" className="text-right">
+                        Actions
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -484,10 +486,10 @@ export function AdminWaitlists() {
 
                       return (
                         <TableRow key={entry.id}>
-                          <TableCell className="px-4">
+                          <TableCell>
                             <p className="font-mono text-sm">#{entry.id}</p>
                           </TableCell>
-                          <TableCell className="px-4">
+                          <TableCell>
                             {entry.email ? (
                               <Tooltip>
                                 <TooltipTrigger asChild>
@@ -512,7 +514,7 @@ export function AdminWaitlists() {
                               </span>
                             )}
                           </TableCell>
-                          <TableCell className="px-4">
+                          <TableCell>
                             <p className="font-medium">{entry.discordName}</p>
                             {entry.discordId && (
                               <p className="text-xs text-muted-foreground">
@@ -520,7 +522,7 @@ export function AdminWaitlists() {
                               </p>
                             )}
                           </TableCell>
-                          <TableCell className="px-4">
+                          <TableCell>
                             <Badge
                               variant={
                                 getStatusBadgeStyle(entry.status).variant
@@ -532,7 +534,7 @@ export function AdminWaitlists() {
                               {entry.status}
                             </Badge>
                           </TableCell>
-                          <TableCell className="px-4">
+                          <TableCell>
                             <div className="flex flex-wrap gap-1">
                               {entry.joinedDiscord && (
                                 <Badge
@@ -568,7 +570,7 @@ export function AdminWaitlists() {
                               )}
                             </div>
                           </TableCell>
-                          <TableCell className="px-4">
+                          <TableCell>
                             <p className="text-sm text-muted-foreground">
                               {new Date(entry.submittedAt).toLocaleDateString()}
                             </p>
@@ -581,7 +583,7 @@ export function AdminWaitlists() {
                               </p>
                             )}
                           </TableCell>
-                          <TableCell className="px-4 text-right">
+                          <TableCell className="text-right">
                             <div className="flex justify-end gap-2">
                               {isPending && (
                                 <Button

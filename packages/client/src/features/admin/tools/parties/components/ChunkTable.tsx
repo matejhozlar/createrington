@@ -131,48 +131,50 @@ export function ChunkTable({
   }
 
   return (
-    <Table>
+    <Table className="min-w-[560px]">
       <TableHeader>
         <TableRow>
           <TableHead>
             <button
               type="button"
               onClick={() => handleSort("dimension")}
-              className="inline-flex items-center gap-1 text-sm font-medium"
+              className="inline-flex cursor-pointer items-center gap-1 uppercase"
             >
               Dimension
               {renderSortIcon("dimension")}
             </button>
           </TableHead>
-          <TableHead>
+          <TableHead col="id">
             <button
               type="button"
               onClick={() => handleSort("x")}
-              className="inline-flex items-center gap-1 text-sm font-medium"
+              className="inline-flex cursor-pointer items-center gap-1 uppercase"
             >
               X{renderSortIcon("x")}
             </button>
           </TableHead>
-          <TableHead>
+          <TableHead col="id">
             <button
               type="button"
               onClick={() => handleSort("z")}
-              className="inline-flex items-center gap-1 text-sm font-medium"
+              className="inline-flex cursor-pointer items-center gap-1 uppercase"
             >
               Z{renderSortIcon("z")}
             </button>
           </TableHead>
-          <TableHead>
+          <TableHead col="status">
             <button
               type="button"
               onClick={() => handleSort("active")}
-              className="inline-flex items-center gap-1 text-sm font-medium"
+              className="inline-flex cursor-pointer items-center gap-1 uppercase"
             >
               Status
               {renderSortIcon("active")}
             </button>
           </TableHead>
-          <TableHead className="w-24 text-right">Actions</TableHead>
+          <TableHead col="actions" className="text-right">
+            Actions
+          </TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>

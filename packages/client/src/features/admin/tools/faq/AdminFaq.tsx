@@ -309,61 +309,63 @@ export function AdminFaq() {
           ) : (
             <>
               <CardContent className="px-0">
-                <Table>
-                  <TableHeader className="bg-sidebar-accent/50">
+                <Table className="min-w-[1020px]">
+                  <TableHeader>
                     <TableRow>
-                      <TableHead className="px-4">ID</TableHead>
-                      <TableHead className="px-4">
+                      <TableHead col="id">ID</TableHead>
+                      <TableHead>
                         <button
                           type="button"
                           onClick={() => handleSort("title")}
-                          className="inline-flex items-center gap-1 text-sm font-medium"
+                          className="inline-flex cursor-pointer items-center gap-1 uppercase"
                         >
                           Title
                           {renderSortIcon("title")}
                         </button>
                       </TableHead>
-                      <TableHead className="px-4">Mode</TableHead>
-                      <TableHead className="px-4">Pattern</TableHead>
-                      <TableHead className="px-4">
+                      <TableHead col="tag">Mode</TableHead>
+                      <TableHead col="lg">Pattern</TableHead>
+                      <TableHead col="count">
                         <button
                           type="button"
                           onClick={() => handleSort("priority")}
-                          className="inline-flex items-center gap-1 text-sm font-medium"
+                          className="inline-flex cursor-pointer items-center gap-1 uppercase"
                         >
                           Priority
                           {renderSortIcon("priority")}
                         </button>
                       </TableHead>
-                      <TableHead className="px-4">Status</TableHead>
-                      <TableHead className="px-4">
+                      <TableHead col="status">Status</TableHead>
+                      <TableHead col="date">
                         <button
                           type="button"
                           onClick={() => handleSort("createdAt")}
-                          className="inline-flex items-center gap-1 text-sm font-medium"
+                          className="inline-flex cursor-pointer items-center gap-1 uppercase"
                         >
                           Created
                           {renderSortIcon("createdAt")}
                         </button>
                       </TableHead>
-                      <TableHead className="px-4 text-right">Actions</TableHead>
+                      <TableHead col="actions" className="text-right">
+                        Actions
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {entries.map((entry) => (
                       <TableRow key={entry.id}>
-                        <TableCell className="px-4">
+                        <TableCell>
                           <p className="font-mono text-sm">#{entry.id}</p>
                         </TableCell>
-                        <TableCell className="px-4">
+                        <TableCell>
                           <p className="font-medium">{entry.title}</p>
                         </TableCell>
-                        <TableCell className="px-4">
+                        <TableCell>
                           <Badge variant="outline" className="text-xs">
                             {entry.matchMode === "regex" ? "Regex" : "Keywords"}
                           </Badge>
                         </TableCell>
-                        <TableCell className="px-4">
+                        <TableCell>
                           <p
                             className={cn(
                               "max-w-[200px] truncate text-xs text-muted-foreground",
@@ -374,10 +376,10 @@ export function AdminFaq() {
                             {entry.pattern}
                           </p>
                         </TableCell>
-                        <TableCell className="px-4">
+                        <TableCell>
                           <p className="text-sm">{entry.priority}</p>
                         </TableCell>
-                        <TableCell className="px-4">
+                        <TableCell>
                           <Badge
                             variant="outline"
                             className={
@@ -389,12 +391,12 @@ export function AdminFaq() {
                             {entry.enabled ? "Enabled" : "Disabled"}
                           </Badge>
                         </TableCell>
-                        <TableCell className="px-4">
+                        <TableCell>
                           <p className="text-sm text-muted-foreground">
                             {new Date(entry.createdAt).toLocaleDateString()}
                           </p>
                         </TableCell>
-                        <TableCell className="px-4 text-right">
+                        <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
                             <Button
                               size="sm"

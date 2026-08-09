@@ -111,13 +111,15 @@ export function AdminPrompts() {
           </div>
         ) : (
           <div className="rounded-lg border border-border bg-card">
-            <Table>
+            <Table className="min-w-[570px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>Question</TableHead>
-                  <TableHead className="w-24">Status</TableHead>
-                  <TableHead className="w-24 text-right">Responses</TableHead>
-                  <TableHead className="w-40">Ends</TableHead>
+                  <TableHead col="status">Status</TableHead>
+                  <TableHead col="count" className="text-right">
+                    Responses
+                  </TableHead>
+                  <TableHead col="dateTime">Ends</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

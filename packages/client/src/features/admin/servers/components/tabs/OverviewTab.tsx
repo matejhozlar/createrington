@@ -43,31 +43,31 @@ export function OverviewTab({ serverId, serverData }: OverviewTabProps) {
             No players currently online
           </p>
         ) : (
-          <Table>
-            <TableHeader className="bg-sidebar-accent/50">
+          <Table className="min-w-[310px]">
+            <TableHeader>
               <TableRow>
-                <TableHead className="px-4">Player</TableHead>
-                <TableHead className="px-4">Session Duration</TableHead>
+                <TableHead>Player</TableHead>
+                <TableHead col="duration">Session Duration</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {onlinePlayers.map((player) => (
                 <TableRow key={player.uuid}>
-                  <TableCell className="px-4">
+                  <TableCell>
                     <Link
                       to={`/admin/players/${player.uuid}`}
-                      className="group flex items-center gap-3 rounded"
+                      className="group flex min-w-0 items-center gap-3 rounded"
                     >
                       <MinecraftAvatar
                         uuid={player.uuid}
                         username={player.username}
                       />
-                      <span className="font-medium transition-colors group-hover:text-primary">
+                      <span className="truncate font-medium transition-colors group-hover:text-primary">
                         {player.username}
                       </span>
                     </Link>
                   </TableCell>
-                  <TableCell className="px-4">
+                  <TableCell>
                     <p className="text-sm text-muted-foreground">
                       {formatDuration(player.sessionDuration)}
                     </p>
@@ -85,41 +85,39 @@ export function OverviewTab({ serverId, serverData }: OverviewTabProps) {
         {leaderboard.length === 0 ? (
           <p className="text-sm text-muted-foreground">No playtime data yet</p>
         ) : (
-          <Table>
-            <TableHeader className="bg-sidebar-accent/50">
+          <Table className="min-w-[620px]">
+            <TableHeader>
               <TableRow>
-                <TableHead className="w-12 px-4">#</TableHead>
-                <TableHead className="px-4">Player</TableHead>
-                <TableHead className="px-4">Total Hours</TableHead>
-                <TableHead className="px-4">Sessions</TableHead>
-                <TableHead className="px-4">Last Seen</TableHead>
+                <TableHead col="index">#</TableHead>
+                <TableHead>Player</TableHead>
+                <TableHead col="count">Total Hours</TableHead>
+                <TableHead col="count">Sessions</TableHead>
+                <TableHead col="dateTime">Last Seen</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {leaderboard.map((entry, index) => (
                 <TableRow key={entry.playerMinecraftUuid}>
-                  <TableCell className="px-4 font-medium">
-                    {index + 1}
-                  </TableCell>
-                  <TableCell className="px-4">
+                  <TableCell className="font-medium">{index + 1}</TableCell>
+                  <TableCell>
                     <Link
                       to={`/admin/players/${entry.playerMinecraftUuid}`}
-                      className="group flex items-center gap-3 rounded"
+                      className="group flex min-w-0 items-center gap-3 rounded"
                     >
                       <MinecraftAvatar
                         uuid={entry.playerMinecraftUuid}
                         username={entry.minecraftUsername}
                       />
-                      <span className="font-medium transition-colors group-hover:text-primary">
+                      <span className="truncate font-medium transition-colors group-hover:text-primary">
                         {entry.minecraftUsername}
                       </span>
                     </Link>
                   </TableCell>
-                  <TableCell className="px-4">
+                  <TableCell>
                     {Math.round(Number(entry.totalSeconds) / 3600)}h
                   </TableCell>
-                  <TableCell className="px-4">{entry.totalSessions}</TableCell>
-                  <TableCell className="px-4 text-sm text-muted-foreground">
+                  <TableCell>{entry.totalSessions}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
                     {new Date(entry.lastSeen).toLocaleDateString()}
                   </TableCell>
                 </TableRow>

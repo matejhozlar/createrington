@@ -77,13 +77,15 @@ export function OwnerAdmins() {
             </Button>
           </CardHeader>
           <CardContent className="p-0">
-            <Table>
+            <Table className="min-w-[590px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>Player</TableHead>
-                  <TableHead>Discord ID</TableHead>
-                  <TableHead>Since</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead col="discordId">Discord ID</TableHead>
+                  <TableHead col="date">Since</TableHead>
+                  <TableHead col="actionsMenu" className="text-right">
+                    Actions
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -114,29 +116,29 @@ export function OwnerAdmins() {
                 ) : (
                   admins.map((admin) => (
                     <TableRow key={admin.discordId}>
-                      <TableCell className="px-4">
+                      <TableCell>
                         <PlayerLabel
                           uuid={admin.minecraftUuid}
                           name={admin.minecraftUsername}
                           size={28}
                         />
                       </TableCell>
-                      <TableCell className="px-4">
+                      <TableCell>
                         <button
                           type="button"
                           onClick={(e) => handleCopy(e, admin.discordId)}
-                          className="group/copy flex items-center gap-1 text-sm font-mono text-muted-foreground hover:text-foreground transition-colors"
+                          className="group/copy flex min-w-0 max-w-full items-center gap-1 text-sm font-mono text-muted-foreground hover:text-foreground transition-colors"
                         >
-                          {admin.discordId}
-                          <Copy className="size-3 opacity-0 transition-opacity group-hover/copy:opacity-100" />
+                          <span className="truncate">{admin.discordId}</span>
+                          <Copy className="shrink-0 size-3 opacity-0 transition-opacity group-hover/copy:opacity-100" />
                         </button>
                       </TableCell>
-                      <TableCell className="px-4 text-sm text-muted-foreground">
+                      <TableCell className="text-sm text-muted-foreground">
                         {admin.createdAt
                           ? formatRelativeDate(admin.createdAt)
                           : "—"}
                       </TableCell>
-                      <TableCell className="px-4 text-right">
+                      <TableCell className="text-right">
                         <Button
                           size="sm"
                           variant="destructive"

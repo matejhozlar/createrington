@@ -148,14 +148,16 @@ export function AdminChatHistory() {
         ) : (
           <>
             <div className="rounded-lg border border-border bg-card">
-              <Table>
+              <Table className="min-w-[730px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Title</TableHead>
-                    <TableHead className="w-28">Status</TableHead>
-                    <TableHead className="w-24 text-right">Messages</TableHead>
-                    <TableHead className="w-40">Started</TableHead>
-                    <TableHead className="w-40">Last activity</TableHead>
+                    <TableHead col="status">Status</TableHead>
+                    <TableHead col="count" className="text-right">
+                      Messages
+                    </TableHead>
+                    <TableHead col="dateTime">Started</TableHead>
+                    <TableHead col="dateTime">Last activity</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

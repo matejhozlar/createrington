@@ -311,25 +311,27 @@ export function AdminStructurePacks() {
             </CardContent>
           ) : (
             <CardContent className="px-0">
-              <Table>
-                <TableHeader className="bg-sidebar-accent/50">
+              <Table className="min-w-[630px]">
+                <TableHeader>
                   <TableRow>
-                    <TableHead className="px-4">Name</TableHead>
-                    <TableHead className="px-4">Status</TableHead>
-                    <TableHead className="px-4">Mods</TableHead>
-                    <TableHead className="px-4">Last Active</TableHead>
-                    <TableHead className="px-4 text-right">Actions</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead col="status">Status</TableHead>
+                    <TableHead col="count">Mods</TableHead>
+                    <TableHead col="date">Last Active</TableHead>
+                    <TableHead col="actionsMenu" className="text-right">
+                      Actions
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredPacks.map((pack) => (
                     <TableRow key={pack.id}>
-                      <TableCell className="px-4">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium">{pack.name}</p>
+                      <TableCell>
+                        <div className="min-w-0">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <p className="truncate font-medium">{pack.name}</p>
                             {pack.isActive && (
-                              <Badge className="bg-green-500/20 text-green-500 hover:bg-green-500/30">
+                              <Badge className="shrink-0 bg-green-500/20 text-green-500 hover:bg-green-500/30">
                                 Active
                               </Badge>
                             )}
@@ -341,7 +343,7 @@ export function AdminStructurePacks() {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="px-4">
+                      <TableCell>
                         <Badge
                           variant="outline"
                           className={
@@ -353,16 +355,16 @@ export function AdminStructurePacks() {
                           {pack.enabled ? "Enabled" : "Disabled"}
                         </Badge>
                       </TableCell>
-                      <TableCell className="px-4 text-sm">
+                      <TableCell className="text-sm">
                         {pack.mods.length} mod
                         {pack.mods.length !== 1 && "s"}
                       </TableCell>
-                      <TableCell className="px-4 text-sm text-muted-foreground">
+                      <TableCell className="text-sm text-muted-foreground">
                         {pack.lastActivatedAt
                           ? new Date(pack.lastActivatedAt).toLocaleDateString()
                           : "Never"}
                       </TableCell>
-                      <TableCell className="px-4 text-right">
+                      <TableCell className="text-right">
                         <DropdownMenu modal={false}>
                           <DropdownMenuTrigger asChild>
                             <Button

@@ -364,11 +364,11 @@ export function StatsTab({ playerId, getServerName }: StatsTabProps) {
 
                       {/* Category stats table */}
                       {isExpanded && (
-                        <Table>
-                          <TableHeader className="bg-sidebar-accent/50">
+                        <Table className="min-w-[310px]">
+                          <TableHeader>
                             <TableRow>
-                              <TableHead className="px-4 py-2">Stat</TableHead>
-                              <TableHead className="px-4 py-2 text-right">
+                              <TableHead>Stat</TableHead>
+                              <TableHead col="amount" className="text-right">
                                 Value
                               </TableHead>
                             </TableRow>
@@ -379,12 +379,12 @@ export function StatsTab({ playerId, getServerName }: StatsTabProps) {
                                 key={stat.key}
                                 className="hover:bg-sidebar-accent/30"
                               >
-                                <TableCell className="px-4 py-2">
+                                <TableCell>
                                   <span className="text-sm">
                                     {formatStatName(stat.key)}
                                   </span>
                                 </TableCell>
-                                <TableCell className="px-4 py-2 text-right">
+                                <TableCell className="text-right">
                                   <span className="font-semibold tabular-nums">
                                     {formatValue(stat.value)}
                                   </span>

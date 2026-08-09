@@ -192,19 +192,23 @@ export function SuggestionsCard({
         <CardEmpty icon={Lightbulb} message="No suggestions match this view" />
       ) : (
         <CardContent className="px-0">
-          <Table>
-            <TableHeader className="bg-sidebar-accent/50">
+          <Table className="min-w-[1060px]">
+            <TableHeader>
               <TableRow>
-                <TableHead className="px-4">Mod</TableHead>
-                <TableHead className="px-4">Submitted by</TableHead>
-                <TableHead className="px-4">Note</TableHead>
-                <TableHead className="px-4 text-center">
+                <TableHead>Mod</TableHead>
+                <TableHead col="player">Submitted by</TableHead>
+                <TableHead className="w-[180px]">Note</TableHead>
+                <TableHead col="index" className="text-center">
                   <Heart className="mx-auto size-3.5" />
                 </TableHead>
-                <TableHead className="px-4 text-center">Pulls In</TableHead>
-                <TableHead className="px-4">Status</TableHead>
-                <TableHead className="px-4">Date</TableHead>
-                <TableHead className="px-4 text-right">Actions</TableHead>
+                <TableHead col="count" className="text-center">
+                  Pulls In
+                </TableHead>
+                <TableHead col="status">Status</TableHead>
+                <TableHead col="date">Date</TableHead>
+                <TableHead col="actionsMenu" className="text-right">
+                  Actions
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -213,44 +217,50 @@ export function SuggestionsCard({
                 const busy = busyModId === mod.id;
                 return (
                   <TableRow key={mod.id}>
-                    <TableCell className="px-4">
+                    <TableCell>
                       <button
                         type="button"
-                        className="flex cursor-pointer items-center gap-2 text-left"
+                        className="flex w-full cursor-pointer items-center gap-2 text-left"
                         onClick={() => onView(mod.id)}
                       >
                         <ProjectThumb
                           name={mod.project.name}
                           thumbnailUrl={mod.project.thumbnailUrl}
-                          className="size-8 rounded text-[11px]"
+                          className="size-8 shrink-0 rounded text-[11px]"
                         />
-                        <div>
-                          <p className="font-medium hover:underline">
+                        <div className="min-w-0">
+                          <p
+                            className="truncate font-medium hover:underline"
+                            title={mod.project.name}
+                          >
                             {mod.project.name}
                           </p>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="truncate text-xs text-muted-foreground">
                             {mod.project.slug}
                           </p>
                         </div>
                       </button>
                     </TableCell>
-                    <TableCell className="px-4">
+                    <TableCell>
                       <PlayerLabel
                         name={mod.submitterName ?? mod.submittedBy}
                         playerId={mod.submittedBy}
                         size={20}
                       />
                     </TableCell>
-                    <TableCell className="max-w-[200px] truncate px-4 text-sm text-muted-foreground">
+                    <TableCell
+                      className="text-sm text-muted-foreground"
+                      title={mod.note ?? undefined}
+                    >
                       {mod.note ?? ""}
                     </TableCell>
-                    <TableCell className="px-4 text-center text-sm">
+                    <TableCell className="text-center text-sm">
                       {mod.upvoteCount}
                     </TableCell>
-                    <TableCell className="px-4 text-center">
+                    <TableCell className="text-center">
                       <DependencyCell mod={mod} />
                     </TableCell>
-                    <TableCell className="px-4">
+                    <TableCell>
                       {status && (
                         <Badge
                           variant="outline"
@@ -260,10 +270,10 @@ export function SuggestionsCard({
                         </Badge>
                       )}
                     </TableCell>
-                    <TableCell className="px-4 text-sm text-muted-foreground">
+                    <TableCell className="text-sm text-muted-foreground">
                       {formatDate(mod.createdAt)}
                     </TableCell>
-                    <TableCell className="px-4 text-right">
+                    <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button

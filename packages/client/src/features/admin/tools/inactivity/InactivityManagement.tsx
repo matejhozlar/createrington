@@ -406,15 +406,17 @@ export function InactivityManagement() {
           ) : (
             <>
               <CardContent className="px-0">
-                <Table>
-                  <TableHeader className="bg-sidebar-accent/50">
+                <Table className="min-w-[800px]">
+                  <TableHeader>
                     <TableRow>
-                      <TableHead className="px-4">Player</TableHead>
-                      <TableHead className="px-4">Status</TableHead>
-                      <TableHead className="px-4">Warned</TableHead>
-                      <TableHead className="px-4">Deadline</TableHead>
-                      <TableHead className="px-4">Last Seen</TableHead>
-                      <TableHead className="px-4 text-right">Actions</TableHead>
+                      <TableHead>Player</TableHead>
+                      <TableHead col="status">Status</TableHead>
+                      <TableHead col="date">Warned</TableHead>
+                      <TableHead col="date">Deadline</TableHead>
+                      <TableHead col="date">Last Seen</TableHead>
+                      <TableHead col="actions" className="text-right">
+                        Actions
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -432,7 +434,7 @@ export function InactivityManagement() {
 
                       return (
                         <TableRow key={warning.id}>
-                          <TableCell className="px-4">
+                          <TableCell>
                             <div>
                               <p className="font-medium">
                                 {warning.minecraftUsername ?? (
@@ -446,7 +448,7 @@ export function InactivityManagement() {
                               </p>
                             </div>
                           </TableCell>
-                          <TableCell className="px-4">
+                          <TableCell>
                             <Badge
                               variant="outline"
                               className={STATUS_BADGE_CLASSES[status]}
@@ -454,7 +456,7 @@ export function InactivityManagement() {
                               {STATUS_LABELS[status]}
                             </Badge>
                           </TableCell>
-                          <TableCell className="px-4">
+                          <TableCell>
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <span className="text-sm text-muted-foreground cursor-default">
@@ -466,7 +468,7 @@ export function InactivityManagement() {
                               </TooltipContent>
                             </Tooltip>
                           </TableCell>
-                          <TableCell className="px-4">
+                          <TableCell>
                             {status === "active" ? (
                               <p className="text-sm">
                                 {daysLeft}d{" "}
@@ -482,7 +484,7 @@ export function InactivityManagement() {
                               <p className="text-sm text-muted-foreground">—</p>
                             )}
                           </TableCell>
-                          <TableCell className="px-4">
+                          <TableCell>
                             {lastSeenIso ? (
                               <Tooltip>
                                 <TooltipTrigger asChild>
@@ -498,7 +500,7 @@ export function InactivityManagement() {
                               <p className="text-sm text-muted-foreground">—</p>
                             )}
                           </TableCell>
-                          <TableCell className="px-4 text-right">
+                          <TableCell className="text-right">
                             <div className="flex justify-end gap-2">
                               <Tooltip>
                                 <TooltipTrigger asChild>

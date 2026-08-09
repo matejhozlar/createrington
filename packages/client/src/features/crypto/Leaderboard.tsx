@@ -154,16 +154,12 @@ function LeaderboardTable({ type }: { type: LeaderboardType }) {
       {rest.length > 0 && (
         <Card className="overflow-hidden">
           <CardContent className="p-0">
-            <Table>
+            <Table className="min-w-[370px]">
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead className="w-16 text-[11px] font-medium uppercase tracking-wider">
-                    Rank
-                  </TableHead>
-                  <TableHead className="text-[11px] font-medium uppercase tracking-wider">
-                    Player
-                  </TableHead>
-                  <TableHead className="text-right text-[11px] font-medium uppercase tracking-wider">
+                  <TableHead col="index">Rank</TableHead>
+                  <TableHead>Player</TableHead>
+                  <TableHead col="amount" className="text-right">
                     Value
                   </TableHead>
                 </TableRow>
