@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { Eye, Hammer, Pencil, Plus } from "lucide-react";
+import { Hammer, Pencil, Plus } from "lucide-react";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
@@ -209,16 +209,6 @@ export function AdminWorkshop() {
                         onClick={(event) => event.stopPropagation()}
                       >
                         <div className="flex justify-end gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            aria-label={`Open ${workshop.name}`}
-                            onClick={() =>
-                              navigate(`/admin/tools/workshop/${workshop.slug}`)
-                            }
-                          >
-                            <Eye className="size-4" />
-                          </Button>
                           <Button
                             size="sm"
                             variant="outline"

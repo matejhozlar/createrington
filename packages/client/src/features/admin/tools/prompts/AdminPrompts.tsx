@@ -142,7 +142,7 @@ export function AdminPrompts() {
                           row.status === "active" ? "default" : "secondary"
                         }
                       >
-                        {row.status}
+                        {row.status === "active" ? "Active" : "Closed"}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right tabular-nums">

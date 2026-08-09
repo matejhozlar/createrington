@@ -11,7 +11,6 @@ import {
   Filter,
   Upload,
   MoreHorizontal,
-  Eye,
   Copy,
   CheckCircle2,
   XCircle,
@@ -323,7 +322,22 @@ export function AdminStructurePacks() {
                 </TableHeader>
                 <TableBody>
                   {filteredPacks.map((pack) => (
-                    <TableRow key={pack.id}>
+                    <TableRow
+                      key={pack.id}
+                      role="button"
+                      tabIndex={0}
+                      className="cursor-pointer"
+                      onClick={() =>
+                        navigate(`/admin/tools/structure-packs/${pack.id}`)
+                      }
+                      onKeyDown={(event) => {
+                        if (event.target !== event.currentTarget) return;
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          navigate(`/admin/tools/structure-packs/${pack.id}`);
+                        }
+                      }}
+                    >
                       <TableCell className="px-4">
                         <div>
                           <div className="flex items-center gap-2">
@@ -362,7 +376,10 @@ export function AdminStructurePacks() {
                           ? new Date(pack.lastActivatedAt).toLocaleDateString()
                           : "Never"}
                       </TableCell>
-                      <TableCell className="px-4 text-right">
+                      <TableCell
+                        className="px-4 text-right"
+                        onClick={(event) => event.stopPropagation()}
+                      >
                         <DropdownMenu modal={false}>
                           <DropdownMenuTrigger asChild>
                             <Button
@@ -374,16 +391,6 @@ export function AdminStructurePacks() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={() =>
-                                navigate(
-                                  `/admin/tools/structure-packs/${pack.id}`,
-                                )
-                              }
-                            >
-                              <Eye className="mr-2 size-4" />
-                              View
-                            </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => copyPackJson(pack)}
                             >

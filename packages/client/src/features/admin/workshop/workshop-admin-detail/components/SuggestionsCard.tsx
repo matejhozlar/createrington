@@ -1,7 +1,6 @@
 import {
   Ban,
   Check,
-  Eye,
   FlaskConical,
   Heart,
   Lightbulb,
@@ -19,7 +18,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -212,27 +210,34 @@ export function SuggestionsCard({
                 const status = MOD_STATUS_STYLES[mod.status];
                 const busy = busyModId === mod.id;
                 return (
-                  <TableRow key={mod.id}>
+                  <TableRow
+                    key={mod.id}
+                    role="button"
+                    tabIndex={0}
+                    className="cursor-pointer"
+                    onClick={() => onView(mod.id)}
+                    onKeyDown={(event) => {
+                      if (event.target !== event.currentTarget) return;
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        onView(mod.id);
+                      }
+                    }}
+                  >
                     <TableCell className="px-4">
-                      <button
-                        type="button"
-                        className="flex cursor-pointer items-center gap-2 text-left"
-                        onClick={() => onView(mod.id)}
-                      >
+                      <div className="flex items-center gap-2">
                         <ProjectThumb
                           name={mod.project.name}
                           thumbnailUrl={mod.project.thumbnailUrl}
                           className="size-8 rounded text-[11px]"
                         />
                         <div>
-                          <p className="font-medium hover:underline">
-                            {mod.project.name}
-                          </p>
+                          <p className="font-medium">{mod.project.name}</p>
                           <p className="text-xs text-muted-foreground">
                             {mod.project.slug}
                           </p>
                         </div>
-                      </button>
+                      </div>
                     </TableCell>
                     <TableCell className="px-4">
                       <PlayerLabel
@@ -256,14 +261,17 @@ export function SuggestionsCard({
                           variant="outline"
                           className={cn("text-xs", status.className)}
                         >
-                          {status.label}
+                          {status.tableLabel}
                         </Badge>
                       )}
                     </TableCell>
                     <TableCell className="px-4 text-sm text-muted-foreground">
                       {formatDate(mod.createdAt)}
                     </TableCell>
-                    <TableCell className="px-4 text-right">
+                    <TableCell
+                      className="px-4 text-right"
+                      onClick={(event) => event.stopPropagation()}
+                    >
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
@@ -280,11 +288,6 @@ export function SuggestionsCard({
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => onView(mod.id)}>
-                            <Eye className="size-4" />
-                            View Details
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
                           {(mod.status === "pending" ||
                             mod.status === "rejected") && (
                             <DropdownMenuItem

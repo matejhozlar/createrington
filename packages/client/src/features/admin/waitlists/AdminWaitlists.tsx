@@ -67,6 +67,14 @@ type WaitlistEntry =
 type SortField = "submittedAt" | "acceptedAt" | "email" | "discordName";
 type StatusFilter = "all" | WaitlistStatus;
 
+const STATUS_LABELS: Record<WaitlistStatus, string> = {
+  pending: "Pending",
+  accepted: "Invited",
+  auto_accepted: "Auto-accepted",
+  completed: "Completed",
+  declined: "Declined",
+};
+
 export function AdminWaitlists() {
   const toast = useToastActions();
 
@@ -529,7 +537,7 @@ export function AdminWaitlists() {
                                 getStatusBadgeStyle(entry.status).className
                               }
                             >
-                              {entry.status}
+                              {STATUS_LABELS[entry.status]}
                             </Badge>
                           </TableCell>
                           <TableCell className="px-4">

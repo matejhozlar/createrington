@@ -75,15 +75,28 @@ const MOD_STATUS_CLASSES: Record<WorkshopModStatus, string> = {
   rejected: "border-red-500/20 bg-red-500/10 text-red-400",
 };
 
+const MOD_STATUS_TABLE_LABELS: Record<WorkshopModStatus, string> = {
+  pending: "In review",
+  approved: "Approved",
+  testing: "In testing",
+  next_update: "Next update",
+  in_pack: "In pack",
+  rejected: "Ruled out",
+};
+
 export const MOD_STATUS_STYLES = Object.fromEntries(
   WORKSHOP_MOD_STATUSES.map((status) => [
     status,
     {
       label: WORKSHOP_MOD_STATUS_LABELS[status],
+      tableLabel: MOD_STATUS_TABLE_LABELS[status],
       className: MOD_STATUS_CLASSES[status],
     },
   ]),
-) as Record<WorkshopModStatus, { label: string; className: string }>;
+) as Record<
+  WorkshopModStatus,
+  { label: string; tableLabel: string; className: string }
+>;
 
 // liveInVersion comes from the project's pack row, so it describes this
 // suggestion only once the suggestion itself is the one that shipped
