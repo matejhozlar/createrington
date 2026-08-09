@@ -383,7 +383,7 @@ export class ModpackService {
     return items;
   }
 
-  /** Decorate member rows; exposed for admin-add flows that already hold rows. */
+  /** Decorate member rows; public so callers holding a subset can reuse it. */
   async decoratePackMods(
     modpackId: number,
     rows: ModpackMod[],
