@@ -1,9 +1,14 @@
-import { Package } from "lucide-react";
+import { useState } from "react";
+import { Loader2, Package, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { RouterOutput } from "@/lib/trpc";
+import { trpc, type RouterOutput } from "@/lib/trpc";
+import { useToastActions } from "@/hooks/use-toast";
+import { Paginator } from "@/components/paginator";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -27,6 +32,8 @@ import {
 
 export type PackMod =
   RouterOutput["admin"]["workshops"]["listPackMods"][number];
+
+const PACK_MODS_PER_PAGE = 10;
 
 const ORIGIN_LABELS: Record<PackMod["origin"], string> = {
   suggestion: "Suggestion",
@@ -86,25 +93,62 @@ function Credit({ row }: { row: PackMod }) {
 export function PackMembersCard({
   rows,
   workshopId,
+  modpackId,
   isLoading,
   error,
   onRetry,
+  onReconciled,
 }: {
   rows: PackMod[];
   workshopId: number;
+  modpackId: number;
   isLoading: boolean;
   error: string | null;
   onRetry: () => void;
+  onReconciled: () => void;
 }) {
+  const toast = useToastActions();
+  const [requestedPage, setRequestedPage] = useState(0);
+
+  const totalPages = Math.ceil(rows.length / PACK_MODS_PER_PAGE);
+  const page = Math.min(requestedPage, Math.max(0, totalPages - 1));
+  const visible = rows.slice(
+    page * PACK_MODS_PER_PAGE,
+    (page + 1) * PACK_MODS_PER_PAGE,
+  );
+
+  const reconcileMutation = trpc.admin.modpacks.reconcile.useMutation({
+    onSuccess: () => {
+      toast.success("Checked against the published pack");
+      onReconciled();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
   return (
     <Card className="gap-0">
-      <CardHeader className="gap-0 border-b">
+      <CardHeader className="border-b">
         <CardTitle>Published Pack ({rows.length.toLocaleString()})</CardTitle>
         <CardDescription>
           What the published CurseForge pack actually contains, read from its
           manifest. Mods staged for the next update appear here once you publish
           a build that includes them.
         </CardDescription>
+        <CardAction>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={reconcileMutation.isPending}
+            onClick={() => reconcileMutation.mutate({ modpackId })}
+          >
+            {reconcileMutation.isPending ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <RefreshCw className="size-4" />
+            )}
+            Check Published Pack
+          </Button>
+        </CardAction>
       </CardHeader>
 
       {isLoading ? (
@@ -125,7 +169,7 @@ export function PackMembersCard({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rows.map((row) => {
+              {visible.map((row) => {
                 const state = publishState(row);
                 const otherWorkshop =
                   row.suggestionWorkshopId !== null &&
@@ -173,6 +217,16 @@ export function PackMembersCard({
               })}
             </TableBody>
           </Table>
+
+          <Paginator
+            page={page}
+            limit={PACK_MODS_PER_PAGE}
+            total={rows.length}
+            totalPages={totalPages}
+            onPageChange={setRequestedPage}
+            itemLabel="mod"
+            className="px-4 pt-4"
+          />
         </CardContent>
       )}
     </Card>

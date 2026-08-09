@@ -189,11 +189,8 @@ export class WorkshopService {
   }
 
   /** All workshops regardless of status, for the admin panel. */
-  async listAllWorkshops(): Promise<Workshop[]> {
-    return Q.workshop.findAll(
-      {},
-      { orderBy: "createdAt", orderDirection: "desc" },
-    );
+  async listAllWorkshops(): Promise<(Workshop & { modCount: number })[]> {
+    return Q.workshop.listAllWithModCount();
   }
 
   /** A user-visible workshop by slug; drafts and archived workshops read as missing. */

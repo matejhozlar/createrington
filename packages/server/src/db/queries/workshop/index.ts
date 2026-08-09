@@ -1,4 +1,5 @@
 import type { Pool, PoolClient } from "pg";
+import type { Workshop } from "@createrington/shared/db";
 import { WorkshopBaseQueries } from "@/generated/db/workshop.queries";
 
 /**
@@ -11,6 +12,26 @@ import { WorkshopBaseQueries } from "@/generated/db/workshop.queries";
 export class WorkshopQueries extends WorkshopBaseQueries {
   constructor(db: Pool | PoolClient) {
     super(db);
+  }
+
+  /** Every workshop, newest first, with how many mods it holds. */
+  async listAllWithModCount(): Promise<(Workshop & { modCount: number })[]> {
+    const query = `
+      SELECT w.*, COALESCE(m.mod_count, 0)::int AS mod_count
+      FROM ${this.table} w
+      LEFT JOIN (
+        SELECT workshop_id, COUNT(*)::int AS mod_count
+        FROM workshop_mod
+        GROUP BY workshop_id
+      ) m ON m.workshop_id = w.id
+      ORDER BY w.created_at DESC`;
+    const result = await this.runQuery<
+      Record<string, unknown> & { mod_count: number }
+    >("list workshops with mod count", query);
+    return result.rows.map((row) => ({
+      ...this.mapRowToEntity(row as never),
+      modCount: row.mod_count,
+    }));
   }
 
   /** Distinct discord ids of everyone who suggested or upvoted in a workshop. */

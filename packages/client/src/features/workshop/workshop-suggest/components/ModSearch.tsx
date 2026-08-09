@@ -93,8 +93,8 @@ export function ModSearch({
   return (
     <section className="flex flex-col gap-4">
       <div>
-        <h2 className="text-[22px] leading-7 font-semibold">Find a mod</h2>
-        <p className="mt-1.5 text-[13px] text-muted-foreground">
+        <h2 className="text-2xl font-semibold">Find a mod</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
           Search CurseForge by mod name or author.
         </p>
       </div>

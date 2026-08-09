@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { RouterOutput } from "@/lib/trpc";
+import { Paginator } from "@/components/paginator";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -53,6 +54,7 @@ export type AdminWorkshopMod =
   RouterOutput["admin"]["workshops"]["listMods"][number];
 
 const REQUIRED_DEPENDENCY = 3;
+const SUGGESTIONS_PER_PAGE = 10;
 
 function DependencyCell({ mod }: { mod: AdminWorkshopMod }) {
   const required = mod.dependencies.filter(
@@ -70,11 +72,11 @@ function DependencyCell({ mod }: { mod: AdminWorkshopMod }) {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-7 px-2">
+        <button type="button" className="cursor-pointer">
           <Badge
             variant="outline"
             className={cn(
-              "text-xs",
+              "text-xs transition-colors hover:brightness-125",
               uncovered.length > 0
                 ? "border-amber-500/20 bg-amber-500/10 text-amber-400"
                 : "border-zinc-500/20 bg-zinc-500/10 text-zinc-400",
@@ -84,7 +86,7 @@ function DependencyCell({ mod }: { mod: AdminWorkshopMod }) {
               ? `+${uncovered.length}`
               : `${mod.dependencies.length}`}
           </Badge>
-        </Button>
+        </button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-80 space-y-3">
         {[
@@ -143,6 +145,8 @@ export function SuggestionsCard({
   isLoading,
   error,
   onRetry,
+  page: requestedPage,
+  onPageChange,
   busyModId,
   onView,
   onReview,
@@ -154,11 +158,20 @@ export function SuggestionsCard({
   isLoading: boolean;
   error: string | null;
   onRetry: () => void;
+  page: number;
+  onPageChange: (page: number) => void;
   busyModId: number | null;
   onView: (workshopModId: number) => void;
   onReview: (workshopModId: number, action: WorkshopModReviewAction) => void;
   onReject: (target: { workshopModId: number; name: string }) => void;
 }) {
+  const totalPages = Math.ceil(mods.length / SUGGESTIONS_PER_PAGE);
+  const page = Math.min(requestedPage, Math.max(0, totalPages - 1));
+  const visible = mods.slice(
+    page * SUGGESTIONS_PER_PAGE,
+    (page + 1) * SUGGESTIONS_PER_PAGE,
+  );
+
   return (
     <Card className="gap-0">
       <CardHeader className="gap-0 border-b">
@@ -185,17 +198,17 @@ export function SuggestionsCard({
                 <TableHead className="px-4">Mod</TableHead>
                 <TableHead className="px-4">Submitted by</TableHead>
                 <TableHead className="px-4">Note</TableHead>
-                <TableHead className="px-4">
-                  <Heart className="size-3.5" />
+                <TableHead className="px-4 text-center">
+                  <Heart className="mx-auto size-3.5" />
                 </TableHead>
-                <TableHead className="px-4">Pulls In</TableHead>
+                <TableHead className="px-4 text-center">Pulls In</TableHead>
                 <TableHead className="px-4">Status</TableHead>
                 <TableHead className="px-4">Date</TableHead>
                 <TableHead className="px-4 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {mods.map((mod) => {
+              {visible.map((mod) => {
                 const status = MOD_STATUS_STYLES[mod.status];
                 const busy = busyModId === mod.id;
                 return (
@@ -231,10 +244,10 @@ export function SuggestionsCard({
                     <TableCell className="max-w-[200px] truncate px-4 text-sm text-muted-foreground">
                       {mod.note ?? ""}
                     </TableCell>
-                    <TableCell className="px-4 text-sm">
+                    <TableCell className="px-4 text-center text-sm">
                       {mod.upvoteCount}
                     </TableCell>
-                    <TableCell className="px-4">
+                    <TableCell className="px-4 text-center">
                       <DependencyCell mod={mod} />
                     </TableCell>
                     <TableCell className="px-4">
@@ -326,6 +339,16 @@ export function SuggestionsCard({
               })}
             </TableBody>
           </Table>
+
+          <Paginator
+            page={page}
+            limit={SUGGESTIONS_PER_PAGE}
+            total={mods.length}
+            totalPages={totalPages}
+            onPageChange={onPageChange}
+            itemLabel="suggestion"
+            className="px-4 pt-4"
+          />
         </CardContent>
       )}
     </Card>

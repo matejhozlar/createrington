@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { ChevronRight, Hammer, Plus } from "lucide-react";
-import { trpc } from "@/lib/trpc";
+import { Eye, Hammer, Pencil, Plus } from "lucide-react";
+import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,9 @@ import {
   loaderName,
 } from "@/features/workshop/format";
 import { CreateWorkshopDialog } from "./components/CreateWorkshopDialog";
+import { WorkshopSettingsDialog } from "./workshop-admin-detail/components/WorkshopSettingsDialog";
+
+type AdminWorkshopRow = RouterOutput["admin"]["workshops"]["list"][number];
 
 export function AdminWorkshop() {
   const navigate = useNavigate();
@@ -45,10 +48,19 @@ export function AdminWorkshop() {
 
   const [createOpen, setCreateOpen] = useState(false);
   const [createKey, setCreateKey] = useState(0);
+  const [settingsTarget, setSettingsTarget] = useState<AdminWorkshopRow | null>(
+    null,
+  );
+  const [settingsKey, setSettingsKey] = useState(0);
 
   const openCreate = () => {
     setCreateKey((key) => key + 1);
     setCreateOpen(true);
+  };
+
+  const openSettings = (workshop: AdminWorkshopRow) => {
+    setSettingsKey((key) => key + 1);
+    setSettingsTarget(workshop);
   };
 
   const workshops = workshopsQuery.data ?? [];
@@ -142,10 +154,10 @@ export function AdminWorkshop() {
                   <TableRow>
                     <TableHead className="px-4">Name</TableHead>
                     <TableHead className="px-4">Status</TableHead>
-                    <TableHead className="px-4">Target</TableHead>
-                    <TableHead className="px-4">Cap</TableHead>
+                    <TableHead className="px-4">Version</TableHead>
+                    <TableHead className="px-4">Loader</TableHead>
                     <TableHead className="px-4">Created</TableHead>
-                    <TableHead className="px-4" />
+                    <TableHead className="px-4 text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -184,17 +196,38 @@ export function AdminWorkshop() {
                         </Badge>
                       </TableCell>
                       <TableCell className="px-4 text-sm">
-                        {workshop.gameVersion} ·{" "}
-                        {loaderName(workshop.modLoaderType)}
+                        {workshop.gameVersion}
                       </TableCell>
                       <TableCell className="px-4 text-sm">
-                        {workshop.maxModsPerUser} mods
+                        {loaderName(workshop.modLoaderType)}
                       </TableCell>
                       <TableCell className="px-4 text-sm text-muted-foreground">
                         {formatDate(workshop.createdAt)}
                       </TableCell>
-                      <TableCell className="px-4 text-right">
-                        <ChevronRight className="ml-auto size-4 text-muted-foreground" />
+                      <TableCell
+                        className="px-4 text-right"
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            aria-label={`Open ${workshop.name}`}
+                            onClick={() =>
+                              navigate(`/admin/tools/workshop/${workshop.slug}`)
+                            }
+                          >
+                            <Eye className="size-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            aria-label={`Edit ${workshop.name}`}
+                            onClick={() => openSettings(workshop)}
+                          >
+                            <Pencil className="size-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -210,6 +243,18 @@ export function AdminWorkshop() {
         open={createOpen}
         onOpenChange={setCreateOpen}
       />
+
+      {settingsTarget && (
+        <WorkshopSettingsDialog
+          key={`settings-${settingsKey}`}
+          open
+          onOpenChange={(open) => {
+            if (!open) setSettingsTarget(null);
+          }}
+          workshop={settingsTarget}
+          hasMods={settingsTarget.modCount > 0}
+        />
+      )}
     </div>
   );
 }

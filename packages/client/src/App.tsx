@@ -333,7 +333,7 @@ function AppLayout() {
     <>
       <AppSidebar />
       <SidebarInset>
-        <div className="sticky top-0 z-30 flex md:hidden items-center gap-2 p-2 bg-background border-b">
+        <div className="sticky top-0 z-30 flex h-14 md:hidden items-center gap-2 p-2 bg-background border-b">
           <SidebarTrigger />
           <Logo />
         </div>

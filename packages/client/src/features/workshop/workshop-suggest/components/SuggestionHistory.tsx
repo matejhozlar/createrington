@@ -101,7 +101,7 @@ export function SuggestionHistory() {
   return (
     <section>
       <div className="flex flex-wrap items-center gap-2.5">
-        <h2 className="text-[22px] leading-7 font-semibold">My suggestions</h2>
+        <h2 className="text-2xl font-semibold">My suggestions</h2>
         <span className="flex-1" />
         <Select
           value={status}
@@ -141,7 +141,7 @@ export function SuggestionHistory() {
         </Select>
         <ViewToggle view={view} onChange={changeView} />
       </div>
-      <p className="mt-1.5 text-[13px] text-muted-foreground">
+      <p className="mt-1 text-sm text-muted-foreground">
         Everything you've suggested across workshops, including ruled-out ones.
       </p>
 

@@ -89,10 +89,10 @@ export function WorkshopSuggest() {
         </Link>
 
         <header className="mt-5 max-w-[640px]">
-          <h1 className="text-[34px] leading-10 font-bold text-shadow-[0_2px_8px_rgb(0_0_0/0.4)]">
+          <h1 className="text-4xl font-semibold text-shadow-[0_2px_8px_rgb(0_0_0/0.4)]">
             Suggest mods
           </h1>
-          <p className="mt-2.5 text-[15px] leading-6 text-zinc-200 text-shadow-[0_1px_4px_rgb(0_0_0/0.4)]">
+          <p className="mt-4 text-base text-zinc-200 text-shadow-[0_1px_4px_rgb(0_0_0/0.4)]">
             Find a mod on CurseForge and tell us why it belongs in the pack. The
             team reviews every suggestion. Upvotes are the signal, not the
             verdict.
@@ -119,7 +119,7 @@ export function WorkshopSuggest() {
           </PackStrip>
         )}
 
-        <main className="mt-11 flex flex-col gap-12">
+        <main className="mt-10 flex flex-col gap-12">
           {isOpen ? (
             <ModSearch
               workshop={workshop}
@@ -129,10 +129,8 @@ export function WorkshopSuggest() {
             />
           ) : (
             <section>
-              <h2 className="text-[22px] leading-7 font-semibold">
-                Find a mod
-              </h2>
-              <p className="mt-1.5 text-[13px] text-muted-foreground">
+              <h2 className="text-2xl font-semibold">Find a mod</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
                 This workshop is closed for suggestions.
               </p>
             </section>
