@@ -19,9 +19,8 @@
   "scripts": {
     "dev": "infisical run --env=dev -- node scripts/dev-watch.mjs",
     "dev:types": "concurrently \"tsc --emitDeclarationOnly --watch\" \"tsc-alias --watch\"",
-    "build": "tsc && tsc-alias && pnpm post-build && pnpm build:copy-assets",
+    "build": "tsc && tsc-alias && pnpm build:copy-assets",
     "build:copy-assets": "copyfiles -u 1 \"src/**/*.html\" \"src/**/*.png\" \"src/**/*.jpg\" \"src/**/*.svg\" \"src/**/*.json\" \"src/**/*.woff2\" dist/server/src",
-    "post-build": "tsx src/scripts/tools/post-build.ts",
     "start": "node dist/server/src/server.js",
     "build:types": "tsc --declaration --emitDeclarationOnly && tsc-alias",
     "typecheck": "tsc --noEmit",
