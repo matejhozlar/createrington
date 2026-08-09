@@ -190,20 +190,7 @@ export class WorkshopService {
 
   /** All workshops regardless of status, for the admin panel. */
   async listAllWorkshops(): Promise<(Workshop & { modCount: number })[]> {
-    const [workshops, mods] = await Promise.all([
-      Q.workshop.findAll({}, { orderBy: "createdAt", orderDirection: "desc" }),
-      Q.workshop.mod.findAll({}, { select: ["workshopId"] }),
-    ]);
-
-    const counts = new Map<number, number>();
-    for (const mod of mods) {
-      counts.set(mod.workshopId, (counts.get(mod.workshopId) ?? 0) + 1);
-    }
-
-    return workshops.map((workshop) => ({
-      ...workshop,
-      modCount: counts.get(workshop.id) ?? 0,
-    }));
+    return Q.workshop.listAllWithModCount();
   }
 
   /** A user-visible workshop by slug; drafts and archived workshops read as missing. */

@@ -1,4 +1,3 @@
-import { useState } from "react";
 import {
   Ban,
   Check,
@@ -146,6 +145,8 @@ export function SuggestionsCard({
   isLoading,
   error,
   onRetry,
+  page: requestedPage,
+  onPageChange,
   busyModId,
   onView,
   onReview,
@@ -157,13 +158,13 @@ export function SuggestionsCard({
   isLoading: boolean;
   error: string | null;
   onRetry: () => void;
+  page: number;
+  onPageChange: (page: number) => void;
   busyModId: number | null;
   onView: (workshopModId: number) => void;
   onReview: (workshopModId: number, action: WorkshopModReviewAction) => void;
   onReject: (target: { workshopModId: number; name: string }) => void;
 }) {
-  const [requestedPage, setRequestedPage] = useState(0);
-
   const totalPages = Math.ceil(mods.length / SUGGESTIONS_PER_PAGE);
   const page = Math.min(requestedPage, Math.max(0, totalPages - 1));
   const visible = mods.slice(
@@ -344,7 +345,7 @@ export function SuggestionsCard({
             limit={SUGGESTIONS_PER_PAGE}
             total={mods.length}
             totalPages={totalPages}
-            onPageChange={setRequestedPage}
+            onPageChange={onPageChange}
             itemLabel="suggestion"
             className="px-4 pt-4"
           />

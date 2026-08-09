@@ -68,6 +68,7 @@ export function AdminWorkshopDetail() {
 
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [search, setSearch] = useState("");
+  const [suggestionsPage, setSuggestionsPage] = useState(0);
   const [detailModId, setDetailModId] = useState<number | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -223,9 +224,15 @@ export function AdminWorkshopDetail() {
 
         <SuggestionFilters
           search={search}
-          onSearchChange={setSearch}
+          onSearchChange={(value) => {
+            setSearch(value);
+            setSuggestionsPage(0);
+          }}
           status={statusFilter}
-          onStatusChange={setStatusFilter}
+          onStatusChange={(value) => {
+            setStatusFilter(value);
+            setSuggestionsPage(0);
+          }}
           counts={counts}
         />
 
@@ -236,6 +243,8 @@ export function AdminWorkshopDetail() {
           isLoading={modsQuery.isLoading}
           error={modsQuery.error?.message ?? null}
           onRetry={() => modsQuery.refetch()}
+          page={suggestionsPage}
+          onPageChange={setSuggestionsPage}
           busyModId={
             reviewMutation.isPending
               ? (reviewMutation.variables?.workshopModId ?? null)
