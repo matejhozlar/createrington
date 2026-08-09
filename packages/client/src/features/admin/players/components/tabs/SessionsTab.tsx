@@ -161,12 +161,12 @@ export function SessionsTab({ playerId, getServerName }: SessionsTabProps) {
                     className="hover:bg-sidebar-accent/30"
                   >
                     <TableCell>
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium">{serverName}</p>
+                      <div className="flex min-w-0 items-center gap-2">
+                        <p className="truncate font-medium">{serverName}</p>
                         {!leftAt && (
                           <Badge
                             variant="default"
-                            className="bg-green-500/20 text-green-500"
+                            className="shrink-0 bg-green-500/20 text-green-500"
                           >
                             Active
                           </Badge>

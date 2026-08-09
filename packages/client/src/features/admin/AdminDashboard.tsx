@@ -258,7 +258,7 @@ export function AdminDashboard() {
                   <TableHeader>
                     <TableRow>
                       <TableHead col="player">Player</TableHead>
-                      <TableHead col="status">Type</TableHead>
+                      <TableHead col="tag">Type</TableHead>
                       <TableHead>Reason</TableHead>
                       <TableHead col="player">By</TableHead>
                       <TableHead col="date">Date</TableHead>

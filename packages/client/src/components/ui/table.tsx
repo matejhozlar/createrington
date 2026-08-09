@@ -3,7 +3,8 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 const COLUMN_WIDTHS = {
-  index: "w-[56px]",
+  // sized by what the column holds
+  index: "w-[64px]",
   icon: "w-[48px]",
   id: "w-[64px]",
   actionsMenu: "w-[92px]",
@@ -12,12 +13,16 @@ const COLUMN_WIDTHS = {
   count: "w-[100px]",
   amount: "w-[110px]",
   duration: "w-[110px]",
+  tag: "w-[116px]",
   status: "w-[116px]",
   date: "w-[120px]",
-  label: "w-[136px]",
   dateTime: "w-[156px]",
   discordId: "w-[180px]",
   player: "w-[184px]",
+  // neutral sizes for plain text columns with no more specific name
+  sm: "w-[100px]",
+  md: "w-[136px]",
+  lg: "w-[180px]",
 } as const;
 
 type TableColumn = keyof typeof COLUMN_WIDTHS;

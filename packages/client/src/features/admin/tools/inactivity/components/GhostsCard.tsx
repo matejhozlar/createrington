@@ -264,20 +264,22 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
                               onClick={(e) =>
                                 handleCopy(e, ghost.minecraftUsername)
                               }
-                              className="group/copy flex items-center gap-1 font-medium hover:text-foreground transition-colors"
+                              className="group/copy flex min-w-0 max-w-full items-center gap-1 font-medium hover:text-foreground transition-colors"
                             >
-                              {ghost.minecraftUsername}
-                              <Copy className="size-3 text-muted-foreground opacity-0 transition-opacity group-hover/copy:opacity-100" />
+                              <span className="truncate">
+                                {ghost.minecraftUsername}
+                              </span>
+                              <Copy className="shrink-0 size-3 text-muted-foreground opacity-0 transition-opacity group-hover/copy:opacity-100" />
                             </button>
                             <button
                               type="button"
                               onClick={(e) =>
                                 handleCopy(e, ghost.minecraftUuid)
                               }
-                              className="group/copy flex items-center gap-1 font-mono text-xs text-muted-foreground hover:text-foreground transition-colors"
+                              className="group/copy flex min-w-0 max-w-full items-center gap-1 font-mono text-xs text-muted-foreground hover:text-foreground transition-colors"
                             >
                               {ghost.minecraftUuid.slice(0, 8)}…
-                              <Copy className="size-2.5 opacity-0 transition-opacity group-hover/copy:opacity-100" />
+                              <Copy className="shrink-0 size-2.5 opacity-0 transition-opacity group-hover/copy:opacity-100" />
                             </button>
                           </div>
                         </TableCell>
@@ -285,10 +287,10 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
                           <button
                             type="button"
                             onClick={(e) => handleCopy(e, ghost.discordId)}
-                            className="group/copy flex items-center gap-1 font-mono text-xs text-muted-foreground hover:text-foreground transition-colors"
+                            className="group/copy flex min-w-0 max-w-full items-center gap-1 font-mono text-xs text-muted-foreground hover:text-foreground transition-colors"
                           >
-                            {ghost.discordId}
-                            <Copy className="size-3 opacity-0 transition-opacity group-hover/copy:opacity-100" />
+                            <span className="truncate">{ghost.discordId}</span>
+                            <Copy className="shrink-0 size-3 opacity-0 transition-opacity group-hover/copy:opacity-100" />
                           </button>
                         </TableCell>
                         <TableCell>

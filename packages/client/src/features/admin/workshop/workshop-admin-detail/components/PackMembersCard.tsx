@@ -165,7 +165,7 @@ export function PackMembersCard({
             <TableHeader>
               <TableRow>
                 <TableHead>Mod</TableHead>
-                <TableHead col="label">Origin</TableHead>
+                <TableHead col="md">Origin</TableHead>
                 <TableHead className="w-[180px]">Credit</TableHead>
                 <TableHead col="status">Publish State</TableHead>
               </TableRow>

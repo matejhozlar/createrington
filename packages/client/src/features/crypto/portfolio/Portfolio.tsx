@@ -400,9 +400,9 @@ export function Portfolio() {
                                 dotColor,
                               )}
                             />
-                            <div>
-                              <p className="font-medium">{h.name}</p>
-                              <p className="text-xs text-muted-foreground font-mono">
+                            <div className="min-w-0">
+                              <p className="truncate font-medium">{h.name}</p>
+                              <p className="truncate text-xs text-muted-foreground font-mono">
                                 {h.symbol}
                               </p>
                             </div>

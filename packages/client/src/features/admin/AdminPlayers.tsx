@@ -457,7 +457,7 @@ export function AdminPlayers() {
                       </TableHead>
                       <TableHead col="discordId">Discord ID</TableHead>
                       <TableHead col="status">Status</TableHead>
-                      <TableHead col="label">Server</TableHead>
+                      <TableHead col="md">Server</TableHead>
                       <TableHead col="dateTime">
                         <button
                           type="button"
@@ -499,8 +499,8 @@ export function AdminPlayers() {
                           }
                         >
                           <TableCell>
-                            <div className="flex items-center gap-3">
-                              <div className="relative">
+                            <div className="flex min-w-0 items-center gap-3">
+                              <div className="relative shrink-0">
                                 <MinecraftAvatar
                                   uuid={player.minecraftUuid}
                                   username={player.minecraftUsername}
@@ -519,26 +519,28 @@ export function AdminPlayers() {
                                   </div>
                                 )}
                               </div>
-                              <div>
+                              <div className="min-w-0">
                                 <button
                                   type="button"
                                   onClick={(e) =>
                                     handleCopy(e, player.minecraftUsername)
                                   }
-                                  className="group/copy flex items-center gap-1 font-medium hover:text-foreground transition-colors"
+                                  className="group/copy flex min-w-0 max-w-full items-center gap-1 font-medium hover:text-foreground transition-colors"
                                 >
-                                  {player.minecraftUsername}
-                                  <Copy className="size-3 text-muted-foreground opacity-0 transition-opacity group-hover/copy:opacity-100" />
+                                  <span className="truncate">
+                                    {player.minecraftUsername}
+                                  </span>
+                                  <Copy className="shrink-0 size-3 text-muted-foreground opacity-0 transition-opacity group-hover/copy:opacity-100" />
                                 </button>
                                 <button
                                   type="button"
                                   onClick={(e) =>
                                     handleCopy(e, player.minecraftUuid)
                                   }
-                                  className="group/copy flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                                  className="group/copy flex min-w-0 max-w-full items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
                                 >
                                   {player.minecraftUuid.slice(0, 8)}...
-                                  <Copy className="size-2.5 opacity-0 transition-opacity group-hover/copy:opacity-100" />
+                                  <Copy className="shrink-0 size-2.5 opacity-0 transition-opacity group-hover/copy:opacity-100" />
                                 </button>
                               </div>
                             </div>
@@ -547,10 +549,12 @@ export function AdminPlayers() {
                             <button
                               type="button"
                               onClick={(e) => handleCopy(e, player.discordId)}
-                              className="group/copy flex items-center gap-1 text-sm font-mono text-muted-foreground hover:text-foreground transition-colors"
+                              className="group/copy flex min-w-0 max-w-full items-center gap-1 text-sm font-mono text-muted-foreground hover:text-foreground transition-colors"
                             >
-                              {player.discordId}
-                              <Copy className="size-3 opacity-0 transition-opacity group-hover/copy:opacity-100" />
+                              <span className="truncate">
+                                {player.discordId}
+                              </span>
+                              <Copy className="shrink-0 size-3 opacity-0 transition-opacity group-hover/copy:opacity-100" />
                             </button>
                           </TableCell>
                           <TableCell>

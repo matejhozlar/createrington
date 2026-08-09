@@ -313,7 +313,7 @@ export function AdminLogs() {
                           {renderSortIcon("adminUsername")}
                         </button>
                       </TableHead>
-                      <TableHead col="label">
+                      <TableHead col="md">
                         <button
                           type="button"
                           onClick={() => handleSort("actionType")}

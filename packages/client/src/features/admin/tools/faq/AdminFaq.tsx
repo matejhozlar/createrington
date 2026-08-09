@@ -323,8 +323,8 @@ export function AdminFaq() {
                           {renderSortIcon("title")}
                         </button>
                       </TableHead>
-                      <TableHead col="status">Mode</TableHead>
-                      <TableHead col="player">Pattern</TableHead>
+                      <TableHead col="tag">Mode</TableHead>
+                      <TableHead col="lg">Pattern</TableHead>
                       <TableHead col="count">
                         <button
                           type="button"

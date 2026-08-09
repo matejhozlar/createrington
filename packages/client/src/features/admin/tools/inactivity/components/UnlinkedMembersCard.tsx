@@ -229,18 +229,20 @@ export function UnlinkedMembersCard() {
                           <button
                             type="button"
                             onClick={(e) => handleCopy(e, member.displayName)}
-                            className="group/copy flex items-center gap-1 font-medium hover:text-foreground transition-colors"
+                            className="group/copy flex min-w-0 max-w-full items-center gap-1 font-medium hover:text-foreground transition-colors"
                           >
-                            {member.displayName}
-                            <Copy className="size-3 text-muted-foreground opacity-0 transition-opacity group-hover/copy:opacity-100" />
+                            <span className="truncate">
+                              {member.displayName}
+                            </span>
+                            <Copy className="shrink-0 size-3 text-muted-foreground opacity-0 transition-opacity group-hover/copy:opacity-100" />
                           </button>
                           <button
                             type="button"
                             onClick={(e) => handleCopy(e, member.username)}
-                            className="group/copy flex items-center gap-1 font-mono text-xs text-muted-foreground hover:text-foreground transition-colors"
+                            className="group/copy flex min-w-0 max-w-full items-center gap-1 font-mono text-xs text-muted-foreground hover:text-foreground transition-colors"
                           >
-                            @{member.username}
-                            <Copy className="size-2.5 opacity-0 transition-opacity group-hover/copy:opacity-100" />
+                            <span className="truncate">@{member.username}</span>
+                            <Copy className="shrink-0 size-2.5 opacity-0 transition-opacity group-hover/copy:opacity-100" />
                           </button>
                         </div>
                       </TableCell>
@@ -248,10 +250,10 @@ export function UnlinkedMembersCard() {
                         <button
                           type="button"
                           onClick={(e) => handleCopy(e, member.discordId)}
-                          className="group/copy flex items-center gap-1 font-mono text-xs text-muted-foreground hover:text-foreground transition-colors"
+                          className="group/copy flex min-w-0 max-w-full items-center gap-1 font-mono text-xs text-muted-foreground hover:text-foreground transition-colors"
                         >
-                          {member.discordId}
-                          <Copy className="size-3 opacity-0 transition-opacity group-hover/copy:opacity-100" />
+                          <span className="truncate">{member.discordId}</span>
+                          <Copy className="shrink-0 size-3 opacity-0 transition-opacity group-hover/copy:opacity-100" />
                         </button>
                       </TableCell>
                       <TableCell>

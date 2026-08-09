@@ -117,7 +117,7 @@ export function TradeHistory() {
                 <TableRow className="hover:bg-transparent">
                   <TableHead col="dateTime">Date</TableHead>
                   <TableHead>Token</TableHead>
-                  <TableHead col="status">Type</TableHead>
+                  <TableHead col="tag">Type</TableHead>
                   <TableHead col="amount" className="text-right">
                     Amount
                   </TableHead>

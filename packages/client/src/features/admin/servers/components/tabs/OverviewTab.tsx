@@ -56,13 +56,13 @@ export function OverviewTab({ serverId, serverData }: OverviewTabProps) {
                   <TableCell>
                     <Link
                       to={`/admin/players/${player.uuid}`}
-                      className="group flex items-center gap-3 rounded"
+                      className="group flex min-w-0 items-center gap-3 rounded"
                     >
                       <MinecraftAvatar
                         uuid={player.uuid}
                         username={player.username}
                       />
-                      <span className="font-medium transition-colors group-hover:text-primary">
+                      <span className="truncate font-medium transition-colors group-hover:text-primary">
                         {player.username}
                       </span>
                     </Link>
@@ -85,7 +85,7 @@ export function OverviewTab({ serverId, serverData }: OverviewTabProps) {
         {leaderboard.length === 0 ? (
           <p className="text-sm text-muted-foreground">No playtime data yet</p>
         ) : (
-          <Table className="min-w-[610px]">
+          <Table className="min-w-[620px]">
             <TableHeader>
               <TableRow>
                 <TableHead col="index">#</TableHead>
@@ -102,13 +102,13 @@ export function OverviewTab({ serverId, serverData }: OverviewTabProps) {
                   <TableCell>
                     <Link
                       to={`/admin/players/${entry.playerMinecraftUuid}`}
-                      className="group flex items-center gap-3 rounded"
+                      className="group flex min-w-0 items-center gap-3 rounded"
                     >
                       <MinecraftAvatar
                         uuid={entry.playerMinecraftUuid}
                         username={entry.minecraftUsername}
                       />
-                      <span className="font-medium transition-colors group-hover:text-primary">
+                      <span className="truncate font-medium transition-colors group-hover:text-primary">
                         {entry.minecraftUsername}
                       </span>
                     </Link>

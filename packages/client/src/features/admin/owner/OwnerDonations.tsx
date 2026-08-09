@@ -368,7 +368,7 @@ export function OwnerDonations() {
                     <TableRow>
                       <TableHead col="id">ID</TableHead>
                       <TableHead>Discord</TableHead>
-                      <TableHead col="status">Type</TableHead>
+                      <TableHead col="tag">Type</TableHead>
                       <TableHead col="amount">Amount</TableHead>
                       <TableHead col="status">Status</TableHead>
                       <TableHead col="date">Date</TableHead>

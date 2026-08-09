@@ -74,7 +74,7 @@ export function TransactionsTab({ playerId }: TransactionsTabProps) {
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   <TableHead col="dateTime">Date</TableHead>
-                  <TableHead col="status">Type</TableHead>
+                  <TableHead col="tag">Type</TableHead>
                   <TableHead col="amount" className="text-right">
                     Amount
                   </TableHead>

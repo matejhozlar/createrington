@@ -154,8 +154,8 @@ export function AdminWorkshop() {
                   <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead col="status">Status</TableHead>
-                    <TableHead col="status">Version</TableHead>
-                    <TableHead col="status">Loader</TableHead>
+                    <TableHead col="tag">Version</TableHead>
+                    <TableHead col="tag">Loader</TableHead>
                     <TableHead col="date">Created</TableHead>
                     <TableHead col="actions" className="text-right">
                       Actions

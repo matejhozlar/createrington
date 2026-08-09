@@ -127,10 +127,10 @@ export function OwnerAdmins() {
                         <button
                           type="button"
                           onClick={(e) => handleCopy(e, admin.discordId)}
-                          className="group/copy flex items-center gap-1 text-sm font-mono text-muted-foreground hover:text-foreground transition-colors"
+                          className="group/copy flex min-w-0 max-w-full items-center gap-1 text-sm font-mono text-muted-foreground hover:text-foreground transition-colors"
                         >
-                          {admin.discordId}
-                          <Copy className="size-3 opacity-0 transition-opacity group-hover/copy:opacity-100" />
+                          <span className="truncate">{admin.discordId}</span>
+                          <Copy className="shrink-0 size-3 opacity-0 transition-opacity group-hover/copy:opacity-100" />
                         </button>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">

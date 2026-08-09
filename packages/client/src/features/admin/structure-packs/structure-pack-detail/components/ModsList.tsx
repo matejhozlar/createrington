@@ -65,11 +65,11 @@ export function ModsList({
                       <img
                         src={mod.thumbnailUrl}
                         alt=""
-                        className="size-8 rounded"
+                        className="size-8 shrink-0 rounded"
                       />
                     )}
-                    <div>
-                      <div className="font-medium">{mod.modName}</div>
+                    <div className="min-w-0">
+                      <div className="truncate font-medium">{mod.modName}</div>
                       {mod.modUrl && (
                         <a
                           href={mod.modUrl}

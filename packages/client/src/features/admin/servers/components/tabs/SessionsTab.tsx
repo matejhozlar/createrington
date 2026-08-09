@@ -74,13 +74,13 @@ export function SessionsTab({ serverId }: SessionsTabProps) {
               <TableCell>
                 <Link
                   to={`/admin/players/${session.playerMinecraftUuid}`}
-                  className="group flex items-center gap-3 rounded"
+                  className="group flex min-w-0 items-center gap-3 rounded"
                 >
                   <MinecraftAvatar
                     uuid={session.playerMinecraftUuid}
                     username={session.minecraftUsername}
                   />
-                  <span className="font-medium transition-colors group-hover:text-primary">
+                  <span className="truncate font-medium transition-colors group-hover:text-primary">
                     {session.minecraftUsername}
                   </span>
                 </Link>

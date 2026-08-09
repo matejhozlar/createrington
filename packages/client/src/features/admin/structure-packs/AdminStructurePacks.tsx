@@ -327,11 +327,11 @@ export function AdminStructurePacks() {
                   {filteredPacks.map((pack) => (
                     <TableRow key={pack.id}>
                       <TableCell>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium">{pack.name}</p>
+                        <div className="min-w-0">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <p className="truncate font-medium">{pack.name}</p>
                             {pack.isActive && (
-                              <Badge className="bg-green-500/20 text-green-500 hover:bg-green-500/30">
+                              <Badge className="shrink-0 bg-green-500/20 text-green-500 hover:bg-green-500/30">
                                 Active
                               </Badge>
                             )}
