@@ -59,41 +59,41 @@ export function SessionsTab({ serverId }: SessionsTabProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <Table className="min-w-[668px]">
-        <TableHeader>
+      <Table>
+        <TableHeader className="bg-sidebar-accent/50">
           <TableRow>
-            <TableHead>Player</TableHead>
-            <TableHead col="dateTime">Joined</TableHead>
-            <TableHead col="dateTime">Left</TableHead>
-            <TableHead col="duration">Duration</TableHead>
+            <TableHead className="px-4">Player</TableHead>
+            <TableHead className="px-4">Joined</TableHead>
+            <TableHead className="px-4">Left</TableHead>
+            <TableHead className="px-4">Duration</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {sessions.map((session) => (
             <TableRow key={session.id}>
-              <TableCell>
+              <TableCell className="px-4">
                 <Link
                   to={`/admin/players/${session.playerMinecraftUuid}`}
-                  className="group flex min-w-0 items-center gap-3 rounded"
+                  className="group flex items-center gap-3 rounded"
                 >
                   <MinecraftAvatar
                     uuid={session.playerMinecraftUuid}
                     username={session.minecraftUsername}
                   />
-                  <span className="truncate font-medium transition-colors group-hover:text-primary">
+                  <span className="font-medium transition-colors group-hover:text-primary">
                     {session.minecraftUsername}
                   </span>
                 </Link>
               </TableCell>
-              <TableCell className="text-sm text-muted-foreground">
+              <TableCell className="px-4 text-sm text-muted-foreground">
                 {new Date(session.sessionStart).toLocaleString()}
               </TableCell>
-              <TableCell className="text-sm text-muted-foreground">
+              <TableCell className="px-4 text-sm text-muted-foreground">
                 {session.sessionEnd
                   ? new Date(session.sessionEnd).toLocaleString()
                   : "Active"}
               </TableCell>
-              <TableCell className="text-sm">
+              <TableCell className="px-4 text-sm">
                 {formatDuration(session.secondsPlayed)}
               </TableCell>
             </TableRow>

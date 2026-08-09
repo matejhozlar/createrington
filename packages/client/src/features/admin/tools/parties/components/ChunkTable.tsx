@@ -131,50 +131,48 @@ export function ChunkTable({
   }
 
   return (
-    <Table className="min-w-[548px]">
+    <Table>
       <TableHeader>
         <TableRow>
           <TableHead>
             <button
               type="button"
               onClick={() => handleSort("dimension")}
-              className="inline-flex cursor-pointer items-center gap-1 uppercase"
+              className="inline-flex items-center gap-1 text-sm font-medium"
             >
               Dimension
               {renderSortIcon("dimension")}
             </button>
           </TableHead>
-          <TableHead col="id">
+          <TableHead>
             <button
               type="button"
               onClick={() => handleSort("x")}
-              className="inline-flex cursor-pointer items-center gap-1 uppercase"
+              className="inline-flex items-center gap-1 text-sm font-medium"
             >
               X{renderSortIcon("x")}
             </button>
           </TableHead>
-          <TableHead col="id">
+          <TableHead>
             <button
               type="button"
               onClick={() => handleSort("z")}
-              className="inline-flex cursor-pointer items-center gap-1 uppercase"
+              className="inline-flex items-center gap-1 text-sm font-medium"
             >
               Z{renderSortIcon("z")}
             </button>
           </TableHead>
-          <TableHead col="status">
+          <TableHead>
             <button
               type="button"
               onClick={() => handleSort("active")}
-              className="inline-flex cursor-pointer items-center gap-1 uppercase"
+              className="inline-flex items-center gap-1 text-sm font-medium"
             >
               Status
               {renderSortIcon("active")}
             </button>
           </TableHead>
-          <TableHead actions={2} className="text-right">
-            Actions
-          </TableHead>
+          <TableHead className="w-24 text-right">Actions</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>

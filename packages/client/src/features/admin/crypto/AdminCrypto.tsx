@@ -779,24 +779,16 @@ export function AdminCrypto() {
               </CardHeader>
               <CardContent className="p-0">
                 <div className="overflow-auto">
-                  <Table className="min-w-[866px]">
+                  <Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead>Token</TableHead>
-                        <TableHead className="w-[130px]">Category</TableHead>
-                        <TableHead col="amount" className="text-right">
-                          Price
-                        </TableHead>
-                        <TableHead col="amount" className="text-right">
-                          Supply
-                        </TableHead>
-                        <TableHead col="count" className="text-right">
-                          24h
-                        </TableHead>
-                        <TableHead col="status">Status</TableHead>
-                        <TableHead actions={1} className="text-right">
-                          Actions
-                        </TableHead>
+                        <TableHead>Category</TableHead>
+                        <TableHead className="text-right">Price</TableHead>
+                        <TableHead className="text-right">Supply</TableHead>
+                        <TableHead className="text-right">24h</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>

@@ -82,7 +82,10 @@ export function ChunkTablesCard({
           )}
         </TabsList>
 
-        <TabsContent value="parties">
+        <TabsContent
+          value="parties"
+          className="[&_[data-slot=table-container]]:overflow-x-clip"
+        >
           <ChunkPartiesTable
             serverId={serverId}
             parties={filteredParties}

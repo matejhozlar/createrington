@@ -161,13 +161,13 @@ export function PackMembersCard({
         <CardEmpty icon={Package} message="Nothing published yet" />
       ) : (
         <CardContent className="px-0">
-          <Table className="min-w-[682px]">
-            <TableHeader>
+          <Table>
+            <TableHeader className="bg-sidebar-accent/50">
               <TableRow>
-                <TableHead>Mod</TableHead>
-                <TableHead col="md">Origin</TableHead>
-                <TableHead className="w-[180px]">Credit</TableHead>
-                <TableHead col="statusWide">Publish State</TableHead>
+                <TableHead className="px-4">Mod</TableHead>
+                <TableHead className="px-4">Origin</TableHead>
+                <TableHead className="px-4">Credit</TableHead>
+                <TableHead className="px-4">Publish State</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -180,41 +180,33 @@ export function PackMembersCard({
                     : null;
                 return (
                   <TableRow key={row.id}>
-                    <TableCell>
+                    <TableCell className="px-4">
                       <div className="flex items-center gap-2">
                         <ProjectThumb
                           name={row.project.name}
                           thumbnailUrl={row.project.thumbnailUrl}
-                          className="size-8 shrink-0 rounded text-[11px]"
+                          className="size-8 rounded text-[11px]"
                         />
-                        <div className="min-w-0">
-                          <p
-                            className="truncate font-medium"
-                            title={row.project.name}
-                          >
-                            {row.project.name}
-                          </p>
-                          <p className="truncate text-xs text-muted-foreground">
+                        <div>
+                          <p className="font-medium">{row.project.name}</p>
+                          <p className="text-xs text-muted-foreground">
                             {row.project.slug}
                           </p>
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className="text-sm">
-                      <p className="truncate">{ORIGIN_LABELS[row.origin]}</p>
+                    <TableCell className="px-4 text-sm">
+                      <p>{ORIGIN_LABELS[row.origin]}</p>
                       {otherWorkshop && (
-                        <p
-                          className="truncate text-xs text-muted-foreground"
-                          title={otherWorkshop}
-                        >
+                        <p className="text-xs text-muted-foreground">
                           from {otherWorkshop}
                         </p>
                       )}
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
+                    <TableCell className="px-4 text-sm text-muted-foreground">
                       <Credit row={row} />
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="px-4">
                       <Badge
                         variant="outline"
                         className={cn("text-xs", state.className)}

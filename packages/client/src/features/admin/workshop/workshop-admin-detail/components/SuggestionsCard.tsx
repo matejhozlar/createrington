@@ -5,14 +5,23 @@ import {
   FlaskConical,
   Heart,
   Lightbulb,
+  Loader2,
+  MoreHorizontal,
   Undo2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { RouterOutput } from "@/lib/trpc";
 import { Paginator } from "@/components/paginator";
-import { RowActions } from "@/components/row-actions";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Table,
   TableBody,
@@ -46,7 +55,6 @@ export type AdminWorkshopMod =
 
 const REQUIRED_DEPENDENCY = 3;
 const SUGGESTIONS_PER_PAGE = 10;
-const MOD_ACTIONS = 4;
 
 function DependencyCell({ mod }: { mod: AdminWorkshopMod }) {
   const required = mod.dependencies.filter(
@@ -184,23 +192,19 @@ export function SuggestionsCard({
         <CardEmpty icon={Lightbulb} message="No suggestions match this view" />
       ) : (
         <CardContent className="px-0">
-          <Table className="min-w-[1118px]">
-            <TableHeader>
+          <Table>
+            <TableHeader className="bg-sidebar-accent/50">
               <TableRow>
-                <TableHead>Mod</TableHead>
-                <TableHead col="player">Submitted by</TableHead>
-                <TableHead className="w-[180px]">Note</TableHead>
-                <TableHead col="index" className="text-center">
+                <TableHead className="px-4">Mod</TableHead>
+                <TableHead className="px-4">Submitted by</TableHead>
+                <TableHead className="px-4">Note</TableHead>
+                <TableHead className="px-4 text-center">
                   <Heart className="mx-auto size-3.5" />
                 </TableHead>
-                <TableHead col="count" className="text-center">
-                  Pulls In
-                </TableHead>
-                <TableHead col="statusWide">Status</TableHead>
-                <TableHead col="date">Date</TableHead>
-                <TableHead actions={MOD_ACTIONS} className="text-right">
-                  Actions
-                </TableHead>
+                <TableHead className="px-4 text-center">Pulls In</TableHead>
+                <TableHead className="px-4">Status</TableHead>
+                <TableHead className="px-4">Date</TableHead>
+                <TableHead className="px-4 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -209,50 +213,44 @@ export function SuggestionsCard({
                 const busy = busyModId === mod.id;
                 return (
                   <TableRow key={mod.id}>
-                    <TableCell>
+                    <TableCell className="px-4">
                       <button
                         type="button"
-                        className="flex w-full cursor-pointer items-center gap-2 text-left"
+                        className="flex cursor-pointer items-center gap-2 text-left"
                         onClick={() => onView(mod.id)}
                       >
                         <ProjectThumb
                           name={mod.project.name}
                           thumbnailUrl={mod.project.thumbnailUrl}
-                          className="size-8 shrink-0 rounded text-[11px]"
+                          className="size-8 rounded text-[11px]"
                         />
-                        <div className="min-w-0">
-                          <p
-                            className="truncate font-medium hover:underline"
-                            title={mod.project.name}
-                          >
+                        <div>
+                          <p className="font-medium hover:underline">
                             {mod.project.name}
                           </p>
-                          <p className="truncate text-xs text-muted-foreground">
+                          <p className="text-xs text-muted-foreground">
                             {mod.project.slug}
                           </p>
                         </div>
                       </button>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="px-4">
                       <PlayerLabel
                         name={mod.submitterName ?? mod.submittedBy}
                         playerId={mod.submittedBy}
                         size={20}
                       />
                     </TableCell>
-                    <TableCell
-                      className="text-sm text-muted-foreground"
-                      title={mod.note ?? undefined}
-                    >
+                    <TableCell className="max-w-[200px] truncate px-4 text-sm text-muted-foreground">
                       {mod.note ?? ""}
                     </TableCell>
-                    <TableCell className="text-center text-sm">
+                    <TableCell className="px-4 text-center text-sm">
                       {mod.upvoteCount}
                     </TableCell>
-                    <TableCell className="text-center">
+                    <TableCell className="px-4 text-center">
                       <DependencyCell mod={mod} />
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="px-4">
                       {status && (
                         <Badge
                           variant="outline"
@@ -262,70 +260,79 @@ export function SuggestionsCard({
                         </Badge>
                       )}
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
+                    <TableCell className="px-4 text-sm text-muted-foreground">
                       {formatDate(mod.createdAt)}
                     </TableCell>
-                    <TableCell className="text-right">
-                      <RowActions
-                        max={MOD_ACTIONS}
-                        busy={busy}
-                        actions={[
-                          {
-                            label: "View details",
-                            icon: Eye,
-                            onClick: () => onView(mod.id),
-                          },
-                          ...(((mod.status === "pending" ||
-                            mod.status === "rejected") as boolean)
-                            ? [
-                                {
-                                  label: "Approve",
-                                  icon: Check,
-                                  onClick: () => onReview(mod.id, "approve"),
-                                },
-                              ]
-                            : []),
-                          ...(mod.status === "approved"
-                            ? [
-                                {
-                                  label: "Start testing",
-                                  icon: FlaskConical,
-                                  onClick: () =>
-                                    onReview(mod.id, "start_testing"),
-                                },
-                              ]
-                            : []),
-                          ...(mod.status === "testing"
-                            ? [
-                                {
-                                  label: "Approve for next update",
-                                  icon: Check,
-                                  onClick: () => onReview(mod.id, "approve"),
-                                },
-                              ]
-                            : []),
-                          ...(mod.status === "testing" ||
-                          mod.status === "next_update"
-                            ? [
-                                {
-                                  label: "Send back a stage",
-                                  icon: Undo2,
-                                  onClick: () => onReview(mod.id, "send_back"),
-                                },
-                              ]
-                            : []),
-                          {
-                            label: "Reject",
-                            icon: Ban,
-                            variant: "destructive" as const,
-                            onClick: () =>
+                    <TableCell className="px-4 text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-8"
+                            disabled={busy}
+                          >
+                            {busy ? (
+                              <Loader2 className="size-4 animate-spin" />
+                            ) : (
+                              <MoreHorizontal className="size-4" />
+                            )}
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => onView(mod.id)}>
+                            <Eye className="size-4" />
+                            View Details
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          {(mod.status === "pending" ||
+                            mod.status === "rejected") && (
+                            <DropdownMenuItem
+                              onClick={() => onReview(mod.id, "approve")}
+                            >
+                              <Check className="size-4 text-green-500" />
+                              Approve
+                            </DropdownMenuItem>
+                          )}
+                          {mod.status === "approved" && (
+                            <DropdownMenuItem
+                              onClick={() => onReview(mod.id, "start_testing")}
+                            >
+                              <FlaskConical className="size-4 text-amber-400" />
+                              Start Testing
+                            </DropdownMenuItem>
+                          )}
+                          {mod.status === "testing" && (
+                            <DropdownMenuItem
+                              onClick={() => onReview(mod.id, "approve")}
+                            >
+                              <Check className="size-4 text-green-500" />
+                              Approve for Next Update
+                            </DropdownMenuItem>
+                          )}
+                          {(mod.status === "testing" ||
+                            mod.status === "next_update") && (
+                            <DropdownMenuItem
+                              onClick={() => onReview(mod.id, "send_back")}
+                            >
+                              <Undo2 className="size-4 text-muted-foreground" />
+                              Send Back a Stage
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={() =>
                               onReject({
                                 workshopModId: mod.id,
                                 name: mod.project.name,
-                              }),
-                          },
-                        ]}
-                      />
+                              })
+                            }
+                          >
+                            <Ban className="size-4" />
+                            Reject
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 );

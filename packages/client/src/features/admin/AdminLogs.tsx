@@ -290,66 +290,64 @@ export function AdminLogs() {
           ) : (
             <>
               <CardContent className="px-0">
-                <Table className="min-w-[1100px]">
-                  <TableHeader>
+                <Table>
+                  <TableHeader className="bg-sidebar-accent/50">
                     <TableRow>
-                      <TableHead col="dateTime">
+                      <TableHead className="px-4">
                         <button
                           type="button"
                           onClick={() => handleSort("performedAt")}
-                          className="inline-flex cursor-pointer items-center gap-1 uppercase"
+                          className="inline-flex items-center gap-1 text-sm font-medium"
                         >
                           Date
                           {renderSortIcon("performedAt")}
                         </button>
                       </TableHead>
-                      <TableHead col="player">
+                      <TableHead className="px-4">
                         <button
                           type="button"
                           onClick={() => handleSort("adminUsername")}
-                          className="inline-flex cursor-pointer items-center gap-1 uppercase"
+                          className="inline-flex items-center gap-1 text-sm font-medium"
                         >
                           Admin
                           {renderSortIcon("adminUsername")}
                         </button>
                       </TableHead>
-                      <TableHead>
+                      <TableHead className="px-4">
                         <button
                           type="button"
                           onClick={() => handleSort("actionType")}
-                          className="inline-flex cursor-pointer items-center gap-1 uppercase"
+                          className="inline-flex items-center gap-1 text-sm font-medium"
                         >
                           Action
                           {renderSortIcon("actionType")}
                         </button>
                       </TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead>Changes</TableHead>
-                      <TableHead>Reason</TableHead>
-                      <TableHead col="icon" />
+                      <TableHead className="px-4">Description</TableHead>
+                      <TableHead className="px-4">Changes</TableHead>
+                      <TableHead className="px-4">Reason</TableHead>
+                      <TableHead className="w-[50px] px-4" />
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {actions.map((action) => (
                       <TableRow key={action.id}>
-                        <TableCell className="text-sm text-muted-foreground">
+                        <TableCell className="px-4 whitespace-nowrap text-sm text-muted-foreground">
                           {new Date(action.performedAt).toLocaleString()}
                         </TableCell>
-                        <TableCell className="text-sm">
+                        <TableCell className="px-4 text-sm">
                           {action.adminUsername}
                         </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" title={action.actionType}>
-                            {action.actionType}
-                          </Badge>
+                        <TableCell className="px-4">
+                          <Badge variant="outline">{action.actionType}</Badge>
                         </TableCell>
-                        <TableCell className="text-sm">
+                        <TableCell className="px-4 text-sm max-w-[300px] truncate">
                           <span title={getDescription(action)}>
                             {getDescription(action)}
                           </span>
                         </TableCell>
-                        <TableCell>
-                          <div className="flex flex-col gap-1 text-xs">
+                        <TableCell className="px-4">
+                          <div className="flex flex-col gap-1 text-xs max-w-[200px]">
                             {action.oldValue != null && (
                               <code
                                 className="bg-destructive/10 text-destructive px-1.5 py-0.5 rounded truncate block"
@@ -373,12 +371,12 @@ export function AdminLogs() {
                           </div>
                         </TableCell>
                         <TableCell
-                          className="text-sm text-muted-foreground"
+                          className="px-4 text-sm text-muted-foreground max-w-[150px] truncate"
                           title={action.reason ?? undefined}
                         >
                           {action.reason ?? "—"}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="px-4">
                           {action.metadata != null && (
                             <Tooltip>
                               <TooltipTrigger asChild>

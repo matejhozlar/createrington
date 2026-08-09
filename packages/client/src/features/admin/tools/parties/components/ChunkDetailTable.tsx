@@ -98,60 +98,58 @@ export function ChunkDetailTable({
   }
 
   return (
-    <Table className="min-w-[648px]">
+    <Table>
       <TableHeader>
         <TableRow>
           <TableHead>
             <button
               type="button"
               onClick={() => onSortChange("dimension")}
-              className="inline-flex cursor-pointer items-center gap-1 uppercase"
+              className="inline-flex items-center gap-1 text-sm font-medium"
             >
               Dimension
               {renderSortIcon("dimension")}
             </button>
           </TableHead>
-          <TableHead col="id">
+          <TableHead>
             <button
               type="button"
               onClick={() => onSortChange("x")}
-              className="inline-flex cursor-pointer items-center gap-1 uppercase"
+              className="inline-flex items-center gap-1 text-sm font-medium"
             >
               X{renderSortIcon("x")}
             </button>
           </TableHead>
-          <TableHead col="id">
+          <TableHead>
             <button
               type="button"
               onClick={() => onSortChange("z")}
-              className="inline-flex cursor-pointer items-center gap-1 uppercase"
+              className="inline-flex items-center gap-1 text-sm font-medium"
             >
               Z{renderSortIcon("z")}
             </button>
           </TableHead>
-          <TableHead col="count">
+          <TableHead>
             <button
               type="button"
               onClick={() => onSortChange("forceloadable")}
-              className="inline-flex cursor-pointer items-center gap-1 uppercase"
+              className="inline-flex items-center gap-1 text-sm font-medium"
             >
               Forceloadable
               {renderSortIcon("forceloadable")}
             </button>
           </TableHead>
-          <TableHead col="status">
+          <TableHead>
             <button
               type="button"
               onClick={() => onSortChange("active")}
-              className="inline-flex cursor-pointer items-center gap-1 uppercase"
+              className="inline-flex items-center gap-1 text-sm font-medium"
             >
               Status
               {renderSortIcon("active")}
             </button>
           </TableHead>
-          <TableHead actions={2} className="text-right">
-            Actions
-          </TableHead>
+          <TableHead className="w-24 text-right">Actions</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>

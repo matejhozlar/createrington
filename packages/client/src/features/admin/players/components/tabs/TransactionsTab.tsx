@@ -70,21 +70,27 @@ export function TransactionsTab({ playerId }: TransactionsTabProps) {
       ) : (
         <>
           <div className="-mx-6 overflow-x-auto">
-            <Table className="min-w-[824px]">
+            <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead col="dateTime">Date</TableHead>
-                  <TableHead col="tag">Type</TableHead>
-                  <TableHead col="amount" className="text-right">
+                  <TableHead className="text-[11px] font-medium uppercase tracking-wider">
+                    Date
+                  </TableHead>
+                  <TableHead className="text-[11px] font-medium uppercase tracking-wider">
+                    Type
+                  </TableHead>
+                  <TableHead className="text-right text-[11px] font-medium uppercase tracking-wider">
                     Amount
                   </TableHead>
-                  <TableHead col="amount" className="text-right">
+                  <TableHead className="text-right text-[11px] font-medium uppercase tracking-wider">
                     Before
                   </TableHead>
-                  <TableHead col="amount" className="text-right">
+                  <TableHead className="text-right text-[11px] font-medium uppercase tracking-wider">
                     After
                   </TableHead>
-                  <TableHead>Description</TableHead>
+                  <TableHead className="text-[11px] font-medium uppercase tracking-wider">
+                    Description
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -101,7 +107,7 @@ export function TransactionsTab({ playerId }: TransactionsTabProps) {
                           : "bg-destructive/[0.02]",
                       )}
                     >
-                      <TableCell className="text-sm text-muted-foreground">
+                      <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
                         {new Date(tx.createdAt).toLocaleString()}
                       </TableCell>
                       <TableCell>

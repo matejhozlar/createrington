@@ -17,11 +17,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-} from "@/components/ui/tooltip";
 import { Copy, UserMinus, UserPlus } from "lucide-react";
 import { PlayerLabel } from "@/components/player-label";
 import { trpc } from "@/lib/trpc";
@@ -82,15 +77,13 @@ export function OwnerAdmins() {
             </Button>
           </CardHeader>
           <CardContent className="p-0">
-            <Table className="min-w-[596px]">
+            <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Player</TableHead>
-                  <TableHead col="discordId">Discord ID</TableHead>
-                  <TableHead col="date">Since</TableHead>
-                  <TableHead actions={1} className="text-right">
-                    Actions
-                  </TableHead>
+                  <TableHead>Discord ID</TableHead>
+                  <TableHead>Since</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -121,42 +114,37 @@ export function OwnerAdmins() {
                 ) : (
                   admins.map((admin) => (
                     <TableRow key={admin.discordId}>
-                      <TableCell>
+                      <TableCell className="px-4">
                         <PlayerLabel
                           uuid={admin.minecraftUuid}
                           name={admin.minecraftUsername}
                           size={28}
                         />
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="px-4">
                         <button
                           type="button"
                           onClick={(e) => handleCopy(e, admin.discordId)}
-                          className="group/copy flex min-w-0 max-w-full items-center gap-1 text-sm font-mono text-muted-foreground hover:text-foreground transition-colors"
+                          className="group/copy flex items-center gap-1 text-sm font-mono text-muted-foreground hover:text-foreground transition-colors"
                         >
-                          <span className="truncate">{admin.discordId}</span>
-                          <Copy className="shrink-0 size-3 opacity-0 transition-opacity group-hover/copy:opacity-100" />
+                          {admin.discordId}
+                          <Copy className="size-3 opacity-0 transition-opacity group-hover/copy:opacity-100" />
                         </button>
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
+                      <TableCell className="px-4 text-sm text-muted-foreground">
                         {admin.createdAt
                           ? formatRelativeDate(admin.createdAt)
                           : "—"}
                       </TableCell>
-                      <TableCell className="text-right">
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              aria-label={`Demote ${admin.minecraftUsername ?? admin.discordId}`}
-                              onClick={() => setDemoteTarget(admin)}
-                            >
-                              <UserMinus className="size-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Demote</TooltipContent>
-                        </Tooltip>
+                      <TableCell className="px-4 text-right">
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => setDemoteTarget(admin)}
+                        >
+                          <UserMinus className="mr-1 size-3" />
+                          Demote
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))

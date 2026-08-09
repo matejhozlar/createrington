@@ -67,33 +67,6 @@ type WaitlistEntry =
 type SortField = "submittedAt" | "acceptedAt" | "email" | "discordName";
 type StatusFilter = "all" | WaitlistStatus;
 
-const STATUS_STYLES: Record<
-  WaitlistStatus,
-  {
-    label: string;
-    variant: React.ComponentProps<typeof Badge>["variant"];
-    className: string;
-  }
-> = {
-  pending: { label: "Pending", variant: "outline", className: "" },
-  accepted: {
-    label: "Invited",
-    variant: "outline",
-    className: "border-success bg-success/10 text-success",
-  },
-  auto_accepted: {
-    label: "Auto-Accepted",
-    variant: "outline",
-    className: "border-chart-2 bg-chart-2/10 text-chart-2",
-  },
-  completed: {
-    label: "Completed",
-    variant: "outline",
-    className: "border-success bg-success/10 text-success",
-  },
-  declined: { label: "Declined", variant: "destructive", className: "" },
-};
-
 export function AdminWaitlists() {
   const toast = useToastActions();
 
@@ -240,6 +213,31 @@ export function AdminWaitlists() {
 
     return items;
   }, [page, totalPages]);
+
+  const getStatusBadgeStyle = useCallback((status: string) => {
+    switch (status.toLowerCase()) {
+      case "accepted":
+        return {
+          variant: "outline" as const,
+          className: "border-success bg-success/10 text-success",
+        };
+      case "auto_accepted":
+        return {
+          variant: "outline" as const,
+          className: "border-chart-2 bg-chart-2/10 text-chart-2",
+        };
+      case "declined":
+        return {
+          variant: "destructive" as const,
+          className: "",
+        };
+      default: // pending
+        return {
+          variant: "outline" as const,
+          className: "",
+        };
+    }
+  }, []);
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -439,57 +437,57 @@ export function AdminWaitlists() {
           ) : (
             <>
               <CardContent className="px-0">
-                <Table className="min-w-[960px]">
-                  <TableHeader>
+                <Table>
+                  <TableHeader className="bg-sidebar-accent/50">
                     <TableRow>
-                      <TableHead col="id">ID</TableHead>
-                      <TableHead>
+                      <TableHead className="px-4">ID</TableHead>
+                      <TableHead className="px-4">
                         <button
                           type="button"
                           onClick={() => handleSort("email")}
-                          className="inline-flex cursor-pointer items-center gap-1 uppercase"
+                          className="inline-flex items-center gap-1 text-sm font-medium"
                         >
                           Email
                           {renderSortIcon("email")}
                         </button>
                       </TableHead>
-                      <TableHead col="player">
+                      <TableHead className="px-4">
                         <button
                           type="button"
                           onClick={() => handleSort("discordName")}
-                          className="inline-flex cursor-pointer items-center gap-1 uppercase"
+                          className="inline-flex items-center gap-1 text-sm font-medium"
                         >
                           Discord Name
                           {renderSortIcon("discordName")}
                         </button>
                       </TableHead>
-                      <TableHead col="statusWide">Status</TableHead>
-                      <TableHead col="status">Progress</TableHead>
-                      <TableHead col="date">
+                      <TableHead className="px-4">Status</TableHead>
+                      <TableHead className="px-4">Progress</TableHead>
+                      <TableHead className="px-4">
                         <button
                           type="button"
                           onClick={() => handleSort("submittedAt")}
-                          className="inline-flex cursor-pointer items-center gap-1 uppercase"
+                          className="inline-flex items-center gap-1 text-sm font-medium"
                         >
                           Submitted
                           {renderSortIcon("submittedAt")}
                         </button>
                       </TableHead>
-                      <TableHead actions={2} className="text-right">
-                        Actions
-                      </TableHead>
+                      <TableHead className="px-4 text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {entries.map((entry) => {
                       const isPending = entry.status === "pending";
+                      const isAccepted = entry.status === "accepted";
+                      const isAutoAccepted = entry.status === "auto_accepted";
 
                       return (
                         <TableRow key={entry.id}>
-                          <TableCell>
+                          <TableCell className="px-4">
                             <p className="font-mono text-sm">#{entry.id}</p>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="px-4">
                             {entry.email ? (
                               <Tooltip>
                                 <TooltipTrigger asChild>
@@ -514,7 +512,7 @@ export function AdminWaitlists() {
                               </span>
                             )}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="px-4">
                             <p className="font-medium">{entry.discordName}</p>
                             {entry.discordId && (
                               <p className="text-xs text-muted-foreground">
@@ -522,15 +520,19 @@ export function AdminWaitlists() {
                               </p>
                             )}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="px-4">
                             <Badge
-                              variant={STATUS_STYLES[entry.status].variant}
-                              className={STATUS_STYLES[entry.status].className}
+                              variant={
+                                getStatusBadgeStyle(entry.status).variant
+                              }
+                              className={
+                                getStatusBadgeStyle(entry.status).className
+                              }
                             >
-                              {STATUS_STYLES[entry.status].label}
+                              {entry.status}
                             </Badge>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="px-4">
                             <div className="flex flex-wrap gap-1">
                               {entry.joinedDiscord && (
                                 <Badge
@@ -566,7 +568,7 @@ export function AdminWaitlists() {
                               )}
                             </div>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="px-4">
                             <p className="text-sm text-muted-foreground">
                               {new Date(entry.submittedAt).toLocaleDateString()}
                             </p>
@@ -579,36 +581,35 @@ export function AdminWaitlists() {
                               </p>
                             )}
                           </TableCell>
-                          <TableCell className="text-right">
+                          <TableCell className="px-4 text-right">
                             <div className="flex justify-end gap-2">
                               {isPending && (
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button
-                                      size="sm"
-                                      variant="default"
-                                      aria-label="Send invite"
-                                      onClick={() => handleInvite(entry)}
-                                    >
-                                      <Mail className="size-4" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>Send invite</TooltipContent>
-                                </Tooltip>
+                                <Button
+                                  size="sm"
+                                  variant="default"
+                                  onClick={() => handleInvite(entry)}
+                                >
+                                  Invite
+                                </Button>
                               )}
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    size="sm"
-                                    variant="destructive"
-                                    aria-label="Delete entry"
-                                    onClick={() => handleDelete(entry)}
-                                  >
-                                    <Trash2 className="size-4" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>Delete entry</TooltipContent>
-                              </Tooltip>
+                              {isAccepted && (
+                                <Badge variant="default">Invited</Badge>
+                              )}
+                              {isAutoAccepted && (
+                                <Badge
+                                  variant="outline"
+                                  className="border-chart-2 bg-chart-2/10 text-chart-2"
+                                >
+                                  Auto-Accepted
+                                </Badge>
+                              )}
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => handleDelete(entry)}
+                              >
+                                <Trash2 className="size-4" />
+                              </Button>
                             </div>
                           </TableCell>
                         </TableRow>

@@ -92,65 +92,65 @@ export function ChunkSoloPlayersSection({
 
   return (
     <div className="flex flex-col gap-3 px-0 pb-3">
-      <Table className="min-w-[852px]">
+      <Table>
         <TableHeader>
           <TableRow>
-            <TableHead col="icon" />
+            <TableHead className="w-8" />
             <TableHead>
               <button
                 type="button"
                 onClick={() => onSortChange("player")}
-                className="inline-flex cursor-pointer items-center gap-1 uppercase"
+                className="inline-flex items-center gap-1 text-sm font-medium"
               >
                 Player
                 {renderSortIcon("player")}
               </button>
             </TableHead>
-            <TableHead col="count">
+            <TableHead>
               <button
                 type="button"
                 onClick={() => onSortChange("totalChunks")}
-                className="inline-flex cursor-pointer items-center gap-1 uppercase"
+                className="inline-flex items-center gap-1 text-sm font-medium"
               >
                 Claimed
                 {renderSortIcon("totalChunks")}
               </button>
             </TableHead>
-            <TableHead col="count">
+            <TableHead>
               <button
                 type="button"
                 onClick={() => onSortChange("forceloadableChunks")}
-                className="inline-flex cursor-pointer items-center gap-1 uppercase"
+                className="inline-flex items-center gap-1 text-sm font-medium"
               >
                 Forceloadable
                 {renderSortIcon("forceloadableChunks")}
               </button>
             </TableHead>
-            <TableHead col="count">
+            <TableHead>
               <button
                 type="button"
                 onClick={() => onSortChange("activeChunks")}
-                className="inline-flex cursor-pointer items-center gap-1 uppercase"
+                className="inline-flex items-center gap-1 text-sm font-medium"
               >
                 Active
                 {renderSortIcon("activeChunks")}
               </button>
             </TableHead>
-            <TableHead col="status">
+            <TableHead>
               <button
                 type="button"
                 onClick={() => onSortChange("allyStatus")}
-                className="inline-flex cursor-pointer items-center gap-1 uppercase"
+                className="inline-flex items-center gap-1 text-sm font-medium"
               >
                 Ally status
                 {renderSortIcon("allyStatus")}
               </button>
             </TableHead>
-            <TableHead col="dateTime">
+            <TableHead>
               <button
                 type="button"
                 onClick={() => onSortChange("lastSyncedAt")}
-                className="inline-flex cursor-pointer items-center gap-1 uppercase"
+                className="inline-flex items-center gap-1 text-sm font-medium"
               >
                 Last synced
                 {renderSortIcon("lastSyncedAt")}

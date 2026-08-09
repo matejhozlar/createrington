@@ -303,19 +303,13 @@ export function StatSearch() {
             </CardContent>
           ) : (
             <CardContent className="px-0">
-              <Table className="min-w-[370px]">
-                <TableHeader>
+              <Table>
+                <TableHeader className="bg-sidebar-accent/50">
                   <TableRow>
-                    <TableHead col="index" className="text-center">
-                      #
-                    </TableHead>
-                    <TableHead>Player</TableHead>
+                    <TableHead className="w-12 px-4 text-center">#</TableHead>
+                    <TableHead className="px-4">Player</TableHead>
                     {categoryLabels.map((label) => (
-                      <TableHead
-                        key={label}
-                        col="amount"
-                        className="text-right"
-                      >
+                      <TableHead key={label} className="px-4 text-right">
                         {label}
                       </TableHead>
                     ))}
@@ -341,10 +335,10 @@ export function StatSearch() {
                           navigate(`/admin/players/${result.minecraftUuid}`)
                         }
                       >
-                        <TableCell className="text-center text-sm text-muted-foreground">
+                        <TableCell className="px-4 text-center text-sm text-muted-foreground">
                           {index + 1}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="px-4">
                           <div className="flex items-center gap-3">
                             <MinecraftAvatar
                               uuid={result.minecraftUuid}

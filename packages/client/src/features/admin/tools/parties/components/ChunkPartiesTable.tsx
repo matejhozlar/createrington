@@ -143,66 +143,66 @@ export function ChunkPartiesTable({
 
   return (
     <div className="px-0">
-      <Table className="min-w-[952px]">
+      <Table>
         <TableHeader>
           <TableRow>
-            <TableHead col="icon" />
+            <TableHead className="w-8" />
             <TableHead>
               <button
                 type="button"
                 onClick={() => handleSort("partyName")}
-                className="inline-flex cursor-pointer items-center gap-1 uppercase"
+                className="inline-flex items-center gap-1 text-sm font-medium"
               >
                 Party name
                 {renderSortIcon("partyName")}
               </button>
             </TableHead>
-            <TableHead col="count">
+            <TableHead>
               <button
                 type="button"
                 onClick={() => handleSort("memberCount")}
-                className="inline-flex cursor-pointer items-center gap-1 uppercase"
+                className="inline-flex items-center gap-1 text-sm font-medium"
               >
                 Members
                 {renderSortIcon("memberCount")}
               </button>
             </TableHead>
-            <TableHead col="count">
+            <TableHead>
               <button
                 type="button"
                 onClick={() => handleSort("totalChunks")}
-                className="inline-flex cursor-pointer items-center gap-1 uppercase"
+                className="inline-flex items-center gap-1 text-sm font-medium"
               >
                 Claimed
                 {renderSortIcon("totalChunks")}
               </button>
             </TableHead>
-            <TableHead col="count">
+            <TableHead>
               <button
                 type="button"
                 onClick={() => handleSort("forceloadableChunks")}
-                className="inline-flex cursor-pointer items-center gap-1 uppercase"
+                className="inline-flex items-center gap-1 text-sm font-medium"
               >
                 Forceloadable
                 {renderSortIcon("forceloadableChunks")}
               </button>
             </TableHead>
-            <TableHead col="count">
+            <TableHead>
               <button
                 type="button"
                 onClick={() => handleSort("activeChunks")}
-                className="inline-flex cursor-pointer items-center gap-1 uppercase"
+                className="inline-flex items-center gap-1 text-sm font-medium"
               >
                 Active
                 {renderSortIcon("activeChunks")}
               </button>
             </TableHead>
-            <TableHead col="status">Status</TableHead>
-            <TableHead col="dateTime">
+            <TableHead>Status</TableHead>
+            <TableHead>
               <button
                 type="button"
                 onClick={() => handleSort("lastSyncedAt")}
-                className="inline-flex cursor-pointer items-center gap-1 uppercase"
+                className="inline-flex items-center gap-1 text-sm font-medium"
               >
                 Last synced
                 {renderSortIcon("lastSyncedAt")}

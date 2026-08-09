@@ -53,9 +53,6 @@ import { EditFaqModal } from "./components/modals/EditFaqModal";
 import { DeleteFaqModal } from "./components/modals/DeleteFaqModal";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
-import { RowActions } from "@/components/row-actions";
-
-const FAQ_ACTIONS = 2;
 
 type FaqEntry = RouterOutput["admin"]["faq"]["list"]["entries"][number];
 
@@ -312,63 +309,61 @@ export function AdminFaq() {
           ) : (
             <>
               <CardContent className="px-0">
-                <Table className="min-w-[1008px]">
-                  <TableHeader>
+                <Table>
+                  <TableHeader className="bg-sidebar-accent/50">
                     <TableRow>
-                      <TableHead col="id">ID</TableHead>
-                      <TableHead>
+                      <TableHead className="px-4">ID</TableHead>
+                      <TableHead className="px-4">
                         <button
                           type="button"
                           onClick={() => handleSort("title")}
-                          className="inline-flex cursor-pointer items-center gap-1 uppercase"
+                          className="inline-flex items-center gap-1 text-sm font-medium"
                         >
                           Title
                           {renderSortIcon("title")}
                         </button>
                       </TableHead>
-                      <TableHead col="tag">Mode</TableHead>
-                      <TableHead col="lg">Pattern</TableHead>
-                      <TableHead col="count">
+                      <TableHead className="px-4">Mode</TableHead>
+                      <TableHead className="px-4">Pattern</TableHead>
+                      <TableHead className="px-4">
                         <button
                           type="button"
                           onClick={() => handleSort("priority")}
-                          className="inline-flex cursor-pointer items-center gap-1 uppercase"
+                          className="inline-flex items-center gap-1 text-sm font-medium"
                         >
                           Priority
                           {renderSortIcon("priority")}
                         </button>
                       </TableHead>
-                      <TableHead col="status">Status</TableHead>
-                      <TableHead col="date">
+                      <TableHead className="px-4">Status</TableHead>
+                      <TableHead className="px-4">
                         <button
                           type="button"
                           onClick={() => handleSort("createdAt")}
-                          className="inline-flex cursor-pointer items-center gap-1 uppercase"
+                          className="inline-flex items-center gap-1 text-sm font-medium"
                         >
                           Created
                           {renderSortIcon("createdAt")}
                         </button>
                       </TableHead>
-                      <TableHead actions={FAQ_ACTIONS} className="text-right">
-                        Actions
-                      </TableHead>
+                      <TableHead className="px-4 text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {entries.map((entry) => (
                       <TableRow key={entry.id}>
-                        <TableCell>
+                        <TableCell className="px-4">
                           <p className="font-mono text-sm">#{entry.id}</p>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="px-4">
                           <p className="font-medium">{entry.title}</p>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="px-4">
                           <Badge variant="outline" className="text-xs">
                             {entry.matchMode === "regex" ? "Regex" : "Keywords"}
                           </Badge>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="px-4">
                           <p
                             className={cn(
                               "max-w-[200px] truncate text-xs text-muted-foreground",
@@ -379,10 +374,10 @@ export function AdminFaq() {
                             {entry.pattern}
                           </p>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="px-4">
                           <p className="text-sm">{entry.priority}</p>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="px-4">
                           <Badge
                             variant="outline"
                             className={
@@ -394,30 +389,32 @@ export function AdminFaq() {
                             {entry.enabled ? "Enabled" : "Disabled"}
                           </Badge>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="px-4">
                           <p className="text-sm text-muted-foreground">
                             {new Date(entry.createdAt).toLocaleDateString()}
                           </p>
                         </TableCell>
-                        <TableCell className="text-right">
-                          <RowActions
-                            max={FAQ_ACTIONS}
-                            actions={[
-                              {
-                                label: "Edit entry",
-                                icon: Pencil,
-                                onClick: () =>
-                                  setEditModal({ open: true, entry }),
-                              },
-                              {
-                                label: "Delete entry",
-                                icon: Trash2,
-                                variant: "destructive",
-                                onClick: () =>
-                                  setDeleteModal({ open: true, entry }),
-                              },
-                            ]}
-                          />
+                        <TableCell className="px-4 text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() =>
+                                setEditModal({ open: true, entry })
+                              }
+                            >
+                              <Pencil className="size-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() =>
+                                setDeleteModal({ open: true, entry })
+                              }
+                            >
+                              <Trash2 className="size-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}

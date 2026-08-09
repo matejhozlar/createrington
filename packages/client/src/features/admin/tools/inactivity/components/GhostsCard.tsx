@@ -238,16 +238,14 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
         ) : (
           <>
             <CardContent className="px-0">
-              <Table className="min-w-[716px]">
-                <TableHeader>
+              <Table>
+                <TableHeader className="bg-sidebar-accent/50">
                   <TableRow>
-                    <TableHead>Player</TableHead>
-                    <TableHead col="discordId">Discord ID</TableHead>
-                    <TableHead col="date">Registered</TableHead>
-                    <TableHead col="date">Last Seen</TableHead>
-                    <TableHead actions={1} className="text-right">
-                      Actions
-                    </TableHead>
+                    <TableHead className="px-4">Player</TableHead>
+                    <TableHead className="px-4">Discord ID</TableHead>
+                    <TableHead className="px-4">Registered</TableHead>
+                    <TableHead className="px-4">Last Seen</TableHead>
+                    <TableHead className="px-4 text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -257,43 +255,41 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
 
                     return (
                       <TableRow key={ghost.discordId}>
-                        <TableCell>
+                        <TableCell className="px-4">
                           <div>
                             <button
                               type="button"
                               onClick={(e) =>
                                 handleCopy(e, ghost.minecraftUsername)
                               }
-                              className="group/copy flex min-w-0 max-w-full items-center gap-1 font-medium hover:text-foreground transition-colors"
+                              className="group/copy flex items-center gap-1 font-medium hover:text-foreground transition-colors"
                             >
-                              <span className="truncate">
-                                {ghost.minecraftUsername}
-                              </span>
-                              <Copy className="shrink-0 size-3 text-muted-foreground opacity-0 transition-opacity group-hover/copy:opacity-100" />
+                              {ghost.minecraftUsername}
+                              <Copy className="size-3 text-muted-foreground opacity-0 transition-opacity group-hover/copy:opacity-100" />
                             </button>
                             <button
                               type="button"
                               onClick={(e) =>
                                 handleCopy(e, ghost.minecraftUuid)
                               }
-                              className="group/copy flex min-w-0 max-w-full items-center gap-1 font-mono text-xs text-muted-foreground hover:text-foreground transition-colors"
+                              className="group/copy flex items-center gap-1 font-mono text-xs text-muted-foreground hover:text-foreground transition-colors"
                             >
                               {ghost.minecraftUuid.slice(0, 8)}…
-                              <Copy className="shrink-0 size-2.5 opacity-0 transition-opacity group-hover/copy:opacity-100" />
+                              <Copy className="size-2.5 opacity-0 transition-opacity group-hover/copy:opacity-100" />
                             </button>
                           </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="px-4">
                           <button
                             type="button"
                             onClick={(e) => handleCopy(e, ghost.discordId)}
-                            className="group/copy flex min-w-0 max-w-full items-center gap-1 font-mono text-xs text-muted-foreground hover:text-foreground transition-colors"
+                            className="group/copy flex items-center gap-1 font-mono text-xs text-muted-foreground hover:text-foreground transition-colors"
                           >
-                            <span className="truncate">{ghost.discordId}</span>
-                            <Copy className="shrink-0 size-3 opacity-0 transition-opacity group-hover/copy:opacity-100" />
+                            {ghost.discordId}
+                            <Copy className="size-3 opacity-0 transition-opacity group-hover/copy:opacity-100" />
                           </button>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="px-4">
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <span className="text-sm text-muted-foreground cursor-default">
@@ -305,7 +301,7 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
                             </TooltipContent>
                           </Tooltip>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="px-4">
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <span className="text-sm text-muted-foreground cursor-default">
@@ -317,7 +313,7 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
                             </TooltipContent>
                           </Tooltip>
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="px-4 text-right">
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <span>

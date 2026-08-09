@@ -41,13 +41,13 @@ export function RotationHistory() {
         </p>
       ) : (
         <>
-          <Table className="min-w-[640px]">
+          <Table>
             <TableHeader>
               <TableRow>
-                <TableHead col="date">Date</TableHead>
+                <TableHead>Date</TableHead>
                 <TableHead>From</TableHead>
                 <TableHead>To</TableHead>
-                <TableHead col="status">Status</TableHead>
+                <TableHead>Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

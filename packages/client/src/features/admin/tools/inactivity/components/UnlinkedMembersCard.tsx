@@ -208,12 +208,12 @@ export function UnlinkedMembersCard() {
       ) : (
         <>
           <CardContent className="px-0">
-            <Table className="min-w-[500px]">
-              <TableHeader>
+            <Table>
+              <TableHeader className="bg-sidebar-accent/50">
                 <TableRow>
-                  <TableHead>Member</TableHead>
-                  <TableHead col="discordId">Discord ID</TableHead>
-                  <TableHead col="date">Joined</TableHead>
+                  <TableHead className="px-4">Member</TableHead>
+                  <TableHead className="px-4">Discord ID</TableHead>
+                  <TableHead className="px-4">Joined</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -224,39 +224,37 @@ export function UnlinkedMembersCard() {
 
                   return (
                     <TableRow key={member.discordId}>
-                      <TableCell>
+                      <TableCell className="px-4">
                         <div>
                           <button
                             type="button"
                             onClick={(e) => handleCopy(e, member.displayName)}
-                            className="group/copy flex min-w-0 max-w-full items-center gap-1 font-medium hover:text-foreground transition-colors"
+                            className="group/copy flex items-center gap-1 font-medium hover:text-foreground transition-colors"
                           >
-                            <span className="truncate">
-                              {member.displayName}
-                            </span>
-                            <Copy className="shrink-0 size-3 text-muted-foreground opacity-0 transition-opacity group-hover/copy:opacity-100" />
+                            {member.displayName}
+                            <Copy className="size-3 text-muted-foreground opacity-0 transition-opacity group-hover/copy:opacity-100" />
                           </button>
                           <button
                             type="button"
                             onClick={(e) => handleCopy(e, member.username)}
-                            className="group/copy flex min-w-0 max-w-full items-center gap-1 font-mono text-xs text-muted-foreground hover:text-foreground transition-colors"
+                            className="group/copy flex items-center gap-1 font-mono text-xs text-muted-foreground hover:text-foreground transition-colors"
                           >
-                            <span className="truncate">@{member.username}</span>
-                            <Copy className="shrink-0 size-2.5 opacity-0 transition-opacity group-hover/copy:opacity-100" />
+                            @{member.username}
+                            <Copy className="size-2.5 opacity-0 transition-opacity group-hover/copy:opacity-100" />
                           </button>
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="px-4">
                         <button
                           type="button"
                           onClick={(e) => handleCopy(e, member.discordId)}
-                          className="group/copy flex min-w-0 max-w-full items-center gap-1 font-mono text-xs text-muted-foreground hover:text-foreground transition-colors"
+                          className="group/copy flex items-center gap-1 font-mono text-xs text-muted-foreground hover:text-foreground transition-colors"
                         >
-                          <span className="truncate">{member.discordId}</span>
-                          <Copy className="shrink-0 size-3 opacity-0 transition-opacity group-hover/copy:opacity-100" />
+                          {member.discordId}
+                          <Copy className="size-3 opacity-0 transition-opacity group-hover/copy:opacity-100" />
                         </button>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="px-4">
                         {joinedIso ? (
                           <Tooltip>
                             <TooltipTrigger asChild>
