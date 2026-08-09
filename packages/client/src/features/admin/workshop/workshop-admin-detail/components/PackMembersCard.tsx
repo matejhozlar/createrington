@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { Loader2, Package, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
+import { Paginator } from "@/components/paginator";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,6 +32,8 @@ import {
 
 export type PackMod =
   RouterOutput["admin"]["workshops"]["listPackMods"][number];
+
+const PACK_MODS_PER_PAGE = 10;
 
 const ORIGIN_LABELS: Record<PackMod["origin"], string> = {
   suggestion: "Suggestion",
@@ -104,6 +108,14 @@ export function PackMembersCard({
   onReconciled: () => void;
 }) {
   const toast = useToastActions();
+  const [requestedPage, setRequestedPage] = useState(0);
+
+  const totalPages = Math.ceil(rows.length / PACK_MODS_PER_PAGE);
+  const page = Math.min(requestedPage, Math.max(0, totalPages - 1));
+  const visible = rows.slice(
+    page * PACK_MODS_PER_PAGE,
+    (page + 1) * PACK_MODS_PER_PAGE,
+  );
 
   const reconcileMutation = trpc.admin.modpacks.reconcile.useMutation({
     onSuccess: () => {
@@ -157,7 +169,7 @@ export function PackMembersCard({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rows.map((row) => {
+              {visible.map((row) => {
                 const state = publishState(row);
                 const otherWorkshop =
                   row.suggestionWorkshopId !== null &&
@@ -205,6 +217,16 @@ export function PackMembersCard({
               })}
             </TableBody>
           </Table>
+
+          <Paginator
+            page={page}
+            limit={PACK_MODS_PER_PAGE}
+            total={rows.length}
+            totalPages={totalPages}
+            onPageChange={setRequestedPage}
+            itemLabel="mod"
+            className="px-4 pt-4"
+          />
         </CardContent>
       )}
     </Card>
