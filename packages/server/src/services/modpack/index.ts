@@ -9,13 +9,16 @@ import type {
   CurseforgeProject,
   Modpack,
   ModpackMod,
+  ModpackRelease,
   Workshop,
   WorkshopMod,
   WorkshopModStatus,
 } from "@createrington/shared/db";
+import type { ReleaseModRow } from "@/db/queries/modpack/release/mod";
 import {
   CurseForgeClass,
   getMod,
+  getFilesDetails,
   getModpackManifest,
   type CurseForgeProjectData,
   type ModpackManifest,
@@ -75,6 +78,41 @@ function announceStatusMoves(mods: WorkshopMod[]): void {
         : announcePackDropOut(mod));
     }
   })();
+}
+
+export interface ModpackReleaseDiffEntry extends ReleaseModRow {
+  previousFile: ReleaseModRow | null;
+}
+
+function groupByProject(
+  rows: ReleaseModRow[],
+): Map<number, [ReleaseModRow, ...ReleaseModRow[]]> {
+  const grouped = new Map<number, [ReleaseModRow, ...ReleaseModRow[]]>();
+  for (const row of rows) {
+    const held = grouped.get(row.curseforgeProjectId);
+    if (held) held.push(row);
+    else grouped.set(row.curseforgeProjectId, [row]);
+  }
+  for (const files of grouped.values()) {
+    files.sort((a, b) => a.fileId - b.fileId);
+  }
+  return grouped;
+}
+
+function sameFiles(a: ReleaseModRow[], b: ReleaseModRow[]): boolean {
+  return (
+    a.length === b.length &&
+    a.every((row, index) => row.fileId === b[index].fileId)
+  );
+}
+
+export interface ModpackReleaseDiff {
+  release: ModpackRelease;
+  previous: ModpackRelease | null;
+  added: ModpackReleaseDiffEntry[];
+  updated: ModpackReleaseDiffEntry[];
+  removed: ModpackReleaseDiffEntry[];
+  unchanged: number;
 }
 
 export type ModpackAttentionItem =
@@ -251,6 +289,182 @@ export class ModpackService {
     const workshops = await Q.workshop.findAll({ modpackId });
     const manifest = await getModpackManifest(modpack.curseforgeProjectId);
     await this.applyManifest(modpack, workshops, manifest);
+    await this.recordRelease(modpack, manifest);
+  }
+
+  /** Recorded releases of a modpack, newest first. */
+  async listReleases(modpackId: number): Promise<ModpackRelease[]> {
+    return Q.modpack.release.findAll(
+      { modpackId },
+      { orderBy: "createdAt", orderDirection: "desc" },
+    );
+  }
+
+  /**
+   * What a release changed against the one before it. Both sides are read from
+   * frozen rows, so this keeps working after CurseForge archives the files.
+   */
+  async getReleaseDiff(releaseId: number): Promise<ModpackReleaseDiff> {
+    const release = await Q.modpack.release.get({ id: releaseId });
+    const [previous] = await Q.modpack.release.findAll(
+      { modpackId: release.modpackId, id: { $lt: release.id } },
+      { orderBy: "id", orderDirection: "desc", limit: 1 },
+    );
+
+    const rows = await Q.modpack.release.mod.listForReleases(
+      previous ? [release.id, previous.id] : [release.id],
+    );
+    // A manifest may ship a project as several files, so a project counts as
+    // changed when its whole set of files does, not when one row differs
+    const before = groupByProject(
+      rows.filter((row) => row.releaseId === previous?.id),
+    );
+    const current = groupByProject(
+      rows.filter((row) => row.releaseId === release.id),
+    );
+
+    const added: ModpackReleaseDiffEntry[] = [];
+    const updated: ModpackReleaseDiffEntry[] = [];
+    let unchanged = 0;
+    for (const [projectId, files] of current) {
+      const prior = before.get(projectId);
+      if (!prior) {
+        if (previous) added.push({ ...files[0], previousFile: null });
+        else unchanged++;
+        continue;
+      }
+      if (sameFiles(prior, files)) {
+        unchanged++;
+        continue;
+      }
+      updated.push({ ...files[0], previousFile: prior[0] });
+    }
+
+    const removed: ModpackReleaseDiffEntry[] = [...before]
+      .filter(([projectId]) => !current.has(projectId))
+      .map(([, files]) => ({ ...files[0], previousFile: null }));
+
+    return {
+      release,
+      previous: previous ?? null,
+      added,
+      updated,
+      removed,
+      unchanged,
+    };
+  }
+
+  /**
+   * Freeze what a published pack file shipped. CurseForge stops serving files
+   * once they are archived, so every column a diff needs is copied in here and
+   * nothing in the history path ever reads CurseForge again.
+   */
+  private async recordRelease(
+    modpack: Modpack,
+    manifest: ModpackManifest,
+  ): Promise<void> {
+    if (manifest.entries.length === 0) return;
+    const recorded = await Q.modpack.release.find({
+      modpackId: modpack.id,
+      curseforgeFileId: manifest.fileId,
+    });
+    if (recorded) return;
+
+    const projectIds = [...new Set(manifest.entries.map((e) => e.projectId))];
+    const cached = new Set(
+      (
+        await Q.curseforge.project.findAll(
+          { id: { $in: projectIds } },
+          { select: ["id"] },
+        )
+      ).map((project) => project.id),
+    );
+    const entries = manifest.entries.filter((e) => cached.has(e.projectId));
+    if (entries.length === 0) return;
+
+    const details = new Map(
+      (await getFilesDetails(entries.map((e) => e.fileId))).map((detail) => [
+        detail.fileId,
+        detail,
+      ]),
+    );
+
+    let release;
+    try {
+      release = await Q.modpack.release.createAndReturn({
+        modpackId: modpack.id,
+        curseforgeFileId: manifest.fileId,
+        version: manifest.version,
+        displayName: manifest.displayName,
+        minecraftVersion: manifest.minecraftVersion,
+        modLoader: manifest.modLoader,
+        modCount: new Set(entries.map((entry) => entry.projectId)).size,
+        publishedAt: manifest.publishedAt
+          ? new Date(manifest.publishedAt)
+          : null,
+      });
+    } catch (error) {
+      if (error instanceof ConstraintViolationError) return;
+      throw error;
+    }
+
+    for (const entry of entries) {
+      const detail = details.get(entry.fileId);
+      try {
+        await Q.modpack.release.mod.create({
+          releaseId: release.id,
+          curseforgeProjectId: entry.projectId,
+          fileId: entry.fileId,
+          fileName: detail?.fileName ?? null,
+          displayName: detail?.displayName ?? null,
+          fileReleaseType: detail?.releaseType ?? null,
+          fileDate: detail?.fileDate ? new Date(detail.fileDate) : null,
+        });
+      } catch (error) {
+        if (!(error instanceof ConstraintViolationError)) throw error;
+      }
+    }
+
+    await this.refreshMemberFiles(modpack.id, entries, details);
+
+    logger.info(
+      `Recorded modpack #${modpack.id} release ${
+        manifest.version ?? manifest.fileId
+      } with ${entries.length} mods`,
+    );
+  }
+
+  /** Point current membership at the files the newest release actually ships. */
+  private async refreshMemberFiles(
+    modpackId: number,
+    entries: ModpackManifest["entries"],
+    details: Map<
+      number,
+      { fileName: string | null; releaseType: number | null }
+    >,
+  ): Promise<void> {
+    const byProject = new Map<number, number>();
+    for (const entry of entries) {
+      if (!byProject.has(entry.projectId)) {
+        byProject.set(entry.projectId, entry.fileId);
+      }
+    }
+
+    const rows = await Q.modpack.mod.findAll({ modpackId });
+    for (const row of rows) {
+      const fileId = byProject.get(row.curseforgeProjectId);
+      if (fileId === undefined || row.fileId === fileId) continue;
+      const detail = details.get(fileId);
+      await Q.modpack.mod.updateAll(
+        {
+          fileId,
+          fileName: detail?.fileName ?? null,
+          fileReleaseType: detail?.releaseType ?? null,
+          updatedAt: new Date(),
+        },
+        { id: row.id },
+      );
+    }
   }
 
   /** Reconcile variant for sweeps and background kicks: logs failures, never throws. */

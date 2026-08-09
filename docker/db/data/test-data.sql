@@ -1394,6 +1394,22 @@ INSERT INTO modpack_mod (modpack_id, curseforge_project_id, origin, workshop_mod
   (3, 245755, 'suggestion', 15, NULL, 4959986, 'waystones-forge-1.20.1-14.1.3.jar', 1, NOW() - INTERVAL '380 days', '2.4.1'),
   (3, 228756, 'suggestion', 16, NULL, 4926885, 'ironchest-1.20.1-14.4.4.jar', 1, NOW() - INTERVAL '380 days', '2.4.1');
 
+-- Season 2 release history: two published builds, so 2.4.1 has something to
+-- diff against. Rows are frozen copies, which is why 2.4.0 still names the JEI
+-- file it shipped even though 2.4.1 moved on.
+INSERT INTO modpack_release (id, modpack_id, curseforge_file_id, version, display_name, minecraft_version, mod_loader, mod_count, published_at, created_at) VALUES
+  (1, 3, 5100001, '2.4.0', 'Createrington Season 2-2.4.0', '1.20.1', 'forge-47.2.0', 3, NOW() - INTERVAL '400 days', NOW() - INTERVAL '400 days'),
+  (2, 3, 5100002, '2.4.1', 'Createrington Season 2-2.4.1', '1.20.1', 'forge-47.2.0', 3, NOW() - INTERVAL '380 days', NOW() - INTERVAL '380 days');
+SELECT setval('modpack_release_id_seq', 2, true);
+
+INSERT INTO modpack_release_mod (release_id, curseforge_project_id, file_id, file_name, display_name, file_release_type, file_date) VALUES
+  (1, 238222, 4700001, 'jei-1.20.1-forge-15.19.0.100.jar', 'JEI 15.19.0.100', 1, NOW() - INTERVAL '405 days'),
+  (1, 245755, 4959986, 'waystones-forge-1.20.1-14.1.3.jar', 'Waystones 14.1.3', 1, NOW() - INTERVAL '405 days'),
+  (1, 248787, 4800001, 'appleskin-forge-mc1.20.1-2.5.1.jar', 'AppleSkin 2.5.1', 1, NOW() - INTERVAL '405 days'),
+  (2, 238222, 4712868, 'jei-1.20.1-forge-15.20.0.106.jar', 'JEI 15.20.0.106', 1, NOW() - INTERVAL '385 days'),
+  (2, 245755, 4959986, 'waystones-forge-1.20.1-14.1.3.jar', 'Waystones 14.1.3', 1, NOW() - INTERVAL '405 days'),
+  (2, 228756, 4926885, 'ironchest-1.20.1-14.4.4.jar', 'Iron Chests 14.4.4', 1, NOW() - INTERVAL '385 days');
+
 -- Show some sample stats
 SELECT
     p.minecraft_username,

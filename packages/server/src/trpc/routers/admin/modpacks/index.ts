@@ -82,6 +82,28 @@ export const adminModpacksRouter = router({
       }
     }),
 
+  listReleases: adminProcedure
+    .meta({ description: "Recorded published releases of a modpack" })
+    .input(z.object({ modpackId: id() }))
+    .query(async ({ input }) => {
+      try {
+        return await modpackService.listReleases(input.modpackId);
+      } catch (error) {
+        rethrowTrpc(error);
+      }
+    }),
+
+  getReleaseDiff: adminProcedure
+    .meta({ description: "What a release changed against the one before it" })
+    .input(z.object({ releaseId: id() }))
+    .query(async ({ input }) => {
+      try {
+        return await modpackService.getReleaseDiff(input.releaseId);
+      } catch (error) {
+        rethrowTrpc(error);
+      }
+    }),
+
   reconcile: adminProcedure
     .meta({
       description:
