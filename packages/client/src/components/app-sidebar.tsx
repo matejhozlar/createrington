@@ -126,7 +126,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         icon: HomeIcon,
       },
       {
-        title: "Packs",
+        title: "Dimensions",
         url: "/structure-packs",
         icon: BoxIcon,
       },
