@@ -80,7 +80,7 @@ function ActionButton({
   spinner: boolean;
 }) {
   return (
-    <Tooltip>
+    <Tooltip delayDuration={500} disableHoverableContent>
       <TooltipTrigger asChild>
         <Button
           size="sm"

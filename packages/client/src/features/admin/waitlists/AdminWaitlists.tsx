@@ -242,7 +242,7 @@ export function AdminWaitlists() {
       onSort: () => handleSort("email"),
       render: (entry) =>
         entry.email ? (
-          <Tooltip>
+          <Tooltip delayDuration={500} disableHoverableContent>
             <TooltipTrigger asChild>
               <button
                 onClick={() => handleCopyEmail(entry.email!)}
