@@ -4,30 +4,18 @@ import {
   FlaskConical,
   Heart,
   Lightbulb,
-  Loader2,
-  MoreHorizontal,
   Undo2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { RouterOutput } from "@/lib/trpc";
 import { Paginator } from "@/components/paginator";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  DataTable,
+  type DataTableAction,
+  type DataTableColumn,
+} from "@/components/data-table";
 import { PlayerLabel } from "@/components/player-label";
 import { ProjectThumb } from "@/features/workshop/components/ProjectThumb";
 import {
@@ -170,6 +158,132 @@ export function SuggestionsCard({
     (page + 1) * SUGGESTIONS_PER_PAGE,
   );
 
+  const columns: DataTableColumn<AdminWorkshopMod>[] = [
+    {
+      key: "mod",
+      header: "Mod",
+      minWidth: 220,
+      render: (mod) => (
+        <div className="flex min-w-0 items-center gap-2">
+          <ProjectThumb
+            name={mod.project.name}
+            thumbnailUrl={mod.project.thumbnailUrl}
+            className="size-8 shrink-0 rounded text-[11px]"
+          />
+          <div className="min-w-0">
+            <p className="truncate font-medium">{mod.project.name}</p>
+            <p className="truncate text-xs text-muted-foreground">
+              {mod.project.slug}
+            </p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "submitter",
+      header: "Submitted by",
+      minWidth: 150,
+      render: (mod) => (
+        <PlayerLabel
+          name={mod.submitterName ?? mod.submittedBy}
+          playerId={mod.submittedBy}
+          size={20}
+        />
+      ),
+    },
+    {
+      key: "note",
+      header: "Note",
+      minWidth: 140,
+      render: (mod) => (
+        <p className="truncate text-sm text-muted-foreground">
+          {mod.note ?? ""}
+        </p>
+      ),
+    },
+    {
+      key: "upvotes",
+      header: <Heart className="mx-auto size-3.5" />,
+      width: 56,
+      align: "center",
+      cellClassName: "text-sm",
+      render: (mod) => mod.upvoteCount,
+    },
+    {
+      key: "dependencies",
+      header: "Pulls In",
+      width: 90,
+      align: "center",
+      render: (mod) => <DependencyCell mod={mod} />,
+    },
+    {
+      key: "status",
+      header: "Status",
+      width: 124,
+      render: (mod) => {
+        const status = MOD_STATUS_STYLES[mod.status];
+        return status ? (
+          <Badge variant="outline" className={cn("text-xs", status.className)}>
+            {status.tableLabel}
+          </Badge>
+        ) : null;
+      },
+    },
+    {
+      key: "date",
+      header: "Date",
+      width: 130,
+      render: (mod) => (
+        <span className="text-sm text-muted-foreground">
+          {formatDate(mod.createdAt)}
+        </span>
+      ),
+    },
+  ];
+
+  const modActions = (mod: AdminWorkshopMod): DataTableAction[] => {
+    const actions: DataTableAction[] = [];
+    if (mod.status === "pending" || mod.status === "rejected") {
+      actions.push({
+        label: "Approve",
+        icon: Check,
+        iconClassName: "text-green-500",
+        onClick: () => onReview(mod.id, "approve"),
+      });
+    }
+    if (mod.status === "approved") {
+      actions.push({
+        label: "Start Testing",
+        icon: FlaskConical,
+        iconClassName: "text-amber-400",
+        onClick: () => onReview(mod.id, "start_testing"),
+      });
+    }
+    if (mod.status === "testing") {
+      actions.push({
+        label: "Approve for Next Update",
+        icon: Check,
+        iconClassName: "text-green-500",
+        onClick: () => onReview(mod.id, "approve"),
+      });
+    }
+    if (mod.status === "testing" || mod.status === "next_update") {
+      actions.push({
+        label: "Send Back a Stage",
+        icon: Undo2,
+        onClick: () => onReview(mod.id, "send_back"),
+      });
+    }
+    actions.push({
+      label: "Reject",
+      icon: Ban,
+      variant: "destructive",
+      onClick: () =>
+        onReject({ workshopModId: mod.id, name: mod.project.name }),
+    });
+    return actions;
+  };
+
   return (
     <Card className="gap-0">
       <CardHeader className="gap-0 border-b">
@@ -190,158 +304,14 @@ export function SuggestionsCard({
         <CardEmpty icon={Lightbulb} message="No suggestions match this view" />
       ) : (
         <CardContent className="px-0">
-          <Table>
-            <TableHeader className="bg-sidebar-accent/50">
-              <TableRow>
-                <TableHead className="px-4">Mod</TableHead>
-                <TableHead className="px-4">Submitted by</TableHead>
-                <TableHead className="px-4">Note</TableHead>
-                <TableHead className="px-4 text-center">
-                  <Heart className="mx-auto size-3.5" />
-                </TableHead>
-                <TableHead className="px-4 text-center">Pulls In</TableHead>
-                <TableHead className="px-4">Status</TableHead>
-                <TableHead className="px-4">Date</TableHead>
-                <TableHead className="px-4 text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {visible.map((mod) => {
-                const status = MOD_STATUS_STYLES[mod.status];
-                const busy = busyModId === mod.id;
-                return (
-                  <TableRow
-                    key={mod.id}
-                    role="button"
-                    tabIndex={0}
-                    className="cursor-pointer"
-                    onClick={() => onView(mod.id)}
-                    onKeyDown={(event) => {
-                      if (event.target !== event.currentTarget) return;
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        onView(mod.id);
-                      }
-                    }}
-                  >
-                    <TableCell className="px-4">
-                      <div className="flex items-center gap-2">
-                        <ProjectThumb
-                          name={mod.project.name}
-                          thumbnailUrl={mod.project.thumbnailUrl}
-                          className="size-8 rounded text-[11px]"
-                        />
-                        <div>
-                          <p className="font-medium">{mod.project.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {mod.project.slug}
-                          </p>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="px-4">
-                      <PlayerLabel
-                        name={mod.submitterName ?? mod.submittedBy}
-                        playerId={mod.submittedBy}
-                        size={20}
-                      />
-                    </TableCell>
-                    <TableCell className="max-w-[200px] truncate px-4 text-sm text-muted-foreground">
-                      {mod.note ?? ""}
-                    </TableCell>
-                    <TableCell className="px-4 text-center text-sm">
-                      {mod.upvoteCount}
-                    </TableCell>
-                    <TableCell className="px-4 text-center">
-                      <DependencyCell mod={mod} />
-                    </TableCell>
-                    <TableCell className="px-4">
-                      {status && (
-                        <Badge
-                          variant="outline"
-                          className={cn("text-xs", status.className)}
-                        >
-                          {status.tableLabel}
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="px-4 text-sm text-muted-foreground">
-                      {formatDate(mod.createdAt)}
-                    </TableCell>
-                    <TableCell
-                      className="px-4 text-right"
-                      onClick={(event) => event.stopPropagation()}
-                    >
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="size-8"
-                            disabled={busy}
-                          >
-                            {busy ? (
-                              <Loader2 className="size-4 animate-spin" />
-                            ) : (
-                              <MoreHorizontal className="size-4" />
-                            )}
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          {(mod.status === "pending" ||
-                            mod.status === "rejected") && (
-                            <DropdownMenuItem
-                              onClick={() => onReview(mod.id, "approve")}
-                            >
-                              <Check className="size-4 text-green-500" />
-                              Approve
-                            </DropdownMenuItem>
-                          )}
-                          {mod.status === "approved" && (
-                            <DropdownMenuItem
-                              onClick={() => onReview(mod.id, "start_testing")}
-                            >
-                              <FlaskConical className="size-4 text-amber-400" />
-                              Start Testing
-                            </DropdownMenuItem>
-                          )}
-                          {mod.status === "testing" && (
-                            <DropdownMenuItem
-                              onClick={() => onReview(mod.id, "approve")}
-                            >
-                              <Check className="size-4 text-green-500" />
-                              Approve for Next Update
-                            </DropdownMenuItem>
-                          )}
-                          {(mod.status === "testing" ||
-                            mod.status === "next_update") && (
-                            <DropdownMenuItem
-                              onClick={() => onReview(mod.id, "send_back")}
-                            >
-                              <Undo2 className="size-4 text-muted-foreground" />
-                              Send Back a Stage
-                            </DropdownMenuItem>
-                          )}
-                          <DropdownMenuItem
-                            className="text-destructive focus:text-destructive"
-                            onClick={() =>
-                              onReject({
-                                workshopModId: mod.id,
-                                name: mod.project.name,
-                              })
-                            }
-                          >
-                            <Ban className="size-4" />
-                            Reject
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+          <DataTable
+            columns={columns}
+            rows={visible}
+            rowKey={(mod) => mod.id}
+            onRowClick={(mod) => onView(mod.id)}
+            actions={modActions}
+            isRowBusy={(mod) => busyModId === mod.id}
+          />
 
           <Paginator
             page={page}

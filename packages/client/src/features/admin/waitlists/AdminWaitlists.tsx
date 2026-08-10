@@ -22,13 +22,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  DataTable,
+  type DataTableAction,
+  type DataTableColumn,
+} from "@/components/data-table";
 import {
   Select,
   SelectContent,
@@ -48,9 +45,6 @@ import {
   UserPlus,
   UserCheck,
   Clock,
-  ArrowUpDown,
-  ArrowUp,
-  ArrowDown,
   Mail,
   Trash2,
 } from "lucide-react";
@@ -176,20 +170,6 @@ export function AdminWaitlists() {
     statsQuery.refetch();
   }, [entriesQuery, statsQuery]);
 
-  const renderSortIcon = useCallback(
-    (field: SortField) => {
-      if (orderBy !== field) {
-        return <ArrowUpDown className="ml-1 size-3.5 opacity-50" />;
-      }
-      return orderDirection === "asc" ? (
-        <ArrowUp className="ml-1 size-3.5" />
-      ) : (
-        <ArrowDown className="ml-1 size-3.5" />
-      );
-    },
-    [orderBy, orderDirection],
-  );
-
   const getPaginationItems = useCallback(() => {
     const items: (number | "ellipsis")[] = [];
     const maxVisible = 5;
@@ -246,6 +226,150 @@ export function AdminWaitlists() {
         };
     }
   }, []);
+
+  const columns: DataTableColumn<WaitlistEntry>[] = [
+    {
+      key: "id",
+      header: "ID",
+      width: 70,
+      render: (entry) => <p className="font-mono text-sm">#{entry.id}</p>,
+    },
+    {
+      key: "email",
+      header: "Email",
+      minWidth: 200,
+      sorted: orderBy === "email" ? orderDirection : false,
+      onSort: () => handleSort("email"),
+      render: (entry) =>
+        entry.email ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => handleCopyEmail(entry.email!)}
+                className="max-w-full cursor-pointer text-sm transition-colors hover:text-foreground"
+                type="button"
+              >
+                <div className="flex min-w-0 items-center gap-2">
+                  <Mail className="size-4 shrink-0 text-muted-foreground" />
+                  <span className="truncate">{entry.email}</span>
+                </div>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Click to copy</TooltipContent>
+          </Tooltip>
+        ) : (
+          <span className="text-sm text-muted-foreground">-</span>
+        ),
+    },
+    {
+      key: "discordName",
+      header: "Discord Name",
+      minWidth: 160,
+      sorted: orderBy === "discordName" ? orderDirection : false,
+      onSort: () => handleSort("discordName"),
+      render: (entry) => (
+        <>
+          <p className="truncate font-medium">{entry.discordName}</p>
+          {entry.discordId && (
+            <p className="truncate text-xs text-muted-foreground">
+              ID: {entry.discordId}
+            </p>
+          )}
+        </>
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      width: 132,
+      render: (entry) => (
+        <Badge
+          variant={getStatusBadgeStyle(entry.status).variant}
+          className={getStatusBadgeStyle(entry.status).className}
+        >
+          {STATUS_LABELS[entry.status]}
+        </Badge>
+      ),
+    },
+    {
+      key: "progress",
+      header: "Progress",
+      minWidth: 170,
+      render: (entry) => (
+        <div className="flex flex-wrap gap-1">
+          {entry.joinedDiscord && (
+            <Badge
+              variant="outline"
+              className="border-success bg-success/10 text-success text-xs"
+            >
+              Discord
+            </Badge>
+          )}
+          {entry.verified && (
+            <Badge
+              variant="outline"
+              className="border-success bg-success/10 text-success text-xs"
+            >
+              Verified
+            </Badge>
+          )}
+          {entry.registered && (
+            <Badge
+              variant="outline"
+              className="border-success bg-success/10 text-success text-xs"
+            >
+              Registered
+            </Badge>
+          )}
+          {entry.joinedMinecraft && (
+            <Badge
+              variant="outline"
+              className="border-success bg-success/10 text-success text-xs"
+            >
+              In-Game
+            </Badge>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "submitted",
+      header: "Submitted",
+      width: 160,
+      sorted: orderBy === "submittedAt" ? orderDirection : false,
+      onSort: () => handleSort("submittedAt"),
+      render: (entry) => (
+        <>
+          <p className="text-sm text-muted-foreground">
+            {new Date(entry.submittedAt).toLocaleDateString()}
+          </p>
+          {entry.acceptedAt && (
+            <p className="text-xs text-muted-foreground">
+              Accepted: {new Date(entry.acceptedAt).toLocaleDateString()}
+            </p>
+          )}
+        </>
+      ),
+    },
+  ];
+
+  const entryActions = (entry: WaitlistEntry): DataTableAction[] => {
+    const actions: DataTableAction[] = [];
+    if (entry.status === "pending") {
+      actions.push({
+        label: "Invite",
+        icon: UserPlus,
+        onClick: () => handleInvite(entry),
+      });
+    }
+    actions.push({
+      label: "Delete",
+      icon: Trash2,
+      variant: "destructive",
+      onClick: () => handleDelete(entry),
+    });
+    return actions;
+  };
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -445,186 +569,12 @@ export function AdminWaitlists() {
           ) : (
             <>
               <CardContent className="px-0">
-                <Table>
-                  <TableHeader className="bg-sidebar-accent/50">
-                    <TableRow>
-                      <TableHead className="px-4">ID</TableHead>
-                      <TableHead className="px-4">
-                        <button
-                          type="button"
-                          onClick={() => handleSort("email")}
-                          className="inline-flex items-center gap-1 text-sm font-medium"
-                        >
-                          Email
-                          {renderSortIcon("email")}
-                        </button>
-                      </TableHead>
-                      <TableHead className="px-4">
-                        <button
-                          type="button"
-                          onClick={() => handleSort("discordName")}
-                          className="inline-flex items-center gap-1 text-sm font-medium"
-                        >
-                          Discord Name
-                          {renderSortIcon("discordName")}
-                        </button>
-                      </TableHead>
-                      <TableHead className="px-4">Status</TableHead>
-                      <TableHead className="px-4">Progress</TableHead>
-                      <TableHead className="px-4">
-                        <button
-                          type="button"
-                          onClick={() => handleSort("submittedAt")}
-                          className="inline-flex items-center gap-1 text-sm font-medium"
-                        >
-                          Submitted
-                          {renderSortIcon("submittedAt")}
-                        </button>
-                      </TableHead>
-                      <TableHead className="px-4 text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {entries.map((entry) => {
-                      const isPending = entry.status === "pending";
-                      const isAccepted = entry.status === "accepted";
-                      const isAutoAccepted = entry.status === "auto_accepted";
-
-                      return (
-                        <TableRow key={entry.id}>
-                          <TableCell className="px-4">
-                            <p className="font-mono text-sm">#{entry.id}</p>
-                          </TableCell>
-                          <TableCell className="px-4">
-                            {entry.email ? (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <button
-                                    onClick={() =>
-                                      handleCopyEmail(entry.email!)
-                                    }
-                                    className="cursor-pointer text-sm transition-colors hover:text-foreground"
-                                    type="button"
-                                  >
-                                    <div className="flex items-center gap-2">
-                                      <Mail className="size-4 text-muted-foreground" />
-                                      <span>{entry.email}</span>
-                                    </div>
-                                  </button>
-                                </TooltipTrigger>
-                                <TooltipContent>Click to copy</TooltipContent>
-                              </Tooltip>
-                            ) : (
-                              <span className="text-sm text-muted-foreground">
-                                -
-                              </span>
-                            )}
-                          </TableCell>
-                          <TableCell className="px-4">
-                            <p className="font-medium">{entry.discordName}</p>
-                            {entry.discordId && (
-                              <p className="text-xs text-muted-foreground">
-                                ID: {entry.discordId}
-                              </p>
-                            )}
-                          </TableCell>
-                          <TableCell className="px-4">
-                            <Badge
-                              variant={
-                                getStatusBadgeStyle(entry.status).variant
-                              }
-                              className={
-                                getStatusBadgeStyle(entry.status).className
-                              }
-                            >
-                              {STATUS_LABELS[entry.status]}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="px-4">
-                            <div className="flex flex-wrap gap-1">
-                              {entry.joinedDiscord && (
-                                <Badge
-                                  variant="outline"
-                                  className="border-success bg-success/10 text-success text-xs"
-                                >
-                                  Discord
-                                </Badge>
-                              )}
-                              {entry.verified && (
-                                <Badge
-                                  variant="outline"
-                                  className="border-success bg-success/10 text-success text-xs"
-                                >
-                                  Verified
-                                </Badge>
-                              )}
-                              {entry.registered && (
-                                <Badge
-                                  variant="outline"
-                                  className="border-success bg-success/10 text-success text-xs"
-                                >
-                                  Registered
-                                </Badge>
-                              )}
-                              {entry.joinedMinecraft && (
-                                <Badge
-                                  variant="outline"
-                                  className="border-success bg-success/10 text-success text-xs"
-                                >
-                                  In-Game
-                                </Badge>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell className="px-4">
-                            <p className="text-sm text-muted-foreground">
-                              {new Date(entry.submittedAt).toLocaleDateString()}
-                            </p>
-                            {entry.acceptedAt && (
-                              <p className="text-xs text-muted-foreground">
-                                Accepted:{" "}
-                                {new Date(
-                                  entry.acceptedAt,
-                                ).toLocaleDateString()}
-                              </p>
-                            )}
-                          </TableCell>
-                          <TableCell className="px-4 text-right">
-                            <div className="flex justify-end gap-2">
-                              {isPending && (
-                                <Button
-                                  size="sm"
-                                  variant="default"
-                                  onClick={() => handleInvite(entry)}
-                                >
-                                  Invite
-                                </Button>
-                              )}
-                              {isAccepted && (
-                                <Badge variant="default">Invited</Badge>
-                              )}
-                              {isAutoAccepted && (
-                                <Badge
-                                  variant="outline"
-                                  className="border-chart-2 bg-chart-2/10 text-chart-2"
-                                >
-                                  Auto-Accepted
-                                </Badge>
-                              )}
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => handleDelete(entry)}
-                              >
-                                <Trash2 className="size-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
+                <DataTable
+                  columns={columns}
+                  rows={entries}
+                  rowKey={(entry) => entry.id}
+                  actions={entryActions}
+                />
               </CardContent>
 
               {/* Pagination */}
