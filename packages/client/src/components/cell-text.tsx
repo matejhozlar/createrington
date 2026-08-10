@@ -55,8 +55,7 @@ export function CellText({
     if (el) setClipped(el.scrollWidth > el.clientWidth);
   };
 
-  const handleCopy = async (event: React.MouseEvent) => {
-    event.stopPropagation();
+  const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(value);
       toast.success("Copied to clipboard");

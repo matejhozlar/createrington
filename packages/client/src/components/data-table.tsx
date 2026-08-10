@@ -285,7 +285,6 @@ export function DataTable<T>({
             <React.Fragment key={key}>
               <TableRow
                 data-row-key={key}
-                role={onRowClick ? "button" : undefined}
                 tabIndex={onRowClick ? 0 : undefined}
                 className={cn(
                   onRowClick && "cursor-pointer",

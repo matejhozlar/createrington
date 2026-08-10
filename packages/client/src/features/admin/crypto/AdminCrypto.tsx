@@ -530,7 +530,6 @@ function TriggerEventDialog({
   );
 }
 
-// Per-row mutation to avoid shared pending state across rows.
 function DelistDialog({
   target,
   onClose,

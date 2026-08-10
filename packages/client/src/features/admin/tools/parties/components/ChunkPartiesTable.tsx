@@ -44,13 +44,14 @@ export function ChunkPartiesTable({
   const [sort, setSort] = useState<SortState>(null);
   const scrollTargetId = initialExpandedPartyId ?? null;
   const hasScrolledRef = useRef(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (hasScrolledRef.current) return;
     if (!scrollTargetId) return;
     if (!parties.some((p) => p.partyId === scrollTargetId)) return;
-    document
-      .querySelector(`[data-row-key="${scrollTargetId}"]`)
+    containerRef.current
+      ?.querySelector(`[data-row-key="${CSS.escape(scrollTargetId)}"]`)
       ?.scrollIntoView({ behavior: "smooth", block: "center" });
     hasScrolledRef.current = true;
   }, [parties, scrollTargetId]);
@@ -230,7 +231,7 @@ export function ChunkPartiesTable({
   }
 
   return (
-    <div className="px-0">
+    <div ref={containerRef} className="px-0">
       <DataTable
         columns={columns}
         rows={sortedParties}
