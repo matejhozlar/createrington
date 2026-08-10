@@ -6,21 +6,15 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from "@/components/ui/table";
+import { CellDate, CellText } from "@/components/cell-text";
+import { DataTable, type DataTableColumn } from "@/components/data-table";
 import { cn } from "@/lib/utils";
 import { useCallback, useState } from "react";
 import { Loading } from "@/components/loading-spinner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Clock } from "lucide-react";
-import { trpc } from "@/lib/trpc";
+import { trpc, type RouterOutput } from "@/lib/trpc";
 
 interface SessionsTabProps {
   playerId: string;
@@ -88,6 +82,67 @@ export function SessionsTab({ playerId, getServerName }: SessionsTabProps) {
     return `${secs}s`;
   };
 
+  type Session =
+    RouterOutput["admin"]["players"]["sessions"]["list"]["sessions"][number];
+
+  const columns: DataTableColumn<Session>[] = [
+    {
+      key: "server",
+      header: "Server",
+      minWidth: 180,
+      render: (session) => (
+        <div className="flex min-w-0 items-center gap-2">
+          <CellText
+            value={getServerName(session.serverId) ?? ""}
+            className="font-medium"
+          />
+          {!session.sessionEnd && (
+            <Badge
+              variant="default"
+              className="shrink-0 bg-green-500/20 text-green-500"
+            >
+              Active
+            </Badge>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "joined",
+      header: "Joined",
+      width: 120,
+      render: (session) => <CellDate value={session.sessionStart} />,
+    },
+    {
+      key: "left",
+      header: "Left",
+      width: 120,
+      render: (session) =>
+        session.sessionEnd && <CellDate value={session.sessionEnd} />,
+    },
+    {
+      key: "duration",
+      header: "Duration",
+      width: 160,
+      align: "right",
+      render: (session) => {
+        const duration = session.secondsPlayed
+          ? Number(session.secondsPlayed)
+          : 0;
+        return (
+          <>
+            <p className="font-semibold">
+              {duration > 0 ? formatDuration(duration) : "In progress"}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Session #{session.id}
+            </p>
+          </>
+        );
+      },
+    },
+  ];
+
   return (
     <div className="flex flex-col gap-4">
       {/* Header */}
@@ -133,83 +188,11 @@ export function SessionsTab({ playerId, getServerName }: SessionsTabProps) {
       ) : (
         <>
           {/* Table */}
-          <Table className="min-w-[620px]">
-            <TableHeader>
-              <TableRow>
-                <TableHead>Server</TableHead>
-                <TableHead col="dateTime">Joined</TableHead>
-                <TableHead col="dateTime">Left</TableHead>
-                <TableHead col="duration" className="text-right">
-                  Duration
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sessions.map((session) => {
-                const serverName = getServerName(session.serverId);
-                const duration = session.secondsPlayed
-                  ? Number(session.secondsPlayed)
-                  : 0;
-                const joinedAt = new Date(session.sessionStart);
-                const leftAt = session.sessionEnd
-                  ? new Date(session.sessionEnd)
-                  : null;
-
-                return (
-                  <TableRow
-                    key={session.id}
-                    className="hover:bg-sidebar-accent/30"
-                  >
-                    <TableCell>
-                      <div className="flex min-w-0 items-center gap-2">
-                        <p className="truncate font-medium">{serverName}</p>
-                        {!leftAt && (
-                          <Badge
-                            variant="default"
-                            className="shrink-0 bg-green-500/20 text-green-500"
-                          >
-                            Active
-                          </Badge>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <p className="text-sm text-foreground">
-                        {joinedAt.toLocaleDateString()}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {joinedAt.toLocaleTimeString()}
-                      </p>
-                    </TableCell>
-                    <TableCell>
-                      {leftAt ? (
-                        <>
-                          <p className="text-sm text-foreground">
-                            {leftAt.toLocaleDateString()}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {leftAt.toLocaleTimeString()}
-                          </p>
-                        </>
-                      ) : (
-                        <p className="text-sm text-muted-foreground">—</p>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <p className="font-semibold">
-                        {duration > 0
-                          ? formatDuration(Number(duration))
-                          : "In progress"}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Session #{session.id}
-                      </p>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+          <DataTable
+            columns={columns}
+            rows={sessions}
+            rowKey={(session) => session.id}
+          />
 
           {/* Pagination */}
           {totalPages > 1 && (

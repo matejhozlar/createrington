@@ -72,7 +72,6 @@ export function PlayerLabel({
   return (
     <Link
       to={`/admin/players/${linkId}`}
-      onClick={(e) => e.stopPropagation()}
       className="group flex min-w-0 items-center gap-2 rounded"
     >
       <MinecraftAvatar
@@ -114,8 +113,7 @@ function UnresolvedUuid({ uuid }: { uuid: string }) {
   return (
     <button
       type="button"
-      onClick={(e) => {
-        e.stopPropagation();
+      onClick={() => {
         if (clicked && isError) {
           query.refetch();
         } else {

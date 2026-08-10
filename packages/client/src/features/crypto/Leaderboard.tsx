@@ -1,17 +1,11 @@
-import { trpc } from "@/lib/trpc";
+import { trpc, type RouterOutput } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { Loading } from "@/components/loading-spinner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { CellText } from "@/components/cell-text";
+import { DataTable, type DataTableColumn } from "@/components/data-table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Crown, Medal, Trophy } from "lucide-react";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
 
@@ -53,6 +47,41 @@ function formatValue(value: string | number) {
     maximumFractionDigits: 2,
   })}`;
 }
+
+type LeaderboardEntry = RouterOutput["public"]["crypto"]["leaderboard"][number];
+
+const REST_COLUMNS: DataTableColumn<LeaderboardEntry>[] = [
+  {
+    key: "rank",
+    header: "Rank",
+    width: 80,
+    cellClassName: "text-sm tabular-nums text-muted-foreground",
+    render: (_entry, index) => index + 4,
+  },
+  {
+    key: "player",
+    header: "Player",
+    minWidth: 200,
+    render: (entry) => (
+      <div className="flex min-w-0 items-center gap-2">
+        <MinecraftAvatar
+          username={entry.playerName}
+          uuid={entry.playerUuid}
+          size={24}
+        />
+        <CellText value={entry.playerName} />
+      </div>
+    ),
+  },
+  {
+    key: "value",
+    header: "Value",
+    width: 150,
+    align: "right",
+    cellClassName: "font-mono tabular-nums",
+    render: (entry) => formatValue(entry.value),
+  },
+];
 
 function LeaderboardTable({ type }: { type: LeaderboardType }) {
   const { data, isLoading, error, refetch } =
@@ -154,47 +183,13 @@ function LeaderboardTable({ type }: { type: LeaderboardType }) {
       {rest.length > 0 && (
         <Card className="overflow-hidden">
           <CardContent className="p-0">
-            <Table className="min-w-[370px]">
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead col="index">Rank</TableHead>
-                  <TableHead>Player</TableHead>
-                  <TableHead col="amount" className="text-right">
-                    Value
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rest.map((entry, index) => {
-                  const rank = index + 4;
-                  return (
-                    <TableRow
-                      key={entry.playerUuid}
-                      className="border-b border-border/30 last:border-0"
-                    >
-                      <TableCell>
-                        <span className="text-sm tabular-nums text-muted-foreground pl-1">
-                          {rank}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <MinecraftAvatar
-                            username={entry.playerName}
-                            uuid={entry.playerUuid}
-                            size={24}
-                          />
-                          <span>{entry.playerName}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right font-mono tabular-nums">
-                        {formatValue(entry.value)}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+            <DataTable
+              columns={REST_COLUMNS}
+              rows={rest}
+              rowKey={(entry) => entry.playerUuid}
+              headerClassName="[&_tr]:hover:bg-transparent"
+              headCellClassName="text-[11px] font-medium uppercase tracking-wider"
+            />
           </CardContent>
         </Card>
       )}

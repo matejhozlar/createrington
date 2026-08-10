@@ -10,8 +10,6 @@ import {
   Search,
   Filter,
   Upload,
-  MoreHorizontal,
-  Eye,
   Copy,
   CheckCircle2,
   XCircle,
@@ -20,14 +18,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CellDate, CellText } from "@/components/cell-text";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  DataTable,
+  type DataTableAction,
+  type DataTableColumn,
+} from "@/components/data-table";
 import {
   Select,
   SelectContent,
@@ -42,13 +38,6 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -193,6 +182,93 @@ export function AdminStructurePacks() {
     onError: (err) => toast.error(err.message),
   });
 
+  type Pack = (typeof packs)[number];
+
+  const columns: DataTableColumn<Pack>[] = [
+    {
+      key: "name",
+      header: "Name",
+      minWidth: 220,
+      render: (pack) => (
+        <>
+          <div className="flex min-w-0 items-center gap-2">
+            <CellText value={pack.name} className="font-medium" />
+            {pack.isActive && (
+              <Badge className="shrink-0 bg-green-500/20 text-green-500 hover:bg-green-500/30">
+                Active
+              </Badge>
+            )}
+          </div>
+          {pack.description && (
+            <CellText
+              value={pack.description}
+              className="mt-0.5 text-xs text-muted-foreground"
+            />
+          )}
+        </>
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      width: 110,
+      render: (pack) => (
+        <Badge
+          variant="outline"
+          className={
+            pack.enabled
+              ? "border-success bg-success/10 text-success"
+              : "border-muted-foreground bg-muted-foreground/10 text-muted-foreground"
+          }
+        >
+          {pack.enabled ? "Enabled" : "Disabled"}
+        </Badge>
+      ),
+    },
+    {
+      key: "mods",
+      header: "Mods",
+      width: 90,
+      cellClassName: "text-sm",
+      render: (pack) =>
+        `${pack.mods.length} mod${pack.mods.length !== 1 ? "s" : ""}`,
+    },
+    {
+      key: "lastActive",
+      header: "Last Active",
+      width: 130,
+      cellClassName: "text-sm text-muted-foreground",
+      render: (pack) =>
+        pack.lastActivatedAt ? (
+          <CellDate value={pack.lastActivatedAt} />
+        ) : (
+          "Never"
+        ),
+    },
+  ];
+
+  const packActions = (pack: Pack): DataTableAction[] => [
+    {
+      label: "Copy",
+      icon: Copy,
+      onClick: () => copyPackJson(pack),
+    },
+    {
+      label: pack.enabled ? "Disable" : "Enable",
+      icon: pack.enabled ? XCircle : CheckCircle2,
+      disabled: pack.isActive || toggleEnabledMutation.isPending,
+      onClick: () =>
+        toggleEnabledMutation.mutate({ id: pack.id, enabled: !pack.enabled }),
+    },
+    {
+      label: "Delete",
+      icon: Trash2,
+      variant: "destructive",
+      disabled: pack.isActive,
+      onClick: () => setDeleteTarget({ id: pack.id, name: pack.name }),
+    },
+  ];
+
   return (
     <div className="flex flex-1 flex-col gap-4">
       <AdminPageHeader
@@ -311,131 +387,15 @@ export function AdminStructurePacks() {
             </CardContent>
           ) : (
             <CardContent className="px-0">
-              <Table className="min-w-[630px]">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead col="status">Status</TableHead>
-                    <TableHead col="count">Mods</TableHead>
-                    <TableHead col="date">Last Active</TableHead>
-                    <TableHead col="actionsMenu" className="text-right">
-                      Actions
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredPacks.map((pack) => (
-                    <TableRow key={pack.id}>
-                      <TableCell>
-                        <div className="min-w-0">
-                          <div className="flex min-w-0 items-center gap-2">
-                            <p className="truncate font-medium">{pack.name}</p>
-                            {pack.isActive && (
-                              <Badge className="shrink-0 bg-green-500/20 text-green-500 hover:bg-green-500/30">
-                                Active
-                              </Badge>
-                            )}
-                          </div>
-                          {pack.description && (
-                            <p className="mt-0.5 max-w-[300px] truncate text-xs text-muted-foreground">
-                              {pack.description}
-                            </p>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={
-                            pack.enabled
-                              ? "border-success bg-success/10 text-success"
-                              : "border-muted-foreground bg-muted-foreground/10 text-muted-foreground"
-                          }
-                        >
-                          {pack.enabled ? "Enabled" : "Disabled"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        {pack.mods.length} mod
-                        {pack.mods.length !== 1 && "s"}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {pack.lastActivatedAt
-                          ? new Date(pack.lastActivatedAt).toLocaleDateString()
-                          : "Never"}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu modal={false}>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="size-8 p-0"
-                            >
-                              <MoreHorizontal className="size-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={() =>
-                                navigate(
-                                  `/admin/tools/structure-packs/${pack.id}`,
-                                )
-                              }
-                            >
-                              <Eye className="mr-2 size-4" />
-                              View
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => copyPackJson(pack)}
-                            >
-                              <Copy className="mr-2 size-4" />
-                              Copy
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              disabled={
-                                pack.isActive || toggleEnabledMutation.isPending
-                              }
-                              onClick={() =>
-                                toggleEnabledMutation.mutate({
-                                  id: pack.id,
-                                  enabled: !pack.enabled,
-                                })
-                              }
-                            >
-                              {pack.enabled ? (
-                                <>
-                                  <XCircle className="mr-2 size-4" />
-                                  Disable
-                                </>
-                              ) : (
-                                <>
-                                  <CheckCircle2 className="mr-2 size-4" />
-                                  Enable
-                                </>
-                              )}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              variant="destructive"
-                              disabled={pack.isActive}
-                              onClick={() =>
-                                setDeleteTarget({
-                                  id: pack.id,
-                                  name: pack.name,
-                                })
-                              }
-                            >
-                              <Trash2 className="mr-2 size-4" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <DataTable
+                columns={columns}
+                rows={filteredPacks}
+                rowKey={(pack) => pack.id}
+                onRowClick={(pack) =>
+                  navigate(`/admin/tools/structure-packs/${pack.id}`)
+                }
+                actions={packActions}
+              />
             </CardContent>
           )}
         </Card>

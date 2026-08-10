@@ -20,14 +20,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { CellText } from "@/components/cell-text";
+import { DataTable, type DataTableColumn } from "@/components/data-table";
 import {
   Select,
   SelectContent,
@@ -219,6 +213,99 @@ export function InactivityManagement() {
     [statsQuery.data],
   );
 
+  const columns: DataTableColumn<Warning>[] = [
+    {
+      key: "player",
+      header: "Player",
+      minWidth: 180,
+      render: (warning) => (
+        <div className="min-w-0">
+          {warning.minecraftUsername ? (
+            <CellText
+              value={warning.minecraftUsername}
+              className="font-medium"
+            />
+          ) : (
+            <p className="italic text-muted-foreground">(deleted)</p>
+          )}
+          <CellText
+            value={warning.playerMinecraftUuid}
+            display={`${warning.playerMinecraftUuid.slice(0, 8)}…`}
+            className="font-mono text-xs text-muted-foreground"
+          />
+        </div>
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      width: 120,
+      render: (warning) => {
+        const status = deriveWarningStatus(warning, graceDays);
+        return (
+          <Badge variant="outline" className={STATUS_BADGE_CLASSES[status]}>
+            {STATUS_LABELS[status]}
+          </Badge>
+        );
+      },
+    },
+    {
+      key: "warned",
+      header: "Warned",
+      width: 140,
+      cellClassName: "text-sm text-muted-foreground",
+      render: (warning) => {
+        const iso = toIso(warning.warnedAt);
+        return (
+          <CellText
+            value={formatFullDate(iso)}
+            display={formatRelativeDate(iso)}
+          />
+        );
+      },
+    },
+    {
+      key: "deadline",
+      header: "Deadline",
+      width: 120,
+      render: (warning) => {
+        const status = deriveWarningStatus(warning, graceDays);
+        const daysLeft = daysUntilDeadline(warning.warnedAt, graceDays);
+        if (status === "active") {
+          return (
+            <p className="text-sm">
+              {daysLeft}d <span className="text-muted-foreground">left</span>
+            </p>
+          );
+        }
+        if (status === "expired") {
+          return (
+            <p className="text-sm text-destructive">
+              {Math.abs(daysLeft)}d overdue
+            </p>
+          );
+        }
+        return null;
+      },
+    },
+    {
+      key: "lastSeen",
+      header: "Last Seen",
+      width: 140,
+      cellClassName: "text-sm text-muted-foreground",
+      render: (warning) => {
+        if (!warning.lastSeen) return null;
+        const iso = toIso(warning.lastSeen);
+        return (
+          <CellText
+            value={formatFullDate(iso)}
+            display={formatRelativeDate(iso)}
+          />
+        );
+      },
+    },
+  ];
+
   return (
     <div className="flex flex-1 flex-col gap-4">
       {/* Header */}
@@ -406,154 +493,31 @@ export function InactivityManagement() {
           ) : (
             <>
               <CardContent className="px-0">
-                <Table className="min-w-[800px]">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Player</TableHead>
-                      <TableHead col="status">Status</TableHead>
-                      <TableHead col="date">Warned</TableHead>
-                      <TableHead col="date">Deadline</TableHead>
-                      <TableHead col="date">Last Seen</TableHead>
-                      <TableHead col="actions" className="text-right">
-                        Actions
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {warnings.map((warning) => {
-                      const status = deriveWarningStatus(warning, graceDays);
-                      const daysLeft = daysUntilDeadline(
-                        warning.warnedAt,
-                        graceDays,
-                      );
-                      const canAct = !warning.resolvedAt && !warning.removedAt;
-                      const warnedAtIso = toIso(warning.warnedAt);
-                      const lastSeenIso = warning.lastSeen
-                        ? toIso(warning.lastSeen)
-                        : null;
-
-                      return (
-                        <TableRow key={warning.id}>
-                          <TableCell>
-                            <div>
-                              <p className="font-medium">
-                                {warning.minecraftUsername ?? (
-                                  <span className="text-muted-foreground italic">
-                                    (deleted)
-                                  </span>
-                                )}
-                              </p>
-                              <p className="font-mono text-xs text-muted-foreground">
-                                {warning.playerMinecraftUuid.slice(0, 8)}…
-                              </p>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant="outline"
-                              className={STATUS_BADGE_CLASSES[status]}
-                            >
-                              {STATUS_LABELS[status]}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span className="text-sm text-muted-foreground cursor-default">
-                                  {formatRelativeDate(warnedAtIso)}
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent side="bottom" align="start">
-                                {formatFullDate(warnedAtIso)}
-                              </TooltipContent>
-                            </Tooltip>
-                          </TableCell>
-                          <TableCell>
-                            {status === "active" ? (
-                              <p className="text-sm">
-                                {daysLeft}d{" "}
-                                <span className="text-muted-foreground">
-                                  left
-                                </span>
-                              </p>
-                            ) : status === "expired" ? (
-                              <p className="text-sm text-destructive">
-                                {Math.abs(daysLeft)}d overdue
-                              </p>
-                            ) : (
-                              <p className="text-sm text-muted-foreground">—</p>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {lastSeenIso ? (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <span className="text-sm text-muted-foreground cursor-default">
-                                    {formatRelativeDate(lastSeenIso)}
-                                  </span>
-                                </TooltipTrigger>
-                                <TooltipContent side="bottom" align="start">
-                                  {formatFullDate(lastSeenIso)}
-                                </TooltipContent>
-                              </Tooltip>
-                            ) : (
-                              <p className="text-sm text-muted-foreground">—</p>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <span>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      disabled={!canAct}
-                                      onClick={() =>
-                                        setResolveModal({
-                                          open: true,
-                                          warning,
-                                        })
-                                      }
-                                    >
-                                      <UserCheck className="size-4" />
-                                    </Button>
-                                  </span>
-                                </TooltipTrigger>
-                                <TooltipContent>Resolve</TooltipContent>
-                              </Tooltip>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <span>
-                                    <Button
-                                      size="sm"
-                                      variant="destructive"
-                                      className="cursor-pointer"
-                                      disabled={!canAct || !canMutate}
-                                      onClick={() =>
-                                        setRemoveModal({
-                                          open: true,
-                                          warning,
-                                        })
-                                      }
-                                    >
-                                      <Trash2 className="size-4" />
-                                    </Button>
-                                  </span>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  {canMutate
-                                    ? "Remove now"
-                                    : "Only available on the production deployment"}
-                                </TooltipContent>
-                              </Tooltip>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
+                <DataTable
+                  columns={columns}
+                  rows={warnings}
+                  rowKey={(warning) => warning.id}
+                  actions={(warning) => {
+                    const canAct = !warning.resolvedAt && !warning.removedAt;
+                    return [
+                      {
+                        label: "Resolve",
+                        icon: UserCheck,
+                        disabled: !canAct,
+                        onClick: () => setResolveModal({ open: true, warning }),
+                      },
+                      {
+                        label: canMutate
+                          ? "Remove now"
+                          : "Only available on the production deployment",
+                        icon: Trash2,
+                        variant: "destructive",
+                        disabled: !canAct || !canMutate,
+                        onClick: () => setRemoveModal({ open: true, warning }),
+                      },
+                    ];
+                  }}
+                />
               </CardContent>
 
               {/* Pagination */}

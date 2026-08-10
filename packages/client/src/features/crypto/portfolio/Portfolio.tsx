@@ -6,14 +6,8 @@ import { useAuth } from "@/contexts/auth";
 import { Loading } from "@/components/loading-spinner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { CellText } from "@/components/cell-text";
+import { DataTable, type DataTableColumn } from "@/components/data-table";
 import { Wallet, BarChart3, TrendingUp, TrendingDown } from "lucide-react";
 import {
   PieChart,
@@ -106,6 +100,85 @@ export function Portfolio() {
       color: ALLOCATION_COLORS[i % ALLOCATION_COLORS.length],
     }))
     .sort((a, b) => b.value - a.value);
+
+  type Holding = (typeof data.holdings)[number];
+
+  const holdingColumns: DataTableColumn<Holding>[] = [
+    {
+      key: "token",
+      header: "Token",
+      minWidth: 170,
+      render: (h) => {
+        const allocIdx = allocations.findIndex((a) => a.symbol === h.symbol);
+        const dotColor =
+          allocIdx >= 0 ? allocations[allocIdx].color : ALLOCATION_COLORS[0];
+        return (
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span className={cn("size-2 shrink-0 rounded-full", dotColor)} />
+            <div className="min-w-0">
+              <CellText value={h.name} className="font-medium" />
+              <CellText
+                value={h.symbol}
+                className="font-mono text-xs text-muted-foreground"
+              />
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      key: "amount",
+      header: "Amount",
+      width: 130,
+      align: "right",
+      cellClassName: "font-mono tabular-nums",
+      render: (h) => Number(h.amount).toLocaleString(),
+    },
+    {
+      key: "avgBuy",
+      header: "Avg Buy",
+      width: 120,
+      align: "right",
+      cellClassName: "font-mono tabular-nums text-muted-foreground",
+      render: (h) => `$${Number(h.avgBuyPrice).toFixed(4)}`,
+    },
+    {
+      key: "current",
+      header: "Current",
+      width: 120,
+      align: "right",
+      cellClassName: "font-mono tabular-nums",
+      render: (h) => `$${Number(h.currentPrice).toFixed(4)}`,
+    },
+    {
+      key: "value",
+      header: "Value",
+      width: 120,
+      align: "right",
+      cellClassName: "font-mono font-medium tabular-nums",
+      render: (h) => `$${Number(h.currentValue).toFixed(2)}`,
+    },
+    {
+      key: "pnl",
+      header: "P&L",
+      width: 160,
+      align: "right",
+      render: (h) => {
+        const pnlPositive = Number(h.unrealizedPnl) >= 0;
+        return (
+          <span
+            className={cn(
+              "font-mono font-medium tabular-nums",
+              pnlPositive ? "text-emerald-400" : "text-destructive",
+            )}
+          >
+            {pnlPositive ? "+" : ""}
+            {Number(h.unrealizedPnl).toFixed(2)} ({h.unrealizedPnlPercent}%)
+          </span>
+        );
+      },
+    },
+  ];
 
   const stats = [
     {
@@ -355,88 +428,14 @@ export function Portfolio() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              <Table className="min-w-[750px]">
-                <TableHeader>
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead>Token</TableHead>
-                    <TableHead col="amount" className="text-right">
-                      Amount
-                    </TableHead>
-                    <TableHead col="amount" className="text-right">
-                      Avg Buy
-                    </TableHead>
-                    <TableHead col="amount" className="text-right">
-                      Current
-                    </TableHead>
-                    <TableHead col="amount" className="text-right">
-                      Value
-                    </TableHead>
-                    <TableHead col="amount" className="text-right">
-                      P&L
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {data.holdings.map((h) => {
-                    const pnlPositive = Number(h.unrealizedPnl) >= 0;
-                    const allocIdx = allocations.findIndex(
-                      (a) => a.symbol === h.symbol,
-                    );
-                    const dotColor =
-                      allocIdx >= 0
-                        ? allocations[allocIdx].color
-                        : ALLOCATION_COLORS[0];
-                    return (
-                      <TableRow
-                        key={h.tokenId}
-                        className="cursor-pointer hover:bg-muted/30"
-                        onClick={() => navigate(`/crypto/${h.symbol}`)}
-                      >
-                        <TableCell>
-                          <div className="flex items-center gap-2.5">
-                            <span
-                              className={cn(
-                                "size-2 rounded-full shrink-0",
-                                dotColor,
-                              )}
-                            />
-                            <div className="min-w-0">
-                              <p className="truncate font-medium">{h.name}</p>
-                              <p className="truncate text-xs text-muted-foreground font-mono">
-                                {h.symbol}
-                              </p>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right font-mono tabular-nums">
-                          {Number(h.amount).toLocaleString()}
-                        </TableCell>
-                        <TableCell className="text-right font-mono tabular-nums text-muted-foreground">
-                          ${Number(h.avgBuyPrice).toFixed(4)}
-                        </TableCell>
-                        <TableCell className="text-right font-mono tabular-nums">
-                          ${Number(h.currentPrice).toFixed(4)}
-                        </TableCell>
-                        <TableCell className="text-right font-mono tabular-nums font-medium">
-                          ${Number(h.currentValue).toFixed(2)}
-                        </TableCell>
-                        <TableCell
-                          className={cn(
-                            "text-right font-mono tabular-nums font-medium",
-                            pnlPositive
-                              ? "text-emerald-400"
-                              : "text-destructive",
-                          )}
-                        >
-                          {pnlPositive ? "+" : ""}
-                          {Number(h.unrealizedPnl).toFixed(2)} (
-                          {h.unrealizedPnlPercent}%)
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+              <DataTable
+                columns={holdingColumns}
+                rows={data.holdings}
+                rowKey={(h) => h.tokenId}
+                onRowClick={(h) => navigate(`/crypto/${h.symbol}`)}
+                headerClassName="[&_tr]:hover:bg-transparent"
+                headCellClassName="text-[11px] font-medium uppercase tracking-wider"
+              />
             </CardContent>
           </Card>
         ) : (

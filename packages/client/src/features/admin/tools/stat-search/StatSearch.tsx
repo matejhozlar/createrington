@@ -11,14 +11,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { CellText } from "@/components/cell-text";
+import { DataTable, type DataTableColumn } from "@/components/data-table";
 import { BarChart3, Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
@@ -111,6 +105,65 @@ export function StatSearch() {
   const categoryLabels = categories.map(
     (c) => CATEGORY_OPTIONS.find((o) => o.key === c)?.label ?? c,
   );
+
+  type StatResult = (typeof results)[number];
+
+  const isSuspicious = (result: StatResult) => {
+    const max = Math.max(...result.values);
+    const min = Math.min(...result.values);
+    return categories.length >= 2 && max > 0 && min === 0;
+  };
+
+  const columns: DataTableColumn<StatResult>[] = [
+    {
+      key: "rank",
+      header: "#",
+      width: 60,
+      align: "center",
+      cellClassName: "text-sm text-muted-foreground",
+      render: (_result, index) => index + 1,
+    },
+    {
+      key: "player",
+      header: "Player",
+      minWidth: 200,
+      render: (result) => (
+        <div className="flex min-w-0 items-center gap-3">
+          <MinecraftAvatar
+            uuid={result.minecraftUuid}
+            username={result.minecraftUsername}
+          />
+          <CellText value={result.minecraftUsername} className="font-medium" />
+        </div>
+      ),
+    },
+    ...categoryLabels.map((label, i): DataTableColumn<StatResult> => ({
+      key: categories[i],
+      header: label,
+      width: 130,
+      align: "right",
+      render: (result) => {
+        const value = result.values[i];
+        const suspicious = isSuspicious(result);
+        const total = result.values.reduce((a, b) => a + b, 0);
+        const max = Math.max(...result.values);
+        return (
+          <span
+            className={cn(
+              "tabular-nums",
+              suspicious && value === 0 && "text-yellow-500",
+              suspicious &&
+                value === max &&
+                total > SUSPICIOUS_THRESHOLD &&
+                "font-bold text-yellow-500",
+            )}
+          >
+            {value.toLocaleString()}
+          </span>
+        );
+      },
+    })),
+  ];
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -303,80 +356,17 @@ export function StatSearch() {
             </CardContent>
           ) : (
             <CardContent className="px-0">
-              <Table className="min-w-[370px]">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead col="index" className="text-center">
-                      #
-                    </TableHead>
-                    <TableHead>Player</TableHead>
-                    {categoryLabels.map((label) => (
-                      <TableHead
-                        key={label}
-                        col="amount"
-                        className="text-right"
-                      >
-                        {label}
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {results.map((result, index) => {
-                    const total = result.values.reduce((a, b) => a + b, 0);
-                    // Flag rows where one category is much higher than another
-                    const max = Math.max(...result.values);
-                    const min = Math.min(...result.values);
-                    const suspicious =
-                      categories.length >= 2 && max > 0 && min === 0;
-
-                    return (
-                      <TableRow
-                        key={result.minecraftUuid}
-                        className={cn(
-                          "cursor-pointer",
-                          suspicious && "bg-yellow-500/5",
-                        )}
-                        onClick={() =>
-                          navigate(`/admin/players/${result.minecraftUuid}`)
-                        }
-                      >
-                        <TableCell className="text-center text-sm text-muted-foreground">
-                          {index + 1}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <MinecraftAvatar
-                              uuid={result.minecraftUuid}
-                              username={result.minecraftUsername}
-                            />
-                            <span className="font-medium">
-                              {result.minecraftUsername}
-                            </span>
-                          </div>
-                        </TableCell>
-                        {result.values.map((value, i) => (
-                          <TableCell
-                            key={categories[i]}
-                            className={cn(
-                              "px-4 text-right",
-                              suspicious && value === 0 && "text-yellow-500",
-                              suspicious &&
-                                value === max &&
-                                total > SUSPICIOUS_THRESHOLD &&
-                                "text-yellow-500 font-bold",
-                            )}
-                          >
-                            <span className="tabular-nums">
-                              {value.toLocaleString()}
-                            </span>
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+              <DataTable
+                columns={columns}
+                rows={results}
+                rowKey={(result) => result.minecraftUuid}
+                onRowClick={(result) =>
+                  navigate(`/admin/players/${result.minecraftUuid}`)
+                }
+                rowClassName={(result) =>
+                  isSuspicious(result) ? "bg-yellow-500/5" : undefined
+                }
+              />
             </CardContent>
           )}
         </Card>

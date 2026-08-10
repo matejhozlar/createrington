@@ -8,21 +8,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Copy, UserMinus, UserPlus } from "lucide-react";
+import { CellText } from "@/components/cell-text";
+import { DataTable, type DataTableColumn } from "@/components/data-table";
+import { UserMinus, UserPlus } from "lucide-react";
 import { PlayerLabel } from "@/components/player-label";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
-import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
-import { formatRelativeDate } from "@/features/admin/format";
+import { formatFullDate, formatRelativeDate } from "@/features/admin/format";
 import { PromoteDialog } from "./components/PromoteDialog";
 import { DemoteDialog } from "./components/DemoteDialog";
 import { AuditFeed } from "./components/AuditFeed";
@@ -50,7 +43,45 @@ export function OwnerAdmins() {
     void auditQuery.refetch();
   };
 
-  const handleCopy = useCopyToClipboard();
+  const columns: DataTableColumn<AdminRow>[] = [
+    {
+      key: "player",
+      header: "Player",
+      minWidth: 200,
+      render: (admin) => (
+        <PlayerLabel
+          uuid={admin.minecraftUuid}
+          name={admin.minecraftUsername}
+          size={28}
+        />
+      ),
+    },
+    {
+      key: "discordId",
+      header: "Discord ID",
+      width: 210,
+      render: (admin) => (
+        <CellText
+          copy
+          value={admin.discordId}
+          className="font-mono text-sm text-muted-foreground"
+        />
+      ),
+    },
+    {
+      key: "since",
+      header: "Since",
+      width: 140,
+      cellClassName: "text-sm text-muted-foreground",
+      render: (admin) =>
+        admin.createdAt && (
+          <CellText
+            value={formatFullDate(admin.createdAt)}
+            display={formatRelativeDate(admin.createdAt)}
+          />
+        ),
+    },
+  ];
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -77,82 +108,34 @@ export function OwnerAdmins() {
             </Button>
           </CardHeader>
           <CardContent className="p-0">
-            <Table className="min-w-[590px]">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Player</TableHead>
-                  <TableHead col="discordId">Discord ID</TableHead>
-                  <TableHead col="date">Since</TableHead>
-                  <TableHead col="actionsMenu" className="text-right">
-                    Actions
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {adminsQuery.isLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={4} className="py-8">
-                      <Loading size="medium" text="Loading admins..." />
-                    </TableCell>
-                  </TableRow>
-                ) : adminsQuery.isError ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={4}
-                      className="py-8 text-center text-destructive"
-                    >
-                      Failed to load admins: {adminsQuery.error.message}
-                    </TableCell>
-                  </TableRow>
-                ) : admins.length === 0 ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={4}
-                      className="py-8 text-center text-muted-foreground"
-                    >
-                      No admins configured yet.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  admins.map((admin) => (
-                    <TableRow key={admin.discordId}>
-                      <TableCell>
-                        <PlayerLabel
-                          uuid={admin.minecraftUuid}
-                          name={admin.minecraftUsername}
-                          size={28}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <button
-                          type="button"
-                          onClick={(e) => handleCopy(e, admin.discordId)}
-                          className="group/copy flex min-w-0 max-w-full items-center gap-1 text-sm font-mono text-muted-foreground hover:text-foreground transition-colors"
-                        >
-                          <span className="truncate">{admin.discordId}</span>
-                          <Copy className="shrink-0 size-3 opacity-0 transition-opacity group-hover/copy:opacity-100" />
-                        </button>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {admin.createdAt
-                          ? formatRelativeDate(admin.createdAt)
-                          : "—"}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => setDemoteTarget(admin)}
-                        >
-                          <UserMinus className="mr-1 size-3" />
-                          Demote
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+            {adminsQuery.isLoading ? (
+              <div className="py-8">
+                <Loading size="medium" text="Loading admins..." />
+              </div>
+            ) : adminsQuery.isError ? (
+              <p className="py-8 text-center text-destructive">
+                Failed to load admins: {adminsQuery.error.message}
+              </p>
+            ) : admins.length === 0 ? (
+              <p className="py-8 text-center text-muted-foreground">
+                No admins configured yet.
+              </p>
+            ) : (
+              <DataTable
+                columns={columns}
+                rows={admins}
+                rowKey={(admin) => admin.discordId}
+                actions={(admin) => [
+                  {
+                    label: "Demote",
+                    icon: UserMinus,
+                    variant: "destructive",
+                    onClick: () => setDemoteTarget(admin),
+                  },
+                ]}
+                actionSlots={1}
+              />
+            )}
           </CardContent>
         </Card>
 

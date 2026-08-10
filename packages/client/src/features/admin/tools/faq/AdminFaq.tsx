@@ -19,14 +19,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { CellDate, CellText } from "@/components/cell-text";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  DataTable,
+  type DataTableAction,
+  type DataTableColumn,
+} from "@/components/data-table";
 import {
   Select,
   SelectContent,
@@ -41,9 +39,6 @@ import {
   Plus,
   Pencil,
   Trash2,
-  ArrowUpDown,
-  ArrowUp,
-  ArrowDown,
   RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -143,20 +138,6 @@ export function AdminFaq() {
     }
   }, [repostWelcome, toast]);
 
-  const renderSortIcon = useCallback(
-    (field: SortField) => {
-      if (orderBy !== field) {
-        return <ArrowUpDown className="ml-1 size-3.5 opacity-50" />;
-      }
-      return orderDirection === "asc" ? (
-        <ArrowUp className="ml-1 size-3.5" />
-      ) : (
-        <ArrowDown className="ml-1 size-3.5" />
-      );
-    },
-    [orderBy, orderDirection],
-  );
-
   const getPaginationItems = useCallback(() => {
     const items: (number | "ellipsis")[] = [];
     const maxVisible = 5;
@@ -188,6 +169,97 @@ export function AdminFaq() {
 
     return items;
   }, [page, totalPages]);
+
+  const columns: DataTableColumn<FaqEntry>[] = [
+    {
+      key: "id",
+      header: "ID",
+      width: 70,
+      render: (entry) => <p className="font-mono text-sm">#{entry.id}</p>,
+    },
+    {
+      key: "title",
+      header: "Title",
+      minWidth: 200,
+      sorted: orderBy === "title" ? orderDirection : false,
+      onSort: () => handleSort("title"),
+      render: (entry) => (
+        <CellText value={entry.title} className="font-medium" />
+      ),
+    },
+    {
+      key: "mode",
+      header: "Mode",
+      width: 110,
+      render: (entry) => (
+        <Badge variant="outline" className="text-xs">
+          {entry.matchMode === "regex" ? "Regex" : "Keywords"}
+        </Badge>
+      ),
+    },
+    {
+      key: "pattern",
+      header: "Pattern",
+      minWidth: 160,
+      render: (entry) => (
+        <CellText
+          value={entry.pattern}
+          className={cn(
+            "text-xs text-muted-foreground",
+            entry.matchMode === "regex" && "font-mono",
+          )}
+        />
+      ),
+    },
+    {
+      key: "priority",
+      header: "Priority",
+      width: 105,
+      sorted: orderBy === "priority" ? orderDirection : false,
+      onSort: () => handleSort("priority"),
+      cellClassName: "text-sm",
+      render: (entry) => entry.priority,
+    },
+    {
+      key: "status",
+      header: "Status",
+      width: 110,
+      render: (entry) => (
+        <Badge
+          variant="outline"
+          className={
+            entry.enabled
+              ? "border-success bg-success/10 text-success"
+              : "border-muted-foreground bg-muted-foreground/10 text-muted-foreground"
+          }
+        >
+          {entry.enabled ? "Enabled" : "Disabled"}
+        </Badge>
+      ),
+    },
+    {
+      key: "created",
+      header: "Created",
+      width: 130,
+      sorted: orderBy === "createdAt" ? orderDirection : false,
+      onSort: () => handleSort("createdAt"),
+      render: (entry) => <CellDate value={entry.createdAt} />,
+    },
+  ];
+
+  const entryActions = (entry: FaqEntry): DataTableAction[] => [
+    {
+      label: "Edit",
+      icon: Pencil,
+      onClick: () => setEditModal({ open: true, entry }),
+    },
+    {
+      label: "Delete",
+      icon: Trash2,
+      variant: "destructive",
+      onClick: () => setDeleteModal({ open: true, entry }),
+    },
+  ];
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -309,119 +381,12 @@ export function AdminFaq() {
           ) : (
             <>
               <CardContent className="px-0">
-                <Table className="min-w-[1020px]">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead col="id">ID</TableHead>
-                      <TableHead>
-                        <button
-                          type="button"
-                          onClick={() => handleSort("title")}
-                          className="inline-flex cursor-pointer items-center gap-1 uppercase"
-                        >
-                          Title
-                          {renderSortIcon("title")}
-                        </button>
-                      </TableHead>
-                      <TableHead col="tag">Mode</TableHead>
-                      <TableHead col="lg">Pattern</TableHead>
-                      <TableHead col="count">
-                        <button
-                          type="button"
-                          onClick={() => handleSort("priority")}
-                          className="inline-flex cursor-pointer items-center gap-1 uppercase"
-                        >
-                          Priority
-                          {renderSortIcon("priority")}
-                        </button>
-                      </TableHead>
-                      <TableHead col="status">Status</TableHead>
-                      <TableHead col="date">
-                        <button
-                          type="button"
-                          onClick={() => handleSort("createdAt")}
-                          className="inline-flex cursor-pointer items-center gap-1 uppercase"
-                        >
-                          Created
-                          {renderSortIcon("createdAt")}
-                        </button>
-                      </TableHead>
-                      <TableHead col="actions" className="text-right">
-                        Actions
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {entries.map((entry) => (
-                      <TableRow key={entry.id}>
-                        <TableCell>
-                          <p className="font-mono text-sm">#{entry.id}</p>
-                        </TableCell>
-                        <TableCell>
-                          <p className="font-medium">{entry.title}</p>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="text-xs">
-                            {entry.matchMode === "regex" ? "Regex" : "Keywords"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <p
-                            className={cn(
-                              "max-w-[200px] truncate text-xs text-muted-foreground",
-                              entry.matchMode === "regex" && "font-mono",
-                            )}
-                            title={entry.pattern}
-                          >
-                            {entry.pattern}
-                          </p>
-                        </TableCell>
-                        <TableCell>
-                          <p className="text-sm">{entry.priority}</p>
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant="outline"
-                            className={
-                              entry.enabled
-                                ? "border-success bg-success/10 text-success"
-                                : "border-muted-foreground bg-muted-foreground/10 text-muted-foreground"
-                            }
-                          >
-                            {entry.enabled ? "Enabled" : "Disabled"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <p className="text-sm text-muted-foreground">
-                            {new Date(entry.createdAt).toLocaleDateString()}
-                          </p>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() =>
-                                setEditModal({ open: true, entry })
-                              }
-                            >
-                              <Pencil className="size-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() =>
-                                setDeleteModal({ open: true, entry })
-                              }
-                            >
-                              <Trash2 className="size-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                <DataTable
+                  columns={columns}
+                  rows={entries}
+                  rowKey={(entry) => entry.id}
+                  actions={entryActions}
+                />
               </CardContent>
 
               {/* Pagination */}

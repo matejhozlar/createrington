@@ -1,25 +1,8 @@
-import { Fragment, useCallback, useState } from "react";
-import {
-  ArrowDown,
-  ArrowUp,
-  ArrowUpDown,
-  ChevronDown,
-  ChevronRight,
-} from "lucide-react";
+import { useCallback, useState } from "react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { CellText } from "@/components/cell-text";
+import { DataTable, type DataTableColumn } from "@/components/data-table";
 import { Loading } from "@/components/loading-spinner";
 import { Paginator } from "@/components/paginator";
 import { PlayerLabel } from "@/components/player-label";
@@ -71,19 +54,109 @@ export function ChunkSoloPlayersSection({
   sort: SoloSortState;
   onSortChange: (key: SoloSortKey) => void;
 }) {
-  const renderSortIcon = useCallback(
-    (key: SoloSortKey) => {
-      if (sort?.key !== key) {
-        return <ArrowUpDown className="ml-1 size-3.5 opacity-50" />;
-      }
-      return sort.dir === "asc" ? (
-        <ArrowUp className="ml-1 size-3.5" />
-      ) : (
-        <ArrowDown className="ml-1 size-3.5" />
-      );
+  const [expandedUuid, setExpandedUuid] = useState<string | null>(null);
+
+  const sortProps = (key: SoloSortKey) => ({
+    sorted: sort?.key === key ? sort.dir : (false as const),
+    onSort: () => onSortChange(key),
+  });
+
+  const columns: DataTableColumn<SoloPlayer>[] = [
+    {
+      key: "expander",
+      width: 56,
+      render: (player) =>
+        expandedUuid === player.playerUuid ? (
+          <ChevronDown className="size-4" />
+        ) : (
+          <ChevronRight className="size-4" />
+        ),
     },
-    [sort],
-  );
+    {
+      key: "player",
+      header: "Player",
+      minWidth: 200,
+      ...sortProps("player"),
+      render: (player) => (
+        <PlayerLabel
+          uuid={player.playerUuid}
+          name={player.minecraftUsername ?? player.playerUuid}
+          linkable={Boolean(player.minecraftUsername)}
+          size={20}
+        />
+      ),
+    },
+    {
+      key: "totalChunks",
+      header: "Claimed",
+      width: 115,
+      ...sortProps("totalChunks"),
+      cellClassName: "font-medium",
+      render: (player) => player.totalChunks,
+    },
+    {
+      key: "forceloadableChunks",
+      header: "Forceloadable",
+      width: 155,
+      ...sortProps("forceloadableChunks"),
+      render: (player) =>
+        player.forceloadableChunks > 0 ? (
+          <span className="font-medium">{player.forceloadableChunks}</span>
+        ) : (
+          <span className="text-muted-foreground">0</span>
+        ),
+    },
+    {
+      key: "activeChunks",
+      header: "Active",
+      width: 105,
+      ...sortProps("activeChunks"),
+      render: (player) =>
+        player.activeChunks > 0 ? (
+          <span className="font-medium text-success">
+            {player.activeChunks}
+          </span>
+        ) : (
+          <span className="text-muted-foreground">0</span>
+        ),
+    },
+    {
+      key: "allyStatus",
+      header: "Ally status",
+      width: 130,
+      ...sortProps("allyStatus"),
+      render: (player) =>
+        player.allyStatus === "allied" ? (
+          <Badge
+            variant="outline"
+            className="border-blue-500 bg-blue-500/10 text-blue-400"
+          >
+            Allied
+          </Badge>
+        ) : player.allyStatus === "pending" ? (
+          <Badge
+            variant="outline"
+            className="border-amber-500 bg-amber-500/10 text-amber-500"
+          >
+            Pending
+          </Badge>
+        ) : null,
+    },
+    {
+      key: "lastSyncedAt",
+      header: "Last synced",
+      width: 140,
+      ...sortProps("lastSyncedAt"),
+      cellClassName: "text-muted-foreground",
+      render: (player) =>
+        player.lastSyncedAt && (
+          <CellText
+            value={formatFullDateSafe(player.lastSyncedAt)}
+            display={formatRelativeDateSafe(player.lastSyncedAt)}
+          />
+        ),
+    },
+  ];
 
   if (isLoading) {
     return <Loading size="medium" text="Loading solo players..." />;
@@ -92,84 +165,25 @@ export function ChunkSoloPlayersSection({
 
   return (
     <div className="flex flex-col gap-3 px-0 pb-3">
-      <Table className="min-w-[820px]">
-        <TableHeader>
-          <TableRow>
-            <TableHead col="icon" />
-            <TableHead>
-              <button
-                type="button"
-                onClick={() => onSortChange("player")}
-                className="inline-flex cursor-pointer items-center gap-1 uppercase"
-              >
-                Player
-                {renderSortIcon("player")}
-              </button>
-            </TableHead>
-            <TableHead col="count">
-              <button
-                type="button"
-                onClick={() => onSortChange("totalChunks")}
-                className="inline-flex cursor-pointer items-center gap-1 uppercase"
-              >
-                Claimed
-                {renderSortIcon("totalChunks")}
-              </button>
-            </TableHead>
-            <TableHead col="count">
-              <button
-                type="button"
-                onClick={() => onSortChange("forceloadableChunks")}
-                className="inline-flex cursor-pointer items-center gap-1 uppercase"
-              >
-                Forceloadable
-                {renderSortIcon("forceloadableChunks")}
-              </button>
-            </TableHead>
-            <TableHead col="count">
-              <button
-                type="button"
-                onClick={() => onSortChange("activeChunks")}
-                className="inline-flex cursor-pointer items-center gap-1 uppercase"
-              >
-                Active
-                {renderSortIcon("activeChunks")}
-              </button>
-            </TableHead>
-            <TableHead col="status">
-              <button
-                type="button"
-                onClick={() => onSortChange("allyStatus")}
-                className="inline-flex cursor-pointer items-center gap-1 uppercase"
-              >
-                Ally status
-                {renderSortIcon("allyStatus")}
-              </button>
-            </TableHead>
-            <TableHead col="dateTime">
-              <button
-                type="button"
-                onClick={() => onSortChange("lastSyncedAt")}
-                className="inline-flex cursor-pointer items-center gap-1 uppercase"
-              >
-                Last synced
-                {renderSortIcon("lastSyncedAt")}
-              </button>
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {(data?.items ?? []).map((player) => (
-            <SoloPlayerRow
-              key={player.playerUuid}
-              serverId={serverId}
-              player={player}
-              dimensionFilter={dimensionFilter}
-              activeOnly={activeOnly}
-            />
-          ))}
-        </TableBody>
-      </Table>
+      <DataTable
+        columns={columns}
+        rows={data.items}
+        rowKey={(player) => player.playerUuid}
+        onRowClick={(player) =>
+          setExpandedUuid(
+            expandedUuid === player.playerUuid ? null : player.playerUuid,
+          )
+        }
+        expandedKey={expandedUuid}
+        renderExpanded={(player) => (
+          <SoloPlayerChunks
+            serverId={serverId}
+            playerUuid={player.playerUuid}
+            dimensionFilter={dimensionFilter}
+            activeOnly={activeOnly}
+          />
+        )}
+      />
       <Paginator
         page={data.pagination.page}
         limit={data.pagination.limit}
@@ -180,104 +194,6 @@ export function ChunkSoloPlayersSection({
         className="px-4"
       />
     </div>
-  );
-}
-
-function SoloPlayerRow({
-  serverId,
-  player,
-  dimensionFilter,
-  activeOnly,
-}: {
-  serverId: number;
-  player: SoloPlayer;
-  dimensionFilter: DimensionFilter;
-  activeOnly: boolean;
-}) {
-  const [expanded, setExpanded] = useState(false);
-  const displayName = player.minecraftUsername ?? player.playerUuid;
-
-  return (
-    <Fragment>
-      <TableRow
-        className="cursor-pointer"
-        onClick={() => setExpanded((v) => !v)}
-      >
-        <TableCell>
-          {expanded ? (
-            <ChevronDown className="size-4" />
-          ) : (
-            <ChevronRight className="size-4" />
-          )}
-        </TableCell>
-        <TableCell>
-          <PlayerLabel
-            uuid={player.playerUuid}
-            name={displayName}
-            linkable={Boolean(player.minecraftUsername)}
-            size={20}
-          />
-        </TableCell>
-        <TableCell className="font-medium">{player.totalChunks}</TableCell>
-        <TableCell>
-          {player.forceloadableChunks > 0 ? (
-            <span className="font-medium">{player.forceloadableChunks}</span>
-          ) : (
-            <span className="text-muted-foreground">0</span>
-          )}
-        </TableCell>
-        <TableCell>
-          {player.activeChunks > 0 ? (
-            <span className="font-medium text-success">
-              {player.activeChunks}
-            </span>
-          ) : (
-            <span className="text-muted-foreground">0</span>
-          )}
-        </TableCell>
-        <TableCell>
-          {player.allyStatus === "allied" ? (
-            <Badge
-              variant="outline"
-              className="border-blue-500 bg-blue-500/10 text-blue-400"
-            >
-              Allied
-            </Badge>
-          ) : player.allyStatus === "pending" ? (
-            <Badge
-              variant="outline"
-              className="border-amber-500 bg-amber-500/10 text-amber-500"
-            >
-              Pending
-            </Badge>
-          ) : (
-            <span className="text-muted-foreground">&mdash;</span>
-          )}
-        </TableCell>
-        <TableCell className="text-muted-foreground">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span>{formatRelativeDateSafe(player.lastSyncedAt)}</span>
-            </TooltipTrigger>
-            <TooltipContent>
-              {formatFullDateSafe(player.lastSyncedAt)}
-            </TooltipContent>
-          </Tooltip>
-        </TableCell>
-      </TableRow>
-      {expanded && (
-        <TableRow>
-          <TableCell colSpan={7} className="bg-muted/30 p-4">
-            <SoloPlayerChunks
-              serverId={serverId}
-              playerUuid={player.playerUuid}
-              dimensionFilter={dimensionFilter}
-              activeOnly={activeOnly}
-            />
-          </TableCell>
-        </TableRow>
-      )}
-    </Fragment>
   );
 }
 

@@ -14,14 +14,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { CellText } from "@/components/cell-text";
+import { DataTable, type DataTableColumn } from "@/components/data-table";
 import { PlayerLabel } from "@/components/player-label";
 import { ProjectThumb } from "@/features/workshop/components/ProjectThumb";
 import {
@@ -47,11 +41,11 @@ const PUBLISH_STATES = {
     className: "border-green-500/20 bg-green-500/10 text-green-400",
   },
   dropped: {
-    label: "Missing from pack",
+    label: "Dropped",
     className: "border-amber-500/20 bg-amber-500/10 text-amber-400",
   },
   awaiting: {
-    label: "Awaiting publish",
+    label: "Awaiting",
     className: "border-zinc-500/20 bg-zinc-500/10 text-zinc-400",
   },
 };
@@ -81,9 +75,13 @@ function Credit({ row }: { row: PackMod }) {
     );
   }
   if (row.origin === "dependency") {
-    return row.requiredBy.length > 0
-      ? `Required by ${row.requiredBy.map((required) => required.name).join(", ")}`
-      : "Required dependency";
+    return row.requiredBy.length > 0 ? (
+      <CellText
+        value={`Required by ${row.requiredBy.map((required) => required.name).join(", ")}`}
+      />
+    ) : (
+      "Required dependency"
+    );
   }
   return row.liveInVersion
     ? `Added with ${row.liveInVersion}`
@@ -127,6 +125,74 @@ export function PackMembersCard({
     onError: (err) => toast.error(err.message),
   });
 
+  const columns: DataTableColumn<PackMod>[] = [
+    {
+      key: "mod",
+      header: "Mod",
+      minWidth: 220,
+      render: (row) => (
+        <div className="flex min-w-0 items-center gap-2">
+          <ProjectThumb
+            name={row.project.name}
+            thumbnailUrl={row.project.thumbnailUrl}
+            className="size-8 shrink-0 rounded text-[11px]"
+          />
+          <div className="min-w-0">
+            <CellText value={row.project.name} className="font-medium" />
+            <CellText
+              value={row.project.slug}
+              className="text-xs text-muted-foreground"
+            />
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "origin",
+      header: "Origin",
+      width: 140,
+      cellClassName: "text-sm",
+      render: (row) => {
+        const otherWorkshop =
+          row.suggestionWorkshopId !== null &&
+          row.suggestionWorkshopId !== workshopId
+            ? (row.suggestionWorkshopName ?? "another workshop")
+            : null;
+        return (
+          <>
+            <p>{ORIGIN_LABELS[row.origin]}</p>
+            {otherWorkshop && (
+              <CellText
+                value={`from ${otherWorkshop}`}
+                className="text-xs text-muted-foreground"
+              />
+            )}
+          </>
+        );
+      },
+    },
+    {
+      key: "credit",
+      header: "Credit",
+      minWidth: 180,
+      cellClassName: "text-sm text-muted-foreground",
+      render: (row) => <Credit row={row} />,
+    },
+    {
+      key: "publishState",
+      header: "Publish State",
+      width: 150,
+      render: (row) => {
+        const state = publishState(row);
+        return (
+          <Badge variant="outline" className={cn("text-xs", state.className)}>
+            {state.label}
+          </Badge>
+        );
+      },
+    },
+  ];
+
   return (
     <Card className="gap-0">
       <CardHeader className="border-b">
@@ -161,72 +227,11 @@ export function PackMembersCard({
         <CardEmpty icon={Package} message="Nothing published yet" />
       ) : (
         <CardContent className="px-0">
-          <Table className="min-w-[630px]">
-            <TableHeader>
-              <TableRow>
-                <TableHead>Mod</TableHead>
-                <TableHead col="md">Origin</TableHead>
-                <TableHead className="w-[180px]">Credit</TableHead>
-                <TableHead col="status">Publish State</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {visible.map((row) => {
-                const state = publishState(row);
-                const otherWorkshop =
-                  row.suggestionWorkshopId !== null &&
-                  row.suggestionWorkshopId !== workshopId
-                    ? (row.suggestionWorkshopName ?? "another workshop")
-                    : null;
-                return (
-                  <TableRow key={row.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <ProjectThumb
-                          name={row.project.name}
-                          thumbnailUrl={row.project.thumbnailUrl}
-                          className="size-8 shrink-0 rounded text-[11px]"
-                        />
-                        <div className="min-w-0">
-                          <p
-                            className="truncate font-medium"
-                            title={row.project.name}
-                          >
-                            {row.project.name}
-                          </p>
-                          <p className="truncate text-xs text-muted-foreground">
-                            {row.project.slug}
-                          </p>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      <p className="truncate">{ORIGIN_LABELS[row.origin]}</p>
-                      {otherWorkshop && (
-                        <p
-                          className="truncate text-xs text-muted-foreground"
-                          title={otherWorkshop}
-                        >
-                          from {otherWorkshop}
-                        </p>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      <Credit row={row} />
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={cn("text-xs", state.className)}
-                      >
-                        {state.label}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+          <DataTable
+            columns={columns}
+            rows={visible}
+            rowKey={(row) => row.id}
+          />
 
           <Paginator
             page={page}

@@ -1,21 +1,19 @@
 import { useState } from "react";
 import { Link } from "react-router";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { CellDate, CellText } from "@/components/cell-text";
+import { DataTable, type DataTableColumn } from "@/components/data-table";
 import { Loading } from "@/components/loading-spinner";
 import { Paginator } from "@/components/paginator";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
-import { trpc } from "@/lib/trpc";
+import { trpc, type RouterOutput } from "@/lib/trpc";
 
 interface SessionsTabProps {
   serverId: number;
 }
+
+type ServerSession =
+  RouterOutput["admin"]["servers"]["sessions"]["sessions"][number];
 
 function formatDuration(seconds: number | null): string {
   if (seconds === null) return "Active";
@@ -24,6 +22,56 @@ function formatDuration(seconds: number | null): string {
   if (h > 0) return `${h}h ${m}m`;
   return `${m}m`;
 }
+
+const COLUMNS: DataTableColumn<ServerSession>[] = [
+  {
+    key: "player",
+    header: "Player",
+    minWidth: 200,
+    render: (session) => (
+      <Link
+        to={`/admin/players/${session.playerMinecraftUuid}`}
+        className="group flex min-w-0 items-center gap-3 rounded"
+      >
+        <MinecraftAvatar
+          uuid={session.playerMinecraftUuid}
+          username={session.minecraftUsername}
+        />
+        <CellText
+          value={session.minecraftUsername}
+          className="font-medium transition-colors group-hover:text-primary"
+        />
+      </Link>
+    ),
+  },
+  {
+    key: "joined",
+    header: "Joined",
+    width: 120,
+    render: (session) => <CellDate value={session.sessionStart} />,
+  },
+  {
+    key: "left",
+    header: "Left",
+    width: 120,
+    render: (session) =>
+      session.sessionEnd ? (
+        <CellDate value={session.sessionEnd} />
+      ) : (
+        <Badge variant="default" className="bg-green-500/20 text-green-500">
+          Active
+        </Badge>
+      ),
+  },
+  {
+    key: "duration",
+    header: "Duration",
+    width: 120,
+    align: "right",
+    cellClassName: "text-sm",
+    render: (session) => formatDuration(session.secondsPlayed),
+  },
+];
 
 export function SessionsTab({ serverId }: SessionsTabProps) {
   const [page, setPage] = useState(0);
@@ -59,47 +107,11 @@ export function SessionsTab({ serverId }: SessionsTabProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <Table className="min-w-[620px]">
-        <TableHeader>
-          <TableRow>
-            <TableHead>Player</TableHead>
-            <TableHead col="dateTime">Joined</TableHead>
-            <TableHead col="dateTime">Left</TableHead>
-            <TableHead col="duration">Duration</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {sessions.map((session) => (
-            <TableRow key={session.id}>
-              <TableCell>
-                <Link
-                  to={`/admin/players/${session.playerMinecraftUuid}`}
-                  className="group flex min-w-0 items-center gap-3 rounded"
-                >
-                  <MinecraftAvatar
-                    uuid={session.playerMinecraftUuid}
-                    username={session.minecraftUsername}
-                  />
-                  <span className="truncate font-medium transition-colors group-hover:text-primary">
-                    {session.minecraftUsername}
-                  </span>
-                </Link>
-              </TableCell>
-              <TableCell className="text-sm text-muted-foreground">
-                {new Date(session.sessionStart).toLocaleString()}
-              </TableCell>
-              <TableCell className="text-sm text-muted-foreground">
-                {session.sessionEnd
-                  ? new Date(session.sessionEnd).toLocaleString()
-                  : "Active"}
-              </TableCell>
-              <TableCell className="text-sm">
-                {formatDuration(session.secondsPlayed)}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <DataTable
+        columns={COLUMNS}
+        rows={sessions}
+        rowKey={(session) => session.id}
+      />
 
       <Paginator
         page={page}

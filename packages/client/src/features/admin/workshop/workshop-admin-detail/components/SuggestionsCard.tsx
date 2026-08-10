@@ -1,35 +1,22 @@
 import {
   Ban,
   Check,
-  Eye,
   FlaskConical,
   Heart,
   Lightbulb,
-  Loader2,
-  MoreHorizontal,
   Undo2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { RouterOutput } from "@/lib/trpc";
 import { Paginator } from "@/components/paginator";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { CellDate, CellText } from "@/components/cell-text";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  DataTable,
+  type DataTableAction,
+  type DataTableColumn,
+} from "@/components/data-table";
 import { PlayerLabel } from "@/components/player-label";
 import { ProjectThumb } from "@/features/workshop/components/ProjectThumb";
 import {
@@ -46,7 +33,6 @@ import {
   DEPENDENCY_COVERAGE_STYLES,
   MOD_STATUS_STYLES,
   dependencyIsCovered,
-  formatDate,
 } from "@/features/workshop/format";
 import type { WorkshopModReviewAction } from "@createrington/shared/workshop";
 
@@ -66,9 +52,6 @@ function DependencyCell({ mod }: { mod: AdminWorkshopMod }) {
   const uncovered = required.filter(
     (dep) => !dependencyIsCovered(dep.coverage),
   );
-  if (mod.dependencies.length === 0) {
-    return <span className="text-xs text-muted-foreground">None</span>;
-  }
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -172,6 +155,132 @@ export function SuggestionsCard({
     (page + 1) * SUGGESTIONS_PER_PAGE,
   );
 
+  const columns: DataTableColumn<AdminWorkshopMod>[] = [
+    {
+      key: "mod",
+      header: "Mod",
+      minWidth: 220,
+      render: (mod) => (
+        <div className="flex min-w-0 items-center gap-2">
+          <ProjectThumb
+            name={mod.project.name}
+            thumbnailUrl={mod.project.thumbnailUrl}
+            className="size-8 shrink-0 rounded text-[11px]"
+          />
+          <div className="min-w-0">
+            <CellText value={mod.project.name} className="font-medium" />
+            <CellText
+              value={mod.project.slug}
+              className="text-xs text-muted-foreground"
+            />
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "submitter",
+      header: "Submitted by",
+      minWidth: 150,
+      render: (mod) => (
+        <PlayerLabel
+          name={mod.submitterName ?? mod.submittedBy}
+          playerId={mod.submittedBy}
+          size={20}
+        />
+      ),
+    },
+    {
+      key: "note",
+      header: "Note",
+      minWidth: 140,
+      render: (mod) =>
+        mod.note && (
+          <CellText
+            value={mod.note}
+            className="text-sm text-muted-foreground"
+          />
+        ),
+    },
+    {
+      key: "upvotes",
+      header: <Heart className="mx-auto size-3.5" />,
+      width: 56,
+      align: "center",
+      cellClassName: "text-sm",
+      render: (mod) => mod.upvoteCount,
+    },
+    {
+      key: "dependencies",
+      header: "Pulls In",
+      width: 90,
+      align: "center",
+      render: (mod) =>
+        mod.dependencies.length > 0 && <DependencyCell mod={mod} />,
+    },
+    {
+      key: "status",
+      header: "Status",
+      width: 124,
+      render: (mod) => {
+        const status = MOD_STATUS_STYLES[mod.status];
+        return status ? (
+          <Badge variant="outline" className={cn("text-xs", status.className)}>
+            {status.tableLabel}
+          </Badge>
+        ) : null;
+      },
+    },
+    {
+      key: "date",
+      header: "Date",
+      width: 120,
+      render: (mod) => <CellDate value={mod.createdAt} />,
+    },
+  ];
+
+  const modActions = (mod: AdminWorkshopMod): DataTableAction[] => {
+    const actions: DataTableAction[] = [];
+    if (mod.status === "pending" || mod.status === "rejected") {
+      actions.push({
+        label: "Approve",
+        icon: Check,
+        iconClassName: "text-green-500",
+        onClick: () => onReview(mod.id, "approve"),
+      });
+    }
+    if (mod.status === "approved") {
+      actions.push({
+        label: "Start Testing",
+        icon: FlaskConical,
+        iconClassName: "text-amber-400",
+        onClick: () => onReview(mod.id, "start_testing"),
+      });
+    }
+    if (mod.status === "testing") {
+      actions.push({
+        label: "Approve for Next Update",
+        icon: Check,
+        iconClassName: "text-green-500",
+        onClick: () => onReview(mod.id, "approve"),
+      });
+    }
+    if (mod.status === "testing" || mod.status === "next_update") {
+      actions.push({
+        label: "Send Back a Stage",
+        icon: Undo2,
+        onClick: () => onReview(mod.id, "send_back"),
+      });
+    }
+    actions.push({
+      label: "Reject",
+      icon: Ban,
+      variant: "destructive",
+      onClick: () =>
+        onReject({ workshopModId: mod.id, name: mod.project.name }),
+    });
+    return actions;
+  };
+
   return (
     <Card className="gap-0">
       <CardHeader className="gap-0 border-b">
@@ -192,163 +301,14 @@ export function SuggestionsCard({
         <CardEmpty icon={Lightbulb} message="No suggestions match this view" />
       ) : (
         <CardContent className="px-0">
-          <Table className="min-w-[1060px]">
-            <TableHeader>
-              <TableRow>
-                <TableHead>Mod</TableHead>
-                <TableHead col="player">Submitted by</TableHead>
-                <TableHead className="w-[180px]">Note</TableHead>
-                <TableHead col="index" className="text-center">
-                  <Heart className="mx-auto size-3.5" />
-                </TableHead>
-                <TableHead col="count" className="text-center">
-                  Pulls In
-                </TableHead>
-                <TableHead col="status">Status</TableHead>
-                <TableHead col="date">Date</TableHead>
-                <TableHead col="actionsMenu" className="text-right">
-                  Actions
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {visible.map((mod) => {
-                const status = MOD_STATUS_STYLES[mod.status];
-                const busy = busyModId === mod.id;
-                return (
-                  <TableRow key={mod.id}>
-                    <TableCell>
-                      <button
-                        type="button"
-                        className="flex w-full cursor-pointer items-center gap-2 text-left"
-                        onClick={() => onView(mod.id)}
-                      >
-                        <ProjectThumb
-                          name={mod.project.name}
-                          thumbnailUrl={mod.project.thumbnailUrl}
-                          className="size-8 shrink-0 rounded text-[11px]"
-                        />
-                        <div className="min-w-0">
-                          <p
-                            className="truncate font-medium hover:underline"
-                            title={mod.project.name}
-                          >
-                            {mod.project.name}
-                          </p>
-                          <p className="truncate text-xs text-muted-foreground">
-                            {mod.project.slug}
-                          </p>
-                        </div>
-                      </button>
-                    </TableCell>
-                    <TableCell>
-                      <PlayerLabel
-                        name={mod.submitterName ?? mod.submittedBy}
-                        playerId={mod.submittedBy}
-                        size={20}
-                      />
-                    </TableCell>
-                    <TableCell
-                      className="text-sm text-muted-foreground"
-                      title={mod.note ?? undefined}
-                    >
-                      {mod.note ?? ""}
-                    </TableCell>
-                    <TableCell className="text-center text-sm">
-                      {mod.upvoteCount}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <DependencyCell mod={mod} />
-                    </TableCell>
-                    <TableCell>
-                      {status && (
-                        <Badge
-                          variant="outline"
-                          className={cn("text-xs", status.className)}
-                        >
-                          {status.label}
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {formatDate(mod.createdAt)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="size-8"
-                            disabled={busy}
-                          >
-                            {busy ? (
-                              <Loader2 className="size-4 animate-spin" />
-                            ) : (
-                              <MoreHorizontal className="size-4" />
-                            )}
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => onView(mod.id)}>
-                            <Eye className="size-4" />
-                            View Details
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          {(mod.status === "pending" ||
-                            mod.status === "rejected") && (
-                            <DropdownMenuItem
-                              onClick={() => onReview(mod.id, "approve")}
-                            >
-                              <Check className="size-4 text-green-500" />
-                              Approve
-                            </DropdownMenuItem>
-                          )}
-                          {mod.status === "approved" && (
-                            <DropdownMenuItem
-                              onClick={() => onReview(mod.id, "start_testing")}
-                            >
-                              <FlaskConical className="size-4 text-amber-400" />
-                              Start Testing
-                            </DropdownMenuItem>
-                          )}
-                          {mod.status === "testing" && (
-                            <DropdownMenuItem
-                              onClick={() => onReview(mod.id, "approve")}
-                            >
-                              <Check className="size-4 text-green-500" />
-                              Approve for Next Update
-                            </DropdownMenuItem>
-                          )}
-                          {(mod.status === "testing" ||
-                            mod.status === "next_update") && (
-                            <DropdownMenuItem
-                              onClick={() => onReview(mod.id, "send_back")}
-                            >
-                              <Undo2 className="size-4 text-muted-foreground" />
-                              Send Back a Stage
-                            </DropdownMenuItem>
-                          )}
-                          <DropdownMenuItem
-                            className="text-destructive focus:text-destructive"
-                            onClick={() =>
-                              onReject({
-                                workshopModId: mod.id,
-                                name: mod.project.name,
-                              })
-                            }
-                          >
-                            <Ban className="size-4" />
-                            Reject
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+          <DataTable
+            columns={columns}
+            rows={visible}
+            rowKey={(mod) => mod.id}
+            onRowClick={(mod) => onView(mod.id)}
+            actions={modActions}
+            isRowBusy={(mod) => busyModId === mod.id}
+          />
 
           <Paginator
             page={page}

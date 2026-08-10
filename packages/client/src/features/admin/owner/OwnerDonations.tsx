@@ -26,14 +26,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { CellDate, CellText } from "@/components/cell-text";
+import { DataTable, type DataTableColumn } from "@/components/data-table";
 import {
   Heart,
   Users,
@@ -71,13 +65,65 @@ function formatAmount(cents: number, currency: string) {
   }).format(cents / 100);
 }
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-}
+const DONATION_COLUMNS: DataTableColumn<Donation>[] = [
+  {
+    key: "id",
+    header: "ID",
+    width: 90,
+    cellClassName: "font-mono text-sm",
+    render: (d) => d.id,
+  },
+  {
+    key: "discord",
+    header: "Discord",
+    width: 210,
+    render: (d) => (
+      <CellText
+        copy
+        value={d.playerDiscordId}
+        className="font-mono text-xs text-muted-foreground"
+      />
+    ),
+  },
+  {
+    key: "type",
+    header: "Type",
+    width: 110,
+    render: (d) => (
+      <Badge variant="outline" className="text-xs">
+        {TYPE_LABELS[d.type] ?? d.type}
+      </Badge>
+    ),
+  },
+  {
+    key: "amount",
+    header: "Amount",
+    width: 120,
+    cellClassName: "font-semibold",
+    render: (d) => formatAmount(d.amountCents, d.currency),
+  },
+  {
+    key: "status",
+    header: "Status",
+    width: 120,
+    render: (d) => (
+      <span
+        className={cn(
+          "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium capitalize",
+          STATUS_STYLES[d.status] ?? STATUS_STYLES.pending,
+        )}
+      >
+        {d.status}
+      </span>
+    ),
+  },
+  {
+    key: "date",
+    header: "Date",
+    width: 120,
+    render: (d) => <CellDate value={d.createdAt} />,
+  },
+];
 
 export function OwnerDonations() {
   const [page, setPage] = useState(0);
@@ -363,51 +409,11 @@ export function OwnerDonations() {
           ) : (
             <>
               <CardContent className="px-0">
-                <Table className="min-w-[730px]">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead col="id">ID</TableHead>
-                      <TableHead>Discord</TableHead>
-                      <TableHead col="tag">Type</TableHead>
-                      <TableHead col="amount">Amount</TableHead>
-                      <TableHead col="status">Status</TableHead>
-                      <TableHead col="date">Date</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {donations.map((d: Donation) => (
-                      <TableRow key={d.id}>
-                        <TableCell className="font-mono text-sm">
-                          {d.id}
-                        </TableCell>
-                        <TableCell className="font-mono text-xs text-muted-foreground">
-                          {d.playerDiscordId}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="text-xs">
-                            {TYPE_LABELS[d.type] ?? d.type}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="font-semibold">
-                          {formatAmount(d.amountCents, d.currency)}
-                        </TableCell>
-                        <TableCell>
-                          <span
-                            className={cn(
-                              "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium capitalize",
-                              STATUS_STYLES[d.status] ?? STATUS_STYLES.pending,
-                            )}
-                          >
-                            {d.status}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground text-sm">
-                          {formatDate(d.createdAt)}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                <DataTable
+                  columns={DONATION_COLUMNS}
+                  rows={donations}
+                  rowKey={(d) => d.id}
+                />
               </CardContent>
 
               <CardFooter className="flex-col gap-3 border-t sm:flex-row sm:flex-wrap sm:items-center">

@@ -15,14 +15,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { CellText } from "@/components/cell-text";
+import { DataTable, type DataTableColumn } from "@/components/data-table";
 import {
   Users,
   Server,
@@ -34,7 +28,7 @@ import {
   Terminal,
 } from "lucide-react";
 
-import { formatRelativeDate } from "./format";
+import { formatFullDate, formatRelativeDate } from "./format";
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("en-US", {
@@ -91,6 +85,65 @@ export function AdminDashboard() {
   const serversData = serversQuery.data;
   const waitlistStats = waitlistStatsQuery.data;
   const recentBans = recentBansQuery.data?.bans ?? [];
+
+  const recentBanColumns: DataTableColumn<(typeof recentBans)[number]>[] = [
+    {
+      key: "player",
+      header: "Player",
+      minWidth: 110,
+      render: (ban) => (
+        <CellText
+          value={
+            ban.metadata?.minecraftUsername ??
+            ban.playerMinecraftUuid.slice(0, 8)
+          }
+          className="font-medium"
+        />
+      ),
+    },
+    {
+      key: "type",
+      header: "Type",
+      width: 110,
+      render: (ban) => (
+        <Badge
+          variant={ban.banType === "permanent" ? "destructive" : "secondary"}
+        >
+          {ban.banType}
+        </Badge>
+      ),
+    },
+    {
+      key: "reason",
+      header: "Reason",
+      minWidth: 120,
+      render: (ban) => ban.reason && <CellText value={ban.reason} />,
+    },
+    {
+      key: "by",
+      header: "By",
+      minWidth: 100,
+      render: (ban) => <CellText value={ban.bannedByUsername} />,
+    },
+    {
+      key: "date",
+      header: "Date",
+      width: 110,
+      cellClassName: "text-muted-foreground",
+      render: (ban) => {
+        const iso =
+          typeof ban.bannedAt === "string"
+            ? ban.bannedAt
+            : new Date(ban.bannedAt).toISOString();
+        return (
+          <CellText
+            value={formatFullDate(iso)}
+            display={formatRelativeDate(iso)}
+          />
+        );
+      },
+    },
+  ];
   const recentLogs = recentLogsQuery.data?.actions ?? [];
 
   return (
@@ -254,52 +307,11 @@ export function AdminDashboard() {
                   No recent bans
                 </p>
               ) : (
-                <Table className="min-w-[800px]">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead col="player">Player</TableHead>
-                      <TableHead col="tag">Type</TableHead>
-                      <TableHead>Reason</TableHead>
-                      <TableHead col="player">By</TableHead>
-                      <TableHead col="date">Date</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {recentBans.map((ban) => (
-                      <TableRow key={ban.id}>
-                        <TableCell className="font-medium">
-                          {ban.metadata?.minecraftUsername ??
-                            ban.playerMinecraftUuid.slice(0, 8)}
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={
-                              ban.banType === "permanent"
-                                ? "destructive"
-                                : "secondary"
-                            }
-                          >
-                            {ban.banType}
-                          </Badge>
-                        </TableCell>
-                        <TableCell
-                          className="max-w-[150px] truncate"
-                          title={ban.reason}
-                        >
-                          {ban.reason}
-                        </TableCell>
-                        <TableCell>{ban.bannedByUsername}</TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {formatRelativeDate(
-                            typeof ban.bannedAt === "string"
-                              ? ban.bannedAt
-                              : new Date(ban.bannedAt).toISOString(),
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                <DataTable
+                  columns={recentBanColumns}
+                  rows={recentBans}
+                  rowKey={(ban) => ban.id}
+                />
               )}
             </CardContent>
           </Card>

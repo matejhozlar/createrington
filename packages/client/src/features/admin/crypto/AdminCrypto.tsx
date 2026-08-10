@@ -39,16 +39,14 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { CellText } from "@/components/cell-text";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  DataTable,
+  type DataTableAction,
+  type DataTableColumn,
+} from "@/components/data-table";
+import { useStickyValue } from "@/hooks/use-sticky-value";
 import {
   Coins,
   TrendingUp,
@@ -532,37 +530,32 @@ function TriggerEventDialog({
   );
 }
 
-// Per-row mutation to avoid shared pending state across rows.
-function DelistButton({
-  tokenId,
-  tokenSymbol,
+function DelistDialog({
+  target,
+  onClose,
   onDelisted,
 }: {
-  tokenId: number;
-  tokenSymbol: string;
+  target: { id: number; symbol: string } | null;
+  onClose: () => void;
   onDelisted: () => void;
 }) {
   const toast = useToastActions();
+  const displayTarget = useStickyValue(target);
   const delistMutation = trpc.admin.crypto.delistToken.useMutation({
     onSuccess: onDelisted,
     onError: (err) => toast.error(err.message),
   });
 
   return (
-    <AlertDialog>
-      <AlertDialogTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-7 text-muted-foreground hover:text-destructive"
-          disabled={delistMutation.isPending}
-        >
-          <Trash2 className="size-3.5" />
-        </Button>
-      </AlertDialogTrigger>
+    <AlertDialog
+      open={target !== null}
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
       <AlertDialogContent size="sm">
         <AlertDialogHeader>
-          <AlertDialogTitle>Delist {tokenSymbol}</AlertDialogTitle>
+          <AlertDialogTitle>Delist {displayTarget?.symbol}</AlertDialogTitle>
           <AlertDialogDescription>
             All holdings will be auto-sold at current price. This action cannot
             be undone.
@@ -572,7 +565,10 @@ function DelistButton({
           <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction
             variant="destructive"
-            onClick={() => delistMutation.mutate({ id: tokenId })}
+            disabled={delistMutation.isPending}
+            onClick={() => {
+              if (target) delistMutation.mutate({ id: target.id });
+            }}
           >
             Delist
           </AlertDialogAction>
@@ -605,6 +601,137 @@ export function AdminCrypto() {
   const treasury = treasuryQuery.data;
   const activeEvents = activeEventsQuery.data ?? [];
   const tokens = tokensQuery.data ?? [];
+
+  const [delistTarget, setDelistTarget] = useState<{
+    id: number;
+    symbol: string;
+  } | null>(null);
+
+  type Token = (typeof tokens)[number];
+
+  const tokenColumns: DataTableColumn<Token>[] = [
+    {
+      key: "token",
+      header: "Token",
+      minWidth: 160,
+      render: (token) => (
+        <>
+          <CellText value={token.name} className="font-medium" />
+          <CellText
+            value={token.symbol}
+            className="font-mono text-xs text-muted-foreground"
+          />
+        </>
+      ),
+    },
+    {
+      key: "category",
+      header: "Category",
+      width: 140,
+      render: (token) => (
+        <Badge
+          variant="outline"
+          className={cn("text-xs", CATEGORY_COLORS[token.category])}
+        >
+          {token.category.replace("_", " ")}
+        </Badge>
+      ),
+    },
+    {
+      key: "price",
+      header: "Price",
+      width: 140,
+      align: "right",
+      cellClassName: "font-mono tabular-nums",
+      render: (token) =>
+        `$${Number(token.price).toLocaleString(undefined, {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 6,
+        })}`,
+    },
+    {
+      key: "supply",
+      header: "Supply",
+      width: 140,
+      align: "right",
+      render: (token) => {
+        const held = Number(token.totalSupply) - Number(token.availableSupply);
+        const heldPct =
+          Number(token.totalSupply) > 0
+            ? ((held / Number(token.totalSupply)) * 100).toFixed(1)
+            : "0";
+        return (
+          <>
+            <p className="font-mono text-sm tabular-nums">
+              {held.toLocaleString()}
+            </p>
+            <p className="text-xs text-muted-foreground">{heldPct}% held</p>
+          </>
+        );
+      },
+    },
+    {
+      key: "change24h",
+      header: "24h",
+      width: 100,
+      align: "right",
+      render: (token) =>
+        token.change24h !== undefined &&
+        token.change24h !== 0 && (
+          <span
+            className={cn(
+              "font-mono text-sm tabular-nums",
+              token.change24h > 0 ? "text-emerald-400" : "text-destructive",
+            )}
+          >
+            {token.change24h > 0 ? "+" : ""}
+            {token.change24h.toFixed(2)}%
+          </span>
+        ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      width: 110,
+      render: (token) =>
+        token.isCrashed ? (
+          <Badge variant="destructive" className="text-xs">
+            Crashed
+          </Badge>
+        ) : token.delistedAt ? (
+          <Badge variant="secondary" className="text-xs">
+            Delisted
+          </Badge>
+        ) : token.ipoEndsAt && new Date(token.ipoEndsAt) > new Date() ? (
+          <Badge
+            variant="outline"
+            className="text-xs text-primary border-primary/30 bg-primary/10"
+          >
+            IPO
+          </Badge>
+        ) : (
+          <Badge
+            variant="outline"
+            className="text-xs text-emerald-400 border-emerald-500/20 bg-emerald-500/10"
+          >
+            Active
+          </Badge>
+        ),
+    },
+  ];
+
+  const tokenActions = (token: Token): DataTableAction[] =>
+    !token.isCrashed && !token.delistedAt
+      ? [
+          {
+            label: "Delist",
+            icon: Trash2,
+            variant: "destructive",
+            onClick: () =>
+              setDelistTarget({ id: token.id, symbol: token.symbol }),
+          },
+        ]
+      : [];
 
   const isLoading = statsQuery.isLoading || tokensQuery.isLoading;
 
@@ -778,146 +905,29 @@ export function AdminCrypto() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0">
-                <div className="overflow-auto">
-                  <Table className="min-w-[860px]">
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Token</TableHead>
-                        <TableHead className="w-[130px]">Category</TableHead>
-                        <TableHead col="amount" className="text-right">
-                          Price
-                        </TableHead>
-                        <TableHead col="amount" className="text-right">
-                          Supply
-                        </TableHead>
-                        <TableHead col="count" className="text-right">
-                          24h
-                        </TableHead>
-                        <TableHead col="status">Status</TableHead>
-                        <TableHead col="actionsMenu" className="text-right">
-                          Actions
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {tokens.map((token) => {
-                        const held =
-                          Number(token.totalSupply) -
-                          Number(token.availableSupply);
-                        const heldPct =
-                          Number(token.totalSupply) > 0
-                            ? (
-                                (held / Number(token.totalSupply)) *
-                                100
-                              ).toFixed(1)
-                            : "0";
-                        const isActive = !token.isCrashed && !token.delistedAt;
-
-                        return (
-                          <TableRow
-                            key={token.id}
-                            className={cn(!isActive && "opacity-50")}
-                          >
-                            <TableCell>
-                              <div>
-                                <p className="font-medium">{token.name}</p>
-                                <p className="text-xs text-muted-foreground font-mono">
-                                  {token.symbol}
-                                </p>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <Badge
-                                variant="outline"
-                                className={cn(
-                                  "text-xs",
-                                  CATEGORY_COLORS[token.category],
-                                )}
-                              >
-                                {token.category.replace("_", " ")}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-right font-mono tabular-nums">
-                              $
-                              {Number(token.price).toLocaleString(undefined, {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 6,
-                              })}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <div>
-                                <p className="text-sm font-mono tabular-nums">
-                                  {held.toLocaleString()}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                  {heldPct}% held
-                                </p>
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {token.change24h !== undefined &&
-                              token.change24h !== 0 ? (
-                                <span
-                                  className={cn(
-                                    "font-mono tabular-nums text-sm",
-                                    token.change24h > 0
-                                      ? "text-emerald-400"
-                                      : "text-destructive",
-                                  )}
-                                >
-                                  {token.change24h > 0 ? "+" : ""}
-                                  {token.change24h.toFixed(2)}%
-                                </span>
-                              ) : (
-                                <span className="text-muted-foreground">—</span>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              {token.isCrashed ? (
-                                <Badge
-                                  variant="destructive"
-                                  className="text-xs"
-                                >
-                                  Crashed
-                                </Badge>
-                              ) : token.delistedAt ? (
-                                <Badge variant="secondary" className="text-xs">
-                                  Delisted
-                                </Badge>
-                              ) : token.ipoEndsAt &&
-                                new Date(token.ipoEndsAt) > new Date() ? (
-                                <Badge
-                                  variant="outline"
-                                  className="text-xs text-primary border-primary/30 bg-primary/10"
-                                >
-                                  IPO
-                                </Badge>
-                              ) : (
-                                <Badge
-                                  variant="outline"
-                                  className="text-xs text-emerald-400 border-emerald-500/20 bg-emerald-500/10"
-                                >
-                                  Active
-                                </Badge>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {isActive && (
-                                <DelistButton
-                                  tokenId={token.id}
-                                  tokenSymbol={token.symbol}
-                                  onDelisted={onTokenDelisted}
-                                />
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
+                <DataTable
+                  columns={tokenColumns}
+                  rows={tokens}
+                  rowKey={(token) => token.id}
+                  actions={tokenActions}
+                  actionSlots={1}
+                  rowClassName={(token) =>
+                    token.isCrashed || token.delistedAt
+                      ? "opacity-50"
+                      : undefined
+                  }
+                />
               </CardContent>
             </Card>
+
+            <DelistDialog
+              target={delistTarget}
+              onClose={() => setDelistTarget(null)}
+              onDelisted={() => {
+                onTokenDelisted();
+                setDelistTarget(null);
+              }}
+            />
 
             {/* Extra stats row */}
             <div className="grid gap-4 md:grid-cols-3">

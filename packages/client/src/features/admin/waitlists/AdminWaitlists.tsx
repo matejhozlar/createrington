@@ -17,18 +17,15 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { useToastActions } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { CellDate, CellText } from "@/components/cell-text";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  DataTable,
+  type DataTableAction,
+  type DataTableColumn,
+} from "@/components/data-table";
 import {
   Select,
   SelectContent,
@@ -37,20 +34,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-} from "@/components/ui/tooltip";
-import {
   Search,
   Filter,
   Users,
   UserPlus,
   UserCheck,
   Clock,
-  ArrowUpDown,
-  ArrowUp,
-  ArrowDown,
   Mail,
   Trash2,
 } from "lucide-react";
@@ -67,9 +56,22 @@ type WaitlistEntry =
 type SortField = "submittedAt" | "acceptedAt" | "email" | "discordName";
 type StatusFilter = "all" | WaitlistStatus;
 
-export function AdminWaitlists() {
-  const toast = useToastActions();
+const STATUS_LABELS: Record<WaitlistStatus, string> = {
+  pending: "Pending",
+  accepted: "Invited",
+  auto_accepted: "Auto-accepted",
+  completed: "Completed",
+  declined: "Declined",
+};
 
+const PROGRESS_STEPS: { key: keyof WaitlistEntry; label: string }[] = [
+  { key: "joinedMinecraft", label: "In-Game" },
+  { key: "registered", label: "Registered" },
+  { key: "verified", label: "Verified" },
+  { key: "joinedDiscord", label: "Discord" },
+];
+
+export function AdminWaitlists() {
   const [page, setPage] = useState(0);
   const [limit] = useState(10);
 
@@ -136,18 +138,6 @@ export function AdminWaitlists() {
     [orderBy],
   );
 
-  const handleCopyEmail = useCallback(
-    async (email: string) => {
-      try {
-        await navigator.clipboard.writeText(email);
-        toast.success("Copied to clipboard");
-      } catch {
-        toast.error("Failed to copy to clipboard");
-      }
-    },
-    [toast],
-  );
-
   const handleInvite = useCallback((entry: WaitlistEntry) => {
     setInviteModal({ open: true, entry });
   }, []);
@@ -167,20 +157,6 @@ export function AdminWaitlists() {
     entriesQuery.refetch();
     statsQuery.refetch();
   }, [entriesQuery, statsQuery]);
-
-  const renderSortIcon = useCallback(
-    (field: SortField) => {
-      if (orderBy !== field) {
-        return <ArrowUpDown className="ml-1 size-3.5 opacity-50" />;
-      }
-      return orderDirection === "asc" ? (
-        <ArrowUp className="ml-1 size-3.5" />
-      ) : (
-        <ArrowDown className="ml-1 size-3.5" />
-      );
-    },
-    [orderBy, orderDirection],
-  );
 
   const getPaginationItems = useCallback(() => {
     const items: (number | "ellipsis")[] = [];
@@ -238,6 +214,114 @@ export function AdminWaitlists() {
         };
     }
   }, []);
+
+  const columns: DataTableColumn<WaitlistEntry>[] = [
+    {
+      key: "id",
+      header: "ID",
+      width: 70,
+      render: (entry) => <p className="font-mono text-sm">#{entry.id}</p>,
+    },
+    {
+      key: "email",
+      header: "Email",
+      minWidth: 200,
+      sorted: orderBy === "email" ? orderDirection : false,
+      onSort: () => handleSort("email"),
+      render: (entry) =>
+        entry.email && (
+          <div className="flex min-w-0 items-center gap-2">
+            <Mail className="size-4 shrink-0 text-muted-foreground" />
+            <CellText copy value={entry.email} className="text-sm" />
+          </div>
+        ),
+    },
+    {
+      key: "discordName",
+      header: "Discord Name",
+      minWidth: 160,
+      sorted: orderBy === "discordName" ? orderDirection : false,
+      onSort: () => handleSort("discordName"),
+      render: (entry) => (
+        <>
+          <CellText value={entry.discordName ?? ""} className="font-medium" />
+          {entry.discordId && (
+            <CellText
+              value={`ID: ${entry.discordId}`}
+              className="text-xs text-muted-foreground"
+            />
+          )}
+        </>
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      width: 132,
+      render: (entry) => (
+        <Badge
+          variant={getStatusBadgeStyle(entry.status).variant}
+          className={getStatusBadgeStyle(entry.status).className}
+        >
+          {STATUS_LABELS[entry.status]}
+        </Badge>
+      ),
+    },
+    {
+      key: "progress",
+      header: "Progress",
+      width: 110,
+      render: (entry) => {
+        const step = PROGRESS_STEPS.find(({ key }) => entry[key]);
+        return (
+          step && (
+            <Badge
+              variant="outline"
+              className="border-success bg-success/10 text-success text-xs"
+            >
+              {step.label}
+            </Badge>
+          )
+        );
+      },
+    },
+    {
+      key: "submitted",
+      header: "Submitted",
+      width: 160,
+      sorted: orderBy === "submittedAt" ? orderDirection : false,
+      onSort: () => handleSort("submittedAt"),
+      render: (entry) => (
+        <>
+          <CellDate value={entry.submittedAt} />
+          {entry.acceptedAt && (
+            <div className="flex gap-1 text-xs text-muted-foreground">
+              <span>Accepted:</span>
+              <CellDate value={entry.acceptedAt} className="text-xs" />
+            </div>
+          )}
+        </>
+      ),
+    },
+  ];
+
+  const entryActions = (entry: WaitlistEntry): DataTableAction[] => {
+    const actions: DataTableAction[] = [];
+    if (entry.status === "pending") {
+      actions.push({
+        label: "Invite",
+        icon: UserPlus,
+        onClick: () => handleInvite(entry),
+      });
+    }
+    actions.push({
+      label: "Delete",
+      icon: Trash2,
+      variant: "destructive",
+      onClick: () => handleDelete(entry),
+    });
+    return actions;
+  };
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -437,188 +521,12 @@ export function AdminWaitlists() {
           ) : (
             <>
               <CardContent className="px-0">
-                <Table className="min-w-[920px]">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead col="id">ID</TableHead>
-                      <TableHead>
-                        <button
-                          type="button"
-                          onClick={() => handleSort("email")}
-                          className="inline-flex cursor-pointer items-center gap-1 uppercase"
-                        >
-                          Email
-                          {renderSortIcon("email")}
-                        </button>
-                      </TableHead>
-                      <TableHead col="player">
-                        <button
-                          type="button"
-                          onClick={() => handleSort("discordName")}
-                          className="inline-flex cursor-pointer items-center gap-1 uppercase"
-                        >
-                          Discord Name
-                          {renderSortIcon("discordName")}
-                        </button>
-                      </TableHead>
-                      <TableHead col="status">Status</TableHead>
-                      <TableHead col="status">Progress</TableHead>
-                      <TableHead col="date">
-                        <button
-                          type="button"
-                          onClick={() => handleSort("submittedAt")}
-                          className="inline-flex cursor-pointer items-center gap-1 uppercase"
-                        >
-                          Submitted
-                          {renderSortIcon("submittedAt")}
-                        </button>
-                      </TableHead>
-                      <TableHead col="actions" className="text-right">
-                        Actions
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {entries.map((entry) => {
-                      const isPending = entry.status === "pending";
-                      const isAccepted = entry.status === "accepted";
-                      const isAutoAccepted = entry.status === "auto_accepted";
-
-                      return (
-                        <TableRow key={entry.id}>
-                          <TableCell>
-                            <p className="font-mono text-sm">#{entry.id}</p>
-                          </TableCell>
-                          <TableCell>
-                            {entry.email ? (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <button
-                                    onClick={() =>
-                                      handleCopyEmail(entry.email!)
-                                    }
-                                    className="cursor-pointer text-sm transition-colors hover:text-foreground"
-                                    type="button"
-                                  >
-                                    <div className="flex items-center gap-2">
-                                      <Mail className="size-4 text-muted-foreground" />
-                                      <span>{entry.email}</span>
-                                    </div>
-                                  </button>
-                                </TooltipTrigger>
-                                <TooltipContent>Click to copy</TooltipContent>
-                              </Tooltip>
-                            ) : (
-                              <span className="text-sm text-muted-foreground">
-                                -
-                              </span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <p className="font-medium">{entry.discordName}</p>
-                            {entry.discordId && (
-                              <p className="text-xs text-muted-foreground">
-                                ID: {entry.discordId}
-                              </p>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant={
-                                getStatusBadgeStyle(entry.status).variant
-                              }
-                              className={
-                                getStatusBadgeStyle(entry.status).className
-                              }
-                            >
-                              {entry.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex flex-wrap gap-1">
-                              {entry.joinedDiscord && (
-                                <Badge
-                                  variant="outline"
-                                  className="border-success bg-success/10 text-success text-xs"
-                                >
-                                  Discord
-                                </Badge>
-                              )}
-                              {entry.verified && (
-                                <Badge
-                                  variant="outline"
-                                  className="border-success bg-success/10 text-success text-xs"
-                                >
-                                  Verified
-                                </Badge>
-                              )}
-                              {entry.registered && (
-                                <Badge
-                                  variant="outline"
-                                  className="border-success bg-success/10 text-success text-xs"
-                                >
-                                  Registered
-                                </Badge>
-                              )}
-                              {entry.joinedMinecraft && (
-                                <Badge
-                                  variant="outline"
-                                  className="border-success bg-success/10 text-success text-xs"
-                                >
-                                  In-Game
-                                </Badge>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <p className="text-sm text-muted-foreground">
-                              {new Date(entry.submittedAt).toLocaleDateString()}
-                            </p>
-                            {entry.acceptedAt && (
-                              <p className="text-xs text-muted-foreground">
-                                Accepted:{" "}
-                                {new Date(
-                                  entry.acceptedAt,
-                                ).toLocaleDateString()}
-                              </p>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
-                              {isPending && (
-                                <Button
-                                  size="sm"
-                                  variant="default"
-                                  onClick={() => handleInvite(entry)}
-                                >
-                                  Invite
-                                </Button>
-                              )}
-                              {isAccepted && (
-                                <Badge variant="default">Invited</Badge>
-                              )}
-                              {isAutoAccepted && (
-                                <Badge
-                                  variant="outline"
-                                  className="border-chart-2 bg-chart-2/10 text-chart-2"
-                                >
-                                  Auto-Accepted
-                                </Badge>
-                              )}
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => handleDelete(entry)}
-                              >
-                                <Trash2 className="size-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
+                <DataTable
+                  columns={columns}
+                  rows={entries}
+                  rowKey={(entry) => entry.id}
+                  actions={entryActions}
+                />
               </CardContent>
 
               {/* Pagination */}

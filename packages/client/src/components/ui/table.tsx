@@ -2,31 +2,6 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-const COLUMN_WIDTHS = {
-  // sized by what the column holds
-  index: "w-[64px]",
-  icon: "w-[48px]",
-  id: "w-[64px]",
-  actionsMenu: "w-[92px]",
-  actions: "w-[120px]",
-  actionsWide: "w-[156px]",
-  count: "w-[100px]",
-  amount: "w-[110px]",
-  duration: "w-[110px]",
-  tag: "w-[116px]",
-  status: "w-[116px]",
-  date: "w-[120px]",
-  dateTime: "w-[156px]",
-  discordId: "w-[180px]",
-  player: "w-[184px]",
-  // neutral sizes for plain text columns with no more specific name
-  sm: "w-[100px]",
-  md: "w-[136px]",
-  lg: "w-[180px]",
-} as const;
-
-type TableColumn = keyof typeof COLUMN_WIDTHS;
-
 function Table({ className, ...props }: React.ComponentProps<"table">) {
   return (
     <div
@@ -35,7 +10,7 @@ function Table({ className, ...props }: React.ComponentProps<"table">) {
     >
       <table
         data-slot="table"
-        className={cn("w-full table-fixed caption-bottom text-sm", className)}
+        className={cn("w-full caption-bottom text-sm", className)}
         {...props}
       />
     </div>
@@ -46,7 +21,7 @@ function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
   return (
     <thead
       data-slot="table-header"
-      className={cn("bg-sidebar-accent/50 [&_tr]:border-b", className)}
+      className={cn("[&_tr]:border-b", className)}
       {...props}
     />
   );
@@ -88,17 +63,12 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
   );
 }
 
-function TableHead({
-  className,
-  col,
-  ...props
-}: React.ComponentProps<"th"> & { col?: TableColumn }) {
+function TableHead({ className, ...props }: React.ComponentProps<"th">) {
   return (
     <th
       data-slot="table-head"
       className={cn(
-        "text-muted-foreground h-10 truncate px-3 text-left align-middle text-[11px] font-medium tracking-wider uppercase [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
-        col && COLUMN_WIDTHS[col],
+        "text-foreground h-10 px-2 text-left align-middle font-medium whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
         className,
       )}
       {...props}
@@ -111,7 +81,7 @@ function TableCell({ className, ...props }: React.ComponentProps<"td">) {
     <td
       data-slot="table-cell"
       className={cn(
-        "truncate px-3 py-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+        "p-2 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
         className,
       )}
       {...props}

@@ -18,24 +18,12 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { Copy, Ghost, RefreshCw, Search, Trash2 } from "lucide-react";
+import { DataTable, type DataTableColumn } from "@/components/data-table";
+import { Ghost, RefreshCw, Search, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useToastActions } from "@/hooks/use-toast";
-import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
+import { CellText } from "@/components/cell-text";
 import { formatFullDate, formatRelativeDate } from "@/features/admin/format";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { RemoveGhostModal } from "./modals/RemoveGhostModal";
@@ -95,8 +83,6 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
     setPage(newPage);
   }, []);
 
-  const handleCopy = useCopyToClipboard();
-
   const handleRefresh = useCallback(async () => {
     try {
       const result = await refreshGhosts.mutateAsync();
@@ -124,6 +110,71 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
     // they should disappear from the table immediately.
     refetchList();
   }, [refetchList]);
+
+  const columns: DataTableColumn<GhostMember>[] = [
+    {
+      key: "player",
+      header: "Player",
+      minWidth: 200,
+      render: (ghost) => (
+        <div className="min-w-0">
+          <CellText
+            copy
+            value={ghost.minecraftUsername}
+            className="font-medium"
+          />
+          <CellText
+            copy
+            value={ghost.minecraftUuid}
+            display={`${ghost.minecraftUuid.slice(0, 8)}…`}
+            className="font-mono text-xs text-muted-foreground"
+          />
+        </div>
+      ),
+    },
+    {
+      key: "discordId",
+      header: "Discord ID",
+      width: 200,
+      render: (ghost) => (
+        <CellText
+          copy
+          value={ghost.discordId}
+          className="font-mono text-xs text-muted-foreground"
+        />
+      ),
+    },
+    {
+      key: "registered",
+      header: "Registered",
+      width: 140,
+      cellClassName: "text-sm text-muted-foreground",
+      render: (ghost) => {
+        const iso = toIso(ghost.playerCreatedAt);
+        return (
+          <CellText
+            value={formatFullDate(iso)}
+            display={formatRelativeDate(iso)}
+          />
+        );
+      },
+    },
+    {
+      key: "lastSeen",
+      header: "Last Seen",
+      width: 140,
+      cellClassName: "text-sm text-muted-foreground",
+      render: (ghost) => {
+        const iso = toIso(ghost.playerLastSeen);
+        return (
+          <CellText
+            value={formatFullDate(iso)}
+            display={formatRelativeDate(iso)}
+          />
+        );
+      },
+    },
+  ];
 
   const getPaginationItems = useCallback(() => {
     const items: (number | "ellipsis")[] = [];
@@ -238,114 +289,23 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
         ) : (
           <>
             <CardContent className="px-0">
-              <Table className="min-w-[710px]">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Player</TableHead>
-                    <TableHead col="discordId">Discord ID</TableHead>
-                    <TableHead col="date">Registered</TableHead>
-                    <TableHead col="date">Last Seen</TableHead>
-                    <TableHead col="actionsMenu" className="text-right">
-                      Actions
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {ghosts.map((ghost) => {
-                    const createdAtIso = toIso(ghost.playerCreatedAt);
-                    const lastSeenIso = toIso(ghost.playerLastSeen);
-
-                    return (
-                      <TableRow key={ghost.discordId}>
-                        <TableCell>
-                          <div>
-                            <button
-                              type="button"
-                              onClick={(e) =>
-                                handleCopy(e, ghost.minecraftUsername)
-                              }
-                              className="group/copy flex min-w-0 max-w-full items-center gap-1 font-medium hover:text-foreground transition-colors"
-                            >
-                              <span className="truncate">
-                                {ghost.minecraftUsername}
-                              </span>
-                              <Copy className="shrink-0 size-3 text-muted-foreground opacity-0 transition-opacity group-hover/copy:opacity-100" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={(e) =>
-                                handleCopy(e, ghost.minecraftUuid)
-                              }
-                              className="group/copy flex min-w-0 max-w-full items-center gap-1 font-mono text-xs text-muted-foreground hover:text-foreground transition-colors"
-                            >
-                              {ghost.minecraftUuid.slice(0, 8)}…
-                              <Copy className="shrink-0 size-2.5 opacity-0 transition-opacity group-hover/copy:opacity-100" />
-                            </button>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <button
-                            type="button"
-                            onClick={(e) => handleCopy(e, ghost.discordId)}
-                            className="group/copy flex min-w-0 max-w-full items-center gap-1 font-mono text-xs text-muted-foreground hover:text-foreground transition-colors"
-                          >
-                            <span className="truncate">{ghost.discordId}</span>
-                            <Copy className="shrink-0 size-3 opacity-0 transition-opacity group-hover/copy:opacity-100" />
-                          </button>
-                        </TableCell>
-                        <TableCell>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="text-sm text-muted-foreground cursor-default">
-                                {formatRelativeDate(createdAtIso)}
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent side="bottom" align="start">
-                              {formatFullDate(createdAtIso)}
-                            </TooltipContent>
-                          </Tooltip>
-                        </TableCell>
-                        <TableCell>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="text-sm text-muted-foreground cursor-default">
-                                {formatRelativeDate(lastSeenIso)}
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent side="bottom" align="start">
-                              {formatFullDate(lastSeenIso)}
-                            </TooltipContent>
-                          </Tooltip>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span>
-                                <Button
-                                  size="sm"
-                                  variant="destructive"
-                                  className="cursor-pointer"
-                                  disabled={!canMutate}
-                                  onClick={() =>
-                                    setRemoveModal({ open: true, ghost })
-                                  }
-                                >
-                                  <Trash2 className="size-4" />
-                                </Button>
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              {canMutate
-                                ? "Remove now"
-                                : "Only available on the production deployment"}
-                            </TooltipContent>
-                          </Tooltip>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+              <DataTable
+                columns={columns}
+                rows={ghosts}
+                rowKey={(ghost) => ghost.discordId}
+                actions={(ghost) => [
+                  {
+                    label: canMutate
+                      ? "Remove now"
+                      : "Only available on the production deployment",
+                    icon: Trash2,
+                    variant: "destructive",
+                    disabled: !canMutate,
+                    onClick: () => setRemoveModal({ open: true, ghost }),
+                  },
+                ]}
+                actionSlots={1}
+              />
             </CardContent>
 
             <CardFooter className="flex-col gap-3 border-t sm:flex-row sm:flex-wrap sm:items-center">

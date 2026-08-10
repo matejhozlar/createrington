@@ -20,14 +20,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { CellDate, CellText } from "@/components/cell-text";
+import { DataTable, type DataTableColumn } from "@/components/data-table";
 import {
   Dialog,
   DialogContent,
@@ -37,26 +31,13 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-} from "@/components/ui/tooltip";
-import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Search,
-  Filter,
-  FileText,
-  ArrowUpDown,
-  ArrowUp,
-  ArrowDown,
-  Info,
-} from "lucide-react";
+import { Search, Filter, FileText, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { trpc } from "@/lib/trpc";
@@ -80,7 +61,7 @@ function getDescription(action: {
   if (action.targetPlayerName) {
     parts.push(`for ${action.targetPlayerName}`);
   }
-  return parts.length > 0 ? parts.join(" ") : "—";
+  return parts.join(" ");
 }
 
 export function AdminLogs() {
@@ -145,20 +126,6 @@ export function AdminLogs() {
     [orderBy],
   );
 
-  const renderSortIcon = useCallback(
-    (field: SortField) => {
-      if (orderBy !== field) {
-        return <ArrowUpDown className="ml-1 size-3.5 opacity-50" />;
-      }
-      return orderDirection === "asc" ? (
-        <ArrowUp className="ml-1 size-3.5" />
-      ) : (
-        <ArrowDown className="ml-1 size-3.5" />
-      );
-    },
-    [orderBy, orderDirection],
-  );
-
   const getPaginationItems = useCallback(() => {
     const items: (number | "ellipsis")[] = [];
     const maxVisible = 5;
@@ -190,6 +157,79 @@ export function AdminLogs() {
 
     return items;
   }, [page, totalPages]);
+
+  type LogAction = (typeof actions)[number];
+
+  const columns: DataTableColumn<LogAction>[] = [
+    {
+      key: "date",
+      header: "Date",
+      width: 115,
+      sorted: orderBy === "performedAt" ? orderDirection : false,
+      onSort: () => handleSort("performedAt"),
+      render: (action) => <CellDate value={action.performedAt} />,
+    },
+    {
+      key: "admin",
+      header: "Admin",
+      minWidth: 130,
+      sorted: orderBy === "adminUsername" ? orderDirection : false,
+      onSort: () => handleSort("adminUsername"),
+      render: (action) => (
+        <CellText value={action.adminUsername} className="text-sm" />
+      ),
+    },
+    {
+      key: "action",
+      header: "Action",
+      width: 200,
+      sorted: orderBy === "actionType" ? orderDirection : false,
+      onSort: () => handleSort("actionType"),
+      render: (action) => (
+        <Badge variant="outline" className="max-w-full">
+          <CellText value={action.actionType} className="min-w-0" />
+        </Badge>
+      ),
+    },
+    {
+      key: "description",
+      header: "Description",
+      minWidth: 200,
+      render: (action) => {
+        const description = getDescription(action);
+        return (
+          description && <CellText value={description} className="text-sm" />
+        );
+      },
+    },
+    {
+      key: "changes",
+      header: "Changes",
+      width: 220,
+      render: (action) =>
+        (action.oldValue != null || action.newValue != null) && (
+          <div className="flex flex-col gap-1 text-xs">
+            {action.oldValue != null && (
+              <code className="block rounded bg-destructive/10 px-1.5 py-0.5 text-destructive">
+                <CellText value={action.oldValue} />
+              </code>
+            )}
+            {action.newValue != null && (
+              <code className="block rounded bg-green-500/10 px-1.5 py-0.5 text-green-600 dark:text-green-400">
+                <CellText value={action.newValue} />
+              </code>
+            )}
+          </div>
+        ),
+    },
+    {
+      key: "reason",
+      header: "Reason",
+      minWidth: 150,
+      cellClassName: "text-sm text-muted-foreground",
+      render: (action) => action.reason && <CellText value={action.reason} />,
+    },
+  ];
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -290,113 +330,23 @@ export function AdminLogs() {
           ) : (
             <>
               <CardContent className="px-0">
-                <Table className="min-w-[980px]">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead col="dateTime">
-                        <button
-                          type="button"
-                          onClick={() => handleSort("performedAt")}
-                          className="inline-flex cursor-pointer items-center gap-1 uppercase"
-                        >
-                          Date
-                          {renderSortIcon("performedAt")}
-                        </button>
-                      </TableHead>
-                      <TableHead col="player">
-                        <button
-                          type="button"
-                          onClick={() => handleSort("adminUsername")}
-                          className="inline-flex cursor-pointer items-center gap-1 uppercase"
-                        >
-                          Admin
-                          {renderSortIcon("adminUsername")}
-                        </button>
-                      </TableHead>
-                      <TableHead col="md">
-                        <button
-                          type="button"
-                          onClick={() => handleSort("actionType")}
-                          className="inline-flex cursor-pointer items-center gap-1 uppercase"
-                        >
-                          Action
-                          {renderSortIcon("actionType")}
-                        </button>
-                      </TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead col="count">Changes</TableHead>
-                      <TableHead className="w-[160px]">Reason</TableHead>
-                      <TableHead col="icon" />
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {actions.map((action) => (
-                      <TableRow key={action.id}>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {new Date(action.performedAt).toLocaleString()}
-                        </TableCell>
-                        <TableCell className="text-sm">
-                          {action.adminUsername}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{action.actionType}</Badge>
-                        </TableCell>
-                        <TableCell className="text-sm max-w-[300px] truncate">
-                          <span title={getDescription(action)}>
-                            {getDescription(action)}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-col gap-1 text-xs max-w-[200px]">
-                            {action.oldValue != null && (
-                              <code
-                                className="bg-destructive/10 text-destructive px-1.5 py-0.5 rounded truncate block"
-                                title={action.oldValue}
-                              >
-                                {action.oldValue}
-                              </code>
-                            )}
-                            {action.newValue != null && (
-                              <code
-                                className="bg-green-500/10 text-green-600 dark:text-green-400 px-1.5 py-0.5 rounded truncate block"
-                                title={action.newValue}
-                              >
-                                {action.newValue}
-                              </code>
-                            )}
-                            {action.oldValue == null &&
-                              action.newValue == null && (
-                                <span className="text-muted-foreground">—</span>
-                              )}
-                          </div>
-                        </TableCell>
-                        <TableCell
-                          className="text-sm text-muted-foreground max-w-[150px] truncate"
-                          title={action.reason ?? undefined}
-                        >
-                          {action.reason ?? "—"}
-                        </TableCell>
-                        <TableCell>
-                          {action.metadata != null && (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="size-8 p-0"
-                                  onClick={() => setMetadataAction(action)}
-                                >
-                                  <Info className="size-4 text-muted-foreground" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>View metadata</TooltipContent>
-                            </Tooltip>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                <DataTable
+                  columns={columns}
+                  rows={actions}
+                  rowKey={(action) => action.id}
+                  actions={(action) =>
+                    action.metadata != null
+                      ? [
+                          {
+                            label: "View metadata",
+                            icon: Info,
+                            onClick: () => setMetadataAction(action),
+                          },
+                        ]
+                      : []
+                  }
+                  actionSlots={1}
+                />
               </CardContent>
 
               {/* Pagination */}
@@ -479,7 +429,7 @@ export function AdminLogs() {
                   tableName: null,
                   fieldName: null,
                 },
-              )}
+              ) || "—"}
             </DialogDescription>
           </DialogHeader>
           <pre className="max-h-[400px] overflow-auto rounded-md bg-muted p-4 text-xs">
