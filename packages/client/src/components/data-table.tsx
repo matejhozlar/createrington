@@ -174,6 +174,7 @@ export function DataTable<T>({
   rowKey,
   onRowClick,
   actions,
+  actionSlots = 2,
   isRowBusy,
 }: {
   columns: DataTableColumn<T>[];
@@ -181,15 +182,10 @@ export function DataTable<T>({
   rowKey: (row: T) => string | number;
   onRowClick?: (row: T) => void;
   actions?: (row: T) => DataTableAction[];
+  actionSlots?: 1 | 2;
   isRowBusy?: (row: T) => boolean;
 }) {
   const rowActions = actions ? rows.map((row) => actions(row)) : null;
-  const actionSlots = rowActions
-    ? Math.max(
-        1,
-        ...rowActions.map((list) => Math.min(list.length, INLINE_ACTION_LIMIT)),
-      )
-    : 0;
   const actionsWidth =
     CELL_PADDING +
     actionSlots * ACTION_BUTTON_WIDTH +
