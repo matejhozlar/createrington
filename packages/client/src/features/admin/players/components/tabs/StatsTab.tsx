@@ -10,14 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { DataTable, type DataTableColumn } from "@/components/data-table";
 import {
   BarChart3,
   ChevronDown,
@@ -67,6 +60,27 @@ function formatCategoryName(category: string): string {
 function formatValue(value: number): string {
   return value.toLocaleString();
 }
+
+const STAT_COLUMNS: DataTableColumn<FlatStat>[] = [
+  {
+    key: "stat",
+    header: "Stat",
+    minWidth: 200,
+    cellClassName: "text-sm",
+    render: (stat) => formatStatName(stat.key),
+  },
+  {
+    key: "value",
+    header: "Value",
+    width: 140,
+    align: "right",
+    render: (stat) => (
+      <span className="font-semibold tabular-nums">
+        {formatValue(stat.value)}
+      </span>
+    ),
+  },
+];
 
 export function StatsTab({ playerId, getServerName }: StatsTabProps) {
   const [search, setSearch] = useState("");
@@ -364,35 +378,11 @@ export function StatsTab({ playerId, getServerName }: StatsTabProps) {
 
                       {/* Category stats table */}
                       {isExpanded && (
-                        <Table>
-                          <TableHeader className="bg-sidebar-accent/50">
-                            <TableRow>
-                              <TableHead className="px-4 py-2">Stat</TableHead>
-                              <TableHead className="px-4 py-2 text-right">
-                                Value
-                              </TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {stats.map((stat) => (
-                              <TableRow
-                                key={stat.key}
-                                className="hover:bg-sidebar-accent/30"
-                              >
-                                <TableCell className="px-4 py-2">
-                                  <span className="text-sm">
-                                    {formatStatName(stat.key)}
-                                  </span>
-                                </TableCell>
-                                <TableCell className="px-4 py-2 text-right">
-                                  <span className="font-semibold tabular-nums">
-                                    {formatValue(stat.value)}
-                                  </span>
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
+                        <DataTable
+                          columns={STAT_COLUMNS}
+                          rows={stats}
+                          rowKey={(stat) => stat.key}
+                        />
                       )}
                     </div>
                   );
