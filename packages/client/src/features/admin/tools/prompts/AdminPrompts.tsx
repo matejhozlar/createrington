@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { MessageSquare, Plus, RefreshCw } from "lucide-react";
+import { formatFullDate } from "@/features/admin/format";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { CreatePromptModal } from "./components/CreatePromptModal";
 
@@ -85,7 +86,12 @@ export function AdminPrompts() {
       width: 100,
       cellClassName: "text-sm text-muted-foreground",
       render: (row) =>
-        row.status === "closed" ? null : formatEndsAt(row.endsAt),
+        row.status === "closed" ? null : (
+          <CellText
+            value={formatFullDate(new Date(row.endsAt).toISOString())}
+            display={formatEndsAt(row.endsAt)}
+          />
+        ),
     },
   ];
 

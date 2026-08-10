@@ -46,7 +46,7 @@ export type DataTableColumn<T> = {
   cellClassName?: string;
   sorted?: "asc" | "desc" | false;
   onSort?: () => void;
-  render: (row: T) => React.ReactNode;
+  render: (row: T, index: number) => React.ReactNode;
 };
 
 export type DataTableAction = {
@@ -79,22 +79,27 @@ function ActionButton({
   busy: boolean;
   spinner: boolean;
 }) {
+  const disabled = action.disabled || busy;
+  const button = (
+    <Button
+      size="sm"
+      variant={action.variant ?? "outline"}
+      aria-label={action.label}
+      disabled={disabled}
+      onClick={action.onClick}
+    >
+      {busy && spinner ? (
+        <Loader2 className="size-4 animate-spin" />
+      ) : (
+        <action.icon className={cn("size-4", action.iconClassName)} />
+      )}
+    </Button>
+  );
+
   return (
     <Tooltip delayDuration={500} disableHoverableContent>
       <TooltipTrigger asChild>
-        <Button
-          size="sm"
-          variant={action.variant ?? "outline"}
-          aria-label={action.label}
-          disabled={action.disabled || busy}
-          onClick={action.onClick}
-        >
-          {busy && spinner ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : (
-            <action.icon className={cn("size-4", action.iconClassName)} />
-          )}
-        </Button>
+        {disabled ? <span className="inline-flex">{button}</span> : button}
       </TooltipTrigger>
       <TooltipContent>{action.label}</TooltipContent>
     </Tooltip>
@@ -177,6 +182,8 @@ export function DataTable<T>({
   actions,
   actionSlots = 2,
   isRowBusy,
+  expandedKey,
+  renderExpanded,
 }: {
   columns: DataTableColumn<T>[];
   rows: T[];
@@ -186,6 +193,8 @@ export function DataTable<T>({
   actions?: (row: T) => DataTableAction[];
   actionSlots?: 1 | 2;
   isRowBusy?: (row: T) => boolean;
+  expandedKey?: string | number | null;
+  renderExpanded?: (row: T) => React.ReactNode;
 }) {
   const rowActions = actions ? rows.map((row) => actions(row)) : null;
   const actionsWidth =
@@ -262,50 +271,70 @@ export function DataTable<T>({
         </TableRow>
       </TableHeader>
       <TableBody>
-        {rows.map((row, index) => (
-          <TableRow
-            key={rowKey(row)}
-            role={onRowClick ? "button" : undefined}
-            tabIndex={onRowClick ? 0 : undefined}
-            className={cn(onRowClick && "cursor-pointer", rowClassName?.(row))}
-            onClick={
-              onRowClick ? (event) => handleRowClick(event, row) : undefined
-            }
-            onKeyDown={
-              onRowClick ? (event) => handleRowKeyDown(event, row) : undefined
-            }
-          >
-            {columns.map((column) => {
-              const content = column.render(row);
-              const empty =
-                content == null || content === "" || content === false;
-              return (
-                <TableCell
-                  key={column.key}
-                  className={cn(
-                    "overflow-hidden px-4",
-                    ALIGN_CLASSES[column.align ?? "left"],
-                    column.cellClassName,
-                  )}
-                >
-                  {empty ? (
-                    <span className="text-muted-foreground">-</span>
-                  ) : (
-                    content
-                  )}
-                </TableCell>
-              );
-            })}
-            {rowActions && (
-              <TableCell className="px-4">
-                <RowActionGroup
-                  actions={rowActions[index]}
-                  busy={isRowBusy?.(row) ?? false}
-                />
-              </TableCell>
-            )}
-          </TableRow>
-        ))}
+        {rows.map((row, index) => {
+          const key = rowKey(row);
+          return (
+            <React.Fragment key={key}>
+              <TableRow
+                data-row-key={key}
+                role={onRowClick ? "button" : undefined}
+                tabIndex={onRowClick ? 0 : undefined}
+                className={cn(
+                  onRowClick && "cursor-pointer",
+                  rowClassName?.(row),
+                )}
+                onClick={
+                  onRowClick ? (event) => handleRowClick(event, row) : undefined
+                }
+                onKeyDown={
+                  onRowClick
+                    ? (event) => handleRowKeyDown(event, row)
+                    : undefined
+                }
+              >
+                {columns.map((column) => {
+                  const content = column.render(row, index);
+                  const empty =
+                    content == null || content === "" || content === false;
+                  return (
+                    <TableCell
+                      key={column.key}
+                      className={cn(
+                        "overflow-hidden px-4",
+                        ALIGN_CLASSES[column.align ?? "left"],
+                        column.cellClassName,
+                      )}
+                    >
+                      {empty ? (
+                        <span className="text-muted-foreground">-</span>
+                      ) : (
+                        content
+                      )}
+                    </TableCell>
+                  );
+                })}
+                {rowActions && (
+                  <TableCell className="px-4">
+                    <RowActionGroup
+                      actions={rowActions[index]}
+                      busy={isRowBusy?.(row) ?? false}
+                    />
+                  </TableCell>
+                )}
+              </TableRow>
+              {renderExpanded && expandedKey === key && (
+                <TableRow>
+                  <TableCell
+                    colSpan={columns.length + (rowActions ? 1 : 0)}
+                    className="bg-muted/30 p-4"
+                  >
+                    {renderExpanded(row)}
+                  </TableCell>
+                </TableRow>
+              )}
+            </React.Fragment>
+          );
+        })}
       </TableBody>
     </Table>
   );

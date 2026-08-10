@@ -18,7 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CellText } from "@/components/cell-text";
+import { CellDate, CellText } from "@/components/cell-text";
 import {
   DataTable,
   type DataTableAction,
@@ -239,9 +239,11 @@ export function AdminStructurePacks() {
       width: 130,
       cellClassName: "text-sm text-muted-foreground",
       render: (pack) =>
-        pack.lastActivatedAt
-          ? new Date(pack.lastActivatedAt).toLocaleDateString()
-          : "Never",
+        pack.lastActivatedAt ? (
+          <CellDate value={pack.lastActivatedAt} />
+        ) : (
+          "Never"
+        ),
     },
   ];
 

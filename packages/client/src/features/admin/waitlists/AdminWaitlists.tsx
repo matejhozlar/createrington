@@ -20,7 +20,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CellText } from "@/components/cell-text";
+import { CellDate, CellText } from "@/components/cell-text";
 import {
   DataTable,
   type DataTableAction,
@@ -293,13 +293,12 @@ export function AdminWaitlists() {
       onSort: () => handleSort("submittedAt"),
       render: (entry) => (
         <>
-          <p className="text-sm text-muted-foreground">
-            {new Date(entry.submittedAt).toLocaleDateString()}
-          </p>
+          <CellDate value={entry.submittedAt} />
           {entry.acceptedAt && (
-            <p className="text-xs text-muted-foreground">
-              Accepted: {new Date(entry.acceptedAt).toLocaleDateString()}
-            </p>
+            <div className="flex gap-1 text-xs text-muted-foreground">
+              <span>Accepted:</span>
+              <CellDate value={entry.acceptedAt} className="text-xs" />
+            </div>
           )}
         </>
       ),

@@ -6,17 +6,13 @@ import { useToastActions } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CellText } from "@/components/cell-text";
+import { CellDate, CellText } from "@/components/cell-text";
 import { DataTable, type DataTableColumn } from "@/components/data-table";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Loading } from "@/components/loading-spinner";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
-import {
-  WORKSHOP_STATUS_STYLES,
-  formatDate,
-  loaderName,
-} from "@/features/workshop/format";
+import { WORKSHOP_STATUS_STYLES, loaderName } from "@/features/workshop/format";
 import { CreateWorkshopDialog } from "./components/CreateWorkshopDialog";
 import { WorkshopSettingsDialog } from "./workshop-admin-detail/components/WorkshopSettingsDialog";
 
@@ -104,9 +100,8 @@ export function AdminWorkshop() {
     {
       key: "created",
       header: "Created",
-      width: 130,
-      cellClassName: "text-sm text-muted-foreground",
-      render: (workshop) => formatDate(workshop.createdAt),
+      width: 120,
+      render: (workshop) => <CellDate value={workshop.createdAt} />,
     },
   ];
 

@@ -3,7 +3,7 @@ import { trpc, type RouterOutput } from "@/lib/trpc";
 import { History, CheckCircle2, XCircle } from "lucide-react";
 import { Paginator } from "@/components/paginator";
 import { Badge } from "@/components/ui/badge";
-import { CellText } from "@/components/cell-text";
+import { CellDate, CellText } from "@/components/cell-text";
 import { DataTable, type DataTableColumn } from "@/components/data-table";
 
 type Rotation =
@@ -27,11 +27,8 @@ export function RotationHistory() {
     {
       key: "date",
       header: "Date",
-      minWidth: 160,
-      cellClassName: "text-sm",
-      render: (rotation) => (
-        <CellText value={new Date(rotation.rotatedAt).toLocaleString()} />
-      ),
+      width: 110,
+      render: (rotation) => <CellDate value={rotation.rotatedAt} />,
     },
     {
       key: "from",

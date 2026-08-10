@@ -8,6 +8,33 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
+const FULL_DATE_FORMAT: Intl.DateTimeFormatOptions = {
+  weekday: "short",
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+};
+
+export function CellDate({
+  value,
+  className,
+}: {
+  value: string | Date | null | undefined;
+  className?: string;
+}) {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  return (
+    <CellText
+      value={date.toLocaleDateString("en-US", FULL_DATE_FORMAT)}
+      display={date.toLocaleDateString()}
+      className={cn("text-sm text-muted-foreground", className)}
+    />
+  );
+}
+
 export function CellText({
   value,
   display,

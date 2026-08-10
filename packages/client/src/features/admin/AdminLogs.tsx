@@ -20,7 +20,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CellText } from "@/components/cell-text";
+import { CellDate, CellText } from "@/components/cell-text";
 import { DataTable, type DataTableColumn } from "@/components/data-table";
 import {
   Dialog,
@@ -164,13 +164,10 @@ export function AdminLogs() {
     {
       key: "date",
       header: "Date",
-      width: 175,
+      width: 115,
       sorted: orderBy === "performedAt" ? orderDirection : false,
       onSort: () => handleSort("performedAt"),
-      cellClassName: "text-sm text-muted-foreground",
-      render: (action) => (
-        <CellText value={new Date(action.performedAt).toLocaleString()} />
-      ),
+      render: (action) => <CellDate value={action.performedAt} />,
     },
     {
       key: "admin",

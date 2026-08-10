@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import type { RouterOutput } from "@/lib/trpc";
 import { Paginator } from "@/components/paginator";
 import { Badge } from "@/components/ui/badge";
-import { CellText } from "@/components/cell-text";
+import { CellDate, CellText } from "@/components/cell-text";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   DataTable,
@@ -33,7 +33,6 @@ import {
   DEPENDENCY_COVERAGE_STYLES,
   MOD_STATUS_STYLES,
   dependencyIsCovered,
-  formatDate,
 } from "@/features/workshop/format";
 import type { WorkshopModReviewAction } from "@createrington/shared/workshop";
 
@@ -234,12 +233,8 @@ export function SuggestionsCard({
     {
       key: "date",
       header: "Date",
-      width: 130,
-      render: (mod) => (
-        <span className="text-sm text-muted-foreground">
-          {formatDate(mod.createdAt)}
-        </span>
-      ),
+      width: 120,
+      render: (mod) => <CellDate value={mod.createdAt} />,
     },
   ];
 

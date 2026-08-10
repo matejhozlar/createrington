@@ -19,7 +19,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CellText } from "@/components/cell-text";
+import { CellDate, CellText } from "@/components/cell-text";
 import {
   DataTable,
   type DataTableAction,
@@ -243,8 +243,7 @@ export function AdminFaq() {
       width: 130,
       sorted: orderBy === "createdAt" ? orderDirection : false,
       onSort: () => handleSort("createdAt"),
-      cellClassName: "text-sm text-muted-foreground",
-      render: (entry) => new Date(entry.createdAt).toLocaleDateString(),
+      render: (entry) => <CellDate value={entry.createdAt} />,
     },
   ];
 
