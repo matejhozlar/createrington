@@ -184,6 +184,8 @@ export function DataTable<T>({
   isRowBusy,
   expandedKey,
   renderExpanded,
+  headerClassName,
+  headCellClassName,
 }: {
   columns: DataTableColumn<T>[];
   rows: T[];
@@ -195,6 +197,8 @@ export function DataTable<T>({
   isRowBusy?: (row: T) => boolean;
   expandedKey?: string | number | null;
   renderExpanded?: (row: T) => React.ReactNode;
+  headerClassName?: string;
+  headCellClassName?: string;
 }) {
   const rowActions = actions ? rows.map((row) => actions(row)) : null;
   const actionsWidth =
@@ -242,12 +246,16 @@ export function DataTable<T>({
         ))}
         {rowActions && <col style={{ width: actionsWidth }} />}
       </colgroup>
-      <TableHeader className="bg-sidebar-accent/50">
+      <TableHeader className={headerClassName ?? "bg-sidebar-accent/50"}>
         <TableRow>
           {columns.map((column) => (
             <TableHead
               key={column.key}
-              className={cn("px-4", ALIGN_CLASSES[column.align ?? "left"])}
+              className={cn(
+                "px-4",
+                ALIGN_CLASSES[column.align ?? "left"],
+                headCellClassName,
+              )}
             >
               {column.onSort ? (
                 <button
@@ -264,7 +272,7 @@ export function DataTable<T>({
             </TableHead>
           ))}
           {rowActions && (
-            <TableHead className="px-4">
+            <TableHead className={cn("px-4", headCellClassName)}>
               <span className="sr-only">Actions</span>
             </TableHead>
           )}
