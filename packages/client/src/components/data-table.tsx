@@ -173,6 +173,7 @@ export function DataTable<T>({
   rows,
   rowKey,
   onRowClick,
+  rowClassName,
   actions,
   actionSlots = 2,
   isRowBusy,
@@ -181,6 +182,7 @@ export function DataTable<T>({
   rows: T[];
   rowKey: (row: T) => string | number;
   onRowClick?: (row: T) => void;
+  rowClassName?: (row: T) => string | undefined;
   actions?: (row: T) => DataTableAction[];
   actionSlots?: 1 | 2;
   isRowBusy?: (row: T) => boolean;
@@ -265,7 +267,7 @@ export function DataTable<T>({
             key={rowKey(row)}
             role={onRowClick ? "button" : undefined}
             tabIndex={onRowClick ? 0 : undefined}
-            className={onRowClick ? "cursor-pointer" : undefined}
+            className={cn(onRowClick && "cursor-pointer", rowClassName?.(row))}
             onClick={
               onRowClick ? (event) => handleRowClick(event, row) : undefined
             }
