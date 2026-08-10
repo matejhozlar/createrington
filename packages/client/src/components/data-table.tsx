@@ -273,18 +273,27 @@ export function DataTable<T>({
               onRowClick ? (event) => handleRowKeyDown(event, row) : undefined
             }
           >
-            {columns.map((column) => (
-              <TableCell
-                key={column.key}
-                className={cn(
-                  "overflow-hidden px-4",
-                  ALIGN_CLASSES[column.align ?? "left"],
-                  column.cellClassName,
-                )}
-              >
-                {column.render(row)}
-              </TableCell>
-            ))}
+            {columns.map((column) => {
+              const content = column.render(row);
+              const empty =
+                content == null || content === "" || content === false;
+              return (
+                <TableCell
+                  key={column.key}
+                  className={cn(
+                    "overflow-hidden px-4",
+                    ALIGN_CLASSES[column.align ?? "left"],
+                    column.cellClassName,
+                  )}
+                >
+                  {empty ? (
+                    <span className="text-muted-foreground">-</span>
+                  ) : (
+                    content
+                  )}
+                </TableCell>
+              );
+            })}
             {rowActions && (
               <TableCell className="px-4">
                 <RowActionGroup

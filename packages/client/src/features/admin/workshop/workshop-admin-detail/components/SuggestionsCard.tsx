@@ -53,9 +53,6 @@ function DependencyCell({ mod }: { mod: AdminWorkshopMod }) {
   const uncovered = required.filter(
     (dep) => !dependencyIsCovered(dep.coverage),
   );
-  if (mod.dependencies.length === 0) {
-    return <span className="text-xs text-muted-foreground">None</span>;
-  }
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -197,12 +194,13 @@ export function SuggestionsCard({
       key: "note",
       header: "Note",
       minWidth: 140,
-      render: (mod) => (
-        <CellText
-          value={mod.note ?? ""}
-          className="text-sm text-muted-foreground"
-        />
-      ),
+      render: (mod) =>
+        mod.note && (
+          <CellText
+            value={mod.note}
+            className="text-sm text-muted-foreground"
+          />
+        ),
     },
     {
       key: "upvotes",
@@ -217,7 +215,8 @@ export function SuggestionsCard({
       header: "Pulls In",
       width: 90,
       align: "center",
-      render: (mod) => <DependencyCell mod={mod} />,
+      render: (mod) =>
+        mod.dependencies.length > 0 && <DependencyCell mod={mod} />,
     },
     {
       key: "status",

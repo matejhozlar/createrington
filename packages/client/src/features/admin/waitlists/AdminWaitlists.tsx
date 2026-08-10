@@ -229,13 +229,11 @@ export function AdminWaitlists() {
       sorted: orderBy === "email" ? orderDirection : false,
       onSort: () => handleSort("email"),
       render: (entry) =>
-        entry.email ? (
+        entry.email && (
           <div className="flex min-w-0 items-center gap-2">
             <Mail className="size-4 shrink-0 text-muted-foreground" />
             <CellText copy value={entry.email} className="text-sm" />
           </div>
-        ) : (
-          <span className="text-sm text-muted-foreground">-</span>
         ),
     },
     {
@@ -275,15 +273,15 @@ export function AdminWaitlists() {
       width: 110,
       render: (entry) => {
         const step = PROGRESS_STEPS.find(({ key }) => entry[key]);
-        return step ? (
-          <Badge
-            variant="outline"
-            className="border-success bg-success/10 text-success text-xs"
-          >
-            {step.label}
-          </Badge>
-        ) : (
-          <span className="text-sm text-muted-foreground">-</span>
+        return (
+          step && (
+            <Badge
+              variant="outline"
+              className="border-success bg-success/10 text-success text-xs"
+            >
+              {step.label}
+            </Badge>
+          )
         );
       },
     },
