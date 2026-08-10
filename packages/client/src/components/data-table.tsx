@@ -205,12 +205,19 @@ export function DataTable<T>({
     CELL_PADDING +
     actionSlots * ACTION_BUTTON_WIDTH +
     (actionSlots - 1) * ACTION_GAP;
+  const fixedWidth =
+    columns.reduce((sum, column) => sum + (column.width ?? 0), 0) +
+    (rowActions ? actionsWidth : 0);
+  const flexMinWidths = columns
+    .filter((column) => !column.width)
+    .map((column) => column.minWidth ?? FLEX_COLUMN_MIN_WIDTH);
+  // Flexible columns split the remainder equally under table-fixed, so the
+  // scroll threshold must fit every flexible column at the largest min.
   const minWidth =
-    columns.reduce(
-      (sum, column) =>
-        sum + (column.width ?? column.minWidth ?? FLEX_COLUMN_MIN_WIDTH),
-      0,
-    ) + (rowActions ? actionsWidth : 0);
+    fixedWidth +
+    (flexMinWidths.length > 0
+      ? flexMinWidths.length * Math.max(...flexMinWidths)
+      : 0);
 
   const handleRowClick = (
     event: React.MouseEvent<HTMLTableRowElement>,
