@@ -1,13 +1,7 @@
 import { ExternalLink, Package, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { CellText } from "@/components/cell-text";
+import { DataTable, type DataTableColumn } from "@/components/data-table";
 import type { RemoveTarget } from "../types";
 
 interface Mod {
@@ -28,6 +22,46 @@ export function ModsList({
   onAdd: () => void;
   onRemove: (target: RemoveTarget) => void;
 }) {
+  const columns: DataTableColumn<Mod>[] = [
+    {
+      key: "mod",
+      header: "Mod",
+      minWidth: 200,
+      render: (mod) => (
+        <div className="flex min-w-0 items-center gap-2">
+          {mod.thumbnailUrl && (
+            <img
+              src={mod.thumbnailUrl}
+              alt=""
+              className="size-8 shrink-0 rounded"
+            />
+          )}
+          <div className="min-w-0">
+            <CellText value={mod.modName} className="font-medium" />
+            {mod.modUrl && (
+              <a
+                href={mod.modUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:underline"
+              >
+                CurseForge
+                <ExternalLink className="size-3" />
+              </a>
+            )}
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "file",
+      header: "File",
+      minWidth: 160,
+      cellClassName: "text-sm text-muted-foreground",
+      render: (mod) => <CellText value={mod.fileName} />,
+    },
+  ];
+
   return (
     <div className="rounded-lg border border-border bg-card p-6">
       <div className="mb-4 flex items-center justify-between">
@@ -48,66 +82,25 @@ export function ModsList({
           <p>No mods added yet</p>
         </div>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Mod</TableHead>
-              <TableHead>File</TableHead>
-              <TableHead className="w-[80px]" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {mods.map((mod) => (
-              <TableRow key={mod.id}>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    {mod.thumbnailUrl && (
-                      <img
-                        src={mod.thumbnailUrl}
-                        alt=""
-                        className="size-8 rounded"
-                      />
-                    )}
-                    <div>
-                      <div className="font-medium">{mod.modName}</div>
-                      {mod.modUrl && (
-                        <a
-                          href={mod.modUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-xs text-muted-foreground hover:underline"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          CurseForge
-                          <ExternalLink className="size-3" />
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell className="text-sm text-muted-foreground">
-                  {mod.fileName}
-                </TableCell>
-                <TableCell>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-destructive hover:text-destructive"
-                    onClick={() =>
-                      onRemove({
-                        modId: mod.id,
-                        modName: mod.modName,
-                        fileName: mod.fileName,
-                      })
-                    }
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <DataTable
+          columns={columns}
+          rows={mods}
+          rowKey={(mod) => mod.id}
+          actions={(mod) => [
+            {
+              label: "Remove",
+              icon: Trash2,
+              variant: "destructive",
+              onClick: () =>
+                onRemove({
+                  modId: mod.id,
+                  modName: mod.modName,
+                  fileName: mod.fileName,
+                }),
+            },
+          ]}
+          actionSlots={1}
+        />
       )}
     </div>
   );

@@ -1,16 +1,13 @@
 import { useState } from "react";
-import { trpc } from "@/lib/trpc";
+import { trpc, type RouterOutput } from "@/lib/trpc";
 import { History, CheckCircle2, XCircle } from "lucide-react";
 import { Paginator } from "@/components/paginator";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { CellText } from "@/components/cell-text";
+import { DataTable, type DataTableColumn } from "@/components/data-table";
+
+type Rotation =
+  RouterOutput["admin"]["structurePacks"]["rotationHistory"]["data"][number];
 
 /** Paginated table of past structure pack rotation events with success/failure status */
 export function RotationHistory() {
@@ -25,6 +22,64 @@ export function RotationHistory() {
 
   const packsQuery = trpc.admin.structurePacks.list.useQuery();
   const packMap = new Map((packsQuery.data ?? []).map((p) => [p.id, p.name]));
+
+  const columns: DataTableColumn<Rotation>[] = [
+    {
+      key: "date",
+      header: "Date",
+      minWidth: 160,
+      cellClassName: "text-sm",
+      render: (rotation) => (
+        <CellText value={new Date(rotation.rotatedAt).toLocaleString()} />
+      ),
+    },
+    {
+      key: "from",
+      header: "From",
+      minWidth: 120,
+      cellClassName: "text-sm",
+      render: (rotation) =>
+        rotation.outgoingPackId && (
+          <CellText
+            value={
+              packMap.get(rotation.outgoingPackId) ??
+              `Pack #${rotation.outgoingPackId}`
+            }
+          />
+        ),
+    },
+    {
+      key: "to",
+      header: "To",
+      minWidth: 120,
+      cellClassName: "text-sm",
+      render: (rotation) => (
+        <CellText
+          value={
+            packMap.get(rotation.incomingPackId) ??
+            `Pack #${rotation.incomingPackId}`
+          }
+        />
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      width: 100,
+      render: (rotation) =>
+        rotation.success ? (
+          <Badge className="bg-green-500/20 text-green-500 hover:bg-green-500/30">
+            <CheckCircle2 className="mr-1 size-3" />
+            OK
+          </Badge>
+        ) : (
+          <Badge variant="destructive">
+            <XCircle className="mr-1 size-3" />
+            Failed
+          </Badge>
+        ),
+    },
+  ];
 
   return (
     <div className="rounded-lg border border-border bg-card p-6">
@@ -41,48 +96,11 @@ export function RotationHistory() {
         </p>
       ) : (
         <>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>From</TableHead>
-                <TableHead>To</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {data.data.map((rotation) => (
-                <TableRow key={rotation.id}>
-                  <TableCell className="text-sm">
-                    {new Date(rotation.rotatedAt).toLocaleString()}
-                  </TableCell>
-                  <TableCell className="text-sm">
-                    {rotation.outgoingPackId
-                      ? (packMap.get(rotation.outgoingPackId) ??
-                        `Pack #${rotation.outgoingPackId}`)
-                      : "-"}
-                  </TableCell>
-                  <TableCell className="text-sm">
-                    {packMap.get(rotation.incomingPackId) ??
-                      `Pack #${rotation.incomingPackId}`}
-                  </TableCell>
-                  <TableCell>
-                    {rotation.success ? (
-                      <Badge className="bg-green-500/20 text-green-500 hover:bg-green-500/30">
-                        <CheckCircle2 className="mr-1 size-3" />
-                        OK
-                      </Badge>
-                    ) : (
-                      <Badge variant="destructive">
-                        <XCircle className="mr-1 size-3" />
-                        Failed
-                      </Badge>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <DataTable
+            columns={columns}
+            rows={data.data}
+            rowKey={(rotation) => rotation.id}
+          />
 
           <Paginator
             page={page}
