@@ -64,6 +64,13 @@ const STATUS_LABELS: Record<WaitlistStatus, string> = {
   declined: "Declined",
 };
 
+const PROGRESS_STEPS: { key: keyof WaitlistEntry; label: string }[] = [
+  { key: "joinedMinecraft", label: "In-Game" },
+  { key: "registered", label: "Registered" },
+  { key: "verified", label: "Verified" },
+  { key: "joinedDiscord", label: "Discord" },
+];
+
 export function AdminWaitlists() {
   const [page, setPage] = useState(0);
   const [limit] = useState(10);
@@ -265,43 +272,20 @@ export function AdminWaitlists() {
     {
       key: "progress",
       header: "Progress",
-      minWidth: 170,
-      render: (entry) => (
-        <div className="flex flex-wrap gap-1">
-          {entry.joinedDiscord && (
-            <Badge
-              variant="outline"
-              className="border-success bg-success/10 text-success text-xs"
-            >
-              Discord
-            </Badge>
-          )}
-          {entry.verified && (
-            <Badge
-              variant="outline"
-              className="border-success bg-success/10 text-success text-xs"
-            >
-              Verified
-            </Badge>
-          )}
-          {entry.registered && (
-            <Badge
-              variant="outline"
-              className="border-success bg-success/10 text-success text-xs"
-            >
-              Registered
-            </Badge>
-          )}
-          {entry.joinedMinecraft && (
-            <Badge
-              variant="outline"
-              className="border-success bg-success/10 text-success text-xs"
-            >
-              In-Game
-            </Badge>
-          )}
-        </div>
-      ),
+      width: 110,
+      render: (entry) => {
+        const step = PROGRESS_STEPS.find(({ key }) => entry[key]);
+        return step ? (
+          <Badge
+            variant="outline"
+            className="border-success bg-success/10 text-success text-xs"
+          >
+            {step.label}
+          </Badge>
+        ) : (
+          <span className="text-sm text-muted-foreground">-</span>
+        );
+      },
     },
     {
       key: "submitted",
