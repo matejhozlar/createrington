@@ -31,11 +31,11 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Copy, RefreshCw, Search, UserSearch } from "lucide-react";
+import { RefreshCw, Search, UserSearch } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useToastActions } from "@/hooks/use-toast";
-import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
+import { CellText } from "@/components/cell-text";
 import { formatFullDate, formatRelativeDate } from "@/features/admin/format";
 import { trpc } from "@/lib/trpc";
 
@@ -79,8 +79,6 @@ export function UnlinkedMembersCard() {
   const handlePageChange = useCallback((newPage: number) => {
     setPage(newPage);
   }, []);
-
-  const handleCopy = useCopyToClipboard();
 
   const handleRefresh = useCallback(async () => {
     try {
@@ -226,33 +224,25 @@ export function UnlinkedMembersCard() {
                     <TableRow key={member.discordId}>
                       <TableCell className="px-4">
                         <div>
-                          <button
-                            type="button"
-                            onClick={(e) => handleCopy(e, member.displayName)}
-                            className="group/copy flex items-center gap-1 font-medium hover:text-foreground transition-colors"
-                          >
-                            {member.displayName}
-                            <Copy className="size-3 text-muted-foreground opacity-0 transition-opacity group-hover/copy:opacity-100" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(e) => handleCopy(e, member.username)}
-                            className="group/copy flex items-center gap-1 font-mono text-xs text-muted-foreground hover:text-foreground transition-colors"
-                          >
-                            @{member.username}
-                            <Copy className="size-2.5 opacity-0 transition-opacity group-hover/copy:opacity-100" />
-                          </button>
+                          <CellText
+                            copy
+                            value={member.displayName}
+                            className="font-medium"
+                          />
+                          <CellText
+                            copy
+                            value={member.username}
+                            display={`@${member.username}`}
+                            className="font-mono text-xs text-muted-foreground"
+                          />
                         </div>
                       </TableCell>
                       <TableCell className="px-4">
-                        <button
-                          type="button"
-                          onClick={(e) => handleCopy(e, member.discordId)}
-                          className="group/copy flex items-center gap-1 font-mono text-xs text-muted-foreground hover:text-foreground transition-colors"
-                        >
-                          {member.discordId}
-                          <Copy className="size-3 opacity-0 transition-opacity group-hover/copy:opacity-100" />
-                        </button>
+                        <CellText
+                          copy
+                          value={member.discordId}
+                          className="font-mono text-xs text-muted-foreground"
+                        />
                       </TableCell>
                       <TableCell className="px-4">
                         {joinedIso ? (

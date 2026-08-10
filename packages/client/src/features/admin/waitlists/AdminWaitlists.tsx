@@ -17,10 +17,10 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { useToastActions } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { CellText } from "@/components/cell-text";
 import {
   DataTable,
   type DataTableAction,
@@ -33,11 +33,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-} from "@/components/ui/tooltip";
 import {
   Search,
   Filter,
@@ -70,8 +65,6 @@ const STATUS_LABELS: Record<WaitlistStatus, string> = {
 };
 
 export function AdminWaitlists() {
-  const toast = useToastActions();
-
   const [page, setPage] = useState(0);
   const [limit] = useState(10);
 
@@ -136,18 +129,6 @@ export function AdminWaitlists() {
       setPage(0);
     },
     [orderBy],
-  );
-
-  const handleCopyEmail = useCallback(
-    async (email: string) => {
-      try {
-        await navigator.clipboard.writeText(email);
-        toast.success("Copied to clipboard");
-      } catch {
-        toast.error("Failed to copy to clipboard");
-      }
-    },
-    [toast],
   );
 
   const handleInvite = useCallback((entry: WaitlistEntry) => {
@@ -242,21 +223,10 @@ export function AdminWaitlists() {
       onSort: () => handleSort("email"),
       render: (entry) =>
         entry.email ? (
-          <Tooltip delayDuration={500} disableHoverableContent>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => handleCopyEmail(entry.email!)}
-                className="max-w-full cursor-pointer text-sm transition-colors hover:text-foreground"
-                type="button"
-              >
-                <div className="flex min-w-0 items-center gap-2">
-                  <Mail className="size-4 shrink-0 text-muted-foreground" />
-                  <span className="truncate">{entry.email}</span>
-                </div>
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>Click to copy</TooltipContent>
-          </Tooltip>
+          <div className="flex min-w-0 items-center gap-2">
+            <Mail className="size-4 shrink-0 text-muted-foreground" />
+            <CellText copy value={entry.email} className="text-sm" />
+          </div>
         ) : (
           <span className="text-sm text-muted-foreground">-</span>
         ),
@@ -269,11 +239,12 @@ export function AdminWaitlists() {
       onSort: () => handleSort("discordName"),
       render: (entry) => (
         <>
-          <p className="truncate font-medium">{entry.discordName}</p>
+          <CellText value={entry.discordName ?? ""} className="font-medium" />
           {entry.discordId && (
-            <p className="truncate text-xs text-muted-foreground">
-              ID: {entry.discordId}
-            </p>
+            <CellText
+              value={`ID: ${entry.discordId}`}
+              className="text-xs text-muted-foreground"
+            />
           )}
         </>
       ),

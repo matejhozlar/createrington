@@ -17,11 +17,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Copy, UserMinus, UserPlus } from "lucide-react";
+import { CellText } from "@/components/cell-text";
+import { UserMinus, UserPlus } from "lucide-react";
 import { PlayerLabel } from "@/components/player-label";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
-import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
 import { formatRelativeDate } from "@/features/admin/format";
 import { PromoteDialog } from "./components/PromoteDialog";
 import { DemoteDialog } from "./components/DemoteDialog";
@@ -49,8 +49,6 @@ export function OwnerAdmins() {
     void adminsQuery.refetch();
     void auditQuery.refetch();
   };
-
-  const handleCopy = useCopyToClipboard();
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -122,14 +120,11 @@ export function OwnerAdmins() {
                         />
                       </TableCell>
                       <TableCell className="px-4">
-                        <button
-                          type="button"
-                          onClick={(e) => handleCopy(e, admin.discordId)}
-                          className="group/copy flex items-center gap-1 text-sm font-mono text-muted-foreground hover:text-foreground transition-colors"
-                        >
-                          {admin.discordId}
-                          <Copy className="size-3 opacity-0 transition-opacity group-hover/copy:opacity-100" />
-                        </button>
+                        <CellText
+                          copy
+                          value={admin.discordId}
+                          className="font-mono text-sm text-muted-foreground"
+                        />
                       </TableCell>
                       <TableCell className="px-4 text-sm text-muted-foreground">
                         {admin.createdAt

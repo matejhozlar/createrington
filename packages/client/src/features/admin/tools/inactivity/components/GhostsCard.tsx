@@ -31,11 +31,11 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Copy, Ghost, RefreshCw, Search, Trash2 } from "lucide-react";
+import { Ghost, RefreshCw, Search, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useToastActions } from "@/hooks/use-toast";
-import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
+import { CellText } from "@/components/cell-text";
 import { formatFullDate, formatRelativeDate } from "@/features/admin/format";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { RemoveGhostModal } from "./modals/RemoveGhostModal";
@@ -94,8 +94,6 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
   const handlePageChange = useCallback((newPage: number) => {
     setPage(newPage);
   }, []);
-
-  const handleCopy = useCopyToClipboard();
 
   const handleRefresh = useCallback(async () => {
     try {
@@ -257,37 +255,25 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
                       <TableRow key={ghost.discordId}>
                         <TableCell className="px-4">
                           <div>
-                            <button
-                              type="button"
-                              onClick={(e) =>
-                                handleCopy(e, ghost.minecraftUsername)
-                              }
-                              className="group/copy flex items-center gap-1 font-medium hover:text-foreground transition-colors"
-                            >
-                              {ghost.minecraftUsername}
-                              <Copy className="size-3 text-muted-foreground opacity-0 transition-opacity group-hover/copy:opacity-100" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={(e) =>
-                                handleCopy(e, ghost.minecraftUuid)
-                              }
-                              className="group/copy flex items-center gap-1 font-mono text-xs text-muted-foreground hover:text-foreground transition-colors"
-                            >
-                              {ghost.minecraftUuid.slice(0, 8)}…
-                              <Copy className="size-2.5 opacity-0 transition-opacity group-hover/copy:opacity-100" />
-                            </button>
+                            <CellText
+                              copy
+                              value={ghost.minecraftUsername}
+                              className="font-medium"
+                            />
+                            <CellText
+                              copy
+                              value={ghost.minecraftUuid}
+                              display={`${ghost.minecraftUuid.slice(0, 8)}…`}
+                              className="font-mono text-xs text-muted-foreground"
+                            />
                           </div>
                         </TableCell>
                         <TableCell className="px-4">
-                          <button
-                            type="button"
-                            onClick={(e) => handleCopy(e, ghost.discordId)}
-                            className="group/copy flex items-center gap-1 font-mono text-xs text-muted-foreground hover:text-foreground transition-colors"
-                          >
-                            {ghost.discordId}
-                            <Copy className="size-3 opacity-0 transition-opacity group-hover/copy:opacity-100" />
-                          </button>
+                          <CellText
+                            copy
+                            value={ghost.discordId}
+                            className="font-mono text-xs text-muted-foreground"
+                          />
                         </TableCell>
                         <TableCell className="px-4">
                           <Tooltip>

@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import type { RouterOutput } from "@/lib/trpc";
 import { Paginator } from "@/components/paginator";
 import { Badge } from "@/components/ui/badge";
+import { CellText } from "@/components/cell-text";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   DataTable,
@@ -171,10 +172,11 @@ export function SuggestionsCard({
             className="size-8 shrink-0 rounded text-[11px]"
           />
           <div className="min-w-0">
-            <p className="truncate font-medium">{mod.project.name}</p>
-            <p className="truncate text-xs text-muted-foreground">
-              {mod.project.slug}
-            </p>
+            <CellText value={mod.project.name} className="font-medium" />
+            <CellText
+              value={mod.project.slug}
+              className="text-xs text-muted-foreground"
+            />
           </div>
         </div>
       ),
@@ -196,9 +198,10 @@ export function SuggestionsCard({
       header: "Note",
       minWidth: 140,
       render: (mod) => (
-        <p className="truncate text-sm text-muted-foreground">
-          {mod.note ?? ""}
-        </p>
+        <CellText
+          value={mod.note ?? ""}
+          className="text-sm text-muted-foreground"
+        />
       ),
     },
     {
