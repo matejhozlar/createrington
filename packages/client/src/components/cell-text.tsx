@@ -68,14 +68,9 @@ export function CellText({
           </span>
         )}
       </TooltipTrigger>
-      {(showValue || copy) && (
+      {showValue && (
         <TooltipContent className="max-w-80">
-          {showValue && <p className="break-all">{value}</p>}
-          {copy && (
-            <p className={showValue ? "text-background/60" : undefined}>
-              Click to copy
-            </p>
-          )}
+          <p className="break-all">{value}</p>
         </TooltipContent>
       )}
     </Tooltip>
