@@ -14,14 +14,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { CellText } from "@/components/cell-text";
+import { DataTable, type DataTableColumn } from "@/components/data-table";
 import { PlayerLabel } from "@/components/player-label";
 import { ProjectThumb } from "@/features/workshop/components/ProjectThumb";
 import {
@@ -81,9 +75,13 @@ function Credit({ row }: { row: PackMod }) {
     );
   }
   if (row.origin === "dependency") {
-    return row.requiredBy.length > 0
-      ? `Required by ${row.requiredBy.map((required) => required.name).join(", ")}`
-      : "Required dependency";
+    return row.requiredBy.length > 0 ? (
+      <CellText
+        value={`Required by ${row.requiredBy.map((required) => required.name).join(", ")}`}
+      />
+    ) : (
+      "Required dependency"
+    );
   }
   return row.liveInVersion
     ? `Added with ${row.liveInVersion}`
@@ -127,6 +125,74 @@ export function PackMembersCard({
     onError: (err) => toast.error(err.message),
   });
 
+  const columns: DataTableColumn<PackMod>[] = [
+    {
+      key: "mod",
+      header: "Mod",
+      minWidth: 220,
+      render: (row) => (
+        <div className="flex min-w-0 items-center gap-2">
+          <ProjectThumb
+            name={row.project.name}
+            thumbnailUrl={row.project.thumbnailUrl}
+            className="size-8 shrink-0 rounded text-[11px]"
+          />
+          <div className="min-w-0">
+            <CellText value={row.project.name} className="font-medium" />
+            <CellText
+              value={row.project.slug}
+              className="text-xs text-muted-foreground"
+            />
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "origin",
+      header: "Origin",
+      width: 140,
+      cellClassName: "text-sm",
+      render: (row) => {
+        const otherWorkshop =
+          row.suggestionWorkshopId !== null &&
+          row.suggestionWorkshopId !== workshopId
+            ? (row.suggestionWorkshopName ?? "another workshop")
+            : null;
+        return (
+          <>
+            <p>{ORIGIN_LABELS[row.origin]}</p>
+            {otherWorkshop && (
+              <CellText
+                value={`from ${otherWorkshop}`}
+                className="text-xs text-muted-foreground"
+              />
+            )}
+          </>
+        );
+      },
+    },
+    {
+      key: "credit",
+      header: "Credit",
+      minWidth: 180,
+      cellClassName: "text-sm text-muted-foreground",
+      render: (row) => <Credit row={row} />,
+    },
+    {
+      key: "publishState",
+      header: "Publish State",
+      width: 150,
+      render: (row) => {
+        const state = publishState(row);
+        return (
+          <Badge variant="outline" className={cn("text-xs", state.className)}>
+            {state.label}
+          </Badge>
+        );
+      },
+    },
+  ];
+
   return (
     <Card className="gap-0">
       <CardHeader className="border-b">
@@ -161,64 +227,11 @@ export function PackMembersCard({
         <CardEmpty icon={Package} message="Nothing published yet" />
       ) : (
         <CardContent className="px-0">
-          <Table>
-            <TableHeader className="bg-sidebar-accent/50">
-              <TableRow>
-                <TableHead className="px-4">Mod</TableHead>
-                <TableHead className="px-4">Origin</TableHead>
-                <TableHead className="px-4">Credit</TableHead>
-                <TableHead className="px-4">Publish State</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {visible.map((row) => {
-                const state = publishState(row);
-                const otherWorkshop =
-                  row.suggestionWorkshopId !== null &&
-                  row.suggestionWorkshopId !== workshopId
-                    ? (row.suggestionWorkshopName ?? "another workshop")
-                    : null;
-                return (
-                  <TableRow key={row.id}>
-                    <TableCell className="px-4">
-                      <div className="flex items-center gap-2">
-                        <ProjectThumb
-                          name={row.project.name}
-                          thumbnailUrl={row.project.thumbnailUrl}
-                          className="size-8 rounded text-[11px]"
-                        />
-                        <div>
-                          <p className="font-medium">{row.project.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {row.project.slug}
-                          </p>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="px-4 text-sm">
-                      <p>{ORIGIN_LABELS[row.origin]}</p>
-                      {otherWorkshop && (
-                        <p className="text-xs text-muted-foreground">
-                          from {otherWorkshop}
-                        </p>
-                      )}
-                    </TableCell>
-                    <TableCell className="px-4 text-sm text-muted-foreground">
-                      <Credit row={row} />
-                    </TableCell>
-                    <TableCell className="px-4">
-                      <Badge
-                        variant="outline"
-                        className={cn("text-xs", state.className)}
-                      >
-                        {state.label}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+          <DataTable
+            columns={columns}
+            rows={visible}
+            rowKey={(row) => row.id}
+          />
 
           <Paginator
             page={page}

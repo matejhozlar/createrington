@@ -6,16 +6,10 @@ import { useToastActions } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CellText } from "@/components/cell-text";
+import { DataTable, type DataTableColumn } from "@/components/data-table";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Loading } from "@/components/loading-spinner";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import {
@@ -64,6 +58,57 @@ export function AdminWorkshop() {
   };
 
   const workshops = workshopsQuery.data ?? [];
+
+  const columns: DataTableColumn<AdminWorkshopRow>[] = [
+    {
+      key: "name",
+      header: "Name",
+      minWidth: 200,
+      render: (workshop) => (
+        <>
+          <CellText value={workshop.name} className="font-medium" />
+          <CellText
+            value={`/${workshop.slug}`}
+            className="text-xs text-muted-foreground"
+          />
+        </>
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      width: 110,
+      render: (workshop) => (
+        <Badge
+          variant="outline"
+          className={WORKSHOP_STATUS_STYLES[workshop.status]?.className}
+        >
+          {WORKSHOP_STATUS_STYLES[workshop.status]?.label ?? workshop.status}
+        </Badge>
+      ),
+    },
+    {
+      key: "version",
+      header: "Version",
+      width: 95,
+      cellClassName: "text-sm",
+      render: (workshop) => workshop.gameVersion,
+    },
+    {
+      key: "loader",
+      header: "Loader",
+      width: 100,
+      cellClassName: "text-sm",
+      render: (workshop) => loaderName(workshop.modLoaderType),
+    },
+    {
+      key: "created",
+      header: "Created",
+      width: 130,
+      cellClassName: "text-sm text-muted-foreground",
+      render: (workshop) => formatDate(workshop.createdAt),
+    },
+  ];
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -149,80 +194,22 @@ export function AdminWorkshop() {
             </CardContent>
           ) : (
             <CardContent className="px-0">
-              <Table>
-                <TableHeader className="bg-sidebar-accent/50">
-                  <TableRow>
-                    <TableHead className="px-4">Name</TableHead>
-                    <TableHead className="px-4">Status</TableHead>
-                    <TableHead className="px-4">Version</TableHead>
-                    <TableHead className="px-4">Loader</TableHead>
-                    <TableHead className="px-4">Created</TableHead>
-                    <TableHead className="px-4 text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {workshops.map((workshop) => (
-                    <TableRow
-                      key={workshop.id}
-                      role="button"
-                      tabIndex={0}
-                      className="cursor-pointer"
-                      onClick={() =>
-                        navigate(`/admin/tools/workshop/${workshop.slug}`)
-                      }
-                      onKeyDown={(event) => {
-                        if (event.target !== event.currentTarget) return;
-                        if (event.key === "Enter" || event.key === " ") {
-                          event.preventDefault();
-                          navigate(`/admin/tools/workshop/${workshop.slug}`);
-                        }
-                      }}
-                    >
-                      <TableCell className="px-4">
-                        <p className="font-medium">{workshop.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          /{workshop.slug}
-                        </p>
-                      </TableCell>
-                      <TableCell className="px-4">
-                        <Badge
-                          variant="outline"
-                          className={
-                            WORKSHOP_STATUS_STYLES[workshop.status]?.className
-                          }
-                        >
-                          {WORKSHOP_STATUS_STYLES[workshop.status]?.label ??
-                            workshop.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="px-4 text-sm">
-                        {workshop.gameVersion}
-                      </TableCell>
-                      <TableCell className="px-4 text-sm">
-                        {loaderName(workshop.modLoaderType)}
-                      </TableCell>
-                      <TableCell className="px-4 text-sm text-muted-foreground">
-                        {formatDate(workshop.createdAt)}
-                      </TableCell>
-                      <TableCell
-                        className="px-4 text-right"
-                        onClick={(event) => event.stopPropagation()}
-                      >
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            aria-label={`Edit ${workshop.name}`}
-                            onClick={() => openSettings(workshop)}
-                          >
-                            <Pencil className="size-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <DataTable
+                columns={columns}
+                rows={workshops}
+                rowKey={(workshop) => workshop.id}
+                onRowClick={(workshop) =>
+                  navigate(`/admin/tools/workshop/${workshop.slug}`)
+                }
+                actions={(workshop) => [
+                  {
+                    label: "Edit",
+                    icon: Pencil,
+                    onClick: () => openSettings(workshop),
+                  },
+                ]}
+                actionSlots={1}
+              />
             </CardContent>
           )}
         </Card>
