@@ -24,8 +24,12 @@ const ROTATION_GRACE_MS = 60_000;
  * when a previously-revoked token is replayed (theft detection). Rotations are cached
  * in memory for a short grace window so concurrent refreshes from browser contexts
  * sharing one domain-scoped cookie (tabs, subdomains) all receive the same successor
- * instead of tripping theft detection. Instantiated as a singleton; an hourly cleanup
- * interval starts automatically on first access and runs for the lifetime of the process.
+ * instead of tripping theft detection. Grace replays re-validate the successor row
+ * first, so explicit revocation (logout, ban, logout-all) always wins. The cache is
+ * process-local and assumes a single-instance deployment; a restart or additional
+ * instance falls back to strict theft detection. Instantiated as a singleton; an hourly
+ * cleanup interval starts automatically on first access and runs for the lifetime of
+ * the process.
  */
 class SessionService {
   private static instance: SessionService;
@@ -76,7 +80,9 @@ class SessionService {
    * Rotates a refresh token in place: revokes the current session and issues a new one
    * in the same family. Repeated calls with the same token within the grace window
    * (concurrent or slightly stale refreshes from other tabs/subdomains) return the same
-   * successor. Returns null when the token is unknown, expired, or has already been
+   * successor, re-validated against the database so revocation always wins; if the
+   * successor was itself already rotated, the call follows the chain to the newest
+   * token. Returns null when the token is unknown, expired, or has already been
    * revoked; replay of a revoked token outside the grace window revokes the entire
    * family as theft.
    */
@@ -89,27 +95,44 @@ class SessionService {
 
     const recent = this.recentRotations.get(tokenHash);
     if (recent && recent.expiresAt > Date.now()) {
-      logger.info(
-        "Refresh token reused within rotation grace window, returning existing successor",
+      const result = await recent.promise;
+      if (!result) return null;
+
+      const successor = await auth.session.findByTokenHash(
+        refreshTokenService.hash(result.rawToken),
       );
-      return recent.promise;
+      if (!successor) return null;
+      if (successor.revoked_at) {
+        return this.rotateToken(result.rawToken, ip, userAgent);
+      }
+
+      logger.info(
+        `Refresh token reused within rotation grace window for user ${result.discordId}`,
+      );
+      return result;
     }
 
-    const promise = this.performRotation(tokenHash, ip, userAgent);
-    this.recentRotations.set(tokenHash, {
-      promise,
+    const entry = {
+      promise: this.performRotation(tokenHash, ip, userAgent),
       expiresAt: Date.now() + ROTATION_GRACE_MS,
-    });
+    };
+    this.recentRotations.set(tokenHash, entry);
+    const evict = () => {
+      if (this.recentRotations.get(tokenHash) === entry) {
+        this.recentRotations.delete(tokenHash);
+      }
+    };
+    setTimeout(evict, ROTATION_GRACE_MS).unref();
 
     let result: RotateResult | null;
     try {
-      result = await promise;
+      result = await entry.promise;
     } catch (error) {
-      this.recentRotations.delete(tokenHash);
+      evict();
       throw error;
     }
     if (!result) {
-      this.recentRotations.delete(tokenHash);
+      evict();
     }
     return result;
   }
@@ -189,13 +212,6 @@ class SessionService {
 
   /** Deletes expired sessions from the database; invoked hourly, also safe to call on demand. */
   async cleanupExpired(): Promise<void> {
-    const now = Date.now();
-    for (const [hash, entry] of this.recentRotations) {
-      if (entry.expiresAt <= now) {
-        this.recentRotations.delete(hash);
-      }
-    }
-
     const deleted = await auth.session.deleteExpired();
     if (deleted > 0) {
       logger.info(`Cleaned up ${deleted} expired auth sessions`);

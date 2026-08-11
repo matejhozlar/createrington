@@ -16,6 +16,7 @@ type SessionRow = {
 
 let rows: SessionRow[];
 let nextId: number;
+let failNextFind: boolean;
 
 vi.mock("@/config", () => ({
   default: {
@@ -36,8 +37,13 @@ vi.mock("@/config", () => ({
 vi.mock("@/db", () => ({
   auth: {
     session: {
-      findByTokenHash: async (tokenHash: string) =>
-        rows.find((r) => r.token_hash === tokenHash) ?? null,
+      findByTokenHash: async (tokenHash: string) => {
+        if (failNextFind) {
+          failNextFind = false;
+          throw new Error("db down");
+        }
+        return rows.find((r) => r.token_hash === tokenHash) ?? null;
+      },
       revokeById: async (id: number) => {
         const row = rows.find((r) => r.id === id);
         if (row && !row.revoked_at) row.revoked_at = new Date();
@@ -90,6 +96,14 @@ function hash(token: string): string {
   return crypto.createHash("sha256").update(token).digest("hex");
 }
 
+// The service singleton's grace cache persists across tests, so every token
+// is namespaced per test run to guarantee isolation.
+let testRun = 0;
+
+function tok(name: string): string {
+  return `${name}-${testRun}`;
+}
+
 function seedSession(
   token: string,
   overrides: Partial<SessionRow> = {},
@@ -114,6 +128,8 @@ function seedSession(
 beforeEach(() => {
   rows = [];
   nextId = 1;
+  failNextFind = false;
+  testRun++;
 });
 
 afterEach(() => {
@@ -122,12 +138,12 @@ afterEach(() => {
 
 describe("SessionService.rotateToken", () => {
   it("rotates a valid token: revokes the old session and issues a successor in the same family", async () => {
-    const seeded = seedSession("valid-token-1");
+    const seeded = seedSession(tok("valid"));
 
-    const result = await sessionService.rotateToken("valid-token-1");
+    const result = await sessionService.rotateToken(tok("valid"));
 
     expect(result).not.toBeNull();
-    expect(result!.rawToken).not.toBe("valid-token-1");
+    expect(result!.rawToken).not.toBe(tok("valid"));
     expect(result!.discordId).toBe("user-1");
     expect(seeded.revoked_at).not.toBeNull();
 
@@ -138,42 +154,42 @@ describe("SessionService.rotateToken", () => {
   });
 
   it("returns null for an unknown token", async () => {
-    const result = await sessionService.rotateToken("unknown-token-1");
+    const result = await sessionService.rotateToken(tok("unknown"));
     expect(result).toBeNull();
   });
 
   it("returns null and revokes an expired token", async () => {
-    const seeded = seedSession("expired-token-1", {
+    const seeded = seedSession(tok("expired"), {
       expires_at: new Date(Date.now() - 1000),
     });
 
-    const result = await sessionService.rotateToken("expired-token-1");
+    const result = await sessionService.rotateToken(tok("expired"));
 
     expect(result).toBeNull();
     expect(seeded.revoked_at).not.toBeNull();
   });
 
   it("revokes the whole family when a revoked token is replayed", async () => {
-    seedSession("stolen-token-1", {
+    seedSession(tok("stolen"), {
       revoked_at: new Date(),
       family_id: "family-theft",
     });
-    const sibling = seedSession("sibling-token-1", {
+    const sibling = seedSession(tok("sibling"), {
       family_id: "family-theft",
     });
 
-    const result = await sessionService.rotateToken("stolen-token-1");
+    const result = await sessionService.rotateToken(tok("stolen"));
 
     expect(result).toBeNull();
     expect(sibling.revoked_at).not.toBeNull();
   });
 
   it("returns the same successor to concurrent rotations of the same token", async () => {
-    seedSession("race-token-1", { family_id: "family-race" });
+    seedSession(tok("race"), { family_id: "family-race" });
 
     const [a, b] = await Promise.all([
-      sessionService.rotateToken("race-token-1"),
-      sessionService.rotateToken("race-token-1"),
+      sessionService.rotateToken(tok("race")),
+      sessionService.rotateToken(tok("race")),
     ]);
 
     expect(a).not.toBeNull();
@@ -184,10 +200,10 @@ describe("SessionService.rotateToken", () => {
   });
 
   it("returns the same successor to a replay within the grace window without revoking the family", async () => {
-    seedSession("grace-token-1", { family_id: "family-grace" });
+    seedSession(tok("grace"), { family_id: "family-grace" });
 
-    const first = await sessionService.rotateToken("grace-token-1");
-    const replay = await sessionService.rotateToken("grace-token-1");
+    const first = await sessionService.rotateToken(tok("grace"));
+    const replay = await sessionService.rotateToken(tok("grace"));
 
     expect(first).not.toBeNull();
     expect(replay).not.toBeNull();
@@ -198,16 +214,54 @@ describe("SessionService.rotateToken", () => {
     expect(successor!.revoked_at).toBeNull();
   });
 
+  it("returns null on a grace replay when the successor has been revoked", async () => {
+    seedSession(tok("logout"), { family_id: "family-logout" });
+
+    const first = await sessionService.rotateToken(tok("logout"));
+    expect(first).not.toBeNull();
+
+    const successor = rows.find((r) => r.token_hash === hash(first!.rawToken))!;
+    successor.revoked_at = new Date();
+
+    const replay = await sessionService.rotateToken(tok("logout"));
+
+    expect(replay).toBeNull();
+  });
+
+  it("follows the rotation chain when the successor was itself already rotated", async () => {
+    seedSession(tok("chain"), { family_id: "family-chain" });
+
+    const first = await sessionService.rotateToken(tok("chain"));
+    const second = await sessionService.rotateToken(first!.rawToken);
+    const replay = await sessionService.rotateToken(tok("chain"));
+
+    expect(second).not.toBeNull();
+    expect(replay).not.toBeNull();
+    expect(replay!.rawToken).toBe(second!.rawToken);
+  });
+
+  it("evicts the cache entry when rotation throws so a retry can succeed", async () => {
+    seedSession(tok("flaky"), { family_id: "family-flaky" });
+
+    failNextFind = true;
+    await expect(sessionService.rotateToken(tok("flaky"))).rejects.toThrow(
+      "db down",
+    );
+
+    const retry = await sessionService.rotateToken(tok("flaky"));
+    expect(retry).not.toBeNull();
+  });
+
   it("treats a replay after the grace window as theft", async () => {
     vi.useFakeTimers();
-    seedSession("late-token-1", { family_id: "family-late" });
+    seedSession(tok("late"), { family_id: "family-late" });
 
-    const first = await sessionService.rotateToken("late-token-1");
+    const first = await sessionService.rotateToken(tok("late"));
     expect(first).not.toBeNull();
 
     vi.advanceTimersByTime(61_000);
 
-    const replay = await sessionService.rotateToken("late-token-1");
+    const replay = await sessionService.rotateToken(tok("late"));
 
     expect(replay).toBeNull();
     const successor = rows.find((r) => r.token_hash === hash(first!.rawToken));
