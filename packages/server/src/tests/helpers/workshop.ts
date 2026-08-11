@@ -124,6 +124,13 @@ export async function seedRequiredDependency(
   });
 }
 
+export async function modEvents(workshopModId: number) {
+  return Q.workshop.mod.event.findAll(
+    { workshopModId },
+    { orderBy: "id", orderDirection: "asc" },
+  );
+}
+
 export async function cleanupWorkshopTestContext(
   ctx: WorkshopTestContext,
 ): Promise<void> {

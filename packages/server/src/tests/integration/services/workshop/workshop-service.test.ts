@@ -59,6 +59,7 @@ import {
   seedPackMod,
   seedRequiredDependency,
   makeProjectData,
+  modEvents,
   GAME_VERSION,
   MOD_LOADER_TYPE,
 } from "@/tests/helpers/workshop";
@@ -913,6 +914,152 @@ describe("WorkshopService.getPack", () => {
     ).rejects.toThrow(NotFoundError);
     await expect(workshopService.getPack(workshop.id)).resolves.toMatchObject({
       mods: [],
+    });
+  });
+});
+
+describe("WorkshopService timeline events", () => {
+  it("records suggested and review events through the pipeline", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const projectId = await seedProject(ctx);
+
+    const item = await workshopService.suggestMod(workshop.id, USER_A, {
+      projectId,
+      note: "adds cool automation",
+    });
+    await vi.waitFor(async () => {
+      expect(await modEvents(item.id)).toHaveLength(1);
+    });
+    expect((await modEvents(item.id))[0]).toMatchObject({
+      eventType: "suggested",
+      workshopId: workshop.id,
+      curseforgeProjectId: projectId,
+      actorDiscordId: USER_A,
+      fromStatus: null,
+      toStatus: "pending",
+      note: "adds cool automation",
+    });
+
+    await workshopService.reviewMod(item.id, "approve", ADMIN);
+    await vi.waitFor(async () => {
+      expect(await modEvents(item.id)).toHaveLength(2);
+    });
+    expect((await modEvents(item.id))[1]).toMatchObject({
+      eventType: "approved",
+      actorDiscordId: ADMIN,
+      fromStatus: "pending",
+      toStatus: "approved",
+    });
+
+    await workshopService.reviewMod(item.id, "reject", ADMIN, {
+      reason: "on_hold",
+      note: "revisit later",
+    });
+    await vi.waitFor(async () => {
+      expect(await modEvents(item.id)).toHaveLength(3);
+    });
+    expect((await modEvents(item.id))[2]).toMatchObject({
+      eventType: "rejected",
+      fromStatus: "approved",
+      toStatus: "rejected",
+      rejectReason: "on_hold",
+      note: "revisit later",
+    });
+  });
+
+  it("keeps a withdrawn suggestion's events after the row is deleted", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const projectId = await seedProject(ctx);
+    const item = await workshopService.suggestMod(workshop.id, USER_A, {
+      projectId,
+    });
+
+    await workshopService.removeSuggestion(item.id, USER_A);
+
+    await vi.waitFor(async () => {
+      expect(await modEvents(item.id)).toHaveLength(2);
+    });
+    expect(await Q.workshop.mod.find({ id: item.id })).toBeNull();
+    expect((await modEvents(item.id))[1]).toMatchObject({
+      eventType: "withdrawn",
+      actorDiscordId: USER_A,
+      fromStatus: "pending",
+    });
+  });
+
+  it("does not record an event for an idempotent review no-op", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const mod = await seedMod(ctx, workshop, {
+      submittedBy: USER_A,
+      status: "approved",
+    });
+
+    await workshopService.reviewMod(mod.id, "approve", ADMIN);
+    await workshopService.reviewMod(mod.id, "start_testing", ADMIN);
+
+    await vi.waitFor(async () => {
+      expect(await modEvents(mod.id)).toHaveLength(1);
+    });
+    expect((await modEvents(mod.id))[0]).toMatchObject({
+      eventType: "testing_started",
+      fromStatus: "approved",
+      toStatus: "testing",
+    });
+  });
+
+  it("skips repeat rejects that change nothing but records reason edits", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const mod = await seedMod(ctx, workshop, { submittedBy: USER_A });
+
+    await workshopService.reviewMod(mod.id, "reject", ADMIN, {
+      reason: "incompatible",
+      note: "crashes with create",
+    });
+    await workshopService.reviewMod(mod.id, "reject", ADMIN, {
+      reason: "incompatible",
+      note: "  crashes with create  ",
+    });
+
+    await vi.waitFor(async () => {
+      expect(await modEvents(mod.id)).toHaveLength(1);
+    });
+
+    await workshopService.reviewMod(mod.id, "reject", ADMIN, {
+      reason: "not_a_good_fit",
+    });
+
+    await vi.waitFor(async () => {
+      expect(await modEvents(mod.id)).toHaveLength(2);
+    });
+    expect((await modEvents(mod.id))[1]).toMatchObject({
+      eventType: "rejected",
+      fromStatus: "rejected",
+      toStatus: "rejected",
+      rejectReason: "not_a_good_fit",
+      note: null,
+    });
+  });
+
+  it("records admin adds as suggested events entering at approved", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const projectId = await seedProject(ctx);
+
+    const [item] = await workshopService.addModsAsAdmin(
+      workshop.id,
+      [projectId],
+      ADMIN,
+      "team pick for the season",
+    );
+
+    await vi.waitFor(async () => {
+      expect(await modEvents(item.id)).toHaveLength(1);
+    });
+    expect((await modEvents(item.id))[0]).toMatchObject({
+      eventType: "suggested",
+      actorDiscordId: ADMIN,
+      fromStatus: null,
+      toStatus: "approved",
+      note: "team pick for the season",
     });
   });
 });

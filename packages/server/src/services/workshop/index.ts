@@ -43,6 +43,7 @@ import {
   resolveProjectDependencies,
   type DependencyCoverage,
 } from "./dependencies";
+import { recordModEvent, REVIEW_EVENT_TYPES } from "./events";
 
 export type WorkshopProjectSummary = Pick<
   CurseforgeProject,
@@ -449,6 +450,15 @@ export class WorkshopService {
       this.mapConstraintError(error);
     }
 
+    recordModEvent({
+      eventType: "suggested",
+      workshopId: workshop.id,
+      workshopModId: created.id,
+      curseforgeProjectId: created.curseforgeProjectId,
+      actorDiscordId: discordId,
+      toStatus: created.status,
+      note: created.note,
+    });
     const [item] = await this.decorateMods(workshop, [created]);
     if (!item) throw new NotFoundError(`Mod #${created.id} not found`);
     void announceSuggestion(workshop, item);
@@ -476,6 +486,14 @@ export class WorkshopService {
     if (removed === 0) {
       throw new BadRequestError("Only pending suggestions can be removed");
     }
+    recordModEvent({
+      eventType: "withdrawn",
+      workshopId: mod.workshopId,
+      workshopModId: mod.id,
+      curseforgeProjectId: mod.curseforgeProjectId,
+      actorDiscordId: discordId,
+      fromStatus: mod.status,
+    });
     void announceRemoval(mod);
   }
 
@@ -734,7 +752,8 @@ export class WorkshopService {
    * discards its ship history and leaves the pack contradicting the manifest
    * until it is republished (the mod surfaces as a shipped_rejected attention
    * item meanwhile). Repeating an action the mod already satisfies is an
-   * idempotent no-op. The in_pack status is reconcile-owned and never set here.
+   * idempotent no-op; a reject with a changed reason or note is an edit, not
+   * a repeat. The in_pack status is reconcile-owned and never set here.
    */
   async reviewMod(
     workshopModId: number,
@@ -762,6 +781,14 @@ export class WorkshopService {
       return mod;
     }
     if (action === "start_testing" && mod.status === "testing") return mod;
+    if (
+      action === "reject" &&
+      mod.status === "rejected" &&
+      mod.rejectReason === options.reason &&
+      mod.rejectNote === (options.note?.trim() || null)
+    ) {
+      return mod;
+    }
     if (action === "send_back" && mod.status === "in_pack") {
       throw new BadRequestError(
         "This mod is in the published pack, reject it instead of sending it back",
@@ -802,6 +829,17 @@ export class WorkshopService {
     }
     const updated = await Q.workshop.mod.get({ id: workshopModId });
 
+    recordModEvent({
+      eventType: REVIEW_EVENT_TYPES[action],
+      workshopId: mod.workshopId,
+      workshopModId: mod.id,
+      curseforgeProjectId: mod.curseforgeProjectId,
+      actorDiscordId: adminId,
+      fromStatus: mod.status,
+      toStatus: updated.status,
+      rejectReason: updated.rejectReason,
+      note: updated.rejectNote,
+    });
     void announceReview(updated, target);
     if (target === "rejected") await pruneStaleDependencyEdges(workshop);
     return updated;
@@ -853,6 +891,17 @@ export class WorkshopService {
       this.mapConstraintError(error);
     }
 
+    for (const mod of created) {
+      recordModEvent({
+        eventType: "suggested",
+        workshopId: workshop.id,
+        workshopModId: mod.id,
+        curseforgeProjectId: mod.curseforgeProjectId,
+        actorDiscordId: adminId,
+        toStatus: mod.status,
+        note: mod.note,
+      });
+    }
     const items = await this.decorateMods(workshop, created);
     void (async () => {
       for (const item of items) await announceSuggestion(workshop, item);

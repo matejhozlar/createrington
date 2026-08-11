@@ -42,6 +42,17 @@ export const WORKSHOP_MOD_STATUS_LABELS: Record<WorkshopModStatus, string> = {
   rejected: "Ruled out",
 };
 
+export const WORKSHOP_MOD_EVENT_TYPES = [
+  "suggested",
+  "withdrawn",
+  "approved",
+  "rejected",
+  "testing_started",
+  "sent_back",
+  "shipped",
+  "dropped",
+] as const;
+
 export const WORKSHOP_MOD_REVIEW_ACTIONS = [
   "approve",
   "start_testing",
