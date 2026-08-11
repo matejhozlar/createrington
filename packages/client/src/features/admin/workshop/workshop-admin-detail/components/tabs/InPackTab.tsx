@@ -16,7 +16,6 @@ import {
 } from "@/components/ui/card";
 import { CellDate, CellText } from "@/components/cell-text";
 import { DataTable, type DataTableColumn } from "@/components/data-table";
-import { Input } from "@/components/ui/input";
 import { PlayerLabel } from "@/components/player-label";
 import {
   Select,
@@ -25,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { FilterBar } from "@/features/admin/components/FilterBar";
 import {
   CardEmpty,
   CardError,
@@ -271,127 +271,128 @@ export function InPackTab({
   };
 
   return (
-    <Card className="gap-0">
-      <CardHeader className="border-b">
-        <CardTitle>Published Pack ({total.toLocaleString()})</CardTitle>
-        <CardDescription className="max-lg:col-start-1">
-          {isCurrent
-            ? "What the published CurseForge pack actually contains, read from its manifest. Mods staged for the next update appear here once you publish a build that includes them."
-            : "What this build shipped, frozen at the moment it was recorded."}
-        </CardDescription>
-        <CardAction className="flex flex-wrap items-center gap-2 max-sm:flex-col max-sm:items-stretch max-lg:col-span-full max-lg:row-start-3 max-lg:mt-2 max-lg:justify-self-stretch">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder="Search mods..."
-              value={search}
-              onChange={(event) => handleSearchChange(event.target.value)}
-              className="w-full pl-9 sm:w-52"
-            />
-          </div>
-          <Select
-            value={selected}
-            onValueChange={(value) => {
-              setSelected(value);
-              setRequestedPage(0);
-            }}
-          >
-            <SelectTrigger className="w-full sm:w-[190px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="current">Current</SelectItem>
-              {(releasesQuery.data ?? []).map((release) => (
-                <SelectItem key={release.id} value={String(release.id)}>
-                  {release.version ??
-                    release.displayName ??
-                    `File #${release.curseforgeFileId}`}
-                  <span className="text-muted-foreground">
-                    · {formatDate(release.publishedAt ?? release.createdAt)}
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={reconcileMutation.isPending}
-            onClick={() => reconcileMutation.mutate({ modpackId })}
-          >
-            {reconcileMutation.isPending ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <RefreshCw className="size-4" />
-            )}
-            Check Published Pack
-          </Button>
-        </CardAction>
-      </CardHeader>
+    <>
+      <FilterBar
+        search={search}
+        onSearchChange={handleSearchChange}
+        placeholder="Search mods..."
+        activeCount={(query ? 1 : 0) + (isCurrent ? 0 : 1)}
+      >
+        <Select
+          value={selected}
+          onValueChange={(value) => {
+            setSelected(value);
+            setRequestedPage(0);
+          }}
+        >
+          <SelectTrigger className="min-w-[190px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="current">Current</SelectItem>
+            {(releasesQuery.data ?? []).map((release) => (
+              <SelectItem key={release.id} value={String(release.id)}>
+                {release.version ??
+                  release.displayName ??
+                  `File #${release.curseforgeFileId}`}
+                <span className="text-muted-foreground">
+                  · {formatDate(release.publishedAt ?? release.createdAt)}
+                </span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </FilterBar>
 
-      {isCurrent ? (
-        isLoading ? (
-          <CardLoading text="Loading pack members..." />
-        ) : error ? (
-          <CardError message={error} onRetry={onRetry} />
-        ) : rows.length === 0 ? (
-          <CardEmpty icon={Package} message="Nothing published yet" />
-        ) : currentFiltered.length === 0 ? (
+      <Card className="gap-0">
+        <CardHeader className="border-b">
+          <CardTitle>Published Pack ({total.toLocaleString()})</CardTitle>
+          <CardDescription className="max-sm:col-start-1">
+            {isCurrent
+              ? "What the published CurseForge pack actually contains, read from its manifest. Mods staged for the next update appear here once you publish a build that includes them."
+              : "What this build shipped, frozen at the moment it was recorded."}
+          </CardDescription>
+          <CardAction className="max-sm:col-span-full max-sm:row-start-3 max-sm:mt-2 max-sm:justify-self-stretch">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={reconcileMutation.isPending}
+              onClick={() => reconcileMutation.mutate({ modpackId })}
+              className="max-sm:w-full"
+            >
+              {reconcileMutation.isPending ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <RefreshCw className="size-4" />
+              )}
+              Check Published Pack
+            </Button>
+          </CardAction>
+        </CardHeader>
+
+        {isCurrent ? (
+          isLoading ? (
+            <CardLoading text="Loading pack members..." />
+          ) : error ? (
+            <CardError message={error} onRetry={onRetry} />
+          ) : rows.length === 0 ? (
+            <CardEmpty icon={Package} message="Nothing published yet" />
+          ) : currentFiltered.length === 0 ? (
+            <CardEmpty icon={Search} message="No mods match your search" />
+          ) : (
+            <CardContent className="px-0">
+              <DataTable
+                columns={currentColumns}
+                rows={currentFiltered.slice(
+                  page * MODS_PER_PAGE,
+                  (page + 1) * MODS_PER_PAGE,
+                )}
+                rowKey={(row) => row.id}
+              />
+              <Paginator
+                page={page}
+                limit={MODS_PER_PAGE}
+                total={currentFiltered.length}
+                totalPages={totalPages}
+                onPageChange={setRequestedPage}
+                itemLabel="mod"
+                className="px-4 pt-4"
+              />
+            </CardContent>
+          )
+        ) : releaseModsQuery.isLoading ? (
+          <CardLoading text="Loading release..." />
+        ) : releaseModsQuery.error ? (
+          <CardError
+            message={releaseModsQuery.error.message}
+            onRetry={() => releaseModsQuery.refetch()}
+          />
+        ) : releaseRows.length === 0 ? (
+          <CardEmpty icon={Package} message="This release recorded no mods" />
+        ) : releaseFiltered.length === 0 ? (
           <CardEmpty icon={Search} message="No mods match your search" />
         ) : (
           <CardContent className="px-0">
             <DataTable
-              columns={currentColumns}
-              rows={currentFiltered.slice(
+              columns={releaseColumns}
+              rows={releaseFiltered.slice(
                 page * MODS_PER_PAGE,
                 (page + 1) * MODS_PER_PAGE,
               )}
-              rowKey={(row) => row.id}
+              rowKey={(row) => `${row.curseforgeProjectId}-${row.fileId}`}
             />
             <Paginator
               page={page}
               limit={MODS_PER_PAGE}
-              total={currentFiltered.length}
+              total={releaseFiltered.length}
               totalPages={totalPages}
               onPageChange={setRequestedPage}
               itemLabel="mod"
               className="px-4 pt-4"
             />
           </CardContent>
-        )
-      ) : releaseModsQuery.isLoading ? (
-        <CardLoading text="Loading release..." />
-      ) : releaseModsQuery.error ? (
-        <CardError
-          message={releaseModsQuery.error.message}
-          onRetry={() => releaseModsQuery.refetch()}
-        />
-      ) : releaseRows.length === 0 ? (
-        <CardEmpty icon={Package} message="This release recorded no mods" />
-      ) : releaseFiltered.length === 0 ? (
-        <CardEmpty icon={Search} message="No mods match your search" />
-      ) : (
-        <CardContent className="px-0">
-          <DataTable
-            columns={releaseColumns}
-            rows={releaseFiltered.slice(
-              page * MODS_PER_PAGE,
-              (page + 1) * MODS_PER_PAGE,
-            )}
-            rowKey={(row) => `${row.curseforgeProjectId}-${row.fileId}`}
-          />
-          <Paginator
-            page={page}
-            limit={MODS_PER_PAGE}
-            total={releaseFiltered.length}
-            totalPages={totalPages}
-            onPageChange={setRequestedPage}
-            itemLabel="mod"
-            className="px-4 pt-4"
-          />
-        </CardContent>
-      )}
-    </Card>
+        )}
+      </Card>
+    </>
   );
 }

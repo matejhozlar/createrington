@@ -7,7 +7,6 @@ import { Paginator } from "@/components/paginator";
 import { CellText } from "@/components/cell-text";
 import {
   Card,
-  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -18,7 +17,7 @@ import {
   type DataTableAction,
   type DataTableColumn,
 } from "@/components/data-table";
-import { Input } from "@/components/ui/input";
+import { FilterBar } from "@/features/admin/components/FilterBar";
 import {
   CardEmpty,
   CardError,
@@ -166,69 +165,69 @@ export function DependenciesTab({
       : [];
 
   return (
-    <Card className="gap-0">
-      <CardHeader className="border-b">
-        <CardTitle>
-          Dependencies (
-          {query
-            ? `${filtered.length.toLocaleString()} of ${rows.length.toLocaleString()}`
-            : rows.length.toLocaleString()}
-          )
-        </CardTitle>
-        <CardDescription className="max-sm:col-start-1">
-          Everything the workshop's mods pull in, with where each dependency
-          stands relative to the pack. Gaps in required coverage sort first.
-        </CardDescription>
-        <CardAction className="max-sm:col-span-full max-sm:row-start-3 max-sm:mt-2 max-sm:justify-self-stretch">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder="Search dependencies..."
-              value={search}
-              onChange={(event) => {
-                onSearchChange(event.target.value);
-                setRequestedPage(0);
-              }}
-              className="w-full pl-9 sm:w-64"
+    <>
+      <FilterBar
+        search={search}
+        onSearchChange={(value) => {
+          onSearchChange(value);
+          setRequestedPage(0);
+        }}
+        placeholder="Search dependencies..."
+        activeCount={query ? 1 : 0}
+      />
+
+      <Card className="gap-0">
+        <CardHeader className="border-b">
+          <CardTitle>
+            Dependencies (
+            {query
+              ? `${filtered.length.toLocaleString()} of ${rows.length.toLocaleString()}`
+              : rows.length.toLocaleString()}
+            )
+          </CardTitle>
+          <CardDescription>
+            Everything the workshop's mods pull in, with where each dependency
+            stands relative to the pack. Gaps in required coverage sort first.
+          </CardDescription>
+        </CardHeader>
+
+        {depsQuery.isLoading ? (
+          <CardLoading text="Loading dependencies..." />
+        ) : depsQuery.error ? (
+          <CardError
+            message={depsQuery.error.message}
+            onRetry={() => depsQuery.refetch()}
+          />
+        ) : rows.length === 0 ? (
+          <CardEmpty icon={Network} message="No dependencies pulled in yet" />
+        ) : filtered.length === 0 ? (
+          <CardEmpty
+            icon={Search}
+            message="No dependencies match your search"
+          />
+        ) : (
+          <CardContent className="px-0">
+            <DataTable
+              columns={columns}
+              rows={visible}
+              rowKey={(row) => row.curseforgeProjectId}
+              actions={rowActions}
+              actionSlots={1}
+              isRowBusy={(row) => busyProjectId === row.curseforgeProjectId}
             />
-          </div>
-        </CardAction>
-      </CardHeader>
 
-      {depsQuery.isLoading ? (
-        <CardLoading text="Loading dependencies..." />
-      ) : depsQuery.error ? (
-        <CardError
-          message={depsQuery.error.message}
-          onRetry={() => depsQuery.refetch()}
-        />
-      ) : rows.length === 0 ? (
-        <CardEmpty icon={Network} message="No dependencies pulled in yet" />
-      ) : filtered.length === 0 ? (
-        <CardEmpty icon={Search} message="No dependencies match your search" />
-      ) : (
-        <CardContent className="px-0">
-          <DataTable
-            columns={columns}
-            rows={visible}
-            rowKey={(row) => row.curseforgeProjectId}
-            actions={rowActions}
-            actionSlots={1}
-            isRowBusy={(row) => busyProjectId === row.curseforgeProjectId}
-          />
-
-          <Paginator
-            page={page}
-            limit={DEPS_PER_PAGE}
-            total={filtered.length}
-            totalPages={totalPages}
-            onPageChange={setRequestedPage}
-            itemLabel="dependency"
-            className="px-4 pt-4"
-          />
-        </CardContent>
-      )}
-    </Card>
+            <Paginator
+              page={page}
+              limit={DEPS_PER_PAGE}
+              total={filtered.length}
+              totalPages={totalPages}
+              onPageChange={setRequestedPage}
+              itemLabel="dependency"
+              className="px-4 pt-4"
+            />
+          </CardContent>
+        )}
+      </Card>
+    </>
   );
 }

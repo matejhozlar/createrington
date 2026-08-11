@@ -4,15 +4,8 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Paginator } from "@/components/paginator";
 import { CellDate } from "@/components/cell-text";
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DataTable, type DataTableColumn } from "@/components/data-table";
-import { Input } from "@/components/ui/input";
 import { PlayerLabel } from "@/components/player-label";
 import {
   Select,
@@ -21,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { FilterBar } from "@/features/admin/components/FilterBar";
 import {
   CardEmpty,
   CardError,
@@ -161,79 +155,77 @@ export function AllModsTab({
   ];
 
   return (
-    <Card className="gap-0">
-      <CardHeader className="gap-0 border-b">
-        <CardTitle>
-          All Mods (
-          {filtering
-            ? `${filtered.length.toLocaleString()} of ${mods.length.toLocaleString()}`
-            : mods.length.toLocaleString()}
-          )
-        </CardTitle>
-        <CardAction className="flex items-center gap-2 max-md:col-span-full max-md:row-start-2 max-md:mt-3 max-md:flex-col max-md:items-stretch max-md:justify-self-stretch">
-          <Select
-            value={category}
-            onValueChange={(value) => {
-              setCategory(value);
-              onPageChange(0);
-            }}
-          >
-            <SelectTrigger className="w-full md:w-[170px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All categories</SelectItem>
-              {categories.map((name) => (
-                <SelectItem key={name} value={name}>
-                  {name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder="Search by mod or player..."
-              value={search}
-              onChange={(event) => onSearchChange(event.target.value)}
-              className="w-full pl-9 md:w-64"
+    <>
+      <FilterBar
+        search={search}
+        onSearchChange={onSearchChange}
+        placeholder="Search by mod or player..."
+        activeCount={(query ? 1 : 0) + (category !== "all" ? 1 : 0)}
+      >
+        <Select
+          value={category}
+          onValueChange={(value) => {
+            setCategory(value);
+            onPageChange(0);
+          }}
+        >
+          <SelectTrigger className="min-w-[170px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All categories</SelectItem>
+            {categories.map((name) => (
+              <SelectItem key={name} value={name}>
+                {name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </FilterBar>
+
+      <Card className="gap-0">
+        <CardHeader className="gap-0 border-b">
+          <CardTitle>
+            All Mods (
+            {filtering
+              ? `${filtered.length.toLocaleString()} of ${mods.length.toLocaleString()}`
+              : mods.length.toLocaleString()}
+            )
+          </CardTitle>
+        </CardHeader>
+
+        {isLoading ? (
+          <CardLoading text="Loading mods..." />
+        ) : error ? (
+          <CardError message={error} onRetry={onRetry} />
+        ) : mods.length === 0 ? (
+          <CardEmpty icon={Lightbulb} message="No suggestions yet" />
+        ) : filtered.length === 0 ? (
+          <CardEmpty icon={Search} message="No mods match your filters" />
+        ) : (
+          <CardContent className="px-0">
+            <DataTable
+              columns={columns}
+              rows={visible}
+              rowKey={(mod) => mod.id}
+              onRowClick={(mod) => onView(mod.id)}
+              actions={(mod) => modReviewActions(mod, { onReview, onReject })}
+              actionSlots={0}
+              isRowBusy={(mod) => busyModId === mod.id}
             />
-          </div>
-        </CardAction>
-      </CardHeader>
 
-      {isLoading ? (
-        <CardLoading text="Loading mods..." />
-      ) : error ? (
-        <CardError message={error} onRetry={onRetry} />
-      ) : mods.length === 0 ? (
-        <CardEmpty icon={Lightbulb} message="No suggestions yet" />
-      ) : filtered.length === 0 ? (
-        <CardEmpty icon={Search} message="No mods match your filters" />
-      ) : (
-        <CardContent className="px-0">
-          <DataTable
-            columns={columns}
-            rows={visible}
-            rowKey={(mod) => mod.id}
-            onRowClick={(mod) => onView(mod.id)}
-            actions={(mod) => modReviewActions(mod, { onReview, onReject })}
-            actionSlots={0}
-            isRowBusy={(mod) => busyModId === mod.id}
-          />
-
-          <Paginator
-            page={page}
-            limit={MODS_PER_PAGE}
-            total={filtered.length}
-            totalPages={totalPages}
-            onPageChange={onPageChange}
-            itemLabel="mod"
-            className="px-4 pt-4"
-          />
-        </CardContent>
-      )}
-    </Card>
+            <Paginator
+              page={page}
+              limit={MODS_PER_PAGE}
+              total={filtered.length}
+              totalPages={totalPages}
+              onPageChange={onPageChange}
+              itemLabel="mod"
+              className="px-4 pt-4"
+            />
+          </CardContent>
+        )}
+      </Card>
+    </>
   );
 }

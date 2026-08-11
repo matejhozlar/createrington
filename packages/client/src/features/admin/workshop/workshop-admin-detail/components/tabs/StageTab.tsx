@@ -2,16 +2,10 @@ import { useMemo } from "react";
 import { Heart, Search } from "lucide-react";
 import { Paginator } from "@/components/paginator";
 import { CellDate, CellText } from "@/components/cell-text";
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DataTable, type DataTableColumn } from "@/components/data-table";
-import { Input } from "@/components/ui/input";
 import { PlayerLabel } from "@/components/player-label";
+import { FilterBar } from "@/features/admin/components/FilterBar";
 import {
   CardEmpty,
   CardError,
@@ -170,59 +164,56 @@ export function StageTab({
   ];
 
   return (
-    <Card className="gap-0">
-      <CardHeader className="gap-0 border-b">
-        <CardTitle>
-          {config.title} (
-          {query
-            ? `${filtered.length.toLocaleString()} of ${mods.length.toLocaleString()}`
-            : mods.length.toLocaleString()}
-          )
-        </CardTitle>
-        <CardAction className="max-sm:col-span-full max-sm:row-start-2 max-sm:mt-3 max-sm:justify-self-stretch">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder="Search by mod or player..."
-              value={search}
-              onChange={(event) => onSearchChange(event.target.value)}
-              className="w-full pl-9 sm:w-64"
+    <>
+      <FilterBar
+        search={search}
+        onSearchChange={onSearchChange}
+        placeholder="Search by mod or player..."
+        activeCount={query ? 1 : 0}
+      />
+
+      <Card className="gap-0">
+        <CardHeader className="gap-0 border-b">
+          <CardTitle>
+            {config.title} (
+            {query
+              ? `${filtered.length.toLocaleString()} of ${mods.length.toLocaleString()}`
+              : mods.length.toLocaleString()}
+            )
+          </CardTitle>
+        </CardHeader>
+
+        {isLoading ? (
+          <CardLoading text="Loading mods..." />
+        ) : error ? (
+          <CardError message={error} onRetry={onRetry} />
+        ) : mods.length === 0 ? (
+          <CardEmpty icon={config.emptyIcon} message={config.emptyMessage} />
+        ) : filtered.length === 0 ? (
+          <CardEmpty icon={Search} message="No mods match your search" />
+        ) : (
+          <CardContent className="px-0">
+            <DataTable
+              columns={columns}
+              rows={visible}
+              rowKey={(mod) => mod.id}
+              onRowClick={(mod) => onView(mod.id)}
+              actions={(mod) => modReviewActions(mod, { onReview, onReject })}
+              isRowBusy={(mod) => busyModId === mod.id}
             />
-          </div>
-        </CardAction>
-      </CardHeader>
 
-      {isLoading ? (
-        <CardLoading text="Loading mods..." />
-      ) : error ? (
-        <CardError message={error} onRetry={onRetry} />
-      ) : mods.length === 0 ? (
-        <CardEmpty icon={config.emptyIcon} message={config.emptyMessage} />
-      ) : filtered.length === 0 ? (
-        <CardEmpty icon={Search} message="No mods match your search" />
-      ) : (
-        <CardContent className="px-0">
-          <DataTable
-            columns={columns}
-            rows={visible}
-            rowKey={(mod) => mod.id}
-            onRowClick={(mod) => onView(mod.id)}
-            actions={(mod) => modReviewActions(mod, { onReview, onReject })}
-            isRowBusy={(mod) => busyModId === mod.id}
-          />
-
-          <Paginator
-            page={page}
-            limit={MODS_PER_PAGE}
-            total={filtered.length}
-            totalPages={totalPages}
-            onPageChange={onPageChange}
-            itemLabel="mod"
-            className="px-4 pt-4"
-          />
-        </CardContent>
-      )}
-    </Card>
+            <Paginator
+              page={page}
+              limit={MODS_PER_PAGE}
+              total={filtered.length}
+              totalPages={totalPages}
+              onPageChange={onPageChange}
+              itemLabel="mod"
+              className="px-4 pt-4"
+            />
+          </CardContent>
+        )}
+      </Card>
+    </>
   );
 }
