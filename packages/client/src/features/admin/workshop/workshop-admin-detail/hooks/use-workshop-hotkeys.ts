@@ -36,7 +36,9 @@ export function useWorkshopHotkeys(input: {
       }
 
       if (event.key === "ArrowDown" && !target?.closest("tr[data-row-key]")) {
-        const row = document.querySelector<HTMLElement>("tr[data-row-key]");
+        const row = document.querySelector<HTMLElement>(
+          "tr[data-row-key][tabindex]",
+        );
         if (row) {
           event.preventDefault();
           row.focus();

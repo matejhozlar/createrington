@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
+import { REQUIRED_DEPENDENCY } from "@createrington/shared/workshop";
 import { useStickyValue } from "@/hooks/use-sticky-value";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -47,8 +48,6 @@ interface ProjectScreenshot {
   title: string;
   url: string;
 }
-
-const REQUIRED_DEPENDENCY = 3;
 
 function asArray<T>(value: unknown): T[] {
   return Array.isArray(value) ? (value as T[]) : [];
@@ -202,7 +201,7 @@ export function ModDetailDialog({
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     Reviewed by{" "}
                     <PlayerLabel
-                      name={adminMod.reviewedBy}
+                      name={adminMod.reviewerName ?? adminMod.reviewedBy}
                       playerId={adminMod.reviewedBy}
                       size={16}
                     />

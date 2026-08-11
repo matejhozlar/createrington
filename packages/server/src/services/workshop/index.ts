@@ -279,6 +279,7 @@ export class WorkshopService {
   ): Promise<{
     mod: WorkshopMod & {
       submitterName: string | null;
+      reviewerName: string | null;
       discordThreadUrl: string | null;
       dependencies: WorkshopModDependencyInfo[];
       liveInVersion: string | null;
@@ -294,11 +295,12 @@ export class WorkshopService {
     if (!options.includeHidden) {
       this.assertUserVisible(workshop);
     }
-    const [project, upvoteCount, submitter, depRows, packRow] =
+    const [project, upvoteCount, submitter, reviewer, depRows, packRow] =
       await Promise.all([
         Q.curseforge.project.get({ id: mod.curseforgeProjectId }),
         Q.workshop.mod.upvote.count({ workshopModId }),
         Q.player.find({ discordId: mod.submittedBy }),
+        mod.reviewedBy ? Q.player.find({ discordId: mod.reviewedBy }) : null,
         Q.workshop.project.dependency.findAll({
           workshopId: mod.workshopId,
           curseforgeProjectId: mod.curseforgeProjectId,
@@ -313,6 +315,7 @@ export class WorkshopService {
       mod: {
         ...mod,
         submitterName: submitter?.minecraftUsername ?? null,
+        reviewerName: reviewer?.minecraftUsername ?? null,
         discordThreadUrl: mod.discordThreadId
           ? discordThreadUrl(mod.discordThreadId)
           : null,
@@ -995,12 +998,7 @@ export class WorkshopService {
       };
     });
 
-    return rows.sort((a, b) => {
-      if (a.name === null || b.name === null) {
-        return a.name === null ? (b.name === null ? 0 : 1) : -1;
-      }
-      return a.name.localeCompare(b.name);
-    });
+    return rows;
   }
 
   private async getWorkshopSummary(

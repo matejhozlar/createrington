@@ -1,5 +1,4 @@
 import { CircleCheck, Eye, PackagePlus } from "lucide-react";
-import { Paginator } from "@/components/paginator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CellDate, CellText } from "@/components/cell-text";
 import {
@@ -140,15 +139,9 @@ export function IssuesTab({
             isRowBusy={(item) => busyProjectId === item.curseforgeProjectId}
           />
 
-          <Paginator
-            page={0}
-            limit={items.length}
-            total={items.length}
-            totalPages={1}
-            onPageChange={() => undefined}
-            itemLabel="issue"
-            className="px-4 pt-4"
-          />
+          <p className="px-4 pt-4 text-xs text-muted-foreground">
+            Showing {items.length} {items.length === 1 ? "issue" : "issues"}
+          </p>
         </CardContent>
       )}
     </Card>

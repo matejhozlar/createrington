@@ -10,9 +10,8 @@ import {
   DEPENDENCY_COVERAGE_STYLES,
   dependencyIsCovered,
 } from "@/features/workshop/format";
+import { REQUIRED_DEPENDENCY } from "@createrington/shared/workshop";
 import type { AdminWorkshopMod } from "../types";
-
-const REQUIRED_DEPENDENCY = 3;
 
 export function DependencyCell({ mod }: { mod: AdminWorkshopMod }) {
   const required = mod.dependencies.filter(

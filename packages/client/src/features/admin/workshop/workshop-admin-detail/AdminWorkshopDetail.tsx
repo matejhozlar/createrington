@@ -97,6 +97,7 @@ export function AdminWorkshopDetail() {
     if (tab === "review") next.delete("tab");
     else next.set("tab", tab);
     setSearchParams(next, { replace: true });
+    setSearch("");
     setPage(0);
   };
 
