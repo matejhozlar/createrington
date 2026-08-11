@@ -267,6 +267,20 @@ export function DataTable<T>({
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
       onRowClick(row);
+      return;
+    }
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      const forward = event.key === "ArrowDown";
+      let sibling = forward
+        ? event.currentTarget.nextElementSibling
+        : event.currentTarget.previousElementSibling;
+      while (sibling && !sibling.hasAttribute("data-row-key")) {
+        sibling = forward
+          ? sibling.nextElementSibling
+          : sibling.previousElementSibling;
+      }
+      (sibling as HTMLElement | null)?.focus();
     }
   };
 

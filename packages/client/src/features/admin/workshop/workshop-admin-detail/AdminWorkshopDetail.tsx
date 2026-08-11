@@ -27,6 +27,7 @@ import {
   isWorkshopTabId,
   type WorkshopTabId,
 } from "./tabs";
+import { useWorkshopHotkeys } from "./hooks/use-workshop-hotkeys";
 import { AddModsDialog } from "./components/AddModsDialog";
 import { RejectModDialog } from "./components/RejectModDialog";
 import { WorkshopSettingsDialog } from "./components/WorkshopSettingsDialog";
@@ -98,6 +99,8 @@ export function AdminWorkshopDetail() {
     setSearchParams(next, { replace: true });
     setPage(0);
   };
+
+  useWorkshopHotkeys({ activeTab, onTabChange: setActiveTab });
 
   const handleSearchChange = (value: string) => {
     setSearch(value);

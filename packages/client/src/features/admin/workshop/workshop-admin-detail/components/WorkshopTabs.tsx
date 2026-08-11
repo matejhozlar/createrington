@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import type { WorkshopTabId } from "../tabs";
@@ -33,8 +34,32 @@ export function WorkshopTabs({
   onTabChange: (tab: WorkshopTabId) => void;
   counts: Partial<Record<WorkshopTabId, number>>;
 }) {
+  const stripRef = useRef<HTMLDivElement>(null);
+  const activeRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const strip = stripRef.current;
+    if (!strip) return;
+    const onWheel = (event: WheelEvent) => {
+      if (strip.scrollWidth <= strip.clientWidth) return;
+      if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+      event.preventDefault();
+      strip.scrollLeft += event.deltaY;
+    };
+    strip.addEventListener("wheel", onWheel, { passive: false });
+    return () => strip.removeEventListener("wheel", onWheel);
+  }, []);
+
+  const countsKey = JSON.stringify(counts);
+  useEffect(() => {
+    activeRef.current?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [activeTab, countsKey]);
+
   return (
-    <div className="overflow-x-auto overflow-y-hidden border-b border-border [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <div
+      ref={stripRef}
+      className="overflow-x-auto overflow-y-hidden border-b border-border [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+    >
       <div className="flex gap-1">
         {TABS.map((tab) => {
           const tabId = tab.id;
@@ -59,6 +84,7 @@ export function WorkshopTabs({
           return (
             <button
               key={tabId}
+              ref={isActive ? activeRef : undefined}
               type="button"
               onClick={() => onTabChange(tabId)}
               className={cn(
