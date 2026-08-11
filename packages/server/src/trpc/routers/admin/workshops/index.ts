@@ -204,6 +204,7 @@ export const adminWorkshopsRouter = router({
           metadata: {
             workshopModId: input.workshopModId,
             curseforgeProjectId: mod.curseforgeProjectId,
+            status: mod.status,
           },
         });
         return mod;

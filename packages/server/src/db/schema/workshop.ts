@@ -12,6 +12,7 @@ import { sql } from "drizzle-orm";
 import {
   workshopStatusEnum,
   workshopModStatusEnum,
+  workshopModEventTypeEnum,
   workshopModRejectReasonEnum,
   workshopPollStatusEnum,
   workshopPollGranularityEnum,
@@ -96,6 +97,39 @@ export const workshopMod = pgTable(
       table.workshopId,
       table.curseforgeProjectId,
     ),
+  ],
+);
+
+// --- workshop_mod_event ---
+// Append-only per-mod history feeding the build timeline. Writes are
+// fire-and-forget at-most-once; workshopModId and curseforgeProjectId are
+// plain ints (no FK) so withdrawn suggestions keep their events after the
+// mod row is hard-deleted.
+
+export const workshopModEvent = pgTable(
+  "workshop_mod_event",
+  {
+    id: serial("id").primaryKey(),
+    workshopId: integer("workshop_id")
+      .notNull()
+      .references(() => workshop.id, { onDelete: "cascade" }),
+    workshopModId: integer("workshop_mod_id").notNull(),
+    curseforgeProjectId: integer("curseforge_project_id").notNull(),
+    eventType: workshopModEventTypeEnum("event_type").notNull(),
+    // Null actor = the reconcile sweep following the published pack manifest
+    actorDiscordId: text("actor_discord_id"),
+    fromStatus: workshopModStatusEnum("from_status"),
+    toStatus: workshopModStatusEnum("to_status"),
+    rejectReason: workshopModRejectReasonEnum("reject_reason"),
+    note: text("note"),
+    releaseVersion: text("release_version"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("idx_workshop_mod_event_mod").on(table.workshopModId),
+    index("idx_workshop_mod_event_workshop").on(table.workshopId),
   ],
 );
 

@@ -1,5 +1,6 @@
 import { pgEnum } from "drizzle-orm/pg-core";
 import {
+  WORKSHOP_MOD_EVENT_TYPES,
   WORKSHOP_MOD_REJECT_REASONS,
   WORKSHOP_MOD_STATUSES,
   WORKSHOP_STATUSES,
@@ -125,6 +126,11 @@ export const workshopModStatusEnum = pgEnum(
 export const workshopModRejectReasonEnum = pgEnum(
   "workshop_mod_reject_reason",
   WORKSHOP_MOD_REJECT_REASONS,
+);
+
+export const workshopModEventTypeEnum = pgEnum(
+  "workshop_mod_event_type",
+  WORKSHOP_MOD_EVENT_TYPES,
 );
 
 // How a mod entered the modpack: a suggestion that reached next_update, an

@@ -33,6 +33,7 @@ import {
   announcePackDropOut,
   announceReview,
 } from "@/services/workshop/discord";
+import { recordModEvent } from "@/services/workshop/events";
 
 export type ModpackProjectSummary = Pick<
   CurseforgeProject,
@@ -697,6 +698,7 @@ export class ModpackService {
     workshopModIds: number[],
     from: Extract<WorkshopModStatus, "next_update" | "in_pack">,
     to: Extract<WorkshopModStatus, "next_update" | "in_pack">,
+    releaseVersion: string | null,
   ): Promise<WorkshopMod[]> {
     if (workshopModIds.length === 0) return [];
     const mods = await Q.workshop.mod.findAll({
@@ -706,13 +708,25 @@ export class ModpackService {
     const moved: WorkshopMod[] = [];
     for (const mod of mods) {
       // Concurrent reconciles read the same rows, so the guarded update picks
-      // one winner per move. Announcements are therefore at-most-once: a crash
-      // between the claim and the post loses it, since no later sweep retries
+      // one winner per move. Announcements and events are therefore
+      // at-most-once: a crash between the claim and the write loses them,
+      // since no later sweep retries
       const claimed = await Q.workshop.mod.updateAll(
         { status: to },
         { id: mod.id, status: from },
       );
-      if (claimed > 0) moved.push({ ...mod, status: to });
+      if (claimed > 0) {
+        moved.push({ ...mod, status: to });
+        recordModEvent({
+          eventType: to === "in_pack" ? "shipped" : "dropped",
+          workshopId: mod.workshopId,
+          workshopModId: mod.id,
+          curseforgeProjectId: mod.curseforgeProjectId,
+          fromStatus: from,
+          toStatus: to,
+          releaseVersion,
+        });
+      }
     }
     return moved;
   }
@@ -792,8 +806,18 @@ export class ModpackService {
     }
 
     announceStatusMoves([
-      ...(await this.moveSuggestions(shippedModIds, "next_update", "in_pack")),
-      ...(await this.moveSuggestions(droppedModIds, "in_pack", "next_update")),
+      ...(await this.moveSuggestions(
+        shippedModIds,
+        "next_update",
+        "in_pack",
+        manifest.version,
+      )),
+      ...(await this.moveSuggestions(
+        droppedModIds,
+        "in_pack",
+        "next_update",
+        manifest.version,
+      )),
     ]);
   }
 

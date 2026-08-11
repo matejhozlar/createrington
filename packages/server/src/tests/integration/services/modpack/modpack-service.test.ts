@@ -115,6 +115,13 @@ afterEach(async () => {
   vi.clearAllMocks();
 });
 
+async function modEvents(workshopModId: number) {
+  return Q.workshop.mod.event.findAll(
+    { workshopModId },
+    { orderBy: "id", orderDirection: "asc" },
+  );
+}
+
 afterAll(async () => {
   await pool.end();
 });
@@ -371,9 +378,23 @@ describe("ModpackService.reconcile", () => {
     expect((await Q.workshop.mod.get({ id: mod.id })).status).toBe("in_pack");
     expect(vi.mocked(announceReview)).toHaveBeenCalledTimes(1);
 
+    await vi.waitFor(async () => {
+      expect(await modEvents(mod.id)).toHaveLength(1);
+    });
+    expect((await modEvents(mod.id))[0]).toMatchObject({
+      eventType: "shipped",
+      workshopId: workshop.id,
+      curseforgeProjectId: mod.curseforgeProjectId,
+      actorDiscordId: null,
+      fromStatus: "next_update",
+      toStatus: "in_pack",
+      releaseVersion: "2.0.0",
+    });
+
     // A second sweep over the same manifest must not re-announce
     await modpackService.reconcile(modpack.id);
     expect(vi.mocked(announceReview)).toHaveBeenCalledTimes(1);
+    expect(await modEvents(mod.id)).toHaveLength(1);
 
     vi.mocked(getModpackManifest).mockResolvedValue(
       manifest({ version: "2.1.0", modIds: new Set<number>() }),
@@ -384,6 +405,16 @@ describe("ModpackService.reconcile", () => {
       "next_update",
     );
     expect(vi.mocked(announcePackDropOut)).toHaveBeenCalledTimes(1);
+
+    await vi.waitFor(async () => {
+      expect(await modEvents(mod.id)).toHaveLength(2);
+    });
+    expect((await modEvents(mod.id))[1]).toMatchObject({
+      eventType: "dropped",
+      fromStatus: "in_pack",
+      toStatus: "next_update",
+      releaseVersion: "2.1.0",
+    });
   });
 
   it("keeps a rejected mod's row while the pack still ships it", async () => {
