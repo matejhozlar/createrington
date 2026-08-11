@@ -3,8 +3,12 @@ import type { Workshop, WorkshopModStatus } from "@createrington/shared/db";
 import { getFilesDependencies, getModpackModIds } from "@/services/curseforge";
 import { refreshProjects } from "@/services/curseforge/ingest";
 
-export const OPTIONAL_DEPENDENCY = 2;
-export const REQUIRED_DEPENDENCY = 3;
+import {
+  OPTIONAL_DEPENDENCY,
+  REQUIRED_DEPENDENCY,
+} from "@createrington/shared/workshop";
+
+export { OPTIONAL_DEPENDENCY, REQUIRED_DEPENDENCY };
 
 export interface DependencySubject {
   curseforgeProjectId: number;

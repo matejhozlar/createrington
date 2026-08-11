@@ -367,6 +367,13 @@ export class ModpackService {
     };
   }
 
+  /** Frozen membership of a recorded release, joined to cached project summaries. */
+  async getReleaseMods(releaseId: number): Promise<ReleaseModRow[]> {
+    const release = await Q.modpack.release.get({ id: releaseId });
+    const rows = await Q.modpack.release.mod.listForReleases([release.id]);
+    return rows.map(({ releaseId: _releaseId, ...row }) => row);
+  }
+
   /**
    * Freeze what a published pack file shipped. CurseForge stops serving files
    * once they are archived, so every column a diff needs is copied in here and

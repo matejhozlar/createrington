@@ -68,7 +68,12 @@ export function Paginator({
   itemLabel = "entry",
   className,
 }: PaginatorProps) {
-  const plural = total === 1 ? itemLabel : `${itemLabel}s`;
+  const plural =
+    total === 1
+      ? itemLabel
+      : /[^aeiou]y$/.test(itemLabel)
+        ? `${itemLabel.slice(0, -1)}ies`
+        : `${itemLabel}s`;
 
   if (totalPages <= 1) {
     if (total === 0) return null;

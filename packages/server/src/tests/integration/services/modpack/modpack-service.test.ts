@@ -661,6 +661,47 @@ describe("ModpackService release history", () => {
     });
   });
 
+  it("exposes a release's frozen membership", async () => {
+    const modpack = await seedModpack(ctx, { curseforgeProjectId: 5010 });
+    const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const member = await seedPackMod(ctx, workshop);
+    vi.mocked(getFilesDetails).mockResolvedValue([
+      {
+        fileId: fileIdFor(member.curseforgeProjectId),
+        projectId: member.curseforgeProjectId,
+        displayName: "Cool Mod 1.2.3",
+        fileName: "coolmod-1.2.3.jar",
+        fileDate: "2026-01-01T00:00:00.000Z",
+        releaseType: 1,
+      },
+    ]);
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      manifest({
+        version: "1.0.0",
+        modIds: new Set([member.curseforgeProjectId]),
+      }),
+    );
+    await modpackService.reconcile(modpack.id);
+    const [release] = await modpackService.listReleases(modpack.id);
+
+    const rows = await modpackService.getReleaseMods(release.id);
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      curseforgeProjectId: member.curseforgeProjectId,
+      fileId: fileIdFor(member.curseforgeProjectId),
+      fileName: "coolmod-1.2.3.jar",
+      projectName: `Vitest Mod ${member.curseforgeProjectId}`,
+    });
+    expect(rows[0]).not.toHaveProperty("releaseId");
+  });
+
+  it("rejects an unknown release", async () => {
+    await expect(modpackService.getReleaseMods(999_999_999)).rejects.toThrow(
+      "not found",
+    );
+  });
+
   it("records a published file only once across repeated reconciles", async () => {
     const modpack = await seedModpack(ctx, { curseforgeProjectId: 5002 });
     const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });

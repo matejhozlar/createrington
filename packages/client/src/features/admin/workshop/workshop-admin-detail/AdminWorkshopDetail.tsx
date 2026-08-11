@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useParams } from "react-router";
+import { useParams, useSearchParams } from "react-router";
 import { PackagePlus, Settings2 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
@@ -20,17 +20,24 @@ import {
   type WorkshopModReviewAction,
 } from "@createrington/shared/workshop";
 import type { WorkshopModStatus } from "@createrington/shared/db";
-import { AddModsDialog } from "./components/AddModsDialog";
-import { AttentionCard } from "./components/AttentionCard";
-import { PackMembersCard } from "./components/PackMembersCard";
-import { ReleaseHistoryCard } from "./components/ReleaseHistoryCard";
-import { RejectModDialog } from "./components/RejectModDialog";
-import { SuggestionsCard } from "./components/SuggestionsCard";
+import type { AdminWorkshopMod } from "./types";
 import {
-  SuggestionFilters,
-  type StatusFilter,
-} from "./components/SuggestionFilters";
+  STAGE_CONFIG,
+  isStageTab,
+  isWorkshopTabId,
+  type WorkshopTabId,
+} from "./tabs";
+import { useWorkshopHotkeys } from "./hooks/use-workshop-hotkeys";
+import { AddModsDialog } from "./components/AddModsDialog";
+import { RejectModDialog } from "./components/RejectModDialog";
 import { WorkshopSettingsDialog } from "./components/WorkshopSettingsDialog";
+import { WorkshopTabs } from "./components/WorkshopTabs";
+import { AllModsTab } from "./components/tabs/AllModsTab";
+import { DependenciesTab } from "./components/tabs/DependenciesTab";
+import { InPackTab } from "./components/tabs/InPackTab";
+import { IssuesTab } from "./components/tabs/IssuesTab";
+import { ReleasesTab } from "./components/tabs/ReleasesTab";
+import { StageTab } from "./components/tabs/StageTab";
 
 const REVIEW_TOASTS: Partial<Record<WorkshopModStatus, string>> = {
   approved: "Mod approved",
@@ -67,9 +74,14 @@ export function AdminWorkshopDetail() {
     { enabled },
   );
 
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const activeTab: WorkshopTabId = isWorkshopTabId(tabParam)
+    ? tabParam
+    : "review";
+
   const [search, setSearch] = useState("");
-  const [suggestionsPage, setSuggestionsPage] = useState(0);
+  const [page, setPage] = useState(0);
   const [detailModId, setDetailModId] = useState<number | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -79,6 +91,22 @@ export function AdminWorkshopDetail() {
     name: string;
   } | null>(null);
   const [rejectKey, setRejectKey] = useState(0);
+
+  const setActiveTab = (tab: WorkshopTabId) => {
+    const next = new URLSearchParams(searchParams);
+    if (tab === "review") next.delete("tab");
+    else next.set("tab", tab);
+    setSearchParams(next, { replace: true });
+    setSearch("");
+    setPage(0);
+  };
+
+  useWorkshopHotkeys({ activeTab, onTabChange: setActiveTab });
+
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    setPage(0);
+  };
 
   const openReject = (target: { workshopModId: number; name: string }) => {
     setRejectKey((key) => key + 1);
@@ -91,6 +119,7 @@ export function AdminWorkshopDetail() {
     utils.admin.workshops.searchProjects.invalidate({ workshopId });
     utils.admin.workshops.listPackMods.invalidate({ workshopId });
     utils.admin.workshops.getAttention.invalidate({ workshopId });
+    utils.admin.workshops.listDependencies.invalidate({ workshopId });
     utils.user.workshops.list.invalidate();
     utils.user.workshops.get.invalidate();
     utils.user.workshops.listRejected.invalidate({ workshopId });
@@ -108,6 +137,14 @@ export function AdminWorkshopDetail() {
     onError: (err) => toast.error(err.message),
   });
 
+  const addProjectMutation = trpc.admin.workshops.addMods.useMutation({
+    onSuccess: () => {
+      toast.success("Added to the workshop as approved");
+      invalidate();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
   const updateWorkshopMutation = trpc.admin.workshops.update.useMutation({
     onSuccess: () => {
       toast.success("Workshop updated");
@@ -120,22 +157,40 @@ export function AdminWorkshopDetail() {
 
   const mods = useMemo(() => modsQuery.data ?? [], [modsQuery.data]);
 
-  const counts = useMemo(() => {
-    const tally: Record<string, number> = { all: mods.length };
-    for (const mod of mods) tally[mod.status] = (tally[mod.status] ?? 0) + 1;
-    return tally;
+  const modsByStatus = useMemo(() => {
+    const groups: Partial<Record<WorkshopModStatus, AdminWorkshopMod[]>> = {};
+    for (const mod of mods) (groups[mod.status] ??= []).push(mod);
+    return groups;
   }, [mods]);
 
-  const filtered = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    return mods.filter((mod) => {
-      if (statusFilter !== "all" && mod.status !== statusFilter) return false;
-      if (!query) return true;
-      return [mod.project.name, mod.project.slug, mod.submitterName].some(
-        (value) => value?.toLowerCase().includes(query),
-      );
-    });
-  }, [mods, statusFilter, search]);
+  const stageCount = (status: WorkshopModStatus) =>
+    modsQuery.data ? (modsByStatus[status]?.length ?? 0) : undefined;
+  const attentionCount = attentionQuery.data?.length;
+  const counts: Partial<Record<WorkshopTabId, number>> = {
+    review: stageCount("pending"),
+    approved: stageCount("approved"),
+    testing: stageCount("testing"),
+    "next-update": stageCount("next_update"),
+    "in-pack": packModsQuery.data?.length,
+    "ruled-out": stageCount("rejected"),
+    all: modsQuery.data?.length,
+    issues:
+      attentionCount !== undefined && attentionCount > 0
+        ? attentionCount
+        : undefined,
+  };
+
+  const busyModId = reviewMutation.isPending
+    ? (reviewMutation.variables?.workshopModId ?? null)
+    : null;
+  const busyProjectId = addProjectMutation.isPending
+    ? (addProjectMutation.variables?.projectIds[0] ?? null)
+    : null;
+
+  const handleReview = (id: number, action: WorkshopModReviewAction) =>
+    reviewMutation.mutate({ workshopModId: id, action });
+  const addProject = (projectId: number) =>
+    addProjectMutation.mutate({ workshopId, projectIds: [projectId] });
 
   if (workshopsQuery.isLoading) {
     return (
@@ -174,7 +229,7 @@ export function AdminWorkshopDetail() {
       <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <h1 className="text-2xl font-semibold">{workshop.name}</h1>
-          <div className="flex items-center gap-2">
+          <div className="flex w-full flex-col gap-2 min-[440px]:w-auto min-[440px]:flex-row min-[440px]:items-center">
             <Select
               value={workshop.status}
               disabled={updateWorkshopMutation.isPending}
@@ -185,7 +240,7 @@ export function AdminWorkshopDetail() {
                 })
               }
             >
-              <SelectTrigger className="w-32">
+              <SelectTrigger className="w-full min-[440px]:w-32">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -216,59 +271,86 @@ export function AdminWorkshopDetail() {
           </div>
         </div>
 
-        <AttentionCard
-          items={attentionQuery.data ?? []}
-          isLoading={attentionQuery.isLoading}
-          error={attentionQuery.error?.message ?? null}
-          onRetry={() => attentionQuery.refetch()}
-        />
-
-        <SuggestionFilters
-          search={search}
-          onSearchChange={(value) => {
-            setSearch(value);
-            setSuggestionsPage(0);
-          }}
-          status={statusFilter}
-          onStatusChange={(value) => {
-            setStatusFilter(value);
-            setSuggestionsPage(0);
-          }}
+        <WorkshopTabs
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
           counts={counts}
         />
 
-        <SuggestionsCard
-          mods={filtered}
-          total={mods.length}
-          filtered={statusFilter !== "all" || search.trim() !== ""}
-          isLoading={modsQuery.isLoading}
-          error={modsQuery.error?.message ?? null}
-          onRetry={() => modsQuery.refetch()}
-          page={suggestionsPage}
-          onPageChange={setSuggestionsPage}
-          busyModId={
-            reviewMutation.isPending
-              ? (reviewMutation.variables?.workshopModId ?? null)
-              : null
-          }
-          onView={setDetailModId}
-          onReview={(id, action: WorkshopModReviewAction) =>
-            reviewMutation.mutate({ workshopModId: id, action })
-          }
-          onReject={openReject}
-        />
+        {isStageTab(activeTab) && (
+          <StageTab
+            stage={activeTab}
+            mods={modsByStatus[STAGE_CONFIG[activeTab].status] ?? []}
+            isLoading={modsQuery.isLoading}
+            error={modsQuery.error?.message ?? null}
+            onRetry={() => modsQuery.refetch()}
+            search={search}
+            onSearchChange={handleSearchChange}
+            page={page}
+            onPageChange={setPage}
+            busyModId={busyModId}
+            onView={setDetailModId}
+            onReview={handleReview}
+            onReject={openReject}
+          />
+        )}
 
-        <PackMembersCard
-          rows={packModsQuery.data ?? []}
-          workshopId={workshopId}
-          modpackId={workshop.modpackId}
-          isLoading={packModsQuery.isLoading}
-          error={packModsQuery.error?.message ?? null}
-          onRetry={() => packModsQuery.refetch()}
-          onReconciled={invalidate}
-        />
+        {activeTab === "all" && (
+          <AllModsTab
+            mods={mods}
+            isLoading={modsQuery.isLoading}
+            error={modsQuery.error?.message ?? null}
+            onRetry={() => modsQuery.refetch()}
+            search={search}
+            onSearchChange={handleSearchChange}
+            page={page}
+            onPageChange={setPage}
+            busyModId={busyModId}
+            onView={setDetailModId}
+            onReview={handleReview}
+            onReject={openReject}
+          />
+        )}
 
-        <ReleaseHistoryCard modpackId={workshop.modpackId} />
+        {activeTab === "in-pack" && (
+          <InPackTab
+            workshopId={workshopId}
+            modpackId={workshop.modpackId}
+            rows={packModsQuery.data ?? []}
+            isLoading={packModsQuery.isLoading}
+            error={packModsQuery.error?.message ?? null}
+            onRetry={() => packModsQuery.refetch()}
+            search={search}
+            onSearchChange={setSearch}
+            onReconciled={invalidate}
+          />
+        )}
+
+        {activeTab === "dependencies" && (
+          <DependenciesTab
+            workshopId={workshopId}
+            search={search}
+            onSearchChange={setSearch}
+            onAddProject={addProject}
+            busyProjectId={busyProjectId}
+          />
+        )}
+
+        {activeTab === "issues" && (
+          <IssuesTab
+            items={attentionQuery.data ?? []}
+            isLoading={attentionQuery.isLoading}
+            error={attentionQuery.error?.message ?? null}
+            onRetry={() => attentionQuery.refetch()}
+            onView={setDetailModId}
+            onAddProject={addProject}
+            busyProjectId={busyProjectId}
+          />
+        )}
+
+        {activeTab === "releases" && (
+          <ReleasesTab modpackId={workshop.modpackId} />
+        )}
       </div>
 
       <ModDetailDialog

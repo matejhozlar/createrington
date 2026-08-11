@@ -39,12 +39,16 @@ function redactMod<
   T extends {
     reviewedBy: string | null;
     reviewedAt: Date | null;
+    reviewerName?: string | null;
     discordThreadId: string | null;
   },
->(mod: T): Omit<T, "reviewedBy" | "reviewedAt" | "discordThreadId"> {
+>(
+  mod: T,
+): Omit<T, "reviewedBy" | "reviewedAt" | "reviewerName" | "discordThreadId"> {
   const {
     reviewedBy: _reviewedBy,
     reviewedAt: _reviewedAt,
+    reviewerName: _reviewerName,
     discordThreadId: _discordThreadId,
     ...rest
   } = mod;

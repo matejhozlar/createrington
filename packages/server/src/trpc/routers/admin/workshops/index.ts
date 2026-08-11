@@ -286,4 +286,18 @@ export const adminWorkshopsRouter = router({
         rethrowTrpc(error);
       }
     }),
+
+  listDependencies: adminProcedure
+    .meta({
+      description:
+        "Workshop-wide dependency coverage, one row per depended-on project",
+    })
+    .input(z.object({ workshopId: id() }))
+    .query(async ({ input }) => {
+      try {
+        return await workshopService.getWorkshopDependencies(input.workshopId);
+      } catch (error) {
+        rethrowTrpc(error);
+      }
+    }),
 });

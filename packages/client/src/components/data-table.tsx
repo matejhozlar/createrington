@@ -106,14 +106,70 @@ function ActionButton({
   );
 }
 
-function RowActionGroup({
+function ActionMenu({
   actions,
   busy,
+  spinner,
 }: {
   actions: DataTableAction[];
   busy: boolean;
+  spinner: boolean;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          size="sm"
+          variant="outline"
+          aria-label="More actions"
+          disabled={busy}
+        >
+          {busy && spinner ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <MoreHorizontal className="size-4" />
+          )}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {actions.map((action) => (
+          <DropdownMenuItem
+            key={action.label}
+            disabled={action.disabled}
+            onClick={action.onClick}
+            className={
+              action.variant === "destructive"
+                ? "text-destructive focus:text-destructive"
+                : undefined
+            }
+          >
+            <action.icon className={cn("size-4", action.iconClassName)} />
+            {action.label}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function RowActionGroup({
+  actions,
+  busy,
+  menuOnly,
+}: {
+  actions: DataTableAction[];
+  busy: boolean;
+  menuOnly: boolean;
 }) {
   if (actions.length === 0) return null;
+
+  if (menuOnly) {
+    return (
+      <div className="flex justify-end">
+        <ActionMenu actions={actions} busy={busy} spinner />
+      </div>
+    );
+  }
 
   if (actions.length <= INLINE_ACTION_LIMIT) {
     return (
@@ -140,35 +196,7 @@ function RowActionGroup({
   return (
     <div className="flex justify-end gap-2">
       <ActionButton action={primary} busy={busy} spinner />
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            size="sm"
-            variant="outline"
-            aria-label="More actions"
-            disabled={busy}
-          >
-            <MoreHorizontal className="size-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          {rest.map((action) => (
-            <DropdownMenuItem
-              key={action.label}
-              disabled={action.disabled}
-              onClick={action.onClick}
-              className={
-                action.variant === "destructive"
-                  ? "text-destructive focus:text-destructive"
-                  : undefined
-              }
-            >
-              <action.icon className={cn("size-4", action.iconClassName)} />
-              {action.label}
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <ActionMenu actions={rest} busy={busy} spinner={false} />
     </div>
   );
 }
@@ -193,7 +221,7 @@ export function DataTable<T>({
   onRowClick?: (row: T) => void;
   rowClassName?: (row: T) => string | undefined;
   actions?: (row: T) => DataTableAction[];
-  actionSlots?: 1 | 2;
+  actionSlots?: 0 | 1 | 2;
   isRowBusy?: (row: T) => boolean;
   expandedKey?: string | number | null;
   renderExpanded?: (row: T) => React.ReactNode;
@@ -203,8 +231,8 @@ export function DataTable<T>({
   const rowActions = actions ? rows.map((row) => actions(row)) : null;
   const actionsWidth =
     CELL_PADDING +
-    actionSlots * ACTION_BUTTON_WIDTH +
-    (actionSlots - 1) * ACTION_GAP;
+    Math.max(actionSlots, 1) * ACTION_BUTTON_WIDTH +
+    Math.max(actionSlots - 1, 0) * ACTION_GAP;
   const fixedWidth =
     columns.reduce((sum, column) => sum + (column.width ?? 0), 0) +
     (rowActions ? actionsWidth : 0);
@@ -239,6 +267,20 @@ export function DataTable<T>({
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
       onRowClick(row);
+      return;
+    }
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      const forward = event.key === "ArrowDown";
+      let sibling = forward
+        ? event.currentTarget.nextElementSibling
+        : event.currentTarget.previousElementSibling;
+      while (sibling && !sibling.hasAttribute("data-row-key")) {
+        sibling = forward
+          ? sibling.nextElementSibling
+          : sibling.previousElementSibling;
+      }
+      (sibling as HTMLElement | null)?.focus();
     }
   };
 
@@ -332,6 +374,7 @@ export function DataTable<T>({
                     <RowActionGroup
                       actions={rowActions[index]}
                       busy={isRowBusy?.(row) ?? false}
+                      menuOnly={actionSlots === 0}
                     />
                   </TableCell>
                 )}

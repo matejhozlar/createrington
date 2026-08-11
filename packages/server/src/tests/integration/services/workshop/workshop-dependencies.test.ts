@@ -46,6 +46,7 @@ vi.mock("@/services/curseforge/ingest", () => ({
 }));
 
 import pool, { Q } from "@/db";
+import { NotFoundError } from "@/app/middleware/error-handler";
 import { workshopService } from "@/services/workshop";
 import { loadDependencyContext } from "@/services/workshop/dependencies";
 import {
@@ -142,6 +143,76 @@ describe("loadDependencyContext", () => {
     const { coverage } = await loadDependencyContext(workshop);
 
     expect(coverage.get(shipped.curseforgeProjectId)).toBe("published");
+  });
+});
+
+describe("getWorkshopDependencies", () => {
+  it("aggregates one row per dependency with coverage, requirers, and demand", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const staged = await seedMod(ctx, workshop, {
+      status: "next_update",
+      submittedBy: USER_A,
+    });
+    const inReview = await seedMod(ctx, workshop, { submittedBy: USER_A });
+    const published = await seedPackMod(ctx, workshop, {
+      liveAt: new Date(),
+      liveInVersion: "1.0.0",
+    });
+    const nowhere = await seedProject(ctx, "Zeta Lib");
+
+    await seedRequiredDependency(workshop, staged.curseforgeProjectId, nowhere);
+    await seedRequiredDependency(
+      workshop,
+      inReview.curseforgeProjectId,
+      nowhere,
+    );
+    await Q.workshop.project.dependency.create({
+      workshopId: workshop.id,
+      curseforgeProjectId: staged.curseforgeProjectId,
+      dependsOnProjectId: published.curseforgeProjectId,
+      relationType: 2,
+    });
+
+    const rows = await workshopService.getWorkshopDependencies(workshop.id);
+
+    expect(rows).toHaveLength(2);
+    const missing = rows.find((row) => row.curseforgeProjectId === nowhere);
+    expect(missing).toMatchObject({
+      name: "Zeta Lib",
+      coverage: "missing",
+      optionalByCount: 0,
+      shippingDemand: 1,
+    });
+    expect(
+      missing!.requiredBy.map((entry) => entry.curseforgeProjectId).sort(),
+    ).toEqual(
+      [staged.curseforgeProjectId, inReview.curseforgeProjectId].sort(),
+    );
+
+    const optionalDep = rows.find(
+      (row) => row.curseforgeProjectId === published.curseforgeProjectId,
+    );
+    expect(optionalDep).toMatchObject({
+      coverage: "published",
+      requiredBy: [],
+      optionalByCount: 1,
+      shippingDemand: 0,
+    });
+  });
+
+  it("returns nothing for a workshop without dependency edges", async () => {
+    const workshop = await seedWorkshop(ctx);
+    await seedMod(ctx, workshop, { submittedBy: USER_A });
+
+    expect(await workshopService.getWorkshopDependencies(workshop.id)).toEqual(
+      [],
+    );
+  });
+
+  it("throws NotFoundError for an unknown workshop", async () => {
+    await expect(
+      workshopService.getWorkshopDependencies(999_999_999),
+    ).rejects.toThrow(NotFoundError);
   });
 });
 
