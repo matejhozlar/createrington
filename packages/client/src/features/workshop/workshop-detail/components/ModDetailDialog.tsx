@@ -35,6 +35,7 @@ import {
   isHttpUrl,
   modCredit,
   MOD_STATUS_STYLES,
+  REJECT_REASON_LABELS,
 } from "../../format";
 
 interface ProjectCategory {
@@ -75,6 +76,7 @@ export function ModDetailDialog({
   const detailQuery = admin ? adminQuery : userQuery;
 
   const data = detailQuery.data;
+  const adminMod = admin ? adminQuery.data?.mod : undefined;
   const project = data?.project;
   const categories = asArray<ProjectCategory>(project?.categories);
   const screenshots = asArray<ProjectScreenshot>(project?.screenshots).filter(
@@ -190,6 +192,43 @@ export function ModDetailDialog({
               <div className="rounded-lg border bg-accent/30 p-3 text-sm">
                 <span className="font-medium">Submitter's note:</span>{" "}
                 {data.mod.note}
+              </div>
+            )}
+
+            {adminMod && (adminMod.reviewedBy || adminMod.rejectReason) && (
+              <div className="space-y-2 rounded-lg border p-3">
+                <div className="text-sm font-medium">Review</div>
+                {adminMod.reviewedBy && (
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    Reviewed by{" "}
+                    <PlayerLabel
+                      name={adminMod.reviewedBy}
+                      playerId={adminMod.reviewedBy}
+                      size={16}
+                    />
+                    {adminMod.reviewedAt && (
+                      <>· {formatDate(adminMod.reviewedAt)}</>
+                    )}
+                  </div>
+                )}
+                {adminMod.status === "rejected" && adminMod.rejectReason && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "text-xs",
+                        MOD_STATUS_STYLES.rejected.className,
+                      )}
+                    >
+                      {REJECT_REASON_LABELS[adminMod.rejectReason]}
+                    </Badge>
+                    {adminMod.rejectNote && (
+                      <span className="text-xs text-muted-foreground">
+                        {adminMod.rejectNote}
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 

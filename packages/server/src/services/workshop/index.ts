@@ -41,6 +41,7 @@ import {
   loadDependencyContext,
   pruneStaleDependencyEdges,
   resolveProjectDependencies,
+  REQUIRED_DEPENDENCY,
   type DependencyCoverage,
 } from "./dependencies";
 import { recordModEvent, REVIEW_EVENT_TYPES } from "./events";
@@ -77,6 +78,17 @@ export interface WorkshopModListItem extends WorkshopMod {
   discordThreadUrl: string | null;
   dependencies: WorkshopModDependencyInfo[];
   liveInVersion: string | null;
+}
+
+export interface WorkshopDependencyListItem {
+  curseforgeProjectId: number;
+  name: string | null;
+  slug: string | null;
+  thumbnailUrl: string | null;
+  coverage: DependencyCoverage;
+  requiredBy: Array<{ curseforgeProjectId: number; name: string }>;
+  optionalByCount: number;
+  shippingDemand: number;
 }
 
 export type WorkshopSuggestionHistoryItem = WorkshopModListItem & {
@@ -919,6 +931,76 @@ export class WorkshopService {
       { orderBy: "reviewedAt", orderDirection: "desc" },
     );
     return this.decorateMods(workshop, mods);
+  }
+
+  /** Workshop-wide dependency coverage, one row per depended-on project. */
+  async getWorkshopDependencies(
+    workshopId: number,
+  ): Promise<WorkshopDependencyListItem[]> {
+    const workshop = await this.getWorkshop(workshopId);
+    const [edges, context] = await Promise.all([
+      Q.workshop.project.dependency.findAll({ workshopId }),
+      loadDependencyContext(workshop),
+    ]);
+    if (edges.length === 0) return [];
+
+    const projectIds = [
+      ...new Set(
+        edges.flatMap((edge) => [
+          edge.dependsOnProjectId,
+          edge.curseforgeProjectId,
+        ]),
+      ),
+    ];
+    const projects = await Q.curseforge.project.findAll({
+      id: { $in: projectIds },
+    });
+    const projectById = new Map(
+      projects.map((project) => [project.id, project]),
+    );
+
+    const byDependency = new Map<number, typeof edges>();
+    for (const edge of edges) {
+      const group = byDependency.get(edge.dependsOnProjectId) ?? [];
+      group.push(edge);
+      byDependency.set(edge.dependsOnProjectId, group);
+    }
+
+    const rows = [...byDependency.entries()].map(([dependencyId, group]) => {
+      const project = projectById.get(dependencyId);
+      const requiredIds = [
+        ...new Set(
+          group
+            .filter((edge) => edge.relationType === REQUIRED_DEPENDENCY)
+            .map((edge) => edge.curseforgeProjectId),
+        ),
+      ];
+      const optionalIds = new Set(
+        group
+          .filter((edge) => edge.relationType !== REQUIRED_DEPENDENCY)
+          .map((edge) => edge.curseforgeProjectId),
+      );
+      return {
+        curseforgeProjectId: dependencyId,
+        name: project?.name ?? null,
+        slug: project?.slug ?? null,
+        thumbnailUrl: project?.thumbnailUrl ?? null,
+        coverage: context.coverage.get(dependencyId) ?? ("missing" as const),
+        requiredBy: requiredIds.map((id) => ({
+          curseforgeProjectId: id,
+          name: projectById.get(id)?.name ?? `#${id}`,
+        })),
+        optionalByCount: optionalIds.size,
+        shippingDemand: context.demand.get(dependencyId) ?? 0,
+      };
+    });
+
+    return rows.sort((a, b) => {
+      if (a.name === null || b.name === null) {
+        return a.name === null ? (b.name === null ? 0 : 1) : -1;
+      }
+      return a.name.localeCompare(b.name);
+    });
   }
 
   private async getWorkshopSummary(

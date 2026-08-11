@@ -104,6 +104,17 @@ export const adminModpacksRouter = router({
       }
     }),
 
+  listReleaseMods: adminProcedure
+    .meta({ description: "Frozen membership of a recorded release" })
+    .input(z.object({ releaseId: id() }))
+    .query(async ({ input }) => {
+      try {
+        return await modpackService.getReleaseMods(input.releaseId);
+      } catch (error) {
+        rethrowTrpc(error);
+      }
+    }),
+
   reconcile: adminProcedure
     .meta({
       description:

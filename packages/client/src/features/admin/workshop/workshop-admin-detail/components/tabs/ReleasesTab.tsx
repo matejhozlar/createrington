@@ -149,7 +149,7 @@ function ReleaseDiff({ releaseId }: { releaseId: number }) {
   );
 }
 
-export function ReleaseHistoryCard({ modpackId }: { modpackId: number }) {
+export function ReleasesTab({ modpackId }: { modpackId: number }) {
   const releasesQuery = trpc.admin.modpacks.listReleases.useQuery({
     modpackId,
   });
