@@ -752,7 +752,8 @@ export class WorkshopService {
    * discards its ship history and leaves the pack contradicting the manifest
    * until it is republished (the mod surfaces as a shipped_rejected attention
    * item meanwhile). Repeating an action the mod already satisfies is an
-   * idempotent no-op. The in_pack status is reconcile-owned and never set here.
+   * idempotent no-op; a reject with a changed reason or note is an edit, not
+   * a repeat. The in_pack status is reconcile-owned and never set here.
    */
   async reviewMod(
     workshopModId: number,
@@ -780,6 +781,14 @@ export class WorkshopService {
       return mod;
     }
     if (action === "start_testing" && mod.status === "testing") return mod;
+    if (
+      action === "reject" &&
+      mod.status === "rejected" &&
+      mod.rejectReason === options.reason &&
+      mod.rejectNote === (options.note?.trim() || null)
+    ) {
+      return mod;
+    }
     if (action === "send_back" && mod.status === "in_pack") {
       throw new BadRequestError(
         "This mod is in the published pack, reject it instead of sending it back",

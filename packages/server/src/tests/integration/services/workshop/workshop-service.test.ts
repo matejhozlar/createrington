@@ -59,6 +59,7 @@ import {
   seedPackMod,
   seedRequiredDependency,
   makeProjectData,
+  modEvents,
   GAME_VERSION,
   MOD_LOADER_TYPE,
 } from "@/tests/helpers/workshop";
@@ -917,13 +918,6 @@ describe("WorkshopService.getPack", () => {
   });
 });
 
-async function modEvents(workshopModId: number) {
-  return Q.workshop.mod.event.findAll(
-    { workshopModId },
-    { orderBy: "id", orderDirection: "asc" },
-  );
-}
-
 describe("WorkshopService timeline events", () => {
   it("records suggested and review events through the pipeline", async () => {
     const workshop = await seedWorkshop(ctx);
@@ -1010,6 +1004,39 @@ describe("WorkshopService timeline events", () => {
       eventType: "testing_started",
       fromStatus: "approved",
       toStatus: "testing",
+    });
+  });
+
+  it("skips repeat rejects that change nothing but records reason edits", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const mod = await seedMod(ctx, workshop, { submittedBy: USER_A });
+
+    await workshopService.reviewMod(mod.id, "reject", ADMIN, {
+      reason: "incompatible",
+      note: "crashes with create",
+    });
+    await workshopService.reviewMod(mod.id, "reject", ADMIN, {
+      reason: "incompatible",
+      note: "  crashes with create  ",
+    });
+
+    await vi.waitFor(async () => {
+      expect(await modEvents(mod.id)).toHaveLength(1);
+    });
+
+    await workshopService.reviewMod(mod.id, "reject", ADMIN, {
+      reason: "not_a_good_fit",
+    });
+
+    await vi.waitFor(async () => {
+      expect(await modEvents(mod.id)).toHaveLength(2);
+    });
+    expect((await modEvents(mod.id))[1]).toMatchObject({
+      eventType: "rejected",
+      fromStatus: "rejected",
+      toStatus: "rejected",
+      rejectReason: "not_a_good_fit",
+      note: null,
     });
   });
 

@@ -68,6 +68,7 @@ import {
 import {
   createWorkshopTestContext,
   cleanupWorkshopTestContext,
+  modEvents,
   seedModpack,
   seedWorkshop,
   seedMod,
@@ -114,13 +115,6 @@ afterEach(async () => {
   await cleanupWorkshopTestContext(ctx);
   vi.clearAllMocks();
 });
-
-async function modEvents(workshopModId: number) {
-  return Q.workshop.mod.event.findAll(
-    { workshopModId },
-    { orderBy: "id", orderDirection: "asc" },
-  );
-}
 
 afterAll(async () => {
   await pool.end();
