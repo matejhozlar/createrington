@@ -274,12 +274,12 @@ export function InPackTab({
     <Card className="gap-0">
       <CardHeader className="border-b">
         <CardTitle>Published Pack ({total.toLocaleString()})</CardTitle>
-        <CardDescription>
+        <CardDescription className="max-lg:col-start-1">
           {isCurrent
             ? "What the published CurseForge pack actually contains, read from its manifest. Mods staged for the next update appear here once you publish a build that includes them."
             : "What this build shipped, frozen at the moment it was recorded."}
         </CardDescription>
-        <CardAction className="flex flex-wrap items-center gap-2">
+        <CardAction className="flex flex-wrap items-center gap-2 max-sm:flex-col max-sm:items-stretch max-lg:col-span-full max-lg:row-start-3 max-lg:mt-2 max-lg:justify-self-stretch">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -287,7 +287,7 @@ export function InPackTab({
               placeholder="Search mods..."
               value={search}
               onChange={(event) => handleSearchChange(event.target.value)}
-              className="w-52 pl-9"
+              className="w-full pl-9 sm:w-52"
             />
           </div>
           <Select
@@ -297,7 +297,7 @@ export function InPackTab({
               setRequestedPage(0);
             }}
           >
-            <SelectTrigger className="w-[190px]">
+            <SelectTrigger className="w-full sm:w-[190px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

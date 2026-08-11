@@ -179,7 +179,7 @@ export function StageTab({
             : mods.length.toLocaleString()}
           )
         </CardTitle>
-        <CardAction>
+        <CardAction className="max-sm:col-span-full max-sm:row-start-2 max-sm:mt-3 max-sm:justify-self-stretch">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -187,7 +187,7 @@ export function StageTab({
               placeholder="Search by mod or player..."
               value={search}
               onChange={(event) => onSearchChange(event.target.value)}
-              className="w-64 pl-9"
+              className="w-full pl-9 sm:w-64"
             />
           </div>
         </CardAction>

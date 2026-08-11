@@ -175,11 +175,11 @@ export function DependenciesTab({
             : rows.length.toLocaleString()}
           )
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="max-sm:col-start-1">
           Everything the workshop's mods pull in, with where each dependency
           stands relative to the pack. Gaps in required coverage sort first.
         </CardDescription>
-        <CardAction>
+        <CardAction className="max-sm:col-span-full max-sm:row-start-3 max-sm:mt-2 max-sm:justify-self-stretch">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -190,7 +190,7 @@ export function DependenciesTab({
                 onSearchChange(event.target.value);
                 setRequestedPage(0);
               }}
-              className="w-64 pl-9"
+              className="w-full pl-9 sm:w-64"
             />
           </div>
         </CardAction>

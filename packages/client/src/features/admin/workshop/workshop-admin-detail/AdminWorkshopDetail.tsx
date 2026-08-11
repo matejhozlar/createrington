@@ -225,7 +225,7 @@ export function AdminWorkshopDetail() {
       <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <h1 className="text-2xl font-semibold">{workshop.name}</h1>
-          <div className="flex items-center gap-2">
+          <div className="flex w-full flex-col gap-2 min-[440px]:w-auto min-[440px]:flex-row min-[440px]:items-center">
             <Select
               value={workshop.status}
               disabled={updateWorkshopMutation.isPending}
@@ -236,7 +236,7 @@ export function AdminWorkshopDetail() {
                 })
               }
             >
-              <SelectTrigger className="w-32">
+              <SelectTrigger className="w-full min-[440px]:w-32">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

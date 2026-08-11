@@ -170,7 +170,7 @@ export function AllModsTab({
             : mods.length.toLocaleString()}
           )
         </CardTitle>
-        <CardAction className="flex items-center gap-2">
+        <CardAction className="flex items-center gap-2 max-md:col-span-full max-md:row-start-2 max-md:mt-3 max-md:flex-col max-md:items-stretch max-md:justify-self-stretch">
           <Select
             value={category}
             onValueChange={(value) => {
@@ -178,7 +178,7 @@ export function AllModsTab({
               onPageChange(0);
             }}
           >
-            <SelectTrigger className="w-[170px]">
+            <SelectTrigger className="w-full md:w-[170px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -197,7 +197,7 @@ export function AllModsTab({
               placeholder="Search by mod or player..."
               value={search}
               onChange={(event) => onSearchChange(event.target.value)}
-              className="w-64 pl-9"
+              className="w-full pl-9 md:w-64"
             />
           </div>
         </CardAction>
