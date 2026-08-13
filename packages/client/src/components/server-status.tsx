@@ -5,7 +5,6 @@ import { cn } from "@/lib/utils";
 import { useServerData } from "@/contexts/server-data";
 import { useSidebar } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { useCountdown } from "@/hooks/use-countdown";
 import type { ScheduledMaintenance } from "@createrington/shared/socket";
 
@@ -14,8 +13,7 @@ function ServerStatus({
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) {
   const { state } = useSidebar();
-  const isMobile = useIsMobile();
-  const isCollapsed = !isMobile && state === "collapsed";
+  const isCollapsed = state === "collapsed";
   const {
     servers,
     stats: serverStats,

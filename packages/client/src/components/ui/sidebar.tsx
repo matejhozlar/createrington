@@ -127,7 +127,7 @@ function SidebarProvider({
 
   // We add a state so that we can do data-state="expanded" or "collapsed".
   // This makes it easier to style the sidebar with Tailwind classes.
-  const state = open ? "expanded" : "collapsed";
+  const state = isMobile || open ? "expanded" : "collapsed";
 
   const contextValue = React.useMemo<SidebarContextProps>(
     () => ({
@@ -559,7 +559,7 @@ const SidebarMenuButton = React.forwardRef<
   ref,
 ) {
   const Comp = asChild ? Slot : "button";
-  const { isMobile, state } = useSidebar();
+  const { state } = useSidebar();
 
   const button = (
     <Comp
@@ -589,7 +589,7 @@ const SidebarMenuButton = React.forwardRef<
       <TooltipContent
         side="right"
         align="center"
-        hidden={state !== "collapsed" || isMobile}
+        hidden={state !== "collapsed"}
         {...tooltip}
       />
     </Tooltip>
