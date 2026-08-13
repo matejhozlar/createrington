@@ -9,6 +9,7 @@ const SHOWN_COUNT = 4;
 export function PackStrip({
   slug,
   mods,
+  totalCount,
   className,
   children,
 }: {
@@ -17,11 +18,12 @@ export function PackStrip({
     id: number;
     project: { name: string; thumbnailUrl: string | null };
   }>;
+  totalCount?: number;
   className?: string;
   children: ReactNode;
 }) {
   const shown = mods.slice(0, SHOWN_COUNT);
-  const extra = mods.length - shown.length;
+  const extra = (totalCount ?? mods.length) - shown.length;
   return (
     <Link
       to={`/workshop/${slug}/pack`}

@@ -100,11 +100,10 @@ export function Workshop() {
 function ActiveWorkshopCard({ workshop }: { workshop: WorkshopListItem }) {
   const summary = workshop.summary;
   const suggestionCount = summary?.suggestionCount ?? 0;
-  const packQuery = trpc.user.workshops.getPack.useQuery(
-    { workshopId: workshop.id },
-    { enabled: (summary?.packModCount ?? 0) > 0 },
-  );
-  const packMods = packQuery.data?.mods ?? [];
+  const packMods = (summary?.packModSample ?? []).map((mod) => ({
+    id: mod.id,
+    project: { name: mod.name, thumbnailUrl: mod.thumbnailUrl },
+  }));
 
   return (
     <Card className="grid gap-0 overflow-hidden py-0 lg:grid-cols-[minmax(0,1fr)_360px]">
@@ -172,7 +171,11 @@ function ActiveWorkshopCard({ workshop }: { workshop: WorkshopListItem }) {
         </div>
 
         {packMods.length > 0 && (
-          <PackStrip slug={workshop.slug} mods={packMods}>
+          <PackStrip
+            slug={workshop.slug}
+            mods={packMods}
+            totalCount={summary?.packModCount}
+          >
             <span className="text-[13px] font-semibold whitespace-nowrap">
               Already in the pack
             </span>

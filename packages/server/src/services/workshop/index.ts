@@ -123,6 +123,12 @@ export interface WorkshopTopMod {
   thumbnailUrl: string | null;
 }
 
+export interface WorkshopPackSampleMod {
+  id: number;
+  name: string;
+  thumbnailUrl: string | null;
+}
+
 export interface WorkshopSummary {
   packModCount: number;
   pendingModCount: number;
@@ -130,6 +136,7 @@ export interface WorkshopSummary {
   participantCount: number;
   participantSample: WorkshopParticipantSample[];
   topMods: WorkshopTopMod[];
+  packModSample: WorkshopPackSampleMod[];
 }
 
 export type WorkshopListItem = Workshop & { summary: WorkshopSummary | null };
@@ -1005,7 +1012,7 @@ export class WorkshopService {
     workshop: Workshop,
   ): Promise<WorkshopSummary> {
     const workshopId = workshop.id;
-    const [packModCount, pendingModCount, participantIds, mods] =
+    const [packModCount, pendingModCount, participantIds, mods, packSample] =
       await Promise.all([
         Q.modpack.mod.count({ modpackId: workshop.modpackId }),
         Q.workshop.mod.count({ workshopId, status: "pending" }),
@@ -1015,6 +1022,15 @@ export class WorkshopService {
           {
             orderBy: "createdAt",
             orderDirection: "desc",
+            select: ["id", "curseforgeProjectId"],
+          },
+        ),
+        Q.modpack.mod.findAll(
+          { modpackId: workshop.modpackId },
+          {
+            orderBy: "id",
+            orderDirection: "asc",
+            limit: 4,
             select: ["id", "curseforgeProjectId"],
           },
         ),
@@ -1036,11 +1052,12 @@ export class WorkshopService {
     const top = [...mods]
       .sort((a, b) => (upvoteCounts[b.id] ?? 0) - (upvoteCounts[a.id] ?? 0))
       .slice(0, 3);
+    const projectIds = [
+      ...new Set([...top, ...packSample].map((mod) => mod.curseforgeProjectId)),
+    ];
     const projects =
-      top.length > 0
-        ? await Q.curseforge.project.findAll({
-            id: { $in: top.map((m) => m.curseforgeProjectId) },
-          })
+      projectIds.length > 0
+        ? await Q.curseforge.project.findAll({ id: { $in: projectIds } })
         : [];
     const projectById = new Map(projects.map((p) => [p.id, p]));
     const topMods = top.flatMap((mod) => {
@@ -1056,6 +1073,17 @@ export class WorkshopService {
         },
       ];
     });
+    const packModSample = packSample.flatMap((row) => {
+      const project = projectById.get(row.curseforgeProjectId);
+      if (!project) return [];
+      return [
+        {
+          id: row.id,
+          name: project.name,
+          thumbnailUrl: project.thumbnailUrl,
+        },
+      ];
+    });
 
     return {
       packModCount,
@@ -1064,6 +1092,7 @@ export class WorkshopService {
       participantCount: participantIds.length,
       participantSample,
       topMods,
+      packModSample,
     };
   }
 
