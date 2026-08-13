@@ -34,6 +34,7 @@ export interface RaceItem {
 
 interface LeaderboardProps {
   items: RaceItem[];
+  allMods: RaceMod[];
   view: "list" | "grid";
   onOpen: (workshopModId: number) => void;
   onUpvote: (workshopModId: number) => void;
@@ -49,6 +50,7 @@ const REORDER_ANIMATION = {
 
 export function Leaderboard({
   items,
+  allMods,
   view,
   onOpen,
   onUpvote,
@@ -56,17 +58,15 @@ export function Leaderboard({
   const [containerRef, enableAnimations] =
     useAutoAnimate<HTMLDivElement>(REORDER_ANIMATION);
   const previousCountsRef = useRef<Map<number, number> | null>(null);
-  const counts = new Map(
-    items.map((item) => [item.mod.id, item.mod.upvoteCount]),
-  );
+  const counts = new Map(allMods.map((mod) => [mod.id, mod.upvoteCount]));
   const previous = previousCountsRef.current;
-  const sameIdSet =
-    previous !== null &&
-    previous.size === counts.size &&
-    [...counts.keys()].every((id) => previous.has(id));
-  // Animate only vote-driven changes: same mod set, some count changed
+  // Votes are the only thing that changes a count; filters never do
   const voteChange =
-    sameIdSet && [...counts].some(([id, count]) => previous.get(id) !== count);
+    previous !== null &&
+    [...counts].some(([id, count]) => {
+      const previousCount = previous.get(id);
+      return previousCount !== undefined && previousCount !== count;
+    });
 
   useLayoutEffect(() => {
     enableAnimations(voteChange);

@@ -458,6 +458,7 @@ export function WorkshopDetail() {
           ) : (
             <Leaderboard
               items={items}
+              allMods={mods}
               view={view}
               onOpen={(workshopModId) => setParam("mod", String(workshopModId))}
               onUpvote={(workshopModId) => {
