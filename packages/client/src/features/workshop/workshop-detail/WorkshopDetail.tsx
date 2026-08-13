@@ -455,7 +455,9 @@ export function WorkshopDetail() {
               items={items}
               allMods={mods}
               view={view}
-              onOpen={(workshopModId) => setParam("mod", String(workshopModId))}
+              onOpen={(workshopModId) =>
+                setParam("mod", String(workshopModId), "", { push: true })
+              }
               onUpvote={(workshopModId) => {
                 const item = items.find(
                   (entry) => entry.mod.id === workshopModId,
