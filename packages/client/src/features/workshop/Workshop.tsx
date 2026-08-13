@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Loading } from "@/components/loading-spinner";
 import { mcHeadsAvatar } from "@/lib/external-urls";
+import { PackStrip } from "./components/PackStrip";
 import { ProjectThumb } from "./components/ProjectThumb";
 import { QueryErrorState } from "./components/QueryErrorState";
 import {
@@ -99,6 +100,10 @@ export function Workshop() {
 function ActiveWorkshopCard({ workshop }: { workshop: WorkshopListItem }) {
   const summary = workshop.summary;
   const suggestionCount = summary?.suggestionCount ?? 0;
+  const packQuery = trpc.user.workshops.getPack.useQuery({
+    workshopId: workshop.id,
+  });
+  const packMods = packQuery.data?.mods ?? [];
 
   return (
     <Card className="grid gap-0 overflow-hidden py-0 lg:grid-cols-[minmax(0,1fr)_360px]">
@@ -164,6 +169,12 @@ function ActiveWorkshopCard({ workshop }: { workshop: WorkshopListItem }) {
             </Link>
           </Button>
         </div>
+
+        <PackStrip slug={workshop.slug} mods={packMods}>
+          <span className="text-[13px] font-semibold whitespace-nowrap">
+            Already in the pack
+          </span>
+        </PackStrip>
       </div>
 
       <div className="flex flex-col gap-4 border-t border-border bg-accent/20 p-7 lg:border-l lg:border-t-0">
