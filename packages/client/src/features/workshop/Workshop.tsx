@@ -100,9 +100,10 @@ export function Workshop() {
 function ActiveWorkshopCard({ workshop }: { workshop: WorkshopListItem }) {
   const summary = workshop.summary;
   const suggestionCount = summary?.suggestionCount ?? 0;
-  const packQuery = trpc.user.workshops.getPack.useQuery({
-    workshopId: workshop.id,
-  });
+  const packQuery = trpc.user.workshops.getPack.useQuery(
+    { workshopId: workshop.id },
+    { enabled: (summary?.packModCount ?? 0) > 0 },
+  );
   const packMods = packQuery.data?.mods ?? [];
 
   return (
