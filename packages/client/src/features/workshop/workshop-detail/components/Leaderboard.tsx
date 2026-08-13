@@ -61,8 +61,11 @@ export function Leaderboard({
   const previousCountsRef = useRef<Map<number, number> | null>(null);
   const disableTimerRef = useRef<number | undefined>(undefined);
 
-  // Votes are the only thing that changes a count; filters never do.
-  // disable() cancels in-flight animations, so it must wait out the duration.
+  useLayoutEffect(() => {
+    enableAnimations(false);
+  }, [enableAnimations]);
+
+  // Only vote changes animate; disable() has side effects, so call it rarely
   useLayoutEffect(() => {
     const counts = new Map(allMods.map((mod) => [mod.id, mod.upvoteCount]));
     const previous = previousCountsRef.current;
@@ -76,11 +79,8 @@ export function Leaderboard({
       window.clearTimeout(disableTimerRef.current);
       enableAnimations(true);
       disableTimerRef.current = window.setTimeout(() => {
-        disableTimerRef.current = undefined;
         enableAnimations(false);
       }, REORDER_ANIMATION.duration + 50);
-    } else if (disableTimerRef.current === undefined) {
-      enableAnimations(false);
     }
     previousCountsRef.current = counts;
   });
@@ -91,7 +91,7 @@ export function Leaderboard({
     return (
       <div
         ref={containerRef}
-        className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-3"
+        className="grid grid-cols-[repeat(auto-fill,minmax(min(320px,100%),1fr))] gap-3"
       >
         {items.map((item) => (
           <RaceCard
