@@ -355,6 +355,12 @@ export async function findModBySlug(
     "slug lookup",
   );
 
+  if (body.data.length > 1) {
+    logger.warn(
+      `CurseForge slug lookup for "${slug}" (class ${classId}) returned ${body.data.length} projects, using the first`,
+    );
+  }
+
   return body.data[0] ?? null;
 }
 
