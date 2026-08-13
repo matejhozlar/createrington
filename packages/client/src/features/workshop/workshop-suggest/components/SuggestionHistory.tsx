@@ -189,10 +189,7 @@ export function SuggestionHistory() {
                     </div>
                   )}
                 </div>
-                <span className="flex min-w-[82px] shrink-0 justify-end">
-                  <StatusBadge mod={mod} />
-                </span>
-                <div className="hidden shrink-0 items-center gap-3.5 sm:flex">
+                <div className="mr-1 hidden shrink-0 items-center gap-3.5 sm:flex">
                   <SocialLinks
                     discordThreadUrl={mod.discordThreadUrl}
                     websiteUrl={mod.project.websiteUrl}
@@ -203,6 +200,9 @@ export function SuggestionHistory() {
                     {mod.workshopName} ·{" "}
                   </span>
                   {dateLine(mod)}
+                </span>
+                <span className="flex min-w-[82px] shrink-0 justify-end">
+                  <StatusBadge mod={mod} />
                 </span>
               </div>
             );
