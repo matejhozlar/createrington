@@ -170,11 +170,13 @@ function ActiveWorkshopCard({ workshop }: { workshop: WorkshopListItem }) {
           </Button>
         </div>
 
-        <PackStrip slug={workshop.slug} mods={packMods}>
-          <span className="text-[13px] font-semibold whitespace-nowrap">
-            Already in the pack
-          </span>
-        </PackStrip>
+        {packMods.length > 0 && (
+          <PackStrip slug={workshop.slug} mods={packMods}>
+            <span className="text-[13px] font-semibold whitespace-nowrap">
+              Already in the pack
+            </span>
+          </PackStrip>
+        )}
       </div>
 
       <div className="flex flex-col gap-4 border-t border-border bg-accent/20 p-7 lg:border-l lg:border-t-0">
