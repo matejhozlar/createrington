@@ -1,4 +1,5 @@
 import { Fragment, type KeyboardEvent, type ReactNode } from "react";
+import { useAutoAnimate } from "@formkit/auto-animate/react";
 import { Heart } from "lucide-react";
 import type { RouterOutput } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
@@ -34,6 +35,10 @@ interface LeaderboardProps {
 const RANK_FONT = "'Minecraft', ui-monospace, monospace";
 const BAR_TRANSITION =
   "transition-[width] duration-[400ms] ease-[cubic-bezier(0.22,1,0.36,1)]";
+const REORDER_ANIMATION = {
+  duration: 400,
+  easing: "cubic-bezier(0.22,1,0.36,1)",
+};
 
 export function Leaderboard({
   items,
@@ -41,9 +46,13 @@ export function Leaderboard({
   onOpen,
   onUpvote,
 }: LeaderboardProps) {
+  const [containerRef] = useAutoAnimate<HTMLDivElement>(REORDER_ANIMATION);
   if (view === "grid") {
     return (
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-3">
+      <div
+        ref={containerRef}
+        className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-3"
+      >
         {items.map((item) => (
           <RaceCard
             key={item.mod.id}
@@ -56,7 +65,7 @@ export function Leaderboard({
     );
   }
   return (
-    <div className="flex flex-col gap-2">
+    <div ref={containerRef} className="flex flex-col gap-2">
       {items.map((item) => (
         <RaceRow
           key={item.mod.id}
