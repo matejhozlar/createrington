@@ -160,7 +160,8 @@ export async function execute(
   }
 
   if (!project) {
-    const suggestUrl = `${config.meta.links.website}/workshop/${workshop.slug}/suggest?q=${parsed.slug}`;
+    const query = encodeURIComponent(parsed.slug.replace(/-/g, " "));
+    const suggestUrl = `${config.meta.links.website}/workshop/${workshop.slug}/suggest?q=${query}`;
     await replyError(
       interaction,
       "Mod Not Found",
