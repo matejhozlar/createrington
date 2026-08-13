@@ -1,5 +1,6 @@
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 
 export function useFilterParams() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -9,8 +10,9 @@ export function useFilterParams() {
       key: string,
       value: string,
       fallback = "",
-      options?: { push?: boolean },
+      options?: { replace?: boolean },
     ) => {
+      if ((searchParams.get(key) ?? fallback) === value) return;
       setSearchParams(
         (prev) => {
           const next = new URLSearchParams(prev);
@@ -18,11 +20,27 @@ export function useFilterParams() {
           else next.set(key, value);
           return next;
         },
-        { replace: !options?.push },
+        { replace: options?.replace ?? true },
       );
     },
-    [setSearchParams],
+    [searchParams, setSearchParams],
   );
 
-  return { searchParams, setParam } as const;
+  const [searchInput, setSearchInput] = useState(
+    () => searchParams.get("q") ?? "",
+  );
+  const debouncedSearch = useDebouncedValue(searchInput, 250);
+  const query = debouncedSearch.trim().toLowerCase();
+
+  useEffect(() => {
+    setParam("q", debouncedSearch.trim(), "");
+  }, [debouncedSearch, setParam]);
+
+  return {
+    searchParams,
+    setParam,
+    searchInput,
+    setSearchInput,
+    query,
+  } as const;
 }

@@ -1,8 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, useParams } from "react-router";
 import { ArrowLeft, Search } from "lucide-react";
 import { trpc } from "@/lib/trpc";
-import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,29 +40,23 @@ const SOURCE_OPTIONS: Array<{ value: SourceFilter; label: string }> = [
 export function WorkshopPack() {
   const { slug } = useParams<{ slug: string }>();
 
-  const { searchParams, setParam } = useFilterParams();
-  const [shownCount, setShownCount] = useState(PAGE_SIZE);
+  const { searchParams, setParam, searchInput, setSearchInput, query } =
+    useFilterParams();
   const [view, changeView] = useViewMode("workshop-pack-view");
-  const [searchInput, setSearchInput] = useState(
-    () => searchParams.get("q") ?? "",
-  );
 
   const category = searchParams.get("category") ?? "all";
   const sourceParam = searchParams.get("source");
   const source: SourceFilter =
     sourceParam === "voted" || sourceParam === "base" ? sourceParam : "all";
-  const debouncedSearch = useDebouncedValue(searchInput, 250);
-  const query = debouncedSearch.trim().toLowerCase();
   const searching = query.length > 0;
 
-  useEffect(() => {
-    setParam("q", debouncedSearch.trim(), "");
-  }, [debouncedSearch, setParam]);
-
-  const changeFilter = (key: string, value: string, fallback: string) => {
-    setParam(key, value, fallback);
-    setShownCount(PAGE_SIZE);
-  };
+  const paginationKey = `${query}:${source}:${category}`;
+  const [pagination, setPagination] = useState({
+    key: paginationKey,
+    count: PAGE_SIZE,
+  });
+  const shownCount =
+    pagination.key === paginationKey ? pagination.count : PAGE_SIZE;
 
   const workshopQuery = trpc.user.workshops.get.useQuery(
     { slug: slug! },
@@ -210,29 +203,21 @@ export function WorkshopPack() {
                   <Search className="pointer-events-none absolute top-1/2 left-2.5 size-[15px] -translate-y-1/2 text-muted-foreground" />
                   <Input
                     value={searchInput}
-                    onChange={(event) => {
-                      setSearchInput(event.target.value);
-                      setShownCount(PAGE_SIZE);
-                    }}
+                    onChange={(event) => setSearchInput(event.target.value)}
                     placeholder="Search the pack..."
                     className="h-9 rounded-lg bg-white/[0.03] pr-8 pl-8 text-[13px]"
                   />
                   {searchInput && (
                     <ClearButton
                       className="right-1"
-                      onClick={() => {
-                        setSearchInput("");
-                        setShownCount(PAGE_SIZE);
-                      }}
+                      onClick={() => setSearchInput("")}
                     />
                   )}
                 </div>
                 <span className="hidden flex-1 sm:block" />
                 <Select
                   value={source}
-                  onValueChange={(value) =>
-                    changeFilter("source", value, "all")
-                  }
+                  onValueChange={(value) => setParam("source", value, "all")}
                 >
                   <SelectTrigger className="w-full sm:w-44">
                     <SelectValue />
@@ -247,9 +232,7 @@ export function WorkshopPack() {
                 </Select>
                 <Select
                   value={category}
-                  onValueChange={(value) =>
-                    changeFilter("category", value, "all")
-                  }
+                  onValueChange={(value) => setParam("category", value, "all")}
                 >
                   <SelectTrigger className="w-full sm:w-[150px]">
                     <SelectValue />
@@ -280,7 +263,12 @@ export function WorkshopPack() {
                 <div className="-mt-1 flex justify-center">
                   <Button
                     variant="secondary"
-                    onClick={() => setShownCount(shownCount + PAGE_SIZE)}
+                    onClick={() =>
+                      setPagination({
+                        key: paginationKey,
+                        count: shownCount + PAGE_SIZE,
+                      })
+                    }
                   >
                     Show {Math.min(remaining, PAGE_SIZE)} more
                   </Button>
