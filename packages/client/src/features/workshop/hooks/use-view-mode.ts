@@ -1,7 +1,9 @@
 import { useState } from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import type { ViewMode } from "../components/ViewToggle";
 
 export function useViewMode(storageKey: string) {
+  const isMobile = useIsMobile();
   const [view, setView] = useState<ViewMode>(() => {
     try {
       return localStorage.getItem(storageKey) === "grid" ? "grid" : "list";
@@ -19,5 +21,5 @@ export function useViewMode(storageKey: string) {
     setView(next);
   };
 
-  return [view, changeView] as const;
+  return [isMobile ? "grid" : view, changeView] as const;
 }

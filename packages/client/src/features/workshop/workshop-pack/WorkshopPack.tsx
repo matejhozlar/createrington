@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef } from "react";
 import { Link, useParams } from "react-router";
 import { ArrowLeft, Search } from "lucide-react";
 import { trpc } from "@/lib/trpc";
@@ -17,7 +17,10 @@ import { NotFound } from "@/pages/not-found";
 import { CurseForgeIcon } from "@/components/icons/curseforge";
 import { isHttpUrl, loaderName, projectCategories } from "../format";
 import { PAGE_SIZE, WORDMARK_IMAGE } from "../constants";
+import { useFilterParams } from "../hooks/use-filter-params";
+import { usePagination } from "../hooks/use-pagination";
 import { useViewMode } from "../hooks/use-view-mode";
+import { ClearButton } from "../components/ClearButton";
 import { QueryErrorState } from "../components/QueryErrorState";
 import { ViewToggle } from "../components/ViewToggle";
 import { WorkshopDisabledState } from "../components/WorkshopEmptyState";
@@ -38,11 +41,20 @@ const SOURCE_OPTIONS: Array<{ value: SourceFilter; label: string }> = [
 export function WorkshopPack() {
   const { slug } = useParams<{ slug: string }>();
 
-  const [searchQuery, setSearchQuery] = useState("");
-  const [source, setSource] = useState<SourceFilter>("all");
-  const [category, setCategory] = useState("all");
-  const [shownCount, setShownCount] = useState(PAGE_SIZE);
+  const { searchParams, setParam, searchInput, setSearchInput, query } =
+    useFilterParams();
   const [view, changeView] = useViewMode("workshop-pack-view");
+
+  const category = searchParams.get("category") ?? "all";
+  const sourceParam = searchParams.get("source");
+  const source: SourceFilter =
+    sourceParam === "voted" || sourceParam === "base" ? sourceParam : "all";
+  const searching = query.length > 0;
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const { shownCount, showMore } = usePagination(
+    `${query}:${source}:${category}`,
+  );
 
   const workshopQuery = trpc.user.workshops.get.useQuery(
     { slug: slug! },
@@ -86,9 +98,6 @@ export function WorkshopPack() {
   const modpack = packQuery.data?.modpack;
   const mods = packQuery.data?.mods ?? [];
 
-  const query = searchQuery.trim().toLowerCase();
-  const searching = query.length > 0;
-
   const categories = [
     ...new Set(
       mods.flatMap((mod) => projectCategories(mod.project.categories)),
@@ -118,8 +127,7 @@ export function WorkshopPack() {
   }
 
   const filtering = searching || source !== "all" || category !== "all";
-  const shown = filtering ? visible.length : shownCount;
-  const remaining = visible.length - shown;
+  const remaining = visible.length - shownCount;
 
   return (
     <div className="relative overflow-hidden">
@@ -192,22 +200,24 @@ export function WorkshopPack() {
                 <div className="relative w-full min-w-0 flex-none sm:max-w-[420px] sm:min-w-[200px] sm:flex-1">
                   <Search className="pointer-events-none absolute top-1/2 left-2.5 size-[15px] -translate-y-1/2 text-muted-foreground" />
                   <Input
-                    value={searchQuery}
-                    onChange={(event) => {
-                      setSearchQuery(event.target.value);
-                      setShownCount(PAGE_SIZE);
-                    }}
+                    ref={searchInputRef}
+                    value={searchInput}
+                    onChange={(event) => setSearchInput(event.target.value)}
                     placeholder="Search the pack..."
-                    className="h-9 rounded-lg bg-white/[0.03] pl-8 text-[13px]"
+                    className="h-9 rounded-lg bg-white/[0.03] pr-8 pl-8 text-[13px]"
                   />
+                  {searchInput && (
+                    <ClearButton
+                      className="right-1"
+                      inputRef={searchInputRef}
+                      onClick={() => setSearchInput("")}
+                    />
+                  )}
                 </div>
                 <span className="hidden flex-1 sm:block" />
                 <Select
                   value={source}
-                  onValueChange={(value) => {
-                    setSource(value as SourceFilter);
-                    setShownCount(PAGE_SIZE);
-                  }}
+                  onValueChange={(value) => setParam("source", value, "all")}
                 >
                   <SelectTrigger className="w-full sm:w-44">
                     <SelectValue />
@@ -222,10 +232,7 @@ export function WorkshopPack() {
                 </Select>
                 <Select
                   value={category}
-                  onValueChange={(value) => {
-                    setCategory(value);
-                    setShownCount(PAGE_SIZE);
-                  }}
+                  onValueChange={(value) => setParam("category", value, "all")}
                 >
                   <SelectTrigger className="w-full sm:w-[150px]">
                     <SelectValue />
@@ -249,15 +256,12 @@ export function WorkshopPack() {
                     : "Nothing in the pack yet."}
                 </div>
               ) : (
-                <PackList mods={visible.slice(0, shown)} view={view} />
+                <PackList mods={visible.slice(0, shownCount)} view={view} />
               )}
 
               {remaining > 0 && (
                 <div className="-mt-1 flex justify-center">
-                  <Button
-                    variant="secondary"
-                    onClick={() => setShownCount(shown + PAGE_SIZE)}
-                  >
+                  <Button variant="secondary" onClick={showMore}>
                     Show {Math.min(remaining, PAGE_SIZE)} more
                   </Button>
                 </div>

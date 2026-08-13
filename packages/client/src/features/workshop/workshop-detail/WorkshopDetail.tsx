@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link, useParams } from "react-router";
+import { useRef } from "react";
+import { Link, useNavigate, useParams } from "react-router";
 import { ArrowLeft, Search } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/auth";
@@ -18,7 +18,10 @@ import { Loading } from "@/components/loading-spinner";
 import { NotFound } from "@/pages/not-found";
 import { loaderName, projectCategories } from "../format";
 import { PAGE_SIZE, WORDMARK_IMAGE } from "../constants";
+import { useFilterParams } from "../hooks/use-filter-params";
+import { usePagination } from "../hooks/use-pagination";
 import { useViewMode } from "../hooks/use-view-mode";
+import { ClearButton } from "../components/ClearButton";
 import { PackStrip } from "../components/PackStrip";
 import { QueryErrorState } from "../components/QueryErrorState";
 import { WorkshopDisabledState } from "../components/WorkshopEmptyState";
@@ -54,15 +57,25 @@ export function WorkshopDetail() {
   const toast = useToastActions();
   const utils = trpc.useUtils();
 
-  const [openModId, setOpenModId] = useState<number | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [category, setCategory] = useState("all");
-  const [sortMode, setSortMode] = useState<SortMode>("top");
-  const [shownCount, setShownCount] = useState(PAGE_SIZE);
+  const navigate = useNavigate();
+  const pushedModRef = useRef(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const { searchParams, setParam, searchInput, setSearchInput, query } =
+    useFilterParams();
   const [view, changeView] = useViewMode("workshop-detail-view");
 
-  const query = searchQuery.trim().toLowerCase();
+  const category = searchParams.get("category") ?? "all";
+  const sortParam = searchParams.get("sort");
+  const sortMode: SortMode =
+    sortParam === "new" || sortParam === "votes" ? sortParam : "top";
+  const modParam = searchParams.get("mod");
+  const openModId =
+    modParam && /^\d+$/.test(modParam) ? Number(modParam) : null;
   const searching = query.length > 0;
+
+  const { shownCount, showMore } = usePagination(
+    `${query}:${category}:${sortMode}`,
+  );
 
   const workshopQuery = trpc.user.workshops.get.useQuery(
     { slug: slug! },
@@ -236,29 +249,33 @@ export function WorkshopDetail() {
   }
 
   const filtering = searching || sortMode === "votes" || category !== "all";
-  const shown = filtering ? visible.length : shownCount;
-  const remaining = visible.length - shown;
+  const remaining = visible.length - shownCount;
 
   const budget = myUpvotesQuery.data;
   const votesLeft = budget?.votesRemaining ?? null;
 
-  const items: RaceItem[] = visible.slice(0, shown).map((mod) => ({
-    mod,
-    rank: mod.status === "pending" ? (rankById.get(mod.id) ?? null) : null,
-    barPct:
-      mod.status === "pending"
-        ? Math.round((mod.upvoteCount / maxRaceCount) * 92)
-        : 0,
-    upvoted: upvotedIds.has(mod.id),
-    canUpvote:
+  const items: RaceItem[] = visible.slice(0, shownCount).map((mod) => {
+    const votable =
       isOpen &&
       mod.status === "pending" &&
       !upvoteMutation.isPending &&
-      user?.discordId != null &&
-      (upvotedIds.has(mod.id) ||
-        mod.submittedBy === user.discordId ||
-        (votesLeft !== null && votesLeft > 0)),
-  }));
+      user?.discordId != null;
+    const hasFreeVote =
+      upvotedIds.has(mod.id) || mod.submittedBy === user?.discordId;
+    return {
+      mod,
+      rank: mod.status === "pending" ? (rankById.get(mod.id) ?? null) : null,
+      barPct:
+        mod.status === "pending"
+          ? Math.round((mod.upvoteCount / maxRaceCount) * 92)
+          : 0,
+      upvoted: upvotedIds.has(mod.id),
+      canUpvote:
+        votable && (hasFreeVote || (votesLeft !== null && votesLeft > 0)),
+      outOfVotes:
+        votable && !hasFreeVote && votesLeft !== null && votesLeft <= 0,
+    };
+  });
 
   return (
     <div className="relative overflow-hidden">
@@ -345,22 +362,24 @@ export function WorkshopDetail() {
             <div className="relative w-full min-w-0 flex-none sm:max-w-[420px] sm:min-w-[200px] sm:flex-1">
               <Search className="pointer-events-none absolute top-1/2 left-2.5 size-[15px] -translate-y-1/2 text-muted-foreground" />
               <Input
-                value={searchQuery}
-                onChange={(event) => {
-                  setSearchQuery(event.target.value);
-                  setShownCount(PAGE_SIZE);
-                }}
+                ref={searchInputRef}
+                value={searchInput}
+                onChange={(event) => setSearchInput(event.target.value)}
                 placeholder="Search all suggestions..."
-                className="h-9 rounded-lg bg-white/[0.03] pl-8 text-[13px]"
+                className="h-9 rounded-lg bg-white/[0.03] pr-8 pl-8 text-[13px]"
               />
+              {searchInput && (
+                <ClearButton
+                  className="right-1"
+                  inputRef={searchInputRef}
+                  onClick={() => setSearchInput("")}
+                />
+              )}
             </div>
             <span className="hidden flex-1 sm:block" />
             <Select
               value={category}
-              onValueChange={(value) => {
-                setCategory(value);
-                setShownCount(PAGE_SIZE);
-              }}
+              onValueChange={(value) => setParam("category", value, "all")}
             >
               <SelectTrigger className="w-full sm:w-[150px]">
                 <SelectValue />
@@ -376,10 +395,7 @@ export function WorkshopDetail() {
             </Select>
             <Select
               value={sortMode}
-              onValueChange={(value) => {
-                setSortMode(value as SortMode);
-                setShownCount(PAGE_SIZE);
-              }}
+              onValueChange={(value) => setParam("sort", value, "top")}
             >
               <SelectTrigger className="w-full sm:w-44">
                 <SelectValue />
@@ -412,7 +428,7 @@ export function WorkshopDetail() {
                 <>
                   {" "}
                   <Link
-                    to={`/workshop/${slug}/suggest?q=${encodeURIComponent(searchQuery.trim())}`}
+                    to={`/workshop/${slug}/suggest?q=${encodeURIComponent(searchInput.trim())}`}
                     className="text-primary hover:underline"
                   >
                     Suggest it yourself
@@ -423,33 +439,51 @@ export function WorkshopDetail() {
           ) : (
             <Leaderboard
               items={items}
+              allMods={mods}
               view={view}
-              onOpen={setOpenModId}
-              onUpvote={(workshopModId) =>
-                upvoteMutation.mutate({ workshopModId })
-              }
+              onOpen={(workshopModId) => {
+                pushedModRef.current = true;
+                setParam("mod", String(workshopModId), "", { replace: false });
+              }}
+              onUpvote={(item) => {
+                if (item.outOfVotes) {
+                  toast.info(
+                    "You're out of votes. Remove an upvote to free one up.",
+                  );
+                  return;
+                }
+                upvoteMutation.mutate({ workshopModId: item.mod.id });
+              }}
             />
           )}
 
           {remaining > 0 && (
             <div className="-mt-1 flex justify-center">
-              <Button
-                variant="secondary"
-                onClick={() => setShownCount(shown + PAGE_SIZE)}
-              >
+              <Button variant="secondary" onClick={showMore}>
                 Show {Math.min(remaining, PAGE_SIZE)} more
               </Button>
             </div>
           )}
 
-          {packMatches.length > 0 && <PackSearchResults mods={packMatches} />}
+          {packMatches.length > 0 && (
+            <PackSearchResults
+              mods={packMatches}
+              paginationKey={`${query}:${category}`}
+            />
+          )}
         </main>
       </div>
 
       <ModDetailDialog
         workshopModId={openModId}
         onOpenChange={(open) => {
-          if (!open) setOpenModId(null);
+          if (open) return;
+          if (pushedModRef.current) {
+            pushedModRef.current = false;
+            navigate(-1);
+          } else {
+            setParam("mod", "");
+          }
         }}
       />
     </div>

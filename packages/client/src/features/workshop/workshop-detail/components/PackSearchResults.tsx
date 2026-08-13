@@ -1,8 +1,11 @@
 import { type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { PlayerLabel } from "@/components/player-label";
 import { MOD_STATUS_STYLES, isHttpUrl } from "../../format";
+import { PAGE_SIZE } from "../../constants";
+import { usePagination } from "../../hooks/use-pagination";
 import { ProjectThumb } from "../../components/ProjectThumb";
 import { type PackMod } from "../../workshop-pack/components/PackList";
 
@@ -28,13 +31,21 @@ function packCredit(row: PackMod): ReactNode {
   return ORIGIN_CREDITS[row.origin] ?? null;
 }
 
-export function PackSearchResults({ mods }: { mods: PackMod[] }) {
+export function PackSearchResults({
+  mods,
+  paginationKey,
+}: {
+  mods: PackMod[];
+  paginationKey: string;
+}) {
+  const { shownCount, showMore } = usePagination(paginationKey);
+  const remaining = mods.length - shownCount;
   return (
     <div className="flex flex-col gap-2">
       <h3 className="text-sm font-semibold text-muted-foreground">
         Already in the pack
       </h3>
-      {mods.map((row) => {
+      {mods.slice(0, shownCount).map((row) => {
         const status = MOD_STATUS_STYLES.in_pack;
         const content = (
           <>
@@ -98,6 +109,13 @@ export function PackSearchResults({ mods }: { mods: PackMod[] }) {
           </div>
         );
       })}
+      {remaining > 0 && (
+        <div className="mt-1 flex justify-center">
+          <Button variant="secondary" onClick={showMore}>
+            Show {Math.min(remaining, PAGE_SIZE)} more
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

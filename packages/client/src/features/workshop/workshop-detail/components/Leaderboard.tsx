@@ -1,4 +1,12 @@
-import { Fragment, type KeyboardEvent, type ReactNode } from "react";
+import {
+  Fragment,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
+import { useAutoAnimate } from "@formkit/auto-animate/react";
 import { Heart } from "lucide-react";
 import type { RouterOutput } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
@@ -22,28 +30,70 @@ export interface RaceItem {
   barPct: number;
   upvoted: boolean;
   canUpvote: boolean;
+  outOfVotes: boolean;
 }
 
 interface LeaderboardProps {
   items: RaceItem[];
+  allMods: RaceMod[];
   view: "list" | "grid";
   onOpen: (workshopModId: number) => void;
-  onUpvote: (workshopModId: number) => void;
+  onUpvote: (item: RaceItem) => void;
 }
 
 const RANK_FONT = "'Minecraft', ui-monospace, monospace";
 const BAR_TRANSITION =
   "transition-[width] duration-[400ms] ease-[cubic-bezier(0.22,1,0.36,1)]";
+const REORDER_ANIMATION = {
+  duration: 400,
+  easing: "cubic-bezier(0.22,1,0.36,1)",
+};
 
 export function Leaderboard({
   items,
+  allMods,
   view,
   onOpen,
   onUpvote,
 }: LeaderboardProps) {
+  const [containerRef, enableAnimations] =
+    useAutoAnimate<HTMLDivElement>(REORDER_ANIMATION);
+  const previousCountsRef = useRef<Map<number, number> | null>(null);
+  const disableTimerRef = useRef<number | undefined>(undefined);
+
+  // enableAnimations is a no-op until the controller lands; the dep re-runs this
+  useLayoutEffect(() => {
+    enableAnimations(false);
+  }, [enableAnimations]);
+
+  // Only vote changes animate; disable() has side effects, so call it rarely
+  useLayoutEffect(() => {
+    const counts = new Map(allMods.map((mod) => [mod.id, mod.upvoteCount]));
+    const previous = previousCountsRef.current;
+    const voteChange =
+      previous !== null &&
+      [...counts].some(([id, count]) => {
+        const previousCount = previous.get(id);
+        return previousCount !== undefined && previousCount !== count;
+      });
+    if (voteChange) {
+      window.clearTimeout(disableTimerRef.current);
+      enableAnimations(true);
+      disableTimerRef.current = window.setTimeout(() => {
+        enableAnimations(false);
+      }, REORDER_ANIMATION.duration + 50);
+    }
+    previousCountsRef.current = counts;
+  }, [allMods, enableAnimations]);
+
+  useEffect(() => () => window.clearTimeout(disableTimerRef.current), []);
+
   if (view === "grid") {
     return (
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-3">
+      <div
+        ref={containerRef}
+        className="grid grid-cols-[repeat(auto-fill,minmax(min(320px,100%),1fr))] gap-3"
+      >
         {items.map((item) => (
           <RaceCard
             key={item.mod.id}
@@ -56,7 +106,7 @@ export function Leaderboard({
     );
   }
   return (
-    <div className="flex flex-col gap-2">
+    <div ref={containerRef} className="flex flex-col gap-2">
       {items.map((item) => (
         <RaceRow
           key={item.mod.id}
@@ -72,7 +122,7 @@ export function Leaderboard({
 interface RaceItemProps {
   item: RaceItem;
   onOpen: (workshopModId: number) => void;
-  onUpvote: (workshopModId: number) => void;
+  onUpvote: (item: RaceItem) => void;
 }
 
 function openOnActivate(onActivate: () => void) {
@@ -243,7 +293,7 @@ function HeartOrBadge({
   onUpvote,
 }: {
   item: RaceItem;
-  onUpvote: (workshopModId: number) => void;
+  onUpvote: (item: RaceItem) => void;
 }) {
   const { mod } = item;
   if (mod.status === "rejected") {
@@ -276,18 +326,24 @@ function HeartOrBadge({
   return (
     <button
       type="button"
-      disabled={!item.canUpvote}
-      aria-label={item.upvoted ? "Remove upvote" : "Upvote"}
+      disabled={!item.canUpvote && !item.outOfVotes}
+      aria-label={
+        item.upvoted
+          ? "Remove upvote"
+          : item.outOfVotes
+            ? "Upvote (no votes left)"
+            : "Upvote"
+      }
       onClick={(event) => {
         event.stopPropagation();
-        onUpvote(mod.id);
+        onUpvote(item);
       }}
       className={cn(
         "relative inline-flex min-w-[66px] shrink-0 items-center justify-center gap-1.5 rounded-[9px] border px-[13px] py-[7px] text-[13px] font-semibold tabular-nums transition-colors",
         item.upvoted
           ? "border-red-400/50 bg-red-400/10 text-red-400"
           : "border-border bg-accent/35 text-muted-foreground",
-        item.canUpvote && "cursor-pointer",
+        (item.canUpvote || item.outOfVotes) && "cursor-pointer",
       )}
     >
       <Heart className={cn("size-3.5", item.upvoted && "fill-current")} />

@@ -209,7 +209,7 @@ export function SuggestionHistory() {
           })}
         </div>
       ) : (
-        <div className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-2.5">
+        <div className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(min(280px,100%),1fr))] gap-2.5">
           {shown.map((mod) => {
             const secondary = secondaryLine(mod);
             return (

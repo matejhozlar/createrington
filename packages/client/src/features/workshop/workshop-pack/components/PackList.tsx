@@ -17,7 +17,7 @@ export function PackList({
 }) {
   if (view === "grid") {
     return (
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-3">
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(min(320px,100%),1fr))] gap-3">
         {mods.map((mod) => (
           <PackCard key={mod.id} mod={mod} />
         ))}

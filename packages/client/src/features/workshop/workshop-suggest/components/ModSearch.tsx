@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { Info, Loader2, Search, X } from "lucide-react";
+import { Info, Loader2, Search } from "lucide-react";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useToastActions } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ClearButton } from "../../components/ClearButton";
 import { ProjectThumb } from "../../components/ProjectThumb";
 import { formatDownloads } from "../../format";
 
@@ -25,11 +26,17 @@ export function ModSearch({
   const toast = useToastActions();
   const utils = trpc.useUtils();
   const containerRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [dismissed, setDismissed] = useState(false);
   const [noteFor, setNoteFor] = useState<number | null>(null);
   const [note, setNote] = useState("");
   const debouncedSearch = useDebouncedValue(searchQuery.trim(), 400);
+
+  const cancelNote = () => {
+    setNoteFor(null);
+    setNote("");
+  };
 
   const usedSlots = suggestions.filter((m) => m.status === "pending").length;
   const isFull = usedSlots >= workshop.maxModsPerUser;
@@ -47,6 +54,7 @@ export function ModSearch({
     const onPointerDown = (event: PointerEvent) => {
       if (!containerRef.current?.contains(event.target as Node)) {
         setDismissed(true);
+        cancelNote();
       }
     };
     document.addEventListener("pointerdown", onPointerDown);
@@ -102,6 +110,7 @@ export function ModSearch({
       <div ref={containerRef} className="relative">
         <Search className="pointer-events-none absolute top-1/2 left-3.5 size-[17px] -translate-y-1/2 text-muted-foreground" />
         <Input
+          ref={searchInputRef}
           value={searchQuery}
           disabled={isFull}
           onChange={(event) => {
@@ -110,11 +119,24 @@ export function ModSearch({
           }}
           onFocus={() => setDismissed(false)}
           onKeyDown={(event) => {
-            if (event.key === "Escape") setDismissed(true);
+            if (event.key === "Escape") {
+              setDismissed(true);
+              cancelNote();
+            }
           }}
           placeholder={isFull ? "All slots used" : "Search CurseForge..."}
-          className="h-[46px] rounded-[10px] bg-white/[0.03] pl-10 text-sm"
+          className="h-[46px] rounded-[10px] bg-white/[0.03] pr-10 pl-10 text-sm"
         />
+        {searchQuery && (
+          <ClearButton
+            className="right-2"
+            inputRef={searchInputRef}
+            onClick={() => {
+              setSearchQuery("");
+              cancelNote();
+            }}
+          />
+        )}
         {dropdownOpen && (
           <div className="absolute inset-x-0 top-[calc(100%+8px)] z-50 flex max-h-[420px] flex-col gap-0.5 overflow-y-auto rounded-xl border border-border bg-popover p-1.5 shadow-[0_12px_32px_rgb(0_0_0/0.45)]">
             {searchResults.isLoading && (
@@ -193,8 +215,7 @@ export function ModSearch({
                               confirmSuggest(result.id);
                             }
                             if (event.key === "Escape") {
-                              setNoteFor(null);
-                              setNote("");
+                              cancelNote();
                             }
                           }}
                           placeholder="Why this one? What does it add to the pack?"
@@ -210,18 +231,6 @@ export function ModSearch({
                           ) : (
                             "Suggest"
                           )}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-8 shrink-0"
-                          aria-label="Cancel"
-                          onClick={() => {
-                            setNoteFor(null);
-                            setNote("");
-                          }}
-                        >
-                          <X className="size-3.5" />
                         </Button>
                       </div>
                       <p className="text-[11px] text-muted-foreground">

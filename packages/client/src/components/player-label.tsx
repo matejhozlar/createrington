@@ -72,14 +72,14 @@ export function PlayerLabel({
   return (
     <Link
       to={`/admin/players/${linkId}`}
-      className="group flex min-w-0 items-center gap-2 rounded"
+      className="group/player-label flex min-w-0 items-center gap-2 rounded"
     >
       <MinecraftAvatar
         username={displayName}
         uuid={uuid ?? name ?? undefined}
         size={size}
       />
-      <span className="truncate font-medium transition-colors group-hover:text-primary">
+      <span className="truncate font-medium transition-colors group-hover/player-label:text-primary">
         {displayName}
       </span>
     </Link>

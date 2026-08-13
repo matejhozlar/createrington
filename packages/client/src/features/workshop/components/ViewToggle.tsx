@@ -1,4 +1,5 @@
 import { AlignJustify, LayoutGrid } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 
 export type ViewMode = "list" | "grid";
@@ -10,6 +11,8 @@ export function ViewToggle({
   view: ViewMode;
   onChange: (view: ViewMode) => void;
 }) {
+  const isMobile = useIsMobile();
+  if (isMobile) return null;
   return (
     <div className="flex h-9 shrink-0 overflow-hidden rounded-lg border border-border">
       <ViewButton
