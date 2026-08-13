@@ -29,6 +29,7 @@ export const commandRegistry: Record<string, CommandEnv> = {
   profile: "prod",
   activity: "prod",
   top: "prod",
+  suggest: "prod",
 
   // Admin
   username: "prod",

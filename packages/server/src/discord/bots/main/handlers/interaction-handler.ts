@@ -21,6 +21,7 @@ import {
 } from "../../common/loaders/button-loader";
 import * as registrationModal from "../interactions/modals/registration";
 import * as promptSubmitModal from "../interactions/modals/prompt-submit";
+import * as workshopSuggestModal from "../interactions/modals/workshop-suggest";
 
 type ModalHandler = {
   /** Exact customId OR a wildcard prefix ending in `:*` (e.g. `prompt:submit:*`). */
@@ -29,7 +30,11 @@ type ModalHandler = {
 };
 
 /** Registry of modal-submit handlers keyed by the modal's customId. */
-const MODAL_HANDLERS: ModalHandler[] = [registrationModal, promptSubmitModal];
+const MODAL_HANDLERS: ModalHandler[] = [
+  registrationModal,
+  promptSubmitModal,
+  workshopSuggestModal,
+];
 
 /**
  * True if `handler` owns the given customId. Supports wildcard suffixes

@@ -324,6 +324,48 @@ export async function searchMods(
 }
 
 /**
+ * Look up a single project by its URL slug (exact match within a class).
+ * Returns null when nothing matches or the slug is ambiguous within the class.
+ */
+export async function findModBySlug(
+  slug: string,
+  classId: number = MOD_CLASS_ID,
+): Promise<{ id: number; name: string } | null> {
+  ensureApiKey();
+
+  const url = new URL(`${CURSEFORGE_API}/v1/mods/search`);
+  url.searchParams.set("gameId", String(MINECRAFT_GAME_ID));
+  url.searchParams.set("classId", String(classId));
+  url.searchParams.set("slug", slug);
+
+  const res = await fetch(url.toString(), {
+    headers: cfHeaders(),
+    signal: AbortSignal.timeout(CF_FETCH_TIMEOUT_MS),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`CurseForge slug lookup failed (${res.status}): ${text}`);
+  }
+
+  const body = parseCfResponse(
+    z.object({
+      data: z.array(z.object({ id: z.number(), name: z.string() })),
+    }),
+    await res.json(),
+    "slug lookup",
+  );
+
+  if (body.data.length > 1) {
+    logger.warn(
+      `CurseForge slug lookup for "${slug}" (class ${classId}) returned ${body.data.length} projects, treating as not found`,
+    );
+    return null;
+  }
+
+  return body.data[0] ?? null;
+}
+
+/**
  * Fetch the available files for a mod, filtered by game version and mod loader
  *
  * Only optional (relationType 2) and required (relationType 3) dependencies are included.
