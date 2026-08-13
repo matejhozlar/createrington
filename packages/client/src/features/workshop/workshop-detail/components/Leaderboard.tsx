@@ -1,4 +1,10 @@
-import { Fragment, type KeyboardEvent, type ReactNode } from "react";
+import {
+  Fragment,
+  useLayoutEffect,
+  useRef,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 import { useAutoAnimate } from "@formkit/auto-animate/react";
 import { Heart } from "lucide-react";
 import type { RouterOutput } from "@/lib/trpc";
@@ -47,7 +53,26 @@ export function Leaderboard({
   onOpen,
   onUpvote,
 }: LeaderboardProps) {
-  const [containerRef] = useAutoAnimate<HTMLDivElement>(REORDER_ANIMATION);
+  const [containerRef, enableAnimations] =
+    useAutoAnimate<HTMLDivElement>(REORDER_ANIMATION);
+  const previousCountsRef = useRef<Map<number, number> | null>(null);
+  const counts = new Map(
+    items.map((item) => [item.mod.id, item.mod.upvoteCount]),
+  );
+  const previous = previousCountsRef.current;
+  const sameIdSet =
+    previous !== null &&
+    previous.size === counts.size &&
+    [...counts.keys()].every((id) => previous.has(id));
+  // Animate only vote-driven changes: same mod set, some count changed
+  const voteChange =
+    sameIdSet && [...counts].some(([id, count]) => previous.get(id) !== count);
+
+  useLayoutEffect(() => {
+    enableAnimations(voteChange);
+    previousCountsRef.current = counts;
+  });
+
   if (view === "grid") {
     return (
       <div
