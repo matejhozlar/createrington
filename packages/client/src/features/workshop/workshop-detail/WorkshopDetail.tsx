@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router";
 import { ArrowLeft, Search } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/auth";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useToastActions } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -61,7 +62,7 @@ export function WorkshopDetail() {
   const [shownCount, setShownCount] = useState(PAGE_SIZE);
   const [view, changeView] = useViewMode("workshop-detail-view");
 
-  const query = searchQuery.trim().toLowerCase();
+  const query = useDebouncedValue(searchQuery.trim().toLowerCase(), 250);
   const searching = query.length > 0;
 
   const workshopQuery = trpc.user.workshops.get.useQuery(
@@ -236,13 +237,12 @@ export function WorkshopDetail() {
   }
 
   const filtering = searching || sortMode === "votes" || category !== "all";
-  const shown = filtering ? visible.length : shownCount;
-  const remaining = visible.length - shown;
+  const remaining = visible.length - shownCount;
 
   const budget = myUpvotesQuery.data;
   const votesLeft = budget?.votesRemaining ?? null;
 
-  const items: RaceItem[] = visible.slice(0, shown).map((mod) => ({
+  const items: RaceItem[] = visible.slice(0, shownCount).map((mod) => ({
     mod,
     rank: mod.status === "pending" ? (rankById.get(mod.id) ?? null) : null,
     barPct:
@@ -436,14 +436,19 @@ export function WorkshopDetail() {
             <div className="-mt-1 flex justify-center">
               <Button
                 variant="secondary"
-                onClick={() => setShownCount(shown + PAGE_SIZE)}
+                onClick={() => setShownCount(shownCount + PAGE_SIZE)}
               >
                 Show {Math.min(remaining, PAGE_SIZE)} more
               </Button>
             </div>
           )}
 
-          {packMatches.length > 0 && <PackSearchResults mods={packMatches} />}
+          {packMatches.length > 0 && (
+            <PackSearchResults
+              key={`${query}:${category}`}
+              mods={packMatches}
+            />
+          )}
         </main>
       </div>
 
