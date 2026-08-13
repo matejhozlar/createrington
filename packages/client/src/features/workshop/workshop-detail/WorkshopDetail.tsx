@@ -258,6 +258,13 @@ export function WorkshopDetail() {
       (upvotedIds.has(mod.id) ||
         mod.submittedBy === user.discordId ||
         (votesLeft !== null && votesLeft > 0)),
+    outOfVotes:
+      isOpen &&
+      mod.status === "pending" &&
+      user?.discordId != null &&
+      !upvotedIds.has(mod.id) &&
+      mod.submittedBy !== user.discordId &&
+      votesLeft === 0,
   }));
 
   return (
@@ -426,9 +433,18 @@ export function WorkshopDetail() {
               items={items}
               view={view}
               onOpen={setOpenModId}
-              onUpvote={(workshopModId) =>
-                upvoteMutation.mutate({ workshopModId })
-              }
+              onUpvote={(workshopModId) => {
+                const item = items.find(
+                  (entry) => entry.mod.id === workshopModId,
+                );
+                if (item?.outOfVotes) {
+                  toast.info(
+                    "You're out of votes. Remove an upvote to free one up.",
+                  );
+                  return;
+                }
+                upvoteMutation.mutate({ workshopModId });
+              }}
             />
           )}
 

@@ -23,6 +23,7 @@ export interface RaceItem {
   barPct: number;
   upvoted: boolean;
   canUpvote: boolean;
+  outOfVotes: boolean;
 }
 
 interface LeaderboardProps {
@@ -285,7 +286,7 @@ function HeartOrBadge({
   return (
     <button
       type="button"
-      disabled={!item.canUpvote}
+      disabled={!item.canUpvote && !item.outOfVotes}
       aria-label={item.upvoted ? "Remove upvote" : "Upvote"}
       onClick={(event) => {
         event.stopPropagation();
