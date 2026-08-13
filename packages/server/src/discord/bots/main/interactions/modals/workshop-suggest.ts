@@ -119,6 +119,14 @@ export async function execute(
     );
     return;
   }
+  if (workshop.status !== "open") {
+    await replyError(
+      interaction,
+      "Suggestion Failed",
+      "This workshop is not open for suggestions.",
+    );
+    return;
+  }
 
   let project: { id: number; name: string } | null;
   try {
