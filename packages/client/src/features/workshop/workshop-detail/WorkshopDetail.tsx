@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
-import { ArrowLeft, Search } from "lucide-react";
+import { ArrowLeft, Search, X } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/auth";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
@@ -373,8 +373,19 @@ export function WorkshopDetail() {
                   setFilterParam("q", event.target.value, "")
                 }
                 placeholder="Search all suggestions..."
-                className="h-9 rounded-lg bg-white/[0.03] pl-8 text-[13px]"
+                className="h-9 rounded-lg bg-white/[0.03] pr-8 pl-8 text-[13px]"
               />
+              {searchQuery && (
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  aria-label="Clear search"
+                  onClick={() => setFilterParam("q", "", "")}
+                  className="absolute top-1/2 right-1 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <X />
+                </Button>
+              )}
             </div>
             <span className="hidden flex-1 sm:block" />
             <Select
