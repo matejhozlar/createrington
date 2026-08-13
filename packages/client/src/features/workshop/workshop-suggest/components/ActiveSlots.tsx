@@ -38,6 +38,7 @@ export function ActiveSlots({
   const toast = useToastActions();
   const utils = trpc.useUtils();
 
+  // confirmMod outlives the dialog so the name doesn't blank mid-close
   const [confirmMod, setConfirmMod] = useState<Suggestion | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
@@ -110,7 +111,7 @@ export function ActiveSlots({
                     <TooltipTrigger asChild>
                       <Button
                         variant="outline"
-                        size="icon-xs"
+                        size="icon-sm"
                         aria-label="Remove suggestion"
                         disabled={removeMutation.isPending}
                         onClick={() => {

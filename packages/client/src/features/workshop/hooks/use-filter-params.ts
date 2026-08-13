@@ -1,9 +1,16 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 
 export function useFilterParams() {
   const [searchParams, setSearchParams] = useSearchParams();
+
+  const searchParamsRef = useRef(searchParams);
+  const setSearchParamsRef = useRef(setSearchParams);
+  useEffect(() => {
+    searchParamsRef.current = searchParams;
+    setSearchParamsRef.current = setSearchParams;
+  });
 
   const setParam = useCallback(
     (
@@ -12,8 +19,8 @@ export function useFilterParams() {
       fallback = "",
       options?: { replace?: boolean },
     ) => {
-      if ((searchParams.get(key) ?? fallback) === value) return;
-      setSearchParams(
+      if ((searchParamsRef.current.get(key) ?? fallback) === value) return;
+      setSearchParamsRef.current(
         (prev) => {
           const next = new URLSearchParams(prev);
           if (value === fallback) next.delete(key);
@@ -23,7 +30,7 @@ export function useFilterParams() {
         { replace: options?.replace ?? true },
       );
     },
-    [searchParams, setSearchParams],
+    [],
   );
 
   const [searchInput, setSearchInput] = useState(

@@ -61,6 +61,7 @@ export function Leaderboard({
   const previousCountsRef = useRef<Map<number, number> | null>(null);
   const disableTimerRef = useRef<number | undefined>(undefined);
 
+  // enableAnimations is a no-op until the controller lands; the dep re-runs this
   useLayoutEffect(() => {
     enableAnimations(false);
   }, [enableAnimations]);
@@ -83,7 +84,7 @@ export function Leaderboard({
       }, REORDER_ANIMATION.duration + 50);
     }
     previousCountsRef.current = counts;
-  });
+  }, [allMods, enableAnimations]);
 
   useEffect(() => () => window.clearTimeout(disableTimerRef.current), []);
 

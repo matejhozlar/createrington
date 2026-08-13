@@ -467,8 +467,8 @@ export function WorkshopDetail() {
 
           {packMatches.length > 0 && (
             <PackSearchResults
-              key={`${query}:${category}`}
               mods={packMatches}
+              paginationKey={`${query}:${category}`}
             />
           )}
         </main>

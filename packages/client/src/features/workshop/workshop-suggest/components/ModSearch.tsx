@@ -33,6 +33,11 @@ export function ModSearch({
   const [note, setNote] = useState("");
   const debouncedSearch = useDebouncedValue(searchQuery.trim(), 400);
 
+  const cancelNote = () => {
+    setNoteFor(null);
+    setNote("");
+  };
+
   const usedSlots = suggestions.filter((m) => m.status === "pending").length;
   const isFull = usedSlots >= workshop.maxModsPerUser;
   const ownProjectIds = new Set(suggestions.map((m) => m.curseforgeProjectId));
@@ -49,8 +54,7 @@ export function ModSearch({
     const onPointerDown = (event: PointerEvent) => {
       if (!containerRef.current?.contains(event.target as Node)) {
         setDismissed(true);
-        setNoteFor(null);
-        setNote("");
+        cancelNote();
       }
     };
     document.addEventListener("pointerdown", onPointerDown);
@@ -115,7 +119,10 @@ export function ModSearch({
           }}
           onFocus={() => setDismissed(false)}
           onKeyDown={(event) => {
-            if (event.key === "Escape") setDismissed(true);
+            if (event.key === "Escape") {
+              setDismissed(true);
+              cancelNote();
+            }
           }}
           placeholder={isFull ? "All slots used" : "Search CurseForge..."}
           className="h-[46px] rounded-[10px] bg-white/[0.03] pr-10 pl-10 text-sm"
@@ -124,7 +131,10 @@ export function ModSearch({
           <ClearButton
             className="right-2"
             inputRef={searchInputRef}
-            onClick={() => setSearchQuery("")}
+            onClick={() => {
+              setSearchQuery("");
+              cancelNote();
+            }}
           />
         )}
         {dropdownOpen && (
@@ -205,8 +215,7 @@ export function ModSearch({
                               confirmSuggest(result.id);
                             }
                             if (event.key === "Escape") {
-                              setNoteFor(null);
-                              setNote("");
+                              cancelNote();
                             }
                           }}
                           placeholder="Why this one? What does it add to the pack?"

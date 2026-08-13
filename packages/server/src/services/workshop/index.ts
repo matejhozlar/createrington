@@ -123,6 +123,8 @@ export interface WorkshopTopMod {
   thumbnailUrl: string | null;
 }
 
+const PACK_SAMPLE_SIZE = 4;
+
 export interface WorkshopPackSampleMod {
   id: number;
   name: string;
@@ -1028,9 +1030,9 @@ export class WorkshopService {
         Q.modpack.mod.findAll(
           { modpackId: workshop.modpackId },
           {
-            orderBy: "id",
-            orderDirection: "asc",
-            limit: 4,
+            orderBy: "createdAt",
+            orderDirection: "desc",
+            limit: PACK_SAMPLE_SIZE,
             select: ["id", "curseforgeProjectId"],
           },
         ),
