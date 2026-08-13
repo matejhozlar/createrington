@@ -131,7 +131,9 @@ export function WorkshopSuggest() {
             <section>
               <h2 className="text-2xl font-semibold">Find a mod</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                This workshop is closed for suggestions.
+                {workshop.status === "locked"
+                  ? "This workshop is locked while the team reviews. You can still upvote what has been suggested."
+                  : "This workshop is closed for suggestions."}
               </p>
             </section>
           )}

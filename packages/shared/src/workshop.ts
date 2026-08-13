@@ -107,6 +107,7 @@ export const WORKSHOP_MOD_REVIEW_TARGETS: Record<
 export const WORKSHOP_STATUSES = [
   "draft",
   "open",
+  "locked",
   "closed",
   "archived",
 ] as const;
@@ -118,7 +119,22 @@ export const WORKSHOP_STATUS_TRANSITIONS: Record<
   WorkshopStatus[]
 > = {
   draft: ["open"],
-  open: ["closed"],
+  open: ["locked", "closed"],
+  locked: ["open", "closed"],
   closed: ["open", "archived"],
   archived: ["closed"],
 };
+
+// Statuses a workshop is still featured and participated in under. Locked
+// keeps everything about an open workshop except the intake of new mods.
+export const WORKSHOP_LIVE_STATUSES: readonly WorkshopStatus[] = [
+  "open",
+  "locked",
+];
+
+// Statuses users may see; anything else reads as missing, not as hidden.
+export const WORKSHOP_VISIBLE_STATUSES: readonly WorkshopStatus[] = [
+  "open",
+  "locked",
+  "closed",
+];

@@ -64,10 +64,16 @@ export async function execute(
 
   const open = await listOpenWorkshops();
   if (open.length === 0) {
+    const [locked] = await Q.workshop.findAll(
+      { status: "locked", classId: CurseForgeClass.mods },
+      { orderBy: "createdAt", orderDirection: "desc", limit: 1 },
+    );
     await replyError(
       interaction,
-      "No Open Workshop",
-      "No workshop is currently accepting suggestions.",
+      locked ? "Workshop Locked" : "No Open Workshop",
+      locked
+        ? `**${locked.name}** is locked and is not taking new suggestions right now. You can still browse and upvote it on the website.`
+        : "No workshop is currently accepting suggestions.",
     );
     return;
   }

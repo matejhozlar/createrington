@@ -376,8 +376,11 @@ describe("WorkshopService.updateWorkshop", () => {
 
     for (const status of [
       "open",
+      "locked",
+      "open",
       "closed",
       "open",
+      "locked",
       "closed",
       "archived",
       "closed",
@@ -386,6 +389,16 @@ describe("WorkshopService.updateWorkshop", () => {
         status,
       });
       expect(updated.status).toBe(status);
+    }
+  });
+
+  it("blocks locking a workshop that is not open", async () => {
+    for (const status of ["draft", "closed", "archived"] as const) {
+      const workshop = await seedWorkshop(ctx, { status });
+
+      await expect(
+        workshopService.updateWorkshop(workshop.id, { status: "locked" }),
+      ).rejects.toThrow(`A ${status} workshop cannot move to locked`);
     }
   });
 
@@ -601,6 +614,25 @@ describe("WorkshopService.suggestMod", () => {
       workshopService.suggestMod(workshop.id, USER_A, { projectId }),
     ).rejects.toThrow("This workshop is not open for suggestions");
   });
+
+  it("throws when the workshop is locked", async () => {
+    const workshop = await seedWorkshop(ctx, { status: "locked" });
+    const projectId = await seedProject(ctx);
+
+    await expect(
+      workshopService.suggestMod(workshop.id, USER_A, { projectId }),
+    ).rejects.toThrow("This workshop is locked");
+  });
+
+  it("blocks withdrawing a pending suggestion once the workshop locks", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const mod = await seedMod(ctx, workshop, { submittedBy: USER_A });
+    await Q.workshop.update({ id: workshop.id }, { status: "locked" });
+
+    await expect(
+      workshopService.removeSuggestion(mod.id, USER_A),
+    ).rejects.toThrow("This workshop is locked");
+  });
 });
 
 describe("WorkshopService.toggleModUpvote", () => {
@@ -689,6 +721,29 @@ describe("WorkshopService.toggleModUpvote", () => {
     await expect(
       workshopService.toggleModUpvote(mod.id, USER_A),
     ).rejects.toThrow(NotFoundError);
+  });
+
+  it("keeps upvoting alive in a locked workshop", async () => {
+    const workshop = await seedWorkshop(ctx, { maxUpvotesPerUser: 2 });
+    const mod = await seedMod(ctx, workshop, { submittedBy: USER_B });
+    await Q.workshop.update({ id: workshop.id }, { status: "locked" });
+
+    const result = await workshopService.toggleModUpvote(mod.id, USER_A);
+
+    expect(result).toEqual({
+      upvoted: true,
+      upvoteCount: 1,
+      votesRemaining: 1,
+    });
+  });
+
+  it("stops upvoting once the workshop closes", async () => {
+    const workshop = await seedWorkshop(ctx, { status: "closed" });
+    const mod = await seedMod(ctx, workshop, { submittedBy: USER_B });
+
+    await expect(
+      workshopService.toggleModUpvote(mod.id, USER_A),
+    ).rejects.toThrow("This workshop is closed");
   });
 });
 
@@ -865,6 +920,23 @@ describe("WorkshopService.getMySuggestionHistory", () => {
     const rows = await workshopService.getMySuggestionHistory(USER_A);
 
     expect(rows.map((row) => row.id)).toEqual([kept.id]);
+  });
+});
+
+describe("WorkshopService.listVisibleWorkshops", () => {
+  it("summarises locked workshops but not closed ones", async () => {
+    const locked = await seedWorkshop(ctx, { status: "locked" });
+    const closed = await seedWorkshop(ctx, { status: "closed" });
+    await seedMod(ctx, locked, { submittedBy: USER_A });
+
+    const rows = await workshopService.listVisibleWorkshops();
+    const byId = new Map(rows.map((row) => [row.id, row]));
+
+    expect(byId.get(locked.id)?.summary).toMatchObject({
+      suggestionCount: 1,
+      pendingModCount: 1,
+    });
+    expect(byId.get(closed.id)?.summary).toBeNull();
   });
 });
 

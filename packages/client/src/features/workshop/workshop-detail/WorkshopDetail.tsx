@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router";
 import { ArrowLeft, Search } from "lucide-react";
+import { WORKSHOP_LIVE_STATUSES } from "@createrington/shared/workshop";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/auth";
 import { useToastActions } from "@/hooks/use-toast";
@@ -178,6 +179,7 @@ export function WorkshopDetail() {
 
   const { workshop, mods } = workshopQuery.data;
   const isOpen = workshop.status === "open";
+  const isLive = WORKSHOP_LIVE_STATUSES.includes(workshop.status);
   const upvotedIds = new Set(myUpvotesQuery.data?.modIds ?? []);
 
   const packMods = packQuery.data?.mods ?? [];
@@ -251,7 +253,7 @@ export function WorkshopDetail() {
         : 0,
     upvoted: upvotedIds.has(mod.id),
     canUpvote:
-      isOpen &&
+      isLive &&
       mod.status === "pending" &&
       !upvoteMutation.isPending &&
       user?.discordId != null &&
@@ -298,7 +300,9 @@ export function WorkshopDetail() {
                 </Button>
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  This workshop is closed for suggestions.
+                  {workshop.status === "locked"
+                    ? "This workshop is locked while the team reviews. You can still upvote what has been suggested."
+                    : "This workshop is closed for suggestions."}
                 </p>
               )}
             </div>
@@ -331,7 +335,7 @@ export function WorkshopDetail() {
             <h2 className="text-2xl font-semibold">
               {searching ? "Suggestions" : "Top suggested mods"}
             </h2>
-            {isOpen && budget && votesLeft !== null && (
+            {isLive && budget && votesLeft !== null && (
               <span className="text-[13px] text-muted-foreground">
                 <span className="font-semibold text-foreground">
                   {votesLeft}

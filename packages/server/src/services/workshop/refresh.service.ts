@@ -3,6 +3,10 @@ import { refreshProjects } from "@/services/curseforge/ingest";
 import { FeatureFlags, featureFlagService } from "@/services/feature-flag";
 import { modpackService } from "@/services/modpack";
 import {
+  WORKSHOP_LIVE_STATUSES,
+  WORKSHOP_VISIBLE_STATUSES,
+} from "@createrington/shared/workshop";
+import {
   pruneStaleDependencyEdges,
   resolveProjectDependencies,
   type DependencySubject,
@@ -10,10 +14,10 @@ import {
 import { healThreads } from "./discord";
 
 /**
- * Daily sweep over open and closed workshops and every modpack. For open
+ * Daily sweep over user-visible workshops and every modpack. For running
  * workshops it refreshes the cached CurseForge snapshots (names, thumbnails,
  * download counts), re-resolves dependencies, and heals missed
- * required-dependency promotions. For both it cleans stale dependency edges
+ * required-dependency promotions. For all it cleans stale dependency edges
  * and reconciles Discord forum threads with the stored thread ids. Every
  * modpack is then reconciled: missing rows for approved suggestions are
  * healed, live state is derived from the published pack's manifest, and
@@ -53,7 +57,7 @@ export class WorkshopProjectRefreshService {
         return 0;
       }
       const workshops = await Q.workshop.findAll({
-        status: { $in: ["open", "closed"] },
+        status: { $in: [...WORKSHOP_VISIBLE_STATUSES] },
       });
 
       let refreshed = 0;
@@ -65,7 +69,7 @@ export class WorkshopProjectRefreshService {
           const packRows = await Q.modpack.mod.findAll({
             modpackId: workshop.modpackId,
           });
-          if (workshop.status === "open") {
+          if (WORKSHOP_LIVE_STATUSES.includes(workshop.status)) {
             const liveMods = mods.filter((mod) => mod.status !== "rejected");
             const subjects = new Map<number, DependencySubject>();
             for (const subject of [...liveMods, ...packRows]) {

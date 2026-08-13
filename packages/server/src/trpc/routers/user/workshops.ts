@@ -74,7 +74,7 @@ export const userWorkshopsRouter = router({
     })),
 
   list: workshopProcedure
-    .meta({ description: "List open and closed workshops" })
+    .meta({ description: "List workshops users may see" })
     .query(async () => {
       const workshops = await workshopService.listVisibleWorkshops();
       return workshops.map((w) => redactWorkshop(w));

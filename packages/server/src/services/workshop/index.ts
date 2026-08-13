@@ -14,10 +14,12 @@ import type {
   WorkshopProjectDependency,
 } from "@createrington/shared/db";
 import {
+  WORKSHOP_LIVE_STATUSES,
   WORKSHOP_MOD_REVIEW_ACTION_LABELS,
   WORKSHOP_MOD_REVIEW_TARGETS,
   WORKSHOP_MOD_STATUS_LABELS,
   WORKSHOP_STATUS_TRANSITIONS,
+  WORKSHOP_VISIBLE_STATUSES,
   type WorkshopModReviewAction,
 } from "@createrington/shared/workshop";
 import {
@@ -184,19 +186,18 @@ function slugify(name: string): string {
  * snapshot cache; validation guards run against the live API at submit time.
  */
 export class WorkshopService {
-  /** Workshops users may see (open and closed), with stats for open ones. */
+  /** Workshops users may see, with stats for the ones still running. */
   async listVisibleWorkshops(): Promise<WorkshopListItem[]> {
     const workshops = await Q.workshop.findAll(
-      { status: { $in: ["open", "closed"] } },
+      { status: { $in: [...WORKSHOP_VISIBLE_STATUSES] } },
       { orderBy: "createdAt", orderDirection: "desc" },
     );
     return Promise.all(
       workshops.map(async (workshop) => ({
         ...workshop,
-        summary:
-          workshop.status === "open"
-            ? await this.getWorkshopSummary(workshop)
-            : null,
+        summary: WORKSHOP_LIVE_STATUSES.includes(workshop.status)
+          ? await this.getWorkshopSummary(workshop)
+          : null,
       })),
     );
   }
@@ -397,7 +398,7 @@ export class WorkshopService {
     discordId: string,
   ): Promise<WorkshopSuggestionHistoryItem[]> {
     const workshops = await Q.workshop.findAll({
-      status: { $in: ["open", "closed"] },
+      status: { $in: [...WORKSHOP_VISIBLE_STATUSES] },
     });
     if (workshops.length === 0) return [];
     const mods = await Q.workshop.mod.findAll({
@@ -513,10 +514,11 @@ export class WorkshopService {
   }
 
   /**
-   * Toggle the caller's upvote on a visible mod in an open workshop. Upvotes on
-   * other players' pending mods draw from the per-workshop budget; a review
-   * refunds them. Upvotes on reviewed mods and on the caller's own suggestions
-   * are free.
+   * Toggle the caller's upvote on a visible mod in a running workshop, locked
+   * ones included: a lock stops new mods arriving, not the ranking of the ones
+   * already in. Upvotes on other players' pending mods draw from the
+   * per-workshop budget; a review refunds them. Upvotes on reviewed mods and on
+   * the caller's own suggestions are free.
    */
   async toggleModUpvote(
     workshopModId: number,
@@ -530,7 +532,7 @@ export class WorkshopService {
     if (!mod || !USER_VISIBLE_MOD_STATUSES.includes(mod.status)) {
       throw new NotFoundError(`Mod #${workshopModId} not found`);
     }
-    const workshop = await this.getOpenWorkshop(mod.workshopId);
+    const workshop = await this.getLiveWorkshop(mod.workshopId);
 
     const existing = await Q.workshop.mod.upvote.find({
       workshopModId,
@@ -865,9 +867,10 @@ export class WorkshopService {
    * to the acting admin and already approved, so they still walk testing and
    * next_update before reaching the pack.
    *
-   * Unlike suggesting, this works on draft and closed workshops. Threads are
-   * only ever posted for open ones: a draft workshop's adds pick theirs up from
-   * the daily sweep once it opens, a closed workshop's never get one.
+   * Unlike suggesting, this works on draft, locked, and closed workshops.
+   * Threads are only ever posted for running ones: a draft workshop's adds pick
+   * theirs up from the daily sweep once it opens, a closed workshop's never get
+   * one.
    */
   async addModsAsAdmin(
     workshopId: number,
@@ -1085,7 +1088,7 @@ export class WorkshopService {
   }
 
   private assertUserVisible(workshop: Workshop): void {
-    if (workshop.status === "draft" || workshop.status === "archived") {
+    if (!WORKSHOP_VISIBLE_STATUSES.includes(workshop.status)) {
       throw new NotFoundError(`Workshop #${workshop.id} not found`);
     }
   }
@@ -1094,7 +1097,20 @@ export class WorkshopService {
     const workshop = await this.getWorkshop(workshopId);
     this.assertUserVisible(workshop);
     if (workshop.status !== "open") {
-      throw new BadRequestError("This workshop is not open for suggestions");
+      throw new BadRequestError(
+        workshop.status === "locked"
+          ? "This workshop is locked, it is not taking new suggestions right now"
+          : "This workshop is not open for suggestions",
+      );
+    }
+    return workshop;
+  }
+
+  private async getLiveWorkshop(workshopId: number): Promise<Workshop> {
+    const workshop = await this.getWorkshop(workshopId);
+    this.assertUserVisible(workshop);
+    if (!WORKSHOP_LIVE_STATUSES.includes(workshop.status)) {
+      throw new BadRequestError("This workshop is closed");
     }
     return workshop;
   }

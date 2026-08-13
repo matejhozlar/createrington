@@ -17,7 +17,10 @@ import type {
   WorkshopModRejectReason,
   WorkshopModStatus,
 } from "@createrington/shared/db";
-import { WORKSHOP_MOD_REJECT_REASON_LABELS } from "@createrington/shared/workshop";
+import {
+  WORKSHOP_LIVE_STATUSES,
+  WORKSHOP_MOD_REJECT_REASON_LABELS,
+} from "@createrington/shared/workshop";
 
 interface SuggestionAnnouncement extends WorkshopMod {
   project: Pick<CurseforgeProject, "name" | "primaryAuthor" | "websiteUrl">;
@@ -196,7 +199,7 @@ export async function announceSuggestion(
   mod: SuggestionAnnouncement,
 ): Promise<void> {
   if (
-    workshop.status !== "open" ||
+    !WORKSHOP_LIVE_STATUSES.includes(workshop.status) ||
     !workshop.discordForumChannelId ||
     mod.discordThreadId
   ) {
@@ -372,7 +375,12 @@ export async function healThreads(
     }
   }
 
-  if (workshop.status !== "open" || !workshop.discordForumChannelId) return;
+  if (
+    !WORKSHOP_LIVE_STATUSES.includes(workshop.status) ||
+    !workshop.discordForumChannelId
+  ) {
+    return;
+  }
   const missing = rows.filter(
     (mod) => !mod.discordThreadId && LIVE_MOD_STATUSES.includes(mod.status),
   );

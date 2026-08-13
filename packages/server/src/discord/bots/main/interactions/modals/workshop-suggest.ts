@@ -175,8 +175,10 @@ export async function execute(
   if (workshop.status !== "open") {
     await replyError(
       interaction,
-      "Suggestion Failed",
-      "This workshop is not open for suggestions.",
+      workshop.status === "locked" ? "Workshop Locked" : "Suggestion Failed",
+      workshop.status === "locked"
+        ? "This workshop was just locked and is not taking new suggestions right now. You can still browse and upvote it on the website."
+        : "This workshop is not open for suggestions.",
     );
     return;
   }

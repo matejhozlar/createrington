@@ -1,0 +1,1 @@
+ALTER TYPE "public"."workshop_status" ADD VALUE 'locked' BEFORE 'closed';

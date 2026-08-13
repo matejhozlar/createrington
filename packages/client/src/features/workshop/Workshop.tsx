@@ -1,5 +1,6 @@
 import { Link } from "react-router";
-import { ChevronRight, Heart } from "lucide-react";
+import { ChevronRight, Heart, Lock } from "lucide-react";
+import { WORKSHOP_LIVE_STATUSES } from "@createrington/shared/workshop";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -31,8 +32,8 @@ export function Workshop() {
     retry: retryUnlessForbidden,
   });
   const workshops = workshopsQuery.data ?? [];
-  const openWorkshops = workshops.filter(
-    (workshop) => workshop.status === "open",
+  const liveWorkshops = workshops.filter((workshop) =>
+    WORKSHOP_LIVE_STATUSES.includes(workshop.status),
   );
   const closedWorkshops = workshops.filter(
     (workshop) => workshop.status === "closed",
@@ -73,14 +74,14 @@ export function Workshop() {
                 message={workshopsQuery.error.message}
                 onRetry={() => workshopsQuery.refetch()}
               />
-            ) : openWorkshops.length === 0 ? (
+            ) : liveWorkshops.length === 0 ? (
               <WorkshopEmptyState
                 title="No workshops open right now"
                 description="When the next workshop opens, it'll show up here. Keep an eye on the Discord announcements."
               />
             ) : (
               <div className="flex flex-col gap-6">
-                {openWorkshops.map((workshop) => (
+                {liveWorkshops.map((workshop) => (
                   <ActiveWorkshopCard key={workshop.id} workshop={workshop} />
                 ))}
               </div>
@@ -99,12 +100,24 @@ export function Workshop() {
 function ActiveWorkshopCard({ workshop }: { workshop: WorkshopListItem }) {
   const summary = workshop.summary;
   const suggestionCount = summary?.suggestionCount ?? 0;
+  const locked = workshop.status === "locked";
 
   return (
     <Card className="grid gap-0 overflow-hidden py-0 lg:grid-cols-[minmax(0,1fr)_360px]">
       <div className="flex flex-col gap-6 p-8">
         <div className="flex flex-col gap-2">
-          <h3 className="text-3xl font-semibold">{workshop.name}</h3>
+          <div className="flex flex-wrap items-center gap-3">
+            <h3 className="text-3xl font-semibold">{workshop.name}</h3>
+            {locked && (
+              <Badge
+                variant="outline"
+                className={cn("gap-1", WORKSHOP_STATUS_STYLES.locked.className)}
+              >
+                <Lock className="size-3" />
+                {WORKSHOP_STATUS_STYLES.locked.label}
+              </Badge>
+            )}
+          </div>
           {workshop.description && (
             <p className="max-w-[560px] text-base text-muted-foreground">
               {workshop.description}
@@ -160,9 +173,15 @@ function ActiveWorkshopCard({ workshop }: { workshop: WorkshopListItem }) {
         <div className="mt-1 flex flex-wrap items-center gap-4">
           <Button size="lg" asChild>
             <Link to={`/workshop/${workshop.slug}`}>
-              Suggest &amp; upvote mods
+              {locked ? "Browse & upvote mods" : "Suggest & upvote mods"}
             </Link>
           </Button>
+          {locked && (
+            <p className="text-sm text-muted-foreground">
+              Closed to new suggestions while the team reviews. Your votes still
+              count.
+            </p>
+          )}
         </div>
       </div>
 
