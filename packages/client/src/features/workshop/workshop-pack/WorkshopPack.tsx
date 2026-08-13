@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useParams } from "react-router";
+import { Link, useParams, useSearchParams } from "react-router";
 import { ArrowLeft, Search } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
@@ -39,13 +39,30 @@ const SOURCE_OPTIONS: Array<{ value: SourceFilter; label: string }> = [
 export function WorkshopPack() {
   const { slug } = useParams<{ slug: string }>();
 
-  const [searchQuery, setSearchQuery] = useState("");
-  const [source, setSource] = useState<SourceFilter>("all");
-  const [category, setCategory] = useState("all");
+  const [searchParams, setSearchParams] = useSearchParams();
   const [shownCount, setShownCount] = useState(PAGE_SIZE);
   const [view, changeView] = useViewMode("workshop-pack-view");
+
+  const searchQuery = searchParams.get("q") ?? "";
+  const category = searchParams.get("category") ?? "all";
+  const sourceParam = searchParams.get("source");
+  const source: SourceFilter =
+    sourceParam === "voted" || sourceParam === "base" ? sourceParam : "all";
   const query = useDebouncedValue(searchQuery.trim().toLowerCase(), 250);
   const searching = query.length > 0;
+
+  const setFilterParam = (key: string, value: string, fallback: string) => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (value === fallback) next.delete(key);
+        else next.set(key, value);
+        return next;
+      },
+      { replace: true },
+    );
+    setShownCount(PAGE_SIZE);
+  };
 
   const workshopQuery = trpc.user.workshops.get.useQuery(
     { slug: slug! },
@@ -192,10 +209,9 @@ export function WorkshopPack() {
                   <Search className="pointer-events-none absolute top-1/2 left-2.5 size-[15px] -translate-y-1/2 text-muted-foreground" />
                   <Input
                     value={searchQuery}
-                    onChange={(event) => {
-                      setSearchQuery(event.target.value);
-                      setShownCount(PAGE_SIZE);
-                    }}
+                    onChange={(event) =>
+                      setFilterParam("q", event.target.value, "")
+                    }
                     placeholder="Search the pack..."
                     className="h-9 rounded-lg bg-white/[0.03] pl-8 text-[13px]"
                   />
@@ -203,10 +219,9 @@ export function WorkshopPack() {
                 <span className="hidden flex-1 sm:block" />
                 <Select
                   value={source}
-                  onValueChange={(value) => {
-                    setSource(value as SourceFilter);
-                    setShownCount(PAGE_SIZE);
-                  }}
+                  onValueChange={(value) =>
+                    setFilterParam("source", value, "all")
+                  }
                 >
                   <SelectTrigger className="w-full sm:w-44">
                     <SelectValue />
@@ -221,10 +236,9 @@ export function WorkshopPack() {
                 </Select>
                 <Select
                   value={category}
-                  onValueChange={(value) => {
-                    setCategory(value);
-                    setShownCount(PAGE_SIZE);
-                  }}
+                  onValueChange={(value) =>
+                    setFilterParam("category", value, "all")
+                  }
                 >
                   <SelectTrigger className="w-full sm:w-[150px]">
                     <SelectValue />
