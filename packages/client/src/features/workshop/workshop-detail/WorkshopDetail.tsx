@@ -422,6 +422,7 @@ export function WorkshopDetail() {
             </div>
           ) : (
             <Leaderboard
+              key={`${sortMode}:${category}:${query}`}
               items={items}
               view={view}
               onOpen={setOpenModId}
