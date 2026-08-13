@@ -113,8 +113,19 @@ export function ModSearch({
             if (event.key === "Escape") setDismissed(true);
           }}
           placeholder={isFull ? "All slots used" : "Search CurseForge..."}
-          className="h-[46px] rounded-[10px] bg-white/[0.03] pl-10 text-sm"
+          className="h-[46px] rounded-[10px] bg-white/[0.03] pr-10 pl-10 text-sm"
         />
+        {searchQuery && (
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            aria-label="Clear search"
+            onClick={() => setSearchQuery("")}
+            className="absolute top-1/2 right-2 -translate-y-1/2 text-muted-foreground hover:bg-transparent hover:text-foreground dark:hover:bg-transparent"
+          >
+            <X />
+          </Button>
+        )}
         {dropdownOpen && (
           <div className="absolute inset-x-0 top-[calc(100%+8px)] z-50 flex max-h-[420px] flex-col gap-0.5 overflow-y-auto rounded-xl border border-border bg-popover p-1.5 shadow-[0_12px_32px_rgb(0_0_0/0.45)]">
             {searchResults.isLoading && (
