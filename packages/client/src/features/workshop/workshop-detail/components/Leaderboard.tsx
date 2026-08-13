@@ -326,7 +326,13 @@ function HeartOrBadge({
     <button
       type="button"
       disabled={!item.canUpvote && !item.outOfVotes}
-      aria-label={item.upvoted ? "Remove upvote" : "Upvote"}
+      aria-label={
+        item.upvoted
+          ? "Remove upvote"
+          : item.outOfVotes
+            ? "Upvote, no votes left"
+            : "Upvote"
+      }
       onClick={(event) => {
         event.stopPropagation();
         onUpvote(mod.id);
@@ -336,7 +342,7 @@ function HeartOrBadge({
         item.upvoted
           ? "border-red-400/50 bg-red-400/10 text-red-400"
           : "border-border bg-accent/35 text-muted-foreground",
-        item.canUpvote && "cursor-pointer",
+        (item.canUpvote || item.outOfVotes) && "cursor-pointer",
       )}
     >
       <Heart className={cn("size-3.5", item.upvoted && "fill-current")} />

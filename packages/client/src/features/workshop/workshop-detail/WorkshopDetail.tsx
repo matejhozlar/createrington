@@ -283,6 +283,7 @@ export function WorkshopDetail() {
     outOfVotes:
       isOpen &&
       mod.status === "pending" &&
+      !upvoteMutation.isPending &&
       user?.discordId != null &&
       !upvotedIds.has(mod.id) &&
       mod.submittedBy !== user.discordId &&
