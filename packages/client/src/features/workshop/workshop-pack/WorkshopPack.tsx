@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useParams } from "react-router";
 import { ArrowLeft, Search } from "lucide-react";
 import { trpc } from "@/lib/trpc";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,6 +44,8 @@ export function WorkshopPack() {
   const [category, setCategory] = useState("all");
   const [shownCount, setShownCount] = useState(PAGE_SIZE);
   const [view, changeView] = useViewMode("workshop-pack-view");
+  const query = useDebouncedValue(searchQuery.trim().toLowerCase(), 250);
+  const searching = query.length > 0;
 
   const workshopQuery = trpc.user.workshops.get.useQuery(
     { slug: slug! },
@@ -86,9 +89,6 @@ export function WorkshopPack() {
   const modpack = packQuery.data?.modpack;
   const mods = packQuery.data?.mods ?? [];
 
-  const query = searchQuery.trim().toLowerCase();
-  const searching = query.length > 0;
-
   const categories = [
     ...new Set(
       mods.flatMap((mod) => projectCategories(mod.project.categories)),
@@ -118,8 +118,7 @@ export function WorkshopPack() {
   }
 
   const filtering = searching || source !== "all" || category !== "all";
-  const shown = filtering ? visible.length : shownCount;
-  const remaining = visible.length - shown;
+  const remaining = visible.length - shownCount;
 
   return (
     <div className="relative overflow-hidden">
@@ -249,14 +248,14 @@ export function WorkshopPack() {
                     : "Nothing in the pack yet."}
                 </div>
               ) : (
-                <PackList mods={visible.slice(0, shown)} view={view} />
+                <PackList mods={visible.slice(0, shownCount)} view={view} />
               )}
 
               {remaining > 0 && (
                 <div className="-mt-1 flex justify-center">
                   <Button
                     variant="secondary"
-                    onClick={() => setShownCount(shown + PAGE_SIZE)}
+                    onClick={() => setShownCount(shownCount + PAGE_SIZE)}
                   >
                     Show {Math.min(remaining, PAGE_SIZE)} more
                   </Button>
