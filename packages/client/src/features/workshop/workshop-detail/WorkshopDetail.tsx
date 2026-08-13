@@ -56,7 +56,6 @@ export function WorkshopDetail() {
   const utils = trpc.useUtils();
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const [openModId, setOpenModId] = useState<number | null>(null);
   const [shownCount, setShownCount] = useState(PAGE_SIZE);
   const [view, changeView] = useViewMode("workshop-detail-view");
 
@@ -65,10 +64,13 @@ export function WorkshopDetail() {
   const sortParam = searchParams.get("sort");
   const sortMode: SortMode =
     sortParam === "new" || sortParam === "votes" ? sortParam : "top";
+  const modParam = searchParams.get("mod");
+  const openModId =
+    modParam && /^\d+$/.test(modParam) ? Number(modParam) : null;
   const query = useDebouncedValue(searchQuery.trim().toLowerCase(), 250);
   const searching = query.length > 0;
 
-  const setFilterParam = (key: string, value: string, fallback: string) => {
+  const setParam = (key: string, value: string, fallback = "") => {
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev);
@@ -78,6 +80,10 @@ export function WorkshopDetail() {
       },
       { replace: true },
     );
+  };
+
+  const setFilterParam = (key: string, value: string, fallback: string) => {
+    setParam(key, value, fallback);
     setShownCount(PAGE_SIZE);
   };
 
@@ -451,10 +457,9 @@ export function WorkshopDetail() {
             </div>
           ) : (
             <Leaderboard
-              key={`${view}:${sortMode}:${category}:${query}:${shownCount}`}
               items={items}
               view={view}
-              onOpen={setOpenModId}
+              onOpen={(workshopModId) => setParam("mod", String(workshopModId))}
               onUpvote={(workshopModId) => {
                 const item = items.find(
                   (entry) => entry.mod.id === workshopModId,
@@ -493,7 +498,7 @@ export function WorkshopDetail() {
       <ModDetailDialog
         workshopModId={openModId}
         onOpenChange={(open) => {
-          if (!open) setOpenModId(null);
+          if (!open) setParam("mod", "");
         }}
       />
     </div>
