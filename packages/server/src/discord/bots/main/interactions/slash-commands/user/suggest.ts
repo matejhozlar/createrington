@@ -7,6 +7,7 @@ import { player, Q } from "@/db";
 import { buildWorkshopSuggestModal } from "@/discord/bots/main/interactions/modals/workshop-suggest";
 import { CooldownType } from "@/discord/utils/cooldown";
 import { replyError } from "@/discord/utils/interaction-reply";
+import { CurseForgeClass } from "@/services/curseforge";
 import { featureFlagService, FeatureFlags } from "@/services/feature-flag";
 import type { Workshop } from "@createrington/shared/db";
 
@@ -31,7 +32,7 @@ export const cooldown = {
 
 function listOpenWorkshops(): Promise<Workshop[]> {
   return Q.workshop.findAll(
-    { status: "open" },
+    { status: "open", classId: CurseForgeClass.mods },
     { orderBy: "createdAt", orderDirection: "desc" },
   );
 }

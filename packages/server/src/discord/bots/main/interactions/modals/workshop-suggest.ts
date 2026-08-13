@@ -148,7 +148,7 @@ export async function execute(
 
   let project: { id: number; name: string } | null;
   try {
-    project = await findModBySlug(parsed.slug, workshop.classId);
+    project = await findModBySlug(parsed.slug);
   } catch (error) {
     logger.error("CurseForge slug lookup failed:", error);
     await replyError(
