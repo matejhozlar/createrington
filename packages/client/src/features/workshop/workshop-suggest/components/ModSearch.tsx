@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Info, Loader2, Search, X } from "lucide-react";
+import { Info, Loader2, Search } from "lucide-react";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useToastActions } from "@/hooks/use-toast";
@@ -214,18 +214,6 @@ export function ModSearch({
                           ) : (
                             "Suggest"
                           )}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-8 shrink-0"
-                          aria-label="Cancel"
-                          onClick={() => {
-                            setNoteFor(null);
-                            setNote("");
-                          }}
-                        >
-                          <X className="size-3.5" />
                         </Button>
                       </div>
                       <p className="text-[11px] text-muted-foreground">
