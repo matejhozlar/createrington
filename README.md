@@ -10,14 +10,6 @@
   <a href="https://createrington.com">createrington.com</a>
 </h2>
 
-<p>
-  <a href="#quick-start">Quick start</a>
-  &nbsp;·&nbsp;
-  <a href="#what-it-does">Features</a>
-  &nbsp;·&nbsp;
-  <a href="CONTRIBUTING.md">Contributing</a>
-</p>
-
 <img src="screenshots/homepage.webp" alt="Createrington homepage">
 
 </div>
