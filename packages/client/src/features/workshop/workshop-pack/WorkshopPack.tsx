@@ -221,7 +221,7 @@ export function WorkshopPack() {
                       size="icon-xs"
                       aria-label="Clear search"
                       onClick={() => setFilterParam("q", "", "")}
-                      className="absolute top-1/2 right-1 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      className="absolute top-1/2 right-1 -translate-y-1/2 text-muted-foreground hover:bg-transparent hover:text-foreground dark:hover:bg-transparent"
                     >
                       <X />
                     </Button>
