@@ -58,17 +58,17 @@ export function Leaderboard({
   const [containerRef, enableAnimations] =
     useAutoAnimate<HTMLDivElement>(REORDER_ANIMATION);
   const previousCountsRef = useRef<Map<number, number> | null>(null);
-  const counts = new Map(allMods.map((mod) => [mod.id, mod.upvoteCount]));
-  const previous = previousCountsRef.current;
-  // Votes are the only thing that changes a count; filters never do
-  const voteChange =
-    previous !== null &&
-    [...counts].some(([id, count]) => {
-      const previousCount = previous.get(id);
-      return previousCount !== undefined && previousCount !== count;
-    });
 
+  // Votes are the only thing that changes a count; filters never do
   useLayoutEffect(() => {
+    const counts = new Map(allMods.map((mod) => [mod.id, mod.upvoteCount]));
+    const previous = previousCountsRef.current;
+    const voteChange =
+      previous !== null &&
+      [...counts].some(([id, count]) => {
+        const previousCount = previous.get(id);
+        return previousCount !== undefined && previousCount !== count;
+      });
     enableAnimations(voteChange);
     previousCountsRef.current = counts;
   });
