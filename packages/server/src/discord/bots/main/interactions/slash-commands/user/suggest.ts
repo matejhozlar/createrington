@@ -4,7 +4,10 @@ import {
   type ChatInputCommandInteraction,
 } from "discord.js";
 import { player, Q } from "@/db";
-import { buildWorkshopSuggestModal } from "@/discord/bots/main/interactions/modals/workshop-suggest";
+import {
+  buildWorkshopPickerSuggestModal,
+  buildWorkshopSuggestModal,
+} from "@/discord/bots/main/interactions/modals/workshop-suggest";
 import { CooldownType } from "@/discord/utils/cooldown";
 import { replyError } from "@/discord/utils/interaction-reply";
 import { CurseForgeClass } from "@/services/curseforge";
@@ -84,12 +87,7 @@ export async function execute(
     }
     workshop = selected;
   } else if (open.length > 1) {
-    const names = open.map((w) => `**${w.name}**`).join(", ");
-    await replyError(
-      interaction,
-      "Several Workshops Open",
-      `Pick one with the \`workshop\` option: ${names}`,
-    );
+    await interaction.showModal(buildWorkshopPickerSuggestModal(open));
     return;
   }
 

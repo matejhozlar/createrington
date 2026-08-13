@@ -2,6 +2,7 @@ import {
   LabelBuilder,
   MessageFlags,
   ModalBuilder,
+  StringSelectMenuBuilder,
   TextDisplayBuilder,
   TextInputBuilder,
   TextInputStyle,
@@ -22,6 +23,8 @@ import { featureFlagService, FeatureFlags } from "@/services/feature-flag";
 import { workshopService } from "@/services/workshop";
 
 const MODAL_ID_PREFIX = "workshop-suggest";
+const PICKER_SUFFIX = "pick";
+const WORKSHOP_SELECT_ID = "workshop";
 const LINK_INPUT_ID = "link";
 const NOTE_INPUT_ID = "note";
 
@@ -36,12 +39,8 @@ const LINK_ERRORS: Record<ModUrlErrorReason, string> = {
 
 export const customId = `${MODAL_ID_PREFIX}:*`;
 
-/** Builds the suggestion modal for a specific workshop. */
-export function buildWorkshopSuggestModal(
-  workshop: Workshop,
-  slotsUsed: number,
-): ModalBuilder {
-  const linkField = new LabelBuilder()
+function linkField(): LabelBuilder {
+  return new LabelBuilder()
     .setLabel("CurseForge link")
     .setDescription("The mod's page on curseforge.com")
     .setTextInputComponent(
@@ -53,8 +52,10 @@ export function buildWorkshopSuggestModal(
         .setMaxLength(300)
         .setRequired(true),
     );
+}
 
-  const noteField = new LabelBuilder()
+function noteField(): LabelBuilder {
+  return new LabelBuilder()
     .setLabel("Why this mod?")
     .setDescription(
       "A short pitch, at least 10 characters. Shown with your suggestion.",
@@ -68,7 +69,13 @@ export function buildWorkshopSuggestModal(
         .setMaxLength(500)
         .setRequired(true),
     );
+}
 
+/** Builds the suggestion modal for a specific workshop. */
+export function buildWorkshopSuggestModal(
+  workshop: Workshop,
+  slotsUsed: number,
+): ModalBuilder {
   return new ModalBuilder()
     .setCustomId(`${MODAL_ID_PREFIX}:${workshop.id}`)
     .setTitle("Suggest a mod")
@@ -77,7 +84,31 @@ export function buildWorkshopSuggestModal(
         `Suggesting to **${workshop.name}** · ${slotsUsed} of ${workshop.maxModsPerUser} suggestion slots used`,
       ),
     )
-    .addLabelComponents(linkField, noteField);
+    .addLabelComponents(linkField(), noteField());
+}
+
+/** Builds the suggestion modal with a required workshop picker on top. */
+export function buildWorkshopPickerSuggestModal(
+  workshops: Workshop[],
+): ModalBuilder {
+  const workshopField = new LabelBuilder()
+    .setLabel("Workshop")
+    .setStringSelectMenuComponent(
+      new StringSelectMenuBuilder()
+        .setCustomId(WORKSHOP_SELECT_ID)
+        .setPlaceholder("Pick a workshop")
+        .setRequired(true)
+        .setOptions(
+          workshops
+            .slice(0, 25)
+            .map((w) => ({ label: w.name, value: String(w.id) })),
+        ),
+    );
+
+  return new ModalBuilder()
+    .setCustomId(`${MODAL_ID_PREFIX}:${PICKER_SUFFIX}`)
+    .setTitle("Suggest a mod")
+    .addLabelComponents(workshopField, linkField(), noteField());
 }
 
 export async function execute(
@@ -85,7 +116,11 @@ export async function execute(
 ): Promise<void> {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-  const workshopId = Number(interaction.customId.split(":")[1]);
+  const suffix = interaction.customId.split(":")[1];
+  const workshopId =
+    suffix === PICKER_SUFFIX
+      ? Number(interaction.fields.getStringSelectValues(WORKSHOP_SELECT_ID)[0])
+      : Number(suffix);
   if (!Number.isInteger(workshopId) || workshopId <= 0) {
     await replyError(interaction, "Suggestion Failed", "Unknown workshop.");
     return;
