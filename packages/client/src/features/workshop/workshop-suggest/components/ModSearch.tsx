@@ -5,6 +5,7 @@ import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useToastActions } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ClearButton } from "../../components/ClearButton";
 import { ProjectThumb } from "../../components/ProjectThumb";
 import { formatDownloads } from "../../format";
 
@@ -116,15 +117,7 @@ export function ModSearch({
           className="h-[46px] rounded-[10px] bg-white/[0.03] pr-10 pl-10 text-sm"
         />
         {searchQuery && (
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            aria-label="Clear search"
-            onClick={() => setSearchQuery("")}
-            className="absolute top-1/2 right-2 -translate-y-1/2 text-muted-foreground hover:bg-transparent hover:text-foreground dark:hover:bg-transparent"
-          >
-            <X />
-          </Button>
+          <ClearButton className="right-2" onClick={() => setSearchQuery("")} />
         )}
         {dropdownOpen && (
           <div className="absolute inset-x-0 top-[calc(100%+8px)] z-50 flex max-h-[420px] flex-col gap-0.5 overflow-y-auto rounded-xl border border-border bg-popover p-1.5 shadow-[0_12px_32px_rgb(0_0_0/0.45)]">

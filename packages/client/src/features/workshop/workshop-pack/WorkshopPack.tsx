@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { Link, useParams, useSearchParams } from "react-router";
-import { ArrowLeft, Search, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Link, useParams } from "react-router";
+import { ArrowLeft, Search } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { Badge } from "@/components/ui/badge";
@@ -18,7 +18,9 @@ import { NotFound } from "@/pages/not-found";
 import { CurseForgeIcon } from "@/components/icons/curseforge";
 import { isHttpUrl, loaderName, projectCategories } from "../format";
 import { PAGE_SIZE, WORDMARK_IMAGE } from "../constants";
+import { useFilterParams } from "../hooks/use-filter-params";
 import { useViewMode } from "../hooks/use-view-mode";
+import { ClearButton } from "../components/ClearButton";
 import { QueryErrorState } from "../components/QueryErrorState";
 import { ViewToggle } from "../components/ViewToggle";
 import { WorkshopDisabledState } from "../components/WorkshopEmptyState";
@@ -39,28 +41,27 @@ const SOURCE_OPTIONS: Array<{ value: SourceFilter; label: string }> = [
 export function WorkshopPack() {
   const { slug } = useParams<{ slug: string }>();
 
-  const [searchParams, setSearchParams] = useSearchParams();
+  const { searchParams, setParam } = useFilterParams();
   const [shownCount, setShownCount] = useState(PAGE_SIZE);
   const [view, changeView] = useViewMode("workshop-pack-view");
+  const [searchInput, setSearchInput] = useState(
+    () => searchParams.get("q") ?? "",
+  );
 
-  const searchQuery = searchParams.get("q") ?? "";
   const category = searchParams.get("category") ?? "all";
   const sourceParam = searchParams.get("source");
   const source: SourceFilter =
     sourceParam === "voted" || sourceParam === "base" ? sourceParam : "all";
-  const query = useDebouncedValue(searchQuery.trim().toLowerCase(), 250);
+  const debouncedSearch = useDebouncedValue(searchInput, 250);
+  const query = debouncedSearch.trim().toLowerCase();
   const searching = query.length > 0;
 
-  const setFilterParam = (key: string, value: string, fallback: string) => {
-    setSearchParams(
-      (prev) => {
-        const next = new URLSearchParams(prev);
-        if (value === fallback) next.delete(key);
-        else next.set(key, value);
-        return next;
-      },
-      { replace: true },
-    );
+  useEffect(() => {
+    setParam("q", debouncedSearch.trim(), "");
+  }, [debouncedSearch, setParam]);
+
+  const changeFilter = (key: string, value: string, fallback: string) => {
+    setParam(key, value, fallback);
     setShownCount(PAGE_SIZE);
   };
 
@@ -208,30 +209,29 @@ export function WorkshopPack() {
                 <div className="relative w-full min-w-0 flex-none sm:max-w-[420px] sm:min-w-[200px] sm:flex-1">
                   <Search className="pointer-events-none absolute top-1/2 left-2.5 size-[15px] -translate-y-1/2 text-muted-foreground" />
                   <Input
-                    value={searchQuery}
-                    onChange={(event) =>
-                      setFilterParam("q", event.target.value, "")
-                    }
+                    value={searchInput}
+                    onChange={(event) => {
+                      setSearchInput(event.target.value);
+                      setShownCount(PAGE_SIZE);
+                    }}
                     placeholder="Search the pack..."
                     className="h-9 rounded-lg bg-white/[0.03] pr-8 pl-8 text-[13px]"
                   />
-                  {searchQuery && (
-                    <Button
-                      variant="ghost"
-                      size="icon-xs"
-                      aria-label="Clear search"
-                      onClick={() => setFilterParam("q", "", "")}
-                      className="absolute top-1/2 right-1 -translate-y-1/2 text-muted-foreground hover:bg-transparent hover:text-foreground dark:hover:bg-transparent"
-                    >
-                      <X />
-                    </Button>
+                  {searchInput && (
+                    <ClearButton
+                      className="right-1"
+                      onClick={() => {
+                        setSearchInput("");
+                        setShownCount(PAGE_SIZE);
+                      }}
+                    />
                   )}
                 </div>
                 <span className="hidden flex-1 sm:block" />
                 <Select
                   value={source}
                   onValueChange={(value) =>
-                    setFilterParam("source", value, "all")
+                    changeFilter("source", value, "all")
                   }
                 >
                   <SelectTrigger className="w-full sm:w-44">
@@ -248,7 +248,7 @@ export function WorkshopPack() {
                 <Select
                   value={category}
                   onValueChange={(value) =>
-                    setFilterParam("category", value, "all")
+                    changeFilter("category", value, "all")
                   }
                 >
                   <SelectTrigger className="w-full sm:w-[150px]">

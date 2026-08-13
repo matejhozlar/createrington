@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { Link, useParams, useSearchParams } from "react-router";
-import { ArrowLeft, Search, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Link, useParams } from "react-router";
+import { ArrowLeft, Search } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/auth";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
@@ -19,7 +19,9 @@ import { Loading } from "@/components/loading-spinner";
 import { NotFound } from "@/pages/not-found";
 import { loaderName, projectCategories } from "../format";
 import { PAGE_SIZE, WORDMARK_IMAGE } from "../constants";
+import { useFilterParams } from "../hooks/use-filter-params";
 import { useViewMode } from "../hooks/use-view-mode";
+import { ClearButton } from "../components/ClearButton";
 import { PackStrip } from "../components/PackStrip";
 import { QueryErrorState } from "../components/QueryErrorState";
 import { WorkshopDisabledState } from "../components/WorkshopEmptyState";
@@ -55,11 +57,13 @@ export function WorkshopDetail() {
   const toast = useToastActions();
   const utils = trpc.useUtils();
 
-  const [searchParams, setSearchParams] = useSearchParams();
+  const { searchParams, setParam } = useFilterParams();
   const [shownCount, setShownCount] = useState(PAGE_SIZE);
   const [view, changeView] = useViewMode("workshop-detail-view");
+  const [searchInput, setSearchInput] = useState(
+    () => searchParams.get("q") ?? "",
+  );
 
-  const searchQuery = searchParams.get("q") ?? "";
   const category = searchParams.get("category") ?? "all";
   const sortParam = searchParams.get("sort");
   const sortMode: SortMode =
@@ -67,22 +71,15 @@ export function WorkshopDetail() {
   const modParam = searchParams.get("mod");
   const openModId =
     modParam && /^\d+$/.test(modParam) ? Number(modParam) : null;
-  const query = useDebouncedValue(searchQuery.trim().toLowerCase(), 250);
+  const debouncedSearch = useDebouncedValue(searchInput, 250);
+  const query = debouncedSearch.trim().toLowerCase();
   const searching = query.length > 0;
 
-  const setParam = (key: string, value: string, fallback = "") => {
-    setSearchParams(
-      (prev) => {
-        const next = new URLSearchParams(prev);
-        if (value === fallback) next.delete(key);
-        else next.set(key, value);
-        return next;
-      },
-      { replace: true },
-    );
-  };
+  useEffect(() => {
+    setParam("q", debouncedSearch.trim(), "");
+  }, [debouncedSearch, setParam]);
 
-  const setFilterParam = (key: string, value: string, fallback: string) => {
+  const changeFilter = (key: string, value: string, fallback: string) => {
     setParam(key, value, fallback);
     setShownCount(PAGE_SIZE);
   };
@@ -375,31 +372,28 @@ export function WorkshopDetail() {
             <div className="relative w-full min-w-0 flex-none sm:max-w-[420px] sm:min-w-[200px] sm:flex-1">
               <Search className="pointer-events-none absolute top-1/2 left-2.5 size-[15px] -translate-y-1/2 text-muted-foreground" />
               <Input
-                value={searchQuery}
-                onChange={(event) =>
-                  setFilterParam("q", event.target.value, "")
-                }
+                value={searchInput}
+                onChange={(event) => {
+                  setSearchInput(event.target.value);
+                  setShownCount(PAGE_SIZE);
+                }}
                 placeholder="Search all suggestions..."
                 className="h-9 rounded-lg bg-white/[0.03] pr-8 pl-8 text-[13px]"
               />
-              {searchQuery && (
-                <Button
-                  variant="ghost"
-                  size="icon-xs"
-                  aria-label="Clear search"
-                  onClick={() => setFilterParam("q", "", "")}
-                  className="absolute top-1/2 right-1 -translate-y-1/2 text-muted-foreground hover:bg-transparent hover:text-foreground dark:hover:bg-transparent"
-                >
-                  <X />
-                </Button>
+              {searchInput && (
+                <ClearButton
+                  className="right-1"
+                  onClick={() => {
+                    setSearchInput("");
+                    setShownCount(PAGE_SIZE);
+                  }}
+                />
               )}
             </div>
             <span className="hidden flex-1 sm:block" />
             <Select
               value={category}
-              onValueChange={(value) =>
-                setFilterParam("category", value, "all")
-              }
+              onValueChange={(value) => changeFilter("category", value, "all")}
             >
               <SelectTrigger className="w-full sm:w-[150px]">
                 <SelectValue />
@@ -415,7 +409,7 @@ export function WorkshopDetail() {
             </Select>
             <Select
               value={sortMode}
-              onValueChange={(value) => setFilterParam("sort", value, "top")}
+              onValueChange={(value) => changeFilter("sort", value, "top")}
             >
               <SelectTrigger className="w-full sm:w-44">
                 <SelectValue />
@@ -448,7 +442,7 @@ export function WorkshopDetail() {
                 <>
                   {" "}
                   <Link
-                    to={`/workshop/${slug}/suggest?q=${encodeURIComponent(searchQuery.trim())}`}
+                    to={`/workshop/${slug}/suggest?q=${encodeURIComponent(searchInput.trim())}`}
                     className="text-primary hover:underline"
                   >
                     Suggest it yourself
