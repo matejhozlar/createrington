@@ -1,11 +1,13 @@
 import {
-  ActionRowBuilder,
+  LabelBuilder,
   MessageFlags,
   ModalBuilder,
+  TextDisplayBuilder,
   TextInputBuilder,
   TextInputStyle,
   type ModalSubmitInteraction,
 } from "discord.js";
+import type { Workshop } from "@createrington/shared/db";
 import { player, Q } from "@/db";
 import { AppError } from "@/app/middleware/error-handler";
 import { EmbedPresets } from "@/discord/embeds";
@@ -34,32 +36,47 @@ const LINK_ERRORS: Record<ModUrlErrorReason, string> = {
 export const customId = `${MODAL_ID_PREFIX}:*`;
 
 /** Builds the suggestion modal for a specific workshop. */
-export function buildWorkshopSuggestModal(workshopId: number): ModalBuilder {
-  const linkInput = new TextInputBuilder()
-    .setCustomId(LINK_INPUT_ID)
+export function buildWorkshopSuggestModal(
+  workshop: Workshop,
+  slotsUsed: number,
+): ModalBuilder {
+  const linkField = new LabelBuilder()
     .setLabel("CurseForge link")
-    .setPlaceholder("https://www.curseforge.com/minecraft/mc-mods/...")
-    .setStyle(TextInputStyle.Short)
-    .setMinLength(10)
-    .setMaxLength(300)
-    .setRequired(true);
+    .setDescription("The mod's page on curseforge.com")
+    .setTextInputComponent(
+      new TextInputBuilder()
+        .setCustomId(LINK_INPUT_ID)
+        .setPlaceholder("https://www.curseforge.com/minecraft/mc-mods/...")
+        .setStyle(TextInputStyle.Short)
+        .setMinLength(10)
+        .setMaxLength(300)
+        .setRequired(true),
+    );
 
-  const noteInput = new TextInputBuilder()
-    .setCustomId(NOTE_INPUT_ID)
+  const noteField = new LabelBuilder()
     .setLabel("Why this mod?")
-    .setPlaceholder("Why this one? What does it add to the pack?")
-    .setStyle(TextInputStyle.Paragraph)
-    .setMinLength(10)
-    .setMaxLength(500)
-    .setRequired(true);
+    .setDescription(
+      "A short pitch, at least 10 characters. Shown with your suggestion.",
+    )
+    .setTextInputComponent(
+      new TextInputBuilder()
+        .setCustomId(NOTE_INPUT_ID)
+        .setPlaceholder("Why this one? What does it add to the pack?")
+        .setStyle(TextInputStyle.Paragraph)
+        .setMinLength(10)
+        .setMaxLength(500)
+        .setRequired(true),
+    );
 
   return new ModalBuilder()
-    .setCustomId(`${MODAL_ID_PREFIX}:${workshopId}`)
+    .setCustomId(`${MODAL_ID_PREFIX}:${workshop.id}`)
     .setTitle("Suggest a mod")
-    .addComponents(
-      new ActionRowBuilder<TextInputBuilder>().addComponents(linkInput),
-      new ActionRowBuilder<TextInputBuilder>().addComponents(noteInput),
-    );
+    .addTextDisplayComponents(
+      new TextDisplayBuilder().setContent(
+        `Suggesting to **${workshop.name}** · ${slotsUsed} of ${workshop.maxModsPerUser} suggestion slots used`,
+      ),
+    )
+    .addLabelComponents(linkField, noteField);
 }
 
 export async function execute(

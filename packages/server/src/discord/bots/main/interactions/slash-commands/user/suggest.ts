@@ -92,7 +92,22 @@ export async function execute(
     return;
   }
 
-  await interaction.showModal(buildWorkshopSuggestModal(workshop.id));
+  const slotsUsed = await Q.workshop.mod.count({
+    workshopId: workshop.id,
+    submittedBy: interaction.user.id,
+    status: "pending",
+  });
+
+  if (slotsUsed >= workshop.maxModsPerUser) {
+    await replyError(
+      interaction,
+      "No Slots Left",
+      `All ${workshop.maxModsPerUser} of your suggestion slots are in use. Slots free up when a suggestion is reviewed, or you can remove one on the website.`,
+    );
+    return;
+  }
+
+  await interaction.showModal(buildWorkshopSuggestModal(workshop, slotsUsed));
 }
 
 export async function autocomplete(
