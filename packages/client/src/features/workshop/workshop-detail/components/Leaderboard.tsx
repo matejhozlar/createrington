@@ -1,5 +1,6 @@
 import {
   Fragment,
+  useEffect,
   useLayoutEffect,
   useRef,
   type KeyboardEvent,
@@ -58,8 +59,10 @@ export function Leaderboard({
   const [containerRef, enableAnimations] =
     useAutoAnimate<HTMLDivElement>(REORDER_ANIMATION);
   const previousCountsRef = useRef<Map<number, number> | null>(null);
+  const disableTimerRef = useRef<number | undefined>(undefined);
 
-  // Votes are the only thing that changes a count; filters never do
+  // Votes are the only thing that changes a count; filters never do.
+  // disable() cancels in-flight animations, so it must wait out the duration.
   useLayoutEffect(() => {
     const counts = new Map(allMods.map((mod) => [mod.id, mod.upvoteCount]));
     const previous = previousCountsRef.current;
@@ -69,9 +72,20 @@ export function Leaderboard({
         const previousCount = previous.get(id);
         return previousCount !== undefined && previousCount !== count;
       });
-    enableAnimations(voteChange);
+    if (voteChange) {
+      window.clearTimeout(disableTimerRef.current);
+      enableAnimations(true);
+      disableTimerRef.current = window.setTimeout(() => {
+        disableTimerRef.current = undefined;
+        enableAnimations(false);
+      }, REORDER_ANIMATION.duration + 50);
+    } else if (disableTimerRef.current === undefined) {
+      enableAnimations(false);
+    }
     previousCountsRef.current = counts;
   });
+
+  useEffect(() => () => window.clearTimeout(disableTimerRef.current), []);
 
   if (view === "grid") {
     return (
