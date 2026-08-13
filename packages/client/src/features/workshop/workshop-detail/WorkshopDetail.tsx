@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { ArrowLeft, Search } from "lucide-react";
 import { trpc } from "@/lib/trpc";
@@ -19,6 +19,7 @@ import { NotFound } from "@/pages/not-found";
 import { loaderName, projectCategories } from "../format";
 import { PAGE_SIZE, WORDMARK_IMAGE } from "../constants";
 import { useFilterParams } from "../hooks/use-filter-params";
+import { usePagination } from "../hooks/use-pagination";
 import { useViewMode } from "../hooks/use-view-mode";
 import { ClearButton } from "../components/ClearButton";
 import { PackStrip } from "../components/PackStrip";
@@ -58,6 +59,7 @@ export function WorkshopDetail() {
 
   const navigate = useNavigate();
   const pushedModRef = useRef(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const { searchParams, setParam, searchInput, setSearchInput, query } =
     useFilterParams();
   const [view, changeView] = useViewMode("workshop-detail-view");
@@ -71,13 +73,9 @@ export function WorkshopDetail() {
     modParam && /^\d+$/.test(modParam) ? Number(modParam) : null;
   const searching = query.length > 0;
 
-  const paginationKey = `${query}:${category}:${sortMode}`;
-  const [pagination, setPagination] = useState({
-    key: paginationKey,
-    count: PAGE_SIZE,
-  });
-  const shownCount =
-    pagination.key === paginationKey ? pagination.count : PAGE_SIZE;
+  const { shownCount, showMore } = usePagination(
+    `${query}:${category}:${sortMode}`,
+  );
 
   const workshopQuery = trpc.user.workshops.get.useQuery(
     { slug: slug! },
@@ -274,7 +272,8 @@ export function WorkshopDetail() {
       upvoted: upvotedIds.has(mod.id),
       canUpvote:
         votable && (hasFreeVote || (votesLeft !== null && votesLeft > 0)),
-      outOfVotes: votable && !hasFreeVote && votesLeft === 0,
+      outOfVotes:
+        votable && !hasFreeVote && votesLeft !== null && votesLeft <= 0,
     };
   });
 
@@ -363,6 +362,7 @@ export function WorkshopDetail() {
             <div className="relative w-full min-w-0 flex-none sm:max-w-[420px] sm:min-w-[200px] sm:flex-1">
               <Search className="pointer-events-none absolute top-1/2 left-2.5 size-[15px] -translate-y-1/2 text-muted-foreground" />
               <Input
+                ref={searchInputRef}
                 value={searchInput}
                 onChange={(event) => setSearchInput(event.target.value)}
                 placeholder="Search all suggestions..."
@@ -371,6 +371,7 @@ export function WorkshopDetail() {
               {searchInput && (
                 <ClearButton
                   className="right-1"
+                  inputRef={searchInputRef}
                   onClick={() => setSearchInput("")}
                 />
               )}
@@ -458,15 +459,7 @@ export function WorkshopDetail() {
 
           {remaining > 0 && (
             <div className="-mt-1 flex justify-center">
-              <Button
-                variant="secondary"
-                onClick={() =>
-                  setPagination({
-                    key: paginationKey,
-                    count: shownCount + PAGE_SIZE,
-                  })
-                }
-              >
+              <Button variant="secondary" onClick={showMore}>
                 Show {Math.min(remaining, PAGE_SIZE)} more
               </Button>
             </div>

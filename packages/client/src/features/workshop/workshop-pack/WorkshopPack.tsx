@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef } from "react";
 import { Link, useParams } from "react-router";
 import { ArrowLeft, Search } from "lucide-react";
 import { trpc } from "@/lib/trpc";
@@ -18,6 +18,7 @@ import { CurseForgeIcon } from "@/components/icons/curseforge";
 import { isHttpUrl, loaderName, projectCategories } from "../format";
 import { PAGE_SIZE, WORDMARK_IMAGE } from "../constants";
 import { useFilterParams } from "../hooks/use-filter-params";
+import { usePagination } from "../hooks/use-pagination";
 import { useViewMode } from "../hooks/use-view-mode";
 import { ClearButton } from "../components/ClearButton";
 import { QueryErrorState } from "../components/QueryErrorState";
@@ -49,14 +50,11 @@ export function WorkshopPack() {
   const source: SourceFilter =
     sourceParam === "voted" || sourceParam === "base" ? sourceParam : "all";
   const searching = query.length > 0;
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
-  const paginationKey = `${query}:${source}:${category}`;
-  const [pagination, setPagination] = useState({
-    key: paginationKey,
-    count: PAGE_SIZE,
-  });
-  const shownCount =
-    pagination.key === paginationKey ? pagination.count : PAGE_SIZE;
+  const { shownCount, showMore } = usePagination(
+    `${query}:${source}:${category}`,
+  );
 
   const workshopQuery = trpc.user.workshops.get.useQuery(
     { slug: slug! },
@@ -202,6 +200,7 @@ export function WorkshopPack() {
                 <div className="relative w-full min-w-0 flex-none sm:max-w-[420px] sm:min-w-[200px] sm:flex-1">
                   <Search className="pointer-events-none absolute top-1/2 left-2.5 size-[15px] -translate-y-1/2 text-muted-foreground" />
                   <Input
+                    ref={searchInputRef}
                     value={searchInput}
                     onChange={(event) => setSearchInput(event.target.value)}
                     placeholder="Search the pack..."
@@ -210,6 +209,7 @@ export function WorkshopPack() {
                   {searchInput && (
                     <ClearButton
                       className="right-1"
+                      inputRef={searchInputRef}
                       onClick={() => setSearchInput("")}
                     />
                   )}
@@ -261,15 +261,7 @@ export function WorkshopPack() {
 
               {remaining > 0 && (
                 <div className="-mt-1 flex justify-center">
-                  <Button
-                    variant="secondary"
-                    onClick={() =>
-                      setPagination({
-                        key: paginationKey,
-                        count: shownCount + PAGE_SIZE,
-                      })
-                    }
-                  >
+                  <Button variant="secondary" onClick={showMore}>
                     Show {Math.min(remaining, PAGE_SIZE)} more
                   </Button>
                 </div>
