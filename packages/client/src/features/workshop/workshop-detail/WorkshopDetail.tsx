@@ -256,31 +256,27 @@ export function WorkshopDetail() {
   const budget = myUpvotesQuery.data;
   const votesLeft = budget?.votesRemaining ?? null;
 
-  const items: RaceItem[] = visible.slice(0, shownCount).map((mod) => ({
-    mod,
-    rank: mod.status === "pending" ? (rankById.get(mod.id) ?? null) : null,
-    barPct:
-      mod.status === "pending"
-        ? Math.round((mod.upvoteCount / maxRaceCount) * 92)
-        : 0,
-    upvoted: upvotedIds.has(mod.id),
-    canUpvote:
+  const items: RaceItem[] = visible.slice(0, shownCount).map((mod) => {
+    const votable =
       isOpen &&
       mod.status === "pending" &&
       !upvoteMutation.isPending &&
-      user?.discordId != null &&
-      (upvotedIds.has(mod.id) ||
-        mod.submittedBy === user.discordId ||
-        (votesLeft !== null && votesLeft > 0)),
-    outOfVotes:
-      isOpen &&
-      mod.status === "pending" &&
-      !upvoteMutation.isPending &&
-      user?.discordId != null &&
-      !upvotedIds.has(mod.id) &&
-      mod.submittedBy !== user.discordId &&
-      votesLeft === 0,
-  }));
+      user?.discordId != null;
+    const hasFreeVote =
+      upvotedIds.has(mod.id) || mod.submittedBy === user?.discordId;
+    return {
+      mod,
+      rank: mod.status === "pending" ? (rankById.get(mod.id) ?? null) : null,
+      barPct:
+        mod.status === "pending"
+          ? Math.round((mod.upvoteCount / maxRaceCount) * 92)
+          : 0,
+      upvoted: upvotedIds.has(mod.id),
+      canUpvote:
+        votable && (hasFreeVote || (votesLeft !== null && votesLeft > 0)),
+      outOfVotes: votable && !hasFreeVote && votesLeft === 0,
+    };
+  });
 
   return (
     <div className="relative overflow-hidden">
@@ -448,17 +444,14 @@ export function WorkshopDetail() {
                 pushedModRef.current = true;
                 setParam("mod", String(workshopModId), "", { replace: false });
               }}
-              onUpvote={(workshopModId) => {
-                const item = items.find(
-                  (entry) => entry.mod.id === workshopModId,
-                );
-                if (item?.outOfVotes) {
+              onUpvote={(item) => {
+                if (item.outOfVotes) {
                   toast.info(
                     "You're out of votes. Remove an upvote to free one up.",
                   );
                   return;
                 }
-                upvoteMutation.mutate({ workshopModId });
+                upvoteMutation.mutate({ workshopModId: item.mod.id });
               }}
             />
           )}

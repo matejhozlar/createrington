@@ -38,7 +38,7 @@ interface LeaderboardProps {
   allMods: RaceMod[];
   view: "list" | "grid";
   onOpen: (workshopModId: number) => void;
-  onUpvote: (workshopModId: number) => void;
+  onUpvote: (item: RaceItem) => void;
 }
 
 const RANK_FONT = "'Minecraft', ui-monospace, monospace";
@@ -121,7 +121,7 @@ export function Leaderboard({
 interface RaceItemProps {
   item: RaceItem;
   onOpen: (workshopModId: number) => void;
-  onUpvote: (workshopModId: number) => void;
+  onUpvote: (item: RaceItem) => void;
 }
 
 function openOnActivate(onActivate: () => void) {
@@ -292,7 +292,7 @@ function HeartOrBadge({
   onUpvote,
 }: {
   item: RaceItem;
-  onUpvote: (workshopModId: number) => void;
+  onUpvote: (item: RaceItem) => void;
 }) {
   const { mod } = item;
   if (mod.status === "rejected") {
@@ -330,12 +330,12 @@ function HeartOrBadge({
         item.upvoted
           ? "Remove upvote"
           : item.outOfVotes
-            ? "Upvote, no votes left"
+            ? "Upvote (no votes left)"
             : "Upvote"
       }
       onClick={(event) => {
         event.stopPropagation();
-        onUpvote(mod.id);
+        onUpvote(item);
       }}
       className={cn(
         "relative inline-flex min-w-[66px] shrink-0 items-center justify-center gap-1.5 rounded-[9px] border px-[13px] py-[7px] text-[13px] font-semibold tabular-nums transition-colors",
