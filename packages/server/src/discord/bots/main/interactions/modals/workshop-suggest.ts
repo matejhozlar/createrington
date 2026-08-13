@@ -8,6 +8,7 @@ import {
   type ModalSubmitInteraction,
 } from "discord.js";
 import type { Workshop } from "@createrington/shared/db";
+import config from "@/config";
 import { player, Q } from "@/db";
 import { AppError } from "@/app/middleware/error-handler";
 import { EmbedPresets } from "@/discord/embeds";
@@ -159,10 +160,11 @@ export async function execute(
   }
 
   if (!project) {
+    const suggestUrl = `${config.meta.links.website}/workshop/${workshop.slug}/suggest?q=${parsed.slug}`;
     await replyError(
       interaction,
       "Mod Not Found",
-      `No mod matches \`${parsed.slug}\` on CurseForge. Double-check the link.`,
+      `No mod matches \`${parsed.slug}\` on CurseForge. Double-check the link, or [search and suggest it on the website](${suggestUrl}).`,
     );
     return;
   }

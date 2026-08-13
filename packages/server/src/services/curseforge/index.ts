@@ -325,7 +325,7 @@ export async function searchMods(
 
 /**
  * Look up a single project by its URL slug (exact match within a class).
- * Returns null when nothing on CurseForge matches.
+ * Returns null when nothing matches or the slug is ambiguous within the class.
  */
 export async function findModBySlug(
   slug: string,
@@ -357,8 +357,9 @@ export async function findModBySlug(
 
   if (body.data.length > 1) {
     logger.warn(
-      `CurseForge slug lookup for "${slug}" (class ${classId}) returned ${body.data.length} projects, using the first`,
+      `CurseForge slug lookup for "${slug}" (class ${classId}) returned ${body.data.length} projects, treating as not found`,
     );
+    return null;
   }
 
   return body.data[0] ?? null;
