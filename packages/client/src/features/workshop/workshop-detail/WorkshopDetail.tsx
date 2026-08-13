@@ -318,11 +318,13 @@ export function WorkshopDetail() {
               onRetry={() => packQuery.refetch()}
             />
           ) : (
-            <PackStrip slug={slug!} mods={packMods}>
-              <span className="text-[13px] font-semibold whitespace-nowrap">
-                Already in the pack
-              </span>
-            </PackStrip>
+            packMods.length > 0 && (
+              <PackStrip slug={slug!} mods={packMods}>
+                <span className="text-[13px] font-semibold whitespace-nowrap">
+                  Already in the pack
+                </span>
+              </PackStrip>
+            )
           )}
 
           <div className="flex flex-wrap items-baseline justify-between gap-3">
