@@ -189,21 +189,21 @@ export function SuggestionHistory() {
                     </div>
                   )}
                 </div>
-                <div className="mr-1 hidden shrink-0 items-center gap-3.5 sm:flex">
-                  <SocialLinks
-                    discordThreadUrl={mod.discordThreadUrl}
-                    websiteUrl={mod.project.websiteUrl}
-                  />
-                </div>
+                <span className="flex min-w-[82px] shrink-0 justify-end">
+                  <StatusBadge mod={mod} />
+                </span>
                 <span className="shrink-0 text-xs whitespace-nowrap text-muted-foreground">
                   <span className="hidden md:inline">
                     {mod.workshopName} ·{" "}
                   </span>
                   {dateLine(mod)}
                 </span>
-                <span className="flex min-w-[82px] shrink-0 justify-end">
-                  <StatusBadge mod={mod} />
-                </span>
+                <div className="hidden shrink-0 items-center gap-3.5 sm:flex">
+                  <SocialLinks
+                    discordThreadUrl={mod.discordThreadUrl}
+                    websiteUrl={mod.project.websiteUrl}
+                  />
+                </div>
               </div>
             );
           })}
