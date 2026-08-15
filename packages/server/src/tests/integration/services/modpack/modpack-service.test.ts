@@ -712,6 +712,47 @@ describe("ModpackService.seedFromManifest", () => {
     );
   });
 
+  it("counts only the manifest's mods when a dropped suggestion member keeps its row", async () => {
+    const modpack = await seedModpack(ctx);
+    const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const staged = await seedMod(ctx, workshop, {
+      status: "next_update",
+      submittedBy: USER_A,
+    });
+    const keeper = await seedProject(ctx);
+
+    await modpackService.seedFromManifest(
+      modpack.id,
+      seed({
+        version: "0.1.0",
+        modIds: [staged.curseforgeProjectId, keeper],
+      }),
+    );
+    expect((await Q.workshop.mod.get({ id: staged.id })).status).toBe(
+      "in_pack",
+    );
+
+    const result = await modpackService.seedFromManifest(
+      modpack.id,
+      seed({ version: "0.2.0", modIds: [keeper] }),
+    );
+
+    expect(result).toEqual({
+      modCount: 1,
+      memberCount: 1,
+      unresolvedProjectIds: [],
+    });
+    expect((await Q.workshop.mod.get({ id: staged.id })).status).toBe(
+      "next_update",
+    );
+    const droppedRow = await Q.modpack.mod.find({
+      modpackId: modpack.id,
+      curseforgeProjectId: staged.curseforgeProjectId,
+    });
+    expect(droppedRow!.droppedFromManifestAt).not.toBeNull();
+    expect(droppedRow!.liveAt).toBeNull();
+  });
+
   it("rejects a manifest for a different game version or loader", async () => {
     const workshop = await seedWorkshop(ctx);
     const projectId = await seedProject(ctx);
@@ -727,7 +768,7 @@ describe("ModpackService.seedFromManifest", () => {
         workshop.modpackId,
         seed({ modLoader: "fabric-0.16.9", modIds: [projectId] }),
       ),
-    ).rejects.toThrow("does not match this workshop's mod loader");
+    ).rejects.toThrow("does not match this pack's mod loader");
     expect(await Q.modpack.mod.count({ modpackId: workshop.modpackId })).toBe(
       0,
     );

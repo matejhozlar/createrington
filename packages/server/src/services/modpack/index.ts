@@ -103,10 +103,9 @@ export interface ModpackSeedResult {
 
 function manifestLoaderType(loaderId: string): number | null {
   const prefix = loaderId.split("-")[0]?.toLowerCase() ?? "";
-  if (prefix in CurseForgeLoader) {
-    return CurseForgeLoader[prefix as keyof typeof CurseForgeLoader];
-  }
-  return null;
+  return Object.hasOwn(CurseForgeLoader, prefix)
+    ? CurseForgeLoader[prefix as keyof typeof CurseForgeLoader]
+    : null;
 }
 
 function groupByProject(
@@ -357,15 +356,18 @@ export class ModpackService {
       version: seed.version,
     });
 
+    // Members dropped by an earlier seed keep their rows, so the count of
+    // what this manifest covers is derived from the manifest side
     const rows = await Q.modpack.mod.findAll(
       { modpackId },
       { select: ["curseforgeProjectId"] },
     );
     const memberIds = new Set(rows.map((row) => row.curseforgeProjectId));
+    const unresolvedProjectIds = [...modIds].filter((id) => !memberIds.has(id));
     return {
       modCount: modIds.size,
-      memberCount: memberIds.size,
-      unresolvedProjectIds: [...modIds].filter((id) => !memberIds.has(id)),
+      memberCount: modIds.size - unresolvedProjectIds.length,
+      unresolvedProjectIds,
     };
   }
 
@@ -380,7 +382,7 @@ export class ModpackService {
     ) {
       const versions = [...new Set(workshops.map((w) => w.gameVersion))];
       throw new BadRequestError(
-        `The manifest targets Minecraft ${seed.minecraftVersion}, but this workshop targets ${versions.join(", ")}`,
+        `The manifest targets Minecraft ${seed.minecraftVersion}, but this pack's workshops target ${versions.join(", ")}`,
       );
     }
     if (!seed.modLoader) return;
@@ -390,7 +392,7 @@ export class ModpackService {
       !workshops.some((w) => w.modLoaderType === loaderType)
     ) {
       throw new BadRequestError(
-        `The manifest uses ${seed.modLoader}, which does not match this workshop's mod loader`,
+        `The manifest uses ${seed.modLoader}, which does not match this pack's mod loader`,
       );
     }
   }
