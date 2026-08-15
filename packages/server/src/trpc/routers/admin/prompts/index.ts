@@ -12,16 +12,37 @@ import { Discord } from "@/discord/constants";
 
 const MAX_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const MIN_DURATION_MS = 60 * 1000; // 1 minute, guards against accidental zero-duration prompts
+const MAX_ENTRIES_PER_PLAYER = 50;
+const MAX_COOLDOWN_SECONDS = 7 * 24 * 60 * 60; // 7 days
 
-const createInput = z.object({
-  question: z.string().min(1).max(256),
-  description: z.string().max(2000).optional(),
-  durationMs: z.number().int().min(MIN_DURATION_MS).max(MAX_DURATION_MS),
-  rolePingId: z.string().regex(/^\d+$/).optional(),
-  // Optional, defaults to the announcements channel. Admins can target
-  // any configured channel via the client picker.
-  channelId: z.string().regex(/^\d+$/).optional(),
-});
+const createInput = z
+  .object({
+    question: z.string().min(1).max(256),
+    description: z.string().max(2000).optional(),
+    durationMs: z.number().int().min(MIN_DURATION_MS).max(MAX_DURATION_MS),
+    rolePingId: z.string().regex(/^\d+$/).optional(),
+    // Optional, defaults to the announcements channel. Admins can target
+    // any configured channel via the client picker.
+    channelId: z.string().regex(/^\d+$/).optional(),
+    entryMode: z.enum(["single", "multi"]).default("single"),
+    // Multi mode only. Omit for unlimited entries / no cooldown.
+    maxEntries: z.number().int().min(2).max(MAX_ENTRIES_PER_PLAYER).optional(),
+    cooldownSeconds: z
+      .number()
+      .int()
+      .min(1)
+      .max(MAX_COOLDOWN_SECONDS)
+      .optional(),
+  })
+  .refine(
+    (input) =>
+      input.entryMode === "multi" ||
+      (input.maxEntries === undefined && input.cooldownSeconds === undefined),
+    {
+      message: "maxEntries and cooldownSeconds require entryMode 'multi'",
+      path: ["entryMode"],
+    },
+  );
 
 /**
  * Admin Player Prompt router.
@@ -99,13 +120,21 @@ export const adminPromptsRouter = router({
           input.channelId ??
           Discord.Channels.createringtonOfficial.ANNOUNCEMENTS,
         createdBy: ctx.user.discordId,
+        entryMode: input.entryMode,
+        maxEntries: input.maxEntries ?? null,
+        cooldownSeconds: input.cooldownSeconds ?? null,
       });
 
       await Q.admin.log.action.logAction({
         ...auditActor(ctx),
         actionType: "player_prompt_create",
         description: `Created player prompt "${input.question.slice(0, 80)}"`,
-        metadata: { promptId: prompt.id },
+        metadata: {
+          promptId: prompt.id,
+          entryMode: input.entryMode,
+          maxEntries: input.maxEntries ?? null,
+          cooldownSeconds: input.cooldownSeconds ?? null,
+        },
       });
 
       return { prompt };

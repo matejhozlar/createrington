@@ -9,14 +9,19 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { player } from "./player";
-import { playerPromptStatusEnum } from "./enums";
+import { playerPromptEntryModeEnum, playerPromptStatusEnum } from "./enums";
 
 // Player Prompt
 //
 // Admin-authored free-text question posted to a Discord channel with a
 // "Respond" button. Clicking the button opens a modal; the submitted text
-// is stored in player_prompt_response keyed on (prompt_id, discord_id) so
-// a player can edit their answer until the prompt closes.
+// is stored in player_prompt_response keyed on
+// (prompt_id, discord_id, entry_number).
+//
+// entry_mode picks the submission rule. In `single` mode every player owns
+// one row (entry_number 1) they can edit until the prompt closes. In `multi`
+// mode each submission appends a new entry, capped by max_entries and paced
+// by cooldown_seconds when those are set.
 
 export const playerPrompt = pgTable(
   "player_prompt",
@@ -36,6 +41,13 @@ export const playerPrompt = pgTable(
       .defaultNow(),
     endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
     status: playerPromptStatusEnum("status").notNull().default("active"),
+    entryMode: playerPromptEntryModeEnum("entry_mode")
+      .notNull()
+      .default("single"),
+    // Multi mode only. Null means unlimited entries per player.
+    maxEntries: integer("max_entries"),
+    // Multi mode only. Null means no wait between a player's entries.
+    cooldownSeconds: integer("cooldown_seconds"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -51,11 +63,14 @@ export const playerPrompt = pgTable(
 
 // Player Prompt Response
 //
-// One row per (prompt, Discord user). Editable until the parent prompt
-// closes: the service upserts on the unique index. minecraftUuid is
-// resolved opportunistically at submission time via Q.player.find so
-// admins can see the linked Minecraft account when it exists; null means
-// the responder hasn't linked their Discord to a Minecraft account yet.
+// One row per (prompt, Discord user, entry number). Single-mode prompts only
+// ever hold entry_number 1 per player and the service upserts on the unique
+// index so an edit replaces the answer in place; multi-mode prompts append
+// entry 2, 3, ... and the same index makes a racing double-submit fail loudly
+// instead of silently duplicating. minecraftUuid is resolved opportunistically
+// at submission time via Q.player.find so admins can see the linked Minecraft
+// account when it exists; null means the responder hasn't linked their Discord
+// to a Minecraft account yet.
 
 export const playerPromptResponse = pgTable(
   "player_prompt_response",
@@ -68,6 +83,7 @@ export const playerPromptResponse = pgTable(
         onDelete: "cascade",
       }),
     discordId: text("discord_id").notNull(),
+    entryNumber: integer("entry_number").notNull().default(1),
     minecraftUuid: uuid("minecraft_uuid").references(
       () => player.minecraftUuid,
       { onUpdate: "cascade", onDelete: "set null" },
@@ -81,7 +97,12 @@ export const playerPromptResponse = pgTable(
       .defaultNow(),
   },
   (table) => [
-    uniqueIndex("uq_player_prompt_response_prompt_discord").on(
+    uniqueIndex("uq_player_prompt_response_prompt_discord_entry").on(
+      table.promptId,
+      table.discordId,
+      table.entryNumber,
+    ),
+    index("idx_player_prompt_response_prompt_discord").on(
       table.promptId,
       table.discordId,
     ),

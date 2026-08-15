@@ -115,6 +115,13 @@ export const playerPromptStatusEnum = pgEnum("player_prompt_status", [
   "closed",
 ]);
 
+// single = one editable answer per player, multi = a player can stack several
+// entries, bounded by the prompt's max_entries / cooldown_seconds settings
+export const playerPromptEntryModeEnum = pgEnum("player_prompt_entry_mode", [
+  "single",
+  "multi",
+]);
+
 export const workshopStatusEnum = pgEnum("workshop_status", WORKSHOP_STATUSES);
 
 // rejected rows persist per workshop with a reason; re-review can approve them

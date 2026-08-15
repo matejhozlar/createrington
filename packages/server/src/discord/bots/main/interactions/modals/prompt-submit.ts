@@ -1,4 +1,4 @@
-import { type ModalSubmitInteraction, MessageFlags, time } from "discord.js";
+import { type ModalSubmitInteraction, MessageFlags } from "discord.js";
 import { getServiceSync, Services } from "@/services";
 
 /**
@@ -7,6 +7,8 @@ import { getServiceSync, Services } from "@/services";
  * customId shape: `prompt:submit:<promptId>`. The interaction-handler
  * registry matches wildcard-ending strings via `startsWith`, so we declare
  * the shared prefix here; the numeric id is parsed at execute time.
+ * PlayerPromptService re-checks the entry rules and hands back the exact
+ * ephemeral copy to echo, so a stale modal can't outrun a cap or cooldown.
  */
 export const customId = "prompt:submit:*";
 
@@ -43,14 +45,14 @@ export async function execute(
   const service = getServiceSync(Services.PLAYER_PROMPT_SERVICE);
 
   try {
-    const { endsAt } = await service.submitResponse({
+    const result = await service.submitResponse({
       promptId: parsed.promptId,
       discordId: interaction.user.id,
       responseText,
     });
 
     await interaction.reply({
-      content: `Recorded. You can edit your response until ${time(endsAt, "R")}.`,
+      content: result.message,
       flags: MessageFlags.Ephemeral,
     });
   } catch (error) {

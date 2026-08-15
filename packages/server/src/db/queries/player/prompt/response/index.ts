@@ -1,5 +1,6 @@
 import type { Pool, PoolClient } from "pg";
 import { PlayerPromptResponseBaseQueries } from "@/generated/db/player_prompt_response.queries";
+import { ConstraintViolationError } from "@/db/utils/errors";
 import type { PlayerPromptResponse } from "@createrington/shared/db/player_prompt_response.types";
 
 /**
@@ -12,11 +13,29 @@ export interface PlayerPromptResponseWithPlayer extends PlayerPromptResponse {
 }
 
 /**
+ * What a single Discord user has submitted to one prompt so far. Drives the
+ * multi-mode max-entries and cooldown gates without pulling every row.
+ */
+export interface PlayerPromptEntryStats {
+  entryCount: number;
+  lastEntryNumber: number;
+  lastSubmittedAt: Date | null;
+}
+
+/** Entry and unique-responder totals for one prompt. */
+export interface PlayerPromptResponseTotals {
+  entryCount: number;
+  responderCount: number;
+}
+
+const APPEND_ENTRY_ATTEMPTS = 3;
+
+/**
  * Custom queries for player_prompt_response table.
  *
- * The upsert is the hot path: every modal submission runs through it
- * and must honour the (prompt_id, discord_id) unique index so editing an
- * answer replaces it in-place rather than creating a second row.
+ * Two write paths share the (prompt_id, discord_id, entry_number) unique
+ * index: `upsertSingleEntry` pins entry 1 and replaces its text, while
+ * `appendEntry` claims the next free number for multi-entry prompts.
  */
 export class PlayerPromptResponseQueries extends PlayerPromptResponseBaseQueries {
   constructor(db: Pool | PoolClient) {
@@ -24,11 +43,12 @@ export class PlayerPromptResponseQueries extends PlayerPromptResponseBaseQueries
   }
 
   /**
-   * Insert or update a response, keyed on (prompt_id, discord_id).
-   * minecraftUuid is resolved by the service before this call; pass
-   * null when the responder hasn't linked a Minecraft account.
+   * Insert or replace a player's sole entry on a single-mode prompt, keyed
+   * on (prompt_id, discord_id, entry_number = 1). minecraftUuid is resolved
+   * by the service before this call; pass null when the responder hasn't
+   * linked a Minecraft account.
    */
-  async upsert(data: {
+  async upsertSingleEntry(data: {
     promptId: number;
     discordId: string;
     minecraftUuid: string | null;
@@ -36,9 +56,9 @@ export class PlayerPromptResponseQueries extends PlayerPromptResponseBaseQueries
   }): Promise<PlayerPromptResponse> {
     const query = `
       INSERT INTO ${this.table}
-        (prompt_id, discord_id, minecraft_uuid, response_text)
-      VALUES ($1, $2, $3, $4)
-      ON CONFLICT (prompt_id, discord_id) DO UPDATE SET
+        (prompt_id, discord_id, entry_number, minecraft_uuid, response_text)
+      VALUES ($1, $2, 1, $3, $4)
+      ON CONFLICT (prompt_id, discord_id, entry_number) DO UPDATE SET
         response_text = EXCLUDED.response_text,
         minecraft_uuid = EXCLUDED.minecraft_uuid,
         updated_at = NOW()
@@ -51,6 +71,46 @@ export class PlayerPromptResponseQueries extends PlayerPromptResponseBaseQueries
       data.responseText,
     ]);
     return this.mapRowToEntity(result.rows[0]);
+  }
+
+  /**
+   * Append a new entry for a multi-mode prompt, claiming the next entry
+   * number in the same statement. Two racing submissions both compute the
+   * same number and the unique index rejects the loser, so the insert is
+   * retried a few times rather than silently duplicating or dropping.
+   */
+  async appendEntry(data: {
+    promptId: number;
+    discordId: string;
+    minecraftUuid: string | null;
+    responseText: string;
+  }): Promise<PlayerPromptResponse> {
+    const query = `
+      INSERT INTO ${this.table}
+        (prompt_id, discord_id, entry_number, minecraft_uuid, response_text)
+      SELECT $1, $2, COALESCE(MAX(entry_number), 0) + 1, $3, $4
+      FROM ${this.table}
+      WHERE prompt_id = $1 AND discord_id = $2
+      RETURNING *`;
+
+    for (let attempt = 1; ; attempt++) {
+      try {
+        const result = await this.runQuery("append prompt entry", query, [
+          data.promptId,
+          data.discordId,
+          data.minecraftUuid,
+          data.responseText,
+        ]);
+        return this.mapRowToEntity(result.rows[0]);
+      } catch (error) {
+        if (
+          !(error instanceof ConstraintViolationError) ||
+          attempt >= APPEND_ENTRY_ATTEMPTS
+        ) {
+          throw error;
+        }
+      }
+    }
   }
 
   /**
@@ -80,19 +140,72 @@ export class PlayerPromptResponseQueries extends PlayerPromptResponseBaseQueries
     }));
   }
 
-  /** Returns the current response for a (prompt, Discord user) or null. */
-  async findByPromptAndDiscordId(
+  /**
+   * The most recent entry a (prompt, Discord user) pair holds, or null.
+   * Single-mode prompts only ever have one, which is what the respond
+   * modal prefills.
+   */
+  async findLatestEntry(
     promptId: number,
     discordId: string,
   ): Promise<PlayerPromptResponse | null> {
     const query = `
       SELECT * FROM ${this.table}
-      WHERE prompt_id = $1 AND discord_id = $2`;
+      WHERE prompt_id = $1 AND discord_id = $2
+      ORDER BY entry_number DESC
+      LIMIT 1`;
     const result = await this.runQuery(
-      "find response by prompt+discord",
+      "find latest response by prompt+discord",
       query,
       [promptId, discordId],
     );
     return result.rows.length ? this.mapRowToEntity(result.rows[0]) : null;
+  }
+
+  /** Entry count, highest entry number, and newest submission for one responder. */
+  async getEntryStats(
+    promptId: number,
+    discordId: string,
+  ): Promise<PlayerPromptEntryStats> {
+    const query = `
+      SELECT
+        COUNT(*)::int AS entry_count,
+        COALESCE(MAX(entry_number), 0)::int AS last_entry_number,
+        MAX(submitted_at) AS last_submitted_at
+      FROM ${this.table}
+      WHERE prompt_id = $1 AND discord_id = $2`;
+
+    const result = await this.runQuery<{
+      entry_count: number;
+      last_entry_number: number;
+      last_submitted_at: Date | null;
+    }>("get prompt entry stats", query, [promptId, discordId]);
+
+    const row = result.rows[0];
+    return {
+      entryCount: row.entry_count,
+      lastEntryNumber: row.last_entry_number,
+      lastSubmittedAt: row.last_submitted_at,
+    };
+  }
+
+  /** Total entries and distinct responders for a prompt. */
+  async countByPrompt(promptId: number): Promise<PlayerPromptResponseTotals> {
+    const query = `
+      SELECT
+        COUNT(*)::int AS entry_count,
+        COUNT(DISTINCT discord_id)::int AS responder_count
+      FROM ${this.table}
+      WHERE prompt_id = $1`;
+
+    const result = await this.runQuery<{
+      entry_count: number;
+      responder_count: number;
+    }>("count prompt responses", query, [promptId]);
+
+    return {
+      entryCount: result.rows[0].entry_count,
+      responderCount: result.rows[0].responder_count,
+    };
   }
 }
