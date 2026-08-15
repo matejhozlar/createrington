@@ -27,6 +27,35 @@ export function isWorkshopTabId(value: string | null): value is WorkshopTabId {
   return WORKSHOP_TAB_IDS.includes(value as WorkshopTabId);
 }
 
+export const MOD_TAB_IDS = [
+  "review",
+  "approved",
+  "testing",
+  "next-update",
+  "in-pack",
+  "ruled-out",
+  "all",
+] as const satisfies readonly WorkshopTabId[];
+
+export type ModTabId = (typeof MOD_TAB_IDS)[number];
+
+export function isModTab(tab: WorkshopTabId): tab is ModTabId {
+  return MOD_TAB_IDS.includes(tab as ModTabId);
+}
+
+export const TOP_TAB_IDS = [
+  "mods",
+  "dependencies",
+  "issues",
+  "releases",
+] as const;
+
+export type TopTabId = (typeof TOP_TAB_IDS)[number];
+
+export function tabGroup(tab: WorkshopTabId): TopTabId {
+  return isModTab(tab) ? "mods" : tab;
+}
+
 export type StageId = Extract<
   WorkshopTabId,
   "review" | "approved" | "testing" | "next-update" | "ruled-out"

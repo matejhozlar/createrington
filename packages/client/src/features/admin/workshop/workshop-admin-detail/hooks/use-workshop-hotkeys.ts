@@ -1,5 +1,12 @@
 import { useEffect, useRef } from "react";
-import { WORKSHOP_TAB_IDS, type WorkshopTabId } from "../tabs";
+import {
+  MOD_TAB_IDS,
+  TOP_TAB_IDS,
+  isModTab,
+  tabGroup,
+  type TopTabId,
+  type WorkshopTabId,
+} from "../tabs";
 
 const BLOCKING_SELECTOR =
   "input, textarea, select, [contenteditable=true], [role=dialog], [role=listbox], [role=menu], [role=combobox]";
@@ -7,6 +14,7 @@ const BLOCKING_SELECTOR =
 export function useWorkshopHotkeys(input: {
   activeTab: WorkshopTabId;
   onTabChange: (tab: WorkshopTabId) => void;
+  onOpenGroup: (group: TopTabId) => void;
 }) {
   const latest = useRef(input);
   useEffect(() => {
@@ -26,12 +34,28 @@ export function useWorkshopHotkeys(input: {
 
       if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
         event.preventDefault();
-        const index = WORKSHOP_TAB_IDS.indexOf(latest.current.activeTab);
         const delta = event.key === "ArrowRight" ? 1 : -1;
-        const count = WORKSHOP_TAB_IDS.length;
-        latest.current.onTabChange(
-          WORKSHOP_TAB_IDS[(index + delta + count) % count],
-        );
+        const active = latest.current.activeTab;
+        if (isModTab(active)) {
+          const index = MOD_TAB_IDS.indexOf(active);
+          const count = MOD_TAB_IDS.length;
+          latest.current.onTabChange(
+            MOD_TAB_IDS[(index + delta + count) % count],
+          );
+        } else {
+          const index = TOP_TAB_IDS.indexOf(tabGroup(active));
+          const count = TOP_TAB_IDS.length;
+          latest.current.onOpenGroup(
+            TOP_TAB_IDS[(index + delta + count) % count],
+          );
+        }
+        return;
+      }
+
+      const digit = Number.parseInt(event.key, 10);
+      if (digit >= 1 && digit <= TOP_TAB_IDS.length && event.key.length === 1) {
+        event.preventDefault();
+        latest.current.onOpenGroup(TOP_TAB_IDS[digit - 1]);
         return;
       }
 
