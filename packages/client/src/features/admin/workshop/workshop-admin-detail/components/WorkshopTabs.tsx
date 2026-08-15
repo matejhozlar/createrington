@@ -145,12 +145,13 @@ export function WorkshopTabs({
                     key={id}
                     value={id}
                     ref={id === activeTab ? activeModRef : undefined}
+                    className="text-foreground/80"
                   >
                     {MOD_TAB_LABELS[id]}
                     {count !== undefined && (
                       <Badge
                         variant="outline"
-                        className="text-xs text-muted-foreground"
+                        className="border-transparent bg-foreground/10"
                       >
                         {count.toLocaleString()}
                       </Badge>
