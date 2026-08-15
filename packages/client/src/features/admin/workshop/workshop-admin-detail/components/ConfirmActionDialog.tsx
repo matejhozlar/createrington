@@ -13,9 +13,10 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import type { WorkshopModStatus } from "@createrington/shared/db";
-import type { WorkshopModReviewAction } from "@createrington/shared/workshop";
-
-export const SKIP_CONFIRM_SESSION_KEY = "workshop-admin-skip-confirms";
+import {
+  WORKSHOP_MOD_REVIEW_ACTION_LABELS,
+  type WorkshopModReviewAction,
+} from "@createrington/shared/workshop";
 
 type ConfirmReviewAction = Exclude<WorkshopModReviewAction, "reject">;
 
@@ -32,6 +33,7 @@ export type ConfirmActionTarget =
 interface ConfirmCopy {
   title: (name: string) => string;
   description: string;
+  variant?: "destructive";
 }
 
 const REVIEW_COPY: Partial<
@@ -68,6 +70,7 @@ const REVIEW_COPY: Partial<
       title: (name) => `Send ${name} back a stage?`,
       description:
         "This returns the mod to the Approved stage, where it waits to be tested again.",
+      variant: "destructive",
     },
   },
   next_update: {
@@ -75,6 +78,7 @@ const REVIEW_COPY: Partial<
       title: (name) => `Send ${name} back a stage?`,
       description:
         "This pulls the mod out of the next update queue and returns it to the Testing stage. It leaves the pack's member list until it is approved again.",
+      variant: "destructive",
     },
   },
 };
@@ -85,9 +89,16 @@ const ADD_COPY: ConfirmCopy = {
     "This adds the mod to the workshop as an approved suggestion credited to you, visible to players. It still goes through testing before it can join the pack.",
 };
 
-function copyFor(target: ConfirmActionTarget): ConfirmCopy | null {
+function copyFor(target: ConfirmActionTarget): ConfirmCopy {
   if (target.kind === "add") return ADD_COPY;
-  return REVIEW_COPY[target.status]?.[target.action] ?? null;
+  const copy = REVIEW_COPY[target.status]?.[target.action];
+  if (copy) return copy;
+  const label = WORKSHOP_MOD_REVIEW_ACTION_LABELS[target.action];
+  return {
+    title: (name) =>
+      `${label.charAt(0).toUpperCase()}${label.slice(1)} ${name}?`,
+    description: "This moves the mod to a different stage of the pipeline.",
+  };
 }
 
 export function ConfirmActionDialog({
@@ -128,6 +139,7 @@ export function ConfirmActionDialog({
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction
+            variant={copy?.variant}
             onClick={() => target && onConfirm(target, dontAskAgain)}
           >
             Confirm

@@ -34,7 +34,6 @@ import { useWorkshopHotkeys } from "./hooks/use-workshop-hotkeys";
 import { AddModsDialog } from "./components/AddModsDialog";
 import {
   ConfirmActionDialog,
-  SKIP_CONFIRM_SESSION_KEY,
   type ConfirmActionTarget,
 } from "./components/ConfirmActionDialog";
 import { RejectModDialog } from "./components/RejectModDialog";
@@ -58,6 +57,8 @@ const SEND_BACK_TOASTS: Partial<Record<WorkshopModStatus, string>> = {
   approved: "Mod sent back, awaiting testing",
   testing: "Mod sent back to testing",
 };
+
+const SKIP_CONFIRM_SESSION_KEY = "workshop-admin-skip-confirms";
 
 export function AdminWorkshopDetail() {
   const { slug } = useParams<{ slug: string }>();
@@ -102,9 +103,13 @@ export function AdminWorkshopDetail() {
   const [confirmTarget, setConfirmTarget] =
     useState<ConfirmActionTarget | null>(null);
   const [confirmKey, setConfirmKey] = useState(0);
-  const [skipConfirms, setSkipConfirms] = useState(
-    () => sessionStorage.getItem(SKIP_CONFIRM_SESSION_KEY) === "1",
-  );
+  const [skipConfirms, setSkipConfirms] = useState(() => {
+    try {
+      return sessionStorage.getItem(SKIP_CONFIRM_SESSION_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
 
   const setActiveTab = (tab: WorkshopTabId) => {
     if (tab === activeTab) return;
@@ -219,9 +224,13 @@ export function AdminWorkshopDetail() {
     ? (addProjectMutation.variables?.projectIds[0] ?? null)
     : null;
 
-  const handleReview = (id: number, action: WorkshopModReviewAction) => {
+  const handleReview = (
+    id: number,
+    action: Exclude<WorkshopModReviewAction, "reject">,
+  ) => {
     const mod = mods.find((row) => row.id === id);
-    if (action === "reject" || skipConfirms || !mod) {
+    if (!mod) return;
+    if (skipConfirms) {
       reviewMutation.mutate({ workshopModId: id, action });
       return;
     }
@@ -243,10 +252,6 @@ export function AdminWorkshopDetail() {
   };
 
   const handleConfirm = (target: ConfirmActionTarget, skipSession: boolean) => {
-    if (skipSession) {
-      sessionStorage.setItem(SKIP_CONFIRM_SESSION_KEY, "1");
-      setSkipConfirms(true);
-    }
     if (target.kind === "add") {
       addProjectMutation.mutate({ workshopId, projectIds: [target.projectId] });
     } else {
@@ -254,6 +259,14 @@ export function AdminWorkshopDetail() {
         workshopModId: target.workshopModId,
         action: target.action,
       });
+    }
+    if (skipSession) {
+      setSkipConfirms(true);
+      try {
+        sessionStorage.setItem(SKIP_CONFIRM_SESSION_KEY, "1");
+      } catch {
+        // storage unavailable, the in-memory flag still covers this page
+      }
     }
   };
 
