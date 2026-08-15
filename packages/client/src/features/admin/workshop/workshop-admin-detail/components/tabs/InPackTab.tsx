@@ -75,14 +75,14 @@ function publishState(row: PackMod) {
   if (row.liveAt) {
     return {
       ...PUBLISH_STATES.live,
-      label: row.liveInVersion
-        ? `${PUBLISH_STATES.live.label} · ${row.liveInVersion}`
-        : PUBLISH_STATES.live.label,
+      label: row.liveInVersion ?? PUBLISH_STATES.live.label,
+      title: row.liveInVersion ? `Live in ${row.liveInVersion}` : undefined,
     };
   }
-  return row.droppedFromManifestAt
+  const state = row.droppedFromManifestAt
     ? PUBLISH_STATES.dropped
     : PUBLISH_STATES.awaiting;
+  return { ...state, title: undefined };
 }
 
 function Credit({ row }: { row: PackMod }) {
@@ -290,7 +290,11 @@ export function InPackTab({
       render: (row) => {
         const state = publishState(row);
         return (
-          <Badge variant="outline" className={cn("text-xs", state.className)}>
+          <Badge
+            variant="outline"
+            className={cn("text-xs", state.className)}
+            title={state.title}
+          >
             {state.label}
           </Badge>
         );

@@ -4,7 +4,10 @@ import type { WorkshopModReviewAction } from "@createrington/shared/workshop";
 import type { AdminWorkshopMod } from "./types";
 
 export interface ModReviewHandlers {
-  onReview: (workshopModId: number, action: WorkshopModReviewAction) => void;
+  onReview: (
+    workshopModId: number,
+    action: Exclude<WorkshopModReviewAction, "reject">,
+  ) => void;
   onReject: (target: { workshopModId: number; name: string }) => void;
 }
 
