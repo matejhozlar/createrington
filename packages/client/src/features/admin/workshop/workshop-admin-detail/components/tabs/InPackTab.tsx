@@ -75,9 +75,7 @@ function publishState(row: PackMod) {
   if (row.liveAt) {
     return {
       ...PUBLISH_STATES.live,
-      label: row.liveInVersion
-        ? `${PUBLISH_STATES.live.label} · ${row.liveInVersion}`
-        : PUBLISH_STATES.live.label,
+      label: row.liveInVersion ?? PUBLISH_STATES.live.label,
     };
   }
   return row.droppedFromManifestAt
