@@ -117,6 +117,27 @@ export const adminWorkshopsRouter = router({
       }
     }),
 
+  delete: adminProcedure
+    .meta({
+      description:
+        "Delete an archived workshop with its suggestions, votes, and history",
+    })
+    .input(z.object({ workshopId: id() }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        const workshop = await workshopService.deleteWorkshop(input.workshopId);
+        await Q.admin.log.action.logAction({
+          ...auditActor(ctx),
+          actionType: "workshop_delete",
+          description: `Deleted workshop "${workshop.name}"`,
+          metadata: { workshopId: workshop.id, slug: workshop.slug },
+        });
+        return { deleted: true };
+      } catch (error) {
+        rethrowTrpc(error);
+      }
+    }),
+
   listMods: adminProcedure
     .meta({ description: "List every mod in a workshop, all statuses" })
     .input(z.object({ workshopId: id() }))

@@ -769,6 +769,20 @@ export class WorkshopService {
   }
 
   /**
+   * Delete an archived workshop with its suggestions, votes, polls, and event
+   * history. Modpack member rows survive with their suggestion link detached,
+   * so per-mod credit in the pack is lost. Discord threads are left alone.
+   */
+  async deleteWorkshop(workshopId: number): Promise<Workshop> {
+    const workshop = await this.getWorkshop(workshopId);
+    if (workshop.status !== "archived") {
+      throw new BadRequestError("Only archived workshops can be deleted");
+    }
+    await Q.workshop.delete({ id: workshop.id });
+    return workshop;
+  }
+
+  /**
    * Move a mod through the review pipeline. WORKSHOP_MOD_REVIEW_TARGETS is the
    * rule: a status with no entry for the action is refused. Reaching
    * next_update adds the pack row; leaving next_update or in_pack for anything
