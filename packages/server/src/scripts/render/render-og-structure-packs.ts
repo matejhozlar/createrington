@@ -492,8 +492,7 @@ async function paintCopy(ctx: SKRSContext2D): Promise<void> {
 }
 
 async function main(): Promise<void> {
-  const outPath =
-    process.argv[2] ?? join(ASSETS, "og", "og-structure-packs.png");
+  const outPath = process.argv[2] ?? join(ASSETS, "og", "structure-packs.png");
 
   registerBrandFonts();
   await writeCard(outPath, async (ctx) => {
