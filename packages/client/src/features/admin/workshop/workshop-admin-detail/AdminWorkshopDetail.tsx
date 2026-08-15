@@ -96,6 +96,7 @@ export function AdminWorkshopDetail() {
   const [rejectKey, setRejectKey] = useState(0);
 
   const setActiveTab = (tab: WorkshopTabId) => {
+    if (tab === activeTab) return;
     const next = new URLSearchParams(searchParams);
     if (tab === "review") next.delete("tab");
     else next.set("tab", tab);

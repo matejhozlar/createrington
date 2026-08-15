@@ -8,25 +8,6 @@ import {
 import type { LucideIcon } from "lucide-react";
 import type { WorkshopModStatus } from "@createrington/shared/db";
 
-export const WORKSHOP_TAB_IDS = [
-  "review",
-  "approved",
-  "testing",
-  "next-update",
-  "in-pack",
-  "ruled-out",
-  "all",
-  "dependencies",
-  "issues",
-  "releases",
-] as const;
-
-export type WorkshopTabId = (typeof WORKSHOP_TAB_IDS)[number];
-
-export function isWorkshopTabId(value: string | null): value is WorkshopTabId {
-  return WORKSHOP_TAB_IDS.includes(value as WorkshopTabId);
-}
-
 export const MOD_TAB_IDS = [
   "review",
   "approved",
@@ -35,22 +16,28 @@ export const MOD_TAB_IDS = [
   "in-pack",
   "ruled-out",
   "all",
-] as const satisfies readonly WorkshopTabId[];
+] as const;
 
+const STANDALONE_TAB_IDS = ["dependencies", "issues", "releases"] as const;
+
+export const WORKSHOP_TAB_IDS = [
+  ...MOD_TAB_IDS,
+  ...STANDALONE_TAB_IDS,
+] as const;
+
+export const TOP_TAB_IDS = ["mods", ...STANDALONE_TAB_IDS] as const;
+
+export type WorkshopTabId = (typeof WORKSHOP_TAB_IDS)[number];
 export type ModTabId = (typeof MOD_TAB_IDS)[number];
+export type TopTabId = (typeof TOP_TAB_IDS)[number];
+
+export function isWorkshopTabId(value: string | null): value is WorkshopTabId {
+  return WORKSHOP_TAB_IDS.includes(value as WorkshopTabId);
+}
 
 export function isModTab(tab: WorkshopTabId): tab is ModTabId {
   return MOD_TAB_IDS.includes(tab as ModTabId);
 }
-
-export const TOP_TAB_IDS = [
-  "mods",
-  "dependencies",
-  "issues",
-  "releases",
-] as const;
-
-export type TopTabId = (typeof TOP_TAB_IDS)[number];
 
 export function tabGroup(tab: WorkshopTabId): TopTabId {
   return isModTab(tab) ? "mods" : tab;

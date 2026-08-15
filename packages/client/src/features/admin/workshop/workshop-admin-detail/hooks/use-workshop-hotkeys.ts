@@ -52,10 +52,12 @@ export function useWorkshopHotkeys(input: {
         return;
       }
 
-      const digit = Number.parseInt(event.key, 10);
-      if (digit >= 1 && digit <= TOP_TAB_IDS.length && event.key.length === 1) {
-        event.preventDefault();
-        latest.current.onOpenGroup(TOP_TAB_IDS[digit - 1]);
+      if (/^[1-9]$/.test(event.key)) {
+        const digit = Number(event.key);
+        if (digit <= TOP_TAB_IDS.length) {
+          event.preventDefault();
+          latest.current.onOpenGroup(TOP_TAB_IDS[digit - 1]);
+        }
         return;
       }
 
