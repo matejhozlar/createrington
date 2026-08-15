@@ -1,4 +1,5 @@
 import { pgEnum } from "drizzle-orm/pg-core";
+import { PLAYER_PROMPT_ENTRY_MODES } from "@createrington/shared/player-prompt";
 import {
   WORKSHOP_MOD_EVENT_TYPES,
   WORKSHOP_MOD_REJECT_REASONS,
@@ -117,10 +118,10 @@ export const playerPromptStatusEnum = pgEnum("player_prompt_status", [
 
 // single = one editable answer per player, multi = a player can stack several
 // entries, bounded by the prompt's max_entries / cooldown_seconds settings
-export const playerPromptEntryModeEnum = pgEnum("player_prompt_entry_mode", [
-  "single",
-  "multi",
-]);
+export const playerPromptEntryModeEnum = pgEnum(
+  "player_prompt_entry_mode",
+  PLAYER_PROMPT_ENTRY_MODES,
+);
 
 export const workshopStatusEnum = pgEnum("workshop_status", WORKSHOP_STATUSES);
 

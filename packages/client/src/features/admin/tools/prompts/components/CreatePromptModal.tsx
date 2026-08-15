@@ -21,11 +21,14 @@ import {
 import { useToastActions } from "@/hooks/use-toast";
 import { trpc } from "@/lib/trpc";
 import {
+  MAX_ENTRIES_PER_PLAYER,
+  MIN_ENTRIES_PER_PLAYER,
+  type PlayerPromptEntryModeValue,
+} from "@createrington/shared/player-prompt";
+import {
   COOLDOWN_OPTIONS,
   DURATION_OPTIONS,
   ENTRY_MODE_OPTIONS,
-  MAX_MAX_ENTRIES,
-  MIN_MAX_ENTRIES,
 } from "../format";
 
 // Format a camelCase config key ("serverAnnouncements") into the label
@@ -45,13 +48,12 @@ interface Props {
   onSuccess: () => void;
 }
 
-// Sentinel select values: Radix Select can't hold an empty string,
-// so we use reserved tokens for "don't ping anyone", "fall back to
-// the server default (announcements)" and "no cooldown", then
-// translate them at submit.
-const NO_ROLE = "__none__";
+// Sentinel select values: Radix Select can't hold an empty string, so
+// reserved tokens stand in for "nothing selected" (no role ping, no
+// cooldown) and "fall back to the server default (announcements)", and
+// are translated back at submit.
+const NONE = "__none__";
 const DEFAULT_CHANNEL = "__default__";
-const NO_COOLDOWN = "__none__";
 
 export function CreatePromptModal({ open, onClose, onSuccess }: Props) {
   const toast = useToastActions();
@@ -65,11 +67,12 @@ export function CreatePromptModal({ open, onClose, onSuccess }: Props) {
   const [question, setQuestion] = useState("");
   const [description, setDescription] = useState("");
   const [durationPreset, setDurationPreset] = useState<string>("24h");
-  const [rolePingId, setRolePingId] = useState<string>(NO_ROLE);
+  const [rolePingId, setRolePingId] = useState<string>(NONE);
   const [channelId, setChannelId] = useState<string>(DEFAULT_CHANNEL);
-  const [entryMode, setEntryMode] = useState<"single" | "multi">("single");
+  const [entryMode, setEntryMode] =
+    useState<PlayerPromptEntryModeValue>("single");
   const [maxEntries, setMaxEntries] = useState("");
-  const [cooldownPreset, setCooldownPreset] = useState<string>(NO_COOLDOWN);
+  const [cooldownPreset, setCooldownPreset] = useState<string>(NONE);
 
   const isMulti = entryMode === "multi";
   const modeDescription = ENTRY_MODE_OPTIONS.find(
@@ -80,11 +83,11 @@ export function CreatePromptModal({ open, onClose, onSuccess }: Props) {
     setQuestion("");
     setDescription("");
     setDurationPreset("24h");
-    setRolePingId(NO_ROLE);
+    setRolePingId(NONE);
     setChannelId(DEFAULT_CHANNEL);
     setEntryMode("single");
     setMaxEntries("");
-    setCooldownPreset(NO_COOLDOWN);
+    setCooldownPreset(NONE);
   };
 
   const handleClose = () => {
@@ -114,11 +117,11 @@ export function CreatePromptModal({ open, onClose, onSuccess }: Props) {
       maxEntriesValue = Number(trimmedMaxEntries);
       if (
         !Number.isInteger(maxEntriesValue) ||
-        maxEntriesValue < MIN_MAX_ENTRIES ||
-        maxEntriesValue > MAX_MAX_ENTRIES
+        maxEntriesValue < MIN_ENTRIES_PER_PLAYER ||
+        maxEntriesValue > MAX_ENTRIES_PER_PLAYER
       ) {
         toast.error(
-          `Max entries must be between ${MIN_MAX_ENTRIES} and ${MAX_MAX_ENTRIES}`,
+          `Max entries must be between ${MIN_ENTRIES_PER_PLAYER} and ${MAX_ENTRIES_PER_PLAYER}`,
         );
         return;
       }
@@ -134,7 +137,7 @@ export function CreatePromptModal({ open, onClose, onSuccess }: Props) {
         question: trimmedQuestion,
         description: description.trim() || undefined,
         durationMs,
-        rolePingId: rolePingId === NO_ROLE ? undefined : rolePingId,
+        rolePingId: rolePingId === NONE ? undefined : rolePingId,
         channelId: channelId === DEFAULT_CHANNEL ? undefined : channelId,
         entryMode,
         maxEntries: maxEntriesValue,
@@ -212,7 +215,9 @@ export function CreatePromptModal({ open, onClose, onSuccess }: Props) {
             <FieldLabel htmlFor="prompt-entry-mode">Entry mode</FieldLabel>
             <Select
               value={entryMode}
-              onValueChange={(v) => setEntryMode(v as "single" | "multi")}
+              onValueChange={(v) =>
+                setEntryMode(v as PlayerPromptEntryModeValue)
+              }
             >
               <SelectTrigger id="prompt-entry-mode">
                 <SelectValue />
@@ -238,8 +243,8 @@ export function CreatePromptModal({ open, onClose, onSuccess }: Props) {
                   id="prompt-max-entries"
                   type="number"
                   inputMode="numeric"
-                  min={MIN_MAX_ENTRIES}
-                  max={MAX_MAX_ENTRIES}
+                  min={MIN_ENTRIES_PER_PLAYER}
+                  max={MAX_ENTRIES_PER_PLAYER}
                   value={maxEntries}
                   onChange={(e) => setMaxEntries(e.target.value)}
                   placeholder="Unlimited"
@@ -259,7 +264,7 @@ export function CreatePromptModal({ open, onClose, onSuccess }: Props) {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={NO_COOLDOWN}>No cooldown</SelectItem>
+                    <SelectItem value={NONE}>No cooldown</SelectItem>
                     {COOLDOWN_OPTIONS.map((option) => (
                       <SelectItem key={option.value} value={option.value}>
                         {option.label}
@@ -310,7 +315,7 @@ export function CreatePromptModal({ open, onClose, onSuccess }: Props) {
                 <SelectValue placeholder="No ping" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={NO_ROLE}>No ping</SelectItem>
+                <SelectItem value={NONE}>No ping</SelectItem>
                 {(rolesQuery.data ?? []).map((role) => (
                   <SelectItem key={role.id} value={role.id}>
                     @ {formatName(role.name)}

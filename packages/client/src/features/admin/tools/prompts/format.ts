@@ -1,3 +1,5 @@
+import type { PlayerPromptEntryModeValue } from "@createrington/shared/player-prompt";
+
 export const DURATION_OPTIONS = [
   { value: "10m", label: "10 minutes", ms: 10 * 60 * 1000 },
   { value: "30m", label: "30 minutes", ms: 30 * 60 * 1000 },
@@ -33,16 +35,13 @@ export const COOLDOWN_OPTIONS = [
   { value: "24h", label: "24 hours", seconds: 24 * 60 * 60 },
 ];
 
-export const MIN_MAX_ENTRIES = 2;
-export const MAX_MAX_ENTRIES = 50;
-
 interface EntryRules {
-  entryMode: "single" | "multi";
+  entryMode: PlayerPromptEntryModeValue;
   maxEntries: number | null;
   cooldownSeconds: number | null;
 }
 
-export function formatCooldown(seconds: number): string {
+function formatCooldown(seconds: number): string {
   const units: Array<[number, string]> = [
     [86400, "day"],
     [3600, "hour"],

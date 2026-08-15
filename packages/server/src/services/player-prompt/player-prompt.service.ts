@@ -20,12 +20,6 @@ export type PlayerPromptEntryDecision =
       entryNumber: number;
     };
 
-/** Ephemeral reply the modal handler echoes back to the responder. */
-export interface PlayerPromptSubmitResult {
-  ok: boolean;
-  message: string;
-}
-
 /**
  * Node clamps setTimeout delays larger than the int32 ceiling
  * (~2^31 - 1 ms ≈ 24.86 days) to 1 ms and fires immediately. A prompt
@@ -199,10 +193,7 @@ export class PlayerPromptService {
     );
 
     if (prompt.maxEntries !== null && stats.entryCount >= prompt.maxEntries) {
-      return {
-        allowed: false,
-        message: `You've used all ${prompt.maxEntries} of your ${pluralize(prompt.maxEntries, "entry", "entries")} on this prompt.`,
-      };
+      return { allowed: false, message: this.capReachedMessage(prompt) };
     }
 
     const nextAllowedAt = this.nextEntryAt(prompt, stats.lastSubmittedAt);
@@ -230,11 +221,9 @@ export class PlayerPromptService {
     promptId: number;
     discordId: string;
     responseText: string;
-  }): Promise<PlayerPromptSubmitResult> {
+  }): Promise<string> {
     const decision = await this.prepareEntry(opts.promptId, opts.discordId);
-    if (!decision.allowed) {
-      return { ok: false, message: decision.message };
-    }
+    if (!decision.allowed) return decision.message;
 
     const { prompt } = decision;
     // Resolve the responder's Minecraft account if they've linked Discord.
@@ -248,17 +237,23 @@ export class PlayerPromptService {
 
     if (prompt.entryMode === "single") {
       await Q.player.prompt.response.upsertSingleEntry(write);
-      return {
-        ok: true,
-        message: `Recorded. You can edit your response until ${discordTimestamp(prompt.endsAt)}.`,
-      };
+      return `Recorded. You can edit your response until ${discordTimestamp(prompt.endsAt)}.`;
     }
 
-    const entry = await Q.player.prompt.response.appendEntry(write);
-    return {
-      ok: true,
-      message: this.buildEntryConfirmation(prompt, entry.entryNumber),
-    };
+    const entry = await Q.player.prompt.response.appendEntry({
+      ...write,
+      maxEntries: prompt.maxEntries,
+    });
+    // Null means the cap filled between the gate and the insert: the insert
+    // enforces it too, so a concurrent submission loses here rather than
+    // slipping past the count the gate read.
+    if (!entry) return this.capReachedMessage(prompt);
+
+    const stats = await Q.player.prompt.response.getEntryStats(
+      opts.promptId,
+      opts.discordId,
+    );
+    return this.buildEntryConfirmation(prompt, entry.entryNumber, stats);
   }
 
   /**
@@ -286,6 +281,12 @@ export class PlayerPromptService {
       const result = await this.messageService.edit({
         channelId: prompt.channelId,
         messageId: prompt.messageId,
+        // Prompts posted before the Components V2 switch still carry content
+        // (the role mention) and an embed. Discord accepts the V2 flag on
+        // edit only when both are empty, so clear them explicitly; the
+        // mention comes back as a text display inside `closed.components`.
+        content: null,
+        embeds: null,
         components: closed.components,
         flags: closed.flags,
       });
@@ -356,13 +357,26 @@ export class PlayerPromptService {
     return readyAt.getTime() > Date.now() ? readyAt : null;
   }
 
+  private capReachedMessage(prompt: PlayerPrompt): string {
+    const cap = prompt.maxEntries ?? 0;
+    return `You've used all ${cap} of your ${pluralize(cap, "entry", "entries")} on this prompt.`;
+  }
+
+  /**
+   * Remaining entries come from the same row count the gate reads, not from
+   * the entry number, so a gap in numbering can never inflate what the
+   * responder is told is left.
+   */
   private buildEntryConfirmation(
     prompt: PlayerPrompt,
     entryNumber: number,
+    stats: { entryCount: number },
   ): string {
     const parts = [`Entry #${entryNumber} recorded.`];
     const remaining =
-      prompt.maxEntries === null ? null : prompt.maxEntries - entryNumber;
+      prompt.maxEntries === null
+        ? null
+        : Math.max(0, prompt.maxEntries - stats.entryCount);
 
     if (remaining === 0) {
       parts.push("That was your last entry on this prompt.");

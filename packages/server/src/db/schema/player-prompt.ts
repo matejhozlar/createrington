@@ -102,10 +102,6 @@ export const playerPromptResponse = pgTable(
       table.discordId,
       table.entryNumber,
     ),
-    index("idx_player_prompt_response_prompt_discord").on(
-      table.promptId,
-      table.discordId,
-    ),
     index("idx_player_prompt_response_prompt_id").on(table.promptId),
     index("idx_player_prompt_response_minecraft_uuid").on(table.minecraftUuid),
   ],

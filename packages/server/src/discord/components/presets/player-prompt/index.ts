@@ -11,7 +11,7 @@ import {
   TextDisplayBuilder,
 } from "discord.js";
 import { ComponentColors } from "../../colors";
-import { discordTimestamp, formatDuration, pluralize } from "@/utils/format";
+import { discordTimestamp, formatSeconds, pluralize } from "@/utils/format";
 import type { TopLevelComponent } from "../../component-builder";
 import type { PlayerPrompt } from "@createrington/shared/db/player_prompt.types";
 
@@ -60,11 +60,7 @@ function describeRules(prompt: PlayerPrompt): string {
       : `Up to ${prompt.maxEntries} ${pluralize(prompt.maxEntries, "entry", "entries")} per player`,
   ];
   if (prompt.cooldownSeconds) {
-    const cooldown = formatDuration(
-      new Date(0),
-      new Date(prompt.cooldownSeconds * 1000),
-    );
-    parts.push(`${cooldown} between them`);
+    parts.push(`${formatSeconds(prompt.cooldownSeconds)} between them`);
   }
   return parts.join(" · ");
 }

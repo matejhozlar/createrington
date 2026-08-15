@@ -1,5 +1,5 @@
 {
-  "id": "9d81f31c-0898-4944-91a1-35db326c6137",
+  "id": "32d564f4-e218-4d30-9fe4-5172254bcf60",
   "prevId": "14682655-6f43-4948-b13a-1a72ebd67f21",
   "version": "7",
   "dialect": "postgresql",
@@ -5800,27 +5800,6 @@
             }
           ],
           "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "idx_player_prompt_response_prompt_discord": {
-          "name": "idx_player_prompt_response_prompt_discord",
-          "columns": [
-            {
-              "expression": "prompt_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "discord_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
           "concurrently": false,
           "method": "btree",
           "with": {}

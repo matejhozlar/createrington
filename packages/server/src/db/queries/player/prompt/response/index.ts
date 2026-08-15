@@ -1,6 +1,6 @@
 import type { Pool, PoolClient } from "pg";
 import { PlayerPromptResponseBaseQueries } from "@/generated/db/player_prompt_response.queries";
-import { ConstraintViolationError } from "@/db/utils/errors";
+import { ConstraintViolationError, translateDbError } from "@/db/utils/errors";
 import type { PlayerPromptResponse } from "@createrington/shared/db/player_prompt_response.types";
 
 /**
@@ -29,6 +29,11 @@ export interface PlayerPromptResponseTotals {
 }
 
 const APPEND_ENTRY_ATTEMPTS = 3;
+
+// Stand-in ceiling for prompts with no max_entries, so the cap check stays a
+// single comparison instead of two query shapes. Well above the API's cap of
+// MAX_ENTRIES_PER_PLAYER.
+const UNCAPPED_ENTRIES = 2147483647;
 
 /**
  * Custom queries for player_prompt_response table.
@@ -75,22 +80,29 @@ export class PlayerPromptResponseQueries extends PlayerPromptResponseBaseQueries
 
   /**
    * Append a new entry for a multi-mode prompt, claiming the next entry
-   * number in the same statement. Two racing submissions both compute the
-   * same number and the unique index rejects the loser, so the insert is
-   * retried a few times rather than silently duplicating or dropping.
+   * number and enforcing `maxEntries` in the same statement so the cap is
+   * atomic with the row it guards. Returns null when the responder is
+   * already at the cap (the HAVING filters the row out and nothing inserts).
+   *
+   * Two submissions racing for the same entry number leave one of them
+   * rejected by the unique index; that loser is retried, since its number is
+   * merely stale rather than disallowed. `runQuery` rethrows the raw pg error,
+   * so it goes through `translateDbError` before the check.
    */
   async appendEntry(data: {
     promptId: number;
     discordId: string;
     minecraftUuid: string | null;
     responseText: string;
-  }): Promise<PlayerPromptResponse> {
+    maxEntries: number | null;
+  }): Promise<PlayerPromptResponse | null> {
     const query = `
       INSERT INTO ${this.table}
         (prompt_id, discord_id, entry_number, minecraft_uuid, response_text)
       SELECT $1, $2, COALESCE(MAX(entry_number), 0) + 1, $3, $4
       FROM ${this.table}
       WHERE prompt_id = $1 AND discord_id = $2
+      HAVING COUNT(*) < COALESCE($5::int, ${UNCAPPED_ENTRIES})
       RETURNING *`;
 
     for (let attempt = 1; ; attempt++) {
@@ -100,14 +112,16 @@ export class PlayerPromptResponseQueries extends PlayerPromptResponseBaseQueries
           data.discordId,
           data.minecraftUuid,
           data.responseText,
+          data.maxEntries,
         ]);
-        return this.mapRowToEntity(result.rows[0]);
+        return result.rows.length ? this.mapRowToEntity(result.rows[0]) : null;
       } catch (error) {
+        const translated = translateDbError(error);
         if (
-          !(error instanceof ConstraintViolationError) ||
+          !(translated instanceof ConstraintViolationError) ||
           attempt >= APPEND_ENTRY_ATTEMPTS
         ) {
-          throw error;
+          throw translated;
         }
       }
     }
