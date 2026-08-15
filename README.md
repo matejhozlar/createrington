@@ -81,8 +81,8 @@ economy, and moderation analytics.
 
 Discord slash commands like `/profile`, `/top`, `/activity`, and `/compare`
 return rendered cards. Puppeteer drives a headless page for layout and
-`@napi-rs/canvas` handles direct composition, both fed by public Minecraft skin
-APIs.
+`@napi-rs/canvas` handles direct composition, both fed by the in-house
+Createrington skin API.
 
 ## Screenshots
 
@@ -279,11 +279,9 @@ See [`docker/mc/README.md`](docker/mc/README.md) for details.
 
 ## Credits
 
-Player skins on the render cards and throughout the portal come from free public
-Minecraft skin APIs:
+Full-body skin renders come from the in-house Createrington skin API. A couple of
+free public Minecraft skin APIs cover the rest:
 
-- [Starlight Skin API](https://docs.lunareclipse.studio/) by Lunar Eclipse
-  Studios, for the full-body 3D poses.
 - [MCHeads](https://mc-heads.net/), for avatar thumbnails and as the fallback
   body renderer.
 - [Crafatar](https://crafatar.com/), for server-side skin downloads.
