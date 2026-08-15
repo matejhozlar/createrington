@@ -3,27 +3,7 @@ import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
 import { auditActor, rethrowTrpc, id } from "@/trpc/utils";
 import { modpackService } from "@/services/modpack";
-
-const manifestSeedSchema = z.object({
-  version: z.string().trim().max(120).optional(),
-  minecraft: z
-    .object({
-      version: z.string().trim().max(20).optional(),
-      modLoaders: z
-        .array(
-          z.object({
-            id: z.string().trim().max(120),
-            primary: z.boolean().optional(),
-          }),
-        )
-        .optional(),
-    })
-    .optional(),
-  files: z
-    .array(z.object({ projectID: id() }))
-    .min(1)
-    .max(2000),
-});
+import { modpackManifestUploadSchema } from "@createrington/shared/workshop";
 
 export const adminModpacksRouter = router({
   list: adminProcedure
@@ -156,7 +136,7 @@ export const adminModpacksRouter = router({
       description:
         "Seed an unpublished pack's members from an uploaded manifest.json",
     })
-    .input(z.object({ modpackId: id(), manifest: manifestSeedSchema }))
+    .input(z.object({ modpackId: id(), manifest: modpackManifestUploadSchema }))
     .mutation(async ({ ctx, input }) => {
       try {
         const { version, minecraft, files } = input.manifest;

@@ -3,7 +3,21 @@ import { FileUp, Loader2, Package, RefreshCw, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
+import {
+  modpackManifestUploadSchema,
+  type ModpackManifestUpload,
+} from "@createrington/shared/workshop";
 import { Paginator } from "@/components/paginator";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -92,84 +106,14 @@ function Credit({ row }: { row: PackMod }) {
   }
   return row.liveInVersion
     ? `Added with ${row.liveInVersion}`
-    : "From the published pack";
+    : "From the pack manifest";
 }
 
 function releaseFileLabel(row: ReleaseMod) {
   return row.fileName ?? row.displayName ?? `File #${row.fileId}`;
 }
 
-interface ManifestUpload {
-  version?: string;
-  minecraft?: {
-    version?: string;
-    modLoaders?: { id: string; primary?: boolean }[];
-  };
-  files: { projectID: number }[];
-}
-
-function parseManifest(text: string): ManifestUpload | null {
-  let raw: unknown;
-  try {
-    raw = JSON.parse(text);
-  } catch {
-    return null;
-  }
-  if (typeof raw !== "object" || raw === null) return null;
-  const data = raw as {
-    version?: unknown;
-    minecraft?: { version?: unknown; modLoaders?: unknown } | null;
-    files?: unknown;
-  };
-  if (!Array.isArray(data.files)) return null;
-
-  const files = data.files.flatMap((file: unknown) => {
-    const projectID =
-      typeof file === "object" && file !== null
-        ? (file as { projectID?: unknown }).projectID
-        : undefined;
-    return typeof projectID === "number" ? [{ projectID }] : [];
-  });
-  if (files.length === 0) return null;
-
-  const minecraft =
-    typeof data.minecraft === "object" && data.minecraft !== null
-      ? data.minecraft
-      : undefined;
-  const modLoaders = Array.isArray(minecraft?.modLoaders)
-    ? minecraft.modLoaders.flatMap((loader: unknown) => {
-        const entry =
-          typeof loader === "object" && loader !== null
-            ? (loader as { id?: unknown; primary?: unknown })
-            : undefined;
-        return typeof entry?.id === "string"
-          ? [
-              {
-                id: entry.id,
-                primary:
-                  typeof entry.primary === "boolean"
-                    ? entry.primary
-                    : undefined,
-              },
-            ]
-          : [];
-      })
-    : undefined;
-
-  return {
-    version: typeof data.version === "string" ? data.version : undefined,
-    minecraft: minecraft
-      ? {
-          version:
-            typeof minecraft.version === "string"
-              ? minecraft.version
-              : undefined,
-          modLoaders,
-        }
-      : undefined,
-    files,
-  };
-}
+const MAX_MANIFEST_BYTES = 5 * 1024 * 1024;
 
 export function InPackTab({
   workshopId,
@@ -197,6 +141,9 @@ export function InPackTab({
   const [selected, setSelected] = useState("current");
   const [requestedPage, setRequestedPage] = useState(0);
   const manifestInputRef = useRef<HTMLInputElement>(null);
+  const [pendingManifest, setPendingManifest] =
+    useState<ModpackManifestUpload | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const isCurrent = selected === "current";
   const releaseId = isCurrent ? null : Number(selected);
@@ -239,12 +186,28 @@ export function InPackTab({
   });
 
   const handleManifestFile = async (file: File) => {
-    const manifest = parseManifest(await file.text());
-    if (!manifest) {
+    if (file.size > MAX_MANIFEST_BYTES) {
+      toast.error("That file is too large to be a modpack manifest.json");
+      return;
+    }
+    let raw: unknown;
+    try {
+      raw = JSON.parse(await file.text());
+    } catch {
+      toast.error("Could not read that file as JSON");
+      return;
+    }
+    const parsed = modpackManifestUploadSchema.safeParse(raw);
+    if (!parsed.success) {
       toast.error("That file does not look like a modpack manifest.json");
       return;
     }
-    seedMutation.mutate({ modpackId, manifest });
+    if (rows.length === 0) {
+      seedMutation.mutate({ modpackId, manifest: parsed.data });
+      return;
+    }
+    setPendingManifest(parsed.data);
+    setConfirmOpen(true);
   };
 
   const query = search.trim().toLowerCase();
@@ -439,7 +402,9 @@ export function InPackTab({
               <Button
                 variant="outline"
                 size="sm"
-                disabled={reconcileMutation.isPending}
+                disabled={
+                  reconcileMutation.isPending || modpacksQuery.isLoading
+                }
                 onClick={() => reconcileMutation.mutate({ modpackId })}
                 className="max-sm:w-full"
               >
@@ -533,6 +498,37 @@ export function InPackTab({
           </CardContent>
         )}
       </Card>
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Replace the pack contents?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This pack already has {rows.length.toLocaleString()} members.
+              Importing{" "}
+              {pendingManifest?.version
+                ? `manifest "${pendingManifest.version}"`
+                : "this manifest"}{" "}
+              syncs them against its{" "}
+              {(pendingManifest?.files.length ?? 0).toLocaleString()} mods:
+              members missing from the manifest are dropped, and their
+              suggestions move back to Coming next update.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (pendingManifest) {
+                  seedMutation.mutate({ modpackId, manifest: pendingManifest });
+                }
+              }}
+            >
+              Import
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
