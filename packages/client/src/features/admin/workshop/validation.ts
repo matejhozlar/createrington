@@ -20,16 +20,26 @@ export function workshopFormError(fields: {
   ) {
     return "Base modpack ID must be a positive number";
   }
-  const publishedPackId = fields.publishedPackId?.trim() ?? "";
+  const publishedPackError = modpackFormError({
+    publishedPackId: fields.publishedPackId ?? "",
+  });
+  if (publishedPackError) return publishedPackError;
+  const forumChannelId = fields.forumChannelId.trim();
+  if (forumChannelId && !/^\d{17,20}$/.test(forumChannelId)) {
+    return "Discord forum channel ID must be a 17-20 digit number";
+  }
+  return null;
+}
+
+export function modpackFormError(fields: {
+  publishedPackId: string;
+}): string | null {
+  const publishedPackId = fields.publishedPackId.trim();
   if (
     publishedPackId &&
     (!Number.isInteger(Number(publishedPackId)) || Number(publishedPackId) <= 0)
   ) {
     return "Published modpack project ID must be a positive number";
-  }
-  const forumChannelId = fields.forumChannelId.trim();
-  if (forumChannelId && !/^\d{17,20}$/.test(forumChannelId)) {
-    return "Discord forum channel ID must be a 17-20 digit number";
   }
   return null;
 }

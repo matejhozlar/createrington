@@ -1,8 +1,18 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { Hammer, Pencil, Plus } from "lucide-react";
+import { Hammer, Pencil, Plus, Trash2 } from "lucide-react";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +24,7 @@ import { Loading } from "@/components/loading-spinner";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { WORKSHOP_STATUS_STYLES, loaderName } from "@/features/workshop/format";
 import { CreateWorkshopDialog } from "./components/CreateWorkshopDialog";
+import { ModpacksCard } from "./components/ModpacksCard";
 import { WorkshopSettingsDialog } from "./workshop-admin-detail/components/WorkshopSettingsDialog";
 
 type AdminWorkshopRow = RouterOutput["admin"]["workshops"]["list"][number];
@@ -42,6 +53,19 @@ export function AdminWorkshop() {
     null,
   );
   const [settingsKey, setSettingsKey] = useState(0);
+  const [deleteTarget, setDeleteTarget] = useState<AdminWorkshopRow | null>(
+    null,
+  );
+
+  const deleteMutation = trpc.admin.workshops.delete.useMutation({
+    onSuccess: () => {
+      toast.success("Workshop deleted");
+      utils.admin.workshops.list.invalidate();
+      utils.admin.modpacks.list.invalidate();
+      setDeleteTarget(null);
+    },
+    onError: (err) => toast.error(err.message),
+  });
 
   const openCreate = () => {
     setCreateKey((key) => key + 1);
@@ -202,12 +226,24 @@ export function AdminWorkshop() {
                     icon: Pencil,
                     onClick: () => openSettings(workshop),
                   },
+                  {
+                    label:
+                      workshop.status === "archived"
+                        ? "Delete"
+                        : "Only archived workshops can be deleted",
+                    icon: Trash2,
+                    variant: "destructive",
+                    disabled: workshop.status !== "archived",
+                    onClick: () => setDeleteTarget(workshop),
+                  },
                 ]}
-                actionSlots={1}
+                actionSlots={2}
               />
             </CardContent>
           )}
         </Card>
+
+        <ModpacksCard />
       </div>
 
       <CreateWorkshopDialog
@@ -215,6 +251,39 @@ export function AdminWorkshop() {
         open={createOpen}
         onOpenChange={setCreateOpen}
       />
+
+      <AlertDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Delete &quot;{deleteTarget?.name}&quot;?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes the workshop with its suggestions, votes,
+              polls, and history. Mods already in the pack stay, but lose the
+              link to who suggested them. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleteMutation.isPending}
+              onClick={() => {
+                if (deleteTarget) {
+                  deleteMutation.mutate({ workshopId: deleteTarget.id });
+                }
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {settingsTarget && (
         <WorkshopSettingsDialog

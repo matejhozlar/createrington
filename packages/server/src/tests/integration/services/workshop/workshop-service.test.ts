@@ -1063,3 +1063,33 @@ describe("WorkshopService timeline events", () => {
     });
   });
 });
+
+describe("WorkshopService.deleteWorkshop", () => {
+  it("refuses a workshop that is not archived", async () => {
+    const workshop = await seedWorkshop(ctx, { status: "open" });
+
+    await expect(workshopService.deleteWorkshop(workshop.id)).rejects.toThrow(
+      BadRequestError,
+    );
+
+    expect(await Q.workshop.find({ id: workshop.id })).not.toBeNull();
+  });
+
+  it("deletes an archived workshop and detaches pack member credit", async () => {
+    const workshop = await seedWorkshop(ctx, { status: "archived" });
+    const mod = await seedMod(ctx, workshop, { status: "in_pack" });
+    const member = await seedPackMod(ctx, workshop, {
+      curseforgeProjectId: mod.curseforgeProjectId,
+      origin: "suggestion",
+      workshopModId: mod.id,
+    });
+
+    await workshopService.deleteWorkshop(workshop.id);
+
+    expect(await Q.workshop.find({ id: workshop.id })).toBeNull();
+    expect(await Q.workshop.mod.find({ id: mod.id })).toBeNull();
+    const survivor = await Q.modpack.mod.get({ id: member.id });
+    expect(survivor.workshopModId).toBeNull();
+    expect(survivor.origin).toBe("suggestion");
+  });
+});

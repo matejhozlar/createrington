@@ -54,7 +54,7 @@ vi.mock("@/services/curseforge/ingest", () => ({
 }));
 
 import pool, { Q } from "@/db";
-import { BadRequestError } from "@/app/middleware/error-handler";
+import { BadRequestError, ConflictError } from "@/app/middleware/error-handler";
 import { modpackService } from "@/services/modpack";
 import { workshopService } from "@/services/workshop";
 import {
@@ -1169,5 +1169,34 @@ describe("ModpackService.recordRelease durability", () => {
     expect(
       await Q.modpack.release.mod.listForReleases([release.id]),
     ).toHaveLength(1);
+  });
+});
+
+describe("ModpackService.deleteModpack", () => {
+  it("refuses while any workshop uses it, archived included", async () => {
+    const workshop = await seedWorkshop(ctx, { status: "archived" });
+
+    await expect(
+      modpackService.deleteModpack(workshop.modpackId),
+    ).rejects.toThrow(ConflictError);
+
+    expect(await Q.modpack.find({ id: workshop.modpackId })).not.toBeNull();
+  });
+
+  it("deletes members and releases once no workshop uses it", async () => {
+    const workshop = await seedWorkshop(ctx, { status: "archived" });
+    const member = await seedPackMod(ctx, workshop);
+    const release = await Q.modpack.release.createAndReturn({
+      modpackId: workshop.modpackId,
+      curseforgeFileId: 640_001,
+      modCount: 1,
+    });
+
+    await workshopService.deleteWorkshop(workshop.id);
+    await modpackService.deleteModpack(workshop.modpackId);
+
+    expect(await Q.modpack.find({ id: workshop.modpackId })).toBeNull();
+    expect(await Q.modpack.mod.find({ id: member.id })).toBeNull();
+    expect(await Q.modpack.release.find({ id: release.id })).toBeNull();
   });
 });

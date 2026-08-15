@@ -63,6 +63,7 @@ export interface ModpackModListItem extends ModpackMod {
 export type ModpackListItem = Modpack & {
   modCount: number;
   liveCount: number;
+  workshops: Array<Pick<Workshop, "id" | "name" | "slug" | "status">>;
 };
 
 /**
@@ -191,12 +192,15 @@ export type ModpackAttentionItem =
  * CurseForge pack's manifest by reconcile, never set by hand.
  */
 export class ModpackService {
-  /** All modpacks with member counts, for the admin panel. */
+  /** All modpacks with member counts and attached workshops, for the admin panel. */
   async listModpacks(): Promise<ModpackListItem[]> {
-    const modpacks = await Q.modpack.findAll(
-      {},
-      { orderBy: "createdAt", orderDirection: "desc" },
-    );
+    const [modpacks, workshops] = await Promise.all([
+      Q.modpack.findAll({}, { orderBy: "createdAt", orderDirection: "desc" }),
+      Q.workshop.findAll(
+        {},
+        { select: ["id", "name", "slug", "status", "modpackId"] },
+      ),
+    ]);
     return Promise.all(
       modpacks.map(async (modpack) => {
         const rows = await Q.modpack.mod.findAll(
@@ -207,6 +211,9 @@ export class ModpackService {
           ...modpack,
           modCount: rows.length,
           liveCount: rows.filter((row) => row.liveAt !== null).length,
+          workshops: workshops
+            .filter((workshop) => workshop.modpackId === modpack.id)
+            .map(({ id, name, slug, status }) => ({ id, name, slug, status })),
         };
       }),
     );
@@ -281,6 +288,26 @@ export class ModpackService {
       void this.tryReconcile(modpackId);
     }
     return updated;
+  }
+
+  /**
+   * Delete a modpack together with its members and release history. Refused
+   * while any workshop, archived ones included, still points at it.
+   */
+  async deleteModpack(modpackId: number): Promise<Modpack> {
+    const modpack = await this.getModpack(modpackId);
+    const workshops = await Q.workshop.findAll(
+      { modpackId },
+      { select: ["name"] },
+    );
+    if (workshops.length > 0) {
+      const names = workshops.map((w) => `"${w.name}"`).join(", ");
+      throw new ConflictError(
+        `${workshops.length} workshop(s) still use this modpack: ${names}. Delete those workshops first.`,
+      );
+    }
+    await Q.modpack.delete({ id: modpack.id });
+    return modpack;
   }
 
   /** Members of a modpack with project summaries, credit, and live state. */
