@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { Loader2, Package, RefreshCw, Search } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { FileUp, Loader2, Package, RefreshCw, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
@@ -99,6 +99,78 @@ function releaseFileLabel(row: ReleaseMod) {
   return row.fileName ?? row.displayName ?? `File #${row.fileId}`;
 }
 
+interface ManifestUpload {
+  version?: string;
+  minecraft?: {
+    version?: string;
+    modLoaders?: { id: string; primary?: boolean }[];
+  };
+  files: { projectID: number }[];
+}
+
+function parseManifest(text: string): ManifestUpload | null {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(text);
+  } catch {
+    return null;
+  }
+  if (typeof raw !== "object" || raw === null) return null;
+  const data = raw as {
+    version?: unknown;
+    minecraft?: { version?: unknown; modLoaders?: unknown } | null;
+    files?: unknown;
+  };
+  if (!Array.isArray(data.files)) return null;
+
+  const files = data.files.flatMap((file: unknown) => {
+    const projectID =
+      typeof file === "object" && file !== null
+        ? (file as { projectID?: unknown }).projectID
+        : undefined;
+    return typeof projectID === "number" ? [{ projectID }] : [];
+  });
+  if (files.length === 0) return null;
+
+  const minecraft =
+    typeof data.minecraft === "object" && data.minecraft !== null
+      ? data.minecraft
+      : undefined;
+  const modLoaders = Array.isArray(minecraft?.modLoaders)
+    ? minecraft.modLoaders.flatMap((loader: unknown) => {
+        const entry =
+          typeof loader === "object" && loader !== null
+            ? (loader as { id?: unknown; primary?: unknown })
+            : undefined;
+        return typeof entry?.id === "string"
+          ? [
+              {
+                id: entry.id,
+                primary:
+                  typeof entry.primary === "boolean"
+                    ? entry.primary
+                    : undefined,
+              },
+            ]
+          : [];
+      })
+    : undefined;
+
+  return {
+    version: typeof data.version === "string" ? data.version : undefined,
+    minecraft: minecraft
+      ? {
+          version:
+            typeof minecraft.version === "string"
+              ? minecraft.version
+              : undefined,
+          modLoaders,
+        }
+      : undefined,
+    files,
+  };
+}
+
 export function InPackTab({
   workshopId,
   modpackId,
@@ -124,9 +196,15 @@ export function InPackTab({
   const utils = trpc.useUtils();
   const [selected, setSelected] = useState("current");
   const [requestedPage, setRequestedPage] = useState(0);
+  const manifestInputRef = useRef<HTMLInputElement>(null);
 
   const isCurrent = selected === "current";
   const releaseId = isCurrent ? null : Number(selected);
+
+  const modpacksQuery = trpc.admin.modpacks.list.useQuery();
+  const modpack = modpacksQuery.data?.find((row) => row.id === modpackId);
+  const unlinked =
+    modpack !== undefined && modpack.curseforgeProjectId === null;
 
   const releasesQuery = trpc.admin.modpacks.listReleases.useQuery({
     modpackId,
@@ -144,6 +222,30 @@ export function InPackTab({
     },
     onError: (err) => toast.error(err.message),
   });
+
+  const seedMutation = trpc.admin.modpacks.seedFromManifest.useMutation({
+    onSuccess: (result) => {
+      if (result.unresolvedProjectIds.length > 0) {
+        toast.warning(
+          `Imported ${result.memberCount} mods, ${result.unresolvedProjectIds.length} could not be resolved on CurseForge`,
+        );
+      } else {
+        toast.success(`Imported ${result.memberCount} mods from the manifest`);
+      }
+      onReconciled();
+      utils.admin.modpacks.list.invalidate();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const handleManifestFile = async (file: File) => {
+    const manifest = parseManifest(await file.text());
+    if (!manifest) {
+      toast.error("That file does not look like a modpack manifest.json");
+      return;
+    }
+    seedMutation.mutate({ modpackId, manifest });
+  };
 
   const query = search.trim().toLowerCase();
 
@@ -306,27 +408,60 @@ export function InPackTab({
 
       <Card className="gap-0">
         <CardHeader className="border-b">
-          <CardTitle>Published Pack ({total.toLocaleString()})</CardTitle>
+          <CardTitle>
+            {unlinked ? "Pack Members" : "Published Pack"} (
+            {total.toLocaleString()})
+          </CardTitle>
           <CardDescription className="max-sm:col-start-1">
-            {isCurrent
-              ? "What the published CurseForge pack actually contains, read from its manifest. Mods staged for the next update appear here once you publish a build that includes them."
-              : "What this build shipped, frozen at the moment it was recorded."}
+            {!isCurrent
+              ? "What this build shipped, frozen at the moment it was recorded."
+              : unlinked
+                ? "What the pack contains, seeded from an imported manifest.json. Once the pack is published on CurseForge, link its project to derive this automatically."
+                : "What the published CurseForge pack actually contains, read from its manifest. Mods staged for the next update appear here once you publish a build that includes them."}
           </CardDescription>
           <CardAction className="max-sm:col-span-full max-sm:row-start-3 max-sm:mt-2 max-sm:justify-self-stretch">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={reconcileMutation.isPending}
-              onClick={() => reconcileMutation.mutate({ modpackId })}
-              className="max-sm:w-full"
-            >
-              {reconcileMutation.isPending ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <RefreshCw className="size-4" />
-              )}
-              Check Published Pack
-            </Button>
+            {unlinked ? (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={seedMutation.isPending}
+                onClick={() => manifestInputRef.current?.click()}
+                className="max-sm:w-full"
+              >
+                {seedMutation.isPending ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <FileUp className="size-4" />
+                )}
+                Import manifest.json
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={reconcileMutation.isPending}
+                onClick={() => reconcileMutation.mutate({ modpackId })}
+                className="max-sm:w-full"
+              >
+                {reconcileMutation.isPending ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="size-4" />
+                )}
+                Check Published Pack
+              </Button>
+            )}
+            <input
+              ref={manifestInputRef}
+              type="file"
+              accept=".json,application/json"
+              className="hidden"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                if (file) void handleManifestFile(file);
+              }}
+            />
           </CardAction>
         </CardHeader>
 
@@ -336,7 +471,12 @@ export function InPackTab({
           ) : error ? (
             <CardError message={error} onRetry={onRetry} />
           ) : rows.length === 0 ? (
-            <CardEmpty icon={Package} message="Nothing published yet" />
+            <CardEmpty
+              icon={Package}
+              message={
+                unlinked ? "Nothing imported yet" : "Nothing published yet"
+              }
+            />
           ) : currentFiltered.length === 0 ? (
             <CardEmpty icon={Search} message="No mods match your search" />
           ) : (

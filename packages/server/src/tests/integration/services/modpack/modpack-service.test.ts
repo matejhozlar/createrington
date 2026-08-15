@@ -54,6 +54,7 @@ vi.mock("@/services/curseforge/ingest", () => ({
 }));
 
 import pool, { Q } from "@/db";
+import { BadRequestError } from "@/app/middleware/error-handler";
 import { modpackService } from "@/services/modpack";
 import { workshopService } from "@/services/workshop";
 import {
@@ -575,6 +576,161 @@ describe("ModpackService.reconcile", () => {
         curseforgeProjectId: strangerId,
       }),
     ).toMatchObject({ origin: "import" });
+  });
+});
+
+describe("ModpackService.seedFromManifest", () => {
+  const seed = (
+    overrides: Partial<
+      Parameters<typeof modpackService.seedFromManifest>[1]
+    > = {},
+  ) => ({
+    version: null,
+    minecraftVersion: null,
+    modLoader: null,
+    modIds: [],
+    ...overrides,
+  });
+
+  it("refuses when the pack follows a published CurseForge project", async () => {
+    const modpack = await seedModpack(ctx, { curseforgeProjectId: 5100 });
+
+    await expect(
+      modpackService.seedFromManifest(
+        modpack.id,
+        seed({ modIds: [ctx.nextProjectId++] }),
+      ),
+    ).rejects.toThrow(BadRequestError);
+  });
+
+  it("seeds members as live imports and reports unresolved projects", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const known = await seedProject(ctx);
+    const unknown = ctx.nextProjectId++;
+
+    const result = await modpackService.seedFromManifest(
+      workshop.modpackId,
+      seed({
+        version: "alpha-0.0.1",
+        minecraftVersion: "1.21.1",
+        modLoader: "neoforge-21.1.248",
+        modIds: [known, unknown],
+      }),
+    );
+
+    expect(result).toEqual({
+      modCount: 2,
+      memberCount: 1,
+      unresolvedProjectIds: [unknown],
+    });
+    const member = await Q.modpack.mod.find({
+      modpackId: workshop.modpackId,
+      curseforgeProjectId: known,
+    });
+    expect(member).toMatchObject({
+      origin: "import",
+      workshopModId: null,
+      liveInVersion: "alpha-0.0.1",
+    });
+    expect(member!.liveAt).not.toBeNull();
+  });
+
+  it("matches suggestions in any of the pack's workshops and moves staged ones", async () => {
+    const modpack = await seedModpack(ctx);
+    const closed = await seedWorkshop(ctx, {
+      modpackId: modpack.id,
+      status: "closed",
+    });
+    const staged = await seedMod(ctx, closed, {
+      status: "next_update",
+      submittedBy: USER_A,
+    });
+    const open = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const pending = await seedMod(ctx, open, { submittedBy: USER_A });
+
+    await modpackService.seedFromManifest(
+      modpack.id,
+      seed({
+        version: "0.2.0",
+        modIds: [staged.curseforgeProjectId, pending.curseforgeProjectId],
+      }),
+    );
+
+    expect((await Q.workshop.mod.get({ id: staged.id })).status).toBe(
+      "in_pack",
+    );
+    expect(
+      await Q.modpack.mod.find({
+        modpackId: modpack.id,
+        curseforgeProjectId: staged.curseforgeProjectId,
+      }),
+    ).toMatchObject({
+      origin: "suggestion",
+      workshopModId: staged.id,
+      liveInVersion: "0.2.0",
+    });
+    // Shipping does not finish a review, so the pending one keeps its state
+    expect((await Q.workshop.mod.get({ id: pending.id })).status).toBe(
+      "pending",
+    );
+    expect(
+      await Q.modpack.mod.find({
+        modpackId: modpack.id,
+        curseforgeProjectId: pending.curseforgeProjectId,
+      }),
+    ).toMatchObject({ origin: "suggestion", workshopModId: pending.id });
+  });
+
+  it("re-seeds as a full sync without recording releases", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const kept = await seedProject(ctx);
+    const dropped = await seedProject(ctx);
+
+    await modpackService.seedFromManifest(
+      workshop.modpackId,
+      seed({ version: "0.1.0", modIds: [kept, dropped] }),
+    );
+    await modpackService.seedFromManifest(
+      workshop.modpackId,
+      seed({ version: "0.2.0", modIds: [kept] }),
+    );
+
+    expect(
+      await Q.modpack.mod.find({
+        modpackId: workshop.modpackId,
+        curseforgeProjectId: dropped,
+      }),
+    ).toBeNull();
+    expect(
+      await Q.modpack.mod.find({
+        modpackId: workshop.modpackId,
+        curseforgeProjectId: kept,
+      }),
+    ).toMatchObject({ liveInVersion: "0.1.0" });
+    expect(await modpackService.listReleases(workshop.modpackId)).toHaveLength(
+      0,
+    );
+  });
+
+  it("rejects a manifest for a different game version or loader", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const projectId = await seedProject(ctx);
+
+    await expect(
+      modpackService.seedFromManifest(
+        workshop.modpackId,
+        seed({ minecraftVersion: "1.20.1", modIds: [projectId] }),
+      ),
+    ).rejects.toThrow("targets Minecraft 1.20.1");
+    await expect(
+      modpackService.seedFromManifest(
+        workshop.modpackId,
+        seed({ modLoader: "fabric-0.16.9", modIds: [projectId] }),
+      ),
+    ).rejects.toThrow("does not match this workshop's mod loader");
+    expect(await Q.modpack.mod.count({ modpackId: workshop.modpackId })).toBe(
+      0,
+    );
   });
 });
 
