@@ -46,7 +46,7 @@ export function DependenciesTab({
   workshopId: number;
   search: string;
   onSearchChange: (value: string) => void;
-  onAddProject: (projectId: number) => void;
+  onAddProject: (projectId: number, name: string) => void;
   busyProjectId: number | null;
 }) {
   const depsQuery = trpc.admin.workshops.listDependencies.useQuery({
@@ -159,7 +159,8 @@ export function DependenciesTab({
           {
             label: "Add to Workshop",
             icon: PackagePlus,
-            onClick: () => onAddProject(row.curseforgeProjectId),
+            onClick: () =>
+              onAddProject(row.curseforgeProjectId, dependencyName(row)),
           },
         ]
       : [];

@@ -32,6 +32,11 @@ import {
 } from "./tabs";
 import { useWorkshopHotkeys } from "./hooks/use-workshop-hotkeys";
 import { AddModsDialog } from "./components/AddModsDialog";
+import {
+  ConfirmActionDialog,
+  SKIP_CONFIRM_SESSION_KEY,
+  type ConfirmActionTarget,
+} from "./components/ConfirmActionDialog";
 import { RejectModDialog } from "./components/RejectModDialog";
 import { WorkshopSettingsDialog } from "./components/WorkshopSettingsDialog";
 import { WorkshopTabs } from "./components/WorkshopTabs";
@@ -94,6 +99,12 @@ export function AdminWorkshopDetail() {
     name: string;
   } | null>(null);
   const [rejectKey, setRejectKey] = useState(0);
+  const [confirmTarget, setConfirmTarget] =
+    useState<ConfirmActionTarget | null>(null);
+  const [confirmKey, setConfirmKey] = useState(0);
+  const [skipConfirms, setSkipConfirms] = useState(
+    () => sessionStorage.getItem(SKIP_CONFIRM_SESSION_KEY) === "1",
+  );
 
   const setActiveTab = (tab: WorkshopTabId) => {
     if (tab === activeTab) return;
@@ -127,6 +138,11 @@ export function AdminWorkshopDetail() {
   const openReject = (target: { workshopModId: number; name: string }) => {
     setRejectKey((key) => key + 1);
     setRejectTarget(target);
+  };
+
+  const openConfirm = (target: ConfirmActionTarget) => {
+    setConfirmKey((key) => key + 1);
+    setConfirmTarget(target);
   };
 
   const invalidate = () => {
@@ -203,10 +219,43 @@ export function AdminWorkshopDetail() {
     ? (addProjectMutation.variables?.projectIds[0] ?? null)
     : null;
 
-  const handleReview = (id: number, action: WorkshopModReviewAction) =>
-    reviewMutation.mutate({ workshopModId: id, action });
-  const addProject = (projectId: number) =>
-    addProjectMutation.mutate({ workshopId, projectIds: [projectId] });
+  const handleReview = (id: number, action: WorkshopModReviewAction) => {
+    const mod = mods.find((row) => row.id === id);
+    if (action === "reject" || skipConfirms || !mod) {
+      reviewMutation.mutate({ workshopModId: id, action });
+      return;
+    }
+    openConfirm({
+      kind: "review",
+      workshopModId: id,
+      name: mod.project.name,
+      status: mod.status,
+      action,
+    });
+  };
+
+  const addProject = (projectId: number, name: string) => {
+    if (skipConfirms) {
+      addProjectMutation.mutate({ workshopId, projectIds: [projectId] });
+      return;
+    }
+    openConfirm({ kind: "add", projectId, name });
+  };
+
+  const handleConfirm = (target: ConfirmActionTarget, skipSession: boolean) => {
+    if (skipSession) {
+      sessionStorage.setItem(SKIP_CONFIRM_SESSION_KEY, "1");
+      setSkipConfirms(true);
+    }
+    if (target.kind === "add") {
+      addProjectMutation.mutate({ workshopId, projectIds: [target.projectId] });
+    } else {
+      reviewMutation.mutate({
+        workshopModId: target.workshopModId,
+        action: target.action,
+      });
+    }
+  };
 
   if (workshopsQuery.isLoading) {
     return (
@@ -389,6 +438,15 @@ export function AdminWorkshopDetail() {
         onOpenChange={setSettingsOpen}
         workshop={workshop}
         hasMods={mods.length > 0}
+      />
+
+      <ConfirmActionDialog
+        key={`confirm-${confirmKey}`}
+        target={confirmTarget}
+        onOpenChange={(open) => {
+          if (!open) setConfirmTarget(null);
+        }}
+        onConfirm={handleConfirm}
       />
 
       <RejectModDialog
