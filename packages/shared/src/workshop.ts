@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 // CurseForge file dependency relationTypes
 export const OPTIONAL_DEPENDENCY = 2;
 export const REQUIRED_DEPENDENCY = 3;
@@ -122,3 +124,27 @@ export const WORKSHOP_STATUS_TRANSITIONS: Record<
   closed: ["open", "archived"],
   archived: ["closed"],
 };
+
+// The manifest.json inside a CurseForge pack export; unknown keys are stripped
+export const modpackManifestUploadSchema = z.object({
+  version: z.string().trim().max(120).optional(),
+  minecraft: z
+    .object({
+      version: z.string().trim().max(20).optional(),
+      modLoaders: z
+        .array(
+          z.object({
+            id: z.string().trim().max(120),
+            primary: z.boolean().optional(),
+          }),
+        )
+        .optional(),
+    })
+    .optional(),
+  files: z
+    .array(z.object({ projectID: z.number().int().positive().max(2147483647) }))
+    .min(1)
+    .max(2000),
+});
+
+export type ModpackManifestUpload = z.infer<typeof modpackManifestUploadSchema>;

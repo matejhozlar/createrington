@@ -17,6 +17,7 @@ import type {
 import type { ReleaseModRow } from "@/db/queries/modpack/release/mod";
 import {
   CurseForgeClass,
+  CurseForgeLoader,
   getMod,
   getFilesDetails,
   getModpackManifest,
@@ -83,6 +84,28 @@ function announceStatusMoves(mods: WorkshopMod[]): void {
 
 export interface ModpackReleaseDiffEntry extends ReleaseModRow {
   previousFile: ReleaseModRow | null;
+}
+
+type ManifestMembership = Pick<ModpackManifest, "modIds" | "version">;
+
+export interface ModpackManifestSeed {
+  version: string | null;
+  minecraftVersion: string | null;
+  modLoader: string | null;
+  modIds: number[];
+}
+
+export interface ModpackSeedResult {
+  modCount: number;
+  memberCount: number;
+  unresolvedProjectIds: number[];
+}
+
+function manifestLoaderType(loaderId: string): number | null {
+  const prefix = loaderId.split("-")[0]?.toLowerCase() ?? "";
+  return Object.hasOwn(CurseForgeLoader, prefix)
+    ? CurseForgeLoader[prefix as keyof typeof CurseForgeLoader]
+    : null;
 }
 
 function groupByProject(
@@ -303,6 +326,75 @@ export class ModpackService {
     const manifest = await getModpackManifest(modpack.curseforgeProjectId);
     await this.applyManifest(modpack, workshops, manifest);
     await this.recordRelease(modpack, manifest);
+  }
+
+  /**
+   * Seed membership from an uploaded manifest.json while the pack has no
+   * published CurseForge project. Runs the same sync as reconcile, so repeat
+   * imports move suggestions in both directions; once a project is linked,
+   * the published manifest is the source of truth and seeding is refused.
+   * Manifest entries that cannot be resolved on CurseForge are skipped and
+   * reported back.
+   */
+  async seedFromManifest(
+    modpackId: number,
+    seed: ModpackManifestSeed,
+  ): Promise<ModpackSeedResult> {
+    const modpack = await this.getModpack(modpackId);
+    if (modpack.curseforgeProjectId) {
+      throw new BadRequestError(
+        "This modpack follows a published CurseForge project, use Check Published Pack instead",
+      );
+    }
+
+    const workshops = await Q.workshop.findAll({ modpackId });
+    this.assertSeedTarget(workshops, seed);
+
+    const modIds = new Set(seed.modIds);
+    await this.applyManifest(modpack, workshops, {
+      modIds,
+      version: seed.version,
+    });
+
+    // Members dropped by an earlier seed keep their rows, so the count of
+    // what this manifest covers is derived from the manifest side
+    const rows = await Q.modpack.mod.findAll(
+      { modpackId },
+      { select: ["curseforgeProjectId"] },
+    );
+    const memberIds = new Set(rows.map((row) => row.curseforgeProjectId));
+    const unresolvedProjectIds = [...modIds].filter((id) => !memberIds.has(id));
+    return {
+      modCount: modIds.size,
+      memberCount: modIds.size - unresolvedProjectIds.length,
+      unresolvedProjectIds,
+    };
+  }
+
+  private assertSeedTarget(
+    workshops: Workshop[],
+    seed: Pick<ModpackManifestSeed, "minecraftVersion" | "modLoader">,
+  ): void {
+    if (workshops.length === 0) return;
+    if (
+      seed.minecraftVersion &&
+      !workshops.some((w) => w.gameVersion === seed.minecraftVersion)
+    ) {
+      const versions = [...new Set(workshops.map((w) => w.gameVersion))];
+      throw new BadRequestError(
+        `The manifest targets Minecraft ${seed.minecraftVersion}, but this pack's workshops target ${versions.join(", ")}`,
+      );
+    }
+    if (!seed.modLoader) return;
+    const loaderType = manifestLoaderType(seed.modLoader);
+    if (
+      loaderType !== null &&
+      !workshops.some((w) => w.modLoaderType === loaderType)
+    ) {
+      throw new BadRequestError(
+        `The manifest uses ${seed.modLoader}, which does not match this pack's mod loader`,
+      );
+    }
   }
 
   /** Recorded releases of a modpack, newest first. */
@@ -741,7 +833,7 @@ export class ModpackService {
   private async applyManifest(
     modpack: Modpack,
     workshops: Workshop[],
-    manifest: ModpackManifest,
+    manifest: ManifestMembership,
   ): Promise<void> {
     const now = new Date();
     const workshopIds = workshops.map((w) => w.id);
@@ -837,7 +929,7 @@ export class ModpackService {
     modpack: Modpack,
     workshopIds: number[],
     suggestions: WorkshopMod[],
-    manifest: ModpackManifest,
+    manifest: ManifestMembership,
     projectIds: number[],
     now: Date,
   ): Promise<number[]> {

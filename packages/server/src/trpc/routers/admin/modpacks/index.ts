@@ -3,6 +3,7 @@ import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
 import { auditActor, rethrowTrpc, id } from "@/trpc/utils";
 import { modpackService } from "@/services/modpack";
+import { modpackManifestUploadSchema } from "@createrington/shared/workshop";
 
 export const adminModpacksRouter = router({
   list: adminProcedure
@@ -125,6 +126,36 @@ export const adminModpacksRouter = router({
       try {
         await modpackService.reconcile(input.modpackId);
         return { reconciled: true };
+      } catch (error) {
+        rethrowTrpc(error);
+      }
+    }),
+
+  seedFromManifest: adminProcedure
+    .meta({
+      description:
+        "Seed an unpublished pack's members from an uploaded manifest.json",
+    })
+    .input(z.object({ modpackId: id(), manifest: modpackManifestUploadSchema }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        const { version, minecraft, files } = input.manifest;
+        const loaders = minecraft?.modLoaders ?? [];
+        const result = await modpackService.seedFromManifest(input.modpackId, {
+          version: version ?? null,
+          minecraftVersion: minecraft?.version ?? null,
+          modLoader:
+            (loaders.find((loader) => loader.primary) ?? loaders[0])?.id ??
+            null,
+          modIds: files.map((file) => file.projectID),
+        });
+        await Q.admin.log.action.logAction({
+          ...auditActor(ctx),
+          actionType: "modpack_seed_manifest",
+          description: `Imported ${result.memberCount} mods into modpack #${input.modpackId} from a manifest`,
+          metadata: { modpackId: input.modpackId, ...result },
+        });
+        return result;
       } catch (error) {
         rethrowTrpc(error);
       }
