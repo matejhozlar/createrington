@@ -16,37 +16,28 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import {
-  createCanvas,
-  loadImage,
-  GlobalFonts,
-  type Image,
-  type SKRSContext2D,
-} from "@napi-rs/canvas";
+import { loadImage, type Image, type SKRSContext2D } from "@napi-rs/canvas";
 import { computeBBox, fitFontSize } from "@/utils/canvas";
-
-const W = 1200;
-const H = 630;
-// Render at 2x then downscale so gradients, screenshot edges, and text stay
-// crisp.
-const SUPERSAMPLE = 2;
-
-// Brand tokens (client theme.css OkLCH values converted to sRGB).
-const BG_TOP = "#17171d";
-const BG_BOT = "#0b0b0e";
-const CARD = "#18181d";
-const AMBER = "#ffb900";
-const FOREGROUND = "#fafafb";
-const MUTED = "#a0a0a5";
-
-const TEXT_X = 74;
+import {
+  W,
+  H,
+  BG_TOP,
+  BG_BOT,
+  CARD,
+  AMBER,
+  FOREGROUND,
+  MUTED,
+  TEXT_X,
+  ASSETS,
+  registerBrandFonts,
+  roundRectPath,
+  drawImageCover,
+  writeCard,
+} from "./og-shared";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const PUBLIC = join(here, "..", "..", "..", "..", "client", "public");
-const ASSETS = join(PUBLIC, "assets");
 const REPO_ROOT = join(here, "..", "..", "..", "..", "..");
 const SHOTS = join(REPO_ROOT, "screenshots");
-const FONTS = join(here, "..", "..", "assets", "fonts");
 const TEAM_DIR = join(here, "assets", "team");
 
 interface FrameSpec {
@@ -180,37 +171,6 @@ async function getTeamFigure(m: TeamMember): Promise<Image> {
   return loadImage(await readFile(file));
 }
 
-function roundRectPath(
-  ctx: SKRSContext2D,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  r: number,
-): void {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.arcTo(x + w, y, x + w, y + h, r);
-  ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r);
-  ctx.arcTo(x, y, x + w, y, r);
-  ctx.closePath();
-}
-
-// object-fit: cover, anchored to the top-left of the source (so the sidebar
-// and primary content read), clipped by the current path.
-function drawImageCoverTopLeft(
-  ctx: SKRSContext2D,
-  img: Image,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-): void {
-  const scale = Math.max(w / img.width, h / img.height);
-  ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
-}
-
 function paintBackground(ctx: SKRSContext2D): void {
   const bg = ctx.createLinearGradient(0, 0, 0, H);
   bg.addColorStop(0, BG_TOP);
@@ -308,7 +268,7 @@ function drawBrowserFrame(
   ctx.save();
   roundRectPath(ctx, x, y + chromeH, w, bodyH, 0);
   ctx.clip();
-  drawImageCoverTopLeft(ctx, img, x, y + chromeH, w, bodyH);
+  drawImageCover(ctx, img, x, y + chromeH, w, bodyH, "top-left");
   ctx.restore();
 
   ctx.restore(); // body clip
@@ -459,25 +419,13 @@ async function paintTeam(ctx: SKRSContext2D): Promise<void> {
 async function main(): Promise<void> {
   const outPath = process.argv[2] ?? join(ASSETS, "og", "og-card.png");
 
-  GlobalFonts.registerFromPath(join(FONTS, "outfit-latin-400.woff2"), "Outfit");
-  GlobalFonts.registerFromPath(join(FONTS, "outfit-latin-500.woff2"), "Outfit");
-  GlobalFonts.registerFromPath(join(FONTS, "outfit-latin-600.woff2"), "Outfit");
-  GlobalFonts.registerFromPath(join(FONTS, "outfit-latin-700.woff2"), "Outfit");
-
-  const canvas = createCanvas(W * SUPERSAMPLE, H * SUPERSAMPLE);
-  const ctx = canvas.getContext("2d");
-  ctx.scale(SUPERSAMPLE, SUPERSAMPLE);
-
-  paintBackground(ctx);
-  await paintFrames(ctx);
-  await paintText(ctx);
-  await paintTeam(ctx);
-
-  const out = createCanvas(W, H);
-  out.getContext("2d").drawImage(canvas, 0, 0, W, H);
-  await mkdir(dirname(outPath), { recursive: true });
-  await writeFile(outPath, out.toBuffer("image/png"));
-  console.log(`wrote ${outPath} (${W}x${H})`);
+  registerBrandFonts();
+  await writeCard(outPath, async (ctx) => {
+    paintBackground(ctx);
+    await paintFrames(ctx);
+    await paintText(ctx);
+    await paintTeam(ctx);
+  });
 }
 
 void main().catch((err) => {
