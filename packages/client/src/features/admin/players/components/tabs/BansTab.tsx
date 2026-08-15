@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Ban, Clock } from "lucide-react";
 import type { RouterOutput } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
+import { WorkshopBansSection } from "../WorkshopBansSection";
 
 type PlayerDetailed = RouterOutput["admin"]["players"]["players"]["get"];
 
@@ -182,6 +183,11 @@ export function BansTab({
           </div>
         </div>
       )}
+
+      <WorkshopBansSection
+        discordId={player.player.discordId}
+        playerUsername={player.player.minecraftUsername}
+      />
     </div>
   );
 }

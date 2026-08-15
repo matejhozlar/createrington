@@ -12,6 +12,8 @@ import { CooldownType } from "@/discord/utils/cooldown";
 import { replyError } from "@/discord/utils/interaction-reply";
 import { CurseForgeClass } from "@/services/curseforge";
 import { featureFlagService, FeatureFlags } from "@/services/feature-flag";
+import { banNotice, findSuggestBan } from "@/services/workshop/bans";
+import { discordTimestamp } from "@/utils/format";
 import type { Workshop } from "@createrington/shared/db";
 
 export const data = new SlashCommandBuilder()
@@ -87,7 +89,37 @@ export async function execute(
     }
     workshop = selected;
   } else if (open.length > 1) {
-    await interaction.showModal(buildWorkshopPickerSuggestModal(open));
+    const bans = await Promise.all(
+      open.map((candidate) =>
+        findSuggestBan(interaction.user.id, candidate.id),
+      ),
+    );
+    const suggestable = open.filter((_, index) => !bans[index]);
+
+    if (suggestable.length === 0) {
+      await replyError(
+        interaction,
+        "Suggestions Blocked",
+        banNotice(bans[0]!, (expiresAt) => discordTimestamp(expiresAt, "D")),
+      );
+      return;
+    }
+
+    if (suggestable.length > 1) {
+      await interaction.showModal(buildWorkshopPickerSuggestModal(suggestable));
+      return;
+    }
+
+    workshop = suggestable[0];
+  }
+
+  const ban = await findSuggestBan(interaction.user.id, workshop.id);
+  if (ban) {
+    await replyError(
+      interaction,
+      "Suggestions Blocked",
+      banNotice(ban, (expiresAt) => discordTimestamp(expiresAt, "D")),
+    );
     return;
   }
 

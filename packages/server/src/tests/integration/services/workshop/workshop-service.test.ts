@@ -45,9 +45,11 @@ import pool, { Q } from "@/db";
 import {
   BadRequestError,
   ConflictError,
+  ForbiddenError,
   NotFoundError,
 } from "@/app/middleware/error-handler";
 import { workshopService } from "@/services/workshop";
+import { issueBan, liftBan } from "@/services/workshop/bans";
 import { ingestProject, ingestProjects } from "@/services/curseforge/ingest";
 import {
   createWorkshopTestContext,
@@ -603,6 +605,165 @@ describe("WorkshopService.suggestMod", () => {
   });
 });
 
+describe("workshop suggestion bans", () => {
+  const ADMIN_ACTOR = { discordId: ADMIN, username: "admin" };
+
+  // Scoped bans cascade with their workshop, global ones have nothing to
+  // cascade from and would leak into later tests.
+  afterEach(async () => {
+    await Q.workshop.ban.deleteAll({
+      discordId: { $in: [ADMIN, USER_A, USER_B] },
+    });
+  });
+
+  it("blocks suggesting in the workshop it is scoped to", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const projectId = await seedProject(ctx);
+    await issueBan(
+      { discordId: USER_A, workshopId: workshop.id, reason: "spam" },
+      ADMIN_ACTOR,
+    );
+
+    await expect(
+      workshopService.suggestMod(workshop.id, USER_A, { projectId }),
+    ).rejects.toThrow(ForbiddenError);
+  });
+
+  it("leaves other workshops and other users alone", async () => {
+    const banned = await seedWorkshop(ctx);
+    const other = await seedWorkshop(ctx);
+    await issueBan(
+      { discordId: USER_A, workshopId: banned.id, reason: "spam" },
+      ADMIN_ACTOR,
+    );
+
+    const elsewhere = await workshopService.suggestMod(other.id, USER_A, {
+      projectId: await seedProject(ctx),
+    });
+    expect(elsewhere.status).toBe("pending");
+
+    const otherUser = await workshopService.suggestMod(banned.id, USER_B, {
+      projectId: await seedProject(ctx),
+    });
+    expect(otherUser.status).toBe("pending");
+  });
+
+  it("blocks every workshop when scoped globally", async () => {
+    const first = await seedWorkshop(ctx);
+    const second = await seedWorkshop(ctx);
+    await issueBan(
+      { discordId: USER_A, workshopId: null, reason: "repeat abuse" },
+      ADMIN_ACTOR,
+    );
+
+    await expect(
+      workshopService.suggestMod(first.id, USER_A, {
+        projectId: await seedProject(ctx),
+      }),
+    ).rejects.toThrow(ForbiddenError);
+    await expect(
+      workshopService.suggestMod(second.id, USER_A, {
+        projectId: await seedProject(ctx),
+      }),
+    ).rejects.toThrow(ForbiddenError);
+  });
+
+  it("stops blocking once lifted", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const ban = await issueBan(
+      { discordId: USER_A, workshopId: workshop.id, reason: "spam" },
+      ADMIN_ACTOR,
+    );
+
+    await liftBan(ban.id, "appealed", ADMIN_ACTOR);
+
+    const item = await workshopService.suggestMod(workshop.id, USER_A, {
+      projectId: await seedProject(ctx),
+    });
+    expect(item.status).toBe("pending");
+  });
+
+  it("stops blocking once elapsed, with no sweeper involved", async () => {
+    const workshop = await seedWorkshop(ctx);
+    await Q.workshop.ban.create({
+      discordId: USER_A,
+      workshopId: workshop.id,
+      banType: "temporary",
+      reason: "old",
+      bannedByDiscordId: ADMIN,
+      bannedByUsername: "admin",
+      bannedAt: new Date(Date.now() - 30 * 86_400_000),
+      expiresAt: new Date(Date.now() - 86_400_000),
+    });
+
+    const item = await workshopService.suggestMod(workshop.id, USER_A, {
+      projectId: await seedProject(ctx),
+    });
+    expect(item.status).toBe("pending");
+  });
+
+  it("leaves upvoting and withdrawing existing suggestions untouched", async () => {
+    const workshop = await seedWorkshop(ctx, { maxUpvotesPerUser: 5 });
+    const own = await workshopService.suggestMod(workshop.id, USER_A, {
+      projectId: await seedProject(ctx),
+    });
+    const othersMod = await seedMod(ctx, workshop, {
+      submittedBy: USER_B,
+    });
+
+    await issueBan(
+      { discordId: USER_A, workshopId: workshop.id, reason: "spam" },
+      ADMIN_ACTOR,
+    );
+
+    const vote = await workshopService.toggleModUpvote(othersMod.id, USER_A);
+    expect(vote.upvoted).toBe(true);
+
+    await expect(
+      workshopService.removeSuggestion(own.id, USER_A),
+    ).resolves.toBeUndefined();
+  });
+
+  it("does not gate admin adds, even for a blocked admin", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const projectId = await seedProject(ctx);
+    await issueBan(
+      { discordId: ADMIN, workshopId: null, reason: "blocked as a user" },
+      ADMIN_ACTOR,
+    );
+
+    const rows = await workshopService.addModsAsAdmin(
+      workshop.id,
+      [projectId],
+      ADMIN,
+    );
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.status).toBe("approved");
+  });
+
+  it("rejects a duplicate in the same scope but allows global alongside scoped", async () => {
+    const workshop = await seedWorkshop(ctx);
+    await issueBan(
+      { discordId: USER_A, workshopId: workshop.id, reason: "spam" },
+      ADMIN_ACTOR,
+    );
+
+    await expect(
+      issueBan(
+        { discordId: USER_A, workshopId: workshop.id, reason: "again" },
+        ADMIN_ACTOR,
+      ),
+    ).rejects.toThrow(ConflictError);
+
+    const global = await issueBan(
+      { discordId: USER_A, workshopId: null, reason: "everywhere" },
+      ADMIN_ACTOR,
+    );
+    expect(global.workshopId).toBeNull();
+  });
+});
+
 describe("WorkshopService.toggleModUpvote", () => {
   it("allows self-upvotes without consuming the budget", async () => {
     const workshop = await seedWorkshop(ctx, { maxUpvotesPerUser: 1 });
@@ -1061,5 +1222,62 @@ describe("WorkshopService timeline events", () => {
       toStatus: "approved",
       note: "team pick for the season",
     });
+  });
+});
+
+describe("WorkshopService.deleteWorkshop", () => {
+  it("refuses a workshop that is not archived", async () => {
+    const workshop = await seedWorkshop(ctx, { status: "open" });
+
+    await expect(workshopService.deleteWorkshop(workshop.id)).rejects.toThrow(
+      BadRequestError,
+    );
+
+    expect(await Q.workshop.find({ id: workshop.id })).not.toBeNull();
+  });
+
+  it("deletes an archived workshop and detaches pack member credit", async () => {
+    const workshop = await seedWorkshop(ctx, { status: "archived" });
+    const mod = await seedMod(ctx, workshop, { status: "in_pack" });
+    const member = await seedPackMod(ctx, workshop, {
+      curseforgeProjectId: mod.curseforgeProjectId,
+      origin: "suggestion",
+      workshopModId: mod.id,
+    });
+
+    await workshopService.deleteWorkshop(workshop.id);
+
+    expect(await Q.workshop.find({ id: workshop.id })).toBeNull();
+    expect(await Q.workshop.mod.find({ id: mod.id })).toBeNull();
+    const survivor = await Q.modpack.mod.get({ id: member.id });
+    expect(survivor.workshopModId).toBeNull();
+    expect(survivor.origin).toBe("suggestion");
+  });
+
+  it("takes polls, poll mods, and ballots with the workshop", async () => {
+    const workshop = await seedWorkshop(ctx, { status: "archived" });
+    const mod = await seedMod(ctx, workshop);
+    const poll = await Q.workshop.poll.createAndReturn({
+      workshopId: workshop.id,
+      granularity: "per_mod",
+      endsAt: new Date(Date.now() + 60_000),
+      createdBy: ADMIN,
+    });
+    const pollMod = await Q.workshop.poll.mod.createAndReturn({
+      pollId: poll.id,
+      workshopModId: mod.id,
+    });
+    const ballot = await Q.workshop.poll.ballot.createAndReturn({
+      pollId: poll.id,
+      pollModId: pollMod.id,
+      discordId: USER_A,
+      choice: true,
+    });
+
+    await workshopService.deleteWorkshop(workshop.id);
+
+    expect(await Q.workshop.poll.find({ id: poll.id })).toBeNull();
+    expect(await Q.workshop.poll.mod.find({ id: pollMod.id })).toBeNull();
+    expect(await Q.workshop.poll.ballot.find({ id: ballot.id })).toBeNull();
   });
 });

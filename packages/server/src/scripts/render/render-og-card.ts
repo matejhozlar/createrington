@@ -11,42 +11,33 @@
 //
 // Run: pnpm --filter @createrington/server util:render-og-card [outPath]
 
-import { existsSync } from "node:fs";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import {
-  createCanvas,
-  loadImage,
-  GlobalFonts,
-  type Image,
-  type SKRSContext2D,
-} from "@napi-rs/canvas";
+import { loadImage, type Image, type SKRSContext2D } from "@napi-rs/canvas";
 import { computeBBox, fitFontSize } from "@/utils/canvas";
-
-const W = 1200;
-const H = 630;
-// Render at 2x then downscale so gradients, screenshot edges, and text stay
-// crisp.
-const SUPERSAMPLE = 2;
-
-// Brand tokens (client theme.css OkLCH values converted to sRGB).
-const BG_TOP = "#17171d";
-const BG_BOT = "#0b0b0e";
-const CARD = "#18181d";
-const AMBER = "#ffb900";
-const FOREGROUND = "#fafafb";
-const MUTED = "#a0a0a5";
-
-const TEXT_X = 74;
+import {
+  W,
+  H,
+  BG_TOP,
+  BG_BOT,
+  CARD,
+  AMBER,
+  FOREGROUND,
+  MUTED,
+  TEXT_X,
+  ASSETS,
+  registerBrandFonts,
+  roundRectPath,
+  drawImageCover,
+  paintWordmark,
+  getPoseFigure,
+  writeCard,
+} from "./og-shared";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const PUBLIC = join(here, "..", "..", "..", "..", "client", "public");
-const ASSETS = join(PUBLIC, "assets");
 const REPO_ROOT = join(here, "..", "..", "..", "..", "..");
 const SHOTS = join(REPO_ROOT, "screenshots");
-const FONTS = join(here, "..", "..", "assets", "fonts");
 const TEAM_DIR = join(here, "assets", "team");
 
 interface FrameSpec {
@@ -133,82 +124,14 @@ const TEAM: readonly TeamMember[] = [
   },
 ];
 
-// Resolve a team figure PNG: prefer the committed cache, otherwise render it
-// via the skin-api and cache it so later card renders stay offline. Calls the
-// HTTP endpoint directly rather than via the SDK because the SDK does not
-// forward the `outline` option, which gives the figures the white edge that
-// reads against the dark card.
-async function getTeamFigure(m: TeamMember): Promise<Image> {
-  const file = join(TEAM_DIR, `${m.username}.png`);
-  if (!existsSync(file)) {
-    const apiKey = process.env.SKIN_API_KEY;
-    if (!apiKey) {
-      throw new Error(
-        `Missing cached team figure (${file}) and SKIN_API_KEY is not set. ` +
-          `Run once with the skin-api key to populate the cache, e.g.: ` +
-          `infisical run --env=dev -- pnpm --filter @createrington/server util:render-og-card`,
-      );
-    }
-    // Defaults to the public skin-api so the script runs without env setup;
-    // dev/infisical runs override via SKIN_API_URL.
-    const baseUrl = process.env.SKIN_API_URL ?? "https://api.createrington.com";
-    const query = new URLSearchParams({
-      pose: m.pose,
-      width: "300",
-      height: "450",
-      outline: "true",
-    });
-    const res = await fetch(`${baseUrl}/v1/render?${query}`, {
-      method: "POST",
-      headers: {
-        authorization: `Bearer ${apiKey}`,
-        "content-type": "application/json",
-        "user-agent": "createrington-app/og-card",
-      },
-      body: JSON.stringify({ uuid: m.uuid }),
-    });
-    if (!res.ok) {
-      const detail = await res.text().catch(() => "");
-      throw new Error(
-        `skin-api render failed for ${m.username} (${res.status}): ${detail}`,
-      );
-    }
-    const png = Buffer.from(await res.arrayBuffer());
-    await mkdir(TEAM_DIR, { recursive: true });
-    await writeFile(file, png);
-  }
-  return loadImage(await readFile(file));
-}
-
-function roundRectPath(
-  ctx: SKRSContext2D,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  r: number,
-): void {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.arcTo(x + w, y, x + w, y + h, r);
-  ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r);
-  ctx.arcTo(x, y, x + w, y, r);
-  ctx.closePath();
-}
-
-// object-fit: cover, anchored to the top-left of the source (so the sidebar
-// and primary content read), clipped by the current path.
-function drawImageCoverTopLeft(
-  ctx: SKRSContext2D,
-  img: Image,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-): void {
-  const scale = Math.max(w / img.width, h / img.height);
-  ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+function getTeamFigure(m: TeamMember): Promise<Image> {
+  return getPoseFigure({
+    uuid: m.uuid,
+    pose: m.pose,
+    file: join(TEAM_DIR, `${m.username}.png`),
+    width: 300,
+    height: 450,
+  });
 }
 
 function paintBackground(ctx: SKRSContext2D): void {
@@ -308,7 +231,7 @@ function drawBrowserFrame(
   ctx.save();
   roundRectPath(ctx, x, y + chromeH, w, bodyH, 0);
   ctx.clip();
-  drawImageCoverTopLeft(ctx, img, x, y + chromeH, w, bodyH);
+  drawImageCover(ctx, img, x, y + chromeH, w, bodyH, "top-left");
   ctx.restore();
 
   ctx.restore(); // body clip
@@ -331,12 +254,7 @@ async function paintFrames(ctx: SKRSContext2D): Promise<void> {
 }
 
 async function paintText(ctx: SKRSContext2D): Promise<void> {
-  const wood = await loadImage(
-    join(ASSETS, "logo", "cogs-and-steam-logo.webp"),
-  );
-  const woodW = 388;
-  const woodH = (woodW * wood.height) / wood.width;
-  ctx.drawImage(wood, TEXT_X, 50, woodW, woodH);
+  await paintWordmark(ctx);
 
   const maxTextWidth = 452;
   ctx.textBaseline = "alphabetic";
@@ -459,25 +377,13 @@ async function paintTeam(ctx: SKRSContext2D): Promise<void> {
 async function main(): Promise<void> {
   const outPath = process.argv[2] ?? join(ASSETS, "og", "og-card.png");
 
-  GlobalFonts.registerFromPath(join(FONTS, "outfit-latin-400.woff2"), "Outfit");
-  GlobalFonts.registerFromPath(join(FONTS, "outfit-latin-500.woff2"), "Outfit");
-  GlobalFonts.registerFromPath(join(FONTS, "outfit-latin-600.woff2"), "Outfit");
-  GlobalFonts.registerFromPath(join(FONTS, "outfit-latin-700.woff2"), "Outfit");
-
-  const canvas = createCanvas(W * SUPERSAMPLE, H * SUPERSAMPLE);
-  const ctx = canvas.getContext("2d");
-  ctx.scale(SUPERSAMPLE, SUPERSAMPLE);
-
-  paintBackground(ctx);
-  await paintFrames(ctx);
-  await paintText(ctx);
-  await paintTeam(ctx);
-
-  const out = createCanvas(W, H);
-  out.getContext("2d").drawImage(canvas, 0, 0, W, H);
-  await mkdir(dirname(outPath), { recursive: true });
-  await writeFile(outPath, out.toBuffer("image/png"));
-  console.log(`wrote ${outPath} (${W}x${H})`);
+  registerBrandFonts();
+  await writeCard(outPath, async (ctx) => {
+    paintBackground(ctx);
+    await paintFrames(ctx);
+    await paintText(ctx);
+    await paintTeam(ctx);
+  });
 }
 
 void main().catch((err) => {

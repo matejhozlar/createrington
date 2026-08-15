@@ -60,7 +60,7 @@ export function IssuesTab({
   error: string | null;
   onRetry: () => void;
   onView: (workshopModId: number) => void;
-  onAddProject: (projectId: number) => void;
+  onAddProject: (projectId: number, name: string) => void;
   busyProjectId: number | null;
 }) {
   const columns: DataTableColumn<AttentionItem>[] = [
@@ -111,7 +111,7 @@ export function IssuesTab({
       actions.push({
         label: "Add to Workshop",
         icon: PackagePlus,
-        onClick: () => onAddProject(item.curseforgeProjectId),
+        onClick: () => onAddProject(item.curseforgeProjectId, item.name),
       });
     }
     return actions;

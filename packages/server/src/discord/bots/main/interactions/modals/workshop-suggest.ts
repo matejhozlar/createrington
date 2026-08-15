@@ -21,6 +21,8 @@ import {
 } from "@/services/curseforge/mod-url";
 import { featureFlagService, FeatureFlags } from "@/services/feature-flag";
 import { workshopService } from "@/services/workshop";
+import { banNotice, findSuggestBan } from "@/services/workshop/bans";
+import { discordTimestamp } from "@/utils/format";
 
 const MODAL_ID_PREFIX = "workshop-suggest";
 const PICKER_SUFFIX = "pick";
@@ -177,6 +179,16 @@ export async function execute(
       interaction,
       "Suggestion Failed",
       "This workshop is not open for suggestions.",
+    );
+    return;
+  }
+
+  const ban = await findSuggestBan(interaction.user.id, workshop.id);
+  if (ban) {
+    await replyError(
+      interaction,
+      "Suggestions Blocked",
+      banNotice(ban, (expiresAt) => discordTimestamp(expiresAt, "D")),
     );
     return;
   }

@@ -30,6 +30,7 @@ import {
 import { ingestProjects } from "@/services/curseforge/ingest";
 import { modpackService } from "@/services/modpack";
 import type { ModpackModListItem } from "@/services/modpack";
+import { assertCanSuggest } from "./bans";
 import {
   announceRemoval,
   announceReview,
@@ -452,6 +453,7 @@ export class WorkshopService {
     entry: WorkshopModEntry,
   ): Promise<WorkshopModListItem> {
     const workshop = await this.getOpenWorkshop(workshopId);
+    await assertCanSuggest(discordId, workshop.id);
     await this.assertSuggestionSlot(Q, workshop, discordId);
 
     const [prepared] = await this.prepareEntries(workshop, [entry]);
@@ -766,6 +768,20 @@ export class WorkshopService {
     }
 
     return Q.workshop.updateAndReturn({ id: workshopId }, patch);
+  }
+
+  /**
+   * Delete an archived workshop with its suggestions, votes, polls, and event
+   * history. Modpack member rows survive with their suggestion link detached,
+   * so per-mod credit in the pack is lost. Discord threads are left alone.
+   */
+  async deleteWorkshop(workshopId: number): Promise<Workshop> {
+    const workshop = await this.getWorkshop(workshopId);
+    if (workshop.status !== "archived") {
+      throw new BadRequestError("Only archived workshops can be deleted");
+    }
+    await Q.workshop.delete({ id: workshop.id });
+    return workshop;
   }
 
   /**

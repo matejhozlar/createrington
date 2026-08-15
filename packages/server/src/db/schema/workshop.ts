@@ -7,9 +7,11 @@ import {
   boolean,
   index,
   uniqueIndex,
+  check,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import {
+  banTypeEnum,
   workshopStatusEnum,
   workshopModStatusEnum,
   workshopModEventTypeEnum,
@@ -283,5 +285,49 @@ export const workshopPollBallot = pgTable(
     uniqueIndex("idx_workshop_poll_ballot_bundle_unique")
       .on(table.pollId, table.discordId)
       .where(sql`${table.pollModId} IS NULL`),
+  ],
+);
+
+// --- workshop_ban ---
+// workshopId null = every workshop. Expiry is read-time only, so no unique
+// index can cover active bans: an elapsed temporary ban keeps unbanned = false
+// and would block re-banning forever.
+
+export const workshopBan = pgTable(
+  "workshop_ban",
+  {
+    id: serial("id").primaryKey(),
+    discordId: text("discord_id").notNull(),
+    workshopId: integer("workshop_id").references(() => workshop.id, {
+      onDelete: "cascade",
+    }),
+    banType: banTypeEnum("ban_type").notNull(),
+    reason: text("reason").notNull(),
+    bannedByDiscordId: text("banned_by_discord_id").notNull(),
+    bannedByUsername: text("banned_by_username").notNull(),
+    bannedAt: timestamp("banned_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    unbanned: boolean("unbanned").notNull().default(false),
+    unbannedByDiscordId: text("unbanned_by_discord_id"),
+    unbannedByUsername: text("unbanned_by_username"),
+    unbannedAt: timestamp("unbanned_at", { withTimezone: true }),
+    unbanReason: text("unban_reason"),
+  },
+  (table) => [
+    check(
+      "chk_workshop_ban_expiry",
+      sql`(${table.banType} = 'permanent' AND ${table.expiresAt} IS NULL) OR (${table.banType} = 'temporary' AND ${table.expiresAt} IS NOT NULL AND ${table.expiresAt} > ${table.bannedAt})`,
+    ),
+    check(
+      "chk_workshop_ban_unban_fields",
+      sql`(${table.unbanned} = false AND ${table.unbannedByDiscordId} IS NULL AND ${table.unbannedByUsername} IS NULL AND ${table.unbannedAt} IS NULL AND ${table.unbanReason} IS NULL) OR (${table.unbanned} = true AND ${table.unbannedByDiscordId} IS NOT NULL AND ${table.unbannedByUsername} IS NOT NULL AND ${table.unbannedAt} IS NOT NULL)`,
+    ),
+    index("idx_workshop_ban_active")
+      .on(table.discordId, table.workshopId)
+      .where(sql`unbanned = false`),
+    index("idx_workshop_ban_workshop").on(table.workshopId),
+    index("idx_workshop_ban_banned_at").on(table.bannedAt.desc()),
   ],
 );
