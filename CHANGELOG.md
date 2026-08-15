@@ -1,3 +1,26 @@
+## v1.32.0 (2026-08-15)
+
+### @createrington/server (1.31.0 → 1.32.0)
+- [add] Add workshop suggestion bans with `workshop_ban` table, per-workshop or global scope, temporary/permanent types, and CHECK constraints enforcing field consistency; ban service with issue, lift, and active-ban lookup; admin tRPC endpoints for managing bans per user; user-facing `mySuggestBan` query for pre-flight checks
+- [add] Enforce suggestion bans in the Discord `/suggest` command, rejecting banned users with a human-readable notice and filtering banned workshops out of the multi-workshop picker
+- [add] Add admin endpoints for deleting archived workshops (with all suggestions, votes, polls, and history) and unused modpacks (with members and releases), guarded by foreign-key and status checks
+- [add] Add structure packs and workshop OG card render scripts using `@napi-rs/canvas` to generate 1200x630 social sharing cards with player figures and portal imagery; shared render plumbing extracted into `og-shared.ts`
+- [add] Generate per-route og-html variants at build time: `build-dist.js` reads card images under `assets/og/`, validates dimensions, and emits route-specific `index.html` copies with swapped `og:*` and `twitter:*` meta tags
+- [refactor] Extract shared OG card render plumbing into `og-shared.ts` for reuse across card scripts
+- [chore] Remove Starlight Skin API references from the README, replaced with the in-house Createrington skin API
+
+### @createrington/client (0.2.42 → 0.2.43)
+- [add] Add confirmation modals to workshop admin review actions: stage transitions (approve, start testing, send back, rule out) now require explicit confirmation with context-specific copy explaining each action's effect, including a "confirm mod name" checkbox for destructive actions
+- [add] Add modpack management card to the workshop admin panel listing all modpacks with mod counts, attached workshops, and publish state; supports creating, editing settings, and deleting unused modpacks with confirmation dialogs
+- [add] Add workshop bans section to the player detail admin tab displaying active and historical suggestion bans with issue/lift modals scoped per-workshop or globally
+- [add] Add archived workshop deletion button on the workshop list (restricted to archived status) with a confirmation dialog warning about permanent data loss
+- [add] Surface active suggestion bans on the workshop suggest page, showing scope, duration, and reason instead of the mod search form
+- [add] Add OG card images for the structure packs and workshop pages
+- [refactor] Split workshop admin tabs into two levels with top-level groups (Mods, Dependencies, Issues, Releases) and mod stages as a second row; stage counts shown as pills; restored mouse-wheel horizontal scrolling with proper line-height delta handling
+- [fix] Drop workshop name from suggestion history rows to prevent text overflow on narrow viewports
+- [fix] Show only the version number in pack publish state labels for cleaner presentation
+- [fix] Improve stage pill label and count badge contrast for better readability
+
 ## v1.31.0 (2026-08-15)
 
 ### @createrington/server (1.30.3 → 1.31.0)
