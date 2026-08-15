@@ -20,9 +20,7 @@ export function workshopFormError(fields: {
   ) {
     return "Base modpack ID must be a positive number";
   }
-  const publishedPackError = modpackFormError({
-    publishedPackId: fields.publishedPackId ?? "",
-  });
+  const publishedPackError = modpackFormError(fields.publishedPackId ?? "");
   if (publishedPackError) return publishedPackError;
   const forumChannelId = fields.forumChannelId.trim();
   if (forumChannelId && !/^\d{17,20}$/.test(forumChannelId)) {
@@ -31,14 +29,9 @@ export function workshopFormError(fields: {
   return null;
 }
 
-export function modpackFormError(fields: {
-  publishedPackId: string;
-}): string | null {
-  const publishedPackId = fields.publishedPackId.trim();
-  if (
-    publishedPackId &&
-    (!Number.isInteger(Number(publishedPackId)) || Number(publishedPackId) <= 0)
-  ) {
+export function modpackFormError(publishedPackId: string): string | null {
+  const trimmed = publishedPackId.trim();
+  if (trimmed && (!Number.isInteger(Number(trimmed)) || Number(trimmed) <= 0)) {
     return "Published modpack project ID must be a positive number";
   }
   return null;

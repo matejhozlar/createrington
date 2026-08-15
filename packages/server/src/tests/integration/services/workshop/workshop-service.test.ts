@@ -1092,4 +1092,31 @@ describe("WorkshopService.deleteWorkshop", () => {
     expect(survivor.workshopModId).toBeNull();
     expect(survivor.origin).toBe("suggestion");
   });
+
+  it("takes polls, poll mods, and ballots with the workshop", async () => {
+    const workshop = await seedWorkshop(ctx, { status: "archived" });
+    const mod = await seedMod(ctx, workshop);
+    const poll = await Q.workshop.poll.createAndReturn({
+      workshopId: workshop.id,
+      granularity: "per_mod",
+      endsAt: new Date(Date.now() + 60_000),
+      createdBy: ADMIN,
+    });
+    const pollMod = await Q.workshop.poll.mod.createAndReturn({
+      pollId: poll.id,
+      workshopModId: mod.id,
+    });
+    const ballot = await Q.workshop.poll.ballot.createAndReturn({
+      pollId: poll.id,
+      pollModId: pollMod.id,
+      discordId: USER_A,
+      choice: true,
+    });
+
+    await workshopService.deleteWorkshop(workshop.id);
+
+    expect(await Q.workshop.poll.find({ id: poll.id })).toBeNull();
+    expect(await Q.workshop.poll.mod.find({ id: pollMod.id })).toBeNull();
+    expect(await Q.workshop.poll.ballot.find({ id: ballot.id })).toBeNull();
+  });
 });

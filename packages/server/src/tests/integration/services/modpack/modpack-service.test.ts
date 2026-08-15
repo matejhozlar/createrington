@@ -54,7 +54,11 @@ vi.mock("@/services/curseforge/ingest", () => ({
 }));
 
 import pool, { Q } from "@/db";
-import { BadRequestError, ConflictError } from "@/app/middleware/error-handler";
+import {
+  BadRequestError,
+  ConflictError,
+  NotFoundError,
+} from "@/app/middleware/error-handler";
 import { modpackService } from "@/services/modpack";
 import { workshopService } from "@/services/workshop";
 import {
@@ -1173,6 +1177,12 @@ describe("ModpackService.recordRelease durability", () => {
 });
 
 describe("ModpackService.deleteModpack", () => {
+  it("throws NotFoundError for a modpack that does not exist", async () => {
+    await expect(modpackService.deleteModpack(99_999_999)).rejects.toThrow(
+      NotFoundError,
+    );
+  });
+
   it("refuses while any workshop uses it, archived included", async () => {
     const workshop = await seedWorkshop(ctx, { status: "archived" });
 

@@ -292,9 +292,12 @@ export class ModpackService {
 
   /**
    * Delete a modpack together with its members and release history. Refused
-   * while any workshop, archived ones included, still points at it.
+   * while any workshop, archived ones included, still points at it. Returns
+   * counts of what was destroyed for the audit trail.
    */
-  async deleteModpack(modpackId: number): Promise<Modpack> {
+  async deleteModpack(
+    modpackId: number,
+  ): Promise<{ modpack: Modpack; modCount: number; releaseCount: number }> {
     const modpack = await this.getModpack(modpackId);
     const workshops = await Q.workshop.findAll(
       { modpackId },
@@ -306,8 +309,21 @@ export class ModpackService {
         `${workshops.length} workshop(s) still use this modpack: ${names}. Delete those workshops first.`,
       );
     }
-    await Q.modpack.delete({ id: modpack.id });
-    return modpack;
+    const [modCount, releaseCount] = await Promise.all([
+      Q.modpack.mod.count({ modpackId }),
+      Q.modpack.release.count({ modpackId }),
+    ]);
+    try {
+      await Q.modpack.delete({ id: modpack.id });
+    } catch (error) {
+      if (error instanceof ConstraintViolationError) {
+        throw new ConflictError(
+          "A workshop was attached to this modpack while it was being deleted",
+        );
+      }
+      throw error;
+    }
+    return { modpack, modCount, releaseCount };
   }
 
   /** Members of a modpack with project summaries, credit, and live state. */

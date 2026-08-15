@@ -38,7 +38,7 @@ export function CreateModpackDialog({
   });
 
   const handleCreate = () => {
-    const validationError = modpackFormError({ publishedPackId });
+    const validationError = modpackFormError(publishedPackId);
     if (validationError) {
       toast.error(validationError);
       return;

@@ -80,12 +80,13 @@ export const adminModpacksRouter = router({
     .input(z.object({ modpackId: id() }))
     .mutation(async ({ ctx, input }) => {
       try {
-        const modpack = await modpackService.deleteModpack(input.modpackId);
+        const { modpack, modCount, releaseCount } =
+          await modpackService.deleteModpack(input.modpackId);
         await Q.admin.log.action.logAction({
           ...auditActor(ctx),
           actionType: "modpack_delete",
-          description: `Deleted modpack "${modpack.name}"`,
-          metadata: { modpackId: modpack.id },
+          description: `Deleted modpack "${modpack.name}" with ${modCount} member(s) and ${releaseCount} release(s)`,
+          metadata: { modpackId: modpack.id, modCount, releaseCount },
         });
         return { deleted: true };
       } catch (error) {

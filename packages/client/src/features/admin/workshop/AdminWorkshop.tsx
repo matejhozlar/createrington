@@ -21,6 +21,7 @@ import { DataTable, type DataTableColumn } from "@/components/data-table";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Loading } from "@/components/loading-spinner";
+import { useStickyValue } from "@/hooks/use-sticky-value";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { WORKSHOP_STATUS_STYLES, loaderName } from "@/features/workshop/format";
 import { CreateWorkshopDialog } from "./components/CreateWorkshopDialog";
@@ -56,6 +57,7 @@ export function AdminWorkshop() {
   const [deleteTarget, setDeleteTarget] = useState<AdminWorkshopRow | null>(
     null,
   );
+  const displayDeleteTarget = useStickyValue(deleteTarget);
 
   const deleteMutation = trpc.admin.workshops.delete.useMutation({
     onSuccess: () => {
@@ -261,17 +263,19 @@ export function AdminWorkshop() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Delete &quot;{deleteTarget?.name}&quot;?
+              Delete &quot;{displayDeleteTarget?.name}&quot;?
             </AlertDialogTitle>
             <AlertDialogDescription>
               This permanently removes the workshop with its suggestions, votes,
-              polls, and history. Mods already in the pack stay, but lose the
-              link to who suggested them. This cannot be undone.
+              polls, and history. Mods it placed in the pack stay, but lose
+              their suggestion credit and can no longer be reviewed. Discord
+              discussion threads are left in place. This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
+              variant="destructive"
               disabled={deleteMutation.isPending}
               onClick={() => {
                 if (deleteTarget) {

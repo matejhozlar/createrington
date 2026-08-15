@@ -45,13 +45,15 @@ export function ModpackSettingsDialog({
       utils.admin.modpacks.list.invalidate();
       utils.admin.workshops.listPackMods.invalidate();
       utils.admin.workshops.getAttention.invalidate();
+      utils.user.workshops.list.invalidate();
+      utils.user.workshops.get.invalidate();
       onOpenChange(false);
     },
     onError: (err) => toast.error(err.message),
   });
 
   const handleSave = () => {
-    const validationError = modpackFormError({ publishedPackId });
+    const validationError = modpackFormError(publishedPackId);
     if (validationError) {
       toast.error(validationError);
       return;

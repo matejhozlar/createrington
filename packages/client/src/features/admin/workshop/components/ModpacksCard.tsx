@@ -24,6 +24,7 @@ import {
 import { CellDate, CellText } from "@/components/cell-text";
 import { DataTable, type DataTableColumn } from "@/components/data-table";
 import { Loading } from "@/components/loading-spinner";
+import { useStickyValue } from "@/hooks/use-sticky-value";
 import { CreateModpackDialog } from "./CreateModpackDialog";
 import { ModpackSettingsDialog } from "./ModpackSettingsDialog";
 
@@ -124,6 +125,7 @@ export function ModpacksCard() {
   const [deleteTarget, setDeleteTarget] = useState<AdminModpackRow | null>(
     null,
   );
+  const displayDeleteTarget = useStickyValue(deleteTarget);
 
   const deleteMutation = trpc.admin.modpacks.delete.useMutation({
     onSuccess: () => {
@@ -206,7 +208,6 @@ export function ModpacksCard() {
                   onClick: () => setDeleteTarget(modpack),
                 },
               ]}
-              actionSlots={2}
             />
           </CardContent>
         )}
@@ -238,7 +239,7 @@ export function ModpacksCard() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Delete &quot;{deleteTarget?.name}&quot;?
+              Delete &quot;{displayDeleteTarget?.name}&quot;?
             </AlertDialogTitle>
             <AlertDialogDescription>
               This permanently removes the modpack, its member list, and its
@@ -248,6 +249,7 @@ export function ModpacksCard() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
+              variant="destructive"
               disabled={deleteMutation.isPending}
               onClick={() => {
                 if (deleteTarget) {
