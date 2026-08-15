@@ -1,11 +1,14 @@
 // Headless tool: composites the /structure-packs social card
 // (og-structure-packs.png), a canvas rebuild of the page hero: the Parallel
 // Worlds portal (obsidian frame + animated sprite frame) over the blurred
-// warehouse backdrop, the hero headline, and a "leading the vote" peek card.
+// warehouse backdrop, the hero headline, and team figures gathered at the
+// portal. Figures are cached under assets/packs/ (committed); to refresh,
+// delete the cache and re-run with SKIN_API_KEY in the environment.
 //
 // Run: pnpm --filter @createrington/server util:render-og-structure-packs [outPath]
 
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import {
   createCanvas,
@@ -13,7 +16,7 @@ import {
   type Canvas,
   type SKRSContext2D,
 } from "@napi-rs/canvas";
-import { fitFontSize } from "@/utils/canvas";
+import { computeBBox, fitFontSize } from "@/utils/canvas";
 import {
   W,
   H,
@@ -26,36 +29,65 @@ import {
   registerBrandFonts,
   roundRectPath,
   drawImageCover,
+  paintWordmark,
+  getPoseFigure,
   writeCard,
 } from "./og-shared";
 
+const here = dirname(fileURLToPath(import.meta.url));
+const PACKS_DIR = join(here, "assets", "packs");
+
 // Portal palette from the packs hero CSS (OkLCH converted to sRGB).
 const blue = (a: number) => `rgba(29,132,245,${a})`;
-const BAR_BLUE = "#5188cd";
 const INTERIOR_STROKE = "rgba(213,223,235,0.3)";
 const DUST = "rgb(120,170,255)";
 
-const BLOCK = 72;
+const BLOCK = 84;
 const PORTAL_COLS = 4;
 const PORTAL_ROWS = 5;
-const PORTAL_X = 736;
-const PORTAL_Y = 56;
+const PORTAL_X = 727;
+const PORTAL_Y = 66;
 const PORTAL_FRAME = 0;
 
-const PEEK_W = 360;
-const PEEK_H = 168;
-const PEEK_X = PORTAL_X + (PORTAL_COLS * BLOCK - PEEK_W) / 2;
-const PEEK_Y = PORTAL_Y + PORTAL_ROWS * BLOCK + 18;
-
-interface PoolRow {
-  name: string;
-  pct: number;
+interface FigureSpec {
+  username: string;
+  uuid: string;
+  pose: string;
+  height: number;
+  centerX: number;
+  groundY: number;
+  mirror?: boolean;
 }
 
-const POOL: readonly PoolRow[] = [
-  { name: "qraftyfied", pct: 17 },
-  { name: "YUNG's", pct: 15 },
-  { name: "Vanilla +", pct: 13 },
+// Gathered at the portal: Agent772 (the Parallel Worlds author) presents it,
+// saunhardy anchors the middle, Cailin05 cheers the next rotation on. The
+// point pose is mirrored so the raised arm points at the portal.
+const FIGURES: readonly FigureSpec[] = [
+  {
+    username: "Agent772",
+    uuid: "3e0db446-147a-4692-87fd-c3facc4341db",
+    pose: "point",
+    height: 212,
+    centerX: 747,
+    groundY: 604,
+    mirror: true,
+  },
+  {
+    username: "Cailin05",
+    uuid: "aee71815-6420-444c-a245-9047c41f4a39",
+    pose: "cheer",
+    height: 204,
+    centerX: 1040,
+    groundY: 606,
+  },
+  {
+    username: "saunhardy",
+    uuid: "091b900c-4174-478c-900c-a0fe5a31a329",
+    pose: "confidence",
+    height: 218,
+    centerX: 892,
+    groundY: 618,
+  },
 ];
 
 // 16x16 obsidian tile transcribed from the packs hero tile SVG; every speck
@@ -329,133 +361,73 @@ async function paintPortal(ctx: SKRSContext2D): Promise<void> {
   ctx.strokeRect(ix + 0.5, iy + 0.5, iw - 1, ih - 1);
 }
 
-function paintTrendingUp(
-  ctx: SKRSContext2D,
-  x: number,
-  y: number,
-  s: number,
-  color: string,
-): void {
-  const px = (vx: number) => x + (vx / 24) * s;
-  const py = (vy: number) => y + (vy / 24) * s;
-  ctx.save();
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 1.6;
-  ctx.lineJoin = "round";
-  ctx.lineCap = "round";
-  ctx.beginPath();
-  ctx.moveTo(px(2), py(17));
-  ctx.lineTo(px(8.5), py(10.5));
-  ctx.lineTo(px(13.5), py(15.5));
-  ctx.lineTo(px(22), py(7));
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(px(16), py(7));
-  ctx.lineTo(px(22), py(7));
-  ctx.lineTo(px(22), py(13));
-  ctx.stroke();
-  ctx.restore();
-}
+async function paintFigures(ctx: SKRSContext2D): Promise<void> {
+  paintEllipseGradient(ctx, 895, 606, 310, 48, [
+    [0, blue(0.26)],
+    [0.6, blue(0.09)],
+    [1, blue(0)],
+  ]);
 
-function paintPeekCard(ctx: SKRSContext2D): void {
-  const x = PEEK_X;
-  const y = PEEK_Y;
-  const w = PEEK_W;
-  const h = PEEK_H;
-  const pad = 18;
+  for (const spec of FIGURES) {
+    const img = await getPoseFigure({
+      uuid: spec.uuid,
+      pose: spec.pose,
+      file: join(PACKS_DIR, `${spec.username}-${spec.pose}.png`),
+      width: 400,
+      height: 600,
+    });
+    const bbox = computeBBox(img);
+    if (!bbox) throw new Error(`Empty figure render for ${spec.username}`);
 
-  roundRectPath(ctx, x, y, w, h, 14);
-  ctx.fillStyle = "rgba(16,16,21,0.78)";
-  ctx.fill();
+    const scale = spec.height / bbox.height;
+    const w = bbox.width * scale;
+    const x = spec.centerX - w / 2;
+    const y = spec.groundY - spec.height;
 
-  const tint = ctx.createLinearGradient(x, y, x + w, y + h);
-  tint.addColorStop(0, "rgba(255,185,0,0.07)");
-  tint.addColorStop(1, "rgba(255,185,0,0)");
-  roundRectPath(ctx, x, y, w, h, 14);
-  ctx.fillStyle = tint;
-  ctx.fill();
+    paintEllipseGradient(ctx, spec.centerX, spec.groundY - 3, w * 0.62, 11, [
+      [0, "rgba(0,0,0,0.5)"],
+      [1, "rgba(0,0,0,0)"],
+    ]);
 
-  ctx.strokeStyle = "rgba(255,185,0,0.32)";
-  ctx.lineWidth = 1;
-  roundRectPath(ctx, x + 0.5, y + 0.5, w - 1, h - 1, 14);
-  ctx.stroke();
-
-  ctx.textBaseline = "alphabetic";
-  ctx.letterSpacing = "2.2px";
-  ctx.font = "600 11px Outfit";
-  ctx.fillStyle = "rgba(255,185,0,0.9)";
-  ctx.fillText("LEADING THE VOTE", x + pad, y + 27);
-  ctx.letterSpacing = "0px";
-
-  paintTrendingUp(ctx, x + w - pad - 15, y + 14, 15, AMBER);
-
-  const leader = POOL[0];
-  ctx.font = "700 21px Outfit";
-  ctx.fillStyle = FOREGROUND;
-  ctx.fillText(leader.name, x + pad, y + 58);
-  ctx.textAlign = "right";
-  ctx.fillStyle = AMBER;
-  ctx.fillText(`${leader.pct}%`, x + w - pad, y + 58);
-  ctx.textAlign = "left";
-
-  const trackX = x + pad + 102;
-  const trackW = w - pad * 2 - 102 - 34;
-  const rows = [y + 82, y + 102, y + 122];
-  POOL.forEach((row, i) => {
-    const rowY = rows[i];
-    ctx.font = "400 11.5px Outfit";
-    ctx.fillStyle = MUTED;
-    ctx.fillText(row.name, x + pad, rowY + 4, 96);
-
-    roundRectPath(ctx, trackX, rowY - 2.5, trackW, 5, 2.5);
-    ctx.fillStyle = "rgba(255,255,255,0.05)";
-    ctx.fill();
-
-    const fillW = Math.max(5, (trackW * row.pct) / 100);
     ctx.save();
-    ctx.shadowColor = i === 0 ? "rgba(255,185,0,0.7)" : blue(0.5);
-    ctx.shadowBlur = i === 0 ? 8 : 6;
-    roundRectPath(ctx, trackX, rowY - 2.5, fillW, 5, 2.5);
-    ctx.fillStyle = i === 0 ? AMBER : BAR_BLUE;
-    ctx.fill();
+    if (spec.mirror) {
+      ctx.translate(spec.centerX * 2, 0);
+      ctx.scale(-1, 1);
+    }
+
+    ctx.save();
+    ctx.shadowColor = blue(0.4);
+    ctx.shadowBlur = 12;
+    ctx.drawImage(
+      img,
+      bbox.minX,
+      bbox.minY,
+      bbox.width,
+      bbox.height,
+      x,
+      y,
+      w,
+      spec.height,
+    );
     ctx.restore();
 
-    ctx.textAlign = "right";
-    ctx.fillStyle = MUTED;
-    ctx.fillText(`${row.pct}%`, x + w - pad, rowY + 4);
-    ctx.textAlign = "left";
-  });
-
-  ctx.strokeStyle = "rgba(255,255,255,0.1)";
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(x + pad, y + h - 32.5);
-  ctx.lineTo(x + w - pad, y + h - 32.5);
-  ctx.stroke();
-
-  ctx.letterSpacing = "2px";
-  ctx.font = "500 9.5px Outfit";
-  ctx.textAlign = "center";
-  const credit = "PARALLEL WORLDS BY ";
-  const author = "AGENT772";
-  const creditW = ctx.measureText(credit).width;
-  const authorW = ctx.measureText(author).width;
-  const creditX = x + w / 2 - (creditW + authorW) / 2;
-  ctx.textAlign = "left";
-  ctx.fillStyle = MUTED;
-  ctx.fillText(credit, creditX, y + h - 13);
-  ctx.fillStyle = "rgba(255,185,0,0.9)";
-  ctx.fillText(author, creditX + creditW, y + h - 13);
-  ctx.letterSpacing = "0px";
+    ctx.drawImage(
+      img,
+      bbox.minX,
+      bbox.minY,
+      bbox.width,
+      bbox.height,
+      x,
+      y,
+      w,
+      spec.height,
+    );
+    ctx.restore();
+  }
 }
 
 async function paintCopy(ctx: SKRSContext2D): Promise<void> {
-  const wood = await loadImage(
-    join(ASSETS, "logo", "cogs-and-steam-logo.webp"),
-  );
-  const woodW = 300;
-  const woodH = (woodW * wood.height) / wood.width;
-  ctx.drawImage(wood, TEXT_X, 52, woodW, woodH);
+  await paintWordmark(ctx);
 
   const maxTextWidth = 520;
   ctx.textBaseline = "alphabetic";
@@ -528,7 +500,7 @@ async function main(): Promise<void> {
     await paintBackdrop(ctx);
     paintDust(ctx);
     await paintPortal(ctx);
-    paintPeekCard(ctx);
+    await paintFigures(ctx);
     await paintCopy(ctx);
     paintGrain(ctx);
   });

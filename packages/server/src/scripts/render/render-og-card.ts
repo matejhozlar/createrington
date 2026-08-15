@@ -11,8 +11,6 @@
 //
 // Run: pnpm --filter @createrington/server util:render-og-card [outPath]
 
-import { existsSync } from "node:fs";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -32,6 +30,8 @@ import {
   registerBrandFonts,
   roundRectPath,
   drawImageCover,
+  paintWordmark,
+  getPoseFigure,
   writeCard,
 } from "./og-shared";
 
@@ -124,51 +124,14 @@ const TEAM: readonly TeamMember[] = [
   },
 ];
 
-// Resolve a team figure PNG: prefer the committed cache, otherwise render it
-// via the skin-api and cache it so later card renders stay offline. Calls the
-// HTTP endpoint directly rather than via the SDK because the SDK does not
-// forward the `outline` option, which gives the figures the white edge that
-// reads against the dark card.
-async function getTeamFigure(m: TeamMember): Promise<Image> {
-  const file = join(TEAM_DIR, `${m.username}.png`);
-  if (!existsSync(file)) {
-    const apiKey = process.env.SKIN_API_KEY;
-    if (!apiKey) {
-      throw new Error(
-        `Missing cached team figure (${file}) and SKIN_API_KEY is not set. ` +
-          `Run once with the skin-api key to populate the cache, e.g.: ` +
-          `infisical run --env=dev -- pnpm --filter @createrington/server util:render-og-card`,
-      );
-    }
-    // Defaults to the public skin-api so the script runs without env setup;
-    // dev/infisical runs override via SKIN_API_URL.
-    const baseUrl = process.env.SKIN_API_URL ?? "https://api.createrington.com";
-    const query = new URLSearchParams({
-      pose: m.pose,
-      width: "300",
-      height: "450",
-      outline: "true",
-    });
-    const res = await fetch(`${baseUrl}/v1/render?${query}`, {
-      method: "POST",
-      headers: {
-        authorization: `Bearer ${apiKey}`,
-        "content-type": "application/json",
-        "user-agent": "createrington-app/og-card",
-      },
-      body: JSON.stringify({ uuid: m.uuid }),
-    });
-    if (!res.ok) {
-      const detail = await res.text().catch(() => "");
-      throw new Error(
-        `skin-api render failed for ${m.username} (${res.status}): ${detail}`,
-      );
-    }
-    const png = Buffer.from(await res.arrayBuffer());
-    await mkdir(TEAM_DIR, { recursive: true });
-    await writeFile(file, png);
-  }
-  return loadImage(await readFile(file));
+function getTeamFigure(m: TeamMember): Promise<Image> {
+  return getPoseFigure({
+    uuid: m.uuid,
+    pose: m.pose,
+    file: join(TEAM_DIR, `${m.username}.png`),
+    width: 300,
+    height: 450,
+  });
 }
 
 function paintBackground(ctx: SKRSContext2D): void {
@@ -291,12 +254,7 @@ async function paintFrames(ctx: SKRSContext2D): Promise<void> {
 }
 
 async function paintText(ctx: SKRSContext2D): Promise<void> {
-  const wood = await loadImage(
-    join(ASSETS, "logo", "cogs-and-steam-logo.webp"),
-  );
-  const woodW = 388;
-  const woodH = (woodW * wood.height) / wood.width;
-  ctx.drawImage(wood, TEXT_X, 50, woodW, woodH);
+  await paintWordmark(ctx);
 
   const maxTextWidth = 452;
   ctx.textBaseline = "alphabetic";

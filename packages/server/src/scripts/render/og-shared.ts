@@ -1,12 +1,14 @@
 // Shared plumbing for the og card renderers: brand tokens, asset paths, font
 // registration, and the supersampled render-to-png pipeline.
 
-import { mkdir, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
   createCanvas,
+  loadImage,
   GlobalFonts,
   type Image,
   type SKRSContext2D,
@@ -77,6 +79,72 @@ export function drawImageCover(
   } else {
     ctx.drawImage(img, x, y, drawW, drawH);
   }
+}
+
+const WORDMARK_W = 330;
+
+export async function paintWordmark(
+  ctx: SKRSContext2D,
+  x = TEXT_X,
+  y = 54,
+): Promise<void> {
+  const img = await loadImage(join(ASSETS, "createrington-wordmark.png"));
+  ctx.drawImage(img, x, y, WORDMARK_W, (WORDMARK_W * img.height) / img.width);
+}
+
+export interface PoseFigureRequest {
+  uuid: string;
+  pose: string;
+  file: string;
+  width: number;
+  height: number;
+}
+
+// Resolve a posed figure PNG: prefer the committed cache, otherwise render it
+// via the skin-api and cache it so later card renders stay offline. Calls the
+// HTTP endpoint directly rather than via the SDK because the SDK does not
+// forward the `outline` option, which gives the figures the white edge that
+// reads against the dark card.
+export async function getPoseFigure(req: PoseFigureRequest): Promise<Image> {
+  if (!existsSync(req.file)) {
+    const apiKey = process.env.SKIN_API_KEY;
+    if (!apiKey) {
+      throw new Error(
+        `Missing cached figure (${req.file}) and SKIN_API_KEY is not set. ` +
+          `Run once with the skin-api key in the environment to populate ` +
+          `the cache, e.g.: infisical run --env=dev -- pnpm --filter ` +
+          `@createrington/server util:render-og-card`,
+      );
+    }
+    // Defaults to the public skin-api so the script runs without env setup;
+    // dev/infisical runs override via SKIN_API_URL.
+    const baseUrl = process.env.SKIN_API_URL ?? "https://api.createrington.com";
+    const query = new URLSearchParams({
+      pose: req.pose,
+      width: String(req.width),
+      height: String(req.height),
+      outline: "true",
+    });
+    const res = await fetch(`${baseUrl}/v1/render?${query}`, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${apiKey}`,
+        "content-type": "application/json",
+        "user-agent": "createrington-app/og-card",
+      },
+      body: JSON.stringify({ uuid: req.uuid }),
+    });
+    if (!res.ok) {
+      const detail = await res.text().catch(() => "");
+      throw new Error(
+        `skin-api render failed for ${req.uuid}/${req.pose} (${res.status}): ${detail}`,
+      );
+    }
+    const png = Buffer.from(await res.arrayBuffer());
+    await mkdir(dirname(req.file), { recursive: true });
+    await writeFile(req.file, png);
+  }
+  return loadImage(await readFile(req.file));
 }
 
 export async function writeCard(
