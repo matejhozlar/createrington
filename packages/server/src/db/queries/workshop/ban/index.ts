@@ -4,7 +4,6 @@ import { WorkshopBanBaseQueries } from "@/generated/db/workshop_ban.queries";
 
 export interface WorkshopBanWithScope extends WorkshopBan {
   workshopName: string | null;
-  workshopSlug: string | null;
 }
 
 /**
@@ -106,23 +105,19 @@ export class WorkshopBanQueries extends WorkshopBanBaseQueries {
       )`;
 
     const query = `
-      SELECT b.*, w.name AS workshop_name, w.slug AS workshop_slug
+      SELECT b.*, w.name AS workshop_name
       FROM ${this.table} b
       LEFT JOIN workshop w ON w.id = b.workshop_id
       WHERE b.discord_id = $1${includeInactive ? "" : activeOnly}
       ORDER BY b.banned_at DESC`;
 
     const result = await this.runQuery<
-      WorkshopBanRow & {
-        workshop_name: string | null;
-        workshop_slug: string | null;
-      }
+      WorkshopBanRow & { workshop_name: string | null }
     >("list workshop bans for user", query, [discordId]);
 
     return result.rows.map((row) => ({
       ...this.mapRowToEntity(row),
       workshopName: row.workshop_name,
-      workshopSlug: row.workshop_slug,
     }));
   }
 }

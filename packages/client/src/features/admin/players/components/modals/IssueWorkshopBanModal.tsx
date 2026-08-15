@@ -84,11 +84,15 @@ export function IssueWorkshopBanModal({
       confirmLabel="Block Suggestions"
       loadingLabel="Blocking..."
       loading={issueBan.isPending}
-      disabled={!reason.trim()}
+      disabled={!reason.trim() || workshops.isLoading || !!workshops.error}
     >
       <Field>
         <FieldLabel htmlFor="workshop-ban-scope">Scope</FieldLabel>
-        <Select value={scope} onValueChange={setScope}>
+        <Select
+          value={scope}
+          onValueChange={setScope}
+          disabled={workshops.isLoading || !!workshops.error}
+        >
           <SelectTrigger id="workshop-ban-scope">
             <SelectValue />
           </SelectTrigger>
@@ -101,6 +105,14 @@ export function IssueWorkshopBanModal({
             ))}
           </SelectContent>
         </Select>
+        {workshops.isLoading && (
+          <p className="text-xs text-muted-foreground">Loading workshops...</p>
+        )}
+        {workshops.error && (
+          <p className="text-xs text-destructive">
+            Could not load workshops: {workshops.error.message}
+          </p>
+        )}
       </Field>
 
       <Field>
