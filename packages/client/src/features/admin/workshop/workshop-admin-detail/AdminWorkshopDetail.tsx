@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useSearchParams } from "react-router";
 import { PackagePlus, Settings2 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
@@ -23,8 +23,11 @@ import type { WorkshopModStatus } from "@createrington/shared/db";
 import type { AdminWorkshopMod } from "./types";
 import {
   STAGE_CONFIG,
+  isModTab,
   isStageTab,
   isWorkshopTabId,
+  type ModTabId,
+  type TopTabId,
   type WorkshopTabId,
 } from "./tabs";
 import { useWorkshopHotkeys } from "./hooks/use-workshop-hotkeys";
@@ -93,6 +96,7 @@ export function AdminWorkshopDetail() {
   const [rejectKey, setRejectKey] = useState(0);
 
   const setActiveTab = (tab: WorkshopTabId) => {
+    if (tab === activeTab) return;
     const next = new URLSearchParams(searchParams);
     if (tab === "review") next.delete("tab");
     else next.set("tab", tab);
@@ -101,7 +105,19 @@ export function AdminWorkshopDetail() {
     setPage(0);
   };
 
-  useWorkshopHotkeys({ activeTab, onTabChange: setActiveTab });
+  const lastModTab = useRef<ModTabId>("review");
+  useEffect(() => {
+    if (isModTab(activeTab)) lastModTab.current = activeTab;
+  }, [activeTab]);
+
+  const openGroup = (group: TopTabId) =>
+    setActiveTab(group === "mods" ? lastModTab.current : group);
+
+  useWorkshopHotkeys({
+    activeTab,
+    onTabChange: setActiveTab,
+    onOpenGroup: openGroup,
+  });
 
   const handleSearchChange = (value: string) => {
     setSearch(value);
@@ -274,6 +290,7 @@ export function AdminWorkshopDetail() {
         <WorkshopTabs
           activeTab={activeTab}
           onTabChange={setActiveTab}
+          onGroupChange={openGroup}
           counts={counts}
         />
 
