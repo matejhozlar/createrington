@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -39,7 +39,7 @@ const MOD_TAB_LABELS: Record<ModTabId, string> = {
 };
 
 const SCROLL_ROW_CLASSES =
-  "overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
+  "overflow-x-auto overflow-y-hidden [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
 
 export function WorkshopTabs({
   activeTab,
@@ -55,6 +55,18 @@ export function WorkshopTabs({
   const group = tabGroup(activeTab);
   const activeModRef = useRef<HTMLButtonElement>(null);
 
+  const wheelScrollRef = useCallback((strip: HTMLDivElement | null) => {
+    if (!strip) return;
+    const onWheel = (event: WheelEvent) => {
+      if (strip.scrollWidth <= strip.clientWidth) return;
+      if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+      event.preventDefault();
+      strip.scrollLeft += event.deltaY;
+    };
+    strip.addEventListener("wheel", onWheel, { passive: false });
+    return () => strip.removeEventListener("wheel", onWheel);
+  }, []);
+
   useEffect(() => {
     activeModRef.current?.scrollIntoView({
       block: "nearest",
@@ -64,7 +76,10 @@ export function WorkshopTabs({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className={cn("border-b border-border", SCROLL_ROW_CLASSES)}>
+      <div
+        ref={wheelScrollRef}
+        className={cn("border-b border-border", SCROLL_ROW_CLASSES)}
+      >
         <div className="flex gap-1">
           {TOP_TABS.map((tab) => {
             const topId = tab.id;
@@ -117,7 +132,7 @@ export function WorkshopTabs({
       </div>
 
       {group === "mods" && (
-        <div className={SCROLL_ROW_CLASSES}>
+        <div ref={wheelScrollRef} className={SCROLL_ROW_CLASSES}>
           <Tabs
             value={activeTab}
             onValueChange={(value) => onTabChange(value as ModTabId)}
