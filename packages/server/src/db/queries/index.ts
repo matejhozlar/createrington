@@ -78,6 +78,7 @@ export { TicketQueries } from "./ticket";
 export { TicketActionQueries } from "./ticket/action";
 export { WaitlistEntryQueries } from "./waitlist/entry";
 export { WorkshopQueries } from "./workshop";
+export { WorkshopBanQueries } from "./workshop/ban";
 export { WorkshopModQueries } from "./workshop/mod";
 export { WorkshopModEventQueries } from "./workshop/mod/event";
 export { WorkshopModUpvoteQueries } from "./workshop/mod/upvote";

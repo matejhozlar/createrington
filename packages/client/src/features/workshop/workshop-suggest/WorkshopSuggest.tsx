@@ -31,6 +31,10 @@ export function WorkshopSuggest() {
     { workshopId: workshopId! },
     { enabled: workshopId !== undefined },
   );
+  const suggestBanQuery = trpc.user.workshops.mySuggestBan.useQuery(
+    { workshopId: workshopId! },
+    { enabled: workshopId !== undefined },
+  );
 
   if (workshopQuery.error?.data?.code === "NOT_FOUND") {
     return <NotFound />;
@@ -60,7 +64,8 @@ export function WorkshopSuggest() {
   if (
     workshopQuery.isLoading ||
     !workshopQuery.data ||
-    suggestionsQuery.isLoading
+    suggestionsQuery.isLoading ||
+    suggestBanQuery.isLoading
   ) {
     return (
       <Loading size="large" className="py-32" text="Loading workshop..." />
@@ -69,6 +74,7 @@ export function WorkshopSuggest() {
 
   const { workshop } = workshopQuery.data;
   const isOpen = workshop.status === "open";
+  const suggestBan = suggestBanQuery.data;
   const suggestions = suggestionsQuery.data ?? [];
   const packMods = packQuery.data?.mods ?? [];
   const packProjectIds = new Set(
@@ -120,20 +126,34 @@ export function WorkshopSuggest() {
         )}
 
         <main className="mt-10 flex flex-col gap-12">
-          {isOpen ? (
-            <ModSearch
-              workshop={workshop}
-              suggestions={suggestions}
-              packProjectIds={packProjectIds}
-              initialQuery={searchParams.get("q") ?? ""}
-            />
-          ) : (
+          {!isOpen ? (
             <section>
               <h2 className="text-2xl font-semibold">Find a mod</h2>
               <p className="mt-1 text-sm text-muted-foreground">
                 This workshop is closed for suggestions.
               </p>
             </section>
+          ) : suggestBan ? (
+            <section>
+              <h2 className="text-2xl font-semibold">Find a mod</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                You are blocked from suggesting mods{" "}
+                {suggestBan.global
+                  ? "across every workshop"
+                  : "in this workshop"}{" "}
+                {suggestBan.expiresAt
+                  ? `until ${new Date(suggestBan.expiresAt).toLocaleDateString()}`
+                  : "permanently"}
+                . Reason: {suggestBan.reason}
+              </p>
+            </section>
+          ) : (
+            <ModSearch
+              workshop={workshop}
+              suggestions={suggestions}
+              packProjectIds={packProjectIds}
+              initialQuery={searchParams.get("q") ?? ""}
+            />
           )}
 
           <ActiveSlots

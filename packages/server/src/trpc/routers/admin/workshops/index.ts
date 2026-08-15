@@ -7,6 +7,7 @@ import { workshopService } from "@/services/workshop";
 import { modpackService } from "@/services/modpack";
 import { getMinecraftVersions } from "@/services/curseforge";
 import { listForumChannels } from "@/services/workshop/discord";
+import { adminWorkshopBansRouter } from "./bans";
 import {
   WORKSHOP_MOD_REJECT_REASONS,
   WORKSHOP_MOD_REVIEW_ACTIONS,
@@ -38,6 +39,8 @@ const workshopPatch = z.object({
 });
 
 export const adminWorkshopsRouter = router({
+  bans: adminWorkshopBansRouter,
+
   list: adminProcedure
     .meta({ description: "List all workshops including drafts" })
     .query(() => workshopService.listAllWorkshops()),
