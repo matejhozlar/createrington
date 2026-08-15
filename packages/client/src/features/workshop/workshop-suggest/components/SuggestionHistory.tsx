@@ -196,9 +196,6 @@ export function SuggestionHistory() {
                   />
                 </div>
                 <span className="shrink-0 text-xs whitespace-nowrap text-muted-foreground">
-                  <span className="hidden md:inline">
-                    {mod.workshopName} ·{" "}
-                  </span>
                   {dateLine(mod)}
                 </span>
                 <span className="flex min-w-[82px] shrink-0 justify-end">
@@ -244,7 +241,7 @@ export function SuggestionHistory() {
                   />
                   <span className="flex-1" />
                   <span className="text-xs whitespace-nowrap text-muted-foreground">
-                    {mod.workshopName} · {dateLine(mod)}
+                    {dateLine(mod)}
                   </span>
                 </div>
               </div>
