@@ -30,6 +30,7 @@ import {
 import { ingestProjects } from "@/services/curseforge/ingest";
 import { modpackService } from "@/services/modpack";
 import type { ModpackModListItem } from "@/services/modpack";
+import { assertCanSuggest } from "./bans";
 import {
   announceRemoval,
   announceReview,
@@ -452,6 +453,7 @@ export class WorkshopService {
     entry: WorkshopModEntry,
   ): Promise<WorkshopModListItem> {
     const workshop = await this.getOpenWorkshop(workshopId);
+    await assertCanSuggest(discordId, workshop.id);
     await this.assertSuggestionSlot(Q, workshop, discordId);
 
     const [prepared] = await this.prepareEntries(workshop, [entry]);

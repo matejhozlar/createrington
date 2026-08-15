@@ -3,6 +3,7 @@ import { router, userProcedure, middleware } from "@/trpc/trpc";
 import { trpcError, rethrowTrpc, id } from "@/trpc/utils";
 import { createRateLimit } from "@/trpc/middleware/rate-limit";
 import { workshopService } from "@/services/workshop";
+import { banNotice, findSuggestBan } from "@/services/workshop/bans";
 import { featureFlagService, FeatureFlags } from "@/services/feature-flag";
 
 const requireWorkshopEnabled = middleware(async ({ next }) => {
@@ -143,6 +144,18 @@ export const userWorkshopsRouter = router({
           ctx.user.discordId,
         );
         return mods.map((m) => redactMod(m));
+      } catch (error) {
+        rethrowTrpc(error);
+      }
+    }),
+
+  mySuggestBan: workshopProcedure
+    .meta({ description: "Active block on your own suggestions, if any" })
+    .input(z.object({ workshopId: id() }))
+    .query(async ({ ctx, input }) => {
+      try {
+        const ban = await findSuggestBan(ctx.user.discordId, input.workshopId);
+        return ban ? { notice: banNotice(ban) } : null;
       } catch (error) {
         rethrowTrpc(error);
       }
