@@ -11,4 +11,11 @@ export const OG_ROUTES = {
     imageAlt:
       "The Createrington team gathered at a glowing Parallel Worlds portal.",
   },
+  "/workshop": {
+    title: "What ships next? You decide.",
+    description:
+      "Suggest mods, upvote your favorites, and build the next Createrington modpack together.",
+    imageAlt:
+      "Createrington players gathered around an open chest as suggested mods drop in.",
+  },
 };
