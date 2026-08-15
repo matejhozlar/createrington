@@ -1,4 +1,4 @@
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 
 export function ServerDetail() {
   const { serverId } = useParams();

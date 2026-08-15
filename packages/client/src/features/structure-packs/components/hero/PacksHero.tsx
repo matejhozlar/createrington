@@ -259,8 +259,8 @@ function HeroCopy({
         style={{ textWrap: "pretty" }}
       >
         Mining dimensions rotate on a schedule. Spend in-game currency to boost
-        the themed pack you want next — weighted voting decides what appears
-        through the portal.
+        the themed dimension you want next — weighted voting decides what
+        appears through the portal.
       </p>
 
       <div className="grid w-full grid-cols-2 gap-3 sm:grid-cols-3">
@@ -272,7 +272,7 @@ function HeroCopy({
         />
         <Stat
           icon={Package}
-          label="Packs in pool"
+          label="Dimensions in pool"
           value={poolLoading ? null : `${poolCount} themed`}
         />
         <Stat

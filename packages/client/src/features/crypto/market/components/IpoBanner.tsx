@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Rocket } from "lucide-react";

@@ -18,6 +18,9 @@
       "@createrington/shared/*": ["../shared/src/*"]
     }
   },
+  "tsc-alias": {
+    "resolveFullPaths": true
+  },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
 }

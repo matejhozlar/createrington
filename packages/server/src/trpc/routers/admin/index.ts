@@ -19,6 +19,9 @@ import { adminServersRouter } from "./servers";
 import { waitlistsRouter } from "./waitlists";
 import { adminStructurePacksRouter } from "./structure-packs";
 import { adminPartiesRouter } from "./parties";
+import { adminModpacksRouter } from "./modpacks";
+import { adminWorkshopsRouter } from "./workshops";
+import { adminFeaturesRouter } from "./features";
 import { refetchDiscordEntities } from "@/services/discord/entities/refetch";
 
 export const adminRouter = router({
@@ -47,6 +50,7 @@ export const adminRouter = router({
   discordCommands: discordCommandsRouter,
   embeds: embedsRouter,
   faq: faqRouter,
+  features: adminFeaturesRouter,
   parties: adminPartiesRouter,
   inactivity: inactivityRouter,
   logs: logsRouter,
@@ -55,5 +59,7 @@ export const adminRouter = router({
   prompts: adminPromptsRouter,
   servers: adminServersRouter,
   structurePacks: adminStructurePacksRouter,
+  modpacks: adminModpacksRouter,
+  workshops: adminWorkshopsRouter,
   waitlists: waitlistsRouter,
 });

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router";
 import { useAuth } from "@/contexts/auth/";
 import { api } from "@/services/api/client";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";

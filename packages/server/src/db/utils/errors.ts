@@ -33,6 +33,9 @@ export class NotFoundError extends DatabaseError {
  * Error thrown when database constraint is violated
  */
 export class ConstraintViolationError extends DatabaseError {
+  /** Postgres error code copied from the cause, so duck-typed `code === "23505"` checks keep working */
+  public readonly code?: string;
+
   constructor(
     message: string,
     public readonly constraint?: string,
@@ -40,7 +43,31 @@ export class ConstraintViolationError extends DatabaseError {
   ) {
     super(message, cause);
     this.name = "ConstraintViolationError";
+    if (typeof cause === "object" && cause !== null && "code" in cause) {
+      this.code = String((cause as { code: unknown }).code);
+    }
   }
+}
+
+/**
+ * Wraps pg unique-violation errors (code 23505) in ConstraintViolationError;
+ * returns every other error unchanged.
+ */
+export function translateDbError(error: unknown): unknown {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code: unknown }).code === "23505"
+  ) {
+    const pgError = error as { message?: string; constraint?: string };
+    return new ConstraintViolationError(
+      pgError.message ?? "Unique constraint violation",
+      pgError.constraint,
+      error,
+    );
+  }
+  return error;
 }
 
 /**

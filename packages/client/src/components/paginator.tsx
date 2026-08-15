@@ -68,7 +68,12 @@ export function Paginator({
   itemLabel = "entry",
   className,
 }: PaginatorProps) {
-  const plural = total === 1 ? itemLabel : `${itemLabel}s`;
+  const plural =
+    total === 1
+      ? itemLabel
+      : /[^aeiou]y$/.test(itemLabel)
+        ? `${itemLabel.slice(0, -1)}ies`
+        : `${itemLabel}s`;
 
   if (totalPages <= 1) {
     if (total === 0) return null;
@@ -92,7 +97,7 @@ export function Paginator({
       <p className="text-xs text-muted-foreground">
         Showing {start}-{end} of {total} {plural}
       </p>
-      <Pagination className="sm:ml-auto sm:mx-0 sm:w-auto">
+      <Pagination className="sm:mx-0 sm:ml-auto sm:w-auto">
         <PaginationContent>
           <PaginationItem>
             <PaginationPrevious

@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { Loading } from "@/components/loading-spinner";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import {
@@ -19,18 +19,11 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { useAdminPlayers } from "@/contexts/admin";
-import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
+import { CellText } from "@/components/cell-text";
+import { DataTable, type DataTableColumn } from "@/components/data-table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
   Select,
   SelectContent,
@@ -45,16 +38,7 @@ import {
   TrendingUp,
   Coins,
   UserPlus,
-  ArrowUpDown,
-  ArrowUp,
-  ArrowDown,
-  Copy,
 } from "lucide-react";
-import {
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { PlayerApiData } from "@createrington/shared/db";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
@@ -165,22 +149,6 @@ export function AdminPlayers() {
     [orderBy],
   );
 
-  const handleCopy = useCopyToClipboard();
-
-  const renderSortIcon = useCallback(
-    (field: SortField) => {
-      if (orderBy !== field) {
-        return <ArrowUpDown className="ml-1 size-3.5 opacity-50" />;
-      }
-      return orderDirection === "asc" ? (
-        <ArrowUp className="ml-1 size-3.5" />
-      ) : (
-        <ArrowDown className="ml-1 size-3.5" />
-      );
-    },
-    [orderBy, orderDirection],
-  );
-
   const getPaginationItems = useCallback(() => {
     const items: (number | "ellipsis")[] = [];
     const maxVisible = 5;
@@ -231,6 +199,117 @@ export function AdminPlayers() {
   }, []);
 
   const navigate = useNavigate();
+
+  const columns: DataTableColumn<PlayerWithCounts>[] = [
+    {
+      key: "player",
+      header: "Player",
+      minWidth: 240,
+      sorted: orderBy === "minecraftUsername" ? orderDirection : false,
+      onSort: () => handleSort("minecraftUsername"),
+      render: (player) => {
+        const badgeInfo = getPlayerBadgeInfo(player);
+        return (
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="relative shrink-0">
+              <MinecraftAvatar
+                uuid={player.minecraftUuid}
+                username={player.minecraftUsername}
+              />
+              {badgeInfo.hasIssues && (
+                <div
+                  className={cn(
+                    "absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full text-[10px] font-bold text-white ring-2 ring-background",
+                    badgeInfo.color === "yellow" && "bg-yellow-500",
+                    badgeInfo.color === "red" && "bg-destructive",
+                  )}
+                >
+                  {badgeInfo.count}
+                </div>
+              )}
+            </div>
+            <div className="min-w-0">
+              <CellText
+                copy
+                value={player.minecraftUsername}
+                className="font-medium"
+              />
+              <CellText
+                copy
+                value={player.minecraftUuid}
+                display={`${player.minecraftUuid.slice(0, 8)}...`}
+                className="text-xs text-muted-foreground"
+              />
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      key: "discordId",
+      header: "Discord ID",
+      width: 210,
+      render: (player) => (
+        <CellText
+          copy
+          value={player.discordId}
+          className="font-mono text-sm text-muted-foreground"
+        />
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      width: 110,
+      render: (player) => {
+        const isOnline = isPlayerOnline(player.minecraftUuid);
+        return (
+          <Badge
+            variant={isOnline ? "default" : "outline"}
+            className={cn(
+              isOnline &&
+                "bg-green-500/20 text-green-500 hover:bg-green-500/30",
+            )}
+          >
+            {isOnline ? "Online" : "Offline"}
+          </Badge>
+        );
+      },
+    },
+    {
+      key: "server",
+      header: "Server",
+      minWidth: 140,
+      render: (player) => {
+        if (!isPlayerOnline(player.minecraftUuid)) return null;
+        const serverId = getPlayerServerId(player.minecraftUuid);
+        const serverName = serverId ? getServerName(serverId) : null;
+        return (
+          serverName && <CellText value={serverName} className="text-sm" />
+        );
+      },
+    },
+    {
+      key: "lastSeen",
+      header: "Last Seen",
+      width: 160,
+      sorted: orderBy === "lastSeen" ? orderDirection : false,
+      onSort: () => handleSort("lastSeen"),
+      render: (player) => {
+        const iso =
+          typeof player.lastSeen === "string"
+            ? player.lastSeen
+            : new Date(player.lastSeen).toISOString();
+        return (
+          <CellText
+            value={formatFullDate(iso)}
+            display={formatRelativeDate(iso)}
+            className="text-sm text-muted-foreground"
+          />
+        );
+      },
+    },
+  ];
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -442,162 +521,21 @@ export function AdminPlayers() {
             <>
               {/* Table */}
               <CardContent className="px-0">
-                <Table>
-                  <TableHeader className="bg-sidebar-accent/50">
-                    <TableRow>
-                      <TableHead className="px-4">
-                        <button
-                          type="button"
-                          onClick={() => handleSort("minecraftUsername")}
-                          className="inline-flex items-center gap-1 text-sm font-medium"
-                        >
-                          Player
-                          {renderSortIcon("minecraftUsername")}
-                        </button>
-                      </TableHead>
-                      <TableHead className="px-4">Discord ID</TableHead>
-                      <TableHead className="px-4">Status</TableHead>
-                      <TableHead className="px-4">Server</TableHead>
-                      <TableHead className="px-4">
-                        <button
-                          type="button"
-                          onClick={() => handleSort("lastSeen")}
-                          className="inline-flex items-center gap-1 text-sm font-medium"
-                        >
-                          Last Seen
-                          {renderSortIcon("lastSeen")}
-                        </button>
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {players.map((player) => {
-                      const isOnline = isPlayerOnline(player.minecraftUuid);
-                      const currentServerId = getPlayerServerId(
-                        player.minecraftUuid,
-                      );
-                      const serverName = currentServerId
-                        ? getServerName(currentServerId)
-                        : null;
-
-                      const badgeInfo = getPlayerBadgeInfo(player);
-
-                      return (
-                        <TableRow
-                          key={player.minecraftUuid}
-                          className={cn(
-                            "group cursor-pointer",
-                            badgeInfo.hasIssues &&
-                              badgeInfo.color === "yellow" &&
-                              "bg-yellow-500/5",
-                            badgeInfo.hasIssues &&
-                              badgeInfo.color === "red" &&
-                              "bg-destructive/5",
-                          )}
-                          onClick={() =>
-                            navigate(`/admin/players/${player.minecraftUuid}`)
-                          }
-                        >
-                          <TableCell className="px-4">
-                            <div className="flex items-center gap-3">
-                              <div className="relative">
-                                <MinecraftAvatar
-                                  uuid={player.minecraftUuid}
-                                  username={player.minecraftUsername}
-                                />
-                                {badgeInfo.hasIssues && (
-                                  <div
-                                    className={cn(
-                                      "absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full text-[10px] font-bold text-white ring-2 ring-background",
-                                      badgeInfo.color === "yellow" &&
-                                        "bg-yellow-500",
-                                      badgeInfo.color === "red" &&
-                                        "bg-destructive",
-                                    )}
-                                  >
-                                    {badgeInfo.count}
-                                  </div>
-                                )}
-                              </div>
-                              <div>
-                                <button
-                                  type="button"
-                                  onClick={(e) =>
-                                    handleCopy(e, player.minecraftUsername)
-                                  }
-                                  className="group/copy flex items-center gap-1 font-medium hover:text-foreground transition-colors"
-                                >
-                                  {player.minecraftUsername}
-                                  <Copy className="size-3 text-muted-foreground opacity-0 transition-opacity group-hover/copy:opacity-100" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={(e) =>
-                                    handleCopy(e, player.minecraftUuid)
-                                  }
-                                  className="group/copy flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                                >
-                                  {player.minecraftUuid.slice(0, 8)}...
-                                  <Copy className="size-2.5 opacity-0 transition-opacity group-hover/copy:opacity-100" />
-                                </button>
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell className="px-4">
-                            <button
-                              type="button"
-                              onClick={(e) => handleCopy(e, player.discordId)}
-                              className="group/copy flex items-center gap-1 text-sm font-mono text-muted-foreground hover:text-foreground transition-colors"
-                            >
-                              {player.discordId}
-                              <Copy className="size-3 opacity-0 transition-opacity group-hover/copy:opacity-100" />
-                            </button>
-                          </TableCell>
-                          <TableCell className="px-4">
-                            <Badge
-                              variant={isOnline ? "default" : "outline"}
-                              className={cn(
-                                isOnline &&
-                                  "bg-green-500/20 text-green-500 hover:bg-green-500/30",
-                              )}
-                            >
-                              {isOnline ? "Online" : "Offline"}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="px-4">
-                            {isOnline && serverName ? (
-                              <p className="text-sm text-foreground">
-                                {serverName}
-                              </p>
-                            ) : (
-                              <p className="text-sm text-muted-foreground">—</p>
-                            )}
-                          </TableCell>
-                          <TableCell className="px-4">
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span className="text-sm text-muted-foreground cursor-default">
-                                  {formatRelativeDate(
-                                    typeof player.lastSeen === "string"
-                                      ? player.lastSeen
-                                      : new Date(player.lastSeen).toISOString(),
-                                  )}
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent side="bottom" align="start">
-                                {formatFullDate(
-                                  typeof player.lastSeen === "string"
-                                    ? player.lastSeen
-                                    : new Date(player.lastSeen).toISOString(),
-                                )}
-                              </TooltipContent>
-                            </Tooltip>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
+                <DataTable
+                  columns={columns}
+                  rows={players}
+                  rowKey={(player) => player.minecraftUuid}
+                  onRowClick={(player) =>
+                    navigate(`/admin/players/${player.minecraftUuid}`)
+                  }
+                  rowClassName={(player) => {
+                    const badgeInfo = getPlayerBadgeInfo(player);
+                    if (!badgeInfo.hasIssues) return undefined;
+                    return badgeInfo.color === "red"
+                      ? "bg-destructive/5"
+                      : "bg-yellow-500/5";
+                  }}
+                />
               </CardContent>
 
               {/* Pagination */}

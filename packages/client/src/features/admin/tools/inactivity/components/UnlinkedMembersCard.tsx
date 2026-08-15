@@ -18,24 +18,12 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { Copy, RefreshCw, Search, UserSearch } from "lucide-react";
+import { DataTable, type DataTableColumn } from "@/components/data-table";
+import { RefreshCw, Search, UserSearch } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useToastActions } from "@/hooks/use-toast";
-import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
+import { CellText } from "@/components/cell-text";
 import { formatFullDate, formatRelativeDate } from "@/features/admin/format";
 import { trpc } from "@/lib/trpc";
 
@@ -80,8 +68,6 @@ export function UnlinkedMembersCard() {
     setPage(newPage);
   }, []);
 
-  const handleCopy = useCopyToClipboard();
-
   const handleRefresh = useCallback(async () => {
     try {
       const result = await refreshMembers.mutateAsync();
@@ -95,6 +81,55 @@ export function UnlinkedMembersCard() {
       );
     }
   }, [refreshMembers, toast, refetchList]);
+
+  type Member = (typeof members)[number];
+
+  const columns: DataTableColumn<Member>[] = [
+    {
+      key: "member",
+      header: "Member",
+      minWidth: 200,
+      render: (member) => (
+        <div className="min-w-0">
+          <CellText copy value={member.displayName} className="font-medium" />
+          <CellText
+            copy
+            value={member.username}
+            display={`@${member.username}`}
+            className="font-mono text-xs text-muted-foreground"
+          />
+        </div>
+      ),
+    },
+    {
+      key: "discordId",
+      header: "Discord ID",
+      width: 200,
+      render: (member) => (
+        <CellText
+          copy
+          value={member.discordId}
+          className="font-mono text-xs text-muted-foreground"
+        />
+      ),
+    },
+    {
+      key: "joined",
+      header: "Joined",
+      width: 140,
+      cellClassName: "text-sm text-muted-foreground",
+      render: (member) => {
+        if (!member.joinedAt) return null;
+        const iso = toIso(member.joinedAt);
+        return (
+          <CellText
+            value={formatFullDate(iso)}
+            display={formatRelativeDate(iso)}
+          />
+        );
+      },
+    },
+  ];
 
   const getPaginationItems = useCallback(() => {
     const items: (number | "ellipsis")[] = [];
@@ -208,75 +243,11 @@ export function UnlinkedMembersCard() {
       ) : (
         <>
           <CardContent className="px-0">
-            <Table>
-              <TableHeader className="bg-sidebar-accent/50">
-                <TableRow>
-                  <TableHead className="px-4">Member</TableHead>
-                  <TableHead className="px-4">Discord ID</TableHead>
-                  <TableHead className="px-4">Joined</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {members.map((member) => {
-                  const joinedIso = member.joinedAt
-                    ? toIso(member.joinedAt)
-                    : null;
-
-                  return (
-                    <TableRow key={member.discordId}>
-                      <TableCell className="px-4">
-                        <div>
-                          <button
-                            type="button"
-                            onClick={(e) => handleCopy(e, member.displayName)}
-                            className="group/copy flex items-center gap-1 font-medium hover:text-foreground transition-colors"
-                          >
-                            {member.displayName}
-                            <Copy className="size-3 text-muted-foreground opacity-0 transition-opacity group-hover/copy:opacity-100" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(e) => handleCopy(e, member.username)}
-                            className="group/copy flex items-center gap-1 font-mono text-xs text-muted-foreground hover:text-foreground transition-colors"
-                          >
-                            @{member.username}
-                            <Copy className="size-2.5 opacity-0 transition-opacity group-hover/copy:opacity-100" />
-                          </button>
-                        </div>
-                      </TableCell>
-                      <TableCell className="px-4">
-                        <button
-                          type="button"
-                          onClick={(e) => handleCopy(e, member.discordId)}
-                          className="group/copy flex items-center gap-1 font-mono text-xs text-muted-foreground hover:text-foreground transition-colors"
-                        >
-                          {member.discordId}
-                          <Copy className="size-3 opacity-0 transition-opacity group-hover/copy:opacity-100" />
-                        </button>
-                      </TableCell>
-                      <TableCell className="px-4">
-                        {joinedIso ? (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="text-sm text-muted-foreground cursor-default">
-                                {formatRelativeDate(joinedIso)}
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent side="bottom" align="start">
-                              {formatFullDate(joinedIso)}
-                            </TooltipContent>
-                          </Tooltip>
-                        ) : (
-                          <span className="text-sm text-muted-foreground">
-                            —
-                          </span>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+            <DataTable
+              columns={columns}
+              rows={members}
+              rowKey={(member) => member.discordId}
+            />
           </CardContent>
 
           <CardFooter className="flex-col gap-3 border-t sm:flex-row sm:flex-wrap sm:items-center">

@@ -1,26 +1,32 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { Loader2, UserSearch } from "lucide-react";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
+import { useAuth } from "@/contexts/auth";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 
 interface PlayerLabelProps {
   uuid?: string | null;
   name?: string | null;
+  /**
+   * Fallback identifier for the admin link when no UUID is known, e.g. a
+   * Discord id. The admin player page resolves any player identifier.
+   */
+  playerId?: string | null;
   /** Avatar pixel size. Defaults to 24. */
   size?: number;
   /**
    * Whether the label should link to the player detail page. Defaults to
-   * true when `uuid` is present. Set to false for cases where the player is
-   * known by UUID but not resolvable in this app's player DB.
+   * true when an identifier is present. Set to false for cases where the
+   * player is known by UUID but not resolvable in this app's player DB.
    */
   linkable?: boolean;
 }
 
 /**
- * Player label with avatar + username that links to `/admin/players/:uuid`
- * when a UUID is available. Renders a non-interactive fallback otherwise.
+ * Player label with avatar + username that links to the admin player page
+ * for admin viewers. Renders a non-interactive label otherwise.
  *
  * When the caller has no resolved username and falls back to passing the
  * raw UUID as `name`, the label becomes a click-to-resolve button that
@@ -29,25 +35,29 @@ interface PlayerLabelProps {
 export function PlayerLabel({
   uuid,
   name,
+  playerId,
   size = 24,
   linkable,
 }: PlayerLabelProps) {
+  const { user } = useAuth();
   const displayName = name ?? uuid ?? "Unknown";
   const isUnresolvedUuid = !!uuid && !!name && name === uuid;
-  const shouldLink = (linkable ?? !!uuid) && !!uuid && !isUnresolvedUuid;
+  const linkId = uuid ?? playerId;
+  const shouldLink =
+    !!user?.isAdmin && (linkable ?? !!linkId) && !!linkId && !isUnresolvedUuid;
 
   if (!shouldLink) {
     return (
-      <div className="flex items-center gap-2">
+      <div className="flex min-w-0 items-center gap-2">
         <MinecraftAvatar
           username={displayName}
-          uuid={uuid ?? undefined}
+          uuid={uuid ?? name ?? undefined}
           size={size}
         />
         {isUnresolvedUuid ? (
           <UnresolvedUuid uuid={uuid} />
         ) : (
-          <span className="font-medium">
+          <span className="truncate font-medium">
             {name ?? (
               <span className="italic text-muted-foreground">
                 No Minecraft link
@@ -61,16 +71,15 @@ export function PlayerLabel({
 
   return (
     <Link
-      to={`/admin/players/${uuid}`}
-      onClick={(e) => e.stopPropagation()}
-      className="group flex items-center gap-2 rounded"
+      to={`/admin/players/${linkId}`}
+      className="group/player-label flex min-w-0 items-center gap-2 rounded"
     >
       <MinecraftAvatar
         username={displayName}
-        uuid={uuid ?? undefined}
+        uuid={uuid ?? name ?? undefined}
         size={size}
       />
-      <span className="font-medium transition-colors group-hover:text-primary">
+      <span className="truncate font-medium transition-colors group-hover/player-label:text-primary">
         {displayName}
       </span>
     </Link>
@@ -104,8 +113,7 @@ function UnresolvedUuid({ uuid }: { uuid: string }) {
   return (
     <button
       type="button"
-      onClick={(e) => {
-        e.stopPropagation();
+      onClick={() => {
         if (clicked && isError) {
           query.refetch();
         } else {

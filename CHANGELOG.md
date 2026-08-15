@@ -1,3 +1,55 @@
+## v1.31.0 (2026-08-15)
+
+### @createrington/server (1.30.3 → 1.31.0)
+- [add] Add the modpack workshop system: community members suggest CurseForge mods, upvote favorites within a per-user budget, and admins curate through a staged review pipeline (pending, approved, testing, next update, in pack, rejected) with per-workshop Discord forum threads, dependency auto-detection, and rejection reason tags
+- [add] Add modpack release tracking: each published CurseForge modpack file is recorded with a frozen member snapshot, enabling release-to-release diffs that show exactly which mods were added, updated, or removed
+- [add] Add modpack manifest seeding: admins can upload a CurseForge manifest.json to bulk-import unpublished pack members, with shared Zod validation and re-seed confirmation
+- [add] Add feature flag service with runtime toggles backed by a database table and a 10-second in-process cache, used to gate the workshop feature behind a kill switch
+- [add] Add `/suggest` Discord slash command: players suggest mods to open workshops via a modal with CurseForge link validation, pitch text, and multi-workshop picker when several are open
+- [add] Send a personalized welcome card after registration completes, randomly selecting from seven WebP background images and rendering the player's skin via @napi-rs/canvas
+- [add] Add admin tRPC routers for feature flags, modpacks, and workshops with 34 new endpoints covering workshop lifecycle, mod review, dependency reports, release history, manifest seeding, and CurseForge project search
+- [add] Add user tRPC router for workshops with feature-gated endpoints for browsing, suggesting, upvoting, and viewing pack contents
+- [add] Add workshop project refresh service: a 24-hour sweep that refreshes CurseForge snapshots, re-resolves dependencies, heals Discord threads, reconciles pack state, and auto-promotes required dependencies
+- [add] Add CurseForge project ingest module for batch upserting project snapshots with INT4 overflow protection on download counts
+- [add] Add mod-url parser for extracting and validating CurseForge mod page URLs from user input
+- [add] Add database error translation utility that surfaces unique-violation pg errors as typed ConstraintViolationError with the original error code
+- [add] Add JSONB column serialization utility that auto-detects schema JSONB columns and JSON.stringifies array values on write, preventing the pg driver from misinterpreting arrays
+- [add] Add workshop mod timeline events: an append-only audit log recording every status transition, upvote, and reconcile action per mod
+- [add] Add integration tests for the workshop service, modpack service, workshop dependency resolution, base query serialization, database error translation, and CurseForge mod-url parsing
+- [fix] Accept null author avatar URLs in CurseForge API responses instead of failing validation
+- [fix] Move welcome card generation from guild-member-add to post-registration so the card reflects the player's actual skin and member number
+- [refactor] Replace the post-build path-rewriting script with tsc-alias `resolveFullPaths`, removing ~120 lines of custom build tooling
+- [refactor] Run dev type watchers via concurrently so tsc-alias works correctly on Windows
+- [chore] Switch canvas runtime from node-canvas to @napi-rs/canvas (Rust-based, no native build step)
+- [chore] Bump puppeteer-core from v24 to v25 to drop the vulnerable extract-zip transitive dependency
+- [chore] Add sanitize-html for processing user-generated workshop content
+- [chore] Restructure server README to focus on practical commands and architecture notes
+
+### @createrington/client (0.2.41 → 0.2.42)
+- [add] Add the workshop hub, detail, suggest, and pack pages: players browse open workshops, view a leaderboard of suggested mods with animated vote reordering, suggest mods via CurseForge search, and explore the full modpack contents
+- [add] Add admin workshop management pages with a tabbed detail view covering all mods, in-pack members, issues, dependencies, releases, and staging, plus create and settings dialogs
+- [add] Add a generic DataTable component that owns fixed column layout, row actions, sortable headers, expandable rows, row click navigation, and keyboard accessibility, replacing manual table composition across all admin pages
+- [add] Add CellText and CellDate primitives for consistent table cell rendering with automatic truncation, hover tooltips, and copy-to-clipboard
+- [add] Add CardState components (loading, error, empty) and a FilterBar component with keyboard shortcut for consistent admin page patterns
+- [add] Add workshop URL-synced filters, debounced search, view mode persistence (list/grid), and lazy pagination hooks
+- [add] Add mod detail dialog with full CurseForge project info, author, categories, social links, and deep-linked URL history entries
+- [add] Add animated leaderboard reordering on upvote using @formkit/auto-animate with cubic-bezier transitions
+- [refactor] Rebuild all admin tables (dashboard, logs, players, servers, structure packs, crypto, waitlists, owner pages, chat history, FAQ, inactivity, parties, prompts, stat search) onto the shared DataTable component
+- [refactor] Rename "Packs" to "Dimensions" in user-facing sidebar navigation and page copy
+- [refactor] Pin the admin page header while pages scroll and collapse it to a back link on small screens
+- [fix] Keep carousel navigation buttons above slides on iOS by adding z-10
+- [fix] Keep the mobile sidebar sheet in its expanded presentation instead of collapsing
+- [fix] Prevent tooltips from blocking pointer events on underlying elements
+- [fix] Pluralize paginator labels ending in consonant-y correctly
+- [chore] Migrate from react-router-dom v7 to react-router v8 and remove the audit ignore for the RSC-mode CSRF advisory
+- [chore] Bump React from 19.2.4 to 19.2.7 and add @formkit/auto-animate for vote animations
+- [remove] Remove the useCopyToClipboard hook, replaced by built-in copy in CellText
+
+### @createrington/shared (1.2.1 → 1.3.0)
+- [add] Add workshop domain types, status enums, review action labels, reject reason labels, status transition table, and the modpack manifest upload Zod schema
+- [chore] Restructure shared README to document all exported modules (api, auth, socket, db, workshop)
+- [chore] Add nanoid and js-yaml security overrides in workspace config
+
 ## v1.30.3 (2026-08-04)
 
 ### @createrington/server (1.30.2 → 1.30.3)

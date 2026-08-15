@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router";
 import { Loading } from "@/components/loading-spinner";
 import { Button } from "@/components/ui/button";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";

@@ -1,16 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { RefreshCw } from "lucide-react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router";
 import { trpc } from "@/lib/trpc";
 import { Loading } from "@/components/loading-spinner";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
+import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -178,23 +171,13 @@ export function AdminParties() {
 
   return (
     <div className="flex flex-1 flex-col gap-4">
-      <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-border bg-sidebar px-4">
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/admin/dashboard">Admin</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/admin/tools">Tools</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage>Parties</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
-
+      <AdminPageHeader
+        trail={[
+          { label: "Admin", href: "/admin/dashboard" },
+          { label: "Tools", href: "/admin/tools" },
+          { label: "Parties" },
+        ]}
+      >
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
@@ -214,7 +197,7 @@ export function AdminParties() {
             Dispatch /opac-fp sync and reload data
           </TooltipContent>
         </Tooltip>
-      </header>
+      </AdminPageHeader>
 
       <div className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-4 px-4 pb-4">
         <div className="flex flex-wrap items-center justify-between gap-4">

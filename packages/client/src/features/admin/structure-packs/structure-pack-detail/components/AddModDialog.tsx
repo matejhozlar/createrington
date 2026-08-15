@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useToastActions } from "@/hooks/use-toast";
 import { trpc } from "@/lib/trpc";
+import { REQUIRED_DEPENDENCY } from "@createrington/shared/workshop";
 
 interface PackMod {
   curseforgeModId: number;
@@ -74,8 +75,11 @@ export function AddModDialog({
     const set = new Set<number>();
     for (const dep of depsQuery.data) {
       const rel = selectedFile.dependencies.find((d) => d.modId === dep.modId);
-      // relationType 3 = Required in the CurseForge API
-      if (rel?.relationType === 3 && !dep.inPack && dep.bestFile) {
+      if (
+        rel?.relationType === REQUIRED_DEPENDENCY &&
+        !dep.inPack &&
+        dep.bestFile
+      ) {
         set.add(dep.modId);
       }
     }

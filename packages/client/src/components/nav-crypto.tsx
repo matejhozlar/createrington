@@ -8,7 +8,7 @@ import {
   WalletIcon,
   useAnimatedHover,
 } from "@createrington/icons";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation } from "react-router";
 import { useState } from "react";
 import {
   SidebarMenuButton,
@@ -71,11 +71,8 @@ function CryptoSubRow({
   item: CryptoNavItem;
   isActive: boolean;
 }) {
-  const [hoverRef, hoverHandlers] = useAnimatedHover();
-  const Icon = item.icon;
-
   return (
-    <SidebarMenuSubItem {...hoverHandlers}>
+    <SidebarMenuSubItem>
       <SidebarMenuSubButton asChild>
         <NavLink
           to={item.url}
@@ -84,11 +81,6 @@ function CryptoSubRow({
             isActive && "text-primary bg-primary/10",
           )}
         >
-          <Icon
-            ref={hoverRef}
-            size={16}
-            className="block shrink-0 transition-colors"
-          />
           <span>{item.title}</span>
         </NavLink>
       </SidebarMenuSubButton>

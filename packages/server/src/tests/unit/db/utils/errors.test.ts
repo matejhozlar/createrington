@@ -4,6 +4,7 @@ import {
   NotFoundError,
   ConstraintViolationError,
   QueryError,
+  translateDbError,
 } from "@/db/utils/errors";
 
 describe("DatabaseError", () => {
@@ -86,6 +87,43 @@ describe("ConstraintViolationError", () => {
 
   it("is a DatabaseError subclass", () => {
     expect(new ConstraintViolationError("x")).toBeInstanceOf(DatabaseError);
+  });
+
+  it("copies the pg error code from the cause", () => {
+    const pgError = Object.assign(new Error("duplicate key"), {
+      code: "23505",
+    });
+    const err = new ConstraintViolationError("dup", undefined, pgError);
+    expect(err.code).toBe("23505");
+  });
+});
+
+describe("translateDbError", () => {
+  it("wraps pg unique violations in ConstraintViolationError", () => {
+    const pgError = Object.assign(
+      new Error(
+        'duplicate key value violates unique constraint "workshop_slug"',
+      ),
+      { code: "23505", constraint: "workshop_slug" },
+    );
+    const result = translateDbError(pgError);
+    expect(result).toBeInstanceOf(ConstraintViolationError);
+    const wrapped = result as ConstraintViolationError;
+    expect(wrapped.constraint).toBe("workshop_slug");
+    expect(wrapped.code).toBe("23505");
+    expect(wrapped.cause).toBe(pgError);
+  });
+
+  it("returns other pg errors unchanged", () => {
+    const fkError = Object.assign(new Error("fk violation"), {
+      code: "23503",
+    });
+    expect(translateDbError(fkError)).toBe(fkError);
+  });
+
+  it("returns non-object errors unchanged", () => {
+    expect(translateDbError("boom")).toBe("boom");
+    expect(translateDbError(null)).toBe(null);
   });
 });
 

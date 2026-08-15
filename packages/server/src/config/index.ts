@@ -204,13 +204,15 @@ const config = {
         welcome: {
           channelId: discordEntities.channels.createringtonOfficial?.welcome,
           enabled: true,
-          imageConfig: {
-            backgroundColor: "#2C2F33",
-            accentColor: "#7289DA",
-            textColor: "#FFFFFF",
-            secondaryTextColor: "#99AA5B",
-            backgroundImageURL: "https://assets.createrington.com/welcome.jpg",
-          },
+          backgroundImageUrls: [
+            "https://assets.createrington.com/welcome/dark-warehouse.webp",
+            "https://assets.createrington.com/welcome/gondola-station.webp",
+            "https://assets.createrington.com/welcome/high-speed-train.webp",
+            "https://assets.createrington.com/welcome/metro.webp",
+            "https://assets.createrington.com/welcome/mountains-train-station.webp",
+            "https://assets.createrington.com/welcome/royal-albert-hall.webp",
+            "https://assets.createrington.com/welcome/space-station.webp",
+          ],
         },
         autoRole: {
           roleId: discordEntities.roles.unverified,
@@ -294,6 +296,10 @@ const config = {
 
   curseforge: {
     apiKey: env.CURSEFORGE_API_KEY,
+    apiBaseUrl: "https://api.curseforge.com",
+    defaultGameVersion: "1.21.1",
+    modpackProjectId: env.CURSEFORGE_MODPACK_PROJECT_ID,
+    modpackCacheTtlMs: 60 * 60 * 1000,
   },
 
   email: {

@@ -7,6 +7,7 @@ import {
   BoxIcon,
   ClipboardIcon,
   DashboardIcon,
+  HammerIcon,
   HeartIcon,
   HomeIcon,
   InfoIcon,
@@ -61,6 +62,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   // leave the owner nav visible until the cache is cleared.
   const isOwner = !!user && (accountQuery.data?.isOwner ?? false);
 
+  const workshopEnabledQuery = trpc.user.workshops.isEnabled.useQuery(
+    undefined,
+    { enabled: !!user },
+  );
+  const workshopEnabled =
+    !!user && (workshopEnabledQuery.data?.enabled ?? false);
+
   const data = {
     ownerNav: [
       {
@@ -96,6 +104,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         icon: ServerIcon,
       },
       {
+        title: "Workshop",
+        url: "/admin/tools/workshop",
+        icon: HammerIcon,
+      },
+      {
         title: "Tools",
         url: "/admin/tools",
         icon: WrenchIcon,
@@ -113,10 +126,21 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         icon: HomeIcon,
       },
       {
-        title: "Packs",
+        title: "Dimensions",
         url: "/structure-packs",
         icon: BoxIcon,
       },
+      ...(workshopEnabled
+        ? [
+            {
+              title: "Workshop",
+              url: "/workshop",
+              icon: HammerIcon,
+              badge: "New",
+              badgeClassName: "bg-blue-500/90 text-white",
+            },
+          ]
+        : []),
       {
         title: "Chat",
         url: "/chat/1",

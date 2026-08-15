@@ -1,4 +1,10 @@
 import { pgEnum } from "drizzle-orm/pg-core";
+import {
+  WORKSHOP_MOD_EVENT_TYPES,
+  WORKSHOP_MOD_REJECT_REASONS,
+  WORKSHOP_MOD_STATUSES,
+  WORKSHOP_STATUSES,
+} from "@createrington/shared/workshop";
 
 export const banTypeEnum = pgEnum("ban_type", ["temporary", "permanent"]);
 
@@ -107,4 +113,42 @@ export const donationTypeEnum = pgEnum("donation_type", [
 export const playerPromptStatusEnum = pgEnum("player_prompt_status", [
   "active",
   "closed",
+]);
+
+export const workshopStatusEnum = pgEnum("workshop_status", WORKSHOP_STATUSES);
+
+// rejected rows persist per workshop with a reason; re-review can approve them
+export const workshopModStatusEnum = pgEnum(
+  "workshop_mod_status",
+  WORKSHOP_MOD_STATUSES,
+);
+
+export const workshopModRejectReasonEnum = pgEnum(
+  "workshop_mod_reject_reason",
+  WORKSHOP_MOD_REJECT_REASONS,
+);
+
+export const workshopModEventTypeEnum = pgEnum(
+  "workshop_mod_event_type",
+  WORKSHOP_MOD_EVENT_TYPES,
+);
+
+// How a mod entered the modpack: a suggestion that reached next_update, an
+// auto-promoted required dependency, or an unknown mod found in the published
+// pack manifest
+export const modpackModOriginEnum = pgEnum("modpack_mod_origin", [
+  "suggestion",
+  "dependency",
+  "import",
+]);
+
+export const workshopPollStatusEnum = pgEnum("workshop_poll_status", [
+  "open",
+  "closed",
+]);
+
+// per_mod = one yes/no ballot per mod in the poll, bundle = one ballot for the whole poll
+export const workshopPollGranularityEnum = pgEnum("workshop_poll_granularity", [
+  "per_mod",
+  "bundle",
 ]);

@@ -85,8 +85,9 @@ export function BoostDialog({
             Boost &ldquo;{packName}&rdquo;
           </DialogTitle>
           <DialogDescription className="text-white/55">
-            Purchase boost units to increase this pack&apos;s selection odds for
-            the next rotation. All boosts reset when the rotation occurs.
+            Purchase boost units to increase this dimension&apos;s selection
+            odds for the next rotation. All boosts reset when the rotation
+            occurs.
           </DialogDescription>
         </DialogHeader>
 

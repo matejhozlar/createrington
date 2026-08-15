@@ -11,7 +11,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { NavLink } from "react-router-dom";
+import { NavLink } from "react-router";
 import { Badge, IconBadge } from "./ui/badge";
 import { cn } from "@/lib/utils";
 import React from "react";
@@ -21,7 +21,8 @@ type NavMainItem = {
   title: string;
   url: string;
   icon?: AnimatedIcon;
-  badge?: number;
+  badge?: number | string;
+  badgeClassName?: string;
 };
 
 function NavMainRow({ item }: { item: NavMainItem }) {
@@ -63,7 +64,12 @@ function NavMainRow({ item }: { item: NavMainItem }) {
 
                 {item.badge && (
                   <SidebarMenuBadge>
-                    <Badge className="font-semibold bg-primary/90">
+                    <Badge
+                      className={cn(
+                        "font-semibold bg-primary/90",
+                        item.badgeClassName,
+                      )}
+                    >
                       {item.badge}
                     </Badge>
                   </SidebarMenuBadge>

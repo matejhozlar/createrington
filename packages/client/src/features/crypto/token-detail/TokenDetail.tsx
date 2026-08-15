@@ -1,4 +1,4 @@
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/auth";

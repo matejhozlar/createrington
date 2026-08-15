@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { NavLink } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { Loading } from "@/components/loading-spinner";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { CellText } from "@/components/cell-text";
+import { DataTable, type DataTableColumn } from "@/components/data-table";
 import {
   Select,
   SelectContent,
@@ -11,19 +13,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { MessageSquare, Plus, RefreshCw } from "lucide-react";
-import { trpc } from "@/lib/trpc";
+import { formatFullDate } from "@/features/admin/format";
+import { trpc, type RouterOutput } from "@/lib/trpc";
 import { CreatePromptModal } from "./components/CreatePromptModal";
 
 type StatusFilter = "all" | "active" | "closed";
+type PromptRow = RouterOutput["admin"]["prompts"]["list"]["items"][number];
 
 function formatEndsAt(date: Date | string): string {
   const d = new Date(date);
@@ -38,6 +34,7 @@ function formatEndsAt(date: Date | string): string {
 }
 
 export function AdminPrompts() {
+  const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [page, setPage] = useState(0);
   const [createOpen, setCreateOpen] = useState(false);
@@ -47,6 +44,56 @@ export function AdminPrompts() {
     limit: 20,
     status: statusFilter === "all" ? undefined : statusFilter,
   });
+
+  const columns: DataTableColumn<PromptRow>[] = [
+    {
+      key: "question",
+      header: "Question",
+      minWidth: 240,
+      render: (row) => (
+        <>
+          <CellText value={row.question} className="font-medium" />
+          {row.description && (
+            <CellText
+              value={row.description}
+              className="mt-0.5 text-xs text-muted-foreground"
+            />
+          )}
+        </>
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      width: 100,
+      render: (row) => (
+        <Badge variant={row.status === "active" ? "default" : "secondary"}>
+          {row.status === "active" ? "Active" : "Closed"}
+        </Badge>
+      ),
+    },
+    {
+      key: "responses",
+      header: "Responses",
+      width: 120,
+      align: "right",
+      cellClassName: "tabular-nums",
+      render: (row) => row.responseCount,
+    },
+    {
+      key: "ends",
+      header: "Ends",
+      width: 100,
+      cellClassName: "text-sm text-muted-foreground",
+      render: (row) =>
+        row.status === "closed" ? null : (
+          <CellText
+            value={formatFullDate(new Date(row.endsAt).toISOString())}
+            display={formatEndsAt(row.endsAt)}
+          />
+        ),
+    },
+  ];
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -111,50 +158,12 @@ export function AdminPrompts() {
           </div>
         ) : (
           <div className="rounded-lg border border-border bg-card">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Question</TableHead>
-                  <TableHead className="w-24">Status</TableHead>
-                  <TableHead className="w-24 text-right">Responses</TableHead>
-                  <TableHead className="w-40">Ends</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {listQuery.data.items.map((row) => (
-                  <TableRow key={row.id}>
-                    <TableCell>
-                      <NavLink
-                        to={`/admin/tools/prompts/${row.id}`}
-                        className="font-medium hover:text-primary"
-                      >
-                        {row.question}
-                      </NavLink>
-                      {row.description && (
-                        <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
-                          {row.description}
-                        </p>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          row.status === "active" ? "default" : "secondary"
-                        }
-                      >
-                        {row.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {row.responseCount}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {row.status === "closed" ? "—" : formatEndsAt(row.endsAt)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <DataTable
+              columns={columns}
+              rows={listQuery.data.items}
+              rowKey={(row) => row.id}
+              onRowClick={(row) => navigate(`/admin/tools/prompts/${row.id}`)}
+            />
           </div>
         )}
       </div>

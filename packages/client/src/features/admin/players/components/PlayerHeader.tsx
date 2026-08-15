@@ -1,11 +1,11 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Edit, Trash2, Copy, MapPin } from "lucide-react";
+import { CellText } from "@/components/cell-text";
+import { Edit, Trash2, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { PlayerApiData } from "@createrington/shared/db";
 import { mcBodyFront } from "@/lib/external-urls";
 import { formatDimension, tpCommand } from "@/lib/minecraft";
-import { useToastActions } from "@/hooks/use-toast";
 
 interface PlayerHeaderProps {
   player: PlayerApiData;
@@ -23,12 +23,6 @@ export function PlayerHeader({
   onDelete,
 }: PlayerHeaderProps) {
   const activeStrikes = 0;
-  const toast = useToastActions();
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast.success("Copied to clipboard");
-  };
 
   return (
     <div className="overflow-hidden rounded-lg border border-border bg-card">
@@ -93,16 +87,8 @@ export function PlayerHeader({
 
           {/* Row 2: Copyable identifiers */}
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <CopyField
-              label="UUID"
-              value={player.minecraftUuid}
-              onCopy={() => copyToClipboard(player.minecraftUuid)}
-            />
-            <CopyField
-              label="Discord"
-              value={player.discordId}
-              onCopy={() => copyToClipboard(player.discordId)}
-            />
+            <CopyField label="UUID" value={player.minecraftUuid} />
+            <CopyField label="Discord" value={player.discordId} />
           </div>
 
           {/* Row 2.5: Logout position (offline only) */}
@@ -115,7 +101,6 @@ export function PlayerHeader({
                 y={player.logoutY}
                 z={player.logoutZ}
                 dimension={player.logoutDimension}
-                onCopy={copyToClipboard}
               />
             )}
 
@@ -145,25 +130,19 @@ export function PlayerHeader({
   );
 }
 
-function CopyField({
-  label,
-  value,
-  onCopy,
-}: {
-  label: string;
-  value: string;
-  onCopy: () => void;
-}) {
+function CopyField({ label, value }: { label: string; value: string }) {
   return (
-    <button
-      type="button"
-      onClick={onCopy}
-      className="group flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
-    >
-      <span className="text-muted-foreground/60">{label}:</span>
-      <span className="font-mono text-[11px]">{value}</span>
-      <Copy className="size-3 opacity-0 transition-opacity group-hover:opacity-100" />
-    </button>
+    <CellText
+      copy
+      value={value}
+      display={
+        <>
+          <span className="text-muted-foreground/60">{label}:</span>{" "}
+          <span className="font-mono text-[11px]">{value}</span>
+        </>
+      }
+      className="text-xs text-muted-foreground"
+    />
   );
 }
 
@@ -172,13 +151,11 @@ function LogoutPosition({
   y,
   z,
   dimension,
-  onCopy,
 }: {
   x: number;
   y: number;
   z: number;
   dimension: string | null;
-  onCopy: (text: string) => void;
 }) {
   const tp = tpCommand(dimension ?? "minecraft:overworld", x, y, z);
 
@@ -193,14 +170,11 @@ function LogoutPosition({
         <span>&middot;</span>
         <span>{formatDimension(dimension)}</span>
       </div>
-      <button
-        type="button"
-        onClick={() => onCopy(tp)}
-        className="group flex cursor-pointer items-center gap-1 rounded border border-border bg-sidebar-accent/50 px-2 py-0.5 text-[11px] font-mono text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
-      >
-        {tp}
-        <Copy className="size-3 opacity-50 transition-opacity group-hover:opacity-100" />
-      </button>
+      <CellText
+        copy
+        value={tp}
+        className="rounded border border-border bg-sidebar-accent/50 px-2 py-0.5 font-mono text-[11px] text-muted-foreground hover:border-primary/50"
+      />
     </div>
   );
 }

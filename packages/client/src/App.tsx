@@ -5,7 +5,7 @@ import {
   Route,
   Outlet,
   useLocation,
-} from "react-router-dom";
+} from "react-router";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { trpc, trpcClient, queryClient } from "./lib/trpc";
 import { lazyNamed } from "./lib/lazy";
@@ -120,6 +120,22 @@ const StructurePacks = lazyNamed(
   () => import("./features/structure-packs/StructurePacks"),
   "StructurePacks",
 );
+const Workshop = lazyNamed(
+  () => import("./features/workshop/Workshop"),
+  "Workshop",
+);
+const WorkshopDetail = lazyNamed(
+  () => import("./features/workshop/workshop-detail/WorkshopDetail"),
+  "WorkshopDetail",
+);
+const WorkshopSuggest = lazyNamed(
+  () => import("./features/workshop/workshop-suggest/WorkshopSuggest"),
+  "WorkshopSuggest",
+);
+const WorkshopPack = lazyNamed(
+  () => import("./features/workshop/workshop-pack/WorkshopPack"),
+  "WorkshopPack",
+);
 
 // Server pages
 const ServerDetail = lazyNamed(
@@ -223,6 +239,15 @@ const AdminStructurePacks = lazyNamed(
   () => import("./features/admin/structure-packs/AdminStructurePacks"),
   "AdminStructurePacks",
 );
+const AdminWorkshop = lazyNamed(
+  () => import("./features/admin/workshop/AdminWorkshop"),
+  "AdminWorkshop",
+);
+const AdminWorkshopDetail = lazyNamed(
+  () =>
+    import("./features/admin/workshop/workshop-admin-detail/AdminWorkshopDetail"),
+  "AdminWorkshopDetail",
+);
 const StructurePackDetail = lazyNamed(
   () =>
     import("./features/admin/structure-packs/structure-pack-detail/StructurePackDetail"),
@@ -308,7 +333,7 @@ function AppLayout() {
     <>
       <AppSidebar />
       <SidebarInset>
-        <div className="sticky top-0 z-30 flex md:hidden items-center gap-2 p-2 bg-background border-b">
+        <div className="sticky top-0 z-30 flex h-14 md:hidden items-center gap-2 p-2 bg-background border-b">
           <SidebarTrigger />
           <Logo />
         </div>
@@ -455,6 +480,38 @@ function AppContent() {
             }
           />
           <Route path="/structure-packs" element={<StructurePacks />} />
+          <Route
+            path="/workshop"
+            element={
+              <ProtectedRoute promptLogin>
+                <Workshop />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/workshop/:slug"
+            element={
+              <ProtectedRoute promptLogin>
+                <WorkshopDetail />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/workshop/:slug/suggest"
+            element={
+              <ProtectedRoute promptLogin>
+                <WorkshopSuggest />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/workshop/:slug/pack"
+            element={
+              <ProtectedRoute promptLogin>
+                <WorkshopPack />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Server Routes */}
           <Route
@@ -497,6 +554,14 @@ function AppContent() {
                       <Route
                         path="tools/structure-packs/:id"
                         element={<StructurePackDetail />}
+                      />
+                      <Route
+                        path="tools/workshop"
+                        element={<AdminWorkshop />}
+                      />
+                      <Route
+                        path="tools/workshop/:slug"
+                        element={<AdminWorkshopDetail />}
                       />
                       <Route path="tools" element={<AdminTools />} />
                       <Route path="tools/faq" element={<AdminFaq />} />

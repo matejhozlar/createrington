@@ -234,6 +234,11 @@ const envSchema = z
 
     // CurseForge
     CURSEFORGE_API_KEY: z.string().min(1).optional(),
+    CURSEFORGE_MODPACK_PROJECT_ID: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(1316177),
 
     // AI (OpenAI): optional; AI features are disabled when the key is not set
     OPENAI_API_KEY: z.string().min(1).optional(),

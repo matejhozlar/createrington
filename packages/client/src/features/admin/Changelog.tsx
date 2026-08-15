@@ -386,7 +386,7 @@ function VersionRail({
 }) {
   return (
     <aside className="hidden min-[920px]:block">
-      <div className="sticky top-6">
+      <div className="sticky top-22">
         <div className="mb-3 px-3 font-mono text-[10.5px] uppercase tracking-[0.12em] text-muted-foreground">
           Releases
         </div>

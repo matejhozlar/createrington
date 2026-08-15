@@ -29,7 +29,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useAuth, type User } from "@/contexts/auth";
-import { NavLink } from "react-router-dom";
+import { NavLink } from "react-router";
 
 function TriggerSummary({
   avatarUrl,

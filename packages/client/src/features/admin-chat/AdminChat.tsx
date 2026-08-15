@@ -1,4 +1,4 @@
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/auth";
 import { useAdminChat } from "@/contexts/admin-chat";

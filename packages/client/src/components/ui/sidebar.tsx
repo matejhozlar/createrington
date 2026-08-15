@@ -9,7 +9,7 @@ import {
   PanelLeftOpenIcon,
   useAnimatedHover,
 } from "@createrington/icons";
-import { useLocation } from "react-router-dom";
+import { useLocation } from "react-router";
 
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
@@ -127,7 +127,7 @@ function SidebarProvider({
 
   // We add a state so that we can do data-state="expanded" or "collapsed".
   // This makes it easier to style the sidebar with Tailwind classes.
-  const state = open ? "expanded" : "collapsed";
+  const state = isMobile || open ? "expanded" : "collapsed";
 
   const contextValue = React.useMemo<SidebarContextProps>(
     () => ({
@@ -559,7 +559,7 @@ const SidebarMenuButton = React.forwardRef<
   ref,
 ) {
   const Comp = asChild ? Slot : "button";
-  const { isMobile, state } = useSidebar();
+  const { state } = useSidebar();
 
   const button = (
     <Comp
@@ -589,7 +589,7 @@ const SidebarMenuButton = React.forwardRef<
       <TooltipContent
         side="right"
         align="center"
-        hidden={state !== "collapsed" || isMobile}
+        hidden={state !== "collapsed"}
         {...tooltip}
       />
     </Tooltip>
@@ -696,7 +696,7 @@ function SidebarMenuSub({ className, ...props }: React.ComponentProps<"ul">) {
       data-slot="sidebar-menu-sub"
       data-sidebar="menu-sub"
       className={cn(
-        "border-sidebar-border mx-3.5 flex min-w-0 translate-x-px flex-col gap-1 border-l px-2.5 py-0.5",
+        "border-sidebar-border mx-7 flex min-w-0 translate-x-px flex-col gap-1 border-l px-4 py-0.5",
         "group-data-[collapsible=icon]:hidden",
         className,
       )}

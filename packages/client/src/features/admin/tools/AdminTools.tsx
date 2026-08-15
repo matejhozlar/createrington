@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import type { LucideIcon } from "lucide-react";
 import {
   Breadcrumb,
@@ -28,6 +28,7 @@ import {
   Terminal,
   Timer,
   Users,
+  Hammer as WorkshopIcon,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
@@ -89,6 +90,13 @@ const TOOL_SECTIONS: ToolSection[] = [
         description: "Manage weekly rotating mod collections from CurseForge.",
         icon: Blocks,
         href: "/admin/tools/structure-packs",
+      },
+      {
+        title: "Workshop",
+        description:
+          "Community mod suggestions: review, approve, and rule out mods.",
+        icon: WorkshopIcon,
+        href: "/admin/tools/workshop",
       },
       {
         title: "Crypto Market",

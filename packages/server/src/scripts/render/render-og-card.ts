@@ -1,7 +1,7 @@
 // Headless tool: composites the social / link-preview card (og-card.png) for
 // the Createrington client SPA. Brand assets are read from the client's public
-// assets and the repo-root screenshots/ folder; the Outfit webfont is vendored
-// alongside this tool.
+// assets and the repo-root screenshots/ folder; the Outfit webfont lives in
+// the shared server assets (src/assets/fonts).
 //
 // Team figures are rendered once via the skin-api and cached under assets/team/
 // (committed), so regenerating the card stays offline. To refresh them after a
@@ -16,8 +16,6 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-// @napi-rs/canvas rather than the server's node-canvas: its GlobalFonts loads
-// the vendored .woff2 fonts, which node-canvas's registerFont cannot read.
 import {
   createCanvas,
   loadImage,
@@ -25,6 +23,7 @@ import {
   type Image,
   type SKRSContext2D,
 } from "@napi-rs/canvas";
+import { computeBBox, fitFontSize } from "@/utils/canvas";
 
 const W = 1200;
 const H = 630;
@@ -47,7 +46,7 @@ const PUBLIC = join(here, "..", "..", "..", "..", "client", "public");
 const ASSETS = join(PUBLIC, "assets");
 const REPO_ROOT = join(here, "..", "..", "..", "..", "..");
 const SHOTS = join(REPO_ROOT, "screenshots");
-const FONTS = join(here, "assets", "fonts");
+const FONTS = join(here, "..", "..", "assets", "fonts");
 const TEAM_DIR = join(here, "assets", "team");
 
 interface FrameSpec {
@@ -62,7 +61,7 @@ interface FrameSpec {
 
 // A diagonal cascade of browser windows, mirroring the marketing WebShowcase
 // scene: feature screens (not the home page, whose hero would duplicate the
-// woodmark + tagline drawn on the left).
+// wordmark + tagline drawn on the left).
 const FRAMES: readonly FrameSpec[] = [
   {
     file: join(SHOTS, "web-chat.webp"),
@@ -133,38 +132,6 @@ const TEAM: readonly TeamMember[] = [
     pose: "ponder",
   },
 ];
-
-interface BBox {
-  minX: number;
-  minY: number;
-  width: number;
-  height: number;
-}
-
-// Tight alpha bounding box so each posed figure can be scaled by its true
-// silhouette height and bottom-aligned to a shared ground line regardless of
-// the transparent padding around it.
-function computeBBox(img: Image): BBox {
-  const probe = createCanvas(img.width, img.height);
-  const pctx = probe.getContext("2d");
-  pctx.drawImage(img, 0, 0);
-  const { data } = pctx.getImageData(0, 0, img.width, img.height);
-  let minX = img.width;
-  let minY = img.height;
-  let maxX = 0;
-  let maxY = 0;
-  for (let y = 0; y < img.height; y++) {
-    for (let x = 0; x < img.width; x++) {
-      if (data[(y * img.width + x) * 4 + 3]! > 16) {
-        if (x < minX) minX = x;
-        if (x > maxX) maxX = x;
-        if (y < minY) minY = y;
-        if (y > maxY) maxY = y;
-      }
-    }
-  }
-  return { minX, minY, width: maxX - minX + 1, height: maxY - minY + 1 };
-}
 
 // Resolve a team figure PNG: prefer the committed cache, otherwise render it
 // via the skin-api and cache it so later card renders stay offline. Calls the
@@ -363,21 +330,6 @@ async function paintFrames(ctx: SKRSContext2D): Promise<void> {
   for (const { spec, img } of loaded) drawBrowserFrame(ctx, img, spec);
 }
 
-// Largest size from the descending list whose rendered width fits maxWidth.
-function fitFontSize(
-  ctx: SKRSContext2D,
-  text: string,
-  font: (size: number) => string,
-  sizes: readonly number[],
-  maxWidth: number,
-): number {
-  for (const size of sizes) {
-    ctx.font = font(size);
-    if (ctx.measureText(text).width <= maxWidth) return size;
-  }
-  return sizes[sizes.length - 1]!;
-}
-
 async function paintText(ctx: SKRSContext2D): Promise<void> {
   const wood = await loadImage(
     join(ASSETS, "logo", "cogs-and-steam-logo.webp"),
@@ -449,7 +401,9 @@ async function paintTeam(ctx: SKRSContext2D): Promise<void> {
   const loaded = await Promise.all(
     TEAM.map(async (m) => {
       const img = await getTeamFigure(m);
-      return { img, bbox: computeBBox(img) };
+      const bbox = computeBBox(img);
+      if (!bbox) throw new Error(`Empty figure render for ${m.username}`);
+      return { img, bbox };
     }),
   );
 

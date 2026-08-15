@@ -6,7 +6,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 import { ChevronDown, Paperclip, Send, Users } from "lucide-react";
 import type {
   CachedMessage,

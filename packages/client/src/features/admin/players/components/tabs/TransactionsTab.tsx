@@ -1,23 +1,20 @@
 import { useState } from "react";
-import { trpc } from "@/lib/trpc";
+import { trpc, type RouterOutput } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { Loading } from "@/components/loading-spinner";
 import { Paginator } from "@/components/paginator";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { CellDate, CellText } from "@/components/cell-text";
+import { DataTable, type DataTableColumn } from "@/components/data-table";
 import { ArrowLeftRight } from "lucide-react";
 
 interface TransactionsTabProps {
   playerId: string;
 }
+
+type Transaction =
+  RouterOutput["admin"]["players"]["transactions"]["list"]["items"][number];
 
 export function TransactionsTab({ playerId }: TransactionsTabProps) {
   const [page, setPage] = useState(0);
@@ -33,6 +30,69 @@ export function TransactionsTab({ playerId }: TransactionsTabProps) {
   const items = data?.items ?? [];
   const total = data?.pagination.total ?? 0;
   const totalPages = data?.pagination.totalPages ?? 0;
+
+  const columns: DataTableColumn<Transaction>[] = [
+    {
+      key: "date",
+      header: "Date",
+      width: 115,
+      render: (tx) => <CellDate value={tx.createdAt} />,
+    },
+    {
+      key: "type",
+      header: "Type",
+      width: 150,
+      render: (tx) => (
+        <Badge variant="outline" className="max-w-full text-xs">
+          <CellText value={tx.transactionType} className="min-w-0" />
+        </Badge>
+      ),
+    },
+    {
+      key: "amount",
+      header: "Amount",
+      width: 130,
+      align: "right",
+      render: (tx) => {
+        const amount = Number(tx.amount);
+        const isPositive = amount >= 0;
+        return (
+          <span
+            className={cn(
+              "font-mono text-sm font-medium tabular-nums",
+              isPositive ? "text-emerald-400" : "text-destructive",
+            )}
+          >
+            {isPositive ? "+" : ""}
+            {amount.toLocaleString()}
+          </span>
+        );
+      },
+    },
+    {
+      key: "before",
+      header: "Before",
+      width: 130,
+      align: "right",
+      cellClassName: "font-mono text-sm text-muted-foreground tabular-nums",
+      render: (tx) => Number(tx.balanceBefore).toLocaleString(),
+    },
+    {
+      key: "after",
+      header: "After",
+      width: 130,
+      align: "right",
+      cellClassName: "font-mono text-sm text-muted-foreground tabular-nums",
+      render: (tx) => Number(tx.balanceAfter).toLocaleString(),
+    },
+    {
+      key: "description",
+      header: "Description",
+      minWidth: 200,
+      cellClassName: "text-sm text-muted-foreground",
+      render: (tx) => tx.description && <CellText value={tx.description} />,
+    },
+  ];
 
   return (
     <div className="flex flex-col gap-4">
@@ -69,76 +129,16 @@ export function TransactionsTab({ playerId }: TransactionsTabProps) {
         </div>
       ) : (
         <>
-          <div className="-mx-6 overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="text-[11px] font-medium uppercase tracking-wider">
-                    Date
-                  </TableHead>
-                  <TableHead className="text-[11px] font-medium uppercase tracking-wider">
-                    Type
-                  </TableHead>
-                  <TableHead className="text-right text-[11px] font-medium uppercase tracking-wider">
-                    Amount
-                  </TableHead>
-                  <TableHead className="text-right text-[11px] font-medium uppercase tracking-wider">
-                    Before
-                  </TableHead>
-                  <TableHead className="text-right text-[11px] font-medium uppercase tracking-wider">
-                    After
-                  </TableHead>
-                  <TableHead className="text-[11px] font-medium uppercase tracking-wider">
-                    Description
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {items.map((tx) => {
-                  const amount = Number(tx.amount);
-                  const isPositive = amount >= 0;
-                  return (
-                    <TableRow
-                      key={tx.id}
-                      className={cn(
-                        "border-b border-border/30 last:border-0",
-                        isPositive
-                          ? "bg-emerald-500/[0.02]"
-                          : "bg-destructive/[0.02]",
-                      )}
-                    >
-                      <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
-                        {new Date(tx.createdAt).toLocaleString()}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="text-xs">
-                          {tx.transactionType}
-                        </Badge>
-                      </TableCell>
-                      <TableCell
-                        className={cn(
-                          "text-right font-mono tabular-nums text-sm font-medium",
-                          isPositive ? "text-emerald-400" : "text-destructive",
-                        )}
-                      >
-                        {isPositive ? "+" : ""}
-                        {amount.toLocaleString()}
-                      </TableCell>
-                      <TableCell className="text-right font-mono tabular-nums text-sm text-muted-foreground">
-                        {Number(tx.balanceBefore).toLocaleString()}
-                      </TableCell>
-                      <TableCell className="text-right font-mono tabular-nums text-sm text-muted-foreground">
-                        {Number(tx.balanceAfter).toLocaleString()}
-                      </TableCell>
-                      <TableCell className="max-w-xs truncate text-sm text-muted-foreground">
-                        {tx.description ?? "—"}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
+          <DataTable
+            columns={columns}
+            rows={items}
+            rowKey={(tx) => tx.id}
+            rowClassName={(tx) =>
+              Number(tx.amount) >= 0
+                ? "bg-emerald-500/[0.02]"
+                : "bg-destructive/[0.02]"
+            }
+          />
 
           <Paginator
             page={page}

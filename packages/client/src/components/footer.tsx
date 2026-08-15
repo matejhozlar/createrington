@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom";
+import { NavLink } from "react-router";
 import { Mail } from "lucide-react";
 import { DiscordIcon } from "@/components/icons/discord";
 import { CurseForgeIcon } from "@/components/icons/curseforge";

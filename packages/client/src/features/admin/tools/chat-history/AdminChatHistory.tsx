@@ -1,22 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import { NavLink } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { Loading } from "@/components/loading-spinner";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { CellText } from "@/components/cell-text";
+import { DataTable, type DataTableColumn } from "@/components/data-table";
 import { History, RefreshCw } from "lucide-react";
 import {
   fetchChatSessions,
@@ -48,6 +37,7 @@ function displayTitle(raw: string): string {
 }
 
 export function AdminChatHistory() {
+  const navigate = useNavigate();
   const [sessions, setSessions] = useState<ChatHistorySession[]>([]);
   const [nextCursor, setNextCursor] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -102,6 +92,63 @@ export function AdminChatHistory() {
     void loadFirstPage();
   }, [loadFirstPage]);
 
+  const columns: DataTableColumn<ChatHistorySession>[] = [
+    {
+      key: "title",
+      header: "Title",
+      minWidth: 240,
+      render: (s) => (
+        <>
+          <CellText value={displayTitle(s.title)} className="font-medium" />
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Session #{s.id}
+          </p>
+        </>
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      width: 120,
+      render: (s) => statusBadge(s.status),
+    },
+    {
+      key: "messages",
+      header: "Messages",
+      width: 110,
+      align: "right",
+      cellClassName: "tabular-nums",
+      render: (s) => s.messageCount,
+    },
+    {
+      key: "started",
+      header: "Started",
+      width: 140,
+      cellClassName: "text-sm text-muted-foreground",
+      render: (s) => (
+        <CellText
+          value={formatFullDate(s.createdAt)}
+          display={formatRelativeDate(s.createdAt)}
+        />
+      ),
+    },
+    {
+      key: "lastActivity",
+      header: "Last activity",
+      width: 140,
+      cellClassName: "text-sm text-muted-foreground",
+      render: (s) => {
+        const last = s.lastActivityAt ?? s.completedAt ?? s.createdAt;
+        return (
+          <CellText
+            value={formatFullDate(last)}
+            display={formatRelativeDate(last)}
+          />
+        );
+      },
+    },
+  ];
+
   return (
     <div className="flex flex-1 flex-col gap-4">
       <AdminPageHeader
@@ -148,66 +195,14 @@ export function AdminChatHistory() {
         ) : (
           <>
             <div className="rounded-lg border border-border bg-card">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Title</TableHead>
-                    <TableHead className="w-28">Status</TableHead>
-                    <TableHead className="w-24 text-right">Messages</TableHead>
-                    <TableHead className="w-40">Started</TableHead>
-                    <TableHead className="w-40">Last activity</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {sessions.map((s) => {
-                    const last =
-                      s.lastActivityAt ?? s.completedAt ?? s.createdAt;
-                    return (
-                      <TableRow key={s.id}>
-                        <TableCell>
-                          <NavLink
-                            to={`/admin/tools/chat-history/${s.id}`}
-                            className="font-medium hover:text-primary"
-                          >
-                            {displayTitle(s.title)}
-                          </NavLink>
-                          <p className="mt-0.5 text-xs text-muted-foreground">
-                            Session #{s.id}
-                          </p>
-                        </TableCell>
-                        <TableCell>{statusBadge(s.status)}</TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {s.messageCount}
-                        </TableCell>
-                        <TableCell>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="text-sm text-muted-foreground cursor-default">
-                                {formatRelativeDate(s.createdAt)}
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent side="bottom" align="start">
-                              {formatFullDate(s.createdAt)}
-                            </TooltipContent>
-                          </Tooltip>
-                        </TableCell>
-                        <TableCell>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="text-sm text-muted-foreground cursor-default">
-                                {formatRelativeDate(last)}
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent side="bottom" align="start">
-                              {formatFullDate(last)}
-                            </TooltipContent>
-                          </Tooltip>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+              <DataTable
+                columns={columns}
+                rows={sessions}
+                rowKey={(s) => s.id}
+                onRowClick={(s) =>
+                  navigate(`/admin/tools/chat-history/${s.id}`)
+                }
+              />
             </div>
 
             {nextCursor !== null && (

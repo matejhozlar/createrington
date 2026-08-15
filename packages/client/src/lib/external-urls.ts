@@ -5,12 +5,15 @@ export const CONTACT_EMAIL = "admin@createrington.com";
 
 const MC_HEADS_BASE = "https://mc-heads.net";
 
-export function mcHeadsAvatar(uuid: string): string {
-  return `${MC_HEADS_BASE}/avatar/${uuid}`;
+export function mcHeadsAvatar(uuid: string, size?: number): string {
+  const id = encodeURIComponent(uuid);
+  return size === undefined
+    ? `${MC_HEADS_BASE}/avatar/${id}`
+    : `${MC_HEADS_BASE}/avatar/${id}/${size}`;
 }
 
 export function mcHeadsBody(uuid: string): string {
-  return `${MC_HEADS_BASE}/body/${uuid}`;
+  return `${MC_HEADS_BASE}/body/${encodeURIComponent(uuid)}`;
 }
 
 export function mcBodyFront(uuid: string): string {

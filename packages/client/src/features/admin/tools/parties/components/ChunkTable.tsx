@@ -1,34 +1,11 @@
-import {
-  ArrowDown,
-  ArrowUp,
-  ArrowUpDown,
-  Copy,
-  MoreHorizontal,
-} from "lucide-react";
+import { Copy } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+  DataTable,
+  type DataTableAction,
+  type DataTableColumn,
+} from "@/components/data-table";
 import { useToastActions } from "@/hooks/use-toast";
 import {
   chunkTpCommand,
@@ -73,20 +50,6 @@ export function ChunkTable({
     [sortField],
   );
 
-  const renderSortIcon = useCallback(
-    (field: SortField) => {
-      if (sortField !== field) {
-        return <ArrowUpDown className="ml-1 size-3.5 opacity-50" />;
-      }
-      return sortDirection === "asc" ? (
-        <ArrowUp className="ml-1 size-3.5" />
-      ) : (
-        <ArrowDown className="ml-1 size-3.5" />
-      );
-    },
-    [sortField, sortDirection],
-  );
-
   const filtered = useMemo(
     () =>
       chunks.filter((c) => {
@@ -120,6 +83,82 @@ export function ChunkTable({
     toast.success("Copied to clipboard");
   };
 
+  const sortProps = (field: SortField) => ({
+    sorted: sortField === field ? sortDirection : (false as const),
+    onSort: () => handleSort(field),
+  });
+
+  const columns: DataTableColumn<Chunk>[] = [
+    {
+      key: "dimension",
+      header: "Dimension",
+      minWidth: 140,
+      ...sortProps("dimension"),
+      cellClassName: "text-xs",
+      render: (chunk) => formatDimension(chunk.dimension),
+    },
+    {
+      key: "x",
+      header: "X",
+      width: 90,
+      ...sortProps("x"),
+      cellClassName: "font-mono text-xs",
+      render: (chunk) => chunk.x,
+    },
+    {
+      key: "z",
+      header: "Z",
+      width: 90,
+      ...sortProps("z"),
+      cellClassName: "font-mono text-xs",
+      render: (chunk) => chunk.z,
+    },
+    {
+      key: "active",
+      header: "Status",
+      width: 110,
+      ...sortProps("active"),
+      render: (chunk) => (
+        <Badge
+          variant="outline"
+          className={
+            chunk.active
+              ? "border-success bg-success/10 text-success"
+              : "border-muted-foreground bg-muted-foreground/10 text-muted-foreground"
+          }
+        >
+          {chunk.active ? "Active" : "Inactive"}
+        </Badge>
+      ),
+    },
+  ];
+
+  const chunkActions = (chunk: Chunk): DataTableAction[] => {
+    const tp = chunkTpCommand(chunk.dimension, chunk.x, chunk.z);
+    return [
+      {
+        label: "Copy /tp command",
+        icon: Copy,
+        onClick: () => copy(tp),
+      },
+      {
+        label: "Copy chunk coords",
+        icon: Copy,
+        onClick: () => copy(`${chunk.x}, ${chunk.z}`),
+      },
+      {
+        label: "Copy block coords (center)",
+        icon: Copy,
+        onClick: () => copy(`${chunk.x * 16 + 8}, ${chunk.z * 16 + 8}`),
+      },
+      {
+        label: `Copy region file (${regionFileName(chunk.x, chunk.z)})`,
+        icon: Copy,
+        onClick: () => copy(regionFileName(chunk.x, chunk.z)),
+      },
+    ];
+  };
+
   if (sorted.length === 0) {
     return (
       <p className="py-2 text-sm text-muted-foreground">
@@ -131,133 +170,11 @@ export function ChunkTable({
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>
-            <button
-              type="button"
-              onClick={() => handleSort("dimension")}
-              className="inline-flex items-center gap-1 text-sm font-medium"
-            >
-              Dimension
-              {renderSortIcon("dimension")}
-            </button>
-          </TableHead>
-          <TableHead>
-            <button
-              type="button"
-              onClick={() => handleSort("x")}
-              className="inline-flex items-center gap-1 text-sm font-medium"
-            >
-              X{renderSortIcon("x")}
-            </button>
-          </TableHead>
-          <TableHead>
-            <button
-              type="button"
-              onClick={() => handleSort("z")}
-              className="inline-flex items-center gap-1 text-sm font-medium"
-            >
-              Z{renderSortIcon("z")}
-            </button>
-          </TableHead>
-          <TableHead>
-            <button
-              type="button"
-              onClick={() => handleSort("active")}
-              className="inline-flex items-center gap-1 text-sm font-medium"
-            >
-              Status
-              {renderSortIcon("active")}
-            </button>
-          </TableHead>
-          <TableHead className="w-24 text-right">Actions</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {sorted.map((chunk) => {
-          const tp = chunkTpCommand(chunk.dimension, chunk.x, chunk.z);
-          return (
-            <TableRow key={chunk.id}>
-              <TableCell className="text-xs">
-                {formatDimension(chunk.dimension)}
-              </TableCell>
-              <TableCell className="font-mono text-xs">{chunk.x}</TableCell>
-              <TableCell className="font-mono text-xs">{chunk.z}</TableCell>
-              <TableCell>
-                <Badge
-                  variant="outline"
-                  className={
-                    chunk.active
-                      ? "border-success bg-success/10 text-success"
-                      : "border-muted-foreground bg-muted-foreground/10 text-muted-foreground"
-                  }
-                >
-                  {chunk.active ? "Active" : "Inactive"}
-                </Badge>
-              </TableCell>
-              <TableCell className="text-right">
-                <div className="flex items-center justify-end gap-1">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="size-7"
-                        onClick={() => copy(tp)}
-                        aria-label="Copy /tp command"
-                      >
-                        <Copy className="size-3.5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <span className="font-mono text-[11px]">{tp}</span>
-                    </TooltipContent>
-                  </Tooltip>
-
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="size-7"
-                        aria-label="More actions"
-                      >
-                        <MoreHorizontal className="size-3.5" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-48">
-                      <DropdownMenuLabel>Copy</DropdownMenuLabel>
-                      <DropdownMenuItem onClick={() => copy(tp)}>
-                        /tp command
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => copy(`${chunk.x}, ${chunk.z}`)}
-                      >
-                        Chunk coords
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() =>
-                          copy(`${chunk.x * 16 + 8}, ${chunk.z * 16 + 8}`)
-                        }
-                      >
-                        Block coords (center)
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={() => copy(regionFileName(chunk.x, chunk.z))}
-                      >
-                        Region file ({regionFileName(chunk.x, chunk.z)})
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </TableCell>
-            </TableRow>
-          );
-        })}
-      </TableBody>
-    </Table>
+    <DataTable
+      columns={columns}
+      rows={sorted}
+      rowKey={(chunk) => chunk.id}
+      actions={chunkActions}
+    />
   );
 }
