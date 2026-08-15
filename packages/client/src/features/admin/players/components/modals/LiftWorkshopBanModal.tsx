@@ -75,6 +75,7 @@ export function LiftWorkshopBanModal({
           onChange={(e) => setReason(e.target.value)}
           className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           rows={4}
+          maxLength={500}
         />
       </Field>
     </AdminActionModal>

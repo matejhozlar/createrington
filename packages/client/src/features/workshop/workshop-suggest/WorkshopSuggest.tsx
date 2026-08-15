@@ -64,7 +64,8 @@ export function WorkshopSuggest() {
   if (
     workshopQuery.isLoading ||
     !workshopQuery.data ||
-    suggestionsQuery.isLoading
+    suggestionsQuery.isLoading ||
+    suggestBanQuery.isLoading
   ) {
     return (
       <Loading size="large" className="py-32" text="Loading workshop..." />
@@ -136,7 +137,14 @@ export function WorkshopSuggest() {
             <section>
               <h2 className="text-2xl font-semibold">Find a mod</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                {suggestBan.notice}
+                You are blocked from suggesting mods{" "}
+                {suggestBan.global
+                  ? "across every workshop"
+                  : "in this workshop"}{" "}
+                {suggestBan.expiresAt
+                  ? `until ${new Date(suggestBan.expiresAt).toLocaleDateString()}`
+                  : "permanently"}
+                . Reason: {suggestBan.reason}
               </p>
             </section>
           ) : (

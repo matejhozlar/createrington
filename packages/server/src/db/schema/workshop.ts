@@ -289,11 +289,9 @@ export const workshopPollBallot = pgTable(
 );
 
 // --- workshop_ban ---
-// Blocks suggesting only; upvotes, ballots and withdrawals stay open, and
-// nothing here touches Minecraft or Discord membership. workshopId null =
-// global. No FK on discordId, matching workshop_mod.submittedBy. Expiry is
-// read-time only, so no unique index can cover active bans: an elapsed
-// temporary ban keeps unbanned = false and would block re-banning forever.
+// workshopId null = every workshop. Expiry is read-time only, so no unique
+// index can cover active bans: an elapsed temporary ban keeps unbanned = false
+// and would block re-banning forever.
 
 export const workshopBan = pgTable(
   "workshop_ban",

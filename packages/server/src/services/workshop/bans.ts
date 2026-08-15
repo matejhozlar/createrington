@@ -24,11 +24,17 @@ export interface WorkshopBanActor {
 
 /**
  * Human-readable reason a suggestion was refused, safe to show the banned user.
+ * Callers that can render a timezone-aware date pass their own formatter; the
+ * default spells out UTC rather than reading a day off for western users.
  */
-export function banNotice(ban: WorkshopBan): string {
+export function banNotice(
+  ban: WorkshopBan,
+  formatExpiry: (expiresAt: Date) => string = (expiresAt) =>
+    `${expiresAt.toISOString().slice(0, 10)} (UTC)`,
+): string {
   const scope = ban.workshopId ? "in this workshop" : "across every workshop";
   const until = ban.expiresAt
-    ? `until ${ban.expiresAt.toISOString().slice(0, 10)}`
+    ? `until ${formatExpiry(ban.expiresAt)}`
     : "permanently";
   return `You are blocked from suggesting mods ${scope} ${until}. Reason: ${ban.reason}`;
 }

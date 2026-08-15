@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Input } from "@/components/ui/input";
 import { Field, FieldLabel } from "@/components/ui/field";
 import {
   Select,
@@ -93,7 +92,7 @@ export function IssueWorkshopBanModal({
           <SelectTrigger id="workshop-ban-scope">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="z-[100]">
             <SelectItem value={GLOBAL_SCOPE}>Every workshop</SelectItem>
             {workshops.data?.map((workshop) => (
               <SelectItem key={workshop.id} value={String(workshop.id)}>
@@ -113,7 +112,7 @@ export function IssueWorkshopBanModal({
           <SelectTrigger id="workshop-ban-type">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="z-[100]">
             <SelectItem value="temporary">Temporary</SelectItem>
             <SelectItem value="permanent">Permanent</SelectItem>
           </SelectContent>
@@ -130,7 +129,7 @@ export function IssueWorkshopBanModal({
             <SelectTrigger id="workshop-ban-duration">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="z-[100]">
               {DURATIONS.map((days) => (
                 <SelectItem key={days} value={String(days)}>
                   {days} {days === 1 ? "day" : "days"}
@@ -143,11 +142,13 @@ export function IssueWorkshopBanModal({
 
       <Field>
         <FieldLabel htmlFor="workshop-ban-reason">Reason</FieldLabel>
-        <Input
+        <textarea
           id="workshop-ban-reason"
-          value={reason}
-          onChange={(event) => setReason(event.target.value)}
           placeholder="Shown to the user when they try to suggest"
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          rows={4}
           maxLength={500}
         />
       </Field>

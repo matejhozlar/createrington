@@ -611,7 +611,9 @@ describe("workshop suggestion bans", () => {
   // Scoped bans cascade with their workshop, global ones have nothing to
   // cascade from and would leak into later tests.
   afterEach(async () => {
-    await Q.workshop.ban.deleteAll({ discordId: { $in: [USER_A, USER_B] } });
+    await Q.workshop.ban.deleteAll({
+      discordId: { $in: [ADMIN, USER_A, USER_B] },
+    });
   });
 
   it("blocks suggesting in the workshop it is scoped to", async () => {
@@ -705,7 +707,7 @@ describe("workshop suggestion bans", () => {
     const own = await workshopService.suggestMod(workshop.id, USER_A, {
       projectId: await seedProject(ctx),
     });
-    const someone_elses = await seedMod(ctx, workshop, {
+    const othersMod = await seedMod(ctx, workshop, {
       submittedBy: USER_B,
     });
 
@@ -714,15 +716,30 @@ describe("workshop suggestion bans", () => {
       ADMIN_ACTOR,
     );
 
-    const vote = await workshopService.toggleModUpvote(
-      someone_elses.id,
-      USER_A,
-    );
+    const vote = await workshopService.toggleModUpvote(othersMod.id, USER_A);
     expect(vote.upvoted).toBe(true);
 
     await expect(
       workshopService.removeSuggestion(own.id, USER_A),
     ).resolves.toBeUndefined();
+  });
+
+  it("does not gate admin adds, even for a blocked admin", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const projectId = await seedProject(ctx);
+    await issueBan(
+      { discordId: ADMIN, workshopId: null, reason: "blocked as a user" },
+      ADMIN_ACTOR,
+    );
+
+    const rows = await workshopService.addModsAsAdmin(
+      workshop.id,
+      [projectId],
+      ADMIN,
+    );
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.status).toBe("approved");
   });
 
   it("rejects a duplicate in the same scope but allows global alongside scoped", async () => {

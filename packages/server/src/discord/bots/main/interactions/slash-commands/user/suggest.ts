@@ -13,6 +13,7 @@ import { replyError } from "@/discord/utils/interaction-reply";
 import { CurseForgeClass } from "@/services/curseforge";
 import { featureFlagService, FeatureFlags } from "@/services/feature-flag";
 import { banNotice, findSuggestBan } from "@/services/workshop/bans";
+import { discordTimestamp } from "@/utils/format";
 import type { Workshop } from "@createrington/shared/db";
 
 export const data = new SlashCommandBuilder()
@@ -94,7 +95,11 @@ export async function execute(
 
   const ban = await findSuggestBan(interaction.user.id, workshop.id);
   if (ban) {
-    await replyError(interaction, "Suggestions Blocked", banNotice(ban));
+    await replyError(
+      interaction,
+      "Suggestions Blocked",
+      banNotice(ban, (expiresAt) => discordTimestamp(expiresAt, "D")),
+    );
     return;
   }
 
