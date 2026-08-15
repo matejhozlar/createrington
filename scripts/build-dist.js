@@ -11,6 +11,8 @@ const CLIENT_DIST = path.join(ROOT, "packages/client/dist");
 
 const SITE_URL = "https://createrington.com";
 const FALLBACK_IMAGE = `${SITE_URL}/assets/og/og-card.png`;
+const CARD_W = 1200;
+const CARD_H = 630;
 
 fs.rmSync(DIST, { recursive: true, force: true });
 
@@ -30,12 +32,28 @@ generateOgHtml();
 
 console.log("Build assembled in dist/");
 
-function setMeta(html, attr, key, value) {
-  const re = new RegExp(`(<meta\\s+${attr}="${key}"[\\s\\S]*?content=")[^"]*(")`);
+function escapeAttr(value) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
+function swapTag(html, re, value, what) {
   if (!re.test(html)) {
-    throw new Error(`og-html: no <meta ${attr}="${key}"> in built index.html`);
+    throw new Error(`og-html: no ${what} in built index.html`);
   }
-  return html.replace(re, `$1${value}$2`);
+  return html.replace(re, (_, pre, post) => `${pre}${value}${post}`);
+}
+
+function setMeta(html, attr, key, value) {
+  return swapTag(
+    html,
+    new RegExp(`(<meta\\s+${attr}="${key}"[^>]*?content=")[^"]*(")`),
+    escapeAttr(value),
+    `<meta ${attr}="${key}">`,
+  );
 }
 
 // Every <route>.png under assets/og/ (except the global og-card.png fallback)
@@ -45,11 +63,15 @@ function setMeta(html, attr, key, value) {
 function generateOgHtml() {
   const publicDir = path.join(DIST, "public");
   const ogDir = path.join(publicDir, "assets", "og");
-  if (!fs.existsSync(ogDir)) return;
+  if (!fs.existsSync(ogDir)) {
+    throw new Error(`og-html: ${ogDir} is missing from the built client`);
+  }
 
   const base = fs.readFileSync(path.join(publicDir, "index.html"), "utf8");
   if (!base.includes(FALLBACK_IMAGE)) {
-    throw new Error(`og-html: built index.html does not reference ${FALLBACK_IMAGE}`);
+    throw new Error(
+      `og-html: built index.html does not reference ${FALLBACK_IMAGE}`,
+    );
   }
 
   const cards = fs
@@ -57,15 +79,29 @@ function generateOgHtml() {
     .map((entry) => entry.split(path.sep).join("/"))
     .filter((entry) => entry.endsWith(".png") && entry !== "og-card.png");
 
+  const routes = new Set();
   for (const card of cards) {
     const route = `/${card.slice(0, -".png".length)}`;
+    routes.add(route);
+
+    const png = fs.readFileSync(path.join(ogDir, card));
+    const width = png.readUInt32BE(16);
+    const height = png.readUInt32BE(20);
+    if (width !== CARD_W || height !== CARD_H) {
+      throw new Error(
+        `og-html: ${card} is ${width}x${height}, og:image:width/height advertise ${CARD_W}x${CARD_H}`,
+      );
+    }
+
     const meta = OG_ROUTES[route];
 
     let html = base.replaceAll(FALLBACK_IMAGE, `${SITE_URL}/assets/og/${card}`);
     html = setMeta(html, "property", "og:url", `${SITE_URL}${route}`);
-    html = html.replace(
+    html = swapTag(
+      html,
       /(<link\s+rel="canonical"\s+href=")[^"]*(")/,
-      `$1${SITE_URL}${route}$2`,
+      `${SITE_URL}${route}`,
+      '<link rel="canonical">',
     );
     if (meta?.title) {
       html = setMeta(html, "property", "og:title", meta.title);
@@ -85,5 +121,14 @@ function generateOgHtml() {
     fs.mkdirSync(path.dirname(outFile), { recursive: true });
     fs.writeFileSync(outFile, html);
     console.log(`og-html: ${route}`);
+  }
+
+  const unmatched = Object.keys(OG_ROUTES).filter(
+    (route) => !routes.has(route),
+  );
+  if (unmatched.length > 0) {
+    throw new Error(
+      `og-html: OG_ROUTES entries with no matching card image: ${unmatched.join(", ")}`,
+    );
   }
 }

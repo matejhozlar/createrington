@@ -1,5 +1,5 @@
 // Headless tool: composites the /structure-packs social card
-// (og-structure-packs.png), a canvas rebuild of the page hero: the Parallel
+// (structure-packs.png), a canvas rebuild of the page hero: the Parallel
 // Worlds portal (obsidian frame + animated sprite frame) over the blurred
 // warehouse backdrop, the hero headline, and team figures gathered at the
 // portal. Figures are cached under assets/packs/ (committed); to refresh,

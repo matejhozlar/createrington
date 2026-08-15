@@ -31,7 +31,7 @@ export const MUTED = "#a0a0a5";
 export const TEXT_X = 74;
 
 const here = dirname(fileURLToPath(import.meta.url));
-export const PUBLIC = join(here, "..", "..", "..", "..", "client", "public");
+const PUBLIC = join(here, "..", "..", "..", "..", "client", "public");
 export const ASSETS = join(PUBLIC, "assets");
 const FONTS = join(here, "..", "..", "assets", "fonts");
 
@@ -101,8 +101,10 @@ export interface PoseFigureRequest {
 }
 
 // Resolve a posed figure PNG: prefer the committed cache, otherwise render it
-// via the skin-api and cache it so later card renders stay offline. Calls the
-// HTTP endpoint directly rather than via the SDK because the SDK does not
+// via the skin-api and cache it so later card renders stay offline. The cache
+// is keyed by the caller's file path only, so a change to the requested
+// dimensions needs the cached file deleted first. Calls the HTTP endpoint
+// directly rather than via the SDK because the SDK does not
 // forward the `outline` option, which gives the figures the white edge that
 // reads against the dark card.
 export async function getPoseFigure(req: PoseFigureRequest): Promise<Image> {
@@ -111,9 +113,9 @@ export async function getPoseFigure(req: PoseFigureRequest): Promise<Image> {
     if (!apiKey) {
       throw new Error(
         `Missing cached figure (${req.file}) and SKIN_API_KEY is not set. ` +
-          `Run once with the skin-api key in the environment to populate ` +
-          `the cache, e.g.: infisical run --env=dev -- pnpm --filter ` +
-          `@createrington/server util:render-og-card`,
+          `Re-run this card's util:render-og-* script once with the ` +
+          `skin-api key in the environment to populate the cache, e.g. ` +
+          `via infisical run --env=dev`,
       );
     }
     // Defaults to the public skin-api so the script runs without env setup;
