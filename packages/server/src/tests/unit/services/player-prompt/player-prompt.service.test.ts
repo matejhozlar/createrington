@@ -22,6 +22,10 @@ let raceOnAppend: StoredEntry | null;
 let promptDeleteCalls: number[];
 let messageDeleteCalls: Array<{ channelId: string; messageId: string }>;
 let messageDeleteResult: { success: boolean; error?: string };
+let promptFindCalls: number;
+let promptUpdateCalls: Array<{ id: number } & Partial<PlayerPrompt>>;
+let activePrompts: PlayerPrompt[];
+let rejectPromptDelete: boolean;
 
 vi.mock("@/db", () => {
   const response = {
@@ -65,6 +69,10 @@ vi.mock("@/db", () => {
       entries.push(entry);
       return entry;
     },
+    countByPrompt: async () => ({
+      entryCount: entries.length,
+      responderCount: entries.length > 0 ? 1 : 0,
+    }),
   };
 
   return {
@@ -74,8 +82,20 @@ vi.mock("@/db", () => {
           minecraftUuid: "11111111-1111-1111-1111-111111111111",
         }),
         prompt: {
-          find: async () => prompt,
+          find: async () => {
+            promptFindCalls += 1;
+            return prompt;
+          },
+          findAllActive: async () => activePrompts,
+          update: async (
+            identifier: { id: number },
+            data: Partial<PlayerPrompt>,
+          ) => {
+            promptUpdateCalls.push({ id: identifier.id, ...data });
+            if (prompt) prompt = { ...prompt, ...data };
+          },
           delete: async (identifier: { id: number }) => {
+            if (rejectPromptDelete) throw new Error("delete failed");
             promptDeleteCalls.push(identifier.id);
             prompt = null;
           },
@@ -144,6 +164,10 @@ beforeEach(() => {
   promptDeleteCalls = [];
   messageDeleteCalls = [];
   messageDeleteResult = { success: true };
+  promptFindCalls = 0;
+  promptUpdateCalls = [];
+  activePrompts = [];
+  rejectPromptDelete = false;
 });
 
 describe("PlayerPromptService.prepareEntry", () => {
@@ -421,5 +445,44 @@ describe("PlayerPromptService.deletePrompt", () => {
 
     expect(messageDeleteCalls).toHaveLength(0);
     expect(promptDeleteCalls).toEqual([1]);
+  });
+
+  it("cancels the closure timer so a deleted prompt is never closed later", async () => {
+    vi.useFakeTimers();
+    try {
+      activePrompts = [setPrompt({ endsAt: new Date(Date.now() + 60_000) })];
+      const service = makeService(recordingMessageService());
+      await service.initialize();
+      await service.deletePrompt(1);
+
+      promptFindCalls = 0;
+      await vi.advanceTimersByTimeAsync(120_000);
+
+      expect(promptFindCalls).toBe(0);
+      expect(promptUpdateCalls).toHaveLength(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  // Pins the ordering: the timer is cleared only after the row is gone, so a
+  // failed delete leaves a prompt that still closes on schedule.
+  it("keeps the closure timer armed when the row delete fails", async () => {
+    vi.useFakeTimers();
+    try {
+      activePrompts = [
+        setPrompt({ endsAt: new Date(Date.now() + 60_000), messageId: null }),
+      ];
+      rejectPromptDelete = true;
+      const service = makeService(recordingMessageService());
+      await service.initialize();
+
+      await expect(service.deletePrompt(1)).rejects.toThrow("delete failed");
+      await vi.advanceTimersByTimeAsync(120_000);
+
+      expect(promptUpdateCalls).toContainEqual({ id: 1, status: "closed" });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

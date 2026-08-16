@@ -255,7 +255,6 @@ export function PromptDetail() {
         entryCount={responses.length}
         onSuccess={() => {
           setDeleteOpen(false);
-          // The record this page renders is gone, so fall back to the list.
           void navigate("/admin/tools/prompts");
         }}
       />

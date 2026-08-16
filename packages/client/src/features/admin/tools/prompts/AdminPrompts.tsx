@@ -263,7 +263,7 @@ export function AdminPrompts() {
           entryCount={deleteModal.prompt.responseCount}
           onSuccess={() => {
             setDeleteModal({ open: false, prompt: null });
-            void listQuery.refetch();
+            if (items.length === 1 && page > 0) setPage(page - 1);
           }}
         />
       )}

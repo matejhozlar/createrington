@@ -19,7 +19,6 @@ interface DeletePromptModalProps {
     question: string;
     status: "active" | "closed";
   };
-  /** Total entries recorded against the prompt, all of which are destroyed. */
   entryCount: number;
   onSuccess: () => void;
 }
@@ -32,11 +31,14 @@ export function DeletePromptModal({
   onSuccess,
 }: DeletePromptModalProps) {
   const toast = useToastActions();
+  const utils = trpc.useUtils();
   const deletePrompt = trpc.admin.prompts.delete.useMutation();
 
   const handleDelete = async () => {
     try {
       await deletePrompt.mutateAsync({ id: prompt.id });
+      await utils.admin.prompts.list.invalidate();
+      void utils.admin.prompts.get.reset({ id: prompt.id });
       toast.success("Prompt deleted");
       onSuccess();
     } catch (error) {

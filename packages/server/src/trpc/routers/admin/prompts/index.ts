@@ -183,8 +183,6 @@ export const adminPromptsRouter = router({
     .input(z.object({ id: z.number().int().positive() }))
     .mutation(async ({ input, ctx }) => {
       const service = getServiceSync(Services.PLAYER_PROMPT_SERVICE);
-      // Read before the delete cascades the responses away, so the audit
-      // entry records how much was destroyed alongside the prompt.
       const totals = await Q.player.prompt.response.countByPrompt(input.id);
       const prompt = await service.deletePrompt(input.id);
       if (!prompt) throw trpcError.notFound("Prompt not found");
