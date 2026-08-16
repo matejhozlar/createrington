@@ -78,10 +78,14 @@ export function IssuesTab({
             href={item.websiteUrl}
             target="_blank"
             rel="noopener noreferrer"
+            aria-label={`Open ${item.name} on CurseForge`}
             className="flex min-w-0 items-center gap-1 hover:underline"
           >
             <CellText value={item.name} className="min-w-0 font-medium" />
-            <ExternalLink className="size-3 shrink-0 text-muted-foreground" />
+            <ExternalLink
+              aria-hidden
+              className="size-3 shrink-0 text-muted-foreground"
+            />
           </a>
         ) : (
           <CellText value={item.name} className="font-medium" />

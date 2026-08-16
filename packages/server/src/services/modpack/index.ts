@@ -1,4 +1,4 @@
-import { Q, db } from "@/db";
+﻿import { Q, db } from "@/db";
 import {
   BadRequestError,
   ConflictError,
@@ -719,17 +719,20 @@ export class ModpackService {
         : [];
     const projectById = new Map(projects.map((p) => [p.id, p]));
     const label = (id: number) => projectById.get(id)?.name ?? `#${id}`;
-    const subject = (id: number): AttentionSubject => ({
-      curseforgeProjectId: id,
-      name: label(id),
-      websiteUrl: projectById.get(id)?.websiteUrl ?? null,
-    });
+    const attentionSubject = (id: number): AttentionSubject => {
+      const project = projectById.get(id);
+      return {
+        curseforgeProjectId: id,
+        name: project?.name ?? `#${id}`,
+        websiteUrl: project?.websiteUrl ?? null,
+      };
+    };
 
     for (const row of dropped) {
       items.push({
         type: "dropped_from_pack",
         modpackModId: row.id,
-        ...subject(row.curseforgeProjectId),
+        ...attentionSubject(row.curseforgeProjectId),
         droppedAt: row.droppedFromManifestAt!,
       });
     }
@@ -738,7 +741,7 @@ export class ModpackService {
         type:
           mod.status === "rejected" ? "shipped_rejected" : "shipped_unreviewed",
         workshopModId: mod.id,
-        ...subject(mod.curseforgeProjectId),
+        ...attentionSubject(mod.curseforgeProjectId),
       });
     }
     for (const [projectId, gap] of gaps) {
@@ -750,14 +753,14 @@ export class ModpackService {
             ? "rejected_dependency"
             : "unpromoted_dependency",
         workshopModId: suggestion.id,
-        ...subject(projectId),
+        ...attentionSubject(projectId),
         requiredByName: label(gap.requiredByProjectId),
       });
     }
     for (const projectId of duplicateIds) {
       items.push({
         type: "duplicate_manifest_entry",
-        ...subject(projectId),
+        ...attentionSubject(projectId),
       });
     }
     for (const [projectId, workshopModId] of unclassifiedTargets) {
@@ -766,7 +769,7 @@ export class ModpackService {
       items.push({
         type: "environment_unspecified",
         workshopModId,
-        ...subject(projectId),
+        ...attentionSubject(projectId),
       });
     }
     return items;
