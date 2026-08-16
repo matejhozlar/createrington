@@ -9,7 +9,7 @@ import {
   type SKRSContext2D,
 } from "@napi-rs/canvas";
 import { AttachmentBuilder } from "discord.js";
-import type { KnownPose } from "createrington-skin-api";
+import { randomPose } from "createrington-skin-api";
 import config from "@/config";
 import { getSkinApiClient, MAX_QUALITY_RENDER } from "@/services/skin-api";
 import { computeBBox, fitFontSize } from "@/utils/canvas";
@@ -31,17 +31,6 @@ const FIGURE_HEIGHT = 620;
 const FIGURE_MAX_WIDTH = 500;
 const FIGURE_CENTER_X = 1220;
 const FIGURE_GROUND_Y = 800;
-
-const POSES = [
-  "cheer",
-  "wave",
-  "point",
-  "cute",
-  "sprint",
-  "callout",
-  "dab",
-  "victory",
-] as const satisfies readonly KnownPose[];
 
 const MC_HEADS_BODY_URL = "https://mc-heads.net/body";
 const FETCH_TIMEOUT_MS = 5000;
@@ -105,7 +94,7 @@ async function fetchBackground(): Promise<Image | null> {
 }
 
 async function fetchFigure(minecraftUuid: string): Promise<Image | null> {
-  const pose = POSES[Math.floor(Math.random() * POSES.length)];
+  const pose = randomPose();
   try {
     const png = await getSkinApiClient().render({
       pose,
