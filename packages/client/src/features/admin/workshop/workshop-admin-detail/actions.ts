@@ -36,10 +36,14 @@ export function modReviewActions(
     });
   }
   if (mod.status === "testing") {
+    const unclassified = mod.project.environment === "unspecified";
     actions.push({
-      label: "Approve for Next Update",
+      label: unclassified
+        ? "Flag client/server side to approve"
+        : "Approve for Next Update",
       icon: Check,
       iconClassName: "text-green-500",
+      disabled: unclassified,
       onClick: () => onReview(mod.id, "approve"),
     });
   }

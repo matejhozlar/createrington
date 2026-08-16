@@ -867,6 +867,17 @@ export class WorkshopService {
       );
     }
 
+    if (target === "next_update") {
+      const project = await Q.curseforge.project.find({
+        id: mod.curseforgeProjectId,
+      });
+      if (project?.environment === "unspecified") {
+        throw new BadRequestError(
+          "Flag whether this mod runs client or server side before approving it for the next update",
+        );
+      }
+    }
+
     const changed = await Q.workshop.mod.updateAll(
       target === "rejected"
         ? {
