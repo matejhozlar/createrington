@@ -20,6 +20,16 @@ import {
 } from "@/components/ui/select";
 import { useToastActions } from "@/hooks/use-toast";
 import { trpc } from "@/lib/trpc";
+import {
+  MAX_ENTRIES_PER_PLAYER,
+  MIN_ENTRIES_PER_PLAYER,
+  type PlayerPromptEntryModeValue,
+} from "@createrington/shared/player-prompt";
+import {
+  COOLDOWN_OPTIONS,
+  DURATION_OPTIONS,
+  ENTRY_MODE_OPTIONS,
+} from "../format";
 
 // Format a camelCase config key ("serverAnnouncements") into the label
 // we show in a picker ("Server Announcements"). Same transform the
@@ -38,21 +48,11 @@ interface Props {
   onSuccess: () => void;
 }
 
-// Preset durations in milliseconds, keyed off the select value string.
-const DURATION_PRESETS: Record<string, number> = {
-  "10m": 10 * 60 * 1000,
-  "30m": 30 * 60 * 1000,
-  "1h": 60 * 60 * 1000,
-  "6h": 6 * 60 * 60 * 1000,
-  "24h": 24 * 60 * 60 * 1000,
-  "3d": 3 * 24 * 60 * 60 * 1000,
-  "7d": 7 * 24 * 60 * 60 * 1000,
-};
-
-// Sentinel select values: Radix Select can't hold an empty string,
-// so we use reserved tokens for "don't ping anyone" and "fall back to
-// the server default (announcements)" and translate them at submit.
-const NO_ROLE = "__none__";
+// Sentinel select values: Radix Select can't hold an empty string, so
+// reserved tokens stand in for "nothing selected" (no role ping, no
+// cooldown) and "fall back to the server default (announcements)", and
+// are translated back at submit.
+const NONE = "__none__";
 const DEFAULT_CHANNEL = "__default__";
 
 export function CreatePromptModal({ open, onClose, onSuccess }: Props) {
@@ -67,15 +67,27 @@ export function CreatePromptModal({ open, onClose, onSuccess }: Props) {
   const [question, setQuestion] = useState("");
   const [description, setDescription] = useState("");
   const [durationPreset, setDurationPreset] = useState<string>("24h");
-  const [rolePingId, setRolePingId] = useState<string>(NO_ROLE);
+  const [rolePingId, setRolePingId] = useState<string>(NONE);
   const [channelId, setChannelId] = useState<string>(DEFAULT_CHANNEL);
+  const [entryMode, setEntryMode] =
+    useState<PlayerPromptEntryModeValue>("single");
+  const [maxEntries, setMaxEntries] = useState("");
+  const [cooldownPreset, setCooldownPreset] = useState<string>(NONE);
+
+  const isMulti = entryMode === "multi";
+  const modeDescription = ENTRY_MODE_OPTIONS.find(
+    (option) => option.value === entryMode,
+  )?.description;
 
   const reset = () => {
     setQuestion("");
     setDescription("");
     setDurationPreset("24h");
-    setRolePingId(NO_ROLE);
+    setRolePingId(NONE);
     setChannelId(DEFAULT_CHANNEL);
+    setEntryMode("single");
+    setMaxEntries("");
+    setCooldownPreset(NONE);
   };
 
   const handleClose = () => {
@@ -91,19 +103,45 @@ export function CreatePromptModal({ open, onClose, onSuccess }: Props) {
       toast.error("Question is required");
       return;
     }
-    const durationMs = DURATION_PRESETS[durationPreset];
+    const durationMs = DURATION_OPTIONS.find(
+      (option) => option.value === durationPreset,
+    )?.ms;
     if (!durationMs) {
       toast.error("Select a valid duration");
       return;
     }
+
+    const trimmedMaxEntries = maxEntries.trim();
+    let maxEntriesValue: number | undefined;
+    if (isMulti && trimmedMaxEntries) {
+      maxEntriesValue = Number(trimmedMaxEntries);
+      if (
+        !Number.isInteger(maxEntriesValue) ||
+        maxEntriesValue < MIN_ENTRIES_PER_PLAYER ||
+        maxEntriesValue > MAX_ENTRIES_PER_PLAYER
+      ) {
+        toast.error(
+          `Max entries must be between ${MIN_ENTRIES_PER_PLAYER} and ${MAX_ENTRIES_PER_PLAYER}`,
+        );
+        return;
+      }
+    }
+
+    const cooldownSeconds = isMulti
+      ? COOLDOWN_OPTIONS.find((option) => option.value === cooldownPreset)
+          ?.seconds
+      : undefined;
 
     try {
       await createMutation.mutateAsync({
         question: trimmedQuestion,
         description: description.trim() || undefined,
         durationMs,
-        rolePingId: rolePingId === NO_ROLE ? undefined : rolePingId,
+        rolePingId: rolePingId === NONE ? undefined : rolePingId,
         channelId: channelId === DEFAULT_CHANNEL ? undefined : channelId,
+        entryMode,
+        maxEntries: maxEntriesValue,
+        cooldownSeconds,
       });
       toast.success("Prompt posted to Discord");
       reset();
@@ -135,7 +173,7 @@ export function CreatePromptModal({ open, onClose, onSuccess }: Props) {
               required
             />
             <FieldDescription>
-              Shown as the embed title on Discord.
+              Shown as the heading of the Discord card.
             </FieldDescription>
           </Field>
 
@@ -164,16 +202,82 @@ export function CreatePromptModal({ open, onClose, onSuccess }: Props) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="10m">10 minutes</SelectItem>
-                <SelectItem value="30m">30 minutes</SelectItem>
-                <SelectItem value="1h">1 hour</SelectItem>
-                <SelectItem value="6h">6 hours</SelectItem>
-                <SelectItem value="24h">24 hours</SelectItem>
-                <SelectItem value="3d">3 days</SelectItem>
-                <SelectItem value="7d">7 days</SelectItem>
+                {DURATION_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </Field>
+
+          <Field>
+            <FieldLabel htmlFor="prompt-entry-mode">Entry mode</FieldLabel>
+            <Select
+              value={entryMode}
+              onValueChange={(v) =>
+                setEntryMode(v as PlayerPromptEntryModeValue)
+              }
+            >
+              <SelectTrigger id="prompt-entry-mode">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {ENTRY_MODE_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FieldDescription>{modeDescription}</FieldDescription>
+          </Field>
+
+          {isMulti && (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field>
+                <FieldLabel htmlFor="prompt-max-entries">
+                  Max entries
+                </FieldLabel>
+                <Input
+                  id="prompt-max-entries"
+                  type="number"
+                  inputMode="numeric"
+                  min={MIN_ENTRIES_PER_PLAYER}
+                  max={MAX_ENTRIES_PER_PLAYER}
+                  value={maxEntries}
+                  onChange={(e) => setMaxEntries(e.target.value)}
+                  placeholder="Unlimited"
+                />
+                <FieldDescription>
+                  Per player. Leave empty for unlimited.
+                </FieldDescription>
+              </Field>
+
+              <Field>
+                <FieldLabel htmlFor="prompt-cooldown">Cooldown</FieldLabel>
+                <Select
+                  value={cooldownPreset}
+                  onValueChange={setCooldownPreset}
+                >
+                  <SelectTrigger id="prompt-cooldown">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NONE}>No cooldown</SelectItem>
+                    {COOLDOWN_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FieldDescription>
+                  Wait between a player's entries.
+                </FieldDescription>
+              </Field>
+            </div>
+          )}
 
           <Field>
             <FieldLabel htmlFor="prompt-channel">Channel</FieldLabel>
@@ -211,7 +315,7 @@ export function CreatePromptModal({ open, onClose, onSuccess }: Props) {
                 <SelectValue placeholder="No ping" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={NO_ROLE}>No ping</SelectItem>
+                <SelectItem value={NONE}>No ping</SelectItem>
                 {(rolesQuery.data ?? []).map((role) => (
                   <SelectItem key={role.id} value={role.id}>
                     @ {formatName(role.name)}
@@ -220,7 +324,7 @@ export function CreatePromptModal({ open, onClose, onSuccess }: Props) {
               </SelectContent>
             </Select>
             <FieldDescription>
-              The mention is posted above the embed inside Discord spoiler tags,
+              The mention is posted above the card inside Discord spoiler tags,
               so the channel stays visually clean while the ping still fires.
             </FieldDescription>
           </Field>

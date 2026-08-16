@@ -14,7 +14,7 @@ export class PlayerPromptQueries extends PlayerPromptBaseQueries {
   }
 
   /**
-   * List prompts with a derived response count.
+   * List prompts with derived entry and unique-responder counts.
    *
    * Used by the admin UI's list page. Ordered newest first so the most
    * recently created prompt sits at the top.
@@ -23,7 +23,9 @@ export class PlayerPromptQueries extends PlayerPromptBaseQueries {
     limit: number;
     offset: number;
     status?: "active" | "closed";
-  }): Promise<Array<PlayerPrompt & { responseCount: number }>> {
+  }): Promise<
+    Array<PlayerPrompt & { responseCount: number; responderCount: number }>
+  > {
     const conditions: string[] = [];
     const params: unknown[] = [];
     if (options.status) {
@@ -38,10 +40,16 @@ export class PlayerPromptQueries extends PlayerPromptBaseQueries {
     const offsetParam = `$${params.length}`;
 
     const query = `
-      SELECT p.*, COALESCE(r.response_count, 0)::int AS response_count
+      SELECT
+        p.*,
+        COALESCE(r.response_count, 0)::int AS response_count,
+        COALESCE(r.responder_count, 0)::int AS responder_count
       FROM ${this.table} p
       LEFT JOIN (
-        SELECT prompt_id, COUNT(*)::int AS response_count
+        SELECT
+          prompt_id,
+          COUNT(*)::int AS response_count,
+          COUNT(DISTINCT discord_id)::int AS responder_count
         FROM player_prompt_response
         GROUP BY prompt_id
       ) r ON r.prompt_id = p.id
@@ -50,11 +58,15 @@ export class PlayerPromptQueries extends PlayerPromptBaseQueries {
       LIMIT ${limitParam} OFFSET ${offsetParam}`;
 
     const result = await this.runQuery<
-      Record<string, unknown> & { response_count: number }
+      Record<string, unknown> & {
+        response_count: number;
+        responder_count: number;
+      }
     >("list prompts with response count", query, params);
     return result.rows.map((row) => ({
       ...this.mapRowToEntity(row as never),
       responseCount: row.response_count,
+      responderCount: row.responder_count,
     }));
   }
 

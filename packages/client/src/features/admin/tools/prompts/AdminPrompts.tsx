@@ -73,12 +73,31 @@ export function AdminPrompts() {
       ),
     },
     {
+      key: "mode",
+      header: "Mode",
+      width: 100,
+      render: (row) => (
+        <Badge variant="outline">
+          {row.entryMode === "multi" ? "Multi" : "Single"}
+        </Badge>
+      ),
+    },
+    {
       key: "responses",
-      header: "Responses",
+      header: "Entries",
       width: 120,
       align: "right",
       cellClassName: "tabular-nums",
-      render: (row) => row.responseCount,
+      render: (row) => (
+        <>
+          <div>{row.responseCount}</div>
+          {row.entryMode === "multi" && row.responseCount > 0 && (
+            <div className="text-xs text-muted-foreground">
+              from {row.responderCount}
+            </div>
+          )}
+        </>
+      ),
     },
     {
       key: "ends",

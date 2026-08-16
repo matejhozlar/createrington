@@ -9,19 +9,55 @@ import {
 } from "@/trpc/utils";
 import { getServiceSync, Services } from "@/services";
 import { Discord } from "@/discord/constants";
+import {
+  MAX_ENTRIES_PER_PLAYER,
+  MAX_PROMPT_COOLDOWN_SECONDS,
+  MIN_ENTRIES_PER_PLAYER,
+  PLAYER_PROMPT_ENTRY_MODES,
+} from "@createrington/shared/player-prompt";
 
 const MAX_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const MIN_DURATION_MS = 60 * 1000; // 1 minute, guards against accidental zero-duration prompts
 
-const createInput = z.object({
-  question: z.string().min(1).max(256),
-  description: z.string().max(2000).optional(),
-  durationMs: z.number().int().min(MIN_DURATION_MS).max(MAX_DURATION_MS),
-  rolePingId: z.string().regex(/^\d+$/).optional(),
-  // Optional, defaults to the announcements channel. Admins can target
-  // any configured channel via the client picker.
-  channelId: z.string().regex(/^\d+$/).optional(),
-});
+const createInput = z
+  .object({
+    // Collapsed to one line: the question renders as a markdown heading on
+    // the Discord card, which a newline would break out of.
+    question: z
+      .string()
+      .max(256)
+      .transform((value) => value.replace(/\s+/g, " ").trim())
+      .pipe(z.string().min(1)),
+    description: z.string().max(2000).optional(),
+    durationMs: z.number().int().min(MIN_DURATION_MS).max(MAX_DURATION_MS),
+    rolePingId: z.string().regex(/^\d+$/).optional(),
+    // Optional, defaults to the announcements channel. Admins can target
+    // any configured channel via the client picker.
+    channelId: z.string().regex(/^\d+$/).optional(),
+    entryMode: z.enum(PLAYER_PROMPT_ENTRY_MODES).default("single"),
+    // Multi mode only. Omit for unlimited entries / no cooldown.
+    maxEntries: z
+      .number()
+      .int()
+      .min(MIN_ENTRIES_PER_PLAYER)
+      .max(MAX_ENTRIES_PER_PLAYER)
+      .optional(),
+    cooldownSeconds: z
+      .number()
+      .int()
+      .min(1)
+      .max(MAX_PROMPT_COOLDOWN_SECONDS)
+      .optional(),
+  })
+  .refine(
+    (input) =>
+      input.entryMode === "multi" ||
+      (input.maxEntries === undefined && input.cooldownSeconds === undefined),
+    {
+      message: "maxEntries and cooldownSeconds require entryMode 'multi'",
+      path: ["entryMode"],
+    },
+  );
 
 /**
  * Admin Player Prompt router.
@@ -99,13 +135,21 @@ export const adminPromptsRouter = router({
           input.channelId ??
           Discord.Channels.createringtonOfficial.ANNOUNCEMENTS,
         createdBy: ctx.user.discordId,
+        entryMode: input.entryMode,
+        maxEntries: input.maxEntries ?? null,
+        cooldownSeconds: input.cooldownSeconds ?? null,
       });
 
       await Q.admin.log.action.logAction({
         ...auditActor(ctx),
         actionType: "player_prompt_create",
         description: `Created player prompt "${input.question.slice(0, 80)}"`,
-        metadata: { promptId: prompt.id },
+        metadata: {
+          promptId: prompt.id,
+          entryMode: input.entryMode,
+          maxEntries: input.maxEntries ?? null,
+          cooldownSeconds: input.cooldownSeconds ?? null,
+        },
       });
 
       return { prompt };
