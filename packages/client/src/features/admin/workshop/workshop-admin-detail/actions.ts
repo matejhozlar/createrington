@@ -38,7 +38,9 @@ export function modReviewActions(
   if (mod.status === "testing") {
     const unclassified = mod.project.environment === "unspecified";
     actions.push({
-      label: unclassified ? "Environment not set" : "Approve for Next Update",
+      label: unclassified
+        ? "Environment not specified"
+        : "Approve for Next Update",
       icon: Check,
       iconClassName: "text-green-500",
       disabled: unclassified,
