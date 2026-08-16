@@ -54,6 +54,7 @@ export function IssuesTab({
   onRetry,
   onView,
   envOverride,
+  resolvedEnvironments,
   onSetEnvironment,
 }: {
   items: AttentionItem[];
@@ -62,6 +63,7 @@ export function IssuesTab({
   onRetry: () => void;
   onView: (workshopModId: number) => void;
   envOverride: EnvironmentOverride | null;
+  resolvedEnvironments: Record<number, ModEnvironment>;
   onSetEnvironment: (projectId: number, environment: ModEnvironment) => void;
 }) {
   const columns: DataTableColumn<AttentionItem>[] = [
@@ -98,8 +100,17 @@ export function IssuesTab({
             <div className="pt-1.5">
               <EnvironmentCell
                 projectId={item.curseforgeProjectId}
-                environment="unspecified"
-                source={null}
+                environment={
+                  resolvedEnvironments[item.curseforgeProjectId] ??
+                  "unspecified"
+                }
+                source={
+                  resolvedEnvironments[item.curseforgeProjectId] &&
+                  resolvedEnvironments[item.curseforgeProjectId] !==
+                    "unspecified"
+                    ? "manual"
+                    : null
+                }
                 override={envOverride}
                 onSetEnvironment={onSetEnvironment}
               />

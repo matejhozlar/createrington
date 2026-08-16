@@ -25,7 +25,7 @@ import type {
   ModEnvironment,
   WorkshopModStatus,
 } from "@createrington/shared/db";
-import type { AdminWorkshopMod } from "./types";
+import type { AdminWorkshopMod, AttentionItem } from "./types";
 import {
   STAGE_CONFIG,
   isModTab,
@@ -112,6 +112,9 @@ export function AdminWorkshopDetail() {
   const [envOverride, setEnvOverride] = useState<EnvironmentOverride | null>(
     null,
   );
+  const [lingeringEnvItems, setLingeringEnvItems] = useState<
+    Array<{ item: AttentionItem; environment: ModEnvironment }>
+  >([]);
   const [skipConfirms, setSkipConfirms] = useState(() => {
     try {
       return sessionStorage.getItem(SKIP_CONFIRM_SESSION_KEY) === "1";
@@ -128,6 +131,7 @@ export function AdminWorkshopDetail() {
     setSearchParams(next, { replace: true });
     setSearch("");
     setPage(0);
+    setLingeringEnvItems([]);
   };
 
   const lastModTab = useRef<ModTabId>("review");
@@ -218,6 +222,16 @@ export function AdminWorkshopDetail() {
       },
       onError: (err, variables) => {
         clearEnvOverride(variables);
+        setLingeringEnvItems((current) =>
+          current.filter(
+            (lingering) =>
+              !(
+                lingering.item.curseforgeProjectId ===
+                  variables.curseforgeProjectId &&
+                lingering.environment === variables.environment
+              ),
+          ),
+        );
         toast.error(err.message);
       },
     });
@@ -239,6 +253,30 @@ export function AdminWorkshopDetail() {
     for (const mod of mods) (groups[mod.status] ??= []).push(mod);
     return groups;
   }, [mods]);
+
+  const issueItems = useMemo(() => {
+    const fresh = attentionQuery.data ?? [];
+    if (lingeringEnvItems.length === 0) return fresh;
+    const unresolved = new Set(
+      fresh
+        .filter((item) => item.type === "environment_unspecified")
+        .map((item) => item.curseforgeProjectId),
+    );
+    return [
+      ...fresh,
+      ...lingeringEnvItems
+        .filter((l) => !unresolved.has(l.item.curseforgeProjectId))
+        .map((l) => l.item),
+    ];
+  }, [attentionQuery.data, lingeringEnvItems]);
+
+  const resolvedEnvironments = useMemo(() => {
+    const byProject: Record<number, ModEnvironment> = {};
+    for (const l of lingeringEnvItems) {
+      byProject[l.item.curseforgeProjectId] = l.environment;
+    }
+    return byProject;
+  }, [lingeringEnvItems]);
 
   const stageCount = (status: WorkshopModStatus) =>
     modsQuery.data ? (modsByStatus[status]?.length ?? 0) : undefined;
@@ -268,6 +306,23 @@ export function AdminWorkshopDetail() {
     projectId: number,
     environment: ModEnvironment,
   ) => {
+    if (activeTab === "issues") {
+      setLingeringEnvItems((current) => {
+        if (current.some((l) => l.item.curseforgeProjectId === projectId)) {
+          return current.map((l) =>
+            l.item.curseforgeProjectId === projectId
+              ? { ...l, environment }
+              : l,
+          );
+        }
+        const item = (attentionQuery.data ?? []).find(
+          (row) =>
+            row.type === "environment_unspecified" &&
+            row.curseforgeProjectId === projectId,
+        );
+        return item ? [...current, { item, environment }] : current;
+      });
+    }
     setEnvOverride({ projectId, environment });
     environmentMutation.mutate({
       curseforgeProjectId: projectId,
@@ -472,12 +527,13 @@ export function AdminWorkshopDetail() {
 
         {activeTab === "issues" && (
           <IssuesTab
-            items={attentionQuery.data ?? []}
+            items={issueItems}
             isLoading={attentionQuery.isLoading}
             error={attentionQuery.error?.message ?? null}
             onRetry={() => attentionQuery.refetch()}
             onView={setDetailModId}
             envOverride={envOverride}
+            resolvedEnvironments={resolvedEnvironments}
             onSetEnvironment={handleSetEnvironment}
           />
         )}
