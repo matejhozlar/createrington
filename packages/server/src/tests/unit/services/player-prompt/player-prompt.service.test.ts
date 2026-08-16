@@ -9,11 +9,16 @@ interface StoredEntry {
 
 let prompt: PlayerPrompt | null;
 let entries: StoredEntry[];
-let appendCalls: Array<{ maxEntries: number | null; responseText: string }>;
+let appendCalls: Array<{
+  maxEntries: number | null;
+  cooldownSeconds: number | null;
+  responseText: string;
+}>;
 let upsertCalls: Array<{ responseText: string }>;
-// Simulates a concurrent submission filling the last slot between the gate
-// read and the insert, which the real query catches via its HAVING clause.
-let capRaceOnAppend: boolean;
+// Simulates a concurrent submission landing between the gate read and the
+// insert, which the real query catches via its HAVING clause. The entry it
+// would have written is pushed here so the follow-up re-read sees it.
+let raceOnAppend: StoredEntry | null;
 
 vi.mock("@/db", () => {
   const response = {
@@ -29,11 +34,24 @@ vi.mock("@/db", () => {
     },
     appendEntry: async (data: {
       maxEntries: number | null;
+      cooldownSeconds: number | null;
       responseText: string;
     }) => {
       appendCalls.push(data);
-      if (capRaceOnAppend) return null;
+      if (raceOnAppend) {
+        entries.push(raceOnAppend);
+        raceOnAppend = null;
+        return null;
+      }
       if (data.maxEntries !== null && entries.length >= data.maxEntries) {
+        return null;
+      }
+      const last = entries.at(-1);
+      if (
+        data.cooldownSeconds !== null &&
+        last &&
+        last.submittedAt.getTime() + data.cooldownSeconds * 1000 > Date.now()
+      ) {
         return null;
       }
       const entry = {
@@ -102,7 +120,7 @@ beforeEach(() => {
   entries = [];
   appendCalls = [];
   upsertCalls = [];
-  capRaceOnAppend = false;
+  raceOnAppend = null;
 });
 
 describe("PlayerPromptService.prepareEntry", () => {
@@ -271,7 +289,11 @@ describe("PlayerPromptService.submitResponse", () => {
   it("reports the cap when a concurrent submission takes the last slot", async () => {
     setPrompt({ entryMode: "multi", maxEntries: 2 });
     addEntries(1);
-    capRaceOnAppend = true;
+    raceOnAppend = {
+      entryNumber: 2,
+      responseText: "the winner",
+      submittedAt: new Date(),
+    };
 
     const message = await makeService().submitResponse({
       promptId: 1,
@@ -280,6 +302,39 @@ describe("PlayerPromptService.submitResponse", () => {
     });
 
     expect(message).toContain("all 2");
+  });
+
+  it("passes the cooldown to the insert so it is enforced with the write", async () => {
+    setPrompt({ entryMode: "multi", cooldownSeconds: 600 });
+
+    await makeService().submitResponse({
+      promptId: 1,
+      discordId: "user-1",
+      responseText: "first",
+    });
+
+    expect(appendCalls[0].cooldownSeconds).toBe(600);
+  });
+
+  it("reports the cooldown when a concurrent entry lands first", async () => {
+    // Both submissions clear the gate on a lapsed cooldown; the insert is
+    // what stops the second, and the responder is told when they can retry.
+    setPrompt({ entryMode: "multi", cooldownSeconds: 600 });
+    addEntries(1, new Date(Date.now() - 601_000));
+    raceOnAppend = {
+      entryNumber: 2,
+      responseText: "the winner",
+      submittedAt: new Date(),
+    };
+
+    const message = await makeService().submitResponse({
+      promptId: 1,
+      discordId: "user-1",
+      responseText: "too fast",
+    });
+
+    expect(message).toContain("cooldown");
+    expect(message).toContain("<t:");
   });
 
   it("refuses without writing when the prompt closed before submitting", async () => {

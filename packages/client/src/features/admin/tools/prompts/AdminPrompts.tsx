@@ -84,7 +84,7 @@ export function AdminPrompts() {
     },
     {
       key: "responses",
-      header: "Responses",
+      header: "Entries",
       width: 120,
       align: "right",
       cellClassName: "tabular-nums",

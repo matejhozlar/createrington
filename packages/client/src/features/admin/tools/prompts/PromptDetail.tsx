@@ -15,12 +15,22 @@ interface ResponderGroup {
   discordId: string;
   minecraftUuid: string | null;
   minecraftUsername: string | null;
-  latestAt: string | Date;
   entries: ResponseRow[];
 }
 
 function formatTime(date: Date | string): string {
   return new Date(date).toLocaleString();
+}
+
+// The list is ordered by the newer of submitted/updated, so an edited answer
+// sorts to the top; label it with the edit time rather than the original
+// submission it would otherwise contradict.
+function formatEntryTime(entry: ResponseRow): string {
+  const submitted = new Date(entry.submittedAt).getTime();
+  const updated = new Date(entry.updatedAt).getTime();
+  return updated > submitted
+    ? `edited ${formatTime(entry.updatedAt)}`
+    : formatTime(entry.submittedAt);
 }
 
 function groupByResponder(responses: ResponseRow[]): ResponderGroup[] {
@@ -35,7 +45,6 @@ function groupByResponder(responses: ResponseRow[]): ResponderGroup[] {
       discordId: response.discordId,
       minecraftUuid: response.minecraftUuid,
       minecraftUsername: response.minecraftUsername,
-      latestAt: response.submittedAt,
       entries: [response],
     });
   }
@@ -200,7 +209,7 @@ export function PromptDetail() {
                     <span className="text-xs text-muted-foreground">
                       {group.entries.length > 1
                         ? `${group.entries.length} entries`
-                        : formatTime(group.latestAt)}
+                        : formatEntryTime(group.entries[0])}
                     </span>
                   </div>
                   {group.entries.length === 1 ? (
@@ -216,7 +225,7 @@ export function PromptDetail() {
                         >
                           <div className="text-xs text-muted-foreground">
                             Entry #{entry.entryNumber} •{" "}
-                            {formatTime(entry.submittedAt)}
+                            {formatEntryTime(entry)}
                           </div>
                           <p className="mt-0.5 whitespace-pre-wrap text-sm text-foreground">
                             {entry.responseText}

@@ -41,19 +41,31 @@ interface EntryRules {
   cooldownSeconds: number | null;
 }
 
+function unit(value: number, name: string): string {
+  return `${value} ${name}${value === 1 ? "" : "s"}`;
+}
+
+// Mirrors the server's formatSeconds so the admin panel and the Discord card
+// describe the same cooldown identically.
 function formatCooldown(seconds: number): string {
-  const units: Array<[number, string]> = [
-    [86400, "day"],
-    [3600, "hour"],
-    [60, "minute"],
-  ];
-  for (const [size, name] of units) {
-    if (seconds % size === 0) {
-      const value = seconds / size;
-      return `${value} ${name}${value === 1 ? "" : "s"}`;
-    }
+  if (seconds < 60) return unit(seconds, "second");
+
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return unit(minutes, "minute");
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) {
+    const remainingMinutes = minutes % 60;
+    return remainingMinutes === 0
+      ? unit(hours, "hour")
+      : `${unit(hours, "hour")} and ${unit(remainingMinutes, "minute")}`;
   }
-  return `${seconds} second${seconds === 1 ? "" : "s"}`;
+
+  const days = Math.floor(hours / 24);
+  const remainingHours = hours % 24;
+  return remainingHours === 0
+    ? unit(days, "day")
+    : `${unit(days, "day")} and ${unit(remainingHours, "hour")}`;
 }
 
 export function describeEntryRules(rules: EntryRules): string {

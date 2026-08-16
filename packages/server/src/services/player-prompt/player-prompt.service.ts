@@ -3,6 +3,7 @@ import { discordTimestamp, pluralize } from "@/utils/format";
 import { PlayerPromptComponentPresets } from "@/discord/components/presets/player-prompt";
 import type { DiscordMessageService } from "@/services/discord/message/message.service";
 import type { PlayerPrompt } from "@createrington/shared/db/player_prompt.types";
+import type { PlayerPromptEntryModeValue } from "@createrington/shared/player-prompt";
 
 const MAX_MISSED_CLOSE_TOLERANCE_MS = 24 * 60 * 60 * 1000;
 
@@ -106,7 +107,7 @@ export class PlayerPromptService {
     rolePingId?: string | null;
     durationMs: number;
     createdBy: string;
-    entryMode?: "single" | "multi";
+    entryMode?: PlayerPromptEntryModeValue;
     maxEntries?: number | null;
     cooldownSeconds?: number | null;
   }): Promise<PlayerPrompt> {
@@ -193,15 +194,15 @@ export class PlayerPromptService {
     );
 
     if (prompt.maxEntries !== null && stats.entryCount >= prompt.maxEntries) {
-      return { allowed: false, message: this.capReachedMessage(prompt) };
+      return {
+        allowed: false,
+        message: this.capReachedMessage(prompt.maxEntries),
+      };
     }
 
     const nextAllowedAt = this.nextEntryAt(prompt, stats.lastSubmittedAt);
     if (nextAllowedAt) {
-      return {
-        allowed: false,
-        message: `You're on cooldown. You can add your next entry ${discordTimestamp(nextAllowedAt)}.`,
-      };
+      return { allowed: false, message: this.cooldownMessage(nextAllowedAt) };
     }
 
     return {
@@ -243,11 +244,12 @@ export class PlayerPromptService {
     const entry = await Q.player.prompt.response.appendEntry({
       ...write,
       maxEntries: prompt.maxEntries,
+      cooldownSeconds: prompt.cooldownSeconds,
     });
-    // Null means the cap filled between the gate and the insert: the insert
-    // enforces it too, so a concurrent submission loses here rather than
-    // slipping past the count the gate read.
-    if (!entry) return this.capReachedMessage(prompt);
+    // Null means the cap or the cooldown bit between the gate read and the
+    // insert, which enforces both itself. A concurrent submission loses here
+    // rather than slipping past the snapshot the gate saw.
+    if (!entry) return this.explainRefusedEntry(prompt, opts.discordId);
 
     const stats = await Q.player.prompt.response.getEntryStats(
       opts.promptId,
@@ -357,9 +359,36 @@ export class PlayerPromptService {
     return readyAt.getTime() > Date.now() ? readyAt : null;
   }
 
-  private capReachedMessage(prompt: PlayerPrompt): string {
-    const cap = prompt.maxEntries ?? 0;
+  private capReachedMessage(cap: number): string {
     return `You've used all ${cap} of your ${pluralize(cap, "entry", "entries")} on this prompt.`;
+  }
+
+  private cooldownMessage(readyAt: Date): string {
+    return `You're on cooldown. You can add your next entry ${discordTimestamp(readyAt)}.`;
+  }
+
+  /**
+   * Which rule refused an append. The insert enforces the cap and the
+   * cooldown itself, so a null result means one of them bit after the gate
+   * read; this re-reads to name the right one.
+   */
+  private async explainRefusedEntry(
+    prompt: PlayerPrompt,
+    discordId: string,
+  ): Promise<string> {
+    const stats = await Q.player.prompt.response.getEntryStats(
+      prompt.id,
+      discordId,
+    );
+
+    if (prompt.maxEntries !== null && stats.entryCount >= prompt.maxEntries) {
+      return this.capReachedMessage(prompt.maxEntries);
+    }
+
+    const nextAllowedAt = this.nextEntryAt(prompt, stats.lastSubmittedAt);
+    if (nextAllowedAt) return this.cooldownMessage(nextAllowedAt);
+
+    return "Couldn't record that entry. Please try again.";
   }
 
   /**

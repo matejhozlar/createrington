@@ -80,14 +80,20 @@ export class PlayerPromptResponseQueries extends PlayerPromptResponseBaseQueries
 
   /**
    * Append a new entry for a multi-mode prompt, claiming the next entry
-   * number and enforcing `maxEntries` in the same statement so the cap is
-   * atomic with the row it guards. Returns null when the responder is
-   * already at the cap (the HAVING filters the row out and nothing inserts).
+   * number and enforcing both `maxEntries` and `cooldownSeconds` in the same
+   * statement, so each rule is atomic with the row it guards. Returns null
+   * when either bites: the HAVING filters the row out and nothing inserts.
+   * The caller re-reads to decide which rule refused.
    *
-   * Two submissions racing for the same entry number leave one of them
-   * rejected by the unique index; that loser is retried, since its number is
-   * merely stale rather than disallowed. `runQuery` rethrows the raw pg error,
-   * so it goes through `translateDbError` before the check.
+   * Two submissions racing for the same entry number leave one rejected by
+   * the unique index; that loser is retried, since its number is stale rather
+   * than disallowed. The retry re-evaluates the HAVING against a fresh
+   * snapshot, so it cannot smuggle an entry past a cap or a cooldown that the
+   * winning insert just triggered.
+   *
+   * Runs against `this.db` rather than `runQuery` because a rejected attempt
+   * is an expected, handled outcome: `runQuery` would log every one of them at
+   * error level. Only an attempt that exhausts the retries is logged.
    */
   async appendEntry(data: {
     promptId: number;
@@ -95,6 +101,7 @@ export class PlayerPromptResponseQueries extends PlayerPromptResponseBaseQueries
     minecraftUuid: string | null;
     responseText: string;
     maxEntries: number | null;
+    cooldownSeconds: number | null;
   }): Promise<PlayerPromptResponse | null> {
     const query = `
       INSERT INTO ${this.table}
@@ -103,17 +110,23 @@ export class PlayerPromptResponseQueries extends PlayerPromptResponseBaseQueries
       FROM ${this.table}
       WHERE prompt_id = $1 AND discord_id = $2
       HAVING COUNT(*) < COALESCE($5::int, ${UNCAPPED_ENTRIES})
+         AND ($6::int IS NULL
+              OR COALESCE(MAX(submitted_at), to_timestamp(0))
+                 <= NOW() - ($6::int * INTERVAL '1 second'))
       RETURNING *`;
+
+    const params = [
+      data.promptId,
+      data.discordId,
+      data.minecraftUuid,
+      data.responseText,
+      data.maxEntries,
+      data.cooldownSeconds,
+    ];
 
     for (let attempt = 1; ; attempt++) {
       try {
-        const result = await this.runQuery("append prompt entry", query, [
-          data.promptId,
-          data.discordId,
-          data.minecraftUuid,
-          data.responseText,
-          data.maxEntries,
-        ]);
+        const result = await this.db.query(query, params);
         return result.rows.length ? this.mapRowToEntity(result.rows[0]) : null;
       } catch (error) {
         const translated = translateDbError(error);
@@ -121,6 +134,7 @@ export class PlayerPromptResponseQueries extends PlayerPromptResponseBaseQueries
           !(translated instanceof ConstraintViolationError) ||
           attempt >= APPEND_ENTRY_ATTEMPTS
         ) {
+          logger.error("Failed to append prompt entry:", error);
           throw translated;
         }
       }
