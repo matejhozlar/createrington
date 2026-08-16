@@ -3,10 +3,12 @@
 // assets and the repo-root screenshots/ folder; the Outfit webfont lives in
 // the shared server assets (src/assets/fonts).
 //
-// Team figures are rendered once via the skin-api and cached under assets/team/
-// (committed), so regenerating the card stays offline. To refresh them after a
-// skin change, delete assets/team/ and re-run with the skin-api key in the
-// environment:
+// Team figures are rendered once via the skin-api and cached under
+// assets/figures/ (committed), so regenerating the card stays offline. That
+// cache is shared with every other og card and keyed by username and pose, so
+// deleting an entry re-renders it for whichever cards use it. To refresh after
+// a skin change, delete the relevant assets/figures/<username>-<pose>.png and
+// re-run with the skin-api key in the environment:
 //   infisical run --env=dev -- pnpm --filter @createrington/server util:render-og-card
 //
 // Run: pnpm --filter @createrington/server util:render-og-card [outPath]
@@ -38,7 +40,6 @@ import {
 const here = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(here, "..", "..", "..", "..", "..");
 const SHOTS = join(REPO_ROOT, "screenshots");
-const TEAM_DIR = join(here, "assets", "team");
 
 interface FrameSpec {
   file: string;
@@ -128,9 +129,7 @@ function getTeamFigure(m: TeamMember): Promise<Image> {
   return getPoseFigure({
     uuid: m.uuid,
     pose: m.pose,
-    file: join(TEAM_DIR, `${m.username}.png`),
-    width: 300,
-    height: 450,
+    username: m.username,
   });
 }
 

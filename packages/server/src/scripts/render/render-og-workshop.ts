@@ -2,9 +2,11 @@
 // rebuild of the workshop hub hero: the Royal Albert Hall build with the
 // page's grayscale + fade treatment, a spotlit pixel chest (the next pack)
 // swallowing suggested mods, and the community trio reacting around it.
-// Figures are cached under assets/workshop/ (committed); to refresh, delete
-// the cache and re-run with SKIN_API_KEY in the environment. Mod logos are
-// fetched from the CurseForge CDN at render time.
+// Figures are cached under assets/figures/ (committed), shared with every
+// other og card and keyed by username and pose; to refresh, delete the
+// relevant assets/figures/<username>-<pose>.png (which re-renders it for any
+// other card using it) and re-run with SKIN_API_KEY in the environment. Mod
+// logos are fetched from the CurseForge CDN at render time.
 //
 // Run: pnpm --filter @createrington/server util:render-og-workshop [outPath]
 
@@ -35,7 +37,6 @@ import {
 } from "./og-shared";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const WORKSHOP_DIR = join(here, "assets", "workshop");
 
 // Upvote red from the workshop leaderboard heart (Tailwind red-400, OkLCH
 // converted to sRGB).
@@ -529,9 +530,7 @@ async function paintFigures(ctx: SKRSContext2D): Promise<void> {
     const img = await getPoseFigure({
       uuid: spec.uuid,
       pose: spec.pose,
-      file: join(WORKSHOP_DIR, `${spec.username}-${spec.pose}.png`),
-      width: 400,
-      height: 600,
+      username: spec.username,
     });
     const bbox = computeBBox(img);
     if (!bbox) throw new Error(`Empty figure render for ${spec.username}`);

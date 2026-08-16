@@ -175,7 +175,7 @@ export function CompareRender() {
             <img
               src={skinLeft}
               alt={left.username}
-              className="relative h-[280px] drop-shadow-[0_4px_24px_rgba(0,0,0,0.6)] [image-rendering:pixelated]"
+              className="relative h-[280px] drop-shadow-[0_4px_24px_rgba(0,0,0,0.6)]"
             />
           </div>
           <span className="mt-2 text-xl font-bold tracking-wide text-chart-1">
@@ -223,7 +223,7 @@ export function CompareRender() {
             <img
               src={skinRight}
               alt={right.username}
-              className="relative h-[280px] -scale-x-100 drop-shadow-[0_4px_24px_rgba(0,0,0,0.6)] [image-rendering:pixelated]"
+              className="relative h-[280px] -scale-x-100 drop-shadow-[0_4px_24px_rgba(0,0,0,0.6)]"
             />
           </div>
           <span className="mt-2 text-xl font-bold tracking-wide text-chart-5">

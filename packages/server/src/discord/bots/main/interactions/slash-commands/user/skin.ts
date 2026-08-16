@@ -2,7 +2,7 @@ import { Q } from "@/db";
 import { EmbedPresets } from "@/discord/embeds";
 import { replyError } from "@/discord/utils/interaction-reply";
 import { CooldownType } from "@/discord/utils/cooldown";
-import { getSkinApiClient } from "@/services/skin-api";
+import { getSkinApiClient, MAX_QUALITY_RENDER } from "@/services/skin-api";
 import { KNOWN_POSES, type KnownPose } from "createrington-skin-api";
 import {
   AttachmentBuilder,
@@ -102,6 +102,7 @@ export async function execute(
     const png = await skinApi.render({
       pose,
       source: { uuid: player.minecraftUuid },
+      options: MAX_QUALITY_RENDER,
     });
 
     const fileName = `${player.minecraftUsername}_${pose}.png`;

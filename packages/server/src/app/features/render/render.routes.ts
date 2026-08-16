@@ -13,7 +13,7 @@ import { formatPlaytime, toUnixSeconds } from "@/utils/format";
 import { UnauthorizedError } from "@/app/middleware";
 import { requireLoopback } from "@/app/middleware/server-ip.middleware";
 import { getService, Services } from "@/services";
-import { getSkinApiClient } from "@/services/skin-api";
+import { getSkinApiClient, MAX_QUALITY_RENDER } from "@/services/skin-api";
 import { getActiveEventsInMemory } from "@/services/crypto/events/event-engine";
 import { EVENT_DEFINITIONS } from "@/services/crypto/events/event-definitions";
 import { timingSafeEqualStrings } from "@/utils/timing-safe-equal";
@@ -22,6 +22,9 @@ import { MC_UUID_REGEX } from "@/utils/zod-schemas";
 const SKIN_RENDER_CACHE_SECONDS = 24 * 60 * 60;
 const KNOWN_POSE_SET: ReadonlySet<KnownPose> = new Set(KNOWN_POSES);
 const MC_HEADS_FALLBACK_URL = "https://mc-heads.net/body";
+// mc-heads' unsized /body is 180x432, which the render pages display upscaled.
+// 600 is its ceiling for this endpoint (1200 also returns 600x1441).
+const MC_HEADS_FALLBACK_SIZE = 600;
 
 const router = Router();
 
@@ -542,6 +545,7 @@ router.get(
       png = await getSkinApiClient().render({
         pose: requestedPose,
         source: { uuid },
+        options: MAX_QUALITY_RENDER,
       });
     } catch (error) {
       // Keep the <img> tag rendering something useful instead of triggering
@@ -550,7 +554,10 @@ router.get(
       logger.warn(
         `skin-api render failed (uuid=${uuid} pose=${requestedPose}): ${message}, falling back to mc-heads`,
       );
-      res.redirect(302, `${MC_HEADS_FALLBACK_URL}/${uuid}`);
+      res.redirect(
+        302,
+        `${MC_HEADS_FALLBACK_URL}/${uuid}/${MC_HEADS_FALLBACK_SIZE}`,
+      );
       return;
     }
 
