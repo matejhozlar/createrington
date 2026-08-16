@@ -38,7 +38,6 @@ import {
 const here = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(here, "..", "..", "..", "..", "..");
 const SHOTS = join(REPO_ROOT, "screenshots");
-const TEAM_DIR = join(here, "assets", "team");
 
 interface FrameSpec {
   file: string;
@@ -128,7 +127,7 @@ function getTeamFigure(m: TeamMember): Promise<Image> {
   return getPoseFigure({
     uuid: m.uuid,
     pose: m.pose,
-    file: join(TEAM_DIR, `${m.username}.png`),
+    username: m.username,
   });
 }
 
@@ -334,10 +333,7 @@ async function paintTeam(ctx: SKRSContext2D): Promise<void> {
   const refHeight = Math.max(...loaded.map((f) => f.bbox.height));
   const scale = figH / refHeight;
 
-  // Figures arrive with hard alphaTest edges; the downscale to figH is what
-  // anti-aliases them, so smoothing must be on here regardless of what the
-  // pixel-art painters above left it set to.
-  ctx.imageSmoothingEnabled = true;
+  // Figures downscale ~9x to figH; napi-rs defaults to "low".
   ctx.imageSmoothingQuality = "high";
 
   let x = TEXT_X;

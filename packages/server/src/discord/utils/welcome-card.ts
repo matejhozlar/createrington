@@ -208,9 +208,10 @@ function drawFigure(ctx: SKRSContext2D, img: Image): void {
 
   drawContactShadow(ctx, drawW);
 
-  // The render comes back with hard alphaTest edges, so the downscale to
-  // drawH is what anti-aliases them.
-  ctx.imageSmoothingEnabled = true;
+  // Not a downscale: ctx is scaled by SUPERSAMPLE, so drawH lands on ~1240
+  // device pixels and the ~1089px silhouette is stretched ~1.14x. The edges
+  // are anti-aliased later, by the whole-canvas downsample in the caller.
+  // napi-rs defaults to "low".
   ctx.imageSmoothingQuality = "high";
 
   ctx.save();
@@ -328,7 +329,11 @@ export async function generateRegistrationWelcomeCard(params: {
   drawText(ctx, wordmark, params.minecraftUsername, params.memberNumber);
 
   const out = createCanvas(W, H);
-  out.getContext("2d").drawImage(canvas, 0, 0, W, H);
+  const outCtx = out.getContext("2d");
+  // This is the supersample downsample, so it is what anti-aliases the
+  // figure's hard alphaTest edges. napi-rs defaults to "low".
+  outCtx.imageSmoothingQuality = "high";
+  outCtx.drawImage(canvas, 0, 0, W, H);
   return new AttachmentBuilder(out.toBuffer("image/png"), {
     name: "welcome.png",
   });

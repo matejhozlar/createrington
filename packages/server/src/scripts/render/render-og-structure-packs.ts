@@ -35,7 +35,6 @@ import {
 } from "./og-shared";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const PACKS_DIR = join(here, "assets", "packs");
 
 // Portal palette from the packs hero CSS (OkLCH converted to sRGB).
 const blue = (a: number) => `rgba(29,132,245,${a})`;
@@ -362,10 +361,7 @@ async function paintPortal(ctx: SKRSContext2D): Promise<void> {
 }
 
 async function paintFigures(ctx: SKRSContext2D): Promise<void> {
-  // Figures arrive with hard alphaTest edges; the downscale to spec.height is
-  // what anti-aliases them, so smoothing must be on here regardless of what
-  // the pixel-art painters left it set to.
-  ctx.imageSmoothingEnabled = true;
+  // Figures downscale ~5x to spec.height; napi-rs defaults to "low".
   ctx.imageSmoothingQuality = "high";
 
   paintEllipseGradient(ctx, 895, 606, 310, 48, [
@@ -378,7 +374,7 @@ async function paintFigures(ctx: SKRSContext2D): Promise<void> {
     const img = await getPoseFigure({
       uuid: spec.uuid,
       pose: spec.pose,
-      file: join(PACKS_DIR, `${spec.username}-${spec.pose}.png`),
+      username: spec.username,
     });
     const bbox = computeBBox(img);
     if (!bbox) throw new Error(`Empty figure render for ${spec.username}`);

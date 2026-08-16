@@ -14,6 +14,8 @@ import {
   type SKRSContext2D,
 } from "@napi-rs/canvas";
 
+// Deep import on purpose: the @/services/skin-api barrel pulls in @/config,
+// whose env validation these standalone scripts cannot satisfy.
 import { MAX_QUALITY_RENDER } from "@/services/skin-api/quality";
 
 export const W = 1200;
@@ -36,6 +38,8 @@ const here = dirname(fileURLToPath(import.meta.url));
 const PUBLIC = join(here, "..", "..", "..", "..", "client", "public");
 export const ASSETS = join(PUBLIC, "assets");
 const FONTS = join(here, "..", "..", "assets", "fonts");
+// One cache for every card's posed figures, keyed by username and pose.
+const FIGURES = join(here, "assets", "figures");
 
 export function registerBrandFonts(): void {
   GlobalFonts.registerFromPath(join(FONTS, "outfit-latin-400.woff2"), "Outfit");
@@ -97,27 +101,26 @@ export async function paintWordmark(
 export interface PoseFigureRequest {
   uuid: string;
   pose: string;
-  file: string;
-  /** Defaults to the API's maximum-resolution framing. */
-  width?: number;
-  height?: number;
+  /** Only used to name the cache file readably. */
+  username: string;
 }
 
 // Resolve a posed figure PNG: prefer the committed cache, otherwise render it
-// via the skin-api and cache it so later card renders stay offline. The cache
-// is keyed by the caller's file path only, so a change to the requested
-// dimensions needs the cached file deleted first. Calls the HTTP endpoint
-// directly rather than via the SDK because the SDK does not
-// forward the `outline` option, which gives the figures the white edge that
-// reads against the dark card.
+// via the skin-api and cache it so later card renders stay offline. Every card
+// shares one cache directory keyed by username and pose, so the same figure
+// requested by two cards is stored (and refreshed) once. A re-render needs the
+// cached file deleted first; nothing here detects a changed skin or a changed
+// render size. Calls the HTTP endpoint directly rather than via the SDK
+// because the SDK does not forward the `outline` option, which gives the
+// figures the white edge that reads against the dark card.
 export async function getPoseFigure(req: PoseFigureRequest): Promise<Image> {
-  if (!existsSync(req.file)) {
-    const width = req.width ?? MAX_QUALITY_RENDER.width;
-    const height = req.height ?? MAX_QUALITY_RENDER.height;
+  const file = join(FIGURES, `${req.username}-${req.pose}.png`);
+  if (!existsSync(file)) {
+    const { width, height } = MAX_QUALITY_RENDER;
     const apiKey = process.env.SKIN_API_KEY;
     if (!apiKey) {
       throw new Error(
-        `Missing cached figure (${req.file}) and SKIN_API_KEY is not set. ` +
+        `Missing cached figure (${file}) and SKIN_API_KEY is not set. ` +
           `Re-run this card's util:render-og-* script once with the ` +
           `skin-api key in the environment to populate the cache, e.g. ` +
           `via infisical run --env=dev`,
@@ -148,10 +151,10 @@ export async function getPoseFigure(req: PoseFigureRequest): Promise<Image> {
       );
     }
     const png = Buffer.from(await res.arrayBuffer());
-    await mkdir(dirname(req.file), { recursive: true });
-    await writeFile(req.file, png);
+    await mkdir(dirname(file), { recursive: true });
+    await writeFile(file, png);
   }
-  return loadImage(await readFile(req.file));
+  return loadImage(await readFile(file));
 }
 
 export async function writeCard(
@@ -165,7 +168,11 @@ export async function writeCard(
   await paint(ctx);
 
   const out = createCanvas(W, H);
-  out.getContext("2d").drawImage(canvas, 0, 0, W, H);
+  const outCtx = out.getContext("2d");
+  // This is the supersample downsample, so it is the resampling step that
+  // decides the card's final sharpness. napi-rs defaults to "low".
+  outCtx.imageSmoothingQuality = "high";
+  outCtx.drawImage(canvas, 0, 0, W, H);
   await mkdir(dirname(outPath), { recursive: true });
   await writeFile(outPath, out.toBuffer("image/png"));
   console.log(`wrote ${outPath} (${W}x${H})`);

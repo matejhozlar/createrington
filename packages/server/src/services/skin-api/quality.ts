@@ -9,10 +9,16 @@ import type { RenderOptions } from "createrington-skin-api";
  * figure's pixel height scales with `height` while `width` only decides how
  * much empty space is captured either side. 2048 is the API ceiling.
  *
- * 1366 is the smallest width that cannot cost quality. The crop is always 2:3,
- * so it can never be wider than 2048 * 2/3, and the widest pose in the
- * catalogue (`lounge`) is 928px at this height. A square 2048x2048 request
- * returns a byte-identical PNG for ~33% more render work.
+ * 1366 is the smallest width that cannot cost quality, and raising it cannot
+ * buy any. The crop is always 2:3, so at this height it can never be wider
+ * than 2048 * 2/3; a pose whose silhouette exceeded that would be cut by the
+ * crop at any canvas width, so a wider canvas protects nothing. A square
+ * 2048x2048 request returns a byte-identical PNG for ~33% more render work.
+ *
+ * The widest pose in the catalogue (`lounge`) measures 928px here, so there
+ * is 438px of headroom. That is a measured fact about a catalogue the SDK can
+ * grow, not an invariant anything enforces: re-measure the widest pose when
+ * bumping createrington-skin-api.
  *
  * Silhouette edges come back aliased (the model uses alphaTest, and the API
  * exposes no supersampling), so consumers should downscale this with
