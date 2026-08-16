@@ -362,6 +362,12 @@ async function paintPortal(ctx: SKRSContext2D): Promise<void> {
 }
 
 async function paintFigures(ctx: SKRSContext2D): Promise<void> {
+  // Figures arrive with hard alphaTest edges; the downscale to spec.height is
+  // what anti-aliases them, so smoothing must be on here regardless of what
+  // the pixel-art painters left it set to.
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+
   paintEllipseGradient(ctx, 895, 606, 310, 48, [
     [0, blue(0.26)],
     [0.6, blue(0.09)],
@@ -373,8 +379,6 @@ async function paintFigures(ctx: SKRSContext2D): Promise<void> {
       uuid: spec.uuid,
       pose: spec.pose,
       file: join(PACKS_DIR, `${spec.username}-${spec.pose}.png`),
-      width: 400,
-      height: 600,
     });
     const bbox = computeBBox(img);
     if (!bbox) throw new Error(`Empty figure render for ${spec.username}`);

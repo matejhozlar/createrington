@@ -14,6 +14,8 @@ import {
   type SKRSContext2D,
 } from "@napi-rs/canvas";
 
+import { MAX_QUALITY_RENDER } from "@/services/skin-api/quality";
+
 export const W = 1200;
 export const H = 630;
 // Render at 2x then downscale so gradients, screenshot edges, and text stay
@@ -96,8 +98,9 @@ export interface PoseFigureRequest {
   uuid: string;
   pose: string;
   file: string;
-  width: number;
-  height: number;
+  /** Defaults to the API's maximum-resolution framing. */
+  width?: number;
+  height?: number;
 }
 
 // Resolve a posed figure PNG: prefer the committed cache, otherwise render it
@@ -109,6 +112,8 @@ export interface PoseFigureRequest {
 // reads against the dark card.
 export async function getPoseFigure(req: PoseFigureRequest): Promise<Image> {
   if (!existsSync(req.file)) {
+    const width = req.width ?? MAX_QUALITY_RENDER.width;
+    const height = req.height ?? MAX_QUALITY_RENDER.height;
     const apiKey = process.env.SKIN_API_KEY;
     if (!apiKey) {
       throw new Error(
@@ -123,8 +128,8 @@ export async function getPoseFigure(req: PoseFigureRequest): Promise<Image> {
     const baseUrl = process.env.SKIN_API_URL ?? "https://api.createrington.com";
     const query = new URLSearchParams({
       pose: req.pose,
-      width: String(req.width),
-      height: String(req.height),
+      width: String(width),
+      height: String(height),
       outline: "true",
     });
     const res = await fetch(`${baseUrl}/v1/render?${query}`, {

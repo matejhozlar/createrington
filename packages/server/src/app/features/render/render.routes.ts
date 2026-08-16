@@ -13,7 +13,7 @@ import { formatPlaytime, toUnixSeconds } from "@/utils/format";
 import { UnauthorizedError } from "@/app/middleware";
 import { requireLoopback } from "@/app/middleware/server-ip.middleware";
 import { getService, Services } from "@/services";
-import { getSkinApiClient } from "@/services/skin-api";
+import { getSkinApiClient, MAX_QUALITY_RENDER } from "@/services/skin-api";
 import { getActiveEventsInMemory } from "@/services/crypto/events/event-engine";
 import { EVENT_DEFINITIONS } from "@/services/crypto/events/event-definitions";
 import { timingSafeEqualStrings } from "@/utils/timing-safe-equal";
@@ -542,6 +542,7 @@ router.get(
       png = await getSkinApiClient().render({
         pose: requestedPose,
         source: { uuid },
+        options: MAX_QUALITY_RENDER,
       });
     } catch (error) {
       // Keep the <img> tag rendering something useful instead of triggering

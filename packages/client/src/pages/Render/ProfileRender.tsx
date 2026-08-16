@@ -145,7 +145,7 @@ export function ProfileRender() {
             <img
               src={skinSrc}
               alt={data.username}
-              className="relative h-[340px] drop-shadow-[0_4px_24px_rgba(0,0,0,0.6)] [image-rendering:pixelated]"
+              className="relative h-[340px] drop-shadow-[0_4px_24px_rgba(0,0,0,0.6)]"
             />
           </div>
         </div>

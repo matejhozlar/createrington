@@ -11,7 +11,7 @@ import {
 import { AttachmentBuilder } from "discord.js";
 import type { KnownPose } from "createrington-skin-api";
 import config from "@/config";
-import { getSkinApiClient } from "@/services/skin-api";
+import { getSkinApiClient, MAX_QUALITY_RENDER } from "@/services/skin-api";
 import { computeBBox, fitFontSize } from "@/utils/canvas";
 
 const W = 1600;
@@ -110,7 +110,7 @@ async function fetchFigure(minecraftUuid: string): Promise<Image | null> {
     const png = await getSkinApiClient().render({
       pose,
       source: { uuid: minecraftUuid },
-      options: { width: 600, height: 900 },
+      options: MAX_QUALITY_RENDER,
     });
     return await loadImage(Buffer.from(png));
   } catch (error) {
@@ -218,6 +218,11 @@ function drawFigure(ctx: SKRSContext2D, img: Image): void {
   const y = FIGURE_GROUND_Y - drawH;
 
   drawContactShadow(ctx, drawW);
+
+  // The render comes back with hard alphaTest edges, so the downscale to
+  // drawH is what anti-aliases them.
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
 
   ctx.save();
   ctx.shadowColor = "rgba(255,185,0,0.35)";

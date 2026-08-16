@@ -129,8 +129,6 @@ function getTeamFigure(m: TeamMember): Promise<Image> {
     uuid: m.uuid,
     pose: m.pose,
     file: join(TEAM_DIR, `${m.username}.png`),
-    width: 300,
-    height: 450,
   });
 }
 
@@ -335,6 +333,12 @@ async function paintTeam(ctx: SKRSContext2D): Promise<void> {
   // compact poses (e.g. "relaxed").
   const refHeight = Math.max(...loaded.map((f) => f.bbox.height));
   const scale = figH / refHeight;
+
+  // Figures arrive with hard alphaTest edges; the downscale to figH is what
+  // anti-aliases them, so smoothing must be on here regardless of what the
+  // pixel-art painters above left it set to.
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
 
   let x = TEXT_X;
   for (const { img, bbox } of loaded) {
