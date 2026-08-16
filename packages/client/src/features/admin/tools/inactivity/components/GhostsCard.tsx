@@ -1,5 +1,4 @@
 import { useCallback, useState } from "react";
-import { Loading } from "@/components/loading-spinner";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -10,17 +9,16 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Paginator } from "@/components/paginator";
 import {
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
-import { DataTable, type DataTableColumn } from "@/components/data-table";
+  DataTable,
+  loadingRowCount,
+  TwoLineCellSkeleton,
+  type DataTableColumn,
+} from "@/components/data-table";
 import { Ghost, RefreshCw, Search, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { keepPreviousData } from "@tanstack/react-query";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useToastActions } from "@/hooks/use-toast";
 import { CellText } from "@/components/cell-text";
@@ -50,11 +48,14 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
 
   const capabilitiesQuery =
     trpc.admin.inactivity.ghosts.capabilities.useQuery();
-  const listQuery = trpc.admin.inactivity.ghosts.list.useQuery({
-    search: debouncedSearch.trim() || undefined,
-    page,
-    limit,
-  });
+  const listQuery = trpc.admin.inactivity.ghosts.list.useQuery(
+    {
+      search: debouncedSearch.trim() || undefined,
+      page,
+      limit,
+    },
+    { placeholderData: keepPreviousData },
+  );
 
   const refreshGhosts = trpc.admin.inactivity.ghosts.refresh.useMutation();
 
@@ -68,7 +69,8 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
     capabilitiesQuery.data?.lastRefreshedAt ??
     listQuery.data?.lastRefreshedAt ??
     null;
-  const loading = listQuery.isLoading;
+  const loading = listQuery.isLoading || listQuery.isPlaceholderData;
+  const loadingRows = loadingRowCount(page, limit, total);
   const error = listQuery.error?.message ?? null;
 
   const handleSearchChange = useCallback(
@@ -78,10 +80,6 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
     },
     [],
   );
-
-  const handlePageChange = useCallback((newPage: number) => {
-    setPage(newPage);
-  }, []);
 
   const handleRefresh = useCallback(async () => {
     try {
@@ -116,6 +114,7 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
       key: "player",
       header: "Player",
       minWidth: 200,
+      skeleton: () => <TwoLineCellSkeleton />,
       render: (ghost) => (
         <div className="min-w-0">
           <CellText
@@ -176,38 +175,6 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
     },
   ];
 
-  const getPaginationItems = useCallback(() => {
-    const items: (number | "ellipsis")[] = [];
-    const maxVisible = 5;
-
-    if (totalPages <= maxVisible) {
-      return Array.from({ length: totalPages }, (_, i) => i);
-    }
-
-    items.push(0);
-
-    if (page <= 2) {
-      items.push(1, 2, 3);
-      items.push("ellipsis");
-      items.push(totalPages - 1);
-    } else if (page >= totalPages - 3) {
-      items.push("ellipsis");
-      items.push(
-        totalPages - 4,
-        totalPages - 3,
-        totalPages - 2,
-        totalPages - 1,
-      );
-    } else {
-      items.push("ellipsis");
-      items.push(page - 1, page, page + 1);
-      items.push("ellipsis");
-      items.push(totalPages - 1);
-    }
-
-    return items;
-  }, [page, totalPages]);
-
   return (
     <>
       <Card className="gap-0">
@@ -258,11 +225,7 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
           </div>
         </CardHeader>
 
-        {loading ? (
-          <CardContent className="flex items-center justify-center py-12">
-            <Loading size="medium" text="Loading ghosts..." />
-          </CardContent>
-        ) : error ? (
+        {error ? (
           <CardContent className="flex items-center justify-center py-12">
             <div className="text-center">
               <p className="text-destructive">{error}</p>
@@ -275,7 +238,7 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
               </Button>
             </div>
           </CardContent>
-        ) : ghosts.length === 0 ? (
+        ) : !loading && ghosts.length === 0 ? (
           <CardContent className="flex items-center justify-center py-12">
             <div className="text-center">
               <Ghost className="mx-auto size-12 text-muted-foreground" />
@@ -292,6 +255,8 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
               <DataTable
                 columns={columns}
                 rows={ghosts}
+                loading={loading}
+                loadingRows={loadingRows}
                 rowKey={(ghost) => ghost.discordId}
                 actions={(ghost) => [
                   {
@@ -308,62 +273,19 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
               />
             </CardContent>
 
-            <CardFooter className="flex-col gap-3 border-t sm:flex-row sm:flex-wrap sm:items-center">
-              <p className="text-sm text-muted-foreground">
-                Showing {page * limit + 1}-{Math.min((page + 1) * limit, total)}{" "}
-                of {total} ghosts
-              </p>
-
-              <PaginationContent className="justify-baseline sm:ml-auto sm:justify-end">
-                <PaginationItem>
-                  <PaginationPrevious
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      if (page > 0) handlePageChange(page - 1);
-                    }}
-                    className={cn(
-                      page === 0 && "pointer-events-none opacity-50",
-                    )}
-                  />
-                </PaginationItem>
-
-                {getPaginationItems().map((item, index) => (
-                  <PaginationItem
-                    key={item === "ellipsis" ? `ellipsis-${index}` : item}
-                  >
-                    {item === "ellipsis" ? (
-                      <PaginationEllipsis />
-                    ) : (
-                      <PaginationLink
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          handlePageChange(item);
-                        }}
-                        isActive={page === item}
-                      >
-                        {item + 1}
-                      </PaginationLink>
-                    )}
-                  </PaginationItem>
-                ))}
-
-                <PaginationItem>
-                  <PaginationNext
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      if (page < totalPages - 1) handlePageChange(page + 1);
-                    }}
-                    className={cn(
-                      page >= totalPages - 1 &&
-                        "pointer-events-none opacity-50",
-                    )}
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </CardFooter>
+            {total > 0 && (
+              <CardFooter className="border-t">
+                <Paginator
+                  page={page}
+                  limit={limit}
+                  total={total}
+                  totalPages={totalPages}
+                  onPageChange={setPage}
+                  itemLabel="ghost"
+                  className="w-full"
+                />
+              </CardFooter>
+            )}
           </>
         )}
       </Card>

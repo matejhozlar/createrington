@@ -3,20 +3,20 @@ import { Heart, Search } from "lucide-react";
 import { Paginator } from "@/components/paginator";
 import { CellDate, CellText } from "@/components/cell-text";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DataTable, type DataTableColumn } from "@/components/data-table";
+import {
+  AvatarCellSkeleton,
+  DataTable,
+  type DataTableColumn,
+} from "@/components/data-table";
 import { PlayerLabel } from "@/components/player-label";
 import { FilterBar } from "@/features/admin/components/FilterBar";
-import {
-  CardEmpty,
-  CardError,
-  CardLoading,
-} from "@/features/admin/components/CardState";
+import { CardEmpty, CardError } from "@/features/admin/components/CardState";
 import { REJECT_REASON_LABELS } from "@/features/workshop/format";
 import { modReviewActions, type ModReviewHandlers } from "../../actions";
 import { STAGE_CONFIG, type StageColumn, type StageId } from "../../tabs";
 import type { AdminWorkshopMod } from "../../types";
 import { DependencyCell } from "../DependencyCell";
-import { ModCell } from "../ModCell";
+import { ModCell, ModCellSkeleton } from "../ModCell";
 
 const MODS_PER_PAGE = 10;
 
@@ -134,6 +134,7 @@ export function StageTab({
       key: "mod",
       header: "Mod",
       minWidth: 220,
+      skeleton: () => <ModCellSkeleton />,
       render: (mod) => (
         <ModCell
           name={mod.project.name}
@@ -146,6 +147,7 @@ export function StageTab({
       key: "submitter",
       header: "Submitted by",
       minWidth: 150,
+      skeleton: () => <AvatarCellSkeleton />,
       render: (mod) => (
         <PlayerLabel
           name={mod.submitterName ?? mod.submittedBy}
@@ -183,19 +185,19 @@ export function StageTab({
           </CardTitle>
         </CardHeader>
 
-        {isLoading ? (
-          <CardLoading text="Loading mods..." />
-        ) : error ? (
+        {error ? (
           <CardError message={error} onRetry={onRetry} />
-        ) : mods.length === 0 ? (
+        ) : !isLoading && mods.length === 0 ? (
           <CardEmpty icon={config.emptyIcon} message={config.emptyMessage} />
-        ) : filtered.length === 0 ? (
+        ) : !isLoading && filtered.length === 0 ? (
           <CardEmpty icon={Search} message="No mods match your search" />
         ) : (
           <CardContent className="px-0">
             <DataTable
               columns={columns}
               rows={visible}
+              loading={isLoading}
+              loadingRows={MODS_PER_PAGE}
               rowKey={(mod) => mod.id}
               onRowClick={(mod) => onView(mod.id)}
               actions={(mod) => modReviewActions(mod, { onReview, onReject })}

@@ -1,5 +1,4 @@
 import { useCallback, useState } from "react";
-import { Loading } from "@/components/loading-spinner";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import {
   Card,
@@ -8,20 +7,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
+import { Paginator } from "@/components/paginator";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CellDate, CellText } from "@/components/cell-text";
 import {
+  BadgeCellSkeleton,
   DataTable,
+  loadingRowCount,
   type DataTableAction,
   type DataTableColumn,
 } from "@/components/data-table";
@@ -43,6 +37,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { keepPreviousData } from "@tanstack/react-query";
 import { CreateFaqModal } from "./components/modals/CreateFaqModal";
 import { EditFaqModal } from "./components/modals/EditFaqModal";
 import { DeleteFaqModal } from "./components/modals/DeleteFaqModal";
@@ -80,33 +75,33 @@ export function AdminFaq() {
 
   const repostWelcome = trpc.admin.faq.repostWelcome.useMutation();
 
-  const entriesQuery = trpc.admin.faq.list.useQuery({
-    page,
-    limit,
-    orderBy,
-    orderDirection,
-    search: debouncedSearch.trim() || undefined,
-    enabled:
-      enabledFilter === "enabled"
-        ? true
-        : enabledFilter === "disabled"
-          ? false
-          : undefined,
-  });
+  const entriesQuery = trpc.admin.faq.list.useQuery(
+    {
+      page,
+      limit,
+      orderBy,
+      orderDirection,
+      search: debouncedSearch.trim() || undefined,
+      enabled:
+        enabledFilter === "enabled"
+          ? true
+          : enabledFilter === "disabled"
+            ? false
+            : undefined,
+    },
+    { placeholderData: keepPreviousData },
+  );
 
   const entries = entriesQuery.data?.entries ?? [];
   const total = entriesQuery.data?.pagination.total ?? 0;
   const totalPages = entriesQuery.data?.pagination.totalPages ?? 0;
-  const loading = entriesQuery.isLoading;
+  const loading = entriesQuery.isLoading || entriesQuery.isPlaceholderData;
+  const loadingRows = loadingRowCount(page, limit, total);
   const error = entriesQuery.error?.message ?? null;
 
   const handleSearch = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     setPage(0);
-  }, []);
-
-  const handlePageChange = useCallback((newPage: number) => {
-    setPage(newPage);
   }, []);
 
   const handleSort = useCallback(
@@ -138,38 +133,6 @@ export function AdminFaq() {
     }
   }, [repostWelcome, toast]);
 
-  const getPaginationItems = useCallback(() => {
-    const items: (number | "ellipsis")[] = [];
-    const maxVisible = 5;
-
-    if (totalPages <= maxVisible) {
-      return Array.from({ length: totalPages }, (_, i) => i);
-    }
-
-    items.push(0);
-
-    if (page <= 2) {
-      items.push(1, 2, 3);
-      items.push("ellipsis");
-      items.push(totalPages - 1);
-    } else if (page >= totalPages - 3) {
-      items.push("ellipsis");
-      items.push(
-        totalPages - 4,
-        totalPages - 3,
-        totalPages - 2,
-        totalPages - 1,
-      );
-    } else {
-      items.push("ellipsis");
-      items.push(page - 1, page, page + 1);
-      items.push("ellipsis");
-      items.push(totalPages - 1);
-    }
-
-    return items;
-  }, [page, totalPages]);
-
   const columns: DataTableColumn<FaqEntry>[] = [
     {
       key: "id",
@@ -191,6 +154,7 @@ export function AdminFaq() {
       key: "mode",
       header: "Mode",
       width: 110,
+      skeleton: () => <BadgeCellSkeleton />,
       render: (entry) => (
         <Badge variant="outline" className="text-xs">
           {entry.matchMode === "regex" ? "Regex" : "Keywords"}
@@ -224,6 +188,7 @@ export function AdminFaq() {
       key: "status",
       header: "Status",
       width: 110,
+      skeleton: () => <BadgeCellSkeleton />,
       render: (entry) => (
         <Badge
           variant="outline"
@@ -348,11 +313,7 @@ export function AdminFaq() {
             <CardTitle>FAQ Entries ({total.toLocaleString()})</CardTitle>
           </CardHeader>
 
-          {loading ? (
-            <CardContent className="flex flex-1 items-center justify-center py-12">
-              <Loading size="medium" text="Loading FAQ entries..." />
-            </CardContent>
-          ) : error ? (
+          {error ? (
             <CardContent className="flex flex-1 items-center justify-center py-12">
               <div className="text-center">
                 <p className="text-destructive">{error}</p>
@@ -365,7 +326,7 @@ export function AdminFaq() {
                 </Button>
               </div>
             </CardContent>
-          ) : entries.length === 0 ? (
+          ) : !loading && entries.length === 0 ? (
             <CardContent className="flex flex-1 items-center justify-center py-12">
               <div className="text-center">
                 <MessageCircleQuestion className="mx-auto size-12 text-muted-foreground" />
@@ -384,68 +345,26 @@ export function AdminFaq() {
                 <DataTable
                   columns={columns}
                   rows={entries}
+                  loading={loading}
+                  loadingRows={loadingRows}
                   rowKey={(entry) => entry.id}
                   actions={entryActions}
                 />
               </CardContent>
 
-              {/* Pagination */}
-              <CardFooter className="flex-col gap-3 border-t sm:flex-row sm:flex-wrap sm:items-center">
-                <p className="text-sm text-muted-foreground">
-                  Showing {page * limit + 1}-
-                  {Math.min((page + 1) * limit, total)} of {total} entries
-                </p>
-
-                <PaginationContent className="justify-baseline sm:ml-auto sm:justify-end">
-                  <PaginationItem>
-                    <PaginationPrevious
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        if (page > 0) handlePageChange(page - 1);
-                      }}
-                      className={cn(
-                        page === 0 && "pointer-events-none opacity-50",
-                      )}
-                    />
-                  </PaginationItem>
-
-                  {getPaginationItems().map((item, index) => (
-                    <PaginationItem
-                      key={item === "ellipsis" ? `ellipsis-${index}` : item}
-                    >
-                      {item === "ellipsis" ? (
-                        <PaginationEllipsis />
-                      ) : (
-                        <PaginationLink
-                          href="#"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            handlePageChange(item);
-                          }}
-                          isActive={page === item}
-                        >
-                          {item + 1}
-                        </PaginationLink>
-                      )}
-                    </PaginationItem>
-                  ))}
-
-                  <PaginationItem>
-                    <PaginationNext
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        if (page < totalPages - 1) handlePageChange(page + 1);
-                      }}
-                      className={cn(
-                        page >= totalPages - 1 &&
-                          "pointer-events-none opacity-50",
-                      )}
-                    />
-                  </PaginationItem>
-                </PaginationContent>
-              </CardFooter>
+              {total > 0 && (
+                <CardFooter className="border-t">
+                  <Paginator
+                    page={page}
+                    limit={limit}
+                    total={total}
+                    totalPages={totalPages}
+                    onPageChange={setPage}
+                    itemLabel="entry"
+                    className="w-full"
+                  />
+                </CardFooter>
+              )}
             </>
           )}
         </Card>

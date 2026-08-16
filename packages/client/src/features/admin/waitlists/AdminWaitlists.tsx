@@ -9,20 +9,16 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
+import { Paginator } from "@/components/paginator";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CellDate, CellText } from "@/components/cell-text";
 import {
+  BadgeCellSkeleton,
   DataTable,
+  loadingRowCount,
+  TwoLineCellSkeleton,
   type DataTableAction,
   type DataTableColumn,
 } from "@/components/data-table";
@@ -43,9 +39,9 @@ import {
   Mail,
   Trash2,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import type { WaitlistStatus } from "@createrington/shared/db";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { keepPreviousData } from "@tanstack/react-query";
 import { InviteWaitlistModal } from "./components/modals/InviteWaitlistModal";
 import { DeleteWaitlistModal } from "./components/modals/DeleteWaitlistModal";
 import { trpc, type RouterOutput } from "@/lib/trpc";
@@ -99,30 +95,30 @@ export function AdminWaitlists() {
   const stats = statsQuery.data ?? null;
   const statsLoading = statsQuery.isLoading;
 
-  const entriesQuery = trpc.admin.waitlists.list.useQuery({
-    page,
-    limit,
-    orderBy,
-    orderDirection,
-    email: debouncedSearch.trim() || undefined,
-    discordName: debouncedSearch.trim() || undefined,
-    status: statusFilter !== "all" ? statusFilter : undefined,
-    verified: verifiedFilter,
-  });
+  const entriesQuery = trpc.admin.waitlists.list.useQuery(
+    {
+      page,
+      limit,
+      orderBy,
+      orderDirection,
+      email: debouncedSearch.trim() || undefined,
+      discordName: debouncedSearch.trim() || undefined,
+      status: statusFilter !== "all" ? statusFilter : undefined,
+      verified: verifiedFilter,
+    },
+    { placeholderData: keepPreviousData },
+  );
 
   const entries = entriesQuery.data?.entries ?? [];
   const total = entriesQuery.data?.pagination.total ?? 0;
   const totalPages = entriesQuery.data?.pagination.totalPages ?? 0;
-  const loading = entriesQuery.isLoading;
+  const loading = entriesQuery.isLoading || entriesQuery.isPlaceholderData;
+  const loadingRows = loadingRowCount(page, limit, total);
   const error = entriesQuery.error?.message ?? null;
 
   const handleSearch = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     setPage(0);
-  }, []);
-
-  const handlePageChange = useCallback((newPage: number) => {
-    setPage(newPage);
   }, []);
 
   const handleSort = useCallback(
@@ -157,38 +153,6 @@ export function AdminWaitlists() {
     entriesQuery.refetch();
     statsQuery.refetch();
   }, [entriesQuery, statsQuery]);
-
-  const getPaginationItems = useCallback(() => {
-    const items: (number | "ellipsis")[] = [];
-    const maxVisible = 5;
-
-    if (totalPages <= maxVisible) {
-      return Array.from({ length: totalPages }, (_, i) => i);
-    }
-
-    items.push(0);
-
-    if (page <= 2) {
-      items.push(1, 2, 3);
-      items.push("ellipsis");
-      items.push(totalPages - 1);
-    } else if (page >= totalPages - 3) {
-      items.push("ellipsis");
-      items.push(
-        totalPages - 4,
-        totalPages - 3,
-        totalPages - 2,
-        totalPages - 1,
-      );
-    } else {
-      items.push("ellipsis");
-      items.push(page - 1, page, page + 1);
-      items.push("ellipsis");
-      items.push(totalPages - 1);
-    }
-
-    return items;
-  }, [page, totalPages]);
 
   const getStatusBadgeStyle = useCallback((status: string) => {
     switch (status.toLowerCase()) {
@@ -242,6 +206,7 @@ export function AdminWaitlists() {
       minWidth: 160,
       sorted: orderBy === "discordName" ? orderDirection : false,
       onSort: () => handleSort("discordName"),
+      skeleton: () => <TwoLineCellSkeleton />,
       render: (entry) => (
         <>
           <CellText value={entry.discordName ?? ""} className="font-medium" />
@@ -258,6 +223,7 @@ export function AdminWaitlists() {
       key: "status",
       header: "Status",
       width: 132,
+      skeleton: () => <BadgeCellSkeleton />,
       render: (entry) => (
         <Badge
           variant={getStatusBadgeStyle(entry.status).variant}
@@ -271,6 +237,7 @@ export function AdminWaitlists() {
       key: "progress",
       header: "Progress",
       width: 110,
+      skeleton: () => <BadgeCellSkeleton />,
       render: (entry) => {
         const step = PROGRESS_STEPS.find(({ key }) => entry[key]);
         return (
@@ -291,6 +258,7 @@ export function AdminWaitlists() {
       width: 160,
       sorted: orderBy === "submittedAt" ? orderDirection : false,
       onSort: () => handleSort("submittedAt"),
+      skeleton: () => <TwoLineCellSkeleton />,
       render: (entry) => (
         <>
           <CellDate value={entry.submittedAt} />
@@ -492,11 +460,7 @@ export function AdminWaitlists() {
             <CardTitle>Waitlist Entries ({total.toLocaleString()})</CardTitle>
           </CardHeader>
 
-          {loading ? (
-            <CardContent className="flex flex-1 items-center justify-center py-12">
-              <Loading size="medium" text="Loading waitlist entries..." />
-            </CardContent>
-          ) : error ? (
+          {error ? (
             <CardContent className="flex flex-1 items-center justify-center py-12">
               <div className="text-center">
                 <p className="text-destructive">{error}</p>
@@ -509,7 +473,7 @@ export function AdminWaitlists() {
                 </Button>
               </div>
             </CardContent>
-          ) : entries.length === 0 ? (
+          ) : !loading && entries.length === 0 ? (
             <CardContent className="flex flex-1 items-center justify-center py-12">
               <div className="text-center">
                 <Users className="mx-auto size-12 text-muted-foreground" />
@@ -524,68 +488,26 @@ export function AdminWaitlists() {
                 <DataTable
                   columns={columns}
                   rows={entries}
+                  loading={loading}
+                  loadingRows={loadingRows}
                   rowKey={(entry) => entry.id}
                   actions={entryActions}
                 />
               </CardContent>
 
-              {/* Pagination */}
-              <CardFooter className="flex-col gap-3 border-t sm:flex-row sm:flex-wrap sm:items-center">
-                <p className="text-sm text-muted-foreground">
-                  Showing {page * limit + 1}-
-                  {Math.min((page + 1) * limit, total)} of {total} entries
-                </p>
-
-                <PaginationContent className="justify-baseline sm:ml-auto sm:justify-end">
-                  <PaginationItem>
-                    <PaginationPrevious
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        if (page > 0) handlePageChange(page - 1);
-                      }}
-                      className={cn(
-                        page === 0 && "pointer-events-none opacity-50",
-                      )}
-                    />
-                  </PaginationItem>
-
-                  {getPaginationItems().map((item, index) => (
-                    <PaginationItem
-                      key={item === "ellipsis" ? `ellipsis-${index}` : item}
-                    >
-                      {item === "ellipsis" ? (
-                        <PaginationEllipsis />
-                      ) : (
-                        <PaginationLink
-                          href="#"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            handlePageChange(item);
-                          }}
-                          isActive={page === item}
-                        >
-                          {item + 1}
-                        </PaginationLink>
-                      )}
-                    </PaginationItem>
-                  ))}
-
-                  <PaginationItem>
-                    <PaginationNext
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        if (page < totalPages - 1) handlePageChange(page + 1);
-                      }}
-                      className={cn(
-                        page >= totalPages - 1 &&
-                          "pointer-events-none opacity-50",
-                      )}
-                    />
-                  </PaginationItem>
-                </PaginationContent>
-              </CardFooter>
+              {total > 0 && (
+                <CardFooter className="border-t">
+                  <Paginator
+                    page={page}
+                    limit={limit}
+                    total={total}
+                    totalPages={totalPages}
+                    onPageChange={setPage}
+                    itemLabel="entry"
+                    className="w-full"
+                  />
+                </CardFooter>
+              )}
             </>
           )}
         </Card>

@@ -1,16 +1,13 @@
-import {
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
 import { CellDate, CellText } from "@/components/cell-text";
-import { DataTable, type DataTableColumn } from "@/components/data-table";
-import { cn } from "@/lib/utils";
-import { useCallback, useState } from "react";
-import { Loading } from "@/components/loading-spinner";
+import {
+  DataTable,
+  loadingRowCount,
+  TwoLineCellSkeleton,
+  type DataTableColumn,
+} from "@/components/data-table";
+import { Paginator } from "@/components/paginator";
+import { useState } from "react";
+import { keepPreviousData } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Clock } from "lucide-react";
@@ -25,49 +22,21 @@ export function SessionsTab({ playerId, getServerName }: SessionsTabProps) {
   const [page, setPage] = useState(0);
   const [limit] = useState(10);
 
-  const sessionsQuery = trpc.admin.players.sessions.list.useQuery({
-    id: playerId,
-    page,
-    limit,
-  });
+  const sessionsQuery = trpc.admin.players.sessions.list.useQuery(
+    {
+      id: playerId,
+      page,
+      limit,
+    },
+    { placeholderData: keepPreviousData },
+  );
 
   const sessions = sessionsQuery.data?.sessions ?? [];
   const total = sessionsQuery.data?.pagination.total ?? 0;
   const totalPages = sessionsQuery.data?.pagination.totalPages ?? 0;
-  const loading = sessionsQuery.isLoading;
+  const loading = sessionsQuery.isLoading || sessionsQuery.isPlaceholderData;
+  const loadingRows = loadingRowCount(page, limit, total);
   const error = sessionsQuery.error?.message ?? null;
-
-  const getPaginationItems = useCallback(() => {
-    const items: (number | "ellipsis")[] = [];
-    const maxVisible = 5;
-
-    if (totalPages <= maxVisible) {
-      return Array.from({ length: totalPages }, (_, i) => i);
-    }
-
-    items.push(0);
-
-    if (page <= 2) {
-      items.push(1, 2, 3);
-      items.push("ellipsis");
-      items.push(totalPages - 1);
-    } else if (page >= totalPages - 3) {
-      items.push("ellipsis");
-      items.push(
-        totalPages - 4,
-        totalPages - 3,
-        totalPages - 2,
-        totalPages - 1,
-      );
-    } else {
-      items.push("ellipsis");
-      items.push(page - 1, page, page + 1);
-      items.push("ellipsis");
-      items.push(totalPages - 1);
-    }
-
-    return items;
-  }, [page, totalPages]);
 
   const formatDuration = (seconds: number): string => {
     const hours = Math.floor(seconds / 3600);
@@ -125,6 +94,9 @@ export function SessionsTab({ playerId, getServerName }: SessionsTabProps) {
       header: "Duration",
       width: 160,
       align: "right",
+      skeleton: () => (
+        <TwoLineCellSkeleton className="flex flex-col items-end" />
+      ),
       render: (session) => {
         const duration = session.secondsPlayed
           ? Number(session.secondsPlayed)
@@ -164,11 +136,7 @@ export function SessionsTab({ playerId, getServerName }: SessionsTabProps) {
         </Button>
       </div>
 
-      {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loading size="medium" text="Loading sessions..." />
-        </div>
-      ) : error ? (
+      {error ? (
         <div className="py-12 text-center">
           <p className="text-destructive">{error}</p>
           <Button
@@ -180,80 +148,30 @@ export function SessionsTab({ playerId, getServerName }: SessionsTabProps) {
             Retry
           </Button>
         </div>
-      ) : sessions.length === 0 ? (
+      ) : !loading && sessions.length === 0 ? (
         <div className="py-12 text-center">
           <Clock className="mx-auto size-12 text-muted-foreground" />
           <p className="mt-2 text-muted-foreground">No sessions found</p>
         </div>
       ) : (
         <>
-          {/* Table */}
           <DataTable
             columns={columns}
             rows={sessions}
+            loading={loading}
+            loadingRows={loadingRows}
             rowKey={(session) => session.id}
           />
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center gap-4 border-t border-border pt-4">
-              <p className="flex-1 text-sm text-muted-foreground">
-                Showing {page * limit + 1}-{Math.min((page + 1) * limit, total)}{" "}
-                of {total} sessions
-              </p>
-
-              {/* No <Pagination /> wrapper, it centers by default */}
-              <PaginationContent className="ml-auto flex-nowrap justify-end">
-                <PaginationItem>
-                  <PaginationPrevious
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      if (page > 0) setPage(page - 1);
-                    }}
-                    className={cn(
-                      page === 0 && "pointer-events-none opacity-50",
-                    )}
-                  />
-                </PaginationItem>
-
-                {getPaginationItems().map((item, index) => (
-                  <PaginationItem
-                    key={item === "ellipsis" ? `ellipsis-${index}` : item}
-                  >
-                    {item === "ellipsis" ? (
-                      <PaginationEllipsis />
-                    ) : (
-                      <PaginationLink
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          setPage(item);
-                        }}
-                        isActive={page === item}
-                      >
-                        {item + 1}
-                      </PaginationLink>
-                    )}
-                  </PaginationItem>
-                ))}
-
-                <PaginationItem>
-                  <PaginationNext
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      if (page < totalPages - 1) setPage(page + 1);
-                    }}
-                    className={cn(
-                      page >= totalPages - 1 &&
-                        "pointer-events-none opacity-50",
-                    )}
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </div>
-          )}
+          <Paginator
+            page={page}
+            limit={limit}
+            total={total}
+            totalPages={totalPages}
+            onPageChange={setPage}
+            itemLabel="session"
+            className="border-t border-border pt-4"
+          />
         </>
       )}
     </div>

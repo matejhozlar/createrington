@@ -17,10 +17,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CellDate, CellText } from "@/components/cell-text";
-import { DataTable, type DataTableColumn } from "@/components/data-table";
+import {
+  BadgeCellSkeleton,
+  DataTable,
+  TwoLineCellSkeleton,
+  type DataTableColumn,
+} from "@/components/data-table";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Loading } from "@/components/loading-spinner";
 import { useStickyValue } from "@/hooks/use-sticky-value";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { WORKSHOP_STATUS_STYLES, loaderName } from "@/features/workshop/format";
@@ -86,6 +90,7 @@ export function AdminWorkshop() {
       key: "name",
       header: "Name",
       minWidth: 200,
+      skeleton: () => <TwoLineCellSkeleton />,
       render: (workshop) => (
         <>
           <CellText value={workshop.name} className="font-medium" />
@@ -100,6 +105,7 @@ export function AdminWorkshop() {
       key: "status",
       header: "Status",
       width: 110,
+      skeleton: () => <BadgeCellSkeleton />,
       render: (workshop) => (
         <Badge
           variant="outline"
@@ -183,11 +189,7 @@ export function AdminWorkshop() {
             </CardTitle>
           </CardHeader>
 
-          {workshopsQuery.isLoading ? (
-            <CardContent className="flex flex-1 items-center justify-center py-12">
-              <Loading size="medium" text="Loading workshops..." />
-            </CardContent>
-          ) : workshopsQuery.error ? (
+          {workshopsQuery.error ? (
             <CardContent className="flex flex-1 items-center justify-center py-12">
               <div className="text-center">
                 <p className="text-destructive">
@@ -202,7 +204,7 @@ export function AdminWorkshop() {
                 </Button>
               </div>
             </CardContent>
-          ) : workshops.length === 0 ? (
+          ) : !workshopsQuery.isLoading && workshops.length === 0 ? (
             <CardContent className="flex flex-1 items-center justify-center py-12">
               <div className="text-center">
                 <Hammer className="mx-auto size-12 text-muted-foreground" />
@@ -218,6 +220,7 @@ export function AdminWorkshop() {
               <DataTable
                 columns={columns}
                 rows={workshops}
+                loading={workshopsQuery.isLoading}
                 rowKey={(workshop) => workshop.id}
                 onRowClick={(workshop) =>
                   navigate(`/admin/tools/workshop/${workshop.slug}`)

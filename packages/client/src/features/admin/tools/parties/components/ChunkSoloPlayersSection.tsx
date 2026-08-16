@@ -2,10 +2,16 @@ import { useCallback, useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { CellText } from "@/components/cell-text";
-import { DataTable, type DataTableColumn } from "@/components/data-table";
+import {
+  BadgeCellSkeleton,
+  DataTable,
+  loadingRowCount,
+  type DataTableColumn,
+} from "@/components/data-table";
 import { Loading } from "@/components/loading-spinner";
 import { Paginator } from "@/components/paginator";
 import { PlayerLabel } from "@/components/player-label";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   formatFullDateSafe,
   formatRelativeDateSafe,
@@ -24,6 +30,7 @@ export type SoloPlayersData =
 type SoloPlayer = SoloPlayersData["items"][number];
 
 const CHUNKS_PER_PAGE = 50;
+const PLAYERS_PER_PAGE = 50;
 
 export type SoloSortKey =
   | "player"
@@ -37,6 +44,7 @@ export type SoloSortState = { key: SoloSortKey; dir: "asc" | "desc" } | null;
 
 export function ChunkSoloPlayersSection({
   serverId,
+  page,
   data,
   isLoading,
   onPageChange,
@@ -46,6 +54,7 @@ export function ChunkSoloPlayersSection({
   onSortChange,
 }: {
   serverId: number;
+  page: number;
   data: SoloPlayersData | undefined;
   isLoading: boolean;
   onPageChange: (page: number) => void;
@@ -77,6 +86,12 @@ export function ChunkSoloPlayersSection({
       header: "Player",
       minWidth: 200,
       ...sortProps("player"),
+      skeleton: () => (
+        <div className="flex items-center gap-2">
+          <Skeleton className="size-5 shrink-0 rounded-xs" />
+          <Skeleton className="h-4 w-28" />
+        </div>
+      ),
       render: (player) => (
         <PlayerLabel
           uuid={player.playerUuid}
@@ -125,6 +140,7 @@ export function ChunkSoloPlayersSection({
       header: "Ally status",
       width: 130,
       ...sortProps("allyStatus"),
+      skeleton: () => <BadgeCellSkeleton />,
       render: (player) =>
         player.allyStatus === "allied" ? (
           <Badge
@@ -158,16 +174,19 @@ export function ChunkSoloPlayersSection({
     },
   ];
 
-  if (isLoading) {
-    return <Loading size="medium" text="Loading solo players..." />;
-  }
-  if (!data || data.pagination.total === 0) return null;
+  const total = data?.pagination.total ?? 0;
+  const totalPages = data?.pagination.totalPages ?? 0;
+  const loadingRows = loadingRowCount(page, PLAYERS_PER_PAGE, total);
+
+  if (!isLoading && total === 0) return null;
 
   return (
     <div className="flex flex-col gap-3 px-0 pb-3">
       <DataTable
         columns={columns}
-        rows={data.items}
+        rows={data?.items ?? []}
+        loading={isLoading}
+        loadingRows={loadingRows}
         rowKey={(player) => player.playerUuid}
         onRowClick={(player) =>
           setExpandedUuid(
@@ -185,10 +204,10 @@ export function ChunkSoloPlayersSection({
         )}
       />
       <Paginator
-        page={data.pagination.page}
-        limit={data.pagination.limit}
-        total={data.pagination.total}
-        totalPages={data.pagination.totalPages}
+        page={page}
+        limit={PLAYERS_PER_PAGE}
+        total={total}
+        totalPages={totalPages}
         onPageChange={onPageChange}
         itemLabel="player"
         className="px-4"
