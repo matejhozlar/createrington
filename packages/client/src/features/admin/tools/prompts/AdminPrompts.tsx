@@ -10,6 +10,7 @@ import {
   DataTable,
   loadingRowCount,
   TwoLineCellSkeleton,
+  type DataTableAction,
   type DataTableColumn,
 } from "@/components/data-table";
 import { Paginator } from "@/components/paginator";
@@ -20,11 +21,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { MessageSquare, Plus, RefreshCw } from "lucide-react";
+import { MessageSquare, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { formatFullDate } from "@/features/admin/format";
 import { keepPreviousData } from "@tanstack/react-query";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { CreatePromptModal } from "./components/CreatePromptModal";
+import { DeletePromptModal } from "./components/DeletePromptModal";
 
 type StatusFilter = "all" | "active" | "closed";
 type PromptRow = RouterOutput["admin"]["prompts"]["list"]["items"][number];
@@ -47,6 +49,10 @@ export function AdminPrompts() {
   const [page, setPage] = useState(0);
   const limit = 20;
   const [createOpen, setCreateOpen] = useState(false);
+  const [deleteModal, setDeleteModal] = useState<{
+    open: boolean;
+    prompt: PromptRow | null;
+  }>({ open: false, prompt: null });
 
   const listQuery = trpc.admin.prompts.list.useQuery(
     {
@@ -145,6 +151,15 @@ export function AdminPrompts() {
     },
   ];
 
+  const promptActions = (row: PromptRow): DataTableAction[] => [
+    {
+      label: "Delete",
+      icon: Trash2,
+      variant: "destructive",
+      onClick: () => setDeleteModal({ open: true, prompt: row }),
+    },
+  ];
+
   return (
     <div className="flex flex-1 flex-col gap-4">
       <AdminPageHeader
@@ -211,6 +226,8 @@ export function AdminPrompts() {
               loadingRows={loadingRows}
               rowKey={(row) => row.id}
               onRowClick={(row) => navigate(`/admin/tools/prompts/${row.id}`)}
+              actions={promptActions}
+              actionSlots={1}
             />
             {total > 0 && (
               <div className="border-t px-6 py-4">
@@ -237,6 +254,19 @@ export function AdminPrompts() {
           void listQuery.refetch();
         }}
       />
+
+      {deleteModal.prompt !== null && (
+        <DeletePromptModal
+          open={deleteModal.open}
+          onClose={() => setDeleteModal({ open: false, prompt: null })}
+          prompt={deleteModal.prompt}
+          entryCount={deleteModal.prompt.responseCount}
+          onSuccess={() => {
+            setDeleteModal({ open: false, prompt: null });
+            void listQuery.refetch();
+          }}
+        />
+      )}
     </div>
   );
 }

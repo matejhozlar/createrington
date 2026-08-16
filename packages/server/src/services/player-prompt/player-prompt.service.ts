@@ -304,6 +304,48 @@ export class PlayerPromptService {
     );
   }
 
+  /**
+   * Removes a prompt outright: cancels its closure timer, deletes the Discord
+   * announcement so no orphaned Respond button outlives it, then drops the row
+   * (responses cascade). Returns the deleted prompt, or null if it was already
+   * gone.
+   *
+   * The Discord delete is best-effort, mirroring `closePrompt`'s edit: a
+   * message that can't be removed (deleted by hand, permissions revoked)
+   * must not strand the row in the admin panel with no way to clear it. A
+   * button left behind that way lands on `prepareEntry`'s "no longer exists"
+   * refusal rather than accepting responses into nothing.
+   */
+  async deletePrompt(promptId: number): Promise<PlayerPrompt | null> {
+    const prompt = await Q.player.prompt.find({ id: promptId });
+    if (!prompt) return null;
+
+    // Dropped before the row goes: a timer that survives the delete would
+    // wake up to a missing prompt. If the delete below fails, `initialize()`
+    // re-arms the timer on the next boot.
+    const timer = this.closureTimers.get(promptId);
+    if (timer) {
+      clearTimeout(timer);
+      this.closureTimers.delete(promptId);
+    }
+
+    if (prompt.messageId) {
+      const result = await this.messageService.delete({
+        channelId: prompt.channelId,
+        messageId: prompt.messageId,
+      });
+      if (!result.success) {
+        logger.warn(
+          `Deleting prompt #${promptId} but failed to delete its Discord message: ${result.error}`,
+        );
+      }
+    }
+
+    await Q.player.prompt.delete({ id: promptId });
+    logger.info(`Deleted prompt #${promptId} and its responses`);
+    return prompt;
+  }
+
   private async postAnnouncement(prompt: PlayerPrompt) {
     const active = PlayerPromptComponentPresets.active(prompt);
 

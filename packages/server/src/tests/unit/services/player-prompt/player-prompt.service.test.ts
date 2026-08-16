@@ -19,6 +19,9 @@ let upsertCalls: Array<{ responseText: string }>;
 // insert, which the real query catches via its HAVING clause. The entry it
 // would have written is pushed here so the follow-up re-read sees it.
 let raceOnAppend: StoredEntry | null;
+let promptDeleteCalls: number[];
+let messageDeleteCalls: Array<{ channelId: string; messageId: string }>;
+let messageDeleteResult: { success: boolean; error?: string };
 
 vi.mock("@/db", () => {
   const response = {
@@ -70,7 +73,14 @@ vi.mock("@/db", () => {
         find: async () => ({
           minecraftUuid: "11111111-1111-1111-1111-111111111111",
         }),
-        prompt: { find: async () => prompt, response },
+        prompt: {
+          find: async () => prompt,
+          delete: async (identifier: { id: number }) => {
+            promptDeleteCalls.push(identifier.id);
+            prompt = null;
+          },
+          response,
+        },
       },
     },
   };
@@ -79,8 +89,18 @@ vi.mock("@/db", () => {
 import { PlayerPromptService } from "@/services/player-prompt/player-prompt.service";
 import type { DiscordMessageService } from "@/services/discord/message/message.service";
 
-function makeService() {
-  return new PlayerPromptService({} as DiscordMessageService);
+function makeService(messageService: Partial<DiscordMessageService> = {}) {
+  return new PlayerPromptService(messageService as DiscordMessageService);
+}
+
+/** Records every message delete and replies with `messageDeleteResult`. */
+function recordingMessageService(): Partial<DiscordMessageService> {
+  return {
+    delete: async (options: { channelId: string; messageId: string }) => {
+      messageDeleteCalls.push(options);
+      return messageDeleteResult;
+    },
+  };
 }
 
 function setPrompt(overrides: Partial<PlayerPrompt> = {}) {
@@ -121,6 +141,9 @@ beforeEach(() => {
   appendCalls = [];
   upsertCalls = [];
   raceOnAppend = null;
+  promptDeleteCalls = [];
+  messageDeleteCalls = [];
+  messageDeleteResult = { success: true };
 });
 
 describe("PlayerPromptService.prepareEntry", () => {
@@ -349,5 +372,54 @@ describe("PlayerPromptService.submitResponse", () => {
     expect(upsertCalls).toHaveLength(0);
     expect(appendCalls).toHaveLength(0);
     expect(message).toContain("closed");
+  });
+});
+
+describe("PlayerPromptService.deletePrompt", () => {
+  it("reports a prompt that is already gone without deleting anything", async () => {
+    const deleted = await makeService(recordingMessageService()).deletePrompt(
+      1,
+    );
+
+    expect(deleted).toBeNull();
+    expect(promptDeleteCalls).toHaveLength(0);
+    expect(messageDeleteCalls).toHaveLength(0);
+  });
+
+  it("removes the Discord announcement along with the row", async () => {
+    setPrompt();
+
+    const deleted = await makeService(recordingMessageService()).deletePrompt(
+      1,
+    );
+
+    expect(deleted).toMatchObject({ id: 1, question: "What next?" });
+    expect(messageDeleteCalls).toEqual([
+      { channelId: "channel-1", messageId: "message-1" },
+    ]);
+    expect(promptDeleteCalls).toEqual([1]);
+  });
+
+  it("still drops the row when the Discord message can't be removed", async () => {
+    setPrompt();
+    messageDeleteResult = { success: false, error: "Message not found" };
+
+    const deleted = await makeService(recordingMessageService()).deletePrompt(
+      1,
+    );
+
+    expect(deleted).not.toBeNull();
+    expect(messageDeleteCalls).toHaveLength(1);
+    // A message that can't be deleted must not strand the row in the panel.
+    expect(promptDeleteCalls).toEqual([1]);
+  });
+
+  it("skips Discord entirely for a prompt that never got a message id", async () => {
+    setPrompt({ messageId: null });
+
+    await makeService(recordingMessageService()).deletePrompt(1);
+
+    expect(messageDeleteCalls).toHaveLength(0);
+    expect(promptDeleteCalls).toEqual([1]);
   });
 });
