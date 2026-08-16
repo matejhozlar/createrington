@@ -44,6 +44,7 @@ export type SoloSortState = { key: SoloSortKey; dir: "asc" | "desc" } | null;
 
 export function ChunkSoloPlayersSection({
   serverId,
+  page,
   data,
   isLoading,
   onPageChange,
@@ -53,6 +54,7 @@ export function ChunkSoloPlayersSection({
   onSortChange,
 }: {
   serverId: number;
+  page: number;
   data: SoloPlayersData | undefined;
   isLoading: boolean;
   onPageChange: (page: number) => void;
@@ -172,11 +174,9 @@ export function ChunkSoloPlayersSection({
     },
   ];
 
-  const page = data?.pagination.page ?? 0;
-  const limit = data?.pagination.limit ?? PLAYERS_PER_PAGE;
   const total = data?.pagination.total ?? 0;
   const totalPages = data?.pagination.totalPages ?? 0;
-  const loadingRows = loadingRowCount(page, limit, total);
+  const loadingRows = loadingRowCount(page, PLAYERS_PER_PAGE, total);
 
   if (!isLoading && total === 0) return null;
 
@@ -203,17 +203,15 @@ export function ChunkSoloPlayersSection({
           />
         )}
       />
-      {total > 0 && (
-        <Paginator
-          page={page}
-          limit={limit}
-          total={total}
-          totalPages={totalPages}
-          onPageChange={onPageChange}
-          itemLabel="player"
-          className="px-4"
-        />
-      )}
+      <Paginator
+        page={page}
+        limit={PLAYERS_PER_PAGE}
+        total={total}
+        totalPages={totalPages}
+        onPageChange={onPageChange}
+        itemLabel="player"
+        className="px-4"
+      />
     </div>
   );
 }

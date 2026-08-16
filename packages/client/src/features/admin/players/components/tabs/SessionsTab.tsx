@@ -163,17 +163,15 @@ export function SessionsTab({ playerId, getServerName }: SessionsTabProps) {
             rowKey={(session) => session.id}
           />
 
-          {total > 0 && (
-            <Paginator
-              page={page}
-              limit={limit}
-              total={total}
-              totalPages={totalPages}
-              onPageChange={setPage}
-              itemLabel="session"
-              className="border-t border-border pt-4"
-            />
-          )}
+          <Paginator
+            page={page}
+            limit={limit}
+            total={total}
+            totalPages={totalPages}
+            onPageChange={setPage}
+            itemLabel="session"
+            className="border-t border-border pt-4"
+          />
         </>
       )}
     </div>

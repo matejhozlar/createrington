@@ -149,17 +149,15 @@ export function TransactionsTab({ playerId }: TransactionsTabProps) {
             }
           />
 
-          {total > 0 && (
-            <Paginator
-              page={page}
-              limit={limit}
-              total={total}
-              totalPages={totalPages}
-              onPageChange={setPage}
-              itemLabel="transaction"
-              className="border-t border-border pt-4"
-            />
-          )}
+          <Paginator
+            page={page}
+            limit={limit}
+            total={total}
+            totalPages={totalPages}
+            onPageChange={setPage}
+            itemLabel="transaction"
+            className="border-t border-border pt-4"
+          />
         </>
       )}
     </div>

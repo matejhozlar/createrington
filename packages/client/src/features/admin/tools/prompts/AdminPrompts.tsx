@@ -45,7 +45,7 @@ export function AdminPrompts() {
   const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [page, setPage] = useState(0);
-  const [limit] = useState(20);
+  const limit = 20;
   const [createOpen, setCreateOpen] = useState(false);
 
   const listQuery = trpc.admin.prompts.list.useQuery(

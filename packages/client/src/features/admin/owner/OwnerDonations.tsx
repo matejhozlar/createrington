@@ -128,7 +128,7 @@ const DONATION_COLUMNS: DataTableColumn<Donation>[] = [
 
 export function OwnerDonations() {
   const [page, setPage] = useState(0);
-  const [limit] = useState(20);
+  const limit = 20;
   const [discordIdInput, setDiscordIdInput] = useState("");
   const [statusFilter, setStatusFilter] = useState<DonationStatus | "all">(
     "all",

@@ -247,6 +247,7 @@ export function AdminParties() {
               totalParties={totalParties}
               filters={filters}
               soloPlayersEnabled={soloPlayersEnabled}
+              soloPage={soloPage}
               soloData={chunkSoloPlayersQuery.data}
               soloIsLoading={
                 chunkSoloPlayersQuery.isLoading ||

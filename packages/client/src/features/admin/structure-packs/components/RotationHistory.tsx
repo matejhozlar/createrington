@@ -115,17 +115,15 @@ export function RotationHistory() {
             rowKey={(rotation) => rotation.id}
           />
 
-          {total > 0 && (
-            <Paginator
-              page={page}
-              limit={limit}
-              total={total}
-              totalPages={totalPages}
-              onPageChange={setPage}
-              itemLabel="rotation"
-              className="mt-4"
-            />
-          )}
+          <Paginator
+            page={page}
+            limit={limit}
+            total={total}
+            totalPages={totalPages}
+            onPageChange={setPage}
+            itemLabel="rotation"
+            className="mt-4"
+          />
         </>
       )}
     </div>
