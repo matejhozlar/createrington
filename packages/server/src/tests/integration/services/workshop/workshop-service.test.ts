@@ -359,6 +359,21 @@ describe("WorkshopService.reviewMod", () => {
     expect((await Q.workshop.mod.get({ id: mod.id })).status).toBe("in_pack");
     expect(await Q.modpack.mod.find({ id: packRow.id })).not.toBeNull();
   });
+
+  it("treats approving a mod already in the pack as a no-op", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const mod = await seedMod(ctx, workshop, {
+      submittedBy: USER_A,
+      status: "in_pack",
+    });
+
+    const result = await workshopService.reviewMod(mod.id, "approve", ADMIN);
+
+    expect(result.status).toBe("in_pack");
+    const unchanged = await Q.workshop.mod.get({ id: mod.id });
+    expect(unchanged.status).toBe("in_pack");
+    expect(unchanged.reviewedBy).toBeNull();
+  });
 });
 
 describe("WorkshopService.updateWorkshop", () => {

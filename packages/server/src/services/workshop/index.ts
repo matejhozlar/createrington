@@ -828,18 +828,14 @@ export class WorkshopService {
     ) {
       return mod;
     }
-    if (mod.status === "in_pack") {
-      throw new BadRequestError(
-        "This mod is live in the published pack, publish a release without it first",
-      );
-    }
-
     const target = WORKSHOP_MOD_REVIEW_TARGETS[mod.status][action];
     if (!target) {
       throw new BadRequestError(
-        `Cannot ${WORKSHOP_MOD_REVIEW_ACTION_LABELS[action]} a mod that is ${WORKSHOP_MOD_STATUS_LABELS[
-          mod.status
-        ].toLowerCase()}`,
+        mod.status === "in_pack"
+          ? "This mod is live in the published pack, publish a release without it first"
+          : `Cannot ${WORKSHOP_MOD_REVIEW_ACTION_LABELS[action]} a mod that is ${WORKSHOP_MOD_STATUS_LABELS[
+              mod.status
+            ].toLowerCase()}`,
       );
     }
 
