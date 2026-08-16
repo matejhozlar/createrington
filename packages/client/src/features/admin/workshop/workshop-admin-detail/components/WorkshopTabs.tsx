@@ -44,6 +44,34 @@ const MOD_TAB_LABELS: Record<ModTabId, string> = {
 const SCROLL_ROW_CLASSES =
   "overflow-x-auto overflow-y-hidden [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
 
+function attachWheelScroll(strip: HTMLDivElement) {
+  const onWheel = (event: WheelEvent) => {
+    if (strip.scrollWidth <= strip.clientWidth) return;
+    if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+    event.preventDefault();
+    strip.scrollLeft +=
+      event.deltaMode === WheelEvent.DOM_DELTA_LINE
+        ? event.deltaY * 24
+        : event.deltaY;
+  };
+  strip.addEventListener("wheel", onWheel, { passive: false });
+  return () => strip.removeEventListener("wheel", onWheel);
+}
+
+function revealInStrip(
+  strip: HTMLDivElement | null,
+  tab: HTMLButtonElement | null,
+) {
+  if (!strip || !tab) return;
+  const stripBox = strip.getBoundingClientRect();
+  const tabBox = tab.getBoundingClientRect();
+  if (tabBox.left < stripBox.left) {
+    strip.scrollLeft -= stripBox.left - tabBox.left;
+  } else if (tabBox.right > stripBox.right) {
+    strip.scrollLeft += tabBox.right - stripBox.right;
+  }
+}
+
 export function WorkshopTabs({
   activeTab,
   onTabChange,
@@ -58,40 +86,31 @@ export function WorkshopTabs({
   const group = tabGroup(activeTab);
   const activeTopRef = useRef<HTMLButtonElement>(null);
   const activeModRef = useRef<HTMLButtonElement>(null);
+  const topStripRef = useRef<HTMLDivElement | null>(null);
+  const modStripRef = useRef<HTMLDivElement | null>(null);
 
   const countsKey = [...MOD_TAB_IDS, "issues" as const]
     .map((id) => counts[id] ?? "")
     .join();
   useEffect(() => {
-    activeTopRef.current?.scrollIntoView({
-      block: "nearest",
-      inline: "nearest",
-    });
-    activeModRef.current?.scrollIntoView({
-      block: "nearest",
-      inline: "nearest",
-    });
+    revealInStrip(topStripRef.current, activeTopRef.current);
+    revealInStrip(modStripRef.current, activeModRef.current);
   }, [activeTab, countsKey]);
 
-  const wheelScrollRef = useCallback((strip: HTMLDivElement | null) => {
-    if (!strip) return;
-    const onWheel = (event: WheelEvent) => {
-      if (strip.scrollWidth <= strip.clientWidth) return;
-      if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
-      event.preventDefault();
-      strip.scrollLeft +=
-        event.deltaMode === WheelEvent.DOM_DELTA_LINE
-          ? event.deltaY * 24
-          : event.deltaY;
-    };
-    strip.addEventListener("wheel", onWheel, { passive: false });
-    return () => strip.removeEventListener("wheel", onWheel);
+  const setTopStrip = useCallback((strip: HTMLDivElement | null) => {
+    topStripRef.current = strip;
+    return strip ? attachWheelScroll(strip) : undefined;
+  }, []);
+
+  const setModStrip = useCallback((strip: HTMLDivElement | null) => {
+    modStripRef.current = strip;
+    return strip ? attachWheelScroll(strip) : undefined;
   }, []);
 
   return (
     <div className="flex flex-col gap-3">
       <div
-        ref={wheelScrollRef}
+        ref={setTopStrip}
         className={cn("border-b border-border", SCROLL_ROW_CLASSES)}
       >
         <div className="flex gap-1">
@@ -143,7 +162,7 @@ export function WorkshopTabs({
       </div>
 
       {group === "mods" && (
-        <div ref={wheelScrollRef} className={SCROLL_ROW_CLASSES}>
+        <div ref={setModStrip} className={SCROLL_ROW_CLASSES}>
           <div className="inline-flex h-9 w-fit items-center justify-center rounded-lg bg-muted p-1">
             {MOD_TAB_IDS.map((id) => {
               const count = counts[id];
