@@ -714,6 +714,7 @@ export class WorkshopService {
     workshopId: number,
     patch: Partial<{
       name: string;
+      slug: string;
       description: string | null;
       status: Workshop["status"];
       classId: number;
@@ -767,7 +768,25 @@ export class WorkshopService {
       await assertForumChannel(patch.discordForumChannelId);
     }
 
-    return Q.workshop.updateAndReturn({ id: workshopId }, patch);
+    if (patch.slug !== undefined && patch.slug !== workshop.slug) {
+      const existing = await Q.workshop.find({ slug: patch.slug });
+      if (existing) {
+        throw new ConflictError(
+          `A workshop with slug "${patch.slug}" already exists`,
+        );
+      }
+    }
+
+    try {
+      return await Q.workshop.updateAndReturn({ id: workshopId }, patch);
+    } catch (error) {
+      if (error instanceof ConstraintViolationError) {
+        throw new ConflictError(
+          `A workshop with slug "${patch.slug}" already exists`,
+        );
+      }
+      throw error;
+    }
   }
 
   /**

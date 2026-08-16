@@ -400,6 +400,43 @@ describe("WorkshopService.updateWorkshop", () => {
       ).rejects.toThrow(BadRequestError);
     }
   });
+
+  it("renames the slug", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const nextSlug = `${workshop.slug}-renamed`;
+
+    const updated = await workshopService.updateWorkshop(workshop.id, {
+      slug: nextSlug,
+    });
+    expect(updated.slug).toBe(nextSlug);
+
+    const persisted = await Q.workshop.get({ id: workshop.id });
+    expect(persisted.slug).toBe(nextSlug);
+  });
+
+  it("accepts an unchanged slug", async () => {
+    const workshop = await seedWorkshop(ctx);
+
+    const updated = await workshopService.updateWorkshop(workshop.id, {
+      slug: workshop.slug,
+      name: "Renamed Workshop",
+    });
+    expect(updated.slug).toBe(workshop.slug);
+    expect(updated.name).toBe("Renamed Workshop");
+  });
+
+  it("rejects a slug already used by another workshop", async () => {
+    const modpackId = (await seedModpack(ctx)).id;
+    const workshop = await seedWorkshop(ctx, { modpackId });
+    const other = await seedWorkshop(ctx, { modpackId });
+
+    await expect(
+      workshopService.updateWorkshop(workshop.id, { slug: other.slug }),
+    ).rejects.toThrow(ConflictError);
+
+    const unchanged = await Q.workshop.get({ id: workshop.id });
+    expect(unchanged.slug).toBe(workshop.slug);
+  });
 });
 
 describe("WorkshopService.createWorkshop", () => {

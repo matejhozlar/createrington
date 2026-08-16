@@ -18,6 +18,7 @@ import { workshopFormError } from "../../validation";
 interface WorkshopSettings {
   id: number;
   name: string;
+  slug: string;
   description: string | null;
   modpackId: number;
   maxModsPerUser: number;
@@ -31,11 +32,13 @@ export function WorkshopSettingsDialog({
   onOpenChange,
   workshop,
   hasMods,
+  onSlugChange,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   workshop: WorkshopSettings;
   hasMods: boolean;
+  onSlugChange?: (slug: string) => void;
 }) {
   const modpacksQuery = trpc.admin.modpacks.list.useQuery(undefined, {
     enabled: open,
@@ -62,6 +65,7 @@ export function WorkshopSettingsDialog({
             hasMods={hasMods}
             publishedPackId={modpack?.curseforgeProjectId ?? null}
             onOpenChange={onOpenChange}
+            onSlugChange={onSlugChange}
           />
         )}
       </DialogContent>
@@ -74,16 +78,19 @@ function SettingsForm({
   hasMods,
   publishedPackId: currentPublishedPackId,
   onOpenChange,
+  onSlugChange,
 }: {
   workshop: WorkshopSettings;
   hasMods: boolean;
   publishedPackId: number | null;
   onOpenChange: (open: boolean) => void;
+  onSlugChange?: (slug: string) => void;
 }) {
   const toast = useToastActions();
   const utils = trpc.useUtils();
 
   const [name, setName] = useState(workshop.name);
+  const [slug, setSlug] = useState(workshop.slug);
   const [description, setDescription] = useState(workshop.description ?? "");
   const [maxMods, setMaxMods] = useState(String(workshop.maxModsPerUser));
   const [maxUpvotes, setMaxUpvotes] = useState(
@@ -110,6 +117,7 @@ function SettingsForm({
       basePackId: hasMods ? "" : basePackId,
       forumChannelId,
       publishedPackId,
+      slug,
     });
     if (validationError) {
       toast.error(validationError);
@@ -119,12 +127,14 @@ function SettingsForm({
     const nextPublishedPackId = publishedPackId.trim()
       ? Number(publishedPackId)
       : null;
+    const nextSlug = slug.trim();
 
     try {
       await updateMutation.mutateAsync({
         workshopId: workshop.id,
         patch: {
           name: name.trim(),
+          slug: nextSlug,
           description: description.trim() || null,
           maxModsPerUser: Number(maxMods),
           maxUpvotesPerUser: Number(maxUpvotes),
@@ -153,6 +163,13 @@ function SettingsForm({
     }
 
     toast.success("Workshop settings saved");
+    if (nextSlug !== workshop.slug) {
+      utils.admin.workshops.list.setData(undefined, (rows) =>
+        rows?.map((row) =>
+          row.id === workshop.id ? { ...row, slug: nextSlug } : row,
+        ),
+      );
+    }
     utils.admin.workshops.list.invalidate();
     utils.admin.modpacks.list.invalidate();
     utils.admin.workshops.listPackMods.invalidate();
@@ -160,6 +177,9 @@ function SettingsForm({
     utils.user.workshops.list.invalidate();
     utils.user.workshops.get.invalidate();
     onOpenChange(false);
+    if (nextSlug !== workshop.slug) {
+      onSlugChange?.(nextSlug);
+    }
   };
 
   return (
@@ -173,6 +193,19 @@ function SettingsForm({
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="settings-slug">URL Slug</Label>
+          <Input
+            id="settings-slug"
+            maxLength={100}
+            value={slug}
+            onChange={(e) => setSlug(e.target.value)}
+          />
+          <p className="text-xs text-muted-foreground">
+            The workshop's address: /workshop/{slug.trim() || "..."}. Changing
+            it breaks previously shared links.
+          </p>
         </div>
         <div className="space-y-2">
           <Label htmlFor="settings-desc">Description</Label>
@@ -249,7 +282,10 @@ function SettingsForm({
         </div>
       </div>
       <DialogFooter>
-        <Button onClick={handleSave} disabled={pending || !name.trim()}>
+        <Button
+          onClick={handleSave}
+          disabled={pending || !name.trim() || !slug.trim()}
+        >
           {pending && <Loader2 className="size-4 animate-spin" />}
           Save
         </Button>
