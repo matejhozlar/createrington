@@ -1,6 +1,5 @@
 import { useCallback, useState } from "react";
 import { useStickyValue } from "@/hooks/use-sticky-value";
-import { Loading } from "@/components/loading-spinner";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import {
   Card,
@@ -9,19 +8,18 @@ import {
   CardTitle,
   CardFooter,
 } from "@/components/ui/card";
-import {
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
+import { Paginator } from "@/components/paginator";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { CellDate, CellText } from "@/components/cell-text";
-import { DataTable, type DataTableColumn } from "@/components/data-table";
+import {
+  BadgeCellSkeleton,
+  DataTable,
+  loadingRowCount,
+  type DataTableColumn,
+} from "@/components/data-table";
 import {
   Dialog,
   DialogContent,
@@ -38,8 +36,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Search, Filter, FileText, Info } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { keepPreviousData } from "@tanstack/react-query";
 import { trpc } from "@/lib/trpc";
 
 type SortField = "performedAt" | "actionType" | "adminUsername";
@@ -84,28 +82,28 @@ export function AdminLogs() {
   const adminsQuery = trpc.admin.logs.admins.useQuery();
   const adminList = adminsQuery.data ?? [];
 
-  const logsQuery = trpc.admin.logs.list.useQuery({
-    page,
-    limit,
-    orderBy,
-    orderDirection,
-    search: debouncedSearch.trim() || undefined,
-    adminUsername: adminFilter,
-  });
+  const logsQuery = trpc.admin.logs.list.useQuery(
+    {
+      page,
+      limit,
+      orderBy,
+      orderDirection,
+      search: debouncedSearch.trim() || undefined,
+      adminUsername: adminFilter,
+    },
+    { placeholderData: keepPreviousData },
+  );
 
   const actions = logsQuery.data?.actions ?? [];
   const total = logsQuery.data?.pagination.total ?? 0;
   const totalPages = logsQuery.data?.pagination.totalPages ?? 0;
-  const loading = logsQuery.isLoading;
+  const loading = logsQuery.isLoading || logsQuery.isPlaceholderData;
+  const loadingRows = loadingRowCount(page, limit, total);
   const error = logsQuery.error?.message ?? null;
 
   const handleSearch = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     setPage(0);
-  }, []);
-
-  const handlePageChange = useCallback((newPage: number) => {
-    setPage(newPage);
   }, []);
 
   const handleSearchChange = useCallback((value: string) => {
@@ -125,38 +123,6 @@ export function AdminLogs() {
     },
     [orderBy],
   );
-
-  const getPaginationItems = useCallback(() => {
-    const items: (number | "ellipsis")[] = [];
-    const maxVisible = 5;
-
-    if (totalPages <= maxVisible) {
-      return Array.from({ length: totalPages }, (_, i) => i);
-    }
-
-    items.push(0);
-
-    if (page <= 2) {
-      items.push(1, 2, 3);
-      items.push("ellipsis");
-      items.push(totalPages - 1);
-    } else if (page >= totalPages - 3) {
-      items.push("ellipsis");
-      items.push(
-        totalPages - 4,
-        totalPages - 3,
-        totalPages - 2,
-        totalPages - 1,
-      );
-    } else {
-      items.push("ellipsis");
-      items.push(page - 1, page, page + 1);
-      items.push("ellipsis");
-      items.push(totalPages - 1);
-    }
-
-    return items;
-  }, [page, totalPages]);
 
   type LogAction = (typeof actions)[number];
 
@@ -185,6 +151,7 @@ export function AdminLogs() {
       width: 200,
       sorted: orderBy === "actionType" ? orderDirection : false,
       onSort: () => handleSort("actionType"),
+      skeleton: () => <BadgeCellSkeleton />,
       render: (action) => (
         <Badge variant="outline" className="max-w-full">
           <CellText value={action.actionType} className="min-w-0" />
@@ -206,6 +173,12 @@ export function AdminLogs() {
       key: "changes",
       header: "Changes",
       width: 220,
+      skeleton: () => (
+        <div className="flex flex-col gap-1">
+          <Skeleton className="h-5 w-32 rounded" />
+          <Skeleton className="h-5 w-32 rounded" />
+        </div>
+      ),
       render: (action) =>
         (action.oldValue != null || action.newValue != null) && (
           <div className="flex flex-col gap-1 text-xs">
@@ -301,11 +274,7 @@ export function AdminLogs() {
             <CardTitle>Audit Logs ({total.toLocaleString()})</CardTitle>
           </CardHeader>
 
-          {loading ? (
-            <CardContent className="flex flex-1 items-center justify-center py-12">
-              <Loading size="medium" text="Loading logs..." />
-            </CardContent>
-          ) : error ? (
+          {error ? (
             <CardContent className="flex flex-1 items-center justify-center py-12">
               <div className="text-center">
                 <p className="text-destructive">{error}</p>
@@ -318,7 +287,7 @@ export function AdminLogs() {
                 </Button>
               </div>
             </CardContent>
-          ) : actions.length === 0 ? (
+          ) : !loading && actions.length === 0 ? (
             <CardContent className="flex flex-1 items-center justify-center py-12">
               <div className="text-center">
                 <FileText className="mx-auto size-12 text-muted-foreground" />
@@ -333,6 +302,8 @@ export function AdminLogs() {
                 <DataTable
                   columns={columns}
                   rows={actions}
+                  loading={loading}
+                  loadingRows={loadingRows}
                   rowKey={(action) => action.id}
                   actions={(action) =>
                     action.metadata != null
@@ -349,63 +320,19 @@ export function AdminLogs() {
                 />
               </CardContent>
 
-              {/* Pagination */}
-              <CardFooter className="flex-col gap-3 border-t sm:flex-row sm:flex-wrap sm:items-center">
-                <p className="text-sm text-muted-foreground">
-                  Showing {page * limit + 1}-
-                  {Math.min((page + 1) * limit, total)} of {total} entries
-                </p>
-
-                <PaginationContent className="justify-baseline sm:ml-auto sm:justify-end">
-                  <PaginationItem>
-                    <PaginationPrevious
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        if (page > 0) handlePageChange(page - 1);
-                      }}
-                      className={cn(
-                        page === 0 && "pointer-events-none opacity-50",
-                      )}
-                    />
-                  </PaginationItem>
-
-                  {getPaginationItems().map((item, index) => (
-                    <PaginationItem
-                      key={item === "ellipsis" ? `ellipsis-${index}` : item}
-                    >
-                      {item === "ellipsis" ? (
-                        <PaginationEllipsis />
-                      ) : (
-                        <PaginationLink
-                          href="#"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            handlePageChange(item);
-                          }}
-                          isActive={page === item}
-                        >
-                          {item + 1}
-                        </PaginationLink>
-                      )}
-                    </PaginationItem>
-                  ))}
-
-                  <PaginationItem>
-                    <PaginationNext
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        if (page < totalPages - 1) handlePageChange(page + 1);
-                      }}
-                      className={cn(
-                        page >= totalPages - 1 &&
-                          "pointer-events-none opacity-50",
-                      )}
-                    />
-                  </PaginationItem>
-                </PaginationContent>
-              </CardFooter>
+              {total > 0 && (
+                <CardFooter className="border-t">
+                  <Paginator
+                    page={page}
+                    limit={limit}
+                    total={total}
+                    totalPages={totalPages}
+                    onPageChange={setPage}
+                    itemLabel="entry"
+                    className="w-full"
+                  />
+                </CardFooter>
+              )}
             </>
           )}
         </Card>

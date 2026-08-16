@@ -16,7 +16,11 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { CellText } from "@/components/cell-text";
-import { DataTable, type DataTableColumn } from "@/components/data-table";
+import {
+  BadgeCellSkeleton,
+  DataTable,
+  type DataTableColumn,
+} from "@/components/data-table";
 import {
   Users,
   Server,
@@ -105,6 +109,7 @@ export function AdminDashboard() {
       key: "type",
       header: "Type",
       width: 110,
+      skeleton: () => <BadgeCellSkeleton />,
       render: (ban) => (
         <Badge
           variant={ban.banType === "permanent" ? "destructive" : "secondary"}
@@ -300,9 +305,7 @@ export function AdminDashboard() {
               </Button>
             </CardHeader>
             <CardContent>
-              {recentBansQuery.isLoading ? (
-                <Loading size="small" text="Loading bans..." />
-              ) : recentBans.length === 0 ? (
+              {!recentBansQuery.isLoading && recentBans.length === 0 ? (
                 <p className="py-4 text-center text-sm text-muted-foreground">
                   No recent bans
                 </p>
@@ -310,6 +313,8 @@ export function AdminDashboard() {
                 <DataTable
                   columns={recentBanColumns}
                   rows={recentBans}
+                  loading={recentBansQuery.isLoading}
+                  loadingRows={5}
                   rowKey={(ban) => ban.id}
                 />
               )}

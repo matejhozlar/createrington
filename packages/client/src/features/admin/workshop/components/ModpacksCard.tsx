@@ -22,8 +22,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { CellDate, CellText } from "@/components/cell-text";
-import { DataTable, type DataTableColumn } from "@/components/data-table";
-import { Loading } from "@/components/loading-spinner";
+import {
+  BadgeCellSkeleton,
+  DataTable,
+  TwoLineCellSkeleton,
+  type DataTableColumn,
+} from "@/components/data-table";
 import { useStickyValue } from "@/hooks/use-sticky-value";
 import { CreateModpackDialog } from "./CreateModpackDialog";
 import { ModpackSettingsDialog } from "./ModpackSettingsDialog";
@@ -35,6 +39,7 @@ const columns: DataTableColumn<AdminModpackRow>[] = [
     key: "name",
     header: "Name",
     minWidth: 200,
+    skeleton: () => <TwoLineCellSkeleton />,
     render: (modpack) => (
       <>
         <CellText value={modpack.name} className="font-medium" />
@@ -51,6 +56,7 @@ const columns: DataTableColumn<AdminModpackRow>[] = [
     key: "published",
     header: "Published",
     width: 120,
+    skeleton: () => <BadgeCellSkeleton />,
     render: (modpack) =>
       modpack.curseforgeProjectId ? (
         <>
@@ -92,6 +98,7 @@ const columns: DataTableColumn<AdminModpackRow>[] = [
     key: "mods",
     header: "Mods",
     width: 80,
+    skeleton: () => <TwoLineCellSkeleton />,
     render: (modpack) => (
       <>
         <CellText value={String(modpack.modCount)} />
@@ -161,11 +168,7 @@ export function ModpacksCard() {
           </CardAction>
         </CardHeader>
 
-        {modpacksQuery.isLoading ? (
-          <CardContent className="flex flex-1 items-center justify-center py-12">
-            <Loading size="medium" text="Loading modpacks..." />
-          </CardContent>
-        ) : modpacksQuery.error ? (
+        {modpacksQuery.error ? (
           <CardContent className="flex flex-1 items-center justify-center py-12">
             <div className="text-center">
               <p className="text-destructive">{modpacksQuery.error.message}</p>
@@ -178,7 +181,7 @@ export function ModpacksCard() {
               </Button>
             </div>
           </CardContent>
-        ) : modpacks.length === 0 ? (
+        ) : !modpacksQuery.isLoading && modpacks.length === 0 ? (
           <CardContent className="flex flex-1 items-center justify-center py-12">
             <div className="text-center">
               <Package className="mx-auto size-12 text-muted-foreground" />
@@ -190,6 +193,7 @@ export function ModpacksCard() {
             <DataTable
               columns={columns}
               rows={modpacks}
+              loading={modpacksQuery.isLoading}
               rowKey={(modpack) => modpack.id}
               actions={(modpack) => [
                 {

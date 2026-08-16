@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { Loading } from "@/components/loading-spinner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +11,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { CellText } from "@/components/cell-text";
-import { DataTable, type DataTableColumn } from "@/components/data-table";
+import {
+  AvatarCellSkeleton,
+  DataTable,
+  type DataTableColumn,
+} from "@/components/data-table";
 import { BarChart3, Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
@@ -127,6 +130,7 @@ export function StatSearch() {
       key: "player",
       header: "Player",
       minWidth: 200,
+      skeleton: () => <AvatarCellSkeleton />,
       render: (result) => (
         <div className="flex min-w-0 items-center gap-3">
           <MinecraftAvatar
@@ -328,10 +332,6 @@ export function StatSearch() {
                 </p>
               </div>
             </CardContent>
-          ) : compareQuery.isLoading ? (
-            <CardContent className="flex flex-1 items-center justify-center py-12">
-              <Loading size="medium" text="Searching stats..." />
-            </CardContent>
           ) : compareQuery.error ? (
             <CardContent className="flex flex-1 items-center justify-center py-12">
               <div className="text-center">
@@ -345,7 +345,7 @@ export function StatSearch() {
                 </Button>
               </div>
             </CardContent>
-          ) : results.length === 0 ? (
+          ) : !compareQuery.isLoading && results.length === 0 ? (
             <CardContent className="flex flex-1 items-center justify-center py-12">
               <div className="text-center">
                 <Search className="mx-auto size-12 text-muted-foreground" />
@@ -359,6 +359,7 @@ export function StatSearch() {
               <DataTable
                 columns={columns}
                 rows={results}
+                loading={compareQuery.isLoading}
                 rowKey={(result) => result.minecraftUuid}
                 onRowClick={(result) =>
                   navigate(`/admin/players/${result.minecraftUuid}`)

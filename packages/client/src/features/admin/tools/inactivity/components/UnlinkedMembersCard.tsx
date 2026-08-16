@@ -1,5 +1,4 @@
 import { useCallback, useState } from "react";
-import { Loading } from "@/components/loading-spinner";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -10,17 +9,16 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Paginator } from "@/components/paginator";
 import {
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
-import { DataTable, type DataTableColumn } from "@/components/data-table";
+  DataTable,
+  loadingRowCount,
+  TwoLineCellSkeleton,
+  type DataTableColumn,
+} from "@/components/data-table";
 import { RefreshCw, Search, UserSearch } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { keepPreviousData } from "@tanstack/react-query";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useToastActions } from "@/hooks/use-toast";
 import { CellText } from "@/components/cell-text";
@@ -39,11 +37,14 @@ export function UnlinkedMembersCard() {
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearch = useDebouncedValue(searchQuery, 500);
 
-  const listQuery = trpc.admin.inactivity.unlinked.list.useQuery({
-    search: debouncedSearch.trim() || undefined,
-    page,
-    limit,
-  });
+  const listQuery = trpc.admin.inactivity.unlinked.list.useQuery(
+    {
+      search: debouncedSearch.trim() || undefined,
+      page,
+      limit,
+    },
+    { placeholderData: keepPreviousData },
+  );
 
   const refreshMembers = trpc.admin.inactivity.unlinked.refresh.useMutation();
 
@@ -53,7 +54,8 @@ export function UnlinkedMembersCard() {
   const total = listQuery.data?.pagination.total ?? 0;
   const totalPages = listQuery.data?.pagination.totalPages ?? 0;
   const lastRefreshedAt = listQuery.data?.lastRefreshedAt ?? null;
-  const loading = listQuery.isLoading;
+  const loading = listQuery.isLoading || listQuery.isPlaceholderData;
+  const loadingRows = loadingRowCount(page, limit, total);
   const error = listQuery.error?.message ?? null;
 
   const handleSearchChange = useCallback(
@@ -63,10 +65,6 @@ export function UnlinkedMembersCard() {
     },
     [],
   );
-
-  const handlePageChange = useCallback((newPage: number) => {
-    setPage(newPage);
-  }, []);
 
   const handleRefresh = useCallback(async () => {
     try {
@@ -89,6 +87,7 @@ export function UnlinkedMembersCard() {
       key: "member",
       header: "Member",
       minWidth: 200,
+      skeleton: () => <TwoLineCellSkeleton />,
       render: (member) => (
         <div className="min-w-0">
           <CellText copy value={member.displayName} className="font-medium" />
@@ -130,38 +129,6 @@ export function UnlinkedMembersCard() {
       },
     },
   ];
-
-  const getPaginationItems = useCallback(() => {
-    const items: (number | "ellipsis")[] = [];
-    const maxVisible = 5;
-
-    if (totalPages <= maxVisible) {
-      return Array.from({ length: totalPages }, (_, i) => i);
-    }
-
-    items.push(0);
-
-    if (page <= 2) {
-      items.push(1, 2, 3);
-      items.push("ellipsis");
-      items.push(totalPages - 1);
-    } else if (page >= totalPages - 3) {
-      items.push("ellipsis");
-      items.push(
-        totalPages - 4,
-        totalPages - 3,
-        totalPages - 2,
-        totalPages - 1,
-      );
-    } else {
-      items.push("ellipsis");
-      items.push(page - 1, page, page + 1);
-      items.push("ellipsis");
-      items.push(totalPages - 1);
-    }
-
-    return items;
-  }, [page, totalPages]);
 
   return (
     <Card className="gap-0">
@@ -212,11 +179,7 @@ export function UnlinkedMembersCard() {
         </div>
       </CardHeader>
 
-      {loading ? (
-        <CardContent className="flex items-center justify-center py-12">
-          <Loading size="medium" text="Loading members..." />
-        </CardContent>
-      ) : error ? (
+      {error ? (
         <CardContent className="flex items-center justify-center py-12">
           <div className="text-center">
             <p className="text-destructive">{error}</p>
@@ -229,7 +192,7 @@ export function UnlinkedMembersCard() {
             </Button>
           </div>
         </CardContent>
-      ) : members.length === 0 ? (
+      ) : !loading && members.length === 0 ? (
         <CardContent className="flex items-center justify-center py-12">
           <div className="text-center">
             <UserSearch className="mx-auto size-12 text-muted-foreground" />
@@ -246,63 +209,25 @@ export function UnlinkedMembersCard() {
             <DataTable
               columns={columns}
               rows={members}
+              loading={loading}
+              loadingRows={loadingRows}
               rowKey={(member) => member.discordId}
             />
           </CardContent>
 
-          <CardFooter className="flex-col gap-3 border-t sm:flex-row sm:flex-wrap sm:items-center">
-            <p className="text-sm text-muted-foreground">
-              Showing {page * limit + 1}-{Math.min((page + 1) * limit, total)}{" "}
-              of {total} members
-            </p>
-
-            <PaginationContent className="justify-baseline sm:ml-auto sm:justify-end">
-              <PaginationItem>
-                <PaginationPrevious
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    if (page > 0) handlePageChange(page - 1);
-                  }}
-                  className={cn(page === 0 && "pointer-events-none opacity-50")}
-                />
-              </PaginationItem>
-
-              {getPaginationItems().map((item, index) => (
-                <PaginationItem
-                  key={item === "ellipsis" ? `ellipsis-${index}` : item}
-                >
-                  {item === "ellipsis" ? (
-                    <PaginationEllipsis />
-                  ) : (
-                    <PaginationLink
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        handlePageChange(item);
-                      }}
-                      isActive={page === item}
-                    >
-                      {item + 1}
-                    </PaginationLink>
-                  )}
-                </PaginationItem>
-              ))}
-
-              <PaginationItem>
-                <PaginationNext
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    if (page < totalPages - 1) handlePageChange(page + 1);
-                  }}
-                  className={cn(
-                    page >= totalPages - 1 && "pointer-events-none opacity-50",
-                  )}
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </CardFooter>
+          {total > 0 && (
+            <CardFooter className="border-t">
+              <Paginator
+                page={page}
+                limit={limit}
+                total={total}
+                totalPages={totalPages}
+                onPageChange={setPage}
+                itemLabel="member"
+                className="w-full"
+              />
+            </CardFooter>
+          )}
         </>
       )}
     </Card>

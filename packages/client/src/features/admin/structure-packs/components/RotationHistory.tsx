@@ -1,10 +1,16 @@
 import { useState } from "react";
+import { keepPreviousData } from "@tanstack/react-query";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { History, CheckCircle2, XCircle } from "lucide-react";
 import { Paginator } from "@/components/paginator";
 import { Badge } from "@/components/ui/badge";
 import { CellDate, CellText } from "@/components/cell-text";
-import { DataTable, type DataTableColumn } from "@/components/data-table";
+import {
+  BadgeCellSkeleton,
+  DataTable,
+  loadingRowCount,
+  type DataTableColumn,
+} from "@/components/data-table";
 
 type Rotation =
   RouterOutput["admin"]["structurePacks"]["rotationHistory"]["data"][number];
@@ -14,11 +20,18 @@ export function RotationHistory() {
   const [page, setPage] = useState(0);
   const limit = 10;
 
-  const historyQuery = trpc.admin.structurePacks.rotationHistory.useQuery({
-    page,
-    limit,
-  });
+  const historyQuery = trpc.admin.structurePacks.rotationHistory.useQuery(
+    {
+      page,
+      limit,
+    },
+    { placeholderData: keepPreviousData },
+  );
   const data = historyQuery.data;
+  const total = data?.pagination.total ?? 0;
+  const totalPages = data?.pagination.totalPages ?? 0;
+  const loading = historyQuery.isLoading || historyQuery.isPlaceholderData;
+  const loadingRows = loadingRowCount(page, limit, total);
 
   const packsQuery = trpc.admin.structurePacks.list.useQuery();
   const packMap = new Map((packsQuery.data ?? []).map((p) => [p.id, p.name]));
@@ -63,6 +76,7 @@ export function RotationHistory() {
       key: "status",
       header: "Status",
       width: 100,
+      skeleton: () => <BadgeCellSkeleton />,
       render: (rotation) =>
         rotation.success ? (
           <Badge className="bg-green-500/20 text-green-500 hover:bg-green-500/30">
@@ -87,7 +101,7 @@ export function RotationHistory() {
         </h2>
         <p className="text-sm text-muted-foreground">Past rotation events</p>
       </div>
-      {!data || data.data.length === 0 ? (
+      {!loading && (!data || data.data.length === 0) ? (
         <p className="py-4 text-center text-sm text-muted-foreground">
           No rotations yet
         </p>
@@ -95,19 +109,23 @@ export function RotationHistory() {
         <>
           <DataTable
             columns={columns}
-            rows={data.data}
+            rows={data?.data ?? []}
+            loading={loading}
+            loadingRows={loadingRows}
             rowKey={(rotation) => rotation.id}
           />
 
-          <Paginator
-            page={page}
-            limit={limit}
-            total={data.pagination.total}
-            totalPages={data.pagination.totalPages}
-            onPageChange={setPage}
-            itemLabel="rotation"
-            className="mt-4"
-          />
+          {total > 0 && (
+            <Paginator
+              page={page}
+              limit={limit}
+              total={total}
+              totalPages={totalPages}
+              onPageChange={setPage}
+              itemLabel="rotation"
+              className="mt-4"
+            />
+          )}
         </>
       )}
     </div>

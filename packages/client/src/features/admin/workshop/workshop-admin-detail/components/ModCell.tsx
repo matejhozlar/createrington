@@ -1,4 +1,6 @@
 import { CellText } from "@/components/cell-text";
+import { TwoLineCellSkeleton } from "@/components/data-table";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ProjectThumb } from "@/features/workshop/components/ProjectThumb";
 
 export function ModCell({
@@ -23,6 +25,15 @@ export function ModCell({
           <CellText value={slug} className="text-xs text-muted-foreground" />
         )}
       </div>
+    </div>
+  );
+}
+
+export function ModCellSkeleton() {
+  return (
+    <div className="flex items-center gap-2">
+      <Skeleton className="size-8 shrink-0 rounded" />
+      <TwoLineCellSkeleton />
     </div>
   );
 }

@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router";
-import { Loading } from "@/components/loading-spinner";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CellText } from "@/components/cell-text";
-import { DataTable, type DataTableColumn } from "@/components/data-table";
+import {
+  BadgeCellSkeleton,
+  DataTable,
+  TwoLineCellSkeleton,
+  type DataTableColumn,
+} from "@/components/data-table";
 import { History, RefreshCw } from "lucide-react";
 import {
   fetchChatSessions,
@@ -97,6 +101,7 @@ export function AdminChatHistory() {
       key: "title",
       header: "Title",
       minWidth: 240,
+      skeleton: () => <TwoLineCellSkeleton />,
       render: (s) => (
         <>
           <CellText value={displayTitle(s.title)} className="font-medium" />
@@ -110,6 +115,7 @@ export function AdminChatHistory() {
       key: "status",
       header: "Status",
       width: 120,
+      skeleton: () => <BadgeCellSkeleton />,
       render: (s) => statusBadge(s.status),
     },
     {
@@ -173,18 +179,14 @@ export function AdminChatHistory() {
           </Button>
         </div>
 
-        {loading ? (
-          <div className="flex items-center justify-center py-10">
-            <Loading mode="inline" size="medium" />
-          </div>
-        ) : error ? (
+        {error ? (
           <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card py-16 text-center">
             <p className="text-destructive">{error}</p>
             <Button variant="outline" onClick={reload} className="mt-2">
               Try Again
             </Button>
           </div>
-        ) : sessions.length === 0 ? (
+        ) : !loading && sessions.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card py-16 text-center">
             <History className="size-10 text-muted-foreground" />
             <p className="text-muted-foreground">No past sessions yet.</p>
@@ -198,6 +200,7 @@ export function AdminChatHistory() {
               <DataTable
                 columns={columns}
                 rows={sessions}
+                loading={loading}
                 rowKey={(s) => s.id}
                 onRowClick={(s) =>
                   navigate(`/admin/tools/chat-history/${s.id}`)

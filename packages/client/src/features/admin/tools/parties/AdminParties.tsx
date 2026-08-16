@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { keepPreviousData } from "@tanstack/react-query";
 import { RefreshCw } from "lucide-react";
 import { useSearchParams } from "react-router";
 import { trpc } from "@/lib/trpc";
@@ -102,7 +103,7 @@ export function AdminParties() {
       sortBy: soloSort?.key,
       sortDir: soloSort?.dir,
     },
-    { enabled: soloPlayersEnabled },
+    { enabled: soloPlayersEnabled, placeholderData: keepPreviousData },
   );
   const fakePartyQuery = trpc.admin.parties.fakeParty.useQuery({
     serverId: SERVER_ID,
@@ -247,7 +248,10 @@ export function AdminParties() {
               filters={filters}
               soloPlayersEnabled={soloPlayersEnabled}
               soloData={chunkSoloPlayersQuery.data}
-              soloIsLoading={chunkSoloPlayersQuery.isLoading}
+              soloIsLoading={
+                chunkSoloPlayersQuery.isLoading ||
+                chunkSoloPlayersQuery.isPlaceholderData
+              }
               onSoloPageChange={setSoloPage}
               soloSort={soloSort}
               onSoloSortChange={handleSoloSortChange}

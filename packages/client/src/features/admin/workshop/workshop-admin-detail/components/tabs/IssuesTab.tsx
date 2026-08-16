@@ -6,11 +6,7 @@ import {
   type DataTableAction,
   type DataTableColumn,
 } from "@/components/data-table";
-import {
-  CardEmpty,
-  CardError,
-  CardLoading,
-} from "@/features/admin/components/CardState";
+import { CardEmpty, CardError } from "@/features/admin/components/CardState";
 import type { AttentionItem } from "../../types";
 
 type DependencyGap = Extract<
@@ -123,25 +119,26 @@ export function IssuesTab({
         <CardTitle>Issues ({items.length.toLocaleString()})</CardTitle>
       </CardHeader>
 
-      {isLoading ? (
-        <CardLoading text="Checking for problems..." />
-      ) : error ? (
+      {error ? (
         <CardError message={error} onRetry={onRetry} />
-      ) : items.length === 0 ? (
+      ) : !isLoading && items.length === 0 ? (
         <CardEmpty icon={CircleCheck} message="Nothing needs attention" />
       ) : (
         <CardContent className="px-0">
           <DataTable
             columns={columns}
             rows={items}
+            loading={isLoading}
             rowKey={(item) => `${item.type}-${item.curseforgeProjectId}`}
             actions={itemActions}
             isRowBusy={(item) => busyProjectId === item.curseforgeProjectId}
           />
 
-          <p className="px-4 pt-4 text-xs text-muted-foreground">
-            Showing {items.length} {items.length === 1 ? "issue" : "issues"}
-          </p>
+          {!isLoading && (
+            <p className="px-4 pt-4 text-xs text-muted-foreground">
+              Showing {items.length} {items.length === 1 ? "issue" : "issues"}
+            </p>
+          )}
         </CardContent>
       )}
     </Card>
