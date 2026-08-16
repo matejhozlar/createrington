@@ -13,11 +13,16 @@ import {
 import { Paginator } from "@/components/paginator";
 import { useAdminPlayers } from "@/contexts/admin";
 import { CellText } from "@/components/cell-text";
-import { DataTable, type DataTableColumn } from "@/components/data-table";
+import {
+  AvatarCellSkeleton,
+  BadgeCellSkeleton,
+  DataTable,
+  loadingRowCount,
+  type DataTableColumn,
+} from "@/components/data-table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -123,8 +128,7 @@ export function AdminPlayers() {
   const total = playersQuery.data?.pagination.total ?? 0;
   const totalPages = playersQuery.data?.pagination.totalPages ?? 0;
   const loading = playersQuery.isLoading || playersQuery.isPlaceholderData;
-  const loadingRows =
-    total > 0 ? Math.min(limit, Math.max(total - page * limit, 1)) : limit;
+  const loadingRows = loadingRowCount(page, limit, total);
   const error = playersQuery.error?.message ?? null;
 
   const handleSearch = useCallback((e: React.FormEvent) => {
@@ -171,19 +175,7 @@ export function AdminPlayers() {
       minWidth: 240,
       sorted: orderBy === "minecraftUsername" ? orderDirection : false,
       onSort: () => handleSort("minecraftUsername"),
-      skeleton: () => (
-        <div className="flex items-center gap-3">
-          <Skeleton className="size-8 shrink-0 rounded-xs" />
-          <div className="min-w-0">
-            <div className="flex h-5 items-center">
-              <Skeleton className="h-4 w-28" />
-            </div>
-            <div className="flex h-4 items-center">
-              <Skeleton className="h-3 w-20" />
-            </div>
-          </div>
-        </div>
-      ),
+      skeleton: () => <AvatarCellSkeleton />,
       render: (player) => {
         const badgeInfo = getPlayerBadgeInfo(player);
         return (
@@ -238,7 +230,7 @@ export function AdminPlayers() {
       key: "status",
       header: "Status",
       width: 110,
-      skeleton: () => <Skeleton className="h-[22px] w-14 rounded-full" />,
+      skeleton: () => <BadgeCellSkeleton />,
       render: (player) => {
         const isOnline = isPlayerOnline(player.minecraftUuid);
         return (

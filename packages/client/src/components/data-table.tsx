@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import * as React from "react";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -66,6 +67,40 @@ const ALIGN_CLASSES = {
   center: "text-center",
   right: "text-right",
 } as const;
+
+export function loadingRowCount(
+  page: number,
+  limit: number,
+  total: number,
+): number {
+  return total > 0 ? Math.min(limit, Math.max(total - page * limit, 1)) : limit;
+}
+
+export function BadgeCellSkeleton({ className }: { className?: string }) {
+  return <Skeleton className={cn("h-[22px] w-14 rounded-full", className)} />;
+}
+
+export function TwoLineCellSkeleton({ className }: { className?: string }) {
+  return (
+    <div className={cn("min-w-0", className)}>
+      <div className="flex h-5 items-center">
+        <Skeleton className="h-4 w-28" />
+      </div>
+      <div className="flex h-4 items-center">
+        <Skeleton className="h-3 w-20" />
+      </div>
+    </div>
+  );
+}
+
+export function AvatarCellSkeleton({ className }: { className?: string }) {
+  return (
+    <div className={cn("flex items-center gap-3", className)}>
+      <Skeleton className="size-8 shrink-0 rounded-xs" />
+      <TwoLineCellSkeleton />
+    </div>
+  );
+}
 
 function SortIcon({ sorted }: { sorted: "asc" | "desc" | false }) {
   if (sorted === "asc") return <ArrowUp className="size-3.5" />;
