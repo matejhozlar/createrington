@@ -10,20 +10,14 @@ import {
   CardTitle,
   CardFooter,
 } from "@/components/ui/card";
-import {
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
+import { Paginator } from "@/components/paginator";
 import { useAdminPlayers } from "@/contexts/admin";
 import { CellText } from "@/components/cell-text";
 import { DataTable, type DataTableColumn } from "@/components/data-table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -43,6 +37,7 @@ import { cn } from "@/lib/utils";
 import type { PlayerApiData } from "@createrington/shared/db";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { keepPreviousData } from "@tanstack/react-query";
 import { trpc } from "@/lib/trpc";
 import { formatRelativeDate, formatFullDate } from "./format";
 
@@ -105,35 +100,36 @@ export function AdminPlayers() {
 
   const statsQuery = trpc.admin.players.players.stats.useQuery();
 
-  const playersQuery = trpc.admin.players.players.list.useQuery({
-    page,
-    limit,
-    orderBy,
-    orderDirection,
-    ...searchFilters,
-    online: onlineFilter,
-    hasStrikes: violationFilter === "strikes" ? true : undefined,
-    hasBans: violationFilter === "bans" ? true : undefined,
-    hasViolations: violationFilter === "any" ? true : undefined,
-    includeStrikeCounts: true,
-    includeBanCounts: true,
-  });
+  const playersQuery = trpc.admin.players.players.list.useQuery(
+    {
+      page,
+      limit,
+      orderBy,
+      orderDirection,
+      ...searchFilters,
+      online: onlineFilter,
+      hasStrikes: violationFilter === "strikes" ? true : undefined,
+      hasBans: violationFilter === "bans" ? true : undefined,
+      hasViolations: violationFilter === "any" ? true : undefined,
+      includeStrikeCounts: true,
+      includeBanCounts: true,
+    },
+    { placeholderData: keepPreviousData },
+  );
 
   const stats = statsQuery.data;
   const statsLoading = statsQuery.isLoading;
   const players = (playersQuery.data?.players ?? []) as PlayerWithCounts[];
   const total = playersQuery.data?.pagination.total ?? 0;
   const totalPages = playersQuery.data?.pagination.totalPages ?? 0;
-  const loading = playersQuery.isLoading;
+  const loading = playersQuery.isLoading || playersQuery.isPlaceholderData;
+  const loadingRows =
+    total > 0 ? Math.min(limit, Math.max(total - page * limit, 1)) : limit;
   const error = playersQuery.error?.message ?? null;
 
   const handleSearch = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     setPage(0);
-  }, []);
-
-  const handlePageChange = useCallback((newPage: number) => {
-    setPage(newPage);
   }, []);
 
   const handleSort = useCallback(
@@ -148,38 +144,6 @@ export function AdminPlayers() {
     },
     [orderBy],
   );
-
-  const getPaginationItems = useCallback(() => {
-    const items: (number | "ellipsis")[] = [];
-    const maxVisible = 5;
-
-    if (totalPages <= maxVisible) {
-      return Array.from({ length: totalPages }, (_, i) => i);
-    }
-
-    items.push(0);
-
-    if (page <= 2) {
-      items.push(1, 2, 3);
-      items.push("ellipsis");
-      items.push(totalPages - 1);
-    } else if (page >= totalPages - 3) {
-      items.push("ellipsis");
-      items.push(
-        totalPages - 4,
-        totalPages - 3,
-        totalPages - 2,
-        totalPages - 1,
-      );
-    } else {
-      items.push("ellipsis");
-      items.push(page - 1, page, page + 1);
-      items.push("ellipsis");
-      items.push(totalPages - 1);
-    }
-
-    return items;
-  }, [page, totalPages]);
 
   const getPlayerBadgeInfo = useCallback((player: PlayerWithCounts) => {
     const strikeCount = player.activeStrikeCount ?? 0;
@@ -207,6 +171,19 @@ export function AdminPlayers() {
       minWidth: 240,
       sorted: orderBy === "minecraftUsername" ? orderDirection : false,
       onSort: () => handleSort("minecraftUsername"),
+      skeleton: () => (
+        <div className="flex items-center gap-3">
+          <Skeleton className="size-8 shrink-0 rounded-xs" />
+          <div className="min-w-0">
+            <div className="flex h-5 items-center">
+              <Skeleton className="h-4 w-28" />
+            </div>
+            <div className="flex h-4 items-center">
+              <Skeleton className="h-3 w-20" />
+            </div>
+          </div>
+        </div>
+      ),
       render: (player) => {
         const badgeInfo = getPlayerBadgeInfo(player);
         return (
@@ -261,6 +238,7 @@ export function AdminPlayers() {
       key: "status",
       header: "Status",
       width: 110,
+      skeleton: () => <Skeleton className="h-[22px] w-14 rounded-full" />,
       render: (player) => {
         const isOnline = isPlayerOnline(player.minecraftUuid);
         return (
@@ -488,11 +466,7 @@ export function AdminPlayers() {
             <CardTitle>Players ({total.toLocaleString()})</CardTitle>
           </CardHeader>
 
-          {loading ? (
-            <CardContent className="flex flex-1 items-center justify-center py-12">
-              <Loading size="medium" text="Loading players..." />
-            </CardContent>
-          ) : error ? (
+          {error ? (
             <CardContent className="flex flex-1 items-center justify-center py-12">
               <div className="text-center">
                 <p className="text-destructive">{error}</p>
@@ -505,7 +479,7 @@ export function AdminPlayers() {
                 </Button>
               </div>
             </CardContent>
-          ) : players.length === 0 ? (
+          ) : !loading && players.length === 0 ? (
             <CardContent className="flex flex-1 items-center justify-center py-12">
               <div className="text-center">
                 <Users className="mx-auto size-12 text-muted-foreground" />
@@ -524,6 +498,8 @@ export function AdminPlayers() {
                 <DataTable
                   columns={columns}
                   rows={players}
+                  loading={loading}
+                  loadingRows={loadingRows}
                   rowKey={(player) => player.minecraftUuid}
                   onRowClick={(player) =>
                     navigate(`/admin/players/${player.minecraftUuid}`)
@@ -538,63 +514,19 @@ export function AdminPlayers() {
                 />
               </CardContent>
 
-              {/* Pagination */}
-              <CardFooter className="flex-col gap-3 border-t sm:flex-row sm:flex-wrap sm:items-center">
-                <p className="text-sm text-muted-foreground">
-                  Showing {page * limit + 1}-
-                  {Math.min((page + 1) * limit, total)} of {total} players
-                </p>
-
-                <PaginationContent className="justify-baseline sm:ml-auto sm:justify-end">
-                  <PaginationItem>
-                    <PaginationPrevious
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        if (page > 0) handlePageChange(page - 1);
-                      }}
-                      className={cn(
-                        page === 0 && "pointer-events-none opacity-50",
-                      )}
-                    />
-                  </PaginationItem>
-
-                  {getPaginationItems().map((item, index) => (
-                    <PaginationItem
-                      key={item === "ellipsis" ? `ellipsis-${index}` : item}
-                    >
-                      {item === "ellipsis" ? (
-                        <PaginationEllipsis />
-                      ) : (
-                        <PaginationLink
-                          href="#"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            handlePageChange(item);
-                          }}
-                          isActive={page === item}
-                        >
-                          {item + 1}
-                        </PaginationLink>
-                      )}
-                    </PaginationItem>
-                  ))}
-
-                  <PaginationItem>
-                    <PaginationNext
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        if (page < totalPages - 1) handlePageChange(page + 1);
-                      }}
-                      className={cn(
-                        page >= totalPages - 1 &&
-                          "pointer-events-none opacity-50",
-                      )}
-                    />
-                  </PaginationItem>
-                </PaginationContent>
-              </CardFooter>
+              {total > 0 && (
+                <CardFooter className="border-t">
+                  <Paginator
+                    page={page}
+                    limit={limit}
+                    total={total}
+                    totalPages={totalPages}
+                    onPageChange={setPage}
+                    itemLabel="player"
+                    className="w-full"
+                  />
+                </CardFooter>
+              )}
             </>
           )}
         </Card>
