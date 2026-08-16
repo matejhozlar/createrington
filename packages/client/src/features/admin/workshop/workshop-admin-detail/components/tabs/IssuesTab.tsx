@@ -1,4 +1,4 @@
-import { CircleCheck, Eye } from "lucide-react";
+import { CircleCheck, ExternalLink, Eye } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CellDate, CellText } from "@/components/cell-text";
 import {
@@ -7,6 +7,7 @@ import {
   type DataTableColumn,
 } from "@/components/data-table";
 import { CardEmpty, CardError } from "@/features/admin/components/CardState";
+import { isHttpUrl } from "@/features/workshop/format";
 import type { ModEnvironment } from "@createrington/shared/db";
 import {
   EnvironmentCell,
@@ -71,7 +72,20 @@ export function IssuesTab({
       key: "mod",
       header: "Mod",
       minWidth: 180,
-      render: (item) => <CellText value={item.name} className="font-medium" />,
+      render: (item) =>
+        isHttpUrl(item.websiteUrl) ? (
+          <a
+            href={item.websiteUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex min-w-0 items-center gap-1 hover:underline"
+          >
+            <CellText value={item.name} className="min-w-0 font-medium" />
+            <ExternalLink className="size-3 shrink-0 text-muted-foreground" />
+          </a>
+        ) : (
+          <CellText value={item.name} className="font-medium" />
+        ),
     },
     {
       key: "problem",
