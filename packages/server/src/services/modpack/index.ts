@@ -832,20 +832,23 @@ export class ModpackService {
   }
 
   /**
-   * Move suggestions between next_update and in_pack to match what the
-   * published manifest actually contains. Returns the rows this call claimed,
-   * so the caller can announce them.
+   * Move suggestions in and out of in_pack to match what the published
+   * manifest actually contains. Pack membership overrides the review
+   * pipeline, so shipping claims a suggestion from any active status, not
+   * just next_update; only rejected stays put, surfacing as a
+   * shipped_rejected attention item instead of silently undoing the
+   * rejection. Returns the rows this call claimed, so the caller can
+   * announce them.
    */
   private async moveSuggestions(
     workshopModIds: number[],
-    from: Extract<WorkshopModStatus, "next_update" | "in_pack">,
     to: Extract<WorkshopModStatus, "next_update" | "in_pack">,
     releaseVersion: string | null,
   ): Promise<WorkshopMod[]> {
     if (workshopModIds.length === 0) return [];
     const mods = await Q.workshop.mod.findAll({
       id: { $in: workshopModIds },
-      status: from,
+      status: to === "in_pack" ? { $nin: ["in_pack", "rejected"] } : "in_pack",
     });
     const moved: WorkshopMod[] = [];
     for (const mod of mods) {
@@ -855,7 +858,7 @@ export class ModpackService {
       // since no later sweep retries
       const claimed = await Q.workshop.mod.updateAll(
         { status: to },
-        { id: mod.id, status: from },
+        { id: mod.id, status: mod.status },
       );
       if (claimed > 0) {
         moved.push({ ...mod, status: to });
@@ -864,7 +867,7 @@ export class ModpackService {
           workshopId: mod.workshopId,
           workshopModId: mod.id,
           curseforgeProjectId: mod.curseforgeProjectId,
-          fromStatus: from,
+          fromStatus: mod.status,
           toStatus: to,
           releaseVersion,
         });
@@ -950,13 +953,11 @@ export class ModpackService {
     announceStatusMoves([
       ...(await this.moveSuggestions(
         shippedModIds,
-        "next_update",
         "in_pack",
         manifest.version,
       )),
       ...(await this.moveSuggestions(
         droppedModIds,
-        "in_pack",
         "next_update",
         manifest.version,
       )),

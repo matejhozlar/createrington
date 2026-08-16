@@ -516,7 +516,7 @@ describe("ModpackService.reconcile", () => {
     expect(healed.liveInVersion).toBe("1.0.0");
   });
 
-  it("credits a shipped mod to its suggestion even mid review", async () => {
+  it("credits a shipped mod to its suggestion and ships it even mid review", async () => {
     const modpack = await seedModpack(ctx, {
       curseforgeProjectId: ctx.nextProjectId++,
     });
@@ -537,9 +537,59 @@ describe("ModpackService.reconcile", () => {
         curseforgeProjectId: pending.curseforgeProjectId,
       }),
     ).toMatchObject({ origin: "suggestion", workshopModId: pending.id });
-    // Shipping does not finish a review, so it stays pending and is reported
+    // Pack membership overrides the review pipeline, so shipping promotes
+    // the suggestion no matter how far its review got
     expect(await Q.workshop.mod.get({ id: pending.id })).toMatchObject({
-      status: "pending",
+      status: "in_pack",
+    });
+    await vi.waitFor(async () => {
+      expect(await modEvents(pending.id)).toHaveLength(1);
+    });
+    expect((await modEvents(pending.id))[0]).toMatchObject({
+      eventType: "shipped",
+      fromStatus: "pending",
+      toStatus: "in_pack",
+      releaseVersion: "2.0.0",
+    });
+  });
+
+  it("heals a linked suggestion the pack ships but the pipeline left behind", async () => {
+    const modpack = await seedModpack(ctx, {
+      curseforgeProjectId: ctx.nextProjectId++,
+    });
+    const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const mod = await seedMod(ctx, workshop, {
+      submittedBy: USER_A,
+      status: "approved",
+    });
+    const member = await seedPackMod(ctx, workshop, {
+      curseforgeProjectId: mod.curseforgeProjectId,
+      origin: "suggestion",
+      workshopModId: mod.id,
+      addedBy: null,
+      liveAt: new Date(),
+      liveInVersion: "2.0.0",
+    });
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      manifest({
+        version: "2.0.0",
+        modIds: new Set([member.curseforgeProjectId]),
+      }),
+    );
+
+    await modpackService.reconcile(modpack.id);
+
+    expect(await Q.workshop.mod.get({ id: mod.id })).toMatchObject({
+      status: "in_pack",
+    });
+    await vi.waitFor(async () => {
+      expect(await modEvents(mod.id)).toHaveLength(1);
+    });
+    expect((await modEvents(mod.id))[0]).toMatchObject({
+      eventType: "shipped",
+      fromStatus: "approved",
+      toStatus: "in_pack",
+      releaseVersion: "2.0.0",
     });
   });
 
@@ -673,9 +723,10 @@ describe("ModpackService.seedFromManifest", () => {
       workshopModId: staged.id,
       liveInVersion: "0.2.0",
     });
-    // Shipping does not finish a review, so the pending one keeps its state
+    // Pack membership overrides the review pipeline, so the pending one
+    // ships too
     expect((await Q.workshop.mod.get({ id: pending.id })).status).toBe(
-      "pending",
+      "in_pack",
     );
     expect(
       await Q.modpack.mod.find({
