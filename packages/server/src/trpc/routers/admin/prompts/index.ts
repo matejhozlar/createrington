@@ -174,4 +174,32 @@ export const adminPromptsRouter = router({
 
       return { ok: true };
     }),
+
+  delete: adminProcedure
+    .meta({
+      description:
+        "Delete a prompt along with its responses and its Discord announcement.",
+    })
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ input, ctx }) => {
+      const service = getServiceSync(Services.PLAYER_PROMPT_SERVICE);
+      const totals = await Q.player.prompt.response.countByPrompt(input.id);
+      const prompt = await service.deletePrompt(input.id);
+      if (!prompt) throw trpcError.notFound("Prompt not found");
+
+      await Q.admin.log.action.logAction({
+        ...auditActor(ctx),
+        actionType: "player_prompt_delete",
+        description: `Deleted player prompt "${prompt.question.slice(0, 80)}" with ${totals.entryCount} ${totals.entryCount === 1 ? "entry" : "entries"} from ${totals.responderCount} ${totals.responderCount === 1 ? "responder" : "responders"}`,
+        metadata: {
+          promptId: input.id,
+          question: prompt.question,
+          status: prompt.status,
+          entryCount: totals.entryCount,
+          responderCount: totals.responderCount,
+        },
+      });
+
+      return { ok: true };
+    }),
 });

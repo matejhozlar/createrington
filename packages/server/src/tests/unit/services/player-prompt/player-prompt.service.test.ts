@@ -19,6 +19,13 @@ let upsertCalls: Array<{ responseText: string }>;
 // insert, which the real query catches via its HAVING clause. The entry it
 // would have written is pushed here so the follow-up re-read sees it.
 let raceOnAppend: StoredEntry | null;
+let promptDeleteCalls: number[];
+let messageDeleteCalls: Array<{ channelId: string; messageId: string }>;
+let messageDeleteResult: { success: boolean; error?: string };
+let promptFindCalls: number;
+let promptUpdateCalls: Array<{ id: number } & Partial<PlayerPrompt>>;
+let activePrompts: PlayerPrompt[];
+let rejectPromptDelete: boolean;
 
 vi.mock("@/db", () => {
   const response = {
@@ -62,6 +69,10 @@ vi.mock("@/db", () => {
       entries.push(entry);
       return entry;
     },
+    countByPrompt: async () => ({
+      entryCount: entries.length,
+      responderCount: entries.length > 0 ? 1 : 0,
+    }),
   };
 
   return {
@@ -70,7 +81,26 @@ vi.mock("@/db", () => {
         find: async () => ({
           minecraftUuid: "11111111-1111-1111-1111-111111111111",
         }),
-        prompt: { find: async () => prompt, response },
+        prompt: {
+          find: async () => {
+            promptFindCalls += 1;
+            return prompt;
+          },
+          findAllActive: async () => activePrompts,
+          update: async (
+            identifier: { id: number },
+            data: Partial<PlayerPrompt>,
+          ) => {
+            promptUpdateCalls.push({ id: identifier.id, ...data });
+            if (prompt) prompt = { ...prompt, ...data };
+          },
+          delete: async (identifier: { id: number }) => {
+            if (rejectPromptDelete) throw new Error("delete failed");
+            promptDeleteCalls.push(identifier.id);
+            prompt = null;
+          },
+          response,
+        },
       },
     },
   };
@@ -79,8 +109,18 @@ vi.mock("@/db", () => {
 import { PlayerPromptService } from "@/services/player-prompt/player-prompt.service";
 import type { DiscordMessageService } from "@/services/discord/message/message.service";
 
-function makeService() {
-  return new PlayerPromptService({} as DiscordMessageService);
+function makeService(messageService: Partial<DiscordMessageService> = {}) {
+  return new PlayerPromptService(messageService as DiscordMessageService);
+}
+
+/** Records every message delete and replies with `messageDeleteResult`. */
+function recordingMessageService(): Partial<DiscordMessageService> {
+  return {
+    delete: async (options: { channelId: string; messageId: string }) => {
+      messageDeleteCalls.push(options);
+      return messageDeleteResult;
+    },
+  };
 }
 
 function setPrompt(overrides: Partial<PlayerPrompt> = {}) {
@@ -121,6 +161,13 @@ beforeEach(() => {
   appendCalls = [];
   upsertCalls = [];
   raceOnAppend = null;
+  promptDeleteCalls = [];
+  messageDeleteCalls = [];
+  messageDeleteResult = { success: true };
+  promptFindCalls = 0;
+  promptUpdateCalls = [];
+  activePrompts = [];
+  rejectPromptDelete = false;
 });
 
 describe("PlayerPromptService.prepareEntry", () => {
@@ -349,5 +396,93 @@ describe("PlayerPromptService.submitResponse", () => {
     expect(upsertCalls).toHaveLength(0);
     expect(appendCalls).toHaveLength(0);
     expect(message).toContain("closed");
+  });
+});
+
+describe("PlayerPromptService.deletePrompt", () => {
+  it("reports a prompt that is already gone without deleting anything", async () => {
+    const deleted = await makeService(recordingMessageService()).deletePrompt(
+      1,
+    );
+
+    expect(deleted).toBeNull();
+    expect(promptDeleteCalls).toHaveLength(0);
+    expect(messageDeleteCalls).toHaveLength(0);
+  });
+
+  it("removes the Discord announcement along with the row", async () => {
+    setPrompt();
+
+    const deleted = await makeService(recordingMessageService()).deletePrompt(
+      1,
+    );
+
+    expect(deleted).toMatchObject({ id: 1, question: "What next?" });
+    expect(messageDeleteCalls).toEqual([
+      { channelId: "channel-1", messageId: "message-1" },
+    ]);
+    expect(promptDeleteCalls).toEqual([1]);
+  });
+
+  it("still drops the row when the Discord message can't be removed", async () => {
+    setPrompt();
+    messageDeleteResult = { success: false, error: "Message not found" };
+
+    const deleted = await makeService(recordingMessageService()).deletePrompt(
+      1,
+    );
+
+    expect(deleted).not.toBeNull();
+    expect(messageDeleteCalls).toHaveLength(1);
+    // A message that can't be deleted must not strand the row in the panel.
+    expect(promptDeleteCalls).toEqual([1]);
+  });
+
+  it("skips Discord entirely for a prompt that never got a message id", async () => {
+    setPrompt({ messageId: null });
+
+    await makeService(recordingMessageService()).deletePrompt(1);
+
+    expect(messageDeleteCalls).toHaveLength(0);
+    expect(promptDeleteCalls).toEqual([1]);
+  });
+
+  it("cancels the closure timer so a deleted prompt is never closed later", async () => {
+    vi.useFakeTimers();
+    try {
+      activePrompts = [setPrompt({ endsAt: new Date(Date.now() + 60_000) })];
+      const service = makeService(recordingMessageService());
+      await service.initialize();
+      await service.deletePrompt(1);
+
+      promptFindCalls = 0;
+      await vi.advanceTimersByTimeAsync(120_000);
+
+      expect(promptFindCalls).toBe(0);
+      expect(promptUpdateCalls).toHaveLength(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  // Pins the ordering: the timer is cleared only after the row is gone, so a
+  // failed delete leaves a prompt that still closes on schedule.
+  it("keeps the closure timer armed when the row delete fails", async () => {
+    vi.useFakeTimers();
+    try {
+      activePrompts = [
+        setPrompt({ endsAt: new Date(Date.now() + 60_000), messageId: null }),
+      ];
+      rejectPromptDelete = true;
+      const service = makeService(recordingMessageService());
+      await service.initialize();
+
+      await expect(service.deletePrompt(1)).rejects.toThrow("delete failed");
+      await vi.advanceTimersByTimeAsync(120_000);
+
+      expect(promptUpdateCalls).toContainEqual({ id: 1, status: "closed" });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
