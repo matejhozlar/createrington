@@ -249,7 +249,7 @@ describe("ModpackService.getWorkshopAttention", () => {
 
     expect(items).toContainEqual({
       type: "environment_unspecified",
-      modpackModId: member.id,
+      workshopModId: null,
       curseforgeProjectId: member.curseforgeProjectId,
       name: `Vitest Mod ${member.curseforgeProjectId}`,
     });
@@ -823,6 +823,28 @@ describe("ModpackService.seedFromManifest", () => {
     ...overrides,
   });
 
+  // CurseForge exports repeat a project that ships more than one file, so the
+  // seed merges the entries and reports them instead of failing the import
+  it("merges repeated projects and reports them", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const repeated = await seedProject(ctx);
+    const other = await seedProject(ctx);
+
+    const result = await modpackService.seedFromManifest(
+      workshop.modpackId,
+      seed({ modIds: [repeated, other, repeated] }),
+    );
+
+    expect(result).toMatchObject({
+      modCount: 2,
+      memberCount: 2,
+      duplicateProjectIds: [repeated],
+    });
+    expect(await Q.modpack.mod.count({ modpackId: workshop.modpackId })).toBe(
+      2,
+    );
+  });
+
   it("refuses when the pack follows a published CurseForge project", async () => {
     const modpack = await seedModpack(ctx, { curseforgeProjectId: 5100 });
 
@@ -853,6 +875,7 @@ describe("ModpackService.seedFromManifest", () => {
       modCount: 2,
       memberCount: 1,
       unresolvedProjectIds: [unknown],
+      duplicateProjectIds: [],
     });
     const member = await Q.modpack.mod.find({
       modpackId: workshop.modpackId,
@@ -971,6 +994,7 @@ describe("ModpackService.seedFromManifest", () => {
       modCount: 1,
       memberCount: 1,
       unresolvedProjectIds: [],
+      duplicateProjectIds: [],
     });
     expect((await Q.workshop.mod.get({ id: staged.id })).status).toBe(
       "next_update",

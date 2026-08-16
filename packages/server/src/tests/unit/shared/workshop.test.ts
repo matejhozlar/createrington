@@ -16,16 +16,17 @@ describe("modpackManifestUploadSchema", () => {
     expect(parsed.success).toBe(true);
   });
 
-  it("rejects a manifest listing the same project twice", () => {
+  // Real CurseForge exports repeat a project that ships more than one file;
+  // the seed path merges them rather than failing the whole import
+  it("accepts a manifest listing the same project twice", () => {
     const parsed = modpackManifestUploadSchema.safeParse(
-      manifestWith([1001, 1002, 1001, 1003, 1002]),
+      manifestWith([1001, 1002, 1001]),
     );
+    expect(parsed.success).toBe(true);
+  });
+
+  it("rejects a manifest with no files", () => {
+    const parsed = modpackManifestUploadSchema.safeParse(manifestWith([]));
     expect(parsed.success).toBe(false);
-    const custom = parsed.success
-      ? undefined
-      : parsed.error.issues.find((issue) => issue.code === "custom");
-    expect(custom?.message).toContain("1001");
-    expect(custom?.message).toContain("1002");
-    expect(custom?.message).not.toContain("1003");
   });
 });

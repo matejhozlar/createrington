@@ -10,7 +10,7 @@ import { CardEmpty, CardError } from "@/features/admin/components/CardState";
 import type { ModEnvironment } from "@createrington/shared/db";
 import {
   EnvironmentCell,
-  type EnvironmentOverride,
+  type EnvironmentDisplay,
 } from "@/features/workshop/components/EnvironmentCell";
 import type { AttentionItem } from "../../types";
 
@@ -53,8 +53,8 @@ export function IssuesTab({
   error,
   onRetry,
   onView,
-  envOverride,
-  resolvedEnvironments,
+  unresolvedCount,
+  envDisplay,
   onSetEnvironment,
 }: {
   items: AttentionItem[];
@@ -62,8 +62,8 @@ export function IssuesTab({
   error: string | null;
   onRetry: () => void;
   onView: (workshopModId: number) => void;
-  envOverride: EnvironmentOverride | null;
-  resolvedEnvironments: Record<number, ModEnvironment>;
+  unresolvedCount: number;
+  envDisplay: EnvironmentDisplay;
   onSetEnvironment: (projectId: number, environment: ModEnvironment) => void;
 }) {
   const columns: DataTableColumn<AttentionItem>[] = [
@@ -100,18 +100,9 @@ export function IssuesTab({
             <div className="pt-1.5">
               <EnvironmentCell
                 projectId={item.curseforgeProjectId}
-                environment={
-                  resolvedEnvironments[item.curseforgeProjectId] ??
-                  "unspecified"
-                }
-                source={
-                  resolvedEnvironments[item.curseforgeProjectId] &&
-                  resolvedEnvironments[item.curseforgeProjectId] !==
-                    "unspecified"
-                    ? "manual"
-                    : null
-                }
-                override={envOverride}
+                environment="unspecified"
+                source={null}
+                display={envDisplay}
                 onSetEnvironment={onSetEnvironment}
               />
             </div>
@@ -122,21 +113,21 @@ export function IssuesTab({
   ];
 
   const itemActions = (item: AttentionItem): DataTableAction[] => {
-    const actions: DataTableAction[] = [];
-    if ("workshopModId" in item) {
-      actions.push({
+    const workshopModId = "workshopModId" in item ? item.workshopModId : null;
+    if (workshopModId === null) return [];
+    return [
+      {
         label: "View Mod",
         icon: Eye,
-        onClick: () => onView(item.workshopModId),
-      });
-    }
-    return actions;
+        onClick: () => onView(workshopModId),
+      },
+    ];
   };
 
   return (
     <Card className="gap-0">
       <CardHeader className="gap-0 border-b">
-        <CardTitle>Issues ({items.length.toLocaleString()})</CardTitle>
+        <CardTitle>Issues ({unresolvedCount.toLocaleString()})</CardTitle>
       </CardHeader>
 
       {error ? (
@@ -155,7 +146,8 @@ export function IssuesTab({
 
           {!isLoading && (
             <p className="px-4 pt-4 text-xs text-muted-foreground">
-              Showing {items.length} {items.length === 1 ? "issue" : "issues"}
+              Showing {unresolvedCount}{" "}
+              {unresolvedCount === 1 ? "issue" : "issues"}
             </p>
           )}
         </CardContent>

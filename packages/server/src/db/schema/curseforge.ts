@@ -37,8 +37,9 @@ export const curseforgeProject = pgTable(
     allowModDistribution: boolean("allow_mod_distribution"),
     isAvailable: boolean("is_available").notNull().default(true),
     // Which side(s) the mod runs on; unspecified ships to both manifests.
-    // Source tracks trust: cf_flag hints refresh with the snapshot and never
-    // overwrite a manual admin flag; null means no signal yet
+    // Source tracks trust: a manual admin flag is never overwritten, and a
+    // cf_flag value follows the author's tags but is kept if they later drop
+    // them, so a classified mod never silently reverts; null means no signal
     environment: modEnvironmentEnum("environment")
       .notNull()
       .default("unspecified"),

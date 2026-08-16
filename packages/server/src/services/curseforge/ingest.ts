@@ -3,7 +3,12 @@ import type {
   CurseforgeProject,
   CurseforgeProjectCreate,
 } from "@createrington/shared/db";
-import { getMod, getMods, type CurseForgeProjectData } from "./index";
+import {
+  getMod,
+  getMods,
+  type CurseForgeEnvironmentHint,
+  type CurseForgeProjectData,
+} from "./index";
 
 // CurseForge reports int64 counters; the column is int4
 const INT4_MAX = 2_147_483_647;
@@ -67,16 +72,22 @@ async function applyEnvironmentHints(
     { select: ["id", "environment", "environmentSource"] },
   );
   const byId = new Map(rows.map((row) => [row.id, row]));
+  const idsByHint = new Map<CurseForgeEnvironmentHint, number[]>();
   for (const data of hinted) {
-    const hint = data.environmentHint;
+    const hint = data.environmentHint!;
     const row = byId.get(data.id);
-    if (!hint || !row || row.environmentSource === "manual") continue;
+    if (!row || row.environmentSource === "manual") continue;
     if (row.environment === hint && row.environmentSource === "cf_flag") {
       continue;
     }
-    await Q.curseforge.project.update(
-      { id: data.id },
+    const ids = idsByHint.get(hint) ?? [];
+    ids.push(data.id);
+    idsByHint.set(hint, ids);
+  }
+  for (const [hint, ids] of idsByHint) {
+    await Q.curseforge.project.updateAll(
       { environment: hint, environmentSource: "cf_flag" },
+      { id: { $in: ids } },
     );
   }
 }

@@ -871,7 +871,7 @@ export class WorkshopService {
       const project = await Q.curseforge.project.find({
         id: mod.curseforgeProjectId,
       });
-      if (project?.environment === "unspecified") {
+      if (!project || project.environment === "unspecified") {
         throw new BadRequestError(
           "Flag whether this mod runs client or server side before approving it for the next update",
         );
@@ -1248,18 +1248,13 @@ export class WorkshopService {
         `CurseForge project #${curseforgeProjectId} is not cached`,
       );
     }
-    await Q.curseforge.project.update(
+    return Q.curseforge.project.updateAndReturn(
       { id: curseforgeProjectId },
       {
         environment,
         environmentSource: environment === "unspecified" ? null : "manual",
       },
     );
-    return {
-      ...project,
-      environment,
-      environmentSource: environment === "unspecified" ? null : "manual",
-    };
   }
 
   private async buildDependencyInfo(

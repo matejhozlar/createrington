@@ -109,6 +109,7 @@ export interface ModpackSeedResult {
   modCount: number;
   memberCount: number;
   unresolvedProjectIds: number[];
+  duplicateProjectIds: number[];
 }
 
 function manifestLoaderType(loaderId: string): number | null {
@@ -190,13 +191,7 @@ export type ModpackAttentionItem =
     }
   | {
       type: "environment_unspecified";
-      workshopModId: number;
-      curseforgeProjectId: number;
-      name: string;
-    }
-  | {
-      type: "environment_unspecified";
-      modpackModId: number;
+      workshopModId: number | null;
       curseforgeProjectId: number;
       name: string;
     }
@@ -413,7 +408,12 @@ export class ModpackService {
     const workshops = await Q.workshop.findAll({ modpackId });
     this.assertSeedTarget(workshops, seed);
 
-    const modIds = new Set(seed.modIds);
+    const modIds = new Set<number>();
+    const duplicateProjectIds = new Set<number>();
+    for (const projectId of seed.modIds) {
+      if (modIds.has(projectId)) duplicateProjectIds.add(projectId);
+      modIds.add(projectId);
+    }
     await this.applyManifest(modpack, workshops, {
       modIds,
       version: seed.version,
@@ -431,6 +431,7 @@ export class ModpackService {
       modCount: modIds.size,
       memberCount: modIds.size - unresolvedProjectIds.length,
       unresolvedProjectIds,
+      duplicateProjectIds: [...duplicateProjectIds],
     };
   }
 
@@ -679,21 +680,15 @@ export class ModpackService {
     const suggestionByProject = new Map(
       suggestions.map((mod) => [mod.curseforgeProjectId, mod]),
     );
-    const unclassifiedTargets = new Map<
-      number,
-      { workshopModId?: number; modpackModId?: number }
-    >();
+    // A project can be both a pack member and a live suggestion; the
+    // suggestion wins so the item can link through to the mod
+    const unclassifiedTargets = new Map<number, number | null>();
     for (const row of active) {
-      unclassifiedTargets.set(row.curseforgeProjectId, {
-        modpackModId: row.id,
-      });
+      unclassifiedTargets.set(row.curseforgeProjectId, null);
     }
     for (const mod of suggestions) {
       if (mod.status !== "testing" && mod.status !== "next_update") continue;
-      unclassifiedTargets.set(mod.curseforgeProjectId, {
-        ...unclassifiedTargets.get(mod.curseforgeProjectId),
-        workshopModId: mod.id,
-      });
+      unclassifiedTargets.set(mod.curseforgeProjectId, mod.id);
     }
     const gaps = new Map<
       number,
@@ -770,24 +765,15 @@ export class ModpackService {
         name: label(projectId),
       });
     }
-    for (const [projectId, target] of unclassifiedTargets) {
+    for (const [projectId, workshopModId] of unclassifiedTargets) {
       const project = projectById.get(projectId);
       if (project?.environment !== "unspecified") continue;
-      items.push(
-        target.workshopModId !== undefined
-          ? {
-              type: "environment_unspecified",
-              workshopModId: target.workshopModId,
-              curseforgeProjectId: projectId,
-              name: project.name,
-            }
-          : {
-              type: "environment_unspecified",
-              modpackModId: target.modpackModId!,
-              curseforgeProjectId: projectId,
-              name: project.name,
-            },
-      );
+      items.push({
+        type: "environment_unspecified",
+        workshopModId,
+        curseforgeProjectId: projectId,
+        name: project.name,
+      });
     }
     return items;
   }

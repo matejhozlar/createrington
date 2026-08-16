@@ -49,7 +49,7 @@ export type StageId = Extract<
 >;
 
 export type StageColumn =
-  "note" | "upvotes" | "dependencies" | "file" | "reason" | "environment";
+  "note" | "upvotes" | "dependencies" | "file" | "reason";
 
 export const STAGE_CONFIG: Record<
   StageId,
@@ -61,6 +61,8 @@ export const STAGE_CONFIG: Record<
     dateHeader: string;
     dateField: "createdAt" | "reviewedAt";
     columns: readonly StageColumn[];
+    // Stages where the environment gates what happens next
+    showEnvironment?: boolean;
   }
 > = {
   review: {
@@ -88,7 +90,8 @@ export const STAGE_CONFIG: Record<
     emptyMessage: "Nothing in testing",
     dateHeader: "Testing Since",
     dateField: "reviewedAt",
-    columns: ["dependencies", "environment"],
+    columns: ["dependencies"],
+    showEnvironment: true,
   },
   "next-update": {
     status: "next_update",
@@ -97,7 +100,8 @@ export const STAGE_CONFIG: Record<
     emptyMessage: "Nothing staged for the next update",
     dateHeader: "Staged",
     dateField: "reviewedAt",
-    columns: ["file", "environment"],
+    columns: ["file"],
+    showEnvironment: true,
   },
   "ruled-out": {
     status: "rejected",

@@ -163,24 +163,12 @@ export const modpackManifestUploadSchema = z.object({
         .optional(),
     })
     .optional(),
+  // Real CurseForge exports repeat a project across entries when it ships more
+  // than one file, so duplicates are deduped on import rather than rejected
   files: z
     .array(z.object({ projectID: z.number().int().positive().max(2147483647) }))
     .min(1)
-    .max(2000)
-    .superRefine((files, ctx) => {
-      const seen = new Set<number>();
-      const duplicates = new Set<number>();
-      for (const file of files) {
-        if (seen.has(file.projectID)) duplicates.add(file.projectID);
-        seen.add(file.projectID);
-      }
-      if (duplicates.size > 0) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: `The manifest lists the same project more than once: ${[...duplicates].join(", ")}`,
-        });
-      }
-    }),
+    .max(2000),
 });
 
 export type ModpackManifestUpload = z.infer<typeof modpackManifestUploadSchema>;

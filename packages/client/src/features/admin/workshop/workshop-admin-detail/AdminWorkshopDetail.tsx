@@ -14,7 +14,7 @@ import {
 import { Loading } from "@/components/loading-spinner";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { ModDetailDialog } from "@/features/workshop/workshop-detail/components/ModDetailDialog";
-import type { EnvironmentOverride } from "@/features/workshop/components/EnvironmentCell";
+import type { EnvironmentDisplay } from "@/features/workshop/components/EnvironmentCell";
 import { WORKSHOP_STATUS_STYLES } from "@/features/workshop/format";
 import {
   MOD_ENVIRONMENT_LABELS,
@@ -109,8 +109,8 @@ export function AdminWorkshopDetail() {
   const [confirmTarget, setConfirmTarget] =
     useState<ConfirmActionTarget | null>(null);
   const [confirmKey, setConfirmKey] = useState(0);
-  const [envOverride, setEnvOverride] = useState<EnvironmentOverride | null>(
-    null,
+  const [envPending, setEnvPending] = useState<Map<number, ModEnvironment>>(
+    new Map(),
   );
   const [lingeringEnvItems, setLingeringEnvItems] = useState<
     Array<{ item: AttentionItem; environment: ModEnvironment }>
@@ -196,17 +196,13 @@ export function AdminWorkshopDetail() {
     onError: (err) => toast.error(err.message),
   });
 
-  const clearEnvOverride = (variables: {
-    curseforgeProjectId: number;
-    environment: ModEnvironment;
-  }) => {
-    setEnvOverride((current) =>
-      current &&
-      current.projectId === variables.curseforgeProjectId &&
-      current.environment === variables.environment
-        ? null
-        : current,
-    );
+  const clearEnvPending = (projectId: number, environment: ModEnvironment) => {
+    setEnvPending((current) => {
+      if (current.get(projectId) !== environment) return current;
+      const next = new Map(current);
+      next.delete(projectId);
+      return next;
+    });
   };
 
   const environmentMutation =
@@ -217,19 +213,26 @@ export function AdminWorkshopDetail() {
             ? "Environment flag cleared"
             : `Flagged as ${MOD_ENVIRONMENT_LABELS[project.environment]}`,
         );
+        setLingeringEnvItems((current) =>
+          current.map((lingering) =>
+            lingering.item.curseforgeProjectId === variables.curseforgeProjectId
+              ? { ...lingering, environment: project.environment }
+              : lingering,
+          ),
+        );
         await invalidate();
-        clearEnvOverride(variables);
+        clearEnvPending(variables.curseforgeProjectId, variables.environment);
       },
+      // A failed re-flag falls back to the value the server still holds, so a
+      // row that already resolved once keeps its place instead of vanishing
       onError: (err, variables) => {
-        clearEnvOverride(variables);
+        clearEnvPending(variables.curseforgeProjectId, variables.environment);
         setLingeringEnvItems((current) =>
           current.filter(
             (lingering) =>
-              !(
-                lingering.item.curseforgeProjectId ===
-                  variables.curseforgeProjectId &&
-                lingering.environment === variables.environment
-              ),
+              lingering.item.curseforgeProjectId !==
+                variables.curseforgeProjectId ||
+              lingering.environment !== "unspecified",
           ),
         );
         toast.error(err.message);
@@ -270,13 +273,18 @@ export function AdminWorkshopDetail() {
     ];
   }, [attentionQuery.data, lingeringEnvItems]);
 
-  const resolvedEnvironments = useMemo(() => {
-    const byProject: Record<number, ModEnvironment> = {};
-    for (const l of lingeringEnvItems) {
-      byProject[l.item.curseforgeProjectId] = l.environment;
+  // Confirmed values for lingering rows, then in-flight clicks on top
+  const envDisplay: EnvironmentDisplay = useMemo(() => {
+    const merged = new Map<number, ModEnvironment>();
+    for (const lingering of lingeringEnvItems) {
+      if (lingering.environment === "unspecified") continue;
+      merged.set(lingering.item.curseforgeProjectId, lingering.environment);
     }
-    return byProject;
-  }, [lingeringEnvItems]);
+    for (const [projectId, environment] of envPending) {
+      merged.set(projectId, environment);
+    }
+    return merged;
+  }, [lingeringEnvItems, envPending]);
 
   const stageCount = (status: WorkshopModStatus) =>
     modsQuery.data ? (modsByStatus[status]?.length ?? 0) : undefined;
@@ -306,24 +314,24 @@ export function AdminWorkshopDetail() {
     projectId: number,
     environment: ModEnvironment,
   ) => {
+    // Entries start at the value the server still holds; the mutation's
+    // outcome is what promotes or removes them
     if (activeTab === "issues") {
       setLingeringEnvItems((current) => {
         if (current.some((l) => l.item.curseforgeProjectId === projectId)) {
-          return current.map((l) =>
-            l.item.curseforgeProjectId === projectId
-              ? { ...l, environment }
-              : l,
-          );
+          return current;
         }
         const item = (attentionQuery.data ?? []).find(
           (row) =>
             row.type === "environment_unspecified" &&
             row.curseforgeProjectId === projectId,
         );
-        return item ? [...current, { item, environment }] : current;
+        return item
+          ? [...current, { item, environment: "unspecified" as ModEnvironment }]
+          : current;
       });
     }
-    setEnvOverride({ projectId, environment });
+    setEnvPending((current) => new Map(current).set(projectId, environment));
     environmentMutation.mutate({
       curseforgeProjectId: projectId,
       environment,
@@ -475,7 +483,7 @@ export function AdminWorkshopDetail() {
             onPageChange={setPage}
             busyModId={busyModId}
             onView={setDetailModId}
-            envOverride={envOverride}
+            envDisplay={envDisplay}
             onSetEnvironment={handleSetEnvironment}
             onReview={handleReview}
             onReject={openReject}
@@ -494,6 +502,8 @@ export function AdminWorkshopDetail() {
             onPageChange={setPage}
             busyModId={busyModId}
             onView={setDetailModId}
+            envDisplay={envDisplay}
+            onSetEnvironment={handleSetEnvironment}
             onReview={handleReview}
             onReject={openReject}
           />
@@ -510,7 +520,7 @@ export function AdminWorkshopDetail() {
             search={search}
             onSearchChange={setSearch}
             onReconciled={invalidate}
-            envOverride={envOverride}
+            envDisplay={envDisplay}
             onSetEnvironment={handleSetEnvironment}
           />
         )}
@@ -532,8 +542,8 @@ export function AdminWorkshopDetail() {
             error={attentionQuery.error?.message ?? null}
             onRetry={() => attentionQuery.refetch()}
             onView={setDetailModId}
-            envOverride={envOverride}
-            resolvedEnvironments={resolvedEnvironments}
+            unresolvedCount={attentionCount ?? 0}
+            envDisplay={envDisplay}
             onSetEnvironment={handleSetEnvironment}
           />
         )}

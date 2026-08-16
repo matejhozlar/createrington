@@ -19,7 +19,7 @@ import { STAGE_CONFIG, type StageColumn, type StageId } from "../../tabs";
 import type { AdminWorkshopMod } from "../../types";
 import {
   EnvironmentCell,
-  type EnvironmentOverride,
+  type EnvironmentDisplay,
 } from "@/features/workshop/components/EnvironmentCell";
 import { DependencyCell } from "../DependencyCell";
 import { ModCell, ModCellSkeleton } from "../ModCell";
@@ -27,7 +27,7 @@ import { ModCell, ModCellSkeleton } from "../ModCell";
 const MODS_PER_PAGE = 10;
 
 const OPTIONAL_COLUMNS: Record<
-  Exclude<StageColumn, "environment">,
+  StageColumn,
   DataTableColumn<AdminWorkshopMod>
 > = {
   note: {
@@ -101,7 +101,7 @@ export function StageTab({
   onPageChange,
   busyModId,
   onView,
-  envOverride,
+  envDisplay,
   onSetEnvironment,
   onReview,
   onReject,
@@ -117,7 +117,7 @@ export function StageTab({
   onPageChange: (page: number) => void;
   busyModId: number | null;
   onView: (workshopModId: number) => void;
-  envOverride: EnvironmentOverride | null;
+  envDisplay: EnvironmentDisplay;
   onSetEnvironment: (projectId: number, environment: ModEnvironment) => void;
 } & ModReviewHandlers) {
   const config = STAGE_CONFIG[stage];
@@ -133,7 +133,7 @@ export function StageTab({
         projectId={mod.project.id}
         environment={mod.project.environment}
         source={mod.project.environmentSource}
-        override={envOverride}
+        display={envDisplay}
         onSetEnvironment={onSetEnvironment}
       />
     ),
@@ -182,9 +182,8 @@ export function StageTab({
         />
       ),
     },
-    ...config.columns.map((key) =>
-      key === "environment" ? environmentColumn : OPTIONAL_COLUMNS[key],
-    ),
+    ...config.columns.map((key) => OPTIONAL_COLUMNS[key]),
+    ...(config.showEnvironment ? [environmentColumn] : []),
     {
       key: "date",
       header: config.dateHeader,
@@ -228,7 +227,9 @@ export function StageTab({
               loadingRows={MODS_PER_PAGE}
               rowKey={(mod) => mod.id}
               onRowClick={(mod) => onView(mod.id)}
-              actions={(mod) => modReviewActions(mod, { onReview, onReject })}
+              actions={(mod) =>
+                modReviewActions(mod, { onReview, onReject }, envDisplay)
+              }
               isRowBusy={(mod) => busyModId === mod.id}
             />
 

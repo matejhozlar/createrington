@@ -17,34 +17,38 @@ import {
   MOD_ENVIRONMENT_STYLES,
 } from "@/features/workshop/format";
 
-export interface EnvironmentOverride {
-  projectId: number;
-  environment: ModEnvironment;
-}
+/** Values shown ahead of the server, keyed by CurseForge project id */
+export type EnvironmentDisplay = Map<number, ModEnvironment>;
 
 export function EnvironmentCell({
   projectId,
   environment,
   source,
-  override,
+  display,
   onSetEnvironment,
 }: {
   projectId: number;
   environment: ModEnvironment;
   source: ModEnvironmentSource | null;
-  override: EnvironmentOverride | null;
+  display: EnvironmentDisplay;
   onSetEnvironment: (projectId: number, environment: ModEnvironment) => void;
 }) {
-  const display =
-    override?.projectId === projectId ? override.environment : environment;
-  const style = MOD_ENVIRONMENT_STYLES[display];
+  const pending = display.get(projectId);
+  const shown = pending ?? environment;
+  const shownSource = pending
+    ? pending === "unspecified"
+      ? null
+      : "manual"
+    : source;
+  const style = MOD_ENVIRONMENT_STYLES[shown];
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild onClick={(event) => event.stopPropagation()}>
         <button
           type="button"
           className="cursor-pointer"
-          title={environmentTitle(display, source)}
+          title={environmentTitle(shown, shownSource)}
         >
           <Badge
             variant="outline"
@@ -61,13 +65,13 @@ export function EnvironmentCell({
         {MOD_ENVIRONMENTS.map((value) => (
           <DropdownMenuItem
             key={value}
-            disabled={value === display}
+            disabled={value === shown}
             onClick={() => onSetEnvironment(projectId, value)}
           >
             <Check
               className={cn(
                 "size-4",
-                value === display ? "opacity-100" : "opacity-0",
+                value === shown ? "opacity-100" : "opacity-0",
               )}
             />
             {MOD_ENVIRONMENT_STYLES[value].label}

@@ -4,6 +4,7 @@ import {
   WORKSHOP_MOD_REVIEW_TARGETS,
   type WorkshopModReviewAction,
 } from "@createrington/shared/workshop";
+import type { EnvironmentDisplay } from "@/features/workshop/components/EnvironmentCell";
 import type { AdminWorkshopMod } from "./types";
 
 export interface ModReviewHandlers {
@@ -17,6 +18,7 @@ export interface ModReviewHandlers {
 export function modReviewActions(
   mod: AdminWorkshopMod,
   { onReview, onReject }: ModReviewHandlers,
+  envDisplay?: EnvironmentDisplay,
 ): DataTableAction[] {
   const actions: DataTableAction[] = [];
   if (mod.status === "pending" || mod.status === "rejected") {
@@ -36,7 +38,9 @@ export function modReviewActions(
     });
   }
   if (mod.status === "testing") {
-    const unclassified = mod.project.environment === "unspecified";
+    const environment =
+      envDisplay?.get(mod.project.id) ?? mod.project.environment;
+    const unclassified = environment === "unspecified";
     actions.push({
       label: unclassified
         ? "Environment not specified"

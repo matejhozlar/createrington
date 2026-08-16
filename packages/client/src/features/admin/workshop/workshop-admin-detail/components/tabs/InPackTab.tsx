@@ -48,7 +48,7 @@ import { formatDate } from "@/features/workshop/format";
 import type { ModEnvironment } from "@createrington/shared/db";
 import {
   EnvironmentCell,
-  type EnvironmentOverride,
+  type EnvironmentDisplay,
 } from "@/features/workshop/components/EnvironmentCell";
 import type { PackMod, ReleaseMod } from "../../types";
 import { ModCell, ModCellSkeleton } from "../ModCell";
@@ -130,7 +130,7 @@ export function InPackTab({
   search,
   onSearchChange,
   onReconciled,
-  envOverride,
+  envDisplay,
   onSetEnvironment,
 }: {
   workshopId: number;
@@ -142,7 +142,7 @@ export function InPackTab({
   search: string;
   onSearchChange: (value: string) => void;
   onReconciled: () => void;
-  envOverride: EnvironmentOverride | null;
+  envDisplay: EnvironmentDisplay;
   onSetEnvironment: (projectId: number, environment: ModEnvironment) => void;
 }) {
   const toast = useToastActions();
@@ -185,6 +185,10 @@ export function InPackTab({
         toast.warning(
           `Imported ${result.memberCount} mods, ${result.unresolvedProjectIds.length} could not be resolved on CurseForge`,
         );
+      } else if (result.duplicateProjectIds.length > 0) {
+        toast.warning(
+          `Imported ${result.memberCount} mods, ${result.duplicateProjectIds.length} listed more than once in the manifest and were merged`,
+        );
       } else {
         toast.success(`Imported ${result.memberCount} mods from the manifest`);
       }
@@ -208,13 +212,7 @@ export function InPackTab({
     }
     const parsed = modpackManifestUploadSchema.safeParse(raw);
     if (!parsed.success) {
-      const custom = parsed.error.issues.find(
-        (issue) => issue.code === "custom",
-      );
-      toast.error(
-        custom?.message ??
-          "That file does not look like a modpack manifest.json",
-      );
+      toast.error("That file does not look like a modpack manifest.json");
       return;
     }
     if (rows.length === 0) {
@@ -309,7 +307,7 @@ export function InPackTab({
           projectId={row.project.id}
           environment={row.project.environment}
           source={row.project.environmentSource}
-          override={envOverride}
+          display={envDisplay}
           onSetEnvironment={onSetEnvironment}
         />
       ),
