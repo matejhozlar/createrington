@@ -1,3 +1,9 @@
+## v1.35.1 (2026-08-16)
+
+### @createrington/client (0.2.46 → 0.2.47)
+- [fix] Fix workshop tab strip scrolling the entire page when switching tabs by replacing `scrollIntoView` with a manual `scrollLeft` adjustment scoped to the strip container
+- [refactor] Extract wheel-scroll interception into a reusable `useStripRef` hook that properly clears refs on detach and measures the scrollport for precise tab reveal
+
 ## v1.35.0 (2026-08-16)
 
 ### @createrington/server (1.34.0 → 1.35.0)
