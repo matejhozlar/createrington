@@ -1,4 +1,4 @@
-import { Check, Loader2 } from "lucide-react";
+import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type {
   ModEnvironment,
@@ -17,37 +17,39 @@ import {
   MOD_ENVIRONMENT_STYLES,
 } from "@/features/workshop/format";
 
+export interface EnvironmentOverride {
+  projectId: number;
+  environment: ModEnvironment;
+}
+
 export function EnvironmentCell({
   projectId,
   environment,
   source,
-  busy,
+  override,
   onSetEnvironment,
 }: {
   projectId: number;
   environment: ModEnvironment;
   source: ModEnvironmentSource | null;
-  busy: boolean;
+  override: EnvironmentOverride | null;
   onSetEnvironment: (projectId: number, environment: ModEnvironment) => void;
 }) {
-  const style = MOD_ENVIRONMENT_STYLES[environment];
+  const display =
+    override?.projectId === projectId ? override.environment : environment;
+  const style = MOD_ENVIRONMENT_STYLES[display];
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger
-        asChild
-        disabled={busy}
-        onClick={(event) => event.stopPropagation()}
-      >
+      <DropdownMenuTrigger asChild onClick={(event) => event.stopPropagation()}>
         <button
           type="button"
           className="cursor-pointer"
-          title={environmentTitle(environment, source)}
+          title={environmentTitle(display, source)}
         >
           <Badge
             variant="outline"
             className={cn("pointer-events-none text-xs", style.className)}
           >
-            {busy && <Loader2 className="size-3 animate-spin" />}
             {style.label}
           </Badge>
         </button>
@@ -59,13 +61,13 @@ export function EnvironmentCell({
         {MOD_ENVIRONMENTS.map((value) => (
           <DropdownMenuItem
             key={value}
-            disabled={value === environment}
+            disabled={value === display}
             onClick={() => onSetEnvironment(projectId, value)}
           >
             <Check
               className={cn(
                 "size-4",
-                value === environment ? "opacity-100" : "opacity-0",
+                value === display ? "opacity-100" : "opacity-0",
               )}
             />
             {MOD_ENVIRONMENT_STYLES[value].label}

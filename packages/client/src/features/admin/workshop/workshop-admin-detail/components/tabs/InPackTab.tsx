@@ -46,8 +46,11 @@ import { FilterBar } from "@/features/admin/components/FilterBar";
 import { CardEmpty, CardError } from "@/features/admin/components/CardState";
 import { formatDate } from "@/features/workshop/format";
 import type { ModEnvironment } from "@createrington/shared/db";
+import {
+  EnvironmentCell,
+  type EnvironmentOverride,
+} from "@/features/workshop/components/EnvironmentCell";
 import type { PackMod, ReleaseMod } from "../../types";
-import { EnvironmentCell } from "../EnvironmentCell";
 import { ModCell, ModCellSkeleton } from "../ModCell";
 
 const MODS_PER_PAGE = 10;
@@ -127,7 +130,7 @@ export function InPackTab({
   search,
   onSearchChange,
   onReconciled,
-  envBusyProjectId,
+  envOverride,
   onSetEnvironment,
 }: {
   workshopId: number;
@@ -139,7 +142,7 @@ export function InPackTab({
   search: string;
   onSearchChange: (value: string) => void;
   onReconciled: () => void;
-  envBusyProjectId: number | null;
+  envOverride: EnvironmentOverride | null;
   onSetEnvironment: (projectId: number, environment: ModEnvironment) => void;
 }) {
   const toast = useToastActions();
@@ -298,7 +301,7 @@ export function InPackTab({
     },
     {
       key: "environment",
-      header: "Side",
+      header: "Environment",
       width: 140,
       skeleton: () => <BadgeCellSkeleton />,
       render: (row) => (
@@ -306,7 +309,7 @@ export function InPackTab({
           projectId={row.project.id}
           environment={row.project.environment}
           source={row.project.environmentSource}
-          busy={envBusyProjectId === row.project.id}
+          override={envOverride}
           onSetEnvironment={onSetEnvironment}
         />
       ),

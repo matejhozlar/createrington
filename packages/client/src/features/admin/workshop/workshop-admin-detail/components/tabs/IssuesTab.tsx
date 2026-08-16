@@ -8,8 +8,11 @@ import {
 } from "@/components/data-table";
 import { CardEmpty, CardError } from "@/features/admin/components/CardState";
 import type { ModEnvironment } from "@createrington/shared/db";
+import {
+  EnvironmentCell,
+  type EnvironmentOverride,
+} from "@/features/workshop/components/EnvironmentCell";
 import type { AttentionItem } from "../../types";
-import { EnvironmentCell } from "../EnvironmentCell";
 
 type DependencyGap = Extract<
   AttentionItem["type"],
@@ -56,7 +59,7 @@ export function IssuesTab({
   onView,
   onAddProject,
   busyProjectId,
-  envBusyProjectId,
+  envOverride,
   onSetEnvironment,
 }: {
   items: AttentionItem[];
@@ -66,7 +69,7 @@ export function IssuesTab({
   onView: (workshopModId: number) => void;
   onAddProject: (projectId: number, name: string) => void;
   busyProjectId: number | null;
-  envBusyProjectId: number | null;
+  envOverride: EnvironmentOverride | null;
   onSetEnvironment: (projectId: number, environment: ModEnvironment) => void;
 }) {
   const columns: DataTableColumn<AttentionItem>[] = [
@@ -105,7 +108,7 @@ export function IssuesTab({
                 projectId={item.curseforgeProjectId}
                 environment="unspecified"
                 source={null}
-                busy={envBusyProjectId === item.curseforgeProjectId}
+                override={envOverride}
                 onSetEnvironment={onSetEnvironment}
               />
             </div>

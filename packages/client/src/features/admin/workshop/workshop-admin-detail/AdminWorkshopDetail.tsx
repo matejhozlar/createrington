@@ -14,6 +14,7 @@ import {
 import { Loading } from "@/components/loading-spinner";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { ModDetailDialog } from "@/features/workshop/workshop-detail/components/ModDetailDialog";
+import type { EnvironmentOverride } from "@/features/workshop/components/EnvironmentCell";
 import { WORKSHOP_STATUS_STYLES } from "@/features/workshop/format";
 import {
   MOD_ENVIRONMENT_LABELS,
@@ -108,6 +109,9 @@ export function AdminWorkshopDetail() {
   const [confirmTarget, setConfirmTarget] =
     useState<ConfirmActionTarget | null>(null);
   const [confirmKey, setConfirmKey] = useState(0);
+  const [envOverride, setEnvOverride] = useState<EnvironmentOverride | null>(
+    null,
+  );
   const [skipConfirms, setSkipConfirms] = useState(() => {
     try {
       return sessionStorage.getItem(SKIP_CONFIRM_SESSION_KEY) === "1";
@@ -155,18 +159,19 @@ export function AdminWorkshopDetail() {
     setConfirmTarget(target);
   };
 
-  const invalidate = () => {
-    utils.admin.workshops.listMods.invalidate({ workshopId });
-    utils.admin.workshops.getMod.invalidate();
-    utils.admin.workshops.searchProjects.invalidate({ workshopId });
-    utils.admin.workshops.listPackMods.invalidate({ workshopId });
-    utils.admin.workshops.getAttention.invalidate({ workshopId });
-    utils.admin.workshops.listDependencies.invalidate({ workshopId });
-    utils.user.workshops.list.invalidate();
-    utils.user.workshops.get.invalidate();
-    utils.user.workshops.listRejected.invalidate({ workshopId });
-    utils.user.workshops.getPack.invalidate({ workshopId });
-  };
+  const invalidate = () =>
+    Promise.all([
+      utils.admin.workshops.listMods.invalidate({ workshopId }),
+      utils.admin.workshops.getMod.invalidate(),
+      utils.admin.workshops.searchProjects.invalidate({ workshopId }),
+      utils.admin.workshops.listPackMods.invalidate({ workshopId }),
+      utils.admin.workshops.getAttention.invalidate({ workshopId }),
+      utils.admin.workshops.listDependencies.invalidate({ workshopId }),
+      utils.user.workshops.list.invalidate(),
+      utils.user.workshops.get.invalidate(),
+      utils.user.workshops.listRejected.invalidate({ workshopId }),
+      utils.user.workshops.getPack.invalidate({ workshopId }),
+    ]);
 
   const reviewMutation = trpc.admin.workshops.reviewMod.useMutation({
     onSuccess: (mod, variables) => {
@@ -187,17 +192,34 @@ export function AdminWorkshopDetail() {
     onError: (err) => toast.error(err.message),
   });
 
+  const clearEnvOverride = (variables: {
+    curseforgeProjectId: number;
+    environment: ModEnvironment;
+  }) => {
+    setEnvOverride((current) =>
+      current &&
+      current.projectId === variables.curseforgeProjectId &&
+      current.environment === variables.environment
+        ? null
+        : current,
+    );
+  };
+
   const environmentMutation =
     trpc.admin.workshops.setProjectEnvironment.useMutation({
-      onSuccess: (project) => {
+      onSuccess: async (project, variables) => {
         toast.success(
           project.environment === "unspecified"
-            ? "Side flag cleared"
+            ? "Environment flag cleared"
             : `Flagged as ${MOD_ENVIRONMENT_LABELS[project.environment]}`,
         );
-        invalidate();
+        await invalidate();
+        clearEnvOverride(variables);
       },
-      onError: (err) => toast.error(err.message),
+      onError: (err, variables) => {
+        clearEnvOverride(variables);
+        toast.error(err.message);
+      },
     });
 
   const updateWorkshopMutation = trpc.admin.workshops.update.useMutation({
@@ -241,14 +263,12 @@ export function AdminWorkshopDetail() {
   const busyProjectId = addProjectMutation.isPending
     ? (addProjectMutation.variables?.projectIds[0] ?? null)
     : null;
-  const envBusyProjectId = environmentMutation.isPending
-    ? (environmentMutation.variables?.curseforgeProjectId ?? null)
-    : null;
 
   const handleSetEnvironment = (
     projectId: number,
     environment: ModEnvironment,
   ) => {
+    setEnvOverride({ projectId, environment });
     environmentMutation.mutate({
       curseforgeProjectId: projectId,
       environment,
@@ -400,7 +420,7 @@ export function AdminWorkshopDetail() {
             onPageChange={setPage}
             busyModId={busyModId}
             onView={setDetailModId}
-            envBusyProjectId={envBusyProjectId}
+            envOverride={envOverride}
             onSetEnvironment={handleSetEnvironment}
             onReview={handleReview}
             onReject={openReject}
@@ -435,7 +455,7 @@ export function AdminWorkshopDetail() {
             search={search}
             onSearchChange={setSearch}
             onReconciled={invalidate}
-            envBusyProjectId={envBusyProjectId}
+            envOverride={envOverride}
             onSetEnvironment={handleSetEnvironment}
           />
         )}
@@ -459,7 +479,7 @@ export function AdminWorkshopDetail() {
             onView={setDetailModId}
             onAddProject={addProject}
             busyProjectId={busyProjectId}
-            envBusyProjectId={envBusyProjectId}
+            envOverride={envOverride}
             onSetEnvironment={handleSetEnvironment}
           />
         )}
@@ -473,6 +493,8 @@ export function AdminWorkshopDetail() {
         workshopModId={detailModId}
         onOpenChange={(open) => !open && setDetailModId(null)}
         admin
+        onSetEnvironment={handleSetEnvironment}
+        envOverride={envOverride}
       />
 
       <AddModsDialog

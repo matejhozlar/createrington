@@ -17,8 +17,11 @@ import { REJECT_REASON_LABELS } from "@/features/workshop/format";
 import { modReviewActions, type ModReviewHandlers } from "../../actions";
 import { STAGE_CONFIG, type StageColumn, type StageId } from "../../tabs";
 import type { AdminWorkshopMod } from "../../types";
+import {
+  EnvironmentCell,
+  type EnvironmentOverride,
+} from "@/features/workshop/components/EnvironmentCell";
 import { DependencyCell } from "../DependencyCell";
-import { EnvironmentCell } from "../EnvironmentCell";
 import { ModCell, ModCellSkeleton } from "../ModCell";
 
 const MODS_PER_PAGE = 10;
@@ -98,7 +101,7 @@ export function StageTab({
   onPageChange,
   busyModId,
   onView,
-  envBusyProjectId,
+  envOverride,
   onSetEnvironment,
   onReview,
   onReject,
@@ -114,7 +117,7 @@ export function StageTab({
   onPageChange: (page: number) => void;
   busyModId: number | null;
   onView: (workshopModId: number) => void;
-  envBusyProjectId: number | null;
+  envOverride: EnvironmentOverride | null;
   onSetEnvironment: (projectId: number, environment: ModEnvironment) => void;
 } & ModReviewHandlers) {
   const config = STAGE_CONFIG[stage];
@@ -122,7 +125,7 @@ export function StageTab({
 
   const environmentColumn: DataTableColumn<AdminWorkshopMod> = {
     key: "environment",
-    header: "Side",
+    header: "Environment",
     width: 140,
     skeleton: () => <BadgeCellSkeleton />,
     render: (mod) => (
@@ -130,7 +133,7 @@ export function StageTab({
         projectId={mod.project.id}
         environment={mod.project.environment}
         source={mod.project.environmentSource}
-        busy={envBusyProjectId === mod.project.id}
+        override={envOverride}
         onSetEnvironment={onSetEnvironment}
       />
     ),
