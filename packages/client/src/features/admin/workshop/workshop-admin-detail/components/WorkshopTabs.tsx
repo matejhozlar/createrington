@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useRef } from "react";
+import { Fragment, useCallback, useLayoutEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -58,17 +58,32 @@ function attachWheelScroll(strip: HTMLDivElement) {
   return () => strip.removeEventListener("wheel", onWheel);
 }
 
+function useStripRef() {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const setRef = useCallback((strip: HTMLDivElement | null) => {
+    ref.current = strip;
+    if (!strip) return;
+    const detach = attachWheelScroll(strip);
+    return () => {
+      detach();
+      ref.current = null;
+    };
+  }, []);
+  return [ref, setRef] as const;
+}
+
 function revealInStrip(
   strip: HTMLDivElement | null,
   tab: HTMLButtonElement | null,
 ) {
   if (!strip || !tab) return;
-  const stripBox = strip.getBoundingClientRect();
+  const scrollportLeft = strip.getBoundingClientRect().left + strip.clientLeft;
+  const scrollportRight = scrollportLeft + strip.clientWidth;
   const tabBox = tab.getBoundingClientRect();
-  if (tabBox.left < stripBox.left) {
-    strip.scrollLeft -= stripBox.left - tabBox.left;
-  } else if (tabBox.right > stripBox.right) {
-    strip.scrollLeft += tabBox.right - stripBox.right;
+  if (tabBox.left < scrollportLeft) {
+    strip.scrollLeft -= scrollportLeft - tabBox.left;
+  } else if (tabBox.right > scrollportRight) {
+    strip.scrollLeft += tabBox.right - scrollportRight;
   }
 }
 
@@ -86,26 +101,16 @@ export function WorkshopTabs({
   const group = tabGroup(activeTab);
   const activeTopRef = useRef<HTMLButtonElement>(null);
   const activeModRef = useRef<HTMLButtonElement>(null);
-  const topStripRef = useRef<HTMLDivElement | null>(null);
-  const modStripRef = useRef<HTMLDivElement | null>(null);
+  const [topStripRef, setTopStrip] = useStripRef();
+  const [modStripRef, setModStrip] = useStripRef();
 
   const countsKey = [...MOD_TAB_IDS, "issues" as const]
     .map((id) => counts[id] ?? "")
     .join();
-  useEffect(() => {
+  useLayoutEffect(() => {
     revealInStrip(topStripRef.current, activeTopRef.current);
     revealInStrip(modStripRef.current, activeModRef.current);
-  }, [activeTab, countsKey]);
-
-  const setTopStrip = useCallback((strip: HTMLDivElement | null) => {
-    topStripRef.current = strip;
-    return strip ? attachWheelScroll(strip) : undefined;
-  }, []);
-
-  const setModStrip = useCallback((strip: HTMLDivElement | null) => {
-    modStripRef.current = strip;
-    return strip ? attachWheelScroll(strip) : undefined;
-  }, []);
+  }, [activeTab, countsKey, topStripRef, modStripRef]);
 
   return (
     <div className="flex flex-col gap-3">
