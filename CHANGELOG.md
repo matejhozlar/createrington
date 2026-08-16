@@ -1,3 +1,24 @@
+## v1.33.0 (2026-08-16)
+
+### @createrington/server (1.32.0 → 1.33.0)
+- [add] Add single and multi entry modes to player prompts, letting admins choose between one editable answer per player or multiple stacked entries with optional per-player caps and cooldowns enforced atomically in the database
+- [add] Extract Discord prompt card rendering into a `PlayerPromptComponentPresets` class using Components V2 containers with banner imagery, entry-rule descriptions, and mode-aware button labels
+- [add] Allow editing a workshop slug after creation with unique-slug validation, conflict error handling, and the admin settings dialog wired to navigate to the new URL on rename
+- [fix] Refuse all review actions on mods that are live in the published pack (status `in_pack`), requiring a release drop first instead of allowing reject, which previously left the pack contradicting its manifest
+- [fix] Ship workshop suggestions from any active status on reconcile (pending, approved, testing, next_update) instead of only from next_update, so suggestions that were approved but not yet queued still get claimed when the manifest ships them
+- [fix] Enforce prompt cooldown atomically in the append-entry SQL statement so a modal left open past the cooldown window cannot bypass the gate the button check saw
+
+### @createrington/client (0.2.43 → 0.2.44)
+- [add] Add loading skeleton support to the DataTable component with per-column custom skeleton renderers, shared skeleton cells (badge, two-line, avatar), and a `loadingRowCount` helper that sizes skeleton rows to match the expected remaining page count
+- [add] Roll out table loading skeletons and shared Paginator across all admin tables: players, logs, donations, waitlists, FAQs, inactivity (ghosts and unlinked members), prompts, structure packs, workshops, modpacks, chat history, stat search, parties, trade history, and player-detail sessions/transactions tabs
+- [add] Add entry mode picker (single/multi) with max-entries and cooldown fields to the create-prompt modal, and show mode badge and per-responder entry counts on the prompt list and detail pages
+- [add] Add slug editing field to the workshop settings dialog with client-side validation and automatic URL navigation on successful rename
+- [fix] Hide review action buttons entirely for in-pack mods instead of showing them disabled, driven by the shared `WORKSHOP_MOD_REVIEW_TARGETS` map so the UI stays in sync with the server's refusal rules
+
+### @createrington/shared (1.3.0 → 1.4.0)
+- [add] Add player prompt entry mode constants and bounds (entry modes, min/max entries, max cooldown) shared between the server validator, the database enum, and the admin UI
+- [fix] Remove the reject action from the `in_pack` review targets so mods live in the published pack have no review transitions available
+
 ## v1.32.0 (2026-08-15)
 
 ### @createrington/server (1.31.0 → 1.32.0)

@@ -5,7 +5,12 @@ import { Badge } from "@/components/ui/badge";
 import { Paginator } from "@/components/paginator";
 import { CellDate } from "@/components/cell-text";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DataTable, type DataTableColumn } from "@/components/data-table";
+import {
+  AvatarCellSkeleton,
+  BadgeCellSkeleton,
+  DataTable,
+  type DataTableColumn,
+} from "@/components/data-table";
 import { PlayerLabel } from "@/components/player-label";
 import {
   Select,
@@ -15,11 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { FilterBar } from "@/features/admin/components/FilterBar";
-import {
-  CardEmpty,
-  CardError,
-  CardLoading,
-} from "@/features/admin/components/CardState";
+import { CardEmpty, CardError } from "@/features/admin/components/CardState";
 import {
   MOD_STATUS_STYLES,
   projectCategories,
@@ -27,7 +28,7 @@ import {
 import { modReviewActions, type ModReviewHandlers } from "../../actions";
 import type { AdminWorkshopMod } from "../../types";
 import { DependencyCell } from "../DependencyCell";
-import { ModCell } from "../ModCell";
+import { ModCell, ModCellSkeleton } from "../ModCell";
 
 const MODS_PER_PAGE = 10;
 
@@ -97,6 +98,7 @@ export function AllModsTab({
       key: "mod",
       header: "Mod",
       minWidth: 220,
+      skeleton: () => <ModCellSkeleton />,
       render: (mod) => (
         <ModCell
           name={mod.project.name}
@@ -109,6 +111,7 @@ export function AllModsTab({
       key: "submitter",
       header: "Submitted by",
       minWidth: 150,
+      skeleton: () => <AvatarCellSkeleton />,
       render: (mod) => (
         <PlayerLabel
           name={mod.submitterName ?? mod.submittedBy}
@@ -137,6 +140,7 @@ export function AllModsTab({
       key: "status",
       header: "Status",
       width: 124,
+      skeleton: () => <BadgeCellSkeleton />,
       render: (mod) => {
         const status = MOD_STATUS_STYLES[mod.status];
         return status ? (
@@ -194,19 +198,19 @@ export function AllModsTab({
           </CardTitle>
         </CardHeader>
 
-        {isLoading ? (
-          <CardLoading text="Loading mods..." />
-        ) : error ? (
+        {error ? (
           <CardError message={error} onRetry={onRetry} />
-        ) : mods.length === 0 ? (
+        ) : !isLoading && mods.length === 0 ? (
           <CardEmpty icon={Lightbulb} message="No suggestions yet" />
-        ) : filtered.length === 0 ? (
+        ) : !isLoading && filtered.length === 0 ? (
           <CardEmpty icon={Search} message="No mods match your filters" />
         ) : (
           <CardContent className="px-0">
             <DataTable
               columns={columns}
               rows={visible}
+              loading={isLoading}
+              loadingRows={MODS_PER_PAGE}
               rowKey={(mod) => mod.id}
               onRowClick={(mod) => onView(mod.id)}
               actions={(mod) => modReviewActions(mod, { onReview, onReject })}

@@ -1,6 +1,9 @@
 import { Ban, Check, FlaskConical, Pencil, Undo2 } from "lucide-react";
 import type { DataTableAction } from "@/components/data-table";
-import type { WorkshopModReviewAction } from "@createrington/shared/workshop";
+import {
+  WORKSHOP_MOD_REVIEW_TARGETS,
+  type WorkshopModReviewAction,
+} from "@createrington/shared/workshop";
 import type { AdminWorkshopMod } from "./types";
 
 export interface ModReviewHandlers {
@@ -47,21 +50,23 @@ export function modReviewActions(
       onClick: () => onReview(mod.id, "send_back"),
     });
   }
-  if (mod.status === "rejected") {
-    actions.push({
-      label: "Edit Reason",
-      icon: Pencil,
-      onClick: () =>
-        onReject({ workshopModId: mod.id, name: mod.project.name }),
-    });
-  } else {
-    actions.push({
-      label: "Reject",
-      icon: Ban,
-      variant: "destructive",
-      onClick: () =>
-        onReject({ workshopModId: mod.id, name: mod.project.name }),
-    });
+  if (WORKSHOP_MOD_REVIEW_TARGETS[mod.status].reject) {
+    actions.push(
+      mod.status === "rejected"
+        ? {
+            label: "Edit Reason",
+            icon: Pencil,
+            onClick: () =>
+              onReject({ workshopModId: mod.id, name: mod.project.name }),
+          }
+        : {
+            label: "Reject",
+            icon: Ban,
+            variant: "destructive",
+            onClick: () =>
+              onReject({ workshopModId: mod.id, name: mod.project.name }),
+          },
+    );
   }
   return actions;
 }

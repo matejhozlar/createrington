@@ -4,7 +4,17 @@ export function workshopFormError(fields: {
   basePackId: string;
   forumChannelId: string;
   publishedPackId?: string;
+  slug?: string;
 }): string | null {
+  if (fields.slug !== undefined) {
+    const slug = fields.slug.trim();
+    if (!slug) {
+      return "Slug is required";
+    }
+    if (!/^[a-z0-9-]+$/.test(slug)) {
+      return "Slug may only contain lowercase letters, numbers, and hyphens";
+    }
+  }
   const maxMods = Number(fields.maxMods);
   if (!Number.isInteger(maxMods) || maxMods < 1 || maxMods > 25) {
     return "Suggestions per player must be between 1 and 25";

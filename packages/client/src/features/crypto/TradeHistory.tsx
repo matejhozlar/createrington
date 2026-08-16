@@ -1,22 +1,20 @@
 import { useCallback, useState } from "react";
+import { keepPreviousData } from "@tanstack/react-query";
 import { useNavigate } from "react-router";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/auth";
-import { Loading } from "@/components/loading-spinner";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CellDate } from "@/components/cell-text";
-import { DataTable, type DataTableColumn } from "@/components/data-table";
 import {
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
+  BadgeCellSkeleton,
+  DataTable,
+  loadingRowCount,
+  type DataTableColumn,
+} from "@/components/data-table";
+import { Paginator } from "@/components/paginator";
 import { ArrowLeftRight } from "lucide-react";
 
 type Trade = RouterOutput["user"]["crypto"]["tradeHistory"]["items"][number];
@@ -25,6 +23,7 @@ export function TradeHistory() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [page, setPage] = useState(0);
+  const limit = 20;
 
   const columns: DataTableColumn<Trade>[] = [
     {
@@ -51,6 +50,7 @@ export function TradeHistory() {
       key: "type",
       header: "Type",
       width: 90,
+      skeleton: () => <BadgeCellSkeleton />,
       render: (tx) => (
         <Badge
           variant="outline"
@@ -120,62 +120,26 @@ export function TradeHistory() {
     },
   ];
 
-  const { data, isLoading, error, refetch } =
+  const { data, isLoading, isPlaceholderData, error, refetch } =
     trpc.user.crypto.tradeHistory.useQuery(
-      { page, limit: 20 },
-      { enabled: !!user },
+      { page, limit },
+      { enabled: !!user, placeholderData: keepPreviousData },
     );
 
+  const items = data?.items ?? [];
+  const total = data?.pagination.total ?? 0;
   const totalPages = data?.pagination.totalPages ?? 0;
+  const loading = isLoading || isPlaceholderData;
+  const loadingRows = loadingRowCount(page, limit, total);
 
   const handlePageChange = useCallback((newPage: number) => {
     setPage(newPage);
   }, []);
 
-  const getPaginationItems = useCallback(() => {
-    const items: (number | "ellipsis")[] = [];
-    const maxVisible = 5;
-
-    if (totalPages <= maxVisible) {
-      return Array.from({ length: totalPages }, (_, i) => i);
-    }
-
-    items.push(0);
-
-    if (page <= 2) {
-      items.push(1, 2, 3);
-      items.push("ellipsis");
-      items.push(totalPages - 1);
-    } else if (page >= totalPages - 3) {
-      items.push("ellipsis");
-      items.push(
-        totalPages - 4,
-        totalPages - 3,
-        totalPages - 2,
-        totalPages - 1,
-      );
-    } else {
-      items.push("ellipsis");
-      items.push(page - 1, page, page + 1);
-      items.push("ellipsis");
-      items.push(totalPages - 1);
-    }
-
-    return items;
-  }, [page, totalPages]);
-
   if (!user) {
     return (
       <div className="py-12 text-center text-muted-foreground">
         Sign in to view your trade history
-      </div>
-    );
-  }
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loading size="medium" text="Loading trades..." />
       </div>
     );
   }
@@ -192,8 +156,6 @@ export function TradeHistory() {
     );
   }
 
-  if (!data) return null;
-
   return (
     <div className="flex flex-1 flex-col px-5 md:px-8 pt-5 pb-16">
       <div className="max-w-7xl mx-auto w-full space-y-5">
@@ -202,14 +164,16 @@ export function TradeHistory() {
         </div>
         <Card className="overflow-hidden">
           <CardContent className="p-0">
-            {data.items.length === 0 ? (
+            {!loading && items.length === 0 ? (
               <p className="py-12 text-center text-muted-foreground">
                 No trades yet
               </p>
             ) : (
               <DataTable
                 columns={columns}
-                rows={data.items}
+                rows={items}
+                loading={loading}
+                loadingRows={loadingRows}
                 rowKey={(tx) => tx.id}
                 rowClassName={(tx) =>
                   tx.type === "buy"
@@ -221,58 +185,20 @@ export function TradeHistory() {
               />
             )}
           </CardContent>
+          {total > 0 && (
+            <CardFooter className="border-t">
+              <Paginator
+                page={page}
+                limit={limit}
+                total={total}
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
+                itemLabel="trade"
+                className="w-full"
+              />
+            </CardFooter>
+          )}
         </Card>
-
-        {totalPages > 1 && (
-          <div className="flex items-center justify-center">
-            <PaginationContent>
-              <PaginationItem>
-                <PaginationPrevious
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    if (page > 0) handlePageChange(page - 1);
-                  }}
-                  className={cn(page === 0 && "pointer-events-none opacity-50")}
-                />
-              </PaginationItem>
-
-              {getPaginationItems().map((item, index) => (
-                <PaginationItem
-                  key={item === "ellipsis" ? `ellipsis-${index}` : item}
-                >
-                  {item === "ellipsis" ? (
-                    <PaginationEllipsis />
-                  ) : (
-                    <PaginationLink
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        handlePageChange(item);
-                      }}
-                      isActive={page === item}
-                    >
-                      {item + 1}
-                    </PaginationLink>
-                  )}
-                </PaginationItem>
-              ))}
-
-              <PaginationItem>
-                <PaginationNext
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    if (page < totalPages - 1) handlePageChange(page + 1);
-                  }}
-                  className={cn(
-                    page >= totalPages - 1 && "pointer-events-none opacity-50",
-                  )}
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </div>
-        )}
       </div>
     </div>
   );

@@ -423,7 +423,8 @@ describe("ModpackService.reconcile", () => {
     const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
     const mod = await seedMod(ctx, workshop, {
       submittedBy: USER_A,
-      status: "in_pack",
+      status: "rejected",
+      rejectReason: "incompatible",
     });
     await seedPackMod(ctx, workshop, {
       curseforgeProjectId: mod.curseforgeProjectId,
@@ -440,9 +441,6 @@ describe("ModpackService.reconcile", () => {
       }),
     );
 
-    await workshopService.reviewMod(mod.id, "reject", ADMIN, {
-      reason: "incompatible",
-    });
     await modpackService.reconcile(modpack.id);
 
     expect(
@@ -516,7 +514,7 @@ describe("ModpackService.reconcile", () => {
     expect(healed.liveInVersion).toBe("1.0.0");
   });
 
-  it("credits a shipped mod to its suggestion even mid review", async () => {
+  it("credits a shipped mod to its suggestion and ships it even mid review", async () => {
     const modpack = await seedModpack(ctx, {
       curseforgeProjectId: ctx.nextProjectId++,
     });
@@ -537,9 +535,124 @@ describe("ModpackService.reconcile", () => {
         curseforgeProjectId: pending.curseforgeProjectId,
       }),
     ).toMatchObject({ origin: "suggestion", workshopModId: pending.id });
-    // Shipping does not finish a review, so it stays pending and is reported
     expect(await Q.workshop.mod.get({ id: pending.id })).toMatchObject({
-      status: "pending",
+      status: "in_pack",
+    });
+    await vi.waitFor(async () => {
+      expect(await modEvents(pending.id)).toHaveLength(1);
+    });
+    expect((await modEvents(pending.id))[0]).toMatchObject({
+      eventType: "shipped",
+      fromStatus: "pending",
+      toStatus: "in_pack",
+      releaseVersion: "2.0.0",
+    });
+  });
+
+  it("heals a linked suggestion the pack ships but the pipeline left behind", async () => {
+    const modpack = await seedModpack(ctx, {
+      curseforgeProjectId: ctx.nextProjectId++,
+    });
+    const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const mod = await seedMod(ctx, workshop, {
+      submittedBy: USER_A,
+      status: "approved",
+    });
+    const member = await seedPackMod(ctx, workshop, {
+      curseforgeProjectId: mod.curseforgeProjectId,
+      origin: "suggestion",
+      workshopModId: mod.id,
+      addedBy: null,
+      liveAt: new Date(),
+      liveInVersion: "2.0.0",
+    });
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      manifest({
+        version: "2.0.0",
+        modIds: new Set([member.curseforgeProjectId]),
+      }),
+    );
+
+    await modpackService.reconcile(modpack.id);
+
+    expect(await Q.workshop.mod.get({ id: mod.id })).toMatchObject({
+      status: "in_pack",
+    });
+    await vi.waitFor(async () => {
+      expect(await modEvents(mod.id)).toHaveLength(1);
+    });
+    expect((await modEvents(mod.id))[0]).toMatchObject({
+      eventType: "shipped",
+      fromStatus: "approved",
+      toStatus: "in_pack",
+      releaseVersion: "2.0.0",
+    });
+  });
+
+  it("links a shipped mod to its rejected suggestion without unrejecting it", async () => {
+    const modpack = await seedModpack(ctx, {
+      curseforgeProjectId: ctx.nextProjectId++,
+    });
+    const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const mod = await seedMod(ctx, workshop, {
+      submittedBy: USER_A,
+      status: "rejected",
+      rejectReason: "not_a_good_fit",
+    });
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      manifest({
+        version: "2.0.0",
+        modIds: new Set([mod.curseforgeProjectId]),
+      }),
+    );
+
+    await modpackService.reconcile(modpack.id);
+
+    expect(
+      await Q.modpack.mod.find({
+        modpackId: modpack.id,
+        curseforgeProjectId: mod.curseforgeProjectId,
+      }),
+    ).toMatchObject({ origin: "suggestion", workshopModId: mod.id });
+    expect(await Q.workshop.mod.get({ id: mod.id })).toMatchObject({
+      status: "rejected",
+      rejectReason: "not_a_good_fit",
+    });
+    expect(vi.mocked(announceReview)).not.toHaveBeenCalled();
+    expect(await modEvents(mod.id)).toHaveLength(0);
+  });
+
+  it("drops a mid-review shipped mod back to next_update like any other member", async () => {
+    const modpack = await seedModpack(ctx, {
+      curseforgeProjectId: ctx.nextProjectId++,
+    });
+    const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const mod = await seedMod(ctx, workshop, { submittedBy: USER_A });
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      manifest({
+        version: "2.0.0",
+        modIds: new Set([mod.curseforgeProjectId]),
+      }),
+    );
+    await modpackService.reconcile(modpack.id);
+    expect((await Q.workshop.mod.get({ id: mod.id })).status).toBe("in_pack");
+
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      manifest({ version: "2.1.0", modIds: new Set<number>() }),
+    );
+    await modpackService.reconcile(modpack.id);
+
+    expect((await Q.workshop.mod.get({ id: mod.id })).status).toBe(
+      "next_update",
+    );
+    await vi.waitFor(async () => {
+      expect(await modEvents(mod.id)).toHaveLength(2);
+    });
+    expect((await modEvents(mod.id))[1]).toMatchObject({
+      eventType: "dropped",
+      fromStatus: "in_pack",
+      toStatus: "next_update",
+      releaseVersion: "2.1.0",
     });
   });
 
@@ -673,9 +786,8 @@ describe("ModpackService.seedFromManifest", () => {
       workshopModId: staged.id,
       liveInVersion: "0.2.0",
     });
-    // Shipping does not finish a review, so the pending one keeps its state
     expect((await Q.workshop.mod.get({ id: pending.id })).status).toBe(
-      "pending",
+      "in_pack",
     );
     expect(
       await Q.modpack.mod.find({

@@ -101,7 +101,8 @@ export const WORKSHOP_MOD_REVIEW_TARGETS: Record<
     reject: "rejected",
   },
   next_update: { send_back: "testing", reject: "rejected" },
-  in_pack: { reject: "rejected" },
+  // A live mod leaves the pack via a release drop, never through review
+  in_pack: {},
   // Re-rejecting is how a reason gets edited
   rejected: { approve: "approved", reject: "rejected" },
 };

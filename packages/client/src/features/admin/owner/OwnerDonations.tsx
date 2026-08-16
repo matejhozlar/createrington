@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import {
   Card,
@@ -8,14 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
+import { Paginator } from "@/components/paginator";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -27,7 +20,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CellDate, CellText } from "@/components/cell-text";
-import { DataTable, type DataTableColumn } from "@/components/data-table";
+import {
+  BadgeCellSkeleton,
+  DataTable,
+  loadingRowCount,
+  type DataTableColumn,
+} from "@/components/data-table";
 import {
   Heart,
   Users,
@@ -38,6 +36,7 @@ import {
   CalendarX,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { keepPreviousData } from "@tanstack/react-query";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { Loading } from "@/components/loading-spinner";
@@ -89,6 +88,7 @@ const DONATION_COLUMNS: DataTableColumn<Donation>[] = [
     key: "type",
     header: "Type",
     width: 110,
+    skeleton: () => <BadgeCellSkeleton />,
     render: (d) => (
       <Badge variant="outline" className="text-xs">
         {TYPE_LABELS[d.type] ?? d.type}
@@ -106,6 +106,7 @@ const DONATION_COLUMNS: DataTableColumn<Donation>[] = [
     key: "status",
     header: "Status",
     width: 120,
+    skeleton: () => <BadgeCellSkeleton />,
     render: (d) => (
       <span
         className={cn(
@@ -127,6 +128,7 @@ const DONATION_COLUMNS: DataTableColumn<Donation>[] = [
 
 export function OwnerDonations() {
   const [page, setPage] = useState(0);
+  const limit = 20;
   const [discordIdInput, setDiscordIdInput] = useState("");
   const [statusFilter, setStatusFilter] = useState<DonationStatus | "all">(
     "all",
@@ -136,12 +138,15 @@ export function OwnerDonations() {
 
   const statsQuery = trpc.owner.donations.stats.useQuery();
   const subStatsQuery = trpc.owner.donations.subscriptionStats.useQuery();
-  const listQuery = trpc.owner.donations.list.useQuery({
-    page,
-    limit: 20,
-    discordId: debouncedDiscordId || undefined,
-    status: statusFilter !== "all" ? statusFilter : undefined,
-  });
+  const listQuery = trpc.owner.donations.list.useQuery(
+    {
+      page,
+      limit,
+      discordId: debouncedDiscordId || undefined,
+      status: statusFilter !== "all" ? statusFilter : undefined,
+    },
+    { placeholderData: keepPreviousData },
+  );
 
   const filteredDonations =
     typeFilter === "all"
@@ -155,43 +160,9 @@ export function OwnerDonations() {
   const totalPages = pagination
     ? Math.ceil(pagination.total / pagination.limit)
     : 0;
+  const loading = listQuery.isLoading || listQuery.isPlaceholderData;
+  const loadingRows = loadingRowCount(page, limit, total);
   const error = listQuery.error?.message ?? null;
-
-  const handlePageChange = useCallback((newPage: number) => {
-    setPage(newPage);
-  }, []);
-
-  const getPaginationItems = useCallback(() => {
-    const items: (number | "ellipsis")[] = [];
-    const maxVisible = 5;
-
-    if (totalPages <= maxVisible) {
-      return Array.from({ length: totalPages }, (_, i) => i);
-    }
-
-    items.push(0);
-
-    if (page <= 2) {
-      items.push(1, 2, 3);
-      items.push("ellipsis");
-      items.push(totalPages - 1);
-    } else if (page >= totalPages - 3) {
-      items.push("ellipsis");
-      items.push(
-        totalPages - 4,
-        totalPages - 3,
-        totalPages - 2,
-        totalPages - 1,
-      );
-    } else {
-      items.push("ellipsis");
-      items.push(page - 1, page, page + 1);
-      items.push("ellipsis");
-      items.push(totalPages - 1);
-    }
-
-    return items;
-  }, [page, totalPages]);
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -382,11 +353,7 @@ export function OwnerDonations() {
             </CardTitle>
           </CardHeader>
 
-          {listQuery.isLoading ? (
-            <CardContent className="flex flex-1 items-center justify-center py-12">
-              <Loading size="medium" text="Loading donations..." />
-            </CardContent>
-          ) : error ? (
+          {error ? (
             <CardContent className="flex flex-1 items-center justify-center py-12">
               <div className="text-center">
                 <p className="text-destructive">{error}</p>
@@ -399,7 +366,7 @@ export function OwnerDonations() {
                 </Button>
               </div>
             </CardContent>
-          ) : donations.length === 0 ? (
+          ) : !loading && donations.length === 0 ? (
             <CardContent className="flex flex-1 items-center justify-center py-12">
               <div className="text-center">
                 <Heart className="mx-auto size-12 text-muted-foreground" />
@@ -412,66 +379,25 @@ export function OwnerDonations() {
                 <DataTable
                   columns={DONATION_COLUMNS}
                   rows={donations}
+                  loading={loading}
+                  loadingRows={loadingRows}
                   rowKey={(d) => d.id}
                 />
               </CardContent>
 
-              <CardFooter className="flex-col gap-3 border-t sm:flex-row sm:flex-wrap sm:items-center">
-                <p className="text-sm text-muted-foreground">
-                  Showing {page * 20 + 1}-{Math.min((page + 1) * 20, total)} of{" "}
-                  {total} donations
-                </p>
-
-                <PaginationContent className="justify-baseline sm:ml-auto sm:justify-end">
-                  <PaginationItem>
-                    <PaginationPrevious
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        if (page > 0) handlePageChange(page - 1);
-                      }}
-                      className={cn(
-                        page === 0 && "pointer-events-none opacity-50",
-                      )}
-                    />
-                  </PaginationItem>
-
-                  {getPaginationItems().map((item, index) => (
-                    <PaginationItem
-                      key={item === "ellipsis" ? `ellipsis-${index}` : item}
-                    >
-                      {item === "ellipsis" ? (
-                        <PaginationEllipsis />
-                      ) : (
-                        <PaginationLink
-                          href="#"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            handlePageChange(item);
-                          }}
-                          isActive={page === item}
-                        >
-                          {item + 1}
-                        </PaginationLink>
-                      )}
-                    </PaginationItem>
-                  ))}
-
-                  <PaginationItem>
-                    <PaginationNext
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        if (page < totalPages - 1) handlePageChange(page + 1);
-                      }}
-                      className={cn(
-                        page >= totalPages - 1 &&
-                          "pointer-events-none opacity-50",
-                      )}
-                    />
-                  </PaginationItem>
-                </PaginationContent>
-              </CardFooter>
+              {total > 0 && (
+                <CardFooter className="border-t">
+                  <Paginator
+                    page={page}
+                    limit={limit}
+                    total={total}
+                    totalPages={totalPages}
+                    onPageChange={setPage}
+                    itemLabel="donation"
+                    className="w-full"
+                  />
+                </CardFooter>
+              )}
             </>
           )}
         </Card>

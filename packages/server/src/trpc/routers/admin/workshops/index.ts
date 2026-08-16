@@ -21,8 +21,19 @@ const searchLimit = createRateLimit({
   key: (ctx) => ctx.user?.discordId ?? "anonymous",
 });
 
+const workshopSlug = z
+  .string()
+  .trim()
+  .min(1)
+  .max(100)
+  .regex(
+    /^[a-z0-9-]+$/,
+    "Slug may only contain lowercase letters, numbers, and hyphens",
+  );
+
 const workshopPatch = z.object({
   name: z.string().trim().min(1).max(120).optional(),
+  slug: workshopSlug.optional(),
   description: z.string().trim().max(2000).nullable().optional(),
   status: z.enum(WORKSHOP_STATUSES).optional(),
   classId: id().optional(),
@@ -50,16 +61,7 @@ export const adminWorkshopsRouter = router({
     .input(
       z.object({
         name: z.string().trim().min(1).max(120),
-        slug: z
-          .string()
-          .trim()
-          .min(1)
-          .max(100)
-          .regex(
-            /^[a-z0-9-]+$/,
-            "Slug may only contain lowercase letters, numbers, and hyphens",
-          )
-          .optional(),
+        slug: workshopSlug.optional(),
         description: z.string().trim().max(2000).optional(),
         gameVersion: z.string().trim().min(1).max(20),
         modLoaderType: z.number().int().min(0),

@@ -1,15 +1,25 @@
-import {
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-  EmbedBuilder,
-} from "discord.js";
 import { Q } from "@/db";
-import { discordTimestamp } from "@/utils/format";
+import { discordTimestamp, pluralize } from "@/utils/format";
+import { PlayerPromptComponentPresets } from "@/discord/components/presets/player-prompt";
 import type { DiscordMessageService } from "@/services/discord/message/message.service";
 import type { PlayerPrompt } from "@createrington/shared/db/player_prompt.types";
+import type { PlayerPromptEntryModeValue } from "@createrington/shared/player-prompt";
 
 const MAX_MISSED_CLOSE_TOLERANCE_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Outcome of the entry gate: either the responder may open the modal (with
+ * the text to prefill and the entry slot they're filling), or they may not
+ * and `message` explains why in Discord-ready copy.
+ */
+export type PlayerPromptEntryDecision =
+  | { allowed: false; message: string }
+  | {
+      allowed: true;
+      prompt: PlayerPrompt;
+      prefill: string | null;
+      entryNumber: number;
+    };
 
 /**
  * Node clamps setTimeout delays larger than the int32 ceiling
@@ -26,6 +36,12 @@ const MAX_TIMER_MS = 2_000_000_000;
  * create → post to Discord with a Respond button → accept modal responses
  * → close at `ends_at` (or on demand) → edit the Discord message to show
  * a closed state with response count.
+ *
+ * Also the single source of truth for the entry rules. `single` prompts give
+ * each player one editable answer; `multi` prompts let them stack entries up
+ * to `maxEntries`, spaced by `cooldownSeconds`. Both the button (before the
+ * modal opens) and the modal submit run the same gate, so a modal left open
+ * past the limit still can't sneak an entry through.
  *
  * Uses setTimeout handles keyed by prompt id, mirroring MaintenanceScheduler.
  * On startup, `initialize()` reloads every active prompt and re-arms its
@@ -91,9 +107,14 @@ export class PlayerPromptService {
     rolePingId?: string | null;
     durationMs: number;
     createdBy: string;
+    entryMode?: PlayerPromptEntryModeValue;
+    maxEntries?: number | null;
+    cooldownSeconds?: number | null;
   }): Promise<PlayerPrompt> {
     const startsAt = new Date();
     const endsAt = new Date(startsAt.getTime() + opts.durationMs);
+    const entryMode = opts.entryMode ?? "single";
+    const isMulti = entryMode === "multi";
 
     const prompt = await Q.player.prompt.createAndReturn({
       question: opts.question,
@@ -104,6 +125,9 @@ export class PlayerPromptService {
       endsAt,
       status: "active",
       createdBy: opts.createdBy,
+      entryMode,
+      maxEntries: isMulti ? (opts.maxEntries ?? null) : null,
+      cooldownSeconds: isMulti ? (opts.cooldownSeconds ?? null) : null,
     });
 
     const post = await this.postAnnouncement(prompt);
@@ -133,31 +157,105 @@ export class PlayerPromptService {
     return { ...prompt, messageId: post.messageId };
   }
 
-  /** Upserts a response for the given prompt. Rejects if the prompt is closed or past its end time. */
+  /**
+   * Whether the responder may open the respond modal right now, plus the
+   * text to prefill it with. Single-mode prompts prefill the existing answer
+   * so a second click edits instead of retyping; multi-mode prompts always
+   * open blank and are refused once the cap or cooldown bites.
+   */
+  async prepareEntry(
+    promptId: number,
+    discordId: string,
+  ): Promise<PlayerPromptEntryDecision> {
+    const prompt = await Q.player.prompt.find({ id: promptId });
+    if (!prompt) {
+      return { allowed: false, message: "That prompt no longer exists." };
+    }
+
+    const closed = this.closedMessage(prompt);
+    if (closed) return { allowed: false, message: closed };
+
+    if (prompt.entryMode === "single") {
+      const existing = await Q.player.prompt.response.findLatestEntry(
+        promptId,
+        discordId,
+      );
+      return {
+        allowed: true,
+        prompt,
+        prefill: existing?.responseText ?? null,
+        entryNumber: 1,
+      };
+    }
+
+    const stats = await Q.player.prompt.response.getEntryStats(
+      promptId,
+      discordId,
+    );
+
+    if (prompt.maxEntries !== null && stats.entryCount >= prompt.maxEntries) {
+      return {
+        allowed: false,
+        message: this.capReachedMessage(prompt.maxEntries),
+      };
+    }
+
+    const nextAllowedAt = this.nextEntryAt(prompt, stats.lastSubmittedAt);
+    if (nextAllowedAt) {
+      return { allowed: false, message: this.cooldownMessage(nextAllowedAt) };
+    }
+
+    return {
+      allowed: true,
+      prompt,
+      prefill: null,
+      entryNumber: stats.lastEntryNumber + 1,
+    };
+  }
+
+  /**
+   * Records a modal submission, re-running the entry gate first. Returns the
+   * ephemeral copy to show the responder rather than throwing on a refusal:
+   * only infrastructure failures escape as exceptions.
+   */
   async submitResponse(opts: {
     promptId: number;
     discordId: string;
     responseText: string;
-  }): Promise<{ endsAt: Date }> {
-    const prompt = await Q.player.prompt.find({ id: opts.promptId });
-    if (!prompt) throw new Error("Prompt not found");
-    if (prompt.status !== "active") {
-      throw new Error("This prompt is closed");
-    }
-    if (prompt.endsAt.getTime() <= Date.now()) {
-      throw new Error("This prompt has already ended");
-    }
+  }): Promise<string> {
+    const decision = await this.prepareEntry(opts.promptId, opts.discordId);
+    if (!decision.allowed) return decision.message;
 
+    const { prompt } = decision;
     // Resolve the responder's Minecraft account if they've linked Discord.
     const player = await Q.player.find({ discordId: opts.discordId });
-    await Q.player.prompt.response.upsert({
+    const write = {
       promptId: opts.promptId,
       discordId: opts.discordId,
       minecraftUuid: player?.minecraftUuid ?? null,
       responseText: opts.responseText,
-    });
+    };
 
-    return { endsAt: prompt.endsAt };
+    if (prompt.entryMode === "single") {
+      await Q.player.prompt.response.upsertSingleEntry(write);
+      return `Recorded. You can edit your response until ${discordTimestamp(prompt.endsAt)}.`;
+    }
+
+    const entry = await Q.player.prompt.response.appendEntry({
+      ...write,
+      maxEntries: prompt.maxEntries,
+      cooldownSeconds: prompt.cooldownSeconds,
+    });
+    // Null means the cap or the cooldown bit between the gate read and the
+    // insert, which enforces both itself. A concurrent submission loses here
+    // rather than slipping past the snapshot the gate saw.
+    if (!entry) return this.explainRefusedEntry(prompt, opts.discordId);
+
+    const stats = await Q.player.prompt.response.getEntryStats(
+      opts.promptId,
+      opts.discordId,
+    );
+    return this.buildEntryConfirmation(prompt, entry.entryNumber, stats);
   }
 
   /**
@@ -178,16 +276,21 @@ export class PlayerPromptService {
 
     await Q.player.prompt.update({ id: promptId }, { status: "closed" });
 
-    const responseCount = await Q.player.prompt.response.count({
-      promptId,
-    });
+    const totals = await Q.player.prompt.response.countByPrompt(promptId);
 
     if (prompt.messageId) {
+      const closed = PlayerPromptComponentPresets.closed(prompt, totals);
       const result = await this.messageService.edit({
         channelId: prompt.channelId,
         messageId: prompt.messageId,
-        embeds: this.buildClosedEmbed(prompt, responseCount),
-        components: [this.buildDisabledButtonRow(promptId)],
+        // Prompts posted before the Components V2 switch still carry content
+        // (the role mention) and an embed. Discord accepts the V2 flag on
+        // edit only when both are empty, so clear them explicitly; the
+        // mention comes back as a text display inside `closed.components`.
+        content: null,
+        embeds: null,
+        components: closed.components,
+        flags: closed.flags,
       });
       if (!result.success) {
         logger.warn(
@@ -196,24 +299,18 @@ export class PlayerPromptService {
       }
     }
 
-    logger.info(`Closed prompt #${promptId} with ${responseCount} responses`);
+    logger.info(
+      `Closed prompt #${promptId} with ${totals.entryCount} entries from ${totals.responderCount} responders`,
+    );
   }
 
   private async postAnnouncement(prompt: PlayerPrompt) {
-    const embed = this.buildActiveEmbed(prompt);
-    const row = this.buildRespondButtonRow(prompt.id);
-    // Wrap the role mention in Discord spoiler tags (`||...||`) so the
-    // message looks clean in the channel but still fires the ping. The
-    // mention sits in `content`, which renders above the embed.
-    const mention = prompt.rolePingId
-      ? `||<@&${prompt.rolePingId}>||`
-      : undefined;
+    const active = PlayerPromptComponentPresets.active(prompt);
 
     return this.messageService.send({
       channelId: prompt.channelId,
-      content: mention,
-      embeds: embed,
-      components: [row],
+      components: active.components,
+      flags: active.flags,
       // Defense in depth: even though the Zod validator already
       // restricts rolePingId to digits, this ensures Discord will
       // refuse to ping anything else (especially @everyone/@here)
@@ -242,70 +339,92 @@ export class PlayerPromptService {
     }
   }
 
-  private buildActiveEmbed(prompt: PlayerPrompt): EmbedBuilder {
-    const embed = new EmbedBuilder()
-      .setTitle(prompt.question)
-      .setColor(0xe6b800)
-      .setTimestamp(prompt.startsAt);
-
-    if (prompt.description) {
-      embed.setDescription(prompt.description);
+  private closedMessage(prompt: PlayerPrompt): string | null {
+    if (prompt.status !== "active" || prompt.endsAt.getTime() <= Date.now()) {
+      return prompt.entryMode === "multi"
+        ? "This prompt is closed. Entries are no longer accepted."
+        : "This prompt is closed. Responses are no longer accepted.";
     }
-
-    embed.addFields({
-      name: "Closes",
-      value: discordTimestamp(prompt.endsAt, "R"),
-    });
-
-    embed.setFooter({
-      text: "Click Respond to answer. You can edit your reply until it closes.",
-    });
-
-    return embed;
+    return null;
   }
 
-  private buildClosedEmbed(
+  private nextEntryAt(
     prompt: PlayerPrompt,
-    responseCount: number,
-  ): EmbedBuilder {
-    const embed = new EmbedBuilder()
-      .setTitle(prompt.question)
-      .setColor(0x6b7280)
-      .setTimestamp(prompt.startsAt);
+    lastSubmittedAt: Date | null,
+  ): Date | null {
+    if (!prompt.cooldownSeconds || !lastSubmittedAt) return null;
+    const readyAt = new Date(
+      lastSubmittedAt.getTime() + prompt.cooldownSeconds * 1000,
+    );
+    return readyAt.getTime() > Date.now() ? readyAt : null;
+  }
 
-    if (prompt.description) {
-      embed.setDescription(prompt.description);
+  private capReachedMessage(cap: number): string {
+    return `You've used all ${cap} of your ${pluralize(cap, "entry", "entries")} on this prompt.`;
+  }
+
+  private cooldownMessage(readyAt: Date): string {
+    return `You're on cooldown. You can add your next entry ${discordTimestamp(readyAt)}.`;
+  }
+
+  /**
+   * Which rule refused an append. The insert enforces the cap and the
+   * cooldown itself, so a null result means one of them bit after the gate
+   * read; this re-reads to name the right one.
+   */
+  private async explainRefusedEntry(
+    prompt: PlayerPrompt,
+    discordId: string,
+  ): Promise<string> {
+    const stats = await Q.player.prompt.response.getEntryStats(
+      prompt.id,
+      discordId,
+    );
+
+    if (prompt.maxEntries !== null && stats.entryCount >= prompt.maxEntries) {
+      return this.capReachedMessage(prompt.maxEntries);
     }
 
-    embed.addFields({
-      name: "Status",
-      value: `Closed - ${responseCount} response${responseCount === 1 ? "" : "s"} received.`,
-    });
+    const nextAllowedAt = this.nextEntryAt(prompt, stats.lastSubmittedAt);
+    if (nextAllowedAt) return this.cooldownMessage(nextAllowedAt);
 
-    return embed;
+    return "Couldn't record that entry. Please try again.";
   }
 
-  private buildRespondButtonRow(
-    promptId: number,
-  ): ActionRowBuilder<ButtonBuilder> {
-    return new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder()
-        .setCustomId(`prompt:respond:${promptId}`)
-        .setLabel("Respond")
-        .setStyle(ButtonStyle.Primary),
-    );
-  }
+  /**
+   * Remaining entries come from the same row count the gate reads, not from
+   * the entry number, so a gap in numbering can never inflate what the
+   * responder is told is left.
+   */
+  private buildEntryConfirmation(
+    prompt: PlayerPrompt,
+    entryNumber: number,
+    stats: { entryCount: number },
+  ): string {
+    const parts = [`Entry #${entryNumber} recorded.`];
+    const remaining =
+      prompt.maxEntries === null
+        ? null
+        : Math.max(0, prompt.maxEntries - stats.entryCount);
 
-  private buildDisabledButtonRow(
-    promptId: number,
-  ): ActionRowBuilder<ButtonBuilder> {
-    return new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder()
-        .setCustomId(`prompt:respond:${promptId}`)
-        .setLabel("Responses closed")
-        .setStyle(ButtonStyle.Secondary)
-        .setDisabled(true),
-    );
+    if (remaining === 0) {
+      parts.push("That was your last entry on this prompt.");
+      return parts.join(" ");
+    }
+    if (remaining !== null) {
+      parts.push(
+        `You have ${remaining} ${pluralize(remaining, "entry", "entries")} left.`,
+      );
+    }
+    if (prompt.cooldownSeconds) {
+      const readyAt = new Date(Date.now() + prompt.cooldownSeconds * 1000);
+      parts.push(`You can add another ${discordTimestamp(readyAt)}.`);
+    } else {
+      parts.push(
+        `You can add another any time before ${discordTimestamp(prompt.endsAt)}.`,
+      );
+    }
+    return parts.join(" ");
   }
 
   /**

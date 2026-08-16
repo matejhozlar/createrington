@@ -124,6 +124,22 @@ export function formatDuration(start: Date, end: Date = new Date()): string {
 }
 
 /**
+ * Formats a bare span of seconds, for durations that aren't anchored to a
+ * pair of dates (a cooldown length, a configured interval).
+ *
+ * @param seconds - The span in seconds
+ * @returns Human-readable duration string
+ *
+ * @example
+ * formatSeconds(45)     // "45 seconds"
+ * formatSeconds(900)    // "15 minutes"
+ * formatSeconds(5400)   // "1 hour and 30 minutes"
+ */
+export function formatSeconds(seconds: number): string {
+  return formatDuration(new Date(0), new Date(seconds * 1000));
+}
+
+/**
  * Converts a Date to whole seconds since the Unix epoch, the unit Discord's
  * `<t:...>` timestamp markup expects.
  *

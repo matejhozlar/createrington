@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useParams, useSearchParams } from "react-router";
+import { useNavigate, useParams, useSearchParams } from "react-router";
 import { PackagePlus, Settings2 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
@@ -62,6 +62,7 @@ const SKIP_CONFIRM_SESSION_KEY = "workshop-admin-skip-confirms";
 
 export function AdminWorkshopDetail() {
   const { slug } = useParams<{ slug: string }>();
+  const navigate = useNavigate();
   const toast = useToastActions();
   const utils = trpc.useUtils();
 
@@ -451,6 +452,9 @@ export function AdminWorkshopDetail() {
         onOpenChange={setSettingsOpen}
         workshop={workshop}
         hasMods={mods.length > 0}
+        onSlugChange={(nextSlug) =>
+          navigate(`/admin/tools/workshop/${nextSlug}`, { replace: true })
+        }
       />
 
       <ConfirmActionDialog

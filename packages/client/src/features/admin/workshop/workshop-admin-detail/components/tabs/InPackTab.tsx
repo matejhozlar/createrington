@@ -29,7 +29,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { CellDate, CellText } from "@/components/cell-text";
-import { DataTable, type DataTableColumn } from "@/components/data-table";
+import {
+  BadgeCellSkeleton,
+  DataTable,
+  type DataTableColumn,
+} from "@/components/data-table";
 import { PlayerLabel } from "@/components/player-label";
 import {
   Select,
@@ -39,14 +43,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { FilterBar } from "@/features/admin/components/FilterBar";
-import {
-  CardEmpty,
-  CardError,
-  CardLoading,
-} from "@/features/admin/components/CardState";
+import { CardEmpty, CardError } from "@/features/admin/components/CardState";
 import { formatDate } from "@/features/workshop/format";
 import type { PackMod, ReleaseMod } from "../../types";
-import { ModCell } from "../ModCell";
+import { ModCell, ModCellSkeleton } from "../ModCell";
 
 const MODS_PER_PAGE = 10;
 
@@ -244,6 +244,7 @@ export function InPackTab({
       key: "mod",
       header: "Mod",
       minWidth: 220,
+      skeleton: () => <ModCellSkeleton />,
       render: (row) => (
         <ModCell
           name={row.project.name}
@@ -287,6 +288,7 @@ export function InPackTab({
       key: "publishState",
       header: "Publish State",
       width: 150,
+      skeleton: () => <BadgeCellSkeleton />,
       render: (row) => {
         const state = publishState(row);
         return (
@@ -307,6 +309,7 @@ export function InPackTab({
       key: "mod",
       header: "Mod",
       minWidth: 220,
+      skeleton: () => <ModCellSkeleton />,
       render: (row) => (
         <ModCell
           name={row.projectName}
@@ -435,18 +438,16 @@ export function InPackTab({
         </CardHeader>
 
         {isCurrent ? (
-          isLoading ? (
-            <CardLoading text="Loading pack members..." />
-          ) : error ? (
+          error ? (
             <CardError message={error} onRetry={onRetry} />
-          ) : rows.length === 0 ? (
+          ) : !isLoading && rows.length === 0 ? (
             <CardEmpty
               icon={Package}
               message={
                 unlinked ? "Nothing imported yet" : "Nothing published yet"
               }
             />
-          ) : currentFiltered.length === 0 ? (
+          ) : !isLoading && currentFiltered.length === 0 ? (
             <CardEmpty icon={Search} message="No mods match your search" />
           ) : (
             <CardContent className="px-0">
@@ -456,6 +457,8 @@ export function InPackTab({
                   page * MODS_PER_PAGE,
                   (page + 1) * MODS_PER_PAGE,
                 )}
+                loading={isLoading}
+                loadingRows={MODS_PER_PAGE}
                 rowKey={(row) => row.id}
               />
               <Paginator
@@ -469,16 +472,14 @@ export function InPackTab({
               />
             </CardContent>
           )
-        ) : releaseModsQuery.isLoading ? (
-          <CardLoading text="Loading release..." />
         ) : releaseModsQuery.error ? (
           <CardError
             message={releaseModsQuery.error.message}
             onRetry={() => releaseModsQuery.refetch()}
           />
-        ) : releaseRows.length === 0 ? (
+        ) : !releaseModsQuery.isLoading && releaseRows.length === 0 ? (
           <CardEmpty icon={Package} message="This release recorded no mods" />
-        ) : releaseFiltered.length === 0 ? (
+        ) : !releaseModsQuery.isLoading && releaseFiltered.length === 0 ? (
           <CardEmpty icon={Search} message="No mods match your search" />
         ) : (
           <CardContent className="px-0">
@@ -488,6 +489,8 @@ export function InPackTab({
                 page * MODS_PER_PAGE,
                 (page + 1) * MODS_PER_PAGE,
               )}
+              loading={releaseModsQuery.isLoading}
+              loadingRows={MODS_PER_PAGE}
               rowKey={(row) => `${row.curseforgeProjectId}-${row.fileId}`}
             />
             <Paginator

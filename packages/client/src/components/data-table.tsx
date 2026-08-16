@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import * as React from "react";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -15,6 +16,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -30,6 +32,7 @@ import {
 } from "@/components/ui/tooltip";
 
 const INLINE_ACTION_LIMIT = 2;
+const DEFAULT_LOADING_ROWS = 10;
 const CELL_PADDING = 32;
 const ACTION_BUTTON_WIDTH = 38;
 const ACTION_GAP = 8;
@@ -47,6 +50,7 @@ export type DataTableColumn<T> = {
   sorted?: "asc" | "desc" | false;
   onSort?: () => void;
   render: (row: T, index: number) => React.ReactNode;
+  skeleton?: () => React.ReactNode;
 };
 
 export type DataTableAction = {
@@ -63,6 +67,40 @@ const ALIGN_CLASSES = {
   center: "text-center",
   right: "text-right",
 } as const;
+
+export function loadingRowCount(
+  page: number,
+  limit: number,
+  total: number,
+): number {
+  return total > 0 ? Math.min(limit, Math.max(total - page * limit, 1)) : limit;
+}
+
+export function BadgeCellSkeleton({ className }: { className?: string }) {
+  return <Skeleton className={cn("h-[22px] w-14 rounded-full", className)} />;
+}
+
+export function TwoLineCellSkeleton({ className }: { className?: string }) {
+  return (
+    <div className={cn("min-w-0", className)}>
+      <div className="flex h-5 items-center">
+        <Skeleton className="h-4 w-28" />
+      </div>
+      <div className="flex h-4 items-center">
+        <Skeleton className="h-3 w-20" />
+      </div>
+    </div>
+  );
+}
+
+export function AvatarCellSkeleton({ className }: { className?: string }) {
+  return (
+    <div className={cn("flex items-center gap-3", className)}>
+      <Skeleton className="size-8 shrink-0 rounded-xs" />
+      <TwoLineCellSkeleton />
+    </div>
+  );
+}
 
 function SortIcon({ sorted }: { sorted: "asc" | "desc" | false }) {
   if (sorted === "asc") return <ArrowUp className="size-3.5" />;
@@ -214,6 +252,8 @@ export function DataTable<T>({
   renderExpanded,
   headerClassName,
   headCellClassName,
+  loading = false,
+  loadingRows = DEFAULT_LOADING_ROWS,
 }: {
   columns: DataTableColumn<T>[];
   rows: T[];
@@ -227,15 +267,19 @@ export function DataTable<T>({
   renderExpanded?: (row: T) => React.ReactNode;
   headerClassName?: string;
   headCellClassName?: string;
+  loading?: boolean;
+  loadingRows?: number;
 }) {
-  const rowActions = actions ? rows.map((row) => actions(row)) : null;
+  const hasActions = Boolean(actions);
+  const rowActions =
+    actions && !loading ? rows.map((row) => actions(row)) : null;
   const actionsWidth =
     CELL_PADDING +
     Math.max(actionSlots, 1) * ACTION_BUTTON_WIDTH +
     Math.max(actionSlots - 1, 0) * ACTION_GAP;
   const fixedWidth =
     columns.reduce((sum, column) => sum + (column.width ?? 0), 0) +
-    (rowActions ? actionsWidth : 0);
+    (hasActions ? actionsWidth : 0);
   const flexMinWidths = columns
     .filter((column) => !column.width)
     .map((column) => column.minWidth ?? FLEX_COLUMN_MIN_WIDTH);
@@ -293,7 +337,7 @@ export function DataTable<T>({
             style={column.width ? { width: column.width } : undefined}
           />
         ))}
-        {rowActions && <col style={{ width: actionsWidth }} />}
+        {hasActions && <col style={{ width: actionsWidth }} />}
       </colgroup>
       <TableHeader className={headerClassName ?? "bg-sidebar-accent/50"}>
         <TableRow>
@@ -320,7 +364,7 @@ export function DataTable<T>({
               )}
             </TableHead>
           ))}
-          {rowActions && (
+          {hasActions && (
             <TableHead className={cn("px-4", headCellClassName)}>
               <span className="sr-only">Actions</span>
             </TableHead>
@@ -328,70 +372,118 @@ export function DataTable<T>({
         </TableRow>
       </TableHeader>
       <TableBody>
-        {rows.map((row, index) => {
-          const key = rowKey(row);
-          return (
-            <React.Fragment key={key}>
-              <TableRow
-                data-row-key={key}
-                tabIndex={onRowClick ? 0 : undefined}
-                className={cn(
-                  onRowClick && "cursor-pointer",
-                  rowClassName?.(row),
-                )}
-                onClick={
-                  onRowClick ? (event) => handleRowClick(event, row) : undefined
-                }
-                onKeyDown={
-                  onRowClick
-                    ? (event) => handleRowKeyDown(event, row)
-                    : undefined
-                }
-              >
-                {columns.map((column) => {
-                  const content = column.render(row, index);
-                  const empty =
-                    content == null || content === "" || content === false;
-                  return (
-                    <TableCell
-                      key={column.key}
+        {loading &&
+          Array.from({ length: loadingRows }, (_, index) => (
+            <TableRow key={index}>
+              {columns.map((column) => (
+                <TableCell
+                  key={column.key}
+                  className={cn(
+                    "overflow-hidden px-4",
+                    ALIGN_CLASSES[column.align ?? "left"],
+                    column.cellClassName,
+                  )}
+                >
+                  {column.skeleton ? (
+                    column.skeleton()
+                  ) : (
+                    <div
                       className={cn(
-                        "overflow-hidden px-4",
-                        ALIGN_CLASSES[column.align ?? "left"],
-                        column.cellClassName,
+                        "flex h-5 items-center",
+                        column.align === "right" && "justify-end",
+                        column.align === "center" && "justify-center",
                       )}
                     >
-                      {empty ? (
-                        <span className="text-muted-foreground">-</span>
-                      ) : (
-                        content
-                      )}
-                    </TableCell>
-                  );
-                })}
-                {rowActions && (
-                  <TableCell className="px-4">
-                    <RowActionGroup
-                      actions={rowActions[index]}
-                      busy={isRowBusy?.(row) ?? false}
-                      menuOnly={actionSlots === 0}
-                    />
-                  </TableCell>
-                )}
-              </TableRow>
-              {renderExpanded && expandedKey === key && (
-                <TableRow>
-                  <TableCell
-                    colSpan={columns.length + (rowActions ? 1 : 0)}
-                    className="bg-muted/30 p-4"
-                  >
-                    {renderExpanded(row)}
-                  </TableCell>
-                </TableRow>
+                      <Skeleton className="h-4 w-3/5 max-w-32" />
+                    </div>
+                  )}
+                </TableCell>
+              ))}
+              {hasActions && (
+                <TableCell className="px-4">
+                  <div className="flex justify-end gap-2">
+                    {Array.from(
+                      { length: Math.max(actionSlots, 1) },
+                      (_, slot) => (
+                        <Skeleton
+                          key={slot}
+                          className="h-8"
+                          style={{ width: ACTION_BUTTON_WIDTH }}
+                        />
+                      ),
+                    )}
+                  </div>
+                </TableCell>
               )}
-            </React.Fragment>
-          );
-        })}
+            </TableRow>
+          ))}
+        {!loading &&
+          rows.map((row, index) => {
+            const key = rowKey(row);
+            return (
+              <React.Fragment key={key}>
+                <TableRow
+                  data-row-key={key}
+                  tabIndex={onRowClick ? 0 : undefined}
+                  className={cn(
+                    onRowClick && "cursor-pointer",
+                    rowClassName?.(row),
+                  )}
+                  onClick={
+                    onRowClick
+                      ? (event) => handleRowClick(event, row)
+                      : undefined
+                  }
+                  onKeyDown={
+                    onRowClick
+                      ? (event) => handleRowKeyDown(event, row)
+                      : undefined
+                  }
+                >
+                  {columns.map((column) => {
+                    const content = column.render(row, index);
+                    const empty =
+                      content == null || content === "" || content === false;
+                    return (
+                      <TableCell
+                        key={column.key}
+                        className={cn(
+                          "overflow-hidden px-4",
+                          ALIGN_CLASSES[column.align ?? "left"],
+                          column.cellClassName,
+                        )}
+                      >
+                        {empty ? (
+                          <span className="text-muted-foreground">-</span>
+                        ) : (
+                          content
+                        )}
+                      </TableCell>
+                    );
+                  })}
+                  {rowActions && (
+                    <TableCell className="px-4">
+                      <RowActionGroup
+                        actions={rowActions[index]}
+                        busy={isRowBusy?.(row) ?? false}
+                        menuOnly={actionSlots === 0}
+                      />
+                    </TableCell>
+                  )}
+                </TableRow>
+                {renderExpanded && expandedKey === key && (
+                  <TableRow>
+                    <TableCell
+                      colSpan={columns.length + (rowActions ? 1 : 0)}
+                      className="bg-muted/30 p-4"
+                    >
+                      {renderExpanded(row)}
+                    </TableCell>
+                  </TableRow>
+                )}
+              </React.Fragment>
+            );
+          })}
       </TableBody>
     </Table>
   );

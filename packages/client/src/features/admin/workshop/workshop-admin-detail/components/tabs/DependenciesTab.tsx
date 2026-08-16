@@ -13,22 +13,19 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
+  BadgeCellSkeleton,
   DataTable,
   type DataTableAction,
   type DataTableColumn,
 } from "@/components/data-table";
 import { FilterBar } from "@/features/admin/components/FilterBar";
-import {
-  CardEmpty,
-  CardError,
-  CardLoading,
-} from "@/features/admin/components/CardState";
+import { CardEmpty, CardError } from "@/features/admin/components/CardState";
 import {
   DEPENDENCY_COVERAGE_STYLES,
   dependencyIsCovered,
 } from "@/features/workshop/format";
 import type { WorkshopDependency } from "../../types";
-import { ModCell } from "../ModCell";
+import { ModCell, ModCellSkeleton } from "../ModCell";
 
 const DEPS_PER_PAGE = 10;
 
@@ -88,6 +85,7 @@ export function DependenciesTab({
       key: "dependency",
       header: "Dependency",
       minWidth: 220,
+      skeleton: () => <ModCellSkeleton />,
       render: (row) => (
         <ModCell
           name={dependencyName(row)}
@@ -132,6 +130,7 @@ export function DependenciesTab({
       key: "type",
       header: "Type",
       width: 110,
+      skeleton: () => <BadgeCellSkeleton />,
       render: (row) => (
         <Badge variant={row.requiredBy.length > 0 ? "outline" : "secondary"}>
           {row.requiredBy.length > 0 ? "Required" : "Optional"}
@@ -142,6 +141,7 @@ export function DependenciesTab({
       key: "coverage",
       header: "Coverage",
       width: 170,
+      skeleton: () => <BadgeCellSkeleton />,
       render: (row) => {
         const style = DEPENDENCY_COVERAGE_STYLES[row.coverage];
         return style ? (
@@ -192,16 +192,14 @@ export function DependenciesTab({
           </CardDescription>
         </CardHeader>
 
-        {depsQuery.isLoading ? (
-          <CardLoading text="Loading dependencies..." />
-        ) : depsQuery.error ? (
+        {depsQuery.error ? (
           <CardError
             message={depsQuery.error.message}
             onRetry={() => depsQuery.refetch()}
           />
-        ) : rows.length === 0 ? (
+        ) : !depsQuery.isLoading && rows.length === 0 ? (
           <CardEmpty icon={Network} message="No dependencies pulled in yet" />
-        ) : filtered.length === 0 ? (
+        ) : !depsQuery.isLoading && filtered.length === 0 ? (
           <CardEmpty
             icon={Search}
             message="No dependencies match your search"
@@ -211,6 +209,8 @@ export function DependenciesTab({
             <DataTable
               columns={columns}
               rows={visible}
+              loading={depsQuery.isLoading}
+              loadingRows={DEPS_PER_PAGE}
               rowKey={(row) => row.curseforgeProjectId}
               actions={rowActions}
               actionSlots={1}

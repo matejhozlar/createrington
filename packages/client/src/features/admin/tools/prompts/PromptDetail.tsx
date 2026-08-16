@@ -5,11 +5,53 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MessageSquare, Lock, RefreshCw } from "lucide-react";
 import { mcHeadsAvatar } from "@/lib/external-urls";
-import { trpc } from "@/lib/trpc";
+import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
+import { describeEntryRules } from "./format";
+
+type ResponseRow = RouterOutput["admin"]["prompts"]["get"]["responses"][number];
+
+interface ResponderGroup {
+  discordId: string;
+  minecraftUuid: string | null;
+  minecraftUsername: string | null;
+  entries: ResponseRow[];
+}
 
 function formatTime(date: Date | string): string {
   return new Date(date).toLocaleString();
+}
+
+// The list is ordered by the newer of submitted/updated, so an edited answer
+// sorts to the top; label it with the edit time rather than the original
+// submission it would otherwise contradict.
+function formatEntryTime(entry: ResponseRow): string {
+  const submitted = new Date(entry.submittedAt).getTime();
+  const updated = new Date(entry.updatedAt).getTime();
+  return updated > submitted
+    ? `edited ${formatTime(entry.updatedAt)}`
+    : formatTime(entry.submittedAt);
+}
+
+function groupByResponder(responses: ResponseRow[]): ResponderGroup[] {
+  const groups = new Map<string, ResponderGroup>();
+  for (const response of responses) {
+    const existing = groups.get(response.discordId);
+    if (existing) {
+      existing.entries.push(response);
+      continue;
+    }
+    groups.set(response.discordId, {
+      discordId: response.discordId,
+      minecraftUuid: response.minecraftUuid,
+      minecraftUsername: response.minecraftUsername,
+      entries: [response],
+    });
+  }
+  for (const group of groups.values()) {
+    group.entries.sort((a, b) => a.entryNumber - b.entryNumber);
+  }
+  return [...groups.values()];
 }
 
 export function PromptDetail() {
@@ -55,8 +97,13 @@ export function PromptDetail() {
 
   const { prompt, responses, creator } = detailQuery.data;
   const isActive = prompt.status === "active";
+  const isMulti = prompt.entryMode === "multi";
   const authorLabel =
     creator?.minecraftUsername ?? `Discord user ${prompt.createdBy}`;
+  const groups = groupByResponder(responses);
+  const countLabel = isMulti
+    ? `${responses.length} ${responses.length === 1 ? "entry" : "entries"} from ${groups.length} ${groups.length === 1 ? "player" : "players"}`
+    : `${responses.length} response${responses.length === 1 ? "" : "s"}`;
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -78,6 +125,9 @@ export function PromptDetail() {
               <Badge variant={isActive ? "default" : "secondary"}>
                 {prompt.status}
               </Badge>
+              <Badge variant="outline">
+                {isMulti ? "Multiple entries" : "Single entry"}
+              </Badge>
             </div>
             {prompt.description && (
               <p className="text-sm text-muted-foreground">
@@ -87,8 +137,10 @@ export function PromptDetail() {
             <p className="text-xs text-muted-foreground">
               Created {formatTime(prompt.createdAt)} by{" "}
               <span className="font-medium">{authorLabel}</span> • Closes{" "}
-              {formatTime(prompt.endsAt)} • {responses.length} response
-              {responses.length === 1 ? "" : "s"}
+              {formatTime(prompt.endsAt)} • {countLabel}
+            </p>
+            <p className="text-xs text-muted-foreground/80">
+              {describeEntryRules(prompt)}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -124,15 +176,15 @@ export function PromptDetail() {
           </div>
         ) : (
           <ul className="flex flex-col gap-3">
-            {responses.map((r) => (
+            {groups.map((group) => (
               <li
-                key={r.id}
+                key={group.discordId}
                 className="flex gap-3 rounded-lg border border-border/60 bg-card p-3"
               >
-                {r.minecraftUuid ? (
+                {group.minecraftUuid ? (
                   <img
-                    src={mcHeadsAvatar(r.minecraftUuid)}
-                    alt={r.minecraftUsername ?? "player"}
+                    src={mcHeadsAvatar(group.minecraftUuid)}
+                    alt={group.minecraftUsername ?? "player"}
                     className="size-10 shrink-0 rounded bg-muted object-cover"
                     loading="lazy"
                   />
@@ -145,24 +197,43 @@ export function PromptDetail() {
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
                     <div className="flex items-baseline gap-2">
                       <span className="font-medium">
-                        {r.minecraftUsername ?? `Discord user ${r.discordId}`}
+                        {group.minecraftUsername ??
+                          `Discord user ${group.discordId}`}
                       </span>
-                      {!r.minecraftUsername && (
+                      {!group.minecraftUsername && (
                         <span className="text-xs text-muted-foreground">
                           (no linked Minecraft account)
                         </span>
                       )}
                     </div>
-                    <span
-                      className="text-xs text-muted-foreground"
-                      title={formatTime(r.submittedAt)}
-                    >
-                      {formatTime(r.submittedAt)}
+                    <span className="text-xs text-muted-foreground">
+                      {group.entries.length > 1
+                        ? `${group.entries.length} entries`
+                        : formatEntryTime(group.entries[0])}
                     </span>
                   </div>
-                  <p className="mt-1 whitespace-pre-wrap text-sm text-foreground">
-                    {r.responseText}
-                  </p>
+                  {group.entries.length === 1 ? (
+                    <p className="mt-1 whitespace-pre-wrap text-sm text-foreground">
+                      {group.entries[0].responseText}
+                    </p>
+                  ) : (
+                    <ol className="mt-2 flex flex-col gap-2">
+                      {group.entries.map((entry) => (
+                        <li
+                          key={entry.id}
+                          className="border-l-2 border-border/60 pl-3"
+                        >
+                          <div className="text-xs text-muted-foreground">
+                            Entry #{entry.entryNumber} •{" "}
+                            {formatEntryTime(entry)}
+                          </div>
+                          <p className="mt-0.5 whitespace-pre-wrap text-sm text-foreground">
+                            {entry.responseText}
+                          </p>
+                        </li>
+                      ))}
+                    </ol>
+                  )}
                 </div>
               </li>
             ))}

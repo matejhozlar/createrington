@@ -1,12 +1,17 @@
 import { useState } from "react";
+import { keepPreviousData } from "@tanstack/react-query";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
-import { Loading } from "@/components/loading-spinner";
 import { Paginator } from "@/components/paginator";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CellDate, CellText } from "@/components/cell-text";
-import { DataTable, type DataTableColumn } from "@/components/data-table";
+import {
+  BadgeCellSkeleton,
+  DataTable,
+  loadingRowCount,
+  type DataTableColumn,
+} from "@/components/data-table";
 import { ArrowLeftRight } from "lucide-react";
 
 interface TransactionsTabProps {
@@ -20,16 +25,21 @@ export function TransactionsTab({ playerId }: TransactionsTabProps) {
   const [page, setPage] = useState(0);
   const limit = 20;
 
-  const { data, isLoading, error, refetch } =
-    trpc.admin.players.transactions.list.useQuery({
-      id: playerId,
-      page,
-      limit,
-    });
+  const { data, isLoading, isPlaceholderData, error, refetch } =
+    trpc.admin.players.transactions.list.useQuery(
+      {
+        id: playerId,
+        page,
+        limit,
+      },
+      { placeholderData: keepPreviousData },
+    );
 
   const items = data?.items ?? [];
   const total = data?.pagination.total ?? 0;
   const totalPages = data?.pagination.totalPages ?? 0;
+  const loading = isLoading || isPlaceholderData;
+  const loadingRows = loadingRowCount(page, limit, total);
 
   const columns: DataTableColumn<Transaction>[] = [
     {
@@ -42,6 +52,7 @@ export function TransactionsTab({ playerId }: TransactionsTabProps) {
       key: "type",
       header: "Type",
       width: 150,
+      skeleton: () => <BadgeCellSkeleton />,
       render: (tx) => (
         <Badge variant="outline" className="max-w-full text-xs">
           <CellText value={tx.transactionType} className="min-w-0" />
@@ -105,11 +116,7 @@ export function TransactionsTab({ playerId }: TransactionsTabProps) {
         </div>
       </div>
 
-      {isLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loading size="medium" text="Loading transactions..." />
-        </div>
-      ) : error ? (
+      {error ? (
         <div className="flex items-center justify-center py-12">
           <div className="text-center">
             <p className="text-destructive">{error.message}</p>
@@ -122,7 +129,7 @@ export function TransactionsTab({ playerId }: TransactionsTabProps) {
             </Button>
           </div>
         </div>
-      ) : items.length === 0 ? (
+      ) : !loading && items.length === 0 ? (
         <div className="py-12 text-center">
           <ArrowLeftRight className="mx-auto size-12 text-muted-foreground" />
           <p className="mt-2 text-muted-foreground">No transactions found</p>
@@ -132,6 +139,8 @@ export function TransactionsTab({ playerId }: TransactionsTabProps) {
           <DataTable
             columns={columns}
             rows={items}
+            loading={loading}
+            loadingRows={loadingRows}
             rowKey={(tx) => tx.id}
             rowClassName={(tx) =>
               Number(tx.amount) >= 0

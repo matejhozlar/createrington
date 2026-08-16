@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { useStickyValue } from "@/hooks/use-sticky-value";
 import { useNavigate } from "react-router";
-import { Loading } from "@/components/loading-spinner";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import {
@@ -20,7 +19,9 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CellDate, CellText } from "@/components/cell-text";
 import {
+  BadgeCellSkeleton,
   DataTable,
+  TwoLineCellSkeleton,
   type DataTableAction,
   type DataTableColumn,
 } from "@/components/data-table";
@@ -189,6 +190,7 @@ export function AdminStructurePacks() {
       key: "name",
       header: "Name",
       minWidth: 220,
+      skeleton: () => <TwoLineCellSkeleton />,
       render: (pack) => (
         <>
           <div className="flex min-w-0 items-center gap-2">
@@ -212,6 +214,7 @@ export function AdminStructurePacks() {
       key: "status",
       header: "Status",
       width: 110,
+      skeleton: () => <BadgeCellSkeleton />,
       render: (pack) => (
         <Badge
           variant="outline"
@@ -364,11 +367,7 @@ export function AdminStructurePacks() {
             </CardTitle>
           </CardHeader>
 
-          {packsQuery.isLoading ? (
-            <CardContent className="flex flex-1 items-center justify-center py-12">
-              <Loading size="medium" text="Loading structure packs..." />
-            </CardContent>
-          ) : filteredPacks.length === 0 ? (
+          {!packsQuery.isLoading && filteredPacks.length === 0 ? (
             <CardContent className="flex flex-1 items-center justify-center py-12">
               <div className="text-center">
                 <Package className="mx-auto size-12 text-muted-foreground" />
@@ -390,6 +389,7 @@ export function AdminStructurePacks() {
               <DataTable
                 columns={columns}
                 rows={filteredPacks}
+                loading={packsQuery.isLoading}
                 rowKey={(pack) => pack.id}
                 onRowClick={(pack) =>
                   navigate(`/admin/tools/structure-packs/${pack.id}`)

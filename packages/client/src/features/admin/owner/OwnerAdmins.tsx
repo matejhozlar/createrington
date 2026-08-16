@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Loading } from "@/components/loading-spinner";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import {
   Card,
@@ -10,7 +9,11 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CellText } from "@/components/cell-text";
-import { DataTable, type DataTableColumn } from "@/components/data-table";
+import {
+  AvatarCellSkeleton,
+  DataTable,
+  type DataTableColumn,
+} from "@/components/data-table";
 import { UserMinus, UserPlus } from "lucide-react";
 import { PlayerLabel } from "@/components/player-label";
 import { trpc } from "@/lib/trpc";
@@ -48,6 +51,7 @@ export function OwnerAdmins() {
       key: "player",
       header: "Player",
       minWidth: 200,
+      skeleton: () => <AvatarCellSkeleton />,
       render: (admin) => (
         <PlayerLabel
           uuid={admin.minecraftUuid}
@@ -108,15 +112,11 @@ export function OwnerAdmins() {
             </Button>
           </CardHeader>
           <CardContent className="p-0">
-            {adminsQuery.isLoading ? (
-              <div className="py-8">
-                <Loading size="medium" text="Loading admins..." />
-              </div>
-            ) : adminsQuery.isError ? (
+            {adminsQuery.isError ? (
               <p className="py-8 text-center text-destructive">
                 Failed to load admins: {adminsQuery.error.message}
               </p>
-            ) : admins.length === 0 ? (
+            ) : !adminsQuery.isLoading && admins.length === 0 ? (
               <p className="py-8 text-center text-muted-foreground">
                 No admins configured yet.
               </p>
@@ -124,6 +124,7 @@ export function OwnerAdmins() {
               <DataTable
                 columns={columns}
                 rows={admins}
+                loading={adminsQuery.isLoading}
                 rowKey={(admin) => admin.discordId}
                 actions={(admin) => [
                   {

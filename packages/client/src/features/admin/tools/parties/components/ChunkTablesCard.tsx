@@ -23,6 +23,7 @@ export function ChunkTablesCard({
   totalParties,
   filters,
   soloPlayersEnabled,
+  soloPage,
   soloData,
   soloIsLoading,
   onSoloPageChange,
@@ -35,6 +36,7 @@ export function ChunkTablesCard({
   totalParties: number;
   filters: PartyFilters;
   soloPlayersEnabled: boolean;
+  soloPage: number;
   soloData: SoloPlayersData | undefined;
   soloIsLoading: boolean;
   onSoloPageChange: (page: number) => void;
@@ -98,6 +100,7 @@ export function ChunkTablesCard({
         <TabsContent value="solo">
           <ChunkSoloPlayersSection
             serverId={serverId}
+            page={soloPage}
             data={soloData}
             isLoading={soloIsLoading}
             onPageChange={onSoloPageChange}
