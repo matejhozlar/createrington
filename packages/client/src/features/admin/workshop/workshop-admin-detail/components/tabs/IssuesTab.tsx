@@ -1,4 +1,4 @@
-import { CircleCheck, Eye, PackagePlus } from "lucide-react";
+import { CircleCheck, Eye } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CellDate, CellText } from "@/components/cell-text";
 import {
@@ -7,19 +7,22 @@ import {
   type DataTableColumn,
 } from "@/components/data-table";
 import { CardEmpty, CardError } from "@/features/admin/components/CardState";
+import type { ModEnvironment } from "@createrington/shared/db";
+import {
+  EnvironmentCell,
+  type EnvironmentDisplay,
+} from "@/features/workshop/components/EnvironmentCell";
 import type { AttentionItem } from "../../types";
 
 type DependencyGap = Extract<
   AttentionItem["type"],
-  "rejected_dependency" | "unpromoted_dependency" | "missing_dependency"
+  "rejected_dependency" | "unpromoted_dependency"
 >;
 
 const DEPENDENCY_GAP_MESSAGES: Record<DependencyGap, string> = {
   rejected_dependency: "but is ruled out in this workshop.",
   unpromoted_dependency:
     "but is still in review, so the pack would ship without it.",
-  missing_dependency:
-    "but is not in the workshop at all, so it has to be installed by hand when you build the pack.",
 };
 
 const ATTENTION_MESSAGES: Record<
@@ -30,15 +33,17 @@ const ATTENTION_MESSAGES: Record<
   shipped_unreviewed:
     "shipped in the pack but its suggestion never finished review, so the suggester is uncredited.",
   shipped_rejected: "shipped in the pack but is rejected in this workshop.",
+  environment_unspecified:
+    "has no environment flag yet, which blocks approval past testing. Flag whether it runs client or server side:",
+  duplicate_manifest_entry:
+    "appears more than once in the published pack manifest. Publish a build that lists it once.",
 };
 
 function isDependencyGap(
   item: AttentionItem,
 ): item is Extract<AttentionItem, { requiredByName: string }> {
   return (
-    item.type === "rejected_dependency" ||
-    item.type === "unpromoted_dependency" ||
-    item.type === "missing_dependency"
+    item.type === "rejected_dependency" || item.type === "unpromoted_dependency"
   );
 }
 
@@ -48,16 +53,18 @@ export function IssuesTab({
   error,
   onRetry,
   onView,
-  onAddProject,
-  busyProjectId,
+  unresolvedCount,
+  envDisplay,
+  onSetEnvironment,
 }: {
   items: AttentionItem[];
   isLoading: boolean;
   error: string | null;
   onRetry: () => void;
   onView: (workshopModId: number) => void;
-  onAddProject: (projectId: number, name: string) => void;
-  busyProjectId: number | null;
+  unresolvedCount: number;
+  envDisplay: EnvironmentDisplay;
+  onSetEnvironment: (projectId: number, environment: ModEnvironment) => void;
 }) {
   const columns: DataTableColumn<AttentionItem>[] = [
     {
@@ -89,34 +96,38 @@ export function IssuesTab({
           {item.type === "dropped_from_pack" && (
             <CellDate value={item.droppedAt} className="text-xs" />
           )}
+          {item.type === "environment_unspecified" && (
+            <div className="pt-1.5">
+              <EnvironmentCell
+                projectId={item.curseforgeProjectId}
+                environment="unspecified"
+                source={null}
+                display={envDisplay}
+                onSetEnvironment={onSetEnvironment}
+              />
+            </div>
+          )}
         </>
       ),
     },
   ];
 
   const itemActions = (item: AttentionItem): DataTableAction[] => {
-    const actions: DataTableAction[] = [];
-    if ("workshopModId" in item) {
-      actions.push({
+    const workshopModId = "workshopModId" in item ? item.workshopModId : null;
+    if (workshopModId === null) return [];
+    return [
+      {
         label: "View Mod",
         icon: Eye,
-        onClick: () => onView(item.workshopModId),
-      });
-    }
-    if (item.type === "missing_dependency") {
-      actions.push({
-        label: "Add to Workshop",
-        icon: PackagePlus,
-        onClick: () => onAddProject(item.curseforgeProjectId, item.name),
-      });
-    }
-    return actions;
+        onClick: () => onView(workshopModId),
+      },
+    ];
   };
 
   return (
     <Card className="gap-0">
       <CardHeader className="gap-0 border-b">
-        <CardTitle>Issues ({items.length.toLocaleString()})</CardTitle>
+        <CardTitle>Issues ({unresolvedCount.toLocaleString()})</CardTitle>
       </CardHeader>
 
       {error ? (
@@ -131,12 +142,12 @@ export function IssuesTab({
             loading={isLoading}
             rowKey={(item) => `${item.type}-${item.curseforgeProjectId}`}
             actions={itemActions}
-            isRowBusy={(item) => busyProjectId === item.curseforgeProjectId}
           />
 
           {!isLoading && (
             <p className="px-4 pt-4 text-xs text-muted-foreground">
-              Showing {items.length} {items.length === 1 ? "issue" : "issues"}
+              Showing {unresolvedCount}{" "}
+              {unresolvedCount === 1 ? "issue" : "issues"}
             </p>
           )}
         </CardContent>

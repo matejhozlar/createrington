@@ -224,6 +224,10 @@ describe("reviewMod pack rows", () => {
       submittedBy: USER_A,
     });
 
+    await workshopService.setProjectEnvironment(
+      mod.curseforgeProjectId,
+      "both",
+    );
     await workshopService.reviewMod(mod.id, "approve", ADMIN);
 
     expect(await Q.workshop.mod.get({ id: mod.id })).toMatchObject({

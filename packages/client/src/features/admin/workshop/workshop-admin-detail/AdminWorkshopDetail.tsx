@@ -14,13 +14,18 @@ import {
 import { Loading } from "@/components/loading-spinner";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { ModDetailDialog } from "@/features/workshop/workshop-detail/components/ModDetailDialog";
+import type { EnvironmentDisplay } from "@/features/workshop/components/EnvironmentCell";
 import { WORKSHOP_STATUS_STYLES } from "@/features/workshop/format";
 import {
+  MOD_ENVIRONMENT_LABELS,
   WORKSHOP_STATUS_TRANSITIONS,
   type WorkshopModReviewAction,
 } from "@createrington/shared/workshop";
-import type { WorkshopModStatus } from "@createrington/shared/db";
-import type { AdminWorkshopMod } from "./types";
+import type {
+  ModEnvironment,
+  WorkshopModStatus,
+} from "@createrington/shared/db";
+import type { AdminWorkshopMod, AttentionItem } from "./types";
 import {
   STAGE_CONFIG,
   isModTab,
@@ -104,6 +109,12 @@ export function AdminWorkshopDetail() {
   const [confirmTarget, setConfirmTarget] =
     useState<ConfirmActionTarget | null>(null);
   const [confirmKey, setConfirmKey] = useState(0);
+  const [envPending, setEnvPending] = useState<Map<number, ModEnvironment>>(
+    new Map(),
+  );
+  const [lingeringEnvItems, setLingeringEnvItems] = useState<
+    Array<{ item: AttentionItem; environment: ModEnvironment }>
+  >([]);
   const [skipConfirms, setSkipConfirms] = useState(() => {
     try {
       return sessionStorage.getItem(SKIP_CONFIRM_SESSION_KEY) === "1";
@@ -120,6 +131,7 @@ export function AdminWorkshopDetail() {
     setSearchParams(next, { replace: true });
     setSearch("");
     setPage(0);
+    setLingeringEnvItems([]);
   };
 
   const lastModTab = useRef<ModTabId>("review");
@@ -151,18 +163,19 @@ export function AdminWorkshopDetail() {
     setConfirmTarget(target);
   };
 
-  const invalidate = () => {
-    utils.admin.workshops.listMods.invalidate({ workshopId });
-    utils.admin.workshops.getMod.invalidate();
-    utils.admin.workshops.searchProjects.invalidate({ workshopId });
-    utils.admin.workshops.listPackMods.invalidate({ workshopId });
-    utils.admin.workshops.getAttention.invalidate({ workshopId });
-    utils.admin.workshops.listDependencies.invalidate({ workshopId });
-    utils.user.workshops.list.invalidate();
-    utils.user.workshops.get.invalidate();
-    utils.user.workshops.listRejected.invalidate({ workshopId });
-    utils.user.workshops.getPack.invalidate({ workshopId });
-  };
+  const invalidate = () =>
+    Promise.all([
+      utils.admin.workshops.listMods.invalidate({ workshopId }),
+      utils.admin.workshops.getMod.invalidate(),
+      utils.admin.workshops.searchProjects.invalidate({ workshopId }),
+      utils.admin.workshops.listPackMods.invalidate({ workshopId }),
+      utils.admin.workshops.getAttention.invalidate({ workshopId }),
+      utils.admin.workshops.listDependencies.invalidate({ workshopId }),
+      utils.user.workshops.list.invalidate(),
+      utils.user.workshops.get.invalidate(),
+      utils.user.workshops.listRejected.invalidate({ workshopId }),
+      utils.user.workshops.getPack.invalidate({ workshopId }),
+    ]);
 
   const reviewMutation = trpc.admin.workshops.reviewMod.useMutation({
     onSuccess: (mod, variables) => {
@@ -183,6 +196,49 @@ export function AdminWorkshopDetail() {
     onError: (err) => toast.error(err.message),
   });
 
+  const clearEnvPending = (projectId: number, environment: ModEnvironment) => {
+    setEnvPending((current) => {
+      if (current.get(projectId) !== environment) return current;
+      const next = new Map(current);
+      next.delete(projectId);
+      return next;
+    });
+  };
+
+  const environmentMutation =
+    trpc.admin.workshops.setProjectEnvironment.useMutation({
+      onSuccess: async (project, variables) => {
+        toast.success(
+          project.environment === "unspecified"
+            ? "Environment flag cleared"
+            : `Flagged as ${MOD_ENVIRONMENT_LABELS[project.environment]}`,
+        );
+        setLingeringEnvItems((current) =>
+          current.map((lingering) =>
+            lingering.item.curseforgeProjectId === variables.curseforgeProjectId
+              ? { ...lingering, environment: project.environment }
+              : lingering,
+          ),
+        );
+        await invalidate();
+        clearEnvPending(variables.curseforgeProjectId, variables.environment);
+      },
+      // A failed re-flag falls back to the value the server still holds, so a
+      // row that already resolved once keeps its place instead of vanishing
+      onError: (err, variables) => {
+        clearEnvPending(variables.curseforgeProjectId, variables.environment);
+        setLingeringEnvItems((current) =>
+          current.filter(
+            (lingering) =>
+              lingering.item.curseforgeProjectId !==
+                variables.curseforgeProjectId ||
+              lingering.environment !== "unspecified",
+          ),
+        );
+        toast.error(err.message);
+      },
+    });
+
   const updateWorkshopMutation = trpc.admin.workshops.update.useMutation({
     onSuccess: () => {
       toast.success("Workshop updated");
@@ -200,6 +256,35 @@ export function AdminWorkshopDetail() {
     for (const mod of mods) (groups[mod.status] ??= []).push(mod);
     return groups;
   }, [mods]);
+
+  const issueItems = useMemo(() => {
+    const fresh = attentionQuery.data ?? [];
+    if (lingeringEnvItems.length === 0) return fresh;
+    const unresolved = new Set(
+      fresh
+        .filter((item) => item.type === "environment_unspecified")
+        .map((item) => item.curseforgeProjectId),
+    );
+    return [
+      ...fresh,
+      ...lingeringEnvItems
+        .filter((l) => !unresolved.has(l.item.curseforgeProjectId))
+        .map((l) => l.item),
+    ];
+  }, [attentionQuery.data, lingeringEnvItems]);
+
+  // Confirmed values for lingering rows, then in-flight clicks on top
+  const envDisplay: EnvironmentDisplay = useMemo(() => {
+    const merged = new Map<number, ModEnvironment>();
+    for (const lingering of lingeringEnvItems) {
+      if (lingering.environment === "unspecified") continue;
+      merged.set(lingering.item.curseforgeProjectId, lingering.environment);
+    }
+    for (const [projectId, environment] of envPending) {
+      merged.set(projectId, environment);
+    }
+    return merged;
+  }, [lingeringEnvItems, envPending]);
 
   const stageCount = (status: WorkshopModStatus) =>
     modsQuery.data ? (modsByStatus[status]?.length ?? 0) : undefined;
@@ -224,6 +309,34 @@ export function AdminWorkshopDetail() {
   const busyProjectId = addProjectMutation.isPending
     ? (addProjectMutation.variables?.projectIds[0] ?? null)
     : null;
+
+  const handleSetEnvironment = (
+    projectId: number,
+    environment: ModEnvironment,
+  ) => {
+    // Entries start at the value the server still holds; the mutation's
+    // outcome is what promotes or removes them
+    if (activeTab === "issues") {
+      setLingeringEnvItems((current) => {
+        if (current.some((l) => l.item.curseforgeProjectId === projectId)) {
+          return current;
+        }
+        const item = (attentionQuery.data ?? []).find(
+          (row) =>
+            row.type === "environment_unspecified" &&
+            row.curseforgeProjectId === projectId,
+        );
+        return item
+          ? [...current, { item, environment: "unspecified" as ModEnvironment }]
+          : current;
+      });
+    }
+    setEnvPending((current) => new Map(current).set(projectId, environment));
+    environmentMutation.mutate({
+      curseforgeProjectId: projectId,
+      environment,
+    });
+  };
 
   const handleReview = (
     id: number,
@@ -370,6 +483,8 @@ export function AdminWorkshopDetail() {
             onPageChange={setPage}
             busyModId={busyModId}
             onView={setDetailModId}
+            envDisplay={envDisplay}
+            onSetEnvironment={handleSetEnvironment}
             onReview={handleReview}
             onReject={openReject}
           />
@@ -387,6 +502,8 @@ export function AdminWorkshopDetail() {
             onPageChange={setPage}
             busyModId={busyModId}
             onView={setDetailModId}
+            envDisplay={envDisplay}
+            onSetEnvironment={handleSetEnvironment}
             onReview={handleReview}
             onReject={openReject}
           />
@@ -403,6 +520,8 @@ export function AdminWorkshopDetail() {
             search={search}
             onSearchChange={setSearch}
             onReconciled={invalidate}
+            envDisplay={envDisplay}
+            onSetEnvironment={handleSetEnvironment}
           />
         )}
 
@@ -418,13 +537,14 @@ export function AdminWorkshopDetail() {
 
         {activeTab === "issues" && (
           <IssuesTab
-            items={attentionQuery.data ?? []}
+            items={issueItems}
             isLoading={attentionQuery.isLoading}
             error={attentionQuery.error?.message ?? null}
             onRetry={() => attentionQuery.refetch()}
             onView={setDetailModId}
-            onAddProject={addProject}
-            busyProjectId={busyProjectId}
+            unresolvedCount={attentionCount ?? 0}
+            envDisplay={envDisplay}
+            onSetEnvironment={handleSetEnvironment}
           />
         )}
 

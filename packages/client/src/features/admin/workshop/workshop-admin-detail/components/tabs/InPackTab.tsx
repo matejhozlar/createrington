@@ -45,6 +45,11 @@ import {
 import { FilterBar } from "@/features/admin/components/FilterBar";
 import { CardEmpty, CardError } from "@/features/admin/components/CardState";
 import { formatDate } from "@/features/workshop/format";
+import type { ModEnvironment } from "@createrington/shared/db";
+import {
+  EnvironmentCell,
+  type EnvironmentDisplay,
+} from "@/features/workshop/components/EnvironmentCell";
 import type { PackMod, ReleaseMod } from "../../types";
 import { ModCell, ModCellSkeleton } from "../ModCell";
 
@@ -125,6 +130,8 @@ export function InPackTab({
   search,
   onSearchChange,
   onReconciled,
+  envDisplay,
+  onSetEnvironment,
 }: {
   workshopId: number;
   modpackId: number;
@@ -135,6 +142,8 @@ export function InPackTab({
   search: string;
   onSearchChange: (value: string) => void;
   onReconciled: () => void;
+  envDisplay: EnvironmentDisplay;
+  onSetEnvironment: (projectId: number, environment: ModEnvironment) => void;
 }) {
   const toast = useToastActions();
   const utils = trpc.useUtils();
@@ -175,6 +184,10 @@ export function InPackTab({
       if (result.unresolvedProjectIds.length > 0) {
         toast.warning(
           `Imported ${result.memberCount} mods, ${result.unresolvedProjectIds.length} could not be resolved on CurseForge`,
+        );
+      } else if (result.duplicateProjectIds.length > 0) {
+        toast.warning(
+          `Imported ${result.memberCount} mods, ${result.duplicateProjectIds.length} listed more than once in the manifest and were merged`,
         );
       } else {
         toast.success(`Imported ${result.memberCount} mods from the manifest`);
@@ -283,6 +296,21 @@ export function InPackTab({
       minWidth: 180,
       cellClassName: "text-sm text-muted-foreground",
       render: (row) => <Credit row={row} />,
+    },
+    {
+      key: "environment",
+      header: "Environment",
+      width: 140,
+      skeleton: () => <BadgeCellSkeleton />,
+      render: (row) => (
+        <EnvironmentCell
+          projectId={row.project.id}
+          environment={row.project.environment}
+          source={row.project.environmentSource}
+          display={envDisplay}
+          onSetEnvironment={onSetEnvironment}
+        />
+      ),
     },
     {
       key: "publishState",

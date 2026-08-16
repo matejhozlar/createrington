@@ -26,6 +26,27 @@ export const WORKSHOP_MOD_REJECT_REASON_LABELS: Record<
   not_a_good_fit: "Not a good fit",
 };
 
+// Which side(s) a mod runs on. CurseForge's author-assigned file flags feed
+// low-trust cf_flag hints; manual admin flags always win. Unspecified mods
+// ship to both sides and are surfaced for review.
+export const MOD_ENVIRONMENTS = [
+  "client",
+  "server",
+  "both",
+  "unspecified",
+] as const;
+
+export const MOD_ENVIRONMENT_SOURCES = ["cf_flag", "manual"] as const;
+
+type ModEnvironment = (typeof MOD_ENVIRONMENTS)[number];
+
+export const MOD_ENVIRONMENT_LABELS: Record<ModEnvironment, string> = {
+  client: "Client",
+  server: "Server",
+  both: "Client & Server",
+  unspecified: "Not specified",
+};
+
 export const WORKSHOP_MOD_STATUSES = [
   "pending",
   "approved",
@@ -142,6 +163,8 @@ export const modpackManifestUploadSchema = z.object({
         .optional(),
     })
     .optional(),
+  // Real CurseForge exports repeat a project across entries when it ships more
+  // than one file, so duplicates are deduped on import rather than rejected
   files: z
     .array(z.object({ projectID: z.number().int().positive().max(2147483647) }))
     .min(1)

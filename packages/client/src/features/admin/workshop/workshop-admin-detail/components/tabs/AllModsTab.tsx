@@ -25,6 +25,11 @@ import {
   MOD_STATUS_STYLES,
   projectCategories,
 } from "@/features/workshop/format";
+import type { ModEnvironment } from "@createrington/shared/db";
+import {
+  EnvironmentCell,
+  type EnvironmentDisplay,
+} from "@/features/workshop/components/EnvironmentCell";
 import { modReviewActions, type ModReviewHandlers } from "../../actions";
 import type { AdminWorkshopMod } from "../../types";
 import { DependencyCell } from "../DependencyCell";
@@ -43,6 +48,8 @@ export function AllModsTab({
   onPageChange,
   busyModId,
   onView,
+  envDisplay,
+  onSetEnvironment,
   onReview,
   onReject,
 }: {
@@ -56,6 +63,8 @@ export function AllModsTab({
   onPageChange: (page: number) => void;
   busyModId: number | null;
   onView: (workshopModId: number) => void;
+  envDisplay: EnvironmentDisplay;
+  onSetEnvironment: (projectId: number, environment: ModEnvironment) => void;
 } & ModReviewHandlers) {
   const [category, setCategory] = useState("all");
   const query = search.trim().toLowerCase();
@@ -137,6 +146,21 @@ export function AllModsTab({
         mod.dependencies.length > 0 && <DependencyCell mod={mod} />,
     },
     {
+      key: "environment",
+      header: "Environment",
+      width: 140,
+      skeleton: () => <BadgeCellSkeleton />,
+      render: (mod) => (
+        <EnvironmentCell
+          projectId={mod.project.id}
+          environment={mod.project.environment}
+          source={mod.project.environmentSource}
+          display={envDisplay}
+          onSetEnvironment={onSetEnvironment}
+        />
+      ),
+    },
+    {
       key: "status",
       header: "Status",
       width: 124,
@@ -213,7 +237,9 @@ export function AllModsTab({
               loadingRows={MODS_PER_PAGE}
               rowKey={(mod) => mod.id}
               onRowClick={(mod) => onView(mod.id)}
-              actions={(mod) => modReviewActions(mod, { onReview, onReject })}
+              actions={(mod) =>
+                modReviewActions(mod, { onReview, onReject }, envDisplay)
+              }
               actionSlots={0}
               isRowBusy={(mod) => busyModId === mod.id}
             />

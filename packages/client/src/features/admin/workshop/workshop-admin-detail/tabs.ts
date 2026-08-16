@@ -61,6 +61,8 @@ export const STAGE_CONFIG: Record<
     dateHeader: string;
     dateField: "createdAt" | "reviewedAt";
     columns: readonly StageColumn[];
+    // Stages where the environment gates what happens next
+    showEnvironment?: boolean;
   }
 > = {
   review: {
@@ -89,6 +91,7 @@ export const STAGE_CONFIG: Record<
     dateHeader: "Testing Since",
     dateField: "reviewedAt",
     columns: ["dependencies"],
+    showEnvironment: true,
   },
   "next-update": {
     status: "next_update",
@@ -98,6 +101,7 @@ export const STAGE_CONFIG: Record<
     dateHeader: "Staged",
     dateField: "reviewedAt",
     columns: ["file"],
+    showEnvironment: true,
   },
   "ruled-out": {
     status: "rejected",

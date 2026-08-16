@@ -1,5 +1,11 @@
-import type { WorkshopModStatus } from "@createrington/shared/db";
+import type {
+  ModEnvironment,
+  ModEnvironmentSource,
+  WorkshopModStatus,
+} from "@createrington/shared/db";
 import {
+  MOD_ENVIRONMENTS,
+  MOD_ENVIRONMENT_LABELS,
   WORKSHOP_MOD_STATUSES,
   WORKSHOP_MOD_STATUS_LABELS,
 } from "@createrington/shared/workshop";
@@ -107,6 +113,35 @@ export function liveTitle(mod: {
   return mod.status === "in_pack" && mod.liveInVersion
     ? `Live since ${mod.liveInVersion}`
     : undefined;
+}
+
+const MOD_ENVIRONMENT_CLASSES: Record<ModEnvironment, string> = {
+  client: "border-sky-500/20 bg-sky-500/10 text-sky-400",
+  server: "border-orange-500/20 bg-orange-500/10 text-orange-400",
+  both: "border-teal-500/20 bg-teal-500/10 text-teal-400",
+  unspecified: "border-red-500/20 bg-red-500/10 text-red-400",
+};
+
+export const MOD_ENVIRONMENT_STYLES = Object.fromEntries(
+  MOD_ENVIRONMENTS.map((environment) => [
+    environment,
+    {
+      label: MOD_ENVIRONMENT_LABELS[environment],
+      className: MOD_ENVIRONMENT_CLASSES[environment],
+    },
+  ]),
+) as Record<ModEnvironment, { label: string; className: string }>;
+
+export function environmentTitle(
+  environment: ModEnvironment,
+  source: ModEnvironmentSource | null,
+): string {
+  if (environment === "unspecified") {
+    return "Not classified yet, treated as Client & Server";
+  }
+  return source === "manual"
+    ? "Set manually"
+    : "From CurseForge, author-assigned and unverified";
 }
 
 export const DEPENDENCY_COVERAGE_STYLES: Record<

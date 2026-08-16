@@ -177,6 +177,7 @@ export function makeProjectData(
         modLoader: MOD_LOADER_TYPE,
       },
     ],
+    environmentHint: null,
     ...overrides,
   };
 }

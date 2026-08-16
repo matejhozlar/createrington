@@ -179,6 +179,10 @@ describe("WorkshopService.reviewMod", () => {
     );
     expect(testing.status).toBe("testing");
 
+    await workshopService.setProjectEnvironment(
+      mod.curseforgeProjectId,
+      "both",
+    );
     const promoted = await workshopService.reviewMod(mod.id, "approve", ADMIN);
     expect(promoted.status).toBe("next_update");
 
@@ -951,6 +955,7 @@ describe("WorkshopService.addModsAsAdmin", () => {
     ).resolves.toMatchObject({ status: "approved" });
 
     await workshopService.reviewMod(added!.id, "start_testing", ADMIN);
+    await workshopService.setProjectEnvironment(projectId, "server");
     await expect(
       workshopService.reviewMod(added!.id, "approve", ADMIN),
     ).resolves.toMatchObject({ status: "next_update" });
@@ -1333,5 +1338,93 @@ describe("WorkshopService.deleteWorkshop", () => {
     expect(await Q.workshop.poll.find({ id: poll.id })).toBeNull();
     expect(await Q.workshop.poll.mod.find({ id: pollMod.id })).toBeNull();
     expect(await Q.workshop.poll.ballot.find({ id: ballot.id })).toBeNull();
+  });
+});
+
+describe("WorkshopService.setProjectEnvironment", () => {
+  it("stores an explicit side as a manual flag", async () => {
+    const projectId = await seedProject(ctx);
+
+    const updated = await workshopService.setProjectEnvironment(
+      projectId,
+      "client",
+    );
+
+    expect(updated.environment).toBe("client");
+    expect(updated.environmentSource).toBe("manual");
+    expect(await Q.curseforge.project.get({ id: projectId })).toMatchObject({
+      environment: "client",
+      environmentSource: "manual",
+    });
+  });
+
+  it("clears the source when set back to unspecified", async () => {
+    const projectId = await seedProject(ctx);
+    await Q.curseforge.project.update(
+      { id: projectId },
+      { environment: "server", environmentSource: "manual" },
+    );
+
+    await workshopService.setProjectEnvironment(projectId, "unspecified");
+
+    expect(await Q.curseforge.project.get({ id: projectId })).toMatchObject({
+      environment: "unspecified",
+      environmentSource: null,
+    });
+  });
+
+  it("throws NotFoundError for a project that is not cached", async () => {
+    await expect(
+      workshopService.setProjectEnvironment(ctx.nextProjectId++, "both"),
+    ).rejects.toThrow(NotFoundError);
+  });
+});
+
+describe("WorkshopService.reviewMod environment gate", () => {
+  it("refuses to approve a testing mod whose environment is unspecified", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const mod = await seedMod(ctx, workshop, {
+      submittedBy: USER_A,
+      status: "testing",
+    });
+
+    await expect(
+      workshopService.reviewMod(mod.id, "approve", ADMIN),
+    ).rejects.toThrow(
+      "Flag whether this mod runs client or server side before approving it for the next update",
+    );
+    expect((await Q.workshop.mod.get({ id: mod.id })).status).toBe("testing");
+  });
+
+  it("approves a testing mod once its environment is flagged", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const mod = await seedMod(ctx, workshop, {
+      submittedBy: USER_A,
+      status: "testing",
+    });
+    await workshopService.setProjectEnvironment(
+      mod.curseforgeProjectId,
+      "both",
+    );
+
+    const updated = await workshopService.reviewMod(mod.id, "approve", ADMIN);
+
+    expect(updated.status).toBe("next_update");
+  });
+
+  it("still allows sending an unclassified mod back a stage", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const mod = await seedMod(ctx, workshop, {
+      submittedBy: USER_A,
+      status: "testing",
+    });
+
+    const sentBack = await workshopService.reviewMod(
+      mod.id,
+      "send_back",
+      ADMIN,
+    );
+
+    expect(sentBack.status).toBe("approved");
   });
 });

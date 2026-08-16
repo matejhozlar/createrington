@@ -56,6 +56,8 @@ export type ModpackProjectSummary = Pick<
   | "downloadCount"
   | "dateReleased"
   | "allowModDistribution"
+  | "environment"
+  | "environmentSource"
 >;
 
 export interface ModpackModListItem extends ModpackMod {
@@ -107,6 +109,7 @@ export interface ModpackSeedResult {
   modCount: number;
   memberCount: number;
   unresolvedProjectIds: number[];
+  duplicateProjectIds: number[];
 }
 
 function manifestLoaderType(loaderId: string): number | null {
@@ -187,10 +190,15 @@ export type ModpackAttentionItem =
       requiredByName: string;
     }
   | {
-      type: "missing_dependency";
+      type: "environment_unspecified";
+      workshopModId: number | null;
       curseforgeProjectId: number;
       name: string;
-      requiredByName: string;
+    }
+  | {
+      type: "duplicate_manifest_entry";
+      curseforgeProjectId: number;
+      name: string;
     };
 
 /**
@@ -400,7 +408,12 @@ export class ModpackService {
     const workshops = await Q.workshop.findAll({ modpackId });
     this.assertSeedTarget(workshops, seed);
 
-    const modIds = new Set(seed.modIds);
+    const modIds = new Set<number>();
+    const duplicateProjectIds = new Set<number>();
+    for (const projectId of seed.modIds) {
+      if (modIds.has(projectId)) duplicateProjectIds.add(projectId);
+      modIds.add(projectId);
+    }
     await this.applyManifest(modpack, workshops, {
       modIds,
       version: seed.version,
@@ -418,6 +431,7 @@ export class ModpackService {
       modCount: modIds.size,
       memberCount: modIds.size - unresolvedProjectIds.length,
       unresolvedProjectIds,
+      duplicateProjectIds: [...duplicateProjectIds],
     };
   }
 
@@ -624,6 +638,7 @@ export class ModpackService {
 
     const rows = await Q.modpack.mod.findAll({ modpackId: modpack.id });
     const dropped = rows.filter((row) => row.droppedFromManifestAt !== null);
+    const active = rows.filter((row) => row.droppedFromManifestAt === null);
 
     let manifest: ModpackManifest | null = null;
     if (modpack.curseforgeProjectId) {
@@ -639,6 +654,7 @@ export class ModpackService {
     });
 
     let shipped: WorkshopMod[] = [];
+    const duplicateIds = new Set<number>();
     if (manifest) {
       const { modIds } = manifest;
       shipped = suggestions.filter(
@@ -647,6 +663,11 @@ export class ModpackService {
           mod.status !== "next_update" &&
           mod.status !== "in_pack",
       );
+      const seen = new Set<number>();
+      for (const entry of manifest.entries) {
+        if (seen.has(entry.projectId)) duplicateIds.add(entry.projectId);
+        seen.add(entry.projectId);
+      }
     }
 
     // A dependency is only a problem for something that ships, so the gaps are
@@ -659,6 +680,16 @@ export class ModpackService {
     const suggestionByProject = new Map(
       suggestions.map((mod) => [mod.curseforgeProjectId, mod]),
     );
+    // A project can be both a pack member and a live suggestion; the
+    // suggestion wins so the item can link through to the mod
+    const unclassifiedTargets = new Map<number, number | null>();
+    for (const row of active) {
+      unclassifiedTargets.set(row.curseforgeProjectId, null);
+    }
+    for (const mod of suggestions) {
+      if (mod.status !== "testing" && mod.status !== "next_update") continue;
+      unclassifiedTargets.set(mod.curseforgeProjectId, mod.id);
+    }
     const gaps = new Map<
       number,
       { coverage: DependencyCoverage; requiredByProjectId: number }
@@ -679,7 +710,9 @@ export class ModpackService {
     const projectIds = [
       ...new Set([
         ...dropped.map((row) => row.curseforgeProjectId),
+        ...unclassifiedTargets.keys(),
         ...shipped.map((mod) => mod.curseforgeProjectId),
+        ...duplicateIds,
         ...[...gaps.entries()].flatMap(([depId, gap]) => [
           depId,
           gap.requiredByProjectId,
@@ -690,8 +723,8 @@ export class ModpackService {
       projectIds.length > 0
         ? await Q.curseforge.project.findAll({ id: { $in: projectIds } })
         : [];
-    const nameById = new Map(projects.map((p) => [p.id, p.name]));
-    const label = (id: number) => nameById.get(id) ?? `#${id}`;
+    const projectById = new Map(projects.map((p) => [p.id, p]));
+    const label = (id: number) => projectById.get(id)?.name ?? `#${id}`;
 
     for (const row of dropped) {
       items.push({
@@ -713,15 +746,7 @@ export class ModpackService {
     }
     for (const [projectId, gap] of gaps) {
       const suggestion = suggestionByProject.get(projectId);
-      if (!suggestion) {
-        items.push({
-          type: "missing_dependency",
-          curseforgeProjectId: projectId,
-          name: label(projectId),
-          requiredByName: label(gap.requiredByProjectId),
-        });
-        continue;
-      }
+      if (!suggestion) continue;
       items.push({
         type:
           gap.coverage === "rejected"
@@ -731,6 +756,23 @@ export class ModpackService {
         curseforgeProjectId: projectId,
         name: label(projectId),
         requiredByName: label(gap.requiredByProjectId),
+      });
+    }
+    for (const projectId of duplicateIds) {
+      items.push({
+        type: "duplicate_manifest_entry",
+        curseforgeProjectId: projectId,
+        name: label(projectId),
+      });
+    }
+    for (const [projectId, workshopModId] of unclassifiedTargets) {
+      const project = projectById.get(projectId);
+      if (project?.environment !== "unspecified") continue;
+      items.push({
+        type: "environment_unspecified",
+        workshopModId,
+        curseforgeProjectId: projectId,
+        name: project.name,
       });
     }
     return items;
@@ -1057,6 +1099,8 @@ export class ModpackService {
       downloadCount: project.downloadCount,
       dateReleased: project.dateReleased,
       allowModDistribution: project.allowModDistribution,
+      environment: project.environment,
+      environmentSource: project.environmentSource,
     };
   }
 

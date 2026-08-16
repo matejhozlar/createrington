@@ -8,6 +8,7 @@ import {
   index,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
+import { modEnvironmentEnum, modEnvironmentSourceEnum } from "./enums";
 
 // --- curseforge_project ---
 // Global snapshot cache, one row per project ID. Deep content (descriptions,
@@ -35,6 +36,14 @@ export const curseforgeProject = pgTable(
     dateReleased: timestamp("date_released", { withTimezone: true }),
     allowModDistribution: boolean("allow_mod_distribution"),
     isAvailable: boolean("is_available").notNull().default(true),
+    // Which side(s) the mod runs on; unspecified ships to both manifests.
+    // Source tracks trust: a manual admin flag is never overwritten, and a
+    // cf_flag value follows the author's tags but is kept if they later drop
+    // them, so a classified mod never silently reverts; null means no signal
+    environment: modEnvironmentEnum("environment")
+      .notNull()
+      .default("unspecified"),
+    environmentSource: modEnvironmentSourceEnum("environment_source"),
     refreshedAt: timestamp("refreshed_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
