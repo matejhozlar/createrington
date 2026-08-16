@@ -101,7 +101,11 @@ export async function paintWordmark(
 export interface PoseFigureRequest {
   uuid: string;
   pose: string;
-  /** Only used to name the cache file readably. */
+  /**
+   * Cache key together with `pose`, not just a label: renaming this rebinds
+   * or orphans a cache entry. `uuid` is deliberately not part of the key, so
+   * changing it is not detected either; delete the cached file to re-render.
+   */
   username: string;
 }
 
@@ -164,6 +168,11 @@ export async function writeCard(
   const canvas = createCanvas(W * SUPERSAMPLE, H * SUPERSAMPLE);
   const ctx = canvas.getContext("2d");
   ctx.scale(SUPERSAMPLE, SUPERSAMPLE);
+  // Every resample the card paints (screenshots, backdrops, skin figures)
+  // wants the good filter; napi-rs defaults to "low". Painters that want
+  // nearest-neighbour pixel art set imageSmoothingEnabled = false, which makes
+  // this inert for them.
+  ctx.imageSmoothingQuality = "high";
 
   await paint(ctx);
 

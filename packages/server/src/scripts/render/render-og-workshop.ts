@@ -2,9 +2,11 @@
 // rebuild of the workshop hub hero: the Royal Albert Hall build with the
 // page's grayscale + fade treatment, a spotlit pixel chest (the next pack)
 // swallowing suggested mods, and the community trio reacting around it.
-// Figures are cached under assets/workshop/ (committed); to refresh, delete
-// the cache and re-run with SKIN_API_KEY in the environment. Mod logos are
-// fetched from the CurseForge CDN at render time.
+// Figures are cached under assets/figures/ (committed), shared with every
+// other og card and keyed by username and pose; to refresh, delete the
+// relevant assets/figures/<username>-<pose>.png (which re-renders it for any
+// other card using it) and re-run with SKIN_API_KEY in the environment. Mod
+// logos are fetched from the CurseForge CDN at render time.
 //
 // Run: pnpm --filter @createrington/server util:render-og-workshop [outPath]
 
@@ -524,9 +526,6 @@ function paintChest(ctx: SKRSContext2D): void {
 }
 
 async function paintFigures(ctx: SKRSContext2D): Promise<void> {
-  // Figures downscale ~5x to spec.height; napi-rs defaults to "low".
-  ctx.imageSmoothingQuality = "high";
-
   for (const spec of FIGURES) {
     const img = await getPoseFigure({
       uuid: spec.uuid,

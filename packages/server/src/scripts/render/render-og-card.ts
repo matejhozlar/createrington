@@ -3,10 +3,12 @@
 // assets and the repo-root screenshots/ folder; the Outfit webfont lives in
 // the shared server assets (src/assets/fonts).
 //
-// Team figures are rendered once via the skin-api and cached under assets/team/
-// (committed), so regenerating the card stays offline. To refresh them after a
-// skin change, delete assets/team/ and re-run with the skin-api key in the
-// environment:
+// Team figures are rendered once via the skin-api and cached under
+// assets/figures/ (committed), so regenerating the card stays offline. That
+// cache is shared with every other og card and keyed by username and pose, so
+// deleting an entry re-renders it for whichever cards use it. To refresh after
+// a skin change, delete the relevant assets/figures/<username>-<pose>.png and
+// re-run with the skin-api key in the environment:
 //   infisical run --env=dev -- pnpm --filter @createrington/server util:render-og-card
 //
 // Run: pnpm --filter @createrington/server util:render-og-card [outPath]
@@ -332,9 +334,6 @@ async function paintTeam(ctx: SKRSContext2D): Promise<void> {
   // compact poses (e.g. "relaxed").
   const refHeight = Math.max(...loaded.map((f) => f.bbox.height));
   const scale = figH / refHeight;
-
-  // Figures downscale ~9x to figH; napi-rs defaults to "low".
-  ctx.imageSmoothingQuality = "high";
 
   let x = TEXT_X;
   for (const { img, bbox } of loaded) {

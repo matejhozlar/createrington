@@ -208,12 +208,6 @@ function drawFigure(ctx: SKRSContext2D, img: Image): void {
 
   drawContactShadow(ctx, drawW);
 
-  // Not a downscale: ctx is scaled by SUPERSAMPLE, so drawH lands on ~1240
-  // device pixels and the ~1089px silhouette is stretched ~1.14x. The edges
-  // are anti-aliased later, by the whole-canvas downsample in the caller.
-  // napi-rs defaults to "low".
-  ctx.imageSmoothingQuality = "high";
-
   ctx.save();
   ctx.shadowColor = "rgba(255,185,0,0.35)";
   ctx.shadowBlur = 26;
@@ -323,6 +317,11 @@ export async function generateRegistrationWelcomeCard(params: {
   const canvas = createCanvas(W * SUPERSAMPLE, H * SUPERSAMPLE);
   const ctx = canvas.getContext("2d");
   ctx.scale(SUPERSAMPLE, SUPERSAMPLE);
+  // Set once for every resample the card paints (background screenshot,
+  // figure, wordmark), not per-painter: the figure draw is conditional, so
+  // setting it there left the wordmark's quality riding on whether a skin
+  // render succeeded. napi-rs defaults to "low".
+  ctx.imageSmoothingQuality = "high";
 
   drawBackground(ctx, background);
   if (figure) drawFigure(ctx, figure);

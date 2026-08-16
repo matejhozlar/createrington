@@ -2,8 +2,10 @@
 // (structure-packs.png), a canvas rebuild of the page hero: the Parallel
 // Worlds portal (obsidian frame + animated sprite frame) over the blurred
 // warehouse backdrop, the hero headline, and team figures gathered at the
-// portal. Figures are cached under assets/packs/ (committed); to refresh,
-// delete the cache and re-run with SKIN_API_KEY in the environment.
+// portal. Figures are cached under assets/figures/ (committed), shared with
+// every other og card and keyed by username and pose; to refresh, delete the
+// relevant assets/figures/<username>-<pose>.png (which re-renders it for any
+// other card using it) and re-run with SKIN_API_KEY in the environment.
 //
 // Run: pnpm --filter @createrington/server util:render-og-structure-packs [outPath]
 
@@ -361,9 +363,6 @@ async function paintPortal(ctx: SKRSContext2D): Promise<void> {
 }
 
 async function paintFigures(ctx: SKRSContext2D): Promise<void> {
-  // Figures downscale ~5x to spec.height; napi-rs defaults to "low".
-  ctx.imageSmoothingQuality = "high";
-
   paintEllipseGradient(ctx, 895, 606, 310, 48, [
     [0, blue(0.26)],
     [0.6, blue(0.09)],
