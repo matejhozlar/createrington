@@ -1,3 +1,23 @@
+## v1.35.0 (2026-08-16)
+
+### @createrington/server (1.34.0 → 1.35.0)
+- [add] Add client/server environment classification for CurseForge projects, with `environment` and `environment_source` columns on `curseforge_project` storing whether a mod runs client-side, server-side, or both
+- [add] Derive environment hints from CurseForge file gameVersions tags during project ingest and refresh, storing them as low-trust `cf_flag` values that follow author changes but never overwrite manual admin flags
+- [add] Add `setProjectEnvironment` admin tRPC mutation for manually flagging which side a mod runs on, with audit logging
+- [add] Gate testing-to-next_update approval on a classified environment, requiring admins to flag client/server before a mod can ship
+- [add] Surface `environment_unspecified` and `duplicate_manifest_entry` attention items in modpack attention checks so admins see unclassified mods and repeated manifest entries
+- [fix] Deduplicate repeated CurseForge project entries during manifest seed instead of failing the import, reporting the duplicates in the seed result
+- [remove] Remove `missing_dependency` attention item type, skipping unresolved dependency gaps that have no workshop suggestion
+
+### @createrington/client (0.2.45 → 0.2.46)
+- [add] Add inline environment badge with dropdown editor across testing, next-update, in-pack, and all-mods tabs, showing client/server/both status with instant optimistic switching
+- [add] Show environment_unspecified and duplicate_manifest_entry issues in the Issues tab with direct links to the affected mod or CurseForge project
+- [add] Keep resolved environment issues visible as "fixed" until the admin leaves the tab, so recently classified mods stay in view during a review session
+
+### @createrington/shared (1.4.0 → 1.5.0)
+- [add] Add `MOD_ENVIRONMENTS`, `MOD_ENVIRONMENT_SOURCES`, and `MOD_ENVIRONMENT_LABELS` constants and types for the client/server environment classification system
+- [fix] Allow duplicate project entries in `modpackManifestUploadSchema` since CurseForge exports repeat a project when it ships more than one file, deferring deduplication to the import layer
+
 ## v1.34.0 (2026-08-16)
 
 ### @createrington/server (1.33.0 → 1.34.0)
