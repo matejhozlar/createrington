@@ -1,13 +1,15 @@
-import { useParams, NavLink } from "react-router";
+import { useState } from "react";
+import { useParams, useNavigate, NavLink } from "react-router";
 import { Loading } from "@/components/loading-spinner";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MessageSquare, Lock, RefreshCw } from "lucide-react";
+import { MessageSquare, Lock, RefreshCw, Trash2 } from "lucide-react";
 import { mcHeadsAvatar } from "@/lib/external-urls";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { describeEntryRules } from "./format";
+import { DeletePromptModal } from "./components/DeletePromptModal";
 
 type ResponseRow = RouterOutput["admin"]["prompts"]["get"]["responses"][number];
 
@@ -58,6 +60,8 @@ export function PromptDetail() {
   const { id } = useParams<{ id: string }>();
   const promptId = id ? parseInt(id, 10) : NaN;
   const toast = useToastActions();
+  const navigate = useNavigate();
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const detailQuery = trpc.admin.prompts.get.useQuery(
     { id: promptId },
@@ -159,13 +163,16 @@ export function PromptDetail() {
             </Button>
             {isActive && (
               <Button
-                variant="destructive"
+                variant="outline"
                 onClick={() => closeMutation.mutate({ id: prompt.id })}
                 disabled={closeMutation.isPending}
               >
                 <Lock className="size-4" /> Close now
               </Button>
             )}
+            <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
+              <Trash2 className="size-4" /> Delete
+            </Button>
           </div>
         </div>
 
@@ -240,6 +247,17 @@ export function PromptDetail() {
           </ul>
         )}
       </div>
+
+      <DeletePromptModal
+        open={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        prompt={prompt}
+        entryCount={responses.length}
+        onSuccess={() => {
+          setDeleteOpen(false);
+          void navigate("/admin/tools/prompts");
+        }}
+      />
     </div>
   );
 }

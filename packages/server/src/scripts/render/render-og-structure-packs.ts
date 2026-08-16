@@ -2,8 +2,10 @@
 // (structure-packs.png), a canvas rebuild of the page hero: the Parallel
 // Worlds portal (obsidian frame + animated sprite frame) over the blurred
 // warehouse backdrop, the hero headline, and team figures gathered at the
-// portal. Figures are cached under assets/packs/ (committed); to refresh,
-// delete the cache and re-run with SKIN_API_KEY in the environment.
+// portal. Figures are cached under assets/figures/ (committed), shared with
+// every other og card and keyed by username and pose; to refresh, delete the
+// relevant assets/figures/<username>-<pose>.png (which re-renders it for any
+// other card using it) and re-run with SKIN_API_KEY in the environment.
 //
 // Run: pnpm --filter @createrington/server util:render-og-structure-packs [outPath]
 
@@ -35,7 +37,6 @@ import {
 } from "./og-shared";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const PACKS_DIR = join(here, "assets", "packs");
 
 // Portal palette from the packs hero CSS (OkLCH converted to sRGB).
 const blue = (a: number) => `rgba(29,132,245,${a})`;
@@ -372,9 +373,7 @@ async function paintFigures(ctx: SKRSContext2D): Promise<void> {
     const img = await getPoseFigure({
       uuid: spec.uuid,
       pose: spec.pose,
-      file: join(PACKS_DIR, `${spec.username}-${spec.pose}.png`),
-      width: 400,
-      height: 600,
+      username: spec.username,
     });
     const bbox = computeBBox(img);
     if (!bbox) throw new Error(`Empty figure render for ${spec.username}`);

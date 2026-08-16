@@ -9,9 +9,9 @@ import {
   type SKRSContext2D,
 } from "@napi-rs/canvas";
 import { AttachmentBuilder } from "discord.js";
-import type { KnownPose } from "createrington-skin-api";
+import { randomPose } from "createrington-skin-api";
 import config from "@/config";
-import { getSkinApiClient } from "@/services/skin-api";
+import { getSkinApiClient, MAX_QUALITY_RENDER } from "@/services/skin-api";
 import { computeBBox, fitFontSize } from "@/utils/canvas";
 
 const W = 1600;
@@ -31,17 +31,6 @@ const FIGURE_HEIGHT = 620;
 const FIGURE_MAX_WIDTH = 500;
 const FIGURE_CENTER_X = 1220;
 const FIGURE_GROUND_Y = 800;
-
-const POSES = [
-  "cheer",
-  "wave",
-  "point",
-  "cute",
-  "sprint",
-  "callout",
-  "dab",
-  "victory",
-] as const satisfies readonly KnownPose[];
 
 const MC_HEADS_BODY_URL = "https://mc-heads.net/body";
 const FETCH_TIMEOUT_MS = 5000;
@@ -105,12 +94,12 @@ async function fetchBackground(): Promise<Image | null> {
 }
 
 async function fetchFigure(minecraftUuid: string): Promise<Image | null> {
-  const pose = POSES[Math.floor(Math.random() * POSES.length)];
+  const pose = randomPose();
   try {
     const png = await getSkinApiClient().render({
       pose,
       source: { uuid: minecraftUuid },
-      options: { width: 600, height: 900 },
+      options: MAX_QUALITY_RENDER,
     });
     return await loadImage(Buffer.from(png));
   } catch (error) {
@@ -328,13 +317,22 @@ export async function generateRegistrationWelcomeCard(params: {
   const canvas = createCanvas(W * SUPERSAMPLE, H * SUPERSAMPLE);
   const ctx = canvas.getContext("2d");
   ctx.scale(SUPERSAMPLE, SUPERSAMPLE);
+  // Set once for every resample the card paints (background screenshot,
+  // figure, wordmark), not per-painter: the figure draw is conditional, so
+  // setting it there left the wordmark's quality riding on whether a skin
+  // render succeeded. napi-rs defaults to "low".
+  ctx.imageSmoothingQuality = "high";
 
   drawBackground(ctx, background);
   if (figure) drawFigure(ctx, figure);
   drawText(ctx, wordmark, params.minecraftUsername, params.memberNumber);
 
   const out = createCanvas(W, H);
-  out.getContext("2d").drawImage(canvas, 0, 0, W, H);
+  const outCtx = out.getContext("2d");
+  // This is the supersample downsample, so it is what anti-aliases the
+  // figure's hard alphaTest edges. napi-rs defaults to "low".
+  outCtx.imageSmoothingQuality = "high";
+  outCtx.drawImage(canvas, 0, 0, W, H);
   return new AttachmentBuilder(out.toBuffer("image/png"), {
     name: "welcome.png",
   });

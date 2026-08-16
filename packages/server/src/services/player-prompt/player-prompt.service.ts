@@ -304,6 +304,35 @@ export class PlayerPromptService {
     );
   }
 
+  /** Deletes a prompt, its responses, and its Discord announcement. */
+  async deletePrompt(promptId: number): Promise<PlayerPrompt | null> {
+    const prompt = await Q.player.prompt.find({ id: promptId });
+    if (!prompt) return null;
+
+    if (prompt.messageId) {
+      const result = await this.messageService.delete({
+        channelId: prompt.channelId,
+        messageId: prompt.messageId,
+      });
+      if (!result.success) {
+        logger.warn(
+          `Deleting prompt #${promptId} but failed to delete its Discord message: ${result.error}`,
+        );
+      }
+    }
+
+    await Q.player.prompt.delete({ id: promptId });
+
+    const timer = this.closureTimers.get(promptId);
+    if (timer) {
+      clearTimeout(timer);
+      this.closureTimers.delete(promptId);
+    }
+
+    logger.info(`Deleted prompt #${promptId} and its responses`);
+    return prompt;
+  }
+
   private async postAnnouncement(prompt: PlayerPrompt) {
     const active = PlayerPromptComponentPresets.active(prompt);
 

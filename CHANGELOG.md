@@ -1,3 +1,20 @@
+## v1.34.0 (2026-08-16)
+
+### @createrington/server (1.33.0 → 1.34.0)
+- [add] Add admin endpoint to delete player prompts, removing the prompt, all its responses, and its Discord announcement message in one operation with full audit logging
+- [add] Render all skins at the skin-api maximum resolution (1366x2048) across the /skin command, render routes, welcome card, and OG card scripts, replacing the previous lower-resolution per-caller dimensions
+- [refactor] Consolidate OG card figure caches into a single shared `assets/figures/` directory keyed by username and pose, replacing the per-card directories (team/, packs/, workshop/)
+- [refactor] Draw welcome card poses from the SDK's `randomPose()` catalogue instead of a hardcoded subset
+- [fix] Set `imageSmoothingQuality = "high"` on the welcome card and OG card supersample downscale, fixing aliased figure edges that the default "low" filter left jagged
+- [fix] Request mc-heads body renders at their 600px ceiling instead of the unsized 180px default, so fallback images are no longer blurry when upscaled
+- [refactor] Optimize `computeBBox` by hoisting width/height reads and walking the alpha channel with a running index (156ms to 5ms on a typical figure)
+- [chore] Bump createrington-skin-api from 2.7.0 to 2.8.0
+
+### @createrington/client (0.2.44 → 0.2.45)
+- [add] Add delete prompt modal with confirmation dialog accessible from both the prompts list (row action) and prompt detail page, showing entry count and active-status warning
+- [fix] Request mc-heads body renders at the 600px maximum instead of the unsized default, matching the server-side fix for blurry fallback skins
+- [fix] Remove `[image-rendering:pixelated]` from skin render pages (profile, compare, top) since the higher-resolution source no longer needs nearest-neighbor upscaling
+
 ## v1.33.0 (2026-08-16)
 
 ### @createrington/server (1.32.0 → 1.33.0)

@@ -72,7 +72,7 @@ function PodiumEntry({
         <img
           src={skinSrc}
           alt={player.username}
-          className={`relative ${style.height} drop-shadow-[0_4px_20px_rgba(0,0,0,0.6)] [image-rendering:pixelated]`}
+          className={`relative ${style.height} drop-shadow-[0_4px_20px_rgba(0,0,0,0.6)]`}
         />
       </div>
       {/* Username + Value */}
