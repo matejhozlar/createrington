@@ -1,4 +1,4 @@
-import { Q, db } from "@/db";
+﻿import { Q, db } from "@/db";
 import {
   BadRequestError,
   ConflictError,
@@ -162,44 +162,38 @@ export interface ModpackReleaseDiff {
   unchanged: number;
 }
 
+interface AttentionSubject {
+  curseforgeProjectId: number;
+  name: string;
+  websiteUrl: string | null;
+}
+
 export type ModpackAttentionItem =
-  | {
+  | (AttentionSubject & {
       type: "dropped_from_pack";
       modpackModId: number;
-      curseforgeProjectId: number;
-      name: string;
       droppedAt: Date;
-    }
-  | {
+    })
+  | (AttentionSubject & {
       type: "shipped_unreviewed";
       workshopModId: number;
-      curseforgeProjectId: number;
-      name: string;
-    }
-  | {
+    })
+  | (AttentionSubject & {
       type: "shipped_rejected";
       workshopModId: number;
-      curseforgeProjectId: number;
-      name: string;
-    }
-  | {
+    })
+  | (AttentionSubject & {
       type: "rejected_dependency" | "unpromoted_dependency";
       workshopModId: number;
-      curseforgeProjectId: number;
-      name: string;
       requiredByName: string;
-    }
-  | {
+    })
+  | (AttentionSubject & {
       type: "environment_unspecified";
       workshopModId: number | null;
-      curseforgeProjectId: number;
-      name: string;
-    }
-  | {
+    })
+  | (AttentionSubject & {
       type: "duplicate_manifest_entry";
-      curseforgeProjectId: number;
-      name: string;
-    };
+    });
 
 /**
  * The durable pack artifact workshops feed into. Membership rows track how
@@ -725,13 +719,20 @@ export class ModpackService {
         : [];
     const projectById = new Map(projects.map((p) => [p.id, p]));
     const label = (id: number) => projectById.get(id)?.name ?? `#${id}`;
+    const attentionSubject = (id: number): AttentionSubject => {
+      const project = projectById.get(id);
+      return {
+        curseforgeProjectId: id,
+        name: project?.name ?? `#${id}`,
+        websiteUrl: project?.websiteUrl ?? null,
+      };
+    };
 
     for (const row of dropped) {
       items.push({
         type: "dropped_from_pack",
         modpackModId: row.id,
-        curseforgeProjectId: row.curseforgeProjectId,
-        name: label(row.curseforgeProjectId),
+        ...attentionSubject(row.curseforgeProjectId),
         droppedAt: row.droppedFromManifestAt!,
       });
     }
@@ -740,8 +741,7 @@ export class ModpackService {
         type:
           mod.status === "rejected" ? "shipped_rejected" : "shipped_unreviewed",
         workshopModId: mod.id,
-        curseforgeProjectId: mod.curseforgeProjectId,
-        name: label(mod.curseforgeProjectId),
+        ...attentionSubject(mod.curseforgeProjectId),
       });
     }
     for (const [projectId, gap] of gaps) {
@@ -753,16 +753,14 @@ export class ModpackService {
             ? "rejected_dependency"
             : "unpromoted_dependency",
         workshopModId: suggestion.id,
-        curseforgeProjectId: projectId,
-        name: label(projectId),
+        ...attentionSubject(projectId),
         requiredByName: label(gap.requiredByProjectId),
       });
     }
     for (const projectId of duplicateIds) {
       items.push({
         type: "duplicate_manifest_entry",
-        curseforgeProjectId: projectId,
-        name: label(projectId),
+        ...attentionSubject(projectId),
       });
     }
     for (const [projectId, workshopModId] of unclassifiedTargets) {
@@ -771,8 +769,7 @@ export class ModpackService {
       items.push({
         type: "environment_unspecified",
         workshopModId,
-        curseforgeProjectId: projectId,
-        name: project.name,
+        ...attentionSubject(projectId),
       });
     }
     return items;

@@ -149,6 +149,7 @@ describe("ModpackService.getWorkshopAttention", () => {
       workshopModId: depMod.id,
       curseforgeProjectId: depProjectId,
       name: "Rejected Dep",
+      websiteUrl: null,
       requiredByName: `Vitest Mod ${member.curseforgeProjectId}`,
     });
   });
@@ -198,6 +199,7 @@ describe("ModpackService.getWorkshopAttention", () => {
       workshopModId: depMod.id,
       curseforgeProjectId: depProjectId,
       name: "Testing Dep",
+      websiteUrl: null,
       requiredByName: `Vitest Mod ${member.curseforgeProjectId}`,
     });
   });
@@ -252,6 +254,7 @@ describe("ModpackService.getWorkshopAttention", () => {
       workshopModId: null,
       curseforgeProjectId: member.curseforgeProjectId,
       name: `Vitest Mod ${member.curseforgeProjectId}`,
+      websiteUrl: null,
     });
   });
 
@@ -281,6 +284,7 @@ describe("ModpackService.getWorkshopAttention", () => {
       type: "duplicate_manifest_entry",
       curseforgeProjectId: member.curseforgeProjectId,
       name: `Vitest Mod ${member.curseforgeProjectId}`,
+      websiteUrl: null,
     });
   });
 
@@ -306,8 +310,28 @@ describe("ModpackService.getWorkshopAttention", () => {
         workshopModId: inTesting.id,
         curseforgeProjectId: inTesting.curseforgeProjectId,
         name: `Vitest Mod ${inTesting.curseforgeProjectId}`,
+        websiteUrl: null,
       },
     ]);
+  });
+
+  it("carries the project's CurseForge url so the issue can link out", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const member = await seedPackMod(ctx, workshop);
+    await Q.curseforge.project.update(
+      { id: member.curseforgeProjectId },
+      { websiteUrl: "https://www.curseforge.com/minecraft/mc-mods/vitest-mod" },
+    );
+
+    const items = await modpackService.getWorkshopAttention(workshop);
+
+    expect(items).toContainEqual(
+      expect.objectContaining({
+        type: "environment_unspecified",
+        curseforgeProjectId: member.curseforgeProjectId,
+        websiteUrl: "https://www.curseforge.com/minecraft/mc-mods/vitest-mod",
+      }),
+    );
   });
 
   it("flags a project once, preferring the suggestion over the member row", async () => {
@@ -333,6 +357,7 @@ describe("ModpackService.getWorkshopAttention", () => {
         workshopModId: mod.id,
         curseforgeProjectId: mod.curseforgeProjectId,
         name: `Vitest Mod ${mod.curseforgeProjectId}`,
+        websiteUrl: null,
       },
     ]);
   });
