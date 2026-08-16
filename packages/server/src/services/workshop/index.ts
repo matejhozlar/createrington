@@ -7,6 +7,7 @@ import {
 import { ConstraintViolationError, DatabaseError } from "@/db/utils/errors";
 import type {
   CurseforgeProject,
+  ModEnvironment,
   Workshop,
   WorkshopMod,
   WorkshopModRejectReason,
@@ -60,6 +61,8 @@ export type WorkshopProjectSummary = Pick<
   | "downloadCount"
   | "dateReleased"
   | "allowModDistribution"
+  | "environment"
+  | "environmentSource"
 >;
 
 export interface WorkshopModDependencyInfo {
@@ -864,6 +867,17 @@ export class WorkshopService {
       );
     }
 
+    if (target === "next_update") {
+      const project = await Q.curseforge.project.find({
+        id: mod.curseforgeProjectId,
+      });
+      if (!project || project.environment === "unspecified") {
+        throw new BadRequestError(
+          "Flag whether this mod runs client or server side before approving it for the next update",
+        );
+      }
+    }
+
     const changed = await Q.workshop.mod.updateAll(
       target === "rejected"
         ? {
@@ -1217,6 +1231,32 @@ export class WorkshopService {
     });
   }
 
+  /**
+   * Flag which side(s) a project runs on. Explicit sides become manual flags
+   * that CurseForge hints never overwrite; unspecified clears the flag so the
+   * next snapshot refresh may re-apply a CurseForge hint.
+   */
+  async setProjectEnvironment(
+    curseforgeProjectId: number,
+    environment: ModEnvironment,
+  ): Promise<CurseforgeProject> {
+    const project = await Q.curseforge.project.find({
+      id: curseforgeProjectId,
+    });
+    if (!project) {
+      throw new NotFoundError(
+        `CurseForge project #${curseforgeProjectId} is not cached`,
+      );
+    }
+    return Q.curseforge.project.updateAndReturn(
+      { id: curseforgeProjectId },
+      {
+        environment,
+        environmentSource: environment === "unspecified" ? null : "manual",
+      },
+    );
+  }
+
   private async buildDependencyInfo(
     workshop: Workshop,
     depRows: WorkshopProjectDependency[],
@@ -1264,6 +1304,8 @@ export class WorkshopService {
       downloadCount: project.downloadCount,
       dateReleased: project.dateReleased,
       allowModDistribution: project.allowModDistribution,
+      environment: project.environment,
+      environmentSource: project.environmentSource,
     };
   }
 

@@ -9,6 +9,8 @@ import { getMinecraftVersions } from "@/services/curseforge";
 import { listForumChannels } from "@/services/workshop/discord";
 import { adminWorkshopBansRouter } from "./bans";
 import {
+  MOD_ENVIRONMENTS,
+  MOD_ENVIRONMENT_LABELS,
   WORKSHOP_MOD_REJECT_REASONS,
   WORKSHOP_MOD_REVIEW_ACTIONS,
   WORKSHOP_STATUSES,
@@ -234,6 +236,38 @@ export const adminWorkshopsRouter = router({
           },
         });
         return mod;
+      } catch (error) {
+        rethrowTrpc(error);
+      }
+    }),
+
+  setProjectEnvironment: adminProcedure
+    .meta({
+      description:
+        "Flag which side(s) a CurseForge project runs on; manual flags override CurseForge hints",
+    })
+    .input(
+      z.object({
+        curseforgeProjectId: id(),
+        environment: z.enum(MOD_ENVIRONMENTS),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      try {
+        const project = await workshopService.setProjectEnvironment(
+          input.curseforgeProjectId,
+          input.environment,
+        );
+        await Q.admin.log.action.logAction({
+          ...auditActor(ctx),
+          actionType: "workshop_project_environment",
+          description: `Flagged "${project.name}" as ${MOD_ENVIRONMENT_LABELS[input.environment]}`,
+          metadata: {
+            curseforgeProjectId: input.curseforgeProjectId,
+            environment: input.environment,
+          },
+        });
+        return project;
       } catch (error) {
         rethrowTrpc(error);
       }

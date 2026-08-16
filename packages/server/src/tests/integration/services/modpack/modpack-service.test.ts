@@ -240,6 +240,120 @@ describe("ModpackService.getWorkshopAttention", () => {
       items.filter((item) => item.type === "shipped_unreviewed"),
     ).toHaveLength(1);
   });
+
+  it("flags active members whose project has no environment", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const member = await seedPackMod(ctx, workshop);
+
+    const items = await modpackService.getWorkshopAttention(workshop);
+
+    expect(items).toContainEqual({
+      type: "environment_unspecified",
+      workshopModId: null,
+      curseforgeProjectId: member.curseforgeProjectId,
+      name: `Vitest Mod ${member.curseforgeProjectId}`,
+    });
+  });
+
+  it("flags projects listed more than once in the published manifest", async () => {
+    const modpack = await seedModpack(ctx, {
+      curseforgeProjectId: ctx.nextProjectId++,
+    });
+    const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const member = await seedPackMod(ctx, workshop, {
+      liveAt: new Date(),
+      liveInVersion: "1.0.0",
+    });
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      manifest({
+        version: "1.0.0",
+        modIds: new Set([member.curseforgeProjectId]),
+        entries: [
+          { projectId: member.curseforgeProjectId, fileId: 1 },
+          { projectId: member.curseforgeProjectId, fileId: 2 },
+        ],
+      }),
+    );
+
+    const items = await modpackService.getWorkshopAttention(workshop);
+
+    expect(items).toContainEqual({
+      type: "duplicate_manifest_entry",
+      curseforgeProjectId: member.curseforgeProjectId,
+      name: `Vitest Mod ${member.curseforgeProjectId}`,
+    });
+  });
+
+  it("flags unclassified suggestions in testing with their mod id", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const inTesting = await seedMod(ctx, workshop, {
+      status: "testing",
+      submittedBy: USER_A,
+    });
+    await seedMod(ctx, workshop, {
+      status: "pending",
+      submittedBy: USER_A,
+    });
+
+    const items = await modpackService.getWorkshopAttention(workshop);
+
+    const envItems = items.filter(
+      (item) => item.type === "environment_unspecified",
+    );
+    expect(envItems).toEqual([
+      {
+        type: "environment_unspecified",
+        workshopModId: inTesting.id,
+        curseforgeProjectId: inTesting.curseforgeProjectId,
+        name: `Vitest Mod ${inTesting.curseforgeProjectId}`,
+      },
+    ]);
+  });
+
+  it("flags a project once, preferring the suggestion over the member row", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const mod = await seedMod(ctx, workshop, {
+      status: "next_update",
+      submittedBy: USER_A,
+    });
+    await seedPackMod(ctx, workshop, {
+      curseforgeProjectId: mod.curseforgeProjectId,
+      origin: "suggestion",
+      workshopModId: mod.id,
+      addedBy: null,
+    });
+
+    const items = await modpackService.getWorkshopAttention(workshop);
+
+    expect(
+      items.filter((item) => item.type === "environment_unspecified"),
+    ).toEqual([
+      {
+        type: "environment_unspecified",
+        workshopModId: mod.id,
+        curseforgeProjectId: mod.curseforgeProjectId,
+        name: `Vitest Mod ${mod.curseforgeProjectId}`,
+      },
+    ]);
+  });
+
+  it("does not flag classified or dropped members", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const classified = await seedPackMod(ctx, workshop);
+    await Q.curseforge.project.update(
+      { id: classified.curseforgeProjectId },
+      { environment: "both", environmentSource: "manual" },
+    );
+    await seedPackMod(ctx, workshop, {
+      droppedFromManifestAt: new Date(),
+    });
+
+    const items = await modpackService.getWorkshopAttention(workshop);
+
+    expect(
+      items.filter((item) => item.type === "environment_unspecified"),
+    ).toHaveLength(0);
+  });
 });
 
 describe("ModpackService.reconcile", () => {
@@ -709,6 +823,28 @@ describe("ModpackService.seedFromManifest", () => {
     ...overrides,
   });
 
+  // CurseForge exports repeat a project that ships more than one file, so the
+  // seed merges the entries and reports them instead of failing the import
+  it("merges repeated projects and reports them", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const repeated = await seedProject(ctx);
+    const other = await seedProject(ctx);
+
+    const result = await modpackService.seedFromManifest(
+      workshop.modpackId,
+      seed({ modIds: [repeated, other, repeated] }),
+    );
+
+    expect(result).toMatchObject({
+      modCount: 2,
+      memberCount: 2,
+      duplicateProjectIds: [repeated],
+    });
+    expect(await Q.modpack.mod.count({ modpackId: workshop.modpackId })).toBe(
+      2,
+    );
+  });
+
   it("refuses when the pack follows a published CurseForge project", async () => {
     const modpack = await seedModpack(ctx, { curseforgeProjectId: 5100 });
 
@@ -739,6 +875,7 @@ describe("ModpackService.seedFromManifest", () => {
       modCount: 2,
       memberCount: 1,
       unresolvedProjectIds: [unknown],
+      duplicateProjectIds: [],
     });
     const member = await Q.modpack.mod.find({
       modpackId: workshop.modpackId,
@@ -857,6 +994,7 @@ describe("ModpackService.seedFromManifest", () => {
       modCount: 1,
       memberCount: 1,
       unresolvedProjectIds: [],
+      duplicateProjectIds: [],
     });
     expect((await Q.workshop.mod.get({ id: staged.id })).status).toBe(
       "next_update",

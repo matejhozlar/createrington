@@ -100,6 +100,9 @@ const rawModSchema = z.object({
   allowModDistribution: z.boolean().nullish(),
   dateModified: z.string(),
   dateReleased: z.string(),
+  latestFiles: z
+    .array(z.object({ gameVersions: z.array(z.string()).nullish() }))
+    .nullish(),
   latestFilesIndexes: z.array(rawFileIndexSchema).nullish(),
 });
 
@@ -211,6 +214,8 @@ export interface CurseForgeModFile {
   dependencies: Array<{ modId: number; relationType: number }>;
 }
 
+export type CurseForgeEnvironmentHint = "client" | "server" | "both";
+
 export interface CurseForgeProjectData {
   id: number;
   classId: number;
@@ -244,6 +249,7 @@ export interface CurseForgeProjectData {
     releaseType: number;
     modLoader: number | null;
   }>;
+  environmentHint: CurseForgeEnvironmentHint | null;
 }
 
 export interface ResolvedDependency {
@@ -414,6 +420,25 @@ export async function getModFiles(
 
 type RawCurseForgeMod = z.infer<typeof rawModSchema>;
 
+// CurseForge surfaces the author-assigned environment checkboxes as plain
+// "Client" / "Server" entries mixed into each file's gameVersions array
+export function deriveEnvironmentHint(
+  files: Array<{ gameVersions?: string[] | null }>,
+): CurseForgeEnvironmentHint | null {
+  let client = false;
+  let server = false;
+  for (const file of files) {
+    for (const tag of file.gameVersions ?? []) {
+      if (tag === "Client") client = true;
+      else if (tag === "Server") server = true;
+    }
+  }
+  if (client && server) return "both";
+  if (client) return "client";
+  if (server) return "server";
+  return null;
+}
+
 function mapProject(raw: RawCurseForgeMod): CurseForgeProjectData {
   return {
     id: raw.id,
@@ -438,6 +463,7 @@ function mapProject(raw: RawCurseForgeMod): CurseForgeProjectData {
       releaseType: idx.releaseType,
       modLoader: idx.modLoader ?? null,
     })),
+    environmentHint: deriveEnvironmentHint(raw.latestFiles ?? []),
   };
 }
 
