@@ -709,7 +709,10 @@ export class WorkshopService {
     }
   }
 
-  /** Update workshop fields, including lifecycle status. */
+  /**
+   * Update workshop fields, including lifecycle status. Renaming the slug
+   * throws ConflictError when another workshop already uses it.
+   */
   async updateWorkshop(
     workshopId: number,
     patch: Partial<{
@@ -780,7 +783,10 @@ export class WorkshopService {
     try {
       return await Q.workshop.updateAndReturn({ id: workshopId }, patch);
     } catch (error) {
-      if (error instanceof ConstraintViolationError) {
+      if (
+        error instanceof ConstraintViolationError &&
+        patch.slug !== undefined
+      ) {
         throw new ConflictError(
           `A workshop with slug "${patch.slug}" already exists`,
         );

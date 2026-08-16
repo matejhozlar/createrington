@@ -130,11 +130,11 @@ function SettingsForm({
     const nextSlug = slug.trim();
 
     try {
-      await updateMutation.mutateAsync({
+      const updated = await updateMutation.mutateAsync({
         workshopId: workshop.id,
         patch: {
           name: name.trim(),
-          slug: nextSlug,
+          ...(nextSlug !== workshop.slug ? { slug: nextSlug } : {}),
           description: description.trim() || null,
           maxModsPerUser: Number(maxMods),
           maxUpvotesPerUser: Number(maxUpvotes),
@@ -148,6 +148,15 @@ function SettingsForm({
               }),
         },
       });
+
+      if (updated.slug !== workshop.slug) {
+        utils.admin.workshops.list.setData(undefined, (rows) =>
+          rows?.map((row) =>
+            row.id === workshop.id ? { ...row, slug: updated.slug } : row,
+          ),
+        );
+        onSlugChange?.(updated.slug);
+      }
 
       if (nextPublishedPackId !== currentPublishedPackId) {
         await updateModpackMutation.mutateAsync({
@@ -163,13 +172,6 @@ function SettingsForm({
     }
 
     toast.success("Workshop settings saved");
-    if (nextSlug !== workshop.slug) {
-      utils.admin.workshops.list.setData(undefined, (rows) =>
-        rows?.map((row) =>
-          row.id === workshop.id ? { ...row, slug: nextSlug } : row,
-        ),
-      );
-    }
     utils.admin.workshops.list.invalidate();
     utils.admin.modpacks.list.invalidate();
     utils.admin.workshops.listPackMods.invalidate();
@@ -177,9 +179,6 @@ function SettingsForm({
     utils.user.workshops.list.invalidate();
     utils.user.workshops.get.invalidate();
     onOpenChange(false);
-    if (nextSlug !== workshop.slug) {
-      onSlugChange?.(nextSlug);
-    }
   };
 
   return (
@@ -200,7 +199,9 @@ function SettingsForm({
             id="settings-slug"
             maxLength={100}
             value={slug}
-            onChange={(e) => setSlug(e.target.value)}
+            onChange={(e) =>
+              setSlug(e.target.value.toLowerCase().replace(/\s+/g, "-"))
+            }
           />
           <p className="text-xs text-muted-foreground">
             The workshop's address: /workshop/{slug.trim() || "..."}. Changing
