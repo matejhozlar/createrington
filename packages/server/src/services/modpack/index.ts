@@ -36,6 +36,13 @@ import {
 } from "@/services/workshop/discord";
 import { recordModEvent } from "@/services/workshop/events";
 
+const SHIP_CLAIMABLE_STATUSES: WorkshopModStatus[] = [
+  "pending",
+  "approved",
+  "testing",
+  "next_update",
+];
+
 export type ModpackProjectSummary = Pick<
   CurseforgeProject,
   | "id"
@@ -832,13 +839,9 @@ export class ModpackService {
   }
 
   /**
-   * Move suggestions in and out of in_pack to match what the published
-   * manifest actually contains. Pack membership overrides the review
-   * pipeline, so shipping claims a suggestion from any active status, not
-   * just next_update; only rejected stays put, surfacing as a
-   * shipped_rejected attention item instead of silently undoing the
-   * rejection. Returns the rows this call claimed, so the caller can
-   * announce them.
+   * Sync suggestions with what the manifest ships. rejected is excluded from
+   * the shipped move so a sweep never undoes an explicit rejection; it
+   * surfaces as a shipped_rejected attention item instead.
    */
   private async moveSuggestions(
     workshopModIds: number[],
@@ -848,7 +851,7 @@ export class ModpackService {
     if (workshopModIds.length === 0) return [];
     const mods = await Q.workshop.mod.findAll({
       id: { $in: workshopModIds },
-      status: to === "in_pack" ? { $nin: ["in_pack", "rejected"] } : "in_pack",
+      status: to === "in_pack" ? { $in: SHIP_CLAIMABLE_STATUSES } : "in_pack",
     });
     const moved: WorkshopMod[] = [];
     for (const mod of mods) {
