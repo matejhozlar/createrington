@@ -334,7 +334,7 @@ describe("WorkshopService.reviewMod", () => {
     expect(updated.rejectNote).toBe("covered by the base pack");
   });
 
-  it("keeps the published row when rejecting a shipped mod", async () => {
+  it("refuses to reject a mod that is already in the published pack", async () => {
     const workshop = await seedWorkshop(ctx);
     const mod = await seedMod(ctx, workshop, {
       submittedBy: USER_A,
@@ -348,13 +348,15 @@ describe("WorkshopService.reviewMod", () => {
       liveInVersion: "1.0.0",
     });
 
-    const rejected = await workshopService.reviewMod(mod.id, "reject", ADMIN, {
-      reason: "incompatible",
-    });
+    await expect(
+      workshopService.reviewMod(mod.id, "reject", ADMIN, {
+        reason: "incompatible",
+      }),
+    ).rejects.toThrow(
+      "This mod is live in the published pack, publish a release without it first",
+    );
 
-    // The pack still ships it until the next publish drops it, so the mirror
-    // keeps saying so and the mod surfaces as shipped_rejected
-    expect(rejected.status).toBe("rejected");
+    expect((await Q.workshop.mod.get({ id: mod.id })).status).toBe("in_pack");
     expect(await Q.modpack.mod.find({ id: packRow.id })).not.toBeNull();
   });
 });

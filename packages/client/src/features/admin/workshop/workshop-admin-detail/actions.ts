@@ -54,7 +54,7 @@ export function modReviewActions(
       onClick: () =>
         onReject({ workshopModId: mod.id, name: mod.project.name }),
     });
-  } else {
+  } else if (mod.status !== "in_pack") {
     actions.push({
       label: "Reject",
       icon: Ban,

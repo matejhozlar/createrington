@@ -786,14 +786,13 @@ export class WorkshopService {
 
   /**
    * Move a mod through the review pipeline. WORKSHOP_MOD_REVIEW_TARGETS is the
-   * rule: a status with no entry for the action is refused. Reaching
-   * next_update adds the pack row; leaving next_update or in_pack for anything
-   * else drops it, so rejecting a mod that is already in the published pack
-   * discards its ship history and leaves the pack contradicting the manifest
-   * until it is republished (the mod surfaces as a shipped_rejected attention
-   * item meanwhile). Repeating an action the mod already satisfies is an
-   * idempotent no-op; a reject with a changed reason or note is an edit, not
-   * a repeat. The in_pack status is reconcile-owned and never set here.
+   * rule: a status with no entry for the action is refused. A mod that is
+   * in_pack is live in the published pack, so no review action applies to it:
+   * it has to be dropped from a published release first, which reconcile turns
+   * into a move back to next_update. Repeating an action the mod already
+   * satisfies is an idempotent no-op; a reject with a changed reason or note
+   * is an edit, not a repeat. The in_pack status is reconcile-owned and never
+   * set here.
    */
   async reviewMod(
     workshopModId: number,
@@ -829,9 +828,9 @@ export class WorkshopService {
     ) {
       return mod;
     }
-    if (action === "send_back" && mod.status === "in_pack") {
+    if (mod.status === "in_pack") {
       throw new BadRequestError(
-        "This mod is in the published pack, reject it instead of sending it back",
+        "This mod is live in the published pack, publish a release without it first",
       );
     }
 

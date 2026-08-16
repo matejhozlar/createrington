@@ -234,10 +234,11 @@ describe("reviewMod pack rows", () => {
     );
   });
 
-  it("leaves a published row in place when its suggestion is rejected", async () => {
+  it("leaves a published row in place when its rejected suggestion is re-reviewed", async () => {
     const workshop = await seedWorkshop(ctx);
     const mod = await seedMod(ctx, workshop, {
-      status: "in_pack",
+      status: "rejected",
+      rejectReason: "incompatible",
       submittedBy: USER_A,
     });
     const row = await seedPackMod(ctx, workshop, {
@@ -249,7 +250,7 @@ describe("reviewMod pack rows", () => {
     });
 
     await workshopService.reviewMod(mod.id, "reject", ADMIN, {
-      reason: "incompatible",
+      reason: "not_a_good_fit",
     });
 
     expect(await Q.modpack.mod.find({ id: row.id })).not.toBeNull();

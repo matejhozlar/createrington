@@ -423,7 +423,8 @@ describe("ModpackService.reconcile", () => {
     const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
     const mod = await seedMod(ctx, workshop, {
       submittedBy: USER_A,
-      status: "in_pack",
+      status: "rejected",
+      rejectReason: "incompatible",
     });
     await seedPackMod(ctx, workshop, {
       curseforgeProjectId: mod.curseforgeProjectId,
@@ -440,9 +441,6 @@ describe("ModpackService.reconcile", () => {
       }),
     );
 
-    await workshopService.reviewMod(mod.id, "reject", ADMIN, {
-      reason: "incompatible",
-    });
     await modpackService.reconcile(modpack.id);
 
     expect(
