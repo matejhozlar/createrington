@@ -49,7 +49,7 @@ export type StageId = Extract<
 >;
 
 export type StageColumn =
-  "note" | "upvotes" | "dependencies" | "file" | "reason";
+  "note" | "upvotes" | "dependencies" | "file" | "reason" | "environment";
 
 export const STAGE_CONFIG: Record<
   StageId,
@@ -88,7 +88,7 @@ export const STAGE_CONFIG: Record<
     emptyMessage: "Nothing in testing",
     dateHeader: "Testing Since",
     dateField: "reviewedAt",
-    columns: ["dependencies"],
+    columns: ["dependencies", "environment"],
   },
   "next-update": {
     status: "next_update",
@@ -97,7 +97,7 @@ export const STAGE_CONFIG: Record<
     emptyMessage: "Nothing staged for the next update",
     dateHeader: "Staged",
     dateField: "reviewedAt",
-    columns: ["file"],
+    columns: ["file", "environment"],
   },
   "ruled-out": {
     status: "rejected",

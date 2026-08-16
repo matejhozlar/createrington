@@ -1335,3 +1335,42 @@ describe("WorkshopService.deleteWorkshop", () => {
     expect(await Q.workshop.poll.ballot.find({ id: ballot.id })).toBeNull();
   });
 });
+
+describe("WorkshopService.setProjectEnvironment", () => {
+  it("stores an explicit side as a manual flag", async () => {
+    const projectId = await seedProject(ctx);
+
+    const updated = await workshopService.setProjectEnvironment(
+      projectId,
+      "client",
+    );
+
+    expect(updated.environment).toBe("client");
+    expect(updated.environmentSource).toBe("manual");
+    expect(await Q.curseforge.project.get({ id: projectId })).toMatchObject({
+      environment: "client",
+      environmentSource: "manual",
+    });
+  });
+
+  it("clears the source when set back to unspecified", async () => {
+    const projectId = await seedProject(ctx);
+    await Q.curseforge.project.update(
+      { id: projectId },
+      { environment: "server", environmentSource: "manual" },
+    );
+
+    await workshopService.setProjectEnvironment(projectId, "unspecified");
+
+    expect(await Q.curseforge.project.get({ id: projectId })).toMatchObject({
+      environment: "unspecified",
+      environmentSource: null,
+    });
+  });
+
+  it("throws NotFoundError for a project that is not cached", async () => {
+    await expect(
+      workshopService.setProjectEnvironment(ctx.nextProjectId++, "both"),
+    ).rejects.toThrow(NotFoundError);
+  });
+});

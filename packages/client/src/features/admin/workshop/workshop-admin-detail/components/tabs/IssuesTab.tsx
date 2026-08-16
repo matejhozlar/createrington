@@ -7,7 +7,9 @@ import {
   type DataTableColumn,
 } from "@/components/data-table";
 import { CardEmpty, CardError } from "@/features/admin/components/CardState";
+import type { ModEnvironment } from "@createrington/shared/db";
 import type { AttentionItem } from "../../types";
+import { EnvironmentCell } from "../EnvironmentCell";
 
 type DependencyGap = Extract<
   AttentionItem["type"],
@@ -30,6 +32,10 @@ const ATTENTION_MESSAGES: Record<
   shipped_unreviewed:
     "shipped in the pack but its suggestion never finished review, so the suggester is uncredited.",
   shipped_rejected: "shipped in the pack but is rejected in this workshop.",
+  environment_unspecified:
+    "has no client/server flag, so manifests will ship it to both sides. Flag it if you know better:",
+  duplicate_manifest_entry:
+    "appears more than once in the published pack manifest. Publish a build that lists it once.",
 };
 
 function isDependencyGap(
@@ -50,6 +56,8 @@ export function IssuesTab({
   onView,
   onAddProject,
   busyProjectId,
+  envBusyProjectId,
+  onSetEnvironment,
 }: {
   items: AttentionItem[];
   isLoading: boolean;
@@ -58,6 +66,8 @@ export function IssuesTab({
   onView: (workshopModId: number) => void;
   onAddProject: (projectId: number, name: string) => void;
   busyProjectId: number | null;
+  envBusyProjectId: number | null;
+  onSetEnvironment: (projectId: number, environment: ModEnvironment) => void;
 }) {
   const columns: DataTableColumn<AttentionItem>[] = [
     {
@@ -88,6 +98,17 @@ export function IssuesTab({
           </p>
           {item.type === "dropped_from_pack" && (
             <CellDate value={item.droppedAt} className="text-xs" />
+          )}
+          {item.type === "environment_unspecified" && (
+            <div className="pt-1.5">
+              <EnvironmentCell
+                projectId={item.curseforgeProjectId}
+                environment="unspecified"
+                source={null}
+                busy={envBusyProjectId === item.curseforgeProjectId}
+                onSetEnvironment={onSetEnvironment}
+              />
+            </div>
           )}
         </>
       ),

@@ -26,6 +26,27 @@ export const WORKSHOP_MOD_REJECT_REASON_LABELS: Record<
   not_a_good_fit: "Not a good fit",
 };
 
+// Which side(s) a mod runs on. CurseForge's author-assigned file flags feed
+// low-trust cf_flag hints; manual admin flags always win. Unspecified mods
+// ship to both sides and are surfaced for review.
+export const MOD_ENVIRONMENTS = [
+  "client",
+  "server",
+  "both",
+  "unspecified",
+] as const;
+
+export const MOD_ENVIRONMENT_SOURCES = ["cf_flag", "manual"] as const;
+
+type ModEnvironment = (typeof MOD_ENVIRONMENTS)[number];
+
+export const MOD_ENVIRONMENT_LABELS: Record<ModEnvironment, string> = {
+  client: "Client",
+  server: "Server",
+  both: "Client & Server",
+  unspecified: "Not specified",
+};
+
 export const WORKSHOP_MOD_STATUSES = [
   "pending",
   "approved",
@@ -145,7 +166,21 @@ export const modpackManifestUploadSchema = z.object({
   files: z
     .array(z.object({ projectID: z.number().int().positive().max(2147483647) }))
     .min(1)
-    .max(2000),
+    .max(2000)
+    .superRefine((files, ctx) => {
+      const seen = new Set<number>();
+      const duplicates = new Set<number>();
+      for (const file of files) {
+        if (seen.has(file.projectID)) duplicates.add(file.projectID);
+        seen.add(file.projectID);
+      }
+      if (duplicates.size > 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `The manifest lists the same project more than once: ${[...duplicates].join(", ")}`,
+        });
+      }
+    }),
 });
 
 export type ModpackManifestUpload = z.infer<typeof modpackManifestUploadSchema>;

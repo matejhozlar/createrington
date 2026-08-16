@@ -5,9 +5,11 @@ import { CellDate, CellText } from "@/components/cell-text";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   AvatarCellSkeleton,
+  BadgeCellSkeleton,
   DataTable,
   type DataTableColumn,
 } from "@/components/data-table";
+import type { ModEnvironment } from "@createrington/shared/db";
 import { PlayerLabel } from "@/components/player-label";
 import { FilterBar } from "@/features/admin/components/FilterBar";
 import { CardEmpty, CardError } from "@/features/admin/components/CardState";
@@ -16,12 +18,13 @@ import { modReviewActions, type ModReviewHandlers } from "../../actions";
 import { STAGE_CONFIG, type StageColumn, type StageId } from "../../tabs";
 import type { AdminWorkshopMod } from "../../types";
 import { DependencyCell } from "../DependencyCell";
+import { EnvironmentCell } from "../EnvironmentCell";
 import { ModCell, ModCellSkeleton } from "../ModCell";
 
 const MODS_PER_PAGE = 10;
 
 const OPTIONAL_COLUMNS: Record<
-  StageColumn,
+  Exclude<StageColumn, "environment">,
   DataTableColumn<AdminWorkshopMod>
 > = {
   note: {
@@ -95,6 +98,8 @@ export function StageTab({
   onPageChange,
   busyModId,
   onView,
+  envBusyProjectId,
+  onSetEnvironment,
   onReview,
   onReject,
 }: {
@@ -109,9 +114,27 @@ export function StageTab({
   onPageChange: (page: number) => void;
   busyModId: number | null;
   onView: (workshopModId: number) => void;
+  envBusyProjectId: number | null;
+  onSetEnvironment: (projectId: number, environment: ModEnvironment) => void;
 } & ModReviewHandlers) {
   const config = STAGE_CONFIG[stage];
   const query = search.trim().toLowerCase();
+
+  const environmentColumn: DataTableColumn<AdminWorkshopMod> = {
+    key: "environment",
+    header: "Side",
+    width: 140,
+    skeleton: () => <BadgeCellSkeleton />,
+    render: (mod) => (
+      <EnvironmentCell
+        projectId={mod.project.id}
+        environment={mod.project.environment}
+        source={mod.project.environmentSource}
+        busy={envBusyProjectId === mod.project.id}
+        onSetEnvironment={onSetEnvironment}
+      />
+    ),
+  };
 
   const filtered = useMemo(() => {
     if (!query) return mods;
@@ -156,7 +179,9 @@ export function StageTab({
         />
       ),
     },
-    ...config.columns.map((key) => OPTIONAL_COLUMNS[key]),
+    ...config.columns.map((key) =>
+      key === "environment" ? environmentColumn : OPTIONAL_COLUMNS[key],
+    ),
     {
       key: "date",
       header: config.dateHeader,

@@ -45,7 +45,9 @@ import {
 import { FilterBar } from "@/features/admin/components/FilterBar";
 import { CardEmpty, CardError } from "@/features/admin/components/CardState";
 import { formatDate } from "@/features/workshop/format";
+import type { ModEnvironment } from "@createrington/shared/db";
 import type { PackMod, ReleaseMod } from "../../types";
+import { EnvironmentCell } from "../EnvironmentCell";
 import { ModCell, ModCellSkeleton } from "../ModCell";
 
 const MODS_PER_PAGE = 10;
@@ -125,6 +127,8 @@ export function InPackTab({
   search,
   onSearchChange,
   onReconciled,
+  envBusyProjectId,
+  onSetEnvironment,
 }: {
   workshopId: number;
   modpackId: number;
@@ -135,6 +139,8 @@ export function InPackTab({
   search: string;
   onSearchChange: (value: string) => void;
   onReconciled: () => void;
+  envBusyProjectId: number | null;
+  onSetEnvironment: (projectId: number, environment: ModEnvironment) => void;
 }) {
   const toast = useToastActions();
   const utils = trpc.useUtils();
@@ -199,7 +205,13 @@ export function InPackTab({
     }
     const parsed = modpackManifestUploadSchema.safeParse(raw);
     if (!parsed.success) {
-      toast.error("That file does not look like a modpack manifest.json");
+      const custom = parsed.error.issues.find(
+        (issue) => issue.code === "custom",
+      );
+      toast.error(
+        custom?.message ??
+          "That file does not look like a modpack manifest.json",
+      );
       return;
     }
     if (rows.length === 0) {
@@ -283,6 +295,21 @@ export function InPackTab({
       minWidth: 180,
       cellClassName: "text-sm text-muted-foreground",
       render: (row) => <Credit row={row} />,
+    },
+    {
+      key: "environment",
+      header: "Side",
+      width: 140,
+      skeleton: () => <BadgeCellSkeleton />,
+      render: (row) => (
+        <EnvironmentCell
+          projectId={row.project.id}
+          environment={row.project.environment}
+          source={row.project.environmentSource}
+          busy={envBusyProjectId === row.project.id}
+          onSetEnvironment={onSetEnvironment}
+        />
+      ),
     },
     {
       key: "publishState",

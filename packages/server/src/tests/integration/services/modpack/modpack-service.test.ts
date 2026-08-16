@@ -240,6 +240,67 @@ describe("ModpackService.getWorkshopAttention", () => {
       items.filter((item) => item.type === "shipped_unreviewed"),
     ).toHaveLength(1);
   });
+
+  it("flags active members whose project has no environment", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const member = await seedPackMod(ctx, workshop);
+
+    const items = await modpackService.getWorkshopAttention(workshop);
+
+    expect(items).toContainEqual({
+      type: "environment_unspecified",
+      modpackModId: member.id,
+      curseforgeProjectId: member.curseforgeProjectId,
+      name: `Vitest Mod ${member.curseforgeProjectId}`,
+    });
+  });
+
+  it("flags projects listed more than once in the published manifest", async () => {
+    const modpack = await seedModpack(ctx, {
+      curseforgeProjectId: ctx.nextProjectId++,
+    });
+    const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const member = await seedPackMod(ctx, workshop, {
+      liveAt: new Date(),
+      liveInVersion: "1.0.0",
+    });
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      manifest({
+        version: "1.0.0",
+        modIds: new Set([member.curseforgeProjectId]),
+        entries: [
+          { projectId: member.curseforgeProjectId, fileId: 1 },
+          { projectId: member.curseforgeProjectId, fileId: 2 },
+        ],
+      }),
+    );
+
+    const items = await modpackService.getWorkshopAttention(workshop);
+
+    expect(items).toContainEqual({
+      type: "duplicate_manifest_entry",
+      curseforgeProjectId: member.curseforgeProjectId,
+      name: `Vitest Mod ${member.curseforgeProjectId}`,
+    });
+  });
+
+  it("does not flag classified or dropped members", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const classified = await seedPackMod(ctx, workshop);
+    await Q.curseforge.project.update(
+      { id: classified.curseforgeProjectId },
+      { environment: "both", environmentSource: "manual" },
+    );
+    await seedPackMod(ctx, workshop, {
+      droppedFromManifestAt: new Date(),
+    });
+
+    const items = await modpackService.getWorkshopAttention(workshop);
+
+    expect(
+      items.filter((item) => item.type === "environment_unspecified"),
+    ).toHaveLength(0);
+  });
 });
 
 describe("ModpackService.reconcile", () => {

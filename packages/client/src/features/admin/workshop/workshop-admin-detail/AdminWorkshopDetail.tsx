@@ -16,10 +16,14 @@ import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { ModDetailDialog } from "@/features/workshop/workshop-detail/components/ModDetailDialog";
 import { WORKSHOP_STATUS_STYLES } from "@/features/workshop/format";
 import {
+  MOD_ENVIRONMENT_LABELS,
   WORKSHOP_STATUS_TRANSITIONS,
   type WorkshopModReviewAction,
 } from "@createrington/shared/workshop";
-import type { WorkshopModStatus } from "@createrington/shared/db";
+import type {
+  ModEnvironment,
+  WorkshopModStatus,
+} from "@createrington/shared/db";
 import type { AdminWorkshopMod } from "./types";
 import {
   STAGE_CONFIG,
@@ -183,6 +187,19 @@ export function AdminWorkshopDetail() {
     onError: (err) => toast.error(err.message),
   });
 
+  const environmentMutation =
+    trpc.admin.workshops.setProjectEnvironment.useMutation({
+      onSuccess: (project) => {
+        toast.success(
+          project.environment === "unspecified"
+            ? "Side flag cleared"
+            : `Flagged as ${MOD_ENVIRONMENT_LABELS[project.environment]}`,
+        );
+        invalidate();
+      },
+      onError: (err) => toast.error(err.message),
+    });
+
   const updateWorkshopMutation = trpc.admin.workshops.update.useMutation({
     onSuccess: () => {
       toast.success("Workshop updated");
@@ -224,6 +241,19 @@ export function AdminWorkshopDetail() {
   const busyProjectId = addProjectMutation.isPending
     ? (addProjectMutation.variables?.projectIds[0] ?? null)
     : null;
+  const envBusyProjectId = environmentMutation.isPending
+    ? (environmentMutation.variables?.curseforgeProjectId ?? null)
+    : null;
+
+  const handleSetEnvironment = (
+    projectId: number,
+    environment: ModEnvironment,
+  ) => {
+    environmentMutation.mutate({
+      curseforgeProjectId: projectId,
+      environment,
+    });
+  };
 
   const handleReview = (
     id: number,
@@ -370,6 +400,8 @@ export function AdminWorkshopDetail() {
             onPageChange={setPage}
             busyModId={busyModId}
             onView={setDetailModId}
+            envBusyProjectId={envBusyProjectId}
+            onSetEnvironment={handleSetEnvironment}
             onReview={handleReview}
             onReject={openReject}
           />
@@ -403,6 +435,8 @@ export function AdminWorkshopDetail() {
             search={search}
             onSearchChange={setSearch}
             onReconciled={invalidate}
+            envBusyProjectId={envBusyProjectId}
+            onSetEnvironment={handleSetEnvironment}
           />
         )}
 
@@ -425,6 +459,8 @@ export function AdminWorkshopDetail() {
             onView={setDetailModId}
             onAddProject={addProject}
             busyProjectId={busyProjectId}
+            envBusyProjectId={envBusyProjectId}
+            onSetEnvironment={handleSetEnvironment}
           />
         )}
 

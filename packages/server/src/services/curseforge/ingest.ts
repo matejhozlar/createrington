@@ -18,6 +18,8 @@ function toCreate(data: CurseForgeProjectData): CurseforgeProjectCreate {
     thumbnailUrl: data.thumbnailUrl,
     websiteUrl: data.websiteUrl,
     primaryAuthor: data.authors[0]?.name ?? null,
+    environment: data.environmentHint ?? "unspecified",
+    environmentSource: data.environmentHint ? "cf_flag" : null,
     categories: data.categories.map((c) => ({
       id: c.id,
       name: c.name,
@@ -54,6 +56,31 @@ const UPDATE_FIELDS: Array<keyof CurseforgeProjectCreate> = [
   "updatedAt",
 ];
 
+async function applyEnvironmentHints(
+  projects: CurseForgeProjectData[],
+): Promise<void> {
+  const hinted = projects.filter((data) => data.environmentHint !== null);
+  if (hinted.length === 0) return;
+
+  const rows = await Q.curseforge.project.findAll(
+    { id: { $in: hinted.map((data) => data.id) } },
+    { select: ["id", "environment", "environmentSource"] },
+  );
+  const byId = new Map(rows.map((row) => [row.id, row]));
+  for (const data of hinted) {
+    const hint = data.environmentHint;
+    const row = byId.get(data.id);
+    if (!hint || !row || row.environmentSource === "manual") continue;
+    if (row.environment === hint && row.environmentSource === "cf_flag") {
+      continue;
+    }
+    await Q.curseforge.project.update(
+      { id: data.id },
+      { environment: hint, environmentSource: "cf_flag" },
+    );
+  }
+}
+
 /**
  * Fetch a project from CurseForge and upsert its snapshot into the cache.
  * Returns both the stored entity and the live API data (for validation that
@@ -68,6 +95,7 @@ export async function ingestProject(
     "id",
     UPDATE_FIELDS,
   );
+  await applyEnvironmentHints([data]);
   return { entity, data };
 }
 
@@ -86,6 +114,7 @@ export async function ingestProjects(
     await Q.curseforge.project.upsert(toCreate(data), "id", UPDATE_FIELDS);
     byId.set(data.id, data);
   }
+  await applyEnvironmentHints(projects);
   return byId;
 }
 
@@ -100,5 +129,6 @@ export async function refreshProjects(projectIds: number[]): Promise<number> {
   for (const data of projects) {
     await Q.curseforge.project.upsert(toCreate(data), "id", UPDATE_FIELDS);
   }
+  await applyEnvironmentHints(projects);
   return projects.length;
 }

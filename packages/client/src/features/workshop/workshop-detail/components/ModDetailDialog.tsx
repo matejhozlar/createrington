@@ -31,10 +31,12 @@ import { PlayerLabel } from "@/components/player-label";
 import { ProjectThumb } from "../../components/ProjectThumb";
 import {
   DEPENDENCY_COVERAGE_STYLES,
+  environmentTitle,
   formatDate,
   formatDownloads,
   isHttpUrl,
   modCredit,
+  MOD_ENVIRONMENT_STYLES,
   MOD_STATUS_STYLES,
   REJECT_REASON_LABELS,
 } from "../../format";
@@ -133,6 +135,21 @@ export function ModDetailDialog({
                         className={cn("text-xs", status.className)}
                       >
                         {status.label}
+                      </Badge>
+                    )}
+                    {project.environment !== "unspecified" && (
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "text-xs",
+                          MOD_ENVIRONMENT_STYLES[project.environment].className,
+                        )}
+                        title={environmentTitle(
+                          project.environment,
+                          project.environmentSource,
+                        )}
+                      >
+                        {MOD_ENVIRONMENT_STYLES[project.environment].label}
                       </Badge>
                     )}
                     {categories.slice(0, 4).map((c) => (

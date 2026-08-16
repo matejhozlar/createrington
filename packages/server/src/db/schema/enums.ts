@@ -1,6 +1,8 @@
 import { pgEnum } from "drizzle-orm/pg-core";
 import { PLAYER_PROMPT_ENTRY_MODES } from "@createrington/shared/player-prompt";
 import {
+  MOD_ENVIRONMENTS,
+  MOD_ENVIRONMENT_SOURCES,
   WORKSHOP_MOD_EVENT_TYPES,
   WORKSHOP_MOD_REJECT_REASONS,
   WORKSHOP_MOD_STATUSES,
@@ -121,6 +123,17 @@ export const playerPromptStatusEnum = pgEnum("player_prompt_status", [
 export const playerPromptEntryModeEnum = pgEnum(
   "player_prompt_entry_mode",
   PLAYER_PROMPT_ENTRY_MODES,
+);
+
+// Which side(s) a CurseForge project runs on; drives client/server manifest
+// membership. unspecified is the safe default and ships to both sides
+export const modEnvironmentEnum = pgEnum("mod_environment", MOD_ENVIRONMENTS);
+
+// Where a project's environment value came from: a CurseForge author flag
+// (low trust, refreshed by sweeps) or a manual admin flag (never overwritten)
+export const modEnvironmentSourceEnum = pgEnum(
+  "mod_environment_source",
+  MOD_ENVIRONMENT_SOURCES,
 );
 
 export const workshopStatusEnum = pgEnum("workshop_status", WORKSHOP_STATUSES);
