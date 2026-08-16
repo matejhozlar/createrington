@@ -1,3 +1,12 @@
+## v1.35.2 (2026-08-16)
+
+### @createrington/server (1.35.0 → 1.36.0)
+- [add] Add CurseForge website URL to workshop attention items so the Issues tab can link each mod directly to its CurseForge page
+- [refactor] Extract shared attention-item fields into an `AttentionSubject` interface and a local `attentionSubject()` helper, removing repeated property assignments across all item types
+
+### @createrington/client (0.2.47 → 0.2.48)
+- [add] Link mod names in the workshop Issues tab to their CurseForge page, showing an external-link icon and opening in a new tab when a URL is available
+
 ## v1.35.1 (2026-08-16)
 
 ### @createrington/client (0.2.46 → 0.2.47)
