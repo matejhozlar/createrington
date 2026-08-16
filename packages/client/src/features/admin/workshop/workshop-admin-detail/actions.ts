@@ -67,14 +67,6 @@ export function modReviewActions(
               onReject({ workshopModId: mod.id, name: mod.project.name }),
           },
     );
-  } else if (mod.status === "in_pack") {
-    actions.push({
-      label: "Publish a release without this mod to remove it",
-      icon: Ban,
-      variant: "destructive",
-      disabled: true,
-      onClick: () => {},
-    });
   }
   return actions;
 }
