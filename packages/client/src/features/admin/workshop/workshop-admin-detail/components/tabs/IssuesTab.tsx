@@ -1,4 +1,4 @@
-import { CircleCheck, Eye, PackagePlus } from "lucide-react";
+import { CircleCheck, Eye } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CellDate, CellText } from "@/components/cell-text";
 import {
@@ -16,15 +16,13 @@ import type { AttentionItem } from "../../types";
 
 type DependencyGap = Extract<
   AttentionItem["type"],
-  "rejected_dependency" | "unpromoted_dependency" | "missing_dependency"
+  "rejected_dependency" | "unpromoted_dependency"
 >;
 
 const DEPENDENCY_GAP_MESSAGES: Record<DependencyGap, string> = {
   rejected_dependency: "but is ruled out in this workshop.",
   unpromoted_dependency:
     "but is still in review, so the pack would ship without it.",
-  missing_dependency:
-    "but is not in the workshop at all, so it has to be installed by hand when you build the pack.",
 };
 
 const ATTENTION_MESSAGES: Record<
@@ -36,7 +34,7 @@ const ATTENTION_MESSAGES: Record<
     "shipped in the pack but its suggestion never finished review, so the suggester is uncredited.",
   shipped_rejected: "shipped in the pack but is rejected in this workshop.",
   environment_unspecified:
-    "has no client/server flag, so manifests will ship it to both sides. Flag it if you know better:",
+    "has no environment flag yet, which blocks approval past testing. Flag whether it runs client or server side:",
   duplicate_manifest_entry:
     "appears more than once in the published pack manifest. Publish a build that lists it once.",
 };
@@ -45,9 +43,7 @@ function isDependencyGap(
   item: AttentionItem,
 ): item is Extract<AttentionItem, { requiredByName: string }> {
   return (
-    item.type === "rejected_dependency" ||
-    item.type === "unpromoted_dependency" ||
-    item.type === "missing_dependency"
+    item.type === "rejected_dependency" || item.type === "unpromoted_dependency"
   );
 }
 
@@ -57,8 +53,6 @@ export function IssuesTab({
   error,
   onRetry,
   onView,
-  onAddProject,
-  busyProjectId,
   envOverride,
   onSetEnvironment,
 }: {
@@ -67,8 +61,6 @@ export function IssuesTab({
   error: string | null;
   onRetry: () => void;
   onView: (workshopModId: number) => void;
-  onAddProject: (projectId: number, name: string) => void;
-  busyProjectId: number | null;
   envOverride: EnvironmentOverride | null;
   onSetEnvironment: (projectId: number, environment: ModEnvironment) => void;
 }) {
@@ -127,13 +119,6 @@ export function IssuesTab({
         onClick: () => onView(item.workshopModId),
       });
     }
-    if (item.type === "missing_dependency") {
-      actions.push({
-        label: "Add to Workshop",
-        icon: PackagePlus,
-        onClick: () => onAddProject(item.curseforgeProjectId, item.name),
-      });
-    }
     return actions;
   };
 
@@ -155,7 +140,6 @@ export function IssuesTab({
             loading={isLoading}
             rowKey={(item) => `${item.type}-${item.curseforgeProjectId}`}
             actions={itemActions}
-            isRowBusy={(item) => busyProjectId === item.curseforgeProjectId}
           />
 
           {!isLoading && (

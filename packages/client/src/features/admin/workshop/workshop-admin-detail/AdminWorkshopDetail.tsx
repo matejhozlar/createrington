@@ -477,8 +477,6 @@ export function AdminWorkshopDetail() {
             error={attentionQuery.error?.message ?? null}
             onRetry={() => attentionQuery.refetch()}
             onView={setDetailModId}
-            onAddProject={addProject}
-            busyProjectId={busyProjectId}
             envOverride={envOverride}
             onSetEnvironment={handleSetEnvironment}
           />
@@ -493,8 +491,6 @@ export function AdminWorkshopDetail() {
         workshopModId={detailModId}
         onOpenChange={(open) => !open && setDetailModId(null)}
         admin
-        onSetEnvironment={handleSetEnvironment}
-        envOverride={envOverride}
       />
 
       <AddModsDialog

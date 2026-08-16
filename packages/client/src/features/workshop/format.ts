@@ -119,7 +119,7 @@ const MOD_ENVIRONMENT_CLASSES: Record<ModEnvironment, string> = {
   client: "border-sky-500/20 bg-sky-500/10 text-sky-400",
   server: "border-orange-500/20 bg-orange-500/10 text-orange-400",
   both: "border-teal-500/20 bg-teal-500/10 text-teal-400",
-  unspecified: "border-zinc-500/20 bg-zinc-500/10 text-zinc-400",
+  unspecified: "border-red-500/20 bg-red-500/10 text-red-400",
 };
 
 export const MOD_ENVIRONMENT_STYLES = Object.fromEntries(

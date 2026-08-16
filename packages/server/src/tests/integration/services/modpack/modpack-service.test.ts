@@ -284,6 +284,59 @@ describe("ModpackService.getWorkshopAttention", () => {
     });
   });
 
+  it("flags unclassified suggestions in testing with their mod id", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const inTesting = await seedMod(ctx, workshop, {
+      status: "testing",
+      submittedBy: USER_A,
+    });
+    await seedMod(ctx, workshop, {
+      status: "pending",
+      submittedBy: USER_A,
+    });
+
+    const items = await modpackService.getWorkshopAttention(workshop);
+
+    const envItems = items.filter(
+      (item) => item.type === "environment_unspecified",
+    );
+    expect(envItems).toEqual([
+      {
+        type: "environment_unspecified",
+        workshopModId: inTesting.id,
+        curseforgeProjectId: inTesting.curseforgeProjectId,
+        name: `Vitest Mod ${inTesting.curseforgeProjectId}`,
+      },
+    ]);
+  });
+
+  it("flags a project once, preferring the suggestion over the member row", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const mod = await seedMod(ctx, workshop, {
+      status: "next_update",
+      submittedBy: USER_A,
+    });
+    await seedPackMod(ctx, workshop, {
+      curseforgeProjectId: mod.curseforgeProjectId,
+      origin: "suggestion",
+      workshopModId: mod.id,
+      addedBy: null,
+    });
+
+    const items = await modpackService.getWorkshopAttention(workshop);
+
+    expect(
+      items.filter((item) => item.type === "environment_unspecified"),
+    ).toEqual([
+      {
+        type: "environment_unspecified",
+        workshopModId: mod.id,
+        curseforgeProjectId: mod.curseforgeProjectId,
+        name: `Vitest Mod ${mod.curseforgeProjectId}`,
+      },
+    ]);
+  });
+
   it("does not flag classified or dropped members", async () => {
     const workshop = await seedWorkshop(ctx);
     const classified = await seedPackMod(ctx, workshop);

@@ -9,7 +9,6 @@ import {
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { REQUIRED_DEPENDENCY } from "@createrington/shared/workshop";
-import type { ModEnvironment } from "@createrington/shared/db";
 import { useStickyValue } from "@/hooks/use-sticky-value";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,19 +28,13 @@ import {
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PlayerLabel } from "@/components/player-label";
-import {
-  EnvironmentCell,
-  type EnvironmentOverride,
-} from "../../components/EnvironmentCell";
 import { ProjectThumb } from "../../components/ProjectThumb";
 import {
   DEPENDENCY_COVERAGE_STYLES,
-  environmentTitle,
   formatDate,
   formatDownloads,
   isHttpUrl,
   modCredit,
-  MOD_ENVIRONMENT_STYLES,
   MOD_STATUS_STYLES,
   REJECT_REASON_LABELS,
 } from "../../format";
@@ -64,14 +57,10 @@ export function ModDetailDialog({
   workshopModId,
   onOpenChange,
   admin = false,
-  onSetEnvironment,
-  envOverride = null,
 }: {
   workshopModId: number | null;
   onOpenChange: (open: boolean) => void;
   admin?: boolean;
-  onSetEnvironment?: (projectId: number, environment: ModEnvironment) => void;
-  envOverride?: EnvironmentOverride | null;
 }) {
   const open = workshopModId !== null;
   const displayId = useStickyValue(workshopModId);
@@ -145,32 +134,6 @@ export function ModDetailDialog({
                       >
                         {status.label}
                       </Badge>
-                    )}
-                    {onSetEnvironment ? (
-                      <EnvironmentCell
-                        projectId={project.id}
-                        environment={project.environment}
-                        source={project.environmentSource}
-                        override={envOverride}
-                        onSetEnvironment={onSetEnvironment}
-                      />
-                    ) : (
-                      project.environment !== "unspecified" && (
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            "text-xs",
-                            MOD_ENVIRONMENT_STYLES[project.environment]
-                              .className,
-                          )}
-                          title={environmentTitle(
-                            project.environment,
-                            project.environmentSource,
-                          )}
-                        >
-                          {MOD_ENVIRONMENT_STYLES[project.environment].label}
-                        </Badge>
-                      )
                     )}
                     {categories.slice(0, 4).map((c) => (
                       <Badge

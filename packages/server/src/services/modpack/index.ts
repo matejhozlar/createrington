@@ -189,10 +189,10 @@ export type ModpackAttentionItem =
       requiredByName: string;
     }
   | {
-      type: "missing_dependency";
+      type: "environment_unspecified";
+      workshopModId: number;
       curseforgeProjectId: number;
       name: string;
-      requiredByName: string;
     }
   | {
       type: "environment_unspecified";
@@ -679,6 +679,22 @@ export class ModpackService {
     const suggestionByProject = new Map(
       suggestions.map((mod) => [mod.curseforgeProjectId, mod]),
     );
+    const unclassifiedTargets = new Map<
+      number,
+      { workshopModId?: number; modpackModId?: number }
+    >();
+    for (const row of active) {
+      unclassifiedTargets.set(row.curseforgeProjectId, {
+        modpackModId: row.id,
+      });
+    }
+    for (const mod of suggestions) {
+      if (mod.status !== "testing" && mod.status !== "next_update") continue;
+      unclassifiedTargets.set(mod.curseforgeProjectId, {
+        ...unclassifiedTargets.get(mod.curseforgeProjectId),
+        workshopModId: mod.id,
+      });
+    }
     const gaps = new Map<
       number,
       { coverage: DependencyCoverage; requiredByProjectId: number }
@@ -699,7 +715,7 @@ export class ModpackService {
     const projectIds = [
       ...new Set([
         ...dropped.map((row) => row.curseforgeProjectId),
-        ...active.map((row) => row.curseforgeProjectId),
+        ...unclassifiedTargets.keys(),
         ...shipped.map((mod) => mod.curseforgeProjectId),
         ...duplicateIds,
         ...[...gaps.entries()].flatMap(([depId, gap]) => [
@@ -735,15 +751,7 @@ export class ModpackService {
     }
     for (const [projectId, gap] of gaps) {
       const suggestion = suggestionByProject.get(projectId);
-      if (!suggestion) {
-        items.push({
-          type: "missing_dependency",
-          curseforgeProjectId: projectId,
-          name: label(projectId),
-          requiredByName: label(gap.requiredByProjectId),
-        });
-        continue;
-      }
+      if (!suggestion) continue;
       items.push({
         type:
           gap.coverage === "rejected"
@@ -762,15 +770,24 @@ export class ModpackService {
         name: label(projectId),
       });
     }
-    for (const row of active) {
-      const project = projectById.get(row.curseforgeProjectId);
+    for (const [projectId, target] of unclassifiedTargets) {
+      const project = projectById.get(projectId);
       if (project?.environment !== "unspecified") continue;
-      items.push({
-        type: "environment_unspecified",
-        modpackModId: row.id,
-        curseforgeProjectId: row.curseforgeProjectId,
-        name: project.name,
-      });
+      items.push(
+        target.workshopModId !== undefined
+          ? {
+              type: "environment_unspecified",
+              workshopModId: target.workshopModId,
+              curseforgeProjectId: projectId,
+              name: project.name,
+            }
+          : {
+              type: "environment_unspecified",
+              modpackModId: target.modpackModId!,
+              curseforgeProjectId: projectId,
+              name: project.name,
+            },
+      );
     }
     return items;
   }
