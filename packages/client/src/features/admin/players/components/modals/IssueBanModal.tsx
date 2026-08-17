@@ -8,16 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { AlertTriangle } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
@@ -41,10 +32,12 @@ export function IssueBanModal({
   onSuccess,
 }: IssueBanModalProps) {
   const toast = useToastActions();
-  const issueTemporaryBan =
-    trpc.admin.players.bans.issueTemporary.useMutation();
-  const issuePermanentBan =
-    trpc.admin.players.bans.issuePermanent.useMutation();
+  const issueTemporaryBan = trpc.admin.players.bans.issueTemporary.useMutation({
+    onError: () => toast.error("Failed to issue ban"),
+  });
+  const issuePermanentBan = trpc.admin.players.bans.issuePermanent.useMutation({
+    onError: () => toast.error("Failed to issue ban"),
+  });
 
   const [banType, setBanType] = useState<BanType>("temporary");
   const [reason, setReason] = useState("");
@@ -72,53 +65,34 @@ export function IssueBanModal({
       return;
     }
 
-    await executeBan();
+    await executeBan().catch(() => undefined);
   };
 
   const loading = issueTemporaryBan.isPending || issuePermanentBan.isPending;
 
   const executeBan = async () => {
-    try {
-      if (banType === "temporary") {
-        await issueTemporaryBan.mutateAsync({
-          id: playerId,
-          reason: reason.trim(),
-          durationDays,
-        });
-        toast.success(`Player banned for ${durationDays} days`);
-      } else {
-        await issuePermanentBan.mutateAsync({
-          id: playerId,
-          reason: reason.trim(),
-        });
-        toast.success("Player permanently banned and deleted");
-      }
-
-      setReason("");
-      setDurationDays(7);
-      setBanType("temporary");
-      setConfirmText("");
-      setShowPermanentConfirm(false);
-
-      onSuccess();
-      onClose();
-    } catch {
-      toast.error("Failed to issue ban");
-    }
-  };
-
-  const handleConfirmPermanent = async () => {
-    if (confirmText !== "PERMANENTLY BAN") {
-      toast.error('You must type "PERMANENTLY BAN" to confirm');
-      return;
+    if (banType === "temporary") {
+      await issueTemporaryBan.mutateAsync({
+        id: playerId,
+        reason: reason.trim(),
+        durationDays,
+      });
+      toast.success(`Player banned for ${durationDays} days`);
+    } else {
+      await issuePermanentBan.mutateAsync({
+        id: playerId,
+        reason: reason.trim(),
+      });
+      toast.success("Player permanently banned and deleted");
     }
 
-    await executeBan();
-  };
-
-  const handleCancelConfirm = () => {
-    setShowPermanentConfirm(false);
+    setReason("");
+    setDurationDays(7);
+    setBanType("temporary");
     setConfirmText("");
+
+    onSuccess();
+    onClose();
   };
 
   return (
@@ -215,48 +189,36 @@ export function IssueBanModal({
         </Field>
       </AdminActionModal>
 
-      {/* Permanent Ban Confirmation Dialog */}
-      <AlertDialog
+      <ConfirmDialog
         open={showPermanentConfirm}
-        onOpenChange={setShowPermanentConfirm}
+        onOpenChange={(isOpen) => {
+          setShowPermanentConfirm(isOpen);
+          if (!isOpen) setConfirmText("");
+        }}
+        title={<span className="text-destructive">Confirm Permanent Ban</span>}
+        description={
+          <>
+            This will permanently ban and DELETE all data for{" "}
+            <span className="font-semibold">{playerUsername}</span>. This action
+            cannot be undone. Type{" "}
+            <span className="font-semibold">PERMANENTLY BAN</span> to confirm.
+          </>
+        }
+        confirmLabel="Confirm Permanent Ban"
+        variant="destructive"
+        confirmDisabled={confirmText !== "PERMANENTLY BAN"}
+        onConfirm={executeBan}
       >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-destructive">
-              Confirm Permanent Ban
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently ban and DELETE all data for{" "}
-              <span className="font-semibold">{playerUsername}</span>. This
-              action cannot be undone. Type{" "}
-              <span className="font-semibold">PERMANENTLY BAN</span> to confirm.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-
-          <Field>
-            <Input
-              type="text"
-              placeholder="Type PERMANENTLY BAN to confirm"
-              value={confirmText}
-              onChange={(e) => setConfirmText(e.target.value)}
-              autoFocus
-            />
-          </Field>
-
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={handleCancelConfirm}>
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              onClick={handleConfirmPermanent}
-              disabled={confirmText !== "PERMANENTLY BAN" || loading}
-            >
-              {loading ? "Banning..." : "Confirm Permanent Ban"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        <Field>
+          <Input
+            type="text"
+            placeholder="Type PERMANENTLY BAN to confirm"
+            value={confirmText}
+            onChange={(e) => setConfirmText(e.target.value)}
+            autoFocus
+          />
+        </Field>
+      </ConfirmDialog>
     </>
   );
 }

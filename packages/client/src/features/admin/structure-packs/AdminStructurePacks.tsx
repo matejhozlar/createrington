@@ -39,16 +39,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
@@ -401,38 +392,21 @@ export function AdminStructurePacks() {
         </Card>
       </div>
 
-      {/* Delete Confirmation */}
-      <AlertDialog
+      <ConfirmDialog
         open={deleteTarget !== null}
         onOpenChange={(open) => {
           if (!open) setDeleteTarget(null);
         }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              Delete &quot;{displayDeleteTarget?.name}&quot;?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              This will remove the pack from the rotation pool. Historical data
-              will be preserved.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={deleteMutation.isPending}
-              onClick={() => {
-                if (deleteTarget) {
-                  deleteMutation.mutate({ id: deleteTarget.id });
-                }
-              }}
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        title={<>Delete &quot;{displayDeleteTarget?.name}&quot;?</>}
+        description="This will remove the pack from the rotation pool. Historical data will be preserved."
+        confirmLabel="Delete"
+        variant="destructive"
+        onConfirm={() =>
+          deleteTarget
+            ? deleteMutation.mutateAsync({ id: deleteTarget.id })
+            : undefined
+        }
+      />
 
       {/* Create Dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>

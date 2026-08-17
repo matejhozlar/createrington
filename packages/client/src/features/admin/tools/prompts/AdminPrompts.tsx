@@ -49,10 +49,7 @@ export function AdminPrompts() {
   const [page, setPage] = useState(0);
   const limit = 20;
   const [createOpen, setCreateOpen] = useState(false);
-  const [deleteModal, setDeleteModal] = useState<{
-    open: boolean;
-    prompt: PromptRow | null;
-  }>({ open: false, prompt: null });
+  const [deleteTarget, setDeleteTarget] = useState<PromptRow | null>(null);
 
   const listQuery = trpc.admin.prompts.list.useQuery(
     {
@@ -156,7 +153,7 @@ export function AdminPrompts() {
       label: "Delete",
       icon: Trash2,
       variant: "destructive",
-      onClick: () => setDeleteModal({ open: true, prompt: row }),
+      onClick: () => setDeleteTarget(row),
     },
   ];
 
@@ -255,18 +252,15 @@ export function AdminPrompts() {
         }}
       />
 
-      {deleteModal.prompt !== null && (
-        <DeletePromptModal
-          open={deleteModal.open}
-          onClose={() => setDeleteModal({ open: false, prompt: null })}
-          prompt={deleteModal.prompt}
-          entryCount={deleteModal.prompt.responseCount}
-          onSuccess={() => {
-            setDeleteModal({ open: false, prompt: null });
-            if (items.length === 1 && page > 0) setPage(page - 1);
-          }}
-        />
-      )}
+      <DeletePromptModal
+        prompt={deleteTarget}
+        entryCount={deleteTarget?.responseCount ?? 0}
+        onClose={() => setDeleteTarget(null)}
+        onSuccess={() => {
+          setDeleteTarget(null);
+          if (items.length === 1 && page > 0) setPage(page - 1);
+        }}
+      />
     </div>
   );
 }

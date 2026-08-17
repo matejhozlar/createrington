@@ -249,10 +249,9 @@ export function PromptDetail() {
       </div>
 
       <DeletePromptModal
-        open={deleteOpen}
-        onClose={() => setDeleteOpen(false)}
-        prompt={prompt}
+        prompt={deleteOpen ? prompt : null}
         entryCount={responses.length}
+        onClose={() => setDeleteOpen(false)}
         onSuccess={() => {
           setDeleteOpen(false);
           void navigate("/admin/tools/prompts");

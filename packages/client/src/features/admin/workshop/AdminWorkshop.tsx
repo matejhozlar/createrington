@@ -3,16 +3,7 @@ import { useNavigate } from "react-router";
 import { Hammer, Pencil, Plus, Trash2 } from "lucide-react";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -257,40 +248,21 @@ export function AdminWorkshop() {
         onOpenChange={setCreateOpen}
       />
 
-      <AlertDialog
+      <ConfirmDialog
         open={deleteTarget !== null}
         onOpenChange={(open) => {
           if (!open) setDeleteTarget(null);
         }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              Delete &quot;{displayDeleteTarget?.name}&quot;?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              This permanently removes the workshop with its suggestions, votes,
-              polls, and history. Mods it placed in the pack stay, but lose
-              their suggestion credit and can no longer be reviewed. Discord
-              discussion threads are left in place. This cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              disabled={deleteMutation.isPending}
-              onClick={() => {
-                if (deleteTarget) {
-                  deleteMutation.mutate({ workshopId: deleteTarget.id });
-                }
-              }}
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        title={<>Delete &quot;{displayDeleteTarget?.name}&quot;?</>}
+        description="This permanently removes the workshop with its suggestions, votes, polls, and history. Mods it placed in the pack stay, but lose their suggestion credit and can no longer be reviewed. Discord discussion threads are left in place. This cannot be undone."
+        confirmLabel="Delete"
+        variant="destructive"
+        onConfirm={() =>
+          deleteTarget
+            ? deleteMutation.mutateAsync({ workshopId: deleteTarget.id })
+            : undefined
+        }
+      />
 
       {settingsTarget && (
         <WorkshopSettingsDialog

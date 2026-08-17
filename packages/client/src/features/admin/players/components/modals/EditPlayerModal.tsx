@@ -6,16 +6,7 @@ import {
   FieldDescription,
   FieldError,
 } from "@/components/ui/field";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useToastActions } from "@/hooks/use-toast";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { AdminActionModal } from "./AdminActionModal";
@@ -36,7 +27,12 @@ export function EditPlayerModal({
   onSuccess,
 }: EditPlayerModalProps) {
   const toast = useToastActions();
-  const updatePlayer = trpc.admin.players.players.update.useMutation();
+  const updatePlayer = trpc.admin.players.players.update.useMutation({
+    onError: (error) =>
+      toast.error(
+        error instanceof Error ? error.message : "Failed to update player",
+      ),
+  });
 
   const [minecraftUsername, setMinecraftUsername] = useState(
     player.minecraftUsername,
@@ -97,41 +93,34 @@ export function EditPlayerModal({
   };
 
   const handleConfirmSubmit = async () => {
-    try {
-      const input: {
-        id: string;
-        reason: string;
-        minecraftUsername?: string;
-        discordId?: string;
-      } = {
-        id: player.minecraftUuid,
-        reason: reason.trim(),
-      };
+    const input: {
+      id: string;
+      reason: string;
+      minecraftUsername?: string;
+      discordId?: string;
+    } = {
+      id: player.minecraftUuid,
+      reason: reason.trim(),
+    };
 
-      if (minecraftUsername.trim() !== player.minecraftUsername) {
-        input.minecraftUsername = minecraftUsername.trim();
-      }
-      if (discordId.trim() !== player.discordId) {
-        input.discordId = discordId.trim();
-      }
-
-      if (!input.minecraftUsername && !input.discordId) {
-        toast.error("No changes to save");
-        return;
-      }
-
-      await updatePlayer.mutateAsync(input);
-
-      toast.success("Player updated");
-      setReason("");
-      setShowConfirmDialog(false);
-      onClose();
-      onSuccess();
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to update player",
-      );
+    if (minecraftUsername.trim() !== player.minecraftUsername) {
+      input.minecraftUsername = minecraftUsername.trim();
     }
+    if (discordId.trim() !== player.discordId) {
+      input.discordId = discordId.trim();
+    }
+
+    if (!input.minecraftUsername && !input.discordId) {
+      toast.error("No changes to save");
+      throw new Error("No changes to save");
+    }
+
+    await updatePlayer.mutateAsync(input);
+
+    toast.success("Player updated");
+    setReason("");
+    onClose();
+    onSuccess();
   };
 
   const handleCancel = () => {
@@ -259,55 +248,39 @@ export function EditPlayerModal({
         )}
       </AdminActionModal>
 
-      {/* Confirmation AlertDialog */}
-      <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirm Player Update</AlertDialogTitle>
-            <AlertDialogDescription>
-              You are about to make the following changes to{" "}
-              <span className="font-semibold">{player.minecraftUsername}</span>:
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-
-          <div className="space-y-3">
-            <div className="rounded-lg border border-border bg-muted/50 p-4">
-              <p className="mb-2 text-sm font-medium text-foreground">
-                Changes:
-              </p>
-              <ul className="space-y-1.5 text-sm text-muted-foreground">
-                {getChangesSummary().map((change, index) => (
-                  <li key={index}>• {change}</li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="rounded-lg border border-border bg-muted/50 p-4">
-              <p className="mb-2 text-sm font-medium text-foreground">
-                Reason:
-              </p>
-              <p className="text-sm text-muted-foreground">{reason}</p>
-            </div>
-
-            <p className="text-sm text-muted-foreground">
-              This action will be logged in the audit trail and cannot be
-              undone.
-            </p>
+      <ConfirmDialog
+        open={showConfirmDialog}
+        onOpenChange={setShowConfirmDialog}
+        title="Confirm Player Update"
+        description={
+          <>
+            You are about to make the following changes to{" "}
+            <span className="font-semibold">{player.minecraftUsername}</span>:
+          </>
+        }
+        confirmLabel="Confirm & Update"
+        onConfirm={handleConfirmSubmit}
+      >
+        <div className="space-y-3">
+          <div className="rounded-lg border border-border bg-muted/50 p-4">
+            <p className="mb-2 text-sm font-medium text-foreground">Changes:</p>
+            <ul className="space-y-1.5 text-sm text-muted-foreground">
+              {getChangesSummary().map((change, index) => (
+                <li key={index}>• {change}</li>
+              ))}
+            </ul>
           </div>
 
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={updatePlayer.isPending}>
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleConfirmSubmit}
-              disabled={updatePlayer.isPending}
-            >
-              {updatePlayer.isPending ? "Updating..." : "Confirm & Update"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+          <div className="rounded-lg border border-border bg-muted/50 p-4">
+            <p className="mb-2 text-sm font-medium text-foreground">Reason:</p>
+            <p className="text-sm text-muted-foreground">{reason}</p>
+          </div>
+
+          <p className="text-sm text-muted-foreground">
+            This action will be logged in the audit trail and cannot be undone.
+          </p>
+        </div>
+      </ConfirmDialog>
     </>
   );
 }

@@ -85,10 +85,7 @@ export function AdminWaitlists() {
     open: boolean;
     entry: WaitlistEntry | null;
   }>({ open: false, entry: null });
-  const [deleteModal, setDeleteModal] = useState<{
-    open: boolean;
-    entry: WaitlistEntry | null;
-  }>({ open: false, entry: null });
+  const [deleteTarget, setDeleteTarget] = useState<WaitlistEntry | null>(null);
 
   const debouncedSearch = useDebouncedValue(searchQuery, 1000);
 
@@ -140,7 +137,7 @@ export function AdminWaitlists() {
   }, []);
 
   const handleDelete = useCallback((entry: WaitlistEntry) => {
-    setDeleteModal({ open: true, entry });
+    setDeleteTarget(entry);
   }, []);
 
   const handleInviteSuccess = useCallback(() => {
@@ -150,7 +147,7 @@ export function AdminWaitlists() {
   }, [entriesQuery, statsQuery]);
 
   const handleDeleteSuccess = useCallback(() => {
-    setDeleteModal({ open: false, entry: null });
+    setDeleteTarget(null);
     entriesQuery.refetch();
     statsQuery.refetch();
   }, [entriesQuery, statsQuery]);
@@ -524,14 +521,11 @@ export function AdminWaitlists() {
         />
       )}
 
-      {deleteModal.entry !== null && (
-        <DeleteWaitlistModal
-          open={deleteModal.open}
-          onClose={() => setDeleteModal({ open: false, entry: null })}
-          entry={deleteModal.entry}
-          onSuccess={handleDeleteSuccess}
-        />
-      )}
+      <DeleteWaitlistModal
+        entry={deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onSuccess={handleDeleteSuccess}
+      />
     </div>
   );
 }
