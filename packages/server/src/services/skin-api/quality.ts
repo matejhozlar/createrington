@@ -15,10 +15,10 @@ import type { RenderOptions } from "createrington-skin-api";
  * crop at any canvas width, so a wider canvas protects nothing. A square
  * 2048x2048 request returns a byte-identical PNG for ~33% more render work.
  *
- * The widest pose in the catalogue (`lounge`) measures 928px here, so there
- * is 438px of headroom. That is a measured fact about a catalogue the SDK can
- * grow, not an invariant anything enforces: re-measure the widest pose when
- * bumping createrington-skin-api.
+ * The widest pose in the catalogue (`mojavatar`) measures 1234px here, so
+ * there is 132px of headroom. That is a measured fact about a catalogue the
+ * SDK can grow, not an invariant anything enforces: re-measure the widest
+ * pose when bumping createrington-skin-api.
  *
  * Silhouette edges come back aliased (the model uses alphaTest, and the API
  * exposes no supersampling), so consumers should downscale this with
