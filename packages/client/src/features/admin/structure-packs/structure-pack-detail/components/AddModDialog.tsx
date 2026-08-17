@@ -430,13 +430,10 @@ export function AddModDialog({
           <DialogFooter>
             <Button
               onClick={handleBatchAdd}
-              disabled={depsQuery.isLoading || addingBatch}
+              disabled={depsQuery.isLoading}
+              loading={addingBatch}
             >
-              {addingBatch ? (
-                <Loader2 className="size-3.5 animate-spin" />
-              ) : (
-                <Plus className="size-3.5" />
-              )}
+              <Plus className="size-3.5" />
               Add{selectedDeps.size > 0 ? ` ${1 + selectedDeps.size} mods` : ""}
             </Button>
           </DialogFooter>

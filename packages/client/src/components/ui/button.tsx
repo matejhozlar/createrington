@@ -4,6 +4,7 @@ import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";
+import { Spinner } from "@/components/ui/spinner";
 
 const buttonVariants = cva(
   "mc-btn shrink-0 disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
@@ -22,10 +23,11 @@ const buttonVariants = cva(
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
-        default: "h-9 gap-2 px-4 py-2 text-sm has-[>svg]:px-3",
-        xs: "h-6 gap-1 px-2 text-xs has-[>svg]:px-1.5 [&_svg:not([class*='size-'])]:size-3",
-        sm: "h-8 gap-1.5 px-3 text-sm has-[>svg]:px-2.5",
-        lg: "h-10 gap-2 px-6 text-sm has-[>svg]:px-4",
+        default:
+          "h-9 gap-2 px-4 py-2 text-sm has-[>svg]:px-3 has-[>[data-slot=button-content]>svg]:px-3",
+        xs: "h-6 gap-1 px-2 text-xs has-[>svg]:px-1.5 has-[>[data-slot=button-content]>svg]:px-1.5 [&_svg:not([class*='size-'])]:size-3",
+        sm: "h-8 gap-1.5 px-3 text-sm has-[>svg]:px-2.5 has-[>[data-slot=button-content]>svg]:px-2.5",
+        lg: "h-10 gap-2 px-6 text-sm has-[>svg]:px-4 has-[>[data-slot=button-content]>svg]:px-4",
         icon: "size-9",
         "icon-xs": "size-6 [&_svg:not([class*='size-'])]:size-3",
         "icon-sm": "size-8",
@@ -44,6 +46,7 @@ const Button = React.forwardRef<
   React.ComponentProps<"button"> &
     VariantProps<typeof buttonVariants> & {
       asChild?: boolean;
+      loading?: boolean;
     }
 >(
   (
@@ -52,21 +55,57 @@ const Button = React.forwardRef<
       variant = "default",
       size = "default",
       asChild = false,
+      loading = false,
+      disabled,
+      children,
       ...props
     },
     ref,
   ) => {
-    const Comp = asChild ? Slot : "button";
+    if (asChild) {
+      return (
+        <Slot
+          data-slot="button"
+          data-variant={variant}
+          data-size={size}
+          className={cn(buttonVariants({ variant, size, className }))}
+          ref={ref}
+          {...props}
+        >
+          {children}
+        </Slot>
+      );
+    }
 
     return (
-      <Comp
+      <button
         data-slot="button"
         data-variant={variant}
         data-size={size}
-        className={cn(buttonVariants({ variant, size, className }))}
+        className={cn(
+          buttonVariants({ variant, size, className }),
+          loading && "relative",
+        )}
         ref={ref}
+        disabled={disabled || loading}
+        aria-busy={loading || undefined}
         {...props}
-      />
+      >
+        <span
+          data-slot="button-content"
+          className={cn("contents", loading && "invisible")}
+        >
+          {children}
+        </span>
+        {loading && (
+          <span
+            data-slot="button-loading"
+            className="absolute inset-0 flex items-center justify-center"
+          >
+            <Spinner />
+          </span>
+        )}
+      </button>
     );
   },
 );

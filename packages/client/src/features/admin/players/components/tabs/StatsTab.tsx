@@ -225,7 +225,7 @@ export function StatsTab({ playerId, getServerName }: StatsTabProps) {
           disabled={loading}
         >
           <RefreshCw className={cn("size-4", loading && "animate-spin")} />
-          {loading ? "Loading..." : "Refresh"}
+          Refresh
         </Button>
       </div>
 

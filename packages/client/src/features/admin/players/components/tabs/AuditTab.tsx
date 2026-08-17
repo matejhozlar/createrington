@@ -108,10 +108,10 @@ export function AuditTab({ playerId }: AuditTabProps) {
           size="sm"
           variant="outline"
           onClick={() => auditQuery.refetch()}
-          disabled={loading}
+          loading={loading}
         >
           <FileText className="size-4" />
-          {loading ? "Loading..." : "Refresh"}
+          Refresh
         </Button>
       </div>
 

@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { FileUp, Loader2, Package, RefreshCw, Search } from "lucide-react";
+import { FileUp, Package, RefreshCw, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
@@ -413,32 +413,23 @@ export function InPackTab({
               <Button
                 variant="outline"
                 size="sm"
-                disabled={seedMutation.isPending}
+                loading={seedMutation.isPending}
                 onClick={() => manifestInputRef.current?.click()}
                 className="max-sm:w-full"
               >
-                {seedMutation.isPending ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <FileUp className="size-4" />
-                )}
+                <FileUp className="size-4" />
                 Import manifest.json
               </Button>
             ) : (
               <Button
                 variant="outline"
                 size="sm"
-                disabled={
-                  reconcileMutation.isPending || modpacksQuery.isLoading
-                }
+                disabled={modpacksQuery.isLoading}
+                loading={reconcileMutation.isPending}
                 onClick={() => reconcileMutation.mutate({ modpackId })}
                 className="max-sm:w-full"
               >
-                {reconcileMutation.isPending ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <RefreshCw className="size-4" />
-                )}
+                <RefreshCw className="size-4" />
                 Check Published Pack
               </Button>
             )}

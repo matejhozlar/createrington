@@ -67,7 +67,6 @@ export function DeletePlayerModal({
         }
         onConfirm={handleDeleteClick}
         confirmLabel="Delete Player"
-        loadingLabel="Deleting..."
         loading={deletePlayer.isPending}
         disabled={!reason.trim()}
         destructive

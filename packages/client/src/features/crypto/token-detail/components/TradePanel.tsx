@@ -338,12 +338,12 @@ export function TradePanel({
               buyMutation.mutate({ symbol, amount: amountNum });
             }}
             disabled={
-              isPending ||
               amountNum <= 0 ||
               (remainingAllocation !== null && amountNum > remainingAllocation)
             }
+            loading={isPending}
           >
-            {isPending ? "Processing..." : `Buy ${symbol} (IPO)`}
+            Buy {symbol} (IPO)
           </Button>
         </CardContent>
       </Card>
@@ -484,15 +484,14 @@ export function TradePanel({
           variant={tab === "buy" ? "success" : "destructive"}
           className="w-full h-11"
           onClick={handleTrade}
-          disabled={isPending || isCrashed || amountNum <= 0 || isOnCooldown}
+          disabled={isCrashed || amountNum <= 0 || isOnCooldown}
+          loading={isPending}
         >
-          {isPending
-            ? "Processing..."
-            : isCrashed
-              ? "Token Crashed"
-              : orderMode === "market"
-                ? `${tab === "buy" ? "Buy" : "Sell"} ${symbol}`
-                : `Place ${ORDER_MODE_LABELS[orderMode]} Order`}
+          {isCrashed
+            ? "Token Crashed"
+            : orderMode === "market"
+              ? `${tab === "buy" ? "Buy" : "Sell"} ${symbol}`
+              : `Place ${ORDER_MODE_LABELS[orderMode]} Order`}
         </Button>
 
         <ConfirmDialog

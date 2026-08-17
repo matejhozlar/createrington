@@ -330,11 +330,10 @@ export function MaintenanceToggle({
                 <Button
                   variant="warning"
                   onClick={handleSchedule}
-                  disabled={!scheduledAt || scheduleMutation.isPending}
+                  disabled={!scheduledAt}
+                  loading={scheduleMutation.isPending}
                 >
-                  {scheduleMutation.isPending
-                    ? "Scheduling..."
-                    : "Schedule Maintenance"}
+                  Schedule Maintenance
                 </Button>
               </DialogFooter>
             </TabsContent>
@@ -349,11 +348,9 @@ export function MaintenanceToggle({
                 <Button
                   variant="warning"
                   onClick={handleInstantEnable}
-                  disabled={toggleMutation.isPending}
+                  loading={toggleMutation.isPending}
                 >
-                  {toggleMutation.isPending
-                    ? "Processing..."
-                    : "Enable Maintenance Now"}
+                  Enable Maintenance Now
                 </Button>
               </DialogFooter>
             </TabsContent>

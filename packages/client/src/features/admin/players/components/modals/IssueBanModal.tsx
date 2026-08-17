@@ -103,7 +103,6 @@ export function IssueBanModal({
         title="Issue Ban"
         onConfirm={handleSubmit}
         confirmLabel="Issue Ban"
-        loadingLabel="Issuing..."
         loading={loading}
         disabled={!reason.trim()}
         destructive={banType === "permanent"}

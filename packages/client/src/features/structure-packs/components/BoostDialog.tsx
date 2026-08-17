@@ -171,10 +171,11 @@ export function BoostDialog({
           </Button>
           <Button
             onClick={handleConfirm}
-            disabled={!canAfford || boostMutation.isPending}
+            disabled={!canAfford}
+            loading={boostMutation.isPending}
             className="bg-[var(--blue)] text-white hover:bg-[var(--blue-bright)] disabled:opacity-50"
           >
-            {boostMutation.isPending ? "Boosting..." : "Confirm Boost"}
+            Confirm Boost
           </Button>
         </DialogFooter>
       </DialogContent>

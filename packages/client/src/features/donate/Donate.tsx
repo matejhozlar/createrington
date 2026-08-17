@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Heart, Repeat, Zap, CalendarX, Loader2 } from "lucide-react";
+import { Heart, Repeat, Zap, CalendarX } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import {
   Accordion,
@@ -172,13 +172,9 @@ export function Donate() {
                   variant="outline"
                   size="sm"
                   onClick={() => reactivateSubscription.mutate()}
-                  disabled={reactivateSubscription.isPending}
+                  loading={reactivateSubscription.isPending}
                 >
-                  {reactivateSubscription.isPending ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    <Repeat className="size-4" />
-                  )}
+                  <Repeat className="size-4" />
                   Reactivate
                 </Button>
               ) : (
@@ -186,13 +182,9 @@ export function Donate() {
                   variant="outline"
                   size="sm"
                   onClick={() => cancelSubscription.mutate()}
-                  disabled={cancelSubscription.isPending}
+                  loading={cancelSubscription.isPending}
                 >
-                  {cancelSubscription.isPending ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    <CalendarX className="size-4" />
-                  )}
+                  <CalendarX className="size-4" />
                   Cancel
                 </Button>
               )}
@@ -326,11 +318,11 @@ export function Donate() {
           size="lg"
           className="w-full"
           onClick={handleDonate}
-          disabled={createCheckout.isPending || (isCustom && !isValidAmount)}
+          disabled={isCustom && !isValidAmount}
+          loading={createCheckout.isPending}
         >
-          {createCheckout.isPending
-            ? "Redirecting to Stripe..."
-            : `Donate €${(donationCents / 100).toFixed(2)}${type === "monthly" ? "/mo" : ""}`}
+          Donate €{(donationCents / 100).toFixed(2)}
+          {type === "monthly" ? "/mo" : ""}
         </Button>
 
         <p className="text-center text-xs text-muted-foreground">

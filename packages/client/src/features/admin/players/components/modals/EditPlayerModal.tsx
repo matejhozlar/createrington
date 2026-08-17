@@ -153,7 +153,6 @@ export function EditPlayerModal({
         description="Update player information. All changes require a reason and will be logged in the audit trail."
         onConfirm={handleReviewChanges}
         confirmLabel="Review Changes"
-        loadingLabel="Saving..."
         loading={updatePlayer.isPending}
         contentClassName="sm:max-w-lg"
       >

@@ -157,11 +157,12 @@ export function MaintenanceAnnouncement() {
 
         <Button
           onClick={handleSend}
-          disabled={!canSend || sendMutation.isPending}
+          disabled={!canSend}
+          loading={sendMutation.isPending}
           className="w-full"
         >
           <Send className="mr-2 h-4 w-4" />
-          {sendMutation.isPending ? "Sending..." : "Send to Discord"}
+          Send to Discord
         </Button>
       </div>
 

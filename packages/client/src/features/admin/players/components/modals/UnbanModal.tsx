@@ -57,7 +57,6 @@ export function UnbanModal({
       description="This will lift the ban and allow the player to rejoin the server."
       onConfirm={handleSubmit}
       confirmLabel="Unban Player"
-      loadingLabel="Unbanning..."
       loading={unbanPlayer.isPending}
       disabled={!reason.trim()}
     >
