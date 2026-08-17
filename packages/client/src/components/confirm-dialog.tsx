@@ -1,4 +1,4 @@
-import { useState, type MouseEvent, type ReactNode } from "react";
+import { useRef, useState, type MouseEvent, type ReactNode } from "react";
 
 import {
   AlertDialog,
@@ -41,20 +41,24 @@ export function ConfirmDialog({
   children,
 }: ConfirmDialogProps) {
   const [pending, setPending] = useState(false);
+  const pendingRef = useRef(false);
 
   const handleOpenChange = (isOpen: boolean) => {
-    if (!pending) onOpenChange(isOpen);
+    if (!pendingRef.current) onOpenChange(isOpen);
   };
 
   const handleConfirm = async (event: MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
+    if (pendingRef.current) return;
     const result = onConfirm();
     if (result instanceof Promise) {
+      pendingRef.current = true;
       setPending(true);
       const succeeded = await result.then(
         () => true,
         () => false,
       );
+      pendingRef.current = false;
       setPending(false);
       if (succeeded) onOpenChange(false);
     } else {

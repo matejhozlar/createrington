@@ -50,8 +50,8 @@ export function EditPlayerModal({
     const newErrors: typeof errors = {};
 
     const hasChanges =
-      minecraftUsername !== player.minecraftUsername ||
-      discordId !== player.discordId;
+      minecraftUsername.trim() !== player.minecraftUsername ||
+      discordId.trim() !== player.discordId;
 
     if (!hasChanges) {
       newErrors.minecraftUsername = "No changes to save";
@@ -112,7 +112,7 @@ export function EditPlayerModal({
 
     if (!input.minecraftUsername && !input.discordId) {
       toast.error("No changes to save");
-      throw new Error("No changes to save");
+      return;
     }
 
     await updatePlayer.mutateAsync(input);

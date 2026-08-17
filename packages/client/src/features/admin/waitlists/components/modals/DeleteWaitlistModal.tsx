@@ -32,18 +32,20 @@ export function DeleteWaitlistModal({
 }: DeleteWaitlistModalProps) {
   const toast = useToastActions();
 
+  const [reason, setReason] = useState("");
+  const [confirmText, setConfirmText] = useState("");
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+
   const deleteEntry = trpc.admin.waitlists.delete.useMutation({
     onSuccess: () => {
       toast.success("Waitlist entry deleted");
+      setReason("");
+      setConfirmText("");
       onSuccess();
       onClose();
     },
     onError: () => toast.error("Failed to delete waitlist entry"),
   });
-
-  const [reason, setReason] = useState("");
-  const [confirmText, setConfirmText] = useState("");
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
   const displayEntry = useStickyValue(entry);
 
