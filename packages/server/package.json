@@ -29,7 +29,6 @@
     "db:migrate": "drizzle-kit migrate",
     "util:generate-structure": "node src/scripts/tools/generate-structure.js",
     "util:env-gen": "tsx src/scripts/env/env-gen.ts",
-    "util:env-find": "tsx src/scripts/env/env-gen.ts",
     "util:import-find": "node src/scripts/dependency/import-find.js",
     "util:schema-info": "node src/scripts/db/get-table-info.js",
     "util:deploy-commands": "tsx src/discord/deployers/command-deployer.ts",
