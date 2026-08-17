@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
+import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import {
   Card,
   CardContent,
@@ -235,29 +236,30 @@ export function AdminFaq() {
       />
 
       <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
-        {/* Actions Bar */}
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold">FAQ Auto-Responder</h1>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={handleRepostWelcome}
-              disabled={repostWelcome.isPending}
-            >
-              <RefreshCw
-                className={cn(
-                  "mr-2 size-4",
-                  repostWelcome.isPending && "animate-spin",
-                )}
-              />
-              Repost Welcome
-            </Button>
-            <Button onClick={() => setCreateModal(true)}>
-              <Plus className="mr-2 size-4" />
-              New Entry
-            </Button>
-          </div>
-        </div>
+        <AdminPageTitle
+          title="FAQ Auto-Responder"
+          actions={
+            <>
+              <Button
+                variant="outline"
+                onClick={handleRepostWelcome}
+                disabled={repostWelcome.isPending}
+              >
+                <RefreshCw
+                  className={cn(
+                    "mr-2 size-4",
+                    repostWelcome.isPending && "animate-spin",
+                  )}
+                />
+                Repost Welcome
+              </Button>
+              <Button onClick={() => setCreateModal(true)}>
+                <Plus className="mr-2 size-4" />
+                New Entry
+              </Button>
+            </>
+          }
+        />
 
         {/* Filters & Search */}
         <Card className="gap-2">

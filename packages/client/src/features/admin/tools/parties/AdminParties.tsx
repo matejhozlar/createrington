@@ -5,6 +5,7 @@ import { useSearchParams } from "react-router";
 import { trpc } from "@/lib/trpc";
 import { Loading } from "@/components/loading-spinner";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
+import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -201,20 +202,22 @@ export function AdminParties() {
       </AdminPageHeader>
 
       <div className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-4 px-4 pb-4">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex flex-col gap-1">
-            <h1 className="text-2xl font-semibold">Parties</h1>
-            <p className="text-sm text-muted-foreground">
-              Claimed chunks, forceload status, ally status, and members for
-              every party on the server.
-            </p>
-            {lastRefreshedAt && (
-              <p className="text-xs text-muted-foreground">
-                Last refreshed {formatRelativeDateSafe(lastRefreshedAt)}
+        <AdminPageTitle
+          title="Parties"
+          description={
+            <>
+              <p>
+                Claimed chunks, forceload status, ally status, and members for
+                every party on the server.
               </p>
-            )}
-          </div>
-        </div>
+              {lastRefreshedAt && (
+                <p className="text-xs">
+                  Last refreshed {formatRelativeDateSafe(lastRefreshedAt)}
+                </p>
+              )}
+            </>
+          }
+        />
 
         {kpisQuery.isLoading || chunkKpisQuery.isLoading ? (
           <Loading size="medium" text="Loading KPIs..." />

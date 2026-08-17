@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
+import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -168,43 +169,45 @@ export function AdminPrompts() {
       />
 
       <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
-        <div className="flex items-center justify-between gap-3">
-          <h1 className="text-2xl font-semibold">Player Prompts</h1>
-          <div className="flex items-center gap-2">
-            <Select
-              value={statusFilter}
-              onValueChange={(v) => {
-                setStatusFilter(v as StatusFilter);
-                setPage(0);
-              }}
-            >
-              <SelectTrigger className="w-36">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="closed">Closed</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => void listQuery.refetch()}
-              disabled={listQuery.isFetching}
-              title="Refresh"
-            >
-              <RefreshCw
-                className={
-                  listQuery.isFetching ? "size-4 animate-spin" : "size-4"
-                }
-              />
-            </Button>
-            <Button onClick={() => setCreateOpen(true)}>
-              <Plus className="size-4" /> New Prompt
-            </Button>
-          </div>
-        </div>
+        <AdminPageTitle
+          title="Player Prompts"
+          actions={
+            <>
+              <Select
+                value={statusFilter}
+                onValueChange={(v) => {
+                  setStatusFilter(v as StatusFilter);
+                  setPage(0);
+                }}
+              >
+                <SelectTrigger className="w-full xs:w-36">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="closed">Closed</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => void listQuery.refetch()}
+                disabled={listQuery.isFetching}
+                title="Refresh"
+              >
+                <RefreshCw
+                  className={
+                    listQuery.isFetching ? "size-4 animate-spin" : "size-4"
+                  }
+                />
+              </Button>
+              <Button onClick={() => setCreateOpen(true)}>
+                <Plus className="size-4" /> New Prompt
+              </Button>
+            </>
+          }
+        />
 
         {!loading && items.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card py-16 text-center">

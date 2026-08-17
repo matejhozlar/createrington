@@ -2,6 +2,7 @@ import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { Settings, Save, Zap, Trash2 } from "lucide-react";
+import { HeaderActions } from "@/features/admin/components/HeaderActions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -105,7 +106,7 @@ export function RotationConfig() {
 
   return (
     <div className="rounded-lg border border-border bg-card p-6">
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="flex items-center gap-2 font-semibold">
             <Settings className="size-4" />
@@ -115,7 +116,7 @@ export function RotationConfig() {
             Global rotation schedule and weight configuration
           </p>
         </div>
-        <div className="flex gap-2">
+        <HeaderActions>
           <Button
             variant="destructive"
             size="sm"
@@ -149,7 +150,7 @@ export function RotationConfig() {
             confirmLabel="Rotate Now"
             onConfirm={() => forceRotationMutation.mutateAsync()}
           />
-        </div>
+        </HeaderActions>
       </div>
 
       <div className="space-y-4">

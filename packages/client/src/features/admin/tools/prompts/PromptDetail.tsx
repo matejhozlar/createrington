@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useParams, useNavigate, NavLink } from "react-router";
 import { Loading } from "@/components/loading-spinner";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
+import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MessageSquare, Lock, RefreshCw, Trash2 } from "lucide-react";
@@ -121,60 +122,62 @@ export function PromptDetail() {
       />
 
       <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
-        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-          <div className="flex flex-1 flex-col gap-1">
-            <div className="flex items-center gap-2">
-              <MessageSquare className="size-5 text-primary" />
-              <h1 className="text-2xl font-semibold">{prompt.question}</h1>
+        <AdminPageTitle
+          title={prompt.question}
+          icon={MessageSquare}
+          badges={
+            <>
               <Badge variant={isActive ? "default" : "secondary"}>
                 {prompt.status}
               </Badge>
               <Badge variant="outline">
                 {isMulti ? "Multiple entries" : "Single entry"}
               </Badge>
-            </div>
-            {prompt.description && (
-              <p className="text-sm text-muted-foreground">
-                {prompt.description}
+            </>
+          }
+          description={
+            <>
+              {prompt.description && <p>{prompt.description}</p>}
+              <p className="text-xs">
+                Created {formatTime(prompt.createdAt)} by{" "}
+                <span className="font-medium">{authorLabel}</span> • Closes{" "}
+                {formatTime(prompt.endsAt)} • {countLabel}
               </p>
-            )}
-            <p className="text-xs text-muted-foreground">
-              Created {formatTime(prompt.createdAt)} by{" "}
-              <span className="font-medium">{authorLabel}</span> • Closes{" "}
-              {formatTime(prompt.endsAt)} • {countLabel}
-            </p>
-            <p className="text-xs text-muted-foreground/80">
-              {describeEntryRules(prompt)}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => void detailQuery.refetch()}
-              disabled={detailQuery.isFetching}
-              title="Refresh"
-            >
-              <RefreshCw
-                className={
-                  detailQuery.isFetching ? "size-4 animate-spin" : "size-4"
-                }
-              />
-            </Button>
-            {isActive && (
+              <p className="text-xs text-muted-foreground/80">
+                {describeEntryRules(prompt)}
+              </p>
+            </>
+          }
+          actions={
+            <>
               <Button
                 variant="outline"
-                onClick={() => closeMutation.mutate({ id: prompt.id })}
-                disabled={closeMutation.isPending}
+                size="icon"
+                onClick={() => void detailQuery.refetch()}
+                disabled={detailQuery.isFetching}
+                title="Refresh"
               >
-                <Lock className="size-4" /> Close now
+                <RefreshCw
+                  className={
+                    detailQuery.isFetching ? "size-4 animate-spin" : "size-4"
+                  }
+                />
               </Button>
-            )}
-            <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
-              <Trash2 className="size-4" /> Delete
-            </Button>
-          </div>
-        </div>
+              {isActive && (
+                <Button
+                  variant="outline"
+                  onClick={() => closeMutation.mutate({ id: prompt.id })}
+                  disabled={closeMutation.isPending}
+                >
+                  <Lock className="size-4" /> Close now
+                </Button>
+              )}
+              <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
+                <Trash2 className="size-4" /> Delete
+              </Button>
+            </>
+          }
+        />
 
         {responses.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card py-12 text-center">

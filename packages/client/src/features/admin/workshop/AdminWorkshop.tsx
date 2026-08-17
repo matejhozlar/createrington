@@ -14,10 +14,10 @@ import {
   TwoLineCellSkeleton,
   type DataTableColumn,
 } from "@/components/data-table";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
+import { LabeledSwitch } from "@/components/labeled-switch";
 import { useStickyValue } from "@/hooks/use-sticky-value";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
+import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { WORKSHOP_STATUS_STYLES, loaderName } from "@/features/workshop/format";
 import { CreateWorkshopDialog } from "./components/CreateWorkshopDialog";
 import { ModpacksCard } from "./components/ModpacksCard";
@@ -139,18 +139,13 @@ export function AdminWorkshop() {
       />
 
       <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold">Workshop</h1>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <Label
-                htmlFor="workshop-enabled"
-                className="text-sm text-muted-foreground"
-              >
-                Feature Enabled
-              </Label>
-              <Switch
+        <AdminPageTitle
+          title="Workshop"
+          actions={
+            <>
+              <LabeledSwitch
                 id="workshop-enabled"
+                label="Feature Enabled"
                 checked={workshopFlag?.enabled ?? false}
                 disabled={
                   flagsQuery.isLoading ||
@@ -165,13 +160,13 @@ export function AdminWorkshop() {
                   })
                 }
               />
-            </div>
-            <Button onClick={openCreate}>
-              <Plus className="mr-2 size-4" />
-              New Workshop
-            </Button>
-          </div>
-        </div>
+              <Button onClick={openCreate}>
+                <Plus className="mr-2 size-4" />
+                New Workshop
+              </Button>
+            </>
+          }
+        />
 
         <Card className="gap-0">
           <CardHeader className="gap-0 border-b">

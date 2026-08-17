@@ -1,4 +1,5 @@
 import { ExternalLink, Package, Plus, Trash2 } from "lucide-react";
+import { HeaderActions } from "@/features/admin/components/HeaderActions";
 import { Button } from "@/components/ui/button";
 import { CellText } from "@/components/cell-text";
 import { DataTable, type DataTableColumn } from "@/components/data-table";
@@ -64,17 +65,19 @@ export function ModsList({
 
   return (
     <div className="rounded-lg border border-border bg-card p-6">
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="font-semibold">Mods</h2>
           <p className="text-sm text-muted-foreground">
             CurseForge mods included in this pack
           </p>
         </div>
-        <Button size="sm" onClick={onAdd}>
-          <Plus className="size-4" />
-          Add Mod
-        </Button>
+        <HeaderActions>
+          <Button size="sm" onClick={onAdd}>
+            <Plus className="size-4" />
+            Add Mod
+          </Button>
+        </HeaderActions>
       </div>
       {mods.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
