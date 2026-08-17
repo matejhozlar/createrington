@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
+import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { FileText, Wrench } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ModpackChangelog } from "./ModpackChangelog";
@@ -30,7 +31,7 @@ export function Announcements() {
       />
 
       <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-6 px-4 pb-4">
-        <h1 className="text-2xl font-semibold">Announcements</h1>
+        <AdminPageTitle title="Announcements" />
 
         <div className="overflow-x-auto border-b border-border [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <div className="flex gap-1">

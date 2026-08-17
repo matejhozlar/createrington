@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { Loading } from "@/components/loading-spinner";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
+import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -102,13 +103,17 @@ export function AutoMessages() {
       />
 
       <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold">Auto Messages</h1>
-          <Button onClick={() => setConfigDialog({ open: true, config: null })}>
-            <Plus className="mr-2 size-4" />
-            New Config
-          </Button>
-        </div>
+        <AdminPageTitle
+          title="Auto Messages"
+          actions={
+            <Button
+              onClick={() => setConfigDialog({ open: true, config: null })}
+            >
+              <Plus className="mr-2 size-4" />
+              New Config
+            </Button>
+          }
+        />
 
         {configsQuery.isLoading ? (
           <div className="flex flex-1 items-center justify-center py-12">

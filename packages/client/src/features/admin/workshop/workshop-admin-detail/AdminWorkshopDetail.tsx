@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { Loading } from "@/components/loading-spinner";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
+import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { ModDetailDialog } from "@/features/workshop/workshop-detail/components/ModDetailDialog";
 import type { EnvironmentDisplay } from "@/features/workshop/components/EnvironmentCell";
 import { WORKSHOP_STATUS_STYLES } from "@/features/workshop/format";
@@ -419,49 +420,51 @@ export function AdminWorkshopDetail() {
       />
 
       <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <h1 className="text-2xl font-semibold">{workshop.name}</h1>
-          <div className="flex w-full flex-col gap-2 min-[440px]:w-auto min-[440px]:flex-row min-[440px]:items-center">
-            <Select
-              value={workshop.status}
-              disabled={updateWorkshopMutation.isPending}
-              onValueChange={(status) =>
-                updateWorkshopMutation.mutate({
-                  workshopId,
-                  patch: { status: status as typeof workshop.status },
-                })
-              }
-            >
-              <SelectTrigger className="w-full min-[440px]:w-32">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {[
-                  workshop.status,
-                  ...WORKSHOP_STATUS_TRANSITIONS[workshop.status],
-                ].map((status) => (
-                  <SelectItem key={status} value={status}>
-                    {WORKSHOP_STATUS_STYLES[status]?.label ?? status}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setSettingsKey((key) => key + 1);
-                setSettingsOpen(true);
-              }}
-            >
-              <Settings2 className="mr-2 size-4" />
-              Settings
-            </Button>
-            <Button onClick={() => setAddOpen(true)}>
-              <PackagePlus className="mr-2 size-4" />
-              Add Mods
-            </Button>
-          </div>
-        </div>
+        <AdminPageTitle
+          title={workshop.name}
+          actions={
+            <>
+              <Select
+                value={workshop.status}
+                disabled={updateWorkshopMutation.isPending}
+                onValueChange={(status) =>
+                  updateWorkshopMutation.mutate({
+                    workshopId,
+                    patch: { status: status as typeof workshop.status },
+                  })
+                }
+              >
+                <SelectTrigger className="w-full min-[440px]:w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {[
+                    workshop.status,
+                    ...WORKSHOP_STATUS_TRANSITIONS[workshop.status],
+                  ].map((status) => (
+                    <SelectItem key={status} value={status}>
+                      {WORKSHOP_STATUS_STYLES[status]?.label ?? status}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSettingsKey((key) => key + 1);
+                  setSettingsOpen(true);
+                }}
+              >
+                <Settings2 className="mr-2 size-4" />
+                Settings
+              </Button>
+              <Button onClick={() => setAddOpen(true)}>
+                <PackagePlus className="mr-2 size-4" />
+                Add Mods
+              </Button>
+            </>
+          }
+        />
 
         <WorkshopTabs
           activeTab={activeTab}

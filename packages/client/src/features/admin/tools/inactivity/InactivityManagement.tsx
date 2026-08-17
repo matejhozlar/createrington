@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
+import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import {
   Card,
   CardContent,
@@ -280,56 +281,57 @@ export function InactivityManagement() {
       />
 
       <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
-        {/* Title + Actions */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h1 className="text-2xl font-semibold">Inactivity Management</h1>
-          <div className="flex flex-wrap gap-2">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span>
-                  <Button
-                    variant="outline"
-                    onClick={handleProcessOverdue}
-                    disabled={!canMutate}
-                    loading={triggerResolveRemove.isPending}
-                  >
-                    <UserX className="mr-2 size-4" />
-                    Process Overdue
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>
-                {canMutate
-                  ? "Run resolve + remove phases only — no new warning announcements"
-                  : "Only available on the production deployment"}
-              </TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span>
-                  <Button
-                    variant="outline"
-                    onClick={handleTriggerCleanup}
-                    disabled={!canMutate || triggerCleanup.isPending}
-                  >
-                    <RefreshCw
-                      className={cn(
-                        "mr-2 size-4",
-                        triggerCleanup.isPending && "animate-spin",
-                      )}
-                    />
-                    Run Cleanup Now
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>
-                {canMutate
-                  ? "Run the full cycle: resolve → warn → remove"
-                  : "Only available on the production deployment"}
-              </TooltipContent>
-            </Tooltip>
-          </div>
-        </div>
+        <AdminPageTitle
+          title="Inactivity Management"
+          actions={
+            <>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="grid">
+                    <Button
+                      variant="outline"
+                      onClick={handleProcessOverdue}
+                      disabled={!canMutate}
+                      loading={triggerResolveRemove.isPending}
+                    >
+                      <UserX className="mr-2 size-4" />
+                      Process Overdue
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {canMutate
+                    ? "Run resolve + remove phases only — no new warning announcements"
+                    : "Only available on the production deployment"}
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="grid">
+                    <Button
+                      variant="outline"
+                      onClick={handleTriggerCleanup}
+                      disabled={!canMutate || triggerCleanup.isPending}
+                    >
+                      <RefreshCw
+                        className={cn(
+                          "mr-2 size-4",
+                          triggerCleanup.isPending && "animate-spin",
+                        )}
+                      />
+                      Run Cleanup Now
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {canMutate
+                    ? "Run the full cycle: resolve → warn → remove"
+                    : "Only available on the production deployment"}
+                </TooltipContent>
+              </Tooltip>
+            </>
+          }
+        />
 
         {!canMutate && (
           <Card className="border-muted-foreground/30 bg-muted/30 gap-0">
