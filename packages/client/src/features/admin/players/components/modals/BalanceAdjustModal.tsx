@@ -55,7 +55,6 @@ export function BalanceAdjustModal({
       title="Adjust Balance"
       onConfirm={handleSubmit}
       confirmLabel="Confirm"
-      loadingLabel="Adjusting..."
       loading={adjustBalance.isPending}
       disabled={!amount || !reason}
     >

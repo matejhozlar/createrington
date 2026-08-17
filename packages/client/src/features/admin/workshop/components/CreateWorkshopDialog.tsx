@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { Loader2 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -249,15 +248,12 @@ export function CreateWorkshopDialog({
           <Button
             onClick={handleCreate}
             disabled={
-              createMutation.isPending ||
               !name.trim() ||
               !gameVersion.trim() ||
               (modpackSel === "new" && !modpackName.trim())
             }
+            loading={createMutation.isPending}
           >
-            {createMutation.isPending && (
-              <Loader2 className="size-4 animate-spin" />
-            )}
             Create Draft
           </Button>
         </DialogFooter>

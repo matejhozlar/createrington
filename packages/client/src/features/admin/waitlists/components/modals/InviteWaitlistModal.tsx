@@ -92,13 +92,9 @@ export function InviteWaitlistModal({
           <Button
             className="flex-1 cursor-pointer"
             onClick={handleSubmit}
-            disabled={inviteEntry.isPending}
+            loading={inviteEntry.isPending}
           >
-            {inviteEntry.isPending
-              ? "Sending..."
-              : entry.email
-                ? "Send Invitation"
-                : "Accept Entry"}
+            {entry.email ? "Send Invitation" : "Accept Entry"}
           </Button>
         </DialogFooter>
       </DialogContent>

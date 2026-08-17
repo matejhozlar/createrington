@@ -227,13 +227,10 @@ export function RemoveModDialog({
           <Button
             variant="destructive"
             onClick={handleBatchRemove}
-            disabled={checkRemoveDepsQuery.isLoading || removingBatch}
+            disabled={checkRemoveDepsQuery.isLoading}
+            loading={removingBatch}
           >
-            {removingBatch ? (
-              <Loader2 className="size-3.5 animate-spin" />
-            ) : (
-              <Trash2 className="size-3.5" />
-            )}
+            <Trash2 className="size-3.5" />
             Remove
             {selectedRemoveDeps.size > 0
               ? ` ${1 + selectedRemoveDeps.size} mods`

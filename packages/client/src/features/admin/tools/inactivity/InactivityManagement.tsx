@@ -35,7 +35,6 @@ import {
 import {
   Clock,
   Filter,
-  Loader2,
   RefreshCw,
   Search,
   Trash2,
@@ -291,13 +290,10 @@ export function InactivityManagement() {
                   <Button
                     variant="outline"
                     onClick={handleProcessOverdue}
-                    disabled={!canMutate || triggerResolveRemove.isPending}
+                    disabled={!canMutate}
+                    loading={triggerResolveRemove.isPending}
                   >
-                    {triggerResolveRemove.isPending ? (
-                      <Loader2 className="mr-2 size-4 animate-spin" />
-                    ) : (
-                      <UserX className="mr-2 size-4" />
-                    )}
+                    <UserX className="mr-2 size-4" />
                     Process Overdue
                   </Button>
                 </span>

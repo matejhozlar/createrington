@@ -311,10 +311,10 @@ function ExportDataButton() {
       size="sm"
       className="shrink-0"
       onClick={handleExport}
-      disabled={isFetching}
+      loading={isFetching}
     >
       <Download className="size-4 mr-1.5" />
-      {isFetching ? "Exporting..." : "Export"}
+      Export
     </Button>
   );
 }

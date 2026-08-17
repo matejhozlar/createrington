@@ -220,10 +220,10 @@ export function PriceAlerts() {
             </div>
             <Button
               onClick={handleCreate}
-              disabled={createMutation.isPending}
+              loading={createMutation.isPending}
               className="shrink-0"
             >
-              {createMutation.isPending ? "Creating..." : "Create"}
+              Create
             </Button>
           </div>
         </div>

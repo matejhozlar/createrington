@@ -194,9 +194,10 @@ export function PromoteDialog({
           </Button>
           <Button
             onClick={handlePromote}
-            disabled={!selected || promoteMutation.isPending}
+            disabled={!selected}
+            loading={promoteMutation.isPending}
           >
-            {promoteMutation.isPending ? "Promoting…" : "Promote"}
+            Promote
           </Button>
         </DialogFooter>
       </DialogContent>

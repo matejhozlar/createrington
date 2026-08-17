@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Loader2 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -116,11 +115,9 @@ export function ModpackSettingsDialog({
         <DialogFooter>
           <Button
             onClick={handleSave}
-            disabled={updateMutation.isPending || !name.trim()}
+            disabled={!name.trim()}
+            loading={updateMutation.isPending}
           >
-            {updateMutation.isPending && (
-              <Loader2 className="size-4 animate-spin" />
-            )}
             Save
           </Button>
         </DialogFooter>

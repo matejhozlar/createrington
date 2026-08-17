@@ -379,9 +379,10 @@ function CreateTokenDialog() {
         <DialogFooter>
           <Button
             onClick={handleCreate}
-            disabled={!isValid || createMutation.isPending}
+            disabled={!isValid}
+            loading={createMutation.isPending}
           >
-            {createMutation.isPending ? "Creating..." : "Create Token"}
+            Create Token
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -511,9 +512,9 @@ function TriggerEventDialog({
                 tokenId: tokenId ? Number(tokenId) : undefined,
               })
             }
-            disabled={triggerMutation.isPending}
+            loading={triggerMutation.isPending}
           >
-            {triggerMutation.isPending ? "Triggering..." : "Trigger Event"}
+            Trigger Event
           </Button>
         </DialogFooter>
       </DialogContent>

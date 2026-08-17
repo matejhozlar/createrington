@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Loader2 } from "lucide-react";
 import { useStickyValue } from "@/hooks/use-sticky-value";
 import { Button } from "@/components/ui/button";
 import {
@@ -88,7 +87,8 @@ export function RejectModDialog({
         <DialogFooter>
           <Button
             variant="destructive"
-            disabled={pending || !reason}
+            disabled={!reason}
+            loading={pending}
             onClick={() =>
               displayTarget &&
               reason !== "" &&
@@ -99,7 +99,6 @@ export function RejectModDialog({
               })
             }
           >
-            {pending && <Loader2 className="size-4 animate-spin" />}
             Reject
           </Button>
         </DialogFooter>

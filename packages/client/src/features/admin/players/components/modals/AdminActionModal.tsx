@@ -18,7 +18,6 @@ interface AdminActionModalProps {
   children: ReactNode;
   onConfirm: () => void;
   confirmLabel: string;
-  loadingLabel: string;
   cancelLabel?: string;
   loading?: boolean;
   disabled?: boolean;
@@ -35,7 +34,6 @@ export function AdminActionModal({
   children,
   onConfirm,
   confirmLabel,
-  loadingLabel,
   cancelLabel = "Cancel",
   loading = false,
   disabled = false,
@@ -60,9 +58,10 @@ export function AdminActionModal({
         variant={destructive ? "destructive" : "default"}
         className="flex-1"
         onClick={asForm ? undefined : onConfirm}
-        disabled={disabled || loading}
+        disabled={disabled}
+        loading={loading}
       >
-        {loading ? loadingLabel : confirmLabel}
+        {confirmLabel}
       </Button>
     </DialogFooter>
   );

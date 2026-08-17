@@ -225,8 +225,8 @@ export function EditFaqModal({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={updateEntry.isPending}>
-              {updateEntry.isPending ? "Saving..." : "Save Changes"}
+            <Button type="submit" loading={updateEntry.isPending}>
+              Save Changes
             </Button>
           </DialogFooter>
         </form>

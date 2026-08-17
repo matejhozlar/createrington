@@ -213,9 +213,9 @@ export function AdminChatHistory() {
                 <Button
                   variant="outline"
                   onClick={() => void loadMore()}
-                  disabled={loadingMore}
+                  loading={loadingMore}
                 >
-                  {loadingMore ? "Loading…" : "Load more"}
+                  Load more
                 </Button>
                 {loadMoreError && (
                   <p className="text-sm text-destructive">{loadMoreError}</p>

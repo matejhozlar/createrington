@@ -62,7 +62,6 @@ export function IssueStrikeModal({
       title="Issue Strike"
       onConfirm={handleSubmit}
       confirmLabel="Issue Strike"
-      loadingLabel="Issuing..."
       loading={issueStrike.isPending}
       disabled={!description}
     >
