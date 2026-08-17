@@ -181,17 +181,12 @@ export function Topbar({ builder }: TopbarProps) {
           <Button
             onClick={onSaveClick}
             disabled={saveDisabled}
+            loading={isPending}
             variant="outline"
             className="ml-1"
           >
             <Save className="mr-1.5 size-4" />
-            {isPending
-              ? activePreset
-                ? "Saving..."
-                : "Creating..."
-              : activePreset
-                ? "Save"
-                : "Save as new"}
+            {activePreset ? "Save" : "Save as new"}
           </Button>
           <Button
             onClick={() => setSendOpen(true)}

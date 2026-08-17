@@ -11,7 +11,7 @@ function Spinner({
     <Loader2
       role="status"
       aria-label="Loading"
-      className={cn("size-4 animate-spin", className)}
+      className={cn("animate-spin", className)}
       {...props}
     />
   );

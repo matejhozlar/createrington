@@ -331,13 +331,9 @@ export function ApplyToJoin() {
                   <Button
                     type="submit"
                     className="w-full cursor-pointer"
-                    disabled={isSubmitting}
+                    loading={isSubmitting}
                   >
-                    {isSubmitting
-                      ? "Submitting..."
-                      : isWaitlistMode
-                        ? "Join Waitlist"
-                        : "Apply Now"}
+                    {isWaitlistMode ? "Join Waitlist" : "Apply Now"}
                   </Button>
 
                   {errors.root && (

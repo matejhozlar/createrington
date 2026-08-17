@@ -56,7 +56,6 @@ const Button = React.forwardRef<
       size = "default",
       asChild = false,
       loading = false,
-      disabled,
       children,
       ...props
     },
@@ -77,6 +76,8 @@ const Button = React.forwardRef<
       );
     }
 
+    const { disabled, ...buttonProps } = props;
+
     return (
       <button
         data-slot="button"
@@ -89,7 +90,7 @@ const Button = React.forwardRef<
         ref={ref}
         disabled={disabled || loading}
         aria-busy={loading || undefined}
-        {...props}
+        {...buttonProps}
       >
         <span
           data-slot="button-content"
