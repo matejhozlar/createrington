@@ -287,8 +287,9 @@ export function InactivityManagement() {
             <>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <span className="grid">
+                  <span>
                     <Button
+                      className="w-full xs:w-auto"
                       variant="outline"
                       onClick={handleProcessOverdue}
                       disabled={!canMutate}
@@ -307,8 +308,9 @@ export function InactivityManagement() {
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <span className="grid">
+                  <span>
                     <Button
+                      className="w-full xs:w-auto"
                       variant="outline"
                       onClick={handleTriggerCleanup}
                       disabled={!canMutate || triggerCleanup.isPending}

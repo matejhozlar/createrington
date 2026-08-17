@@ -180,7 +180,7 @@ export function AdminPrompts() {
                   setPage(0);
                 }}
               >
-                <SelectTrigger className="w-full min-[440px]:w-36">
+                <SelectTrigger className="w-full xs:w-36">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

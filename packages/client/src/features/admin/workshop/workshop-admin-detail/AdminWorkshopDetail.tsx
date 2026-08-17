@@ -434,7 +434,7 @@ export function AdminWorkshopDetail() {
                   })
                 }
               >
-                <SelectTrigger className="w-full min-[440px]:w-32">
+                <SelectTrigger className="w-full xs:w-32">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
