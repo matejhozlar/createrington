@@ -197,11 +197,7 @@ export function AdminWaitlists() {
         entry.email && (
           <div className="flex min-w-0 items-center gap-2">
             <Mail className="size-4 shrink-0 text-muted-foreground" />
-            <Sensitive
-              value={entry.email}
-              label="email"
-              className="min-w-0 truncate text-sm"
-            />
+            <Sensitive value={entry.email} label="email" className="text-sm" />
           </div>
         ),
     },

@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const DECOY_ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789";
@@ -39,6 +40,8 @@ export function Sensitive({
 
   if (!trimmed) return null;
 
+  const RevealIcon = revealed ? EyeOff : Eye;
+
   return (
     <button
       type="button"
@@ -47,12 +50,19 @@ export function Sensitive({
       title={revealed ? "Click to hide" : "Click to reveal"}
       onClick={() => setRevealed((current) => !current)}
       className={cn(
-        "cursor-pointer select-none align-baseline blur-[2px] transition-[filter,color] duration-150 hover:text-foreground motion-reduce:transition-none",
-        revealed && "select-text blur-none",
+        "group/sensitive inline-flex min-w-0 max-w-full cursor-pointer items-center gap-1 font-mono transition-colors hover:text-foreground motion-reduce:transition-none",
         className,
       )}
     >
-      {revealed ? trimmed : decoy}
+      <span
+        className={cn(
+          "min-w-0 select-none truncate blur-[2px] transition-[filter] duration-150 motion-reduce:transition-none",
+          revealed && "select-text blur-none",
+        )}
+      >
+        {revealed ? trimmed : decoy}
+      </span>
+      <RevealIcon className="size-3 shrink-0 opacity-0 transition-opacity group-hover/sensitive:opacity-100" />
     </button>
   );
 }
