@@ -52,4 +52,4 @@ packageExtensions:
         optional: true
 
 minimumReleaseAgeExclude:
-  - createrington-skin-api@2.7.0 || 2.8.0
+  - createrington-skin-api@2.7.0 || 2.8.0 || 2.9.0
