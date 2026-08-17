@@ -3,6 +3,7 @@ import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/auth";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
+import { Sensitive } from "@/components/sensitive";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -241,7 +242,13 @@ function SessionsSection() {
                   <p className="text-sm font-medium truncate">{label}</p>
                   <p className="text-xs text-muted-foreground">
                     {session.ipAddress && (
-                      <span className="mr-3">IP: {session.ipAddress}</span>
+                      <span className="mr-3">
+                        IP:{" "}
+                        <Sensitive
+                          value={session.ipAddress}
+                          label="IP address"
+                        />
+                      </span>
                     )}
                     Last active: {formatRelative(session.lastUsedAt)}
                   </p>
