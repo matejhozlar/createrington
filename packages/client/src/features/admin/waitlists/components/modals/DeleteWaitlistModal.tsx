@@ -20,6 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Sensitive } from "@/components/sensitive";
 import { useToastActions } from "@/hooks/use-toast";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 
@@ -99,7 +100,11 @@ export function DeleteWaitlistModal({
             <DialogDescription>
               This will permanently delete the waitlist entry for{" "}
               <span className="font-semibold">
-                {entry.email || entry.discordName}
+                {entry.email ? (
+                  <Sensitive value={entry.email} label="email" />
+                ) : (
+                  entry.discordName
+                )}
               </span>
               {entry.email ? ` (${entry.discordName})` : ""}. This action cannot
               be undone.
@@ -115,7 +120,13 @@ export function DeleteWaitlistModal({
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Email:</span>
-                  <span className="font-medium">{entry.email || "-"}</span>
+                  <span className="font-medium">
+                    {entry.email ? (
+                      <Sensitive value={entry.email} label="email" />
+                    ) : (
+                      "-"
+                    )}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Discord:</span>
