@@ -8,16 +8,8 @@ import {
   type ModpackManifestUpload,
 } from "@createrington/shared/workshop";
 import { Paginator } from "@/components/paginator";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { useStickyValue } from "@/hooks/use-sticky-value";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -152,7 +144,7 @@ export function InPackTab({
   const manifestInputRef = useRef<HTMLInputElement>(null);
   const [pendingManifest, setPendingManifest] =
     useState<ModpackManifestUpload | null>(null);
-  const [confirmOpen, setConfirmOpen] = useState(false);
+  const displayManifest = useStickyValue(pendingManifest);
 
   const isCurrent = selected === "current";
   const releaseId = isCurrent ? null : Number(selected);
@@ -220,7 +212,6 @@ export function InPackTab({
       return;
     }
     setPendingManifest(parsed.data);
-    setConfirmOpen(true);
   };
 
   const query = search.trim().toLowerCase();
@@ -534,36 +525,32 @@ export function InPackTab({
         )}
       </Card>
 
-      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Replace the pack contents?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This pack already has {rows.length.toLocaleString()} members.
-              Importing{" "}
-              {pendingManifest?.version
-                ? `manifest "${pendingManifest.version}"`
-                : "this manifest"}{" "}
-              syncs them against its{" "}
-              {(pendingManifest?.files.length ?? 0).toLocaleString()} mods:
-              members missing from the manifest are dropped, and their
-              suggestions move back to Coming next update.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (pendingManifest) {
-                  seedMutation.mutate({ modpackId, manifest: pendingManifest });
-                }
-              }}
-            >
-              Import
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog
+        open={pendingManifest !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingManifest(null);
+        }}
+        title="Replace the pack contents?"
+        description={
+          <>
+            This pack already has {rows.length.toLocaleString()} members.
+            Importing{" "}
+            {displayManifest?.version
+              ? `manifest "${displayManifest.version}"`
+              : "this manifest"}{" "}
+            syncs them against its{" "}
+            {(displayManifest?.files.length ?? 0).toLocaleString()} mods:
+            members missing from the manifest are dropped, and their suggestions
+            move back to Coming next update.
+          </>
+        }
+        confirmLabel="Import"
+        onConfirm={() =>
+          pendingManifest
+            ? seedMutation.mutateAsync({ modpackId, manifest: pendingManifest })
+            : undefined
+        }
+      />
     </>
   );
 }

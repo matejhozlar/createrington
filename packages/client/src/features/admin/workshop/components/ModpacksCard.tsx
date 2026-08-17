@@ -2,16 +2,7 @@ import { useState } from "react";
 import { Package, Pencil, Plus, Trash2 } from "lucide-react";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -234,38 +225,21 @@ export function ModpacksCard() {
         />
       )}
 
-      <AlertDialog
+      <ConfirmDialog
         open={deleteTarget !== null}
         onOpenChange={(open) => {
           if (!open) setDeleteTarget(null);
         }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              Delete &quot;{displayDeleteTarget?.name}&quot;?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              This permanently removes the modpack, its member list, and its
-              recorded release history. This cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              disabled={deleteMutation.isPending}
-              onClick={() => {
-                if (deleteTarget) {
-                  deleteMutation.mutate({ modpackId: deleteTarget.id });
-                }
-              }}
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        title={<>Delete &quot;{displayDeleteTarget?.name}&quot;?</>}
+        description="This permanently removes the modpack, its member list, and its recorded release history. This cannot be undone."
+        confirmLabel="Delete"
+        variant="destructive"
+        onConfirm={() =>
+          deleteTarget
+            ? deleteMutation.mutateAsync({ modpackId: deleteTarget.id })
+            : undefined
+        }
+      />
     </>
   );
 }

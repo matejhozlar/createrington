@@ -1,14 +1,5 @@
 import { useState } from "react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import {
   Dialog,
   DialogContent,
@@ -101,7 +92,6 @@ export function MaintenanceToggle({
     onError: (err: { message: string }) => toast.error(err.message),
     onSettled: () => {
       setDialogOpen(false);
-      setDisableDialogOpen(false);
     },
   });
 
@@ -124,16 +114,11 @@ export function MaintenanceToggle({
       onError: (err: { message: string }) => toast.error(err.message),
       onSettled: () => {
         invalidate();
-        setCancelDialogOpen(false);
       },
     });
 
   function handleInstantEnable() {
     toggleMutation.mutate({ serverId, enabled: true });
-  }
-
-  function handleDisable() {
-    toggleMutation.mutate({ serverId, enabled: false, announce: announceEnd });
   }
 
   function handleSchedule() {
@@ -145,10 +130,6 @@ export function MaintenanceToggle({
       scheduledAt: date.toISOString(),
       estimatedMinutes,
     });
-  }
-
-  function handleCancelSchedule() {
-    cancelMutation.mutate({ serverId });
   }
 
   // State B: Scheduled (not yet active)
@@ -175,35 +156,24 @@ export function MaintenanceToggle({
           </div>
         </div>
 
-        <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCancelDialogOpen(true)}
-          >
-            <X className="mr-1 size-3.5" />
-            Cancel
-          </Button>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Cancel scheduled maintenance?</AlertDialogTitle>
-              <AlertDialogDescription>
-                The scheduled maintenance and all pending Discord warnings will
-                be cancelled.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Keep Schedule</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleCancelSchedule}
-                disabled={cancelMutation.isPending}
-                className="bg-destructive hover:bg-destructive/90"
-              >
-                {cancelMutation.isPending ? "Cancelling..." : "Cancel Schedule"}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setCancelDialogOpen(true)}
+        >
+          <X className="mr-1 size-3.5" />
+          Cancel
+        </Button>
+        <ConfirmDialog
+          open={cancelDialogOpen}
+          onOpenChange={setCancelDialogOpen}
+          title="Cancel scheduled maintenance?"
+          description="The scheduled maintenance and all pending Discord warnings will be cancelled."
+          confirmLabel="Cancel Schedule"
+          cancelLabel="Keep Schedule"
+          variant="destructive"
+          onConfirm={() => cancelMutation.mutateAsync({ serverId })}
+        />
       </div>
     );
   }
@@ -225,51 +195,38 @@ export function MaintenanceToggle({
           </div>
         </div>
 
-        <AlertDialog
+        <Button
+          variant="warning"
+          size="sm"
+          onClick={() => setDisableDialogOpen(true)}
+        >
+          Disable
+        </Button>
+        <ConfirmDialog
           open={disableDialogOpen}
           onOpenChange={setDisableDialogOpen}
+          title="Disable maintenance mode?"
+          description="This will restore the whitelist file and reload it. All previously whitelisted players will be able to join again."
+          confirmLabel="Disable"
+          onConfirm={() =>
+            toggleMutation.mutateAsync({
+              serverId,
+              enabled: false,
+              announce: announceEnd,
+            })
+          }
         >
-          <Button
-            variant="warning"
-            size="sm"
-            onClick={() => setDisableDialogOpen(true)}
-          >
-            Disable
-          </Button>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Disable maintenance mode?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This will restore the whitelist file and reload it. All
-                previously whitelisted players will be able to join again.
-              </AlertDialogDescription>
-              <div className="mt-3 flex items-center gap-2">
-                <Checkbox
-                  id="announce-end"
-                  checked={announceEnd}
-                  onCheckedChange={(checked) =>
-                    setAnnounceEnd(checked === true)
-                  }
-                />
-                <Label
-                  htmlFor="announce-end"
-                  className="text-sm cursor-pointer"
-                >
-                  Send &quot;maintenance ended&quot; announcement to Discord
-                </Label>
-              </div>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleDisable}
-                disabled={toggleMutation.isPending}
-              >
-                {toggleMutation.isPending ? "Processing..." : "Disable"}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="announce-end"
+              checked={announceEnd}
+              onCheckedChange={(checked) => setAnnounceEnd(checked === true)}
+            />
+            <Label htmlFor="announce-end" className="text-sm cursor-pointer">
+              Send &quot;maintenance ended&quot; announcement to Discord
+            </Label>
+          </div>
+        </ConfirmDialog>
       </div>
     );
   }

@@ -15,17 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { LabeledSwitch } from "@/components/labeled-switch";
 import { useStickyValue } from "@/hooks/use-sticky-value";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import {
   Dialog,
   DialogClose,
@@ -326,6 +316,7 @@ export function CryptoSettingsPanel() {
   const toast = useToastActions();
   const utils = trpc.useUtils();
   const listQuery = trpc.admin.crypto.settings.list.useQuery();
+  const [resetAllOpen, setResetAllOpen] = useState(false);
 
   const updateMutation = trpc.admin.crypto.settings.update.useMutation({
     onSuccess: (data) => {
@@ -431,33 +422,23 @@ export function CryptoSettingsPanel() {
                 compiled default. The action is audit-logged.
               </p>
             </div>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive" size="sm" className="shrink-0">
-                  Reset all
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>
-                    Reset all crypto settings?
-                  </AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This removes every override and restores the compiled
-                    defaults. The action is audit-logged.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => resetAllMutation.mutate({ confirm: true })}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    Reset all
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+            <Button
+              variant="destructive"
+              size="sm"
+              className="shrink-0"
+              onClick={() => setResetAllOpen(true)}
+            >
+              Reset all
+            </Button>
+            <ConfirmDialog
+              open={resetAllOpen}
+              onOpenChange={setResetAllOpen}
+              title="Reset all crypto settings?"
+              description="This removes every override and restores the compiled defaults. The action is audit-logged."
+              confirmLabel="Reset all"
+              variant="destructive"
+              onConfirm={() => resetAllMutation.mutateAsync({ confirm: true })}
+            />
           </div>
         </CardContent>
       </Card>

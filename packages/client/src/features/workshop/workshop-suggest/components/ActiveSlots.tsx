@@ -1,17 +1,9 @@
 import { useState } from "react";
-import { Loader2, X } from "lucide-react";
+import { X } from "lucide-react";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { useStickyValue } from "@/hooks/use-sticky-value";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,9 +30,8 @@ export function ActiveSlots({
   const toast = useToastActions();
   const utils = trpc.useUtils();
 
-  // confirmMod outlives the dialog so the name doesn't blank mid-close
   const [confirmMod, setConfirmMod] = useState<Suggestion | null>(null);
-  const [confirmOpen, setConfirmOpen] = useState(false);
+  const displayMod = useStickyValue(confirmMod);
 
   const pending = suggestions.filter((m) => m.status === "pending");
   const emptySlots = Math.max(0, workshop.maxModsPerUser - pending.length);
@@ -78,9 +69,6 @@ export function ActiveSlots({
 
       <div className="mt-4 flex flex-col gap-2">
         {pending.map((mod) => {
-          const removing =
-            removeMutation.isPending &&
-            removeMutation.variables?.workshopModId === mod.id;
           return (
             <div
               key={mod.id}
@@ -114,16 +102,9 @@ export function ActiveSlots({
                         size="icon-sm"
                         aria-label="Remove suggestion"
                         disabled={removeMutation.isPending}
-                        onClick={() => {
-                          setConfirmMod(mod);
-                          setConfirmOpen(true);
-                        }}
+                        onClick={() => setConfirmMod(mod)}
                       >
-                        {removing ? (
-                          <Loader2 className="animate-spin" />
-                        ) : (
-                          <X />
-                        )}
+                        <X />
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>Remove suggestion</TooltipContent>
@@ -144,30 +125,26 @@ export function ActiveSlots({
         ))}
       </div>
 
-      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Remove suggestion?</AlertDialogTitle>
-            <AlertDialogDescription>
-              &ldquo;{confirmMod?.project.name}&rdquo; will be removed from
-              review and its upvotes will be lost. This frees the slot back up.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              onClick={() => {
-                if (confirmMod) {
-                  removeMutation.mutate({ workshopModId: confirmMod.id });
-                }
-              }}
-            >
-              Remove
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog
+        open={confirmMod !== null}
+        onOpenChange={(open) => {
+          if (!open) setConfirmMod(null);
+        }}
+        title="Remove suggestion?"
+        description={
+          <>
+            &ldquo;{displayMod?.project.name}&rdquo; will be removed from review
+            and its upvotes will be lost. This frees the slot back up.
+          </>
+        }
+        confirmLabel="Remove"
+        variant="destructive"
+        onConfirm={() =>
+          confirmMod
+            ? removeMutation.mutateAsync({ workshopModId: confirmMod.id })
+            : undefined
+        }
+      />
     </section>
   );
 }

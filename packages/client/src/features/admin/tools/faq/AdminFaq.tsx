@@ -66,10 +66,7 @@ export function AdminFaq() {
     open: boolean;
     entry: FaqEntry | null;
   }>({ open: false, entry: null });
-  const [deleteModal, setDeleteModal] = useState<{
-    open: boolean;
-    entry: FaqEntry | null;
-  }>({ open: false, entry: null });
+  const [deleteTarget, setDeleteTarget] = useState<FaqEntry | null>(null);
 
   const debouncedSearch = useDebouncedValue(searchQuery, 1000);
 
@@ -120,7 +117,7 @@ export function AdminFaq() {
   const handleSuccess = useCallback(() => {
     setCreateModal(false);
     setEditModal({ open: false, entry: null });
-    setDeleteModal({ open: false, entry: null });
+    setDeleteTarget(null);
     entriesQuery.refetch();
   }, [entriesQuery]);
 
@@ -222,7 +219,7 @@ export function AdminFaq() {
       label: "Delete",
       icon: Trash2,
       variant: "destructive",
-      onClick: () => setDeleteModal({ open: true, entry }),
+      onClick: () => setDeleteTarget(entry),
     },
   ];
 
@@ -386,14 +383,11 @@ export function AdminFaq() {
         />
       )}
 
-      {deleteModal.entry !== null && (
-        <DeleteFaqModal
-          open={deleteModal.open}
-          onClose={() => setDeleteModal({ open: false, entry: null })}
-          entry={deleteModal.entry}
-          onSuccess={handleSuccess}
-        />
-      )}
+      <DeleteFaqModal
+        entry={deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onSuccess={handleSuccess}
+      />
     </div>
   );
 }

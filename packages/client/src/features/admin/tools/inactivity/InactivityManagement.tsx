@@ -78,14 +78,8 @@ export function InactivityManagement() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<WarningStatusFilter>("all");
 
-  const [resolveModal, setResolveModal] = useState<{
-    open: boolean;
-    warning: Warning | null;
-  }>({ open: false, warning: null });
-  const [removeModal, setRemoveModal] = useState<{
-    open: boolean;
-    warning: Warning | null;
-  }>({ open: false, warning: null });
+  const [resolveTarget, setResolveTarget] = useState<Warning | null>(null);
+  const [removeTarget, setRemoveTarget] = useState<Warning | null>(null);
 
   const debouncedSearch = useDebouncedValue(searchQuery, 500);
 
@@ -136,8 +130,8 @@ export function InactivityManagement() {
   }, []);
 
   const handleSuccess = useCallback(() => {
-    setResolveModal({ open: false, warning: null });
-    setRemoveModal({ open: false, warning: null });
+    setResolveTarget(null);
+    setRemoveTarget(null);
     refetchList();
     refetchStats();
   }, [refetchList, refetchStats]);
@@ -471,7 +465,7 @@ export function InactivityManagement() {
                         label: "Resolve",
                         icon: UserCheck,
                         disabled: !canAct,
-                        onClick: () => setResolveModal({ open: true, warning }),
+                        onClick: () => setResolveTarget(warning),
                       },
                       {
                         label: canMutate
@@ -480,7 +474,7 @@ export function InactivityManagement() {
                         icon: Trash2,
                         variant: "destructive",
                         disabled: !canAct || !canMutate,
-                        onClick: () => setRemoveModal({ open: true, warning }),
+                        onClick: () => setRemoveTarget(warning),
                       },
                     ];
                   }}
@@ -512,23 +506,17 @@ export function InactivityManagement() {
       </div>
 
       {/* Modals */}
-      {resolveModal.warning !== null && (
-        <ResolveWarningModal
-          open={resolveModal.open}
-          onClose={() => setResolveModal({ open: false, warning: null })}
-          warning={resolveModal.warning}
-          onSuccess={handleSuccess}
-        />
-      )}
+      <ResolveWarningModal
+        warning={resolveTarget}
+        onClose={() => setResolveTarget(null)}
+        onSuccess={handleSuccess}
+      />
 
-      {removeModal.warning !== null && (
-        <RemoveWarningModal
-          open={removeModal.open}
-          onClose={() => setRemoveModal({ open: false, warning: null })}
-          warning={removeModal.warning}
-          onSuccess={handleSuccess}
-        />
-      )}
+      <RemoveWarningModal
+        warning={removeTarget}
+        onClose={() => setRemoveTarget(null)}
+        onSuccess={handleSuccess}
+      />
     </div>
   );
 }

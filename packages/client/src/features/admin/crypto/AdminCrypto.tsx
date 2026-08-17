@@ -30,16 +30,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { CellText } from "@/components/cell-text";
 import {
   DataTable,
@@ -547,34 +538,20 @@ function DelistDialog({
   });
 
   return (
-    <AlertDialog
+    <ConfirmDialog
       open={target !== null}
       onOpenChange={(open) => {
         if (!open) onClose();
       }}
-    >
-      <AlertDialogContent size="sm">
-        <AlertDialogHeader>
-          <AlertDialogTitle>Delist {displayTarget?.symbol}</AlertDialogTitle>
-          <AlertDialogDescription>
-            All holdings will be auto-sold at current price. This action cannot
-            be undone.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            variant="destructive"
-            disabled={delistMutation.isPending}
-            onClick={() => {
-              if (target) delistMutation.mutate({ id: target.id });
-            }}
-          >
-            Delist
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+      size="sm"
+      title={<>Delist {displayTarget?.symbol}</>}
+      description="All holdings will be auto-sold at current price. This action cannot be undone."
+      confirmLabel="Delist"
+      variant="destructive"
+      onConfirm={() =>
+        target ? delistMutation.mutateAsync({ id: target.id }) : undefined
+      }
+    />
   );
 }
 

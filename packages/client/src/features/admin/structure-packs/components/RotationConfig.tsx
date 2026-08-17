@@ -12,17 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 
 const DAYS_OF_WEEK = [
   "Sunday",
@@ -68,6 +58,8 @@ export function RotationConfig() {
   const [gracePeriodMinutes, setGracePeriodMinutes] = useState<number | null>(
     null,
   );
+  const [clearOpen, setClearOpen] = useState(false);
+  const [forceOpen, setForceOpen] = useState(false);
 
   const currentPeriod = period ?? config?.period ?? "weekly";
   const currentDayOfWeek = dayOfWeek ?? config?.dayOfWeek ?? 1;
@@ -124,59 +116,39 @@ export function RotationConfig() {
           </p>
         </div>
         <div className="flex gap-2">
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive" size="sm">
-                <Trash2 className="size-4" />
-                Clear Rotation
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Clear current rotation?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This will deactivate the current structure pack and remove its
-                  mods from the server. All current boosts will be cleared.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  onClick={() => clearRotationMutation.mutate()}
-                  disabled={clearRotationMutation.isPending}
-                >
-                  Clear Rotation
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="outline" size="sm">
-                <Zap className="size-4" />
-                Force Rotation
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Force rotation now?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This will immediately select and activate a new structure
-                  pack. All current boosts will be consumed.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={() => forceRotationMutation.mutate()}
-                  disabled={forceRotationMutation.isPending}
-                >
-                  Rotate Now
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => setClearOpen(true)}
+          >
+            <Trash2 className="size-4" />
+            Clear Rotation
+          </Button>
+          <ConfirmDialog
+            open={clearOpen}
+            onOpenChange={setClearOpen}
+            title="Clear current rotation?"
+            description="This will deactivate the current structure pack and remove its mods from the server. All current boosts will be cleared."
+            confirmLabel="Clear Rotation"
+            variant="destructive"
+            onConfirm={() => clearRotationMutation.mutateAsync()}
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setForceOpen(true)}
+          >
+            <Zap className="size-4" />
+            Force Rotation
+          </Button>
+          <ConfirmDialog
+            open={forceOpen}
+            onOpenChange={setForceOpen}
+            title="Force rotation now?"
+            description="This will immediately select and activate a new structure pack. All current boosts will be consumed."
+            confirmLabel="Rotate Now"
+            onConfirm={() => forceRotationMutation.mutateAsync()}
+          />
         </div>
       </div>
 
