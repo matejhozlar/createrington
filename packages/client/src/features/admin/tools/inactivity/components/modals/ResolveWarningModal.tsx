@@ -1,62 +1,60 @@
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { useStickyValue } from "@/hooks/use-sticky-value";
 import { useToastActions } from "@/hooks/use-toast";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 
 type Warning = RouterOutput["admin"]["inactivity"]["list"]["warnings"][number];
 
 interface ResolveWarningModalProps {
-  open: boolean;
+  warning: Warning | null;
   onClose: () => void;
-  warning: Warning;
   onSuccess: () => void;
 }
 
 export function ResolveWarningModal({
-  open,
-  onClose,
   warning,
+  onClose,
   onSuccess,
 }: ResolveWarningModalProps) {
   const toast = useToastActions();
-  const resolveWarning = trpc.admin.inactivity.resolveManual.useMutation();
-
-  const displayName =
-    warning.minecraftUsername ?? `UUID ${warning.playerMinecraftUuid}`;
-
-  const handleResolve = async () => {
-    try {
-      await resolveWarning.mutateAsync({ id: warning.id });
+  const resolveWarning = trpc.admin.inactivity.resolveManual.useMutation({
+    onSuccess: () => {
       toast.success("Warning resolved");
       onSuccess();
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to resolve warning",
-      );
-    }
-  };
+    },
+    onError: (error) =>
+      toast.error(error.message || "Failed to resolve warning"),
+  });
+  const displayWarning = useStickyValue(warning);
+
+  const displayName = displayWarning
+    ? (displayWarning.minecraftUsername ??
+      `UUID ${displayWarning.playerMinecraftUuid}`)
+    : "";
 
   return (
-    <AlertDialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Resolve Inactivity Warning</AlertDialogTitle>
-          <AlertDialogDescription>
+    <ConfirmDialog
+      open={warning !== null}
+      onOpenChange={(isOpen) => {
+        if (!isOpen) onClose();
+      }}
+      title="Resolve Inactivity Warning"
+      description={
+        displayWarning && (
+          <>
             Mark{" "}
             <span className="font-semibold">&quot;{displayName}&quot;</span> as
             returned? The warning will be closed and they will not be removed by
             the next cleanup cycle.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-
+          </>
+        )
+      }
+      confirmLabel="Resolve"
+      onConfirm={() =>
+        warning ? resolveWarning.mutateAsync({ id: warning.id }) : undefined
+      }
+    >
+      {displayWarning && (
         <div className="rounded-lg border border-border bg-muted/50 p-4">
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
@@ -66,30 +64,20 @@ export function ResolveWarningModal({
             <div className="flex justify-between">
               <span className="text-muted-foreground">Warned:</span>
               <span className="font-medium">
-                {new Date(warning.warnedAt).toLocaleDateString()}
+                {new Date(displayWarning.warnedAt).toLocaleDateString()}
               </span>
             </div>
-            {warning.lastSeen && (
+            {displayWarning.lastSeen && (
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Last seen:</span>
                 <span className="font-medium">
-                  {new Date(warning.lastSeen).toLocaleDateString()}
+                  {new Date(displayWarning.lastSeen).toLocaleDateString()}
                 </span>
               </div>
             )}
           </div>
         </div>
-
-        <AlertDialogFooter>
-          <AlertDialogCancel onClick={onClose}>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={handleResolve}
-            disabled={resolveWarning.isPending}
-          >
-            {resolveWarning.isPending ? "Resolving..." : "Resolve"}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+      )}
+    </ConfirmDialog>
   );
 }

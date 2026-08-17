@@ -82,7 +82,6 @@ export function IssueWorkshopBanModal({
       description={`${playerUsername} will not be able to submit new mod suggestions. Minecraft access, Discord membership, upvotes and their existing suggestions are unaffected.`}
       onConfirm={handleSubmit}
       confirmLabel="Block Suggestions"
-      loadingLabel="Blocking..."
       loading={issueBan.isPending}
       disabled={!reason.trim() || workshops.isLoading || !!workshops.error}
     >

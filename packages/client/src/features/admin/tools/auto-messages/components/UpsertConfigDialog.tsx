@@ -202,14 +202,8 @@ export function UpsertConfigDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isPending}>
-              {isPending
-                ? isEdit
-                  ? "Saving..."
-                  : "Creating..."
-                : isEdit
-                  ? "Save"
-                  : "Create"}
+            <Button type="submit" loading={isPending}>
+              {isEdit ? "Save" : "Create"}
             </Button>
           </DialogFooter>
         </form>

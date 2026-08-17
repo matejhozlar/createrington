@@ -90,7 +90,6 @@ src/
 ├── components/
 │   ├── Background.tsx         # Ken-Burns hero image backdrop w/ gradient + glow
 │   ├── BrowserFrame.tsx       # Chrome/Safari-style window wrapping screenshots
-│   ├── Gear.tsx               # Procedural SVG gear (kept for future reuse)
 │   ├── AnimatedCounter.tsx    # Tweened number counter (ease-out cubic)
 │   ├── CandlestickChart.tsx   # Animated OHLC chart with live price cursor
 │   └── assets.ts              # Central registry of asset paths (HERO_IMAGES, LOGOS, …)

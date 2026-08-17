@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
+import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import {
   Card,
   CardContent,
@@ -35,7 +36,6 @@ import {
 import {
   Clock,
   Filter,
-  Loader2,
   RefreshCw,
   Search,
   Trash2,
@@ -78,14 +78,8 @@ export function InactivityManagement() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<WarningStatusFilter>("all");
 
-  const [resolveModal, setResolveModal] = useState<{
-    open: boolean;
-    warning: Warning | null;
-  }>({ open: false, warning: null });
-  const [removeModal, setRemoveModal] = useState<{
-    open: boolean;
-    warning: Warning | null;
-  }>({ open: false, warning: null });
+  const [resolveTarget, setResolveTarget] = useState<Warning | null>(null);
+  const [removeTarget, setRemoveTarget] = useState<Warning | null>(null);
 
   const debouncedSearch = useDebouncedValue(searchQuery, 500);
 
@@ -136,8 +130,8 @@ export function InactivityManagement() {
   }, []);
 
   const handleSuccess = useCallback(() => {
-    setResolveModal({ open: false, warning: null });
-    setRemoveModal({ open: false, warning: null });
+    setResolveTarget(null);
+    setRemoveTarget(null);
     refetchList();
     refetchStats();
   }, [refetchList, refetchStats]);
@@ -287,59 +281,59 @@ export function InactivityManagement() {
       />
 
       <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
-        {/* Title + Actions */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h1 className="text-2xl font-semibold">Inactivity Management</h1>
-          <div className="flex flex-wrap gap-2">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span>
-                  <Button
-                    variant="outline"
-                    onClick={handleProcessOverdue}
-                    disabled={!canMutate || triggerResolveRemove.isPending}
-                  >
-                    {triggerResolveRemove.isPending ? (
-                      <Loader2 className="mr-2 size-4 animate-spin" />
-                    ) : (
+        <AdminPageTitle
+          title="Inactivity Management"
+          actions={
+            <>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span>
+                    <Button
+                      className="w-full xs:w-auto"
+                      variant="outline"
+                      onClick={handleProcessOverdue}
+                      disabled={!canMutate}
+                      loading={triggerResolveRemove.isPending}
+                    >
                       <UserX className="mr-2 size-4" />
-                    )}
-                    Process Overdue
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>
-                {canMutate
-                  ? "Run resolve + remove phases only — no new warning announcements"
-                  : "Only available on the production deployment"}
-              </TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span>
-                  <Button
-                    variant="outline"
-                    onClick={handleTriggerCleanup}
-                    disabled={!canMutate || triggerCleanup.isPending}
-                  >
-                    <RefreshCw
-                      className={cn(
-                        "mr-2 size-4",
-                        triggerCleanup.isPending && "animate-spin",
-                      )}
-                    />
-                    Run Cleanup Now
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>
-                {canMutate
-                  ? "Run the full cycle: resolve → warn → remove"
-                  : "Only available on the production deployment"}
-              </TooltipContent>
-            </Tooltip>
-          </div>
-        </div>
+                      Process Overdue
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {canMutate
+                    ? "Run resolve + remove phases only — no new warning announcements"
+                    : "Only available on the production deployment"}
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span>
+                    <Button
+                      className="w-full xs:w-auto"
+                      variant="outline"
+                      onClick={handleTriggerCleanup}
+                      disabled={!canMutate || triggerCleanup.isPending}
+                    >
+                      <RefreshCw
+                        className={cn(
+                          "mr-2 size-4",
+                          triggerCleanup.isPending && "animate-spin",
+                        )}
+                      />
+                      Run Cleanup Now
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {canMutate
+                    ? "Run the full cycle: resolve → warn → remove"
+                    : "Only available on the production deployment"}
+                </TooltipContent>
+              </Tooltip>
+            </>
+          }
+        />
 
         {!canMutate && (
           <Card className="border-muted-foreground/30 bg-muted/30 gap-0">
@@ -471,7 +465,7 @@ export function InactivityManagement() {
                         label: "Resolve",
                         icon: UserCheck,
                         disabled: !canAct,
-                        onClick: () => setResolveModal({ open: true, warning }),
+                        onClick: () => setResolveTarget(warning),
                       },
                       {
                         label: canMutate
@@ -480,7 +474,7 @@ export function InactivityManagement() {
                         icon: Trash2,
                         variant: "destructive",
                         disabled: !canAct || !canMutate,
-                        onClick: () => setRemoveModal({ open: true, warning }),
+                        onClick: () => setRemoveTarget(warning),
                       },
                     ];
                   }}
@@ -512,23 +506,17 @@ export function InactivityManagement() {
       </div>
 
       {/* Modals */}
-      {resolveModal.warning !== null && (
-        <ResolveWarningModal
-          open={resolveModal.open}
-          onClose={() => setResolveModal({ open: false, warning: null })}
-          warning={resolveModal.warning}
-          onSuccess={handleSuccess}
-        />
-      )}
+      <ResolveWarningModal
+        warning={resolveTarget}
+        onClose={() => setResolveTarget(null)}
+        onSuccess={handleSuccess}
+      />
 
-      {removeModal.warning !== null && (
-        <RemoveWarningModal
-          open={removeModal.open}
-          onClose={() => setRemoveModal({ open: false, warning: null })}
-          warning={removeModal.warning}
-          onSuccess={handleSuccess}
-        />
-      )}
+      <RemoveWarningModal
+        warning={removeTarget}
+        onClose={() => setRemoveTarget(null)}
+        onSuccess={handleSuccess}
+      />
     </div>
   );
 }

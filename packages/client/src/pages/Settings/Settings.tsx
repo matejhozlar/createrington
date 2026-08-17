@@ -3,22 +3,14 @@ import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/auth";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
+import { Sensitive } from "@/components/sensitive";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { useToastActions } from "@/hooks/use-toast";
 import {
   Monitor,
   Smartphone,
@@ -241,7 +233,13 @@ function SessionsSection() {
                   <p className="text-sm font-medium truncate">{label}</p>
                   <p className="text-xs text-muted-foreground">
                     {session.ipAddress && (
-                      <span className="mr-3">IP: {session.ipAddress}</span>
+                      <span className="mr-3">
+                        IP:{" "}
+                        <Sensitive
+                          value={session.ipAddress}
+                          label="IP address"
+                        />
+                      </span>
                     )}
                     Last active: {formatRelative(session.lastUsedAt)}
                   </p>
@@ -313,10 +311,10 @@ function ExportDataButton() {
       size="sm"
       className="shrink-0"
       onClick={handleExport}
-      disabled={isFetching}
+      loading={isFetching}
     >
       <Download className="size-4 mr-1.5" />
-      {isFetching ? "Exporting..." : "Export"}
+      Export
     </Button>
   );
 }
@@ -324,40 +322,38 @@ function ExportDataButton() {
 /** Opens a confirmation dialog requiring the user to type a phrase before permanently deleting their account */
 function DeleteAccountButton() {
   const { logout } = useAuth();
+  const toast = useToastActions();
   const [open, setOpen] = useState(false);
   const [confirmation, setConfirmation] = useState("");
 
   const deleteMutation = trpc.user.account.deleteAccount.useMutation({
-    onSuccess: () => {
-      setOpen(false);
-      logout();
-    },
+    onSuccess: () => logout(),
+    onError: (error) =>
+      toast.error(error.message || "Failed to delete account"),
   });
 
   const isValid = confirmation === "DELETE MY ACCOUNT";
 
   return (
-    <AlertDialog
-      open={open}
-      onOpenChange={(v) => {
-        setOpen(v);
-        if (!v) setConfirmation("");
-      }}
-    >
-      <AlertDialogTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          className="shrink-0 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
-        >
-          <Trash2 className="size-4 mr-1.5" />
-          Delete
-        </Button>
-      </AlertDialogTrigger>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Delete your account?</AlertDialogTitle>
-          <AlertDialogDescription className="space-y-2">
+    <>
+      <Button
+        variant="outline"
+        size="sm"
+        className="shrink-0 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+        onClick={() => setOpen(true)}
+      >
+        <Trash2 className="size-4 mr-1.5" />
+        Delete
+      </Button>
+      <ConfirmDialog
+        open={open}
+        onOpenChange={(v) => {
+          setOpen(v);
+          if (!v) setConfirmation("");
+        }}
+        title="Delete your account?"
+        description={
+          <span className="block space-y-2">
             <span className="block">
               This will permanently delete all your data including playtime,
               economy, crypto portfolio, achievements, and moderation records.
@@ -371,28 +367,21 @@ function DeleteAccountButton() {
               <span className="font-mono font-bold">DELETE MY ACCOUNT</span> to
               confirm:
             </span>
-          </AlertDialogDescription>
-        </AlertDialogHeader>
+          </span>
+        }
+        confirmLabel="Permanently delete account"
+        variant="destructive"
+        confirmDisabled={!isValid}
+        onConfirm={() => deleteMutation.mutateAsync({ confirmation })}
+      >
         <Input
           value={confirmation}
           onChange={(e) => setConfirmation(e.target.value)}
           placeholder="DELETE MY ACCOUNT"
           className="font-mono"
         />
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={() => deleteMutation.mutate({ confirmation })}
-            disabled={!isValid || deleteMutation.isPending}
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-          >
-            {deleteMutation.isPending
-              ? "Deleting..."
-              : "Permanently delete account"}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+      </ConfirmDialog>
+    </>
   );
 }
 
@@ -425,33 +414,26 @@ function DangerZone() {
           title="Log out everywhere"
           description="Revoke all active sessions including this one"
           button={
-            <AlertDialog open={logoutOpen} onOpenChange={setLogoutOpen}>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive" size="sm" className="shrink-0">
-                  <LogOut className="size-4 mr-1.5" />
-                  Logout All
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Log out of all sessions?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will revoke all active sessions and log you out of
-                    every device, including this one. You'll need to log in
-                    again.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => logoutAll()}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    Log out everywhere
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+            <>
+              <Button
+                variant="destructive"
+                size="sm"
+                className="shrink-0"
+                onClick={() => setLogoutOpen(true)}
+              >
+                <LogOut className="size-4 mr-1.5" />
+                Logout All
+              </Button>
+              <ConfirmDialog
+                open={logoutOpen}
+                onOpenChange={setLogoutOpen}
+                title="Log out of all sessions?"
+                description="This will revoke all active sessions and log you out of every device, including this one. You'll need to log in again."
+                confirmLabel="Log out everywhere"
+                variant="destructive"
+                onConfirm={() => logoutAll()}
+              />
+            </>
           }
         />
       </CardContent>

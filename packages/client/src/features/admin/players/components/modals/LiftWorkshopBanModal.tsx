@@ -53,7 +53,6 @@ export function LiftWorkshopBanModal({
       description="The user will be able to submit new mod suggestions again."
       onConfirm={handleSubmit}
       confirmLabel="Lift Block"
-      loadingLabel="Lifting..."
       loading={liftBan.isPending}
       disabled={!reason.trim()}
     >

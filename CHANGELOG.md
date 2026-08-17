@@ -1,3 +1,20 @@
+## v1.35.3 (2026-08-17)
+
+### @createrington/client (0.2.48 → 0.2.49)
+- [add] Add Sensitive component that redacts on-screen IPs and emails behind a reveal-on-click overlay with deterministic decoy text, stable layout width, and a hover icon affordance
+- [add] Add loading prop to Button that shows a centered spinner and disables interaction while a mutation is pending, replacing scattered inline pending-state wiring across admin pages
+- [add] Add ConfirmDialog component that wraps AlertDialog with built-in pending state, auto-close on success, and locked dismissal during async operations
+- [add] Add Spinner UI primitive wrapping Lucide Loader2 with consistent spin animation and accessibility attributes
+- [add] Add AdminPageTitle component for responsive admin page headers that wrap action buttons below the heading on narrow viewports instead of squeezing them
+- [refactor] Sweep all admin confirmation dialogs onto the shared ConfirmDialog, removing duplicated pending-state management and manual close logic across ~30 admin pages
+- [refactor] Sweep admin mutation buttons onto Button's new loading prop, eliminating per-button spinner and disabled-state wiring
+- [chore] Remove unused SCSS/CSS module type declarations
+- [chore] Add xs (440px) Tailwind breakpoint for narrow-screen admin layouts
+
+### @createrington/server (1.36.0 → 1.36.1)
+- [chore] Bump createrington-skin-api from 2.8.0 to 2.9.0, updating the widest-pose headroom measurement for the new mojavatar pose
+- [chore] Remove unused utility scripts (env-find, import-playtime-from-stats) and dead barrel-export index files
+
 ## v1.35.2 (2026-08-16)
 
 ### @createrington/server (1.35.0 → 1.36.0)

@@ -1,16 +1,8 @@
 import { useCallback, useState } from "react";
 import { Loading } from "@/components/loading-spinner";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -46,14 +38,10 @@ export function AutoMessages() {
     message: Message | null;
   }>({ open: false, configId: 0, message: null });
 
-  const [deleteConfigConfirm, setDeleteConfigConfirm] = useState<{
-    open: boolean;
-    config: Config | null;
-  }>({ open: false, config: null });
-  const [deleteMessageConfirm, setDeleteMessageConfirm] = useState<{
-    open: boolean;
-    id: number | null;
-  }>({ open: false, id: null });
+  const [deleteConfigTarget, setDeleteConfigTarget] = useState<Config | null>(
+    null,
+  );
+  const [deleteMessageId, setDeleteMessageId] = useState<number | null>(null);
 
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
@@ -63,9 +51,25 @@ export function AutoMessages() {
     { id: expandedId! },
     { enabled: expandedId !== null },
   );
-  const deleteMutation = trpc.admin.autoMessages.configs.delete.useMutation();
+  const deleteMutation = trpc.admin.autoMessages.configs.delete.useMutation({
+    onSuccess: (_data, variables) => {
+      toast.success("Config deleted");
+      if (expandedId === variables.id) setExpandedId(null);
+      setDeleteConfigTarget(null);
+      configsQuery.refetch();
+    },
+    onError: () => toast.error("Failed to delete config"),
+  });
   const deleteMessageMutation =
-    trpc.admin.autoMessages.messages.delete.useMutation();
+    trpc.admin.autoMessages.messages.delete.useMutation({
+      onSuccess: () => {
+        toast.success("Message deleted");
+        setDeleteMessageId(null);
+        detailQuery.refetch();
+        configsQuery.refetch();
+      },
+      onError: () => toast.error("Failed to delete message"),
+    });
 
   const configs = configsQuery.data ?? [];
   const channels = channelsQuery.data ?? [];
@@ -88,40 +92,6 @@ export function AutoMessages() {
     configsQuery.refetch();
   }, [detailQuery, configsQuery]);
 
-  const handleDeleteConfig = useCallback(async () => {
-    const id = deleteConfigConfirm.config?.id;
-    if (!id) return;
-    try {
-      await deleteMutation.mutateAsync({ id });
-      toast.success("Config deleted");
-      if (expandedId === id) setExpandedId(null);
-      setDeleteConfigConfirm({ open: false, config: null });
-      configsQuery.refetch();
-    } catch {
-      toast.error("Failed to delete config");
-    }
-  }, [deleteMutation, toast, configsQuery, expandedId, deleteConfigConfirm]);
-
-  const handleDeleteMessage = useCallback(async () => {
-    const id = deleteMessageConfirm.id;
-    if (!id) return;
-    try {
-      await deleteMessageMutation.mutateAsync({ id });
-      toast.success("Message deleted");
-      setDeleteMessageConfirm({ open: false, id: null });
-      detailQuery.refetch();
-      configsQuery.refetch();
-    } catch {
-      toast.error("Failed to delete message");
-    }
-  }, [
-    deleteMessageMutation,
-    toast,
-    detailQuery,
-    configsQuery,
-    deleteMessageConfirm,
-  ]);
-
   return (
     <div className="flex flex-1 flex-col gap-4">
       <AdminPageHeader
@@ -133,13 +103,17 @@ export function AutoMessages() {
       />
 
       <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold">Auto Messages</h1>
-          <Button onClick={() => setConfigDialog({ open: true, config: null })}>
-            <Plus className="mr-2 size-4" />
-            New Config
-          </Button>
-        </div>
+        <AdminPageTitle
+          title="Auto Messages"
+          actions={
+            <Button
+              onClick={() => setConfigDialog({ open: true, config: null })}
+            >
+              <Plus className="mr-2 size-4" />
+              New Config
+            </Button>
+          }
+        />
 
         {configsQuery.isLoading ? (
           <div className="flex flex-1 items-center justify-center py-12">
@@ -229,9 +203,7 @@ export function AutoMessages() {
                       <Button
                         size="sm"
                         variant="destructive"
-                        onClick={() =>
-                          setDeleteConfigConfirm({ open: true, config })
-                        }
+                        onClick={() => setDeleteConfigTarget(config)}
                       >
                         <Trash2 className="size-4" />
                       </Button>
@@ -337,12 +309,7 @@ export function AutoMessages() {
                                   size="sm"
                                   variant="ghost"
                                   className="size-8 p-0 text-destructive hover:text-destructive"
-                                  onClick={() =>
-                                    setDeleteMessageConfirm({
-                                      open: true,
-                                      id: msg.id,
-                                    })
-                                  }
+                                  onClick={() => setDeleteMessageId(msg.id)}
                                 >
                                   <Trash2 className="size-3.5" />
                                 </Button>
@@ -380,70 +347,37 @@ export function AutoMessages() {
         message={messageDialog.message}
       />
 
-      <AlertDialog
-        open={deleteConfigConfirm.open}
-        onOpenChange={(isOpen) =>
-          !isOpen && setDeleteConfigConfirm({ open: false, config: null })
+      <ConfirmDialog
+        open={deleteConfigTarget !== null}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) setDeleteConfigTarget(null);
+        }}
+        title="Delete Config"
+        description="Are you sure you want to delete this auto-message config? All associated messages will also be deleted. This action cannot be undone."
+        confirmLabel="Delete"
+        variant="destructive"
+        onConfirm={() =>
+          deleteConfigTarget
+            ? deleteMutation.mutateAsync({ id: deleteConfigTarget.id })
+            : undefined
         }
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Config</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete this auto-message config? All
-              associated messages will also be deleted. This action cannot be
-              undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel
-              onClick={() =>
-                setDeleteConfigConfirm({ open: false, config: null })
-              }
-            >
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              onClick={handleDeleteConfig}
-              disabled={deleteMutation.isPending}
-            >
-              {deleteMutation.isPending ? "Deleting..." : "Delete"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      />
 
-      <AlertDialog
-        open={deleteMessageConfirm.open}
-        onOpenChange={(isOpen) =>
-          !isOpen && setDeleteMessageConfirm({ open: false, id: null })
+      <ConfirmDialog
+        open={deleteMessageId !== null}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) setDeleteMessageId(null);
+        }}
+        title="Delete Message"
+        description="Are you sure you want to delete this message? This action cannot be undone."
+        confirmLabel="Delete"
+        variant="destructive"
+        onConfirm={() =>
+          deleteMessageId !== null
+            ? deleteMessageMutation.mutateAsync({ id: deleteMessageId })
+            : undefined
         }
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Message</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete this message? This action cannot
-              be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel
-              onClick={() => setDeleteMessageConfirm({ open: false, id: null })}
-            >
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              onClick={handleDeleteMessage}
-              disabled={deleteMessageMutation.isPending}
-            >
-              {deleteMessageMutation.isPending ? "Deleting..." : "Delete"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      />
     </div>
   );
 }

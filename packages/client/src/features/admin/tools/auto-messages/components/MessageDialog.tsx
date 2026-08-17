@@ -252,14 +252,8 @@ export function MessageDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isPending}>
-              {isPending
-                ? isEdit
-                  ? "Saving..."
-                  : "Adding..."
-                : isEdit
-                  ? "Save"
-                  : "Add"}
+            <Button type="submit" loading={isPending}>
+              {isEdit ? "Save" : "Add"}
             </Button>
           </DialogFooter>
         </form>

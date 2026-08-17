@@ -1,84 +1,71 @@
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { useStickyValue } from "@/hooks/use-sticky-value";
 import { useToastActions } from "@/hooks/use-toast";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 
 type FaqEntry = RouterOutput["admin"]["faq"]["list"]["entries"][number];
 
 interface DeleteFaqModalProps {
-  open: boolean;
+  entry: FaqEntry | null;
   onClose: () => void;
-  entry: FaqEntry;
   onSuccess: () => void;
 }
 
 export function DeleteFaqModal({
-  open,
-  onClose,
   entry,
+  onClose,
   onSuccess,
 }: DeleteFaqModalProps) {
   const toast = useToastActions();
-  const deleteEntry = trpc.admin.faq.delete.useMutation();
-
-  const handleDelete = async () => {
-    try {
-      await deleteEntry.mutateAsync({ id: entry.id });
+  const deleteEntry = trpc.admin.faq.delete.useMutation({
+    onSuccess: () => {
       toast.success("FAQ entry deleted");
       onSuccess();
-    } catch {
-      toast.error("Failed to delete FAQ entry");
-    }
-  };
+    },
+    onError: () => toast.error("Failed to delete FAQ entry"),
+  });
+  const displayEntry = useStickyValue(entry);
 
   return (
-    <AlertDialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Delete FAQ Entry</AlertDialogTitle>
-          <AlertDialogDescription>
+    <ConfirmDialog
+      open={entry !== null}
+      onOpenChange={(isOpen) => {
+        if (!isOpen) onClose();
+      }}
+      title="Delete FAQ Entry"
+      description={
+        displayEntry && (
+          <>
             Are you sure you want to delete{" "}
-            <span className="font-semibold">"{entry.title}"</span>? This action
-            cannot be undone.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-
+            <span className="font-semibold">"{displayEntry.title}"</span>? This
+            action cannot be undone.
+          </>
+        )
+      }
+      confirmLabel="Delete"
+      variant="destructive"
+      onConfirm={() =>
+        entry ? deleteEntry.mutateAsync({ id: entry.id }) : undefined
+      }
+    >
+      {displayEntry && (
         <div className="rounded-lg border border-border bg-muted/50 p-4">
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Title:</span>
-              <span className="font-medium">{entry.title}</span>
+              <span className="font-medium">{displayEntry.title}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Pattern:</span>
-              <span className="font-mono text-xs">{entry.pattern}</span>
+              <span className="font-mono text-xs">{displayEntry.pattern}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Priority:</span>
-              <span className="font-medium">{entry.priority}</span>
+              <span className="font-medium">{displayEntry.priority}</span>
             </div>
           </div>
         </div>
-
-        <AlertDialogFooter>
-          <AlertDialogCancel onClick={onClose}>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            variant="destructive"
-            onClick={handleDelete}
-            disabled={deleteEntry.isPending}
-          >
-            {deleteEntry.isPending ? "Deleting..." : "Delete"}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+      )}
+    </ConfirmDialog>
   );
 }

@@ -187,9 +187,14 @@ function SaveAsNewForm({ builder, onClose }: SaveAsNewFormProps) {
         <Button variant="outline" onClick={onClose}>
           Cancel
         </Button>
-        <Button type="submit" form="save-as-new-form" disabled={submitDisabled}>
+        <Button
+          type="submit"
+          form="save-as-new-form"
+          disabled={submitDisabled}
+          loading={isPending || creating}
+        >
           <Save className="mr-1.5 size-4" />
-          {isPending || creating ? "Saving…" : "Save preset"}
+          Save preset
         </Button>
       </DialogFooter>
     </>

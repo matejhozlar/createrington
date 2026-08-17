@@ -129,10 +129,10 @@ export function SessionsTab({ playerId, getServerName }: SessionsTabProps) {
           size="sm"
           variant="outline"
           onClick={() => sessionsQuery.refetch()}
-          disabled={loading}
+          loading={loading}
         >
           <Clock className="size-4" />
-          {loading ? "Loading..." : "Refresh"}
+          Refresh
         </Button>
       </div>
 

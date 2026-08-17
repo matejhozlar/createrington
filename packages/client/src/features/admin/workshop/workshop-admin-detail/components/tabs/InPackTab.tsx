@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { FileUp, Loader2, Package, RefreshCw, Search } from "lucide-react";
+import { FileUp, Package, RefreshCw, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
@@ -8,16 +8,8 @@ import {
   type ModpackManifestUpload,
 } from "@createrington/shared/workshop";
 import { Paginator } from "@/components/paginator";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { useStickyValue } from "@/hooks/use-sticky-value";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -152,7 +144,7 @@ export function InPackTab({
   const manifestInputRef = useRef<HTMLInputElement>(null);
   const [pendingManifest, setPendingManifest] =
     useState<ModpackManifestUpload | null>(null);
-  const [confirmOpen, setConfirmOpen] = useState(false);
+  const displayManifest = useStickyValue(pendingManifest);
 
   const isCurrent = selected === "current";
   const releaseId = isCurrent ? null : Number(selected);
@@ -220,7 +212,6 @@ export function InPackTab({
       return;
     }
     setPendingManifest(parsed.data);
-    setConfirmOpen(true);
   };
 
   const query = search.trim().toLowerCase();
@@ -422,32 +413,23 @@ export function InPackTab({
               <Button
                 variant="outline"
                 size="sm"
-                disabled={seedMutation.isPending}
+                loading={seedMutation.isPending}
                 onClick={() => manifestInputRef.current?.click()}
                 className="max-sm:w-full"
               >
-                {seedMutation.isPending ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <FileUp className="size-4" />
-                )}
+                <FileUp className="size-4" />
                 Import manifest.json
               </Button>
             ) : (
               <Button
                 variant="outline"
                 size="sm"
-                disabled={
-                  reconcileMutation.isPending || modpacksQuery.isLoading
-                }
+                disabled={modpacksQuery.isLoading}
+                loading={reconcileMutation.isPending}
                 onClick={() => reconcileMutation.mutate({ modpackId })}
                 className="max-sm:w-full"
               >
-                {reconcileMutation.isPending ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <RefreshCw className="size-4" />
-                )}
+                <RefreshCw className="size-4" />
                 Check Published Pack
               </Button>
             )}
@@ -534,36 +516,32 @@ export function InPackTab({
         )}
       </Card>
 
-      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Replace the pack contents?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This pack already has {rows.length.toLocaleString()} members.
-              Importing{" "}
-              {pendingManifest?.version
-                ? `manifest "${pendingManifest.version}"`
-                : "this manifest"}{" "}
-              syncs them against its{" "}
-              {(pendingManifest?.files.length ?? 0).toLocaleString()} mods:
-              members missing from the manifest are dropped, and their
-              suggestions move back to Coming next update.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (pendingManifest) {
-                  seedMutation.mutate({ modpackId, manifest: pendingManifest });
-                }
-              }}
-            >
-              Import
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog
+        open={pendingManifest !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingManifest(null);
+        }}
+        title="Replace the pack contents?"
+        description={
+          <>
+            This pack already has {rows.length.toLocaleString()} members.
+            Importing{" "}
+            {displayManifest?.version
+              ? `manifest "${displayManifest.version}"`
+              : "this manifest"}{" "}
+            syncs them against its{" "}
+            {(displayManifest?.files.length ?? 0).toLocaleString()} mods:
+            members missing from the manifest are dropped, and their suggestions
+            move back to Coming next update.
+          </>
+        }
+        confirmLabel="Import"
+        onConfirm={() =>
+          pendingManifest
+            ? seedMutation.mutateAsync({ modpackId, manifest: pendingManifest })
+            : undefined
+        }
+      />
     </>
   );
 }

@@ -50,7 +50,6 @@ export function RemoveStrikeModal({
       title="Remove Strike"
       onConfirm={handleSubmit}
       confirmLabel="Remove Strike"
-      loadingLabel="Removing..."
       loading={removeStrike.isPending}
       disabled={!reason.trim()}
     >

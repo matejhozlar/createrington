@@ -8,6 +8,7 @@ import {
   BreadcrumbSeparator,
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
+import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -192,7 +193,7 @@ export function AdminTools() {
       </header>
 
       <div className="mx-auto w-full max-w-[1000px] flex flex-1 flex-col gap-8 px-4 pb-4">
-        <h1 className="text-2xl font-semibold">Tools</h1>
+        <AdminPageTitle title="Tools" />
 
         {TOOL_SECTIONS.map((section) => (
           <section key={section.title} className="flex flex-col gap-3">

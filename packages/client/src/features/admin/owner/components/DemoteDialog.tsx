@@ -150,9 +150,9 @@ export function DemoteDialog({ admin, onClose, onSuccess }: DemoteDialogProps) {
           <Button
             variant="destructive"
             onClick={() => void handleDemote()}
-            disabled={demoteMutation.isPending}
+            loading={demoteMutation.isPending}
           >
-            {demoteMutation.isPending ? "Demoting…" : "Demote"}
+            Demote
           </Button>
         </DialogFooter>
       </DialogContent>

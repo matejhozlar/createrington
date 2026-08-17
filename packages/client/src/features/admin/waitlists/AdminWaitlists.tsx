@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CellDate, CellText } from "@/components/cell-text";
+import { Sensitive } from "@/components/sensitive";
 import {
   BadgeCellSkeleton,
   DataTable,
@@ -84,10 +85,7 @@ export function AdminWaitlists() {
     open: boolean;
     entry: WaitlistEntry | null;
   }>({ open: false, entry: null });
-  const [deleteModal, setDeleteModal] = useState<{
-    open: boolean;
-    entry: WaitlistEntry | null;
-  }>({ open: false, entry: null });
+  const [deleteTarget, setDeleteTarget] = useState<WaitlistEntry | null>(null);
 
   const debouncedSearch = useDebouncedValue(searchQuery, 1000);
 
@@ -139,7 +137,7 @@ export function AdminWaitlists() {
   }, []);
 
   const handleDelete = useCallback((entry: WaitlistEntry) => {
-    setDeleteModal({ open: true, entry });
+    setDeleteTarget(entry);
   }, []);
 
   const handleInviteSuccess = useCallback(() => {
@@ -149,7 +147,7 @@ export function AdminWaitlists() {
   }, [entriesQuery, statsQuery]);
 
   const handleDeleteSuccess = useCallback(() => {
-    setDeleteModal({ open: false, entry: null });
+    setDeleteTarget(null);
     entriesQuery.refetch();
     statsQuery.refetch();
   }, [entriesQuery, statsQuery]);
@@ -196,7 +194,7 @@ export function AdminWaitlists() {
         entry.email && (
           <div className="flex min-w-0 items-center gap-2">
             <Mail className="size-4 shrink-0 text-muted-foreground" />
-            <CellText copy value={entry.email} className="text-sm" />
+            <Sensitive value={entry.email} label="email" className="text-sm" />
           </div>
         ),
     },
@@ -523,14 +521,11 @@ export function AdminWaitlists() {
         />
       )}
 
-      {deleteModal.entry !== null && (
-        <DeleteWaitlistModal
-          open={deleteModal.open}
-          onClose={() => setDeleteModal({ open: false, entry: null })}
-          entry={deleteModal.entry}
-          onSuccess={handleDeleteSuccess}
-        />
-      )}
+      <DeleteWaitlistModal
+        entry={deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onSuccess={handleDeleteSuccess}
+      />
     </div>
   );
 }

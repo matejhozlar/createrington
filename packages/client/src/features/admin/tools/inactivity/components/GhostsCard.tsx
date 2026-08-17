@@ -41,10 +41,7 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearch = useDebouncedValue(searchQuery, 500);
 
-  const [removeModal, setRemoveModal] = useState<{
-    open: boolean;
-    ghost: GhostMember | null;
-  }>({ open: false, ghost: null });
+  const [removeTarget, setRemoveTarget] = useState<GhostMember | null>(null);
 
   const capabilitiesQuery =
     trpc.admin.inactivity.ghosts.capabilities.useQuery();
@@ -97,13 +94,13 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
   }, [refreshGhosts, toast, refetchList, refetchCapabilities]);
 
   const handleRemoveSuccess = useCallback(() => {
-    setRemoveModal({ open: false, ghost: null });
+    setRemoveTarget(null);
     refetchList();
     refetchCapabilities();
   }, [refetchList, refetchCapabilities]);
 
   const handleRemoveClose = useCallback(() => {
-    setRemoveModal({ open: false, ghost: null });
+    setRemoveTarget(null);
     // Always refetch on close: if verify evicted the user mid-dialog,
     // they should disappear from the table immediately.
     refetchList();
@@ -266,7 +263,7 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
                     icon: Trash2,
                     variant: "destructive",
                     disabled: !canMutate,
-                    onClick: () => setRemoveModal({ open: true, ghost }),
+                    onClick: () => setRemoveTarget(ghost),
                   },
                 ]}
                 actionSlots={1}
@@ -290,15 +287,12 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
         )}
       </Card>
 
-      {removeModal.ghost !== null && (
-        <RemoveGhostModal
-          open={removeModal.open}
-          onClose={handleRemoveClose}
-          ghost={removeModal.ghost}
-          canMutate={canMutate}
-          onSuccess={handleRemoveSuccess}
-        />
-      )}
+      <RemoveGhostModal
+        ghost={removeTarget}
+        onClose={handleRemoveClose}
+        canMutate={canMutate}
+        onSuccess={handleRemoveSuccess}
+      />
     </>
   );
 }

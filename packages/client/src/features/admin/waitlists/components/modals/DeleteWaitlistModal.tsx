@@ -10,16 +10,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { Sensitive } from "@/components/sensitive";
+import { useStickyValue } from "@/hooks/use-sticky-value";
 import { useToastActions } from "@/hooks/use-toast";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 
@@ -27,25 +20,41 @@ type WaitlistEntry =
   RouterOutput["admin"]["waitlists"]["list"]["entries"][number];
 
 interface DeleteWaitlistModalProps {
-  open: boolean;
+  entry: WaitlistEntry | null;
   onClose: () => void;
-  entry: WaitlistEntry;
   onSuccess: () => void;
 }
 
 export function DeleteWaitlistModal({
-  open,
-  onClose,
   entry,
+  onClose,
   onSuccess,
 }: DeleteWaitlistModalProps) {
   const toast = useToastActions();
 
-  const deleteEntry = trpc.admin.waitlists.delete.useMutation();
-
   const [reason, setReason] = useState("");
   const [confirmText, setConfirmText] = useState("");
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+
+  const deleteEntry = trpc.admin.waitlists.delete.useMutation({
+    onSuccess: () => {
+      toast.success("Waitlist entry deleted");
+      setReason("");
+      setConfirmText("");
+      onSuccess();
+      onClose();
+    },
+    onError: () => toast.error("Failed to delete waitlist entry"),
+  });
+
+  const displayEntry = useStickyValue(entry);
+
+  const handleClose = () => {
+    setReason("");
+    setConfirmText("");
+    setShowConfirmDialog(false);
+    onClose();
+  };
 
   const handleDeleteClick = () => {
     if (!reason.trim()) {
@@ -55,40 +64,12 @@ export function DeleteWaitlistModal({
     setShowConfirmDialog(true);
   };
 
-  const handleConfirmDelete = async () => {
-    if (confirmText !== "DELETE") {
-      toast.error('You must type "DELETE" to confirm');
-      return;
-    }
-
-    try {
-      await deleteEntry.mutateAsync({
-        id: entry.id,
-        reason: reason.trim(),
-      });
-
-      toast.success("Waitlist entry deleted");
-      setShowConfirmDialog(false);
-      setConfirmText("");
-      onSuccess();
-    } catch {
-      toast.error("Failed to delete waitlist entry");
-    } finally {
-      onClose();
-    }
-  };
-
-  const handleCancelConfirm = () => {
-    setShowConfirmDialog(false);
-    setConfirmText("");
-  };
-
   return (
     <>
       <Dialog
-        open={open}
+        open={entry !== null}
         onOpenChange={(open) => {
-          if (!open) onClose();
+          if (!open) handleClose();
         }}
       >
         <DialogContent className="border-destructive">
@@ -99,10 +80,14 @@ export function DeleteWaitlistModal({
             <DialogDescription>
               This will permanently delete the waitlist entry for{" "}
               <span className="font-semibold">
-                {entry.email || entry.discordName}
+                {displayEntry?.email ? (
+                  <Sensitive value={displayEntry.email} label="email" />
+                ) : (
+                  displayEntry?.discordName
+                )}
               </span>
-              {entry.email ? ` (${entry.discordName})` : ""}. This action cannot
-              be undone.
+              {displayEntry?.email ? ` (${displayEntry.discordName})` : ""}.
+              This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
 
@@ -111,24 +96,34 @@ export function DeleteWaitlistModal({
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Entry ID:</span>
-                  <span className="font-medium">#{entry.id}</span>
+                  <span className="font-medium">#{displayEntry?.id}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Email:</span>
-                  <span className="font-medium">{entry.email || "-"}</span>
+                  <span className="font-medium">
+                    {displayEntry?.email ? (
+                      <Sensitive value={displayEntry.email} label="email" />
+                    ) : (
+                      "-"
+                    )}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Discord:</span>
-                  <span className="font-medium">{entry.discordName}</span>
+                  <span className="font-medium">
+                    {displayEntry?.discordName}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Status:</span>
-                  <span className="font-medium">{entry.status}</span>
+                  <span className="font-medium">{displayEntry?.status}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Submitted:</span>
                   <span className="font-medium">
-                    {new Date(entry.submittedAt).toLocaleDateString()}
+                    {displayEntry
+                      ? new Date(displayEntry.submittedAt).toLocaleDateString()
+                      : ""}
                   </span>
                 </div>
               </div>
@@ -152,7 +147,7 @@ export function DeleteWaitlistModal({
             <Button
               variant="outline"
               className="flex-1 cursor-pointer"
-              onClick={onClose}
+              onClick={handleClose}
               disabled={deleteEntry.isPending}
             >
               Cancel
@@ -169,44 +164,38 @@ export function DeleteWaitlistModal({
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirm Deletion</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action is permanent and cannot be undone. Type{" "}
-              <span className="font-semibold">DELETE</span> to confirm.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-
-          <Field>
-            <Input
-              type="text"
-              placeholder="Type DELETE to confirm"
-              value={confirmText}
-              onChange={(e) => setConfirmText(e.target.value)}
-              autoFocus
-            />
-          </Field>
-
-          <AlertDialogFooter>
-            <AlertDialogCancel
-              onClick={handleCancelConfirm}
-              className="cursor-pointer"
-            >
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              className="cursor-pointer"
-              onClick={handleConfirmDelete}
-              disabled={confirmText !== "DELETE" || deleteEntry.isPending}
-            >
-              {deleteEntry.isPending ? "Deleting..." : "Confirm"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog
+        open={showConfirmDialog}
+        onOpenChange={(open) => {
+          setShowConfirmDialog(open);
+          if (!open) setConfirmText("");
+        }}
+        title="Confirm Deletion"
+        description={
+          <>
+            This action is permanent and cannot be undone. Type{" "}
+            <span className="font-semibold">DELETE</span> to confirm.
+          </>
+        }
+        confirmLabel="Confirm"
+        variant="destructive"
+        confirmDisabled={confirmText !== "DELETE"}
+        onConfirm={() =>
+          entry
+            ? deleteEntry.mutateAsync({ id: entry.id, reason: reason.trim() })
+            : undefined
+        }
+      >
+        <Field>
+          <Input
+            type="text"
+            placeholder="Type DELETE to confirm"
+            value={confirmText}
+            onChange={(e) => setConfirmText(e.target.value)}
+            autoFocus
+          />
+        </Field>
+      </ConfirmDialog>
     </>
   );
 }

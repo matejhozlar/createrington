@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Loading } from "@/components/loading-spinner";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
+import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -291,10 +292,10 @@ export function CommandDocs() {
         </div>
       ) : (
         <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-semibold">Discord Commands</h1>
-              <p className="text-sm text-muted-foreground">
+          <AdminPageTitle
+            title="Discord Commands"
+            description={
+              <p>
                 {allCommands.length} commands registered
                 {payload?.generatedAt && (
                   <>
@@ -304,11 +305,11 @@ export function CommandDocs() {
                   </>
                 )}
               </p>
-            </div>
-          </div>
+            }
+          />
 
-          <div className="flex items-center gap-2">
-            <div className="relative max-w-xs flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative w-full max-w-xs sm:flex-1">
               <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Search commands..."
@@ -318,7 +319,7 @@ export function CommandDocs() {
               />
             </div>
 
-            <div className="flex gap-1">
+            <div className="flex flex-wrap gap-1">
               <button
                 type="button"
                 onClick={() => setCategoryFilter(null)}

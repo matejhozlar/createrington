@@ -197,13 +197,11 @@ export function Achievements() {
             <Button
               variant="default"
               size="sm"
-              disabled={claimAllMutation.isPending}
+              loading={claimAllMutation.isPending}
               onClick={() => serverId && claimAllMutation.mutate({ serverId })}
             >
               <Gift className="size-4 mr-1" />
-              {claimAllMutation.isPending
-                ? "Claiming..."
-                : `Claim All (${unclaimedCount})`}
+              Claim All ({unclaimedCount})
             </Button>
           )}
 

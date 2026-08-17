@@ -1,81 +1,72 @@
 import { useState } from "react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { useStickyValue } from "@/hooks/use-sticky-value";
 import { useToastActions } from "@/hooks/use-toast";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 
 type Warning = RouterOutput["admin"]["inactivity"]["list"]["warnings"][number];
 
 interface RemoveWarningModalProps {
-  open: boolean;
+  warning: Warning | null;
   onClose: () => void;
-  warning: Warning;
   onSuccess: () => void;
 }
 
 const CONFIRM_TOKEN = "REMOVE";
 
 export function RemoveWarningModal({
-  open,
-  onClose,
   warning,
+  onClose,
   onSuccess,
 }: RemoveWarningModalProps) {
   const toast = useToastActions();
   const [confirmText, setConfirmText] = useState("");
-  const removeWarning = trpc.admin.inactivity.removeManual.useMutation();
-
-  const displayName =
-    warning.minecraftUsername ?? `UUID ${warning.playerMinecraftUuid}`;
-  const canConfirm = confirmText === CONFIRM_TOKEN;
-
-  const handleClose = () => {
-    setConfirmText("");
-    onClose();
-  };
-
-  const handleRemove = async () => {
-    try {
-      await removeWarning.mutateAsync({ id: warning.id });
+  const removeWarning = trpc.admin.inactivity.removeManual.useMutation({
+    onSuccess: () => {
       toast.success("Player removed");
       setConfirmText("");
       onSuccess();
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to remove player",
-      );
-    }
-  };
+    },
+    onError: (error) => toast.error(error.message || "Failed to remove player"),
+  });
+  const displayWarning = useStickyValue(warning);
+
+  const displayName = displayWarning
+    ? (displayWarning.minecraftUsername ??
+      `UUID ${displayWarning.playerMinecraftUuid}`)
+    : "";
 
   return (
-    <AlertDialog
-      open={open}
-      onOpenChange={(isOpen) => !isOpen && handleClose()}
-    >
-      <AlertDialogContent className="border-destructive">
-        <AlertDialogHeader>
-          <AlertDialogTitle className="text-destructive">
-            Remove Player Now
-          </AlertDialogTitle>
-          <AlertDialogDescription>
+    <ConfirmDialog
+      open={warning !== null}
+      onOpenChange={(isOpen) => {
+        if (!isOpen) {
+          setConfirmText("");
+          onClose();
+        }
+      }}
+      title={<span className="text-destructive">Remove Player Now</span>}
+      description={
+        displayWarning && (
+          <>
             This will immediately kick{" "}
             <span className="font-semibold">&quot;{displayName}&quot;</span>{" "}
             from Discord, remove them from all Minecraft server whitelists, and
             delete their player record. This action skips the remaining grace
             period and cannot be undone.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-
+          </>
+        )
+      }
+      confirmLabel="Remove Player"
+      variant="destructive"
+      confirmDisabled={confirmText !== CONFIRM_TOKEN}
+      onConfirm={() =>
+        warning ? removeWarning.mutateAsync({ id: warning.id }) : undefined
+      }
+    >
+      {displayWarning && (
         <div className="rounded-lg border border-border bg-muted/50 p-4">
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
@@ -85,47 +76,34 @@ export function RemoveWarningModal({
             <div className="flex justify-between">
               <span className="text-muted-foreground">Warned:</span>
               <span className="font-medium">
-                {new Date(warning.warnedAt).toLocaleDateString()}
+                {new Date(displayWarning.warnedAt).toLocaleDateString()}
               </span>
             </div>
-            {warning.lastSeen && (
+            {displayWarning.lastSeen && (
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Last seen:</span>
                 <span className="font-medium">
-                  {new Date(warning.lastSeen).toLocaleDateString()}
+                  {new Date(displayWarning.lastSeen).toLocaleDateString()}
                 </span>
               </div>
             )}
           </div>
         </div>
-
-        <Field>
-          <FieldLabel htmlFor="remove-confirm">
-            Type{" "}
-            <span className="font-mono font-semibold">{CONFIRM_TOKEN}</span> to
-            confirm
-          </FieldLabel>
-          <Input
-            id="remove-confirm"
-            type="text"
-            placeholder={CONFIRM_TOKEN}
-            value={confirmText}
-            onChange={(e) => setConfirmText(e.target.value)}
-            autoFocus
-          />
-        </Field>
-
-        <AlertDialogFooter>
-          <AlertDialogCancel onClick={handleClose}>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            variant="destructive"
-            onClick={handleRemove}
-            disabled={!canConfirm || removeWarning.isPending}
-          >
-            {removeWarning.isPending ? "Removing..." : "Remove Player"}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+      )}
+      <Field>
+        <FieldLabel htmlFor="remove-confirm">
+          Type <span className="font-mono font-semibold">{CONFIRM_TOKEN}</span>{" "}
+          to confirm
+        </FieldLabel>
+        <Input
+          id="remove-confirm"
+          type="text"
+          placeholder={CONFIRM_TOKEN}
+          value={confirmText}
+          onChange={(e) => setConfirmText(e.target.value)}
+          autoFocus
+        />
+      </Field>
+    </ConfirmDialog>
   );
 }

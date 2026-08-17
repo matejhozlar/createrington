@@ -1,22 +1,13 @@
 import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/auth";
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { useStickyValue } from "@/hooks/use-sticky-value";
 import { useToastActions } from "@/hooks/use-toast";
 import {
   Clock,
@@ -68,7 +59,7 @@ export function TradePanel({
   const [amount, setAmount] = useState("");
   const [targetPrice, setTargetPrice] = useState("");
   const [ipoCountdown, setIpoCountdown] = useState("");
-  const [showConfirm, setShowConfirm] = useState(false);
+  const [confirmAmount, setConfirmAmount] = useState<number | null>(null);
   const [cooldownExpiresAt, setCooldownExpiresAt] = useState<number | null>(
     null,
   );
@@ -198,7 +189,7 @@ export function TradePanel({
     const amountNum = parsed;
 
     if (orderMode === "market") {
-      setShowConfirm(true);
+      setConfirmAmount(parsed);
     } else {
       if (!targetPrice || Number(targetPrice) <= 0) {
         toast.error("Enter a valid target price");
@@ -222,13 +213,13 @@ export function TradePanel({
   };
 
   const executeMarketTrade = () => {
-    const amountNum = Math.floor(Number(amount)) || 0;
-    if (tab === "buy") {
-      buyMutation.mutate({ symbol, amount: amountNum });
-    } else {
-      sellMutation.mutate({ symbol, amount: amountNum });
-    }
+    if (confirmAmount === null) return undefined;
+    return tab === "buy"
+      ? buyMutation.mutateAsync({ symbol, amount: confirmAmount })
+      : sellMutation.mutateAsync({ symbol, amount: confirmAmount });
   };
+
+  const displayConfirmAmount = useStickyValue(confirmAmount);
 
   const isPending =
     buyMutation.isPending ||
@@ -244,6 +235,10 @@ export function TradePanel({
     tab === "buy"
       ? effectivePrice * amountNum * (1 + feeRate)
       : effectivePrice * amountNum * (1 - feeRate);
+  const confirmCost =
+    tab === "buy"
+      ? numPrice * (displayConfirmAmount ?? 0) * (1 + feeRate)
+      : numPrice * (displayConfirmAmount ?? 0) * (1 - feeRate);
 
   const showBuySellTabs = orderMode === "market" || orderMode === "limit";
 
@@ -343,12 +338,12 @@ export function TradePanel({
               buyMutation.mutate({ symbol, amount: amountNum });
             }}
             disabled={
-              isPending ||
               amountNum <= 0 ||
               (remainingAllocation !== null && amountNum > remainingAllocation)
             }
+            loading={isPending}
           >
-            {isPending ? "Processing..." : `Buy ${symbol} (IPO)`}
+            Buy {symbol} (IPO)
           </Button>
         </CardContent>
       </Card>
@@ -489,61 +484,47 @@ export function TradePanel({
           variant={tab === "buy" ? "success" : "destructive"}
           className="w-full h-11"
           onClick={handleTrade}
-          disabled={isPending || isCrashed || amountNum <= 0 || isOnCooldown}
+          disabled={isCrashed || amountNum <= 0 || isOnCooldown}
+          loading={isPending}
         >
-          {isPending
-            ? "Processing..."
-            : isCrashed
-              ? "Token Crashed"
-              : orderMode === "market"
-                ? `${tab === "buy" ? "Buy" : "Sell"} ${symbol}`
-                : `Place ${ORDER_MODE_LABELS[orderMode]} Order`}
+          {isCrashed
+            ? "Token Crashed"
+            : orderMode === "market"
+              ? `${tab === "buy" ? "Buy" : "Sell"} ${symbol}`
+              : `Place ${ORDER_MODE_LABELS[orderMode]} Order`}
         </Button>
 
-        {/* Market order confirmation dialog */}
-        <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
-          <AlertDialogContent size="sm">
-            <AlertDialogHeader>
-              <AlertDialogTitle>
-                Confirm {tab === "buy" ? "Buy" : "Sell"}
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                {tab === "buy" ? "Buy" : "Sell"}{" "}
-                <span className="font-semibold text-foreground">
-                  {amountNum.toLocaleString()} {symbol}
-                </span>{" "}
-                at ~$
-                {numPrice.toFixed(
-                  numPrice < 0.01 ? 6 : numPrice < 1 ? 4 : 2,
-                )}{" "}
-                for{" "}
-                <span className="font-semibold text-foreground">
-                  ~$
-                  {estimatedCost.toLocaleString(undefined, {
-                    maximumFractionDigits: 4,
-                  })}
-                </span>
-                {feeRate > 0
-                  ? ` (incl. ${(feeRate * 100).toFixed(1)}% fee)`
-                  : ""}
-                .
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                variant={tab === "buy" ? "default" : "destructive"}
-                className={cn(
-                  tab === "buy" &&
-                    "bg-emerald-500 hover:bg-emerald-600 text-white",
-                )}
-                onClick={executeMarketTrade}
-              >
-                {tab === "buy" ? "Buy" : "Sell"}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <ConfirmDialog
+          open={confirmAmount !== null}
+          onOpenChange={(open) => {
+            if (!open) setConfirmAmount(null);
+          }}
+          size="sm"
+          title={<>Confirm {tab === "buy" ? "Buy" : "Sell"}</>}
+          description={
+            <>
+              {tab === "buy" ? "Buy" : "Sell"}{" "}
+              <span className="font-semibold text-foreground">
+                {(displayConfirmAmount ?? 0).toLocaleString()} {symbol}
+              </span>{" "}
+              at ~$
+              {numPrice.toFixed(
+                numPrice < 0.01 ? 6 : numPrice < 1 ? 4 : 2,
+              )} for{" "}
+              <span className="font-semibold text-foreground">
+                ~$
+                {confirmCost.toLocaleString(undefined, {
+                  maximumFractionDigits: 4,
+                })}
+              </span>
+              {feeRate > 0 ? ` (incl. ${(feeRate * 100).toFixed(1)}% fee)` : ""}
+              .
+            </>
+          }
+          confirmLabel={tab === "buy" ? "Buy" : "Sell"}
+          variant={tab === "buy" ? "success" : "destructive"}
+          onConfirm={executeMarketTrade}
+        />
       </CardContent>
     </Card>
   );

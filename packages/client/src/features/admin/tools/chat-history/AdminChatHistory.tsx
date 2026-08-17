@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
+import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CellText } from "@/components/cell-text";
@@ -166,18 +167,22 @@ export function AdminChatHistory() {
       />
 
       <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
-        <div className="flex items-center justify-between gap-3">
-          <h1 className="text-2xl font-semibold">Assistant Chat History</h1>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={reload}
-            disabled={loading}
-            title="Refresh"
-          >
-            <RefreshCw className={loading ? "size-4 animate-spin" : "size-4"} />
-          </Button>
-        </div>
+        <AdminPageTitle
+          title="Assistant Chat History"
+          actions={
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={reload}
+              disabled={loading}
+              title="Refresh"
+            >
+              <RefreshCw
+                className={loading ? "size-4 animate-spin" : "size-4"}
+              />
+            </Button>
+          }
+        />
 
         {error ? (
           <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card py-16 text-center">
@@ -213,9 +218,9 @@ export function AdminChatHistory() {
                 <Button
                   variant="outline"
                   onClick={() => void loadMore()}
-                  disabled={loadingMore}
+                  loading={loadingMore}
                 >
-                  {loadingMore ? "Loading…" : "Load more"}
+                  Load more
                 </Button>
                 {loadMoreError && (
                   <p className="text-sm text-destructive">{loadMoreError}</p>

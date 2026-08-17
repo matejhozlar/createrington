@@ -86,19 +86,21 @@ export function SendModal({ open, onOpenChange, builder }: SendModalProps) {
             <Button
               variant="outline"
               onClick={onUpdateAll}
-              disabled={updateAllPending || !hasContent}
+              disabled={!hasContent}
+              loading={updateAllPending}
               className="sm:mr-auto"
             >
               <RefreshCw className="mr-1.5 size-4" />
-              {updateAllPending ? "Updating..." : "Update All Linked"}
+              Update All Linked
             </Button>
           )}
           <Button
             onClick={onSend}
-            disabled={isPending || !hasContent || !channelId}
+            disabled={!hasContent || !channelId}
+            loading={isPending}
           >
             <Send className="mr-1.5 size-4" />
-            {isPending ? "Sending..." : "Send"}
+            Send
           </Button>
         </DialogFooter>
       </DialogContent>

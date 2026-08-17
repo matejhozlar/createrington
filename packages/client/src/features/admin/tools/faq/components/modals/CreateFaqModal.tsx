@@ -229,8 +229,8 @@ export function CreateFaqModal({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={createEntry.isPending}>
-              {createEntry.isPending ? "Creating..." : "Create"}
+            <Button type="submit" loading={createEntry.isPending}>
+              Create
             </Button>
           </DialogFooter>
         </form>

@@ -338,8 +338,8 @@ export function CreatePromptModal({ open, onClose, onSuccess }: Props) {
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={createMutation.isPending}>
-              {createMutation.isPending ? "Posting..." : "Post to Discord"}
+            <Button type="submit" loading={createMutation.isPending}>
+              Post to Discord
             </Button>
           </DialogFooter>
         </form>

@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Loader2 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -285,9 +284,9 @@ function SettingsForm({
       <DialogFooter>
         <Button
           onClick={handleSave}
-          disabled={pending || !name.trim() || !slug.trim()}
+          disabled={!name.trim() || !slug.trim()}
+          loading={pending}
         >
-          {pending && <Loader2 className="size-4 animate-spin" />}
           Save
         </Button>
       </DialogFooter>

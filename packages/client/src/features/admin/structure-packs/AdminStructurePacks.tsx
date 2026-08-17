@@ -39,19 +39,12 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
+import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
+import { HeaderActions } from "@/features/admin/components/HeaderActions";
 import { RotationConfig } from "./components/RotationConfig";
 import { RotationHistory } from "./components/RotationHistory";
 
@@ -283,7 +276,7 @@ export function AdminStructurePacks() {
       />
 
       <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
-        <h1 className="text-2xl font-semibold">Structure Packs</h1>
+        <AdminPageTitle title="Structure Packs" />
 
         {/* Rotation Settings & History */}
         <div className="grid gap-4 lg:grid-cols-2">
@@ -294,12 +287,12 @@ export function AdminStructurePacks() {
         {/* Filters */}
         <Card className="gap-2">
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <CardTitle className="flex items-center gap-2 text-base">
                 <Filter className="size-4 text-muted-foreground" />
                 Packs
               </CardTitle>
-              <div className="flex gap-2">
+              <HeaderActions>
                 <Button
                   variant="outline"
                   onClick={handleImport}
@@ -312,7 +305,7 @@ export function AdminStructurePacks() {
                   <Plus className="mr-2 size-4" />
                   New Pack
                 </Button>
-              </div>
+              </HeaderActions>
             </div>
           </CardHeader>
           <CardContent>
@@ -401,38 +394,21 @@ export function AdminStructurePacks() {
         </Card>
       </div>
 
-      {/* Delete Confirmation */}
-      <AlertDialog
+      <ConfirmDialog
         open={deleteTarget !== null}
         onOpenChange={(open) => {
           if (!open) setDeleteTarget(null);
         }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              Delete &quot;{displayDeleteTarget?.name}&quot;?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              This will remove the pack from the rotation pool. Historical data
-              will be preserved.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={deleteMutation.isPending}
-              onClick={() => {
-                if (deleteTarget) {
-                  deleteMutation.mutate({ id: deleteTarget.id });
-                }
-              }}
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        title={<>Delete &quot;{displayDeleteTarget?.name}&quot;?</>}
+        description="This will remove the pack from the rotation pool. Historical data will be preserved."
+        confirmLabel="Delete"
+        variant="destructive"
+        onConfirm={() =>
+          deleteTarget
+            ? deleteMutation.mutateAsync({ id: deleteTarget.id })
+            : undefined
+        }
+      />
 
       {/* Create Dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>

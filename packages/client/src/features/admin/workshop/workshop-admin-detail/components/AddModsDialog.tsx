@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Loader2, Plus, Search, X } from "lucide-react";
+import { Plus, Search, X } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
@@ -263,13 +263,9 @@ export function AddModsDialog({
                 note: trimmedNote || undefined,
               })
             }
-            disabled={
-              addMutation.isPending || selected.length === 0 || noteTooShort
-            }
+            disabled={selected.length === 0 || noteTooShort}
+            loading={addMutation.isPending}
           >
-            {addMutation.isPending && (
-              <Loader2 className="size-4 animate-spin" />
-            )}
             Add {selected.length > 0 ? `${selected.length} ` : ""}as Approved
           </Button>
         </DialogFooter>
