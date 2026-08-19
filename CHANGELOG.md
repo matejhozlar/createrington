@@ -1,3 +1,10 @@
+## v1.35.4 (2026-08-19)
+
+### @createrington/server (1.36.1 → 1.36.2)
+- [remove] Remove the Nomads server integration, including the RCON whitelist sync service, env config, Discord role/channel/category entries, and the server-selection menu entry
+- [refactor] Remove the post-deletion hook registry from PlayerDeletionService now that its only consumer (Nomads whitelist removal) is gone
+- [fix] Fix typos in the server-selection error reply ("wrog" and "yur" corrected to "wrong" and "your")
+
 ## v1.35.3 (2026-08-17)
 
 ### @createrington/client (0.2.48 → 0.2.49)

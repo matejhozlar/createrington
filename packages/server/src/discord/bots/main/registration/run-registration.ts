@@ -7,7 +7,6 @@ import {
 } from "@/discord/bots/main/registration-cleanup";
 import { RoleManager } from "@/discord/utils/roles/role-manager";
 import { minecraftRcon, WhitelistAction } from "@/utils/rcon";
-import { nomadsWhitelist } from "@/services/whitelist/nomads";
 import { ActionRowBuilder } from "discord.js";
 import type {
   ButtonBuilder,
@@ -212,9 +211,6 @@ export async function runRegistration(params: {
 
     await Q.waitlist.entry.update({ id: entry.id }, { registered: true });
     await waitlistRepo.updateProgressEmbed(entry.id);
-
-    // Best-effort: must never block or fail registration on the Nomads server.
-    void nomadsWhitelist.add(correctName);
 
     steps[currentStep].completed = true;
     currentStep++;

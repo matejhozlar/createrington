@@ -144,7 +144,7 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
     await replyError(
       interaction,
       "Action Failed",
-      "Something went wrog while updating yur roles. Please try again or contact an administrator.",
+      "Something went wrong while updating your roles. Please try again or contact an administrator.",
     );
   }
 }
