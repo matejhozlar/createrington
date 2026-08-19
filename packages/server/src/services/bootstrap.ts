@@ -31,7 +31,6 @@ import { RoleManagementService } from "./discord/role/role-management.service";
 import { WebSocketService } from "./websocket";
 import { PlayerBanService } from "./player/ban";
 import { playerDeletionService } from "./player/deletion";
-import { nomadsWhitelist } from "./whitelist/nomads";
 import { StatsImportService, STATS_IMPORT_SERVERS } from "./stats-import";
 import { AchievementService } from "./achievement";
 import { FaqService } from "./discord/faq";
@@ -347,9 +346,6 @@ export function registerServices(): void {
     Services.PLAYER_DELETION_SERVICE,
     async () => {
       await playerDeletionService.initialize();
-      playerDeletionService.onDeleted((player) =>
-        nomadsWhitelist.remove(player.minecraftUsername),
-      );
       return playerDeletionService;
     },
     { dependencies: [Services.DATABASE] },
