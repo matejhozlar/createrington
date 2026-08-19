@@ -32,14 +32,6 @@ export const SERVER_CONFIGS: ServerConfig[] = [
     enabled: true,
   },
   {
-    id: 2,
-    label: "Nomads",
-    description: "Create: Aeronautics test server (proving phase)",
-    roleId: Discord.Roles.NOMADS,
-    emoji: "🪂",
-    enabled: true,
-  },
-  {
     id: 99,
     label: "Tester",
     description: "Get access to the public testing forum",
