@@ -32,11 +32,10 @@ export const ticketStatusEnum = pgEnum("ticket_status", [
 export const ticketTypeEnum = pgEnum("ticket_type", ["general", "report"]);
 
 export const waitlistStatusEnum = pgEnum("waitlist_status", [
-  "pending",
-  "auto_accepted",
-  "accepted",
-  "declined",
-  "completed",
+  "queued",
+  "promoted",
+  "registered",
+  "expired",
 ]);
 
 export const discordAutoMessageRotationEnum = pgEnum(

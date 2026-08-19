@@ -3,61 +3,38 @@ import { EmbedColors } from "../../colors";
 import { ActionRowBuilder, ButtonBuilder, User } from "discord.js";
 import { ButtonPresets } from "../buttons";
 import type { Player, WaitlistEntry } from "@/generated/db";
+import type { WaitlistStatus } from "@createrington/shared/db";
 import { discordTimestamp } from "@/utils/format";
 
 export const WaitlistEmbedPresets = {
   /**
-   * Admin notification for new waitlist submission
+   * Admin notification for a new waitlist entry (informational only;
+   * promotion happens in the admin panel)
    */
-  adminNotification(data: {
+  queueNotification(data: {
     id: number;
-    discordName: string | null;
-    email: string | null;
+    discordId: string;
+    discordUsername: string;
+    status: WaitlistStatus;
   }) {
     const embed = createEmbed()
-      .title("📥 New Waitlist Submission")
-      .color(EmbedColors.Info)
-      .field("🆔 Submission ID", data.id.toString())
-      .field("💬 Discord", data.discordName || "N/A")
-      .field("📧 Email", data.email || "N/A")
-      .build();
-
-    const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      ButtonPresets.waitlist.accept(data.id),
-      ButtonPresets.waitlist.decline(data.id),
-    );
-
-    const linkRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      ButtonPresets.links.adminPanel(),
-    );
-
-    return { embed, components: [actionRow, linkRow] };
-  },
-
-  /**
-   * Auto-accept notification (no action buttons, just admin panel link)
-   */
-  autoAcceptNotification(data: {
-    id: number;
-    discordName: string | null;
-    email: string | null;
-    botMention: string;
-  }) {
-    const embed = createEmbed()
-      .title("📥 New Waitlist Submission (Auto-Accepted)")
-      .color(EmbedColors.Success)
-      .field("🆔 Submission ID", data.id.toString())
-      .field("💬 Discord", data.discordName || "N/A")
-      .field("📧 Email", data.email || "N/A")
+      .title(
+        data.status === "promoted"
+          ? "📥 New Registration Started"
+          : "📥 New Waitlist Signup",
+      )
+      .color(
+        data.status === "promoted" ? EmbedColors.Success : EmbedColors.Info,
+      )
+      .field("🆔 Entry ID", data.id.toString())
+      .field("💬 Discord", `<@${data.discordId}> (\`${data.discordUsername}\`)`)
       .build();
 
     const linkRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
       ButtonPresets.links.adminPanel(),
     );
 
-    const content = `✅ Auto-accepted by ${data.botMention}`;
-
-    return { embed, components: [linkRow], content };
+    return { embed, components: [linkRow] };
   },
 
   /**
@@ -69,14 +46,12 @@ export const WaitlistEmbedPresets = {
     player?: Player | null,
   ): DiscordEmbedBuilder {
     const steps = [
+      { name: "Queued", done: true },
       {
-        name: "Accepted",
-        done: entry.status === "accepted" || entry.status === "auto_accepted",
-        timestamp: entry.acceptedAt,
+        name: "Promoted",
+        done: entry.status === "promoted" || entry.status === "registered",
       },
-      { name: "Joined Discord", done: entry.joinedDiscord },
-      { name: "Verified", done: entry.verified },
-      { name: "Registered", done: entry.registered },
+      { name: "Registered", done: entry.status === "registered" },
       { name: "Joined Minecraft", done: entry.joinedMinecraft },
     ];
 
@@ -94,7 +69,13 @@ export const WaitlistEmbedPresets = {
 
     const embed = createEmbed()
       .title("Onboarding Progress")
-      .color(percent === 100 ? EmbedColors.Success : EmbedColors.Info)
+      .color(
+        entry.status === "expired"
+          ? EmbedColors.Error
+          : percent === 100
+            ? EmbedColors.Success
+            : EmbedColors.Info,
+      )
       .description(`${bar}  **${percent}%**  (${completed}/${total})`);
 
     if (discordUser) {
@@ -103,7 +84,7 @@ export const WaitlistEmbedPresets = {
         .field("Discord ID", `\`${discordUser.id}\``, true)
         .thumbnail(discordUser.displayAvatarURL({ size: 128 }));
     } else {
-      embed.field("Discord Name", `\`${entry.discordName}\``, true);
+      embed.field("Discord Name", `\`${entry.discordUsername}\``, true);
     }
 
     embed.field("Entry ID", `\`${entry.id}\``, true);
@@ -117,12 +98,22 @@ export const WaitlistEmbedPresets = {
       details.push(`UUID: \`${player.minecraftUuid}\``);
     }
 
-    if (entry.acceptedBy) {
-      details.push(`Accepted by: <@${entry.acceptedBy}>`);
+    details.push(`Queued: ${discordTimestamp(entry.queuedAt, "R")}`);
+
+    if (entry.promotedAt) {
+      details.push(
+        `Promoted: ${discordTimestamp(entry.promotedAt, "R")}${entry.promotedBy ? ` by <@${entry.promotedBy}>` : " (auto)"}`,
+      );
     }
 
-    if (entry.acceptedAt) {
-      details.push(`Accepted: ${discordTimestamp(entry.acceptedAt, "R")}`);
+    if (entry.registeredAt) {
+      details.push(`Registered: ${discordTimestamp(entry.registeredAt, "R")}`);
+    }
+
+    if (entry.status === "expired") {
+      details.push(
+        `Expired${entry.expiredAt ? `: ${discordTimestamp(entry.expiredAt, "R")}` : ""}`,
+      );
     }
 
     if (details.length > 0) {

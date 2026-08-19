@@ -10,31 +10,6 @@ const cfg = config.meta.links;
  * to maintain consistency and reduce duplication
  */
 export const ButtonPresets = {
-  /**
-   * Waitlist action buttons
-   */
-  waitlist: {
-    /**
-     * Accept button for waitlist entires
-     */
-    accept(id: number | string): ButtonBuilder {
-      return new ButtonBuilder()
-        .setCustomId(`waitlist:accept:${id}`)
-        .setLabel("Accept")
-        .setStyle(ButtonStyle.Success);
-    },
-
-    /**
-     * Decline button for waitlist entries
-     */
-    decline(id: number | string): ButtonBuilder {
-      return new ButtonBuilder()
-        .setCustomId(`waitlist:decline:${id}`)
-        .setLabel("Decline")
-        .setStyle(ButtonStyle.Danger);
-    },
-  },
-
   links: {
     /**
      * Admin panel link

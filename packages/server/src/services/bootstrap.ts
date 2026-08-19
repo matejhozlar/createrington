@@ -22,6 +22,7 @@ import { InactivityCleanupService } from "./discord/cleanup/inactivity/inactivit
 import { GhostMemberService } from "./discord/cleanup/ghost/ghost-member.service";
 import { UnlinkedMemberService } from "./discord/cleanup/unlinked/unlinked-member.service";
 import { WaitlistCleanupService } from "./waitlist/waitlist-cleanup.service";
+import { waitlistService } from "./waitlist/waitlist.service";
 import { WorkshopProjectRefreshService } from "./workshop/refresh.service";
 import { MemberCleanupService } from "./discord/cleanup/member/member-cleanup.service";
 import { SERVER_STATS_CONFIG, ServerStatsService } from "./discord/stats";
@@ -346,6 +347,9 @@ export function registerServices(): void {
     Services.PLAYER_DELETION_SERVICE,
     async () => {
       await playerDeletionService.initialize();
+      playerDeletionService.onDeleted(async () => {
+        await waitlistService.promoteEligible();
+      });
       return playerDeletionService;
     },
     { dependencies: [Services.DATABASE] },

@@ -1,11 +1,12 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { waitlistRepo } from "@/db";
+import { waitlistService } from "@/services/waitlist/waitlist.service";
 import { escapeLike } from "@/db/utils";
-import { paginationInput, buildPagination } from "@/trpc/utils";
+import { paginationInput, buildPagination, rethrowTrpc } from "@/trpc/utils";
 import type { WaitlistEntryFilters } from "@createrington/shared/db";
 
-/** Admin waitlists router: stats, list, detail, invite, and delete waitlist entries. */
+/** Admin waitlists router: stats, list, detail, promote, and delete waitlist entries. */
 export const waitlistsRouter = router({
   stats: adminProcedure
     .meta({
@@ -18,28 +19,19 @@ export const waitlistsRouter = router({
   list: adminProcedure
     .meta({
       description:
-        "List waitlist entries with filtering by status, email, Discord name/ID, verified/registered status, plus pagination and sorting",
+        "List waitlist entries with filtering by status and Discord username/ID, plus pagination and sorting",
     })
     .input(
       z.object({
         status: z
-          .enum([
-            "pending",
-            "auto_accepted",
-            "accepted",
-            "declined",
-            "completed",
-          ])
+          .enum(["queued", "promoted", "registered", "expired"])
           .optional(),
-        email: z.string().optional(),
-        discordName: z.string().optional(),
+        discordUsername: z.string().optional(),
         discordId: z.string().optional(),
-        verified: z.boolean().optional(),
-        registered: z.boolean().optional(),
         ...paginationInput(),
         orderBy: z
-          .enum(["submittedAt", "acceptedAt", "email", "discordName"])
-          .default("submittedAt"),
+          .enum(["queuedAt", "promotedAt", "discordUsername"])
+          .default("queuedAt"),
         orderDirection: z.enum(["asc", "desc"]).default("desc"),
       }),
     )
@@ -47,14 +39,12 @@ export const waitlistsRouter = router({
       const filters: WaitlistEntryFilters = {};
 
       if (input.status) filters.status = input.status;
-      if (input.email)
-        filters.email = { $ilike: `%${escapeLike(input.email)}%` };
-      if (input.discordName) {
-        filters.discordName = { $ilike: `%${escapeLike(input.discordName)}%` };
+      if (input.discordUsername) {
+        filters.discordUsername = {
+          $ilike: `%${escapeLike(input.discordUsername)}%`,
+        };
       }
       if (input.discordId) filters.discordId = input.discordId;
-      if (input.verified !== undefined) filters.verified = input.verified;
-      if (input.registered !== undefined) filters.registered = input.registered;
 
       const [entries, total] = await Promise.all([
         waitlistRepo.getAll(filters, {
@@ -83,21 +73,23 @@ export const waitlistsRouter = router({
       return { entry };
     }),
 
-  invite: adminProcedure
-    .meta({ description: "Manually invite/accept a waitlist entry" })
-    .input(
-      z.object({
-        id: z.number().int().positive(),
-        reason: z.string().optional(),
-      }),
-    )
+  promote: adminProcedure
+    .meta({
+      description:
+        "Force-promote a waitlist entry: the bot pings the member in their verification channel and they can register immediately",
+    })
+    .input(z.object({ id: z.number().int().positive() }))
     .mutation(async ({ input, ctx }) => {
-      const updatedEntry = await waitlistRepo.manualInvite(
-        input.id,
-        ctx.user.discordId,
-      );
+      try {
+        const entry = await waitlistService.promote(
+          input.id,
+          ctx.user.discordId,
+        );
 
-      return { entry: updatedEntry };
+        return { entry };
+      } catch (error) {
+        rethrowTrpc(error);
+      }
     }),
 
   delete: adminProcedure

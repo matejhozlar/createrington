@@ -47,9 +47,9 @@ const sections = [
             tier progress, and reward claims
           </li>
           <li>
-            <strong>Waitlist information</strong> — email address submitted when
-            applying to join the server. Emails are deleted after 30 days or
-            upon successful verification and registration, whichever comes first
+            <strong>Waitlist information</strong> — your Discord ID and
+            username, queue timestamps, and queue status, recorded when you join
+            the waitlist from our Discord server. No email address is collected
           </li>
           <li>
             <strong>Moderation records</strong> — strikes (with classification
@@ -90,7 +90,10 @@ const sections = [
           Assigning Discord roles automatically based on playtime, balance, and
           server tenure
         </li>
-        <li>Processing waitlist applications and sending notifications</li>
+        <li>
+          Managing the waitlist queue and notifying you on Discord when a spot
+          opens
+        </li>
         <li>
           Delivering opt-in Discord notifications (e.g., train crash alerts)
         </li>
@@ -126,8 +129,8 @@ const sections = [
             customer IDs, subscription IDs)
           </li>
           <li>
-            <strong>Email delivery service</strong> — for sending waitlist
-            confirmation emails, invitation notifications, and admin alerts
+            <strong>Email delivery service</strong> — for sending occasional
+            service emails and admin alerts
           </li>
         </ul>
         <p className="mt-2">
@@ -174,8 +177,8 @@ const sections = [
         </p>
         <ul className="list-disc pl-6 space-y-1 mt-2">
           <li>
-            <strong>Waitlist emails</strong> — deleted after 30 days or upon
-            successful verification and registration, whichever comes first
+            <strong>Waitlist entries</strong> — kept while you are in the queue;
+            entries expire when you leave the queue or the Discord server
           </li>
           <li>
             <strong>Login sessions</strong> — automatically expire after 7 days

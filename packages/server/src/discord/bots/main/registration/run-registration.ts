@@ -1,4 +1,5 @@
 import { Q, waitlistRepo } from "@/db";
+import { waitlistService } from "@/services/waitlist/waitlist.service";
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
 import {
@@ -109,18 +110,28 @@ export async function runRegistration(params: {
     await randomDelay();
     let entry = await Q.waitlist.entry.find({ discordId });
 
-    // User joined via the public Discord invite (no waitlist entry exists).
-    // Under cap, auto-create one as if they'd just applied. Over cap, require
-    // them to apply properly so they go through the normal waitlist email flow.
     if (!entry) {
       const hasCapacity = await waitlistRepo.hasCapacity();
       if (!hasCapacity) {
-        steps[currentStep].error = "No waitlist entry found";
+        steps[currentStep].error = "Server at capacity";
         throw new Error(
-          "The server is currently at capacity. Please apply at https://createrington.com/apply-to-join to join the waitlist.",
+          "The server is currently at capacity. Use the **Join Waitlist** button in your verification channel to get in line.",
         );
       }
-      entry = await waitlistRepo.registerForExistingMember(discordId, username);
+      entry = await waitlistService.createPromotedForExistingMember(
+        discordId,
+        username,
+      );
+    } else if (entry.status === "queued" || entry.status === "expired") {
+      const hasCapacity = await waitlistRepo.hasCapacity();
+      if (!hasCapacity) {
+        steps[currentStep].error = "Not promoted from the waitlist";
+        throw new Error(
+          entry.status === "queued"
+            ? "The server is currently at capacity and you're still in the queue. We'll ping you right here when a spot opens up."
+            : "The server is currently at capacity. Use the **Join Waitlist** button in your verification channel to get in line.",
+        );
+      }
     }
 
     steps[currentStep].completed = true;
@@ -197,8 +208,7 @@ export async function runRegistration(params: {
       minecraftUuid: uuid,
     });
 
-    await Q.waitlist.entry.update({ id: entry.id }, { registered: true });
-    await waitlistRepo.updateProgressEmbed(entry.id);
+    await waitlistService.markRegistered(entry.id);
 
     steps[currentStep].completed = true;
     currentStep++;

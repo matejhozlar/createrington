@@ -1,13 +1,13 @@
 import config from "@/config";
-import type { Client, GuildMember, OverwriteResolvable } from "discord.js";
-import { PermissionFlagsBits, ChannelType } from "discord.js";
+import type { Client, GuildMember } from "discord.js";
 import type { EventModule } from "@/discord/bots/common/loaders/event-loader";
 import { Q, waitlistRepo } from "@/db";
 import { RoleManager } from "@/discord/utils/roles/role-manager";
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
-import { diffAndUpdateInvites } from "@/discord/bots/main/invites";
 import { RegistrationComponentPresets } from "@/discord/components/presets/registration";
+import { WaitlistComponentPresets } from "@/discord/components/presets/waitlist";
+import { createVerificationChannel } from "@/discord/bots/main/registration/verification-channel";
 
 const autoRoleConfig = config.discord.events.onGuildMemberAdd.autoRole;
 
@@ -94,35 +94,6 @@ export async function execute(
       );
     }
 
-    // Match the join against any single-use waitlist invite so the entry
-    // can be auto-linked to this Discord account without requiring /verify.
-    try {
-      const consumedCode = await diffAndUpdateInvites(member.guild);
-      if (consumedCode) {
-        const entry = await Q.waitlist.entry.find({ inviteCode: consumedCode });
-        if (entry) {
-          await Q.waitlist.entry.update(
-            { id: entry.id },
-            {
-              discordId: member.user.id,
-              joinedDiscord: true,
-              verified: true,
-              email: null,
-            },
-          );
-          await waitlistRepo.updateProgressEmbed(entry.id);
-          logger.info(
-            `Linked waitlist entry #${entry.id} to Discord user ${member.user.tag} via invite ${consumedCode}`,
-          );
-        }
-      }
-    } catch (error) {
-      logger.error(
-        `Failed to match waitlist invite for ${member.user.tag}:`,
-        error,
-      );
-    }
-
     const existingPlayer = await Q.player.find({
       discordId: member.user.id,
     });
@@ -174,56 +145,22 @@ export async function execute(
       }
 
       try {
-        // Channel is private: hidden from everyone, visible only to the joining member and admins
-        const permissionOverwrites: OverwriteResolvable[] = [
-          {
-            id: member.guild.id,
-            deny: [PermissionFlagsBits.ViewChannel],
-          },
-          {
-            id: member.user.id,
-            allow: [
-              PermissionFlagsBits.ViewChannel,
-              PermissionFlagsBits.SendMessages,
-              PermissionFlagsBits.ReadMessageHistory,
-              PermissionFlagsBits.UseApplicationCommands,
-            ],
-          },
-          {
-            id: Discord.Roles.ADMIN,
-            allow: [
-              PermissionFlagsBits.ViewChannel,
-              PermissionFlagsBits.SendMessages,
-              PermissionFlagsBits.ReadMessageHistory,
-              PermissionFlagsBits.ManageChannels,
-            ],
-          },
-          {
-            id: Discord.Roles.OWNER,
-            allow: [
-              PermissionFlagsBits.ViewChannel,
-              PermissionFlagsBits.SendMessages,
-              PermissionFlagsBits.ReadMessageHistory,
-              PermissionFlagsBits.ManageChannels,
-            ],
-          },
-        ];
-
-        const verificationChannel = await member.guild.channels.create({
-          name: `verify-${joinNumber}`,
-          type: ChannelType.GuildText,
-          parent: Discord.Categories.VERIFICATION,
-          permissionOverwrites,
-          topic: `Verification channel for ${member.user.tag} (Join #${joinNumber})`,
-        });
+        const verificationChannel = await createVerificationChannel(
+          member,
+          joinNumber,
+        );
 
         logger.info(
           `Created verification channel ${verificationChannel.name} for ${member.user.tag}`,
         );
 
-        const welcome = RegistrationComponentPresets.idle({
-          memberMention: `${member}`,
-        });
+        const hasCapacity = await waitlistRepo.hasCapacity();
+        const welcome = hasCapacity
+          ? RegistrationComponentPresets.idle({ memberMention: `${member}` })
+          : WaitlistComponentPresets.queueOffer({
+              memberMention: `${member}`,
+            });
+
         await verificationChannel.send({
           components: welcome.components,
           flags: welcome.flags,

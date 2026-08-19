@@ -10,31 +10,33 @@ import {
 import { waitlistStatusEnum } from "./enums";
 
 // --- waitlist_entry ---
+// Discord-born waitlist queue: every entry is created from inside the guild,
+// so discord_id is always known. Lifecycle: queued -> promoted (slot
+// reserved, may re-queue on timeout) -> registered; expired is terminal
+// (left the guild, left the queue, or removed by an admin).
 
 export const waitlistEntry = pgTable(
   "waitlist_entry",
   {
     id: serial("id").primaryKey(),
-    email: text("email"),
-    discordName: text("discord_name").unique(),
-    discordId: text("discord_id").unique(),
-    inviteCode: text("invite_code").unique(),
-    submittedAt: timestamp("submitted_at", { withTimezone: true })
+    discordId: text("discord_id").notNull().unique(),
+    discordUsername: text("discord_username").notNull(),
+    status: waitlistStatusEnum("status").notNull().default("queued"),
+    queuedAt: timestamp("queued_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
-    discordMessageId: text("discord_message_id"),
-    status: waitlistStatusEnum("status").notNull().default("pending"),
-    joinedDiscord: boolean("joined_discord").notNull().default(false),
-    verified: boolean("verified").notNull().default(false),
-    registered: boolean("registered").notNull().default(false),
+    promotedAt: timestamp("promoted_at", { withTimezone: true }),
+    promotedBy: text("promoted_by"),
+    registeredAt: timestamp("registered_at", { withTimezone: true }),
+    expiredAt: timestamp("expired_at", { withTimezone: true }),
     joinedMinecraft: boolean("joined_minecraft").notNull().default(false),
-    acceptedAt: timestamp("accepted_at", { withTimezone: true }),
-    acceptedBy: text("accepted_by"),
+    verifyChannelId: text("verify_channel_id"),
+    waitingMessageId: text("waiting_message_id"),
+    adminMessageId: text("admin_message_id"),
     metadata: jsonb("metadata"),
   },
   (table) => [
-    index("idx_waitlist_discord_message_id").on(table.discordMessageId),
     index("idx_waitlist_status").on(table.status),
-    index("idx_waitlist_submitted_at").on(table.submittedAt),
+    index("idx_waitlist_queued_at").on(table.queuedAt),
   ],
 );

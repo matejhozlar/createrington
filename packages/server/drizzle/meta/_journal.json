@@ -337,6 +337,20 @@
       "when": 1787154255552,
       "tag": "0047_clean_titanium_man",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1787155351446,
+      "tag": "0048_easy_black_crow",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1787155373019,
+      "tag": "0049_unknown_blackheart",
+      "breakpoints": true
     }
   ]
 }
