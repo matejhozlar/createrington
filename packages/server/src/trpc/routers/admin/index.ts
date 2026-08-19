@@ -22,6 +22,7 @@ import { adminPartiesRouter } from "./parties";
 import { adminModpacksRouter } from "./modpacks";
 import { adminWorkshopsRouter } from "./workshops";
 import { adminFeaturesRouter } from "./features";
+import { adminSettingsRouter } from "./settings";
 import { refetchDiscordEntities } from "@/services/discord/entities/refetch";
 
 export const adminRouter = router({
@@ -58,6 +59,7 @@ export const adminRouter = router({
   players: adminPlayersRouter,
   prompts: adminPromptsRouter,
   servers: adminServersRouter,
+  settings: adminSettingsRouter,
   structurePacks: adminStructurePacksRouter,
   modpacks: adminModpacksRouter,
   workshops: adminWorkshopsRouter,

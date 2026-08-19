@@ -9,7 +9,6 @@ import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
@@ -48,7 +47,6 @@ interface FormValues {
   email: string;
   referralSource: string;
   referralOther: string;
-  agreedToTerms: boolean;
 }
 
 export function ApplyToJoin() {
@@ -72,7 +70,6 @@ export function ApplyToJoin() {
       email: "",
       referralSource: "",
       referralOther: "",
-      agreedToTerms: false,
     },
   });
 
@@ -244,57 +241,25 @@ export function ApplyToJoin() {
                       </Field>
                     )}
 
-                    <div className="flex flex-col gap-1.5">
-                      <div className="flex items-start gap-2">
-                        <Controller
-                          control={control}
-                          name="agreedToTerms"
-                          render={({ field }) => (
-                            <Checkbox
-                              id="agree-terms"
-                              name={field.name}
-                              checked={field.value}
-                              onCheckedChange={(checked) =>
-                                field.onChange(checked === true)
-                              }
-                              aria-invalid={!!errors.agreedToTerms}
-                              aria-describedby={
-                                errors.agreedToTerms
-                                  ? "agree-terms-error"
-                                  : undefined
-                              }
-                              className="mt-0.5 cursor-pointer"
-                            />
-                          )}
-                        />
-                        <label
-                          htmlFor="agree-terms"
-                          className="text-sm text-muted-foreground cursor-pointer select-none"
-                        >
-                          I agree to the{" "}
-                          <NavLink
-                            to="/privacy"
-                            target="_blank"
-                            className="text-primary hover:underline"
-                          >
-                            Privacy Policy
-                          </NavLink>{" "}
-                          and{" "}
-                          <NavLink
-                            to="/terms"
-                            target="_blank"
-                            className="text-primary hover:underline"
-                          >
-                            Terms of Service
-                          </NavLink>
-                        </label>
-                      </div>
-                      {errors.agreedToTerms && (
-                        <FieldError id="agree-terms-error" className="pl-6">
-                          {errors.agreedToTerms.message}
-                        </FieldError>
-                      )}
-                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      By applying you agree to the{" "}
+                      <NavLink
+                        to="/privacy"
+                        target="_blank"
+                        className="text-primary hover:underline"
+                      >
+                        Privacy Policy
+                      </NavLink>{" "}
+                      and{" "}
+                      <NavLink
+                        to="/terms"
+                        target="_blank"
+                        className="text-primary hover:underline"
+                      >
+                        Terms of Service
+                      </NavLink>
+                      .
+                    </p>
 
                     <Button
                       type="submit"

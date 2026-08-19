@@ -45,6 +45,7 @@ import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { keepPreviousData } from "@tanstack/react-query";
 import { InviteWaitlistModal } from "./components/modals/InviteWaitlistModal";
 import { DeleteWaitlistModal } from "./components/modals/DeleteWaitlistModal";
+import { IntakeSettingsCard } from "./components/IntakeSettingsCard";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 
 type WaitlistEntry =
@@ -373,6 +374,9 @@ export function AdminWaitlists() {
             </Card>
           </div>
         ) : null}
+
+        {/* Intake Settings */}
+        <IntakeSettingsCard />
 
         {/* Filters & Search */}
         <Card className="gap-2">

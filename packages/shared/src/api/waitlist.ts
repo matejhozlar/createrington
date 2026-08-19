@@ -28,17 +28,8 @@ export const waitlistFormSchema = z
     email: z.string(),
     referralSource: z.string(),
     referralOther: z.string(),
-    agreedToTerms: z.boolean(),
   })
   .superRefine((values, ctx) => {
-    if (!values.agreedToTerms) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "You must agree to the Privacy Policy and Terms of Service",
-        path: ["agreedToTerms"],
-      });
-    }
-
     if (!values.email.trim()) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

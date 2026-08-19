@@ -8,6 +8,7 @@ import type {
   WaitlistEntryFilters,
 } from "@createrington/shared/db";
 import { email, EmailTemplate } from "@/services/email";
+import { settings } from "@/services/settings";
 import { DatabaseTable } from "@/generated/db";
 import { AdminEdit } from "@/types";
 import {
@@ -32,14 +33,23 @@ export enum ProgressStep {
  */
 export class WaitlistRepository {
   /**
-   * True when the live player count is below configured player limit.
-   * Returns false on any DB error so we fail closed and queue the user.
+   * True when intake is open: mode is "auto" and the live player count is
+   * below the configured player limit. A "closed" intake mode forces
+   * waitlist regardless of capacity. Returns false on any DB error so we
+   * fail closed and queue the user.
    */
   async hasCapacity(): Promise<boolean> {
     try {
-      const currentPlayers = await Q.player.count();
+      const intakeMode = await settings.getIntakeMode();
+      if (intakeMode === "closed") {
+        logger.debug("Capacity check: intake mode is closed");
+        return false;
+      }
 
-      const playerLimit = config.servers.playerLimit;
+      const [currentPlayers, playerLimit] = await Promise.all([
+        Q.player.count(),
+        settings.getPlayerLimit(),
+      ]);
 
       const hasCapacity =
         Number.isFinite(playerLimit) && playerLimit > currentPlayers;
