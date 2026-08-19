@@ -3,7 +3,7 @@ import { runRegistration } from "@/discord/bots/main/registration/run-registrati
 import {
   REGISTER_MODAL_ID,
   REGISTER_MODAL_INPUT_ID,
-} from "@/discord/bots/main/registration/welcome-message";
+} from "@/discord/bots/main/registration/constants";
 
 /** Modal submit handler: runs the shared registration flow and mutates the
  * original welcome message (the one with the "Register" button) in place. */
@@ -40,10 +40,12 @@ export async function execute(
     username: interaction.user.username,
     mcName,
     channel,
-    render: async ({ embeds, components }) => {
+    render: async ({ components, flags }) => {
       await interaction.editReply({
-        embeds: embeds.map((e) => e.build()),
-        components: components ?? [],
+        components,
+        flags,
+        content: null,
+        embeds: [],
       });
     },
   });

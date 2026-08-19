@@ -9,11 +9,9 @@ const inviteUseCache = new Map<string, Map<string, number>>();
  * don't read the same baseline and miss the second consumer. */
 const diffQueue = new Map<string, Promise<string | null>>();
 
-/** TTLs for waitlist invites. Auto-accepted applicants are on the site right now,
- * so they get a short window. Admin-issued invites go by email and may sit in an
- * inbox for a few days before being opened, so they get a longer window. */
+/** TTLs for waitlist invites. Admin-issued invites go by email and may sit in an
+ * inbox for a few days before being opened, so they get a long window. */
 export const INVITE_MAX_AGE_SECONDS = {
-  AUTO_ACCEPT: 60 * 60, // 1 hour
   MANUAL_INVITE: 7 * 24 * 60 * 60, // 7 days
 } as const;
 

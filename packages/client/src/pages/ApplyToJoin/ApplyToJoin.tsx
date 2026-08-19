@@ -1,10 +1,9 @@
-import { CheckCircle, Clock, ExternalLink } from "lucide-react";
+import { Clock, ExternalLink } from "lucide-react";
 import { DISCORD_INVITE_URL } from "@/lib/external-urls";
-import { useMemo } from "react";
 import { NavLink } from "react-router";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { buildWaitlistFormSchema } from "@createrington/shared/api";
+import { waitlistFormSchema } from "@createrington/shared/api";
 import { Loading } from "@/components/loading-spinner";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -32,6 +31,18 @@ const REFERRAL_OPTIONS = [
   "Other",
 ] as const;
 
+const OPEN_STEPS = [
+  "Join our Discord server using the invite link.",
+  "Click Register in your private verification channel and enter your Minecraft username.",
+  "You're whitelisted automatically. Jump in and play!",
+];
+
+const WAITLIST_STEPS = [
+  "Submit your application with your email and Discord username.",
+  "We'll review and email you a personal Discord invite when a spot opens.",
+  "Join the Discord and start building with the community.",
+];
+
 interface FormValues {
   discordName: string;
   email: string;
@@ -47,11 +58,6 @@ export function ApplyToJoin() {
   const mode = statusQuery.data?.mode;
   const isWaitlistMode = mode === "waitlist";
 
-  const schema = useMemo(
-    () => buildWaitlistFormSchema(isWaitlistMode),
-    [isWaitlistMode],
-  );
-
   const {
     register,
     handleSubmit,
@@ -60,7 +66,7 @@ export function ApplyToJoin() {
     clearErrors,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(waitlistFormSchema),
     defaultValues: {
       discordName: "",
       email: "",
@@ -73,7 +79,6 @@ export function ApplyToJoin() {
   const referralSource = useWatch({ control, name: "referralSource" });
 
   const result = createMutation.data;
-  const isAutoAccepted = result?.status === "auto_accepted";
 
   const onSubmit = handleSubmit(async (values) => {
     // Drop any stale server error from a previous failed submit so the
@@ -89,8 +94,8 @@ export function ApplyToJoin() {
 
     try {
       await createMutation.mutateAsync({
-        discordName: values.discordName.trim() || undefined,
-        email: values.email.trim() || undefined,
+        discordName: values.discordName.trim(),
+        email: values.email.trim(),
         metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
       });
     } catch (error: unknown) {
@@ -113,36 +118,6 @@ export function ApplyToJoin() {
   }
 
   if (result) {
-    if (isAutoAccepted && "inviteUrl" in result) {
-      return (
-        <div className="flex flex-1 items-center justify-center px-4 py-20">
-          <div className="w-full max-w-md rounded-lg border border-success bg-success/5 p-8 text-center">
-            <CheckCircle className="mx-auto mb-4 size-12 text-success" />
-            <h2 className="mb-2 text-2xl font-semibold">You're In!</h2>
-            <p className="mb-6 text-muted-foreground">
-              You've been automatically accepted. Click the button below to join
-              our Discord using your personal invite, then run{" "}
-              <code className="rounded bg-muted px-1 py-0.5 text-xs">
-                /register &lt;your_mc_name&gt;
-              </code>{" "}
-              to get whitelisted.
-            </p>
-
-            <Button asChild className="w-full">
-              <a
-                href={result.inviteUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <ExternalLink className="mr-2 size-4" />
-                Join Our Discord
-              </a>
-            </Button>
-          </div>
-        </div>
-      );
-    }
-
     return (
       <div className="flex flex-1 items-center justify-center px-4 py-20">
         <div className="w-full max-w-md rounded-lg border border-sidebar-primary bg-sidebar-primary/5 p-8 text-center">
@@ -151,8 +126,8 @@ export function ApplyToJoin() {
             You're on the Waitlist!
           </h2>
           <p className="mb-6 text-muted-foreground">
-            Thanks for applying! We'll email you when a spot opens up. In the
-            meantime, feel free to join our Discord community.
+            {result.message} In the meantime, feel free to join our Discord
+            community.
           </p>
 
           <Button asChild variant="outline" className="w-full">
@@ -182,22 +157,18 @@ export function ApplyToJoin() {
         <Card className="mx-auto w-full max-w-7xl py-3 sm:py-6 xl:py-10">
           <CardContent className="px-3 sm:px-6 xl:px-10">
             <div className="grid gap-8 md:gap-16 lg:grid-cols-[1fr_1.2fr]">
-              <div className="rounded-xl h-fit border border-border/60 bg-background p-6">
-                <div className="mb-6">
-                  <h2 className="text-xl font-semibold">
-                    {isWaitlistMode
-                      ? "Waitlist Application"
-                      : "Server Application"}
-                  </h2>
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    {isWaitlistMode
-                      ? "Share your details and we'll reach out when a spot opens."
-                      : "Accept the terms to get your Discord invite."}
-                  </p>
-                </div>
+              {isWaitlistMode ? (
+                <div className="rounded-xl h-fit border border-border/60 bg-background p-6">
+                  <div className="mb-6">
+                    <h2 className="text-xl font-semibold">
+                      Waitlist Application
+                    </h2>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      Share your details and we'll reach out when a spot opens.
+                    </p>
+                  </div>
 
-                <form onSubmit={onSubmit} className="space-y-4" noValidate>
-                  {isWaitlistMode && (
+                  <form onSubmit={onSubmit} className="space-y-4" noValidate>
                     <Field data-invalid={!!errors.email}>
                       <FieldLabel htmlFor="email">Email Address</FieldLabel>
                       <Input
@@ -209,9 +180,7 @@ export function ApplyToJoin() {
                       />
                       <FieldError>{errors.email?.message}</FieldError>
                     </Field>
-                  )}
 
-                  {isWaitlistMode && (
                     <Field data-invalid={!!errors.discordName}>
                       <FieldLabel htmlFor="discord-name">
                         Discord Username
@@ -225,122 +194,171 @@ export function ApplyToJoin() {
                       />
                       <FieldError>{errors.discordName?.message}</FieldError>
                     </Field>
-                  )}
 
-                  <Field>
-                    <FieldLabel htmlFor="referral">
-                      How did you find us?{" "}
-                      <span className="font-normal text-muted-foreground">
-                        (optional)
-                      </span>
-                    </FieldLabel>
-                    <Controller
-                      control={control}
-                      name="referralSource"
-                      render={({ field }) => (
-                        <Select
-                          name={field.name}
-                          value={field.value}
-                          onValueChange={field.onChange}
-                        >
-                          <SelectTrigger id="referral">
-                            <SelectValue placeholder="Select an option" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {REFERRAL_OPTIONS.map((option) => (
-                              <SelectItem
-                                key={option}
-                                value={option}
-                                className="cursor-pointer"
-                              >
-                                {option}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                  </Field>
-
-                  {referralSource === "Other" && (
                     <Field>
-                      <FieldLabel htmlFor="referral-other">
-                        Please specify
+                      <FieldLabel htmlFor="referral">
+                        How did you find us?{" "}
+                        <span className="font-normal text-muted-foreground">
+                          (optional)
+                        </span>
                       </FieldLabel>
-                      <Input
-                        id="referral-other"
-                        type="text"
-                        placeholder="Where did you hear about us?"
-                        {...register("referralOther")}
-                      />
-                    </Field>
-                  )}
-
-                  <div className="flex flex-col gap-1.5">
-                    <div className="flex items-start gap-2">
                       <Controller
                         control={control}
-                        name="agreedToTerms"
+                        name="referralSource"
                         render={({ field }) => (
-                          <Checkbox
-                            id="agree-terms"
+                          <Select
                             name={field.name}
-                            checked={field.value}
-                            onCheckedChange={(checked) =>
-                              field.onChange(checked === true)
-                            }
-                            aria-invalid={!!errors.agreedToTerms}
-                            aria-describedby={
-                              errors.agreedToTerms
-                                ? "agree-terms-error"
-                                : undefined
-                            }
-                            className="mt-0.5 cursor-pointer"
-                          />
+                            value={field.value}
+                            onValueChange={field.onChange}
+                          >
+                            <SelectTrigger id="referral">
+                              <SelectValue placeholder="Select an option" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {REFERRAL_OPTIONS.map((option) => (
+                                <SelectItem
+                                  key={option}
+                                  value={option}
+                                  className="cursor-pointer"
+                                >
+                                  {option}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         )}
                       />
-                      <label
-                        htmlFor="agree-terms"
-                        className="text-sm text-muted-foreground cursor-pointer select-none"
-                      >
-                        I agree to the{" "}
-                        <NavLink
-                          to="/privacy"
-                          target="_blank"
-                          className="text-primary hover:underline"
-                        >
-                          Privacy Policy
-                        </NavLink>{" "}
-                        and{" "}
-                        <NavLink
-                          to="/terms"
-                          target="_blank"
-                          className="text-primary hover:underline"
-                        >
-                          Terms of Service
-                        </NavLink>
-                      </label>
-                    </div>
-                    {errors.agreedToTerms && (
-                      <FieldError id="agree-terms-error" className="pl-6">
-                        {errors.agreedToTerms.message}
-                      </FieldError>
+                    </Field>
+
+                    {referralSource === "Other" && (
+                      <Field>
+                        <FieldLabel htmlFor="referral-other">
+                          Please specify
+                        </FieldLabel>
+                        <Input
+                          id="referral-other"
+                          type="text"
+                          placeholder="Where did you hear about us?"
+                          {...register("referralOther")}
+                        />
+                      </Field>
                     )}
+
+                    <div className="flex flex-col gap-1.5">
+                      <div className="flex items-start gap-2">
+                        <Controller
+                          control={control}
+                          name="agreedToTerms"
+                          render={({ field }) => (
+                            <Checkbox
+                              id="agree-terms"
+                              name={field.name}
+                              checked={field.value}
+                              onCheckedChange={(checked) =>
+                                field.onChange(checked === true)
+                              }
+                              aria-invalid={!!errors.agreedToTerms}
+                              aria-describedby={
+                                errors.agreedToTerms
+                                  ? "agree-terms-error"
+                                  : undefined
+                              }
+                              className="mt-0.5 cursor-pointer"
+                            />
+                          )}
+                        />
+                        <label
+                          htmlFor="agree-terms"
+                          className="text-sm text-muted-foreground cursor-pointer select-none"
+                        >
+                          I agree to the{" "}
+                          <NavLink
+                            to="/privacy"
+                            target="_blank"
+                            className="text-primary hover:underline"
+                          >
+                            Privacy Policy
+                          </NavLink>{" "}
+                          and{" "}
+                          <NavLink
+                            to="/terms"
+                            target="_blank"
+                            className="text-primary hover:underline"
+                          >
+                            Terms of Service
+                          </NavLink>
+                        </label>
+                      </div>
+                      {errors.agreedToTerms && (
+                        <FieldError id="agree-terms-error" className="pl-6">
+                          {errors.agreedToTerms.message}
+                        </FieldError>
+                      )}
+                    </div>
+
+                    <Button
+                      type="submit"
+                      className="w-full cursor-pointer"
+                      loading={isSubmitting}
+                    >
+                      Join Waitlist
+                    </Button>
+
+                    {errors.root && (
+                      <FieldError>{errors.root.message}</FieldError>
+                    )}
+                  </form>
+                </div>
+              ) : (
+                <div className="rounded-xl h-fit border border-border/60 bg-background p-6">
+                  <div className="mb-6">
+                    <h2 className="text-xl font-semibold">Join the Server</h2>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      No application needed right now. Hop into our Discord and
+                      register with your Minecraft username to get whitelisted.
+                    </p>
                   </div>
 
-                  <Button
-                    type="submit"
-                    className="w-full cursor-pointer"
-                    loading={isSubmitting}
-                  >
-                    {isWaitlistMode ? "Join Waitlist" : "Apply Now"}
+                  <Button asChild className="w-full">
+                    <a
+                      href={DISCORD_INVITE_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <ExternalLink className="mr-2 size-4" />
+                      Join Our Discord
+                    </a>
                   </Button>
 
-                  {errors.root && (
-                    <FieldError>{errors.root.message}</FieldError>
-                  )}
-                </form>
-              </div>
+                  <p className="mt-4 text-xs text-muted-foreground">
+                    By registering you agree to our{" "}
+                    <NavLink
+                      to="/rules"
+                      target="_blank"
+                      className="text-primary hover:underline"
+                    >
+                      Rules
+                    </NavLink>
+                    ,{" "}
+                    <NavLink
+                      to="/terms"
+                      target="_blank"
+                      className="text-primary hover:underline"
+                    >
+                      Terms of Service
+                    </NavLink>{" "}
+                    and{" "}
+                    <NavLink
+                      to="/privacy"
+                      target="_blank"
+                      className="text-primary hover:underline"
+                    >
+                      Privacy Policy
+                    </NavLink>
+                    .
+                  </p>
+                </div>
+              )}
 
               <div className="flex flex-col gap-6">
                 <div>
@@ -365,7 +383,7 @@ export function ApplyToJoin() {
                   <p className="mt-4 text-base md:text-lg text-muted-foreground">
                     {isWaitlistMode
                       ? "Thank you for showing interest in our server! We're currently at our capacity, but you can join the waitlist to reserve a spot."
-                      : "Thank you for showing interest in our server! We have open spots available. Apply now to get started."}
+                      : "Thank you for showing interest in our server! We have open spots available. Join the Discord to get started."}
                   </p>
                 </div>
 
@@ -374,28 +392,16 @@ export function ApplyToJoin() {
                     What happens next
                   </h3>
                   <ol className="mt-4 space-y-3 text-sm md:text-base text-muted-foreground">
-                    <li className="flex gap-3">
-                      <span className="mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-foreground/10 text-xs font-semibold text-foreground">
-                        1
-                      </span>
-                      {isWaitlistMode
-                        ? "Submit your application with your email and Discord username."
-                        : "Accept the terms and submit your application."}
-                    </li>
-                    <li className="flex gap-3">
-                      <span className="mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-foreground/10 text-xs font-semibold text-foreground">
-                        2
-                      </span>
-                      {isWaitlistMode
-                        ? "We'll review and email you a personal Discord invite when a spot opens."
-                        : "You'll get a personal Discord invite on the next screen."}
-                    </li>
-                    <li className="flex gap-3">
-                      <span className="mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-foreground/10 text-xs font-semibold text-foreground">
-                        3
-                      </span>
-                      Join the Discord and start building with the community.
-                    </li>
+                    {(isWaitlistMode ? WAITLIST_STEPS : OPEN_STEPS).map(
+                      (step, index) => (
+                        <li key={step} className="flex gap-3">
+                          <span className="mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-foreground/10 text-xs font-semibold text-foreground">
+                            {index + 1}
+                          </span>
+                          {step}
+                        </li>
+                      ),
+                    )}
                   </ol>
                 </div>
               </div>

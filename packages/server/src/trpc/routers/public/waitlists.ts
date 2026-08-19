@@ -11,22 +11,6 @@ const waitlistCreateLimit = createRateLimit({
   key: (ctx) => ctx.ip || "anon",
 });
 
-const INVITE_GLOBAL_LIMIT = 30;
-const INVITE_GLOBAL_WINDOW_MS = 60 * 60 * 1000;
-let inviteBucket = { count: 0, resetAt: 0 };
-
-function consumeGlobalInviteSlot(): boolean {
-  const now = Date.now();
-  if (inviteBucket.resetAt <= now) {
-    inviteBucket = { count: 0, resetAt: now + INVITE_GLOBAL_WINDOW_MS };
-  }
-  if (inviteBucket.count >= INVITE_GLOBAL_LIMIT) {
-    return false;
-  }
-  inviteBucket.count += 1;
-  return true;
-}
-
 /** Public waitlists router: check server capacity mode and register for waitlist. */
 export const waitlistsRouter = router({
   status: publicProcedure
@@ -42,23 +26,16 @@ export const waitlistsRouter = router({
     .use(waitlistCreateLimit)
     .meta({
       description:
-        "Registers a new waitlist entry. In open mode (under player limit), auto-accepts and emails a Discord invite URL. In waitlist mode, requires Discord name + email and goes to pending.",
+        "Registers a new pending waitlist entry while the server is at capacity. In open mode there is no application: users join the Discord directly.",
     })
     .input(waitlistCreateInputSchema)
     .mutation(async ({ input }) => {
       const { discordName, email, metadata } = input;
 
       const hasCapacity = await waitlistRepo.hasCapacity();
-
-      if (!hasCapacity && !email) {
+      if (hasCapacity) {
         throw trpcError.badRequest(
-          "Email is required when the server is at capacity",
-        );
-      }
-
-      if (!hasCapacity && !discordName) {
-        throw trpcError.badRequest(
-          "Discord username is required when the server is at capacity",
+          "The server has open spots right now. Join the Discord directly, no application needed.",
         );
       }
 
@@ -71,58 +48,35 @@ export const waitlistsRouter = router({
           "Thanks! You're already registered. We'll email you when a spot opens up.",
       };
 
-      if (email) {
-        const [emailExists] = await waitlist.entry.findAll(
-          { email },
-          { limit: 1 },
-        );
-        if (emailExists) {
-          logger.info(`Waitlist duplicate email attempt`);
-          return alreadyRegistered;
-        }
+      const [emailExists] = await waitlist.entry.findAll(
+        { email },
+        { limit: 1 },
+      );
+      if (emailExists) {
+        logger.info(`Waitlist duplicate email attempt`);
+        return alreadyRegistered;
       }
 
-      if (discordName) {
-        const [discordExists] = await waitlist.entry.findAll(
-          { discordName },
-          { limit: 1 },
-        );
-        if (discordExists) {
-          logger.info(`Waitlist duplicate discord name attempt`);
-          return alreadyRegistered;
-        }
+      const [discordExists] = await waitlist.entry.findAll(
+        { discordName },
+        { limit: 1 },
+      );
+      if (discordExists) {
+        logger.info(`Waitlist duplicate discord name attempt`);
+        return alreadyRegistered;
       }
 
-      if (hasCapacity && !consumeGlobalInviteSlot()) {
-        logger.warn(
-          "[waitlist] global invite cap reached, rejecting open-mode signup",
-        );
-        throw trpcError.tooManyRequests(
-          "Too many signups right now. Please try again later.",
-        );
-      }
-
-      const result = await waitlistRepo.register({
-        discordName: discordName ?? null,
-        email: email ?? null,
+      const entry = await waitlistRepo.register({
+        discordName,
+        email,
         metadata: metadata || null,
       });
 
-      if (result.autoAccepted && result.inviteUrl) {
-        return {
-          entry: result.entry,
-          status: "auto_accepted" as const,
-          inviteUrl: result.inviteUrl,
-          message:
-            "You're in! Click the button below to join our Discord server.",
-        };
-      } else {
-        return {
-          entry: result.entry,
-          status: "pending" as const,
-          message:
-            "Thanks! We've added you to the waitlist. We'll email you when a spot opens up.",
-        };
-      }
+      return {
+        entry,
+        status: "pending" as const,
+        message:
+          "Thanks! We've added you to the waitlist. We'll email you when a spot opens up.",
+      };
     }),
 });

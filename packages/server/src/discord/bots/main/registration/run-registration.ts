@@ -2,27 +2,23 @@ import { Q, waitlistRepo } from "@/db";
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
 import {
+  RegistrationComponentPresets,
+  type RegistrationMessage,
+} from "@/discord/components/presets/registration";
+import {
   AUTO_CLOSE_MS,
   scheduleChannelClose,
 } from "@/discord/bots/main/registration-cleanup";
 import { RoleManager } from "@/discord/utils/roles/role-manager";
 import { minecraftRcon, WhitelistAction } from "@/utils/rcon";
-import { ActionRowBuilder } from "discord.js";
-import type {
-  ButtonBuilder,
-  GuildMember,
-  GuildTextBasedChannel,
-} from "discord.js";
-import type { DiscordEmbedBuilder } from "@/discord/embeds/embed-builder";
-import { buildIdleWelcomeMessage } from "./welcome-message";
+import type { GuildMember, GuildTextBasedChannel } from "discord.js";
 import { postRegistrationWelcomeCard } from "./post-welcome-card";
 
 /** Minimal shape each entry point (slash command, modal submit) supplies so the
- * core flow can render the embed without caring where it lands. */
-export type RegistrationRenderer = (payload: {
-  embeds: DiscordEmbedBuilder[];
-  components?: ActionRowBuilder<ButtonBuilder>[];
-}) => Promise<void>;
+ * core flow can render the Components V2 card without caring where it lands. */
+export type RegistrationRenderer = (
+  payload: RegistrationMessage,
+) => Promise<void>;
 
 function randomDelay(min = 1000, max = 3000): Promise<void> {
   const ms = Math.floor(Math.random() * (max - min + 1)) + min;
@@ -72,40 +68,40 @@ export async function runRegistration(params: {
     typeof member.roles === "string" ||
     Array.isArray(member.roles)
   ) {
-    const embed = EmbedPresets.errorWithAdmin(
-      "Registration Failed",
-      "Could not verify your roles. Please try again.",
+    await render(
+      RegistrationComponentPresets.errorWithAdmin(
+        "Registration Failed",
+        "Could not verify your roles. Please try again.",
+      ),
     );
-    await render({ embeds: [embed] });
     return { ok: false, errorMessage: "roles unavailable" };
   }
 
   if (!RoleManager.has(member, Discord.Roles.UNVERIFIED)) {
-    const embed = EmbedPresets.error(
-      "Already Registered",
-      "You are already verified or not eligible to register",
+    await render(
+      RegistrationComponentPresets.error(
+        "Already Registered",
+        "You are already verified or not eligible to register",
+      ),
     );
-    await render({ embeds: [embed] });
     return { ok: false, errorMessage: "already verified" };
   }
 
-  await render({
-    embeds: [
-      EmbedPresets.registration.userProgress(mcName, steps, currentStep),
-    ],
-  });
+  await render(
+    RegistrationComponentPresets.progress(mcName, steps, currentStep),
+  );
 
   // Minecraft usernames are 3-16 chars of [a-zA-Z0-9_]. Reject anything else
   // up-front so we don't issue malformed URLs to playerdb.co or leak arbitrary
   // input into downstream services.
   if (!/^[a-zA-Z0-9_]{3,16}$/.test(mcName)) {
-    steps[currentStep].error = "Invalid Minecraft username";
-    const userErrorEmbed = EmbedPresets.registration.userError(
-      mcName,
-      "Minecraft usernames can only contain letters, numbers, and underscores (3-16 characters).",
-      steps[currentStep].name,
+    await render(
+      RegistrationComponentPresets.idle({
+        memberMention: `<@${discordId}>`,
+        errorMessage:
+          "Minecraft usernames can only contain letters, numbers, and underscores (3-16 characters).",
+      }),
     );
-    await render({ embeds: [userErrorEmbed] });
     return { ok: false, errorMessage: "invalid mc name" };
   }
 
@@ -130,11 +126,9 @@ export async function runRegistration(params: {
     steps[currentStep].completed = true;
     currentStep++;
 
-    await render({
-      embeds: [
-        EmbedPresets.registration.userProgress(mcName, steps, currentStep),
-      ],
-    });
+    await render(
+      RegistrationComponentPresets.progress(mcName, steps, currentStep),
+    );
 
     await randomDelay();
 
@@ -157,11 +151,9 @@ export async function runRegistration(params: {
     steps[currentStep].completed = true;
     currentStep++;
 
-    await render({
-      embeds: [
-        EmbedPresets.registration.userProgress(correctName, steps, currentStep),
-      ],
-    });
+    await render(
+      RegistrationComponentPresets.progress(correctName, steps, currentStep),
+    );
 
     await randomDelay();
     const exists = await Q.player.exists({ minecraftUuid: uuid });
@@ -176,11 +168,9 @@ export async function runRegistration(params: {
     steps[currentStep].completed = true;
     currentStep++;
 
-    await render({
-      embeds: [
-        EmbedPresets.registration.userProgress(correctName, steps, currentStep),
-      ],
-    });
+    await render(
+      RegistrationComponentPresets.progress(correctName, steps, currentStep),
+    );
 
     await randomDelay();
     try {
@@ -193,11 +183,9 @@ export async function runRegistration(params: {
     steps[currentStep].completed = true;
     currentStep++;
 
-    await render({
-      embeds: [
-        EmbedPresets.registration.userProgress(correctName, steps, currentStep),
-      ],
-    });
+    await render(
+      RegistrationComponentPresets.progress(correctName, steps, currentStep),
+    );
 
     await randomDelay();
     await Q.player.create({
@@ -215,11 +203,9 @@ export async function runRegistration(params: {
     steps[currentStep].completed = true;
     currentStep++;
 
-    await render({
-      embeds: [
-        EmbedPresets.registration.userProgress(correctName, steps, currentStep),
-      ],
-    });
+    await render(
+      RegistrationComponentPresets.progress(correctName, steps, currentStep),
+    );
 
     await randomDelay();
     await RoleManager.remove(member, Discord.Roles.UNVERIFIED);
@@ -239,29 +225,17 @@ export async function runRegistration(params: {
 
     steps[currentStep].completed = true;
 
-    await render({
-      embeds: [
-        EmbedPresets.registration.userProgress(correctName, steps, currentStep),
-      ],
-    });
+    await render(
+      RegistrationComponentPresets.progress(correctName, steps, currentStep),
+    );
 
     await randomDelay(500, 1000);
 
     const autoCloseAt = Math.floor((Date.now() + AUTO_CLOSE_MS) / 1000);
-    const { embed, closeButton } = EmbedPresets.registration.userSuccess(
-      correctName,
-      uuid,
-      autoCloseAt,
-    );
 
-    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      closeButton,
+    await render(
+      RegistrationComponentPresets.success(correctName, uuid, autoCloseAt),
     );
-
-    await render({
-      embeds: [embed],
-      components: [row],
-    });
 
     logger.info(
       `User ${userTag} (${discordId}) registered as ${correctName} (${uuid})`,
@@ -302,12 +276,13 @@ export async function runRegistration(params: {
     });
 
     // Rewind the anchor message back to the idle "click to register" state
-    // with the error appended as a field, so the user can retry.
-    const idle = buildIdleWelcomeMessage({
-      memberMention: `<@${discordId}>`,
-      errorMessage,
-    });
-    await render(idle);
+    // with the error appended, so the user can retry.
+    await render(
+      RegistrationComponentPresets.idle({
+        memberMention: `<@${discordId}>`,
+        errorMessage,
+      }),
+    );
 
     return { ok: false, errorMessage };
   }

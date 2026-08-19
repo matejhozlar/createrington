@@ -15,12 +15,6 @@ import {
   INVITE_MAX_AGE_SECONDS,
 } from "@/discord/bots/main/invites";
 
-interface RegistrationResult {
-  entry: WaitlistEntry;
-  autoAccepted: boolean;
-  inviteUrl?: string;
-}
-
 export enum ProgressStep {
   JOINED_DISCORD = "joinedDiscord",
   VERIFIED = "verified",
@@ -29,12 +23,12 @@ export enum ProgressStep {
 }
 
 /**
- * Waitlist registration and onboarding tracking. Branches on current player
- * count to auto-accept (mint a Discord invite and email it) or queue
- * pending; drives the admin Discord embed that reflects each entry's
- * progress through join / verify / register / Minecraft milestones; and
- * sweeps unclaimed entries whose Discord invite expired. Capacity reads
- * fall closed when the player-count probe fails.
+ * Waitlist registration and onboarding tracking. Queues applicants as
+ * pending while the server is at capacity (open mode has no application:
+ * users join the Discord directly); drives the admin Discord embed that
+ * reflects each entry's progress through join / verify / register /
+ * Minecraft milestones; and sweeps unclaimed entries whose Discord invite
+ * expired. Capacity reads fall closed when the player-count probe fails.
  */
 export class WaitlistRepository {
   /**
@@ -120,92 +114,39 @@ export class WaitlistRepository {
   }
 
   /**
-   * Register a new applicant. Under capacity: mint a one-use Discord invite,
-   * persist as auto_accepted, notify admins, email the invitation. At/over
-   * capacity: persist as pending and email the confirmation. Result flags
-   * which path ran.
+   * Register a new pending applicant while the server is at capacity,
+   * notify admins, and email the confirmation.
    */
-  async register(data: WaitlistEntryCreate): Promise<RegistrationResult> {
-    const shouldAutoAccept = await this.hasCapacity();
+  async register(data: WaitlistEntryCreate): Promise<WaitlistEntry> {
+    const entry = await Q.waitlist.entry.createAndReturn({
+      email: data.email,
+      discordName: data.discordName,
+      metadata: data.metadata,
+    });
 
-    if (shouldAutoAccept) {
-      const { code: inviteCode, url: inviteUrl } = await createOneUseInvite(
-        INVITE_MAX_AGE_SECONDS.AUTO_ACCEPT,
-        "Waitlist auto-accept",
+    logger.info(
+      `New waitlist entry (pending): ${data.email ?? "(no email)"} (${data.discordName ?? "(no discord name)"}) - ID: ${entry.id}`,
+    );
+
+    const messageId = await this.notifyAdmins(entry, false);
+    if (messageId) {
+      await Q.waitlist.entry.update(
+        { id: entry.id },
+        { discordMessageId: messageId },
       );
-
-      const entry = await Q.waitlist.entry.createAndReturn({
-        email: data.email,
-        discordName: data.discordName,
-        metadata: data.metadata,
-        inviteCode,
-        status: "auto_accepted",
-        acceptedAt: new Date(),
-        acceptedBy: config.discord.bots.main.id,
-      });
-
-      logger.info(
-        `New waitlist entry (auto-accepted): ${data.discordName ?? data.email ?? `#${entry.id}`} - ID: ${entry.id}`,
-      );
-
-      const messageId = await this.notifyAdmins(entry, true);
-      if (messageId) {
-        await Q.waitlist.entry.update(
-          { id: entry.id },
-          { discordMessageId: messageId },
-        );
-      }
-
-      if (data.email) {
-        await email.sendTemplate(
-          data.email,
-          EmailTemplate.WAITLIST_INVITATION,
-          {
-            discordName: data.discordName ?? null,
-            inviteUrl,
-          },
-        );
-      }
-
-      return {
-        entry,
-        autoAccepted: true,
-        inviteUrl,
-      };
-    } else {
-      const entry = await Q.waitlist.entry.createAndReturn({
-        email: data.email,
-        discordName: data.discordName,
-        metadata: data.metadata,
-      });
-
-      logger.info(
-        `New waitlist entry (pending): ${data.email ?? "(no email)"} (${data.discordName ?? "(no discord name)"}) - ID: ${entry.id}`,
-      );
-
-      const messageId = await this.notifyAdmins(entry, false);
-      if (messageId) {
-        await Q.waitlist.entry.update(
-          { id: entry.id },
-          { discordMessageId: messageId },
-        );
-      }
-
-      if (data.email) {
-        await email.sendTemplate(
-          data.email,
-          EmailTemplate.WAITLIST_CONFIRMATION,
-          {
-            discordName: data.discordName ?? null,
-          },
-        );
-      }
-
-      return {
-        entry,
-        autoAccepted: false,
-      };
     }
+
+    if (data.email) {
+      await email.sendTemplate(
+        data.email,
+        EmailTemplate.WAITLIST_CONFIRMATION,
+        {
+          discordName: data.discordName ?? null,
+        },
+      );
+    }
+
+    return entry;
   }
 
   /**
@@ -309,45 +250,30 @@ export class WaitlistRepository {
   }
 
   /**
-   * Delete accepted entries whose one-use Discord invite expired before the
-   * applicant ever joined (discordId still NULL, inviteCode set). TTL is per
-   * status: 1h after submission for auto_accepted, 7d after acceptance for
-   * admin-accepted. Returns the number deleted.
+   * Delete admin-accepted entries whose one-use Discord invite expired
+   * before the applicant ever joined (discordId still NULL, inviteCode set,
+   * accepted more than 7 days ago). Returns the number deleted.
    */
   async sweepExpiredUnclaimedEntries(): Promise<number> {
-    const now = Date.now();
-    const autoAcceptCutoff = new Date(now - 60 * 60 * 1000); // 1 hour
-    const manualAcceptCutoff = new Date(now - 7 * 24 * 60 * 60 * 1000); // 7 days
+    const manualAcceptCutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000); // 7 days
 
-    const [autoAccepted, adminAccepted] = await Promise.all([
-      Q.waitlist.entry.findAll(
-        {
-          status: "auto_accepted",
-          discordId: { $exists: false },
-          inviteCode: { $exists: true },
-          submittedAt: { $lt: autoAcceptCutoff },
-        },
-        { limit: 1000 },
-      ),
-      Q.waitlist.entry.findAll(
-        {
-          status: "accepted",
-          discordId: { $exists: false },
-          inviteCode: { $exists: true },
-          acceptedAt: { $lt: manualAcceptCutoff },
-        },
-        { limit: 1000 },
-      ),
-    ]);
+    const rows = await Q.waitlist.entry.findAll(
+      {
+        status: "accepted",
+        discordId: { $exists: false },
+        inviteCode: { $exists: true },
+        acceptedAt: { $lt: manualAcceptCutoff },
+      },
+      { limit: 1000 },
+    );
 
-    const rows = [...autoAccepted, ...adminAccepted];
     for (const row of rows) {
       await Q.waitlist.entry.delete({ id: row.id });
     }
 
     if (rows.length > 0) {
       logger.info(
-        `Swept ${rows.length} expired unclaimed waitlist entries (${autoAccepted.length} auto-accepted, ${adminAccepted.length} admin-accepted)`,
+        `Swept ${rows.length} expired unclaimed waitlist entries (admin-accepted)`,
       );
     }
 

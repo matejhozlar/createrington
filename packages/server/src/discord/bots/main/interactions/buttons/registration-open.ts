@@ -6,10 +6,10 @@ import {
   TextInputStyle,
 } from "discord.js";
 import {
-  REGISTER_BUTTON_ID,
   REGISTER_MODAL_ID,
   REGISTER_MODAL_INPUT_ID,
-} from "@/discord/bots/main/registration/welcome-message";
+} from "@/discord/bots/main/registration/constants";
+import { REGISTER_BUTTON_ID } from "@/discord/components/presets/registration";
 
 /** Opens the registration modal when the applicant clicks the welcome button. */
 export const pattern = REGISTER_BUTTON_ID;

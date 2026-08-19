@@ -7,7 +7,7 @@ import { RoleManager } from "@/discord/utils/roles/role-manager";
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
 import { diffAndUpdateInvites } from "@/discord/bots/main/invites";
-import { buildIdleWelcomeMessage } from "@/discord/bots/main/registration/welcome-message";
+import { RegistrationComponentPresets } from "@/discord/components/presets/registration";
 
 const autoRoleConfig = config.discord.events.onGuildMemberAdd.autoRole;
 
@@ -221,12 +221,12 @@ export async function execute(
           `Created verification channel ${verificationChannel.name} for ${member.user.tag}`,
         );
 
-        const welcome = buildIdleWelcomeMessage({
+        const welcome = RegistrationComponentPresets.idle({
           memberMention: `${member}`,
         });
         await verificationChannel.send({
-          embeds: welcome.embeds.map((e) => e.build()),
           components: welcome.components,
+          flags: welcome.flags,
         });
 
         logger.info(
