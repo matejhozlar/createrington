@@ -50,12 +50,12 @@ export function OverviewTab({ player, getServerName }: OverviewTabProps) {
               <div>
                 <p className="font-medium">Status: {player.waitlist.status}</p>
                 <p className="text-xs text-muted-foreground">
-                  Submitted:{" "}
-                  {new Date(player.waitlist.submittedAt).toLocaleDateString()}
+                  Queued:{" "}
+                  {new Date(player.waitlist.queuedAt).toLocaleDateString()}
                 </p>
               </div>
-              {player.waitlist.acceptedAt && (
-                <Badge variant="default">Accepted</Badge>
+              {player.waitlist.registeredAt && (
+                <Badge variant="default">Registered</Badge>
               )}
             </div>
           </div>

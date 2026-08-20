@@ -401,68 +401,58 @@ INSERT INTO discord_guild_member_join (user_id, username, joined_at) VALUES
 -- WAITLIST ENTRIES
 -- ============================================================================
 
--- More WAITLIST ENTRIES (varied states)
+-- WAITLIST ENTRIES (varied states)
 INSERT INTO waitlist_entry (
-  email,
-  discord_name,
   discord_id,
-  invite_code,
-  submitted_at,
-  discord_message_id,
+  discord_username,
   status,
-  joined_discord,
-  verified,
-  registered,
+  created_at,
+  queued_at,
+  promoted_at,
+  promoted_by,
+  registered_at,
+  expired_at,
   joined_minecraft,
-  accepted_at,
-  accepted_by
+  verify_channel_id,
+  waiting_message_id,
+  admin_message_id
 ) VALUES
 -- ======================================================================
--- COMPLETED (fully onboarded)
+-- REGISTERED (fully onboarded)
 -- ======================================================================
-('mumbo@example.com', 'mumbojumbo', '123456789012345686', 'invite_mumbo_019', NOW() - INTERVAL '52 days', '111111111111111201', 'completed', true, true, true, true, NOW() - INTERVAL '51 days', '818819241666281503'),
-('grian@example.com', 'grian', '123456789012345687', 'invite_grian_020', NOW() - INTERVAL '47 days', '111111111111111202', 'completed', true, true, true, true, NOW() - INTERVAL '46 days', '547450242090532874'),
-('philza@example.com', 'philza', '123456789012345685', 'invite_philza_021', NOW() - INTERVAL '57 days', '111111111111111203', 'completed', true, true, true, true, NOW() - INTERVAL '56 days', '99318080374607872'),
+('123456789012345686', 'mumbojumbo', 'registered', NOW() - INTERVAL '52 days', NOW() - INTERVAL '52 days', NOW() - INTERVAL '51 days', '818819241666281503', NOW() - INTERVAL '50 days', NULL, true, NULL, NULL, '111111111111111201'),
+('123456789012345687', 'grian', 'registered', NOW() - INTERVAL '47 days', NOW() - INTERVAL '47 days', NOW() - INTERVAL '46 days', NULL, NOW() - INTERVAL '45 days', NULL, true, NULL, NULL, '111111111111111202'),
 
--- ======================================================================
--- ACCEPTED (in progress)
--- ======================================================================
-('scar@example.com', 'goodtimeswithscar', '123456789012345688', 'invite_scar_022', NOW() - INTERVAL '41 days', '111111111111111204', 'accepted', true, true, true, false, NOW() - INTERVAL '40 days', '818819241666281503'),
-('iskall@example.com', 'iskall85', '123456789012345689', 'invite_iskall_023', NOW() - INTERVAL '36 days', '111111111111111205', 'accepted', true, true, false, false, NOW() - INTERVAL '35 days', '547450242090532874'),
-('dream@example.com', 'dream', '123456789012345683', 'invite_dream_024', NOW() - INTERVAL '8 days', '111111111111111206', 'accepted', true, false, false, false, NOW() - INTERVAL '7 days', '99318080374607872'),
-
--- Accepted but *hasn't joined Discord yet* (edge case)
-('invite_sent@example.com', 'invite_sent_user', NULL, 'invite_sent_025', NOW() - INTERVAL '20 hours', '111111111111111207', 'accepted', false, false, false, false, NOW() - INTERVAL '19 hours', '818819241666281503'),
+-- Registered but never joined Minecraft (stuck before first session)
+('223456789012345692', 'registered_not_joined_mc', 'registered', NOW() - INTERVAL '4 days', NOW() - INTERVAL '4 days', NOW() - INTERVAL '3 days', NULL, NOW() - INTERVAL '2 days', NULL, false, NULL, NULL, '111111111111111203'),
 
 -- ======================================================================
--- PENDING (varied progress)
+-- PROMOTED (slot reserved, awaiting registration)
 -- ======================================================================
--- Pending, not joined discord, no discord_id yet (typical early state)
-('waiter1@example.com', 'waiter_user1', NULL, NULL, NOW() - INTERVAL '12 hours', '111111111111111208', 'pending', false, false, false, false, NULL, NULL),
-('waiter2@example.com', 'waiter_user2', NULL, NULL, NOW() - INTERVAL '9 hours', '111111111111111209', 'pending', false, false, false, false, NULL, NULL),
+-- Promoted manually by an admin
+('123456789012345688', 'goodtimeswithscar', 'promoted', NOW() - INTERVAL '10 days', NOW() - INTERVAL '10 days', NOW() - INTERVAL '2 days', '818819241666281503', NULL, NULL, false, '333333333333333201', '444444444444444201', '111111111111111204'),
 
--- Pending but joined Discord (discord_id known), not verified yet
-('joined_discord_only@example.com', 'joined_discord_only', '223456789012345690', NULL, NOW() - INTERVAL '6 hours', '111111111111111210', 'pending', true, false, false, false, NULL, NULL),
-
--- Pending, joined Discord + verified, but not registered (stuck on registration)
-('verified_not_registered@example.com', 'verified_not_registered', '223456789012345691', NULL, NOW() - INTERVAL '5 hours', '111111111111111211', 'pending', true, true, false, false, NULL, NULL),
-
--- Pending, registered but not joined MC yet (stuck before first join)
-('registered_not_joined_mc@example.com', 'registered_not_joined_mc', '223456789012345692', NULL, NOW() - INTERVAL '4 hours', '111111111111111212', 'pending', true, true, true, false, NULL, NULL),
-
--- Pending with discord_id set but still not joined_discord (edge/inconsistent but useful for testing)
-('discord_id_but_not_joined@example.com', 'discord_id_but_not_joined', '223456789012345693', NULL, NOW() - INTERVAL '3 hours', '111111111111111213', 'pending', false, false, false, false, NULL, NULL),
+-- Promoted automatically, close to the 7-day registration window
+('123456789012345689', 'iskall85', 'promoted', NOW() - INTERVAL '12 days', NOW() - INTERVAL '12 days', NOW() - INTERVAL '6 days', NULL, NULL, NULL, false, '333333333333333202', '444444444444444202', '111111111111111205'),
 
 -- ======================================================================
--- DECLINED (with/without discord_id)
+-- QUEUED (waiting for a spot, ordered by queued_at)
 -- ======================================================================
-('declined2@example.com', 'declined_user2', NULL, NULL, NOW() - INTERVAL '18 days', '111111111111111214', 'declined', false, false, false, false, NULL, NULL),
+-- Signed up 40 days ago, no-showed a promotion and got re-queued 12 hours
+-- ago: back of the line, but not a new signup in any window.
+('223456789012345690', 'waiter_user1', 'queued', NOW() - INTERVAL '40 days', NOW() - INTERVAL '12 hours', NULL, NULL, NULL, NULL, false, '333333333333333203', '444444444444444203', '111111111111111206'),
+-- Signed up 20 days ago, expired, rejoined 9 hours ago: counts this month
+-- only.
+('223456789012345691', 'waiter_user2', 'queued', NOW() - INTERVAL '20 days', NOW() - INTERVAL '9 hours', NULL, NULL, NULL, NULL, false, '333333333333333204', '444444444444444204', '111111111111111207'),
+-- Genuine first-time signup today: 3 hours ago, but never earlier than
+-- midnight, so a reseed in the small hours still lands in the "today" window.
+('223456789012345693', 'waiter_user3', 'queued', NOW() - LEAST(INTERVAL '3 hours', NOW() - date_trunc('day', NOW())), NOW() - LEAST(INTERVAL '3 hours', NOW() - date_trunc('day', NOW())), NULL, NULL, NULL, NULL, false, '333333333333333205', '444444444444444205', '111111111111111208'),
 
--- Declined after joining Discord (discord_id known)
-('declined_after_join@example.com', 'declined_after_join', '223456789012345694', NULL, NOW() - INTERVAL '11 days', '111111111111111215', 'declined', true, false, false, false, NULL, NULL),
-
--- Declined after verification (rare but good for edge testing)
-('declined_after_verify@example.com', 'declined_after_verify', '223456789012345695', NULL, NOW() - INTERVAL '14 days', '111111111111111216', 'declined', true, true, false, false, NULL, NULL);
+-- ======================================================================
+-- EXPIRED (left the queue or the guild)
+-- ======================================================================
+('223456789012345694', 'left_the_queue', 'expired', NOW() - INTERVAL '11 days', NOW() - INTERVAL '11 days', NULL, NULL, NULL, NOW() - INTERVAL '10 days', false, NULL, NULL, '111111111111111209'),
+('223456789012345695', 'left_the_guild', 'expired', NOW() - INTERVAL '14 days', NOW() - INTERVAL '14 days', NOW() - INTERVAL '13 days', NULL, NULL, NOW() - INTERVAL '12 days', false, NULL, NULL, '111111111111111210');
 
 -- ============================================================================
 -- ADMIN LOG ACTIONS

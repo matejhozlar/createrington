@@ -253,12 +253,12 @@ export function AdminDashboard() {
           <Card>
             <CardContent className="flex items-start justify-between">
               <div>
-                <CardDescription>Waitlist Pending</CardDescription>
+                <CardDescription>Waitlist Queue</CardDescription>
                 <CardTitle className="text-2xl">
-                  {waitlistStats?.pending ?? 0}
+                  {waitlistStats?.queued ?? 0}
                 </CardTitle>
                 <p className="mt-2 text-xs text-muted-foreground">
-                  {waitlistStats?.submitted.thisWeek ?? 0} new this week
+                  {waitlistStats?.signups.thisWeek ?? 0} new this week
                 </p>
               </div>
               <div className="flex size-12 items-center justify-center rounded-full bg-chart-3/10">
@@ -492,28 +492,27 @@ export function AdminDashboard() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="rounded-lg border p-3 text-center">
                   <p className="text-2xl font-bold">
-                    {waitlistStats?.pending ?? 0}
+                    {waitlistStats?.queued ?? 0}
                   </p>
-                  <p className="text-xs text-muted-foreground">Pending</p>
+                  <p className="text-xs text-muted-foreground">Queued</p>
                 </div>
                 <div className="rounded-lg border p-3 text-center">
                   <p className="text-2xl font-bold">
-                    {(waitlistStats?.accepted ?? 0) +
-                      (waitlistStats?.autoAccepted ?? 0)}
+                    {waitlistStats?.promoted ?? 0}
                   </p>
-                  <p className="text-xs text-muted-foreground">Accepted</p>
-                </div>
-                <div className="rounded-lg border p-3 text-center">
-                  <p className="text-2xl font-bold">
-                    {waitlistStats?.verified ?? 0}
-                  </p>
-                  <p className="text-xs text-muted-foreground">Verified</p>
+                  <p className="text-xs text-muted-foreground">Promoted</p>
                 </div>
                 <div className="rounded-lg border p-3 text-center">
                   <p className="text-2xl font-bold">
                     {waitlistStats?.registered ?? 0}
                   </p>
                   <p className="text-xs text-muted-foreground">Registered</p>
+                </div>
+                <div className="rounded-lg border p-3 text-center">
+                  <p className="text-2xl font-bold">
+                    {waitlistStats?.joinedMinecraft ?? 0}
+                  </p>
+                  <p className="text-xs text-muted-foreground">In-Game</p>
                 </div>
               </div>
               <Button

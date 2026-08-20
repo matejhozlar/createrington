@@ -1,4 +1,5 @@
 import { Q } from "@/db";
+import { waitlistService } from "@/services/waitlist/waitlist.service";
 import type { EventModule } from "@/discord/bots/common/loaders/event-loader";
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
@@ -14,11 +15,12 @@ import {
 /**
  * Guild member remove event handler
  *
- * Handles notification when a registered member leaves the Discord server:
- * 1. Checks if the departed member is registered in the system
- * 2. Records their departure in departed_member table
- * 3. Sends admin notification with option to immediately delete
- * 4. Schedules automatic deletion after 30 days if no action taken
+ * Handles a member leaving the Discord server:
+ * 1. Expires any live waitlist entry and deletes its verification channel
+ * 2. Checks if the departed member is registered in the system
+ * 3. Records their departure in departed_member table
+ * 4. Sends admin notification with option to immediately delete
+ * 5. Schedules automatic deletion after 30 days if no action taken
  */
 export const eventName: EventModule<"guildMemberRemove">["eventName"] =
   "guildMemberRemove";
@@ -38,6 +40,15 @@ export async function execute(
   client: Client,
   member: GuildMember | PartialGuildMember,
 ): Promise<void> {
+  try {
+    await waitlistService.expireForDeparture(member.user.id);
+  } catch (error) {
+    logger.error(
+      `Failed to expire waitlist entry for departing ${member.user.tag}:`,
+      error,
+    );
+  }
+
   try {
     const player = await Q.player.find({ discordId: member.user.id });
 

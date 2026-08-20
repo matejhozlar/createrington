@@ -11,7 +11,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { Sensitive } from "@/components/sensitive";
 import { useStickyValue } from "@/hooks/use-sticky-value";
 import { useToastActions } from "@/hooks/use-toast";
 import { trpc, type RouterOutput } from "@/lib/trpc";
@@ -80,14 +79,9 @@ export function DeleteWaitlistModal({
             <DialogDescription>
               This will permanently delete the waitlist entry for{" "}
               <span className="font-semibold">
-                {displayEntry?.email ? (
-                  <Sensitive value={displayEntry.email} label="email" />
-                ) : (
-                  displayEntry?.discordName
-                )}
+                {displayEntry?.discordUsername}
               </span>
-              {displayEntry?.email ? ` (${displayEntry.discordName})` : ""}.
-              This action cannot be undone.
+              . This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
 
@@ -99,30 +93,32 @@ export function DeleteWaitlistModal({
                   <span className="font-medium">#{displayEntry?.id}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Email:</span>
+                  <span className="text-muted-foreground">Discord:</span>
                   <span className="font-medium">
-                    {displayEntry?.email ? (
-                      <Sensitive value={displayEntry.email} label="email" />
-                    ) : (
-                      "-"
-                    )}
+                    {displayEntry?.discordUsername}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Discord:</span>
-                  <span className="font-medium">
-                    {displayEntry?.discordName}
-                  </span>
+                  <span className="text-muted-foreground">Discord ID:</span>
+                  <span className="font-medium">{displayEntry?.discordId}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Status:</span>
                   <span className="font-medium">{displayEntry?.status}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Submitted:</span>
+                  <span className="text-muted-foreground">Signed up:</span>
                   <span className="font-medium">
                     {displayEntry
-                      ? new Date(displayEntry.submittedAt).toLocaleDateString()
+                      ? new Date(displayEntry.createdAt).toLocaleDateString()
+                      : ""}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Queued:</span>
+                  <span className="font-medium">
+                    {displayEntry
+                      ? new Date(displayEntry.queuedAt).toLocaleDateString()
                       : ""}
                   </span>
                 </div>

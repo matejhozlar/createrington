@@ -14,7 +14,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CellDate, CellText } from "@/components/cell-text";
-import { Sensitive } from "@/components/sensitive";
 import {
   BadgeCellSkeleton,
   DataTable,
@@ -37,36 +36,34 @@ import {
   UserPlus,
   UserCheck,
   Clock,
-  Mail,
   Trash2,
 } from "lucide-react";
 import type { WaitlistStatus } from "@createrington/shared/db";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { keepPreviousData } from "@tanstack/react-query";
-import { InviteWaitlistModal } from "./components/modals/InviteWaitlistModal";
+import { PromoteWaitlistModal } from "./components/modals/PromoteWaitlistModal";
 import { DeleteWaitlistModal } from "./components/modals/DeleteWaitlistModal";
+import { IntakeSettingsCard } from "./components/IntakeSettingsCard";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 
 type WaitlistEntry =
   RouterOutput["admin"]["waitlists"]["list"]["entries"][number];
 
-type SortField = "submittedAt" | "acceptedAt" | "email" | "discordName";
+type SortField = "createdAt" | "queuedAt" | "promotedAt" | "discordUsername";
 type StatusFilter = "all" | WaitlistStatus;
 
 const STATUS_LABELS: Record<WaitlistStatus, string> = {
-  pending: "Pending",
-  accepted: "Invited",
-  auto_accepted: "Auto-accepted",
-  completed: "Completed",
-  declined: "Declined",
+  queued: "Queued",
+  promoted: "Promoted",
+  registered: "Registered",
+  expired: "Expired",
 };
 
-const PROGRESS_STEPS: { key: keyof WaitlistEntry; label: string }[] = [
-  { key: "joinedMinecraft", label: "In-Game" },
-  { key: "registered", label: "Registered" },
-  { key: "verified", label: "Verified" },
-  { key: "joinedDiscord", label: "Discord" },
-];
+function hasRequeued(entry: WaitlistEntry) {
+  return (
+    new Date(entry.createdAt).getTime() !== new Date(entry.queuedAt).getTime()
+  );
+}
 
 export function AdminWaitlists() {
   const [page, setPage] = useState(0);
@@ -74,14 +71,11 @@ export function AdminWaitlists() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  const [verifiedFilter, setVerifiedFilter] = useState<boolean | undefined>(
-    undefined,
-  );
 
-  const [orderBy, setOrderBy] = useState<SortField>("submittedAt");
+  const [orderBy, setOrderBy] = useState<SortField>("queuedAt");
   const [orderDirection, setOrderDirection] = useState<"asc" | "desc">("desc");
 
-  const [inviteModal, setInviteModal] = useState<{
+  const [promoteModal, setPromoteModal] = useState<{
     open: boolean;
     entry: WaitlistEntry | null;
   }>({ open: false, entry: null });
@@ -93,16 +87,18 @@ export function AdminWaitlists() {
   const stats = statsQuery.data ?? null;
   const statsLoading = statsQuery.isLoading;
 
+  const search = debouncedSearch.trim();
+  const searchIsId = /^\d{15,21}$/.test(search);
+
   const entriesQuery = trpc.admin.waitlists.list.useQuery(
     {
       page,
       limit,
       orderBy,
       orderDirection,
-      email: debouncedSearch.trim() || undefined,
-      discordName: debouncedSearch.trim() || undefined,
+      discordUsername: search && !searchIsId ? search : undefined,
+      discordId: searchIsId ? search : undefined,
       status: statusFilter !== "all" ? statusFilter : undefined,
-      verified: verifiedFilter,
     },
     { placeholderData: keepPreviousData },
   );
@@ -132,16 +128,16 @@ export function AdminWaitlists() {
     [orderBy],
   );
 
-  const handleInvite = useCallback((entry: WaitlistEntry) => {
-    setInviteModal({ open: true, entry });
+  const handlePromote = useCallback((entry: WaitlistEntry) => {
+    setPromoteModal({ open: true, entry });
   }, []);
 
   const handleDelete = useCallback((entry: WaitlistEntry) => {
     setDeleteTarget(entry);
   }, []);
 
-  const handleInviteSuccess = useCallback(() => {
-    setInviteModal({ open: false, entry: null });
+  const handlePromoteSuccess = useCallback(() => {
+    setPromoteModal({ open: false, entry: null });
     entriesQuery.refetch();
     statsQuery.refetch();
   }, [entriesQuery, statsQuery]);
@@ -152,27 +148,27 @@ export function AdminWaitlists() {
     statsQuery.refetch();
   }, [entriesQuery, statsQuery]);
 
-  const getStatusBadgeStyle = useCallback((status: string) => {
-    switch (status.toLowerCase()) {
-      case "accepted":
+  const getStatusBadgeStyle = useCallback((status: WaitlistStatus) => {
+    switch (status) {
+      case "registered":
         return {
           variant: "outline" as const,
           className: "border-success bg-success/10 text-success",
         };
-      case "auto_accepted":
+      case "promoted":
         return {
           variant: "outline" as const,
           className: "border-chart-2 bg-chart-2/10 text-chart-2",
         };
-      case "declined":
-        return {
-          variant: "destructive" as const,
-          className: "",
-        };
-      default: // pending
+      case "expired":
         return {
           variant: "outline" as const,
-          className: "",
+          className: "border-muted-foreground/40 text-muted-foreground",
+        };
+      default: // queued
+        return {
+          variant: "outline" as const,
+          className: "border-amber-500 bg-amber-500/10 text-amber-500",
         };
     }
   }, []);
@@ -185,99 +181,88 @@ export function AdminWaitlists() {
       render: (entry) => <p className="font-mono text-sm">#{entry.id}</p>,
     },
     {
-      key: "email",
-      header: "Email",
-      minWidth: 200,
-      sorted: orderBy === "email" ? orderDirection : false,
-      onSort: () => handleSort("email"),
-      render: (entry) =>
-        entry.email && (
-          <div className="flex min-w-0 items-center gap-2">
-            <Mail className="size-4 shrink-0 text-muted-foreground" />
-            <Sensitive value={entry.email} label="email" className="text-sm" />
-          </div>
-        ),
-    },
-    {
-      key: "discordName",
-      header: "Discord Name",
-      minWidth: 160,
-      sorted: orderBy === "discordName" ? orderDirection : false,
-      onSort: () => handleSort("discordName"),
+      key: "discordUsername",
+      header: "Member",
+      minWidth: 180,
+      sorted: orderBy === "discordUsername" ? orderDirection : false,
+      onSort: () => handleSort("discordUsername"),
       skeleton: () => <TwoLineCellSkeleton />,
       render: (entry) => (
         <>
-          <CellText value={entry.discordName ?? ""} className="font-medium" />
-          {entry.discordId && (
-            <CellText
-              value={`ID: ${entry.discordId}`}
-              className="text-xs text-muted-foreground"
-            />
-          )}
+          <CellText value={entry.discordUsername} className="font-medium" />
+          <CellText
+            value={`ID: ${entry.discordId}`}
+            className="text-xs text-muted-foreground"
+          />
         </>
       ),
     },
     {
       key: "status",
       header: "Status",
-      width: 132,
+      width: 160,
       skeleton: () => <BadgeCellSkeleton />,
       render: (entry) => (
-        <Badge
-          variant={getStatusBadgeStyle(entry.status).variant}
-          className={getStatusBadgeStyle(entry.status).className}
-        >
-          {STATUS_LABELS[entry.status]}
-        </Badge>
-      ),
-    },
-    {
-      key: "progress",
-      header: "Progress",
-      width: 110,
-      skeleton: () => <BadgeCellSkeleton />,
-      render: (entry) => {
-        const step = PROGRESS_STEPS.find(({ key }) => entry[key]);
-        return (
-          step && (
+        <div className="flex items-center gap-1.5">
+          <Badge
+            variant={getStatusBadgeStyle(entry.status).variant}
+            className={getStatusBadgeStyle(entry.status).className}
+          >
+            {STATUS_LABELS[entry.status]}
+          </Badge>
+          {entry.joinedMinecraft && (
             <Badge
               variant="outline"
               className="border-success bg-success/10 text-success text-xs"
             >
-              {step.label}
+              In-Game
             </Badge>
-          )
-        );
-      },
+          )}
+        </div>
+      ),
     },
     {
-      key: "submitted",
-      header: "Submitted",
-      width: 160,
-      sorted: orderBy === "submittedAt" ? orderDirection : false,
-      onSort: () => handleSort("submittedAt"),
+      key: "queued",
+      header: "Queued",
+      width: 170,
+      sorted: orderBy === "queuedAt" ? orderDirection : false,
+      onSort: () => handleSort("queuedAt"),
       skeleton: () => <TwoLineCellSkeleton />,
       render: (entry) => (
         <>
-          <CellDate value={entry.submittedAt} />
-          {entry.acceptedAt && (
+          <CellDate value={entry.queuedAt} />
+          {hasRequeued(entry) && (
             <div className="flex gap-1 text-xs text-muted-foreground">
-              <span>Accepted:</span>
-              <CellDate value={entry.acceptedAt} className="text-xs" />
+              <span>Signed up:</span>
+              <CellDate value={entry.createdAt} className="text-xs" />
+            </div>
+          )}
+          {entry.promotedAt && (
+            <div className="flex gap-1 text-xs text-muted-foreground">
+              <span>Promoted:</span>
+              <CellDate value={entry.promotedAt} className="text-xs" />
             </div>
           )}
         </>
       ),
     },
+    {
+      key: "registered",
+      header: "Registered",
+      width: 140,
+      skeleton: () => <TwoLineCellSkeleton />,
+      render: (entry) =>
+        entry.registeredAt && <CellDate value={entry.registeredAt} />,
+    },
   ];
 
   const entryActions = (entry: WaitlistEntry): DataTableAction[] => {
     const actions: DataTableAction[] = [];
-    if (entry.status === "pending") {
+    if (entry.status === "queued") {
       actions.push({
-        label: "Invite",
+        label: "Promote",
         icon: UserPlus,
-        onClick: () => handleInvite(entry),
+        onClick: () => handlePromote(entry),
       });
     }
     actions.push({
@@ -310,10 +295,10 @@ export function AdminWaitlists() {
             <Card>
               <CardContent className="flex items-start justify-between">
                 <div>
-                  <CardDescription>Total Entries</CardDescription>
-                  <CardTitle className="text-2xl">{stats.total}</CardTitle>
+                  <CardDescription>In Queue</CardDescription>
+                  <CardTitle className="text-2xl">{stats.queued}</CardTitle>
                   <p className="mt-2 text-xs text-muted-foreground">
-                    {stats.pending} pending approval
+                    {stats.total} entries total
                   </p>
                 </div>
                 <div className="flex size-12 items-center justify-center rounded-full bg-sidebar-primary/10">
@@ -325,17 +310,29 @@ export function AdminWaitlists() {
             <Card>
               <CardContent className="flex items-start justify-between">
                 <div>
-                  <CardDescription>Accepted</CardDescription>
-                  <CardTitle className="text-2xl">
-                    {stats.accepted + stats.autoAccepted}
-                  </CardTitle>
+                  <CardDescription>Promoted</CardDescription>
+                  <CardTitle className="text-2xl">{stats.promoted}</CardTitle>
                   <p className="mt-2 text-xs text-muted-foreground">
-                    {stats.autoAccepted} auto-accepted &middot;{" "}
-                    {stats.joinedMinecraft} joined Minecraft
+                    awaiting registration
                   </p>
                 </div>
                 <div className="flex size-12 items-center justify-center rounded-full bg-chart-2/10">
-                  <UserCheck className="size-6 text-chart-2" />
+                  <Clock className="size-6 text-chart-2" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="flex items-start justify-between">
+                <div>
+                  <CardDescription>Registered</CardDescription>
+                  <CardTitle className="text-2xl">{stats.registered}</CardTitle>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {stats.joinedMinecraft} joined Minecraft
+                  </p>
+                </div>
+                <div className="flex size-12 items-center justify-center rounded-full bg-chart-4/10">
+                  <UserCheck className="size-6 text-chart-4" />
                 </div>
               </CardContent>
             </Card>
@@ -345,10 +342,10 @@ export function AdminWaitlists() {
                 <div>
                   <CardDescription>New This Week</CardDescription>
                   <CardTitle className="text-2xl">
-                    {stats.submitted.thisWeek}
+                    {stats.signups.thisWeek}
                   </CardTitle>
                   <p className="mt-2 text-xs text-muted-foreground">
-                    {stats.submitted.today} today
+                    {stats.signups.today} today
                   </p>
                 </div>
                 <div className="flex size-12 items-center justify-center rounded-full bg-chart-3/10">
@@ -356,23 +353,11 @@ export function AdminWaitlists() {
                 </div>
               </CardContent>
             </Card>
-
-            <Card>
-              <CardContent className="flex items-start justify-between">
-                <div>
-                  <CardDescription>Verified</CardDescription>
-                  <CardTitle className="text-2xl">{stats.verified}</CardTitle>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    {stats.registered} registered
-                  </p>
-                </div>
-                <div className="flex size-12 items-center justify-center rounded-full bg-chart-4/10">
-                  <Clock className="size-6 text-chart-4" />
-                </div>
-              </CardContent>
-            </Card>
           </div>
         ) : null}
+
+        {/* Intake Settings */}
+        <IntakeSettingsCard />
 
         {/* Filters & Search */}
         <Card className="gap-2">
@@ -380,13 +365,9 @@ export function AdminWaitlists() {
             <CardTitle className="flex items-center gap-2 text-base">
               <Filter className="size-4 text-muted-foreground" />
               Filters
-              {(searchQuery ||
-                statusFilter !== "all" ||
-                verifiedFilter !== undefined) && (
+              {(searchQuery || statusFilter !== "all") && (
                 <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                  {(searchQuery ? 1 : 0) +
-                    (statusFilter !== "all" ? 1 : 0) +
-                    (verifiedFilter !== undefined ? 1 : 0)}
+                  {(searchQuery ? 1 : 0) + (statusFilter !== "all" ? 1 : 0)}
                 </Badge>
               )}
             </CardTitle>
@@ -397,7 +378,7 @@ export function AdminWaitlists() {
                 <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   type="text"
-                  placeholder="Search by email or Discord name..."
+                  placeholder="Search by Discord username or ID..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-9"
@@ -416,32 +397,10 @@ export function AdminWaitlists() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="accepted">Accepted</SelectItem>
-                  <SelectItem value="auto_accepted">Auto-Accepted</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select
-                value={
-                  verifiedFilter === undefined
-                    ? "all"
-                    : verifiedFilter
-                      ? "verified"
-                      : "unverified"
-                }
-                onValueChange={(v) => {
-                  setVerifiedFilter(v === "all" ? undefined : v === "verified");
-                  setPage(0);
-                }}
-              >
-                <SelectTrigger className="min-w-[130px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Verification</SelectItem>
-                  <SelectItem value="verified">Verified</SelectItem>
-                  <SelectItem value="unverified">Unverified</SelectItem>
+                  <SelectItem value="queued">Queued</SelectItem>
+                  <SelectItem value="promoted">Promoted</SelectItem>
+                  <SelectItem value="registered">Registered</SelectItem>
+                  <SelectItem value="expired">Expired</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -512,12 +471,12 @@ export function AdminWaitlists() {
       </div>
 
       {/* Modals */}
-      {inviteModal.entry !== null && (
-        <InviteWaitlistModal
-          open={inviteModal.open}
-          onClose={() => setInviteModal({ open: false, entry: null })}
-          entry={inviteModal.entry}
-          onSuccess={handleInviteSuccess}
+      {promoteModal.entry !== null && (
+        <PromoteWaitlistModal
+          open={promoteModal.open}
+          onClose={() => setPromoteModal({ open: false, entry: null })}
+          entry={promoteModal.entry}
+          onSuccess={handlePromoteSuccess}
         />
       )}
 

@@ -17,6 +17,13 @@ export interface DeletedPlayer {
   minecraftUsername: string;
 }
 
+/**
+ * Fire-and-forget side effect run after a successful deletion (e.g. the
+ * waitlist promotion pass). Hooks must not throw; failures are logged and
+ * never block the deletion.
+ */
+export type PostDeletionHook = (player: DeletedPlayer) => void | Promise<void>;
+
 export interface DeletePlayerOptions {
   actor: DeletionActor;
   reason: string;
@@ -39,20 +46,29 @@ export interface DeletePlayerOptions {
 /**
  * The single chokepoint for deleting a player. Owns the DB delete plus the
  * cross-cutting application-level side effects (audit row, RCON whitelist
- * removal) so manual and automated paths cannot drift. Stateless; a singleton
+ * removal) so manual and automated paths cannot drift, and exposes a
+ * post-deletion extension point for cross-service notifications such as the
+ * waitlist promotion pass. Stateless aside from the hook registry; a singleton
  * is exported at the bottom of this file.
  */
 export class PlayerDeletionService {
+  private readonly hooks: PostDeletionHook[] = [];
+
   async initialize(): Promise<void> {
     logger.info("PlayerDeletionService initialized");
+  }
+
+  /** Register a fire-and-forget side effect that runs after every successful deletion. */
+  onDeleted(hook: PostDeletionHook): void {
+    this.hooks.push(hook);
   }
 
   /**
    * Delete a player and run the cross-cutting side effects. The audit row and
    * the row delete share one transaction (with any caller `beforeDelete` work);
-   * whitelist removal runs after commit and never aborts the deletion. Returns
-   * the deleted snapshot, or null when `ignoreMissing` is set and no player
-   * existed.
+   * whitelist removal and post-deletion hooks run after commit and never abort
+   * the deletion. Returns the deleted snapshot, or null when `ignoreMissing` is
+   * set and no player existed.
    */
   async delete(
     identifier: PlayerIdentifier,
@@ -131,7 +147,22 @@ export class PlayerDeletionService {
       }
     }
 
+    void this.runHooks(snapshot);
+
     return snapshot;
+  }
+
+  private async runHooks(player: DeletedPlayer): Promise<void> {
+    for (const hook of this.hooks) {
+      try {
+        await hook(player);
+      } catch (error) {
+        logger.warn(
+          `Post-deletion hook failed for ${player.minecraftUsername}:`,
+          error,
+        );
+      }
+    }
   }
 
   private actorLabel(actor: DeletionActor): string {

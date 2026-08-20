@@ -1,3 +1,32 @@
+## v1.36.0 (2026-08-20)
+
+### @createrington/server (1.36.2 → 1.37.0)
+- [refactor] Rework the apply flow into a Discord-first waitlist with queue-based statuses (queued, promoted, registered, expired), replacing the old email-driven pipeline (pending, accepted, completed, declined) and removing email collection, invite codes, and boolean milestone flags from the waitlist schema
+- [add] Add WaitlistService (~770 LOC) orchestrating queue joins, auto-promotion into free slots, 7-day registration expiry, and serialized maintenance passes that prevent race conditions during concurrent slot claims
+- [add] Add `app_setting` table and SettingsService for runtime configuration of player limit and intake mode (auto or closed), with cached reads, immediate cache invalidation on writes, and environment-variable fallbacks
+- [add] Add admin settings tRPC endpoints for reading and updating player limit and intake mode, with audit logging and an automatic promotion pass when capacity changes
+- [add] Add verification channels for in-Discord registration, with progress cards rendered as Components V2 containers showing step completion and a close button for cleanup
+- [add] Add waitlist Discord component presets (waiting card, promotion card, queue confirmation) using the Components V2 API with containers, separators, and text displays
+- [add] Expose workshops to the sandbox consumer router with list and get endpoints that resolve each workshop's modpack and latest release, batching lookups to avoid N+1 queries
+- [fix] Fix registration close card rendering by migrating from legacy embed fields to Components V2, clearing the old content/embeds fields so Discord does not show a blank card
+- [fix] Fix waitlist signup stats to count first-time signups by `created_at` instead of re-queues by `queued_at`, so a member who expired and rejoined is not double-counted
+- [fix] Guard verification-channel buttons against clicks from other members by checking the channel's assigned Discord ID before processing
+- [fix] Expire departed members quietly during auto-promotion instead of logging a noisy error, and handle failed progress embed edits gracefully
+- [refactor] Replace WaitlistRepository flow orchestration (~280 LOC) with thin persistence methods, delegating all queue logic to WaitlistService
+- [refactor] Rework waitlist cleanup service from a 24-hour orphan sweep into an hourly maintenance cycle that expires stale promotions and auto-promotes queued members
+- [chore] Sync the `claude_readonly` grants from the deploy workflows after every migration via a new transactional shell script, covering both dev and prod environments
+- [chore] Bump @createrington/api-types from 0.2.0 to 0.3.0 for the sandbox workshops contract
+
+### @createrington/client (0.2.49 → 0.2.50)
+- [refactor] Rewrite the Apply to Join page from a multi-field web form (email, Discord username, referral, terms) into a Discord-first flow that shows step-by-step instructions for joining the guild and using in-Discord commands, with distinct copy for open mode vs waitlist mode
+- [add] Add IntakeSettingsCard to the admin waitlists page for controlling player limit and intake mode (auto/closed), showing current capacity, reserved slots, and real-time open/waitlist status
+- [refactor] Rework the admin waitlists table to match the new queue statuses (queued, promoted, registered, expired), removing email/verified columns, replacing the Invite modal with a Promote modal, and updating search to filter by Discord username or ID
+- [refactor] Update admin dashboard stats cards to use new waitlist terminology (Queue, Promoted, Registered, In-Game) and merge the old accepted/auto_accepted counts into a single Promoted metric
+- [refactor] Update the privacy policy to reflect Discord-only data collection, removing email references and documenting that only Discord ID, username, and queue timestamps are stored
+
+### @createrington/shared (1.5.0 → 1.5.1)
+- [remove] Remove the waitlist form schemas (waitlistCreateInputSchema, buildWaitlistFormSchema, email/Discord validation) now that intake is handled entirely through Discord interactions
+
 ## v1.35.4 (2026-08-19)
 
 ### @createrington/server (1.36.1 → 1.36.2)

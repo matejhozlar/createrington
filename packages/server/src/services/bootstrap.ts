@@ -22,6 +22,7 @@ import { InactivityCleanupService } from "./discord/cleanup/inactivity/inactivit
 import { GhostMemberService } from "./discord/cleanup/ghost/ghost-member.service";
 import { UnlinkedMemberService } from "./discord/cleanup/unlinked/unlinked-member.service";
 import { WaitlistCleanupService } from "./waitlist/waitlist-cleanup.service";
+import { waitlistService } from "./waitlist/waitlist.service";
 import { WorkshopProjectRefreshService } from "./workshop/refresh.service";
 import { MemberCleanupService } from "./discord/cleanup/member/member-cleanup.service";
 import { SERVER_STATS_CONFIG, ServerStatsService } from "./discord/stats";
@@ -259,15 +260,17 @@ export function registerServices(): void {
     { dependencies: [Services.DATABASE, Services.DISCORD_MAIN_BOT] },
   );
 
-  container.register(
-    Services.WAITLIST_CLEANUP_SERVICE,
-    async () => {
-      const service = new WaitlistCleanupService();
-      await service.initialize();
-      return service;
-    },
-    { dependencies: [Services.DATABASE] },
-  );
+  if (!config.envMode.isDev) {
+    container.register(
+      Services.WAITLIST_CLEANUP_SERVICE,
+      async () => {
+        const service = new WaitlistCleanupService();
+        await service.initialize();
+        return service;
+      },
+      { dependencies: [Services.DATABASE, Services.DISCORD_MAIN_BOT] },
+    );
+  }
 
   container.register(
     Services.PLAYER_PROMPT_SERVICE,
@@ -346,6 +349,17 @@ export function registerServices(): void {
     Services.PLAYER_DELETION_SERVICE,
     async () => {
       await playerDeletionService.initialize();
+      playerDeletionService.onDeleted(async (player) => {
+        try {
+          await waitlistService.expireForPlayerDeletion(player.discordId);
+        } catch (error) {
+          logger.error(
+            `Failed to expire the waitlist entry of deleted player ${player.discordId}:`,
+            error,
+          );
+        }
+        await waitlistService.promoteEligible();
+      });
       return playerDeletionService;
     },
     { dependencies: [Services.DATABASE] },
