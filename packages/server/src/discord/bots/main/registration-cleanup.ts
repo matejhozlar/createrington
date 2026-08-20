@@ -11,6 +11,9 @@ import config from "@/config";
 /** Duration before a completed registration channel is auto-deleted (ms) */
 export const AUTO_CLOSE_MS = 24 * 60 * 60 * 1000;
 
+/** How long the closing card stays up before the channel goes away (ms) */
+export const CLOSE_GRACE_MS = 5000;
+
 /**
  * Schedules a registration channel for deletion.
  * If `delayMs <= 0` the channel is deleted immediately (with a short grace period
@@ -44,7 +47,7 @@ export function scheduleChannelClose(
           error,
         );
       }
-    }, 5000);
+    }, CLOSE_GRACE_MS);
   }, effectiveDelay);
 }
 

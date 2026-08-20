@@ -1,4 +1,5 @@
 import { RegistrationComponentPresets } from "@/discord/components/presets/registration";
+import { CLOSE_GRACE_MS } from "@/discord/bots/main/registration-cleanup";
 import { Discord } from "@/discord/constants";
 import { isSendableChannel } from "@/discord/utils/channel-guard";
 import {
@@ -34,7 +35,7 @@ function parseCustomId(customId: string): { action: string } | null {
 /**
  * Handles registration channel close button
  *
- * Deletes the verification channel after a 5-second delay
+ * Deletes the verification channel after `CLOSE_GRACE_MS`
  * to allow the user to see the closing confirmation.
  *
  * @param interaction - The button interaction from Discord
@@ -81,13 +82,21 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
       const closing = RegistrationComponentPresets.closing();
 
       try {
+        // `content` and `embeds` have to be cleared explicitly: setting
+        // IS_COMPONENTS_V2 on an edit requires both to be empty, and success
+        // cards written before the Components V2 migration still carry an
+        // embed that would otherwise be retained and rejected.
         await interaction.update({
           components: closing.components,
           flags: closing.flags,
+          content: null,
+          embeds: [],
         });
       } catch (error) {
-        // The card is cosmetic; the channel still has to go either way.
+        // The card is cosmetic; the channel still has to go either way. Ack
+        // the click so Discord doesn't show "This interaction failed".
         logger.error("Failed to render the registration closing card:", error);
+        await interaction.deferUpdate().catch(() => {});
       }
 
       setTimeout(async () => {
@@ -101,7 +110,7 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
         } catch (error) {
           logger.error("Failed to delete registration channel:", error);
         }
-      }, 5000);
+      }, CLOSE_GRACE_MS);
     } catch (error) {
       logger.error("Failed to handle registration close button:", error);
     }

@@ -207,7 +207,7 @@ export const RegistrationComponentPresets = {
     return message(container);
   },
 
-  /** The card the success card is replaced with once the channel is on its way out. */
+  /** The channel-is-going-away card, shown when a registration channel closes. */
   closing(): RegistrationMessage {
     const container = new ContainerBuilder()
       .setAccentColor(ComponentColors.Error)
