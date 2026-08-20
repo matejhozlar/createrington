@@ -39,12 +39,22 @@ type ChannelLookup =
  * made while one is running schedules a single re-run after it finishes.
  * Concurrent maintenance runs are skipped. An entry is only expired when
  * Discord positively reports the member gone; an unreachable guild or a
- * failed lookup skips the entry until the next pass.
+ * failed lookup skips the entry until the next pass. Every slot-taking
+ * write (auto promotion, direct-registration reservation) re-reads the free
+ * slot count inside one in-process lock, so two writers cannot both claim
+ * the last slot.
  */
 export class WaitlistService {
   private maintenanceRunning = false;
   private promotionPass: Promise<number> | null = null;
   private promotionRerun = false;
+  private slotLock: Promise<unknown> = Promise.resolve();
+
+  private withSlotLock<T>(fn: () => Promise<T>): Promise<T> {
+    const run = this.slotLock.then(fn, fn);
+    this.slotLock = run.catch(() => undefined);
+    return run;
+  }
 
   private getGuild(): Guild | null {
     return mainBot.guilds.cache.get(config.discord.guild.id) ?? null;
@@ -275,20 +285,92 @@ export class WaitlistService {
     }
   }
 
-  /** Flip an expired or registered entry back to promoted so a direct registration holds its slot. */
-  async reserveForRegistration(entryId: number): Promise<WaitlistEntry> {
-    await Q.waitlist.entry.update(
-      { id: entryId },
-      {
-        status: "promoted",
-        promotedAt: new Date(),
-        promotedBy: null,
-        registeredAt: null,
-        expiredAt: null,
+  /**
+   * Reserve a slot for a member registering directly (no queue): creates a
+   * promoted entry, or flips an expired/registered one back to promoted.
+   * Returns null when no free slot is left. `reserved` is false when the
+   * member already held a promotion, so the caller must not release it.
+   */
+  async reserveForDirectRegistration(
+    discordId: string,
+    discordUsername: string,
+  ): Promise<{ entry: WaitlistEntry; reserved: boolean } | null> {
+    const result = await this.withSlotLock(
+      async (): Promise<{
+        entry: WaitlistEntry;
+        reserved: boolean;
+        created: boolean;
+      } | null> => {
+        let existing = await Q.waitlist.entry.find({ discordId });
+
+        if (existing?.status === "promoted") {
+          return { entry: existing, reserved: false, created: false };
+        }
+        if (existing?.status === "queued") {
+          throw new BadRequestError(
+            "Queued members are promoted in order and cannot register directly.",
+          );
+        }
+        if (
+          existing?.status === "registered" &&
+          (await Q.player.exists({ discordId }))
+        ) {
+          throw new BadRequestError(
+            "This Discord account is already registered.",
+          );
+        }
+
+        if ((await waitlistRepo.getFreeSlots()) <= 0) return null;
+
+        if (!existing) {
+          try {
+            const entry = await Q.waitlist.entry.createAndReturn({
+              discordId,
+              discordUsername,
+              status: "promoted",
+              promotedAt: new Date(),
+            });
+            return { entry, reserved: true, created: true };
+          } catch (error) {
+            if (!(error instanceof ConstraintViolationError)) throw error;
+            existing = await Q.waitlist.entry.get({ discordId });
+            if (existing.status === "promoted") {
+              return { entry: existing, reserved: false, created: false };
+            }
+          }
+        }
+
+        await Q.waitlist.entry.update(
+          { id: existing.id },
+          {
+            status: "promoted",
+            promotedAt: new Date(),
+            promotedBy: null,
+            discordUsername,
+            registeredAt: null,
+            expiredAt: null,
+          },
+        );
+        const entry = await Q.waitlist.entry.get({ id: existing.id });
+        return { entry, reserved: true, created: false };
       },
     );
-    await waitlistRepo.updateProgressEmbed(entryId);
-    return Q.waitlist.entry.get({ id: entryId });
+
+    if (!result) return null;
+
+    if (result.created) {
+      logger.info(
+        `Reserved a slot for ${discordUsername} (${discordId}) registering directly as waitlist entry #${result.entry.id}`,
+      );
+      await this.notifyAdmins(result.entry);
+    } else if (result.reserved) {
+      logger.info(
+        `Reserved a slot for ${discordUsername} (${discordId}) registering directly on waitlist entry #${result.entry.id}`,
+      );
+      await waitlistRepo.updateProgressEmbed(result.entry.id);
+    }
+
+    return { entry: result.entry, reserved: result.reserved };
   }
 
   /** Return a slot reserved by a direct registration attempt that failed before a player row was written. */
@@ -303,9 +385,9 @@ export class WaitlistService {
   /**
    * Promote a queued entry: reserve a slot, swap the waiting card for the
    * register card, and ping the member in their verification channel.
-   * Rejects entries that are not queued. Pass null as promotedBy for
-   * automatic promotion. `notified` is false when the slot was reserved
-   * but the Discord ping could not be delivered.
+   * Rejects entries that are not queued. Admin promotion is deliberate, so
+   * it is not bound by free slots. `notified` is false when the slot was
+   * reserved but the Discord ping could not be delivered.
    */
   async promote(
     entryId: number,
@@ -332,7 +414,12 @@ export class WaitlistService {
       );
     }
 
-    const notified = await this.promoteMember(entry, lookup.member, promotedBy);
+    const { notified } = await this.promoteMember(
+      entry,
+      lookup.member,
+      promotedBy,
+      { enforceCapacity: false },
+    );
 
     return { entry: await Q.waitlist.entry.get({ id: entry.id }), notified };
   }
@@ -341,11 +428,20 @@ export class WaitlistService {
     entry: WaitlistEntry,
     member: GuildMember,
     promotedBy: string | null,
-  ): Promise<boolean> {
-    await Q.waitlist.entry.update(
-      { id: entry.id },
-      { status: "promoted", promotedAt: new Date(), promotedBy },
-    );
+    options: { enforceCapacity: boolean },
+  ): Promise<{ reserved: boolean; notified: boolean }> {
+    const reserved = await this.withSlotLock(async () => {
+      if (options.enforceCapacity && (await waitlistRepo.getFreeSlots()) <= 0) {
+        return false;
+      }
+      await Q.waitlist.entry.update(
+        { id: entry.id },
+        { status: "promoted", promotedAt: new Date(), promotedBy },
+      );
+      return true;
+    });
+
+    if (!reserved) return { reserved: false, notified: false };
 
     let notified = false;
     try {
@@ -363,7 +459,23 @@ export class WaitlistService {
       `Promoted waitlist entry #${entry.id} (${entry.discordUsername})${promotedBy ? ` by admin ${promotedBy}` : " automatically"}${notified ? "" : " (member not notified)"}`,
     );
 
-    return notified;
+    if (!notified) await this.alertUnnotifiedPromotion(entry);
+
+    return { reserved: true, notified };
+  }
+
+  private async alertUnnotifiedPromotion(entry: WaitlistEntry): Promise<void> {
+    try {
+      await Discord.Messages.send({
+        channelId: Discord.Channels.administration.NOTIFICATIONS,
+        content: `⚠️ Waitlist entry #${entry.id} (<@${entry.discordId}>) was promoted but could not be pinged in their verification channel. They hold a reserved slot for 7 days; reach out to them or delete the entry from the admin panel to free it.`,
+      });
+    } catch (error) {
+      logger.error(
+        `Failed to alert admins about unnotified promotion #${entry.id}:`,
+        error,
+      );
+    }
   }
 
   private async renderRegisterCard(
@@ -460,6 +572,10 @@ export class WaitlistService {
       return total;
     })().finally(() => {
       this.promotionPass = null;
+      if (this.promotionRerun) {
+        this.promotionRerun = false;
+        this.schedulePromotionPass();
+      }
     });
 
     return this.promotionPass;
@@ -471,8 +587,7 @@ export class WaitlistService {
       return 0;
     }
 
-    let free = await waitlistRepo.getFreeSlots();
-    if (free <= 0) return 0;
+    if ((await waitlistRepo.getFreeSlots()) <= 0) return 0;
 
     const queued = await Q.waitlist.entry.findAll(
       { status: "queued" },
@@ -481,9 +596,8 @@ export class WaitlistService {
 
     let promoted = 0;
     let expired = 0;
+    let exhausted = false;
     for (const entry of queued) {
-      if (free <= 0) break;
-
       const lookup = await this.lookupMember(entry.discordId);
       if (lookup.state === "gone") {
         await this.expireEntry(entry.id, "member is no longer in the guild");
@@ -498,9 +612,17 @@ export class WaitlistService {
       }
 
       try {
-        await this.promoteMember(entry, lookup.member, null);
+        const { reserved } = await this.promoteMember(
+          entry,
+          lookup.member,
+          null,
+          { enforceCapacity: true },
+        );
+        if (!reserved) {
+          exhausted = true;
+          break;
+        }
         promoted++;
-        free--;
       } catch (error) {
         logger.warn(
           `Skipping waitlist entry #${entry.id} during auto-promotion:`,
@@ -516,7 +638,7 @@ export class WaitlistService {
     }
 
     if (
-      free > 0 &&
+      !exhausted &&
       queued.length === PROMOTION_BATCH &&
       promoted + expired > 0
     ) {
@@ -614,35 +736,6 @@ export class WaitlistService {
     } finally {
       this.maintenanceRunning = false;
     }
-  }
-
-  /** Create an already-promoted entry for a member registering directly while intake is open. */
-  async createPromotedForExistingMember(
-    discordId: string,
-    discordUsername: string,
-  ): Promise<WaitlistEntry> {
-    const entry = await Q.waitlist.entry.createAndReturn({
-      discordId,
-      discordUsername,
-      status: "promoted",
-      promotedAt: new Date(),
-    });
-
-    logger.info(
-      `Auto-promoted existing guild member ${discordUsername} (${discordId}) as waitlist entry #${entry.id}`,
-    );
-
-    await this.notifyAdmins(entry);
-    return Q.waitlist.entry.get({ id: entry.id });
-  }
-
-  /** Mark an entry registered once the registration flow completes. */
-  async markRegistered(entryId: number): Promise<void> {
-    await Q.waitlist.entry.update(
-      { id: entryId },
-      { status: "registered", registeredAt: new Date() },
-    );
-    await waitlistRepo.updateProgressEmbed(entryId);
   }
 }
 

@@ -62,9 +62,11 @@ export const adminSettingsRouter = router({
           });
         }
 
-        void waitlistService.promoteEligible().catch((error) => {
-          logger.error("Promotion pass after settings update failed:", error);
-        });
+        if (input.playerLimit !== undefined || input.intakeMode !== undefined) {
+          void waitlistService.promoteEligible().catch((error) => {
+            logger.error("Promotion pass after settings update failed:", error);
+          });
+        }
       } catch (error) {
         rethrowTrpc(error);
       }

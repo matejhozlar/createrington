@@ -1,4 +1,4 @@
-import { Q, waitlistRepo } from "@/db";
+import { db, Q, waitlistRepo } from "@/db";
 import { waitlistService } from "@/services/waitlist/waitlist.service";
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
@@ -114,35 +114,25 @@ export async function runRegistration(params: {
     await randomDelay();
     entry = await Q.waitlist.entry.find({ discordId });
 
-    if (!entry) {
-      const hasCapacity = await waitlistRepo.hasCapacity();
-      if (!hasCapacity) {
-        steps[currentStep].error = "Server at capacity";
-        throw new Error(
-          "The server is currently at capacity. Use the **Join Waitlist** button in your verification channel to get in line.",
-        );
-      }
-      entry = await waitlistService.createPromotedForExistingMember(
-        discordId,
-        username,
-      );
-      reservedHere = true;
-    } else if (entry.status === "queued") {
+    if (entry?.status === "queued") {
       steps[currentStep].error = "Not promoted from the waitlist";
       throw new Error(
         "You're in the waitlist queue. We'll ping you right here as soon as it's your turn to register.",
       );
-    } else if (entry.status === "expired" || entry.status === "registered") {
-      const hasCapacity = await waitlistRepo.hasCapacity();
-      if (!hasCapacity) {
-        steps[currentStep].error = "Server at capacity";
-        throw new Error(
-          "The server is currently at capacity. Use the **Join Waitlist** button in your verification channel to get in line.",
-        );
-      }
-      entry = await waitlistService.reserveForRegistration(entry.id);
-      reservedHere = true;
     }
+
+    const reservation = await waitlistService.reserveForDirectRegistration(
+      discordId,
+      username,
+    );
+    if (!reservation) {
+      steps[currentStep].error = "Server at capacity";
+      throw new Error(
+        "The server is currently at capacity. Use the **Join Waitlist** button in your verification channel to get in line.",
+      );
+    }
+    entry = reservation.entry;
+    reservedHere = reservation.reserved;
 
     steps[currentStep].completed = true;
     currentStep++;
@@ -209,17 +199,24 @@ export async function runRegistration(params: {
     );
 
     await randomDelay();
-    await Q.player.create({
-      minecraftUuid: uuid,
-      minecraftUsername: correctName,
-      discordId,
+    const entryId = entry.id;
+    await db.inTransaction(async (tx) => {
+      await tx.player.create({
+        minecraftUuid: uuid,
+        minecraftUsername: correctName,
+        discordId,
+      });
+      await tx.player.balance.create({
+        minecraftUuid: uuid,
+      });
+      await tx.waitlist.entry.update(
+        { id: entryId },
+        { status: "registered", registeredAt: new Date() },
+      );
     });
-    await Q.player.balance.create({
-      minecraftUuid: uuid,
-    });
-
-    await waitlistService.markRegistered(entry.id);
     reservedHere = false;
+
+    await waitlistRepo.updateProgressEmbed(entryId);
 
     steps[currentStep].completed = true;
     currentStep++;

@@ -349,10 +349,15 @@ export function registerServices(): void {
     Services.PLAYER_DELETION_SERVICE,
     async () => {
       await playerDeletionService.initialize();
-      playerDeletionService.onDeleted((player) =>
-        waitlistService.expireForPlayerDeletion(player.discordId),
-      );
-      playerDeletionService.onDeleted(async () => {
+      playerDeletionService.onDeleted(async (player) => {
+        try {
+          await waitlistService.expireForPlayerDeletion(player.discordId);
+        } catch (error) {
+          logger.error(
+            `Failed to expire the waitlist entry of deleted player ${player.discordId}:`,
+            error,
+          );
+        }
         await waitlistService.promoteEligible();
       });
       return playerDeletionService;

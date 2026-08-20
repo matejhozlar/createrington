@@ -177,8 +177,9 @@ const sections = [
         </p>
         <ul className="list-disc pl-6 space-y-1 mt-2">
           <li>
-            <strong>Waitlist entries</strong> — kept while you are in the queue;
-            entries expire when you leave the queue or the Discord server
+            <strong>Waitlist entries</strong> — marked as expired when you leave
+            the queue or the Discord server; the entry itself (Discord ID,
+            username and timestamps) is retained for auditing
           </li>
           <li>
             <strong>Login sessions</strong> — automatically expire after 7 days
