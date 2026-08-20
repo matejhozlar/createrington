@@ -220,6 +220,16 @@ export class WaitlistService {
       );
     }
 
+    await this.promoteMember(entry, member, promotedBy);
+
+    return Q.waitlist.entry.get({ id: entry.id });
+  }
+
+  private async promoteMember(
+    entry: WaitlistEntry,
+    member: GuildMember,
+    promotedBy: string | null,
+  ): Promise<void> {
     await Q.waitlist.entry.update(
       { id: entry.id },
       { status: "promoted", promotedAt: new Date(), promotedBy },
@@ -231,8 +241,6 @@ export class WaitlistService {
     logger.info(
       `Promoted waitlist entry #${entry.id} (${entry.discordUsername})${promotedBy ? ` by admin ${promotedBy}` : " automatically"}`,
     );
-
-    return Q.waitlist.entry.get({ id: entry.id });
   }
 
   private async renderRegisterCard(
@@ -322,8 +330,15 @@ export class WaitlistService {
     let promoted = 0;
     for (const entry of queued) {
       if (free <= 0) break;
+
+      const member = await this.fetchMember(entry.discordId);
+      if (!member) {
+        await this.expireEntry(entry.id, "member is no longer in the guild");
+        continue;
+      }
+
       try {
-        await this.promote(entry.id, null);
+        await this.promoteMember(entry, member, null);
         promoted++;
         free--;
       } catch (error) {
