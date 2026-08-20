@@ -444,8 +444,9 @@ INSERT INTO waitlist_entry (
 -- Signed up 20 days ago, expired, rejoined 9 hours ago: counts this month
 -- only.
 ('223456789012345691', 'waiter_user2', 'queued', NOW() - INTERVAL '20 days', NOW() - INTERVAL '9 hours', NULL, NULL, NULL, NULL, false, '333333333333333204', '444444444444444204', '111111111111111207'),
--- Genuine first-time signup today.
-('223456789012345693', 'waiter_user3', 'queued', NOW() - INTERVAL '3 hours', NOW() - INTERVAL '3 hours', NULL, NULL, NULL, NULL, false, '333333333333333205', '444444444444444205', '111111111111111208'),
+-- Genuine first-time signup today: 3 hours ago, but never earlier than
+-- midnight, so a reseed in the small hours still lands in the "today" window.
+('223456789012345693', 'waiter_user3', 'queued', NOW() - LEAST(INTERVAL '3 hours', NOW() - date_trunc('day', NOW())), NOW() - LEAST(INTERVAL '3 hours', NOW() - date_trunc('day', NOW())), NULL, NULL, NULL, NULL, false, '333333333333333205', '444444444444444205', '111111111111111208'),
 
 -- ======================================================================
 -- EXPIRED (left the queue or the guild)

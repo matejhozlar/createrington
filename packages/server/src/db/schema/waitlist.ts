@@ -21,13 +21,12 @@ export const waitlistEntry = pgTable(
     discordId: text("discord_id").notNull().unique(),
     discordUsername: text("discord_username").notNull(),
     status: waitlistStatusEnum("status").notNull().default("queued"),
-    // First time this member entered intake. Never rewritten, so signup
-    // stats stay honest across re-queues and rejoins.
+    // When this row was created. Never rewritten, so it still counts as one
+    // signup after a re-queue or a rejoin.
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
-    // Position in the queue: reset every time the entry goes back in line
-    // (stale-promotion recycle, expired/player-less rejoin).
+    // Place in line, reset every time the entry goes back to the queue.
     queuedAt: timestamp("queued_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
