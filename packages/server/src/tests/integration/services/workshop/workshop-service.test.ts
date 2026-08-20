@@ -1028,6 +1028,60 @@ describe("WorkshopService.getRejectedMods", () => {
   });
 });
 
+describe("WorkshopService.getWorkshopMods", () => {
+  it("returns only the requested statuses when a filter is given", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const statuses = [
+      "pending",
+      "approved",
+      "testing",
+      "next_update",
+      "in_pack",
+      "rejected",
+    ] as const;
+    const byStatus = new Map<string, number>();
+    for (const status of statuses) {
+      const mod = await seedMod(ctx, workshop, {
+        submittedBy: USER_A,
+        status,
+        ...(status === "rejected" ? { rejectReason: "on_hold" } : {}),
+      });
+      byStatus.set(status, mod.id);
+    }
+
+    const rows = await workshopService.getWorkshopMods(workshop.id, {
+      statuses: ["approved", "testing", "next_update"],
+    });
+
+    expect(new Set(rows.map((row) => row.id))).toEqual(
+      new Set([
+        byStatus.get("approved"),
+        byStatus.get("testing"),
+        byStatus.get("next_update"),
+      ]),
+    );
+    expect(new Set(rows.map((row) => row.status))).toEqual(
+      new Set(["approved", "testing", "next_update"]),
+    );
+  });
+
+  it("takes precedence over the default visibility filter", async () => {
+    const workshop = await seedWorkshop(ctx);
+    await seedMod(ctx, workshop, { submittedBy: USER_A, status: "approved" });
+    const rejected = await seedMod(ctx, workshop, {
+      submittedBy: USER_A,
+      status: "rejected",
+      rejectReason: "on_hold",
+    });
+
+    const rows = await workshopService.getWorkshopMods(workshop.id, {
+      statuses: ["rejected"],
+    });
+
+    expect(rows.map((row) => row.id)).toEqual([rejected.id]);
+  });
+});
+
 describe("WorkshopService.getMySuggestions", () => {
   it("returns the caller's own user rows across statuses", async () => {
     const workshop = await seedWorkshop(ctx);

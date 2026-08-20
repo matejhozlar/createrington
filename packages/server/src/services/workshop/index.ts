@@ -242,16 +242,16 @@ export class WorkshopService {
   /** Suggestions in a workshop with project summaries and upvote counts. */
   async getWorkshopMods(
     workshopId: number,
-    options: { includeHidden?: boolean } = {},
+    options: { includeHidden?: boolean; statuses?: WorkshopModStatus[] } = {},
   ): Promise<WorkshopModListItem[]> {
     const workshop = await this.getWorkshop(workshopId);
+    const statusFilter = options.statuses
+      ? { status: { $in: options.statuses } }
+      : options.includeHidden
+        ? {}
+        : { status: { $in: USER_VISIBLE_MOD_STATUSES } };
     const mods = await Q.workshop.mod.findAll(
-      {
-        workshopId,
-        ...(options.includeHidden
-          ? {}
-          : { status: { $in: USER_VISIBLE_MOD_STATUSES } }),
-      },
+      { workshopId, ...statusFilter },
       { orderBy: "createdAt", orderDirection: "desc" },
     );
     return this.decorateMods(workshop, mods);
