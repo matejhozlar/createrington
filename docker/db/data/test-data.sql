@@ -406,6 +406,7 @@ INSERT INTO waitlist_entry (
   discord_id,
   discord_username,
   status,
+  created_at,
   queued_at,
   promoted_at,
   promoted_by,
@@ -419,33 +420,38 @@ INSERT INTO waitlist_entry (
 -- ======================================================================
 -- REGISTERED (fully onboarded)
 -- ======================================================================
-('123456789012345686', 'mumbojumbo', 'registered', NOW() - INTERVAL '52 days', NOW() - INTERVAL '51 days', '818819241666281503', NOW() - INTERVAL '50 days', NULL, true, NULL, NULL, '111111111111111201'),
-('123456789012345687', 'grian', 'registered', NOW() - INTERVAL '47 days', NOW() - INTERVAL '46 days', NULL, NOW() - INTERVAL '45 days', NULL, true, NULL, NULL, '111111111111111202'),
+('123456789012345686', 'mumbojumbo', 'registered', NOW() - INTERVAL '52 days', NOW() - INTERVAL '52 days', NOW() - INTERVAL '51 days', '818819241666281503', NOW() - INTERVAL '50 days', NULL, true, NULL, NULL, '111111111111111201'),
+('123456789012345687', 'grian', 'registered', NOW() - INTERVAL '47 days', NOW() - INTERVAL '47 days', NOW() - INTERVAL '46 days', NULL, NOW() - INTERVAL '45 days', NULL, true, NULL, NULL, '111111111111111202'),
 
 -- Registered but never joined Minecraft (stuck before first session)
-('223456789012345692', 'registered_not_joined_mc', 'registered', NOW() - INTERVAL '4 days', NOW() - INTERVAL '3 days', NULL, NOW() - INTERVAL '2 days', NULL, false, NULL, NULL, '111111111111111203'),
+('223456789012345692', 'registered_not_joined_mc', 'registered', NOW() - INTERVAL '4 days', NOW() - INTERVAL '4 days', NOW() - INTERVAL '3 days', NULL, NOW() - INTERVAL '2 days', NULL, false, NULL, NULL, '111111111111111203'),
 
 -- ======================================================================
 -- PROMOTED (slot reserved, awaiting registration)
 -- ======================================================================
 -- Promoted manually by an admin
-('123456789012345688', 'goodtimeswithscar', 'promoted', NOW() - INTERVAL '10 days', NOW() - INTERVAL '2 days', '818819241666281503', NULL, NULL, false, '333333333333333201', '444444444444444201', '111111111111111204'),
+('123456789012345688', 'goodtimeswithscar', 'promoted', NOW() - INTERVAL '10 days', NOW() - INTERVAL '10 days', NOW() - INTERVAL '2 days', '818819241666281503', NULL, NULL, false, '333333333333333201', '444444444444444201', '111111111111111204'),
 
 -- Promoted automatically, close to the 7-day registration window
-('123456789012345689', 'iskall85', 'promoted', NOW() - INTERVAL '12 days', NOW() - INTERVAL '6 days', NULL, NULL, NULL, false, '333333333333333202', '444444444444444202', '111111111111111205'),
+('123456789012345689', 'iskall85', 'promoted', NOW() - INTERVAL '12 days', NOW() - INTERVAL '12 days', NOW() - INTERVAL '6 days', NULL, NULL, NULL, false, '333333333333333202', '444444444444444202', '111111111111111205'),
 
 -- ======================================================================
 -- QUEUED (waiting for a spot, ordered by queued_at)
 -- ======================================================================
-('223456789012345690', 'waiter_user1', 'queued', NOW() - INTERVAL '12 hours', NULL, NULL, NULL, NULL, false, '333333333333333203', '444444444444444203', '111111111111111206'),
-('223456789012345691', 'waiter_user2', 'queued', NOW() - INTERVAL '9 hours', NULL, NULL, NULL, NULL, false, '333333333333333204', '444444444444444204', '111111111111111207'),
-('223456789012345693', 'waiter_user3', 'queued', NOW() - INTERVAL '3 hours', NULL, NULL, NULL, NULL, false, '333333333333333205', '444444444444444205', '111111111111111208'),
+-- Signed up 40 days ago, no-showed a promotion and got re-queued 12 hours
+-- ago: back of the line, but not a new signup in any window.
+('223456789012345690', 'waiter_user1', 'queued', NOW() - INTERVAL '40 days', NOW() - INTERVAL '12 hours', NULL, NULL, NULL, NULL, false, '333333333333333203', '444444444444444203', '111111111111111206'),
+-- Signed up 20 days ago, expired, rejoined 9 hours ago: counts this month
+-- only.
+('223456789012345691', 'waiter_user2', 'queued', NOW() - INTERVAL '20 days', NOW() - INTERVAL '9 hours', NULL, NULL, NULL, NULL, false, '333333333333333204', '444444444444444204', '111111111111111207'),
+-- Genuine first-time signup today.
+('223456789012345693', 'waiter_user3', 'queued', NOW() - INTERVAL '3 hours', NOW() - INTERVAL '3 hours', NULL, NULL, NULL, NULL, false, '333333333333333205', '444444444444444205', '111111111111111208'),
 
 -- ======================================================================
 -- EXPIRED (left the queue or the guild)
 -- ======================================================================
-('223456789012345694', 'left_the_queue', 'expired', NOW() - INTERVAL '11 days', NULL, NULL, NULL, NOW() - INTERVAL '10 days', false, NULL, NULL, '111111111111111209'),
-('223456789012345695', 'left_the_guild', 'expired', NOW() - INTERVAL '14 days', NOW() - INTERVAL '13 days', NULL, NULL, NOW() - INTERVAL '12 days', false, NULL, NULL, '111111111111111210');
+('223456789012345694', 'left_the_queue', 'expired', NOW() - INTERVAL '11 days', NOW() - INTERVAL '11 days', NULL, NULL, NULL, NOW() - INTERVAL '10 days', false, NULL, NULL, '111111111111111209'),
+('223456789012345695', 'left_the_guild', 'expired', NOW() - INTERVAL '14 days', NOW() - INTERVAL '14 days', NOW() - INTERVAL '13 days', NULL, NULL, NOW() - INTERVAL '12 days', false, NULL, NULL, '111111111111111210');
 
 -- ============================================================================
 -- ADMIN LOG ACTIONS

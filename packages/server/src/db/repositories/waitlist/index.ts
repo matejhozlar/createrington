@@ -248,9 +248,11 @@ export class WaitlistRepository {
       Q.waitlist.entry.count({ status: "registered" }),
       Q.waitlist.entry.count({ status: "expired" }),
       Q.waitlist.entry.count({ joinedMinecraft: true }),
-      Q.waitlist.entry.count({ queuedAt: { $gte: today } }),
-      Q.waitlist.entry.count({ queuedAt: { $gte: weekAgo } }),
-      Q.waitlist.entry.count({ queuedAt: { $gte: monthAgo } }),
+      // createdAt, not queuedAt: a re-queued no-show or a rejoin is not a
+      // new signup, and queuedAt is rewritten by both.
+      Q.waitlist.entry.count({ createdAt: { $gte: today } }),
+      Q.waitlist.entry.count({ createdAt: { $gte: weekAgo } }),
+      Q.waitlist.entry.count({ createdAt: { $gte: monthAgo } }),
     ]);
 
     return {
