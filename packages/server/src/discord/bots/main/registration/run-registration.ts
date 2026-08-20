@@ -13,6 +13,7 @@ import {
 import { RoleManager } from "@/discord/utils/roles/role-manager";
 import { minecraftRcon, WhitelistAction } from "@/utils/rcon";
 import type { GuildMember, GuildTextBasedChannel } from "discord.js";
+import type { WaitlistEntry } from "@createrington/shared/db";
 import { postRegistrationWelcomeCard } from "./post-welcome-card";
 
 /** Minimal shape each entry point (slash command, modal submit) supplies so the
@@ -106,9 +107,12 @@ export async function runRegistration(params: {
     return { ok: false, errorMessage: "invalid mc name" };
   }
 
+  let entry: WaitlistEntry | null = null;
+  let reservedHere = false;
+
   try {
     await randomDelay();
-    let entry = await Q.waitlist.entry.find({ discordId });
+    entry = await Q.waitlist.entry.find({ discordId });
 
     if (!entry) {
       const hasCapacity = await waitlistRepo.hasCapacity();
@@ -122,6 +126,7 @@ export async function runRegistration(params: {
         discordId,
         username,
       );
+      reservedHere = true;
     } else if (entry.status === "queued") {
       steps[currentStep].error = "Not promoted from the waitlist";
       throw new Error(
@@ -135,6 +140,8 @@ export async function runRegistration(params: {
           "The server is currently at capacity. Use the **Join Waitlist** button in your verification channel to get in line.",
         );
       }
+      entry = await waitlistService.reserveForRegistration(entry.id);
+      reservedHere = true;
     }
 
     steps[currentStep].completed = true;
@@ -212,6 +219,7 @@ export async function runRegistration(params: {
     });
 
     await waitlistService.markRegistered(entry.id);
+    reservedHere = false;
 
     steps[currentStep].completed = true;
     currentStep++;
@@ -273,6 +281,17 @@ export async function runRegistration(params: {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logger.error("registration failed:", error);
+
+    if (reservedHere && entry) {
+      try {
+        await waitlistService.releaseReservation(entry.id);
+      } catch (releaseError) {
+        logger.error(
+          `Could not release waitlist reservation for entry #${entry.id}:`,
+          releaseError,
+        );
+      }
+    }
 
     const adminEmbed = EmbedPresets.registration.adminError(
       mcName,

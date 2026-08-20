@@ -260,15 +260,17 @@ export function registerServices(): void {
     { dependencies: [Services.DATABASE, Services.DISCORD_MAIN_BOT] },
   );
 
-  container.register(
-    Services.WAITLIST_CLEANUP_SERVICE,
-    async () => {
-      const service = new WaitlistCleanupService();
-      await service.initialize();
-      return service;
-    },
-    { dependencies: [Services.DATABASE] },
-  );
+  if (!config.envMode.isDev) {
+    container.register(
+      Services.WAITLIST_CLEANUP_SERVICE,
+      async () => {
+        const service = new WaitlistCleanupService();
+        await service.initialize();
+        return service;
+      },
+      { dependencies: [Services.DATABASE, Services.DISCORD_MAIN_BOT] },
+    );
+  }
 
   container.register(
     Services.PLAYER_PROMPT_SERVICE,

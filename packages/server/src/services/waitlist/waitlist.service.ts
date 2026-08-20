@@ -9,9 +9,26 @@ import { createVerificationChannel } from "@/discord/bots/main/registration/veri
 import { BadRequestError } from "@/app/middleware/error-handler";
 import { ConstraintViolationError } from "@/db/utils/errors";
 import type { WaitlistEntry } from "@createrington/shared/db";
-import type { Guild, GuildMember, GuildTextBasedChannel } from "discord.js";
+import {
+  DiscordAPIError,
+  RESTJSONErrorCodes,
+  type Guild,
+  type GuildMember,
+  type GuildTextBasedChannel,
+} from "discord.js";
 
 const PROMOTION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const PROMOTION_BATCH = 100;
+
+type MemberLookup =
+  | { state: "found"; member: GuildMember }
+  | { state: "gone" }
+  | { state: "unavailable" };
+
+type ChannelLookup =
+  | { state: "found"; channel: GuildTextBasedChannel }
+  | { state: "gone" }
+  | { state: "unavailable" };
 
 /**
  * Queue orchestration for the Discord-born waitlist: joining and leaving
@@ -20,7 +37,9 @@ const PROMOTION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
  * no-shows, and all the Discord side effects (waiting-card renders, pings,
  * verification-channel recovery). Promotion passes are serialized: a call
  * made while one is running schedules a single re-run after it finishes.
- * Concurrent maintenance runs are skipped.
+ * Concurrent maintenance runs are skipped. An entry is only expired when
+ * Discord positively reports the member gone; an unreachable guild or a
+ * failed lookup skips the entry until the next pass.
  */
 export class WaitlistService {
   private maintenanceRunning = false;
@@ -31,28 +50,44 @@ export class WaitlistService {
     return mainBot.guilds.cache.get(config.discord.guild.id) ?? null;
   }
 
-  private async fetchMember(discordId: string): Promise<GuildMember | null> {
+  private async lookupMember(discordId: string): Promise<MemberLookup> {
     const guild = this.getGuild();
-    if (!guild) return null;
+    if (!guild) return { state: "unavailable" };
     try {
-      return await guild.members.fetch(discordId);
-    } catch {
-      return null;
+      const member = await guild.members.fetch(discordId);
+      return { state: "found", member };
+    } catch (error) {
+      if (
+        error instanceof DiscordAPIError &&
+        (error.code === RESTJSONErrorCodes.UnknownMember ||
+          error.code === RESTJSONErrorCodes.UnknownUser)
+      ) {
+        return { state: "gone" };
+      }
+      logger.warn(`Could not fetch guild member ${discordId}:`, error);
+      return { state: "unavailable" };
     }
   }
 
-  private async fetchChannel(
+  private async lookupChannel(
     channelId: string | null,
-  ): Promise<GuildTextBasedChannel | null> {
-    if (!channelId) return null;
+  ): Promise<ChannelLookup> {
+    if (!channelId) return { state: "gone" };
     try {
       const channel = await mainBot.channels.fetch(channelId);
       if (channel && channel.isTextBased() && !channel.isDMBased()) {
-        return channel;
+        return { state: "found", channel };
       }
-      return null;
-    } catch {
-      return null;
+      return { state: "gone" };
+    } catch (error) {
+      if (
+        error instanceof DiscordAPIError &&
+        error.code === RESTJSONErrorCodes.UnknownChannel
+      ) {
+        return { state: "gone" };
+      }
+      logger.warn(`Could not fetch channel ${channelId}:`, error);
+      return { state: "unavailable" };
     }
   }
 
@@ -225,10 +260,10 @@ export class WaitlistService {
     await this.expireEntry(entry.id, `${entry.discordUsername} left the guild`);
     if (entry.status === "promoted") this.schedulePromotionPass();
 
-    const channel = await this.fetchChannel(entry.verifyChannelId);
-    if (channel) {
+    const lookup = await this.lookupChannel(entry.verifyChannelId);
+    if (lookup.state === "found") {
       try {
-        await channel.delete(
+        await lookup.channel.delete(
           `Waitlist member ${entry.discordUsername} left the guild`,
         );
       } catch (error) {
@@ -238,6 +273,31 @@ export class WaitlistService {
         );
       }
     }
+  }
+
+  /** Flip an expired or registered entry back to promoted so a direct registration holds its slot. */
+  async reserveForRegistration(entryId: number): Promise<WaitlistEntry> {
+    await Q.waitlist.entry.update(
+      { id: entryId },
+      {
+        status: "promoted",
+        promotedAt: new Date(),
+        promotedBy: null,
+        registeredAt: null,
+        expiredAt: null,
+      },
+    );
+    await waitlistRepo.updateProgressEmbed(entryId);
+    return Q.waitlist.entry.get({ id: entryId });
+  }
+
+  /** Return a slot reserved by a direct registration attempt that failed before a player row was written. */
+  async releaseReservation(entryId: number): Promise<void> {
+    await this.expireEntry(
+      entryId,
+      "registration attempt failed before completing",
+    );
+    this.schedulePromotionPass();
   }
 
   /**
@@ -259,15 +319,20 @@ export class WaitlistService {
       );
     }
 
-    const member = await this.fetchMember(entry.discordId);
-    if (!member) {
+    const lookup = await this.lookupMember(entry.discordId);
+    if (lookup.state === "unavailable") {
+      throw new BadRequestError(
+        "Could not reach Discord to verify the member. Try again in a moment.",
+      );
+    }
+    if (lookup.state === "gone") {
       await this.expireEntry(entry.id, "member is no longer in the guild");
       throw new BadRequestError(
         "This member is no longer in the Discord server; the entry has been expired.",
       );
     }
 
-    const notified = await this.promoteMember(entry, member, promotedBy);
+    const notified = await this.promoteMember(entry, lookup.member, promotedBy);
 
     return { entry: await Q.waitlist.entry.get({ id: entry.id }), notified };
   }
@@ -309,7 +374,14 @@ export class WaitlistService {
       memberMention: `${member}`,
     });
 
-    let channel = await this.fetchChannel(entry.verifyChannelId);
+    const lookup = await this.lookupChannel(entry.verifyChannelId);
+    if (lookup.state === "unavailable") {
+      throw new Error(
+        `Verification channel ${entry.verifyChannelId} is unreachable`,
+      );
+    }
+
+    let channel = lookup.state === "found" ? lookup.channel : null;
     let waitingMessageId = entry.waitingMessageId;
 
     if (!channel) {
@@ -394,26 +466,39 @@ export class WaitlistService {
   }
 
   private async runPromotionPass(): Promise<number> {
+    if (!this.getGuild()) {
+      logger.warn("Skipping waitlist promotion pass: guild is not available");
+      return 0;
+    }
+
     let free = await waitlistRepo.getFreeSlots();
     if (free <= 0) return 0;
 
     const queued = await Q.waitlist.entry.findAll(
       { status: "queued" },
-      { orderBy: "queuedAt", orderDirection: "asc", limit: 100 },
+      { orderBy: "queuedAt", orderDirection: "asc", limit: PROMOTION_BATCH },
     );
 
     let promoted = 0;
+    let expired = 0;
     for (const entry of queued) {
       if (free <= 0) break;
 
-      const member = await this.fetchMember(entry.discordId);
-      if (!member) {
+      const lookup = await this.lookupMember(entry.discordId);
+      if (lookup.state === "gone") {
         await this.expireEntry(entry.id, "member is no longer in the guild");
+        expired++;
+        continue;
+      }
+      if (lookup.state === "unavailable") {
+        logger.warn(
+          `Skipping waitlist entry #${entry.id} during auto-promotion: member lookup unavailable`,
+        );
         continue;
       }
 
       try {
-        await this.promoteMember(entry, member, null);
+        await this.promoteMember(entry, lookup.member, null);
         promoted++;
         free--;
       } catch (error) {
@@ -430,6 +515,14 @@ export class WaitlistService {
       );
     }
 
+    if (
+      free > 0 &&
+      queued.length === PROMOTION_BATCH &&
+      promoted + expired > 0
+    ) {
+      this.promotionRerun = true;
+    }
+
     return promoted;
   }
 
@@ -441,11 +534,17 @@ export class WaitlistService {
     );
 
     for (const entry of stale) {
-      const member = await this.fetchMember(entry.discordId);
-      if (!member) {
+      const lookup = await this.lookupMember(entry.discordId);
+      if (lookup.state === "gone") {
         await this.expireEntry(
           entry.id,
           "stale promotion and member no longer in guild",
+        );
+        continue;
+      }
+      if (lookup.state === "unavailable") {
+        logger.warn(
+          `Skipping stale promotion #${entry.id}: member lookup unavailable`,
         );
         continue;
       }
@@ -465,8 +564,9 @@ export class WaitlistService {
         `Re-queued stale promotion #${entry.id} (${entry.discordUsername})`,
       );
 
-      const channel = await this.fetchChannel(entry.verifyChannelId);
-      if (!channel) continue;
+      const channelLookup = await this.lookupChannel(entry.verifyChannelId);
+      if (channelLookup.state !== "found") continue;
+      const { channel } = channelLookup;
 
       try {
         if (entry.waitingMessageId) {
@@ -503,6 +603,10 @@ export class WaitlistService {
   /** One maintenance pass: recycle stale promotions, then fill free slots. Concurrent runs are skipped. */
   async runMaintenance(): Promise<void> {
     if (this.maintenanceRunning) return;
+    if (!this.getGuild()) {
+      logger.warn("Skipping waitlist maintenance: guild is not available");
+      return;
+    }
     this.maintenanceRunning = true;
     try {
       await this.requeueStalePromotions();

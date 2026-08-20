@@ -130,7 +130,7 @@ export class WaitlistRepository {
       const entry = await Q.waitlist.entry.get({ id: entryId });
 
       if (!entry.adminMessageId) {
-        logger.warn(`No admin message ID for waitlist entry ${entryId}`);
+        logger.debug(`No admin message ID for waitlist entry ${entryId}`);
         return;
       }
 

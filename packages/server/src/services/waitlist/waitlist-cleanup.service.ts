@@ -5,7 +5,9 @@ import { waitlistService } from "./waitlist.service";
  * registration window lapsed (or expires them when the member left) and
  * auto-promotes the oldest queued entries into any free slots. Runs once on
  * startup, then every hour; player deletions also trigger an immediate
- * promotion pass, so the interval is only a backstop.
+ * promotion pass, so the interval is only a backstop. Depends on the main
+ * bot being ready and is not registered in local dev, matching the
+ * prod-only join/leave handlers that feed the queue.
  */
 export class WaitlistCleanupService {
   private intervalId?: NodeJS.Timeout;

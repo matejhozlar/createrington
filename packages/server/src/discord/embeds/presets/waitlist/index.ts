@@ -49,7 +49,7 @@ export const WaitlistEmbedPresets = {
       { name: "Queued", done: true },
       {
         name: "Promoted",
-        done: entry.status === "promoted" || entry.status === "registered",
+        done: entry.promotedAt !== null || entry.status === "registered",
       },
       { name: "Registered", done: entry.status === "registered" },
       { name: "Joined Minecraft", done: entry.joinedMinecraft },
