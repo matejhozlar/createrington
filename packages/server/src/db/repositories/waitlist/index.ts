@@ -212,7 +212,11 @@ export class WaitlistRepository {
     await this.updateProgressEmbed(entry.id);
   }
 
-  /** Dashboard stats: status breakdowns, milestone progress counts, queue trends. */
+  /**
+   * Dashboard stats: status breakdowns, milestone progress counts, and
+   * first-time signups per window. The signup windows read createdAt, so an
+   * entry that returns to the queue is not counted a second time.
+   */
   async getStats(): Promise<{
     total: number;
     queued: number;
@@ -220,7 +224,7 @@ export class WaitlistRepository {
     registered: number;
     expired: number;
     joinedMinecraft: number;
-    submitted: {
+    signups: {
       today: number;
       thisWeek: number;
       thisMonth: number;
@@ -238,9 +242,9 @@ export class WaitlistRepository {
       registered,
       expired,
       joinedMinecraft,
-      submittedToday,
-      submittedThisWeek,
-      submittedThisMonth,
+      signupsToday,
+      signupsThisWeek,
+      signupsThisMonth,
     ] = await Promise.all([
       Q.waitlist.entry.count(),
       Q.waitlist.entry.count({ status: "queued" }),
@@ -248,9 +252,9 @@ export class WaitlistRepository {
       Q.waitlist.entry.count({ status: "registered" }),
       Q.waitlist.entry.count({ status: "expired" }),
       Q.waitlist.entry.count({ joinedMinecraft: true }),
-      Q.waitlist.entry.count({ queuedAt: { $gte: today } }),
-      Q.waitlist.entry.count({ queuedAt: { $gte: weekAgo } }),
-      Q.waitlist.entry.count({ queuedAt: { $gte: monthAgo } }),
+      Q.waitlist.entry.count({ createdAt: { $gte: today } }),
+      Q.waitlist.entry.count({ createdAt: { $gte: weekAgo } }),
+      Q.waitlist.entry.count({ createdAt: { $gte: monthAgo } }),
     ]);
 
     return {
@@ -260,10 +264,10 @@ export class WaitlistRepository {
       registered,
       expired,
       joinedMinecraft,
-      submitted: {
-        today: submittedToday,
-        thisWeek: submittedThisWeek,
-        thisMonth: submittedThisMonth,
+      signups: {
+        today: signupsToday,
+        thisWeek: signupsThisWeek,
+        thisMonth: signupsThisMonth,
       },
     };
   }

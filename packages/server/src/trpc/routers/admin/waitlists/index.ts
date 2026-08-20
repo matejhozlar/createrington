@@ -30,7 +30,7 @@ export const waitlistsRouter = router({
         discordId: z.string().optional(),
         ...paginationInput(),
         orderBy: z
-          .enum(["queuedAt", "promotedAt", "discordUsername"])
+          .enum(["createdAt", "queuedAt", "promotedAt", "discordUsername"])
           .default("queuedAt"),
         orderDirection: z.enum(["asc", "desc"]).default("desc"),
       }),

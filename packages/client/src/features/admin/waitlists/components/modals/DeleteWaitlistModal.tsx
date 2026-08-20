@@ -107,6 +107,14 @@ export function DeleteWaitlistModal({
                   <span className="font-medium">{displayEntry?.status}</span>
                 </div>
                 <div className="flex justify-between">
+                  <span className="text-muted-foreground">Signed up:</span>
+                  <span className="font-medium">
+                    {displayEntry
+                      ? new Date(displayEntry.createdAt).toLocaleDateString()
+                      : ""}
+                  </span>
+                </div>
+                <div className="flex justify-between">
                   <span className="text-muted-foreground">Queued:</span>
                   <span className="font-medium">
                     {displayEntry

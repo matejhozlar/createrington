@@ -49,7 +49,7 @@ import { trpc, type RouterOutput } from "@/lib/trpc";
 type WaitlistEntry =
   RouterOutput["admin"]["waitlists"]["list"]["entries"][number];
 
-type SortField = "queuedAt" | "promotedAt" | "discordUsername";
+type SortField = "createdAt" | "queuedAt" | "promotedAt" | "discordUsername";
 type StatusFilter = "all" | WaitlistStatus;
 
 const STATUS_LABELS: Record<WaitlistStatus, string> = {
@@ -58,6 +58,12 @@ const STATUS_LABELS: Record<WaitlistStatus, string> = {
   registered: "Registered",
   expired: "Expired",
 };
+
+function hasRequeued(entry: WaitlistEntry) {
+  return (
+    new Date(entry.createdAt).getTime() !== new Date(entry.queuedAt).getTime()
+  );
+}
 
 export function AdminWaitlists() {
   const [page, setPage] = useState(0);
@@ -225,6 +231,12 @@ export function AdminWaitlists() {
       render: (entry) => (
         <>
           <CellDate value={entry.queuedAt} />
+          {hasRequeued(entry) && (
+            <div className="flex gap-1 text-xs text-muted-foreground">
+              <span>Signed up:</span>
+              <CellDate value={entry.createdAt} className="text-xs" />
+            </div>
+          )}
           {entry.promotedAt && (
             <div className="flex gap-1 text-xs text-muted-foreground">
               <span>Promoted:</span>
@@ -330,10 +342,10 @@ export function AdminWaitlists() {
                 <div>
                   <CardDescription>New This Week</CardDescription>
                   <CardTitle className="text-2xl">
-                    {stats.submitted.thisWeek}
+                    {stats.signups.thisWeek}
                   </CardTitle>
                   <p className="mt-2 text-xs text-muted-foreground">
-                    {stats.submitted.today} today
+                    {stats.signups.today} today
                   </p>
                 </div>
                 <div className="flex size-12 items-center justify-center rounded-full bg-chart-3/10">

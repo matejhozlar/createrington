@@ -258,7 +258,7 @@ export function AdminDashboard() {
                   {waitlistStats?.queued ?? 0}
                 </CardTitle>
                 <p className="mt-2 text-xs text-muted-foreground">
-                  {waitlistStats?.submitted.thisWeek ?? 0} new this week
+                  {waitlistStats?.signups.thisWeek ?? 0} new this week
                 </p>
               </div>
               <div className="flex size-12 items-center justify-center rounded-full bg-chart-3/10">
