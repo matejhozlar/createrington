@@ -149,10 +149,11 @@ jobs:
       - name: Reset database
         if: ${{ github.event.inputs.reset_db == 'true' }}
         run: |
-          apt-get update && apt-get install -y postgresql-client > /dev/null 2>&1
+          command -v psql > /dev/null || { apt-get update > /dev/null && apt-get install -y postgresql-client > /dev/null; }
           pnpm exec infisical run --projectId="$INFISICAL_PROJECT_ID" --env=staging --command '
             export DB_HOST="$DEPLOY_DB_HOST"
             export DB_PORT="$DEPLOY_DB_PORT"
+            export PGPORT="$DEPLOY_DB_PORT"
             export PGPASSWORD="$DB_PASSWORD"
             psql -h "$DB_HOST" -U "$DB_USER" -d postgres -c "DROP DATABASE IF EXISTS $DB_DATABASE WITH (FORCE);"
             psql -h "$DB_HOST" -U "$DB_USER" -d postgres -c "CREATE DATABASE $DB_DATABASE;"
@@ -163,7 +164,7 @@ jobs:
       - name: Sync readonly role grants
         continue-on-error: true
         run: |
-          command -v psql > /dev/null || (apt-get update > /dev/null 2>&1 && apt-get install -y postgresql-client > /dev/null 2>&1)
+          command -v psql > /dev/null || { apt-get update > /dev/null && apt-get install -y postgresql-client > /dev/null; }
           pnpm exec infisical run --projectId="$INFISICAL_PROJECT_ID" --env=staging --command '
             export DB_HOST="$DEPLOY_DB_HOST"
             export DB_PORT="$DEPLOY_DB_PORT"

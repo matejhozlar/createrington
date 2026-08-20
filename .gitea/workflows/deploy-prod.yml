@@ -115,7 +115,7 @@ jobs:
         if: steps.scope.outputs.client_only != 'true'
         continue-on-error: true
         run: |
-          command -v psql > /dev/null || (apt-get update > /dev/null 2>&1 && apt-get install -y postgresql-client > /dev/null 2>&1)
+          command -v psql > /dev/null || { apt-get update > /dev/null && apt-get install -y postgresql-client > /dev/null; }
           pnpm exec infisical run --projectId="$INFISICAL_PROJECT_ID" --env=prod --command '
             export DB_HOST="$DEPLOY_DB_HOST"
             export DB_PORT="$DEPLOY_DB_PORT"

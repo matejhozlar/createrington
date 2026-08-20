@@ -63,6 +63,17 @@ Then add a new server with these details:
 - **Username:** postgres
 - **Password:** postgres
 
+## Claude readonly role
+
+The Claude admin chat (the `claude-automation` service) queries the production and dev databases through a dedicated `claude_readonly` Postgres role. Two pieces, in two repos:
+
+- **The role itself** is created once per cluster, as the `postgres` superuser, by `claude-automation/scripts/sync-readonly-role.sh --init`. This repo never creates it.
+- **What the role may read** is defined here in `docker/db/claude-readonly-role.sql`: blanket `SELECT` on every table, then explicit `REVOKE`s for blocked tables and column-level grants for partially visible ones. Treat it as the allow-list to update whenever a sensitive table or column is added.
+
+The deploy workflows apply that file through `docker/db/sync-readonly-grants.sh` right after every migration, in a single transaction, as the database owner (so `ALTER DEFAULT PRIVILEGES` covers tables that later migrations create). They also copy both files to `/opt/createrington/docker/db/` and `/opt/createrington-dev/docker/db/`, which is where the manual re-sync in `claude-automation` reads them from. A migration that drops and recreates a table loses that table's grants until the sync step runs, a window of seconds within the same deploy.
+
+Local dev does not need any of this: the role does not exist in the Docker database, and the sync script exits without changes when the role is missing.
+
 ## Troubleshooting
 
 **Port 5432 is already in use.** You likely have PostgreSQL installed locally on your machine. Either stop your local PostgreSQL service or switch the container to a different port.
