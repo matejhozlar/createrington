@@ -7,6 +7,7 @@ import { WaitlistComponentPresets } from "@/discord/components/presets/waitlist"
 import { mainBot } from "@/discord/bots/main/client";
 import { createVerificationChannel } from "@/discord/bots/main/registration/verification-channel";
 import { BadRequestError } from "@/app/middleware/error-handler";
+import { ConstraintViolationError } from "@/db/utils/errors";
 import type { WaitlistEntry } from "@createrington/shared/db";
 import type { Guild, GuildMember, GuildTextBasedChannel } from "discord.js";
 
@@ -106,28 +107,37 @@ export class WaitlistService {
     verifyChannelId: string;
     waitingMessageId: string;
   }): Promise<WaitlistEntry> {
-    const existing = await Q.waitlist.entry.find({
+    let existing = await Q.waitlist.entry.find({
       discordId: params.discordId,
     });
 
     if (!existing) {
-      const entry = await Q.waitlist.entry.createAndReturn({
-        discordId: params.discordId,
-        discordUsername: params.discordUsername,
-        verifyChannelId: params.verifyChannelId,
-        waitingMessageId: params.waitingMessageId,
-      });
+      try {
+        const entry = await Q.waitlist.entry.createAndReturn({
+          discordId: params.discordId,
+          discordUsername: params.discordUsername,
+          verifyChannelId: params.verifyChannelId,
+          waitingMessageId: params.waitingMessageId,
+        });
 
-      logger.info(
-        `${params.discordUsername} (${params.discordId}) joined the waitlist as entry #${entry.id}`,
-      );
+        logger.info(
+          `${params.discordUsername} (${params.discordId}) joined the waitlist as entry #${entry.id}`,
+        );
 
-      await this.notifyAdmins(entry);
-      await waitlistRepo.updateProgressEmbed(entry.id);
-      return Q.waitlist.entry.get({ id: entry.id });
+        await this.notifyAdmins(entry);
+        return Q.waitlist.entry.get({ id: entry.id });
+      } catch (error) {
+        if (!(error instanceof ConstraintViolationError)) throw error;
+        existing = await Q.waitlist.entry.get({ discordId: params.discordId });
+      }
     }
 
-    if (existing.status === "expired") {
+    const canRejoin =
+      existing.status === "expired" ||
+      (existing.status === "registered" &&
+        !(await Q.player.exists({ discordId: params.discordId })));
+
+    if (canRejoin) {
       await Q.waitlist.entry.update(
         { id: existing.id },
         {
@@ -194,6 +204,17 @@ export class WaitlistService {
     return Q.waitlist.entry.get({ id: entry.id });
   }
 
+  /** Expire a deleted player's entry so they re-enter intake from scratch. */
+  async expireForPlayerDeletion(discordId: string): Promise<void> {
+    const entry = await Q.waitlist.entry.find({ discordId });
+    if (!entry || entry.status === "expired") return;
+
+    await this.expireEntry(
+      entry.id,
+      `${entry.discordUsername} was deleted as a player`,
+    );
+  }
+
   /** Expire a departed member's entry and delete their verification channel. */
   async expireForDeparture(discordId: string): Promise<void> {
     const entry = await Q.waitlist.entry.find({ discordId });
@@ -223,12 +244,13 @@ export class WaitlistService {
    * Promote a queued entry: reserve a slot, swap the waiting card for the
    * register card, and ping the member in their verification channel.
    * Rejects entries that are not queued. Pass null as promotedBy for
-   * automatic promotion.
+   * automatic promotion. `notified` is false when the slot was reserved
+   * but the Discord ping could not be delivered.
    */
   async promote(
     entryId: number,
     promotedBy: string | null,
-  ): Promise<WaitlistEntry> {
+  ): Promise<{ entry: WaitlistEntry; notified: boolean }> {
     const entry = await Q.waitlist.entry.get({ id: entryId });
 
     if (entry.status !== "queued") {
@@ -245,33 +267,44 @@ export class WaitlistService {
       );
     }
 
-    await this.promoteMember(entry, member, promotedBy);
+    const notified = await this.promoteMember(entry, member, promotedBy);
 
-    return Q.waitlist.entry.get({ id: entry.id });
+    return { entry: await Q.waitlist.entry.get({ id: entry.id }), notified };
   }
 
   private async promoteMember(
     entry: WaitlistEntry,
     member: GuildMember,
     promotedBy: string | null,
-  ): Promise<void> {
+  ): Promise<boolean> {
     await Q.waitlist.entry.update(
       { id: entry.id },
       { status: "promoted", promotedAt: new Date(), promotedBy },
     );
 
-    await this.renderRegisterCard(entry, member);
+    let notified = false;
+    try {
+      notified = await this.renderRegisterCard(entry, member);
+    } catch (error) {
+      logger.error(
+        `Promoted waitlist entry #${entry.id} but could not notify the member:`,
+        error,
+      );
+    }
+
     await waitlistRepo.updateProgressEmbed(entry.id);
 
     logger.info(
-      `Promoted waitlist entry #${entry.id} (${entry.discordUsername})${promotedBy ? ` by admin ${promotedBy}` : " automatically"}`,
+      `Promoted waitlist entry #${entry.id} (${entry.discordUsername})${promotedBy ? ` by admin ${promotedBy}` : " automatically"}${notified ? "" : " (member not notified)"}`,
     );
+
+    return notified;
   }
 
   private async renderRegisterCard(
     entry: WaitlistEntry,
     member: GuildMember,
-  ): Promise<void> {
+  ): Promise<boolean> {
     const card = RegistrationComponentPresets.idle({
       memberMention: `${member}`,
     });
@@ -296,7 +329,7 @@ export class WaitlistService {
           `Could not recreate verification channel for entry #${entry.id}:`,
           error,
         );
-        return;
+        return false;
       }
     }
 
@@ -331,6 +364,8 @@ export class WaitlistService {
     await channel.send({
       content: `🎉 <@${entry.discordId}> A spot opened up for you! Click **Register** above to claim it.`,
     });
+
+    return true;
   }
 
   /**
@@ -494,7 +529,6 @@ export class WaitlistService {
     );
 
     await this.notifyAdmins(entry);
-    await waitlistRepo.updateProgressEmbed(entry.id);
     return Q.waitlist.entry.get({ id: entry.id });
   }
 

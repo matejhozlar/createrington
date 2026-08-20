@@ -81,12 +81,7 @@ export const waitlistsRouter = router({
     .input(z.object({ id: z.number().int().positive() }))
     .mutation(async ({ input, ctx }) => {
       try {
-        const entry = await waitlistService.promote(
-          input.id,
-          ctx.user.discordId,
-        );
-
-        return { entry };
+        return await waitlistService.promote(input.id, ctx.user.discordId);
       } catch (error) {
         rethrowTrpc(error);
       }

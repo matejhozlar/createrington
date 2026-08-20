@@ -347,6 +347,9 @@ export function registerServices(): void {
     Services.PLAYER_DELETION_SERVICE,
     async () => {
       await playerDeletionService.initialize();
+      playerDeletionService.onDeleted((player) =>
+        waitlistService.expireForPlayerDeletion(player.discordId),
+      );
       playerDeletionService.onDeleted(async () => {
         await waitlistService.promoteEligible();
       });

@@ -1,6 +1,8 @@
 import { db, Q } from "@/db";
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
+import { ButtonPresets } from "@/discord/embeds/presets/buttons";
+import { ActionRowBuilder, type ButtonBuilder } from "discord.js";
 import type {
   WaitlistEntry,
   WaitlistEntryFilters,
@@ -50,9 +52,7 @@ export class WaitlistRepository {
       Q.waitlist.entry.count({ status: "promoted" }),
     ]);
 
-    const free = Number.isFinite(playerLimit)
-      ? Math.max(0, playerLimit - currentPlayers - reserved)
-      : 0;
+    const free = Math.max(0, playerLimit - currentPlayers - reserved);
 
     logger.debug(
       `Capacity check: players=${currentPlayers}, reserved=${reserved}, limit=${playerLimit}, free=${free}`,
@@ -156,11 +156,15 @@ export class WaitlistRepository {
         .createProgressEmbed(entry, discordUser, player)
         .timestamp();
 
+      const linkRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        ButtonPresets.links.adminPanel(),
+      );
+
       const result = await Discord.Messages.edit({
         channelId: Discord.Channels.administration.NOTIFICATIONS,
         messageId: entry.adminMessageId,
         embeds: progressEmbed.build(),
-        components: [],
+        components: [linkRow],
       });
 
       if (!result.success) {

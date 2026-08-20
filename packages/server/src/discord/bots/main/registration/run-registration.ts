@@ -122,14 +122,17 @@ export async function runRegistration(params: {
         discordId,
         username,
       );
-    } else if (entry.status === "queued" || entry.status === "expired") {
+    } else if (entry.status === "queued") {
+      steps[currentStep].error = "Not promoted from the waitlist";
+      throw new Error(
+        "You're in the waitlist queue. We'll ping you right here as soon as it's your turn to register.",
+      );
+    } else if (entry.status === "expired" || entry.status === "registered") {
       const hasCapacity = await waitlistRepo.hasCapacity();
       if (!hasCapacity) {
-        steps[currentStep].error = "Not promoted from the waitlist";
+        steps[currentStep].error = "Server at capacity";
         throw new Error(
-          entry.status === "queued"
-            ? "The server is currently at capacity and you're still in the queue. We'll ping you right here when a spot opens up."
-            : "The server is currently at capacity. Use the **Join Waitlist** button in your verification channel to get in line.",
+          "The server is currently at capacity. Use the **Join Waitlist** button in your verification channel to get in line.",
         );
       }
     }

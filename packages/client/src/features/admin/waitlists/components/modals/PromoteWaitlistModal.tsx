@@ -31,9 +31,15 @@ export function PromoteWaitlistModal({
 
   const handleSubmit = async () => {
     try {
-      await promoteEntry.mutateAsync({ id: entry.id });
+      const result = await promoteEntry.mutateAsync({ id: entry.id });
 
-      toast.success("Waitlist entry promoted");
+      if (result.notified) {
+        toast.success("Waitlist entry promoted");
+      } else {
+        toast.warning(
+          "Spot reserved, but the member couldn't be pinged in Discord. They'll see the Register button when they refresh their card.",
+        );
+      }
       onClose();
       onSuccess();
     } catch (error) {
