@@ -10,6 +10,7 @@ import {
   REGISTER_MODAL_INPUT_ID,
 } from "@/discord/bots/main/registration/constants";
 import { REGISTER_BUTTON_ID } from "@/discord/components/presets/registration";
+import { denyForeignVerificationChannel } from "@/discord/bots/main/registration/verification-channel";
 
 /** Opens the registration modal when the applicant clicks the welcome button. */
 export const pattern = REGISTER_BUTTON_ID;
@@ -17,6 +18,8 @@ export const pattern = REGISTER_BUTTON_ID;
 export const prodOnly = false;
 
 export async function execute(interaction: ButtonInteraction): Promise<void> {
+  if (await denyForeignVerificationChannel(interaction)) return;
+
   const modal = new ModalBuilder()
     .setCustomId(REGISTER_MODAL_ID)
     .setTitle("Register your Minecraft account");

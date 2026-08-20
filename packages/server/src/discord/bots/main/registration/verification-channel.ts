@@ -1,8 +1,47 @@
-import type { GuildMember, OverwriteResolvable, TextChannel } from "discord.js";
-import { ChannelType, PermissionFlagsBits } from "discord.js";
+import type {
+  ButtonInteraction,
+  GuildMember,
+  OverwriteResolvable,
+  TextChannel,
+} from "discord.js";
+import {
+  ChannelType,
+  MessageFlags,
+  OverwriteType,
+  PermissionFlagsBits,
+} from "discord.js";
 import { Discord } from "@/discord/constants";
 
 const CATEGORY_ALERT_THRESHOLD = 45;
+
+export async function denyForeignVerificationChannel(
+  interaction: ButtonInteraction,
+): Promise<boolean> {
+  const channel =
+    interaction.channel ??
+    (await interaction.guild?.channels
+      .fetch(interaction.channelId)
+      .catch(() => null)) ??
+    null;
+
+  if (
+    !channel ||
+    !("permissionOverwrites" in channel) ||
+    channel.parentId !== Discord.Categories.VERIFICATION
+  ) {
+    return false;
+  }
+
+  const overwrite = channel.permissionOverwrites.cache.get(interaction.user.id);
+  if (overwrite?.type === OverwriteType.Member) return false;
+
+  await interaction.reply({
+    content:
+      "This card belongs to the member this channel was created for. Only they can use these buttons.",
+    flags: MessageFlags.Ephemeral,
+  });
+  return true;
+}
 
 export async function createVerificationChannel(
   member: GuildMember,

@@ -1,6 +1,7 @@
 import { Q, waitlistRepo } from "@/db";
 import { waitlistService } from "@/services/waitlist/waitlist.service";
 import { RegistrationComponentPresets } from "@/discord/components/presets/registration";
+import { denyForeignVerificationChannel } from "@/discord/bots/main/registration/verification-channel";
 import {
   WaitlistComponentPresets,
   WAITLIST_JOIN_BUTTON_ID,
@@ -68,6 +69,8 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
   const discordId = interaction.user.id;
 
   try {
+    if (await denyForeignVerificationChannel(interaction)) return;
+
     switch (interaction.customId) {
       case WAITLIST_JOIN_BUTTON_ID: {
         await interaction.deferUpdate();
