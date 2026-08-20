@@ -1,5 +1,7 @@
 -- Readonly role permissions for Claude admin chat database access.
--- This script is IDEMPOTENT — run it on every deploy to keep permissions in sync.
+-- This script is IDEMPOTENT. The deploy workflows apply it after every
+-- migration via docker/db/sync-readonly-grants.sh, running as the database
+-- owner so ALTER DEFAULT PRIVILEGES covers tables created by later migrations.
 --
 -- How it works:
 --   1. Grants SELECT on ALL current tables (picks up new tables since last run)
@@ -11,8 +13,9 @@
 --   - To BLOCK a new sensitive table: add a REVOKE line to the "Blocked tables" section
 --   - To PARTIALLY expose a table: add REVOKE + column-level GRANT
 --
--- The role itself (claude_readonly) is created separately (one-time setup).
--- This script only manages table-level permissions.
+-- The role itself (claude_readonly) is created separately (one-time setup via
+-- claude-automation/scripts/sync-readonly-role.sh --init). This script only
+-- manages table-level permissions.
 
 -- ============================================================
 -- 1. Blanket read access

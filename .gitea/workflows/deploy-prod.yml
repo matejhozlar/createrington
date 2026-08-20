@@ -98,6 +98,8 @@ jobs:
           mkdir -p /opt/createrington/packages/server
           rm -rf /opt/createrington/packages/server/node_modules
           cp -r packages/server/node_modules /opt/createrington/packages/server/node_modules
+          mkdir -p /opt/createrington/docker/db
+          cp docker/db/claude-readonly-role.sql docker/db/sync-readonly-grants.sh /opt/createrington/docker/db/
 
       - name: Migrate database
         if: steps.scope.outputs.client_only != 'true'
@@ -107,6 +109,18 @@ jobs:
             export DB_PORT="$DEPLOY_DB_PORT"
             export PGPASSWORD="$DB_PASSWORD"
             pnpm db:migrate
+          '
+
+      - name: Sync readonly role grants
+        if: steps.scope.outputs.client_only != 'true'
+        continue-on-error: true
+        run: |
+          command -v psql > /dev/null || (apt-get update > /dev/null 2>&1 && apt-get install -y postgresql-client > /dev/null 2>&1)
+          pnpm exec infisical run --projectId="$INFISICAL_PROJECT_ID" --env=prod --command '
+            export DB_HOST="$DEPLOY_DB_HOST"
+            export DB_PORT="$DEPLOY_DB_PORT"
+            export PGPASSWORD="$DB_PASSWORD"
+            bash docker/db/sync-readonly-grants.sh
           '
 
       - name: Sync runtime .env from Infisical
