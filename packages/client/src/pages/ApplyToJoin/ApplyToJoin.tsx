@@ -11,13 +11,13 @@ import { cn } from "@/lib/utils";
 
 const OPEN_STEPS = [
   "Join our Discord server using the invite link.",
-  "Click Register in your private verification channel and enter your Minecraft username.",
+  "Click Register in the verification channel and enter your Minecraft username.",
   "You're whitelisted automatically. Jump in and play!",
 ];
 
 const WAITLIST_STEPS = [
   "Join our Discord server using the invite link.",
-  "Click Join Waitlist in your private verification channel.",
+  "Click Join Waitlist in the verification channel.",
   "We'll ping you right there when a spot opens. Register and play!",
 ];
 
@@ -58,14 +58,9 @@ export function ApplyToJoin() {
                   <h2 className="text-xl font-semibold">
                     {isWaitlistMode ? "Join the Waitlist" : "Join the Server"}
                   </h2>
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    {isWaitlistMode
-                      ? "We're at capacity right now. Hop into our Discord and join the waitlist from your private verification channel; we'll ping you there the moment a spot opens up."
-                      : "No application needed right now. Hop into our Discord and register with your Minecraft username to get whitelisted."}
-                  </p>
                 </div>
 
-                <Button asChild className="w-full">
+                <Button asChild variant="discord" className="w-full">
                   <a
                     href={DISCORD_INVITE_URL}
                     target="_blank"
