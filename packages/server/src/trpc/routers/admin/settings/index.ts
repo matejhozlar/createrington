@@ -38,8 +38,16 @@ export const adminSettingsRouter = router({
     .mutation(async ({ ctx, input }) => {
       try {
         const actor = auditActor(ctx);
+        const [currentLimit, currentMode] = await Promise.all([
+          settings.getPlayerLimit(),
+          settings.getIntakeMode(),
+        ]);
+        let changed = false;
 
-        if (input.playerLimit !== undefined) {
+        if (
+          input.playerLimit !== undefined &&
+          input.playerLimit !== currentLimit
+        ) {
           await settings.setPlayerLimit(
             input.playerLimit,
             actor.adminDiscordId,
@@ -50,9 +58,13 @@ export const adminSettingsRouter = router({
             description: `Set player limit to ${input.playerLimit}`,
             metadata: { key: "player_limit", value: input.playerLimit },
           });
+          changed = true;
         }
 
-        if (input.intakeMode !== undefined) {
+        if (
+          input.intakeMode !== undefined &&
+          input.intakeMode !== currentMode
+        ) {
           await settings.setIntakeMode(input.intakeMode, actor.adminDiscordId);
           await Q.admin.log.action.logAction({
             ...actor,
@@ -60,9 +72,10 @@ export const adminSettingsRouter = router({
             description: `Set intake mode to ${input.intakeMode}`,
             metadata: { key: "intake_mode", value: input.intakeMode },
           });
+          changed = true;
         }
 
-        if (input.playerLimit !== undefined || input.intakeMode !== undefined) {
+        if (changed) {
           void waitlistService.promoteEligible().catch((error) => {
             logger.error("Promotion pass after settings update failed:", error);
           });

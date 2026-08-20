@@ -1,6 +1,8 @@
 import type {
   ButtonInteraction,
+  Channel,
   GuildMember,
+  GuildTextBasedChannel,
   OverwriteResolvable,
   TextChannel,
 } from "discord.js";
@@ -17,6 +19,17 @@ const CATEGORY_ALERT_INTERVAL_MS = 60 * 60 * 1000;
 
 let lastCategoryAlertAt = 0;
 
+export function isVerificationChannel(
+  channel: Channel | null | undefined,
+): channel is GuildTextBasedChannel {
+  return (
+    !!channel &&
+    "parentId" in channel &&
+    !channel.isThread() &&
+    channel.parentId === Discord.Categories.VERIFICATION
+  );
+}
+
 export async function denyForeignVerificationChannel(
   interaction: ButtonInteraction,
 ): Promise<boolean> {
@@ -27,11 +40,7 @@ export async function denyForeignVerificationChannel(
       .catch(() => null)) ??
     null;
 
-  if (
-    !channel ||
-    !("permissionOverwrites" in channel) ||
-    channel.parentId !== Discord.Categories.VERIFICATION
-  ) {
+  if (!isVerificationChannel(channel) || !("permissionOverwrites" in channel)) {
     return false;
   }
 

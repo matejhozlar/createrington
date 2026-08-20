@@ -4,7 +4,6 @@ import {
   text,
   boolean,
   timestamp,
-  jsonb,
   index,
 } from "drizzle-orm/pg-core";
 import { waitlistStatusEnum } from "./enums";
@@ -33,7 +32,6 @@ export const waitlistEntry = pgTable(
     verifyChannelId: text("verify_channel_id"),
     waitingMessageId: text("waiting_message_id"),
     adminMessageId: text("admin_message_id"),
-    metadata: jsonb("metadata"),
   },
   (table) => [
     index("idx_waitlist_status").on(table.status),

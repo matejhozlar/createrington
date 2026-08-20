@@ -12,9 +12,14 @@ import {
 } from "@/discord/bots/main/registration-cleanup";
 import { RoleManager } from "@/discord/utils/roles/role-manager";
 import { minecraftRcon, WhitelistAction } from "@/utils/rcon";
+import { BadRequestError } from "@/app/middleware/error-handler";
 import type { GuildMember, GuildTextBasedChannel } from "discord.js";
 import type { WaitlistEntry } from "@createrington/shared/db";
 import { postRegistrationWelcomeCard } from "./post-welcome-card";
+import { isVerificationChannel } from "./verification-channel";
+
+const GENERIC_FAILURE_MESSAGE =
+  "Something went wrong on our side. An admin has been notified; please try again in a few minutes.";
 
 /** Minimal shape each entry point (slash command, modal submit) supplies so the
  * core flow can render the Components V2 card without caring where it lands. */
@@ -27,10 +32,11 @@ function randomDelay(min = 1000, max = 3000): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+class RegistrationError extends Error {}
+
 interface RegistrationStep {
   name: string;
   completed: boolean;
-  error?: string;
 }
 
 const STEPS: RegistrationStep[] = [
@@ -61,6 +67,7 @@ export async function runRegistration(params: {
 }): Promise<RegistrationResult> {
   const { member, discordId, userTag, username, mcName, channel, render } =
     params;
+  const verifyChannel = isVerificationChannel(channel) ? channel : null;
 
   const steps = STEPS.map((s) => ({ ...s }));
   let currentStep = 0;
@@ -115,8 +122,7 @@ export async function runRegistration(params: {
     entry = await Q.waitlist.entry.find({ discordId });
 
     if (entry?.status === "queued") {
-      steps[currentStep].error = "Not promoted from the waitlist";
-      throw new Error(
+      throw new RegistrationError(
         "You're in the waitlist queue. We'll ping you right here as soon as it's your turn to register.",
       );
     }
@@ -124,10 +130,10 @@ export async function runRegistration(params: {
     const reservation = await waitlistService.reserveForDirectRegistration(
       discordId,
       username,
+      verifyChannel?.id ?? null,
     );
     if (!reservation) {
-      steps[currentStep].error = "Server at capacity";
-      throw new Error(
+      throw new RegistrationError(
         "The server is currently at capacity. Use the **Join Waitlist** button in your verification channel to get in line.",
       );
     }
@@ -152,8 +158,9 @@ export async function runRegistration(params: {
     };
 
     if (!response.ok || !result.success || !result.data.player?.id) {
-      steps[currentStep].error = "Minecraft account not found";
-      throw new Error(`No Minecraft account found with the name \`${mcName}\``);
+      throw new RegistrationError(
+        `No Minecraft account found with the name \`${mcName}\``,
+      );
     }
 
     const uuid = result.data.player.id;
@@ -170,8 +177,7 @@ export async function runRegistration(params: {
     const exists = await Q.player.exists({ minecraftUuid: uuid });
 
     if (exists) {
-      steps[currentStep].error = "Account already registered";
-      throw new Error(
+      throw new RegistrationError(
         `This Minecraft account (\`${correctName}\`) is already registered`,
       );
     }
@@ -187,7 +193,6 @@ export async function runRegistration(params: {
     try {
       await minecraftRcon.whitelistAll(WhitelistAction.ADD, correctName);
     } catch (error) {
-      steps[currentStep].error = "Failed to add to whitelist";
       throw new Error(`Failed to whitelist ${correctName}: ${error}`);
     }
 
@@ -259,9 +264,9 @@ export async function runRegistration(params: {
       `User ${userTag} (${discordId}) registered as ${correctName} (${uuid})`,
     );
 
-    if (channel) {
+    if (verifyChannel) {
       scheduleChannelClose(
-        channel,
+        verifyChannel,
         AUTO_CLOSE_MS,
         `Registration completed - auto-closed after 24 hours (${userTag})`,
       );
@@ -277,6 +282,11 @@ export async function runRegistration(params: {
     return { ok: true };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
+    const memberMessage =
+      error instanceof RegistrationError || error instanceof BadRequestError
+        ? error.message
+        : GENERIC_FAILURE_MESSAGE;
+    const failedStep = steps[currentStep]?.name ?? "Unknown step";
     logger.error("registration failed:", error);
 
     if (reservedHere && entry) {
@@ -295,7 +305,7 @@ export async function runRegistration(params: {
       userTag,
       discordId,
       errorMessage,
-      steps[currentStep]?.name ?? "Unknown step",
+      failedStep,
     );
 
     await Discord.Messages.send({
@@ -304,15 +314,14 @@ export async function runRegistration(params: {
       content: Discord.Roles.mention(Discord.Roles.ADMIN),
     });
 
-    // Rewind the anchor message back to the idle "click to register" state
-    // with the error appended, so the user can retry.
     await render(
       RegistrationComponentPresets.idle({
         memberMention: `<@${discordId}>`,
-        errorMessage,
+        errorMessage: memberMessage,
+        failedStep,
       }),
     );
 
-    return { ok: false, errorMessage };
+    return { ok: false, errorMessage: memberMessage };
   }
 }

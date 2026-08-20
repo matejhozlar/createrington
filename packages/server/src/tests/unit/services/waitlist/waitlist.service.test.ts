@@ -26,6 +26,7 @@ const state = vi.hoisted(() => {
     free: 0,
     freeDelayMs: 0,
     findAllCalls: 0,
+    hideNextFind: false,
     guildAvailable: true,
     memberFetch: vi.fn(),
     channelFetch: vi.fn(),
@@ -66,8 +67,13 @@ vi.mock("@/db", () => {
     );
 
   const entry = {
-    find: async (identifier: { id?: number; discordId?: string }) =>
-      locate(identifier) ?? null,
+    find: async (identifier: { id?: number; discordId?: string }) => {
+      if (state.hideNextFind) {
+        state.hideNextFind = false;
+        return null;
+      }
+      return locate(identifier) ?? null;
+    },
     get: async (identifier: { id?: number; discordId?: string }) => {
       const found = locate(identifier);
       if (!found) throw new Error("not found");
@@ -195,6 +201,7 @@ beforeEach(() => {
   state.free = 0;
   state.freeDelayMs = 0;
   state.findAllCalls = 0;
+  state.hideNextFind = false;
   state.guildAvailable = true;
   state.memberFetch.mockReset();
   state.memberFetch.mockImplementation(async (id: string) => ({
@@ -317,19 +324,38 @@ describe("WaitlistService.reserveForDirectRegistration", () => {
   it("returns null without writing when no slot is free", async () => {
     state.free = 0;
     const svc = new WaitlistService();
-    expect(await svc.reserveForDirectRegistration("u1", "user1")).toBeNull();
+    expect(
+      await svc.reserveForDirectRegistration("u1", "user1", null),
+    ).toBeNull();
     expect(state.entries).toHaveLength(0);
   });
 
-  it("creates a promoted entry and notifies admins when a slot is free", async () => {
+  it("creates a promoted entry with its verification channel and notifies admins", async () => {
     state.free = 1;
     const svc = new WaitlistService();
-    const result = await svc.reserveForDirectRegistration("u1", "user1");
+    const result = await svc.reserveForDirectRegistration(
+      "u1",
+      "user1",
+      "verify-7",
+    );
 
     expect(result?.reserved).toBe(true);
     expect(result?.entry.status).toBe("promoted");
+    expect(result?.entry.verifyChannelId).toBe("verify-7");
     expect(state.free).toBe(0);
     expect(state.adminSend).toHaveBeenCalledTimes(1);
+  });
+
+  it("re-applies the status guards when the insert loses a duplicate-key race", async () => {
+    state.free = 1;
+    state.entries.push(fakeEntry({ discordId: "u1", status: "queued" }));
+    state.hideNextFind = true;
+
+    const svc = new WaitlistService();
+    await expect(
+      svc.reserveForDirectRegistration("u1", "user1", null),
+    ).rejects.toThrow("Queued members are promoted in order");
+    expect(state.entries[0].status).toBe("queued");
   });
 
   it("reports reserved=false for a member who already holds a promotion", async () => {
@@ -338,7 +364,7 @@ describe("WaitlistService.reserveForDirectRegistration", () => {
     state.entries.push(entry);
 
     const svc = new WaitlistService();
-    const result = await svc.reserveForDirectRegistration("u1", "user1");
+    const result = await svc.reserveForDirectRegistration("u1", "user1", null);
     expect(result).toEqual({ entry, reserved: false });
   });
 
@@ -352,12 +378,17 @@ describe("WaitlistService.reserveForDirectRegistration", () => {
     state.entries.push(entry);
 
     const svc = new WaitlistService();
-    const result = await svc.reserveForDirectRegistration("u1", "user1");
+    const result = await svc.reserveForDirectRegistration(
+      "u1",
+      "user1",
+      "verify-9",
+    );
 
     expect(result?.reserved).toBe(true);
     expect(state.entries).toHaveLength(1);
     expect(entry.status).toBe("promoted");
     expect(entry.expiredAt).toBeNull();
+    expect(entry.verifyChannelId).toBe("verify-9");
     expect(state.progressEmbed).toHaveBeenCalledWith(entry.id);
   });
 
@@ -367,8 +398,8 @@ describe("WaitlistService.reserveForDirectRegistration", () => {
     const svc = new WaitlistService();
 
     const [a, b] = await Promise.all([
-      svc.reserveForDirectRegistration("u1", "user1"),
-      svc.reserveForDirectRegistration("u2", "user2"),
+      svc.reserveForDirectRegistration("u1", "user1", null),
+      svc.reserveForDirectRegistration("u2", "user2", null),
     ]);
 
     expect([a, b].filter(Boolean)).toHaveLength(1);
@@ -385,7 +416,7 @@ describe("WaitlistService.reserveForDirectRegistration", () => {
     const svc = new WaitlistService();
     const [promoted, reservation] = await Promise.all([
       svc.promoteEligible(),
-      svc.reserveForDirectRegistration("direct-1", "direct"),
+      svc.reserveForDirectRegistration("direct-1", "direct", null),
     ]);
 
     const promotedCount = state.entries.filter(

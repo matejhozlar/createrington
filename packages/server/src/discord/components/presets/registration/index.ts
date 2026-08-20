@@ -33,7 +33,6 @@ export interface RegistrationMessage {
 interface RegistrationStepView {
   name: string;
   completed: boolean;
-  error?: string;
 }
 
 function divider(): SeparatorBuilder {
@@ -74,10 +73,11 @@ function registerRow(): ActionRowBuilder<ButtonBuilder> {
  * components plus the `IS_COMPONENTS_V2` flag.
  */
 export const RegistrationComponentPresets = {
-  /** The idle welcome card; a failed attempt re-renders it red with the error attached. */
+  /** The idle welcome card; a failed attempt re-renders it red with the error and the step it failed at. */
   idle(params: {
     memberMention: string;
     errorMessage?: string;
+    failedStep?: string;
   }): RegistrationMessage {
     const container = new ContainerBuilder()
       .setAccentColor(
@@ -93,11 +93,12 @@ export const RegistrationComponentPresets = {
       );
 
     if (params.errorMessage) {
+      const heading = params.failedStep
+        ? `❌ **Last attempt failed at "${params.failedStep}"**`
+        : "❌ **Last attempt failed**";
       container
         .addSeparatorComponents(divider())
-        .addTextDisplayComponents(
-          text(`❌ **Last attempt failed**\n${params.errorMessage}`),
-        );
+        .addTextDisplayComponents(text(`${heading}\n${params.errorMessage}`));
     }
 
     container
@@ -123,8 +124,7 @@ export const RegistrationComponentPresets = {
     const stepsText = steps
       .map((s, i) => {
         let icon = "·";
-        if (s.error) icon = "❌";
-        else if (s.completed) icon = "✓";
+        if (s.completed) icon = "✓";
         else if (i === currentStepIndex) icon = "⏳";
         return `${icon} ${s.name}`;
       })

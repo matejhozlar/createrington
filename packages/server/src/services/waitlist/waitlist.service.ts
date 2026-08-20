@@ -30,6 +30,12 @@ type ChannelLookup =
   | { state: "gone" }
   | { state: "unavailable" };
 
+type Reservation = {
+  entry: WaitlistEntry;
+  reserved: boolean;
+  created: boolean;
+};
+
 /**
  * Queue orchestration for the Discord-born waitlist: joining and leaving
  * the queue, slot-accounted promotion (free slots = player limit - players
@@ -228,12 +234,19 @@ export class WaitlistService {
 
     if (!entry || entry.status !== "queued") return { position: 0, total };
 
-    const ahead = await Q.waitlist.entry.count({
-      status: "queued",
-      queuedAt: { $lt: entry.queuedAt },
-    });
+    const [before, tied] = await Promise.all([
+      Q.waitlist.entry.count({
+        status: "queued",
+        queuedAt: { $lt: entry.queuedAt },
+      }),
+      Q.waitlist.entry.count({
+        status: "queued",
+        queuedAt: { $eq: entry.queuedAt },
+        id: { $lt: entry.id },
+      }),
+    ]);
 
-    return { position: ahead + 1, total };
+    return { position: before + tied + 1, total };
   }
 
   /** Remove a member from the queue (Leave Waitlist button). */
@@ -290,34 +303,42 @@ export class WaitlistService {
    * promoted entry, or flips an expired/registered one back to promoted.
    * Returns null when no free slot is left. `reserved` is false when the
    * member already held a promotion, so the caller must not release it.
+   * Pass the member's verification channel id when the registration runs
+   * inside one, so departure cleanup and re-promotion can find it.
    */
   async reserveForDirectRegistration(
     discordId: string,
     discordUsername: string,
+    verifyChannelId: string | null,
   ): Promise<{ entry: WaitlistEntry; reserved: boolean } | null> {
-    const result = await this.withSlotLock(
-      async (): Promise<{
-        entry: WaitlistEntry;
-        reserved: boolean;
-        created: boolean;
-      } | null> => {
-        let existing = await Q.waitlist.entry.find({ discordId });
+    const settle = async (
+      current: WaitlistEntry,
+    ): Promise<Reservation | null> => {
+      if (current.status === "promoted") {
+        return { entry: current, reserved: false, created: false };
+      }
+      if (current.status === "queued") {
+        throw new BadRequestError(
+          "Queued members are promoted in order and cannot register directly.",
+        );
+      }
+      if (
+        current.status === "registered" &&
+        (await Q.player.exists({ discordId }))
+      ) {
+        throw new BadRequestError(
+          "This Discord account is already registered.",
+        );
+      }
+      return null;
+    };
 
-        if (existing?.status === "promoted") {
-          return { entry: existing, reserved: false, created: false };
-        }
-        if (existing?.status === "queued") {
-          throw new BadRequestError(
-            "Queued members are promoted in order and cannot register directly.",
-          );
-        }
-        if (
-          existing?.status === "registered" &&
-          (await Q.player.exists({ discordId }))
-        ) {
-          throw new BadRequestError(
-            "This Discord account is already registered.",
-          );
+    const result = await this.withSlotLock(
+      async (): Promise<Reservation | null> => {
+        let existing = await Q.waitlist.entry.find({ discordId });
+        if (existing) {
+          const settled = await settle(existing);
+          if (settled) return settled;
         }
 
         if ((await waitlistRepo.getFreeSlots()) <= 0) return null;
@@ -329,14 +350,14 @@ export class WaitlistService {
               discordUsername,
               status: "promoted",
               promotedAt: new Date(),
+              verifyChannelId,
             });
             return { entry, reserved: true, created: true };
           } catch (error) {
             if (!(error instanceof ConstraintViolationError)) throw error;
             existing = await Q.waitlist.entry.get({ discordId });
-            if (existing.status === "promoted") {
-              return { entry: existing, reserved: false, created: false };
-            }
+            const settled = await settle(existing);
+            if (settled) return settled;
           }
         }
 
@@ -349,6 +370,7 @@ export class WaitlistService {
             discordUsername,
             registeredAt: null,
             expiredAt: null,
+            ...(verifyChannelId ? { verifyChannelId } : {}),
           },
         );
         const entry = await Q.waitlist.entry.get({ id: existing.id });
@@ -459,7 +481,9 @@ export class WaitlistService {
       `Promoted waitlist entry #${entry.id} (${entry.discordUsername})${promotedBy ? ` by admin ${promotedBy}` : " automatically"}${notified ? "" : " (member not notified)"}`,
     );
 
-    if (!notified) await this.alertUnnotifiedPromotion(entry);
+    if (!notified && promotedBy === null) {
+      await this.alertUnnotifiedPromotion(entry);
+    }
 
     return { reserved: true, notified };
   }
@@ -589,9 +613,13 @@ export class WaitlistService {
 
     if ((await waitlistRepo.getFreeSlots()) <= 0) return 0;
 
-    const queued = await Q.waitlist.entry.findAll(
-      { status: "queued" },
-      { orderBy: "queuedAt", orderDirection: "asc", limit: PROMOTION_BATCH },
+    const queued = (
+      await Q.waitlist.entry.findAll(
+        { status: "queued" },
+        { orderBy: "queuedAt", orderDirection: "asc", limit: PROMOTION_BATCH },
+      )
+    ).sort(
+      (a, b) => a.queuedAt.getTime() - b.queuedAt.getTime() || a.id - b.id,
     );
 
     let promoted = 0;

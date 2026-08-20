@@ -8,7 +8,7 @@ export const waitlistsRouter = router({
       description: "Check whether the server is in open or waitlist mode.",
     })
     .query(async () => {
-      const hasCapacity = await waitlistRepo.hasCapacity();
+      const hasCapacity = await waitlistRepo.hasCapacityMemoized();
       return { mode: hasCapacity ? ("open" as const) : ("waitlist" as const) };
     }),
 });

@@ -11,6 +11,8 @@ import { settings } from "@/services/settings";
 import { DatabaseTable } from "@/generated/db";
 import { AdminEdit } from "@/types";
 
+const CAPACITY_MEMO_TTL_MS = 5_000;
+
 /**
  * Waitlist persistence and reporting. Entries are Discord-born (created by
  * the Join Waitlist button in a member's verification channel), so every
@@ -20,6 +22,21 @@ import { AdminEdit } from "@/types";
  * service. Capacity reads fall closed when the player-count probe fails.
  */
 export class WaitlistRepository {
+  private capacityMemo: { value: boolean; expiresAt: number } | null = null;
+
+  /** hasCapacity() memoized for a few seconds, for unauthenticated high-frequency reads. */
+  async hasCapacityMemoized(): Promise<boolean> {
+    if (this.capacityMemo && Date.now() < this.capacityMemo.expiresAt) {
+      return this.capacityMemo.value;
+    }
+    const value = await this.hasCapacity();
+    this.capacityMemo = {
+      value,
+      expiresAt: Date.now() + CAPACITY_MEMO_TTL_MS,
+    };
+    return value;
+  }
+
   /**
    * True when intake is open: mode is "auto" and the live player count is
    * below the configured player limit. A "closed" intake mode forces

@@ -13,19 +13,22 @@ const SettingKeys = {
 } as const;
 
 const CACHE_TTL_MS = 10_000;
+const FAILURE_CACHE_TTL_MS = 2_000;
 
 /**
  * Runtime application settings backed by the app_setting table. Each key
  * carries a zod schema and a fallback (env-derived where one exists), so a
  * missing or malformed row degrades to the configured default. Reads are
- * cached briefly; writes invalidate the cache immediately. The cache is
+ * cached briefly (a failed read caches the fallback for an even shorter
+ * window so a DB blip is not amplified); writes invalidate the cache
+ * immediately. The cache is
  * per-instance: under horizontal scaling, other instances serve a stale
  * value for up to the cache TTL after an update. Stored values are wrapped
  * in a `{ value }` envelope so scalar settings fit the jsonb column and its
  * generated Record type cleanly.
  */
 export class SettingsService {
-  private cache = new Map<string, { value: unknown; fetchedAt: number }>();
+  private cache = new Map<string, { value: unknown; expiresAt: number }>();
 
   private async read<T>(
     key: string,
@@ -33,7 +36,7 @@ export class SettingsService {
     fallback: T,
   ): Promise<T> {
     const cached = this.cache.get(key);
-    if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
+    if (cached && Date.now() < cached.expiresAt) {
       return cached.value as T;
     }
 
@@ -42,6 +45,10 @@ export class SettingsService {
       row = await Q.app.setting.find({ key });
     } catch (error) {
       logger.error(`Setting "${key}" read failed:`, error);
+      this.cache.set(key, {
+        value: fallback,
+        expiresAt: Date.now() + FAILURE_CACHE_TTL_MS,
+      });
       return fallback;
     }
 
@@ -55,7 +62,7 @@ export class SettingsService {
       }
     }
 
-    this.cache.set(key, { value, fetchedAt: Date.now() });
+    this.cache.set(key, { value, expiresAt: Date.now() + CACHE_TTL_MS });
     return value;
   }
 

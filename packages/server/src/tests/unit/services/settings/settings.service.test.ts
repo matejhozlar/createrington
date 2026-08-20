@@ -81,10 +81,12 @@ describe("SettingsService", () => {
     expect(await svc.getPlayerLimit()).toBe(100);
   });
 
-  it("uses the fallback when the read fails", async () => {
+  it("uses the fallback when the read fails and caches it briefly", async () => {
     state.failReads = true;
     const svc = new SettingsService();
     expect(await svc.getPlayerLimit()).toBe(100);
+    expect(await svc.getPlayerLimit()).toBe(100);
+    expect(state.findCalls).toBe(1);
   });
 
   it("serves repeated reads from the cache", async () => {
