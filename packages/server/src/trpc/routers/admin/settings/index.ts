@@ -15,12 +15,14 @@ export const adminSettingsRouter = router({
       description: "Current runtime settings with the live player count",
     })
     .query(async () => {
-      const [playerLimit, intakeMode, playerCount] = await Promise.all([
-        settings.getPlayerLimit(),
-        settings.getIntakeMode(),
-        Q.player.count(),
-      ]);
-      return { playerLimit, intakeMode, playerCount };
+      const [playerLimit, intakeMode, playerCount, reservedSlots] =
+        await Promise.all([
+          settings.getPlayerLimit(),
+          settings.getIntakeMode(),
+          Q.player.count(),
+          Q.waitlist.entry.count({ status: "promoted" }),
+        ]);
+      return { playerLimit, intakeMode, playerCount, reservedSlots };
     }),
 
   update: adminProcedure

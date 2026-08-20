@@ -26,29 +26,39 @@ export class WaitlistRepository {
    */
   async hasCapacity(): Promise<boolean> {
     try {
-      const intakeMode = await settings.getIntakeMode();
-      if (intakeMode === "closed") {
-        logger.debug("Capacity check: intake mode is closed");
-        return false;
-      }
-
-      const [currentPlayers, playerLimit] = await Promise.all([
-        Q.player.count(),
-        settings.getPlayerLimit(),
-      ]);
-
-      const hasCapacity =
-        Number.isFinite(playerLimit) && playerLimit > currentPlayers;
-
-      logger.debug(
-        `Capacity check: players=${currentPlayers}, limit=${playerLimit}, hasCapacity=${hasCapacity}`,
-      );
-
-      return hasCapacity;
+      return (await this.getFreeSlots()) > 0;
     } catch (error) {
       logger.error("Failed to check capacity:", error);
       return false;
     }
+  }
+
+  /**
+   * Unreserved free slots: player limit minus current players minus
+   * outstanding promotions. Zero while intake is closed.
+   */
+  async getFreeSlots(): Promise<number> {
+    const intakeMode = await settings.getIntakeMode();
+    if (intakeMode === "closed") {
+      logger.debug("Capacity check: intake mode is closed");
+      return 0;
+    }
+
+    const [currentPlayers, playerLimit, reserved] = await Promise.all([
+      Q.player.count(),
+      settings.getPlayerLimit(),
+      Q.waitlist.entry.count({ status: "promoted" }),
+    ]);
+
+    const free = Number.isFinite(playerLimit)
+      ? Math.max(0, playerLimit - currentPlayers - reserved)
+      : 0;
+
+    logger.debug(
+      `Capacity check: players=${currentPlayers}, reserved=${reserved}, limit=${playerLimit}, free=${free}`,
+    );
+
+    return free;
   }
 
   /** Fetch a single waitlist entry by ID for the admin panel detail view. */

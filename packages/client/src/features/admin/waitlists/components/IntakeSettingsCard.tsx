@@ -41,11 +41,16 @@ export function IntakeSettingsCard() {
   const isOpen =
     data !== undefined &&
     data.intakeMode === "auto" &&
-    data.playerCount < data.playerLimit;
+    data.playerCount + data.reservedSlots < data.playerLimit;
 
   const saveLimit = async () => {
     const parsed = Number(limitValue);
-    if (!Number.isInteger(parsed) || parsed < 0 || parsed > 1000) {
+    if (
+      limitValue.trim() === "" ||
+      !Number.isInteger(parsed) ||
+      parsed < 0 ||
+      parsed > 1000
+    ) {
       toast.error("Player limit must be a whole number between 0 and 1000");
       return;
     }
@@ -89,6 +94,7 @@ export function IntakeSettingsCard() {
               </Badge>
               <span className="text-xs font-normal text-muted-foreground">
                 {data.playerCount} / {data.playerLimit} players
+                {data.reservedSlots > 0 && ` · ${data.reservedSlots} reserved`}
               </span>
             </>
           )}

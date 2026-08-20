@@ -108,6 +108,10 @@ export const waitlistsRouter = router({
         input.reason,
       );
 
+      void waitlistService.promoteEligible().catch((error) => {
+        logger.error("Promotion pass after waitlist delete failed:", error);
+      });
+
       return { message: "Waitlist entry deleted successfully" };
     }),
 });

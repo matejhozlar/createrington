@@ -4,7 +4,6 @@ import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
 import { RegistrationComponentPresets } from "@/discord/components/presets/registration";
 import { WaitlistComponentPresets } from "@/discord/components/presets/waitlist";
-import { settings } from "@/services/settings";
 import { mainBot } from "@/discord/bots/main/client";
 import { createVerificationChannel } from "@/discord/bots/main/registration/verification-channel";
 import { BadRequestError } from "@/app/middleware/error-handler";
@@ -18,10 +17,14 @@ const PROMOTION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
  * the queue, slot-accounted promotion (free slots = player limit - players
  * - outstanding promotions), the 7-day promotion window that re-queues
  * no-shows, and all the Discord side effects (waiting-card renders, pings,
- * verification-channel recovery). Concurrent maintenance runs are skipped.
+ * verification-channel recovery). Promotion passes are serialized: a call
+ * made while one is running schedules a single re-run after it finishes.
+ * Concurrent maintenance runs are skipped.
  */
 export class WaitlistService {
   private maintenanceRunning = false;
+  private promotionPass: Promise<number> | null = null;
+  private promotionRerun = false;
 
   private getGuild(): Guild | null {
     return mainBot.guilds.cache.get(config.discord.guild.id) ?? null;
@@ -85,6 +88,12 @@ export class WaitlistService {
     );
     await waitlistRepo.updateProgressEmbed(entryId);
     logger.info(`Expired waitlist entry #${entryId}: ${reason}`);
+  }
+
+  private schedulePromotionPass(): void {
+    void this.promoteEligible().catch((error) => {
+      logger.error("Waitlist promotion pass failed:", error);
+    });
   }
 
   /**
@@ -157,13 +166,19 @@ export class WaitlistService {
   async getQueuePosition(
     discordId: string,
   ): Promise<{ position: number; total: number }> {
-    const queued = await Q.waitlist.entry.findAll(
-      { status: "queued" },
-      { orderBy: "queuedAt", orderDirection: "asc", limit: 1000 },
-    );
+    const [entry, total] = await Promise.all([
+      Q.waitlist.entry.find({ discordId }),
+      Q.waitlist.entry.count({ status: "queued" }),
+    ]);
 
-    const index = queued.findIndex((entry) => entry.discordId === discordId);
-    return { position: index === -1 ? 0 : index + 1, total: queued.length };
+    if (!entry || entry.status !== "queued") return { position: 0, total };
+
+    const ahead = await Q.waitlist.entry.count({
+      status: "queued",
+      queuedAt: { $lt: entry.queuedAt },
+    });
+
+    return { position: ahead + 1, total };
   }
 
   /** Remove a member from the queue (Leave Waitlist button). */
@@ -174,6 +189,8 @@ export class WaitlistService {
     }
 
     await this.expireEntry(entry.id, `${entry.discordUsername} left the queue`);
+    if (entry.status === "promoted") this.schedulePromotionPass();
+
     return Q.waitlist.entry.get({ id: entry.id });
   }
 
@@ -185,6 +202,7 @@ export class WaitlistService {
     }
 
     await this.expireEntry(entry.id, `${entry.discordUsername} left the guild`);
+    if (entry.status === "promoted") this.schedulePromotionPass();
 
     const channel = await this.fetchChannel(entry.verifyChannelId);
     if (channel) {
@@ -202,15 +220,22 @@ export class WaitlistService {
   }
 
   /**
-   * Promote an entry: reserve a slot, swap the waiting card for the
+   * Promote a queued entry: reserve a slot, swap the waiting card for the
    * register card, and ping the member in their verification channel.
-   * Pass null as promotedBy for automatic promotion.
+   * Rejects entries that are not queued. Pass null as promotedBy for
+   * automatic promotion.
    */
   async promote(
     entryId: number,
     promotedBy: string | null,
   ): Promise<WaitlistEntry> {
     const entry = await Q.waitlist.entry.get({ id: entryId });
+
+    if (entry.status !== "queued") {
+      throw new BadRequestError(
+        `Only queued entries can be promoted; this entry is ${entry.status}.`,
+      );
+    }
 
     const member = await this.fetchMember(entry.discordId);
     if (!member) {
@@ -308,18 +333,33 @@ export class WaitlistService {
     });
   }
 
-  /** Promote the oldest queued entries into any free slots; no-op while intake is closed. */
+  /**
+   * Promote the oldest queued entries into any free slots; no-op while
+   * intake is closed. Calls made while a pass is running share its result
+   * and trigger one follow-up pass once it completes.
+   */
   async promoteEligible(): Promise<number> {
-    const intakeMode = await settings.getIntakeMode();
-    if (intakeMode === "closed") return 0;
+    if (this.promotionPass) {
+      this.promotionRerun = true;
+      return this.promotionPass;
+    }
 
-    const [playerCount, playerLimit, outstanding] = await Promise.all([
-      Q.player.count(),
-      settings.getPlayerLimit(),
-      Q.waitlist.entry.count({ status: "promoted" }),
-    ]);
+    this.promotionPass = (async () => {
+      let total = 0;
+      do {
+        this.promotionRerun = false;
+        total += await this.runPromotionPass();
+      } while (this.promotionRerun);
+      return total;
+    })().finally(() => {
+      this.promotionPass = null;
+    });
 
-    let free = playerLimit - playerCount - outstanding;
+    return this.promotionPass;
+  }
+
+  private async runPromotionPass(): Promise<number> {
+    let free = await waitlistRepo.getFreeSlots();
     if (free <= 0) return 0;
 
     const queued = await Q.waitlist.entry.findAll(
