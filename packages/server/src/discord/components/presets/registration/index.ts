@@ -69,8 +69,8 @@ function registerRow(): ActionRowBuilder<ButtonBuilder> {
  * Components V2 renderings of the registration flow that anchors each
  * verification channel: the idle "click Register" card (optionally with the
  * last failure attached), the per-step progress card, the success card with
- * a close button, and error cards. Every method returns the top-level
- * components plus the `IS_COMPONENTS_V2` flag.
+ * a close button, the closing card, and error cards. Every method returns the
+ * top-level components plus the `IS_COMPONENTS_V2` flag.
  */
 export const RegistrationComponentPresets = {
   /** The idle welcome card; a failed attempt re-renders it red with the error and the step it failed at. */
@@ -202,6 +202,18 @@ export const RegistrationComponentPresets = {
       )
       .addActionRowComponents(
         new ActionRowBuilder<ButtonBuilder>().addComponents(closeButton),
+      );
+
+    return message(container);
+  },
+
+  /** The channel-is-going-away card, shown when a registration channel closes. */
+  closing(): RegistrationMessage {
+    const container = new ContainerBuilder()
+      .setAccentColor(ComponentColors.Error)
+      .addTextDisplayComponents(
+        text("## 🗑️ Channel Deletion"),
+        text("This channel will be deleted in a few seconds..."),
       );
 
     return message(container);

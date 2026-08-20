@@ -89,12 +89,3 @@ describe("CommonEmbedPresets.loading", () => {
     expect(data.description).toBe("Doing the thing");
   });
 });
-
-describe("CommonEmbedPresets.channelDeletion", () => {
-  it("uses the Error color with the documented copy", () => {
-    const data = CommonEmbedPresets.channelDeletion().build().data;
-    expect(data.title).toBe("🗑️ Channel Deletion");
-    expect(data.description).toContain("deleted");
-    expect(data.color).toBe(EmbedColors.Error);
-  });
-});
