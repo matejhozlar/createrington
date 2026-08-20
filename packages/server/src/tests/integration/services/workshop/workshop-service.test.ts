@@ -1065,7 +1065,7 @@ describe("WorkshopService.getWorkshopMods", () => {
     );
   });
 
-  it("takes precedence over the default visibility filter", async () => {
+  it("a statuses filter overrides the default visibility filter", async () => {
     const workshop = await seedWorkshop(ctx);
     await seedMod(ctx, workshop, { submittedBy: USER_A, status: "approved" });
     const rejected = await seedMod(ctx, workshop, {

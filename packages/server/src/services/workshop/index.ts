@@ -79,6 +79,7 @@ export interface WorkshopModListItem extends WorkshopMod {
   project: WorkshopProjectSummary;
   upvoteCount: number;
   submitterName: string | null;
+  reviewerName: string | null;
   discordThreadUrl: string | null;
   dependencies: WorkshopModDependencyInfo[];
   liveInVersion: string | null;
@@ -239,7 +240,11 @@ export class WorkshopService {
     return workshop;
   }
 
-  /** Suggestions in a workshop with project summaries and upvote counts. */
+  /**
+   * Suggestions in a workshop with project summaries and upvote counts. An
+   * explicit statuses filter overrides the includeHidden default and returns
+   * exactly those statuses, newest first.
+   */
   async getWorkshopMods(
     workshopId: number,
     options: { includeHidden?: boolean; statuses?: WorkshopModStatus[] } = {},
@@ -255,6 +260,16 @@ export class WorkshopService {
       { orderBy: "createdAt", orderDirection: "desc" },
     );
     return this.decorateMods(workshop, mods);
+  }
+
+  /** A single decorated mod by id, any status; throws when missing. */
+  async getWorkshopMod(workshopModId: number): Promise<WorkshopModListItem> {
+    const mod = await Q.workshop.mod.find({ id: workshopModId });
+    if (!mod) throw new NotFoundError(`Mod #${workshopModId} not found`);
+    const workshop = await this.getWorkshop(mod.workshopId);
+    const [item] = await this.decorateMods(workshop, [mod]);
+    if (!item) throw new NotFoundError(`Mod #${workshopModId} not found`);
+    return item;
   }
 
   /** Members of the workshop's modpack, for the admin members card. */
@@ -1187,12 +1202,18 @@ export class WorkshopService {
     if (mods.length === 0) return [];
 
     const projectIds = [...new Set(mods.map((m) => m.curseforgeProjectId))];
-    const submitterIds = [...new Set(mods.map((m) => m.submittedBy))];
-    const [projects, upvoteCounts, submitters, depRows, packRows] =
+    const playerIds = [
+      ...new Set(
+        mods.flatMap((m) =>
+          m.reviewedBy ? [m.submittedBy, m.reviewedBy] : [m.submittedBy],
+        ),
+      ),
+    ];
+    const [projects, upvoteCounts, players, depRows, packRows] =
       await Promise.all([
         Q.curseforge.project.findAll({ id: { $in: projectIds } }),
         Q.workshop.mod.upvote.countGroupedByMod(mods.map((m) => m.id)),
-        Q.player.findAll({ discordId: { $in: submitterIds } }),
+        Q.player.findAll({ discordId: { $in: playerIds } }),
         Q.workshop.project.dependency.findAll({
           workshopId: workshop.id,
           curseforgeProjectId: { $in: projectIds },
@@ -1204,7 +1225,7 @@ export class WorkshopService {
       ]);
     const byId = new Map(projects.map((p) => [p.id, p]));
     const nameByDiscordId = new Map(
-      submitters.map((p) => [p.discordId, p.minecraftUsername]),
+      players.map((p) => [p.discordId, p.minecraftUsername]),
     );
     const packByProjectId = new Map(
       packRows.map((row) => [row.curseforgeProjectId, row]),
@@ -1221,6 +1242,9 @@ export class WorkshopService {
           project: this.toProjectSummary(project),
           upvoteCount: upvoteCounts[mod.id] ?? 0,
           submitterName: nameByDiscordId.get(mod.submittedBy) ?? null,
+          reviewerName: mod.reviewedBy
+            ? (nameByDiscordId.get(mod.reviewedBy) ?? null)
+            : null,
           discordThreadUrl: mod.discordThreadId
             ? discordThreadUrl(mod.discordThreadId)
             : null,

@@ -9,10 +9,12 @@ import { getMinecraftVersions } from "@/services/curseforge";
 import { listForumChannels } from "@/services/workshop/discord";
 import { adminWorkshopBansRouter } from "./bans";
 import {
+  logModReview,
+  workshopModReviewInput,
+} from "@/trpc/shared/workshop-review";
+import {
   MOD_ENVIRONMENTS,
   MOD_ENVIRONMENT_LABELS,
-  WORKSHOP_MOD_REJECT_REASONS,
-  WORKSHOP_MOD_REVIEW_ACTIONS,
   WORKSHOP_STATUSES,
 } from "@createrington/shared/workshop";
 
@@ -198,24 +200,7 @@ export const adminWorkshopsRouter = router({
       description:
         "Review a mod: approve, move it to testing, send it back a stage, or reject for this workshop with a reason",
     })
-    .input(
-      z
-        .object({
-          workshopModId: id(),
-          action: z.enum(WORKSHOP_MOD_REVIEW_ACTIONS),
-          reason: z.enum(WORKSHOP_MOD_REJECT_REASONS).optional(),
-          note: z.string().trim().max(500).optional(),
-        })
-        .superRefine((data, ctx) => {
-          if (data.action === "reject" && !data.reason) {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              path: ["reason"],
-              message: "Rejecting requires a reason",
-            });
-          }
-        }),
-    )
+    .input(workshopModReviewInput)
     .mutation(async ({ ctx, input }) => {
       try {
         const mod = await workshopService.reviewMod(
@@ -224,17 +209,7 @@ export const adminWorkshopsRouter = router({
           ctx.user.discordId,
           { reason: input.reason, note: input.note },
         );
-        await Q.admin.log.action.logAction({
-          ...auditActor(ctx),
-          actionType: `workshop_mod_${input.action}`,
-          description: `Reviewed workshop mod #${input.workshopModId}: ${input.action}`,
-          reason: [input.reason, input.note].filter(Boolean).join(": "),
-          metadata: {
-            workshopModId: input.workshopModId,
-            curseforgeProjectId: mod.curseforgeProjectId,
-            status: mod.status,
-          },
-        });
+        await logModReview(ctx, input, mod);
         return mod;
       } catch (error) {
         rethrowTrpc(error);
