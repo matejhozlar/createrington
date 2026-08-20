@@ -57,7 +57,10 @@ export function IntakeSettingsCard() {
     try {
       await updateSettings.mutateAsync({ playerLimit: parsed });
       setLimitDraft(null);
-      await utils.admin.settings.get.invalidate();
+      await Promise.all([
+        utils.admin.settings.get.invalidate(),
+        utils.admin.waitlists.invalidate(),
+      ]);
       toast.success("Player limit updated");
     } catch {
       toast.error("Failed to update player limit");
@@ -67,7 +70,10 @@ export function IntakeSettingsCard() {
   const changeMode = async (mode: IntakeMode) => {
     try {
       await updateSettings.mutateAsync({ intakeMode: mode });
-      await utils.admin.settings.get.invalidate();
+      await Promise.all([
+        utils.admin.settings.get.invalidate(),
+        utils.admin.waitlists.invalidate(),
+      ]);
       toast.success(mode === "closed" ? "Intake closed" : "Intake set to auto");
     } catch {
       toast.error("Failed to update intake mode");

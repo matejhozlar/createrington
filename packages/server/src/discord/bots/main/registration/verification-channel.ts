@@ -13,6 +13,9 @@ import {
 import { Discord } from "@/discord/constants";
 
 const CATEGORY_ALERT_THRESHOLD = 45;
+const CATEGORY_ALERT_INTERVAL_MS = 60 * 60 * 1000;
+
+let lastCategoryAlertAt = 0;
 
 export async function denyForeignVerificationChannel(
   interaction: ButtonInteraction,
@@ -53,7 +56,11 @@ export async function createVerificationChannel(
     (ch) => ch.parentId === categoryId,
   ).size;
 
-  if (occupied >= CATEGORY_ALERT_THRESHOLD) {
+  if (
+    occupied >= CATEGORY_ALERT_THRESHOLD &&
+    Date.now() - lastCategoryAlertAt >= CATEGORY_ALERT_INTERVAL_MS
+  ) {
+    lastCategoryAlertAt = Date.now();
     try {
       await Discord.Messages.send({
         channelId: Discord.Channels.administration.NOTIFICATIONS,
