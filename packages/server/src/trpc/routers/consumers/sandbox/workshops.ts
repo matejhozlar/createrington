@@ -21,7 +21,6 @@ async function toSandboxWorkshop(workshop: Workshop) {
     gameVersion: workshop.gameVersion,
     modLoaderType: workshop.modLoaderType,
     classId: workshop.classId,
-    baseModpackProjectId: workshop.baseModpackProjectId,
     modpack: {
       id: modpack.id,
       name: modpack.name,
