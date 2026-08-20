@@ -5,7 +5,7 @@ import {
   OverwriteType,
 } from "discord.js";
 import { Discord } from "@/discord/constants";
-import { EmbedPresets } from "@/discord/embeds";
+import { RegistrationComponentPresets } from "@/discord/components/presets/registration";
 import config from "@/config";
 
 /** Duration before a completed registration channel is auto-deleted (ms) */
@@ -14,7 +14,7 @@ export const AUTO_CLOSE_MS = 24 * 60 * 60 * 1000;
 /**
  * Schedules a registration channel for deletion.
  * If `delayMs <= 0` the channel is deleted immediately (with a short grace period
- * so the deletion embed is visible).
+ * so the closing card is visible).
  */
 export function scheduleChannelClose(
   channel: GuildTextBasedChannel,
@@ -25,8 +25,11 @@ export function scheduleChannelClose(
 
   setTimeout(async () => {
     try {
-      const deleteEmbed = EmbedPresets.channelDeletion();
-      await channel.send({ embeds: [deleteEmbed.build()] });
+      const closing = RegistrationComponentPresets.closing();
+      await channel.send({
+        components: closing.components,
+        flags: closing.flags,
+      });
     } catch {
       // Channel may already be gone, proceed to delete
     }

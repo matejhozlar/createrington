@@ -1,4 +1,4 @@
-import { EmbedPresets } from "@/discord/embeds";
+import { RegistrationComponentPresets } from "@/discord/components/presets/registration";
 import { Discord } from "@/discord/constants";
 import { isSendableChannel } from "@/discord/utils/channel-guard";
 import {
@@ -78,12 +78,17 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
         return;
       }
 
-      const deleteEmbed = EmbedPresets.channelDeletion();
+      const closing = RegistrationComponentPresets.closing();
 
-      await interaction.update({
-        embeds: [deleteEmbed.build()],
-        components: [],
-      });
+      try {
+        await interaction.update({
+          components: closing.components,
+          flags: closing.flags,
+        });
+      } catch (error) {
+        // The card is cosmetic; the channel still has to go either way.
+        logger.error("Failed to render the registration closing card:", error);
+      }
 
       setTimeout(async () => {
         try {
