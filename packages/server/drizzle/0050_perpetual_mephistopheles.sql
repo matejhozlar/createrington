@@ -1,0 +1,1 @@
+ALTER TABLE "waitlist_entry" DROP COLUMN "metadata";

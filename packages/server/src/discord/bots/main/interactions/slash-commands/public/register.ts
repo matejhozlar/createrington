@@ -1,5 +1,5 @@
 import { Discord } from "@/discord/constants";
-import { EmbedPresets } from "@/discord/embeds";
+import { RegistrationComponentPresets } from "@/discord/components/presets/registration";
 import { replyError } from "@/discord/utils/interaction-reply";
 import { CooldownType } from "@/discord/utils/cooldown";
 import { runRegistration } from "@/discord/bots/main/registration/run-registration";
@@ -40,11 +40,11 @@ export async function execute(
     typeof member.roles === "string" ||
     Array.isArray(member.roles)
   ) {
-    const embed = EmbedPresets.errorWithAdmin(
+    const { components, flags } = RegistrationComponentPresets.errorWithAdmin(
       "Registration Failed",
       "Could not verify your roles. Please try again.",
     );
-    await interaction.reply({ embeds: [embed.build()] });
+    await interaction.reply({ components, flags });
     return;
   }
 
@@ -68,10 +68,12 @@ export async function execute(
     username: interaction.user.username,
     mcName,
     channel,
-    render: async ({ embeds, components }) => {
+    render: async ({ components, flags }) => {
       await interaction.editReply({
-        embeds: embeds.map((e) => e.build()),
-        components: components ?? [],
+        components,
+        flags,
+        content: null,
+        embeds: [],
       });
     },
   });

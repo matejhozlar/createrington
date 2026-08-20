@@ -10,6 +10,7 @@
 
 export { AdminQueries } from "./admin";
 export { AdminLogActionQueries } from "./admin/log/action";
+export { AppSettingQueries } from "./app/setting";
 export { AuthSessionQueries } from "./auth/session";
 export { CryptoCostBasisQueries } from "./crypto/cost/basis";
 export { CryptoHoldingQueries } from "./crypto/holding";

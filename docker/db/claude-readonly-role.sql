@@ -32,10 +32,5 @@ REVOKE SELECT ON auth_session FROM claude_readonly;
 --    only specific safe columns.
 -- ============================================================
 
--- waitlist_entry: hide email and verification token
-REVOKE SELECT ON waitlist_entry FROM claude_readonly;
-GRANT SELECT (
-  id, discord_name, discord_id, submitted_at, discord_message_id,
-  status, joined_discord, verified, registered, joined_minecraft,
-  accepted_at, accepted_by
-) ON waitlist_entry TO claude_readonly;
+-- (none currently; waitlist_entry stopped storing emails and is fully
+-- visible via the blanket grant)

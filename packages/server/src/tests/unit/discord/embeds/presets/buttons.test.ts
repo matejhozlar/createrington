@@ -34,22 +34,6 @@ type ButtonData = {
 };
 const json = (b: ButtonBuilder): ButtonData => b.toJSON() as ButtonData;
 
-describe("ButtonPresets.waitlist", () => {
-  it("accept(id) builds a green Success button with the right custom id and label", () => {
-    const data = json(ButtonPresets.waitlist.accept(42));
-    expect(data.style).toBe(ButtonStyle.Success);
-    expect(data.label).toBe("Accept");
-    expect(data).toMatchObject({ custom_id: "waitlist:accept:42" });
-  });
-
-  it("decline(id) builds a red Danger button with the right custom id and label", () => {
-    const data = json(ButtonPresets.waitlist.decline("xyz"));
-    expect(data.style).toBe(ButtonStyle.Danger);
-    expect(data.label).toBe("Decline");
-    expect(data).toMatchObject({ custom_id: "waitlist:decline:xyz" });
-  });
-});
-
 describe("ButtonPresets.links", () => {
   it("each link button uses the Link style and a url", () => {
     for (const factory of [ButtonPresets.links.adminPanel]) {
