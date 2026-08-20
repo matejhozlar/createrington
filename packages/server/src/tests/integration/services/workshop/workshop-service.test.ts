@@ -50,6 +50,7 @@ import {
 } from "@/app/middleware/error-handler";
 import { workshopService } from "@/services/workshop";
 import { issueBan, liftBan } from "@/services/workshop/bans";
+import { getFilesDependencies } from "@/services/curseforge";
 import { ingestProject, ingestProjects } from "@/services/curseforge/ingest";
 import {
   createWorkshopTestContext,
@@ -1426,5 +1427,204 @@ describe("WorkshopService.reviewMod environment gate", () => {
     );
 
     expect(sentBack.status).toBe("approved");
+  });
+});
+
+describe("WorkshopService.reviewMod ruled-out dependency gate", () => {
+  it("refuses to start testing when a required dependency is ruled out", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const mod = await seedMod(ctx, workshop, {
+      submittedBy: USER_A,
+      status: "approved",
+    });
+    const ruledOut = await seedMod(ctx, workshop, {
+      submittedBy: USER_A,
+      status: "rejected",
+      rejectReason: "not_a_good_fit",
+    });
+    await seedRequiredDependency(
+      workshop,
+      mod.curseforgeProjectId,
+      ruledOut.curseforgeProjectId,
+    );
+
+    await expect(
+      workshopService.reviewMod(mod.id, "start_testing", ADMIN),
+    ).rejects.toThrow(
+      "A required dependency of this mod has been ruled out for this workshop",
+    );
+    expect((await Q.workshop.mod.get({ id: mod.id })).status).toBe("approved");
+  });
+
+  it("allows starting testing when the ruled-out dependency is only optional", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const mod = await seedMod(ctx, workshop, {
+      submittedBy: USER_A,
+      status: "approved",
+    });
+    const ruledOut = await seedMod(ctx, workshop, {
+      submittedBy: USER_A,
+      status: "rejected",
+      rejectReason: "not_a_good_fit",
+    });
+    await Q.workshop.project.dependency.create({
+      workshopId: workshop.id,
+      curseforgeProjectId: mod.curseforgeProjectId,
+      dependsOnProjectId: ruledOut.curseforgeProjectId,
+      relationType: 2,
+    });
+
+    const updated = await workshopService.reviewMod(
+      mod.id,
+      "start_testing",
+      ADMIN,
+    );
+
+    expect(updated.status).toBe("testing");
+  });
+
+  it("allows starting testing when the required dependency is merely in review", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const mod = await seedMod(ctx, workshop, {
+      submittedBy: USER_A,
+      status: "approved",
+    });
+    const inReview = await seedMod(ctx, workshop, { submittedBy: USER_A });
+    await seedRequiredDependency(
+      workshop,
+      mod.curseforgeProjectId,
+      inReview.curseforgeProjectId,
+    );
+
+    const updated = await workshopService.reviewMod(
+      mod.id,
+      "start_testing",
+      ADMIN,
+    );
+
+    expect(updated.status).toBe("testing");
+  });
+
+  it("still allows sending a mod back to testing past a ruled-out dependency", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const mod = await seedMod(ctx, workshop, {
+      submittedBy: USER_A,
+      status: "next_update",
+    });
+    const ruledOut = await seedMod(ctx, workshop, {
+      submittedBy: USER_A,
+      status: "rejected",
+      rejectReason: "not_a_good_fit",
+    });
+    await seedRequiredDependency(
+      workshop,
+      mod.curseforgeProjectId,
+      ruledOut.curseforgeProjectId,
+    );
+
+    const sentBack = await workshopService.reviewMod(
+      mod.id,
+      "send_back",
+      ADMIN,
+    );
+
+    expect(sentBack.status).toBe("testing");
+  });
+
+  it("refuses to start testing when the dependency cache is empty and CurseForge is unreachable", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const mod = await seedMod(ctx, workshop, {
+      submittedBy: USER_A,
+      status: "approved",
+      fileId: 12345,
+    });
+    vi.mocked(getFilesDependencies).mockRejectedValueOnce(
+      new Error("CurseForge is down"),
+    );
+
+    await expect(
+      workshopService.reviewMod(mod.id, "start_testing", ADMIN),
+    ).rejects.toThrow(
+      "Could not check this mod's dependencies right now, please try again",
+    );
+    expect((await Q.workshop.mod.get({ id: mod.id })).status).toBe("approved");
+  });
+
+  it("starts testing after a live resolve finds no dependencies", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const mod = await seedMod(ctx, workshop, {
+      submittedBy: USER_A,
+      status: "approved",
+      fileId: 12345,
+    });
+
+    const updated = await workshopService.reviewMod(
+      mod.id,
+      "start_testing",
+      ADMIN,
+    );
+
+    expect(updated.status).toBe("testing");
+    expect(getFilesDependencies).toHaveBeenCalledWith([12345]);
+  });
+
+  it("does not block on a ruled-out suggestion that is already a pack member", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const mod = await seedMod(ctx, workshop, {
+      submittedBy: USER_A,
+      status: "approved",
+    });
+    const ruledOut = await seedMod(ctx, workshop, {
+      submittedBy: USER_A,
+      status: "rejected",
+      rejectReason: "not_a_good_fit",
+    });
+    await seedPackMod(ctx, workshop, {
+      curseforgeProjectId: ruledOut.curseforgeProjectId,
+      liveAt: new Date(),
+      liveInVersion: "1.0.0",
+    });
+    await seedRequiredDependency(
+      workshop,
+      mod.curseforgeProjectId,
+      ruledOut.curseforgeProjectId,
+    );
+
+    const updated = await workshopService.reviewMod(
+      mod.id,
+      "start_testing",
+      ADMIN,
+    );
+
+    expect(updated.status).toBe("testing");
+  });
+
+  it("restores a mod's dependency edges when it is un-rejected", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const depProjectId = await seedProject(ctx);
+    const mod = await seedMod(ctx, workshop, {
+      submittedBy: USER_A,
+      status: "rejected",
+      rejectReason: "on_hold",
+      fileId: 12345,
+    });
+    vi.mocked(getFilesDependencies).mockResolvedValueOnce([
+      {
+        fileId: 12345,
+        modId: mod.curseforgeProjectId,
+        dependencies: [{ modId: depProjectId, relationType: 3 }],
+      },
+    ]);
+
+    await workshopService.reviewMod(mod.id, "approve", ADMIN);
+
+    await vi.waitFor(async () => {
+      expect(
+        await Q.workshop.project.dependency.findAll({
+          workshopId: workshop.id,
+          curseforgeProjectId: mod.curseforgeProjectId,
+        }),
+      ).toMatchObject([{ dependsOnProjectId: depProjectId, relationType: 3 }]);
+    });
   });
 });

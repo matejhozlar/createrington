@@ -15,6 +15,7 @@ import type {
   WorkshopProjectDependency,
 } from "@createrington/shared/db";
 import {
+  hasRuledOutRequiredDependency,
   WORKSHOP_MOD_REVIEW_ACTION_LABELS,
   WORKSHOP_MOD_REVIEW_TARGETS,
   WORKSHOP_MOD_STATUS_LABELS,
@@ -43,6 +44,7 @@ import {
   loadDependencyContext,
   pruneStaleDependencyEdges,
   resolveProjectDependencies,
+  tryResolveProjectDependencies,
   REQUIRED_DEPENDENCY,
   type DependencyCoverage,
 } from "./dependencies";
@@ -491,7 +493,7 @@ export class WorkshopService {
     const [item] = await this.decorateMods(workshop, [created]);
     if (!item) throw new NotFoundError(`Mod #${created.id} not found`);
     void announceSuggestion(workshop, item);
-    void resolveProjectDependencies(workshop, [created]);
+    void tryResolveProjectDependencies(workshop, [created]);
     return item;
   }
 
@@ -867,6 +869,12 @@ export class WorkshopService {
       );
     }
 
+    // Keyed on the action, not the target: send_back from next_update also
+    // lands on testing and must stay open as an escape hatch
+    if (action === "start_testing") {
+      await this.assertNoRuledOutRequiredDependency(workshop, mod);
+    }
+
     if (target === "next_update") {
       const project = await Q.curseforge.project.find({
         id: mod.curseforgeProjectId,
@@ -916,7 +924,55 @@ export class WorkshopService {
     });
     void announceReview(updated, target);
     if (target === "rejected") await pruneStaleDependencyEdges(workshop);
+    // Rejecting pruned this mod's own edges; un-rejecting has to bring them
+    // back or the daily sweep may never (closed workshops are not swept)
+    if (mod.status === "rejected" && target !== "rejected") {
+      void tryResolveProjectDependencies(workshop, [updated]);
+    }
     return updated;
+  }
+
+  private async assertNoRuledOutRequiredDependency(
+    workshop: Workshop,
+    mod: WorkshopMod,
+  ): Promise<void> {
+    let edges = await Q.workshop.project.dependency.findAll({
+      workshopId: workshop.id,
+      curseforgeProjectId: mod.curseforgeProjectId,
+    });
+    // An empty cache can mean resolution silently failed, so re-resolve
+    // before trusting it; mods without a chosen file have nothing to resolve
+    if (edges.length === 0 && mod.fileId !== null) {
+      try {
+        await resolveProjectDependencies(workshop, [mod]);
+      } catch (error) {
+        logger.warn(
+          `Dependency check failed for workshop mod #${mod.id}:`,
+          error,
+        );
+        throw new BadRequestError(
+          "Could not check this mod's dependencies right now, please try again",
+        );
+      }
+      edges = await Q.workshop.project.dependency.findAll({
+        workshopId: workshop.id,
+        curseforgeProjectId: mod.curseforgeProjectId,
+      });
+    }
+    if (edges.length === 0) return;
+
+    const { coverage } = await loadDependencyContext(workshop);
+    const blocked = hasRuledOutRequiredDependency(
+      edges.map((edge) => ({
+        relationType: edge.relationType,
+        coverage: coverage.get(edge.dependsOnProjectId) ?? "missing",
+      })),
+    );
+    if (blocked) {
+      throw new BadRequestError(
+        "A required dependency of this mod has been ruled out for this workshop",
+      );
+    }
   }
 
   /**
@@ -979,7 +1035,7 @@ export class WorkshopService {
     const items = await this.decorateMods(workshop, created);
     void (async () => {
       for (const item of items) await announceSuggestion(workshop, item);
-      await resolveProjectDependencies(workshop, created);
+      await tryResolveProjectDependencies(workshop, created);
     })();
     return items;
   }

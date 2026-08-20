@@ -19,71 +19,83 @@ export interface DependencySubject {
  * Resolve and store the dependencies of the given projects' chosen files,
  * keyed by project so suggestions and modpack mods share one cache. Batch
  * CurseForge calls only; deps satisfied by the base modpack are not stored.
- * Never throws, failures are logged and retried by the daily sweep.
+ * Throws when CurseForge cannot be reached; callers that treat resolution as
+ * best-effort should use `tryResolveProjectDependencies`.
  */
 export async function resolveProjectDependencies(
   workshop: Workshop,
   subjects: DependencySubject[],
 ): Promise<void> {
-  try {
-    const withFile = subjects.filter((subject) => subject.fileId !== null);
-    if (withFile.length === 0) return;
+  const withFile = subjects.filter((subject) => subject.fileId !== null);
+  if (withFile.length === 0) return;
 
-    const fileDeps = await getFilesDependencies(
-      withFile.map((subject) => subject.fileId!),
-    );
-    const depsByFile = new Map(
-      fileDeps.map((file) => [file.fileId, file.dependencies]),
-    );
+  const fileDeps = await getFilesDependencies(
+    withFile.map((subject) => subject.fileId!),
+  );
+  const depsByFile = new Map(
+    fileDeps.map((file) => [file.fileId, file.dependencies]),
+  );
 
-    let basePackIds = new Set<number>();
-    if (workshop.baseModpackProjectId) {
-      try {
-        basePackIds = await getModpackModIds(workshop.baseModpackProjectId);
-      } catch {
-        // Without the manifest some base-pack deps get stored; the next
-        // sweep clears them
-      }
+  let basePackIds = new Set<number>();
+  if (workshop.baseModpackProjectId) {
+    try {
+      basePackIds = await getModpackModIds(workshop.baseModpackProjectId);
+    } catch {
+      // Without the manifest some base-pack deps get stored; the next
+      // sweep clears them
     }
+  }
 
-    const allDepIds = [
-      ...new Set(
-        withFile.flatMap((subject) =>
-          (depsByFile.get(subject.fileId!) ?? [])
-            .map((dep) => dep.modId)
-            .filter((id) => !basePackIds.has(id)),
-        ),
+  const allDepIds = [
+    ...new Set(
+      withFile.flatMap((subject) =>
+        (depsByFile.get(subject.fileId!) ?? [])
+          .map((dep) => dep.modId)
+          .filter((id) => !basePackIds.has(id)),
       ),
-    ];
-    if (allDepIds.length > 0) await refreshProjects(allDepIds);
-    const cached =
-      allDepIds.length > 0
-        ? await Q.curseforge.project.findAll(
-            { id: { $in: allDepIds } },
-            { select: ["id"] },
-          )
-        : [];
-    const cachedIds = new Set(cached.map((project) => project.id));
+    ),
+  ];
+  if (allDepIds.length > 0) await refreshProjects(allDepIds);
+  const cached =
+    allDepIds.length > 0
+      ? await Q.curseforge.project.findAll(
+          { id: { $in: allDepIds } },
+          { select: ["id"] },
+        )
+      : [];
+  const cachedIds = new Set(cached.map((project) => project.id));
 
-    for (const subject of withFile) {
-      const deps = (depsByFile.get(subject.fileId!) ?? []).filter(
-        (dep) => !basePackIds.has(dep.modId) && cachedIds.has(dep.modId),
-      );
-      await db.inTransaction(async (tx) => {
-        await tx.workshop.project.dependency.deleteAll({
+  for (const subject of withFile) {
+    const deps = (depsByFile.get(subject.fileId!) ?? []).filter(
+      (dep) => !basePackIds.has(dep.modId) && cachedIds.has(dep.modId),
+    );
+    await db.inTransaction(async (tx) => {
+      await tx.workshop.project.dependency.deleteAll({
+        workshopId: workshop.id,
+        curseforgeProjectId: subject.curseforgeProjectId,
+      });
+      for (const dep of deps) {
+        await tx.workshop.project.dependency.create({
           workshopId: workshop.id,
           curseforgeProjectId: subject.curseforgeProjectId,
+          dependsOnProjectId: dep.modId,
+          relationType: dep.relationType,
         });
-        for (const dep of deps) {
-          await tx.workshop.project.dependency.create({
-            workshopId: workshop.id,
-            curseforgeProjectId: subject.curseforgeProjectId,
-            dependsOnProjectId: dep.modId,
-            relationType: dep.relationType,
-          });
-        }
-      });
-    }
+      }
+    });
+  }
+}
+
+/**
+ * Fire-and-forget variant of `resolveProjectDependencies`: failures are
+ * logged and retried by the daily sweep.
+ */
+export async function tryResolveProjectDependencies(
+  workshop: Workshop,
+  subjects: DependencySubject[],
+): Promise<void> {
+  try {
+    await resolveProjectDependencies(workshop, subjects);
   } catch (error) {
     logger.warn("Dependency resolution failed:", error);
   }

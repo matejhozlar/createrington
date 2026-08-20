@@ -128,6 +128,17 @@ export const WORKSHOP_MOD_REVIEW_TARGETS: Record<
   rejected: { approve: "approved", reject: "rejected" },
 };
 
+// The single definition of "blocked from testing": a required dependency whose
+// suggestion is currently ruled out. Server gate and client grid both use this.
+export function hasRuledOutRequiredDependency(
+  dependencies: Array<{ relationType: number; coverage: string }>,
+): boolean {
+  return dependencies.some(
+    (dep) =>
+      dep.relationType === REQUIRED_DEPENDENCY && dep.coverage === "rejected",
+  );
+}
+
 export const WORKSHOP_STATUSES = [
   "draft",
   "open",

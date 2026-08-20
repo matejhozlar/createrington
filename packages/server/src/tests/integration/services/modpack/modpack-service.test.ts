@@ -150,8 +150,103 @@ describe("ModpackService.getWorkshopAttention", () => {
       curseforgeProjectId: depProjectId,
       name: "Rejected Dep",
       websiteUrl: null,
-      requiredByName: `Vitest Mod ${member.curseforgeProjectId}`,
+      requiredBy: [
+        {
+          curseforgeProjectId: member.curseforgeProjectId,
+          name: `Vitest Mod ${member.curseforgeProjectId}`,
+        },
+      ],
     });
+  });
+
+  it("flags a rejected required dependency of mods still walking review", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const approved = await seedMod(ctx, workshop, {
+      status: "approved",
+      submittedBy: USER_A,
+    });
+    const inTesting = await seedMod(ctx, workshop, {
+      status: "testing",
+      submittedBy: USER_A,
+    });
+    const depProjectId = await seedProject(ctx, "Rejected Dep");
+    const depMod = await seedMod(ctx, workshop, {
+      curseforgeProjectId: depProjectId,
+      status: "rejected",
+      rejectReason: "not_a_good_fit",
+      submittedBy: USER_A,
+    });
+    for (const subject of [approved, inTesting]) {
+      await seedRequiredDependency(
+        workshop,
+        subject.curseforgeProjectId,
+        depProjectId,
+      );
+    }
+
+    const items = await modpackService.getWorkshopAttention(workshop);
+
+    const rejected = items.flatMap((item) =>
+      item.type === "rejected_dependency" ? [item] : [],
+    );
+    expect(rejected).toHaveLength(1);
+    expect(rejected[0]).toMatchObject({
+      workshopModId: depMod.id,
+      curseforgeProjectId: depProjectId,
+    });
+    expect(
+      rejected[0].requiredBy.map((entry) => entry.curseforgeProjectId).sort(),
+    ).toEqual(
+      [approved.curseforgeProjectId, inTesting.curseforgeProjectId].sort(),
+    );
+  });
+
+  it("does not flag a rejected dependency wanted only by a pending suggestion", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const pending = await seedMod(ctx, workshop, { submittedBy: USER_A });
+    const depProjectId = await seedProject(ctx);
+    await seedMod(ctx, workshop, {
+      curseforgeProjectId: depProjectId,
+      status: "rejected",
+      rejectReason: "not_a_good_fit",
+      submittedBy: USER_A,
+    });
+    await seedRequiredDependency(
+      workshop,
+      pending.curseforgeProjectId,
+      depProjectId,
+    );
+
+    const items = await modpackService.getWorkshopAttention(workshop);
+
+    expect(
+      items.filter((item) => item.type === "rejected_dependency"),
+    ).toHaveLength(0);
+  });
+
+  it("keeps in-review dependency gaps scoped to shipping mods", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const approved = await seedMod(ctx, workshop, {
+      status: "approved",
+      submittedBy: USER_A,
+    });
+    const depProjectId = await seedProject(ctx);
+    await seedMod(ctx, workshop, {
+      curseforgeProjectId: depProjectId,
+      status: "testing",
+      submittedBy: USER_A,
+    });
+    await seedRequiredDependency(
+      workshop,
+      approved.curseforgeProjectId,
+      depProjectId,
+    );
+
+    const items = await modpackService.getWorkshopAttention(workshop);
+
+    expect(
+      items.filter((item) => item.type === "unpromoted_dependency"),
+    ).toHaveLength(0);
   });
 
   it("does not flag a rejected dependency that is itself in the pack", async () => {
@@ -200,7 +295,12 @@ describe("ModpackService.getWorkshopAttention", () => {
       curseforgeProjectId: depProjectId,
       name: "Testing Dep",
       websiteUrl: null,
-      requiredByName: `Vitest Mod ${member.curseforgeProjectId}`,
+      requiredBy: [
+        {
+          curseforgeProjectId: member.curseforgeProjectId,
+          name: `Vitest Mod ${member.curseforgeProjectId}`,
+        },
+      ],
     });
   });
 
