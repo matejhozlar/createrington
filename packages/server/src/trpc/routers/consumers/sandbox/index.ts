@@ -1,5 +1,6 @@
 import { router } from "@/trpc/trpc";
 import { sandboxPlayersRouter } from "./players";
+import { sandboxWorkshopsRouter } from "./workshops";
 
 /**
  * Sandbox consumer router.
@@ -13,6 +14,7 @@ import { sandboxPlayersRouter } from "./players";
  */
 export const sandboxRouter = router({
   players: sandboxPlayersRouter,
+  workshops: sandboxWorkshopsRouter,
 });
 
 export type SandboxRouter = typeof sandboxRouter;
