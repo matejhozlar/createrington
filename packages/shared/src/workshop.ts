@@ -4,6 +4,26 @@ import { z } from "zod";
 export const OPTIONAL_DEPENDENCY = 2;
 export const REQUIRED_DEPENDENCY = 3;
 
+export const CURSEFORGE_CLASSES = {
+  mods: 6,
+  modpacks: 4471,
+  resourcePacks: 12,
+  shaders: 6552,
+  dataPacks: 6945,
+} as const;
+
+export const CURSEFORGE_CLASS_LABELS: Record<number, string> = {
+  [CURSEFORGE_CLASSES.mods]: "Mod",
+  [CURSEFORGE_CLASSES.modpacks]: "Modpack",
+  [CURSEFORGE_CLASSES.resourcePacks]: "Resource pack",
+  [CURSEFORGE_CLASSES.shaders]: "Shader",
+  [CURSEFORGE_CLASSES.dataPacks]: "Data pack",
+};
+
+export function curseforgeClassLabel(classId: number): string {
+  return CURSEFORGE_CLASS_LABELS[classId] ?? `Class ${classId}`;
+}
+
 export const WORKSHOP_MOD_REJECT_REASONS = [
   "on_hold",
   "incompatible",

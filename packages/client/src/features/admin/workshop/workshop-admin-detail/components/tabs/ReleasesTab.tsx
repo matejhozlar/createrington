@@ -16,7 +16,11 @@ import {
   CardError,
   CardLoading,
 } from "@/features/admin/components/CardState";
-import { formatDate } from "@/features/workshop/format";
+import {
+  formatDate,
+  PROJECT_KIND_BADGE_CLASS,
+  projectKindLabel,
+} from "@/features/workshop/format";
 
 type Release = RouterOutput["admin"]["modpacks"]["listReleases"][number];
 type Diff = RouterOutput["admin"]["modpacks"]["getReleaseDiff"];
@@ -54,6 +58,7 @@ function ChangeRow({
   entry: DiffEntry;
   showBump: boolean;
 }) {
+  const kind = projectKindLabel(entry.classId);
   return (
     <div className="flex items-center gap-2.5 px-4 py-2 text-sm">
       <ProjectThumb
@@ -61,8 +66,15 @@ function ChangeRow({
         thumbnailUrl={entry.thumbnailUrl}
         className="size-7 rounded text-[10px]"
       />
-      <span className="min-w-0 flex-1 truncate font-medium">
-        {entry.projectName}
+      <span className="flex min-w-0 flex-1 items-center gap-1.5">
+        <span className="min-w-0 truncate font-medium">
+          {entry.projectName}
+        </span>
+        {kind && (
+          <Badge variant="outline" className={PROJECT_KIND_BADGE_CLASS}>
+            {kind}
+          </Badge>
+        )}
       </span>
       {showBump && entry.previousFile ? (
         <span className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">

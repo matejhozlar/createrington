@@ -4,6 +4,7 @@ import type {
   CurseforgeProjectCreate,
 } from "@createrington/shared/db";
 import {
+  classEnvironmentHint,
   getMod,
   getMods,
   type CurseForgeEnvironmentHint,
@@ -13,7 +14,14 @@ import {
 // CurseForge reports int64 counters; the column is int4
 const INT4_MAX = 2_147_483_647;
 
+function environmentHintFor(
+  data: CurseForgeProjectData,
+): CurseForgeEnvironmentHint | null {
+  return classEnvironmentHint(data.classId) ?? data.environmentHint;
+}
+
 function toCreate(data: CurseForgeProjectData): CurseforgeProjectCreate {
+  const hint = environmentHintFor(data);
   return {
     id: data.id,
     classId: data.classId,
@@ -23,8 +31,8 @@ function toCreate(data: CurseForgeProjectData): CurseforgeProjectCreate {
     thumbnailUrl: data.thumbnailUrl,
     websiteUrl: data.websiteUrl,
     primaryAuthor: data.authors[0]?.name ?? null,
-    environment: data.environmentHint ?? "unspecified",
-    environmentSource: data.environmentHint ? "cf_flag" : null,
+    environment: hint ?? "unspecified",
+    environmentSource: hint ? "cf_flag" : null,
     categories: data.categories.map((c) => ({
       id: c.id,
       name: c.name,
@@ -64,17 +72,19 @@ const UPDATE_FIELDS: Array<keyof CurseforgeProjectCreate> = [
 async function applyEnvironmentHints(
   projects: CurseForgeProjectData[],
 ): Promise<void> {
-  const hinted = projects.filter((data) => data.environmentHint !== null);
+  const hinted = projects.flatMap((data) => {
+    const hint = environmentHintFor(data);
+    return hint ? [{ data, hint }] : [];
+  });
   if (hinted.length === 0) return;
 
   const rows = await Q.curseforge.project.findAll(
-    { id: { $in: hinted.map((data) => data.id) } },
+    { id: { $in: hinted.map(({ data }) => data.id) } },
     { select: ["id", "environment", "environmentSource"] },
   );
   const byId = new Map(rows.map((row) => [row.id, row]));
   const idsByHint = new Map<CurseForgeEnvironmentHint, number[]>();
-  for (const data of hinted) {
-    const hint = data.environmentHint!;
+  for (const { data, hint } of hinted) {
     const row = byId.get(data.id);
     if (!row || row.environmentSource === "manual") continue;
     if (row.environment === hint && row.environmentSource === "cf_flag") {

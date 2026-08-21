@@ -53,6 +53,7 @@ import { recordModEvent, REVIEW_EVENT_TYPES } from "./events";
 export type WorkshopProjectSummary = Pick<
   CurseforgeProject,
   | "id"
+  | "classId"
   | "name"
   | "slug"
   | "summary"
@@ -88,6 +89,7 @@ export interface WorkshopModListItem extends WorkshopMod {
 
 export interface WorkshopDependencyListItem {
   curseforgeProjectId: number;
+  classId: number | null;
   name: string | null;
   slug: string | null;
   thumbnailUrl: string | null;
@@ -1128,6 +1130,7 @@ export class WorkshopService {
       );
       return {
         curseforgeProjectId: dependencyId,
+        classId: project?.classId ?? null,
         name: project?.name ?? null,
         slug: project?.slug ?? null,
         thumbnailUrl: project?.thumbnailUrl ?? null,
@@ -1378,6 +1381,7 @@ export class WorkshopService {
   private toProjectSummary(project: CurseforgeProject): WorkshopProjectSummary {
     return {
       id: project.id,
+      classId: project.classId,
       name: project.name,
       slug: project.slug,
       summary: project.summary,
