@@ -1,7 +1,11 @@
 import "@/logger.global";
 import config from "@/config";
 import { REST, Routes } from "discord.js";
-import { emojiManifest, type EmojiDefinition } from "@/discord/emojis/manifest";
+import {
+  emojiManifest,
+  type EmojiDefinition,
+  type EmojiKey,
+} from "@/discord/emojis/manifest";
 import { renderEmoji, toDataUri } from "@/discord/emojis/rasterize";
 
 const BOT_TOKEN = config.discord.bots.main.token;
@@ -48,6 +52,35 @@ function parseForcedNames(): Set<string> {
 }
 
 /**
+ * Marks a failure as Discord being unreachable rather than the manifest being wrong
+ *
+ * The two need different outcomes: a bad manifest is a commit bug that will
+ * never succeed and must fail the build, while a transient API error should not
+ * take down a deploy over artwork the bot has a Unicode fallback for.
+ */
+class DiscordUnavailableError extends Error {}
+
+/**
+ * Runs a Discord REST call, tagging any failure as transient
+ *
+ * @param operation - The REST call to run
+ * @param description - What was being attempted, for the log line
+ * @returns Whatever the call resolved to
+ * @private
+ */
+async function callDiscord<T>(
+  operation: () => Promise<T>,
+  description: string,
+): Promise<T> {
+  try {
+    return await operation();
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new DiscordUnavailableError(`${description}: ${detail}`);
+  }
+}
+
+/**
  * Fetches the emojis currently owned by the bot application
  *
  * The list endpoint wraps its payload in an `items` key rather than returning a
@@ -57,8 +90,10 @@ function parseForcedNames(): Set<string> {
  * @private
  */
 async function fetchExisting(): Promise<ApplicationEmoji[]> {
-  const response = (await rest.get(Routes.applicationEmojis(BOT_ID))) as
-    { items?: ApplicationEmoji[] } | ApplicationEmoji[];
+  const response = (await callDiscord(
+    () => rest.get(Routes.applicationEmojis(BOT_ID)),
+    "listing application emojis",
+  )) as { items?: ApplicationEmoji[] } | ApplicationEmoji[];
 
   if (Array.isArray(response)) return response;
   return response.items ?? [];
@@ -75,11 +110,17 @@ async function createEmoji(
   name: string,
   definition: EmojiDefinition,
 ): Promise<void> {
+  // Rendered outside callDiscord: a render failure is a manifest bug, not an
+  // outage, and must fail the build rather than being shrugged off
   const { data, mime } = await renderEmoji(name, definition);
 
-  const created = (await rest.post(Routes.applicationEmojis(BOT_ID), {
-    body: { name, image: toDataUri(data, mime) },
-  })) as ApplicationEmoji;
+  const created = (await callDiscord(
+    () =>
+      rest.post(Routes.applicationEmojis(BOT_ID), {
+        body: { name, image: toDataUri(data, mime) },
+      }),
+    `creating "${name}"`,
+  )) as ApplicationEmoji;
 
   const source = definition.icon
     ? `lucide:${definition.icon}`
@@ -110,6 +151,15 @@ export async function deployEmojis(): Promise<void> {
     }
 
     const forced = parseForcedNames();
+    const unmatchedForce = [...forced].filter((name) => !names.includes(name));
+    if (unmatchedForce.length > 0) {
+      // --force is the only way to update changed artwork, so a typo silently
+      // doing nothing and reporting success is the wrong failure mode
+      throw new Error(
+        `--force named emoji(s) not in the manifest: ${unmatchedForce.join(", ")}`,
+      );
+    }
+
     logger.info(`Reconciling ${names.length} emoji(s) for app ${BOT_ID}...`);
 
     const existing = await fetchExisting();
@@ -120,11 +170,14 @@ export async function deployEmojis(): Promise<void> {
     let skipped = 0;
 
     for (const name of names) {
-      const definition: EmojiDefinition = emojiManifest[name as never];
+      const definition: EmojiDefinition = emojiManifest[name as EmojiKey];
       const current = existingByName.get(name);
 
       if (current && forced.has(name)) {
-        await rest.delete(Routes.applicationEmoji(BOT_ID, current.id));
+        await callDiscord(
+          () => rest.delete(Routes.applicationEmoji(BOT_ID, current.id)),
+          `deleting "${name}" before replacing it`,
+        );
         await createEmoji(name, definition);
         replaced++;
       } else if (current) {
@@ -152,6 +205,16 @@ export async function deployEmojis(): Promise<void> {
     );
     process.exit(0);
   } catch (error) {
+    if (error instanceof DiscordUnavailableError) {
+      // Emojis are cosmetic and every entry has a Unicode fallback, so a
+      // Discord-side failure must not abort the deploy that carries migrations
+      // and the application build. The next deploy reconciles what was missed.
+      logger.error(
+        `Emoji deploy skipped, Discord unreachable (${error.message}). The bot renders Unicode fallbacks until the next deploy.`,
+      );
+      process.exit(0);
+    }
+
     logger.error("Failed to deploy emojis:", error);
     process.exit(1);
   }

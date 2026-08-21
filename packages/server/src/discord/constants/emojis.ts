@@ -18,6 +18,10 @@ const DiscordEmojis = {} as {
   [K in EmojiKey as ToScreamingSnakeCase<K>]: string;
 };
 
+// NOTE: these are getters, so spreading this object resolves every value at the
+// point of the spread. `DiscordRolesNamespace` is built with `...DiscordRoles`,
+// but copying that pattern here would freeze whatever was resolved at module
+// init - which is before login, i.e. the Unicode fallbacks, permanently.
 for (const key of Object.keys(emojiManifest) as EmojiKey[]) {
   Object.defineProperty(DiscordEmojis, toScreamingSnakeCase(key), {
     get: () => resolveEmoji(key),

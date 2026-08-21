@@ -4,6 +4,10 @@
  * Emoji ids differ between the dev and prod bot applications, so they are never
  * committed. The bot fetches its own application's emoji list once after login
  * and matches them back to the manifest by name.
+ *
+ * Resolution is scoped to the MAIN bot application, which is the only client
+ * `hydrateEmojiRegistry` is called for. Application emojis can only be rendered
+ * by the application that owns them, so the web bot cannot display these.
  */
 
 import type { Client } from "discord.js";
@@ -32,6 +36,10 @@ export async function hydrateEmojiRegistry(client: Client): Promise<void> {
     const byName = new Map(
       emojis.map((emoji) => [emoji.name, emoji.toString()]),
     );
+
+    // Cleared only once the fetch succeeded, so a failed re-hydrate keeps the
+    // previously resolved ids rather than dropping every emoji to its fallback
+    resolved.clear();
 
     const missing: string[] = [];
     for (const name of Object.keys(emojiManifest)) {
@@ -70,17 +78,4 @@ export async function hydrateEmojiRegistry(client: Client): Promise<void> {
  */
 export function resolveEmoji(key: EmojiKey): string {
   return resolved.get(key) ?? emojiManifest[key].fallback;
-}
-
-/**
- * Reports whether an emoji resolved to its deployed custom form
- *
- * Intended for diagnostics; normal call sites should just use the resolved
- * string and let the fallback do its job.
- *
- * @param key - A manifest key
- * @returns True when the custom emoji was found on the application
- */
-export function isEmojiDeployed(key: EmojiKey): boolean {
-  return resolved.has(key);
 }

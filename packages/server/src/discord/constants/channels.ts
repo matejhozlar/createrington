@@ -1,40 +1,7 @@
 import config from "@/config";
+import { toScreamingSnakeCase, type ToScreamingSnakeCase } from "./case";
 
 const channelsConfig = config.discord.guild.channels;
-
-/**
- * Converts a camelCase string to SCREAMING_SNAKE_CASE at runtime
- *
- * Inserts underscores before capital letters and converts the entire string to uppercase
- *
- * @param str - The camelCase string to convert
- * @returns The converted SCREAMING_SNAKE_CASE string
- *
- * @example
- * toScreamingSnakeCase("adminChat") // Returns "ADMIN_CHAT"
- * toScreamingSnakeCase("generalDiscussion") // Returns "GENERAL_DISCUSSION"
- */
-function toScreamingSnakeCase(str: string): string {
-  return str.replace(/([a-z])([A-Z])/g, "$1_$2").toUpperCase();
-}
-
-/**
- * Type-level utility for converting camelCase string literals to SCREAMING_SNAKE_CASE
- *
- * Recursively processes each character, inserting underscores before uppercase letters
- * and converting all characters to uppercase. Used for type-safe key transformation.
- *
- * @template S - The string literal type to convert
- *
- * @example
- * type Result = ToScreamingSnakeCase<"adminChat">; // "ADMIN_CHAT"
- * type Result2 = ToScreamingSnakeCase<"myChannelName">; // "MY_CHANNEL_NAME"
- */
-type ToScreamingSnakeCase<S extends string> = S extends `${infer T}${infer U}`
-  ? U extends Uncapitalize<U>
-    ? `${Uppercase<T>}${ToScreamingSnakeCase<U>}`
-    : `${Uppercase<T>}_${ToScreamingSnakeCase<U>}`
-  : S;
 
 /**
  * Type-level utility for transforming nested channel configuration structure

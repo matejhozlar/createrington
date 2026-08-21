@@ -9,6 +9,14 @@
  * Icon-backed entries are rendered from `lucide-static` at deploy time. Use
  * `file` instead for bespoke art in `emojis/assets` - required for animated
  * emojis, since GIF has no vector equivalent.
+ *
+ * SCOPE: these are application emojis owned by the MAIN bot, so only the main
+ * bot can render them. A payload built with `Discord.Emojis.*` and sent through
+ * the web bot (a separate Discord application, see `getMessageService("web")`)
+ * shows the literal `<:name:id>` text instead of the image.
+ *
+ * Keys must satisfy Discord's naming rules and stay lowercase; see the manifest
+ * unit test for the exact constraint and why it is tighter than Discord's.
  */
 
 interface EmojiDefinitionBase {
@@ -21,8 +29,14 @@ interface EmojiDefinitionBase {
    */
   readonly fallback: string;
 
-  /** Stroke colour applied when rendering. Defaults to the brand gold. */
-  readonly tint?: string;
+  /**
+   * Stroke colour applied when rendering. Defaults to the brand gold.
+   *
+   * Must be a 6-digit hex colour: it is interpolated straight into SVG markup,
+   * and anything unparseable renders black, which is invisible on Discord's
+   * dark theme.
+   */
+  readonly tint?: `#${string}`;
 
   /** Overrides the default stroke weight for icons that read too thin or heavy */
   readonly strokeWidth?: number;

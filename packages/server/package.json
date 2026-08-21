@@ -20,7 +20,7 @@
     "dev": "infisical run --env=dev -- node scripts/dev-watch.mjs",
     "dev:types": "concurrently \"tsc --emitDeclarationOnly --watch\" \"tsc-alias --watch\"",
     "build": "tsc && tsc-alias && pnpm build:copy-assets",
-    "build:copy-assets": "copyfiles -u 1 \"src/**/*.html\" \"src/**/*.png\" \"src/**/*.jpg\" \"src/**/*.svg\" \"src/**/*.json\" \"src/**/*.woff2\" dist/server/src",
+    "build:copy-assets": "copyfiles -u 1 \"src/**/*.html\" \"src/**/*.png\" \"src/**/*.jpg\" \"src/**/*.gif\" \"src/**/*.svg\" \"src/**/*.json\" \"src/**/*.woff2\" dist/server/src",
     "start": "node dist/server/src/server.js",
     "build:types": "tsc --declaration --emitDeclarationOnly && tsc-alias",
     "typecheck": "tsc --noEmit",

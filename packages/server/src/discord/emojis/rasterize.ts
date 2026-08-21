@@ -21,7 +21,7 @@ const require = createRequire(import.meta.url);
 const RENDER_SIZE = 128;
 
 /** Discord rejects emoji images above 256 KiB */
-export const MAX_EMOJI_BYTES = 256 * 1024;
+const MAX_EMOJI_BYTES = 256 * 1024;
 
 /**
  * Vectors are rasterized at this multiple of the final size, then downscaled
@@ -48,6 +48,9 @@ const CONTENT_MARGIN = 0.05;
  */
 const VIEWBOX_PAD = 0.15;
 
+/** A tint is interpolated into markup, so it has to be a plain hex colour */
+const VALID_TINT = /^#[0-9a-fA-F]{6}$/;
+
 /** Alpha above which a pixel counts as painted rather than antialiasing haze */
 const ALPHA_THRESHOLD = 4;
 
@@ -73,6 +76,8 @@ const RASTER_MIME: Record<string, string> = {
 };
 
 interface SvgRenderOptions {
+  /** The emoji name, so failures deep in the render name their source */
+  readonly name: string;
   /** Colour substituted for `currentColor` */
   readonly tint: string;
   /** Stroke weight override; left alone when undefined */
@@ -144,13 +149,15 @@ function padViewBox(svg: string): string {
  */
 function restyleSvg(svg: string, options: SvgRenderOptions): string {
   const restyled = svg.replaceAll("currentColor", options.tint);
+  if (options.strokeWidth === undefined) return restyled;
 
-  return options.strokeWidth === undefined
-    ? restyled
-    : restyled.replace(
-        /stroke-width="2"/,
-        `stroke-width="${options.strokeWidth}"`,
-      );
+  // Rewritten on the root element rather than by matching a literal weight, so
+  // the override still applies to sources that do not use lucide's stroke-width
+  // of 2. Child elements declaring their own stroke-width still win by normal
+  // SVG inheritance, which is the correct behaviour for hand-authored art.
+  return restyled
+    .replace(/(<svg\b[^>]*?)\sstroke-width="[^"]*"/, "$1")
+    .replace(/<svg\b/, `<svg stroke-width="${options.strokeWidth}"`);
 }
 
 /**
@@ -206,15 +213,31 @@ async function rasterizeSvg(
   svg: string,
   options: SvgRenderOptions,
 ): Promise<Buffer> {
+  if (!VALID_TINT.test(options.tint)) {
+    throw new Error(
+      `Emoji "${options.name}": tint "${options.tint}" is not a 6-digit hex colour. An invalid colour renders black, which is invisible on Discord's dark theme.`,
+    );
+  }
+
   const supersampled = RENDER_SIZE * SUPERSAMPLE;
   const prepared = sizeSvg(padViewBox(restyleSvg(svg, options)), supersampled);
 
-  const image = await loadImage(Buffer.from(prepared));
+  let image;
+  let bounds;
   const scratch = createCanvas(supersampled, supersampled);
   const scratchCtx = scratch.getContext("2d");
-  scratchCtx.drawImage(image, 0, 0, supersampled, supersampled);
 
-  const bounds = paintedBounds(scratchCtx, supersampled);
+  // Failures here surface in CI as a bare stack trace, so name the entry that
+  // produced them rather than leaving the manifest key to be guessed
+  try {
+    image = await loadImage(Buffer.from(prepared));
+    scratchCtx.drawImage(image, 0, 0, supersampled, supersampled);
+    bounds = paintedBounds(scratchCtx, supersampled);
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new Error(`Emoji "${options.name}": ${detail}`);
+  }
+
   const target = RENDER_SIZE * (1 - CONTENT_MARGIN * 2);
   const scale = target / Math.max(bounds.width, bounds.height);
   const width = bounds.width * scale;
@@ -271,14 +294,17 @@ export async function renderEmoji(
     }
     result = {
       data: await rasterizeSvg(svg, {
+        name,
         tint,
         strokeWidth: definition.strokeWidth ?? DEFAULT_STROKE_WIDTH,
       }),
       mime: "image/png",
     };
   } else if (file !== undefined) {
-    const assetPath = path.join(ASSETS_DIR, file);
-    const extension = path.extname(file).toLowerCase();
+    // basename keeps a manifest entry from reaching outside the assets directory
+    const assetFile = path.basename(file);
+    const assetPath = path.join(ASSETS_DIR, assetFile);
+    const extension = path.extname(assetFile).toLowerCase();
     let raw: Buffer;
     try {
       raw = await fs.readFile(assetPath);
@@ -290,6 +316,7 @@ export async function renderEmoji(
       // Bespoke art keeps its own stroke weights unless the manifest overrides
       result = {
         data: await rasterizeSvg(raw.toString("utf-8"), {
+          name,
           tint,
           strokeWidth: definition.strokeWidth,
         }),
