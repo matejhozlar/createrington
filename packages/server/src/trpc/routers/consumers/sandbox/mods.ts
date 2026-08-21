@@ -145,6 +145,7 @@ export const sandboxModsRouter = router({
           input.workshopModId,
           input.action,
           ctx.user.discordId,
+          { allowedFrom: [...SANDBOX_MOD_STATUSES] },
         );
         await logModReview(
           { ...auditActor(ctx), source: "sandbox" },

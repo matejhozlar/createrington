@@ -51,6 +51,7 @@ import {
 import { workshopService } from "@/services/workshop";
 import { issueBan, liftBan } from "@/services/workshop/bans";
 import { getFilesDependencies } from "@/services/curseforge";
+import type { WorkshopModStatus } from "@createrington/shared/db";
 import { ingestProject, ingestProjects } from "@/services/curseforge/ingest";
 import {
   createWorkshopTestContext,
@@ -1670,5 +1671,54 @@ describe("WorkshopService.getWorkshopMods", () => {
     expect(item.dependencies).toMatchObject([
       { curseforgeProjectId: depProjectId, name: "Lib", coverage: "missing" },
     ]);
+  });
+});
+
+describe("WorkshopService.reviewMod allowedFrom", () => {
+  const FROM_TESTING_STAGES: WorkshopModStatus[] = [
+    "approved",
+    "testing",
+    "next_update",
+  ];
+
+  it("refuses to screen a pending mod", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const mod = await seedMod(ctx, workshop, { status: "pending" });
+
+    await expect(
+      workshopService.reviewMod(mod.id, "approve", ADMIN, {
+        allowedFrom: FROM_TESTING_STAGES,
+      }),
+    ).rejects.toThrow(BadRequestError);
+    expect((await Q.workshop.mod.get({ id: mod.id })).status).toBe("pending");
+  });
+
+  it("refuses to un-reject a ruled-out mod", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const mod = await seedMod(ctx, workshop, {
+      status: "rejected",
+      rejectReason: "on_hold",
+    });
+
+    await expect(
+      workshopService.reviewMod(mod.id, "approve", ADMIN, {
+        allowedFrom: FROM_TESTING_STAGES,
+      }),
+    ).rejects.toThrow(BadRequestError);
+    expect((await Q.workshop.mod.get({ id: mod.id })).status).toBe("rejected");
+  });
+
+  it("still walks the allowed stages", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const mod = await seedMod(ctx, workshop, { status: "approved" });
+
+    const updated = await workshopService.reviewMod(
+      mod.id,
+      "start_testing",
+      ADMIN,
+      { allowedFrom: FROM_TESTING_STAGES },
+    );
+
+    expect(updated.status).toBe("testing");
   });
 });

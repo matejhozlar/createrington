@@ -847,7 +847,11 @@ export class WorkshopService {
     workshopModId: number,
     action: WorkshopReviewAction,
     adminId: string,
-    options: { reason?: WorkshopModRejectReason; note?: string } = {},
+    options: {
+      reason?: WorkshopModRejectReason;
+      note?: string;
+      allowedFrom?: WorkshopModStatus[];
+    } = {},
   ): Promise<WorkshopMod> {
     if (action === "reject" && !options.reason) {
       throw new BadRequestError("A reason is required to reject a mod");
@@ -858,6 +862,11 @@ export class WorkshopService {
     const workshop = await this.getWorkshop(mod.workshopId);
     if (workshop.status === "archived") {
       throw new BadRequestError("Cannot review mods in an archived workshop");
+    }
+    if (options.allowedFrom && !options.allowedFrom.includes(mod.status)) {
+      throw new BadRequestError(
+        `Mods that are ${WORKSHOP_MOD_STATUS_LABELS[mod.status].toLowerCase()} cannot be reviewed from here, use the main admin page`,
+      );
     }
 
     if (
