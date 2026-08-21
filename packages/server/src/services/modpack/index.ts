@@ -46,6 +46,7 @@ const SHIP_CLAIMABLE_STATUSES: WorkshopModStatus[] = [
 export type ModpackProjectSummary = Pick<
   CurseforgeProject,
   | "id"
+  | "classId"
   | "name"
   | "slug"
   | "summary"
@@ -1099,6 +1100,7 @@ export class ModpackService {
   private toProjectSummary(project: CurseforgeProject): ModpackProjectSummary {
     return {
       id: project.id,
+      classId: project.classId,
       name: project.name,
       slug: project.slug,
       summary: project.summary,

@@ -17,6 +17,7 @@ export interface ReleaseModRow {
   displayName: string | null;
   fileReleaseType: number | null;
   fileDate: Date | null;
+  classId: number;
   projectName: string;
   projectSlug: string;
   thumbnailUrl: string | null;
@@ -76,6 +77,7 @@ export class ModpackReleaseModQueries extends ModpackReleaseModBaseQueries {
         rm.display_name,
         rm.file_release_type,
         rm.file_date,
+        p.class_id,
         p.name AS project_name,
         p.slug AS project_slug,
         p.thumbnail_url
@@ -91,6 +93,7 @@ export class ModpackReleaseModQueries extends ModpackReleaseModBaseQueries {
       display_name: string | null;
       file_release_type: number | null;
       file_date: Date | null;
+      class_id: number;
       project_name: string;
       project_slug: string;
       thumbnail_url: string | null;
@@ -104,6 +107,7 @@ export class ModpackReleaseModQueries extends ModpackReleaseModBaseQueries {
       displayName: row.display_name,
       fileReleaseType: row.file_release_type,
       fileDate: row.file_date,
+      classId: row.class_id,
       projectName: row.project_name,
       projectSlug: row.project_slug,
       thumbnailUrl: row.thumbnail_url,

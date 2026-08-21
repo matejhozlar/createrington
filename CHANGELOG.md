@@ -1,3 +1,15 @@
+## v1.37.1 (2026-08-21)
+
+### @createrington/server (1.38.0 → 1.38.1)
+- [fix] Surface non-mod manifest entries (shaders, resource packs, data packs) by their CurseForge class ID, exposing `classId` through modpack and workshop project summaries, release mod queries, and sandbox consumer endpoints instead of silently treating every manifest entry as a regular mod
+- [fix] Auto-classify shaders and resource packs as client-side during CurseForge ingest based on their class, overriding any conflicting file-level environment tags so environment detection no longer relies solely on per-file metadata
+
+### @createrington/client (0.2.51 → 0.2.52)
+- [fix] Badge non-mod dependencies and pack members with their CurseForge class label (Shader, Resource pack, Data pack) in the workshop admin detail tabs, and include class labels in the search filter so non-mod entries are discoverable by type
+
+### @createrington/shared (1.6.0 → 1.6.1)
+- [add] Add `CURSEFORGE_CLASSES` constant, `CURSEFORGE_CLASS_LABELS` map, and `curseforgeClassLabel()` helper so server ingest and client UI share a single definition of CurseForge project class IDs and their display names
+
 ## v1.37.0 (2026-08-21)
 
 ### @createrington/server (1.37.0 → 1.38.0)

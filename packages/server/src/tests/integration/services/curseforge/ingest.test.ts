@@ -18,7 +18,13 @@ vi.mock("@/services/curseforge", async (importOriginal) => {
 });
 
 import pool, { Q } from "@/db";
-import { deriveEnvironmentHint, getMod, getMods } from "@/services/curseforge";
+import {
+  classEnvironmentHint,
+  CurseForgeClass,
+  deriveEnvironmentHint,
+  getMod,
+  getMods,
+} from "@/services/curseforge";
 import {
   ingestProject,
   ingestProjects,
@@ -93,7 +99,56 @@ describe("deriveEnvironmentHint", () => {
   });
 });
 
+describe("classEnvironmentHint", () => {
+  it("pins shaders and resource packs to the client", () => {
+    expect(classEnvironmentHint(CurseForgeClass.shaders)).toBe("client");
+    expect(classEnvironmentHint(CurseForgeClass.resourcePacks)).toBe("client");
+  });
+
+  it("has no opinion on mods and data packs", () => {
+    expect(classEnvironmentHint(CurseForgeClass.mods)).toBeNull();
+    expect(classEnvironmentHint(CurseForgeClass.dataPacks)).toBeNull();
+  });
+});
+
 describe("environment hints on ingest", () => {
+  it("classifies shaders client-side from their class, ahead of file tags", async () => {
+    const shaderId = claimProjectId();
+    const packId = claimProjectId();
+    vi.mocked(getMods).mockResolvedValue([
+      makeProjectData(shaderId, { classId: CurseForgeClass.shaders }),
+      makeProjectData(packId, {
+        classId: CurseForgeClass.resourcePacks,
+        environmentHint: "server",
+      }),
+    ]);
+
+    await ingestProjects([shaderId, packId]);
+
+    for (const id of [shaderId, packId]) {
+      expect(await Q.curseforge.project.get({ id })).toMatchObject({
+        environment: "client",
+        environmentSource: "cf_flag",
+      });
+    }
+  });
+
+  it("reclassifies an existing unspecified row by class on refresh", async () => {
+    const projectId = claimProjectId();
+    await seedRow(projectId);
+    vi.mocked(getMods).mockResolvedValue([
+      makeProjectData(projectId, { classId: CurseForgeClass.shaders }),
+    ]);
+
+    await refreshProjects([projectId]);
+
+    expect(await Q.curseforge.project.get({ id: projectId })).toMatchObject({
+      classId: CurseForgeClass.shaders,
+      environment: "client",
+      environmentSource: "cf_flag",
+    });
+  });
+
   it("stores a CurseForge hint when a project is first ingested", async () => {
     const projectId = claimProjectId();
     vi.mocked(getMods).mockResolvedValue([

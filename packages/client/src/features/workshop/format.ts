@@ -4,6 +4,8 @@ import type {
   WorkshopModStatus,
 } from "@createrington/shared/db";
 import {
+  CURSEFORGE_CLASSES,
+  curseforgeClassLabel,
   MOD_ENVIRONMENTS,
   MOD_ENVIRONMENT_LABELS,
   WORKSHOP_MOD_STATUSES,
@@ -67,6 +69,15 @@ export function projectCategories(categories: unknown): string[] {
     typeof category?.name === "string" ? [category.name as string] : [],
   );
 }
+
+export function projectKindLabel(classId: number): string | null {
+  return classId === CURSEFORGE_CLASSES.mods
+    ? null
+    : curseforgeClassLabel(classId);
+}
+
+export const PROJECT_KIND_BADGE_CLASS =
+  "shrink-0 border-fuchsia-500/20 bg-fuchsia-500/10 px-1.5 py-0 text-[10px] text-fuchsia-400";
 
 export function modCredit(submitterName: string | null) {
   return { verb: "Suggested by", name: submitterName ?? "a player" };

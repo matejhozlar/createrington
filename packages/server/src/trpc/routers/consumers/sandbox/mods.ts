@@ -28,6 +28,7 @@ export const SANDBOX_REVIEW_ACTIONS = [
 
 export interface SandboxModProject {
   id: number;
+  classId: number;
   name: string;
   slug: string;
   summary: string | null;
@@ -76,6 +77,7 @@ function toSandboxMod(item: WorkshopModListItem): SandboxWorkshopMod {
     curseforgeProjectId: item.curseforgeProjectId,
     project: {
       id: item.project.id,
+      classId: item.project.classId,
       name: item.project.name,
       slug: item.project.slug,
       summary: item.project.summary,
