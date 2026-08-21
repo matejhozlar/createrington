@@ -51,6 +51,7 @@ import {
 import { workshopService } from "@/services/workshop";
 import { issueBan, liftBan } from "@/services/workshop/bans";
 import { getFilesDependencies } from "@/services/curseforge";
+import type { WorkshopModStatus } from "@createrington/shared/db";
 import { ingestProject, ingestProjects } from "@/services/curseforge/ingest";
 import {
   createWorkshopTestContext,
@@ -1626,5 +1627,98 @@ describe("WorkshopService.reviewMod ruled-out dependency gate", () => {
         }),
       ).toMatchObject([{ dependsOnProjectId: depProjectId, relationType: 3 }]);
     });
+  });
+});
+
+describe("WorkshopService.getWorkshopMods", () => {
+  it("narrows to the requested statuses", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const approved = await seedMod(ctx, workshop, { status: "approved" });
+    const testing = await seedMod(ctx, workshop, { status: "testing" });
+    await seedMod(ctx, workshop, { status: "pending" });
+    await seedMod(ctx, workshop, {
+      status: "rejected",
+      rejectReason: "on_hold",
+    });
+    await seedMod(ctx, workshop, { status: "in_pack" });
+
+    const mods = await workshopService.getWorkshopMods(workshop.id, {
+      statuses: ["approved", "testing", "next_update"],
+    });
+
+    expect(mods.map((mod) => mod.id).sort()).toEqual(
+      [approved.id, testing.id].sort(),
+    );
+  });
+
+  it("returns one mod in the listing shape", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const depProjectId = await seedProject(ctx, "Lib");
+    const mod = await seedMod(ctx, workshop, {
+      status: "testing",
+      fileId: 100,
+    });
+    await seedRequiredDependency(
+      workshop,
+      mod.curseforgeProjectId,
+      depProjectId,
+    );
+
+    const item = await workshopService.getWorkshopModListItem(mod.id);
+
+    expect(item.id).toBe(mod.id);
+    expect(item.project.id).toBe(mod.curseforgeProjectId);
+    expect(item.dependencies).toMatchObject([
+      { curseforgeProjectId: depProjectId, name: "Lib", coverage: "missing" },
+    ]);
+  });
+});
+
+describe("WorkshopService.reviewMod allowedFrom", () => {
+  const FROM_TESTING_STAGES: WorkshopModStatus[] = [
+    "approved",
+    "testing",
+    "next_update",
+  ];
+
+  it("refuses to screen a pending mod", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const mod = await seedMod(ctx, workshop, { status: "pending" });
+
+    await expect(
+      workshopService.reviewMod(mod.id, "approve", ADMIN, {
+        allowedFrom: FROM_TESTING_STAGES,
+      }),
+    ).rejects.toThrow(BadRequestError);
+    expect((await Q.workshop.mod.get({ id: mod.id })).status).toBe("pending");
+  });
+
+  it("refuses to un-reject a ruled-out mod", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const mod = await seedMod(ctx, workshop, {
+      status: "rejected",
+      rejectReason: "on_hold",
+    });
+
+    await expect(
+      workshopService.reviewMod(mod.id, "approve", ADMIN, {
+        allowedFrom: FROM_TESTING_STAGES,
+      }),
+    ).rejects.toThrow(BadRequestError);
+    expect((await Q.workshop.mod.get({ id: mod.id })).status).toBe("rejected");
+  });
+
+  it("still walks the allowed stages", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const mod = await seedMod(ctx, workshop, { status: "approved" });
+
+    const updated = await workshopService.reviewMod(
+      mod.id,
+      "start_testing",
+      ADMIN,
+      { allowedFrom: FROM_TESTING_STAGES },
+    );
+
+    expect(updated.status).toBe("testing");
   });
 });
