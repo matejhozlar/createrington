@@ -89,6 +89,7 @@ export interface WorkshopModListItem extends WorkshopMod {
 
 export interface WorkshopDependencyListItem {
   curseforgeProjectId: number;
+  classId: number | null;
   name: string | null;
   slug: string | null;
   thumbnailUrl: string | null;
@@ -1129,6 +1130,7 @@ export class WorkshopService {
       );
       return {
         curseforgeProjectId: dependencyId,
+        classId: project?.classId ?? null,
         name: project?.name ?? null,
         slug: project?.slug ?? null,
         thumbnailUrl: project?.thumbnailUrl ?? null,

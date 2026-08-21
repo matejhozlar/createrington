@@ -91,6 +91,7 @@ export function DependenciesTab({
           name={dependencyName(row)}
           slug={row.slug}
           thumbnailUrl={row.thumbnailUrl}
+          classId={row.classId ?? undefined}
         />
       ),
     },
