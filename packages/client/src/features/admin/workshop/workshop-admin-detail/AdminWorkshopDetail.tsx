@@ -186,7 +186,12 @@ export function AdminWorkshopDetail() {
       setRejectTarget(null);
       invalidate();
     },
-    onError: (err) => toast.error(err.message),
+    // A refused review means the grid allowed a click the server would not,
+    // so refetch to bring the stale rows up to date
+    onError: (err) => {
+      toast.error(err.message);
+      invalidate();
+    },
   });
 
   const addProjectMutation = trpc.admin.workshops.addMods.useMutation({

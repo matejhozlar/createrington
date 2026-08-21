@@ -185,7 +185,7 @@ export type ModpackAttentionItem =
   | (AttentionSubject & {
       type: "rejected_dependency" | "unpromoted_dependency";
       workshopModId: number;
-      requiredByName: string;
+      requiredBy: Array<{ curseforgeProjectId: number; name: string }>;
     })
   | (AttentionSubject & {
       type: "environment_unspecified";
@@ -686,19 +686,29 @@ export class ModpackService {
     }
     const gaps = new Map<
       number,
-      { coverage: DependencyCoverage; requiredByProjectId: number }
+      { coverage: DependencyCoverage; requiredByProjectIds: number[] }
     >();
     for (const edge of edges) {
-      const subject = context.coverage.get(edge.curseforgeProjectId);
-      if (subject !== "staged" && subject !== "published") continue;
       const coverage =
         context.coverage.get(edge.dependsOnProjectId) ?? "missing";
       if (coverage === "published" || coverage === "staged") continue;
-      if (gaps.has(edge.dependsOnProjectId)) continue;
-      gaps.set(edge.dependsOnProjectId, {
+      const subject = context.coverage.get(edge.curseforgeProjectId);
+      const shipping = subject === "staged" || subject === "published";
+      // A ruled-out dependency also blocks mods still walking review, so
+      // approved and testing subjects surface for that case; other gap kinds
+      // only matter for shipping mods
+      const status = suggestionByProject.get(edge.curseforgeProjectId)?.status;
+      const qualifies =
+        coverage === "rejected"
+          ? shipping || status === "approved" || status === "testing"
+          : shipping;
+      if (!qualifies) continue;
+      const gap = gaps.get(edge.dependsOnProjectId) ?? {
         coverage,
-        requiredByProjectId: edge.curseforgeProjectId,
-      });
+        requiredByProjectIds: [],
+      };
+      gap.requiredByProjectIds.push(edge.curseforgeProjectId);
+      gaps.set(edge.dependsOnProjectId, gap);
     }
 
     const projectIds = [
@@ -709,7 +719,7 @@ export class ModpackService {
         ...duplicateIds,
         ...[...gaps.entries()].flatMap(([depId, gap]) => [
           depId,
-          gap.requiredByProjectId,
+          ...gap.requiredByProjectIds,
         ]),
       ]),
     ];
@@ -754,7 +764,10 @@ export class ModpackService {
             : "unpromoted_dependency",
         workshopModId: suggestion.id,
         ...attentionSubject(projectId),
-        requiredByName: label(gap.requiredByProjectId),
+        requiredBy: gap.requiredByProjectIds.map((id) => ({
+          curseforgeProjectId: id,
+          name: label(id),
+        })),
       });
     }
     for (const projectId of duplicateIds) {

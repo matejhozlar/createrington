@@ -7,10 +7,10 @@ import { workshopService } from "@/services/workshop";
 import { modpackService } from "@/services/modpack";
 import { getMinecraftVersions } from "@/services/curseforge";
 import { listForumChannels } from "@/services/workshop/discord";
+import { logModReview, logProjectEnvironment } from "@/services/workshop/audit";
 import { adminWorkshopBansRouter } from "./bans";
 import {
   MOD_ENVIRONMENTS,
-  MOD_ENVIRONMENT_LABELS,
   WORKSHOP_MOD_REJECT_REASONS,
   WORKSHOP_MOD_REVIEW_ACTIONS,
   WORKSHOP_STATUSES,
@@ -224,17 +224,7 @@ export const adminWorkshopsRouter = router({
           ctx.user.discordId,
           { reason: input.reason, note: input.note },
         );
-        await Q.admin.log.action.logAction({
-          ...auditActor(ctx),
-          actionType: `workshop_mod_${input.action}`,
-          description: `Reviewed workshop mod #${input.workshopModId}: ${input.action}`,
-          reason: [input.reason, input.note].filter(Boolean).join(": "),
-          metadata: {
-            workshopModId: input.workshopModId,
-            curseforgeProjectId: mod.curseforgeProjectId,
-            status: mod.status,
-          },
-        });
+        await logModReview(auditActor(ctx), input, mod);
         return mod;
       } catch (error) {
         rethrowTrpc(error);
@@ -258,15 +248,11 @@ export const adminWorkshopsRouter = router({
           input.curseforgeProjectId,
           input.environment,
         );
-        await Q.admin.log.action.logAction({
-          ...auditActor(ctx),
-          actionType: "workshop_project_environment",
-          description: `Flagged "${project.name}" as ${MOD_ENVIRONMENT_LABELS[input.environment]}`,
-          metadata: {
-            curseforgeProjectId: input.curseforgeProjectId,
-            environment: input.environment,
-          },
-        });
+        await logProjectEnvironment(
+          auditActor(ctx),
+          project,
+          input.environment,
+        );
         return project;
       } catch (error) {
         rethrowTrpc(error);

@@ -15,6 +15,7 @@ import type {
   WorkshopProjectDependency,
 } from "@createrington/shared/db";
 import {
+  hasRuledOutRequiredDependency,
   WORKSHOP_MOD_REVIEW_ACTION_LABELS,
   WORKSHOP_MOD_REVIEW_TARGETS,
   WORKSHOP_MOD_STATUS_LABELS,
@@ -43,6 +44,7 @@ import {
   loadDependencyContext,
   pruneStaleDependencyEdges,
   resolveProjectDependencies,
+  tryResolveProjectDependencies,
   REQUIRED_DEPENDENCY,
   type DependencyCoverage,
 } from "./dependencies";
@@ -242,19 +244,38 @@ export class WorkshopService {
   /** Suggestions in a workshop with project summaries and upvote counts. */
   async getWorkshopMods(
     workshopId: number,
-    options: { includeHidden?: boolean } = {},
+    options: { includeHidden?: boolean; statuses?: WorkshopModStatus[] } = {},
   ): Promise<WorkshopModListItem[]> {
     const workshop = await this.getWorkshop(workshopId);
+    const statuses =
+      options.statuses ??
+      (options.includeHidden ? null : USER_VISIBLE_MOD_STATUSES);
     const mods = await Q.workshop.mod.findAll(
       {
         workshopId,
-        ...(options.includeHidden
-          ? {}
-          : { status: { $in: USER_VISIBLE_MOD_STATUSES } }),
+        ...(statuses ? { status: { $in: statuses } } : {}),
       },
       { orderBy: "createdAt", orderDirection: "desc" },
     );
     return this.decorateMods(workshop, mods);
+  }
+
+  /** One mod in the same shape as the workshop listing. */
+  async getWorkshopModListItem(
+    workshopModId: number,
+  ): Promise<WorkshopModListItem> {
+    const mod = await Q.workshop.mod.find({ id: workshopModId });
+    if (!mod) {
+      throw new NotFoundError(`Mod #${workshopModId} not found`);
+    }
+    const workshop = await this.getWorkshop(mod.workshopId);
+    const [item] = await this.decorateMods(workshop, [mod]);
+    if (!item) {
+      throw new NotFoundError(
+        `CurseForge project #${mod.curseforgeProjectId} is not cached`,
+      );
+    }
+    return item;
   }
 
   /** Members of the workshop's modpack, for the admin members card. */
@@ -491,7 +512,7 @@ export class WorkshopService {
     const [item] = await this.decorateMods(workshop, [created]);
     if (!item) throw new NotFoundError(`Mod #${created.id} not found`);
     void announceSuggestion(workshop, item);
-    void resolveProjectDependencies(workshop, [created]);
+    void tryResolveProjectDependencies(workshop, [created]);
     return item;
   }
 
@@ -826,7 +847,11 @@ export class WorkshopService {
     workshopModId: number,
     action: WorkshopReviewAction,
     adminId: string,
-    options: { reason?: WorkshopModRejectReason; note?: string } = {},
+    options: {
+      reason?: WorkshopModRejectReason;
+      note?: string;
+      allowedFrom?: WorkshopModStatus[];
+    } = {},
   ): Promise<WorkshopMod> {
     if (action === "reject" && !options.reason) {
       throw new BadRequestError("A reason is required to reject a mod");
@@ -837,6 +862,11 @@ export class WorkshopService {
     const workshop = await this.getWorkshop(mod.workshopId);
     if (workshop.status === "archived") {
       throw new BadRequestError("Cannot review mods in an archived workshop");
+    }
+    if (options.allowedFrom && !options.allowedFrom.includes(mod.status)) {
+      throw new BadRequestError(
+        `Mods that are ${WORKSHOP_MOD_STATUS_LABELS[mod.status].toLowerCase()} cannot be reviewed from here, use the main admin page`,
+      );
     }
 
     if (
@@ -865,6 +895,12 @@ export class WorkshopService {
               mod.status
             ].toLowerCase()}`,
       );
+    }
+
+    // Keyed on the action, not the target: send_back from next_update also
+    // lands on testing and must stay open as an escape hatch
+    if (action === "start_testing") {
+      await this.assertNoRuledOutRequiredDependency(workshop, mod);
     }
 
     if (target === "next_update") {
@@ -916,7 +952,55 @@ export class WorkshopService {
     });
     void announceReview(updated, target);
     if (target === "rejected") await pruneStaleDependencyEdges(workshop);
+    // Rejecting pruned this mod's own edges; un-rejecting has to bring them
+    // back itself, since the daily sweep skips closed workshops
+    if (mod.status === "rejected" && target !== "rejected") {
+      void tryResolveProjectDependencies(workshop, [updated]);
+    }
     return updated;
+  }
+
+  private async assertNoRuledOutRequiredDependency(
+    workshop: Workshop,
+    mod: WorkshopMod,
+  ): Promise<void> {
+    let edges = await Q.workshop.project.dependency.findAll({
+      workshopId: workshop.id,
+      curseforgeProjectId: mod.curseforgeProjectId,
+    });
+    // An empty cache can mean resolution silently failed, so re-resolve
+    // before trusting it; mods without a chosen file have nothing to resolve
+    if (edges.length === 0 && mod.fileId !== null) {
+      try {
+        await resolveProjectDependencies(workshop, [mod]);
+      } catch (error) {
+        logger.warn(
+          `Dependency check failed for workshop mod #${mod.id}:`,
+          error,
+        );
+        throw new BadRequestError(
+          "Could not check this mod's dependencies right now, please try again",
+        );
+      }
+      edges = await Q.workshop.project.dependency.findAll({
+        workshopId: workshop.id,
+        curseforgeProjectId: mod.curseforgeProjectId,
+      });
+    }
+    if (edges.length === 0) return;
+
+    const { coverage } = await loadDependencyContext(workshop);
+    const blocked = hasRuledOutRequiredDependency(
+      edges.map((edge) => ({
+        relationType: edge.relationType,
+        coverage: coverage.get(edge.dependsOnProjectId) ?? "missing",
+      })),
+    );
+    if (blocked) {
+      throw new BadRequestError(
+        "A required dependency of this mod has been ruled out for this workshop",
+      );
+    }
   }
 
   /**
@@ -979,7 +1063,7 @@ export class WorkshopService {
     const items = await this.decorateMods(workshop, created);
     void (async () => {
       for (const item of items) await announceSuggestion(workshop, item);
-      await resolveProjectDependencies(workshop, created);
+      await tryResolveProjectDependencies(workshop, created);
     })();
     return items;
   }
