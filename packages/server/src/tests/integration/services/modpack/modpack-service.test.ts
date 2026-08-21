@@ -62,6 +62,7 @@ import {
 import { modpackService } from "@/services/modpack";
 import { workshopService } from "@/services/workshop";
 import {
+  CurseForgeClass,
   getFilesDetails,
   getModpackManifest,
   type ModpackManifest,
@@ -588,6 +589,37 @@ describe("ModpackService.reconcile", () => {
       liveInVersion: "2.0.0",
     });
     expect(imported!.liveAt).not.toBeNull();
+  });
+
+  it("keeps non-mod manifest entries as members and exposes their class", async () => {
+    const modpack = await seedModpack(ctx, {
+      curseforgeProjectId: ctx.nextProjectId++,
+    });
+    const shaderId = await seedProject(ctx, "Complementary Shaders", {
+      classId: CurseForgeClass.shaders,
+    });
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      manifest({ version: "2.0.0", modIds: new Set([shaderId]) }),
+    );
+
+    await modpackService.reconcile(modpack.id);
+
+    const members = await modpackService.getPackMods(modpack.id);
+    expect(members).toHaveLength(1);
+    expect(members[0]).toMatchObject({
+      curseforgeProjectId: shaderId,
+      origin: "import",
+      liveInVersion: "2.0.0",
+      project: { classId: CurseForgeClass.shaders },
+    });
+
+    const [release] = await modpackService.listReleases(modpack.id);
+    const frozen = await modpackService.getReleaseMods(release.id);
+    expect(frozen).toHaveLength(1);
+    expect(frozen[0]).toMatchObject({
+      curseforgeProjectId: shaderId,
+      classId: CurseForgeClass.shaders,
+    });
   });
 
   it("moves a shipped suggestion to in_pack and back when it drops out", async () => {

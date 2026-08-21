@@ -53,6 +53,7 @@ import { recordModEvent, REVIEW_EVENT_TYPES } from "./events";
 export type WorkshopProjectSummary = Pick<
   CurseforgeProject,
   | "id"
+  | "classId"
   | "name"
   | "slug"
   | "summary"
@@ -1378,6 +1379,7 @@ export class WorkshopService {
   private toProjectSummary(project: CurseforgeProject): WorkshopProjectSummary {
     return {
       id: project.id,
+      classId: project.classId,
       name: project.name,
       slug: project.slug,
       summary: project.summary,

@@ -11,6 +11,7 @@ import type {
 
 export interface SandboxPackModProject {
   id: number;
+  classId: number;
   name: string;
   slug: string;
   thumbnailUrl: string | null;
@@ -39,6 +40,7 @@ function toSandboxPackMod(item: ModpackModListItem): SandboxPackMod {
     workshopModId: item.workshopModId,
     project: {
       id: item.project.id,
+      classId: item.project.classId,
       name: item.project.name,
       slug: item.project.slug,
       thumbnailUrl: item.project.thumbnailUrl,
@@ -65,7 +67,7 @@ export const sandboxModpacksRouter = router({
   listMods: adminProcedure
     .meta({
       description:
-        "Lists the current members of a modpack as mirrored from its published CurseForge manifest, with the frozen file each one ships as and its environment. Mods the latest publish dropped are omitted.",
+        "Lists the current members of a modpack as mirrored from its published CurseForge manifest, with the frozen file each one ships as and its environment. A manifest can list any CurseForge project class, so project.classId distinguishes mods (6) from shaders (6552) and resource packs (12), which the CurseForge app installs outside the mods folder. Mods the latest publish dropped are omitted.",
     })
     .input(z.object({ modpackId: id() }))
     .query(async ({ input }) => {

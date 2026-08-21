@@ -1,6 +1,7 @@
 import { Q } from "@/db";
 import type { CurseForgeProjectData } from "@/services/curseforge";
 import type {
+  CurseforgeProjectCreate,
   Modpack,
   ModpackCreate,
   ModpackMod,
@@ -69,6 +70,7 @@ export async function seedWorkshop(
 export async function seedProject(
   ctx: WorkshopTestContext,
   name?: string,
+  overrides: Partial<CurseforgeProjectCreate> = {},
 ): Promise<number> {
   const id = ctx.nextProjectId++;
   await Q.curseforge.project.create({
@@ -76,6 +78,7 @@ export async function seedProject(
     classId: 6,
     slug: `vitest-mod-${id}`,
     name: name ?? `Vitest Mod ${id}`,
+    ...overrides,
   });
   ctx.projectIds.push(id);
   return id;

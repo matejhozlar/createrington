@@ -36,7 +36,7 @@ import {
 } from "@/components/ui/select";
 import { FilterBar } from "@/features/admin/components/FilterBar";
 import { CardEmpty, CardError } from "@/features/admin/components/CardState";
-import { formatDate } from "@/features/workshop/format";
+import { formatDate, projectKindLabel } from "@/features/workshop/format";
 import type { ModEnvironment } from "@createrington/shared/db";
 import {
   EnvironmentCell,
@@ -219,9 +219,12 @@ export function InPackTab({
   const currentFiltered = useMemo(() => {
     if (!query) return rows;
     return rows.filter((row) =>
-      [row.project.name, row.project.slug, row.suggestedByName].some((value) =>
-        value?.toLowerCase().includes(query),
-      ),
+      [
+        row.project.name,
+        row.project.slug,
+        row.suggestedByName,
+        projectKindLabel(row.project.classId),
+      ].some((value) => value?.toLowerCase().includes(query)),
     );
   }, [rows, query]);
 
@@ -232,9 +235,12 @@ export function InPackTab({
   const releaseFiltered = useMemo(() => {
     if (!query) return releaseRows;
     return releaseRows.filter((row) =>
-      [row.projectName, row.projectSlug, row.fileName].some((value) =>
-        value?.toLowerCase().includes(query),
-      ),
+      [
+        row.projectName,
+        row.projectSlug,
+        row.fileName,
+        projectKindLabel(row.classId),
+      ].some((value) => value?.toLowerCase().includes(query)),
     );
   }, [releaseRows, query]);
 
@@ -254,6 +260,7 @@ export function InPackTab({
           name={row.project.name}
           slug={row.project.slug}
           thumbnailUrl={row.project.thumbnailUrl}
+          classId={row.project.classId}
         />
       ),
     },
@@ -334,6 +341,7 @@ export function InPackTab({
           name={row.projectName}
           slug={row.projectSlug}
           thumbnailUrl={row.thumbnailUrl}
+          classId={row.classId}
         />
       ),
     },

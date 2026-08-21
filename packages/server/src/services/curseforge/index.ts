@@ -5,14 +5,12 @@ import path from "node:path";
 import JSZip from "jszip";
 import { z } from "zod";
 import config from "@/config";
+import { CURSEFORGE_CLASSES } from "@createrington/shared/workshop";
 
 // CurseForge API vocabulary
 export const CURSEFORGE_MINECRAFT_GAME_ID = 432;
 
-export const CurseForgeClass = {
-  mods: 6,
-  modpacks: 4471,
-} as const;
+export const CurseForgeClass = CURSEFORGE_CLASSES;
 
 export const CurseForgeLoader = {
   forge: 1,
@@ -437,6 +435,17 @@ export function deriveEnvironmentHint(
   if (client) return "client";
   if (server) return "server";
   return null;
+}
+
+const CLIENT_ONLY_CLASSES: ReadonlySet<number> = new Set([
+  CurseForgeClass.shaders,
+  CurseForgeClass.resourcePacks,
+]);
+
+export function classEnvironmentHint(
+  classId: number,
+): CurseForgeEnvironmentHint | null {
+  return CLIENT_ONLY_CLASSES.has(classId) ? "client" : null;
 }
 
 function mapProject(raw: RawCurseForgeMod): CurseForgeProjectData {
