@@ -1,6 +1,7 @@
 import { Ban, Check, FlaskConical, Pencil, Undo2 } from "lucide-react";
 import type { DataTableAction } from "@/components/data-table";
 import {
+  hasRuledOutRequiredDependency,
   WORKSHOP_MOD_REVIEW_TARGETS,
   type WorkshopModReviewAction,
 } from "@createrington/shared/workshop";
@@ -30,10 +31,12 @@ export function modReviewActions(
     });
   }
   if (mod.status === "approved") {
+    const blocked = hasRuledOutRequiredDependency(mod.dependencies);
     actions.push({
-      label: "Start Testing",
+      label: blocked ? "Dependencies ruled out" : "Start Testing",
       icon: FlaskConical,
       iconClassName: "text-amber-400",
+      disabled: blocked,
       onClick: () => onReview(mod.id, "start_testing"),
     });
   }

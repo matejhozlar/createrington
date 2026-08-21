@@ -4,7 +4,7 @@ import { FeatureFlags, featureFlagService } from "@/services/feature-flag";
 import { modpackService } from "@/services/modpack";
 import {
   pruneStaleDependencyEdges,
-  resolveProjectDependencies,
+  tryResolveProjectDependencies,
   type DependencySubject,
 } from "./dependencies";
 import { healThreads } from "./discord";
@@ -75,7 +75,9 @@ export class WorkshopProjectRefreshService {
             }
             refreshed += await refreshProjects([...subjects.keys()]);
 
-            await resolveProjectDependencies(workshop, [...subjects.values()]);
+            await tryResolveProjectDependencies(workshop, [
+              ...subjects.values(),
+            ]);
           }
           await pruneStaleDependencyEdges(workshop);
           await healThreads(workshop, mods);

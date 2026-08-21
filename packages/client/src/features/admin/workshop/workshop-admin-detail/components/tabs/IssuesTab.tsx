@@ -42,7 +42,7 @@ const ATTENTION_MESSAGES: Record<
 
 function isDependencyGap(
   item: AttentionItem,
-): item is Extract<AttentionItem, { requiredByName: string }> {
+): item is Extract<AttentionItem, { requiredBy: unknown }> {
   return (
     item.type === "rejected_dependency" || item.type === "unpromoted_dependency"
   );
@@ -103,7 +103,7 @@ export function IssuesTab({
               <>
                 is required by{" "}
                 <span className="font-medium text-foreground">
-                  {item.requiredByName}
+                  {item.requiredBy.map((entry) => entry.name).join(", ")}
                 </span>{" "}
                 {DEPENDENCY_GAP_MESSAGES[item.type]}
               </>
