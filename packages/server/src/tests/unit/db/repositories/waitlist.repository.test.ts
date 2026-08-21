@@ -10,19 +10,26 @@ type FunnelStats = {
   signups: { today: number; thisWeek: number; thisMonth: number };
 };
 
+const ZERO_STATS: FunnelStats = {
+  total: 0,
+  queued: 0,
+  promoted: 0,
+  registered: 0,
+  expired: 0,
+  joinedMinecraft: 0,
+  signups: { today: 0, thisWeek: 0, thisMonth: 0 },
+};
+
 const state = vi.hoisted(() => ({
   intakeMode: "auto" as "auto" | "closed",
   playerLimit: 10,
   playerCount: 0,
   promotedCount: 0,
   failLimitRead: false,
-  funnelStats: null as FunnelStats | null,
+  funnelStats: {} as FunnelStats,
   funnelCalls: 0,
 }));
 
-// getStats delegates wholesale to the funnel query, so the counts themselves
-// are asserted against real SQL in the query-layer test; here the stub only
-// has to prove the repository passes them through untouched.
 vi.mock("@/db", () => ({
   db: {},
   Q: {
@@ -76,7 +83,7 @@ beforeEach(() => {
   state.playerCount = 0;
   state.promotedCount = 0;
   state.failLimitRead = false;
-  state.funnelStats = null;
+  state.funnelStats = ZERO_STATS;
   state.funnelCalls = 0;
 });
 

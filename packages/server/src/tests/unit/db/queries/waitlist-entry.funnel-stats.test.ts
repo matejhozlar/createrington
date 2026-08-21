@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, afterEach, vi } from "vitest";
 import type { Pool } from "pg";
 import {
   WaitlistEntryQueries,
@@ -46,7 +46,7 @@ describe("WaitlistEntryQueries.getFunnelStats", () => {
     await queries.getFunnelStats(WINDOWS);
 
     const sql = query.mock.calls[0][0] as string;
-    expect(sql.match(/created_at >= \$\d/g)).toHaveLength(3);
+    expect(sql.match(/created_at >= \$\d+/g)).toHaveLength(3);
     expect(sql).not.toContain("queued_at");
   });
 
@@ -77,14 +77,19 @@ describe("WaitlistEntryQueries.getFunnelStats", () => {
   });
 
   it("falls back to the default windows when none are supplied", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 7, 21, 15, 30, 45));
     const { queries, query } = stubbed();
 
     await queries.getFunnelStats();
 
-    const params = query.mock.calls[0][1] as Date[];
-    expect(params).toHaveLength(3);
-    expect(params.every((value) => value instanceof Date)).toBe(true);
+    const { today, weekAgo, monthAgo } = signupWindows();
+    expect(query.mock.calls[0][1]).toEqual([today, weekAgo, monthAgo]);
   });
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe("signupWindows", () => {

@@ -10,6 +10,21 @@ export type SignupWindows = {
   monthAgo: Date;
 };
 
+/** Onboarding funnel counts: status breakdown, milestone, and signups per window. */
+export type WaitlistFunnelStats = {
+  total: number;
+  queued: number;
+  promoted: number;
+  registered: number;
+  expired: number;
+  joinedMinecraft: number;
+  signups: {
+    today: number;
+    thisWeek: number;
+    thisMonth: number;
+  };
+};
+
 /**
  * Default signup window boundaries: local midnight today, plus the rolling
  * 7- and 30-day marks.
@@ -45,23 +60,10 @@ export class WaitlistEntryQueries extends WaitlistEntryBaseQueries {
    *
    * The signup windows read created_at, so an entry that returns to the
    * queue is not counted as a second signup.
-   *
-   * @param windows - Inclusive lower bounds for the signup windows
-   * @returns Aggregate counts for each status, milestone, and window
    */
-  async getFunnelStats(windows: SignupWindows = signupWindows()): Promise<{
-    total: number;
-    queued: number;
-    promoted: number;
-    registered: number;
-    expired: number;
-    joinedMinecraft: number;
-    signups: {
-      today: number;
-      thisWeek: number;
-      thisMonth: number;
-    };
-  }> {
+  async getFunnelStats(
+    windows: SignupWindows = signupWindows(),
+  ): Promise<WaitlistFunnelStats> {
     const query = `
       SELECT
         COUNT(*)::integer AS total,

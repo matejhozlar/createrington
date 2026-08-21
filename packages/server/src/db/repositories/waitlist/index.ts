@@ -1,4 +1,5 @@
 import { db, Q } from "@/db";
+import type { WaitlistFunnelStats } from "@/db/queries/waitlist/entry";
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
 import { ButtonPresets } from "@/discord/embeds/presets/buttons";
@@ -214,25 +215,10 @@ export class WaitlistRepository {
 
   /**
    * Dashboard stats: status breakdowns, milestone progress counts, and
-   * first-time signups per window. The signup windows read createdAt, so an
-   * entry that returns to the queue is not counted a second time.
-   *
-   * One aggregate query, so the counts are a consistent snapshot rather than
-   * nine independent reads that a concurrent write could straddle.
+   * first-time signups per window. One aggregate query, so the counts are a
+   * consistent snapshot.
    */
-  async getStats(): Promise<{
-    total: number;
-    queued: number;
-    promoted: number;
-    registered: number;
-    expired: number;
-    joinedMinecraft: number;
-    signups: {
-      today: number;
-      thisWeek: number;
-      thisMonth: number;
-    };
-  }> {
+  async getStats(): Promise<WaitlistFunnelStats> {
     return await Q.waitlist.entry.getFunnelStats();
   }
 }
