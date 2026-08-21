@@ -6,6 +6,7 @@ import { loadButtonHandlers } from "../common/loaders/button-loader";
 import { registerInteractionHandler } from "./handlers/interaction-handler";
 import { loadEventHandlers } from "../common/loaders/event-loader";
 import { sweepRegistrationChannels } from "./registration-cleanup";
+import { hydrateEmojiRegistry } from "@/discord/emojis/registry";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -19,6 +20,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
  */
 export async function setupMainBotHandlers(bot: Client): Promise<void> {
   logger.info("Loading main bot handlers...");
+
+  // Resolve custom emoji ids before any handler can render one
+  await hydrateEmojiRegistry(bot);
 
   const commandsPath = path.join(__dirname, "interactions", "slash-commands");
   const buttonsPath = path.join(__dirname, "interactions", "buttons");

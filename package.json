@@ -34,6 +34,7 @@
     "test:unit": "pnpm --filter @createrington/server test:unit",
     "test:integration": "pnpm --filter @createrington/server test:integration",
     "deploy-commands": "pnpm --filter @createrington/server util:deploy-commands",
+    "deploy-emojis": "pnpm --filter @createrington/server util:deploy-emojis",
     "generate-command-docs": "pnpm --filter @createrington/server util:generate-command-docs",
     "generate-command-docs:json": "pnpm --filter @createrington/server util:generate-command-docs:json",
     "generate-command-docs:md": "pnpm --filter @createrington/server util:generate-command-docs:md",

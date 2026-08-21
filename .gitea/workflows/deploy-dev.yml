@@ -54,6 +54,7 @@ jobs:
             pnpm generate-command-docs:json
             pnpm generate-api-docs
             pnpm deploy-commands
+            pnpm deploy-emojis
           '
 
       - name: Check for mod API changes

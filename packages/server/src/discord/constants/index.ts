@@ -1,7 +1,7 @@
 /**
  * Unified Discord namespace
  *
- * Wraps roles, channels, categories, users, and the message service
+ * Wraps roles, channels, categories, users, emojis, and the message service
  * under a single `Discord.*` import for consistent autocomplete.
  */
 
@@ -10,6 +10,7 @@ import { DiscordUsers } from "./users";
 import { DiscordRolesNamespace } from "./roles";
 import { DiscordChannelsNamespace } from "./channels";
 import { DiscordCategoriesNamespace } from "./categories";
+import { DiscordEmojisNamespace } from "./emojis";
 
 let messageService: DiscordMessageService | null = null;
 
@@ -18,6 +19,7 @@ export const Discord = {
   Channels: DiscordChannelsNamespace,
   Categories: DiscordCategoriesNamespace,
   Users: DiscordUsers,
+  Emojis: DiscordEmojisNamespace,
 
   /** Lazily-resolved message service; throws if accessed before initialization */
   get Messages(): DiscordMessageService {
@@ -35,3 +37,4 @@ export const Discord = {
 
 export * from "./roles";
 export * from "./channels";
+export * from "./emojis";
