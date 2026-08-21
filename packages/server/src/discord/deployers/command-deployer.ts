@@ -20,6 +20,16 @@ const GUILD_ID = config.discord.guild.id;
 const isDev = config.envMode.isDev;
 
 /**
+ * Whether WIP commands registered as "dev" should be deployed
+ *
+ * Deliberately wider than `isDev`: the dev deployment runs NODE_ENV=production,
+ * so gating on `isDev` alone would keep WIP commands off the one deployed
+ * environment they exist to be tested in.
+ */
+const allowsDevCommands =
+  config.envMode.isDev || config.envMode.isDevDeployment;
+
+/**
  * Discord REST API client configured with bot token
  */
 const rest = new REST({ version: "10" }).setToken(BOT_TOKEN);
@@ -43,7 +53,7 @@ function shouldDeployCommand(commandName: string): boolean {
 
   // In development, deploy everything (including WIP commands)
   // In production, skip dev-only commands
-  if (isDev) return true;
+  if (allowsDevCommands) return true;
   return env !== "dev";
 }
 

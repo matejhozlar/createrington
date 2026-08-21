@@ -17,6 +17,17 @@ import {
 const isDev = config.envMode.isDev;
 
 /**
+ * Whether WIP commands registered as "dev" should be loaded
+ *
+ * Deliberately wider than `isDev`: the dev deployment runs NODE_ENV=production,
+ * so gating on `isDev` alone would hide WIP commands from the one deployed
+ * environment they exist to be tested in. Kept separate from `isDev` because
+ * that flag also decides whether to load .ts sources or compiled .js.
+ */
+const allowsDevCommands =
+  config.envMode.isDev || config.envMode.isDevDeployment;
+
+/**
  * Discord command module structure
  */
 export interface CommandModule {
@@ -65,7 +76,7 @@ function shouldLoadCommand(commandName: string): boolean {
 
   // In development, load everything (including WIP commands)
   // In production, skip dev-only commands
-  if (isDev) return true;
+  if (allowsDevCommands) return true;
   return env !== "dev";
 }
 

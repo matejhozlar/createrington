@@ -46,4 +46,7 @@ export const commandRegistry: Record<string, CommandEnv> = {
   "donate-panel": "prod",
   "command-docs-panel": "prod",
   "force-inactivity-cleanup": "prod",
+
+  // TODELETE - throwaway emoji preview, never deployed to production
+  "emoji-preview": "dev",
 };
