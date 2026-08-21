@@ -6,9 +6,10 @@ import { refreshProjects } from "@/services/curseforge/ingest";
 import {
   OPTIONAL_DEPENDENCY,
   REQUIRED_DEPENDENCY,
+  type DependencyCoverage,
 } from "@createrington/shared/workshop";
 
-export { OPTIONAL_DEPENDENCY, REQUIRED_DEPENDENCY };
+export { OPTIONAL_DEPENDENCY, REQUIRED_DEPENDENCY, type DependencyCoverage };
 
 export interface DependencySubject {
   curseforgeProjectId: number;
@@ -100,14 +101,6 @@ export async function tryResolveProjectDependencies(
     logger.warn("Dependency resolution failed:", error);
   }
 }
-
-/**
- * Where a dependency stands relative to the pack: already published, staged
- * for the next update, still in review, ruled out, or nowhere yet. Only
- * `missing` and `rejected` mean the pack cannot ship complete.
- */
-export type DependencyCoverage =
-  "published" | "staged" | "in_review" | "rejected" | "missing";
 
 export interface DependencyContext {
   coverage: Map<number, DependencyCoverage>;

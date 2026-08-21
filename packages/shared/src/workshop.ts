@@ -128,10 +128,16 @@ export const WORKSHOP_MOD_REVIEW_TARGETS: Record<
   rejected: { approve: "approved", reject: "rejected" },
 };
 
+// Where a dependency stands relative to the pack: already published, staged
+// for the next update, still in review, ruled out, or nowhere yet. Only
+// missing and rejected mean the pack cannot ship complete.
+export type DependencyCoverage =
+  "published" | "staged" | "in_review" | "rejected" | "missing";
+
 // The single definition of "blocked from testing": a required dependency whose
 // suggestion is currently ruled out. Server gate and client grid both use this.
 export function hasRuledOutRequiredDependency(
-  dependencies: Array<{ relationType: number; coverage: string }>,
+  dependencies: Array<{ relationType: number; coverage: DependencyCoverage }>,
 ): boolean {
   return dependencies.some(
     (dep) =>

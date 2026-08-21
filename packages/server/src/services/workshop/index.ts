@@ -925,7 +925,7 @@ export class WorkshopService {
     void announceReview(updated, target);
     if (target === "rejected") await pruneStaleDependencyEdges(workshop);
     // Rejecting pruned this mod's own edges; un-rejecting has to bring them
-    // back or the daily sweep may never (closed workshops are not swept)
+    // back itself, since the daily sweep skips closed workshops
     if (mod.status === "rejected" && target !== "rejected") {
       void tryResolveProjectDependencies(workshop, [updated]);
     }
