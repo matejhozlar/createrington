@@ -1628,3 +1628,47 @@ describe("WorkshopService.reviewMod ruled-out dependency gate", () => {
     });
   });
 });
+
+describe("WorkshopService.getWorkshopMods", () => {
+  it("narrows to the requested statuses", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const approved = await seedMod(ctx, workshop, { status: "approved" });
+    const testing = await seedMod(ctx, workshop, { status: "testing" });
+    await seedMod(ctx, workshop, { status: "pending" });
+    await seedMod(ctx, workshop, {
+      status: "rejected",
+      rejectReason: "on_hold",
+    });
+    await seedMod(ctx, workshop, { status: "in_pack" });
+
+    const mods = await workshopService.getWorkshopMods(workshop.id, {
+      statuses: ["approved", "testing", "next_update"],
+    });
+
+    expect(mods.map((mod) => mod.id).sort()).toEqual(
+      [approved.id, testing.id].sort(),
+    );
+  });
+
+  it("returns one mod in the listing shape", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const depProjectId = await seedProject(ctx, "Lib");
+    const mod = await seedMod(ctx, workshop, {
+      status: "testing",
+      fileId: 100,
+    });
+    await seedRequiredDependency(
+      workshop,
+      mod.curseforgeProjectId,
+      depProjectId,
+    );
+
+    const item = await workshopService.getWorkshopModListItem(mod.id);
+
+    expect(item.id).toBe(mod.id);
+    expect(item.project.id).toBe(mod.curseforgeProjectId);
+    expect(item.dependencies).toMatchObject([
+      { curseforgeProjectId: depProjectId, name: "Lib", coverage: "missing" },
+    ]);
+  });
+});

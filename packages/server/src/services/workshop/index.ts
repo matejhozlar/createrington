@@ -244,19 +244,38 @@ export class WorkshopService {
   /** Suggestions in a workshop with project summaries and upvote counts. */
   async getWorkshopMods(
     workshopId: number,
-    options: { includeHidden?: boolean } = {},
+    options: { includeHidden?: boolean; statuses?: WorkshopModStatus[] } = {},
   ): Promise<WorkshopModListItem[]> {
     const workshop = await this.getWorkshop(workshopId);
+    const statuses =
+      options.statuses ??
+      (options.includeHidden ? null : USER_VISIBLE_MOD_STATUSES);
     const mods = await Q.workshop.mod.findAll(
       {
         workshopId,
-        ...(options.includeHidden
-          ? {}
-          : { status: { $in: USER_VISIBLE_MOD_STATUSES } }),
+        ...(statuses ? { status: { $in: statuses } } : {}),
       },
       { orderBy: "createdAt", orderDirection: "desc" },
     );
     return this.decorateMods(workshop, mods);
+  }
+
+  /** One mod in the same shape as the workshop listing. */
+  async getWorkshopModListItem(
+    workshopModId: number,
+  ): Promise<WorkshopModListItem> {
+    const mod = await Q.workshop.mod.find({ id: workshopModId });
+    if (!mod) {
+      throw new NotFoundError(`Mod #${workshopModId} not found`);
+    }
+    const workshop = await this.getWorkshop(mod.workshopId);
+    const [item] = await this.decorateMods(workshop, [mod]);
+    if (!item) {
+      throw new NotFoundError(
+        `CurseForge project #${mod.curseforgeProjectId} is not cached`,
+      );
+    }
+    return item;
   }
 
   /** Members of the workshop's modpack, for the admin members card. */
