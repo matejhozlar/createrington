@@ -216,6 +216,9 @@ export class WaitlistRepository {
    * Dashboard stats: status breakdowns, milestone progress counts, and
    * first-time signups per window. The signup windows read createdAt, so an
    * entry that returns to the queue is not counted a second time.
+   *
+   * One aggregate query, so the counts are a consistent snapshot rather than
+   * nine independent reads that a concurrent write could straddle.
    */
   async getStats(): Promise<{
     total: number;
@@ -230,45 +233,6 @@ export class WaitlistRepository {
       thisMonth: number;
     };
   }> {
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-
-    const [
-      total,
-      queued,
-      promoted,
-      registered,
-      expired,
-      joinedMinecraft,
-      signupsToday,
-      signupsThisWeek,
-      signupsThisMonth,
-    ] = await Promise.all([
-      Q.waitlist.entry.count(),
-      Q.waitlist.entry.count({ status: "queued" }),
-      Q.waitlist.entry.count({ status: "promoted" }),
-      Q.waitlist.entry.count({ status: "registered" }),
-      Q.waitlist.entry.count({ status: "expired" }),
-      Q.waitlist.entry.count({ joinedMinecraft: true }),
-      Q.waitlist.entry.count({ createdAt: { $gte: today } }),
-      Q.waitlist.entry.count({ createdAt: { $gte: weekAgo } }),
-      Q.waitlist.entry.count({ createdAt: { $gte: monthAgo } }),
-    ]);
-
-    return {
-      total,
-      queued,
-      promoted,
-      registered,
-      expired,
-      joinedMinecraft,
-      signups: {
-        today: signupsToday,
-        thisWeek: signupsThisWeek,
-        thisMonth: signupsThisMonth,
-      },
-    };
+    return await Q.waitlist.entry.getFunnelStats();
   }
 }
