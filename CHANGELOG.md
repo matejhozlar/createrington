@@ -1,3 +1,22 @@
+## v1.37.0 (2026-08-21)
+
+### @createrington/server (1.37.0 → 1.38.0)
+- [add] Expose the workshop testing queue and review actions to the sandbox consumer, with mods and modpacks sub-routers that list approved/testing/next_update mods and current pack members, perform reviews restricted to the testing stages, and flag project environments, all with source-tagged audit logging
+- [add] Block moving a mod into testing when a required dependency has been ruled out for the workshop, with a re-resolution fallback when the local dependency cache is empty
+- [refactor] Extract workshop audit logging into a dedicated module shared by the admin tRPC router and the new sandbox consumer, removing inline log calls from both surfaces
+- [refactor] Collapse waitlist `getStats` from nine separate count queries into a single aggregate SQL query with windowed signup counts, removing ~50 lines of repository-level orchestration
+- [refactor] Split dependency resolution into a throwing variant and a fire-and-forget wrapper, so callers that need to gate on resolution results can catch failures while background callers stay silent
+- [fix] Restore dependency edges when a mod is un-rejected, since the daily sweep skips closed workshops and would never bring them back on its own
+- [fix] Expand dependency gap detection to surface rejected dependencies of mods still in approved or testing status, not just those already shipping in the pack
+
+### @createrington/client (0.2.50 → 0.2.51)
+- [add] Disable the "Start Testing" action button when a mod has a ruled-out required dependency, showing "Dependencies ruled out" instead
+- [fix] Invalidate the mod list on a failed review mutation so stale rows that the server refused are brought up to date
+- [fix] Update the issues tab to display all mods that require a gapped dependency instead of only one, joining their names with commas
+
+### @createrington/shared (1.5.1 → 1.6.0)
+- [add] Add `DependencyCoverage` type and `hasRuledOutRequiredDependency` helper so both server gate and client grid share a single definition of "blocked from testing"
+
 ## v1.36.0 (2026-08-20)
 
 ### @createrington/server (1.36.2 → 1.37.0)
