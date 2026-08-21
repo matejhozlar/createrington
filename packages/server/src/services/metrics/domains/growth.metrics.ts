@@ -39,7 +39,8 @@ export class GrowthMetrics {
   /**
    * Get waitlist funnel statistics
    *
-   * @returns Counts at each stage of the onboarding funnel
+   * @returns Counts at each stage of the onboarding funnel, plus first-time
+   *   signups for the default today/week/month windows
    */
   async getWaitlistFunnel() {
     return await Q.waitlist.entry.getFunnelStats();
