@@ -914,6 +914,7 @@ export class ModpackService {
     workshopModIds: number[],
     to: Extract<WorkshopModStatus, "next_update" | "in_pack">,
     releaseVersion: string | null,
+    publishedRequired: Map<number, boolean> = new Map(),
   ): Promise<WorkshopMod[]> {
     if (workshopModIds.length === 0) return [];
     const mods = await Q.workshop.mod.findAll({
@@ -922,16 +923,17 @@ export class ModpackService {
     });
     const moved: WorkshopMod[] = [];
     for (const mod of mods) {
+      const required = publishedRequired.get(mod.id) ?? mod.required;
       // Concurrent reconciles read the same rows, so the guarded update picks
       // one winner per move. Announcements and events are therefore
       // at-most-once: a crash between the claim and the write loses them,
       // since no later sweep retries
       const claimed = await Q.workshop.mod.updateAll(
-        { status: to },
+        { status: to, required },
         { id: mod.id, status: mod.status },
       );
       if (claimed > 0) {
-        moved.push({ ...mod, status: to });
+        moved.push({ ...mod, status: to, required });
         recordModEvent({
           eventType: to === "in_pack" ? "shipped" : "dropped",
           workshopId: mod.workshopId,
@@ -962,6 +964,7 @@ export class ModpackService {
 
     const shippedModIds: number[] = [];
     const droppedModIds: number[] = [];
+    const droppedRequired = new Map<number, boolean>();
 
     for (const row of rows) {
       if (manifest.modIds.has(row.curseforgeProjectId)) {
@@ -1006,7 +1009,10 @@ export class ModpackService {
         },
         { id: row.id },
       );
-      if (row.workshopModId) droppedModIds.push(row.workshopModId);
+      if (row.workshopModId) {
+        droppedModIds.push(row.workshopModId);
+        droppedRequired.set(row.workshopModId, row.required);
+      }
     }
 
     const newProjectIds = [...manifest.modIds].filter(
@@ -1035,6 +1041,7 @@ export class ModpackService {
         droppedModIds,
         "next_update",
         manifest.version,
+        droppedRequired,
       )),
     ]);
   }

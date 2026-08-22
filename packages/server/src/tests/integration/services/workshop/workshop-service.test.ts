@@ -1392,14 +1392,20 @@ describe("WorkshopService.setModRequired", () => {
     expect(mod.required).toBe(true);
 
     const disabled = await workshopService.setModRequired(mod.id, false);
-    expect(disabled.required).toBe(false);
+    expect(disabled).toMatchObject({ changed: true, mod: { required: false } });
     expect(await Q.workshop.mod.get({ id: mod.id })).toMatchObject({
       required: false,
       status: "next_update",
     });
 
+    const repeated = await workshopService.setModRequired(mod.id, false);
+    expect(repeated).toMatchObject({
+      changed: false,
+      mod: { required: false },
+    });
+
     const enabled = await workshopService.setModRequired(mod.id, true);
-    expect(enabled.required).toBe(true);
+    expect(enabled).toMatchObject({ changed: true, mod: { required: true } });
   });
 
   it("refuses mods outside next_update", async () => {

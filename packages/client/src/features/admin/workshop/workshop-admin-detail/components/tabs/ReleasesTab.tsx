@@ -54,13 +54,9 @@ function fileLabel(entry: { fileName: string | null; fileId: number }) {
 }
 
 function changeLabel(
-  entry: DiffEntry,
-  side: NonNullable<DiffEntry["previousFile"]>,
+  side: { fileName: string | null; fileId: number; required: boolean },
+  flagOnly: boolean,
 ) {
-  const flagOnly =
-    entry.previousFile !== null &&
-    entry.previousFile.fileId === entry.fileId &&
-    entry.previousFile.required !== entry.required;
   if (!flagOnly) return fileLabel(side);
   return side.required ? "Enabled" : DISABLED_LABEL;
 }
@@ -73,6 +69,11 @@ function ChangeRow({
   showBump: boolean;
 }) {
   const kind = projectKindLabel(entry.classId);
+  const bump = showBump ? entry.previousFile : null;
+  const flagOnly =
+    bump !== null &&
+    bump.fileId === entry.fileId &&
+    bump.required !== entry.required;
   return (
     <div className="flex items-center gap-2.5 px-4 py-2 text-sm">
       <ProjectThumb
@@ -95,14 +96,14 @@ function ChangeRow({
           </Badge>
         )}
       </span>
-      {showBump && entry.previousFile ? (
+      {bump ? (
         <span className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
           <span className="truncate line-through">
-            {changeLabel(entry, entry.previousFile)}
+            {changeLabel(bump, flagOnly)}
           </span>
           <ArrowRight className="size-3 shrink-0" />
           <span className="truncate text-foreground">
-            {changeLabel(entry, entry)}
+            {changeLabel(entry, flagOnly)}
           </span>
         </span>
       ) : (

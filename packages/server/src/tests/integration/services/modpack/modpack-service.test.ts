@@ -824,6 +824,36 @@ describe("ModpackService.reconcile", () => {
     expect(await Q.modpack.mod.find({ id: importRow.id })).toBeNull();
   });
 
+  it("resets a dropped suggestion's required intent to what the pack last published", async () => {
+    const modpack = await seedModpack(ctx, {
+      curseforgeProjectId: ctx.nextProjectId++,
+    });
+    const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const suggestion = await seedMod(ctx, workshop, {
+      status: "in_pack",
+      submittedBy: USER_A,
+      required: false,
+    });
+    await seedPackMod(ctx, workshop, {
+      curseforgeProjectId: suggestion.curseforgeProjectId,
+      origin: "suggestion",
+      workshopModId: suggestion.id,
+      liveAt: new Date(),
+      liveInVersion: "1.0.0",
+      required: true,
+    });
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      manifest({ version: "2.0.0", modIds: new Set<number>() }),
+    );
+
+    await modpackService.reconcile(modpack.id);
+
+    expect(await Q.workshop.mod.get({ id: suggestion.id })).toMatchObject({
+      status: "next_update",
+      required: true,
+    });
+  });
+
   it("clears the dropped flag when the mod ships again", async () => {
     const modpack = await seedModpack(ctx, {
       curseforgeProjectId: ctx.nextProjectId++,

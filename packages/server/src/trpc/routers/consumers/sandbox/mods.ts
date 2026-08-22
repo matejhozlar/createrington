@@ -122,7 +122,7 @@ export const sandboxModsRouter = router({
   list: adminProcedure
     .meta({
       description:
-        "Lists a workshop's approved, testing, and next_update mods with their project, chosen file, environment, dependency coverage, and whether it should ship enabled (required, see setRequired), newest first. This is the sandbox's testing queue.",
+        "Lists a workshop's approved, testing, and next_update mods with their project, chosen file, environment, dependency coverage, and whether it should ship enabled (required; only next_update rows can change it, see setRequired), newest first. This is the sandbox's testing queue.",
     })
     .input(z.object({ workshopId: id() }))
     .query(async ({ input }) => {
@@ -209,16 +209,18 @@ export const sandboxModsRouter = router({
     .input(z.object({ workshopModId: id(), required: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
       try {
-        const mod = await workshopService.setModRequired(
+        const { mod, changed } = await workshopService.setModRequired(
           input.workshopModId,
           input.required,
         );
         const item = await workshopService.getWorkshopModListItem(mod.id);
-        await logModRequired(
-          { ...auditActor(ctx), source: "sandbox" },
-          mod,
-          item.project.name,
-        );
+        if (changed) {
+          await logModRequired(
+            { ...auditActor(ctx), source: "sandbox" },
+            mod,
+            item.project.name,
+          );
+        }
         return { mod: toSandboxMod(item) };
       } catch (error) {
         rethrowTrpc(error);
