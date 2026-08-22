@@ -17,6 +17,8 @@ import {
   CardLoading,
 } from "@/features/admin/components/CardState";
 import {
+  DISABLED_BADGE_CLASS,
+  DISABLED_LABEL,
   formatDate,
   PROJECT_KIND_BADGE_CLASS,
   projectKindLabel,
@@ -51,6 +53,18 @@ function fileLabel(entry: { fileName: string | null; fileId: number }) {
   return entry.fileName ?? `File #${entry.fileId}`;
 }
 
+function changeLabel(
+  entry: DiffEntry,
+  side: NonNullable<DiffEntry["previousFile"]>,
+) {
+  const flagOnly =
+    entry.previousFile !== null &&
+    entry.previousFile.fileId === entry.fileId &&
+    entry.previousFile.required !== entry.required;
+  if (!flagOnly) return fileLabel(side);
+  return side.required ? "Enabled" : DISABLED_LABEL;
+}
+
 function ChangeRow({
   entry,
   showBump,
@@ -75,14 +89,21 @@ function ChangeRow({
             {kind}
           </Badge>
         )}
+        {!entry.required && (
+          <Badge variant="outline" className={DISABLED_BADGE_CLASS}>
+            {DISABLED_LABEL}
+          </Badge>
+        )}
       </span>
       {showBump && entry.previousFile ? (
         <span className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
           <span className="truncate line-through">
-            {fileLabel(entry.previousFile)}
+            {changeLabel(entry, entry.previousFile)}
           </span>
           <ArrowRight className="size-3 shrink-0" />
-          <span className="truncate text-foreground">{fileLabel(entry)}</span>
+          <span className="truncate text-foreground">
+            {changeLabel(entry, entry)}
+          </span>
         </span>
       ) : (
         <span className="truncate text-xs text-muted-foreground">

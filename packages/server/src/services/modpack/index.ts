@@ -21,6 +21,7 @@ import {
   getMod,
   getFilesDetails,
   getModpackManifest,
+  manifestDisabledModIds,
   type CurseForgeProjectData,
   type ModpackManifest,
 } from "@/services/curseforge";
@@ -97,13 +98,21 @@ export interface ModpackReleaseDiffEntry extends ReleaseModRow {
   previousFile: ReleaseModRow | null;
 }
 
-type ManifestMembership = Pick<ModpackManifest, "modIds" | "version">;
+type ManifestMembership = Pick<
+  ModpackManifest,
+  "modIds" | "disabledModIds" | "version"
+>;
+
+export interface ModpackManifestSeedFile {
+  projectId: number;
+  required: boolean;
+}
 
 export interface ModpackManifestSeed {
   version: string | null;
   minecraftVersion: string | null;
   modLoader: string | null;
-  modIds: number[];
+  files: ModpackManifestSeedFile[];
 }
 
 export interface ModpackSeedResult {
@@ -150,7 +159,10 @@ function firstPerProject<T extends { curseforgeProjectId: number }>(
 function sameFiles(a: ReleaseModRow[], b: ReleaseModRow[]): boolean {
   return (
     a.length === b.length &&
-    a.every((row, index) => row.fileId === b[index].fileId)
+    a.every(
+      (row, index) =>
+        row.fileId === b[index].fileId && row.required === b[index].required,
+    )
   );
 }
 
@@ -405,12 +417,13 @@ export class ModpackService {
 
     const modIds = new Set<number>();
     const duplicateProjectIds = new Set<number>();
-    for (const projectId of seed.modIds) {
-      if (modIds.has(projectId)) duplicateProjectIds.add(projectId);
-      modIds.add(projectId);
+    for (const file of seed.files) {
+      if (modIds.has(file.projectId)) duplicateProjectIds.add(file.projectId);
+      modIds.add(file.projectId);
     }
     await this.applyManifest(modpack, workshops, {
       modIds,
+      disabledModIds: manifestDisabledModIds(seed.files),
       version: seed.version,
     });
 
@@ -578,6 +591,7 @@ export class ModpackService {
         displayName: detail?.displayName ?? null,
         fileReleaseType: detail?.releaseType ?? null,
         fileDate: detail?.fileDate ? new Date(detail.fileDate) : null,
+        required: entry.required,
       };
     });
 
@@ -951,19 +965,24 @@ export class ModpackService {
 
     for (const row of rows) {
       if (manifest.modIds.has(row.curseforgeProjectId)) {
+        const required = !manifest.disabledModIds.has(row.curseforgeProjectId);
         if (row.liveAt === null) {
           await Q.modpack.mod.updateAll(
             {
               liveAt: now,
               liveInVersion: manifest.version,
               droppedFromManifestAt: null,
+              required,
               updatedAt: now,
             },
             { id: row.id },
           );
-        } else if (row.droppedFromManifestAt !== null) {
+        } else if (
+          row.droppedFromManifestAt !== null ||
+          row.required !== required
+        ) {
           await Q.modpack.mod.updateAll(
-            { droppedFromManifestAt: null, updatedAt: now },
+            { droppedFromManifestAt: null, required, updatedAt: now },
             { id: row.id },
           );
         }
@@ -1080,6 +1099,7 @@ export class ModpackService {
           fileId: suggestion?.fileId ?? null,
           fileName: suggestion?.fileName ?? null,
           fileReleaseType: suggestion?.fileReleaseType ?? null,
+          required: !manifest.disabledModIds.has(project.id),
           liveAt: now,
           liveInVersion: manifest.version,
         });

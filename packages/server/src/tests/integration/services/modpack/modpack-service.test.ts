@@ -39,6 +39,7 @@ vi.mock("@/services/curseforge", async (importOriginal) => {
       publishedAt: null,
       entries: [],
       modIds: new Set<number>(),
+      disabledModIds: new Set<number>(),
     })),
     getModpackModIds: vi.fn(async () => new Set<number>()),
     searchMods: vi.fn(async () => []),
@@ -92,9 +93,20 @@ let manifestFileId = 0;
 const fileIdFor = (projectId: number) => 700_000 + (projectId % 100_000);
 
 function manifest(
-  overrides: Partial<ModpackManifest> & { modIds?: Set<number> } = {},
+  overrides: Partial<Omit<ModpackManifest, "entries">> & {
+    modIds?: Set<number>;
+    disabledModIds?: Set<number>;
+    entries?: Array<{ projectId: number; fileId: number; required?: boolean }>;
+  } = {},
 ): ModpackManifest {
   const modIds = overrides.modIds ?? new Set<number>();
+  const disabledModIds = overrides.disabledModIds ?? new Set<number>();
+  const entries: NonNullable<typeof overrides.entries> =
+    overrides.entries ??
+    [...modIds].map((projectId) => ({
+      projectId,
+      fileId: fileIdFor(projectId),
+    }));
   return {
     fileId: ++manifestFileId,
     displayName: null,
@@ -102,13 +114,21 @@ function manifest(
     minecraftVersion: null,
     modLoader: null,
     publishedAt: null,
-    entries: [...modIds].map((projectId) => ({
-      projectId,
-      fileId: fileIdFor(projectId),
-    })),
     ...overrides,
+    entries: entries.map((entry) => ({
+      ...entry,
+      required: entry.required ?? !disabledModIds.has(entry.projectId),
+    })),
     modIds,
+    disabledModIds,
   };
+}
+
+function requiredOf(
+  rows: Array<{ curseforgeProjectId: number; required: boolean }>,
+  projectId: number,
+) {
+  return rows.find((row) => row.curseforgeProjectId === projectId)?.required;
 }
 
 const ctx = createWorkshopTestContext(992_000_000);
@@ -622,6 +642,50 @@ describe("ModpackService.reconcile", () => {
     });
   });
 
+  it("mirrors the manifest required flag onto members and frozen releases", async () => {
+    const modpack = await seedModpack(ctx, {
+      curseforgeProjectId: ctx.nextProjectId++,
+    });
+    const disabledId = await seedProject(ctx, "Create: Rolling Tones");
+    const activeId = await seedProject(ctx, "Create");
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      manifest({
+        version: "2.0.0",
+        modIds: new Set([disabledId, activeId]),
+        disabledModIds: new Set([disabledId]),
+      }),
+    );
+
+    await modpackService.reconcile(modpack.id);
+
+    const members = await modpackService.getPackMods(modpack.id);
+    expect(requiredOf(members, disabledId)).toBe(false);
+    expect(requiredOf(members, activeId)).toBe(true);
+    const [first] = await modpackService.listReleases(modpack.id);
+    const frozen = await modpackService.getReleaseMods(first.id);
+    expect(requiredOf(frozen, disabledId)).toBe(false);
+    expect(requiredOf(frozen, activeId)).toBe(true);
+
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      manifest({ version: "2.1.0", modIds: new Set([disabledId, activeId]) }),
+    );
+    await modpackService.reconcile(modpack.id);
+
+    const reenabled = await modpackService.getPackMods(modpack.id);
+    expect(requiredOf(reenabled, disabledId)).toBe(true);
+    const latest = (await modpackService.listReleases(modpack.id)).find(
+      (release) => release.version === "2.1.0",
+    );
+    const diff = await modpackService.getReleaseDiff(latest!.id);
+    expect(diff.updated).toHaveLength(1);
+    expect(diff.updated[0]).toMatchObject({
+      curseforgeProjectId: disabledId,
+      required: true,
+      previousFile: { required: false },
+    });
+    expect(diff.unchanged).toBe(1);
+  });
+
   it("moves a shipped suggestion to in_pack and back when it drops out", async () => {
     const modpack = await seedModpack(ctx, {
       curseforgeProjectId: ctx.nextProjectId++,
@@ -968,16 +1032,36 @@ describe("ModpackService.reconcile", () => {
 });
 
 describe("ModpackService.seedFromManifest", () => {
-  const seed = (
-    overrides: Partial<
-      Parameters<typeof modpackService.seedFromManifest>[1]
-    > = {},
-  ) => ({
+  const seed = ({
+    modIds = [],
+    disabledModIds = [],
+    ...overrides
+  }: Partial<
+    Omit<Parameters<typeof modpackService.seedFromManifest>[1], "files">
+  > & { modIds?: number[]; disabledModIds?: number[] } = {}) => ({
     version: null,
     minecraftVersion: null,
     modLoader: null,
-    modIds: [],
+    files: modIds.map((projectId) => ({
+      projectId,
+      required: !disabledModIds.includes(projectId),
+    })),
     ...overrides,
+  });
+
+  it("keeps entries flagged not required as disabled members", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const disabledId = await seedProject(ctx, "Disabled Mod");
+    const activeId = await seedProject(ctx, "Active Mod");
+
+    await modpackService.seedFromManifest(
+      workshop.modpackId,
+      seed({ modIds: [disabledId, activeId], disabledModIds: [disabledId] }),
+    );
+
+    const members = await modpackService.getPackMods(workshop.modpackId);
+    expect(requiredOf(members, disabledId)).toBe(false);
+    expect(requiredOf(members, activeId)).toBe(true);
   });
 
   // CurseForge exports repeat a project that ships more than one file, so the

@@ -79,6 +79,11 @@ export function projectKindLabel(classId: number): string | null {
 export const PROJECT_KIND_BADGE_CLASS =
   "shrink-0 border-fuchsia-500/20 bg-fuchsia-500/10 px-1.5 py-0 text-[10px] text-fuchsia-400";
 
+export const DISABLED_BADGE_CLASS =
+  "shrink-0 border-zinc-500/20 bg-zinc-500/10 px-1.5 py-0 text-[10px] text-zinc-400";
+
+export const DISABLED_LABEL = "Disabled";
+
 export function modCredit(submitterName: string | null) {
   return { verb: "Suggested by", name: submitterName ?? "a player" };
 }

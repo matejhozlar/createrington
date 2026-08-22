@@ -28,6 +28,7 @@ export interface SandboxPackMod {
   workshopModId: number | null;
   project: SandboxPackModProject;
   file: { id: number; name: string | null; releaseType: number | null } | null;
+  required: boolean;
   liveInVersion: string | null;
   liveAt: string | null;
 }
@@ -57,6 +58,7 @@ function toSandboxPackMod(item: ModpackModListItem): SandboxPackMod {
             name: item.fileName,
             releaseType: item.fileReleaseType,
           },
+    required: item.required,
     liveInVersion: item.liveInVersion,
     liveAt: item.liveAt?.toISOString() ?? null,
   };
@@ -67,7 +69,7 @@ export const sandboxModpacksRouter = router({
   listMods: adminProcedure
     .meta({
       description:
-        "Lists the current members of a modpack as mirrored from its published CurseForge manifest, with the frozen file each one ships as and its environment. A manifest can list any CurseForge project class (see CURSEFORGE_CLASSES in @createrington/shared/workshop), so check project.classId before treating an entry as a mod: shaders (6552) and resource packs (12) install outside the mods folder and data packs (6945) belong to a world. Mods the latest publish dropped are omitted.",
+        "Lists the current members of a modpack as mirrored from its published CurseForge manifest, with the frozen file each one ships as and its environment. A manifest can list any CurseForge project class (see CURSEFORGE_CLASSES in @createrington/shared/workshop), so check project.classId before treating an entry as a mod: shaders (6552) and resource packs (12) install outside the mods folder and data packs (6945) belong to a world. required mirrors the manifest entry flag: false means the pack ships the mod disabled (the CurseForge app exports disabled profile mods that way), so keep it off the test server and write it back as required: false when exporting. Mods the latest publish dropped are omitted.",
     })
     .input(z.object({ modpackId: id() }))
     .query(async ({ input }) => {

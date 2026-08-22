@@ -32,6 +32,7 @@ vi.mock("@/services/curseforge", async (importOriginal) => {
     getModpackManifest: vi.fn(async () => ({
       version: null,
       modIds: new Set<number>(),
+      disabledModIds: new Set<number>(),
     })),
     getModpackModIds: vi.fn(async () => new Set<number>()),
     searchMods: vi.fn(async () => []),

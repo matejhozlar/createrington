@@ -29,4 +29,15 @@ describe("modpackManifestUploadSchema", () => {
     const parsed = modpackManifestUploadSchema.safeParse(manifestWith([]));
     expect(parsed.success).toBe(false);
   });
+
+  it("keeps the required flag and defaults it to true", () => {
+    const parsed = modpackManifestUploadSchema.parse({
+      version: "1.0.0",
+      files: [{ projectID: 1001, required: false }, { projectID: 1002 }],
+    });
+    expect(parsed.files).toEqual([
+      { projectID: 1001, required: false },
+      { projectID: 1002, required: true },
+    ]);
+  });
 });
