@@ -17,7 +17,10 @@ import type {
   WorkshopModRejectReason,
   WorkshopModStatus,
 } from "@createrington/shared/db";
-import { WORKSHOP_MOD_REJECT_REASON_LABELS } from "@createrington/shared/workshop";
+import {
+  WORKSHOP_MOD_REJECT_REASON_LABELS,
+  WORKSHOP_MOD_STATUS_LABELS,
+} from "@createrington/shared/workshop";
 
 interface SuggestionAnnouncement extends WorkshopMod {
   project: Pick<CurseforgeProject, "name" | "primaryAuthor" | "websiteUrl">;
@@ -44,6 +47,17 @@ const REVIEW_MESSAGES: Record<
 
 const PACK_DROP_OUT_MESSAGE =
   "↩️ **Dropped from the latest pack update.** Back to coming next update while the team looks into it.";
+
+const CLOSE_ON_STATUS: Record<
+  Exclude<WorkshopModStatus, "pending">,
+  boolean
+> = {
+  approved: true,
+  testing: true,
+  next_update: true,
+  in_pack: true,
+  rejected: true,
+};
 
 const REJECT_REASON_TAGS: Record<
   WorkshopModRejectReason,
@@ -78,6 +92,26 @@ type ThreadLookup =
 
 function tagNameFor(status: WorkshopModStatus): string | null {
   return status === "rejected" ? null : STATUS_TAGS[status].name;
+}
+
+function closesThread(status: WorkshopModStatus): boolean {
+  return status !== "pending" && CLOSE_ON_STATUS[status];
+}
+
+function auditReason(modId: number, status: WorkshopModStatus): string {
+  return `Workshop suggestion #${modId}: ${WORKSHOP_MOD_STATUS_LABELS[status]}`;
+}
+
+async function closeThread(
+  thread: AnyThreadChannel,
+  modId: number,
+  reason: string,
+): Promise<void> {
+  try {
+    await thread.setArchived(true, reason);
+  } catch (error) {
+    logger.warn(`Could not close thread for mod #${modId}: ${error}`);
+  }
 }
 
 export function discordThreadUrl(threadId: string): string {
@@ -253,15 +287,18 @@ export async function announceSuggestion(
 }
 
 /**
- * Reflect a review outcome on the suggestion's thread: post the result and
- * retag with the new status's tag or the rejection reason's tag.
+ * Reflect a review outcome on the suggestion's thread: post the result, retag
+ * with the new status's tag or the rejection reason's tag, and close the post
+ * again once the mod has left review.
  */
 export async function announceReview(
   mod: WorkshopMod,
   status: Exclude<WorkshopModStatus, "pending">,
-  options: { message?: string } = {},
+  options: { message?: string; reason?: string } = {},
 ): Promise<void> {
   if (!mod.discordThreadId) return;
+  const reason = options.reason ?? auditReason(mod.id, status);
+  let thread: AnyThreadChannel;
   try {
     const lookup = await fetchThread(mod.discordThreadId);
     if (lookup.state === "unavailable") return;
@@ -269,8 +306,7 @@ export async function announceReview(
       await clearThreadId(mod.id);
       return;
     }
-    const { thread } = lookup;
-    if (thread.archived) await thread.setArchived(false);
+    thread = lookup.thread;
 
     const reasonTag = mod.rejectReason
       ? REJECT_REASON_TAGS[mod.rejectReason]
@@ -278,6 +314,7 @@ export async function announceReview(
     const tagName =
       status === "rejected" ? reasonTag?.name : STATUS_TAGS[status].name;
 
+    let appliedTags: string[] | undefined;
     if (tagName && thread.parent?.type === ChannelType.GuildForum) {
       const tags = await ensureStatusTags(thread.parent);
       const tagId = tags.get(tagName);
@@ -288,9 +325,10 @@ export async function announceReview(
             .map(([, id]) => id),
         );
         const kept = thread.appliedTags.filter((id) => !managed.has(id));
-        await thread.setAppliedTags([tagId, ...kept].slice(0, 5));
+        appliedTags = [tagId, ...kept].slice(0, 5);
       }
     }
+    await thread.edit({ archived: false, appliedTags, reason });
 
     const reasonLabel = mod.rejectReason
       ? WORKSHOP_MOD_REJECT_REASON_LABELS[mod.rejectReason]
@@ -304,13 +342,16 @@ export async function announceReview(
     await thread.send({ content, allowedMentions: { parse: [] } });
   } catch (error) {
     logger.warn(`Failed to post review outcome for mod #${mod.id}: ${error}`);
+    return;
   }
+  if (closesThread(status)) await closeThread(thread, mod.id, reason);
 }
 
 /** Retag a mod that fell out of the published pack and say so on its thread. */
 export async function announcePackDropOut(mod: WorkshopMod): Promise<void> {
   return announceReview(mod, "next_update", {
     message: PACK_DROP_OUT_MESSAGE,
+    reason: `Workshop suggestion #${mod.id}: dropped from the pack update`,
   });
 }
 
@@ -351,8 +392,8 @@ export async function announceRemoval(mod: WorkshopMod): Promise<void> {
 
 /**
  * Reconcile a workshop's stored thread ids with Discord: forget ids whose threads
- * were deleted and recreate missing threads for live suggestions while the
- * workshop is open.
+ * were deleted, re-close posts that replies reopened after the mod left review,
+ * and recreate missing threads for live suggestions while the workshop is open.
  */
 export async function healThreads(
   workshop: Workshop,
@@ -366,6 +407,16 @@ export async function healThreads(
       if (lookup.state === "gone") {
         await clearThreadId(mod.id);
         mod.discordThreadId = null;
+      } else if (
+        lookup.state === "found" &&
+        closesThread(mod.status) &&
+        !lookup.thread.archived
+      ) {
+        await closeThread(
+          lookup.thread,
+          mod.id,
+          auditReason(mod.id, mod.status),
+        );
       }
     } catch (error) {
       logger.warn(`Workshop thread heal failed for mod #${mod.id}: ${error}`);
