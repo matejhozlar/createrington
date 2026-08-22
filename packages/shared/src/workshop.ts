@@ -47,9 +47,9 @@ export const WORKSHOP_MOD_REJECT_REASON_LABELS: Record<
 };
 
 // Which side(s) a mod runs on. CurseForge's author-assigned file flags feed
-// low-trust cf_flag hints, the published pack's manifests derive manifest
-// values for its members, and manual admin flags always win. Unspecified mods
-// ship to both sides and are surfaced for review.
+// low-trust cf_flag hints, the published pack confirms those as manifest
+// values, and manual admin flags always win. Unspecified mods ship to both
+// sides and are surfaced for review.
 export const MOD_ENVIRONMENTS = [
   "client",
   "server",
