@@ -36,7 +36,8 @@ export const curseforgeProject = pgTable(
     dateReleased: timestamp("date_released", { withTimezone: true }),
     allowModDistribution: boolean("allow_mod_distribution"),
     isAvailable: boolean("is_available").notNull().default(true),
-    // Which side(s) the mod runs on; unspecified ships to both manifests.
+    // Which side(s) the mod runs on; unspecified ships to the client manifest
+    // and to the server pack as well when the mod is on the test server.
     // Source tracks trust, manual > manifest > cf_flag: a manual admin flag is
     // never overwritten, a manifest value follows what the published pack's
     // client and server manifests shipped and only a publish or an admin can

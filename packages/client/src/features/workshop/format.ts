@@ -157,7 +157,10 @@ export function environmentTitle(
   }
   if (source === "manual") return "Set manually";
   if (source === "manifest") return "From the published pack";
-  return "From CurseForge, author-assigned and unverified";
+  if (source === "cf_flag") {
+    return "From CurseForge, author-assigned and unverified";
+  }
+  return "Source unknown";
 }
 
 export const DEPENDENCY_COVERAGE_STYLES: Record<

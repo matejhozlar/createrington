@@ -1063,7 +1063,9 @@ export class ModpackService {
   /**
    * Classify members by the side(s) that shipped them. Only a release with a
    * server pack says anything about sides, since a lone client file lists
-   * every member. Manual flags stay; anything weaker follows the pack.
+   * every member. Manual flags stay; anything weaker follows the pack. The
+   * environment lives on the shared project row, so with several published
+   * packs the last one reconciled wins for a project they all ship.
    */
   private async applyManifestEnvironments(
     manifest: ModpackManifest,

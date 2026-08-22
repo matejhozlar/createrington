@@ -31,6 +31,17 @@ describe("mergeManifestFiles", () => {
     expect(merged).toEqual([{ projectId: 1, fileId: 10, sides: "both" }]);
   });
 
+  it("lets the client entry's required flag win when the manifests disagree", () => {
+    const merged = mergeManifestFiles(
+      [{ projectId: 1, fileId: 10, required: false }],
+      [{ projectId: 1, fileId: 10, required: true }],
+    );
+    expect(merged).toEqual([
+      { projectId: 1, fileId: 10, required: false, sides: "both" },
+    ]);
+    expect([...manifestDisabledModIds(merged)]).toEqual([1]);
+  });
+
   it("keeps a manifest's own repeated entries", () => {
     const merged = mergeManifestFiles(
       [

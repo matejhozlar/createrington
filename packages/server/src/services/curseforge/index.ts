@@ -823,8 +823,10 @@ export function manifestDisabledModIds(
 /**
  * Union of a release's client and server manifests, client entries first.
  * A project the server manifest repeats is not listed again; it marks the
- * client entry as shipping to both sides. Without a server pack every entry
- * is client-side by definition
+ * client entry as shipping to both sides, and the client entry's file and
+ * required flag win (the sandbox writes both manifests from one plan, so
+ * they agree). Without a server pack every entry is client-side by
+ * definition
  */
 export function mergeManifestFiles<T extends { projectId: number }>(
   client: T[],
@@ -930,12 +932,12 @@ async function fetchModpackManifest(
   if (!latestFile) throw new Error("No modpack files found");
 
   const serverPackFileId = latestFile.serverPackFileId ?? null;
-  const [client, server] = await Promise.all([
-    downloadPackManifest(packProjectId, latestFile.id),
+  // Sequential so only one zip is ever buffered at a time
+  const client = await downloadPackManifest(packProjectId, latestFile.id);
+  const server =
     serverPackFileId === null
       ? null
-      : downloadPackManifest(packProjectId, serverPackFileId),
-  ]);
+      : await downloadPackManifest(packProjectId, serverPackFileId);
 
   const loaders = client.minecraft?.modLoaders ?? [];
   const files = mergeManifestFiles(client.files, server?.files ?? null);

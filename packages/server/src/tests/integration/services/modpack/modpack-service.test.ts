@@ -138,9 +138,8 @@ function sidedManifest(
   version: string,
   sided: Array<[projectId: number, sides: ModpackManifestSides]>,
 ): ModpackManifest {
-  return manifest({
+  const built = manifest({
     version,
-    serverPackFileId: 800_000 + manifestFileId,
     modIds: new Set(sided.map(([projectId]) => projectId)),
     entries: sided.map(([projectId, sides]) => ({
       projectId,
@@ -148,6 +147,7 @@ function sidedManifest(
       sides,
     })),
   });
+  return { ...built, serverPackFileId: 800_000 + built.fileId };
 }
 
 function requiredOf(
