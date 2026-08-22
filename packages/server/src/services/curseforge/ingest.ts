@@ -86,7 +86,13 @@ async function applyEnvironmentHints(
   const idsByHint = new Map<CurseForgeEnvironmentHint, number[]>();
   for (const { data, hint } of hinted) {
     const row = byId.get(data.id);
-    if (!row || row.environmentSource === "manual") continue;
+    if (
+      !row ||
+      row.environmentSource === "manual" ||
+      row.environmentSource === "manifest"
+    ) {
+      continue;
+    }
     if (row.environment === hint && row.environmentSource === "cf_flag") {
       continue;
     }

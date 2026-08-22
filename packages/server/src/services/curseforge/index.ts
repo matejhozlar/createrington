@@ -773,15 +773,21 @@ export async function getFilesDependencies(fileIds: number[]): Promise<
   return results;
 }
 
+/** Which of a release's manifests listed an entry. */
+export type ModpackManifestSides = "client" | "server" | "both";
+
 export interface ModpackManifestEntry {
   projectId: number;
   fileId: number;
   required: boolean;
+  sides: ModpackManifestSides;
 }
 
 export interface ModpackManifest {
-  /** The pack archive the entries were read from; identity of the release. */
+  /** The client pack file; identity of the release. */
   fileId: number;
+  /** The server pack read alongside the client file, null when the release ships none. */
+  serverPackFileId: number | null;
   displayName: string | null;
   version: string | null;
   minecraftVersion: string | null;
@@ -814,6 +820,36 @@ export function manifestDisabledModIds(
   );
 }
 
+/**
+ * Union of a release's client and server manifests, client entries first.
+ * A project the server manifest repeats is not listed again; it marks the
+ * client entry as shipping to both sides, and the client entry's file and
+ * required flag win (the sandbox writes both manifests from one plan, so
+ * they agree). Without a server pack every entry is client-side by
+ * definition
+ */
+export function mergeManifestFiles<T extends { projectId: number }>(
+  client: T[],
+  server: T[] | null,
+): Array<T & { sides: ModpackManifestSides }> {
+  if (server === null) {
+    return client.map((file) => ({ ...file, sides: "client" as const }));
+  }
+  const clientProjects = new Set(client.map((file) => file.projectId));
+  const serverProjects = new Set(server.map((file) => file.projectId));
+  return [
+    ...client.map((file) => ({
+      ...file,
+      sides: serverProjects.has(file.projectId)
+        ? ("both" as const)
+        : ("client" as const),
+    })),
+    ...server
+      .filter((file) => !clientProjects.has(file.projectId))
+      .map((file) => ({ ...file, sides: "server" as const })),
+  ];
+}
+
 const modpackCache = new Map<
   number,
   { manifest: ModpackManifest; fetchedAt: number }
@@ -828,10 +864,10 @@ const MAX_MODPACK_ZIP_BYTES = 256 * 1024 * 1024;
 /**
  * Returns the pack version and mod project IDs of a modpack's latest published file
  *
- * Downloads the modpack zip, parses `manifest.json`, and caches the result for the configured TTL.
- * Concurrent cache misses share a single download, and a failed fetch backs
- * off for a minute before retrying. Prefers the server pack file when
- * available, falling back to the client pack.
+ * Downloads the client pack zip and, when the file ships one, the server pack
+ * zip too, parses each `manifest.json`, and caches the union for the
+ * configured TTL. Concurrent cache misses share a single download, and a
+ * failed fetch backs off for a minute before retrying.
  */
 export async function getModpackManifest(
   packProjectId = MODPACK_PROJECT_ID,
@@ -895,78 +931,35 @@ async function fetchModpackManifest(
   const latestFile = filesBody.data[0];
   if (!latestFile) throw new Error("No modpack files found");
 
-  // Use server pack if available, otherwise client pack
-  const fileId = latestFile.serverPackFileId ?? latestFile.id;
+  const serverPackFileId = latestFile.serverPackFileId ?? null;
+  // Sequential so only one zip is ever buffered at a time
+  const client = await downloadPackManifest(packProjectId, latestFile.id);
+  const server =
+    serverPackFileId === null
+      ? null
+      : await downloadPackManifest(packProjectId, serverPackFileId);
 
-  const dlRes = await fetch(
-    `${CURSEFORGE_API}/v1/mods/${packProjectId}/files/${fileId}/download-url`,
-    { headers: cfHeaders(), signal: AbortSignal.timeout(CF_FETCH_TIMEOUT_MS) },
-  );
-  if (!dlRes.ok) {
-    throw new Error(`Failed to get modpack download URL (${dlRes.status})`);
-  }
-  const { data: downloadUrl } = (await dlRes.json()) as { data: string };
-
-  const zipRes = await fetch(downloadUrl, {
-    signal: AbortSignal.timeout(CF_DOWNLOAD_TIMEOUT_MS),
-  });
-  if (!zipRes.ok) {
-    throw new Error(`Failed to download modpack zip (${zipRes.status})`);
-  }
-  const contentLength = Number(zipRes.headers.get("content-length"));
-  if (Number.isFinite(contentLength) && contentLength > MAX_MODPACK_ZIP_BYTES) {
-    throw new Error(
-      `Modpack zip exceeds the ${MAX_MODPACK_ZIP_BYTES} byte limit (${contentLength})`,
-    );
-  }
-  const zipBuf = await zipRes.arrayBuffer();
-
-  const zip = await JSZip.loadAsync(zipBuf);
-  const manifestFile = zip.file("manifest.json");
-  if (!manifestFile) throw new Error("No manifest.json in modpack");
-
-  const manifest = parseCfResponse(
-    z.object({
-      version: z.string().optional(),
-      minecraft: z
-        .object({
-          version: z.string().optional(),
-          modLoaders: z
-            .array(
-              z.object({ id: z.string(), primary: z.boolean().optional() }),
-            )
-            .optional(),
-        })
-        .optional(),
-      files: z.array(
-        z.object({
-          projectID: z.number(),
-          fileID: z.number().optional(),
-          required: z.boolean().optional(),
-        }),
-      ),
-    }),
-    JSON.parse(await manifestFile.async("text")),
-    "modpack manifest",
-  );
-
-  const loaders = manifest.minecraft?.modLoaders ?? [];
-  const files = manifest.files.map((f) => ({
-    projectId: f.projectID,
-    fileId: f.fileID,
-    required: f.required ?? true,
-  }));
+  const loaders = client.minecraft?.modLoaders ?? [];
+  const files = mergeManifestFiles(client.files, server?.files ?? null);
   const result: ModpackManifest = {
-    fileId,
+    fileId: latestFile.id,
+    serverPackFileId,
     displayName: latestFile.displayName ?? null,
-    version: manifest.version ?? null,
-    minecraftVersion: manifest.minecraft?.version ?? null,
+    version: client.version ?? null,
+    minecraftVersion: client.minecraft?.version ?? null,
     modLoader: (loaders.find((l) => l.primary) ?? loaders[0])?.id ?? null,
     publishedAt: latestFile.fileDate ?? null,
     entries: files.flatMap((f) =>
       f.fileId === undefined
         ? []
-        : [{ projectId: f.projectId, fileId: f.fileId, required: f.required }],
+        : [
+            {
+              projectId: f.projectId,
+              fileId: f.fileId,
+              required: f.required,
+              sides: f.sides,
+            },
+          ],
     ),
     modIds: new Set(files.map((f) => f.projectId)),
     disabledModIds: manifestDisabledModIds(files),
@@ -974,10 +967,78 @@ async function fetchModpackManifest(
   modpackCache.set(packProjectId, { manifest: result, fetchedAt: Date.now() });
 
   logger.info(
-    `Cached modpack mod list: ${result.modIds.size} mods from file ${fileId}`,
+    `Cached modpack mod list: ${result.modIds.size} mods from file ${latestFile.id}` +
+      (serverPackFileId === null ? "" : ` and server pack ${serverPackFileId}`),
   );
 
   return result;
+}
+
+const packManifestSchema = z.object({
+  version: z.string().optional(),
+  minecraft: z
+    .object({
+      version: z.string().optional(),
+      modLoaders: z
+        .array(z.object({ id: z.string(), primary: z.boolean().optional() }))
+        .optional(),
+    })
+    .optional(),
+  files: z.array(
+    z.object({
+      projectID: z.number(),
+      fileID: z.number().optional(),
+      required: z.boolean().optional(),
+    }),
+  ),
+});
+
+async function downloadPackManifest(packProjectId: number, fileId: number) {
+  const dlRes = await fetch(
+    `${CURSEFORGE_API}/v1/mods/${packProjectId}/files/${fileId}/download-url`,
+    { headers: cfHeaders(), signal: AbortSignal.timeout(CF_FETCH_TIMEOUT_MS) },
+  );
+  if (!dlRes.ok) {
+    throw new Error(
+      `Failed to get modpack file ${fileId} download URL (${dlRes.status})`,
+    );
+  }
+  const { data: downloadUrl } = (await dlRes.json()) as { data: string };
+
+  const zipRes = await fetch(downloadUrl, {
+    signal: AbortSignal.timeout(CF_DOWNLOAD_TIMEOUT_MS),
+  });
+  if (!zipRes.ok) {
+    throw new Error(
+      `Failed to download modpack file ${fileId} (${zipRes.status})`,
+    );
+  }
+  const contentLength = Number(zipRes.headers.get("content-length"));
+  if (Number.isFinite(contentLength) && contentLength > MAX_MODPACK_ZIP_BYTES) {
+    throw new Error(
+      `Modpack file ${fileId} exceeds the ${MAX_MODPACK_ZIP_BYTES} byte limit (${contentLength})`,
+    );
+  }
+  const zip = await JSZip.loadAsync(await zipRes.arrayBuffer());
+  const manifestFile = zip.file("manifest.json");
+  if (!manifestFile) {
+    throw new Error(`No manifest.json in modpack file ${fileId}`);
+  }
+
+  const manifest = parseCfResponse(
+    packManifestSchema,
+    JSON.parse(await manifestFile.async("text")),
+    "modpack manifest",
+  );
+  return {
+    version: manifest.version,
+    minecraft: manifest.minecraft,
+    files: manifest.files.map((f) => ({
+      projectId: f.projectID,
+      fileId: f.fileID,
+      required: f.required ?? true,
+    })),
+  };
 }
 
 /** The set of mod project IDs in a modpack's latest published file. */

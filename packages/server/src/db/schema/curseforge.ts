@@ -36,10 +36,14 @@ export const curseforgeProject = pgTable(
     dateReleased: timestamp("date_released", { withTimezone: true }),
     allowModDistribution: boolean("allow_mod_distribution"),
     isAvailable: boolean("is_available").notNull().default(true),
-    // Which side(s) the mod runs on; unspecified ships to both manifests.
-    // Source tracks trust: a manual admin flag is never overwritten, and a
-    // cf_flag value follows the author's tags but is kept if they later drop
-    // them, so a classified mod never silently reverts; null means no signal
+    // Which side(s) the mod runs on; unspecified ships to the client manifest
+    // and to the server pack as well when the mod is on the test server.
+    // Source tracks trust, manual > manifest > cf_flag: a manual admin flag is
+    // never overwritten, a manifest value is a CurseForge hint confirmed by
+    // the side(s) the published pack shipped the mod to and only a publish or
+    // an admin can change it, and a cf_flag value follows the author's tags
+    // but is kept if they later drop them, so a classified mod never silently
+    // reverts; null means no signal, and the pack never turns that into one
     environment: modEnvironmentEnum("environment")
       .notNull()
       .default("unspecified"),

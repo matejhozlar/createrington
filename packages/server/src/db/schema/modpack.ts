@@ -88,9 +88,11 @@ export const modpackMod = pgTable(
 
 // --- modpack_release ---
 // One row per published pack file we managed to read a manifest from, keyed by
-// that file's CurseForge id so re-reading the same release is a no-op. Rows are
-// append-only and self-contained: CurseForge drops archived files, so nothing
-// here may depend on re-fetching them.
+// the client file's CurseForge id so re-reading the same release is a no-op
+// (rows recorded before the server pack was read alongside carry its file id
+// instead, and reconcile checks both). Rows are append-only and
+// self-contained: CurseForge drops archived files, so nothing here may depend
+// on re-fetching them.
 
 export const modpackRelease = pgTable(
   "modpack_release",

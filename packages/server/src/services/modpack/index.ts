@@ -378,10 +378,12 @@ export class ModpackService {
   }
 
   /**
-   * Bring membership in line with the published pack: every mod the manifest
-   * lists gets a row classified by where it came from, suggestions move in and
-   * out of in_pack to match, and mods the latest publish dropped are flagged.
-   * Membership is never written anywhere else, so a row means published.
+   * Bring membership in line with the published pack: every mod either
+   * manifest lists gets a row classified by where it came from, suggestions
+   * move in and out of in_pack to match, mods the latest publish dropped are
+   * flagged, and CurseForge hints that match what shipped are promoted to
+   * manifest values. Membership is never written anywhere else, so a row
+   * means published.
    */
   async reconcile(modpackId: number): Promise<void> {
     const modpack = await this.getModpack(modpackId);
@@ -390,6 +392,7 @@ export class ModpackService {
     const workshops = await Q.workshop.findAll({ modpackId });
     const manifest = await getModpackManifest(modpack.curseforgeProjectId);
     await this.applyManifest(modpack, workshops, manifest);
+    await this.applyManifestEnvironments(manifest);
     await this.recordRelease(modpack, manifest);
   }
 
@@ -548,11 +551,21 @@ export class ModpackService {
     manifest: ModpackManifest,
   ): Promise<void> {
     if (manifest.entries.length === 0) return;
-    const recorded = await Q.modpack.release.find({
-      modpackId: modpack.id,
-      curseforgeFileId: manifest.fileId,
-    });
-    if (recorded) return;
+    // Releases read before the server pack was fetched alongside the client
+    // file are keyed by the server pack id, so a re-read must match either
+    const recorded = await Q.modpack.release.findAll(
+      {
+        modpackId: modpack.id,
+        curseforgeFileId: {
+          $in:
+            manifest.serverPackFileId === null
+              ? [manifest.fileId]
+              : [manifest.fileId, manifest.serverPackFileId],
+        },
+      },
+      { select: ["id"], limit: 1 },
+    );
+    if (recorded.length > 0) return;
 
     const projectIds = [...new Set(manifest.entries.map((e) => e.projectId))];
     const cached = new Set(
@@ -1044,6 +1057,40 @@ export class ModpackService {
         droppedRequired,
       )),
     ]);
+  }
+
+  /**
+   * Promote CurseForge hints the published pack agrees with to manifest.
+   * Needs a server pack to say anything about sides; a hint the pack
+   * disagrees with is left for the next refresh, and unspecified members
+   * stay unspecified so they keep surfacing for review.
+   */
+  private async applyManifestEnvironments(
+    manifest: ModpackManifest,
+  ): Promise<void> {
+    if (manifest.serverPackFileId === null || manifest.entries.length === 0) {
+      return;
+    }
+    const sidesByProject = new Map(
+      manifest.entries.map((entry) => [entry.projectId, entry.sides]),
+    );
+    const hinted = await Q.curseforge.project.findAll(
+      {
+        id: { $in: [...sidesByProject.keys()] },
+        environmentSource: "cf_flag",
+      },
+      { select: ["id", "environment"] },
+    );
+    const confirmed = hinted
+      .filter(
+        (project) => project.environment === sidesByProject.get(project.id),
+      )
+      .map((project) => project.id);
+    if (confirmed.length === 0) return;
+    await Q.curseforge.project.updateAll(
+      { environmentSource: "manifest" },
+      { id: { $in: confirmed } },
+    );
   }
 
   /**
