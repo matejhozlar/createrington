@@ -56,7 +56,7 @@ const CLOSE_ON_STATUS: Record<
   testing: true,
   next_update: true,
   in_pack: true,
-  rejected: false,
+  rejected: true,
 };
 
 const REJECT_REASON_TAGS: Record<

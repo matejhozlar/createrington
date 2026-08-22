@@ -160,7 +160,7 @@ describe("announceReview", () => {
     });
   });
 
-  it("leaves rejected posts open", async () => {
+  it("tags rejected posts with the reason and closes them", async () => {
     fakeThread("thread-42", { appliedTags: ["tag-suggested"] });
 
     await announceReview(
@@ -172,13 +172,21 @@ describe("announceReview", () => {
       "rejected",
     );
 
-    expect(state.calls.map(([name]) => name)).toEqual(["edit", "send"]);
+    expect(state.calls.map(([name]) => name)).toEqual([
+      "edit",
+      "send",
+      "setArchived",
+    ]);
     expect(state.calls[0][1]).toMatchObject({
       archived: false,
       appliedTags: ["tag-incompatible"],
     });
     expect(state.calls[1][1]).toMatchObject({
       content: expect.stringContaining("Crashes on load"),
+    });
+    expect(state.calls[2][1]).toEqual({
+      archived: true,
+      reason: "Workshop suggestion #42: Ruled out",
     });
   });
 
@@ -235,8 +243,11 @@ describe("healThreads", () => {
       true,
       "Workshop suggestion #1: In the pack",
     );
+    expect(rejected.setArchived).toHaveBeenCalledWith(
+      true,
+      "Workshop suggestion #4: Ruled out",
+    );
     expect(pending.setArchived).not.toHaveBeenCalled();
     expect(closed.setArchived).not.toHaveBeenCalled();
-    expect(rejected.setArchived).not.toHaveBeenCalled();
   });
 });
