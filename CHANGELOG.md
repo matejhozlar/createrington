@@ -1,3 +1,18 @@
+## v1.38.0 (2026-08-22)
+
+### @createrington/server (1.38.1 → 1.39.0)
+- [add] Add `required` flag to modpack members and release mods, mirroring the CurseForge manifest entry that marks whether a mod ships enabled or disabled in the pack
+- [add] Detect disabled mods during manifest parsing by collecting projects whose every entry carries `required: false`, and propagate the flag through reconcile, seed, and release-diff flows
+- [add] Add `setRequired` sandbox endpoint letting the sandbox toggle whether a next_update mod will ship enabled or disabled in the next pack export, with status guard, optimistic locking, and audit logging
+- [fix] Treat a required-flag-only change (same file, different enabled state) as a release diff entry so flag flips appear in the release changelog
+
+### @createrington/client (0.2.52 → 0.2.53)
+- [add] Show a "Disabled" badge on pack members, release mods, and workshop mod cells whose manifest `required` flag is false
+- [add] Display flag-only changes in the releases tab as "Enabled"/"Disabled" transitions instead of repeating the unchanged file name
+
+### @createrington/shared (1.6.1 → 1.7.0)
+- [add] Add `required` field (defaults to true) to the modpack manifest upload schema so seed imports and sandbox exports carry the per-entry enabled/disabled flag
+
 ## v1.37.1 (2026-08-21)
 
 ### @createrington/server (1.38.0 → 1.38.1)
