@@ -7,7 +7,6 @@ import {
 import { ConstraintViolationError } from "@/db/utils/errors";
 import type {
   CurseforgeProject,
-  ModEnvironment,
   Modpack,
   ModpackMod,
   ModpackRelease,
@@ -382,9 +381,9 @@ export class ModpackService {
    * Bring membership in line with the published pack: every mod either
    * manifest lists gets a row classified by where it came from, suggestions
    * move in and out of in_pack to match, mods the latest publish dropped are
-   * flagged, and CurseForge-hinted members get their side(s) confirmed from
-   * what shipped. Membership is never written anywhere else, so a row means
-   * published.
+   * flagged, and CurseForge hints that match what shipped are promoted to
+   * manifest values. Membership is never written anywhere else, so a row
+   * means published.
    */
   async reconcile(modpackId: number): Promise<void> {
     const modpack = await this.getModpack(modpackId);
@@ -1061,13 +1060,10 @@ export class ModpackService {
   }
 
   /**
-   * Confirm CurseForge-hinted members from the side(s) that shipped them.
-   * Only a release with a server pack says anything about sides, since a
-   * lone client file lists every member. Manual flags stay, and unspecified
-   * members stay unspecified so they keep surfacing for review: the pack
-   * never invents a classification. The environment lives on the shared
-   * project row, so with several published packs the last one reconciled
-   * wins for a project they all ship.
+   * Promote CurseForge hints the published pack agrees with to manifest.
+   * Needs a server pack to say anything about sides; a hint the pack
+   * disagrees with is left for the next refresh, and unspecified members
+   * stay unspecified so they keep surfacing for review.
    */
   private async applyManifestEnvironments(
     manifest: ModpackManifest,
@@ -1078,36 +1074,23 @@ export class ModpackService {
     const sidesByProject = new Map(
       manifest.entries.map((entry) => [entry.projectId, entry.sides]),
     );
-    const projects = await Q.curseforge.project.findAll(
-      { id: { $in: [...sidesByProject.keys()] } },
-      { select: ["id", "environment", "environmentSource"] },
+    const hinted = await Q.curseforge.project.findAll(
+      {
+        id: { $in: [...sidesByProject.keys()] },
+        environmentSource: "cf_flag",
+      },
+      { select: ["id", "environment"] },
     );
-    const idsByEnvironment = new Map<ModEnvironment, number[]>();
-    for (const project of projects) {
-      const sides = sidesByProject.get(project.id);
-      if (
-        !sides ||
-        (project.environmentSource !== "cf_flag" &&
-          project.environmentSource !== "manifest")
-      ) {
-        continue;
-      }
-      if (
-        project.environment === sides &&
-        project.environmentSource === "manifest"
-      ) {
-        continue;
-      }
-      const ids = idsByEnvironment.get(sides) ?? [];
-      ids.push(project.id);
-      idsByEnvironment.set(sides, ids);
-    }
-    for (const [environment, ids] of idsByEnvironment) {
-      await Q.curseforge.project.updateAll(
-        { environment, environmentSource: "manifest" },
-        { id: { $in: ids } },
-      );
-    }
+    const confirmed = hinted
+      .filter(
+        (project) => project.environment === sidesByProject.get(project.id),
+      )
+      .map((project) => project.id);
+    if (confirmed.length === 0) return;
+    await Q.curseforge.project.updateAll(
+      { environmentSource: "manifest" },
+      { id: { $in: confirmed } },
+    );
   }
 
   /**

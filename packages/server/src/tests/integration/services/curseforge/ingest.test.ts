@@ -209,7 +209,7 @@ describe("environment hints on ingest", () => {
     });
   });
 
-  it("never overwrites a manifest-derived environment with a CurseForge hint", async () => {
+  it("never overwrites a manifest-confirmed environment with a CurseForge hint", async () => {
     const projectId = claimProjectId();
     await seedRow(projectId);
     await Q.curseforge.project.update(

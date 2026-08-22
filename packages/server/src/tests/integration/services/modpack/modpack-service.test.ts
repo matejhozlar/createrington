@@ -1189,12 +1189,12 @@ describe("ModpackService.reconcile across the client file and server pack", () =
     });
   });
 
-  it("confirms a CurseForge hint from the side(s) the pack shipped", async () => {
+  it("confirms a CurseForge hint the pack shipped to the same side(s)", async () => {
     const modpack = await seedModpack(ctx, {
       curseforgeProjectId: ctx.nextProjectId++,
     });
     const projectId = await seedProject(ctx, undefined, {
-      environment: "client",
+      environment: "both",
       environmentSource: "cf_flag",
     });
     vi.mocked(getModpackManifest).mockResolvedValue(
@@ -1206,6 +1206,48 @@ describe("ModpackService.reconcile across the client file and server pack", () =
     expect(await Q.curseforge.project.get({ id: projectId })).toMatchObject({
       environment: "both",
       environmentSource: "manifest",
+    });
+  });
+
+  it("leaves a CurseForge hint the pack disagrees with alone", async () => {
+    const modpack = await seedModpack(ctx, {
+      curseforgeProjectId: ctx.nextProjectId++,
+    });
+    const projectId = await seedProject(ctx, undefined, {
+      environment: "both",
+      environmentSource: "cf_flag",
+    });
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      sidedManifest("2.0.0", [[projectId, "client"]]),
+    );
+
+    await modpackService.reconcile(modpack.id);
+
+    expect(await Q.curseforge.project.get({ id: projectId })).toMatchObject({
+      environment: "both",
+      environmentSource: "cf_flag",
+    });
+  });
+
+  it("keeps a flag cleared to unspecified clear across a reconcile", async () => {
+    const modpack = await seedModpack(ctx, {
+      curseforgeProjectId: ctx.nextProjectId++,
+    });
+    const projectId = await seedProject(ctx, undefined, {
+      environment: "server",
+      environmentSource: "manual",
+    });
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      sidedManifest("2.0.0", [[projectId, "server"]]),
+    );
+    await modpackService.reconcile(modpack.id);
+
+    await workshopService.setProjectEnvironment(projectId, "unspecified");
+    await modpackService.reconcile(modpack.id);
+
+    expect(await Q.curseforge.project.get({ id: projectId })).toMatchObject({
+      environment: "unspecified",
+      environmentSource: null,
     });
   });
 
