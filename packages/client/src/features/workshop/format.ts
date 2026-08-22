@@ -155,9 +155,9 @@ export function environmentTitle(
   if (environment === "unspecified") {
     return "Not classified yet, treated as Client & Server";
   }
-  return source === "manual"
-    ? "Set manually"
-    : "From CurseForge, author-assigned and unverified";
+  if (source === "manual") return "Set manually";
+  if (source === "manifest") return "From the published pack";
+  return "From CurseForge, author-assigned and unverified";
 }
 
 export const DEPENDENCY_COVERAGE_STYLES: Record<

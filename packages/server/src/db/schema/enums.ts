@@ -129,7 +129,9 @@ export const playerPromptEntryModeEnum = pgEnum(
 export const modEnvironmentEnum = pgEnum("mod_environment", MOD_ENVIRONMENTS);
 
 // Where a project's environment value came from: a CurseForge author flag
-// (low trust, refreshed by sweeps) or a manual admin flag (never overwritten)
+// (low trust, refreshed by sweeps), the published pack's manifests (which
+// side(s) actually shipped the mod, rewritten by reconcile) or a manual admin
+// flag (never overwritten)
 export const modEnvironmentSourceEnum = pgEnum(
   "mod_environment_source",
   MOD_ENVIRONMENT_SOURCES,

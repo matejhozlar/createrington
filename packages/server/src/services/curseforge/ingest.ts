@@ -87,6 +87,7 @@ async function applyEnvironmentHints(
   for (const { data, hint } of hinted) {
     const row = byId.get(data.id);
     if (!row || row.environmentSource === "manual") continue;
+    if (row.environmentSource === "manifest") continue;
     if (row.environment === hint && row.environmentSource === "cf_flag") {
       continue;
     }

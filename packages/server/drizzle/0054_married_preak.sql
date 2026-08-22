@@ -1,0 +1,1 @@
+ALTER TYPE "public"."mod_environment_source" ADD VALUE 'manifest' BEFORE 'manual';
