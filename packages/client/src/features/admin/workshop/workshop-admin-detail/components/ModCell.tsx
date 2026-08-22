@@ -4,6 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ProjectThumb } from "@/features/workshop/components/ProjectThumb";
 import {
+  DISABLED_BADGE_CLASS,
+  DISABLED_LABEL,
   PROJECT_KIND_BADGE_CLASS,
   projectKindLabel,
 } from "@/features/workshop/format";
@@ -13,11 +15,13 @@ export function ModCell({
   slug,
   thumbnailUrl,
   classId,
+  required = true,
 }: {
   name: string;
   slug?: string | null;
   thumbnailUrl: string | null;
   classId?: number;
+  required?: boolean;
 }) {
   const kind = classId === undefined ? null : projectKindLabel(classId);
   return (
@@ -33,6 +37,11 @@ export function ModCell({
           {kind && (
             <Badge variant="outline" className={PROJECT_KIND_BADGE_CLASS}>
               {kind}
+            </Badge>
+          )}
+          {!required && (
+            <Badge variant="outline" className={DISABLED_BADGE_CLASS}>
+              {DISABLED_LABEL}
             </Badge>
           )}
         </div>

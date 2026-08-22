@@ -203,7 +203,12 @@ export const modpackManifestUploadSchema = z.object({
   // Real CurseForge exports repeat a project across entries when it ships more
   // than one file, so duplicates are deduped on import rather than rejected
   files: z
-    .array(z.object({ projectID: z.number().int().positive().max(2147483647) }))
+    .array(
+      z.object({
+        projectID: z.number().int().positive().max(2147483647),
+        required: z.boolean().default(true),
+      }),
+    )
     .min(1)
     .max(2000),
 });

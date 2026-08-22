@@ -59,6 +59,8 @@ export const workshop = pgTable(
 
 // --- workshop_mod ---
 // File columns snapshot the submit-time pick; pack builds re-resolve fresh.
+// required = whether a next_update mod should ship enabled; pack exports write
+// it into the manifest entry, after which the published manifest owns it.
 
 export const workshopMod = pgTable(
   "workshop_mod",
@@ -80,6 +82,7 @@ export const workshopMod = pgTable(
     fileId: integer("file_id"),
     fileName: text("file_name"),
     fileReleaseType: integer("file_release_type"),
+    required: boolean("required").notNull().default(true),
     discordThreadId: text("discord_thread_id"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()

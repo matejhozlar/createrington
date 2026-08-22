@@ -3,6 +3,7 @@ import {
   serial,
   integer,
   text,
+  boolean,
   timestamp,
   index,
   uniqueIndex,
@@ -40,6 +41,8 @@ export const modpack = pgTable(
 // --- modpack_mod ---
 // liveAt set = shipped in the published pack, droppedFromManifestAt set = was
 // live but missing from the latest published version (admin attention).
+// required mirrors the manifest entry flag: false = the mod ships in the pack
+// but is disabled (the CurseForge app exports disabled profile mods that way).
 
 export const modpackMod = pgTable(
   "modpack_mod",
@@ -59,6 +62,7 @@ export const modpackMod = pgTable(
     fileId: integer("file_id"),
     fileName: text("file_name"),
     fileReleaseType: integer("file_release_type"),
+    required: boolean("required").notNull().default(true),
     liveAt: timestamp("live_at", { withTimezone: true }),
     liveInVersion: text("live_in_version"),
     droppedFromManifestAt: timestamp("dropped_from_manifest_at", {
@@ -135,6 +139,7 @@ export const modpackReleaseMod = pgTable(
     displayName: text("display_name"),
     fileReleaseType: integer("file_release_type"),
     fileDate: timestamp("file_date", { withTimezone: true }),
+    required: boolean("required").notNull().default(true),
   },
   (table) => [
     index("idx_modpack_release_mod_release").on(table.releaseId),

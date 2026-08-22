@@ -169,7 +169,10 @@ export const adminModpacksRouter = router({
           modLoader:
             (loaders.find((loader) => loader.primary) ?? loaders[0])?.id ??
             null,
-          modIds: files.map((file) => file.projectID),
+          files: files.map((file) => ({
+            projectId: file.projectID,
+            required: file.required,
+          })),
         });
         await Q.admin.log.action.logAction({
           ...auditActor(ctx),
