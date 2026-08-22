@@ -1136,10 +1136,11 @@ describe("ModpackService.reconcile across the client file and server pack", () =
     ).toEqual([]);
   });
 
-  it("derives the environment of unflagged members from the side(s) that shipped them", async () => {
+  it("leaves unflagged members unspecified so they keep surfacing for review", async () => {
     const modpack = await seedModpack(ctx, {
       curseforgeProjectId: ctx.nextProjectId++,
     });
+    const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
     const bothId = await seedProject(ctx);
     const clientId = await seedProject(ctx);
     const serverId = await seedProject(ctx);
@@ -1153,16 +1154,19 @@ describe("ModpackService.reconcile across the client file and server pack", () =
 
     await modpackService.reconcile(modpack.id);
 
-    for (const [id, environment] of [
-      [bothId, "both"],
-      [clientId, "client"],
-      [serverId, "server"],
-    ] as const) {
+    for (const id of [bothId, clientId, serverId]) {
       expect(await Q.curseforge.project.get({ id })).toMatchObject({
-        environment,
-        environmentSource: "manifest",
+        environment: "unspecified",
+        environmentSource: null,
       });
     }
+    const attention = await modpackService.getWorkshopAttention(workshop);
+    expect(
+      attention
+        .filter((item) => item.type === "environment_unspecified")
+        .map((item) => item.curseforgeProjectId)
+        .sort(),
+    ).toEqual([bothId, clientId, serverId].sort());
   });
 
   it("leaves a manual environment flag alone", async () => {
@@ -1185,7 +1189,7 @@ describe("ModpackService.reconcile across the client file and server pack", () =
     });
   });
 
-  it("replaces a CurseForge hint with the side(s) the pack shipped", async () => {
+  it("confirms a CurseForge hint from the side(s) the pack shipped", async () => {
     const modpack = await seedModpack(ctx, {
       curseforgeProjectId: ctx.nextProjectId++,
     });
@@ -1205,11 +1209,14 @@ describe("ModpackService.reconcile across the client file and server pack", () =
     });
   });
 
-  it("does not derive environments when the release ships no server pack", async () => {
+  it("does not confirm environments when the release ships no server pack", async () => {
     const modpack = await seedModpack(ctx, {
       curseforgeProjectId: ctx.nextProjectId++,
     });
-    const projectId = await seedProject(ctx);
+    const projectId = await seedProject(ctx, undefined, {
+      environment: "both",
+      environmentSource: "cf_flag",
+    });
     vi.mocked(getModpackManifest).mockResolvedValue(
       manifest({ version: "2.0.0", modIds: new Set([projectId]) }),
     );
@@ -1217,8 +1224,8 @@ describe("ModpackService.reconcile across the client file and server pack", () =
     await modpackService.reconcile(modpack.id);
 
     expect(await Q.curseforge.project.get({ id: projectId })).toMatchObject({
-      environment: "unspecified",
-      environmentSource: null,
+      environment: "both",
+      environmentSource: "cf_flag",
     });
   });
 });

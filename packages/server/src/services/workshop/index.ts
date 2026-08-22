@@ -1321,9 +1321,8 @@ export class WorkshopService {
   /**
    * Flag which side(s) a project runs on. Explicit sides become manual flags
    * that neither CurseForge hints nor the published pack overwrite;
-   * unspecified clears the flag, so the next snapshot refresh may re-apply a
-   * CurseForge hint and the next reconcile re-derives a pack member's sides
-   * from the published manifests.
+   * unspecified clears the flag so the next snapshot refresh may re-apply a
+   * CurseForge hint.
    */
   async setProjectEnvironment(
     curseforgeProjectId: number,

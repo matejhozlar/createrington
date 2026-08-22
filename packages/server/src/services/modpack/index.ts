@@ -382,9 +382,9 @@ export class ModpackService {
    * Bring membership in line with the published pack: every mod either
    * manifest lists gets a row classified by where it came from, suggestions
    * move in and out of in_pack to match, mods the latest publish dropped are
-   * flagged, and members without a manual flag take the side(s) that shipped
-   * them as their environment. Membership is never written anywhere else, so
-   * a row means published.
+   * flagged, and CurseForge-hinted members get their side(s) confirmed from
+   * what shipped. Membership is never written anywhere else, so a row means
+   * published.
    */
   async reconcile(modpackId: number): Promise<void> {
     const modpack = await this.getModpack(modpackId);
@@ -1061,11 +1061,13 @@ export class ModpackService {
   }
 
   /**
-   * Classify members by the side(s) that shipped them. Only a release with a
-   * server pack says anything about sides, since a lone client file lists
-   * every member. Manual flags stay; anything weaker follows the pack. The
-   * environment lives on the shared project row, so with several published
-   * packs the last one reconciled wins for a project they all ship.
+   * Confirm CurseForge-hinted members from the side(s) that shipped them.
+   * Only a release with a server pack says anything about sides, since a
+   * lone client file lists every member. Manual flags stay, and unspecified
+   * members stay unspecified so they keep surfacing for review: the pack
+   * never invents a classification. The environment lives on the shared
+   * project row, so with several published packs the last one reconciled
+   * wins for a project they all ship.
    */
   private async applyManifestEnvironments(
     manifest: ModpackManifest,
@@ -1083,7 +1085,13 @@ export class ModpackService {
     const idsByEnvironment = new Map<ModEnvironment, number[]>();
     for (const project of projects) {
       const sides = sidesByProject.get(project.id);
-      if (!sides || project.environmentSource === "manual") continue;
+      if (
+        !sides ||
+        (project.environmentSource !== "cf_flag" &&
+          project.environmentSource !== "manifest")
+      ) {
+        continue;
+      }
       if (
         project.environment === sides &&
         project.environmentSource === "manifest"
