@@ -47,7 +47,8 @@ export const WORKSHOP_MOD_REJECT_REASON_LABELS: Record<
 };
 
 // Which side(s) a mod runs on. CurseForge's author-assigned file flags feed
-// low-trust cf_flag hints; manual admin flags always win. Unspecified mods
+// low-trust cf_flag hints, the published pack's manifests derive manifest
+// values for its members, and manual admin flags always win. Unspecified mods
 // ship to both sides and are surfaced for review.
 export const MOD_ENVIRONMENTS = [
   "client",
@@ -56,7 +57,11 @@ export const MOD_ENVIRONMENTS = [
   "unspecified",
 ] as const;
 
-export const MOD_ENVIRONMENT_SOURCES = ["cf_flag", "manual"] as const;
+export const MOD_ENVIRONMENT_SOURCES = [
+  "cf_flag",
+  "manifest",
+  "manual",
+] as const;
 
 type ModEnvironment = (typeof MOD_ENVIRONMENTS)[number];
 

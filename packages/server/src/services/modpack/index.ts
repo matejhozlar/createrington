@@ -7,6 +7,7 @@ import {
 import { ConstraintViolationError } from "@/db/utils/errors";
 import type {
   CurseforgeProject,
+  ModEnvironment,
   Modpack,
   ModpackMod,
   ModpackRelease,
@@ -378,10 +379,12 @@ export class ModpackService {
   }
 
   /**
-   * Bring membership in line with the published pack: every mod the manifest
-   * lists gets a row classified by where it came from, suggestions move in and
-   * out of in_pack to match, and mods the latest publish dropped are flagged.
-   * Membership is never written anywhere else, so a row means published.
+   * Bring membership in line with the published pack: every mod either
+   * manifest lists gets a row classified by where it came from, suggestions
+   * move in and out of in_pack to match, mods the latest publish dropped are
+   * flagged, and members without a manual flag take the side(s) that shipped
+   * them as their environment. Membership is never written anywhere else, so
+   * a row means published.
    */
   async reconcile(modpackId: number): Promise<void> {
     const modpack = await this.getModpack(modpackId);
@@ -390,6 +393,7 @@ export class ModpackService {
     const workshops = await Q.workshop.findAll({ modpackId });
     const manifest = await getModpackManifest(modpack.curseforgeProjectId);
     await this.applyManifest(modpack, workshops, manifest);
+    await this.applyManifestEnvironments(manifest);
     await this.recordRelease(modpack, manifest);
   }
 
@@ -548,11 +552,21 @@ export class ModpackService {
     manifest: ModpackManifest,
   ): Promise<void> {
     if (manifest.entries.length === 0) return;
-    const recorded = await Q.modpack.release.find({
-      modpackId: modpack.id,
-      curseforgeFileId: manifest.fileId,
-    });
-    if (recorded) return;
+    // Releases read before the server pack was fetched alongside the client
+    // file are keyed by the server pack id, so a re-read must match either
+    const recorded = await Q.modpack.release.findAll(
+      {
+        modpackId: modpack.id,
+        curseforgeFileId: {
+          $in:
+            manifest.serverPackFileId === null
+              ? [manifest.fileId]
+              : [manifest.fileId, manifest.serverPackFileId],
+        },
+      },
+      { select: ["id"], limit: 1 },
+    );
+    if (recorded.length > 0) return;
 
     const projectIds = [...new Set(manifest.entries.map((e) => e.projectId))];
     const cached = new Set(
@@ -1044,6 +1058,48 @@ export class ModpackService {
         droppedRequired,
       )),
     ]);
+  }
+
+  /**
+   * Classify members by the side(s) that shipped them. Only a release with a
+   * server pack says anything about sides, since a lone client file lists
+   * every member. Manual flags stay; anything weaker follows the pack. The
+   * environment lives on the shared project row, so with several published
+   * packs the last one reconciled wins for a project they all ship.
+   */
+  private async applyManifestEnvironments(
+    manifest: ModpackManifest,
+  ): Promise<void> {
+    if (manifest.serverPackFileId === null || manifest.entries.length === 0) {
+      return;
+    }
+    const sidesByProject = new Map(
+      manifest.entries.map((entry) => [entry.projectId, entry.sides]),
+    );
+    const projects = await Q.curseforge.project.findAll(
+      { id: { $in: [...sidesByProject.keys()] } },
+      { select: ["id", "environment", "environmentSource"] },
+    );
+    const idsByEnvironment = new Map<ModEnvironment, number[]>();
+    for (const project of projects) {
+      const sides = sidesByProject.get(project.id);
+      if (!sides || project.environmentSource === "manual") continue;
+      if (
+        project.environment === sides &&
+        project.environmentSource === "manifest"
+      ) {
+        continue;
+      }
+      const ids = idsByEnvironment.get(sides) ?? [];
+      ids.push(project.id);
+      idsByEnvironment.set(sides, ids);
+    }
+    for (const [environment, ids] of idsByEnvironment) {
+      await Q.curseforge.project.updateAll(
+        { environment, environmentSource: "manifest" },
+        { id: { $in: ids } },
+      );
+    }
   }
 
   /**

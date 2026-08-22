@@ -32,6 +32,7 @@ vi.mock("@/services/curseforge", async (importOriginal) => {
     getMods: vi.fn(async () => []),
     getModpackManifest: vi.fn(async () => ({
       fileId: 1,
+      serverPackFileId: null,
       displayName: null,
       version: null,
       minecraftVersion: null,
@@ -67,6 +68,7 @@ import {
   getFilesDetails,
   getModpackManifest,
   type ModpackManifest,
+  type ModpackManifestSides,
 } from "@/services/curseforge";
 import {
   announcePackDropOut,
@@ -96,11 +98,17 @@ function manifest(
   overrides: Partial<Omit<ModpackManifest, "entries">> & {
     modIds?: Set<number>;
     disabledModIds?: Set<number>;
-    entries?: Array<{ projectId: number; fileId: number; required?: boolean }>;
+    entries?: Array<{
+      projectId: number;
+      fileId: number;
+      required?: boolean;
+      sides?: ModpackManifestSides;
+    }>;
   } = {},
 ): ModpackManifest {
   const modIds = overrides.modIds ?? new Set<number>();
   const disabledModIds = overrides.disabledModIds ?? new Set<number>();
+  const serverPackFileId = overrides.serverPackFileId ?? null;
   const entries: NonNullable<typeof overrides.entries> =
     overrides.entries ??
     [...modIds].map((projectId) => ({
@@ -115,13 +123,31 @@ function manifest(
     modLoader: null,
     publishedAt: null,
     ...overrides,
+    serverPackFileId,
     entries: entries.map((entry) => ({
       ...entry,
       required: entry.required ?? !disabledModIds.has(entry.projectId),
+      sides: entry.sides ?? (serverPackFileId === null ? "client" : "both"),
     })),
     modIds,
     disabledModIds,
   };
+}
+
+function sidedManifest(
+  version: string,
+  sided: Array<[projectId: number, sides: ModpackManifestSides]>,
+): ModpackManifest {
+  const built = manifest({
+    version,
+    modIds: new Set(sided.map(([projectId]) => projectId)),
+    entries: sided.map(([projectId, sides]) => ({
+      projectId,
+      fileId: fileIdFor(projectId),
+      sides,
+    })),
+  });
+  return { ...built, serverPackFileId: 800_000 + built.fileId };
 }
 
 function requiredOf(
@@ -1061,6 +1087,142 @@ describe("ModpackService.reconcile", () => {
   });
 });
 
+describe("ModpackService.reconcile across the client file and server pack", () => {
+  it("keeps a client-only member live when only the client manifest lists it", async () => {
+    const modpack = await seedModpack(ctx, {
+      curseforgeProjectId: ctx.nextProjectId++,
+    });
+    const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const shared = await seedPackMod(ctx, workshop);
+    const clientOnly = await seedPackMod(ctx, workshop);
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      sidedManifest("2.0.0", [
+        [shared.curseforgeProjectId, "both"],
+        [clientOnly.curseforgeProjectId, "client"],
+      ]),
+    );
+
+    await modpackService.reconcile(modpack.id);
+
+    const row = await Q.modpack.mod.get({ id: clientOnly.id });
+    expect(row.liveAt).not.toBeNull();
+    expect(row.liveInVersion).toBe("2.0.0");
+    expect(row.droppedFromManifestAt).toBeNull();
+  });
+
+  it("keeps a server-only member live when only the server pack lists it", async () => {
+    const modpack = await seedModpack(ctx, {
+      curseforgeProjectId: ctx.nextProjectId++,
+    });
+    const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const shared = await seedPackMod(ctx, workshop);
+    const serverOnly = await seedPackMod(ctx, workshop);
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      sidedManifest("2.0.0", [
+        [shared.curseforgeProjectId, "both"],
+        [serverOnly.curseforgeProjectId, "server"],
+      ]),
+    );
+
+    await modpackService.reconcile(modpack.id);
+
+    const row = await Q.modpack.mod.get({ id: serverOnly.id });
+    expect(row.liveAt).not.toBeNull();
+    expect(row.liveInVersion).toBe("2.0.0");
+    expect(row.droppedFromManifestAt).toBeNull();
+    const attention = await modpackService.getWorkshopAttention(workshop);
+    expect(
+      attention.filter((item) => item.type === "dropped_from_pack"),
+    ).toEqual([]);
+  });
+
+  it("derives the environment of unflagged members from the side(s) that shipped them", async () => {
+    const modpack = await seedModpack(ctx, {
+      curseforgeProjectId: ctx.nextProjectId++,
+    });
+    const bothId = await seedProject(ctx);
+    const clientId = await seedProject(ctx);
+    const serverId = await seedProject(ctx);
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      sidedManifest("2.0.0", [
+        [bothId, "both"],
+        [clientId, "client"],
+        [serverId, "server"],
+      ]),
+    );
+
+    await modpackService.reconcile(modpack.id);
+
+    for (const [id, environment] of [
+      [bothId, "both"],
+      [clientId, "client"],
+      [serverId, "server"],
+    ] as const) {
+      expect(await Q.curseforge.project.get({ id })).toMatchObject({
+        environment,
+        environmentSource: "manifest",
+      });
+    }
+  });
+
+  it("leaves a manual environment flag alone", async () => {
+    const modpack = await seedModpack(ctx, {
+      curseforgeProjectId: ctx.nextProjectId++,
+    });
+    const projectId = await seedProject(ctx, undefined, {
+      environment: "client",
+      environmentSource: "manual",
+    });
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      sidedManifest("2.0.0", [[projectId, "both"]]),
+    );
+
+    await modpackService.reconcile(modpack.id);
+
+    expect(await Q.curseforge.project.get({ id: projectId })).toMatchObject({
+      environment: "client",
+      environmentSource: "manual",
+    });
+  });
+
+  it("replaces a CurseForge hint with the side(s) the pack shipped", async () => {
+    const modpack = await seedModpack(ctx, {
+      curseforgeProjectId: ctx.nextProjectId++,
+    });
+    const projectId = await seedProject(ctx, undefined, {
+      environment: "client",
+      environmentSource: "cf_flag",
+    });
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      sidedManifest("2.0.0", [[projectId, "both"]]),
+    );
+
+    await modpackService.reconcile(modpack.id);
+
+    expect(await Q.curseforge.project.get({ id: projectId })).toMatchObject({
+      environment: "both",
+      environmentSource: "manifest",
+    });
+  });
+
+  it("does not derive environments when the release ships no server pack", async () => {
+    const modpack = await seedModpack(ctx, {
+      curseforgeProjectId: ctx.nextProjectId++,
+    });
+    const projectId = await seedProject(ctx);
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      manifest({ version: "2.0.0", modIds: new Set([projectId]) }),
+    );
+
+    await modpackService.reconcile(modpack.id);
+
+    expect(await Q.curseforge.project.get({ id: projectId })).toMatchObject({
+      environment: "unspecified",
+      environmentSource: null,
+    });
+  });
+});
+
 describe("ModpackService.seedFromManifest", () => {
   const seed = ({
     modIds = [],
@@ -1438,6 +1600,33 @@ describe("ModpackService release history", () => {
     await modpackService.reconcile(modpack.id);
 
     expect(await modpackService.listReleases(modpack.id)).toHaveLength(1);
+  });
+
+  it("treats a release recorded under its server pack file as already read", async () => {
+    const modpack = await seedModpack(ctx, {
+      curseforgeProjectId: ctx.nextProjectId++,
+    });
+    const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const member = await seedPackMod(ctx, workshop);
+    const modIds = new Set([member.curseforgeProjectId]);
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      manifest({ version: "1.0.0", fileId: 9100, modIds }),
+    );
+    await modpackService.reconcile(modpack.id);
+
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      manifest({
+        version: "1.0.0",
+        fileId: 9000,
+        serverPackFileId: 9100,
+        modIds,
+      }),
+    );
+    await modpackService.reconcile(modpack.id);
+
+    const releases = await modpackService.listReleases(modpack.id);
+    expect(releases).toHaveLength(1);
+    expect(releases[0].curseforgeFileId).toBe(9100);
   });
 
   it("keeps an older release readable after a newer one lands", async () => {

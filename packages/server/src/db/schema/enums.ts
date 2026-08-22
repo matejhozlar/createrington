@@ -125,11 +125,14 @@ export const playerPromptEntryModeEnum = pgEnum(
 );
 
 // Which side(s) a CurseForge project runs on; drives client/server manifest
-// membership. unspecified is the safe default and ships to both sides
+// membership. unspecified is the safe default: it ships to the client and,
+// when the mod is on the test server, to the server pack too
 export const modEnvironmentEnum = pgEnum("mod_environment", MOD_ENVIRONMENTS);
 
 // Where a project's environment value came from: a CurseForge author flag
-// (low trust, refreshed by sweeps) or a manual admin flag (never overwritten)
+// (low trust, refreshed by sweeps), the published pack's manifests (which
+// side(s) actually shipped the mod, rewritten by reconcile) or a manual admin
+// flag (never overwritten)
 export const modEnvironmentSourceEnum = pgEnum(
   "mod_environment_source",
   MOD_ENVIRONMENT_SOURCES,

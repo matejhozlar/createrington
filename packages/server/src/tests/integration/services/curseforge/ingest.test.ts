@@ -209,6 +209,25 @@ describe("environment hints on ingest", () => {
     });
   });
 
+  it("never overwrites a manifest-derived environment with a CurseForge hint", async () => {
+    const projectId = claimProjectId();
+    await seedRow(projectId);
+    await Q.curseforge.project.update(
+      { id: projectId },
+      { environment: "both", environmentSource: "manifest" },
+    );
+    vi.mocked(getMods).mockResolvedValue([
+      makeProjectData(projectId, { environmentHint: "client" }),
+    ]);
+
+    await refreshProjects([projectId]);
+
+    expect(await Q.curseforge.project.get({ id: projectId })).toMatchObject({
+      environment: "both",
+      environmentSource: "manifest",
+    });
+  });
+
   it("follows a changed CurseForge flag on later refreshes", async () => {
     const projectId = claimProjectId();
     vi.mocked(getMods).mockResolvedValue([
