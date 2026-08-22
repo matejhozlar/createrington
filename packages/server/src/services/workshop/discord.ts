@@ -45,6 +45,13 @@ const REVIEW_MESSAGES: Record<
 const PACK_DROP_OUT_MESSAGE =
   "↩️ **Dropped from the latest pack update.** Back to coming next update while the team looks into it.";
 
+const CLOSED_STATUSES: ReadonlySet<WorkshopModStatus> = new Set([
+  "approved",
+  "testing",
+  "next_update",
+  "in_pack",
+]);
+
 const REJECT_REASON_TAGS: Record<
   WorkshopModRejectReason,
   { name: string; emoji: string }
@@ -253,8 +260,9 @@ export async function announceSuggestion(
 }
 
 /**
- * Reflect a review outcome on the suggestion's thread: post the result and
- * retag with the new status's tag or the rejection reason's tag.
+ * Reflect a review outcome on the suggestion's thread: post the result, retag
+ * with the new status's tag or the rejection reason's tag, and close the post
+ * again once the mod has left review.
  */
 export async function announceReview(
   mod: WorkshopMod,
@@ -302,6 +310,9 @@ export async function announceReview(
           }`
         : (options.message ?? REVIEW_MESSAGES[status]);
     await thread.send({ content, allowedMentions: { parse: [] } });
+    if (CLOSED_STATUSES.has(status)) {
+      await thread.setArchived(true, `Workshop mod #${mod.id} ${status}`);
+    }
   } catch (error) {
     logger.warn(`Failed to post review outcome for mod #${mod.id}: ${error}`);
   }
