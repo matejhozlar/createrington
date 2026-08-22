@@ -1,3 +1,20 @@
+## v1.39.0 (2026-08-22)
+
+### @createrington/server (1.39.0 → 1.40.0)
+- [add] Close workshop suggestion threads after a mod leaves review (approved, testing, next_update, in_pack, or rejected), with audit reasons on each archive action
+- [add] Re-close suggestion threads that replies reopened after review during the workshop thread healing pass
+- [add] Reconcile modpack membership from both the client pack file and server pack, downloading and merging both manifests to track which side(s) each mod ships on
+- [add] Promote CurseForge environment hints to `manifest` source when the published server pack confirms the side(s) a mod ships to
+- [fix] Keep unflagged pack members as `unspecified` instead of deriving a side, so they continue surfacing for admin review
+- [fix] Prevent CurseForge ingest from overwriting manifest-confirmed environment values with lower-trust author hints
+- [refactor] Extract zip download and manifest parsing into a reusable `downloadPackManifest` helper shared by the client file and server pack fetch paths
+
+### @createrington/client (0.2.53 → 0.2.54)
+- [fix] Display the correct environment source label for manifest-confirmed mods ("From CurseForge, confirmed by the published pack") instead of grouping them with author-assigned flags
+
+### @createrington/shared (1.7.0 → 1.8.0)
+- [add] Add `manifest` to the `MOD_ENVIRONMENT_SOURCES` enum, representing a CurseForge environment hint confirmed by the published pack's manifests
+
 ## v1.38.0 (2026-08-22)
 
 ### @createrington/server (1.38.1 → 1.39.0)
