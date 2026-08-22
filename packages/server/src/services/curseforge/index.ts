@@ -776,6 +776,7 @@ export async function getFilesDependencies(fileIds: number[]): Promise<
 export interface ModpackManifestEntry {
   projectId: number;
   fileId: number;
+  required: boolean;
 }
 
 export interface ModpackManifest {
@@ -788,6 +789,29 @@ export interface ModpackManifest {
   publishedAt: string | null;
   entries: ModpackManifestEntry[];
   modIds: Set<number>;
+  /** Projects the manifest ships only as not-required entries, i.e. disabled in the pack. */
+  disabledModIds: Set<number>;
+}
+
+/**
+ * Projects whose every manifest entry carries required: false, which is how
+ * the CurseForge app exports mods disabled in a profile
+ */
+export function manifestDisabledModIds(
+  files: Array<{ projectId: number; required: boolean }>,
+): Set<number> {
+  const requiredByProject = new Map<number, boolean>();
+  for (const file of files) {
+    requiredByProject.set(
+      file.projectId,
+      (requiredByProject.get(file.projectId) ?? false) || file.required,
+    );
+  }
+  return new Set(
+    [...requiredByProject].flatMap(([projectId, required]) =>
+      required ? [] : [projectId],
+    ),
+  );
 }
 
 const modpackCache = new Map<
@@ -915,7 +939,11 @@ async function fetchModpackManifest(
         })
         .optional(),
       files: z.array(
-        z.object({ projectID: z.number(), fileID: z.number().optional() }),
+        z.object({
+          projectID: z.number(),
+          fileID: z.number().optional(),
+          required: z.boolean().optional(),
+        }),
       ),
     }),
     JSON.parse(await manifestFile.async("text")),
@@ -923,6 +951,11 @@ async function fetchModpackManifest(
   );
 
   const loaders = manifest.minecraft?.modLoaders ?? [];
+  const files = manifest.files.map((f) => ({
+    projectId: f.projectID,
+    fileId: f.fileID,
+    required: f.required ?? true,
+  }));
   const result: ModpackManifest = {
     fileId,
     displayName: latestFile.displayName ?? null,
@@ -930,12 +963,13 @@ async function fetchModpackManifest(
     minecraftVersion: manifest.minecraft?.version ?? null,
     modLoader: (loaders.find((l) => l.primary) ?? loaders[0])?.id ?? null,
     publishedAt: latestFile.fileDate ?? null,
-    entries: manifest.files.flatMap((f) =>
-      f.fileID === undefined
+    entries: files.flatMap((f) =>
+      f.fileId === undefined
         ? []
-        : [{ projectId: f.projectID, fileId: f.fileID }],
+        : [{ projectId: f.projectId, fileId: f.fileId, required: f.required }],
     ),
-    modIds: new Set(manifest.files.map((f) => f.projectID)),
+    modIds: new Set(files.map((f) => f.projectId)),
+    disabledModIds: manifestDisabledModIds(files),
   };
   modpackCache.set(packProjectId, { manifest: result, fetchedAt: Date.now() });
 

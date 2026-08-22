@@ -8,6 +8,7 @@ export interface ReleaseModInsert {
   displayName: string | null;
   fileReleaseType: number | null;
   fileDate: Date | null;
+  required: boolean;
 }
 
 export interface ReleaseModRow {
@@ -17,6 +18,7 @@ export interface ReleaseModRow {
   displayName: string | null;
   fileReleaseType: number | null;
   fileDate: Date | null;
+  required: boolean;
   classId: number;
   projectName: string;
   projectSlug: string;
@@ -44,13 +46,14 @@ export class ModpackReleaseModQueries extends ModpackReleaseModBaseQueries {
       "insert release mods",
       `INSERT INTO ${this.table} (
         release_id, curseforge_project_id, file_id,
-        file_name, display_name, file_release_type, file_date
+        file_name, display_name, file_release_type, file_date, required
       )
       SELECT $1, d.project_id, d.file_id,
-             d.file_name, d.display_name, d.release_type, d.file_date
+             d.file_name, d.display_name, d.release_type, d.file_date, d.required
       FROM UNNEST(
-        $2::int[], $3::int[], $4::text[], $5::text[], $6::int[], $7::timestamptz[]
-      ) AS d(project_id, file_id, file_name, display_name, release_type, file_date)`,
+        $2::int[], $3::int[], $4::text[], $5::text[], $6::int[], $7::timestamptz[],
+        $8::boolean[]
+      ) AS d(project_id, file_id, file_name, display_name, release_type, file_date, required)`,
       [
         releaseId,
         rows.map((row) => row.curseforgeProjectId),
@@ -59,6 +62,7 @@ export class ModpackReleaseModQueries extends ModpackReleaseModBaseQueries {
         rows.map((row) => row.displayName),
         rows.map((row) => row.fileReleaseType),
         rows.map((row) => row.fileDate),
+        rows.map((row) => row.required),
       ],
     );
   }
@@ -77,6 +81,7 @@ export class ModpackReleaseModQueries extends ModpackReleaseModBaseQueries {
         rm.display_name,
         rm.file_release_type,
         rm.file_date,
+        rm.required,
         p.class_id,
         p.name AS project_name,
         p.slug AS project_slug,
@@ -93,6 +98,7 @@ export class ModpackReleaseModQueries extends ModpackReleaseModBaseQueries {
       display_name: string | null;
       file_release_type: number | null;
       file_date: Date | null;
+      required: boolean;
       class_id: number;
       project_name: string;
       project_slug: string;
@@ -107,6 +113,7 @@ export class ModpackReleaseModQueries extends ModpackReleaseModBaseQueries {
       displayName: row.display_name,
       fileReleaseType: row.file_release_type,
       fileDate: row.file_date,
+      required: row.required,
       classId: row.class_id,
       projectName: row.project_name,
       projectSlug: row.project_slug,

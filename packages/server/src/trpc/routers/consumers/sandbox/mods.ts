@@ -3,7 +3,11 @@ import { router, adminProcedure } from "@/trpc/trpc";
 import { auditActor, id, rethrowTrpc } from "@/trpc/utils";
 import { workshopService } from "@/services/workshop";
 import type { WorkshopModListItem } from "@/services/workshop";
-import { logModReview, logProjectEnvironment } from "@/services/workshop/audit";
+import {
+  logModRequired,
+  logModReview,
+  logProjectEnvironment,
+} from "@/services/workshop/audit";
 import {
   MOD_ENVIRONMENTS,
   type DependencyCoverage,
@@ -61,6 +65,7 @@ export interface SandboxWorkshopMod {
   curseforgeProjectId: number;
   project: SandboxModProject;
   file: SandboxModFile | null;
+  required: boolean;
   note: string | null;
   submitterName: string | null;
   reviewedAt: string | null;
@@ -96,6 +101,7 @@ function toSandboxMod(item: WorkshopModListItem): SandboxWorkshopMod {
             name: item.fileName,
             releaseType: item.fileReleaseType,
           },
+    required: item.required,
     note: item.note,
     submitterName: item.submitterName,
     reviewedAt: item.reviewedAt?.toISOString() ?? null,
@@ -116,7 +122,7 @@ export const sandboxModsRouter = router({
   list: adminProcedure
     .meta({
       description:
-        "Lists a workshop's approved, testing, and next_update mods with their project, chosen file, environment, and dependency coverage, newest first. This is the sandbox's testing queue.",
+        "Lists a workshop's approved, testing, and next_update mods with their project, chosen file, environment, dependency coverage, and whether it should ship enabled (required; only next_update rows can change it, see setRequired), newest first. This is the sandbox's testing queue.",
     })
     .input(z.object({ workshopId: id() }))
     .query(async ({ input }) => {
@@ -190,6 +196,32 @@ export const sandboxModsRouter = router({
             environmentSource: project.environmentSource,
           },
         };
+      } catch (error) {
+        rethrowTrpc(error);
+      }
+    }),
+
+  setRequired: adminProcedure
+    .meta({
+      description:
+        "Chooses whether a next_update mod ships enabled (required: true, the default) or disabled (required: false) in the next pack export; write the value into that mod's manifest entry. Refused with a 400 for mods in any other status, since the published manifest owns the flag once a mod is in the pack.",
+    })
+    .input(z.object({ workshopModId: id(), required: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        const { mod, changed } = await workshopService.setModRequired(
+          input.workshopModId,
+          input.required,
+        );
+        const item = await workshopService.getWorkshopModListItem(mod.id);
+        if (changed) {
+          await logModRequired(
+            { ...auditActor(ctx), source: "sandbox" },
+            mod,
+            item.project.name,
+          );
+        }
+        return { mod: toSandboxMod(item) };
       } catch (error) {
         rethrowTrpc(error);
       }

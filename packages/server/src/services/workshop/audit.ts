@@ -57,6 +57,28 @@ export async function logModReview(
   });
 }
 
+/** Admin action log entry for choosing whether a queued mod ships enabled or disabled. */
+export async function logModRequired(
+  actor: WorkshopAuditActor,
+  mod: WorkshopMod,
+  projectName: string,
+): Promise<void> {
+  await Q.admin.log.action.logAction({
+    adminDiscordId: actor.adminDiscordId,
+    adminUsername: actor.adminUsername,
+    actionType: "workshop_mod_required",
+    description: describe(
+      actor,
+      `Set "${projectName}" to ship ${mod.required ? "enabled" : "disabled"} in the next update`,
+    ),
+    metadata: metadata(actor, {
+      workshopModId: mod.id,
+      curseforgeProjectId: mod.curseforgeProjectId,
+      required: mod.required,
+    }),
+  });
+}
+
 /** Admin action log entry for flagging a project's environment. */
 export async function logProjectEnvironment(
   actor: WorkshopAuditActor,

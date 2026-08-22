@@ -1382,6 +1382,54 @@ describe("WorkshopService.setProjectEnvironment", () => {
   });
 });
 
+describe("WorkshopService.setModRequired", () => {
+  it("defaults to enabled and flips for a next_update mod", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const mod = await seedMod(ctx, workshop, {
+      submittedBy: USER_A,
+      status: "next_update",
+    });
+    expect(mod.required).toBe(true);
+
+    const disabled = await workshopService.setModRequired(mod.id, false);
+    expect(disabled).toMatchObject({ changed: true, mod: { required: false } });
+    expect(await Q.workshop.mod.get({ id: mod.id })).toMatchObject({
+      required: false,
+      status: "next_update",
+    });
+
+    const repeated = await workshopService.setModRequired(mod.id, false);
+    expect(repeated).toMatchObject({
+      changed: false,
+      mod: { required: false },
+    });
+
+    const enabled = await workshopService.setModRequired(mod.id, true);
+    expect(enabled).toMatchObject({ changed: true, mod: { required: true } });
+  });
+
+  it("refuses mods outside next_update", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const mod = await seedMod(ctx, workshop, {
+      submittedBy: USER_A,
+      status: "testing",
+    });
+
+    await expect(workshopService.setModRequired(mod.id, false)).rejects.toThrow(
+      /next update/,
+    );
+    expect(await Q.workshop.mod.get({ id: mod.id })).toMatchObject({
+      required: true,
+    });
+  });
+
+  it("throws NotFoundError for an unknown mod", async () => {
+    await expect(
+      workshopService.setModRequired(999_999_999, false),
+    ).rejects.toThrow(NotFoundError);
+  });
+});
+
 describe("WorkshopService.reviewMod environment gate", () => {
   it("refuses to approve a testing mod whose environment is unspecified", async () => {
     const workshop = await seedWorkshop(ctx);

@@ -1344,6 +1344,40 @@ export class WorkshopService {
     );
   }
 
+  /**
+   * Choose whether a mod waiting for the next update ships enabled or
+   * disabled (manifest required flag). The flag is intent while the mod sits
+   * in next_update, so only that status can set it: once the mod ships the
+   * published manifest owns it, and a mod that later drops back out of the
+   * pack returns to next_update with the flag reset to what the pack last
+   * published. Throws ConflictError when a concurrent review moved the mod
+   * between the status check and the write.
+   */
+  async setModRequired(
+    workshopModId: number,
+    required: boolean,
+  ): Promise<{ mod: WorkshopMod; changed: boolean }> {
+    const mod = await Q.workshop.mod.find({ id: workshopModId });
+    if (!mod)
+      throw new NotFoundError(`Workshop mod #${workshopModId} not found`);
+    if (mod.status !== "next_update") {
+      throw new BadRequestError(
+        "Only mods waiting for the next update can be enabled or disabled",
+      );
+    }
+    if (mod.required === required) return { mod, changed: false };
+    const claimed = await Q.workshop.mod.updateAll(
+      { required },
+      { id: workshopModId, status: "next_update" },
+    );
+    if (claimed === 0) {
+      throw new ConflictError(
+        "This mod left the next update while it was being changed",
+      );
+    }
+    return { mod: { ...mod, required }, changed: true };
+  }
+
   private async buildDependencyInfo(
     workshop: Workshop,
     depRows: WorkshopProjectDependency[],

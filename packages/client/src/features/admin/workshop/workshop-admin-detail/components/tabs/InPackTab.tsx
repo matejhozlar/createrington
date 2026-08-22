@@ -36,7 +36,11 @@ import {
 } from "@/components/ui/select";
 import { FilterBar } from "@/features/admin/components/FilterBar";
 import { CardEmpty, CardError } from "@/features/admin/components/CardState";
-import { formatDate, projectKindLabel } from "@/features/workshop/format";
+import {
+  DISABLED_LABEL,
+  formatDate,
+  projectKindLabel,
+} from "@/features/workshop/format";
 import type { ModEnvironment } from "@createrington/shared/db";
 import {
   EnvironmentCell,
@@ -224,6 +228,7 @@ export function InPackTab({
         row.project.slug,
         row.suggestedByName,
         projectKindLabel(row.project.classId),
+        row.required ? null : DISABLED_LABEL,
       ].some((value) => value?.toLowerCase().includes(query)),
     );
   }, [rows, query]);
@@ -240,6 +245,7 @@ export function InPackTab({
         row.projectSlug,
         row.fileName,
         projectKindLabel(row.classId),
+        row.required ? null : DISABLED_LABEL,
       ].some((value) => value?.toLowerCase().includes(query)),
     );
   }, [releaseRows, query]);
@@ -261,6 +267,7 @@ export function InPackTab({
           slug={row.project.slug}
           thumbnailUrl={row.project.thumbnailUrl}
           classId={row.project.classId}
+          required={row.required}
         />
       ),
     },
@@ -342,6 +349,7 @@ export function InPackTab({
           slug={row.projectSlug}
           thumbnailUrl={row.thumbnailUrl}
           classId={row.classId}
+          required={row.required}
         />
       ),
     },
