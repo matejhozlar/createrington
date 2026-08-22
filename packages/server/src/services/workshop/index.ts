@@ -1344,6 +1344,30 @@ export class WorkshopService {
     );
   }
 
+  /**
+   * Choose whether a mod waiting for the next update ships enabled or
+   * disabled (manifest required flag). Only next_update mods can be set: the
+   * published manifest owns the flag once a mod is in the pack.
+   */
+  async setModRequired(
+    workshopModId: number,
+    required: boolean,
+  ): Promise<WorkshopMod> {
+    const mod = await Q.workshop.mod.find({ id: workshopModId });
+    if (!mod)
+      throw new NotFoundError(`Workshop mod #${workshopModId} not found`);
+    if (mod.status !== "next_update") {
+      throw new BadRequestError(
+        "Only mods waiting for the next update can be enabled or disabled",
+      );
+    }
+    if (mod.required === required) return mod;
+    return Q.workshop.mod.updateAndReturn(
+      { id: workshopModId },
+      { required, updatedAt: new Date() },
+    );
+  }
+
   private async buildDependencyInfo(
     workshop: Workshop,
     depRows: WorkshopProjectDependency[],

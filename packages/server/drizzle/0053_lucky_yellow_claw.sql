@@ -1,0 +1,1 @@
+ALTER TABLE "workshop_mod" ADD COLUMN "required" boolean DEFAULT true NOT NULL;
