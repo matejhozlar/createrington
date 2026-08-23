@@ -1,3 +1,18 @@
+## v1.40.0 (2026-08-23)
+
+### @createrington/server (1.40.0 → 1.41.0)
+- [add] Add `modpack_publish` table and `recordPublish` sandbox endpoint for the sandbox server to report published releases (client file + server pack pair), validated against CurseForge and reconciled immediately
+- [add] Add `sandboxServiceProcedure` auth level gated on a shared `SANDBOX_SERVICE_TOKEN`, letting the sandbox server call without a user JWT
+- [add] Guard modpack reconcile against client-only reads when the pack ships a server pack, refusing the read instead of dropping every server-side member
+- [add] Re-freeze releases recorded from the client file alone once the server pack is read alongside, upgrading the membership snapshot without creating a duplicate release
+- [add] Resolve the newest modpack release from both the CurseForge listing and sandbox publish reports, preferring whichever is newer and already served
+- [add] Expose `shipsServerPack` flag on modpacks and `serverPackFileId` on releases to the sandbox workshops listing
+- [refactor] Extract release-row building into a reusable `buildReleaseRows` helper and add a `force` option to `getModpackManifest` that bypasses the cache and waits out stale in-flight reads
+- [chore] Add integration and unit tests for publish reporting, client-only read guard, release upgrade, and release resolution
+
+### @createrington/client (0.2.54 → 0.2.55)
+- [add] Add "Ships a server pack" toggle to the modpack settings dialog, letting admins see and override the auto-detected flag
+
 ## v1.39.0 (2026-08-22)
 
 ### @createrington/server (1.39.0 → 1.40.0)
