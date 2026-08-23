@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { modpackFormError } from "../validation";
 
 interface ModpackSettings {
@@ -18,6 +19,7 @@ interface ModpackSettings {
   name: string;
   description: string | null;
   curseforgeProjectId: number | null;
+  shipsServerPack: boolean;
 }
 
 export function ModpackSettingsDialog({
@@ -36,6 +38,9 @@ export function ModpackSettingsDialog({
   const [description, setDescription] = useState(modpack.description ?? "");
   const [publishedPackId, setPublishedPackId] = useState(
     modpack.curseforgeProjectId ? String(modpack.curseforgeProjectId) : "",
+  );
+  const [shipsServerPack, setShipsServerPack] = useState(
+    modpack.shipsServerPack,
   );
 
   const updateMutation = trpc.admin.modpacks.update.useMutation({
@@ -65,6 +70,7 @@ export function ModpackSettingsDialog({
         curseforgeProjectId: publishedPackId.trim()
           ? Number(publishedPackId)
           : null,
+        shipsServerPack,
       },
     });
   };
@@ -111,6 +117,24 @@ export function ModpackSettingsDialog({
               this modpack.
             </p>
           </div>
+          <label className="flex cursor-pointer items-start gap-3 rounded-md border border-border bg-card p-3 hover:border-[var(--border-strong)]">
+            <Switch
+              checked={shipsServerPack}
+              onCheckedChange={setShipsServerPack}
+            />
+            <div className="space-y-0.5">
+              <div className="text-[13px] font-medium text-foreground">
+                Ships a server pack
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Turns on by itself once a release is read together with its
+                server pack. While on, "Check Published Pack" refuses a read
+                that finds no server pack instead of marking every server-side
+                mod as dropped. Turn it off only if the pack stopped shipping
+                one for good.
+              </div>
+            </div>
+          </label>
         </div>
         <DialogFooter>
           <Button

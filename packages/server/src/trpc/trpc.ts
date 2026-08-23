@@ -7,6 +7,8 @@
  * - `adminProcedure`: requires valid JWT, verified account, and isAdmin flag
  * - `ownerProcedure`: additionally requires JWT discordId to match
  *   `config.app.auth.owner.discordId` (single-owner gate, env-rooted)
+ * - `sandboxServiceProcedure`: requires the sandbox's service token instead
+ *   of a user JWT (server-to-server calls with no session behind them)
  */
 import { initTRPC, TRPCError } from "@trpc/server";
 import type { Context } from "./context";
@@ -109,8 +111,21 @@ const isOwner = middleware(async ({ ctx, next }) => {
   return next({ ctx: { user: ctx.user } });
 });
 
+/** Rejects everything but the sandbox server presenting its service token. */
+const isSandboxService = middleware(async ({ ctx, next }) => {
+  if (ctx.service !== "sandbox") {
+    throw trpcError.unauthorized("Sandbox service token required");
+  }
+  return next();
+});
+
 /** Procedure that requires a valid JWT and a verified (non-UNVERIFIED) account. */
 export const userProcedure = baseProcedure.use(isAuthenticated);
+/**
+ * Procedure for the sandbox server calling on its own behalf (background
+ * jobs with no user session), gated on the shared SANDBOX_SERVICE_TOKEN.
+ */
+export const sandboxServiceProcedure = baseProcedure.use(isSandboxService);
 /** Procedure that requires a valid JWT, a verified account, and the isAdmin flag. */
 export const adminProcedure = baseProcedure.use(isAuthenticated).use(isAdmin);
 /** Procedure gated on matching the configured owner Discord ID. */

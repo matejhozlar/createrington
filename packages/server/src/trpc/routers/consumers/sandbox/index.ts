@@ -11,6 +11,9 @@ import { sandboxModpacksRouter } from "./modpacks";
  * Authentication reuses `adminProcedure`: the sandbox forwards the user's
  * JWT as `Authorization: Bearer <token>`. The sandbox enforces its own RBAC
  * *before* calling this router; the main app only verifies "valid admin user".
+ * `modpacks.recordPublish` is the one exception: the sandbox server calls it
+ * from a background job and authenticates with the shared service token
+ * (`sandboxServiceProcedure`).
  *
  * Consumer-facing type export lives in `@createrington/api-types`.
  */

@@ -290,6 +290,11 @@ const config = {
     defaultGameVersion: "1.21.1",
     modpackProjectId: env.CURSEFORGE_MODPACK_PROJECT_ID,
     modpackCacheTtlMs: 60 * 60 * 1000,
+    modpackIncompleteCacheTtlMs: 60 * 1000,
+  },
+
+  sandbox: {
+    serviceToken: env.SANDBOX_SERVICE_TOKEN ?? null,
   },
 
   email: {
