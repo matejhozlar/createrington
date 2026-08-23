@@ -147,6 +147,19 @@ const rawFileDetailSchema = z.object({
   releaseType: z.number().nullish(),
 });
 
+const rawModpackFileSchema = z.object({
+  id: z.number(),
+  modId: z.number(),
+  displayName: z.string().nullish(),
+  fileDate: z.string().nullish(),
+  fileStatus: z.number().nullish(),
+  isAvailable: z.boolean().nullish(),
+  serverPackFileId: z.number().nullish(),
+  alternateFileId: z.number().nullish(),
+  parentProjectFileId: z.number().nullish(),
+  isServerPack: z.boolean().nullish(),
+});
+
 const rawDependencyModSchema = z.object({
   id: z.number(),
   name: z.string(),
@@ -160,6 +173,8 @@ const NEOFORGE_LOADER_TYPE: number = CurseForgeLoader.neoforge;
 const DEFAULT_GAME_VERSION: string = config.curseforge.defaultGameVersion;
 const MODPACK_PROJECT_ID: number = config.curseforge.modpackProjectId;
 const MODPACK_CACHE_TTL = config.curseforge.modpackCacheTtlMs;
+const MODPACK_INCOMPLETE_CACHE_TTL =
+  config.curseforge.modpackIncompleteCacheTtlMs;
 
 /** Returns the auth and accept headers required for every CurseForge API request */
 function cfHeaders(): Record<string, string> {
@@ -850,9 +865,178 @@ export function mergeManifestFiles<T extends { projectId: number }>(
   ];
 }
 
+/** One file of a modpack project as CurseForge describes it, server packs and additional files included. */
+export interface ModpackFile {
+  id: number;
+  projectId: number;
+  displayName: string | null;
+  fileDate: string | null;
+  fileStatus: number | null;
+  isAvailable: boolean;
+  serverPackFileId: number | null;
+  alternateFileId: number | null;
+  parentProjectFileId: number | null;
+  isServerPack: boolean;
+}
+
+/** A release the sandbox reported after publishing it: the client file and the server pack it uploaded. */
+export interface ModpackPublishHint {
+  clientFileId: number;
+  serverPackFileId: number | null;
+}
+
+/** What the database knows about a pack that shapes how its newest release is read. */
+export interface ModpackReadContext {
+  shipsServerPack: boolean;
+  publishes: ModpackPublishHint[];
+}
+
+export interface ModpackReleaseResolution {
+  file: ModpackFile;
+  serverPackFileId: number | null;
+  /** False when the pack ships a server pack and this read found none. */
+  complete: boolean;
+}
+
+function toModpackFile(raw: z.infer<typeof rawModpackFileSchema>): ModpackFile {
+  return {
+    id: raw.id,
+    projectId: raw.modId,
+    displayName: raw.displayName ?? null,
+    fileDate: raw.fileDate ?? null,
+    fileStatus: raw.fileStatus ?? null,
+    isAvailable: raw.isAvailable ?? true,
+    serverPackFileId: raw.serverPackFileId ?? null,
+    alternateFileId: raw.alternateFileId ?? null,
+    parentProjectFileId: raw.parentProjectFileId ?? null,
+    isServerPack: raw.isServerPack ?? false,
+  };
+}
+
+/**
+ * One file of a modpack project by id. Unlike the files listing this also
+ * serves server packs and additional files. Null when CurseForge does not
+ * serve the file (unknown, not approved yet, or archived).
+ */
+export async function getModpackFile(
+  packProjectId: number,
+  fileId: number,
+): Promise<ModpackFile | null> {
+  ensureApiKey();
+  const res = await fetch(
+    `${CURSEFORGE_API}/v1/mods/${packProjectId}/files/${fileId}`,
+    { headers: cfHeaders(), signal: AbortSignal.timeout(CF_FETCH_TIMEOUT_MS) },
+  );
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    throw new Error(`Failed to fetch modpack file ${fileId} (${res.status})`);
+  }
+  const body = parseCfResponse(
+    z.object({ data: rawModpackFileSchema }),
+    await res.json(),
+    "getModpackFile",
+  );
+  return toModpackFile(body.data);
+}
+
+async function getLatestListedModpackFile(
+  packProjectId: number,
+): Promise<ModpackFile | null> {
+  const res = await fetch(
+    `${CURSEFORGE_API}/v1/mods/${packProjectId}/files?pageSize=1`,
+    { headers: cfHeaders(), signal: AbortSignal.timeout(CF_FETCH_TIMEOUT_MS) },
+  );
+  if (!res.ok) {
+    throw new Error(`Failed to fetch modpack files (${res.status})`);
+  }
+  const body = parseCfResponse(
+    z.object({ data: z.array(rawModpackFileSchema) }),
+    await res.json(),
+    "getModpackFiles",
+  );
+  const latest = body.data[0];
+  return latest ? toModpackFile(latest) : null;
+}
+
+// Lazy so this module stays importable without a database (unit tests, scripts)
+async function loadModpackReadContext(
+  packProjectId: number,
+): Promise<ModpackReadContext> {
+  const { Q } = await import("@/db/index.js");
+  const modpack = await Q.modpack.find({ curseforgeProjectId: packProjectId });
+  if (!modpack) return { shipsServerPack: false, publishes: [] };
+  const publishes = await Q.modpack.publish.findAll(
+    { modpackId: modpack.id },
+    { select: ["clientFileId", "serverPackFileId"] },
+  );
+  return {
+    shipsServerPack: modpack.shipsServerPack,
+    publishes: publishes.map((publish) => ({
+      clientFileId: publish.clientFileId,
+      serverPackFileId: publish.serverPackFileId,
+    })),
+  };
+}
+
+/**
+ * Decide which file is the pack's newest release and which server pack goes
+ * with it. The listing's newest file is the release unless the sandbox
+ * reported a newer client file that CurseForge already serves by id (the
+ * listing is cached per URL on their side and lags behind). The server pack
+ * is CurseForge's own link when it has one, else the alternate file when
+ * that reads back as a server pack of this release, else what the sandbox
+ * reported for the file. The API never links a server pack uploaded
+ * through it, so for sandbox releases the report is the usual source.
+ */
+export async function resolveModpackRelease(
+  listed: ModpackFile | null,
+  context: ModpackReadContext,
+  readFile: (fileId: number) => Promise<ModpackFile | null>,
+): Promise<ModpackReleaseResolution> {
+  const newest = context.publishes.reduce<ModpackPublishHint | null>(
+    (held, publish) =>
+      held === null || publish.clientFileId > held.clientFileId
+        ? publish
+        : held,
+    null,
+  );
+
+  let file = listed;
+  if (newest && (file === null || newest.clientFileId > file.id)) {
+    const reported = await readFile(newest.clientFileId);
+    if (reported?.isAvailable) file = reported;
+  }
+  if (file === null) throw new Error("No modpack files found");
+
+  const publish =
+    context.publishes.find((p) => p.clientFileId === file.id) ?? null;
+  let serverPackFileId = file.serverPackFileId;
+  if (serverPackFileId === null && file.alternateFileId !== null) {
+    const alternate = await readFile(file.alternateFileId);
+    if (alternate?.isServerPack && alternate.parentProjectFileId === file.id) {
+      serverPackFileId = alternate.id;
+    }
+  }
+  if (publish && publish.serverPackFileId !== null) {
+    if (serverPackFileId === null) {
+      serverPackFileId = publish.serverPackFileId;
+    } else if (serverPackFileId !== publish.serverPackFileId) {
+      logger.warn(
+        `Modpack file ${file.id} links server pack ${serverPackFileId} on CurseForge but the sandbox reported ${publish.serverPackFileId}`,
+      );
+    }
+  }
+
+  return {
+    file,
+    serverPackFileId,
+    complete: !context.shipsServerPack || serverPackFileId !== null,
+  };
+}
+
 const modpackCache = new Map<
   number,
-  { manifest: ModpackManifest; fetchedAt: number }
+  { manifest: ModpackManifest; fetchedAt: number; ttlMs: number }
 >();
 
 const inFlightManifests = new Map<number, Promise<ModpackManifest>>();
@@ -862,18 +1046,26 @@ const MANIFEST_FAILURE_BACKOFF_MS = 60_000;
 const MAX_MODPACK_ZIP_BYTES = 256 * 1024 * 1024;
 
 /**
- * Returns the pack version and mod project IDs of a modpack's latest published file
+ * Returns the pack version and mod project IDs of a modpack's newest release
  *
- * Downloads the client pack zip and, when the file ships one, the server pack
- * zip too, parses each `manifest.json`, and caches the union for the
- * configured TTL. Concurrent cache misses share a single download, and a
- * failed fetch backs off for a minute before retrying.
+ * Resolves the release per resolveModpackRelease, downloads the client pack
+ * zip and, when the release ships one, the server pack zip too, parses each
+ * `manifest.json`, and caches the union for the configured TTL (a minute
+ * instead when the pack ships a server pack and none was found, so the
+ * next check re-reads). Concurrent cache misses share a single download,
+ * and a failed fetch backs off for a minute before retrying. force skips
+ * the cache and the backoff, still joining a read already in flight.
  */
 export async function getModpackManifest(
   packProjectId = MODPACK_PROJECT_ID,
+  options: { force?: boolean } = {},
 ): Promise<ModpackManifest> {
   const cached = modpackCache.get(packProjectId);
-  if (cached && Date.now() - cached.fetchedAt < MODPACK_CACHE_TTL) {
+  if (
+    !options.force &&
+    cached &&
+    Date.now() - cached.fetchedAt < cached.ttlMs
+  ) {
     return cached.manifest;
   }
 
@@ -881,7 +1073,11 @@ export async function getModpackManifest(
   if (inFlight) return inFlight;
 
   const failedAt = manifestFailures.get(packProjectId);
-  if (failedAt && Date.now() - failedAt < MANIFEST_FAILURE_BACKOFF_MS) {
+  if (
+    !options.force &&
+    failedAt &&
+    Date.now() - failedAt < MANIFEST_FAILURE_BACKOFF_MS
+  ) {
     throw new Error(
       `Modpack #${packProjectId} manifest fetch recently failed, backing off`,
     );
@@ -906,34 +1102,16 @@ async function fetchModpackManifest(
 ): Promise<ModpackManifest> {
   ensureApiKey();
 
-  const filesRes = await fetch(
-    `${CURSEFORGE_API}/v1/mods/${packProjectId}/files?pageSize=1`,
-    { headers: cfHeaders(), signal: AbortSignal.timeout(CF_FETCH_TIMEOUT_MS) },
+  const context = await loadModpackReadContext(packProjectId);
+  const listed = await getLatestListedModpackFile(packProjectId);
+  const { file, serverPackFileId, complete } = await resolveModpackRelease(
+    listed,
+    context,
+    (fileId) => getModpackFile(packProjectId, fileId),
   );
-  if (!filesRes.ok) {
-    throw new Error(`Failed to fetch modpack files (${filesRes.status})`);
-  }
 
-  const filesBody = parseCfResponse(
-    z.object({
-      data: z.array(
-        z.object({
-          id: z.number(),
-          displayName: z.string().nullish(),
-          fileDate: z.string().nullish(),
-          serverPackFileId: z.number().nullish(),
-        }),
-      ),
-    }),
-    await filesRes.json(),
-    "getModpackFiles",
-  );
-  const latestFile = filesBody.data[0];
-  if (!latestFile) throw new Error("No modpack files found");
-
-  const serverPackFileId = latestFile.serverPackFileId ?? null;
   // Sequential so only one zip is ever buffered at a time
-  const client = await downloadPackManifest(packProjectId, latestFile.id);
+  const client = await downloadPackManifest(packProjectId, file.id);
   const server =
     serverPackFileId === null
       ? null
@@ -942,13 +1120,13 @@ async function fetchModpackManifest(
   const loaders = client.minecraft?.modLoaders ?? [];
   const files = mergeManifestFiles(client.files, server?.files ?? null);
   const result: ModpackManifest = {
-    fileId: latestFile.id,
+    fileId: file.id,
     serverPackFileId,
-    displayName: latestFile.displayName ?? null,
+    displayName: file.displayName,
     version: client.version ?? null,
     minecraftVersion: client.minecraft?.version ?? null,
     modLoader: (loaders.find((l) => l.primary) ?? loaders[0])?.id ?? null,
-    publishedAt: latestFile.fileDate ?? null,
+    publishedAt: file.fileDate,
     entries: files.flatMap((f) =>
       f.fileId === undefined
         ? []
@@ -964,11 +1142,20 @@ async function fetchModpackManifest(
     modIds: new Set(files.map((f) => f.projectId)),
     disabledModIds: manifestDisabledModIds(files),
   };
-  modpackCache.set(packProjectId, { manifest: result, fetchedAt: Date.now() });
+  modpackCache.set(packProjectId, {
+    manifest: result,
+    fetchedAt: Date.now(),
+    ttlMs: complete ? MODPACK_CACHE_TTL : MODPACK_INCOMPLETE_CACHE_TTL,
+  });
 
   logger.info(
-    `Cached modpack mod list: ${result.modIds.size} mods from file ${latestFile.id}` +
-      (serverPackFileId === null ? "" : ` and server pack ${serverPackFileId}`),
+    `Cached modpack mod list: ${result.modIds.size} mods from file ${file.id}` +
+      (listed?.id === file.id ? "" : " (reported by the sandbox)") +
+      (serverPackFileId === null
+        ? complete
+          ? ""
+          : " without the server pack the pack ships"
+        : ` and server pack ${serverPackFileId}`),
   );
 
   return result;

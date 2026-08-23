@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { router, adminProcedure } from "@/trpc/trpc";
+import { router, adminProcedure, sandboxServiceProcedure } from "@/trpc/trpc";
 import { id, rethrowTrpc } from "@/trpc/utils";
 import { modpackService } from "@/services/modpack";
 import type { ModpackModListItem } from "@/services/modpack";
@@ -7,7 +7,28 @@ import type {
   ModEnvironment,
   ModEnvironmentSource,
   ModpackModOrigin,
+  ModpackPublish,
 } from "@createrington/shared/db";
+
+export interface SandboxModpackPublish {
+  clientFileId: number;
+  serverPackFileId: number | null;
+  reportedAt: string;
+  ingestedAt: string | null;
+  lastError: string | null;
+}
+
+export function toSandboxModpackPublish(
+  publish: ModpackPublish,
+): SandboxModpackPublish {
+  return {
+    clientFileId: publish.clientFileId,
+    serverPackFileId: publish.serverPackFileId,
+    reportedAt: publish.reportedAt.toISOString(),
+    ingestedAt: publish.ingestedAt?.toISOString() ?? null,
+    lastError: publish.lastError,
+  };
+}
 
 export interface SandboxPackModProject {
   id: number;
@@ -79,6 +100,31 @@ export const sandboxModpacksRouter = router({
           mods: items
             .filter((item) => item.droppedFromManifestAt === null)
             .map(toSandboxPackMod),
+        };
+      } catch (error) {
+        rethrowTrpc(error);
+      }
+    }),
+
+  recordPublish: sandboxServiceProcedure
+    .meta({
+      description:
+        "Reports a release the sandbox published to CurseForge: the client file and the server pack uploaded as its additional file, once both are served by CurseForge. The CurseForge API never links a server pack uploaded through it, so without this report the main app would read the client manifest alone and treat every server-side member as dropped. The pair is validated against CurseForge (both served, the server pack a child of the client file), stored, and a forced reconcile runs right away; a refused or failed reconcile comes back as error and stays on the report. Idempotent per client file, safe to resend. Authenticates with the shared SANDBOX_SERVICE_TOKEN, not a user JWT.",
+    })
+    .input(
+      z.object({
+        projectId: id(),
+        clientFileId: id(),
+        serverPackFileId: id(),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      try {
+        const result = await modpackService.recordPublish(input);
+        return {
+          ingested: result.ingested,
+          error: result.error,
+          publish: toSandboxModpackPublish(result.publish),
         };
       } catch (error) {
         rethrowTrpc(error);

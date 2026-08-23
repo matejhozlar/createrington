@@ -9,17 +9,22 @@ import type {
   CurseforgeProject,
   Modpack,
   ModpackMod,
+  ModpackPublish,
   ModpackRelease,
   Workshop,
   WorkshopMod,
   WorkshopModStatus,
 } from "@createrington/shared/db";
-import type { ReleaseModRow } from "@/db/queries/modpack/release/mod";
+import type {
+  ReleaseModInsert,
+  ReleaseModRow,
+} from "@/db/queries/modpack/release/mod";
 import {
   CurseForgeClass,
   CurseForgeLoader,
   getMod,
   getFilesDetails,
+  getModpackFile,
   getModpackManifest,
   manifestDisabledModIds,
   type CurseForgeProjectData,
@@ -120,6 +125,18 @@ export interface ModpackSeedResult {
   memberCount: number;
   unresolvedProjectIds: number[];
   duplicateProjectIds: number[];
+}
+
+export interface ModpackPublishReport {
+  projectId: number;
+  clientFileId: number;
+  serverPackFileId: number;
+}
+
+export interface ModpackPublishResult {
+  publish: ModpackPublish;
+  ingested: boolean;
+  error: string | null;
 }
 
 function manifestLoaderType(loaderId: string): number | null {
@@ -285,6 +302,7 @@ export class ModpackService {
       name: string;
       description: string | null;
       curseforgeProjectId: number | null;
+      shipsServerPack: boolean;
       serverId: number | null;
     }>,
   ): Promise<Modpack> {
@@ -383,17 +401,128 @@ export class ModpackService {
    * move in and out of in_pack to match, mods the latest publish dropped are
    * flagged, and CurseForge hints that match what shipped are promoted to
    * manifest values. Membership is never written anywhere else, so a row
-   * means published.
+   * means published. A pack known to ship a server pack is never applied
+   * from a client-only read: that would drop every server-side member, so
+   * the read is refused and nothing changes. force bypasses the manifest
+   * cache (admin button, publish reports).
    */
-  async reconcile(modpackId: number): Promise<void> {
+  async reconcile(
+    modpackId: number,
+    options: { force?: boolean } = {},
+  ): Promise<void> {
     const modpack = await this.getModpack(modpackId);
     if (!modpack.curseforgeProjectId) return;
 
     const workshops = await Q.workshop.findAll({ modpackId });
-    const manifest = await getModpackManifest(modpack.curseforgeProjectId);
+    const manifest = await getModpackManifest(modpack.curseforgeProjectId, {
+      force: options.force,
+    });
+    if (modpack.shipsServerPack && manifest.serverPackFileId === null) {
+      throw new BadRequestError(
+        `CurseForge served release ${manifest.version ?? manifest.fileId} (file ${manifest.fileId}) without a server pack while this modpack ships one, so nothing was changed. Wait for the sandbox to report the release or link the server pack on CurseForge, then check again.`,
+      );
+    }
     await this.applyManifest(modpack, workshops, manifest);
     await this.applyManifestEnvironments(manifest);
     await this.recordRelease(modpack, manifest);
+
+    const now = new Date();
+    if (manifest.serverPackFileId !== null && !modpack.shipsServerPack) {
+      await Q.modpack.updateAll(
+        { shipsServerPack: true, updatedAt: now },
+        { id: modpack.id },
+      );
+    }
+    await Q.modpack.publish.updateAll(
+      { ingestedAt: now, lastError: null },
+      { modpackId: modpack.id, clientFileId: manifest.fileId },
+    );
+  }
+
+  /**
+   * Take the sandbox's word for a release it published: the client file and
+   * the server pack it uploaded, checked against CurseForge (both served,
+   * the server pack a child of the client file). The pair is stored for
+   * reconcile to read the release from, then a forced reconcile runs right
+   * away. A refused or failed reconcile is kept on the report for the
+   * sandbox to show and returned instead of thrown, so the report itself
+   * never gets lost.
+   */
+  async recordPublish(
+    report: ModpackPublishReport,
+  ): Promise<ModpackPublishResult> {
+    const modpack = await Q.modpack.find({
+      curseforgeProjectId: report.projectId,
+    });
+    if (!modpack) {
+      throw new NotFoundError(
+        `No modpack follows CurseForge project #${report.projectId}`,
+      );
+    }
+
+    const client = await getModpackFile(report.projectId, report.clientFileId);
+    if (!client?.isAvailable) {
+      throw new BadRequestError(
+        `CurseForge does not serve file ${report.clientFileId} of project #${report.projectId} yet`,
+      );
+    }
+    const server = await getModpackFile(
+      report.projectId,
+      report.serverPackFileId,
+    );
+    if (!server?.isAvailable) {
+      throw new BadRequestError(
+        `CurseForge does not serve file ${report.serverPackFileId} of project #${report.projectId} yet`,
+      );
+    }
+    if (server.parentProjectFileId !== client.id) {
+      throw new BadRequestError(
+        `File ${server.id} is not an additional file of ${client.id}, so it cannot be its server pack`,
+      );
+    }
+
+    const existing = await Q.modpack.publish.find({
+      modpackId: modpack.id,
+      clientFileId: client.id,
+    });
+    const publish = existing
+      ? await Q.modpack.publish.updateAndReturn(
+          { id: existing.id },
+          {
+            serverPackFileId: server.id,
+            reportedAt: new Date(),
+            ingestedAt: null,
+            lastError: null,
+          },
+        )
+      : await Q.modpack.publish.createAndReturn({
+          modpackId: modpack.id,
+          clientFileId: client.id,
+          serverPackFileId: server.id,
+        });
+    if (!modpack.shipsServerPack) {
+      await Q.modpack.updateAll(
+        { shipsServerPack: true, updatedAt: new Date() },
+        { id: modpack.id },
+      );
+    }
+
+    try {
+      await this.reconcile(modpack.id, { force: true });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      logger.warn(
+        `Modpack #${modpack.id} reconcile after publish report ${client.id}/${server.id} failed:`,
+        error,
+      );
+      const failed = await Q.modpack.publish.updateAndReturn(
+        { id: publish.id },
+        { lastError: message },
+      );
+      return { publish: failed, ingested: false, error: message };
+    }
+    const ingested = await Q.modpack.publish.get({ id: publish.id });
+    return { publish: ingested, ingested: true, error: null };
   }
 
   /**
@@ -553,7 +682,7 @@ export class ModpackService {
     if (manifest.entries.length === 0) return;
     // Releases read before the server pack was fetched alongside the client
     // file are keyed by the server pack id, so a re-read must match either
-    const recorded = await Q.modpack.release.findAll(
+    const [recorded] = await Q.modpack.release.findAll(
       {
         modpackId: modpack.id,
         curseforgeFileId: {
@@ -563,50 +692,21 @@ export class ModpackService {
               : [manifest.fileId, manifest.serverPackFileId],
         },
       },
-      { select: ["id"], limit: 1 },
+      { limit: 1 },
     );
-    if (recorded.length > 0) return;
+    if (recorded) {
+      if (
+        manifest.serverPackFileId !== null &&
+        recorded.curseforgeFileId === manifest.fileId &&
+        recorded.serverPackFileId === null
+      ) {
+        await this.upgradeRelease(modpack, recorded, manifest);
+      }
+      return;
+    }
 
-    const projectIds = [...new Set(manifest.entries.map((e) => e.projectId))];
-    const cached = new Set(
-      (
-        await Q.curseforge.project.findAll(
-          { id: { $in: projectIds } },
-          { select: ["id"] },
-        )
-      ).map((project) => project.id),
-    );
-    // A manifest can repeat a (project, file) pair, which the unique index
-    // would reject and take the whole release down with it
-    const seen = new Set<string>();
-    const entries = manifest.entries.filter((entry) => {
-      if (!cached.has(entry.projectId)) return false;
-      const key = `${entry.projectId}:${entry.fileId}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-    if (entries.length === 0) return;
-
-    const details = new Map(
-      (await getFilesDetails(entries.map((e) => e.fileId))).map((detail) => [
-        detail.fileId,
-        detail,
-      ]),
-    );
-
-    const rows = entries.map((entry) => {
-      const detail = details.get(entry.fileId);
-      return {
-        curseforgeProjectId: entry.projectId,
-        fileId: entry.fileId,
-        fileName: detail?.fileName ?? null,
-        displayName: detail?.displayName ?? null,
-        fileReleaseType: detail?.releaseType ?? null,
-        fileDate: detail?.fileDate ? new Date(detail.fileDate) : null,
-        required: entry.required,
-      };
-    });
+    const rows = await this.buildReleaseRows(manifest);
+    if (rows.length === 0) return;
 
     // A half-written release would be permanent: the guard above sees the
     // release row and never repairs the missing membership
@@ -615,6 +715,7 @@ export class ModpackService {
         const release = await tx.modpack.release.createAndReturn({
           modpackId: modpack.id,
           curseforgeFileId: manifest.fileId,
+          serverPackFileId: manifest.serverPackFileId,
           version: manifest.version,
           displayName: manifest.displayName,
           minecraftVersion: manifest.minecraftVersion,
@@ -638,8 +739,84 @@ export class ModpackService {
     logger.info(
       `Recorded modpack #${modpack.id} release ${
         manifest.version ?? manifest.fileId
-      } with ${entries.length} mods`,
+      } with ${rows.length} mods`,
     );
+  }
+
+  private async upgradeRelease(
+    modpack: Modpack,
+    release: ModpackRelease,
+    manifest: ModpackManifest,
+  ): Promise<void> {
+    const rows = await this.buildReleaseRows(manifest);
+    if (rows.length === 0) return;
+
+    await db.inTransaction(async (tx) => {
+      await tx.modpack.release.mod.deleteAll({ releaseId: release.id });
+      await tx.modpack.release.mod.insertMany(release.id, rows);
+      await tx.modpack.release.updateAll(
+        {
+          serverPackFileId: manifest.serverPackFileId,
+          modCount: new Set(rows.map((row) => row.curseforgeProjectId)).size,
+        },
+        { id: release.id },
+      );
+      await tx.modpack.mod.applyManifestFiles(
+        modpack.id,
+        firstPerProject(rows),
+      );
+    });
+
+    logger.info(
+      `Re-recorded modpack #${modpack.id} release ${
+        manifest.version ?? manifest.fileId
+      } with its server pack: ${rows.length} mods`,
+    );
+  }
+
+  private async buildReleaseRows(
+    manifest: ModpackManifest,
+  ): Promise<ReleaseModInsert[]> {
+    const projectIds = [...new Set(manifest.entries.map((e) => e.projectId))];
+    const cached = new Set(
+      (
+        await Q.curseforge.project.findAll(
+          { id: { $in: projectIds } },
+          { select: ["id"] },
+        )
+      ).map((project) => project.id),
+    );
+    // A manifest can repeat a (project, file) pair, which the unique index
+    // would reject and take the whole release down with it
+    const seen = new Set<string>();
+    const entries = manifest.entries.filter((entry) => {
+      if (!cached.has(entry.projectId)) return false;
+      const key = `${entry.projectId}:${entry.fileId}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    if (entries.length === 0) return [];
+
+    const details = new Map(
+      (await getFilesDetails(entries.map((e) => e.fileId))).map((detail) => [
+        detail.fileId,
+        detail,
+      ]),
+    );
+
+    return entries.map((entry) => {
+      const detail = details.get(entry.fileId);
+      return {
+        curseforgeProjectId: entry.projectId,
+        fileId: entry.fileId,
+        fileName: detail?.fileName ?? null,
+        displayName: detail?.displayName ?? null,
+        fileReleaseType: detail?.releaseType ?? null,
+        fileDate: detail?.fileDate ? new Date(detail.fileDate) : null,
+        required: entry.required,
+      };
+    });
   }
 
   /** Reconcile variant for sweeps and background kicks: logs failures, never throws. */

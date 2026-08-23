@@ -50,6 +50,7 @@ export const adminModpacksRouter = router({
           name: z.string().trim().min(1).max(120).optional(),
           description: z.string().trim().max(2000).nullable().optional(),
           curseforgeProjectId: id().nullable().optional(),
+          shipsServerPack: z.boolean().optional(),
           serverId: id().nullable().optional(),
         }),
       }),
@@ -146,7 +147,7 @@ export const adminModpacksRouter = router({
     .input(z.object({ modpackId: id() }))
     .mutation(async ({ input }) => {
       try {
-        await modpackService.reconcile(input.modpackId);
+        await modpackService.reconcile(input.modpackId, { force: true });
         return { reconciled: true };
       } catch (error) {
         rethrowTrpc(error);

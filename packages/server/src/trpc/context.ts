@@ -1,4 +1,6 @@
+import { timingSafeEqual } from "node:crypto";
 import type { CreateExpressContextOptions } from "@trpc/server/adapters/express";
+import config from "@/config";
 import { jwtService } from "@/services/auth/jwt";
 import type { JWTPayload } from "@createrington/shared/auth";
 import { extractBearerToken } from "@/utils/bearer-token";
@@ -6,7 +8,17 @@ import { extractBearerToken } from "@/utils/bearer-token";
 /** Per-request context injected into every tRPC procedure. */
 export interface Context {
   user: JWTPayload | null;
+  /** Set when the bearer token is a consumer's service secret instead of a user JWT. */
+  service: "sandbox" | null;
   ip: string;
+}
+
+function isSandboxServiceToken(token: string): boolean {
+  const expected = config.sandbox.serviceToken;
+  if (!expected) return false;
+  const given = Buffer.from(token);
+  const wanted = Buffer.from(expected);
+  return given.length === wanted.length && timingSafeEqual(given, wanted);
 }
 
 /**
@@ -24,8 +36,11 @@ export async function createContext({
   const token = extractBearerToken(req);
 
   let user: JWTPayload | null = null;
+  let service: Context["service"] = null;
 
-  if (token) {
+  if (token && isSandboxServiceToken(token)) {
+    service = "sandbox";
+  } else if (token) {
     try {
       user = jwtService.verify(token);
     } catch {
@@ -33,5 +48,5 @@ export async function createContext({
     }
   }
 
-  return { user, ip: req.ip ?? "" };
+  return { user, service, ip: req.ip ?? "" };
 }

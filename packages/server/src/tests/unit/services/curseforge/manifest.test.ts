@@ -1,8 +1,171 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import {
   manifestDisabledModIds,
   mergeManifestFiles,
+  resolveModpackRelease,
+  type ModpackFile,
+  type ModpackReadContext,
 } from "@/services/curseforge";
+
+function file(overrides: Partial<ModpackFile> & { id: number }): ModpackFile {
+  return {
+    projectId: 1,
+    displayName: null,
+    fileDate: null,
+    fileStatus: null,
+    isAvailable: true,
+    serverPackFileId: null,
+    alternateFileId: null,
+    parentProjectFileId: null,
+    isServerPack: false,
+    ...overrides,
+  };
+}
+
+function context(
+  overrides: Partial<ModpackReadContext> = {},
+): ModpackReadContext {
+  return { shipsServerPack: false, publishes: [], ...overrides };
+}
+
+function reader(files: ModpackFile[]) {
+  return vi.fn(
+    async (fileId: number) => files.find((f) => f.id === fileId) ?? null,
+  );
+}
+
+describe("resolveModpackRelease", () => {
+  it("takes the listing's newest file and CurseForge's own server pack link", async () => {
+    const read = reader([]);
+    const resolved = await resolveModpackRelease(
+      file({ id: 100, serverPackFileId: 101 }),
+      context(),
+      read,
+    );
+    expect(resolved).toMatchObject({
+      file: { id: 100 },
+      serverPackFileId: 101,
+      complete: true,
+    });
+    expect(read).not.toHaveBeenCalled();
+  });
+
+  it("reads a reported client file newer than the listing directly, with its reported server pack", async () => {
+    const read = reader([file({ id: 200 })]);
+    const resolved = await resolveModpackRelease(
+      file({ id: 100, serverPackFileId: 101 }),
+      context({
+        shipsServerPack: true,
+        publishes: [{ clientFileId: 200, serverPackFileId: 201 }],
+      }),
+      read,
+    );
+    expect(resolved).toMatchObject({
+      file: { id: 200 },
+      serverPackFileId: 201,
+      complete: true,
+    });
+    expect(read).toHaveBeenCalledWith(200);
+  });
+
+  it("stays on the listing while CurseForge does not serve the reported file yet", async () => {
+    const read = reader([file({ id: 200, isAvailable: false })]);
+    const resolved = await resolveModpackRelease(
+      file({ id: 100 }),
+      context({
+        shipsServerPack: true,
+        publishes: [{ clientFileId: 200, serverPackFileId: 201 }],
+      }),
+      read,
+    );
+    expect(resolved).toMatchObject({
+      file: { id: 100 },
+      serverPackFileId: null,
+      complete: false,
+    });
+  });
+
+  it("ignores a report older than the listing's newest file", async () => {
+    const read = reader([file({ id: 200 })]);
+    const resolved = await resolveModpackRelease(
+      file({ id: 300, serverPackFileId: 301 }),
+      context({ publishes: [{ clientFileId: 200, serverPackFileId: 201 }] }),
+      read,
+    );
+    expect(resolved).toMatchObject({
+      file: { id: 300 },
+      serverPackFileId: 301,
+    });
+    expect(read).not.toHaveBeenCalled();
+  });
+
+  it("uses the report for the listed file when CurseForge has not linked the server pack", async () => {
+    const resolved = await resolveModpackRelease(
+      file({ id: 100 }),
+      context({ publishes: [{ clientFileId: 100, serverPackFileId: 102 }] }),
+      reader([]),
+    );
+    expect(resolved).toMatchObject({ serverPackFileId: 102, complete: true });
+  });
+
+  it("lets CurseForge's own link win over a disagreeing report", async () => {
+    const resolved = await resolveModpackRelease(
+      file({ id: 100, serverPackFileId: 101 }),
+      context({ publishes: [{ clientFileId: 100, serverPackFileId: 102 }] }),
+      reader([]),
+    );
+    expect(resolved.serverPackFileId).toBe(101);
+  });
+
+  it("accepts the alternate file as the server pack when it is one for this release", async () => {
+    const resolved = await resolveModpackRelease(
+      file({ id: 100, alternateFileId: 105 }),
+      context({ shipsServerPack: true }),
+      reader([file({ id: 105, isServerPack: true, parentProjectFileId: 100 })]),
+    );
+    expect(resolved).toMatchObject({ serverPackFileId: 105, complete: true });
+  });
+
+  it("rejects an alternate file that is a plain alternate or belongs to another release", async () => {
+    const plain = await resolveModpackRelease(
+      file({ id: 100, alternateFileId: 105 }),
+      context({ shipsServerPack: true }),
+      reader([
+        file({ id: 105, isServerPack: false, parentProjectFileId: 100 }),
+      ]),
+    );
+    expect(plain).toMatchObject({ serverPackFileId: null, complete: false });
+
+    const foreign = await resolveModpackRelease(
+      file({ id: 100, alternateFileId: 105 }),
+      context({ shipsServerPack: true }),
+      reader([file({ id: 105, isServerPack: true, parentProjectFileId: 99 })]),
+    );
+    expect(foreign.serverPackFileId).toBeNull();
+  });
+
+  it("only calls a read without a server pack incomplete when the pack ships one", async () => {
+    const clientOnly = await resolveModpackRelease(
+      file({ id: 100 }),
+      context({ shipsServerPack: false }),
+      reader([]),
+    );
+    expect(clientOnly.complete).toBe(true);
+  });
+
+  it("throws when neither the listing nor a report yields a file", async () => {
+    await expect(
+      resolveModpackRelease(null, context(), reader([])),
+    ).rejects.toThrow("No modpack files found");
+    await expect(
+      resolveModpackRelease(
+        null,
+        context({ publishes: [{ clientFileId: 200, serverPackFileId: 201 }] }),
+        reader([]),
+      ),
+    ).rejects.toThrow("No modpack files found");
+  });
+});
 
 describe("mergeManifestFiles", () => {
   it("unions both manifests, client entries first, and records the sides", () => {

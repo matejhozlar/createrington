@@ -4,14 +4,20 @@ import { Q } from "@/db";
 import { id } from "@/trpc/utils";
 import type {
   Modpack,
+  ModpackPublish,
   ModpackRelease,
   Workshop,
   WorkshopStatus,
 } from "@createrington/shared/db";
+import {
+  toSandboxModpackPublish,
+  type SandboxModpackPublish,
+} from "./modpacks";
 
 export interface SandboxWorkshopRelease {
   id: number;
   curseforgeFileId: number;
+  serverPackFileId: number | null;
   version: string | null;
   displayName: string | null;
   minecraftVersion: string | null;
@@ -31,7 +37,9 @@ export interface SandboxWorkshop {
     id: number;
     name: string;
     curseforgeProjectId: number | null;
+    shipsServerPack: boolean;
     latestRelease: SandboxWorkshopRelease | null;
+    latestPublish: SandboxModpackPublish | null;
   };
 }
 
@@ -41,6 +49,7 @@ function toSandboxWorkshop(
   workshop: Workshop,
   modpack: Modpack,
   latestRelease: ModpackRelease | undefined,
+  latestPublish: ModpackPublish | undefined,
 ): SandboxWorkshop {
   return {
     id: workshop.id,
@@ -54,16 +63,21 @@ function toSandboxWorkshop(
       id: modpack.id,
       name: modpack.name,
       curseforgeProjectId: modpack.curseforgeProjectId,
+      shipsServerPack: modpack.shipsServerPack,
       latestRelease: latestRelease
         ? {
             id: latestRelease.id,
             curseforgeFileId: latestRelease.curseforgeFileId,
+            serverPackFileId: latestRelease.serverPackFileId,
             version: latestRelease.version,
             displayName: latestRelease.displayName,
             minecraftVersion: latestRelease.minecraftVersion,
             modLoader: latestRelease.modLoader,
             publishedAt: latestRelease.publishedAt?.toISOString() ?? null,
           }
+        : null,
+      latestPublish: latestPublish
+        ? toSandboxModpackPublish(latestPublish)
         : null,
     },
   };
@@ -74,12 +88,14 @@ async function resolveSandboxWorkshops(
 ): Promise<SandboxWorkshop[]> {
   if (workshops.length === 0) return [];
   const modpackIds = [...new Set(workshops.map((w) => w.modpackId))];
-  const [modpacks, releases] = await Promise.all([
+  const [modpacks, releases, publishes] = await Promise.all([
     Q.modpack.findAll({ id: { $in: modpackIds } }),
     Q.modpack.release.latestPerModpack(modpackIds),
+    Q.modpack.publish.latestPerModpack(modpackIds),
   ]);
   const modpackById = new Map(modpacks.map((m) => [m.id, m]));
   const releaseByModpackId = new Map(releases.map((r) => [r.modpackId, r]));
+  const publishByModpackId = new Map(publishes.map((p) => [p.modpackId, p]));
 
   return workshops.map((workshop) => {
     const modpack = modpackById.get(workshop.modpackId);
@@ -92,6 +108,7 @@ async function resolveSandboxWorkshops(
       workshop,
       modpack,
       releaseByModpackId.get(modpack.id),
+      publishByModpackId.get(modpack.id),
     );
   });
 }
