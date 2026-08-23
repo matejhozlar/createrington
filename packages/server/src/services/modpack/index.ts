@@ -481,25 +481,7 @@ export class ModpackService {
       );
     }
 
-    const existing = await Q.modpack.publish.find({
-      modpackId: modpack.id,
-      clientFileId: client.id,
-    });
-    const publish = existing
-      ? await Q.modpack.publish.updateAndReturn(
-          { id: existing.id },
-          {
-            serverPackFileId: server.id,
-            reportedAt: new Date(),
-            ingestedAt: null,
-            lastError: null,
-          },
-        )
-      : await Q.modpack.publish.createAndReturn({
-          modpackId: modpack.id,
-          clientFileId: client.id,
-          serverPackFileId: server.id,
-        });
+    const publish = await this.upsertPublish(modpack.id, client.id, server.id);
     if (!modpack.shipsServerPack) {
       await Q.modpack.updateAll(
         { shipsServerPack: true, updatedAt: new Date() },
@@ -507,22 +489,58 @@ export class ModpackService {
       );
     }
 
+    let error: string | null = null;
     try {
       await this.reconcile(modpack.id, { force: true });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+      const read = await getModpackManifest(report.projectId);
+      if (read.fileId !== client.id) {
+        error = `CurseForge lists file ${read.fileId} as newer than ${client.id}, so the main app read that release instead; the report is kept for when ${client.id} is read`;
+      }
+    } catch (caught) {
+      error = caught instanceof Error ? caught.message : String(caught);
       logger.warn(
         `Modpack #${modpack.id} reconcile after publish report ${client.id}/${server.id} failed:`,
-        error,
+        caught,
       );
-      const failed = await Q.modpack.publish.updateAndReturn(
-        { id: publish.id },
-        { lastError: message },
-      );
-      return { publish: failed, ingested: false, error: message };
     }
-    const ingested = await Q.modpack.publish.get({ id: publish.id });
-    return { publish: ingested, ingested: true, error: null };
+    if (error !== null) {
+      await Q.modpack.publish.updateAll(
+        { lastError: error },
+        { id: publish.id },
+      );
+    }
+    const stored = await Q.modpack.publish.get({ id: publish.id });
+    return { publish: stored, ingested: stored.ingestedAt !== null, error };
+  }
+
+  private async upsertPublish(
+    modpackId: number,
+    clientFileId: number,
+    serverPackFileId: number,
+  ): Promise<ModpackPublish> {
+    const refresh = async (id: number) =>
+      Q.modpack.publish.updateAndReturn(
+        { id },
+        {
+          serverPackFileId,
+          reportedAt: new Date(),
+          ingestedAt: null,
+          lastError: null,
+        },
+      );
+    const existing = await Q.modpack.publish.find({ modpackId, clientFileId });
+    if (existing) return refresh(existing.id);
+    try {
+      return await Q.modpack.publish.createAndReturn({
+        modpackId,
+        clientFileId,
+        serverPackFileId,
+      });
+    } catch (error) {
+      if (!(error instanceof ConstraintViolationError)) throw error;
+      const raced = await Q.modpack.publish.get({ modpackId, clientFileId });
+      return refresh(raced.id);
+    }
   }
 
   /**
@@ -844,6 +862,9 @@ export class ModpackService {
       try {
         manifest = await getModpackManifest(modpack.curseforgeProjectId);
       } catch {
+        manifest = null;
+      }
+      if (modpack.shipsServerPack && manifest?.serverPackFileId === null) {
         manifest = null;
       }
     }

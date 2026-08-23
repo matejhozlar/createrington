@@ -113,7 +113,6 @@ export const modpackPublish = pgTable(
     lastError: text("last_error"),
   },
   (table) => [
-    index("idx_modpack_publish_modpack").on(table.modpackId),
     uniqueIndex("idx_modpack_publish_unique").on(
       table.modpackId,
       table.clientFileId,

@@ -1,9 +1,9 @@
-import { timingSafeEqual } from "node:crypto";
 import type { CreateExpressContextOptions } from "@trpc/server/adapters/express";
 import config from "@/config";
 import { jwtService } from "@/services/auth/jwt";
 import type { JWTPayload } from "@createrington/shared/auth";
 import { extractBearerToken } from "@/utils/bearer-token";
+import { timingSafeEqualStrings } from "@/utils/timing-safe-equal";
 
 /** Per-request context injected into every tRPC procedure. */
 export interface Context {
@@ -15,10 +15,7 @@ export interface Context {
 
 function isSandboxServiceToken(token: string): boolean {
   const expected = config.sandbox.serviceToken;
-  if (!expected) return false;
-  const given = Buffer.from(token);
-  const wanted = Buffer.from(expected);
-  return given.length === wanted.length && timingSafeEqual(given, wanted);
+  return expected !== null && timingSafeEqualStrings(token, expected);
 }
 
 /**

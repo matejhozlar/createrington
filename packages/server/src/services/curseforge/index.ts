@@ -967,7 +967,12 @@ async function loadModpackReadContext(
   if (!modpack) return { shipsServerPack: false, publishes: [] };
   const publishes = await Q.modpack.publish.findAll(
     { modpackId: modpack.id },
-    { select: ["clientFileId", "serverPackFileId"] },
+    {
+      select: ["clientFileId", "serverPackFileId"],
+      orderBy: "clientFileId",
+      orderDirection: "desc",
+      limit: RECENT_PUBLISHES,
+    },
   );
   return {
     shipsServerPack: modpack.shipsServerPack,
@@ -1039,11 +1044,18 @@ const modpackCache = new Map<
   { manifest: ModpackManifest; fetchedAt: number; ttlMs: number }
 >();
 
-const inFlightManifests = new Map<number, Promise<ModpackManifest>>();
+const inFlightManifests = new Map<
+  number,
+  { promise: Promise<ModpackManifest>; seq: number }
+>();
+let readSeq = 0;
 
 const manifestFailures = new Map<number, number>();
 const MANIFEST_FAILURE_BACKOFF_MS = 60_000;
 const MAX_MODPACK_ZIP_BYTES = 256 * 1024 * 1024;
+const RECENT_PUBLISHES = 5;
+const lastForcedReads = new Map<number, number>();
+const FORCE_MIN_INTERVAL_MS = 10_000;
 
 /**
  * Returns the pack version and mod project IDs of a modpack's newest release
@@ -1054,27 +1066,38 @@ const MAX_MODPACK_ZIP_BYTES = 256 * 1024 * 1024;
  * instead when the pack ships a server pack and none was found, so the
  * next check re-reads). Concurrent cache misses share a single download,
  * and a failed fetch backs off for a minute before retrying. force skips
- * the cache and the backoff, still joining a read already in flight.
+ * the cache and the backoff and waits out a read that started before the
+ * call (its context predates whatever the caller just wrote) instead of
+ * joining it; forced reads less than ten seconds apart share the first
+ * one, which bounds what a looping caller can download.
  */
 export async function getModpackManifest(
   packProjectId = MODPACK_PROJECT_ID,
   options: { force?: boolean } = {},
 ): Promise<ModpackManifest> {
+  const lastForced = lastForcedReads.get(packProjectId);
+  const force =
+    options.force === true &&
+    (lastForced === undefined ||
+      Date.now() - lastForced >= FORCE_MIN_INTERVAL_MS);
+  if (force) lastForcedReads.set(packProjectId, Date.now());
+  const callSeq = readSeq;
+
   const cached = modpackCache.get(packProjectId);
-  if (
-    !options.force &&
-    cached &&
-    Date.now() - cached.fetchedAt < cached.ttlMs
-  ) {
+  if (!force && cached && Date.now() - cached.fetchedAt < cached.ttlMs) {
     return cached.manifest;
   }
 
-  const inFlight = inFlightManifests.get(packProjectId);
-  if (inFlight) return inFlight;
+  let inFlight = inFlightManifests.get(packProjectId);
+  while (force && inFlight && inFlight.seq <= callSeq) {
+    await inFlight.promise.catch(() => undefined);
+    inFlight = inFlightManifests.get(packProjectId);
+  }
+  if (inFlight) return inFlight.promise;
 
   const failedAt = manifestFailures.get(packProjectId);
   if (
-    !options.force &&
+    !force &&
     failedAt &&
     Date.now() - failedAt < MANIFEST_FAILURE_BACKOFF_MS
   ) {
@@ -1083,18 +1106,25 @@ export async function getModpackManifest(
     );
   }
 
-  const promise = fetchModpackManifest(packProjectId)
-    .then((manifest) => {
-      manifestFailures.delete(packProjectId);
-      return manifest;
-    })
-    .catch((error) => {
-      manifestFailures.set(packProjectId, Date.now());
-      throw error;
-    })
-    .finally(() => inFlightManifests.delete(packProjectId));
-  inFlightManifests.set(packProjectId, promise);
-  return promise;
+  const entry = {
+    seq: ++readSeq,
+    promise: fetchModpackManifest(packProjectId)
+      .then((manifest) => {
+        manifestFailures.delete(packProjectId);
+        return manifest;
+      })
+      .catch((error) => {
+        manifestFailures.set(packProjectId, Date.now());
+        throw error;
+      })
+      .finally(() => {
+        if (inFlightManifests.get(packProjectId) === entry) {
+          inFlightManifests.delete(packProjectId);
+        }
+      }),
+  };
+  inFlightManifests.set(packProjectId, entry);
+  return entry.promise;
 }
 
 async function fetchModpackManifest(

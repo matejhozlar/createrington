@@ -1,5 +1,5 @@
 {
-  "id": "323b8fa2-5e8b-4148-9ab6-50d68a3e148c",
+  "id": "bc76a6e1-3535-43a8-9728-35e2b3e9b813",
   "prevId": "31de9a15-36c5-4ae5-9e71-59276fd7decf",
   "version": "7",
   "dialect": "postgresql",
@@ -3533,21 +3533,6 @@
         }
       },
       "indexes": {
-        "idx_modpack_publish_modpack": {
-          "name": "idx_modpack_publish_modpack",
-          "columns": [
-            {
-              "expression": "modpack_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
         "idx_modpack_publish_unique": {
           "name": "idx_modpack_publish_unique",
           "columns": [

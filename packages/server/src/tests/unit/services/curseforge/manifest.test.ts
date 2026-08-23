@@ -144,7 +144,7 @@ describe("resolveModpackRelease", () => {
     expect(foreign.serverPackFileId).toBeNull();
   });
 
-  it("only calls a read without a server pack incomplete when the pack ships one", async () => {
+  it("treats a read without a server pack as complete when the pack ships none", async () => {
     const clientOnly = await resolveModpackRelease(
       file({ id: 100 }),
       context({ shipsServerPack: false }),

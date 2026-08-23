@@ -2091,7 +2091,7 @@ describe("ModpackService.recordPublish", () => {
     });
 
     expect(result).toMatchObject({ ingested: true, error: null });
-    expect(getModpackManifest).toHaveBeenLastCalledWith(projectId, {
+    expect(getModpackManifest).toHaveBeenCalledWith(projectId, {
       force: true,
     });
     const publish = await Q.modpack.publish.get({
@@ -2149,6 +2149,32 @@ describe("ModpackService.recordPublish", () => {
     });
 
     expect(await Q.modpack.publish.count({ modpackId: modpack.id })).toBe(1);
+  });
+
+  it("comes back not ingested with the reason when CurseForge lists a newer file than the reported one", async () => {
+    const projectId = ctx.nextProjectId++;
+    const modpack = await seedModpack(ctx, { curseforgeProjectId: projectId });
+    serveReportedPair(projectId);
+    vi.mocked(getModpackManifest).mockResolvedValue({
+      ...manifest({ version: "0.6.4" }),
+      fileId: CLIENT + 10,
+      serverPackFileId: SERVER + 10,
+    });
+
+    const result = await modpackService.recordPublish({
+      projectId,
+      clientFileId: CLIENT,
+      serverPackFileId: SERVER,
+    });
+
+    expect(result.ingested).toBe(false);
+    expect(result.error).toContain(`file ${CLIENT + 10} as newer`);
+    const publish = await Q.modpack.publish.get({
+      modpackId: modpack.id,
+      clientFileId: CLIENT,
+    });
+    expect(publish.ingestedAt).toBeNull();
+    expect(publish.lastError).toContain(`file ${CLIENT + 10} as newer`);
   });
 
   it("keeps the report and returns the refusal when the forced reconcile is refused", async () => {
