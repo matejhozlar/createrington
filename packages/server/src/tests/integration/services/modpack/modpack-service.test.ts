@@ -43,6 +43,7 @@ vi.mock("@/services/curseforge", async (importOriginal) => {
       disabledModIds: new Set<number>(),
     })),
     getModpackModIds: vi.fn(async () => new Set<number>()),
+    getModpackFile: vi.fn(async () => null),
     searchMods: vi.fn(async () => []),
     getFilesDependencies: vi.fn(async () => []),
     getFilesDetails: vi.fn(async () => []),
@@ -66,7 +67,9 @@ import { workshopService } from "@/services/workshop";
 import {
   CurseForgeClass,
   getFilesDetails,
+  getModpackFile,
   getModpackManifest,
+  type ModpackFile,
   type ModpackManifest,
   type ModpackManifestSides,
 } from "@/services/curseforge";
@@ -1967,5 +1970,333 @@ describe("ModpackService.deleteModpack", () => {
     expect(await Q.modpack.find({ id: workshop.modpackId })).toBeNull();
     expect(await Q.modpack.mod.find({ id: member.id })).toBeNull();
     expect(await Q.modpack.release.find({ id: release.id })).toBeNull();
+  });
+});
+
+function cfFile(
+  overrides: Partial<ModpackFile> & { id: number; projectId: number },
+): ModpackFile {
+  return {
+    displayName: null,
+    fileDate: null,
+    fileStatus: null,
+    isAvailable: true,
+    serverPackFileId: null,
+    alternateFileId: null,
+    parentProjectFileId: null,
+    isServerPack: false,
+    ...overrides,
+  };
+}
+
+describe("ModpackService.reconcile for a pack that ships a server pack", () => {
+  it("refuses a client-only read and leaves members and suggestions untouched", async () => {
+    const modpack = await seedModpack(ctx, {
+      curseforgeProjectId: ctx.nextProjectId++,
+      shipsServerPack: true,
+    });
+    const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const mod = await seedMod(ctx, workshop, {
+      submittedBy: USER_A,
+      status: "in_pack",
+    });
+    const member = await seedPackMod(ctx, workshop, {
+      curseforgeProjectId: mod.curseforgeProjectId,
+      origin: "suggestion",
+      workshopModId: mod.id,
+      liveAt: new Date(),
+      liveInVersion: "1.0.0",
+    });
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      manifest({ version: "2.0.0", modIds: new Set<number>() }),
+    );
+
+    await expect(modpackService.reconcile(modpack.id)).rejects.toThrow(
+      BadRequestError,
+    );
+
+    expect(await Q.modpack.mod.get({ id: member.id })).toMatchObject({
+      droppedFromManifestAt: null,
+      liveInVersion: "1.0.0",
+    });
+    expect(await Q.workshop.mod.get({ id: mod.id })).toMatchObject({
+      status: "in_pack",
+    });
+    expect(await modEvents(mod.id)).toEqual([]);
+    expect(announcePackDropOut).not.toHaveBeenCalled();
+    expect(await modpackService.listReleases(modpack.id)).toEqual([]);
+  });
+
+  it("keeps reconciling a client-only pack and flips the flag once a server pack is read", async () => {
+    const modpack = await seedModpack(ctx, {
+      curseforgeProjectId: ctx.nextProjectId++,
+    });
+    const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const member = await seedPackMod(ctx, workshop);
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      manifest({
+        version: "1.0.0",
+        modIds: new Set([member.curseforgeProjectId]),
+      }),
+    );
+
+    await modpackService.reconcile(modpack.id);
+    expect(await Q.modpack.get({ id: modpack.id })).toMatchObject({
+      shipsServerPack: false,
+    });
+
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      sidedManifest("2.0.0", [[member.curseforgeProjectId, "both"]]),
+    );
+    await modpackService.reconcile(modpack.id);
+    expect(await Q.modpack.get({ id: modpack.id })).toMatchObject({
+      shipsServerPack: true,
+    });
+  });
+});
+
+describe("ModpackService.recordPublish", () => {
+  const CLIENT = 8_710_127;
+  const SERVER = 8_710_134;
+
+  function serveReportedPair(projectId: number) {
+    vi.mocked(getModpackFile).mockImplementation(async (_project, fileId) =>
+      fileId === CLIENT
+        ? cfFile({ id: CLIENT, projectId })
+        : fileId === SERVER
+          ? cfFile({ id: SERVER, projectId, parentProjectFileId: CLIENT })
+          : null,
+    );
+  }
+
+  it("stores the reported pair, forces a reconcile and ships a server-only suggestion", async () => {
+    const projectId = ctx.nextProjectId++;
+    const modpack = await seedModpack(ctx, { curseforgeProjectId: projectId });
+    const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const serverOnly = await seedMod(ctx, workshop, {
+      submittedBy: USER_A,
+      status: "next_update",
+    });
+    serveReportedPair(projectId);
+    vi.mocked(getModpackManifest).mockResolvedValue({
+      ...sidedManifest("0.6.3", [[serverOnly.curseforgeProjectId, "server"]]),
+      fileId: CLIENT,
+      serverPackFileId: SERVER,
+    });
+
+    const result = await modpackService.recordPublish({
+      projectId,
+      clientFileId: CLIENT,
+      serverPackFileId: SERVER,
+    });
+
+    expect(result).toMatchObject({ ingested: true, error: null });
+    expect(getModpackManifest).toHaveBeenCalledWith(projectId, {
+      force: true,
+    });
+    const publish = await Q.modpack.publish.get({
+      modpackId: modpack.id,
+      clientFileId: CLIENT,
+    });
+    expect(publish).toMatchObject({
+      serverPackFileId: SERVER,
+      lastError: null,
+    });
+    expect(publish.ingestedAt).not.toBeNull();
+    expect(await Q.modpack.get({ id: modpack.id })).toMatchObject({
+      shipsServerPack: true,
+    });
+    expect(await Q.workshop.mod.get({ id: serverOnly.id })).toMatchObject({
+      status: "in_pack",
+    });
+    expect(
+      await Q.modpack.mod.find({
+        modpackId: modpack.id,
+        curseforgeProjectId: serverOnly.curseforgeProjectId,
+      }),
+    ).toMatchObject({
+      origin: "suggestion",
+      workshopModId: serverOnly.id,
+      liveInVersion: "0.6.3",
+    });
+    const [release] = await modpackService.listReleases(modpack.id);
+    expect(release).toMatchObject({
+      curseforgeFileId: CLIENT,
+      serverPackFileId: SERVER,
+      modCount: 1,
+    });
+  });
+
+  it("is idempotent per client file and refreshes the report on a resend", async () => {
+    const projectId = ctx.nextProjectId++;
+    const modpack = await seedModpack(ctx, { curseforgeProjectId: projectId });
+    serveReportedPair(projectId);
+    vi.mocked(getModpackManifest).mockResolvedValue({
+      ...manifest({ version: "0.6.3" }),
+      fileId: CLIENT,
+      serverPackFileId: SERVER,
+    });
+
+    await modpackService.recordPublish({
+      projectId,
+      clientFileId: CLIENT,
+      serverPackFileId: SERVER,
+    });
+    await modpackService.recordPublish({
+      projectId,
+      clientFileId: CLIENT,
+      serverPackFileId: SERVER,
+    });
+
+    expect(await Q.modpack.publish.count({ modpackId: modpack.id })).toBe(1);
+  });
+
+  it("comes back not ingested with the reason when CurseForge lists a newer file than the reported one", async () => {
+    const projectId = ctx.nextProjectId++;
+    const modpack = await seedModpack(ctx, { curseforgeProjectId: projectId });
+    serveReportedPair(projectId);
+    vi.mocked(getModpackManifest).mockResolvedValue({
+      ...manifest({ version: "0.6.4" }),
+      fileId: CLIENT + 10,
+      serverPackFileId: SERVER + 10,
+    });
+
+    const result = await modpackService.recordPublish({
+      projectId,
+      clientFileId: CLIENT,
+      serverPackFileId: SERVER,
+    });
+
+    expect(result.ingested).toBe(false);
+    expect(result.error).toContain(`file ${CLIENT + 10} as newer`);
+    const publish = await Q.modpack.publish.get({
+      modpackId: modpack.id,
+      clientFileId: CLIENT,
+    });
+    expect(publish.ingestedAt).toBeNull();
+    expect(publish.lastError).toContain(`file ${CLIENT + 10} as newer`);
+  });
+
+  it("keeps the report and returns the refusal when the forced reconcile is refused", async () => {
+    const projectId = ctx.nextProjectId++;
+    const modpack = await seedModpack(ctx, { curseforgeProjectId: projectId });
+    serveReportedPair(projectId);
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      manifest({ version: "0.6.3", fileId: CLIENT }),
+    );
+
+    const result = await modpackService.recordPublish({
+      projectId,
+      clientFileId: CLIENT,
+      serverPackFileId: SERVER,
+    });
+
+    expect(result.ingested).toBe(false);
+    expect(result.error).toContain("without a server pack");
+    const publish = await Q.modpack.publish.get({
+      modpackId: modpack.id,
+      clientFileId: CLIENT,
+    });
+    expect(publish.ingestedAt).toBeNull();
+    expect(publish.lastError).toContain("without a server pack");
+  });
+
+  it("refuses a server pack that is not an additional file of the client file", async () => {
+    const projectId = ctx.nextProjectId++;
+    const modpack = await seedModpack(ctx, { curseforgeProjectId: projectId });
+    vi.mocked(getModpackFile).mockImplementation(async (_project, fileId) =>
+      cfFile({
+        id: fileId,
+        projectId,
+        parentProjectFileId: fileId === SERVER ? CLIENT - 1 : null,
+      }),
+    );
+
+    await expect(
+      modpackService.recordPublish({
+        projectId,
+        clientFileId: CLIENT,
+        serverPackFileId: SERVER,
+      }),
+    ).rejects.toThrow(BadRequestError);
+
+    expect(await Q.modpack.publish.count({ modpackId: modpack.id })).toBe(0);
+    expect(getModpackManifest).not.toHaveBeenCalled();
+  });
+
+  it("refuses files CurseForge does not serve yet", async () => {
+    const projectId = ctx.nextProjectId++;
+    await seedModpack(ctx, { curseforgeProjectId: projectId });
+    vi.mocked(getModpackFile).mockImplementation(async (_project, fileId) =>
+      fileId === CLIENT ? cfFile({ id: CLIENT, projectId }) : null,
+    );
+
+    await expect(
+      modpackService.recordPublish({
+        projectId,
+        clientFileId: CLIENT,
+        serverPackFileId: SERVER,
+      }),
+    ).rejects.toThrow(BadRequestError);
+  });
+
+  it("throws NotFoundError when no modpack follows the project", async () => {
+    await expect(
+      modpackService.recordPublish({
+        projectId: 1,
+        clientFileId: CLIENT,
+        serverPackFileId: SERVER,
+      }),
+    ).rejects.toThrow(NotFoundError);
+  });
+});
+
+describe("ModpackService.recordRelease upgrade", () => {
+  it("re-freezes a release recorded from the client file alone once the server pack is read, never the other way", async () => {
+    const modpack = await seedModpack(ctx, {
+      curseforgeProjectId: ctx.nextProjectId++,
+    });
+    const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const shared = await seedPackMod(ctx, workshop);
+    const serverOnly = await seedPackMod(ctx, workshop);
+    const clientOnly = manifest({
+      version: "0.6.3",
+      modIds: new Set([shared.curseforgeProjectId]),
+    });
+    vi.mocked(getModpackManifest).mockResolvedValue(clientOnly);
+
+    await modpackService.reconcile(modpack.id);
+    const [frozen] = await modpackService.listReleases(modpack.id);
+    expect(frozen).toMatchObject({ modCount: 1, serverPackFileId: null });
+
+    vi.mocked(getModpackManifest).mockResolvedValue({
+      ...sidedManifest("0.6.3", [
+        [shared.curseforgeProjectId, "both"],
+        [serverOnly.curseforgeProjectId, "server"],
+      ]),
+      fileId: clientOnly.fileId,
+      serverPackFileId: 900_001,
+    });
+    await modpackService.reconcile(modpack.id);
+
+    const releases = await modpackService.listReleases(modpack.id);
+    expect(releases).toHaveLength(1);
+    expect(releases[0]).toMatchObject({
+      id: frozen.id,
+      modCount: 2,
+      serverPackFileId: 900_001,
+    });
+    expect(
+      await Q.modpack.release.mod.listForReleases([frozen.id]),
+    ).toHaveLength(2);
+
+    vi.mocked(getModpackManifest).mockResolvedValue(clientOnly);
+    await expect(modpackService.reconcile(modpack.id)).rejects.toThrow(
+      BadRequestError,
+    );
+    expect((await modpackService.listReleases(modpack.id))[0]).toMatchObject({
+      modCount: 2,
+      serverPackFileId: 900_001,
+    });
   });
 });

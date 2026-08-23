@@ -42,6 +42,7 @@ export { LeaderboardMessageQueries } from "./leaderboard/message";
 export { LotteryParticipantQueries } from "./lottery/participant";
 export { ModpackQueries } from "./modpack";
 export { ModpackModQueries } from "./modpack/mod";
+export { ModpackPublishQueries } from "./modpack/publish";
 export { ModpackReleaseQueries } from "./modpack/release";
 export { ModpackReleaseModQueries } from "./modpack/release/mod";
 export { PlayerQueries } from "./player";

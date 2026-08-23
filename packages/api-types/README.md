@@ -63,6 +63,10 @@ the caller must forward a valid Createrington admin JWT as
 `Authorization: Bearer <token>`. The caller is expected to enforce any
 additional authorization rules (e.g. per-server RBAC) before calling.
 
+The exception is `sandbox.modpacks.recordPublish`, which the sandbox server
+calls from a background job with no user session: it authenticates with the
+shared `SANDBOX_SERVICE_TOKEN` as the bearer token instead of a JWT.
+
 ## Versioning
 
 - **Minor bumps** - new procedures, new optional fields. Safe to upgrade.

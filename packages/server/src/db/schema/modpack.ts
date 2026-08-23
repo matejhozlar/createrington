@@ -16,6 +16,9 @@ import { workshopMod } from "./workshop";
 // --- modpack ---
 // curseforgeProjectId points at the published CurseForge pack and stays null
 // until its first publish; live state of members derives from its manifest.
+// shipsServerPack flips on the first release read together with a server
+// pack; from then on a client-only read is refused instead of applied, since
+// it would drop every server-side member.
 
 export const modpack = pgTable(
   "modpack",
@@ -24,6 +27,7 @@ export const modpack = pgTable(
     name: text("name").notNull(),
     description: text("description"),
     curseforgeProjectId: integer("curseforge_project_id"),
+    shipsServerPack: boolean("ships_server_pack").notNull().default(false),
     serverId: integer("server_id").references(() => server.id),
     createdBy: text("created_by").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -86,13 +90,45 @@ export const modpackMod = pgTable(
   ],
 );
 
+// --- modpack_publish ---
+// What the sandbox reported after publishing a release: the client file and
+// the server pack it uploaded, both live on CurseForge. The CurseForge API
+// never links a server pack uploaded through it, so reconcile reads the
+// reported pair directly. ingestedAt set = the release was read from both
+// files; lastError keeps the last refusal for the sandbox to show.
+
+export const modpackPublish = pgTable(
+  "modpack_publish",
+  {
+    id: serial("id").primaryKey(),
+    modpackId: integer("modpack_id")
+      .notNull()
+      .references(() => modpack.id, { onDelete: "cascade" }),
+    clientFileId: integer("client_file_id").notNull(),
+    serverPackFileId: integer("server_pack_file_id"),
+    reportedAt: timestamp("reported_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    ingestedAt: timestamp("ingested_at", { withTimezone: true }),
+    lastError: text("last_error"),
+  },
+  (table) => [
+    uniqueIndex("idx_modpack_publish_unique").on(
+      table.modpackId,
+      table.clientFileId,
+    ),
+  ],
+);
+
 // --- modpack_release ---
 // One row per published pack file we managed to read a manifest from, keyed by
 // the client file's CurseForge id so re-reading the same release is a no-op
 // (rows recorded before the server pack was read alongside carry its file id
-// instead, and reconcile checks both). Rows are append-only and
-// self-contained: CurseForge drops archived files, so nothing here may depend
-// on re-fetching them.
+// instead, and reconcile checks both). serverPackFileId records which server
+// pack the membership was read with; a row frozen from the client file alone
+// is re-frozen once a read carries the server pack, never the other way.
+// Otherwise rows are append-only and self-contained: CurseForge drops
+// archived files, so nothing here may depend on re-fetching them.
 
 export const modpackRelease = pgTable(
   "modpack_release",
@@ -102,6 +138,7 @@ export const modpackRelease = pgTable(
       .notNull()
       .references(() => modpack.id, { onDelete: "cascade" }),
     curseforgeFileId: integer("curseforge_file_id").notNull(),
+    serverPackFileId: integer("server_pack_file_id"),
     version: text("version"),
     displayName: text("display_name"),
     minecraftVersion: text("minecraft_version"),

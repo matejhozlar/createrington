@@ -229,6 +229,10 @@ const envSchema = z
       .positive()
       .default(1316177),
 
+    // Sandbox: shared secret the sandbox presents as a bearer token when it
+    // reports a publish from a background job (no user session to forward)
+    SANDBOX_SERVICE_TOKEN: z.string().min(32).optional(),
+
     // AI (OpenAI): optional; AI features are disabled when the key is not set
     OPENAI_API_KEY: z.string().min(1).optional(),
     OPENAI_DEFAULT_MODEL: z.string().default("gpt-4o-mini"),
