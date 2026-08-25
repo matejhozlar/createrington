@@ -6,6 +6,7 @@ export type EmbedBot = z.infer<typeof embedBotSchema>;
 // http(s) only: `z.string().url()` would otherwise accept `javascript:`, `data:`, `file:` schemes.
 const httpUrl = z
   .string()
+  .max(2048)
   .url()
   .refine((u) => /^https?:\/\//i.test(u), {
     message: "URL must start with http:// or https://",

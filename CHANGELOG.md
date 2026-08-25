@@ -1,3 +1,16 @@
+## v1.43.0 (2026-08-25)
+
+### @createrington/server (1.43.0 → 1.44.0)
+- [add] Add title image support to changelog posts: when a modpack has a title image URL, Discord announcements open with a full-width media gallery banner instead of a text heading
+- [refactor] Restyle changelog posts: remove emojis from group headings and download button, switch container accent color from gold to blue
+- [chore] Remove emoji from the Discord registration button
+
+### @createrington/client (0.2.56 → 0.2.57)
+- [add] Add title image URL field to modpack settings dialog with client-side URL validation
+
+### @createrington/shared (1.9.0 → 1.10.0)
+- [chore] Add 2048-character length limit to the shared HTTP URL schema
+
 ## v1.42.0 (2026-08-25)
 
 ### @createrington/server (1.42.0 → 1.43.0)

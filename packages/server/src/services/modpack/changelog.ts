@@ -381,6 +381,8 @@ async function toChangelogInput(
         [modpack.name, release.version]
           .filter((part): part is string => part !== null)
           .join(" "),
+      label: releaseLabel(release),
+      titleImageUrl: httpUrl(modpack.titleImageUrl),
       minecraftVersion: release.minecraftVersion,
       modLoader: loaderLabel(release.modLoader),
       modCount: release.modCount,

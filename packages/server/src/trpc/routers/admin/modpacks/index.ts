@@ -4,6 +4,7 @@ import { Q } from "@/db";
 import { auditActor, rethrowTrpc, id } from "@/trpc/utils";
 import { modpackService } from "@/services/modpack";
 import { modpackManifestUploadSchema } from "@createrington/shared/workshop";
+import { httpUrlSchema } from "@createrington/shared/api/embed";
 
 export const adminModpacksRouter = router({
   list: adminProcedure
@@ -52,6 +53,7 @@ export const adminModpacksRouter = router({
           curseforgeProjectId: id().nullable().optional(),
           shipsServerPack: z.boolean().optional(),
           serverId: id().nullable().optional(),
+          titleImageUrl: httpUrlSchema.nullable().optional(),
         }),
       }),
     )

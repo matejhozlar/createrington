@@ -4,6 +4,7 @@ import {
   container,
   linkButton,
   measureComponentsV2,
+  mediaGallery,
   section,
   separator,
   text,
@@ -24,6 +25,8 @@ import {
 
 export interface ChangelogRelease {
   title: string;
+  label: string;
+  titleImageUrl: string | null;
   minecraftVersion: string | null;
   modLoader: string | null;
   modCount: number;
@@ -54,13 +57,14 @@ type ChangeGroup = "added" | "updated" | "removed";
 type Child = ComponentContainer["components"][number];
 
 const GROUPS: Array<{ key: ChangeGroup; heading: string }> = [
-  { key: "added", heading: "✨ Added" },
-  { key: "updated", heading: "⬆️ Updated" },
-  { key: "removed", heading: "🗑️ Removed" },
+  { key: "added", heading: "Added" },
+  { key: "updated", heading: "Updated" },
+  { key: "removed", heading: "Removed" },
 ];
 
 const NAME_MAX = 80;
 const LABEL_MAX = 60;
+const TITLE_MAX = 200;
 const PART_PLACEHOLDER = "Part 99 of 99";
 const DOWNLOAD_LABEL = "Download on CurseForge";
 const NO_CHANGES = "No mod changes in this release.";
@@ -108,7 +112,7 @@ function headingNode(
   );
 }
 
-function header(input: ChangelogInput, partLabel: string | null): string {
+function headerNodes(input: ChangelogInput, partLabel: string | null): Child[] {
   const { release } = input;
   const meta = [
     release.minecraftVersion ? `Minecraft ${release.minecraftVersion}` : null,
@@ -128,24 +132,37 @@ function header(input: ChangelogInput, partLabel: string | null): string {
     `${input.unchanged} unchanged`,
   ].join(" · ");
   const summary = input.previousVersion
-    ? `Changes since ${escapeMarkdown(input.previousVersion)}: ${counts}`
+    ? `Changes since ${escapeMarkdown(clip(input.previousVersion, LABEL_MAX))}: ${counts}`
     : counts;
-  return [`## 📦 ${escapeMarkdown(release.title)}`, `-# ${meta}`, summary].join(
-    "\n",
-  );
+  const title = clip(release.title, TITLE_MAX);
+  if (release.titleImageUrl) {
+    return [
+      mediaGallery([{ url: release.titleImageUrl, description: title }]),
+      text(
+        [
+          `**${escapeMarkdown(clip(release.label, LABEL_MAX))}**`,
+          `-# ${meta}`,
+          summary,
+        ].join("\n"),
+      ),
+    ];
+  }
+  return [
+    text([`## ${escapeMarkdown(title)}`, `-# ${meta}`, summary].join("\n")),
+  ];
 }
 
 function footer(release: ChangelogRelease): Child[] {
   if (!release.downloadUrl) return [];
   return [
     separator(),
-    actionRow([linkButton(DOWNLOAD_LABEL, release.downloadUrl, "⬇️")]),
+    actionRow([linkButton(DOWNLOAD_LABEL, release.downloadUrl)]),
   ];
 }
 
 function fits(input: ChangelogInput, children: Child[]): boolean {
   const probe = container([
-    text(header(input, PART_PLACEHOLDER)),
+    ...headerNodes(input, PART_PLACEHOLDER),
     separator(),
     ...children,
     separator(),
@@ -210,12 +227,12 @@ export const ModpackChangelogComponentPresets = {
         components: [
           container(
             [
-              text(header(input, partLabel)),
+              ...headerNodes(input, partLabel),
               separator(),
               ...children,
               ...(last ? footer(input.release) : []),
             ],
-            { accentColor: ComponentColors.Premium },
+            { accentColor: ComponentColors.Info },
           ),
         ],
       };

@@ -58,7 +58,11 @@ interface SentMessage {
   components: Array<{ toJSON(): unknown }>;
 }
 
-function sentMessages(): Array<{ channelId: string; texts: string[] }> {
+function sentMessages(): Array<{
+  channelId: string;
+  texts: string[];
+  types: number[];
+}> {
   return sendMock.mock.calls.map(([options]) => {
     const { channelId, components } = options as SentMessage;
     const [root] = components.map((c) => c.toJSON()) as Array<{
@@ -80,7 +84,11 @@ function sentMessages(): Array<{ channelId: string; texts: string[] }> {
       }
       return [];
     });
-    return { channelId, texts };
+    return {
+      channelId,
+      texts,
+      types: root.components.map((child) => child.type),
+    };
   });
 }
 
@@ -122,7 +130,7 @@ async function seedRelease(
   return release;
 }
 
-async function seedPack(): Promise<Modpack> {
+async function seedPack(overrides: Partial<Modpack> = {}): Promise<Modpack> {
   await Q.curseforge.project.create({
     id: PACK_PROJECT_ID,
     classId: 4471,
@@ -135,6 +143,7 @@ async function seedPack(): Promise<Modpack> {
     name: "Vitest Pack",
     curseforgeProjectId: PACK_PROJECT_ID,
     shipsServerPack: true,
+    ...overrides,
   });
 }
 
@@ -238,11 +247,11 @@ describe("announceReleaseChangelog", () => {
     expect(sendMock).toHaveBeenCalledTimes(1);
     const [message] = sentMessages();
     expect(message.channelId).toBe(CHANNEL_ID);
-    expect(message.texts[0]).toContain("## 📦 Vitest Pack 1.1.0");
+    expect(message.texts[0]).toContain("## Vitest Pack 1.1.0");
     expect(message.texts[0]).toContain("NeoForge 21.1.172");
     expect(message.texts[0]).toContain("Changes since 1.0.0");
-    expect(message.texts).toContain("### ✨ Added (1)");
-    expect(message.texts).toContain("### ⬆️ Updated (1)");
+    expect(message.texts).toContain("### Added (1)");
+    expect(message.texts).toContain("### Updated (1)");
     expect(message.texts.join("\n")).toContain(
       "`Vitest Mod " + kept + " 1.0.0` → `Vitest Mod " + kept + " 1.1.0`",
     );
@@ -494,5 +503,24 @@ describe("announceReleaseChangelog", () => {
         await Q.modpack.release.announcement.findAll({ releaseId: release.id })
       ).map((row) => row.messageId),
     ).toEqual(["message-1"]);
+  });
+
+  it("opens with the pack's title image when one is set", async () => {
+    const banner = "https://assets.createrington.com/titles/vitest-pack.png";
+    const modpack = await seedPack({ titleImageUrl: banner });
+    const [project] = await seedProjects(1);
+    await seedRelease(modpack, "9.0.0", []);
+    const release = await seedRelease(modpack, "9.1.0", [
+      fileRow(project, "1.0.0"),
+    ]);
+
+    await announce(modpack, release, true);
+
+    const [message] = sentMessages();
+    expect(message.types[0]).toBe(ComponentType.MediaGallery);
+    expect(message.texts[0].startsWith("**9.1.0**\n-# Minecraft 1.21.1")).toBe(
+      true,
+    );
+    expect(message.texts[0]).not.toContain("## ");
   });
 });
