@@ -99,7 +99,7 @@ describe("ModpackChangelogComponentPresets.release", () => {
 
     const nodes = children(messages[0]);
     const [header] = texts(nodes);
-    expect(header).toContain("## 📦 Rails n Sails 1.3.0");
+    expect(header).toContain("## Rails n Sails 1.3.0");
     expect(header).toContain("Minecraft 1.21.1");
     expect(header).toContain("NeoForge 21.1.172");
     expect(header).toContain("214 mods");
@@ -111,9 +111,9 @@ describe("ModpackChangelogComponentPresets.release", () => {
     expect(header).not.toContain("Part ");
 
     expect(headings(nodes)).toEqual([
-      "### ✨ Added (2)",
-      "### ⬆️ Updated (1)",
-      "### 🗑️ Removed (1)",
+      "### Added (2)",
+      "### Updated (1)",
+      "### Removed (1)",
     ]);
 
     const entrySections = sections(nodes);
@@ -149,7 +149,7 @@ describe("ModpackChangelogComponentPresets.release", () => {
       expect(validateComponentsV2(message)).toBeNull();
       const nodes = children(message);
       const [header] = texts(nodes);
-      expect(header).toContain("## 📦 Rails n Sails 1.3.0");
+      expect(header).toContain("## Rails n Sails 1.3.0");
       expect(header).toContain(`Part ${index + 1} of ${messages.length}`);
       expect(header).toContain("**40 added**");
       expect(hasDownloadRow(nodes)).toBe(index === messages.length - 1);
@@ -158,15 +158,9 @@ describe("ModpackChangelogComponentPresets.release", () => {
     expect(entriesSeen).toBe(75);
 
     const allHeadings = messages.flatMap((m) => headings(children(m)));
-    expect(allHeadings.filter((h) => h === "### ✨ Added (40)")).toHaveLength(
-      1,
-    );
-    expect(allHeadings.filter((h) => h === "### ⬆️ Updated (30)")).toHaveLength(
-      1,
-    );
-    expect(allHeadings.filter((h) => h === "### 🗑️ Removed (5)")).toHaveLength(
-      1,
-    );
+    expect(allHeadings.filter((h) => h === "### Added (40)")).toHaveLength(1);
+    expect(allHeadings.filter((h) => h === "### Updated (30)")).toHaveLength(1);
+    expect(allHeadings.filter((h) => h === "### Removed (5)")).toHaveLength(1);
     expect(allHeadings.some((h) => h.endsWith("(continued)"))).toBe(true);
     for (const message of messages) {
       const nodes = children(message);
@@ -221,7 +215,7 @@ describe("ModpackChangelogComponentPresets.release", () => {
     const nodes = children(messages[0]);
     const [header] = texts(nodes);
     expect(header).toBe(
-      "## 📦 Rails n Sails\n-# 1 mod\n**1 added** · **0 updated** · **0 removed** · 200 unchanged",
+      "## Rails n Sails\n-# 1 mod\n**1 added** · **0 updated** · **0 removed** · 200 unchanged",
     );
     expect(hasDownloadRow(nodes)).toBe(false);
     expect(sections(nodes)).toHaveLength(0);

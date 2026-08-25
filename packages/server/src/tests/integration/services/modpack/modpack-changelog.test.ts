@@ -238,11 +238,11 @@ describe("announceReleaseChangelog", () => {
     expect(sendMock).toHaveBeenCalledTimes(1);
     const [message] = sentMessages();
     expect(message.channelId).toBe(CHANNEL_ID);
-    expect(message.texts[0]).toContain("## 📦 Vitest Pack 1.1.0");
+    expect(message.texts[0]).toContain("## Vitest Pack 1.1.0");
     expect(message.texts[0]).toContain("NeoForge 21.1.172");
     expect(message.texts[0]).toContain("Changes since 1.0.0");
-    expect(message.texts).toContain("### ✨ Added (1)");
-    expect(message.texts).toContain("### ⬆️ Updated (1)");
+    expect(message.texts).toContain("### Added (1)");
+    expect(message.texts).toContain("### Updated (1)");
     expect(message.texts.join("\n")).toContain(
       "`Vitest Mod " + kept + " 1.0.0` → `Vitest Mod " + kept + " 1.1.0`",
     );

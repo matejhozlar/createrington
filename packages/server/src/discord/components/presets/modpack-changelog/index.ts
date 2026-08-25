@@ -54,9 +54,9 @@ type ChangeGroup = "added" | "updated" | "removed";
 type Child = ComponentContainer["components"][number];
 
 const GROUPS: Array<{ key: ChangeGroup; heading: string }> = [
-  { key: "added", heading: "✨ Added" },
-  { key: "updated", heading: "⬆️ Updated" },
-  { key: "removed", heading: "🗑️ Removed" },
+  { key: "added", heading: "Added" },
+  { key: "updated", heading: "Updated" },
+  { key: "removed", heading: "Removed" },
 ];
 
 const NAME_MAX = 80;
@@ -130,7 +130,7 @@ function header(input: ChangelogInput, partLabel: string | null): string {
   const summary = input.previousVersion
     ? `Changes since ${escapeMarkdown(input.previousVersion)}: ${counts}`
     : counts;
-  return [`## 📦 ${escapeMarkdown(release.title)}`, `-# ${meta}`, summary].join(
+  return [`## ${escapeMarkdown(release.title)}`, `-# ${meta}`, summary].join(
     "\n",
   );
 }
@@ -139,7 +139,7 @@ function footer(release: ChangelogRelease): Child[] {
   if (!release.downloadUrl) return [];
   return [
     separator(),
-    actionRow([linkButton(DOWNLOAD_LABEL, release.downloadUrl, "⬇️")]),
+    actionRow([linkButton(DOWNLOAD_LABEL, release.downloadUrl)]),
   ];
 }
 
@@ -215,7 +215,7 @@ export const ModpackChangelogComponentPresets = {
               ...children,
               ...(last ? footer(input.release) : []),
             ],
-            { accentColor: ComponentColors.Premium },
+            { accentColor: ComponentColors.Info },
           ),
         ],
       };
