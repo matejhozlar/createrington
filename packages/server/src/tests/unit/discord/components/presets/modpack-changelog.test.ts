@@ -36,6 +36,8 @@ function input(overrides: Partial<ChangelogInput> = {}): ChangelogInput {
   return {
     release: {
       title: "Rails n Sails 1.3.0",
+      label: "1.3.0",
+      titleImageUrl: null,
       minecraftVersion: "1.21.1",
       modLoader: "NeoForge 21.1.172",
       modCount: 214,
@@ -202,6 +204,8 @@ describe("ModpackChangelogComponentPresets.release", () => {
       input({
         release: {
           title: "Rails n Sails",
+          label: "Rails n Sails",
+          titleImageUrl: null,
           minecraftVersion: null,
           modLoader: null,
           modCount: 1,
@@ -263,5 +267,30 @@ describe("ModpackChangelogComponentPresets.release", () => {
     expect(body).toContain(
       "**[Mod 1](https://www.curseforge.com/minecraft/mc-mods/mod-(1%29)**",
     );
+  });
+
+  it("opens every part with the title image instead of a heading when the pack has one", () => {
+    const banner = "https://assets.createrington.com/titles/rails-n-sails.png";
+    const base = input();
+    const messages = ModpackChangelogComponentPresets.release({
+      ...base,
+      release: { ...base.release, titleImageUrl: banner },
+      added: entries(40),
+    });
+
+    expect(messages.length).toBeGreaterThan(1);
+    for (const message of messages) {
+      expect(validateComponentsV2(message)).toBeNull();
+      const [gallery, header] = children(message);
+      expect(gallery).toEqual({
+        type: "media_gallery",
+        items: [
+          { url: banner, description: "Rails n Sails 1.3.0", spoiler: false },
+        ],
+      });
+      if (header.type !== "text") throw new Error("expected the header text");
+      expect(header.content.startsWith("**1.3.0**\n-# ")).toBe(true);
+      expect(header.content).not.toContain("## ");
+    }
   });
 });

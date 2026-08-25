@@ -19,7 +19,9 @@ import { workshopMod } from "./workshop";
 // until its first publish; live state of members derives from its manifest.
 // shipsServerPack flips on the first release read together with a server
 // pack; from then on a client-only read is refused instead of applied, since
-// it would drop every server-side member.
+// it would drop every server-side member. titleImageUrl is the full-width
+// banner at the top of the pack's changelog posts; null falls back to a text
+// heading.
 
 export const modpack = pgTable(
   "modpack",
@@ -30,6 +32,7 @@ export const modpack = pgTable(
     curseforgeProjectId: integer("curseforge_project_id"),
     shipsServerPack: boolean("ships_server_pack").notNull().default(false),
     serverId: integer("server_id").references(() => server.id),
+    titleImageUrl: text("title_image_url"),
     createdBy: text("created_by").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()

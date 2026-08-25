@@ -4,6 +4,7 @@ import {
   container,
   linkButton,
   measureComponentsV2,
+  mediaGallery,
   section,
   separator,
   text,
@@ -24,6 +25,8 @@ import {
 
 export interface ChangelogRelease {
   title: string;
+  label: string;
+  titleImageUrl: string | null;
   minecraftVersion: string | null;
   modLoader: string | null;
   modCount: number;
@@ -108,7 +111,7 @@ function headingNode(
   );
 }
 
-function header(input: ChangelogInput, partLabel: string | null): string {
+function headerNodes(input: ChangelogInput, partLabel: string | null): Child[] {
   const { release } = input;
   const meta = [
     release.minecraftVersion ? `Minecraft ${release.minecraftVersion}` : null,
@@ -130,9 +133,23 @@ function header(input: ChangelogInput, partLabel: string | null): string {
   const summary = input.previousVersion
     ? `Changes since ${escapeMarkdown(input.previousVersion)}: ${counts}`
     : counts;
-  return [`## ${escapeMarkdown(release.title)}`, `-# ${meta}`, summary].join(
-    "\n",
-  );
+  if (release.titleImageUrl) {
+    return [
+      mediaGallery([
+        { url: release.titleImageUrl, description: release.title },
+      ]),
+      text(
+        [`**${escapeMarkdown(release.label)}**`, `-# ${meta}`, summary].join(
+          "\n",
+        ),
+      ),
+    ];
+  }
+  return [
+    text(
+      [`## ${escapeMarkdown(release.title)}`, `-# ${meta}`, summary].join("\n"),
+    ),
+  ];
 }
 
 function footer(release: ChangelogRelease): Child[] {
@@ -145,7 +162,7 @@ function footer(release: ChangelogRelease): Child[] {
 
 function fits(input: ChangelogInput, children: Child[]): boolean {
   const probe = container([
-    text(header(input, PART_PLACEHOLDER)),
+    ...headerNodes(input, PART_PLACEHOLDER),
     separator(),
     ...children,
     separator(),
@@ -210,7 +227,7 @@ export const ModpackChangelogComponentPresets = {
         components: [
           container(
             [
-              text(header(input, partLabel)),
+              ...headerNodes(input, partLabel),
               separator(),
               ...children,
               ...(last ? footer(input.release) : []),

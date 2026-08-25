@@ -20,6 +20,7 @@ interface ModpackSettings {
   description: string | null;
   curseforgeProjectId: number | null;
   shipsServerPack: boolean;
+  titleImageUrl: string | null;
 }
 
 export function ModpackSettingsDialog({
@@ -41,6 +42,9 @@ export function ModpackSettingsDialog({
   );
   const [shipsServerPack, setShipsServerPack] = useState(
     modpack.shipsServerPack,
+  );
+  const [titleImageUrl, setTitleImageUrl] = useState(
+    modpack.titleImageUrl ?? "",
   );
 
   const updateMutation = trpc.admin.modpacks.update.useMutation({
@@ -71,6 +75,7 @@ export function ModpackSettingsDialog({
           ? Number(publishedPackId)
           : null,
         shipsServerPack,
+        titleImageUrl: titleImageUrl.trim() || null,
       },
     });
   };
@@ -115,6 +120,22 @@ export function ModpackSettingsDialog({
               Set this once the pack is on CurseForge. It is what "Check
               Published Pack" reads, and it applies to every workshop feeding
               this modpack.
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="modpack-settings-title-image">
+              Title Image URL (Optional)
+            </Label>
+            <Input
+              id="modpack-settings-title-image"
+              type="url"
+              placeholder="https://assets.createrington.com/titles/..."
+              value={titleImageUrl}
+              onChange={(e) => setTitleImageUrl(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Full-width banner at the top of this pack's changelog posts in
+              Discord. Leave empty to use a text heading instead.
             </p>
           </div>
           <label className="flex cursor-pointer items-start gap-3 rounded-md border border-border bg-card p-3 hover:border-[var(--border-strong)]">

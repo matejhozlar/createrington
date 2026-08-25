@@ -1,0 +1,1 @@
+ALTER TABLE "modpack" ADD COLUMN "title_image_url" text;
