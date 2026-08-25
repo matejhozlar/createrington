@@ -6,6 +6,7 @@ export {
   buildComponentsV2,
   container,
   linkButton,
+  measureComponentsV2,
   mediaGallery,
   section,
   separator,

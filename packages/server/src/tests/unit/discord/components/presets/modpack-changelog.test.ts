@@ -252,4 +252,22 @@ describe("ModpackChangelogComponentPresets.release", () => {
     expect(bodies[1]).toContain("· disabled");
     expect(bodies[2]).toContain("`Enabled` → `Disabled`");
   });
+
+  it("keeps a link intact when the project URL contains a closing parenthesis", () => {
+    const messages = ModpackChangelogComponentPresets.release(
+      input({
+        added: [
+          entry(1, {
+            url: "https://www.curseforge.com/minecraft/mc-mods/mod-(1)",
+          }),
+        ],
+      }),
+    );
+    const [body] = sections(children(messages[0])).map(
+      (section) => section.components[0].content,
+    );
+    expect(body).toContain(
+      "**[Mod 1](https://www.curseforge.com/minecraft/mc-mods/mod-(1%29)**",
+    );
+  });
 });

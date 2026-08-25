@@ -75,7 +75,9 @@ function code(value: string): string {
 
 function entryBody(entry: ChangelogEntry, group: ChangeGroup): string {
   const name = escapeMarkdown(clip(entry.name, NAME_MAX));
-  const title = entry.url ? `**[${name}](${entry.url})**` : `**${name}**`;
+  const title = entry.url
+    ? `**[${name}](${entry.url.replace(/\)/g, "%29")})**`
+    : `**${name}**`;
   const tags: string[] = [];
   if (entry.classId !== CURSEFORGE_CLASSES.mods) {
     tags.push(curseforgeClassLabel(entry.classId));

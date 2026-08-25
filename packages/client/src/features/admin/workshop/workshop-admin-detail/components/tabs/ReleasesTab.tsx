@@ -73,7 +73,10 @@ function AnnouncementBadge({
         "gap-1 text-xs",
         complete ? ANNOUNCED_CLASS : ANNOUNCING_CLASS,
       )}
-      title={announcement.presets.map((preset) => preset.name).join(", ")}
+      title={
+        announcement.presets.map((preset) => preset.name).join(", ") ||
+        undefined
+      }
     >
       <Megaphone className="size-3" />
       {complete

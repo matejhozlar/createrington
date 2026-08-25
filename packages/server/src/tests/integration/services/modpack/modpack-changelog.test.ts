@@ -419,4 +419,80 @@ describe("announceReleaseChangelog", () => {
       await Q.modpack.release.announcement.count({ releaseId: release.id }),
     ).toBe(0);
   });
+
+  it("skips the first recorded release of a modpack", async () => {
+    const modpack = await seedPack();
+    const [project] = await seedProjects(1);
+    const release = await seedRelease(modpack, "6.0.0", [
+      fileRow(project, "1.0.0"),
+    ]);
+
+    await announce(modpack, release, true);
+
+    expect(sendMock).not.toHaveBeenCalled();
+    expect(
+      await Q.modpack.release.announcement.count({ releaseId: release.id }),
+    ).toBe(0);
+  });
+
+  it("keeps the part suffix when the release label is too long for a preset name", async () => {
+    const modpack = await seedPack();
+    const projects = await seedProjects(30);
+    await seedRelease(modpack, "7.0.0", []);
+    const version = `7.1.0-${"nightly".repeat(20)}`;
+    const release = await seedRelease(
+      modpack,
+      version,
+      projects.map((id) => fileRow(id, "1.0.0")),
+    );
+
+    await announce(modpack, release, true);
+
+    const rows = await Q.modpack.release.announcement.findAll(
+      { releaseId: release.id },
+      { orderBy: "part", orderDirection: "asc" },
+    );
+    expect(rows.length).toBeGreaterThan(1);
+    expect(rows.every((row) => row.messageId !== null)).toBe(true);
+    const presets = await Q.discord.embed.preset.findAll({
+      id: { $in: rows.map((row) => row.presetId!) },
+    });
+    expect(presets).toHaveLength(rows.length);
+    const names = presets.map((preset) => preset.name);
+    expect(new Set(names).size).toBe(rows.length);
+    for (const row of rows) {
+      const preset = presets.find((p) => p.id === row.presetId)!;
+      expect(preset.name.length).toBeLessThanOrEqual(100);
+      expect(preset.name.endsWith(` (${row.part}/${rows.length})`)).toBe(true);
+      expect(preset.name.startsWith("Changelog 7.1.0-nightly")).toBe(true);
+    }
+  });
+
+  it("drops malformed cached URLs instead of failing the part", async () => {
+    const modpack = await seedPack();
+    const broken = await seedProject(ctx, "Broken Links", {
+      thumbnailUrl: "not a url",
+      websiteUrl: "javascript:alert(1)",
+    });
+    await seedRelease(modpack, "8.0.0", []);
+    const release = await seedRelease(modpack, "8.1.0", [
+      fileRow(broken, "1.0.0"),
+    ]);
+
+    await announce(modpack, release, true);
+
+    expect(sendMock).toHaveBeenCalledTimes(1);
+    const [message] = sentMessages();
+    const body = message.texts.find((t) => t.includes("Broken Links"));
+    expect(body).toBeDefined();
+    expect(body).toMatch(
+      /^\*\*\[Broken Links\]\(https:\/\/www\.curseforge\.com\/minecraft\/mc-mods\//,
+    );
+    expect(body).not.toContain("javascript:");
+    expect(
+      (
+        await Q.modpack.release.announcement.findAll({ releaseId: release.id })
+      ).map((row) => row.messageId),
+    ).toEqual(["message-1"]);
+  });
 });

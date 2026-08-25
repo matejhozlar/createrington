@@ -16,6 +16,7 @@ import {
 } from "@/discord/components/presets/modpack-changelog";
 import {
   componentsDataSchema,
+  httpUrlSchema,
   type ComponentsData,
 } from "@createrington/shared/api/embed";
 import { CURSEFORGE_CLASSES } from "@createrington/shared/workshop";
@@ -30,6 +31,7 @@ import type { ModpackReleaseDiff, ModpackReleaseDiffEntry } from "./index";
 export const CHANGELOG_PRESET_CATEGORY = "Changelogs";
 const PRESET_AUTHOR = "system";
 const PRESET_NAME_MAX = 100;
+const PRESET_NAME_SEARCH_PREFIX = 40;
 
 const CLASS_PATHS: Record<number, string> = {
   [CURSEFORGE_CLASSES.mods]: "mc-mods",
@@ -64,8 +66,9 @@ export interface AnnounceReleaseOptions {
  * preset is what a resumed part sends. Parts are rows keyed by release and
  * part number, which is what makes a release announce once: a part without a
  * message id is the only thing ever (re)sent. No-op while the
- * modpack_changelog feature flag is off, and a release that had no parts
- * created by then is never announced later.
+ * modpack_changelog feature flag is off, for the first recorded release of a
+ * modpack (nothing to diff against), and for a release that had no parts
+ * created by the time either applied.
  */
 export async function announceReleaseChangelog(
   options: AnnounceReleaseOptions,
@@ -98,48 +101,76 @@ async function run({
   }
 
   const diff = await loadDiff();
+  const label = releaseLabel(diff.release);
+  if (existing.length === 0 && diff.previous === null) {
+    logger.info(
+      `Changelog ${label} is the first recorded release of modpack #${modpack.id}, nothing to compare against, not announced`,
+    );
+    return;
+  }
+
   const parts = ModpackChangelogComponentPresets.release(
     await toChangelogInput(modpack, diff),
   );
+  if (existing.length > 0 && parts.length !== existing[0].partCount) {
+    logger.warn(
+      `Changelog ${label} re-rendered into ${parts.length} parts but the announcement has ${existing[0].partCount}, stored presets are sent as saved`,
+    );
+  }
   const rows =
     existing.length > 0 ? existing : await createParts(diff.release, parts);
   if (rows === null) return;
 
   const client = await getService(Services.DISCORD_MAIN_BOT);
   const messages = DiscordMessageService.getInstance(client);
-  const label = releaseLabel(diff.release);
   let sent = 0;
   for (const row of rows) {
     if (row.messageId !== null) continue;
+    const partLabel = `Changelog ${label} part ${row.part}/${row.partCount}`;
     const data = await payloadFor(row, parts);
     if (data === null) {
-      logger.warn(
-        `Changelog ${label} part ${row.part}/${row.partCount} has nothing to send, stopping`,
-      );
+      logger.warn(`${partLabel} has nothing to send, stopping`);
       break;
     }
-    const built = buildComponentsMessage(data);
+    let built: ReturnType<typeof buildComponentsMessage>;
+    try {
+      built = buildComponentsMessage(data);
+    } catch (error) {
+      logger.warn(`${partLabel} could not be built, stopping:`, error);
+      break;
+    }
     const result = await messages.send({
       channelId: row.channelId,
       components: built.components,
       flags: built.flags,
     });
-    if (!result.success || !result.messageId) {
+    const messageId = result.messageId;
+    if (!result.success || !messageId) {
       logger.warn(
-        `Changelog ${label} part ${row.part}/${row.partCount} failed to send, the next reconcile retries: ${result.error ?? "unknown error"}`,
+        `${partLabel} failed to send, the next reconcile retries: ${result.error ?? "unknown error"}`,
       );
       break;
     }
-    await Q.modpack.release.announcement.updateAll(
-      { messageId: result.messageId, sentAt: new Date() },
-      { id: row.id },
-    );
-    if (row.presetId !== null) {
-      await Q.discord.embed.preset.message.create({
-        presetId: row.presetId,
-        channelId: row.channelId,
-        messageId: result.messageId,
+    try {
+      await db.inTransaction(async (tx) => {
+        await tx.modpack.release.announcement.updateAll(
+          { messageId, sentAt: new Date() },
+          { id: row.id },
+        );
+        if (row.presetId !== null) {
+          await tx.discord.embed.preset.message.create({
+            presetId: row.presetId,
+            channelId: row.channelId,
+            messageId,
+          });
+        }
       });
+    } catch (error) {
+      logger.warn(
+        `${partLabel} was posted as message ${messageId} but recording it failed, the next reconcile posts it again:`,
+        error,
+      );
+      break;
     }
     sent++;
   }
@@ -179,8 +210,19 @@ async function createParts(
       return rows;
     });
   } catch (error) {
-    if (error instanceof ConstraintViolationError) return null;
-    throw error;
+    if (!(error instanceof ConstraintViolationError)) throw error;
+    const label = releaseLabel(release);
+    const claimed = await Q.modpack.release.announcement.count({
+      releaseId: release.id,
+    });
+    if (claimed > 0) {
+      logger.info(`Changelog ${label} was claimed by a concurrent run`);
+    } else {
+      logger.warn(
+        `Changelog ${label} could not be saved as presets and was not announced: ${error.message}`,
+      );
+    }
+    return null;
   }
 }
 
@@ -210,10 +252,10 @@ async function ensureCategory(): Promise<number> {
   }
 }
 
-function clipName(name: string): string {
-  return name.length > PRESET_NAME_MAX
-    ? `${name.slice(0, PRESET_NAME_MAX - 1)}…`
-    : name;
+function presetName(stem: string, suffix: string): string {
+  const max = PRESET_NAME_MAX - suffix.length;
+  const clipped = stem.length > max ? `${stem.slice(0, max - 1)}…` : stem;
+  return `${clipped}${suffix}`;
 }
 
 async function presetNames(
@@ -224,18 +266,24 @@ async function presetNames(
   const taken = new Set(
     (
       await Q.discord.embed.preset.findAll({
-        name: { $ilike: `${escapeLike(base)}%` },
+        name: {
+          $ilike: `${escapeLike(base.slice(0, PRESET_NAME_SEARCH_PREFIX))}%`,
+        },
       })
     ).map((preset) => preset.name),
   );
+  const stems = [
+    base,
+    `${base} #${release.id}`,
+    `${base} #${release.id}-${Date.now()}`,
+  ];
   return Array.from({ length: count }, (_, index) => {
     const suffix = count > 1 ? ` (${index + 1}/${count})` : "";
-    const candidates = [
-      `${base}${suffix}`,
-      `${base} #${release.id}${suffix}`,
-      `${base} #${release.id}-${Date.now()}${suffix}`,
-    ].map(clipName);
-    return candidates.find((name) => !taken.has(name)) ?? candidates[2];
+    const candidates = stems.map((stem) => presetName(stem, suffix));
+    const name =
+      candidates.find((candidate) => !taken.has(candidate)) ?? candidates[2];
+    taken.add(name);
+    return name;
   });
 }
 
@@ -270,16 +318,24 @@ function loaderLabel(loader: string | null): string | null {
   return rest.length > 0 ? `${pretty} ${rest.join("-")}` : pretty;
 }
 
+function httpUrl(value: string | null | undefined): string | null {
+  if (!value) return null;
+  return httpUrlSchema.safeParse(value).success ? value : null;
+}
+
 function fileLabel(row: ReleaseModRow): string {
   const raw = row.displayName ?? row.fileName ?? `File #${row.fileId}`;
   return raw.replace(/\.jar$/i, "");
 }
 
 function projectUrl(row: ReleaseModRow): string | null {
-  if (row.websiteUrl) return row.websiteUrl;
+  const cached = httpUrl(row.websiteUrl);
+  if (cached) return cached;
   const path = CLASS_PATHS[row.classId];
   return path
-    ? `https://www.curseforge.com/minecraft/${path}/${row.projectSlug}`
+    ? httpUrl(
+        `https://www.curseforge.com/minecraft/${path}/${encodeURIComponent(row.projectSlug)}`,
+      )
     : null;
 }
 
@@ -296,7 +352,7 @@ function toEntry(entry: ModpackReleaseDiffEntry): ChangelogEntry {
   return {
     name: entry.projectName,
     url: projectUrl(entry),
-    thumbnailUrl: entry.thumbnailUrl,
+    thumbnailUrl: httpUrl(entry.thumbnailUrl),
     classId: entry.classId,
     disabled: !entry.required,
     label: flagOnly ? stateLabel(entry.required) : fileLabel(entry),
@@ -317,6 +373,7 @@ async function toChangelogInput(
   const project = modpack.curseforgeProjectId
     ? await Q.curseforge.project.find({ id: modpack.curseforgeProjectId })
     : null;
+  const packUrl = httpUrl(project?.websiteUrl);
   return {
     release: {
       title:
@@ -328,8 +385,8 @@ async function toChangelogInput(
       modLoader: loaderLabel(release.modLoader),
       modCount: release.modCount,
       publishedAt: release.publishedAt,
-      downloadUrl: project?.websiteUrl
-        ? `${project.websiteUrl}/files/${release.curseforgeFileId}`
+      downloadUrl: packUrl
+        ? httpUrl(`${packUrl}/files/${release.curseforgeFileId}`)
         : null,
     },
     previousVersion: diff.previous ? releaseLabel(diff.previous) : null,
