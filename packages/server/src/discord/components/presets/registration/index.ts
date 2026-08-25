@@ -60,8 +60,7 @@ function registerRow(): ActionRowBuilder<ButtonBuilder> {
   const button = new ButtonBuilder()
     .setCustomId(REGISTER_BUTTON_ID)
     .setLabel("Register")
-    .setStyle(ButtonStyle.Primary)
-    .setEmoji("🎮");
+    .setStyle(ButtonStyle.Primary);
   return new ActionRowBuilder<ButtonBuilder>().addComponents(button);
 }
 
