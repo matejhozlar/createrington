@@ -316,6 +316,7 @@ export class ModpackService {
       curseforgeProjectId: number | null;
       shipsServerPack: boolean;
       serverId: number | null;
+      titleImageUrl: string | null;
     }>,
   ): Promise<Modpack> {
     const modpack = await this.getModpack(modpackId);

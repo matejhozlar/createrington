@@ -39,10 +39,17 @@ export function workshopFormError(fields: {
   return null;
 }
 
-export function modpackFormError(publishedPackId: string): string | null {
+export function modpackFormError(
+  publishedPackId: string,
+  titleImageUrl = "",
+): string | null {
   const trimmed = publishedPackId.trim();
   if (trimmed && (!Number.isInteger(Number(trimmed)) || Number(trimmed) <= 0)) {
     return "Published modpack project ID must be a positive number";
+  }
+  const url = titleImageUrl.trim();
+  if (url && !/^https?:\/\/\S+$/i.test(url)) {
+    return "Title image URL must start with http:// or https://";
   }
   return null;
 }
