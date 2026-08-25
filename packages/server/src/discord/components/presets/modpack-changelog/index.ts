@@ -64,6 +64,7 @@ const GROUPS: Array<{ key: ChangeGroup; heading: string }> = [
 
 const NAME_MAX = 80;
 const LABEL_MAX = 60;
+const TITLE_MAX = 200;
 const PART_PLACEHOLDER = "Part 99 of 99";
 const DOWNLOAD_LABEL = "Download on CurseForge";
 const NO_CHANGES = "No mod changes in this release.";
@@ -131,24 +132,23 @@ function headerNodes(input: ChangelogInput, partLabel: string | null): Child[] {
     `${input.unchanged} unchanged`,
   ].join(" · ");
   const summary = input.previousVersion
-    ? `Changes since ${escapeMarkdown(input.previousVersion)}: ${counts}`
+    ? `Changes since ${escapeMarkdown(clip(input.previousVersion, LABEL_MAX))}: ${counts}`
     : counts;
+  const title = clip(release.title, TITLE_MAX);
   if (release.titleImageUrl) {
     return [
-      mediaGallery([
-        { url: release.titleImageUrl, description: release.title },
-      ]),
+      mediaGallery([{ url: release.titleImageUrl, description: title }]),
       text(
-        [`**${escapeMarkdown(release.label)}**`, `-# ${meta}`, summary].join(
-          "\n",
-        ),
+        [
+          `**${escapeMarkdown(clip(release.label, LABEL_MAX))}**`,
+          `-# ${meta}`,
+          summary,
+        ].join("\n"),
       ),
     ];
   }
   return [
-    text(
-      [`## ${escapeMarkdown(release.title)}`, `-# ${meta}`, summary].join("\n"),
-    ),
+    text([`## ${escapeMarkdown(title)}`, `-# ${meta}`, summary].join("\n")),
   ];
 }
 

@@ -61,7 +61,7 @@ export function ModpackSettingsDialog({
   });
 
   const handleSave = () => {
-    const validationError = modpackFormError(publishedPackId);
+    const validationError = modpackFormError(publishedPackId, titleImageUrl);
     if (validationError) {
       toast.error(validationError);
       return;
@@ -128,7 +128,8 @@ export function ModpackSettingsDialog({
             </Label>
             <Input
               id="modpack-settings-title-image"
-              type="url"
+              inputMode="url"
+              maxLength={2048}
               placeholder="https://assets.createrington.com/titles/..."
               value={titleImageUrl}
               onChange={(e) => setTitleImageUrl(e.target.value)}

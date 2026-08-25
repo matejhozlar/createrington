@@ -293,4 +293,27 @@ describe("ModpackChangelogComponentPresets.release", () => {
       expect(header.content).not.toContain("## ");
     }
   });
+
+  it("clips an absurd release title and label so the header stays valid", () => {
+    const base = input();
+    const messages = ModpackChangelogComponentPresets.release({
+      ...base,
+      release: {
+        ...base.release,
+        title: "T".repeat(3000),
+        label: "L".repeat(500),
+        titleImageUrl: "https://assets.createrington.com/titles/x.png",
+      },
+      previousVersion: "P".repeat(500),
+      added: entries(1),
+    });
+    expect(messages).toHaveLength(1);
+    expect(validateComponentsV2(messages[0])).toBeNull();
+    const [gallery, header] = children(messages[0]);
+    if (gallery.type !== "media_gallery") throw new Error("expected a gallery");
+    expect(gallery.items[0].description!.length).toBeLessThanOrEqual(1024);
+    if (header.type !== "text") throw new Error("expected the header text");
+    expect(header.content.length).toBeLessThan(600);
+    expect(header.content).toContain("…");
+  });
 });
