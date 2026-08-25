@@ -1,3 +1,13 @@
+## v1.41.0 (2026-08-25)
+
+### @createrington/server (1.41.0 → 1.42.0)
+- [add] Add `setFile` sandbox endpoint and `setModFile` service method letting the sandbox choose which CurseForge file a `next_update` mod ships in the next pack export, with ownership validation, dependency re-resolution, and optimistic concurrency guards
+- [add] Add `file_chosen` boolean column to `workshop_mod` that marks an explicit file pick; unchosen mods fall back to the newest matching file at build time
+- [add] Clear `fileChosen` automatically whenever a mod moves out of `next_update` (via review, rejection, or modpack reconcile)
+- [add] Add `logModFile` audit entry for file choice and reset actions
+- [chore] Bump `@createrington/api-types` to 0.9.0
+- [chore] Add integration tests for file choice, reset, ownership rejection, status guards, and choice clearing on review
+
 ## v1.40.0 (2026-08-23)
 
 ### @createrington/server (1.40.0 → 1.41.0)

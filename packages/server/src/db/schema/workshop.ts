@@ -58,9 +58,12 @@ export const workshop = pgTable(
 );
 
 // --- workshop_mod ---
-// File columns snapshot the submit-time pick; pack builds re-resolve fresh.
-// required = whether a next_update mod should ship enabled; pack exports write
-// it into the manifest entry, after which the published manifest owns it.
+// File columns snapshot the submit-time pick; file_chosen marks that the
+// sandbox explicitly re-picked them for the next update (unchosen mods ship
+// the newest matching file at build time, with a warning). Any move out of
+// next_update clears the mark. required = whether a next_update mod should
+// ship enabled; pack exports write it into the manifest entry, after which
+// the published manifest owns it.
 
 export const workshopMod = pgTable(
   "workshop_mod",
@@ -82,6 +85,7 @@ export const workshopMod = pgTable(
     fileId: integer("file_id"),
     fileName: text("file_name"),
     fileReleaseType: integer("file_release_type"),
+    fileChosen: boolean("file_chosen").notNull().default(false),
     required: boolean("required").notNull().default(true),
     discordThreadId: text("discord_thread_id"),
     createdAt: timestamp("created_at", { withTimezone: true })

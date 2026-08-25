@@ -1140,11 +1140,11 @@ export class ModpackService {
       // at-most-once: a crash between the claim and the write loses them,
       // since no later sweep retries
       const claimed = await Q.workshop.mod.updateAll(
-        { status: to, required },
+        { status: to, required, fileChosen: false },
         { id: mod.id, status: mod.status },
       );
       if (claimed > 0) {
-        moved.push({ ...mod, status: to, required });
+        moved.push({ ...mod, status: to, required, fileChosen: false });
         recordModEvent({
           eventType: to === "in_pack" ? "shipped" : "dropped",
           workshopId: mod.workshopId,

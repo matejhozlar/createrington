@@ -24,9 +24,11 @@ import {
 } from "@createrington/shared/workshop";
 import {
   CurseForgeClass,
+  getFilesDetails,
   getMod,
   getModpackModIds,
   searchMods,
+  type CurseForgeFileDetail,
   type CurseForgeProjectData,
 } from "@/services/curseforge";
 import { ingestProjects } from "@/services/curseforge/ingest";
@@ -916,6 +918,8 @@ export class WorkshopService {
       }
     }
 
+    const fileChosenReset =
+      mod.status === "next_update" ? { fileChosen: false } : {};
     const changed = await Q.workshop.mod.updateAll(
       target === "rejected"
         ? {
@@ -924,6 +928,7 @@ export class WorkshopService {
             rejectNote: options.note?.trim() || null,
             reviewedBy: adminId,
             reviewedAt: new Date(),
+            ...fileChosenReset,
           }
         : {
             status: target,
@@ -931,6 +936,7 @@ export class WorkshopService {
             rejectNote: null,
             reviewedBy: adminId,
             reviewedAt: new Date(),
+            ...fileChosenReset,
           },
       { id: workshopModId, status: mod.status },
     );
@@ -1377,6 +1383,102 @@ export class WorkshopService {
       );
     }
     return { mod: { ...mod, required }, changed: true };
+  }
+
+  /**
+   * Choose which CurseForge file a mod waiting for the next update ships,
+   * or reset the choice with a null fileId so builds pick the newest
+   * matching file again. The choice is intent while the mod sits in
+   * next_update, so only that status can set it, and any move out of
+   * next_update clears it. Picking the mod's current file only flips the
+   * mark; a new file is validated for ownership and the dependency edges
+   * are re-resolved from it before returning. Validation stops at
+   * ownership on purpose: file details carry no game versions, and listing
+   * files by game version does not paginate, so a compatibility gate here
+   * would falsely reject old files; the sandbox picker only offers
+   * matching files. Throws ConflictError when a concurrent review moved
+   * the mod between the status check and the write.
+   */
+  async setModFile(
+    workshopModId: number,
+    fileId: number | null,
+  ): Promise<{ mod: WorkshopMod; changed: boolean }> {
+    const mod = await Q.workshop.mod.find({ id: workshopModId });
+    if (!mod)
+      throw new NotFoundError(`Workshop mod #${workshopModId} not found`);
+    if (mod.status !== "next_update") {
+      throw new BadRequestError(
+        "Only mods waiting for the next update can have their file chosen",
+      );
+    }
+    const workshop = await this.getWorkshop(mod.workshopId);
+    if (workshop.status === "archived") {
+      throw new BadRequestError("Cannot choose files in an archived workshop");
+    }
+
+    if (fileId === null) {
+      if (!mod.fileChosen) return { mod, changed: false };
+      const claimed = await Q.workshop.mod.updateAll(
+        { fileChosen: false },
+        { id: workshopModId, status: "next_update" },
+      );
+      if (claimed === 0) {
+        throw new ConflictError(
+          "This mod left the next update while it was being changed",
+        );
+      }
+      return { mod: { ...mod, fileChosen: false }, changed: true };
+    }
+
+    if (mod.fileId === fileId) {
+      if (mod.fileChosen) return { mod, changed: false };
+      const claimed = await Q.workshop.mod.updateAll(
+        { fileChosen: true },
+        { id: workshopModId, status: "next_update" },
+      );
+      if (claimed === 0) {
+        throw new ConflictError(
+          "This mod left the next update while it was being changed",
+        );
+      }
+      return { mod: { ...mod, fileChosen: true }, changed: true };
+    }
+
+    let details: CurseForgeFileDetail[];
+    try {
+      details = await getFilesDetails([fileId]);
+    } catch (error) {
+      logger.warn(`File lookup failed for workshop mod #${mod.id}:`, error);
+      throw new BadRequestError(
+        "Could not verify the file with CurseForge right now, please try again",
+      );
+    }
+    const detail = details.find((d) => d.fileId === fileId);
+    if (!detail || detail.projectId !== mod.curseforgeProjectId) {
+      throw new BadRequestError(
+        "This is not a CurseForge file of this mod's project",
+      );
+    }
+
+    const update = {
+      fileId: detail.fileId,
+      fileName: detail.fileName ?? detail.displayName,
+      fileReleaseType: detail.releaseType,
+      fileChosen: true,
+    };
+    const claimed = await Q.workshop.mod.updateAll(update, {
+      id: workshopModId,
+      status: "next_update",
+    });
+    if (claimed === 0) {
+      throw new ConflictError(
+        "This mod left the next update while it was being changed",
+      );
+    }
+    await tryResolveProjectDependencies(workshop, [
+      { curseforgeProjectId: mod.curseforgeProjectId, fileId: detail.fileId },
+    ]);
+    return { mod: { ...mod, ...update }, changed: true };
   }
 
   private async buildDependencyInfo(
