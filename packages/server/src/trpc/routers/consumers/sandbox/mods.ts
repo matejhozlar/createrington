@@ -4,6 +4,7 @@ import { auditActor, id, rethrowTrpc } from "@/trpc/utils";
 import { workshopService } from "@/services/workshop";
 import type { WorkshopModListItem } from "@/services/workshop";
 import {
+  logModFile,
   logModRequired,
   logModReview,
   logProjectEnvironment,
@@ -65,6 +66,7 @@ export interface SandboxWorkshopMod {
   curseforgeProjectId: number;
   project: SandboxModProject;
   file: SandboxModFile | null;
+  fileChosen: boolean;
   required: boolean;
   note: string | null;
   submitterName: string | null;
@@ -101,6 +103,7 @@ function toSandboxMod(item: WorkshopModListItem): SandboxWorkshopMod {
             name: item.fileName,
             releaseType: item.fileReleaseType,
           },
+    fileChosen: item.fileChosen,
     required: item.required,
     note: item.note,
     submitterName: item.submitterName,
@@ -122,7 +125,7 @@ export const sandboxModsRouter = router({
   list: adminProcedure
     .meta({
       description:
-        "Lists a workshop's approved, testing, and next_update mods with their project, chosen file, environment, dependency coverage, and whether it should ship enabled (required; only next_update rows can change it, see setRequired), newest first. This is the sandbox's testing queue.",
+        "Lists a workshop's approved, testing, and next_update mods with their project, chosen file (fileChosen marks an explicit pick, see setFile; a next_update mod without one should ship the newest matching file at build time), environment, dependency coverage, and whether it should ship enabled (required; only next_update rows can change it, see setRequired), newest first. This is the sandbox's testing queue.",
     })
     .input(z.object({ workshopId: id() }))
     .query(async ({ input }) => {
@@ -216,6 +219,32 @@ export const sandboxModsRouter = router({
         const item = await workshopService.getWorkshopModListItem(mod.id);
         if (changed) {
           await logModRequired(
+            { ...auditActor(ctx), source: "sandbox" },
+            mod,
+            item.project.name,
+          );
+        }
+        return { mod: toSandboxMod(item) };
+      } catch (error) {
+        rethrowTrpc(error);
+      }
+    }),
+
+  setFile: adminProcedure
+    .meta({
+      description:
+        "Chooses which CurseForge file a next_update mod ships in the next pack export, or resets the choice with a null fileId so builds pick the newest matching file again. The file must belong to the mod's project. Refused with a 400 for mods in any other status; any move out of next_update clears the choice.",
+    })
+    .input(z.object({ workshopModId: id(), fileId: id().nullable() }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        const { mod, changed } = await workshopService.setModFile(
+          input.workshopModId,
+          input.fileId,
+        );
+        const item = await workshopService.getWorkshopModListItem(mod.id);
+        if (changed) {
+          await logModFile(
             { ...auditActor(ctx), source: "sandbox" },
             mod,
             item.project.name,

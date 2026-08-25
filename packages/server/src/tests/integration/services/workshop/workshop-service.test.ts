@@ -32,6 +32,7 @@ vi.mock("@/services/curseforge", async (importOriginal) => {
     getModpackModIds: vi.fn(async () => new Set<number>()),
     searchMods: vi.fn(async () => []),
     getFilesDependencies: vi.fn(async () => []),
+    getFilesDetails: vi.fn(async () => []),
   };
 });
 
@@ -50,7 +51,7 @@ import {
 } from "@/app/middleware/error-handler";
 import { workshopService } from "@/services/workshop";
 import { issueBan, liftBan } from "@/services/workshop/bans";
-import { getFilesDependencies } from "@/services/curseforge";
+import { getFilesDependencies, getFilesDetails } from "@/services/curseforge";
 import type { WorkshopModStatus } from "@createrington/shared/db";
 import { ingestProject, ingestProjects } from "@/services/curseforge/ingest";
 import {
@@ -1427,6 +1428,169 @@ describe("WorkshopService.setModRequired", () => {
     await expect(
       workshopService.setModRequired(999_999_999, false),
     ).rejects.toThrow(NotFoundError);
+  });
+});
+
+describe("WorkshopService.setModFile", () => {
+  it("chooses, repeats as a no-op, and resets for a next_update mod", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const mod = await seedMod(ctx, workshop, {
+      submittedBy: USER_A,
+      status: "next_update",
+    });
+    expect(mod.fileChosen).toBe(false);
+    vi.mocked(getFilesDetails).mockResolvedValueOnce([
+      {
+        fileId: 555,
+        projectId: mod.curseforgeProjectId,
+        displayName: "Mod 1.2.0",
+        fileName: "mod-1.2.0.jar",
+        fileDate: "2026-08-01T00:00:00Z",
+        releaseType: 1,
+      },
+    ]);
+
+    const chosen = await workshopService.setModFile(mod.id, 555);
+    expect(chosen).toMatchObject({
+      changed: true,
+      mod: { fileId: 555, fileName: "mod-1.2.0.jar", fileChosen: true },
+    });
+    expect(await Q.workshop.mod.get({ id: mod.id })).toMatchObject({
+      fileId: 555,
+      fileName: "mod-1.2.0.jar",
+      fileReleaseType: 1,
+      fileChosen: true,
+      status: "next_update",
+    });
+
+    const repeated = await workshopService.setModFile(mod.id, 555);
+    expect(repeated).toMatchObject({ changed: false });
+
+    const reset = await workshopService.setModFile(mod.id, null);
+    expect(reset).toMatchObject({ changed: true, mod: { fileChosen: false } });
+    expect(await Q.workshop.mod.get({ id: mod.id })).toMatchObject({
+      fileId: 555,
+      fileChosen: false,
+    });
+
+    const resetAgain = await workshopService.setModFile(mod.id, null);
+    expect(resetAgain).toMatchObject({ changed: false });
+  });
+
+  it("refuses a file that does not belong to the mod's project", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const mod = await seedMod(ctx, workshop, {
+      submittedBy: USER_A,
+      status: "next_update",
+    });
+    vi.mocked(getFilesDetails).mockResolvedValueOnce([
+      {
+        fileId: 556,
+        projectId: mod.curseforgeProjectId + 1,
+        displayName: "Other 1.0.0",
+        fileName: "other-1.0.0.jar",
+        fileDate: "2026-08-01T00:00:00Z",
+        releaseType: 1,
+      },
+    ]);
+
+    await expect(workshopService.setModFile(mod.id, 556)).rejects.toThrow(
+      BadRequestError,
+    );
+    expect(await Q.workshop.mod.get({ id: mod.id })).toMatchObject({
+      fileChosen: false,
+    });
+  });
+
+  it("marks the mod's current file chosen without a CurseForge lookup", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const mod = await seedMod(ctx, workshop, {
+      submittedBy: USER_A,
+      status: "next_update",
+      fileId: 555,
+      fileName: "mod-1.2.0.jar",
+    });
+
+    const chosen = await workshopService.setModFile(mod.id, 555);
+    expect(chosen).toMatchObject({
+      changed: true,
+      mod: { fileId: 555, fileChosen: true },
+    });
+    expect(vi.mocked(getFilesDetails)).not.toHaveBeenCalled();
+    expect(await Q.workshop.mod.get({ id: mod.id })).toMatchObject({
+      fileId: 555,
+      fileName: "mod-1.2.0.jar",
+      fileChosen: true,
+    });
+  });
+
+  it("refuses mods outside next_update", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const mod = await seedMod(ctx, workshop, {
+      submittedBy: USER_A,
+      status: "testing",
+    });
+
+    await expect(workshopService.setModFile(mod.id, 555)).rejects.toThrow(
+      /next update/,
+    );
+  });
+
+  it("refuses mods in an archived workshop", async () => {
+    const workshop = await seedWorkshop(ctx, { status: "archived" });
+    const mod = await seedMod(ctx, workshop, {
+      submittedBy: USER_A,
+      status: "next_update",
+    });
+
+    await expect(workshopService.setModFile(mod.id, 555)).rejects.toThrow(
+      /archived/,
+    );
+  });
+
+  it("throws NotFoundError for an unknown mod", async () => {
+    await expect(workshopService.setModFile(999_999_999, 555)).rejects.toThrow(
+      NotFoundError,
+    );
+  });
+
+  it("clears the choice when a review moves the mod out of next_update", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const mod = await seedMod(ctx, workshop, {
+      submittedBy: USER_A,
+      status: "next_update",
+      fileId: 555,
+      fileName: "mod-1.2.0.jar",
+      fileChosen: true,
+    });
+
+    const sentBack = await workshopService.reviewMod(
+      mod.id,
+      "send_back",
+      ADMIN,
+    );
+    expect(sentBack.status).toBe("testing");
+    expect(sentBack.fileChosen).toBe(false);
+    expect(await Q.workshop.mod.get({ id: mod.id })).toMatchObject({
+      fileId: 555,
+      fileChosen: false,
+    });
+  });
+
+  it("clears the choice when the mod is rejected out of next_update", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const mod = await seedMod(ctx, workshop, {
+      submittedBy: USER_A,
+      status: "next_update",
+      fileId: 555,
+      fileChosen: true,
+    });
+
+    const rejected = await workshopService.reviewMod(mod.id, "reject", ADMIN, {
+      reason: "not_a_good_fit",
+    });
+    expect(rejected.status).toBe("rejected");
+    expect(rejected.fileChosen).toBe(false);
   });
 });
 
