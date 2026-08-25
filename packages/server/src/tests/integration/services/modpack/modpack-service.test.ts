@@ -723,6 +723,7 @@ describe("ModpackService.reconcile", () => {
     const mod = await seedMod(ctx, workshop, {
       submittedBy: USER_A,
       status: "next_update",
+      fileChosen: true,
     });
     const member = await seedPackMod(ctx, workshop, {
       curseforgeProjectId: mod.curseforgeProjectId,
@@ -738,7 +739,10 @@ describe("ModpackService.reconcile", () => {
     );
 
     await modpackService.reconcile(modpack.id);
-    expect((await Q.workshop.mod.get({ id: mod.id })).status).toBe("in_pack");
+    expect(await Q.workshop.mod.get({ id: mod.id })).toMatchObject({
+      status: "in_pack",
+      fileChosen: false,
+    });
     expect(vi.mocked(announceReview)).toHaveBeenCalledTimes(1);
 
     await vi.waitFor(async () => {
@@ -759,14 +763,16 @@ describe("ModpackService.reconcile", () => {
     expect(vi.mocked(announceReview)).toHaveBeenCalledTimes(1);
     expect(await modEvents(mod.id)).toHaveLength(1);
 
+    await Q.workshop.mod.updateAll({ fileChosen: true }, { id: mod.id });
     vi.mocked(getModpackManifest).mockResolvedValue(
       manifest({ version: "2.1.0", modIds: new Set<number>() }),
     );
     await modpackService.reconcile(modpack.id);
 
-    expect((await Q.workshop.mod.get({ id: mod.id })).status).toBe(
-      "next_update",
-    );
+    expect(await Q.workshop.mod.get({ id: mod.id })).toMatchObject({
+      status: "next_update",
+      fileChosen: false,
+    });
     expect(vi.mocked(announcePackDropOut)).toHaveBeenCalledTimes(1);
 
     await vi.waitFor(async () => {

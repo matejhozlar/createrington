@@ -1439,7 +1439,7 @@ describe("WorkshopService.setModFile", () => {
       status: "next_update",
     });
     expect(mod.fileChosen).toBe(false);
-    vi.mocked(getFilesDetails).mockResolvedValue([
+    vi.mocked(getFilesDetails).mockResolvedValueOnce([
       {
         fileId: 555,
         projectId: mod.curseforgeProjectId,
@@ -1483,7 +1483,7 @@ describe("WorkshopService.setModFile", () => {
       submittedBy: USER_A,
       status: "next_update",
     });
-    vi.mocked(getFilesDetails).mockResolvedValue([
+    vi.mocked(getFilesDetails).mockResolvedValueOnce([
       {
         fileId: 556,
         projectId: mod.curseforgeProjectId + 1,
@@ -1502,6 +1502,28 @@ describe("WorkshopService.setModFile", () => {
     });
   });
 
+  it("marks the mod's current file chosen without a CurseForge lookup", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const mod = await seedMod(ctx, workshop, {
+      submittedBy: USER_A,
+      status: "next_update",
+      fileId: 555,
+      fileName: "mod-1.2.0.jar",
+    });
+
+    const chosen = await workshopService.setModFile(mod.id, 555);
+    expect(chosen).toMatchObject({
+      changed: true,
+      mod: { fileId: 555, fileChosen: true },
+    });
+    expect(vi.mocked(getFilesDetails)).not.toHaveBeenCalled();
+    expect(await Q.workshop.mod.get({ id: mod.id })).toMatchObject({
+      fileId: 555,
+      fileName: "mod-1.2.0.jar",
+      fileChosen: true,
+    });
+  });
+
   it("refuses mods outside next_update", async () => {
     const workshop = await seedWorkshop(ctx);
     const mod = await seedMod(ctx, workshop, {
@@ -1511,6 +1533,18 @@ describe("WorkshopService.setModFile", () => {
 
     await expect(workshopService.setModFile(mod.id, 555)).rejects.toThrow(
       /next update/,
+    );
+  });
+
+  it("refuses mods in an archived workshop", async () => {
+    const workshop = await seedWorkshop(ctx, { status: "archived" });
+    const mod = await seedMod(ctx, workshop, {
+      submittedBy: USER_A,
+      status: "next_update",
+    });
+
+    await expect(workshopService.setModFile(mod.id, 555)).rejects.toThrow(
+      /archived/,
     );
   });
 
@@ -1541,6 +1575,22 @@ describe("WorkshopService.setModFile", () => {
       fileId: 555,
       fileChosen: false,
     });
+  });
+
+  it("clears the choice when the mod is rejected out of next_update", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const mod = await seedMod(ctx, workshop, {
+      submittedBy: USER_A,
+      status: "next_update",
+      fileId: 555,
+      fileChosen: true,
+    });
+
+    const rejected = await workshopService.reviewMod(mod.id, "reject", ADMIN, {
+      reason: "not_a_good_fit",
+    });
+    expect(rejected.status).toBe("rejected");
+    expect(rejected.fileChosen).toBe(false);
   });
 });
 

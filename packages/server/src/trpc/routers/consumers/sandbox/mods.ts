@@ -125,7 +125,7 @@ export const sandboxModsRouter = router({
   list: adminProcedure
     .meta({
       description:
-        "Lists a workshop's approved, testing, and next_update mods with their project, chosen file, environment, dependency coverage, and whether it should ship enabled (required; only next_update rows can change it, see setRequired), newest first. This is the sandbox's testing queue.",
+        "Lists a workshop's approved, testing, and next_update mods with their project, chosen file (fileChosen marks an explicit pick, see setFile; a next_update mod without one should ship the newest matching file at build time), environment, dependency coverage, and whether it should ship enabled (required; only next_update rows can change it, see setRequired), newest first. This is the sandbox's testing queue.",
     })
     .input(z.object({ workshopId: id() }))
     .query(async ({ input }) => {
