@@ -1,0 +1,1 @@
+ALTER TABLE "workshop_mod" ADD COLUMN "file_chosen" boolean DEFAULT false NOT NULL;

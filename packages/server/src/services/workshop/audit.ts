@@ -79,6 +79,31 @@ export async function logModRequired(
   });
 }
 
+/** Admin action log entry for choosing which file a queued mod ships. */
+export async function logModFile(
+  actor: WorkshopAuditActor,
+  mod: WorkshopMod,
+  projectName: string,
+): Promise<void> {
+  await Q.admin.log.action.logAction({
+    adminDiscordId: actor.adminDiscordId,
+    adminUsername: actor.adminUsername,
+    actionType: "workshop_mod_file",
+    description: describe(
+      actor,
+      mod.fileChosen
+        ? `Chose file "${mod.fileName ?? `#${mod.fileId}`}" for "${projectName}" to ship in the next update`
+        : `Reset "${projectName}" to ship its newest file in the next update`,
+    ),
+    metadata: metadata(actor, {
+      workshopModId: mod.id,
+      curseforgeProjectId: mod.curseforgeProjectId,
+      fileId: mod.fileId,
+      fileChosen: mod.fileChosen,
+    }),
+  });
+}
+
 /** Admin action log entry for flagging a project's environment. */
 export async function logProjectEnvironment(
   actor: WorkshopAuditActor,
