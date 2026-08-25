@@ -56,6 +56,10 @@ vi.mock("@/services/curseforge/ingest", () => ({
   refreshProjects: vi.fn(async () => 0),
 }));
 
+vi.mock("@/services/modpack/changelog", () => ({
+  announceReleaseChangelog: vi.fn(async () => undefined),
+}));
+
 import pool, { Q } from "@/db";
 import {
   BadRequestError,
@@ -77,6 +81,7 @@ import {
   announcePackDropOut,
   announceReview,
 } from "@/services/workshop/discord";
+import { announceReleaseChangelog } from "@/services/modpack/changelog";
 import {
   createWorkshopTestContext,
   cleanupWorkshopTestContext,
@@ -2304,5 +2309,62 @@ describe("ModpackService.recordRelease upgrade", () => {
       modCount: 2,
       serverPackFileId: 900_001,
     });
+  });
+});
+
+describe("ModpackService release changelog announcements", () => {
+  it("starts an announcement once a release is read with its server pack, then only resumes", async () => {
+    const modpack = await seedModpack(ctx, {
+      curseforgeProjectId: ctx.nextProjectId++,
+    });
+    const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const member = await seedPackMod(ctx, workshop);
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      sidedManifest("2.0.0", [[member.curseforgeProjectId, "both"]]),
+    );
+
+    await modpackService.reconcile(modpack.id);
+    const [release] = await modpackService.listReleases(modpack.id);
+    expect(release.announcement).toBeNull();
+    expect(announceReleaseChangelog).toHaveBeenCalledTimes(1);
+    expect(announceReleaseChangelog).toHaveBeenLastCalledWith(
+      expect.objectContaining({ releaseId: release.id, start: true }),
+    );
+
+    await modpackService.reconcile(modpack.id);
+    expect(announceReleaseChangelog).toHaveBeenCalledTimes(2);
+    expect(announceReleaseChangelog).toHaveBeenLastCalledWith(
+      expect.objectContaining({ releaseId: release.id, start: false }),
+    );
+  });
+
+  it("never announces a client-only read and starts once the server pack arrives", async () => {
+    const modpack = await seedModpack(ctx, {
+      curseforgeProjectId: ctx.nextProjectId++,
+    });
+    const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const member = await seedPackMod(ctx, workshop);
+    const clientOnly = manifest({
+      version: "1.0.0",
+      modIds: new Set([member.curseforgeProjectId]),
+    });
+    vi.mocked(getModpackManifest).mockResolvedValue(clientOnly);
+
+    await modpackService.reconcile(modpack.id);
+    await modpackService.reconcile(modpack.id);
+    expect(announceReleaseChangelog).not.toHaveBeenCalled();
+
+    vi.mocked(getModpackManifest).mockResolvedValue({
+      ...sidedManifest("1.0.0", [[member.curseforgeProjectId, "both"]]),
+      fileId: clientOnly.fileId,
+    });
+    await modpackService.reconcile(modpack.id);
+
+    const [release] = await modpackService.listReleases(modpack.id);
+    expect(release.serverPackFileId).not.toBeNull();
+    expect(announceReleaseChangelog).toHaveBeenCalledTimes(1);
+    expect(announceReleaseChangelog).toHaveBeenLastCalledWith(
+      expect.objectContaining({ releaseId: release.id, start: true }),
+    );
   });
 });

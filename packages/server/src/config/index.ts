@@ -67,8 +67,6 @@ const config = {
       discordInvite: "https://discord.gg/mtF6MDHj4Z",
       website: env.WEBSITE_URL,
       adminPanel: env.ADMIN_PANEL_URL,
-      modpack:
-        "https://www.curseforge.com/minecraft/modpacks/createrington-cogs-steam",
       map: env.MAP_URL,
       assets: env.ASSETS_URL,
     },

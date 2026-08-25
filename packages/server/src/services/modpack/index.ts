@@ -41,6 +41,8 @@ import {
   announceReview,
 } from "@/services/workshop/discord";
 import { recordModEvent } from "@/services/workshop/events";
+import { announceReleaseChangelog } from "./changelog";
+import type { ReleaseAnnouncementRow } from "@/db/queries/modpack/release/announcement";
 
 const SHIP_CLAIMABLE_STATUSES: WorkshopModStatus[] = [
   "pending",
@@ -181,6 +183,16 @@ function sameFiles(a: ReleaseModRow[], b: ReleaseModRow[]): boolean {
         row.fileId === b[index].fileId && row.required === b[index].required,
     )
   );
+}
+
+export interface ModpackReleaseAnnouncementSummary {
+  parts: number;
+  sent: number;
+  presets: Array<{ id: number; name: string }>;
+}
+
+export interface ModpackReleaseListItem extends ModpackRelease {
+  announcement: ModpackReleaseAnnouncementSummary | null;
 }
 
 export interface ModpackReleaseDiff {
@@ -619,12 +631,38 @@ export class ModpackService {
     }
   }
 
-  /** Recorded releases of a modpack, newest first. */
-  async listReleases(modpackId: number): Promise<ModpackRelease[]> {
-    return Q.modpack.release.findAll(
+  /** Recorded releases of a modpack, newest first, each with the state of its changelog post. */
+  async listReleases(modpackId: number): Promise<ModpackReleaseListItem[]> {
+    const releases = await Q.modpack.release.findAll(
       { modpackId },
       { orderBy: "id", orderDirection: "desc" },
     );
+    const rows = await Q.modpack.release.announcement.listForReleases(
+      releases.map((release) => release.id),
+    );
+    const byRelease = new Map<number, ReleaseAnnouncementRow[]>();
+    for (const row of rows) {
+      const list = byRelease.get(row.releaseId) ?? [];
+      list.push(row);
+      byRelease.set(row.releaseId, list);
+    }
+    return releases.map((release) => {
+      const parts = byRelease.get(release.id);
+      return {
+        ...release,
+        announcement: parts
+          ? {
+              parts: parts.length,
+              sent: parts.filter((part) => part.messageId !== null).length,
+              presets: parts.flatMap((part) =>
+                part.presetId !== null && part.presetName !== null
+                  ? [{ id: part.presetId, name: part.presetName }]
+                  : [],
+              ),
+            }
+          : null,
+      };
+    });
   }
 
   /**
@@ -719,6 +757,9 @@ export class ModpackService {
         recorded.serverPackFileId === null
       ) {
         await this.upgradeRelease(modpack, recorded, manifest);
+        this.announceRelease(modpack, recorded.id, true);
+      } else if (recorded.serverPackFileId !== null) {
+        this.announceRelease(modpack, recorded.id, false);
       }
       return;
     }
@@ -728,8 +769,9 @@ export class ModpackService {
 
     // A half-written release would be permanent: the guard above sees the
     // release row and never repairs the missing membership
+    let releaseId: number;
     try {
-      await db.inTransaction(async (tx) => {
+      releaseId = await db.inTransaction(async (tx) => {
         const release = await tx.modpack.release.createAndReturn({
           modpackId: modpack.id,
           curseforgeFileId: manifest.fileId,
@@ -748,6 +790,7 @@ export class ModpackService {
           modpack.id,
           firstPerProject(rows),
         );
+        return release.id;
       });
     } catch (error) {
       if (error instanceof ConstraintViolationError) return;
@@ -759,6 +802,9 @@ export class ModpackService {
         manifest.version ?? manifest.fileId
       } with ${rows.length} mods`,
     );
+    if (manifest.serverPackFileId !== null) {
+      this.announceRelease(modpack, releaseId, true);
+    }
   }
 
   private async upgradeRelease(
@@ -844,6 +890,24 @@ export class ModpackService {
     } catch (error) {
       logger.warn(`Modpack #${modpackId} reconcile failed:`, error);
     }
+  }
+
+  private announceRelease(
+    modpack: Modpack,
+    releaseId: number,
+    start: boolean,
+  ): void {
+    void announceReleaseChangelog({
+      modpack,
+      releaseId,
+      start,
+      loadDiff: () => this.getReleaseDiff(releaseId),
+    }).catch((error) => {
+      logger.warn(
+        `Modpack #${modpack.id} release #${releaseId} changelog failed:`,
+        error,
+      );
+    });
   }
 
   /** Items needing an admin decision for a workshop's modpack. */

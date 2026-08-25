@@ -42,11 +42,14 @@ interface ChannelConfig {
     readonly expiredBases: string;
     readonly notifications: string;
     readonly serverPics: string;
+    readonly modSuggestions3: string;
     readonly modSuggestions: string;
     readonly projects: string;
     readonly chat: string;
     readonly minecraftChat: string;
     readonly publicTesting: string;
+    readonly modSuggestions2: string;
+    readonly modSuggestions4: string;
   };
 
   readonly administration: {
@@ -84,6 +87,17 @@ interface ChannelConfig {
     readonly allMembers: string;
   };
 
+  readonly verification: {
+    readonly verify18: string;
+  };
+
+  readonly uncategorized: {
+    readonly feedbackBugs: string;
+    readonly chat: string;
+    readonly startHere: string;
+    readonly minecraftChat: string;
+  };
+
   readonly dev: {
     readonly features: string;
     readonly chat: string;
@@ -96,6 +110,10 @@ interface ChannelConfig {
     readonly discussion: string;
     readonly news: string;
   };
+
+  readonly railsNSails: {
+    readonly changelog: string;
+  };
 }
 
 interface CategoriesConfig {
@@ -104,6 +122,7 @@ interface CategoriesConfig {
   readonly administration: string;
   readonly verification: string;
   readonly dev: string;
+  readonly railsNSails: string;
   readonly serverStats: string;
   readonly general: string;
   readonly tickets: string;
