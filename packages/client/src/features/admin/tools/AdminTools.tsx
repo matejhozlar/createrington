@@ -65,7 +65,7 @@ const TOOL_SECTIONS: ToolSection[] = [
       },
       {
         title: "Announcements",
-        description: "Post modpack changelogs and maintenance notices.",
+        description: "Post maintenance notices to Discord.",
         icon: Megaphone,
         href: "/admin/tools/announcements",
       },

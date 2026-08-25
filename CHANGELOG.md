@@ -1,3 +1,25 @@
+## v1.42.0 (2026-08-25)
+
+### @createrington/server (1.42.0 → 1.43.0)
+- [add] Add automated release changelog posting to Discord as Components V2 messages, each saved as a linked embed preset so admins can edit and re-push from the builder
+- [add] Add `modpack_release_announcement` table tracking each message part of a changelog post, with preset linkage, channel/message IDs, and retry-safe idempotent delivery
+- [add] Add `ModpackChangelogComponentPresets.release` renderer that diffs two releases into grouped entries (added/updated/removed) with thumbnails, version labels, and download buttons, splitting long diffs across multiple messages within Discord's component and text ceilings
+- [add] Add `modpack_changelog` feature flag gating changelog announcements independently of the workshop flag
+- [add] Expose announcement status (parts sent, linked preset names) on `listReleases` so the admin UI can show post progress per release
+- [refactor] Extract `measureComponentsV2` from `validateComponentsV2` so preset renderers can probe message size before committing to a split
+- [remove] Remove manual changelog tRPC endpoints (`sendChangelog`, `searchMods`, `getModFiles`) and the legacy `modpackUpdate` embed preset, replaced by the automated flow
+- [chore] Add unit tests for the changelog component preset and integration tests for the end-to-end announce/resume/edit/feature-flag flows
+- [chore] Update Discord entity config with new channel and category entries (railsNSails changelog, mod suggestions 2/3/4, verification, uncategorized)
+
+### @createrington/client (0.2.55 → 0.2.56)
+- [add] Add announcement badge on the releases tab showing whether a changelog has been posted, with part progress for multi-message posts
+- [add] Add `modpack_changelog` feature flag toggle to the workshop admin page alongside the existing workshop toggle
+- [remove] Remove the manual modpack changelog form and its components (ModpackChangelog, ModSection, HighlightSection), replaced by automated server-side posting
+- [refactor] Simplify the announcements page to maintenance-only now that changelogs are automated
+
+### @createrington/shared (1.8.0 → 1.9.0)
+- [add] Export `httpUrlSchema` from the embed API module for server-side URL validation in changelog rendering
+
 ## v1.41.0 (2026-08-25)
 
 ### @createrington/server (1.41.0 → 1.42.0)

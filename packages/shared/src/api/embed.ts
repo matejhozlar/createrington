@@ -11,6 +11,8 @@ const httpUrl = z
     message: "URL must start with http:// or https://",
   });
 
+export const httpUrlSchema = httpUrl;
+
 export const embedFieldSchema = z.object({
   name: z.string().min(1).max(256),
   value: z.string().min(1).max(1024),

@@ -23,6 +23,7 @@ export interface ReleaseModRow {
   projectName: string;
   projectSlug: string;
   thumbnailUrl: string | null;
+  websiteUrl: string | null;
 }
 
 /**
@@ -85,7 +86,8 @@ export class ModpackReleaseModQueries extends ModpackReleaseModBaseQueries {
         p.class_id,
         p.name AS project_name,
         p.slug AS project_slug,
-        p.thumbnail_url
+        p.thumbnail_url,
+        p.website_url
       FROM ${this.table} rm
       JOIN curseforge_project p ON p.id = rm.curseforge_project_id
       WHERE rm.release_id = ANY($1::int[])
@@ -103,6 +105,7 @@ export class ModpackReleaseModQueries extends ModpackReleaseModBaseQueries {
       project_name: string;
       project_slug: string;
       thumbnail_url: string | null;
+      website_url: string | null;
     }>("list release mods", query, [releaseIds]);
 
     return result.rows.map((row) => ({
@@ -118,6 +121,7 @@ export class ModpackReleaseModQueries extends ModpackReleaseModBaseQueries {
       projectName: row.project_name,
       projectSlug: row.project_slug,
       thumbnailUrl: row.thumbnail_url,
+      websiteUrl: row.website_url,
     }));
   }
 }

@@ -1,5 +1,12 @@
 import { useState } from "react";
-import { ArrowRight, History, Minus, Plus, RefreshCw } from "lucide-react";
+import {
+  ArrowRight,
+  History,
+  Megaphone,
+  Minus,
+  Plus,
+  RefreshCw,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { Badge } from "@/components/ui/badge";
@@ -48,6 +55,36 @@ const CHANGE_GROUPS = [
     className: "border-red-500/20 bg-red-500/10 text-red-400",
   },
 ];
+
+const ANNOUNCED_CLASS = "border-green-500/20 bg-green-500/10 text-green-400";
+const ANNOUNCING_CLASS = "border-amber-500/20 bg-amber-500/10 text-amber-400";
+
+function AnnouncementBadge({
+  announcement,
+}: {
+  announcement: Release["announcement"];
+}) {
+  if (!announcement) return null;
+  const complete = announcement.sent === announcement.parts;
+  return (
+    <Badge
+      variant="outline"
+      className={cn(
+        "gap-1 text-xs",
+        complete ? ANNOUNCED_CLASS : ANNOUNCING_CLASS,
+      )}
+      title={
+        announcement.presets.map((preset) => preset.name).join(", ") ||
+        undefined
+      }
+    >
+      <Megaphone className="size-3" />
+      {complete
+        ? "Announced"
+        : `Announcing ${announcement.sent}/${announcement.parts}`}
+    </Badge>
+  );
+}
 
 function fileLabel(entry: { fileName: string | null; fileId: number }) {
   return entry.fileName ?? `File #${entry.fileId}`;
@@ -236,6 +273,7 @@ export function ReleasesTab({ modpackId }: { modpackId: number }) {
                   <span className="text-xs text-muted-foreground">
                     {formatDate(release.publishedAt ?? release.createdAt)}
                   </span>
+                  <AnnouncementBadge announcement={release.announcement} />
                   <Badge
                     variant="outline"
                     className={cn("text-xs", open && "bg-accent")}

@@ -25,6 +25,23 @@ import { WorkshopSettingsDialog } from "./workshop-admin-detail/components/Works
 
 type AdminWorkshopRow = RouterOutput["admin"]["workshops"]["list"][number];
 
+const FLAGS = [
+  {
+    name: "workshop",
+    id: "workshop-enabled",
+    label: "Workshop",
+    description: "Workshop tab",
+  },
+  {
+    name: "modpack_changelog",
+    id: "changelog-enabled",
+    label: "Changelog Posts",
+    description: "Release changelogs posted to the Discord changelog channel",
+  },
+] as const;
+
+type FlagName = (typeof FLAGS)[number]["name"];
+
 export function AdminWorkshop() {
   const navigate = useNavigate();
   const toast = useToastActions();
@@ -32,11 +49,13 @@ export function AdminWorkshop() {
 
   const workshopsQuery = trpc.admin.workshops.list.useQuery();
   const flagsQuery = trpc.admin.features.list.useQuery();
-  const workshopFlag = flagsQuery.data?.find((f) => f.name === "workshop");
+  const flagEnabled = (name: FlagName) =>
+    flagsQuery.data?.find((f) => f.name === name)?.enabled ?? false;
 
   const setFlagMutation = trpc.admin.features.set.useMutation({
     onSuccess: (flag) => {
-      toast.success(`Workshop ${flag.enabled ? "enabled" : "disabled"}`);
+      const label = FLAGS.find((f) => f.name === flag.name)?.label ?? flag.name;
+      toast.success(`${label} ${flag.enabled ? "enabled" : "disabled"}`);
       utils.admin.features.list.invalidate();
       utils.user.workshops.isEnabled.invalidate();
     },
@@ -143,23 +162,26 @@ export function AdminWorkshop() {
           title="Workshop"
           actions={
             <>
-              <LabeledSwitch
-                id="workshop-enabled"
-                label="Feature Enabled"
-                checked={workshopFlag?.enabled ?? false}
-                disabled={
-                  flagsQuery.isLoading ||
-                  !!flagsQuery.error ||
-                  setFlagMutation.isPending
-                }
-                onCheckedChange={(checked) =>
-                  setFlagMutation.mutate({
-                    name: "workshop",
-                    enabled: checked,
-                    description: "Workshop tab",
-                  })
-                }
-              />
+              {FLAGS.map((flag) => (
+                <LabeledSwitch
+                  key={flag.name}
+                  id={flag.id}
+                  label={flag.label}
+                  checked={flagEnabled(flag.name)}
+                  disabled={
+                    flagsQuery.isLoading ||
+                    !!flagsQuery.error ||
+                    setFlagMutation.isPending
+                  }
+                  onCheckedChange={(checked) =>
+                    setFlagMutation.mutate({
+                      name: flag.name,
+                      enabled: checked,
+                      description: flag.description,
+                    })
+                  }
+                />
+              ))}
               <Button onClick={openCreate}>
                 <Plus className="mr-2 size-4" />
                 New Workshop
