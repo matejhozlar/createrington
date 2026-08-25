@@ -10,6 +10,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { modpackModOriginEnum } from "./enums";
 import { curseforgeProject } from "./curseforge";
+import { discordEmbedPreset } from "./discord";
 import { server } from "./server";
 import { workshopMod } from "./workshop";
 
@@ -187,6 +188,43 @@ export const modpackReleaseMod = pgTable(
       table.releaseId,
       table.curseforgeProjectId,
       table.fileId,
+    ),
+  ],
+);
+
+// --- modpack_release_announcement ---
+// The changelog posted to Discord for a release, one row per message part
+// (a long diff splits across several messages of the same shape). Each part
+// is saved as an embed builder preset first and linked to its message once
+// sent, so admins can edit and re-push it from the builder; messageId stays
+// null until Discord accepted the part, which is what a retry resends.
+// Rows exist only for releases recorded after both packs were read, and a
+// release without rows was never announced and never will be.
+
+export const modpackReleaseAnnouncement = pgTable(
+  "modpack_release_announcement",
+  {
+    id: serial("id").primaryKey(),
+    releaseId: integer("release_id")
+      .notNull()
+      .references(() => modpackRelease.id, { onDelete: "cascade" }),
+    part: integer("part").notNull(),
+    partCount: integer("part_count").notNull(),
+    presetId: integer("preset_id").references(() => discordEmbedPreset.id, {
+      onDelete: "set null",
+    }),
+    channelId: text("channel_id").notNull(),
+    messageId: text("message_id"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+  },
+  (table) => [
+    index("idx_modpack_release_announcement_release").on(table.releaseId),
+    uniqueIndex("idx_modpack_release_announcement_unique").on(
+      table.releaseId,
+      table.part,
     ),
   ],
 );

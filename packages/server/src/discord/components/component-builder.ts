@@ -183,19 +183,28 @@ function measure(node: AnyComponentNode): { count: number; text: number } {
   }
 }
 
+/** Aggregate component count and text length of a tree, as Discord counts them. */
+export function measureComponentsV2(nodes: AnyComponentNode[]): {
+  count: number;
+  text: number;
+} {
+  let count = 0;
+  let text = 0;
+  for (const node of nodes) {
+    const result = measure(node);
+    count += result.count;
+    text += result.text;
+  }
+  return { count, text };
+}
+
 /** Enforce Discord's aggregate component/text ceilings; returns an error string or null. */
 export function validateComponentsV2(data: ComponentsData): string | null {
   if (data.components.length === 0) {
     return "Add at least one component";
   }
 
-  let count = 0;
-  let text = 0;
-  for (const node of data.components) {
-    const result = measure(node);
-    count += result.count;
-    text += result.text;
-  }
+  const { count, text } = measureComponentsV2(data.components);
 
   if (count > COMPONENTS_V2_MAX_COMPONENTS) {
     return `Too many components (${count}/${COMPONENTS_V2_MAX_COMPONENTS})`;

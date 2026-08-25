@@ -44,6 +44,7 @@ export { ModpackQueries } from "./modpack";
 export { ModpackModQueries } from "./modpack/mod";
 export { ModpackPublishQueries } from "./modpack/publish";
 export { ModpackReleaseQueries } from "./modpack/release";
+export { ModpackReleaseAnnouncementQueries } from "./modpack/release/announcement";
 export { ModpackReleaseModQueries } from "./modpack/release/mod";
 export { PlayerQueries } from "./player";
 export { PlayerAchievementQueries } from "./player/achievement";

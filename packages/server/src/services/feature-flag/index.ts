@@ -3,6 +3,7 @@ import type { FeatureFlag } from "@createrington/shared/db";
 
 export const FeatureFlags = {
   workshop: "workshop",
+  modpackChangelog: "modpack_changelog",
 } as const;
 
 export type FeatureFlagName = (typeof FeatureFlags)[keyof typeof FeatureFlags];
