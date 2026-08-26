@@ -1,3 +1,9 @@
+## v1.43.1 (2026-08-26)
+
+### @createrington/server (1.44.0 → 1.44.1)
+- [fix] Fix multi-part changelog posts repeating the full release header on every message - only the first message now shows the header, while subsequent parts open with a full-width spacer image to maintain consistent width without duplicating the title and metadata
+- [fix] Remove "(continued)" suffix from group headings that spill across message boundaries, keeping headings clean and only showing the total count once
+
 ## v1.43.0 (2026-08-25)
 
 ### @createrington/server (1.43.0 → 1.44.0)
