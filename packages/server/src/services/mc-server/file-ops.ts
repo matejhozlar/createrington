@@ -61,21 +61,6 @@ function getDefaultBasePath(): string {
   return getBasePath(config.servers.cogs.id);
 }
 
-export async function renameFile(from: string, to: string): Promise<void> {
-  const localPath = getLocalPath();
-  if (localPath) {
-    await fs.rename(path.join(localPath, from), path.join(localPath, to));
-  } else {
-    const basePath = getDefaultBasePath();
-    const sftp = await createSftpClient();
-    try {
-      await sftp.rename(`${basePath}/${from}`, `${basePath}/${to}`);
-    } finally {
-      await sftp.end();
-    }
-  }
-}
-
 export async function writeFile(
   name: string,
   content: string | Buffer,

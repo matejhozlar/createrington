@@ -1,5 +1,7 @@
 import type { Pool, PoolClient } from "pg";
+import { ServerMaintenanceAllowedQueries } from "@/db/queries/server/maintenance/allowed";
 import { ServerMaintenanceScheduleQueries } from "@/db/queries/server/maintenance/schedule";
+import { ServerMaintenanceSettingQueries } from "@/db/queries/server/maintenance/setting";
 
 /**
  * Namespace queries for server_maintenance
@@ -72,6 +74,28 @@ export class ServerMaintenanceQueries {
    */
   constructor(protected db: Pool | PoolClient) {}
 
+  /** Private backing field for lazy-loaded server_maintenance_allowed queries */
+  private _allowed?: ServerMaintenanceAllowedQueries;
+
+  /**
+   * Lazy-loaded singleton accessor for server_maintenance_allowed
+   *
+   * Returns a ServerMaintenanceAllowedQueries instance that shares this namespace's
+   * database connection. The instance is created once on first access and
+   * cached for all subsequent calls.
+   *
+   * @returns Singleton ServerMaintenanceAllowedQueries instance
+   */
+  get allowed(): ServerMaintenanceAllowedQueries {
+    if (!this._allowed) {
+      this._allowed = this.getOrCreateChild<ServerMaintenanceAllowedQueries>(
+        "allowed",
+        ServerMaintenanceAllowedQueries,
+      );
+    }
+    return this._allowed;
+  }
+
   /** Private backing field for lazy-loaded server_maintenance_schedule queries */
   private _schedule?: ServerMaintenanceScheduleQueries;
 
@@ -92,5 +116,27 @@ export class ServerMaintenanceQueries {
       );
     }
     return this._schedule;
+  }
+
+  /** Private backing field for lazy-loaded server_maintenance_setting queries */
+  private _setting?: ServerMaintenanceSettingQueries;
+
+  /**
+   * Lazy-loaded singleton accessor for server_maintenance_setting
+   *
+   * Returns a ServerMaintenanceSettingQueries instance that shares this namespace's
+   * database connection. The instance is created once on first access and
+   * cached for all subsequent calls.
+   *
+   * @returns Singleton ServerMaintenanceSettingQueries instance
+   */
+  get setting(): ServerMaintenanceSettingQueries {
+    if (!this._setting) {
+      this._setting = this.getOrCreateChild<ServerMaintenanceSettingQueries>(
+        "setting",
+        ServerMaintenanceSettingQueries,
+      );
+    }
+    return this._setting;
   }
 }

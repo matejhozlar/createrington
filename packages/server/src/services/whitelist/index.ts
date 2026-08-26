@@ -12,13 +12,10 @@ const WHITELIST_FILE = "whitelist.json";
  * Whitelist Service
  *
  * Regenerates a server's whitelist.json from the currently registered players.
- * Like the maintenance service, it operates on the server data dir either via a
- * local filesystem path (dev) or SFTP (production), then reloads the whitelist
- * over RCON.
- *
- * Callers must not invoke this while a server is in maintenance mode: maintenance
- * replaces whitelist.json with an empty list and stashes the real one in
- * whitelist.json.bak, so rewriting it then would clobber that state.
+ * Operates on the server data dir either via a local filesystem path (dev) or
+ * SFTP (production), then reloads the whitelist over RCON. Independent of
+ * maintenance mode, which is handled by the Maintenance Mode mod and never
+ * touches the whitelist.
  */
 export class WhitelistService {
   /**

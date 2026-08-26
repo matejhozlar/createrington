@@ -587,24 +587,22 @@ export async function initializeServices(): Promise<void> {
 
   logger.info(`✓ Service initialization complete: ${ready}/${total} ready`);
 
-  // Initialize maintenance service (checks for backup files via local path or SFTP)
-  maintenanceService
-    .initialize([config.servers.cogs.id])
-    .catch((err) => logger.warn(`Maintenance service init failed: ${err}`));
-
-  // Initialize maintenance scheduler (loads pending schedules, sets up timers)
   try {
     const webMessageService = await container.get(Services.WEB_MESSAGE_SERVICE);
     const scheduler = new MaintenanceScheduler(
       maintenanceService,
       webMessageService,
     );
-    await scheduler.initialize();
     maintenanceService.setScheduler(scheduler);
+    await scheduler.initialize();
     logger.info("Maintenance scheduler initialized");
   } catch (error) {
     logger.warn(`Maintenance scheduler init failed: ${error}`);
   }
+
+  maintenanceService
+    .initialize([config.servers.cogs.id])
+    .catch((err) => logger.warn(`Maintenance service init failed: ${err}`));
 
   try {
     let webMessageService: DiscordMessageService | null = null;
@@ -635,5 +633,6 @@ export async function initializeServices(): Promise<void> {
  * @returns Promise that resolves once all shutdown hooks have settled
  */
 export async function shutdownServices(): Promise<void> {
+  maintenanceService.shutdown();
   await container.shutdown();
 }

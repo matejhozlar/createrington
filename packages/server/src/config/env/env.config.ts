@@ -177,9 +177,9 @@ const envSchema = z
 
     // RCON
     COGS_AND_STEAM_RCON_PORT: port("Cogs and Steam RCON port").default(25583),
-    // Production-only: dev never opens an RCON connection (manager only stores
-    // config at boot, utils/rcon/manager.ts). Required at runtime by the prod
-    // superRefine below.
+    // Required at runtime by the prod superRefine below. Optional in dev:
+    // point it at the local Docker server (docker/mc, password MC_RCON_PASSWORD)
+    // to drive maintenance mode and the other RCON features locally.
     COGS_AND_STEAM_RCON_PASSWORD: z
       .string()
       .max(100, "RCON password is too long")
