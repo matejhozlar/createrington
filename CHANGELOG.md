@@ -1,3 +1,10 @@
+## v1.44.0 (2026-08-26)
+
+### @createrington/server (1.44.1 → 1.45.0)
+- [add] Add owner `/role-panel` slash command that posts an embed with toggle buttons for up to 10 self-assignable roles, with support for updating existing panels via message ID
+- [add] Add role safety validation that blocks self-assignment of managed roles, @everyone, roles granting permissions beyond @everyone, or roles above the bot's highest role
+- [fix] Fix `RoleManager.assign()` not forwarding the audit-log reason when assigning a single role
+
 ## v1.43.1 (2026-08-26)
 
 ### @createrington/server (1.44.0 → 1.44.1)
