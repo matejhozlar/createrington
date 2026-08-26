@@ -2,7 +2,7 @@ import { Q } from "@/db";
 import { getService, Services } from "@/services";
 import { getServerById } from "@/services/playtime/config";
 import type { ServerMaintenanceSchedule } from "@createrington/shared/db/server_maintenance_schedule.types";
-import { MaintenanceModeClient } from "./mmode";
+import { MaintenanceModeClient, MaintenanceModeCommandError } from "./mmode";
 import {
   MAINTENANCE_MESSAGE_PRESET,
   MAINTENANCE_MOTD_PRESET,
@@ -39,6 +39,9 @@ export interface AllowListSyncResult {
   removed: string[];
 }
 
+export type ApplyResult =
+  { applied: true } | { applied: false; modError: boolean; error: unknown };
+
 interface ModState {
   enabled: boolean | null;
   observedAt: Date | null;
@@ -61,13 +64,16 @@ interface ModState {
  * server online, on a slow interval, and after every mutation. Reconcile
  * also mirrors changes made outside the app (`/maintenance off` in-game,
  * `untilRestart` firing) back into the database. Disabling is always explicit;
- * reconcile never turns maintenance off on its own.
+ * reconcile never turns maintenance off on its own. Every state-changing
+ * operation is serialised per server, so concurrent admin clicks and timer
+ * activations cannot interleave.
  */
 export class MaintenanceService {
   private modState = new Map<number, ModState>();
   private scheduler: MaintenanceScheduler | null = null;
   private reconcileTimer: NodeJS.Timeout | null = null;
   private reconciling = new Set<number>();
+  private locks = new Map<number, Promise<unknown>>();
   private serverIds: number[] = [];
 
   constructor(
@@ -163,90 +169,89 @@ export class MaintenanceService {
     estimatedMinutes: number;
     scheduledByDiscordId: string;
   }): Promise<ServerMaintenanceSchedule> {
-    return this.requireScheduler().schedule(opts);
+    return this.withLock(opts.serverId, () =>
+      this.requireScheduler().schedule(opts),
+    );
   }
 
   /** Cancel a pending (not yet active) window. */
   async cancelScheduledMaintenance(serverId: number): Promise<void> {
-    await this.requireScheduler().cancel(serverId);
+    await this.withLock(serverId, () =>
+      this.requireScheduler().cancel(serverId),
+    );
   }
 
   /**
    * Start maintenance now. Returns `applied: false` when the game server could
-   * not be reached; the window stays active and is pushed once it is back.
+   * not be reached; the window stays active and is pushed once it is back. If
+   * the server answered but the mod refused (or is missing), the window is
+   * discarded and the mod's error is thrown.
    */
   async enable(
     serverId: number,
     opts: { byDiscordId: string; untilRestart?: boolean },
   ): Promise<{ applied: boolean }> {
-    if (this.isInMaintenance(serverId)) {
-      throw new Error(`Server ${serverId} is already in maintenance mode`);
-    }
+    return this.withLock(serverId, async () => {
+      if (this.isInMaintenance(serverId)) {
+        throw new Error(`Server ${serverId} is already in maintenance mode`);
+      }
 
-    const scheduler = this.requireScheduler();
-    const pending = scheduler.getSchedule(serverId);
-    if (pending?.status === "scheduled") {
-      await scheduler.cancel(serverId);
-    }
+      const scheduler = this.requireScheduler();
+      const pending = scheduler.getSchedule(serverId);
+      if (pending?.status === "scheduled") {
+        await scheduler.cancel(serverId);
+      }
 
-    const window = await scheduler.startNow({
-      serverId,
-      scheduledByDiscordId: opts.byDiscordId,
-      untilRestart: opts.untilRestart ?? false,
+      const window = await scheduler.startNow({
+        serverId,
+        scheduledByDiscordId: opts.byDiscordId,
+        untilRestart: opts.untilRestart ?? false,
+      });
+
+      const result = await this.applyWindow(window);
+      if (!result.applied && result.modError) {
+        await scheduler.discard(serverId);
+        await this.broadcast(serverId);
+        throw result.error;
+      }
+      return { applied: result.applied };
     });
-
-    return this.apply(window);
   }
 
   /**
    * Push an active window to the mod: sync presentation and allow list, then
-   * turn maintenance on. Marks the window applied on success.
+   * turn maintenance on. Marks the window applied on success; on failure the
+   * result says whether the mod itself refused (`modError`) or the server was
+   * unreachable.
    */
-  async apply(
-    window: ServerMaintenanceSchedule,
-  ): Promise<{ applied: boolean }> {
-    const { serverId } = window;
-    try {
-      await this.pushSettings(serverId, window);
-      await this.mmode.enable(serverId, { untilRestart: window.untilRestart });
-    } catch (error) {
-      logger.warn(
-        `Maintenance #${window.id} could not be applied on server ${serverId}, will retry when the server is reachable: ${error}`,
-      );
-      this.setModState(serverId, null);
-      await this.broadcast(serverId);
-      return { applied: false };
-    }
-
-    await this.requireScheduler().markApplied(window.id);
-    this.setModState(serverId, true);
-    await this.broadcast(serverId);
-    logger.info(`Maintenance #${window.id} applied on server ${serverId}`);
-    return { applied: true };
+  async apply(window: ServerMaintenanceSchedule): Promise<ApplyResult> {
+    return this.withLock(window.serverId, () => this.applyWindow(window));
   }
 
   /** Turn maintenance off on the mod and complete the active window. */
   async disable(serverId: number): Promise<void> {
-    const window = this.getActiveWindow(serverId);
-    if (!window && this.modState.get(serverId)?.enabled !== true) {
-      throw new Error(`Server ${serverId} is not in maintenance mode`);
-    }
+    await this.withLock(serverId, async () => {
+      const window = this.getActiveWindow(serverId);
+      if (!window && this.modState.get(serverId)?.enabled !== true) {
+        throw new Error(`Server ${serverId} is not in maintenance mode`);
+      }
 
-    try {
-      await this.mmode.disable(serverId);
-    } catch (error) {
-      if (!window || window.appliedAt !== null) throw error;
-      logger.warn(
-        `Server ${serverId} is unreachable; closing the never-applied maintenance #${window.id} without contacting the mod`,
-      );
-    }
+      try {
+        await this.mmode.disable(serverId);
+      } catch (error) {
+        if (!window || window.appliedAt !== null) throw error;
+        logger.warn(
+          `Server ${serverId} is unreachable; closing the never-applied maintenance #${window.id} without contacting the mod`,
+        );
+      }
 
-    this.setModState(serverId, false);
-    if (window) {
-      await this.requireScheduler().markCompleted(serverId);
-    }
-    await this.broadcast(serverId);
-    logger.info(`Maintenance mode disabled for server ${serverId}`);
+      this.setModState(serverId, false);
+      if (window) {
+        await this.requireScheduler().markCompleted(serverId);
+      }
+      await this.broadcast(serverId);
+      logger.info(`Maintenance mode disabled for server ${serverId}`);
+    });
   }
 
   /**
@@ -259,41 +264,7 @@ export class MaintenanceService {
     this.reconciling.add(serverId);
 
     try {
-      const before = this.isInMaintenance(serverId);
-
-      let modEnabled: boolean;
-      try {
-        modEnabled = await this.mmode.status(serverId);
-      } catch (error) {
-        this.setModState(serverId, null);
-        logger.debug(
-          `Maintenance status for server ${serverId} unavailable: ${error}`,
-        );
-        if (before !== this.isInMaintenance(serverId)) {
-          await this.broadcast(serverId);
-        }
-        return;
-      }
-
-      this.setModState(serverId, modEnabled);
-      const window = this.getActiveWindow(serverId);
-
-      if (window && !modEnabled) {
-        if (window.appliedAt === null) {
-          await this.apply(window);
-          return;
-        }
-        logger.info(
-          `Maintenance #${window.id} was turned off outside the app, marking it completed`,
-        );
-        await this.requireScheduler().markCompleted(serverId);
-      } else if (window && modEnabled && window.appliedAt === null) {
-        await this.requireScheduler().markApplied(window.id);
-      }
-
-      if (before !== this.isInMaintenance(serverId)) {
-        await this.broadcast(serverId);
-      }
+      await this.withLock(serverId, () => this.reconcileLocked(serverId));
     } finally {
       this.reconciling.delete(serverId);
     }
@@ -408,16 +379,17 @@ export class MaintenanceService {
   }
 
   /** Push presentation, backup-off, and the allow list to the mod. Throws if the server is unreachable. */
-  async pushSettings(
-    serverId: number,
-    window: ServerMaintenanceSchedule | null = this.getActiveWindow(serverId),
-  ): Promise<AllowListSyncResult> {
-    await this.pushPresentation(serverId, window);
-    await this.mmode.setBackups(serverId, false);
-    return this.syncAllowList(serverId);
+  async pushSettings(serverId: number): Promise<AllowListSyncResult> {
+    return this.withLock(serverId, () =>
+      this.pushSettingsLocked(serverId, this.getActiveWindow(serverId)),
+    );
   }
 
-  /** Bring the mod's allow list in line with admins plus the manual list. */
+  /**
+   * Bring the mod's allow list in line with admins plus the manual list. A
+   * single entry that cannot be added or removed is logged and skipped so
+   * one bad name never blocks enabling maintenance.
+   */
   async syncAllowList(serverId: number): Promise<AllowListSyncResult> {
     const desired = await this.resolveAllowedPlayers(serverId);
     const current = await this.mmode.list(serverId);
@@ -441,8 +413,14 @@ export class MaintenanceService {
     const removed: string[] = [];
     for (const name of current.players) {
       if (desiredNames.has(name.toLowerCase())) continue;
-      await this.mmode.removeAllowed(serverId, name);
-      removed.push(name);
+      try {
+        await this.mmode.removeAllowed(serverId, name);
+        removed.push(name);
+      } catch (error) {
+        logger.warn(
+          `Could not remove ${name} from the allow list on server ${serverId}: ${error}`,
+        );
+      }
     }
 
     if (added.length > 0 || removed.length > 0) {
@@ -451,6 +429,83 @@ export class MaintenanceService {
       );
     }
     return { added, removed };
+  }
+
+  private async applyWindow(
+    window: ServerMaintenanceSchedule,
+  ): Promise<ApplyResult> {
+    const { serverId } = window;
+    try {
+      await this.pushSettingsLocked(serverId, window);
+      await this.mmode.enable(serverId, { untilRestart: window.untilRestart });
+    } catch (error) {
+      const modError = error instanceof MaintenanceModeCommandError;
+      if (modError) {
+        logger.error(
+          `Maintenance #${window.id} was refused by the mod on server ${serverId}: ${error}`,
+        );
+      } else {
+        logger.warn(
+          `Maintenance #${window.id} could not be applied on server ${serverId}, will retry when the server is reachable: ${error}`,
+        );
+      }
+      this.setModState(serverId, null);
+      await this.broadcast(serverId);
+      return { applied: false, modError, error };
+    }
+
+    await this.requireScheduler().markApplied(window.id);
+    this.setModState(serverId, true);
+    await this.broadcast(serverId);
+    logger.info(`Maintenance #${window.id} applied on server ${serverId}`);
+    return { applied: true };
+  }
+
+  private async reconcileLocked(serverId: number): Promise<void> {
+    const before = this.isInMaintenance(serverId);
+
+    let modEnabled: boolean;
+    try {
+      modEnabled = await this.mmode.status(serverId);
+    } catch (error) {
+      this.setModState(serverId, null);
+      logger.debug(
+        `Maintenance status for server ${serverId} unavailable: ${error}`,
+      );
+      if (before !== this.isInMaintenance(serverId)) {
+        await this.broadcast(serverId);
+      }
+      return;
+    }
+
+    this.setModState(serverId, modEnabled);
+    const window = this.getActiveWindow(serverId);
+
+    if (window && !modEnabled) {
+      if (window.appliedAt === null) {
+        await this.applyWindow(window);
+        return;
+      }
+      logger.info(
+        `Maintenance #${window.id} was turned off outside the app, marking it completed`,
+      );
+      await this.requireScheduler().markCompleted(serverId);
+    } else if (window && modEnabled && window.appliedAt === null) {
+      await this.requireScheduler().markApplied(window.id);
+    }
+
+    if (before !== this.isInMaintenance(serverId)) {
+      await this.broadcast(serverId);
+    }
+  }
+
+  private async pushSettingsLocked(
+    serverId: number,
+    window: ServerMaintenanceSchedule | null,
+  ): Promise<AllowListSyncResult> {
+    await this.pushPresentation(serverId, window);
+    await this.mmode.setBackups(serverId, false);
+    return this.syncAllowList(serverId);
   }
 
   private async pushPresentation(
@@ -481,7 +536,9 @@ export class MaintenanceService {
   ): Promise<boolean> {
     try {
       if (scope === "presentation") {
-        await this.pushPresentation(serverId, this.getActiveWindow(serverId));
+        await this.withLock(serverId, () =>
+          this.pushPresentation(serverId, this.getActiveWindow(serverId)),
+        );
       } else {
         await this.pushSettings(serverId);
       }
@@ -570,6 +627,16 @@ export class MaintenanceService {
       throw new Error("Maintenance scheduler not initialized");
     }
     return this.scheduler;
+  }
+
+  private withLock<T>(serverId: number, fn: () => Promise<T>): Promise<T> {
+    const previous = this.locks.get(serverId) ?? Promise.resolve();
+    const run = previous.then(fn, fn);
+    this.locks.set(
+      serverId,
+      run.catch(() => undefined),
+    );
+    return run;
   }
 
   private async broadcast(serverId: number): Promise<void> {

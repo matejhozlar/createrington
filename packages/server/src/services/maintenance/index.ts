@@ -1,5 +1,6 @@
 export { MaintenanceService, maintenanceService } from "./maintenance.service";
 export type {
+  ApplyResult,
   MaintenanceAllowedPlayer,
   MaintenanceSettings,
   MaintenanceStatus,

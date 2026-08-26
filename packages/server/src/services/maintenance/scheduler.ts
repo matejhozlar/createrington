@@ -139,6 +139,20 @@ export class MaintenanceScheduler {
     );
   }
 
+  /** Cancel the server's open window whatever its status, for windows that never reached the mod. */
+  async discard(serverId: number): Promise<void> {
+    const schedule = this.windows.get(serverId);
+    if (!schedule) return;
+
+    this.clearTimers(schedule.id);
+    this.windows.delete(serverId);
+    await this.setStatus(schedule.id, "cancelled");
+
+    logger.info(
+      `Discarded maintenance #${schedule.id} for server ${serverId} (never applied)`,
+    );
+  }
+
   /** The scheduled or active window for a server, or null. */
   getSchedule(serverId: number): ServerMaintenanceSchedule | null {
     return this.windows.get(serverId) ?? null;
@@ -276,10 +290,19 @@ export class MaintenanceScheduler {
     );
     this.windows.set(schedule.serverId, updated);
 
-    const { applied } = await this.maintenanceService.apply(updated);
-    logger.info(
-      `Scheduled maintenance #${schedule.id} for server ${schedule.serverId} is active` +
-        (applied ? "" : " (waiting for the server to become reachable)"),
-    );
+    const result = await this.maintenanceService.apply(updated);
+    if (result.applied) {
+      logger.info(
+        `Scheduled maintenance #${schedule.id} for server ${schedule.serverId} is active`,
+      );
+    } else if (result.modError) {
+      logger.error(
+        `Scheduled maintenance #${schedule.id} for server ${schedule.serverId} is pending: the mod refused it and reconcile will keep retrying`,
+      );
+    } else {
+      logger.info(
+        `Scheduled maintenance #${schedule.id} for server ${schedule.serverId} is pending until the server is reachable`,
+      );
+    }
   }
 }

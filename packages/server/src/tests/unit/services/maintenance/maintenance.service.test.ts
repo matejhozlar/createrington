@@ -104,7 +104,10 @@ vi.mock("@/services/playtime/config", () => ({
 }));
 
 import { MaintenanceService } from "@/services/maintenance/maintenance.service";
-import type { MaintenanceModeClient } from "@/services/maintenance/mmode";
+import {
+  MaintenanceModeCommandError,
+  type MaintenanceModeClient,
+} from "@/services/maintenance/mmode";
 import type { MaintenanceScheduler } from "@/services/maintenance/scheduler";
 
 interface FakeMod {
@@ -114,6 +117,9 @@ interface FakeMod {
   motd: string | null;
   message: string | null;
   calls: string[];
+  refuse: boolean;
+  stuckNames: string[];
+  delayMs: number;
 }
 
 function createMod(overrides: Partial<FakeMod> = {}): {
@@ -127,47 +133,67 @@ function createMod(overrides: Partial<FakeMod> = {}): {
     motd: null,
     message: null,
     calls: [],
+    refuse: false,
+    stuckNames: [],
+    delayMs: 0,
     ...overrides,
   };
-  const guard = (name: string) => {
+  const guard = async (name: string) => {
     mod.calls.push(name);
+    if (mod.delayMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, mod.delayMs));
+    }
     if (!mod.reachable) throw new Error("RCON unreachable");
+    if (mod.refuse) {
+      throw new MaintenanceModeCommandError(
+        "The Maintenance Mode mod did not recognise the command",
+        `maintenance ${name}`,
+        "Unknown or incomplete command",
+      );
+    }
   };
   const client = {
     status: async () => {
-      guard("status");
+      await guard("status");
       return mod.enabled;
     },
     enable: async () => {
-      guard("enable");
+      await guard("enable");
       mod.enabled = true;
     },
     disable: async () => {
-      guard("disable");
+      await guard("disable");
       mod.enabled = false;
     },
     setMotd: async (_: number, motd: string) => {
-      guard("setMotd");
+      await guard("setMotd");
       mod.motd = motd;
     },
     setMessage: async (_: number, message: string) => {
-      guard("setMessage");
+      await guard("setMessage");
       mod.message = message;
     },
     setBackups: async () => {
-      guard("setBackups");
+      await guard("setBackups");
     },
     addAllowed: async (_: number, name: string) => {
-      guard(`addAllowed ${name}`);
+      await guard(`addAllowed ${name}`);
       if (!mod.allowed.includes(name)) mod.allowed.push(name);
     },
     removeAllowed: async (_: number, name: string) => {
-      guard(`removeAllowed ${name}`);
+      await guard(`removeAllowed ${name}`);
+      if (mod.stuckNames.includes(name)) {
+        throw new MaintenanceModeCommandError(
+          `Failed to remove ${name}`,
+          `maintenance removeAllowed ${name}`,
+          "That player does not exist",
+        );
+      }
       mod.allowed = mod.allowed.filter((n) => n !== name);
     },
     list: async () => {
-      guard("list");
-      return { players: [...mod.allowed], groups: [] };
+      await guard("list");
+      return { players: [...mod.allowed], groups: [], ignored: [] };
     },
   } as unknown as MaintenanceModeClient;
   return { mod, client };
@@ -178,6 +204,8 @@ interface FakeScheduler {
   applied: number[];
   completed: number[];
   cancelled: number[];
+  discarded: number[];
+  started: number;
   scheduler: MaintenanceScheduler;
 }
 
@@ -189,6 +217,8 @@ function createScheduler(
     applied: [],
     completed: [],
     cancelled: [],
+    discarded: [],
+    started: 0,
     scheduler: null as unknown as MaintenanceScheduler,
   };
   let nextId = 100;
@@ -199,6 +229,7 @@ function createScheduler(
       scheduledByDiscordId: string;
       untilRestart: boolean;
     }) => {
+      state.started += 1;
       state.window = makeWindow({
         id: nextId++,
         status: "active",
@@ -209,6 +240,10 @@ function createScheduler(
     },
     cancel: async (serverId: number) => {
       state.cancelled.push(serverId);
+      state.window = null;
+    },
+    discard: async (serverId: number) => {
+      state.discarded.push(serverId);
       state.window = null;
     },
     markApplied: async (id: number) => {
@@ -249,11 +284,7 @@ function makeWindow(
   };
 }
 
-function createService(
-  mod: FakeMod,
-  client: MaintenanceModeClient,
-  fake: FakeScheduler,
-) {
+function createService(client: MaintenanceModeClient, fake: FakeScheduler) {
   const service = new MaintenanceService(client);
   service.setScheduler(fake.scheduler);
   return service;
@@ -286,8 +317,8 @@ beforeEach(() => {
 
 describe("MaintenanceService.reconcile", () => {
   it("records an unreachable mod without inventing a maintenance state", async () => {
-    const { mod, client } = createMod({ reachable: false });
-    const service = createService(mod, client, createScheduler());
+    const { client } = createMod({ reachable: false });
+    const service = createService(client, createScheduler());
 
     await service.reconcile(SERVER_ID);
 
@@ -298,8 +329,8 @@ describe("MaintenanceService.reconcile", () => {
   });
 
   it("reflects maintenance turned on in-game even without a window", async () => {
-    const { mod, client } = createMod({ enabled: true });
-    const service = createService(mod, client, createScheduler());
+    const { client } = createMod({ enabled: true });
+    const service = createService(client, createScheduler());
 
     await service.reconcile(SERVER_ID);
 
@@ -311,7 +342,7 @@ describe("MaintenanceService.reconcile", () => {
   it("pushes an active window the mod has not confirmed yet", async () => {
     const { mod, client } = createMod({ allowed: ["Stale"] });
     const fake = createScheduler(makeWindow({ appliedAt: null }));
-    const service = createService(mod, client, fake);
+    const service = createService(client, fake);
 
     await service.reconcile(SERVER_ID);
 
@@ -327,7 +358,7 @@ describe("MaintenanceService.reconcile", () => {
   it("completes a window that was turned off outside the app", async () => {
     const { mod, client } = createMod({ enabled: false });
     const fake = createScheduler(makeWindow({ appliedAt: new Date() }));
-    const service = createService(mod, client, fake);
+    const service = createService(client, fake);
 
     await service.reconcile(SERVER_ID);
 
@@ -339,12 +370,27 @@ describe("MaintenanceService.reconcile", () => {
   it("marks a window applied when the mod is already on", async () => {
     const { mod, client } = createMod({ enabled: true });
     const fake = createScheduler(makeWindow({ appliedAt: null }));
-    const service = createService(mod, client, fake);
+    const service = createService(client, fake);
 
     await service.reconcile(SERVER_ID);
 
     expect(fake.applied).toEqual([1]);
     expect(mod.calls).not.toContain("enable");
+  });
+
+  it("still enables when a stale allow-list entry cannot be removed", async () => {
+    const { mod, client } = createMod({
+      allowed: ["Intruder"],
+      stuckNames: ["Intruder"],
+    });
+    const fake = createScheduler(makeWindow({ appliedAt: null }));
+    const service = createService(client, fake);
+
+    await service.reconcile(SERVER_ID);
+
+    expect(mod.enabled).toBe(true);
+    expect(fake.applied).toEqual([1]);
+    expect(mod.allowed).toEqual(["Intruder", "AdminOne"]);
   });
 });
 
@@ -352,7 +398,7 @@ describe("MaintenanceService.enable / disable", () => {
   it("starts a window and applies it", async () => {
     const { mod, client } = createMod();
     const fake = createScheduler();
-    const service = createService(mod, client, fake);
+    const service = createService(client, fake);
 
     const result = await service.enable(SERVER_ID, {
       byDiscordId: "admin-1",
@@ -371,11 +417,11 @@ describe("MaintenanceService.enable / disable", () => {
   });
 
   it("cancels a pending schedule before starting instantly", async () => {
-    const { mod, client } = createMod();
+    const { client } = createMod();
     const fake = createScheduler(
       makeWindow({ status: "scheduled", startedAt: null }),
     );
-    const service = createService(mod, client, fake);
+    const service = createService(client, fake);
 
     await service.enable(SERVER_ID, { byDiscordId: "admin-1" });
 
@@ -386,7 +432,7 @@ describe("MaintenanceService.enable / disable", () => {
   it("keeps the window pending when the server is unreachable", async () => {
     const { mod, client } = createMod({ reachable: false });
     const fake = createScheduler();
-    const service = createService(mod, client, fake);
+    const service = createService(client, fake);
 
     const result = await service.enable(SERVER_ID, { byDiscordId: "admin-1" });
 
@@ -406,9 +452,38 @@ describe("MaintenanceService.enable / disable", () => {
     expect(service.getStatus(SERVER_ID).pendingApply).toBe(false);
   });
 
+  it("discards the window and rethrows when the mod refuses", async () => {
+    const { client } = createMod({ refuse: true });
+    const fake = createScheduler();
+    const service = createService(client, fake);
+
+    await expect(
+      service.enable(SERVER_ID, { byDiscordId: "admin-1" }),
+    ).rejects.toBeInstanceOf(MaintenanceModeCommandError);
+
+    expect(fake.discarded).toEqual([SERVER_ID]);
+    expect(fake.window).toBeNull();
+    expect(service.isInMaintenance(SERVER_ID)).toBe(false);
+  });
+
+  it("serialises concurrent enables so only one window is created", async () => {
+    const { mod, client } = createMod({ delayMs: 5 });
+    const fake = createScheduler();
+    const service = createService(client, fake);
+
+    const results = await Promise.allSettled([
+      service.enable(SERVER_ID, { byDiscordId: "admin-1" }),
+      service.enable(SERVER_ID, { byDiscordId: "admin-2" }),
+    ]);
+
+    expect(results.map((r) => r.status)).toEqual(["fulfilled", "rejected"]);
+    expect(fake.started).toBe(1);
+    expect(mod.calls.filter((c) => c === "enable")).toHaveLength(1);
+  });
+
   it("refuses to enable twice", async () => {
-    const { mod, client } = createMod({ enabled: true });
-    const service = createService(mod, client, createScheduler());
+    const { client } = createMod({ enabled: true });
+    const service = createService(client, createScheduler());
     await service.reconcile(SERVER_ID);
 
     await expect(
@@ -419,7 +494,7 @@ describe("MaintenanceService.enable / disable", () => {
   it("turns the mod off and completes the window", async () => {
     const { mod, client } = createMod({ enabled: true });
     const fake = createScheduler(makeWindow({ appliedAt: new Date() }));
-    const service = createService(mod, client, fake);
+    const service = createService(client, fake);
     await service.reconcile(SERVER_ID);
 
     await service.disable(SERVER_ID);
@@ -430,9 +505,9 @@ describe("MaintenanceService.enable / disable", () => {
   });
 
   it("closes a never-applied window even when the server is unreachable", async () => {
-    const { mod, client } = createMod({ reachable: false });
+    const { client } = createMod({ reachable: false });
     const fake = createScheduler(makeWindow({ appliedAt: null }));
-    const service = createService(mod, client, fake);
+    const service = createService(client, fake);
 
     await service.disable(SERVER_ID);
 
@@ -441,17 +516,17 @@ describe("MaintenanceService.enable / disable", () => {
   });
 
   it("propagates the failure when an applied window cannot be turned off", async () => {
-    const { mod, client } = createMod({ reachable: false });
+    const { client } = createMod({ reachable: false });
     const fake = createScheduler(makeWindow({ appliedAt: new Date() }));
-    const service = createService(mod, client, fake);
+    const service = createService(client, fake);
 
     await expect(service.disable(SERVER_ID)).rejects.toThrow(/unreachable/);
     expect(fake.completed).toEqual([]);
   });
 
   it("rejects disabling when nothing is on", async () => {
-    const { mod, client } = createMod();
-    const service = createService(mod, client, createScheduler());
+    const { client } = createMod();
+    const service = createService(client, createScheduler());
     await service.reconcile(SERVER_ID);
 
     await expect(service.disable(SERVER_ID)).rejects.toThrow(
@@ -469,12 +544,25 @@ describe("MaintenanceService allow list", () => {
       },
     ];
     const { mod, client } = createMod({ allowed: ["adminone", "Intruder"] });
-    const service = createService(mod, client, createScheduler());
+    const service = createService(client, createScheduler());
 
     const result = await service.syncAllowList(SERVER_ID);
 
     expect(result).toEqual({ added: ["Helper"], removed: ["Intruder"] });
     expect(mod.allowed.sort()).toEqual(["Helper", "adminone"]);
+  });
+
+  it("skips entries the mod refuses to remove instead of failing the sync", async () => {
+    const { mod, client } = createMod({
+      allowed: ["Intruder", "Ghost"],
+      stuckNames: ["Ghost"],
+    });
+    const service = createService(client, createScheduler());
+
+    const result = await service.syncAllowList(SERVER_ID);
+
+    expect(result).toEqual({ added: ["AdminOne"], removed: ["Intruder"] });
+    expect(mod.allowed.sort()).toEqual(["AdminOne", "Ghost"]);
   });
 
   it("lists admins first-class and manual entries with their origin", async () => {
@@ -484,8 +572,8 @@ describe("MaintenanceService allow list", () => {
         playerUuid: "22222222-2222-2222-2222-222222222222",
       },
     ];
-    const { mod, client } = createMod();
-    const service = createService(mod, client, createScheduler());
+    const { client } = createMod();
+    const service = createService(client, createScheduler());
 
     const settings = await service.getSettings(SERVER_ID);
 
@@ -499,7 +587,7 @@ describe("MaintenanceService allow list", () => {
 
   it("adds and removes manual players and pushes to the mod", async () => {
     const { mod, client } = createMod();
-    const service = createService(mod, client, createScheduler());
+    const service = createService(client, createScheduler());
 
     const added = await service.addAllowedPlayer(
       SERVER_ID,
@@ -519,8 +607,8 @@ describe("MaintenanceService allow list", () => {
   });
 
   it("never removes an admin", async () => {
-    const { mod, client } = createMod();
-    const service = createService(mod, client, createScheduler());
+    const { client } = createMod();
+    const service = createService(client, createScheduler());
 
     await expect(
       service.removeAllowedPlayer(
@@ -531,8 +619,8 @@ describe("MaintenanceService allow list", () => {
   });
 
   it("rejects unregistered players", async () => {
-    const { mod, client } = createMod();
-    const service = createService(mod, client, createScheduler());
+    const { client } = createMod();
+    const service = createService(client, createScheduler());
 
     await expect(
       service.addAllowedPlayer(
@@ -548,7 +636,7 @@ describe("MaintenanceService settings", () => {
   it("stores overrides and pushes the rendered presentation", async () => {
     const { mod, client } = createMod();
     const fake = createScheduler(makeWindow({ appliedAt: new Date() }));
-    const service = createService(mod, client, fake);
+    const service = createService(client, fake);
 
     const result = await service.updateSettings(
       SERVER_ID,
@@ -566,8 +654,8 @@ describe("MaintenanceService settings", () => {
   });
 
   it("reports when the push did not reach the server", async () => {
-    const { mod, client } = createMod({ reachable: false });
-    const service = createService(mod, client, createScheduler());
+    const { client } = createMod({ reachable: false });
+    const service = createService(client, createScheduler());
 
     const result = await service.updateSettings(
       SERVER_ID,
@@ -582,7 +670,7 @@ describe("MaintenanceService settings", () => {
   it("syncs everything and reconciles when the server comes online", async () => {
     const { mod, client } = createMod({ allowed: [] });
     const fake = createScheduler(makeWindow({ appliedAt: null }));
-    const service = createService(mod, client, fake);
+    const service = createService(client, fake);
     await service.initialize([SERVER_ID]);
     service.shutdown();
 

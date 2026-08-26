@@ -61,6 +61,10 @@ export const serverMaintenanceSchedule = pgTable(
       table.serverId,
       table.status,
     ),
+    // At most one open (scheduled or active) window per server.
+    uniqueIndex("idx_server_maintenance_schedule_open")
+      .on(table.serverId)
+      .where(sql`${table.status} IN ('scheduled', 'active')`),
   ],
 );
 
@@ -76,8 +80,9 @@ export const serverMaintenanceSetting = pgTable(
     serverId: integer("server_id")
       .notNull()
       .references(() => server.id, { onDelete: "cascade" }),
-    // MOTD shown in the server list while maintenance is on. MiniMessage
-    // and legacy & codes are both accepted by the mod.
+    // MOTD shown in the server list while maintenance is on. Legacy & colour
+    // codes plus newlines; the app translates & to § before pushing (the
+    // mod's MiniMessage path is unreliable, see services/maintenance/mmode.ts).
     motd: text("motd"),
     // Kick / join-denied message shown to players who are not allowed in.
     message: text("message"),

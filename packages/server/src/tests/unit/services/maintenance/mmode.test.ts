@@ -51,16 +51,39 @@ describe("mmode parsers", () => {
     expect(parseAllowList("No users and groups are allowed to join")).toEqual({
       players: [],
       groups: [],
+      ignored: [],
     });
   });
 
-  it("parses players and luckperms groups", () => {
+  it("parses players and luckperms groups separated by the mod's newline", () => {
     const reply =
       "There are 2 allowed player(s): Alice, bob_99\n" +
       "There are 1 allowed luckperms groups(s): staff";
     expect(parseAllowList(reply)).toEqual({
       players: ["Alice", "bob_99"],
       groups: ["staff"],
+      ignored: [],
+    });
+  });
+
+  it("stops the player list at the next message even without a separator", () => {
+    const reply =
+      "There are 2 allowed player(s): Alice, bob_99" +
+      "There are 1 allowed luckperms groups(s): staff";
+    expect(parseAllowList(reply)).toEqual({
+      players: ["Alice", "bob_99"],
+      groups: ["staff"],
+      ignored: [],
+    });
+  });
+
+  it("never returns tokens that are not Minecraft usernames", () => {
+    const reply =
+      "There are 3 allowed player(s): Alice, bob 99 weird, Some other message";
+    expect(parseAllowList(reply)).toEqual({
+      players: ["Alice"],
+      groups: [],
+      ignored: ["bob 99 weird", "Some other message"],
     });
   });
 });
@@ -124,6 +147,17 @@ describe("MaintenanceModeClient", () => {
     );
   });
 
+  it("refuses to send names that are not Minecraft usernames", async () => {
+    const { client, sent } = clientWith({});
+    await expect(
+      client.addAllowed(1, "bob 99There are 1 allowed"),
+    ).rejects.toThrow(/Invalid Minecraft username/);
+    await expect(client.removeAllowed(1, "a\nb")).rejects.toThrow(
+      /Invalid Minecraft username/,
+    );
+    expect(sent).toEqual([]);
+  });
+
   it("translates & codes to § and keeps newlines for the MOTD and message", async () => {
     const { client, sent } = clientWith({
       "maintenance setMotd": "Updated config",
@@ -146,6 +180,7 @@ describe("MaintenanceModeClient", () => {
     await expect(client.list(1)).resolves.toEqual({
       players: ["Alice"],
       groups: [],
+      ignored: [],
     });
     await expect(client.setBackups(1, false)).resolves.toBeUndefined();
   });

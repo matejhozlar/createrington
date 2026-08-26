@@ -224,17 +224,19 @@ function MaintenanceSettingsForm({
     (p) => !allowedUuids.has(p.minecraftUuid),
   );
 
+  const motdValue = motd.trim();
+  const messageValue = message.trim();
   const canSave =
-    motd.trim().length > 0 &&
-    message.trim().length > 0 &&
-    (motd !== (settings.motd ?? settings.presets.motd) ||
-      message !== (settings.message ?? settings.presets.message));
+    motdValue.length > 0 &&
+    messageValue.length > 0 &&
+    (motdValue !== (settings.motd ?? settings.presets.motd) ||
+      messageValue !== (settings.message ?? settings.presets.message));
 
   function handleSave() {
     saveMutation.mutate({
       serverId,
-      motd: motd === settings.presets.motd ? null : motd.trim(),
-      message: message === settings.presets.message ? null : message.trim(),
+      motd: motdValue === settings.presets.motd ? null : motdValue,
+      message: messageValue === settings.presets.message ? null : messageValue,
     });
   }
 
