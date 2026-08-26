@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-05T10:03:19.290Z",
+  "generatedAt": "2026-08-26T19:48:50.896Z",
   "commands": [
     {
       "name": "cooldown",
@@ -663,6 +663,13 @@
           "description": "User to check",
           "required": false,
           "type": 6
+        },
+        {
+          "autocomplete": true,
+          "type": 3,
+          "name": "pose",
+          "description": "Render the skin in a specific pose",
+          "required": false
         }
       ],
       "defaultMemberPermissions": null,
@@ -683,6 +690,27 @@
         "duration": 10,
         "type": "user",
         "message": "Please wait before checking status again!"
+      },
+      "env": "prod"
+    },
+    {
+      "name": "suggest",
+      "description": "Suggest a mod for the modpack workshop",
+      "category": "user",
+      "options": [
+        {
+          "autocomplete": true,
+          "type": 3,
+          "name": "workshop",
+          "description": "Workshop to suggest to (only needed when several are open)",
+          "required": false
+        }
+      ],
+      "defaultMemberPermissions": null,
+      "cooldown": {
+        "duration": 5,
+        "type": "user",
+        "message": "Please wait a moment before suggesting again!"
       },
       "env": "prod"
     },
@@ -823,6 +851,91 @@
       "description": "Create or update the notification selection panel",
       "category": "owner",
       "options": [
+        {
+          "type": 3,
+          "name": "message_id",
+          "description": "Message ID of an existing panel to update (sends new if omitted)",
+          "required": false
+        }
+      ],
+      "defaultMemberPermissions": "8",
+      "permissions": {
+        "requireOwner": true
+      },
+      "env": "prod"
+    },
+    {
+      "name": "role-panel",
+      "description": "Post a panel where members toggle the chosen roles with buttons",
+      "category": "owner",
+      "options": [
+        {
+          "name": "role1",
+          "description": "Role members can pick",
+          "required": true,
+          "type": 8
+        },
+        {
+          "name": "role2",
+          "description": "Another role members can pick",
+          "required": false,
+          "type": 8
+        },
+        {
+          "name": "role3",
+          "description": "Another role members can pick",
+          "required": false,
+          "type": 8
+        },
+        {
+          "name": "role4",
+          "description": "Another role members can pick",
+          "required": false,
+          "type": 8
+        },
+        {
+          "name": "role5",
+          "description": "Another role members can pick",
+          "required": false,
+          "type": 8
+        },
+        {
+          "name": "role6",
+          "description": "Another role members can pick",
+          "required": false,
+          "type": 8
+        },
+        {
+          "name": "role7",
+          "description": "Another role members can pick",
+          "required": false,
+          "type": 8
+        },
+        {
+          "name": "role8",
+          "description": "Another role members can pick",
+          "required": false,
+          "type": 8
+        },
+        {
+          "name": "role9",
+          "description": "Another role members can pick",
+          "required": false,
+          "type": 8
+        },
+        {
+          "name": "role10",
+          "description": "Another role members can pick",
+          "required": false,
+          "type": 8
+        },
+        {
+          "type": 3,
+          "name": "title",
+          "description": "Panel title (default: Role Picker)",
+          "required": false,
+          "max_length": 100
+        },
         {
           "type": 3,
           "name": "message_id",
