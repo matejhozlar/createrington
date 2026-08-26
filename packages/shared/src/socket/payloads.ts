@@ -7,7 +7,8 @@ import type { CachedMessage } from "./messages";
 export interface ScheduledMaintenance {
   id: number;
   scheduledAt: string;
-  estimatedMinutes: number;
+  /** Null for windows started instantly rather than scheduled. */
+  estimatedMinutes: number | null;
   status: "scheduled" | "active";
 }
 

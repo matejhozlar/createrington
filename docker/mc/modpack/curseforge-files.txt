@@ -10,3 +10,9 @@ create:7963363
 presenceapi:8144488
 # Createrington Currency
 create-rington-currency:7977558
+
+# Server-side only (not part of the client pack / manifest.json):
+# Maintenance Mode 1.3.4 (universal jar) + its CraterLib 3.1.2 dependency.
+# The backend drives it over RCON (packages/server/src/services/maintenance).
+craterlib:8117841
+maintenance-mode-forge-fabric-quilt:8117977

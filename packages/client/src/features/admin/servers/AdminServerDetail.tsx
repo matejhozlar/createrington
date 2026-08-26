@@ -89,10 +89,7 @@ export function AdminServerDetail() {
           )}
 
           {activeTab === "management" && (
-            <ServerManagement
-              serverId={serverId}
-              isMaintenance={isMaintenance}
-            />
+            <ServerManagement serverId={serverId} />
           )}
 
           {activeTab === "sessions" && <SessionsTab serverId={serverId} />}

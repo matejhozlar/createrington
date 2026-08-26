@@ -21,36 +21,35 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CalendarClock, Clock, Wrench, X } from "lucide-react";
+import {
+  CalendarClock,
+  Clock,
+  Settings2,
+  Wrench,
+  WifiOff,
+  X,
+} from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { useCountdown } from "@/hooks/use-countdown";
+import { MaintenanceSettingsDialog } from "./MaintenanceSettingsDialog";
 
 interface MaintenanceToggleProps {
   serverId: number;
   isMaintenance: boolean;
 }
 
-/**
- * Admin control for a server's maintenance mode.
- *
- * Renders one of three states based on current maintenance status:
- * - State A: Inactive, offers instant enable or scheduled enable via a dialog
- * - State B: Scheduled, shows countdown and a cancel confirmation
- * - State C: Active, shows active indicator and a disable confirmation
- *
- * @param serverId - ID of the server to manage
- * @param isMaintenance - Whether maintenance mode is currently active on the server
- */
 export function MaintenanceToggle({
   serverId,
   isMaintenance,
 }: MaintenanceToggleProps) {
   const toast = useToastActions();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [disableDialogOpen, setDisableDialogOpen] = useState(false);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [announceEnd, setAnnounceEnd] = useState(false);
+  const [untilRestart, setUntilRestart] = useState(false);
   const [maintenanceType, setMaintenanceType] = useState<
     "maintenance" | "modpack_update"
   >("maintenance");
@@ -58,7 +57,6 @@ export function MaintenanceToggle({
   const [estimatedMinutes, setEstimatedMinutes] = useState(30);
   const utils = trpc.useUtils();
 
-  // Min datetime for the input (1 minute from now, recomputed when the dialog opens)
   const [minDatetime, setMinDatetime] = useState("");
 
   const handleScheduleDialogOpenChange = (open: boolean) => {
@@ -74,7 +72,9 @@ export function MaintenanceToggle({
   );
 
   const schedule = status?.schedule ?? null;
-  const countdown = useCountdown(schedule?.scheduledAt ?? null);
+  const countdown = useCountdown(
+    schedule?.status === "scheduled" ? schedule.scheduledAt : null,
+  );
 
   const invalidate = () => {
     utils.admin.servers.get.invalidate({ id: serverId });
@@ -84,9 +84,15 @@ export function MaintenanceToggle({
 
   const toggleMutation = trpc.admin.servers.toggleMaintenance.useMutation({
     onSuccess: (data) => {
-      toast.success(
-        data.enabled ? "Maintenance mode enabled" : "Maintenance mode disabled",
-      );
+      if (!data.enabled) {
+        toast.success("Maintenance mode disabled");
+      } else if (data.applied) {
+        toast.success("Maintenance mode enabled");
+      } else {
+        toast.warning(
+          "Maintenance mode armed. The server is unreachable right now; it will be applied as soon as it's back online.",
+        );
+      }
       invalidate();
     },
     onError: (err: { message: string }) => toast.error(err.message),
@@ -118,7 +124,7 @@ export function MaintenanceToggle({
     });
 
   function handleInstantEnable() {
-    toggleMutation.mutate({ serverId, enabled: true });
+    toggleMutation.mutate({ serverId, enabled: true, untilRestart });
   }
 
   function handleSchedule() {
@@ -131,6 +137,25 @@ export function MaintenanceToggle({
       estimatedMinutes,
     });
   }
+
+  const settingsButton = (
+    <Button
+      variant="ghost"
+      size="sm"
+      aria-label="Maintenance settings"
+      onClick={() => setSettingsOpen(true)}
+    >
+      <Settings2 className="size-4" />
+    </Button>
+  );
+
+  const settingsDialog = (
+    <MaintenanceSettingsDialog
+      serverId={serverId}
+      open={settingsOpen}
+      onOpenChange={setSettingsOpen}
+    />
+  );
 
   // State B: Scheduled (not yet active)
   if (schedule?.status === "scheduled") {
@@ -150,20 +175,24 @@ export function MaintenanceToggle({
               {new Date(schedule.scheduledAt).toLocaleString(undefined, {
                 dateStyle: "medium",
                 timeStyle: "short",
-              })}{" "}
-              · ~{schedule.estimatedMinutes} min
+              })}
+              {schedule.estimatedMinutes !== null &&
+                ` · ~${schedule.estimatedMinutes} min`}
             </p>
           </div>
         </div>
 
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setCancelDialogOpen(true)}
-        >
-          <X className="mr-1 size-3.5" />
-          Cancel
-        </Button>
+        <div className="flex items-center gap-1">
+          {settingsButton}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCancelDialogOpen(true)}
+          >
+            <X className="mr-1 size-3.5" />
+            Cancel
+          </Button>
+        </div>
         <ConfirmDialog
           open={cancelDialogOpen}
           onOpenChange={setCancelDialogOpen}
@@ -174,39 +203,54 @@ export function MaintenanceToggle({
           variant="destructive"
           onConfirm={() => cancelMutation.mutateAsync({ serverId })}
         />
+        {settingsDialog}
       </div>
     );
   }
 
   // State C: Active maintenance
-  if (isMaintenance) {
+  if (isMaintenance || status?.enabled) {
+    const pending = status?.pendingApply ?? false;
+    const detail = pending
+      ? "Waiting for the server to come back online to apply"
+      : schedule?.untilRestart
+        ? "Only allowed players can join · turns off at the next restart"
+        : "Only allowed players can join";
+
     return (
       <div className="flex items-center justify-between rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
         <div className="flex items-center gap-3">
-          <Wrench className="size-5 text-amber-500" />
+          {pending ? (
+            <WifiOff className="size-5 text-amber-500" />
+          ) : (
+            <Wrench className="size-5 text-amber-500" />
+          )}
           <div>
             <p className="text-sm font-medium">
               Maintenance Mode{" "}
-              <span className="font-semibold text-amber-500">Active</span>
+              <span className="font-semibold text-amber-500">
+                {pending ? "Pending" : "Active"}
+              </span>
             </p>
-            <p className="text-xs text-muted-foreground">
-              Whitelist is cleared
-            </p>
+            <p className="text-xs text-muted-foreground">{detail}</p>
           </div>
         </div>
 
-        <Button
-          variant="warning"
-          size="sm"
-          onClick={() => setDisableDialogOpen(true)}
-        >
-          Disable
-        </Button>
+        <div className="flex items-center gap-1">
+          {settingsButton}
+          <Button
+            variant="warning"
+            size="sm"
+            onClick={() => setDisableDialogOpen(true)}
+          >
+            Disable
+          </Button>
+        </div>
         <ConfirmDialog
           open={disableDialogOpen}
           onOpenChange={setDisableDialogOpen}
           title="Disable maintenance mode?"
-          description="This will restore the whitelist file and reload it. All previously whitelisted players will be able to join again."
+          description="Maintenance mode will be turned off on the server and every whitelisted player will be able to join again."
           confirmLabel="Disable"
           onConfirm={() =>
             toggleMutation.mutateAsync({
@@ -227,6 +271,7 @@ export function MaintenanceToggle({
             </Label>
           </div>
         </ConfirmDialog>
+        {settingsDialog}
       </div>
     );
   }
@@ -244,119 +289,139 @@ export function MaintenanceToggle({
             </span>
           </p>
           <p className="text-xs text-muted-foreground">
-            Toggle to clear the whitelist and restrict access to ops only
+            Turn on to kick everyone except allowed players and block new joins
           </p>
         </div>
       </div>
 
-      <Dialog open={dialogOpen} onOpenChange={handleScheduleDialogOpenChange}>
-        <DialogTrigger asChild>
-          <Button variant="outline" size="sm">
-            Enable
-          </Button>
-        </DialogTrigger>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Enable maintenance mode</DialogTitle>
-            <DialogDescription>
-              Choose to start maintenance immediately or schedule it for later.
-            </DialogDescription>
-          </DialogHeader>
+      <div className="flex items-center gap-1">
+        {settingsButton}
+        <Dialog open={dialogOpen} onOpenChange={handleScheduleDialogOpenChange}>
+          <DialogTrigger asChild>
+            <Button variant="outline" size="sm">
+              Enable
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Enable maintenance mode</DialogTitle>
+              <DialogDescription>
+                Choose to start maintenance immediately or schedule it for
+                later.
+              </DialogDescription>
+            </DialogHeader>
 
-          <Tabs defaultValue="schedule" className="mt-2">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="schedule" className="cursor-pointer">
-                <CalendarClock className="mr-1.5 size-3.5" />
-                Schedule
-              </TabsTrigger>
-              <TabsTrigger value="instant" className="cursor-pointer">
-                <Clock className="mr-1.5 size-3.5" />
-                Instant
-              </TabsTrigger>
-            </TabsList>
+            <Tabs defaultValue="schedule" className="mt-2">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="schedule" className="cursor-pointer">
+                  <CalendarClock className="mr-1.5 size-3.5" />
+                  Schedule
+                </TabsTrigger>
+                <TabsTrigger value="instant" className="cursor-pointer">
+                  <Clock className="mr-1.5 size-3.5" />
+                  Instant
+                </TabsTrigger>
+              </TabsList>
 
-            <TabsContent value="schedule" className="mt-4 space-y-4">
-              <div className="space-y-2">
-                <Label>Type</Label>
-                <Select
-                  value={maintenanceType}
-                  onValueChange={(v) =>
-                    setMaintenanceType(v as "maintenance" | "modpack_update")
-                  }
-                >
-                  <SelectTrigger className="cursor-pointer">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="maintenance">
-                      Server Maintenance
-                    </SelectItem>
-                    <SelectItem value="modpack_update">
-                      Modpack & Server Update
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="scheduled-at">Start Date & Time</Label>
-                <Input
-                  id="scheduled-at"
-                  type="datetime-local"
-                  value={scheduledAt}
-                  onChange={(e) => setScheduledAt(e.target.value)}
-                  min={minDatetime}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="estimated-minutes">
-                  Estimated Duration (minutes)
-                </Label>
-                <Input
-                  id="estimated-minutes"
-                  type="number"
-                  min={1}
-                  max={10080}
-                  value={estimatedMinutes}
-                  onChange={(e) =>
-                    setEstimatedMinutes(parseInt(e.target.value) || 30)
-                  }
-                />
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Discord warnings will be sent at 1h, 30m, 15m, 10m, 5m, and 1m
-                before the scheduled time.
-              </p>
-              <DialogFooter>
-                <Button
-                  variant="warning"
-                  onClick={handleSchedule}
-                  disabled={!scheduledAt}
-                  loading={scheduleMutation.isPending}
-                >
-                  Schedule Maintenance
-                </Button>
-              </DialogFooter>
-            </TabsContent>
+              <TabsContent value="schedule" className="mt-4 space-y-4">
+                <div className="space-y-2">
+                  <Label>Type</Label>
+                  <Select
+                    value={maintenanceType}
+                    onValueChange={(v) =>
+                      setMaintenanceType(v as "maintenance" | "modpack_update")
+                    }
+                  >
+                    <SelectTrigger className="cursor-pointer">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="maintenance">
+                        Server Maintenance
+                      </SelectItem>
+                      <SelectItem value="modpack_update">
+                        Modpack & Server Update
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="scheduled-at">Start Date & Time</Label>
+                  <Input
+                    id="scheduled-at"
+                    type="datetime-local"
+                    value={scheduledAt}
+                    onChange={(e) => setScheduledAt(e.target.value)}
+                    min={minDatetime}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="estimated-minutes">
+                    Estimated Duration (minutes)
+                  </Label>
+                  <Input
+                    id="estimated-minutes"
+                    type="number"
+                    min={1}
+                    max={10080}
+                    value={estimatedMinutes}
+                    onChange={(e) =>
+                      setEstimatedMinutes(parseInt(e.target.value) || 30)
+                    }
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Discord warnings will be sent at 1h, 30m, 15m, 10m, 5m, and 1m
+                  before the scheduled time.
+                </p>
+                <DialogFooter>
+                  <Button
+                    variant="warning"
+                    onClick={handleSchedule}
+                    disabled={!scheduledAt}
+                    loading={scheduleMutation.isPending}
+                  >
+                    Schedule Maintenance
+                  </Button>
+                </DialogFooter>
+              </TabsContent>
 
-            <TabsContent value="instant" className="mt-4 space-y-4">
-              <p className="text-sm text-muted-foreground">
-                This will immediately clear the whitelist so only server
-                operators can join. The current whitelist will be backed up and
-                restored when maintenance ends.
-              </p>
-              <DialogFooter>
-                <Button
-                  variant="warning"
-                  onClick={handleInstantEnable}
-                  loading={toggleMutation.isPending}
-                >
-                  Enable Maintenance Now
-                </Button>
-              </DialogFooter>
-            </TabsContent>
-          </Tabs>
-        </DialogContent>
-      </Dialog>
+              <TabsContent value="instant" className="mt-4 space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Turns maintenance mode on right away. Everyone who is not on
+                  the allow list is kicked and can&apos;t join until it&apos;s
+                  turned off.
+                </p>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="until-restart"
+                    checked={untilRestart}
+                    onCheckedChange={(checked) =>
+                      setUntilRestart(checked === true)
+                    }
+                  />
+                  <Label
+                    htmlFor="until-restart"
+                    className="text-sm cursor-pointer"
+                  >
+                    Turn off automatically at the next server restart
+                  </Label>
+                </div>
+                <DialogFooter>
+                  <Button
+                    variant="warning"
+                    onClick={handleInstantEnable}
+                    loading={toggleMutation.isPending}
+                  >
+                    Enable Maintenance Now
+                  </Button>
+                </DialogFooter>
+              </TabsContent>
+            </Tabs>
+          </DialogContent>
+        </Dialog>
+      </div>
+      {settingsDialog}
     </div>
   );
 }

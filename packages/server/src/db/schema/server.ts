@@ -25,8 +25,12 @@ export const server = pgTable("server", {
 });
 
 // --- server_maintenance_schedule ---
-// Tracks scheduled and in-progress maintenance windows. One row per event;
-// status transitions: scheduled → active → completed | cancelled.
+// One row per maintenance window, whether scheduled ahead of time or started
+// instantly (scheduled_at = started_at). Status transitions:
+// scheduled → active → completed | cancelled. applied_at records when the
+// Maintenance Mode mod confirmed the window over RCON; an active row with
+// applied_at NULL is still waiting for the game server to become reachable.
+// estimated_minutes is NULL for instant windows.
 
 export const serverMaintenanceSchedule = pgTable(
   "server_maintenance_schedule",
@@ -37,9 +41,13 @@ export const serverMaintenanceSchedule = pgTable(
       .references(() => server.id),
     status: text("status").notNull().default("scheduled"),
     scheduledAt: timestamp("scheduled_at", { withTimezone: true }).notNull(),
-    estimatedMinutes: integer("estimated_minutes").notNull(),
+    estimatedMinutes: integer("estimated_minutes"),
     startedAt: timestamp("started_at", { withTimezone: true }),
     endedAt: timestamp("ended_at", { withTimezone: true }),
+    appliedAt: timestamp("applied_at", { withTimezone: true }),
+    // Mod-side `schedule untilRestart`: the mod turns itself off at the next
+    // server stop, which the reconciler then mirrors into this row.
+    untilRestart: boolean("until_restart").notNull().default(false),
     scheduledByDiscordId: text("scheduled_by_discord_id").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
@@ -53,6 +61,66 @@ export const serverMaintenanceSchedule = pgTable(
       table.serverId,
       table.status,
     ),
+    // At most one open (scheduled or active) window per server.
+    uniqueIndex("idx_server_maintenance_schedule_open")
+      .on(table.serverId)
+      .where(sql`${table.status} IN ('scheduled', 'active')`),
+  ],
+);
+
+// --- server_maintenance_setting ---
+// Per-server Maintenance Mode presentation pushed to the mod over RCON
+// (`maintenance setMotd` / `setMessage`). NULL means "use the built-in
+// preset". One row per server, created lazily on first edit.
+
+export const serverMaintenanceSetting = pgTable(
+  "server_maintenance_setting",
+  {
+    id: serial("id").primaryKey(),
+    serverId: integer("server_id")
+      .notNull()
+      .references(() => server.id, { onDelete: "cascade" }),
+    // MOTD shown in the server list while maintenance is on. Legacy & colour
+    // codes plus newlines; the app translates & to § before pushing (the
+    // mod's MiniMessage path is unreliable, see services/maintenance/mmode.ts).
+    motd: text("motd"),
+    // Kick / join-denied message shown to players who are not allowed in.
+    message: text("message"),
+    updatedByDiscordId: text("updated_by_discord_id"),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("idx_server_maintenance_setting_server").on(table.serverId),
+  ],
+);
+
+// --- server_maintenance_allowed_player ---
+// Players allowed to join while maintenance is on, on top of admins (admins
+// are derived from the admin table at sync time and never stored here). The
+// mod keeps its own copy in mmode.json; this table is the source of truth the
+// backend reconciles it against. One row per (server, player).
+
+export const serverMaintenanceAllowedPlayer = pgTable(
+  "server_maintenance_allowed_player",
+  {
+    id: serial("id").primaryKey(),
+    serverId: integer("server_id")
+      .notNull()
+      .references(() => server.id, { onDelete: "cascade" }),
+    playerUuid: uuid("player_uuid").notNull(),
+    addedByDiscordId: text("added_by_discord_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("idx_server_maintenance_allowed_player_unique").on(
+      table.serverId,
+      table.playerUuid,
+    ),
+    index("idx_server_maintenance_allowed_player_server").on(table.serverId),
   ],
 );
 

@@ -22,7 +22,10 @@ backend logic can be tested without touching production. Built on
   to auto-download the mods (mirrors `manifest.json`).
 
 The pack targets NeoForge 21.1.222 / MC 1.21.1 and includes CRNet, Create,
-PresenceAPI, and Createrington Currency.
+PresenceAPI, and Createrington Currency. The server additionally auto-installs
+the server-side-only Maintenance Mode mod (plus its CraterLib dependency),
+which the backend drives over RCON; it is listed in `curseforge-files.txt`
+but deliberately not in the client pack.
 
 ## Mod configuration
 
@@ -101,5 +104,8 @@ infisical run -- pnpm mc:up
 | `MC_RCON_PORT`        | `25575`     | Host port mapped to the container's RCON   |
 | `MC_ONLINE_MODE`      | `TRUE`      | Online auth (mirrors prod); `FALSE` to skip |
 
-To let the backend's file operations (maintenance mode, whitelist resync) target
-this server locally, set `MC_SERVER_LOCAL_PATH=./docker/mc/data` in your root `.env`.
+To let the backend's file operations (whitelist resync, structure pack rotation)
+target this server locally, set `MC_SERVER_LOCAL_PATH=./docker/mc/data` in your
+root `.env`. Maintenance mode goes over RCON instead: add
+`COGS_AND_STEAM_RCON_PORT=25575` and `COGS_AND_STEAM_RCON_PASSWORD=dev-rcon`
+(or whatever `MC_RCON_PASSWORD` you set) so the backend can reach the container.
