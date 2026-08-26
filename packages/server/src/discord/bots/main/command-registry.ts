@@ -41,6 +41,7 @@ export const commandRegistry: Record<string, CommandEnv> = {
 
   // Owner
   "notification-panel": "prod",
+  "role-panel": "prod",
   "ticket-panel": "prod",
   "server-panel": "prod",
   "donate-panel": "prod",
