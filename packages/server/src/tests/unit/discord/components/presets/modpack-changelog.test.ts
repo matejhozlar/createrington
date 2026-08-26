@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import config from "@/config";
 import {
+  CHANGELOG_SPACER_IMAGE_URL,
   ModpackChangelogComponentPresets,
   type ChangelogEntry,
   type ChangelogInput,
@@ -79,7 +79,7 @@ function headings(nodes: Child[]): string[] {
 
 const SPACER = {
   type: "media_gallery",
-  items: [{ url: config.discord.embeds.spacerImageUrl, spoiler: false }],
+  items: [{ url: CHANGELOG_SPACER_IMAGE_URL, spoiler: false }],
 };
 
 function hasDownloadRow(nodes: Child[]): boolean {
@@ -176,10 +176,7 @@ describe("ModpackChangelogComponentPresets.release", () => {
       "### Removed (5)",
     ]);
     for (const message of messages) {
-      const content = children(message).filter(
-        (node) => node.type === "text" || node.type === "section",
-      );
-      expect(content.at(-1)?.type).toBe("section");
+      expect(texts(children(message)).at(-1)?.startsWith("### ")).toBe(false);
     }
   });
 
@@ -301,10 +298,11 @@ describe("ModpackChangelogComponentPresets.release", () => {
     expect(header.content).not.toContain("## ");
     for (const message of messages.slice(1)) {
       expect(validateComponentsV2(message)).toBeNull();
-      const [spacer, first] = children(message);
-      expect(spacer).toEqual(SPACER);
-      expect(first.type).toBe("section");
+      expect(children(message)[0]).toEqual(SPACER);
     }
+    expect(messages.flatMap((m) => headings(children(m)))).toEqual([
+      "### Added (40)",
+    ]);
   });
 
   it("clips an absurd release title and label so the header stays valid", () => {

@@ -195,7 +195,6 @@ const config = {
         WHITE: 0xffffff,
         BLACK: 0x000000,
       },
-      spacerImageUrl: "https://assets.createrington.com/changelog-spacer.png",
     },
 
     events: {

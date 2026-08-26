@@ -11,7 +11,6 @@ import {
   thumbnail,
 } from "../../component-builder";
 import { ComponentColors } from "../../colors";
-import config from "@/config";
 import { discordTimestamp, pluralize } from "@/utils/format";
 import {
   CURSEFORGE_CLASSES,
@@ -68,6 +67,9 @@ const LABEL_MAX = 60;
 const TITLE_MAX = 200;
 const DOWNLOAD_LABEL = "Download on CurseForge";
 const NO_CHANGES = "No mod changes in this release.";
+
+export const CHANGELOG_SPACER_IMAGE_URL =
+  "https://assets.createrington.com/changelog-spacer.png";
 
 function clip(value: string, max: number): string {
   return value.length > max ? `${value.slice(0, max - 1)}…` : value;
@@ -156,16 +158,12 @@ function footer(release: ChangelogRelease): Child[] {
 function opening(input: ChangelogInput, first: boolean): Child[] {
   return first
     ? [...headerNodes(input), separator()]
-    : [mediaGallery([{ url: config.discord.embeds.spacerImageUrl }])];
+    : [mediaGallery([{ url: CHANGELOG_SPACER_IMAGE_URL }])];
 }
 
-function fits(
-  input: ChangelogInput,
-  children: Child[],
-  first: boolean,
-): boolean {
+function fits(open: Child[], children: Child[]): boolean {
   const probe = container([
-    ...opening(input, first),
+    ...open,
     ...children,
     separator(),
     actionRow([linkButton(DOWNLOAD_LABEL, "https://www.curseforge.com")]),
@@ -176,13 +174,8 @@ function fits(
   );
 }
 
-/**
- * Split the change list across message-sized chunks. A group heading opens
- * each group once and moves along with the first entry when that one does
- * not fit; the first chunk leaves room for the header, the others for the
- * spacer, and every chunk for the download row.
- */
 function pack(input: ChangelogInput): Child[][] {
+  const openings = { first: opening(input, true), rest: opening(input, false) };
   const parts: Child[][] = [];
   let current: Child[] = [];
 
@@ -195,7 +188,8 @@ function pack(input: ChangelogInput): Child[][] {
       const pending: Child[] = opened
         ? [node]
         : [headingNode(group.heading, entries.length), node];
-      if (fits(input, [...current, ...pending], parts.length === 0)) {
+      const open = parts.length === 0 ? openings.first : openings.rest;
+      if (fits(open, [...current, ...pending])) {
         current.push(...pending);
         opened = true;
         continue;
@@ -215,11 +209,10 @@ function pack(input: ChangelogInput): Child[][] {
 /** Components V2 renderings of a modpack release changelog for the changelog channel. */
 export const ModpackChangelogComponentPresets = {
   /**
-   * One message per chunk of the diff: the first opens with the release facts
-   * and change counts, the others with an invisible full-width spacer image
-   * so they render as wide as the first, all list the grouped entries with
-   * thumbnails, and the last carries the download button. Every message
-   * stays within Discord's component and text ceilings on its own.
+   * One message per chunk of the diff, each within Discord's component and
+   * text ceilings. Only the first opens with the release header; the others
+   * open with a transparent full-width image, without which Discord would
+   * shrink them to their content instead of matching the first one's width.
    */
   release(input: ChangelogInput): ComponentsData[] {
     const chunks = pack(input);
