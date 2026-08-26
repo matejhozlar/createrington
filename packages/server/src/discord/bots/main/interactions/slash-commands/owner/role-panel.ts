@@ -1,6 +1,7 @@
 import { createEmbed, EmbedColors, EmbedPresets } from "@/discord/embeds";
 import { isSendableChannel } from "@/discord/utils/channel-guard";
 import { replyError } from "@/discord/utils/interaction-reply";
+import { getUnassignableReason } from "@/discord/utils/roles/self-assignable";
 import {
   ActionRowBuilder,
   ButtonBuilder,
@@ -12,7 +13,6 @@ import {
   SlashCommandBuilder,
 } from "discord.js";
 import {
-  getUnassignableReason,
   ROLE_PANEL_BUTTON_PREFIX,
   ROLE_PANEL_MAX_ROLES,
 } from "../../../config/role-panel";
@@ -60,17 +60,28 @@ export const permissions = {
   requireOwner: true,
 };
 
-function collectRoles(
-  interaction: ChatInputCommandInteraction<"cached">,
-): Role[] {
+function collectRoles(interaction: ChatInputCommandInteraction<"cached">): {
+  roles: Role[];
+  duplicates: number;
+} {
   const roles = new Map<string, Role>();
+  let selected = 0;
 
   for (let i = 1; i <= ROLE_PANEL_MAX_ROLES; i++) {
     const role = interaction.options.getRole(`role${i}`);
-    if (role) roles.set(role.id, role);
+    if (!role) continue;
+    selected++;
+    roles.set(role.id, role);
   }
 
-  return [...roles.values()];
+  return { roles: [...roles.values()], duplicates: selected - roles.size };
+}
+
+function describeSelection(roles: Role[], duplicates: number): string {
+  const base = `${roles.length} role(s)`;
+  return duplicates > 0
+    ? `${base} (${duplicates} duplicate selection(s) ignored)`
+    : base;
 }
 
 function buildRows(roles: Role[]): ActionRowBuilder<ButtonBuilder>[] {
@@ -115,8 +126,18 @@ export async function execute(
       return;
     }
 
-    const roles = collectRoles(interaction);
     const me = await interaction.guild.members.fetchMe();
+
+    if (!me.permissions.has(PermissionFlagsBits.ManageRoles)) {
+      await replyError(
+        interaction,
+        "Missing Permission",
+        "I need the Manage Roles permission to hand out roles from a panel.",
+      );
+      return;
+    }
+
+    const { roles, duplicates } = collectRoles(interaction);
 
     const rejected = roles.flatMap((role) => {
       const reason = getUnassignableReason(role, me);
@@ -144,6 +165,7 @@ export async function execute(
 
     const payload = { embeds: [embed.build()], components: buildRows(roles) };
     const messageId = interaction.options.getString("message_id");
+    const selection = describeSelection(roles, duplicates);
 
     if (messageId) {
       const existing = await interaction.channel.messages
@@ -163,7 +185,7 @@ export async function execute(
 
       const successEmbed = EmbedPresets.success(
         "Panel Updated",
-        `Role panel has been updated with ${roles.length} role(s)`,
+        `Role panel has been updated with ${selection}`,
       );
       await interaction.reply({
         embeds: [successEmbed.build()],
@@ -171,14 +193,14 @@ export async function execute(
       });
 
       logger.info(
-        `${interaction.user.tag} updated role panel (${messageId}) with ${roles.length} role(s)`,
+        `${interaction.user.tag} updated role panel (${messageId}) with ${selection}`,
       );
     } else {
       await interaction.channel.send(payload);
 
       const successEmbed = EmbedPresets.success(
         "Panel Created",
-        `Role panel has been created with ${roles.length} role(s)`,
+        `Role panel has been created with ${selection}`,
       );
       await interaction.reply({
         embeds: [successEmbed.build()],
@@ -186,7 +208,7 @@ export async function execute(
       });
 
       logger.info(
-        `${interaction.user.tag} created role panel with ${roles.length} role(s)`,
+        `${interaction.user.tag} created role panel with ${selection}`,
       );
     }
   } catch (error) {

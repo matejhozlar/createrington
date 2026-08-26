@@ -2,22 +2,31 @@ import { type ButtonInteraction, MessageFlags } from "discord.js";
 import { EmbedPresets } from "@/discord/embeds";
 import { replyError } from "@/discord/utils/interaction-reply";
 import { RoleManager } from "@/discord/utils/roles/role-manager";
-import {
-  getUnassignableReason,
-  ROLE_PANEL_BUTTON_PREFIX,
-} from "../../config/role-panel";
+import { getUnassignableReason } from "@/discord/utils/roles/self-assignable";
+import { ROLE_PANEL_BUTTON_PREFIX } from "../../config/role-panel";
 
 export const pattern = `${ROLE_PANEL_BUTTON_PREFIX}:*`;
 
 export const prodOnly = false;
 
 export async function execute(interaction: ButtonInteraction): Promise<void> {
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
   const [, roleId] = interaction.customId.split(":");
 
-  if (!roleId || !interaction.inCachedGuild()) {
+  if (!roleId) {
     await replyError(
       interaction,
       "Invalid Button",
+      "This button is missing its role. Ask an admin to recreate the panel.",
+    );
+    return;
+  }
+
+  if (!interaction.inCachedGuild()) {
+    await replyError(
+      interaction,
+      "Server Only",
       "This button can only be used in a server.",
     );
     return;
@@ -69,10 +78,7 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
         `You no longer have ${role}. Click the button again to get it back.`,
       );
 
-      await interaction.reply({
-        embeds: [embed.build()],
-        flags: MessageFlags.Ephemeral,
-      });
+      await interaction.editReply({ embeds: [embed.build()] });
     } else {
       const added = await RoleManager.assign(
         member,
@@ -89,10 +95,7 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
         `You now have ${role}. Click the button again to remove it.`,
       );
 
-      await interaction.reply({
-        embeds: [embed.build()],
-        flags: MessageFlags.Ephemeral,
-      });
+      await interaction.editReply({ embeds: [embed.build()] });
     }
   } catch (error) {
     logger.error(

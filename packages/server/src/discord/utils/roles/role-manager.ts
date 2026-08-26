@@ -64,7 +64,7 @@ export class RoleManager {
     reason?: string,
   ): Promise<boolean | { successful: number; failed: number }> {
     if (typeof roleIdOrIds === "string") {
-      return this.assignRole(member, roleIdOrIds);
+      return this.assignRole(member, roleIdOrIds, reason);
     }
 
     let successful = 0;
