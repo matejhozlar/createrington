@@ -336,6 +336,9 @@ describe("announceReleaseChangelog", () => {
     expect(presets.map((p) => p.name).sort()).toEqual(
       rows.map((row) => `Changelog 2.1.0 (${row.part}/${rows.length})`).sort(),
     );
+    const [first] = sentMessages();
+    expect(first.types[0]).toBe(ComponentType.TextDisplay);
+    expect(first.texts[0]).toContain("## Vitest Pack 2.1.0");
 
     sendMock.mockClear();
     await announce(modpack, release, false);
@@ -354,10 +357,12 @@ describe("announceReleaseChangelog", () => {
     ).toBe(rows.length);
 
     const messages = sentMessages();
-    expect(messages[0].texts[0]).toContain(`Part 2 of ${rows.length}`);
-    expect(messages.at(-1)!.texts[0]).toContain(
-      `Part ${rows.length} of ${rows.length}`,
-    );
+    expect(messages).toHaveLength(rows.length - 1);
+    for (const message of messages) {
+      expect(message.types[0]).toBe(ComponentType.MediaGallery);
+      expect(message.texts.join("\n")).not.toContain("## Vitest Pack");
+      expect(message.texts.join("\n")).not.toContain("(continued)");
+    }
   });
 
   it("sends an admin-edited preset instead of the generated part", async () => {

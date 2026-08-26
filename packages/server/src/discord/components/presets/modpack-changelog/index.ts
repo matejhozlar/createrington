@@ -11,6 +11,7 @@ import {
   thumbnail,
 } from "../../component-builder";
 import { ComponentColors } from "../../colors";
+import config from "@/config";
 import { discordTimestamp, pluralize } from "@/utils/format";
 import {
   CURSEFORGE_CLASSES,
@@ -65,7 +66,6 @@ const GROUPS: Array<{ key: ChangeGroup; heading: string }> = [
 const NAME_MAX = 80;
 const LABEL_MAX = 60;
 const TITLE_MAX = 200;
-const PART_PLACEHOLDER = "Part 99 of 99";
 const DOWNLOAD_LABEL = "Download on CurseForge";
 const NO_CHANGES = "No mod changes in this release.";
 
@@ -102,17 +102,11 @@ function entryNode(entry: ChangelogEntry, group: ChangeGroup): Child {
   return text(body);
 }
 
-function headingNode(
-  heading: string,
-  count: number,
-  continued: boolean,
-): Child {
-  return text(
-    continued ? `### ${heading} (continued)` : `### ${heading} (${count})`,
-  );
+function headingNode(heading: string, count: number): Child {
+  return text(`### ${heading} (${count})`);
 }
 
-function headerNodes(input: ChangelogInput, partLabel: string | null): Child[] {
+function headerNodes(input: ChangelogInput): Child[] {
   const { release } = input;
   const meta = [
     release.minecraftVersion ? `Minecraft ${release.minecraftVersion}` : null,
@@ -121,7 +115,6 @@ function headerNodes(input: ChangelogInput, partLabel: string | null): Child[] {
     release.publishedAt
       ? `Published ${discordTimestamp(release.publishedAt, "R")}`
       : null,
-    partLabel,
   ]
     .filter((part): part is string => part !== null)
     .join(" · ");
@@ -160,10 +153,19 @@ function footer(release: ChangelogRelease): Child[] {
   ];
 }
 
-function fits(input: ChangelogInput, children: Child[]): boolean {
+function opening(input: ChangelogInput, first: boolean): Child[] {
+  return first
+    ? [...headerNodes(input), separator()]
+    : [mediaGallery([{ url: config.discord.embeds.spacerImageUrl }])];
+}
+
+function fits(
+  input: ChangelogInput,
+  children: Child[],
+  first: boolean,
+): boolean {
   const probe = container([
-    ...headerNodes(input, PART_PLACEHOLDER),
-    separator(),
+    ...opening(input, first),
     ...children,
     separator(),
     actionRow([linkButton(DOWNLOAD_LABEL, "https://www.curseforge.com")]),
@@ -176,8 +178,9 @@ function fits(input: ChangelogInput, children: Child[]): boolean {
 
 /**
  * Split the change list across message-sized chunks. A group heading opens
- * each group and repeats as "(continued)" when its entries spill into the
- * next chunk; every chunk leaves room for the header and the download row.
+ * each group once and moves along with the first entry when that one does
+ * not fit; the first chunk leaves room for the header, the others for the
+ * spacer, and every chunk for the download row.
  */
 function pack(input: ChangelogInput): Child[][] {
   const parts: Child[][] = [];
@@ -191,14 +194,14 @@ function pack(input: ChangelogInput): Child[][] {
       const node = entryNode(entry, group.key);
       const pending: Child[] = opened
         ? [node]
-        : [headingNode(group.heading, entries.length, false), node];
-      if (fits(input, [...current, ...pending])) {
+        : [headingNode(group.heading, entries.length), node];
+      if (fits(input, [...current, ...pending], parts.length === 0)) {
         current.push(...pending);
         opened = true;
         continue;
       }
       if (current.length > 0) parts.push(current);
-      current = [headingNode(group.heading, entries.length, opened), node];
+      current = pending;
       opened = true;
     }
   }
@@ -212,23 +215,21 @@ function pack(input: ChangelogInput): Child[][] {
 /** Components V2 renderings of a modpack release changelog for the changelog channel. */
 export const ModpackChangelogComponentPresets = {
   /**
-   * One message per chunk of the diff, all the same shape: header with the
-   * release facts and change counts, the grouped entries with thumbnails,
-   * and the download button on the last one. Every message stays within
-   * Discord's component and text ceilings on its own.
+   * One message per chunk of the diff: the first opens with the release facts
+   * and change counts, the others with an invisible full-width spacer image
+   * so they render as wide as the first, all list the grouped entries with
+   * thumbnails, and the last carries the download button. Every message
+   * stays within Discord's component and text ceilings on its own.
    */
   release(input: ChangelogInput): ComponentsData[] {
     const chunks = pack(input);
     return chunks.map((children, index) => {
-      const partLabel =
-        chunks.length > 1 ? `Part ${index + 1} of ${chunks.length}` : null;
       const last = index === chunks.length - 1;
       return {
         components: [
           container(
             [
-              ...headerNodes(input, partLabel),
-              separator(),
+              ...opening(input, index === 0),
               ...children,
               ...(last ? footer(input.release) : []),
             ],

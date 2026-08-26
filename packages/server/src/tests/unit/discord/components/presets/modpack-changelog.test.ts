@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import config from "@/config";
 import {
   ModpackChangelogComponentPresets,
   type ChangelogEntry,
@@ -76,6 +77,11 @@ function headings(nodes: Child[]): string[] {
   return texts(nodes).filter((content) => content.startsWith("### "));
 }
 
+const SPACER = {
+  type: "media_gallery",
+  items: [{ url: config.discord.embeds.spacerImageUrl, spoiler: false }],
+};
+
 function hasDownloadRow(nodes: Child[]): boolean {
   return nodes.some(
     (node) =>
@@ -134,7 +140,7 @@ describe("ModpackChangelogComponentPresets.release", () => {
     expect(hasDownloadRow(nodes)).toBe(true);
   });
 
-  it("splits a long diff into several valid messages of the same shape", () => {
+  it("splits a long diff into several valid messages, header on the first and a spacer on the rest", () => {
     const added = entries(40);
     const updated = entries(30, 40).map((e) => ({
       ...e,
@@ -150,26 +156,30 @@ describe("ModpackChangelogComponentPresets.release", () => {
     messages.forEach((message, index) => {
       expect(validateComponentsV2(message)).toBeNull();
       const nodes = children(message);
-      const [header] = texts(nodes);
-      expect(header).toContain("## Rails n Sails 1.3.0");
-      expect(header).toContain(`Part ${index + 1} of ${messages.length}`);
-      expect(header).toContain("**40 added**");
+      if (index === 0) {
+        const [header] = texts(nodes);
+        expect(header).toContain("## Rails n Sails 1.3.0");
+        expect(header).toContain("**40 added**");
+        expect(header).not.toContain("Part ");
+      } else {
+        expect(nodes[0]).toEqual(SPACER);
+        expect(texts(nodes).join("\n")).not.toContain("## Rails n Sails");
+      }
       expect(hasDownloadRow(nodes)).toBe(index === messages.length - 1);
       entriesSeen += sections(nodes).length;
     });
     expect(entriesSeen).toBe(75);
 
-    const allHeadings = messages.flatMap((m) => headings(children(m)));
-    expect(allHeadings.filter((h) => h === "### Added (40)")).toHaveLength(1);
-    expect(allHeadings.filter((h) => h === "### Updated (30)")).toHaveLength(1);
-    expect(allHeadings.filter((h) => h === "### Removed (5)")).toHaveLength(1);
-    expect(allHeadings.some((h) => h.endsWith("(continued)"))).toBe(true);
+    expect(messages.flatMap((m) => headings(children(m)))).toEqual([
+      "### Added (40)",
+      "### Updated (30)",
+      "### Removed (5)",
+    ]);
     for (const message of messages) {
-      const nodes = children(message);
-      const [first] = nodes
-        .filter((node) => node.type === "text" || node.type === "section")
-        .slice(1);
-      expect(first.type).toBe("text");
+      const content = children(message).filter(
+        (node) => node.type === "text" || node.type === "section",
+      );
+      expect(content.at(-1)?.type).toBe("section");
     }
   });
 
@@ -269,7 +279,7 @@ describe("ModpackChangelogComponentPresets.release", () => {
     );
   });
 
-  it("opens every part with the title image instead of a heading when the pack has one", () => {
+  it("opens the first part with the title image and the rest with the spacer", () => {
     const banner = "https://assets.createrington.com/titles/rails-n-sails.png";
     const base = input();
     const messages = ModpackChangelogComponentPresets.release({
@@ -279,18 +289,21 @@ describe("ModpackChangelogComponentPresets.release", () => {
     });
 
     expect(messages.length).toBeGreaterThan(1);
-    for (const message of messages) {
+    const [gallery, header] = children(messages[0]);
+    expect(gallery).toEqual({
+      type: "media_gallery",
+      items: [
+        { url: banner, description: "Rails n Sails 1.3.0", spoiler: false },
+      ],
+    });
+    if (header.type !== "text") throw new Error("expected the header text");
+    expect(header.content.startsWith("**1.3.0**\n-# ")).toBe(true);
+    expect(header.content).not.toContain("## ");
+    for (const message of messages.slice(1)) {
       expect(validateComponentsV2(message)).toBeNull();
-      const [gallery, header] = children(message);
-      expect(gallery).toEqual({
-        type: "media_gallery",
-        items: [
-          { url: banner, description: "Rails n Sails 1.3.0", spoiler: false },
-        ],
-      });
-      if (header.type !== "text") throw new Error("expected the header text");
-      expect(header.content.startsWith("**1.3.0**\n-# ")).toBe(true);
-      expect(header.content).not.toContain("## ");
+      const [spacer, first] = children(message);
+      expect(spacer).toEqual(SPACER);
+      expect(first.type).toBe("section");
     }
   });
 
