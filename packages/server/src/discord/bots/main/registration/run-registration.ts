@@ -232,10 +232,7 @@ export async function runRegistration(params: {
 
     await randomDelay();
     await RoleManager.remove(member, Discord.Roles.UNVERIFIED);
-    await RoleManager.assign(member, [
-      Discord.Roles.VERIFIED,
-      Discord.Roles.COGS_AND_STEAM,
-    ]);
+    await RoleManager.assign(member, [Discord.Roles.VERIFIED]);
 
     try {
       await member.setNickname(correctName, "Registration: sync to MC name");
