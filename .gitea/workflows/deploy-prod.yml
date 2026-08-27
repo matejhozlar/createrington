@@ -37,7 +37,7 @@ jobs:
             echo "Empty diff - running full deploy."
             exit 0
           fi
-          NON_CLIENT=$(echo "$CHANGED" | grep -vE '^(packages/client/|marketing/)' || true)
+          NON_CLIENT=$(echo "$CHANGED" | grep -vE '^packages/client/' || true)
           if [ -z "$NON_CLIENT" ]; then
             echo "client_only=true" >> "$GITHUB_OUTPUT"
             echo "Client-only change detected - migrate + restart will be skipped."
