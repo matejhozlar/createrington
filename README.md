@@ -164,8 +164,7 @@ Discord guild ───► packages/server ◄─── packages/client
 | `mod-api`            | Java records generated from the mod-facing API specs         |
 | `docker/db`          | PostgreSQL container, migrations, seed data                  |
 | `docker/mc`          | Local NeoForge 1.21.1 server for development                 |
-| `marketing`          | Remotion promo video (outside the pnpm workspace)            |
-| `screenshots`        | Product shots used by this README and the marketing video    |
+| `screenshots`        | Product shots used by this README and the OG card renders    |
 
 ### Backend
 
@@ -265,7 +264,6 @@ See [`docker/mc/README.md`](docker/mc/README.md) for details.
 | [.env.example](.env.example)                                 | Every environment variable, annotated                   |
 | [mod-api/README.md](mod-api/README.md)                       | The Java API library and its release flow               |
 | [docker/mc/README.md](docker/mc/README.md)                   | Local Minecraft server                                  |
-| [marketing/README.md](marketing/README.md)                   | Remotion promo video                                    |
 | [packages/api-types/README.md](packages/api-types/README.md) | Consuming the tRPC contracts from another app           |
 
 ## Related projects

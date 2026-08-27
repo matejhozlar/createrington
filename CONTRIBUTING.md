@@ -70,8 +70,7 @@ This is a pnpm monorepo with four workspaces under `packages/`:
 
 Other top-level directories: `docker/` (PostgreSQL and local Minecraft server
 containers, migrations, seed data), `mod-api/` (generated Java API library),
-`marketing/` (Remotion promo video, outside the workspace), and `scripts/`
-(build helpers).
+and `scripts/` (build helpers).
 
 ## Branching Strategy
 
