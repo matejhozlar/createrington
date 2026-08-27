@@ -51,7 +51,7 @@ export function buildMainBotStatuses(deps: MainBotStatusDeps): StatusConfig[] {
         endOfDay.setHours(23, 59, 59, 999);
 
         const top = await R.playtimeRepo.getTopPlayersByDateRange(
-          config.servers.cogs.id,
+          config.servers.rails.id,
           startOfDay,
           endOfDay,
           1,

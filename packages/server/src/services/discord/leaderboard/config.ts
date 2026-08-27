@@ -31,7 +31,7 @@ export const LEADERBOARD_CONFIGS: Record<LeaderboardType, LeaderboardConfig> = {
     emoji: "",
     titleImageUrl: `${TITLE_IMAGE_BASE}/playtime.png`,
     channelId: Discord.Channels.general.LEADERBOARDS,
-    serverId: config.servers.cogs.id,
+    serverId: config.servers.rails.id,
     /**
      * Fetches playtime leaderboard data from the database
      *

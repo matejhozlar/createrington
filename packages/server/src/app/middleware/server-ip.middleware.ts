@@ -7,7 +7,7 @@ import { ForbiddenError } from "./error-handler";
  */
 const ALLOWED_IPS = {
   development: ["127.0.0.1", "::1", "localhost"],
-  production: [config.servers.cogs.ip],
+  production: [config.servers.rails.ip],
 };
 
 /**

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-26T19:48:50.896Z",
+  "generatedAt": "2026-08-27T20:08:45.496Z",
   "commands": [
     {
       "name": "cooldown",
@@ -500,7 +500,7 @@
           "type": 3,
           "choices": [
             {
-              "name": "Cogs & Steam",
+              "name": "Rails 'n Sails",
               "value": "1"
             }
           ],

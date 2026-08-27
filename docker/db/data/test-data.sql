@@ -65,7 +65,7 @@ ALTER SEQUENCE server_ally_qualified_player_id_seq RESTART WITH 1;
 -- ============================================================================
 
 INSERT INTO server (name, identifier, created_at) VALUES
-('Cogs SMP', 'cogs', NOW() - INTERVAL '6 months');
+('Rails ''n Sails', 'rails', NOW() - INTERVAL '6 months');
 
 -- ============================================================================
 -- PLAYERS
@@ -342,7 +342,7 @@ BEGIN
                     session_end
                 ) VALUES (
                     player_uuid,
-                    1, -- Cogs server
+                    1, -- Rails 'n Sails server
                     session_start,
                     session_start + (session_duration || ' seconds')::INTERVAL
                 );
@@ -1130,7 +1130,7 @@ UPDATE crypto_treasury SET total_collected = 237.25, total_burned = 20.43;
 -- SERVER FORCELOADS
 -- ============================================================================
 
--- Solo players with forceloaded chunks on Cogs SMP (server_id = 1)
+-- Solo players with forceloaded chunks on Rails 'n Sails (server_id = 1)
 INSERT INTO server_forceload_player (server_id, player_uuid, synced_at) VALUES
   -- id 1: Notch, synced recently
   (1, '550e8400-e29b-41d4-a716-446655440003'::uuid, NOW() - INTERVAL '10 minutes'),
@@ -1176,7 +1176,7 @@ INSERT INTO server_forceload_chunk (player_id, party_id, dimension, x, z, active
 -- SERVER ALLIES (opac-fakeplayer)
 -- ============================================================================
 
--- Fake-player party on Cogs SMP (server_id = 1). The fake party UUIDs are
+-- Fake-player party on Rails 'n Sails (server_id = 1). The fake party UUIDs are
 -- synthetic and intentionally not in the player table — fake players aren't
 -- real accounts.
 INSERT INTO server_ally_fake_party (server_id, party_id, owner_uuid, owner_name, synced_at) VALUES

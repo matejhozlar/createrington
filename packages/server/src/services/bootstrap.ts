@@ -601,7 +601,7 @@ export async function initializeServices(): Promise<void> {
   }
 
   maintenanceService
-    .initialize([config.servers.cogs.id])
+    .initialize([config.servers.rails.id])
     .catch((err) => logger.warn(`Maintenance service init failed: ${err}`));
 
   try {

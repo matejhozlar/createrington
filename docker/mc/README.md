@@ -96,16 +96,16 @@ defaults (see `.env.example`). Secrets are injected via Infisical:
 infisical run -- pnpm mc:up
 ```
 
-| Variable              | Default     | Purpose                                    |
-| --------------------- | ----------- | ------------------------------------------ |
-| `MC_MEMORY`           | `4G`        | JVM heap allocated to the server           |
-| `MC_NEOFORGE_VERSION` | `21.1.222`  | NeoForge build (matches the mods' target)  |
-| `MC_RCON_PASSWORD`    | `dev-rcon`  | RCON password                              |
-| `MC_RCON_PORT`        | `25575`     | Host port mapped to the container's RCON   |
-| `MC_ONLINE_MODE`      | `TRUE`      | Online auth (mirrors prod); `FALSE` to skip |
+| Variable              | Default    | Purpose                                     |
+| --------------------- | ---------- | ------------------------------------------- |
+| `MC_MEMORY`           | `4G`       | JVM heap allocated to the server            |
+| `MC_NEOFORGE_VERSION` | `21.1.222` | NeoForge build (matches the mods' target)   |
+| `MC_RCON_PASSWORD`    | `dev-rcon` | RCON password                               |
+| `MC_RCON_PORT`        | `25575`    | Host port mapped to the container's RCON    |
+| `MC_ONLINE_MODE`      | `TRUE`     | Online auth (mirrors prod); `FALSE` to skip |
 
 To let the backend's file operations (whitelist resync, structure pack rotation)
 target this server locally, set `MC_SERVER_LOCAL_PATH=./docker/mc/data` in your
 root `.env`. Maintenance mode goes over RCON instead: add
-`COGS_AND_STEAM_RCON_PORT=25575` and `COGS_AND_STEAM_RCON_PASSWORD=dev-rcon`
+`RAILS_N_SAILS_RCON_PORT=25575` and `RAILS_N_SAILS_RCON_PASSWORD=dev-rcon`
 (or whatever `MC_RCON_PASSWORD` you set) so the backend can reach the container.

@@ -266,7 +266,7 @@ export class MaintenanceScheduler {
         : `${minutesBefore} minute${minutesBefore !== 1 ? "s" : ""}`;
 
     const result = await this.messageService.send({
-      channelId: Discord.Channels.cogsAndSteam.MINECRAFT_CHAT,
+      channelId: Discord.Channels.railsNSails.MINECRAFT_CHAT,
       content: `Server maintenance in ${label}. Players will be kicked when maintenance begins.`,
     });
 

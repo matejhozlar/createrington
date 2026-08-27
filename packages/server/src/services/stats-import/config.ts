@@ -17,8 +17,8 @@ export interface StatsImportServerConfig {
 /** List of all Minecraft servers configured for stats import */
 export const STATS_IMPORT_SERVERS: StatsImportServerConfig[] = [
   {
-    serverId: config.servers.cogs.id,
-    serverName: config.servers.cogs.name,
-    sftp: config.servers.cogs.sftp,
+    serverId: config.servers.rails.id,
+    serverName: config.servers.rails.name,
+    sftp: config.servers.rails.sftp,
   },
 ];

@@ -19,11 +19,11 @@ export interface ServerInfo {
  * know which server it's from.
  */
 export const MINECRAFT_SERVER_MAPPING: Record<string, ServerInfo> = {
-  [config.servers.cogs.ip]: {
-    serverId: config.servers.cogs.id,
-    serverName: config.servers.cogs.name,
-    ip: config.servers.cogs.ip,
-    port: config.servers.cogs.port,
+  [config.servers.rails.ip]: {
+    serverId: config.servers.rails.id,
+    serverName: config.servers.rails.name,
+    ip: config.servers.rails.ip,
+    port: config.servers.rails.port,
   },
 };
 
@@ -44,11 +44,11 @@ export interface ServerConfig {
 }
 
 export const MINECRAFT_SERVERS: Record<number, ServerConfig> = {
-  [config.servers.cogs.id]: {
-    id: config.servers.cogs.id,
-    name: config.servers.cogs.name,
-    ip: config.servers.cogs.ip,
-    port: config.servers.cogs.port,
+  [config.servers.rails.id]: {
+    id: config.servers.rails.id,
+    name: config.servers.rails.name,
+    ip: config.servers.rails.ip,
+    port: config.servers.rails.port,
     maxPlayers: 20,
   },
 };

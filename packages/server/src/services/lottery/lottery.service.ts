@@ -291,7 +291,7 @@ export class LotteryService {
     getService(Services.WEB_MESSAGE_SERVICE)
       .then((webMessages) =>
         webMessages.send({
-          channelId: Discord.Channels.cogsAndSteam.MINECRAFT_CHAT,
+          channelId: Discord.Channels.railsNSails.MINECRAFT_CHAT,
           content: message,
         }),
       )
