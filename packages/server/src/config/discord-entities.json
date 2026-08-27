@@ -34,6 +34,7 @@
     "supporter": "1484985592788811987",
     "verified": "1483504806738788469",
     "cogsAndSteamnotifications": "1483504806738788468",
+    "railsnsailsnotifications": "1542625574659301406",
     "cryptonotifications": "1483504806738788467",
     "unverified": "1483504806738788466"
   },
@@ -82,6 +83,11 @@
       "members": "1483504809335062614",
       "allMembers": "1483504809335062615"
     },
+    "railsNSails": {
+      "notifications": "1542624975784120382",
+      "changelog": "1541882375150108723",
+      "minecraftChat": "1542624868388835418"
+    },
     "verification": {
       "verify18": "1540050227736748122"
     },
@@ -101,9 +107,6 @@
     "crypto": {
       "discussion": "1483504809620541554",
       "news": "1483504809620541553"
-    },
-    "railsNSails": {
-      "changelog": "1541882375150108723"
     }
   },
   "categories": {
