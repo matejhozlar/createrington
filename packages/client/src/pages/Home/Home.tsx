@@ -282,8 +282,8 @@ export function Home() {
             {/* Server Logo and Status */}
             <div className="flex items-center justify-between gap-2 ">
               <img
-                src="/assets/logo/cogs-and-steam-logo.webp"
-                alt="Cogs and Steam Logo"
+                src="/assets/logo/rails-n-sails-logo.webp"
+                alt="Rails 'n Sails Logo"
                 className="h-16 w-auto md:h-20 lg:h-24 object-contain"
               />
 
