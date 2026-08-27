@@ -1,83 +1,81 @@
 import { Q } from "@/db";
 import { Discord } from "@/discord/constants";
-import { getService, Services } from "@/services";
 import type { DiscordMessageService } from "@/services/discord/message/message.service";
 import type { ServerMaintenanceSchedule } from "@createrington/shared/db/server_maintenance_schedule.types";
-import type { MaintenanceService } from "./index";
+import type { MaintenanceService } from "./maintenance.service";
 
 const WARNING_INTERVALS_MINUTES = [60, 30, 15, 10, 5, 1] as const;
+const MISSED_ACTIVATION_GRACE_MS = 5 * 60 * 1000;
 
 /**
  * Maintenance Scheduler
  *
- * Manages scheduled maintenance windows: persists to DB, sets up warning
- * timers that send Discord messages at defined intervals, and auto-enables
- * maintenance mode when the scheduled time arrives.
- *
- * Follows the setTimeout pattern used by DailyRoleScheduler and AutoMessageService.
+ * Owns the `server_maintenance_schedule` rows: one per window, moving through
+ * scheduled → active → completed | cancelled. For scheduled windows it arms
+ * setTimeout handles that post Discord warnings at fixed intervals and hand
+ * the window to MaintenanceService.apply at the start time; instant windows
+ * are created directly as active. Restores pending windows on startup,
+ * activating ones missed by less than five minutes and cancelling older ones.
+ * Keeps an in-memory copy of each server's scheduled or active row so status
+ * reads never hit the database.
  */
 export class MaintenanceScheduler {
-  /** scheduleId → array of warning setTimeout handles */
   private warningTimers = new Map<number, NodeJS.Timeout[]>();
-  /** scheduleId → activation setTimeout handle */
   private activationTimers = new Map<number, NodeJS.Timeout>();
-  /** serverId → cached schedule row (only scheduled/active) */
-  private activeSchedules = new Map<number, ServerMaintenanceSchedule>();
+  private windows = new Map<number, ServerMaintenanceSchedule>();
 
   constructor(
     private maintenanceService: MaintenanceService,
     private messageService: DiscordMessageService,
   ) {}
 
-  /**
-   * Load pending schedules from DB and set up timers.
-   * Called once on server startup.
-   */
+  /** Load active and pending windows from the database and arm their timers. */
   async initialize(): Promise<void> {
+    const active = await Q.server.maintenance.schedule.findAll({
+      status: "active",
+    });
+    for (const window of active) {
+      this.windows.set(window.serverId, window);
+    }
+
     const pending = await Q.server.maintenance.schedule.findAll({
       status: "scheduled",
     });
 
     for (const schedule of pending) {
+      if (this.windows.has(schedule.serverId)) {
+        logger.warn(
+          `Scheduled maintenance #${schedule.id} conflicts with an active window on server ${schedule.serverId}, cancelling it`,
+        );
+        await this.setStatus(schedule.id, "cancelled");
+        continue;
+      }
+
       const msUntil = schedule.scheduledAt.getTime() - Date.now();
 
       if (msUntil > 0) {
-        this.activeSchedules.set(schedule.serverId, schedule);
+        this.windows.set(schedule.serverId, schedule);
         this.setupTimers(schedule);
         logger.info(
           `Restored scheduled maintenance #${schedule.id} for server ${schedule.serverId} ` +
             `(starts in ${Math.round(msUntil / 60000)} min)`,
         );
-      } else if (msUntil > -5 * 60 * 1000) {
-        // Missed by less than 5 minutes  - activate immediately
+      } else if (msUntil > -MISSED_ACTIVATION_GRACE_MS) {
         logger.warn(
           `Scheduled maintenance #${schedule.id} was missed by ${Math.round(-msUntil / 1000)}s, activating now`,
         );
-        this.activeSchedules.set(schedule.serverId, schedule);
+        this.windows.set(schedule.serverId, schedule);
         await this.activateMaintenance(schedule);
       } else {
-        // Missed by more than 5 minutes  - cancel
         logger.warn(
-          `Scheduled maintenance #${schedule.id} was missed by ${Math.round(-msUntil / 60000)} min, canceling`,
+          `Scheduled maintenance #${schedule.id} was missed by ${Math.round(-msUntil / 60000)} min, cancelling`,
         );
-        await Q.server.maintenance.schedule.update(
-          { id: schedule.id },
-          { status: "cancelled" },
-        );
+        await this.setStatus(schedule.id, "cancelled");
       }
-    }
-
-    const active = await Q.server.maintenance.schedule.findAll({
-      status: "active",
-    });
-    for (const schedule of active) {
-      this.activeSchedules.set(schedule.serverId, schedule);
     }
   }
 
-  /**
-   * Schedule a new maintenance window.
-   */
+  /** Persist a future window and arm its warning and activation timers. */
   async schedule(opts: {
     serverId: number;
     scheduledAt: Date;
@@ -92,7 +90,7 @@ export class MaintenanceScheduler {
       status: "scheduled",
     });
 
-    this.activeSchedules.set(opts.serverId, row);
+    this.windows.set(opts.serverId, row);
     this.setupTimers(row);
 
     logger.info(
@@ -103,46 +101,85 @@ export class MaintenanceScheduler {
     return row;
   }
 
-  /**
-   * Cancel a pending schedule for a server.
-   */
+  /** Persist an instant window as active; the caller pushes it to the mod. */
+  async startNow(opts: {
+    serverId: number;
+    scheduledByDiscordId: string;
+    untilRestart: boolean;
+  }): Promise<ServerMaintenanceSchedule> {
+    const now = new Date();
+    const row = await Q.server.maintenance.schedule.createAndReturn({
+      serverId: opts.serverId,
+      scheduledAt: now,
+      startedAt: now,
+      estimatedMinutes: null,
+      untilRestart: opts.untilRestart,
+      scheduledByDiscordId: opts.scheduledByDiscordId,
+      status: "active",
+    });
+
+    this.windows.set(opts.serverId, row);
+    logger.info(
+      `Started maintenance #${row.id} for server ${opts.serverId}${opts.untilRestart ? " (until restart)" : ""}`,
+    );
+    return row;
+  }
+
+  /** Cancel a pending window; active windows are left alone. */
   async cancel(serverId: number): Promise<void> {
-    const schedule = this.activeSchedules.get(serverId);
+    const schedule = this.windows.get(serverId);
     if (!schedule || schedule.status !== "scheduled") return;
 
     this.clearTimers(schedule.id);
-    this.activeSchedules.delete(serverId);
-
-    await Q.server.maintenance.schedule.update(
-      { id: schedule.id },
-      { status: "cancelled" },
-    );
+    this.windows.delete(serverId);
+    await this.setStatus(schedule.id, "cancelled");
 
     logger.info(
       `Cancelled scheduled maintenance #${schedule.id} for server ${serverId}`,
     );
   }
 
-  /**
-   * Return the current scheduled/active maintenance for a server, or null.
-   */
-  getSchedule(serverId: number): ServerMaintenanceSchedule | null {
-    return this.activeSchedules.get(serverId) ?? null;
-  }
-
-  /**
-   * Mark active maintenance as completed (called when admin disables maintenance).
-   */
-  async markCompleted(serverId: number): Promise<void> {
-    const schedule = this.activeSchedules.get(serverId);
+  /** Cancel the server's open window whatever its status, for windows that never reached the mod. */
+  async discard(serverId: number): Promise<void> {
+    const schedule = this.windows.get(serverId);
     if (!schedule) return;
 
     this.clearTimers(schedule.id);
-    this.activeSchedules.delete(serverId);
+    this.windows.delete(serverId);
+    await this.setStatus(schedule.id, "cancelled");
+
+    logger.info(
+      `Discarded maintenance #${schedule.id} for server ${serverId} (never applied)`,
+    );
+  }
+
+  /** The scheduled or active window for a server, or null. */
+  getSchedule(serverId: number): ServerMaintenanceSchedule | null {
+    return this.windows.get(serverId) ?? null;
+  }
+
+  /** Record that the mod confirmed the window. */
+  async markApplied(scheduleId: number): Promise<void> {
+    const updated = await Q.server.maintenance.schedule.updateAndReturn(
+      { id: scheduleId },
+      { appliedAt: new Date(), updatedAt: new Date() },
+    );
+    if (this.windows.get(updated.serverId)?.id === scheduleId) {
+      this.windows.set(updated.serverId, updated);
+    }
+  }
+
+  /** Complete the server's active window. */
+  async markCompleted(serverId: number): Promise<void> {
+    const schedule = this.windows.get(serverId);
+    if (!schedule) return;
+
+    this.clearTimers(schedule.id);
+    this.windows.delete(serverId);
 
     await Q.server.maintenance.schedule.update(
       { id: schedule.id },
-      { status: "completed", endedAt: new Date() },
+      { status: "completed", endedAt: new Date(), updatedAt: new Date() },
     );
 
     logger.info(
@@ -150,9 +187,7 @@ export class MaintenanceScheduler {
     );
   }
 
-  /**
-   * Clean up all timers on shutdown.
-   */
+  /** Clear every timer; the database keeps the windows for the next boot. */
   shutdown(): void {
     for (const [scheduleId] of this.warningTimers) {
       this.clearTimers(scheduleId);
@@ -160,35 +195,36 @@ export class MaintenanceScheduler {
     for (const [scheduleId] of this.activationTimers) {
       this.clearTimers(scheduleId);
     }
-    this.activeSchedules.clear();
+    this.windows.clear();
   }
 
-  /**
-   * Creates warning and activation setTimeout handles for a schedule row.
-   * Warning timers fire at each interval in WARNING_INTERVALS_MINUTES that
-   * still lies in the future; the activation timer fires at the exact start time.
-   *
-   * @param schedule - The persisted schedule row to set up timers for
-   * @private
-   */
+  private async setStatus(
+    scheduleId: number,
+    status: "cancelled" | "completed",
+  ): Promise<void> {
+    await Q.server.maintenance.schedule.update(
+      { id: scheduleId },
+      { status, updatedAt: new Date() },
+    );
+  }
+
   private setupTimers(schedule: ServerMaintenanceSchedule): void {
     const timers: NodeJS.Timeout[] = [];
     const scheduledMs = schedule.scheduledAt.getTime();
 
     for (const minutes of WARNING_INTERVALS_MINUTES) {
-      const warningMs = scheduledMs - minutes * 60 * 1000;
-      const delay = warningMs - Date.now();
+      const delay = scheduledMs - minutes * 60 * 1000 - Date.now();
+      if (delay <= 0) continue;
 
-      if (delay > 0) {
-        const timer = setTimeout(() => {
+      timers.push(
+        setTimeout(() => {
           this.sendWarning(schedule, minutes).catch((err) =>
             logger.error(
               `Failed to send ${minutes}min warning for maintenance #${schedule.id}: ${err}`,
             ),
           );
-        }, delay);
-        timers.push(timer);
-      }
+        }, delay),
+      );
     }
 
     this.warningTimers.set(schedule.id, timers);
@@ -206,12 +242,6 @@ export class MaintenanceScheduler {
     }
   }
 
-  /**
-   * Clears all warning and activation timers associated with a schedule.
-   *
-   * @param scheduleId - ID of the schedule whose timers should be cleared
-   * @private
-   */
   private clearTimers(scheduleId: number): void {
     const warnings = this.warningTimers.get(scheduleId);
     if (warnings) {
@@ -226,14 +256,6 @@ export class MaintenanceScheduler {
     }
   }
 
-  /**
-   * Sends a plain-text warning message to the Minecraft chat channel
-   * indicating how long until maintenance begins.
-   *
-   * @param schedule - The schedule row the warning is for
-   * @param minutesBefore - How many minutes before start the warning fires
-   * @private
-   */
   private async sendWarning(
     schedule: ServerMaintenanceSchedule,
     minutesBefore: number,
@@ -243,11 +265,9 @@ export class MaintenanceScheduler {
         ? `${Math.floor(minutesBefore / 60)} hour${minutesBefore >= 120 ? "s" : ""}`
         : `${minutesBefore} minute${minutesBefore !== 1 ? "s" : ""}`;
 
-    const message = `Server maintenance in ${label}. Players will be kicked when maintenance begins.`;
-
     const result = await this.messageService.send({
       channelId: Discord.Channels.cogsAndSteam.MINECRAFT_CHAT,
-      content: message,
+      content: `Server maintenance in ${label}. Players will be kicked when maintenance begins.`,
     });
 
     if (result.success) {
@@ -259,50 +279,29 @@ export class MaintenanceScheduler {
     }
   }
 
-  /**
-   * Activates maintenance mode for the given schedule:
-   * 1. Kicks online players and enables the whitelist swap via MaintenanceService
-   * 2. Updates the DB row to status "active" with a startedAt timestamp
-   * 3. Broadcasts a server status update over WebSocket
-   *
-   * @param schedule - The schedule row to activate
-   * @private
-   */
   private async activateMaintenance(
     schedule: ServerMaintenanceSchedule,
   ): Promise<void> {
     this.clearTimers(schedule.id);
 
-    try {
-      const manager = await getService(Services.PLAYTIME_MANAGER_SERVICE);
-      const service = manager.getService(schedule.serverId);
-      const onlinePlayers = (service?.getActiveSessions() ?? []).map(
-        (s) => s.username,
-      );
+    const updated = await Q.server.maintenance.schedule.updateAndReturn(
+      { id: schedule.id },
+      { status: "active", startedAt: new Date(), updatedAt: new Date() },
+    );
+    this.windows.set(schedule.serverId, updated);
 
-      await this.maintenanceService.enable(schedule.serverId, onlinePlayers);
-
-      const updated = await Q.server.maintenance.schedule.updateAndReturn(
-        { id: schedule.id },
-        { status: "active", startedAt: new Date() },
-      );
-      if (updated) {
-        this.activeSchedules.set(schedule.serverId, updated);
-      }
-
-      try {
-        const ws = await getService(Services.WEBSOCKET_SERVICE);
-        await ws.triggerServerStatusUpdate(schedule.serverId);
-      } catch {
-        // Non-critical
-      }
-
+    const result = await this.maintenanceService.apply(updated);
+    if (result.applied) {
       logger.info(
-        `Auto-activated maintenance #${schedule.id} for server ${schedule.serverId}`,
+        `Scheduled maintenance #${schedule.id} for server ${schedule.serverId} is active`,
       );
-    } catch (error) {
+    } else if (result.modError) {
       logger.error(
-        `Failed to auto-activate maintenance #${schedule.id}: ${error}`,
+        `Scheduled maintenance #${schedule.id} for server ${schedule.serverId} is pending: the mod refused it and reconcile will keep retrying`,
+      );
+    } else {
+      logger.info(
+        `Scheduled maintenance #${schedule.id} for server ${schedule.serverId} is pending until the server is reachable`,
       );
     }
   }

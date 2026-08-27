@@ -1,3 +1,28 @@
+## v1.44.1 (2026-08-27)
+
+### @createrington/server (1.45.0 → 1.45.1)
+- [refactor] Rewrite maintenance mode to drive the Maintenance Mode mod over RCON instead of renaming the whitelist file, making the mod's own state the source of truth for whether players are gated
+- [add] Add `MaintenanceModeClient` RCON wrapper that sends typed `/maintenance` subcommands (on/off, status, setMotd, setMessage, addAllowed/removeAllowed, list, doBackups) and validates every reply
+- [add] Add `server_maintenance_setting` table storing per-server MOTD and kick-message overrides with preset fallbacks, and `server_maintenance_allowed_player` table for the per-server allow list
+- [add] Add maintenance settings tRPC endpoints: `maintenanceSettings`, `updateMaintenanceSettings`, `addMaintenanceAllowedPlayer`, `removeMaintenanceAllowedPlayer`, `pushMaintenanceSettings`
+- [add] Add periodic and event-driven reconcile loop that polls the mod's state every five minutes, on server-online events, and after every mutation, pushing unapplied windows and completing externally-ended ones
+- [add] Add `untilRestart` toggle that tells the mod to auto-disable at the next server stop, tracked as a column on the schedule row and mirrored by the reconciler
+- [add] Add `applied_at` column and unique partial index on `server_maintenance_schedule` enforcing at most one open window per server
+- [refactor] Extract scheduler instant-start path into `startNow` so instant and scheduled windows share the same row lifecycle and in-memory cache
+- [refactor] Serialise all state-changing maintenance operations per server with a promise-chain lock to prevent concurrent admin clicks and timer activations from interleaving
+- [fix] Harden reconcile to skip servers already being reconciled, log and continue past individual allow-list sync failures, and gracefully close never-applied windows when the server is unreachable at disable time
+- [refactor] Decouple whitelist resync from maintenance mode: remove the guard that blocked resync during maintenance, since the mod now handles access control independently of the whitelist file
+- [remove] Remove `renameFile` from file-ops, no longer needed now that maintenance does not swap whitelist files
+
+### @createrington/client (0.2.57 → 0.2.58)
+- [add] Add maintenance settings dialog for editing the server-list MOTD and kick message with live Minecraft-formatted previews, preset reset, and a searchable allow-list manager
+- [add] Add `MinecraftText` component and `parseMinecraftText` utility that render Minecraft `&`/`§` formatting codes (colors, bold, italic, underline, strikethrough, obfuscated) as styled spans
+- [refactor] Update `MaintenanceToggle` to show a "Pending" state when the server is unreachable, display "until restart" detail, and expose the new settings dialog via a gear button in all three states
+- [refactor] Remove the `isMaintenance` prop passthrough from `ServerManagement`; the toggle now reads its own status from the `maintenanceStatus` query
+
+### @createrington/shared (1.10.0 → 1.10.1)
+- [refactor] Make `ScheduledMaintenance.estimatedMinutes` nullable to support instant windows that have no estimated duration
+
 ## v1.44.0 (2026-08-26)
 
 ### @createrington/server (1.44.1 → 1.45.0)

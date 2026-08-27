@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
-import { maintenanceService } from "@/services/maintenance";
 import { whitelistService } from "@/services/whitelist";
 import { getServerById } from "@/services/playtime/config";
 import { trpcError, auditActor } from "@/trpc/utils";
@@ -18,12 +17,6 @@ export const serverWhitelistProcedures = {
       if (!serverConfig) {
         throw trpcError.badRequest(
           `Server with id ${input.serverId} not found`,
-        );
-      }
-
-      if (maintenanceService.isInMaintenance(input.serverId)) {
-        throw trpcError.badRequest(
-          "Cannot resync the whitelist while the server is in maintenance mode",
         );
       }
 

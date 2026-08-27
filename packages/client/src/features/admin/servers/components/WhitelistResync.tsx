@@ -1,10 +1,5 @@
 import { useState } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { ListChecks, RefreshCw } from "lucide-react";
 import { trpc } from "@/lib/trpc";
@@ -12,13 +7,9 @@ import { useToastActions } from "@/hooks/use-toast";
 
 interface WhitelistResyncProps {
   serverId: number;
-  isMaintenance: boolean;
 }
 
-export function WhitelistResync({
-  serverId,
-  isMaintenance,
-}: WhitelistResyncProps) {
+export function WhitelistResync({ serverId }: WhitelistResyncProps) {
   const toast = useToastActions();
   const [dialogOpen, setDialogOpen] = useState(false);
   const utils = trpc.useUtils();
@@ -44,24 +35,10 @@ export function WhitelistResync({
         </div>
       </div>
 
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span tabIndex={isMaintenance ? 0 : undefined}>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={isMaintenance}
-              onClick={() => setDialogOpen(true)}
-            >
-              <RefreshCw className="mr-1.5 size-3.5" />
-              Resync
-            </Button>
-          </span>
-        </TooltipTrigger>
-        {isMaintenance && (
-          <TooltipContent>Unavailable during maintenance</TooltipContent>
-        )}
-      </Tooltip>
+      <Button variant="outline" size="sm" onClick={() => setDialogOpen(true)}>
+        <RefreshCw className="mr-1.5 size-3.5" />
+        Resync
+      </Button>
 
       <ConfirmDialog
         open={dialogOpen}
