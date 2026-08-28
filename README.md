@@ -270,7 +270,7 @@ See [`docker/mc/README.md`](docker/mc/README.md) for details.
 
 - [**Createrington Currency**](https://github.com/matejhozlar/createrington-currency)
   is the Minecraft mod that exposes in-game currency to this platform.
-- [**Cogs & Steam**](https://www.curseforge.com/minecraft/modpacks/createrington-cogs-steam)
+- [**Rails 'n Sails**](https://www.curseforge.com/minecraft/modpacks/createrington-rails-n-sails)
   is the official modpack.
 - [**mc-page**](https://github.com/matejhozlar/mc-page) is the predecessor: a
   single-package Node.js and React portal, rewritten into this monorepo.

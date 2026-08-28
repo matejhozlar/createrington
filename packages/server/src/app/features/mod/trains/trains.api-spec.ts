@@ -14,7 +14,7 @@ export default defineApiSpec({
       path: "/crash",
       name: "Crash",
       description:
-        "Receives train crash data and sends a notification embed to the Cogs & Steam notifications channel.",
+        "Receives train crash data and sends a notification embed to the Rails 'n Sails notifications channel.",
       request: {
         name: "CrashRequest",
         fields: [

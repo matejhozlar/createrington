@@ -3,8 +3,8 @@ import { playtimeRepo, Q } from "@/db";
 import { MC_UUID_REGEX } from "@/utils/zod-schemas";
 import type { Request, Response } from "express";
 
-const TEST_SERVER_NAME = "Cogs & Steam (Test)";
-const TEST_SERVER_IDENTIFIER = "cogs-test";
+const TEST_SERVER_NAME = "Rails 'n Sails (Test)";
+const TEST_SERVER_IDENTIFIER = "rails-test";
 
 /** Cached test server ID to avoid repeated DB lookups */
 let testServerIdCache: number | null = null;
@@ -12,7 +12,7 @@ let testServerIdCache: number | null = null;
 /**
  * Ensures the test server entry exists in the database and returns its ID.
  *
- * On first call, looks up or creates a server row with identifier "cogs-test".
+ * On first call, looks up or creates a server row with identifier "rails-test".
  * The result is cached for the lifetime of the process.
  */
 async function ensureTestServer(): Promise<number> {

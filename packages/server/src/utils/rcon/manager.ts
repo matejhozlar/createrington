@@ -49,14 +49,14 @@ export class MinecraftRconManager {
    * Maps servers by their numeric ID
    */
   private loadServerConfigs(): void {
-    if (config.servers?.cogs?.rcon && config.servers.cogs.id) {
-      this.serverConfigs.set(config.servers.cogs.id, {
-        id: config.servers.cogs.id,
-        name: config.servers.cogs.name,
+    if (config.servers?.rails?.rcon && config.servers.rails.id) {
+      this.serverConfigs.set(config.servers.rails.id, {
+        id: config.servers.rails.id,
+        name: config.servers.rails.name,
         rcon: {
-          host: config.servers.cogs.rcon.host,
-          port: config.servers.cogs.rcon.port,
-          password: config.servers.cogs.rcon.password,
+          host: config.servers.rails.rcon.host,
+          port: config.servers.rails.rcon.port,
+          password: config.servers.rails.rcon.password,
         },
       });
     }
