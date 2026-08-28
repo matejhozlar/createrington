@@ -31,6 +31,11 @@ const ipv4 = (label = "IP") =>
       { message: `${label} must be a valid IPv4 address` },
     );
 
+// Placeholder the game-server IP falls back to when unset. Local dev never
+// talks to a real server, but production must never boot on it: the mod-API
+// allowlist and the IP-to-server playtime mapping are both keyed on this value.
+const DEV_FALLBACK_SERVER_IP = "0.0.0.0";
+
 const discordId = (label = "ID") =>
   z
     .string()
@@ -162,7 +167,7 @@ const envSchema = z
 
     // Minecraft Servers: defaults are local-dev safe; prod overrides via .env
     RAILS_N_SAILS_SERVER_IP: ipv4("Rails 'n Sails server IP").default(
-      "0.0.0.0",
+      DEV_FALLBACK_SERVER_IP,
     ),
     RAILS_N_SAILS_SERVER_PORT: port("Rails 'n Sails server port").default(
       26980,
@@ -315,6 +320,16 @@ const envSchema = z
           message,
         });
       }
+    }
+
+    // Defaulted, so the loop above can never catch it: an unset var still
+    // parses, and prod would silently allowlist and ping 0.0.0.0.
+    if (data.RAILS_N_SAILS_SERVER_IP === DEV_FALLBACK_SERVER_IP) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["RAILS_N_SAILS_SERVER_IP"],
+        message: `Rails 'n Sails server IP is required (${DEV_FALLBACK_SERVER_IP} is the dev fallback)`,
+      });
     }
   });
 
