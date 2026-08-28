@@ -107,10 +107,6 @@ const Settings = lazyNamed(
   () => import("./pages/Settings/Settings"),
   "Settings",
 );
-const Achievements = lazyNamed(
-  () => import("./pages/Achievements/Achievements"),
-  "Achievements",
-);
 const StructurePacks = lazyNamed(
   () => import("./features/structure-packs/StructurePacks"),
   "StructurePacks",
@@ -397,14 +393,6 @@ function AppContent() {
             element={
               <ProtectedRoute>
                 <Settings />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/achievements"
-            element={
-              <ProtectedRoute>
-                <Achievements />
               </ProtectedRoute>
             }
           />

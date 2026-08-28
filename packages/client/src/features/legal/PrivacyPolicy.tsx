@@ -37,8 +37,7 @@ const sections = [
             and lottery participation
           </li>
           <li>
-            <strong>Achievement & reward data</strong> — achievements unlocked,
-            tier progress, and reward claims
+            <strong>Reward data</strong> — daily reward claims
           </li>
           <li>
             <strong>Waitlist information</strong> — your Discord ID and
@@ -87,7 +86,7 @@ const sections = [
         <li>
           Delivering opt-in Discord notifications (e.g., train crash alerts)
         </li>
-        <li>Tracking achievements and issuing rewards</li>
+        <li>Issuing daily rewards</li>
         <li>Enforcing server rules and managing moderation</li>
         <li>
           Maintaining admin audit logs for accountability and transparency

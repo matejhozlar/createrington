@@ -35,7 +35,6 @@ export { ModpackReleaseQueries } from "./modpack/release";
 export { ModpackReleaseAnnouncementQueries } from "./modpack/release/announcement";
 export { ModpackReleaseModQueries } from "./modpack/release/mod";
 export { PlayerQueries } from "./player";
-export { PlayerAchievementQueries } from "./player/achievement";
 export { PlayerBalanceQueries } from "./player/balance";
 export { PlayerBalanceTransactionQueries } from "./player/balance/transaction";
 export { PlayerBanQueries } from "./player/ban";

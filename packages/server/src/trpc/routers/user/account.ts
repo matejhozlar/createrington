@@ -101,7 +101,6 @@ export const accountRouter = router({
         playtimeHourly,
         playtimeSummary,
         minecraftStats,
-        achievements,
         bans,
         strikes,
         rewardClaims,
@@ -129,7 +128,6 @@ export const accountRouter = router({
         }),
         Q.player.playtime.summary.findAll(mcFilter),
         Q.player.minecraft.stats.findAll(mcFilterAlt),
-        Q.player.achievement.findAll(mcFilterAlt),
         Q.player.ban.findAll(mcFilter, {
           orderBy: "bannedAt",
           orderDirection: "desc",
@@ -162,7 +160,6 @@ export const accountRouter = router({
           summary: playtimeSummary,
         },
         minecraftStats,
-        achievements,
         moderation: {
           bans,
           strikes,
