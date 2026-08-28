@@ -30,7 +30,7 @@ interface MaintenanceSettingsDialogProps {
 const MOTD_MAX_LENGTH = 300;
 const MESSAGE_MAX_LENGTH = 600;
 
-const PREVIEW_SAMPLE = { server: "Cogs & Steam", eta: "~30 min" };
+const PREVIEW_SAMPLE = { server: "Rails 'n Sails", eta: "~30 min" };
 
 const TEXTAREA_CLASS =
   "w-full rounded-md border border-border bg-background px-3 py-2 font-mono text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
