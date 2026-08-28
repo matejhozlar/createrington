@@ -480,3 +480,27 @@ export const rewardClaim = pgTable(
     index("idx_reward_claim_claimed_at").on(table.claimedAt),
   ],
 );
+
+// --- playtime_archive ---
+// Retired playtime that belongs to no living player: the totals a season leaves
+// behind once its per-player rows are cleared. Kept so all-time showcase figures
+// (homepage total hours) survive a season reset without any player still being
+// credited for them. Deliberately has no server_id, so the retired season's
+// `server` row can be deleted once its hours have been folded in here. Rows are
+// append-only, one per retired season; aggregate with SUM.
+
+export const playtimeArchive = pgTable("playtime_archive", {
+  id: serial("id").primaryKey(),
+  // Human-readable provenance, e.g. "Cogs & Steam (season 2)"
+  label: text("label").notNull(),
+  totalSeconds: bigint("total_seconds", { mode: "bigint" })
+    .notNull()
+    .default(sql`0`),
+  totalSessions: integer("total_sessions").notNull().default(0),
+  // How many distinct players contributed, so the showcase can report a
+  // participant count without keeping the players themselves
+  playerCount: integer("player_count").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});

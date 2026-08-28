@@ -847,6 +847,18 @@ BEGIN
 END $$;
 
 -- ============================================================================
+-- PLAYTIME ARCHIVE
+-- ============================================================================
+
+-- Retired seasons: hours that still count toward the all-time showcase total
+-- but are no longer attributable to any player.
+TRUNCATE TABLE playtime_archive CASCADE;
+ALTER SEQUENCE playtime_archive_id_seq RESTART WITH 1;
+
+INSERT INTO playtime_archive (label, total_seconds, total_sessions, player_count) VALUES
+  ('Cogs & Steam (season 2)', 18720000, 4210, 63);
+
+-- ============================================================================
 -- SERVER FORCELOADS
 -- ============================================================================
 

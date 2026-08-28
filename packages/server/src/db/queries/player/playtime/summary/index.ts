@@ -48,7 +48,7 @@ export type PlayerPlaytimeBreakdown = {
   };
 };
 
-export interface PlaytimeHoursBreakdown {
+export interface ServerHoursBreakdown {
   byServer: Array<{
     serverId: number;
     serverName: string;
@@ -292,7 +292,7 @@ export class PlayerPlaytimeSummaryQueries extends PlayerPlaytimeSummaryBaseQueri
    * //   total: 2221
    * // }
    */
-  async getTotalHoursBreakdown(): Promise<PlaytimeHoursBreakdown> {
+  async getTotalHoursBreakdown(): Promise<ServerHoursBreakdown> {
     const query = `
       SELECT 
         s.server_id,

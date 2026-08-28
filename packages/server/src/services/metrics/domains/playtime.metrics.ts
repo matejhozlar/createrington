@@ -1,5 +1,11 @@
 import { Q } from "@/db";
-import type { PlaytimeHoursBreakdown } from "@/db/queries/player/playtime/summary";
+import type { ServerHoursBreakdown } from "@/db/queries/player/playtime/summary";
+
+/** Hours per live server, the retired-season total, and the two combined. */
+export interface PlaytimeHoursBreakdown extends ServerHoursBreakdown {
+  /** Hours from retired seasons, which have no server of their own */
+  archivedHours: number;
+}
 
 /**
  * Playtime Metrics Domain
@@ -19,12 +25,16 @@ export class PlaytimeMetrics {
    * // Result: 1234
    *
    * @example
-   * // Get hours across all servers
+   * // Get hours across all servers, including retired seasons
    * const hours = await metricsService.playtime.getTotalHours();
    * // Result: 5678
    */
   async getTotalHours(serverId?: number): Promise<number> {
-    return await Q.player.playtime.summary.getTotalHours(serverId);
+    const liveHours = await Q.player.playtime.summary.getTotalHours(serverId);
+    if (serverId !== undefined) return liveHours;
+
+    const archived = await Q.playtime.archive.getTotals();
+    return liveHours + archived.hours;
   }
 
   /**
@@ -45,6 +55,15 @@ export class PlaytimeMetrics {
    * // }
    */
   async getTotalHoursBreakdown(): Promise<PlaytimeHoursBreakdown> {
-    return await Q.player.playtime.summary.getTotalHoursBreakdown();
+    const [breakdown, archived] = await Promise.all([
+      Q.player.playtime.summary.getTotalHoursBreakdown(),
+      Q.playtime.archive.getTotals(),
+    ]);
+
+    return {
+      byServer: breakdown.byServer,
+      archivedHours: archived.hours,
+      total: breakdown.total + archived.hours,
+    };
   }
 }
