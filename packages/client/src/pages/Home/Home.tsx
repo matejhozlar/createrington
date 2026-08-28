@@ -195,7 +195,7 @@ export function Home() {
         },
         {
           name: "Upgrade Aquatic",
-          description: "Richer oceans and rivers to sail out and explore",
+          description: "Richer oceans and rivers to explore",
           url: "https://www.curseforge.com/minecraft/mc-mods/upgrade-aquatic",
         },
       ],
@@ -329,7 +329,11 @@ export function Home() {
                     </Button>
                   ) : (
                     <Button size="lg" className="text-lg" asChild>
-                      <a href={CURSEFORGE_MODPACK_URL} target="_blank">
+                      <a
+                        href={CURSEFORGE_MODPACK_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
                         <Download />
                         Download Modpack
                       </a>

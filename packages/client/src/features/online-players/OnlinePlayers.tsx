@@ -206,6 +206,7 @@ export function OnlinePlayers() {
   }, [computeAvg]);
 
   const isOnline = server?.online ?? false;
+  const serverName = server?.serverName ?? "Rails 'n Sails";
   const playerCount = serverPlayers.length;
   const maxPlayers = server?.maxPlayers ?? 0;
   const capacityPercent =
@@ -254,7 +255,7 @@ export function OnlinePlayers() {
           <p className="mt-4 text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl">
             {isOnline
               ? playerCount > 0
-                ? `${playerCount} player${playerCount !== 1 ? "s" : ""} currently exploring Rails 'n Sails`
+                ? `${playerCount} player${playerCount !== 1 ? "s" : ""} currently exploring ${serverName}`
                 : "No one is online right now — be the first to join!"
               : "The server is currently offline. Check back soon!"}
           </p>
