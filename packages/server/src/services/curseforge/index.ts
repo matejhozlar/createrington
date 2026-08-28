@@ -325,7 +325,11 @@ export async function searchMods(
       packProjectId === null
         ? new Set<number>()
         : await getModpackModIds(packProjectId);
-  } catch {
+  } catch (error) {
+    logger.warn(
+      `Modpack manifest fetch failed for pack ${packProjectId}, search results will report inModpack: false`,
+      error,
+    );
     modpackModIds = new Set();
   }
 
