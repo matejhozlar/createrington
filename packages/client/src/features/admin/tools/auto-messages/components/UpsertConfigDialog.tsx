@@ -111,7 +111,7 @@ export function UpsertConfigDialog({
               id="config-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Cogs & Steam Tips"
+              placeholder="e.g. Rails 'n Sails Tips"
               maxLength={100}
             />
           </Field>

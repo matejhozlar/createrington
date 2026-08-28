@@ -32,6 +32,7 @@ import {
   Zap,
 } from "lucide-react";
 import { useServerData } from "@/contexts/server-data";
+import { CURSEFORGE_MODPACK_URL } from "@/lib/external-urls";
 import { trpc } from "@/lib/trpc";
 import { Loading } from "@/components/loading-spinner";
 
@@ -86,7 +87,7 @@ export function Home() {
     {
       title: "Curated, Not Bloated",
       description:
-        "No kitchen-sink chaos. Our 100+ mods were chosen for balance and performance.",
+        "No kitchen-sink chaos. Our 200+ mods were chosen for balance and performance.",
       backgroundImage: "/assets/features/modpack.webp",
       icon: "/assets/features/chipped-workbench.webp",
     },
@@ -134,14 +135,15 @@ export function Home() {
           url: "https://www.curseforge.com/minecraft/mc-mods/steam-n-rails-neoforge",
         },
         {
-          name: "Silent Gear",
-          description: "Custom gear and tool creation with unique materials",
-          url: "https://www.curseforge.com/minecraft/mc-mods/silent-gear",
+          name: "Create Aeronautics",
+          description: "Build airships and take your contraptions into the sky",
+          url: "https://www.curseforge.com/minecraft/mc-mods/create-aeronautics",
         },
         {
-          name: "Open Parties and Claims",
-          description: "Claim and manage land and parties with friends",
-          url: "https://www.curseforge.com/minecraft/mc-mods/open-parties-and-claims",
+          name: "Create Railways Navigator",
+          description:
+            "Live timetables and route planning for the rail network",
+          url: "https://www.curseforge.com/minecraft/mc-mods/create-railways-navigator",
         },
       ],
     },
@@ -160,14 +162,15 @@ export function Home() {
           url: "https://www.curseforge.com/minecraft/mc-mods/rechiseled",
         },
         {
-          name: "Copycats+",
+          name: "Create: Copycats+",
           description: "Tons of custom block shapes and mimic textures",
           url: "https://www.curseforge.com/minecraft/mc-mods/copycats",
         },
         {
-          name: "Macaw's Furniture",
-          description: "Stylish furniture and decor items for your builds",
-          url: "https://www.curseforge.com/minecraft/mc-mods/macaws-furniture",
+          name: "Create Deco",
+          description:
+            "Girders, panels, and palettes that match Create's style",
+          url: "https://www.curseforge.com/minecraft/mc-mods/create-deco",
         },
       ],
     },
@@ -181,19 +184,19 @@ export function Home() {
           url: "https://www.curseforge.com/minecraft/mc-mods/xaeros-minimap",
         },
         {
-          name: "Nature's Compass",
-          description: "Compass that helps you find specific biomes",
-          url: "https://www.curseforge.com/minecraft/mc-mods/natures-compass",
-        },
-        {
           name: "Farmer's Delight",
           description: "Expanded farming and cooking mechanics",
           url: "https://www.curseforge.com/minecraft/mc-mods/farmers-delight",
         },
         {
-          name: "Deeper and Darker",
-          description: "Enhances the Deep Dark with a new dimension",
-          url: "https://www.curseforge.com/minecraft/mc-mods/deeperdarker",
+          name: "Naturalist",
+          description: "Lifelike wildlife scattered across every biome",
+          url: "https://www.curseforge.com/minecraft/mc-mods/naturalist",
+        },
+        {
+          name: "Upgrade Aquatic",
+          description: "Richer oceans and rivers to explore",
+          url: "https://www.curseforge.com/minecraft/mc-mods/upgrade-aquatic",
         },
       ],
     },
@@ -282,8 +285,8 @@ export function Home() {
             {/* Server Logo and Status */}
             <div className="flex items-center justify-between gap-2 ">
               <img
-                src="/assets/logo/cogs-and-steam-logo.webp"
-                alt="Cogs and Steam Logo"
+                src="/assets/logo/rails-n-sails-logo.webp"
+                alt="Rails 'n Sails Logo"
                 className="h-16 w-auto md:h-20 lg:h-24 object-contain"
               />
 
@@ -309,10 +312,10 @@ export function Home() {
                 </h1>
 
                 <p className="text-lg md:text-xl lg:text-2xl text-gray-200 max-w-2xl leading-relaxed drop-shadow-md">
-                  Cogs & Steam is a Create-powered server built for players who
-                  love clever machines, beautiful builds, and total creative
-                  freedom. From small farms to automated factories, every idea
-                  has a place here.
+                  Rails 'n Sails is a Create-powered server built for players
+                  who love clever machines, beautiful builds, and total creative
+                  freedom. From small farms to sprawling rail networks and
+                  airships, every idea has a place here.
                 </p>
 
                 {/* CTA */}
@@ -327,8 +330,9 @@ export function Home() {
                   ) : (
                     <Button size="lg" className="text-lg" asChild>
                       <a
-                        href="https://www.curseforge.com/minecraft/modpacks/createrington"
+                        href={CURSEFORGE_MODPACK_URL}
                         target="_blank"
+                        rel="noopener noreferrer"
                       >
                         <Download />
                         Download Modpack
@@ -354,7 +358,7 @@ export function Home() {
             id="server-features"
           >
             <h2 className="text-4xl md:text-5xl font-semibold text-foreground">
-              Why Join Cogs & Steam?
+              Why Join Rails 'n Sails?
             </h2>
 
             <p className="text-lg md:text-xl text-primary max-w-2xl">
@@ -464,7 +468,7 @@ export function Home() {
 
             <Button size="lg" variant="secondary" asChild className="shrink-0">
               <a
-                href="https://www.curseforge.com/minecraft/modpacks/createrington-cogs-steam/relations/dependencies"
+                href={`${CURSEFORGE_MODPACK_URL}/relations/dependencies`}
                 target="_blank"
                 rel="noopener noreferrer"
               >
@@ -533,7 +537,7 @@ export function Home() {
                 </h2>
 
                 <p className="text-lg md:text-xl text-primary">
-                  Trade, invest, and manage your wealth with our custom-built
+                  Earn, spend, and manage your wealth with our custom-built
                   economy plugin
                 </p>
               </div>

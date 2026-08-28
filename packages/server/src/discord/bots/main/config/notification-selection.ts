@@ -23,20 +23,11 @@ export interface NotificationConfig {
  */
 export const NOTIFICATION_CONFIGS: NotificationConfig[] = [
   {
-    id: "cogs-and-steam-notifications",
-    label: "Cogs & Steam",
+    id: "rails-n-sails-notifications",
+    label: "Rails 'n Sails",
     description: "Get pinged for train crashes and other server events",
-    roleId: Discord.Roles.COGS_AND_STEAMNOTIFICATIONS,
+    roleId: Discord.Roles.RAILSNSAILSNOTIFICATIONS,
     emoji: "🚂",
-    enabled: true,
-  },
-  {
-    id: "crypto-notifications",
-    label: "Crypto",
-    description:
-      "Get pinged for market events, token launches, and price alerts",
-    roleId: Discord.Roles.CRYPTONOTIFICATIONS,
-    emoji: "💰",
     enabled: true,
   },
 ];

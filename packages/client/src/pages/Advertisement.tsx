@@ -75,8 +75,8 @@ export function Advertisement() {
           <div className="relative h-full flex flex-col justify-between p-16">
             <div className="flex items-center gap-5">
               <img
-                src="/assets/logo/cogs-and-steam-logo.webp"
-                alt="Cogs and Steam"
+                src="/assets/logo/rails-n-sails-logo.webp"
+                alt="Rails 'n Sails"
                 className="h-20 w-auto object-contain"
               />
               <div className="h-12 w-px bg-white/20" />

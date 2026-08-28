@@ -20,7 +20,7 @@ export const data = new SlashCommandBuilder()
       .setName("server")
       .setDescription("Server to fetch players from")
       .setRequired(true)
-      .addChoices({ name: "Cogs & Steam", value: "1" }),
+      .addChoices({ name: "Rails 'n Sails", value: "1" }),
   );
 
 /**

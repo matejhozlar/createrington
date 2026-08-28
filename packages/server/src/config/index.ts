@@ -235,24 +235,24 @@ const config = {
   },
 
   servers: {
-    cogs: {
-      ip: env.COGS_AND_STEAM_SERVER_IP,
-      port: env.COGS_AND_STEAM_SERVER_PORT,
-      name: "Cogs & Steam",
+    rails: {
+      ip: env.RAILS_N_SAILS_SERVER_IP,
+      port: env.RAILS_N_SAILS_SERVER_PORT,
+      name: "Rails 'n Sails",
       id: 1,
       rcon: {
-        host: env.COGS_AND_STEAM_SERVER_IP,
-        port: env.COGS_AND_STEAM_RCON_PORT,
-        password: env.COGS_AND_STEAM_RCON_PASSWORD ?? "",
+        host: env.RAILS_N_SAILS_SERVER_IP,
+        port: env.RAILS_N_SAILS_RCON_PORT,
+        password: env.RAILS_N_SAILS_RCON_PASSWORD ?? "",
       },
       // SFTP is gated behind isSftpAllowed() (services/mc-server/file-ops.ts);
       // empty defaults are fine because dev never opens the connection.
       sftp: {
-        host: env.COGS_AND_STEAM_SFTP_HOST ?? "",
-        port: env.COGS_AND_STEAM_SFTP_PORT ?? 22,
-        username: env.COGS_AND_STEAM_SFTP_USER ?? "",
-        password: env.COGS_AND_STEAM_SFTP_PASS ?? "",
-        statsPath: env.COGS_AND_STEAM_SFTP_STATS_PATH ?? "",
+        host: env.RAILS_N_SAILS_SFTP_HOST ?? "",
+        port: env.RAILS_N_SAILS_SFTP_PORT ?? 22,
+        username: env.RAILS_N_SAILS_SFTP_USER ?? "",
+        password: env.RAILS_N_SAILS_SFTP_PASS ?? "",
+        statsPath: env.RAILS_N_SAILS_SFTP_STATS_PATH ?? "",
       },
     },
     playerLimit: env.PLAYER_LIMIT,

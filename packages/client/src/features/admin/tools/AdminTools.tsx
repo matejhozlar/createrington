@@ -20,7 +20,6 @@ import {
   Blocks,
   ChevronRight,
   Clock,
-  Coins,
   Megaphone,
   MessageCircleQuestion,
   MessageSquare,
@@ -98,12 +97,6 @@ const TOOL_SECTIONS: ToolSection[] = [
           "Community mod suggestions: review, approve, and rule out mods.",
         icon: WorkshopIcon,
         href: "/admin/tools/workshop",
-      },
-      {
-        title: "Crypto Market",
-        description: "Tokens, market events, treasury, and economy stats.",
-        icon: Coins,
-        href: "/admin/tools/crypto",
       },
       {
         title: "Parties",

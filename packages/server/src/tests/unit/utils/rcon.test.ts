@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeEach, afterAll, vi } from "vitest";
 
 // Mock the config so this test doesn't depend on env vars or the real
-// production singleton state. The real config requires COGS_AND_STEAM_*
+// production singleton state. The real config requires RAILS_N_SAILS_*
 // env vars that aren't set in CI.
 vi.mock("@/config", () => ({
   default: {
     servers: {
-      cogs: {
+      rails: {
         id: 1,
         name: "Test Server",
         rcon: {

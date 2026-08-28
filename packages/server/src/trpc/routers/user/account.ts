@@ -2,6 +2,7 @@ import { z } from "zod";
 import { router, userProcedure } from "@/trpc/trpc";
 import { trpcError } from "@/trpc/utils";
 import { Q } from "@/db";
+import { BalanceUtils } from "@/db/repositories/balance/utils";
 import { playerDeletionService } from "@/services/player/deletion";
 import { getService, Services } from "@/services";
 import config from "@/config";
@@ -26,6 +27,17 @@ export const accountRouter = router({
         role: ctx.user.role,
         isOwner: ctx.user.discordId === config.app.auth.owner.discordId,
         createdAt: player.createdAt.toISOString(),
+      };
+    }),
+
+  balance: userProcedure
+    .meta({ description: "Get player's current in-game balance" })
+    .query(async ({ ctx }) => {
+      const balance = await Q.player.balance.find({
+        minecraftUuid: ctx.user.minecraftUuid,
+      });
+      return {
+        balance: String(BalanceUtils.fromStorage(balance?.balance ?? 0n)),
       };
     }),
 
@@ -72,7 +84,7 @@ export const accountRouter = router({
   exportData: userProcedure
     .meta({
       description:
-        "Export all personal data as a single JSON object, covering playtime, balance, moderation history, crypto, and more",
+        "Export all personal data as a single JSON object, covering playtime, balance, moderation history, and more",
     })
     .query(async ({ ctx }) => {
       const { discordId, minecraftUuid } = ctx.user;
@@ -89,18 +101,11 @@ export const accountRouter = router({
         playtimeHourly,
         playtimeSummary,
         minecraftStats,
-        achievements,
         bans,
         strikes,
         rewardClaims,
         lotteryEntries,
         tickets,
-        cryptoHoldings,
-        cryptoTransactions,
-        cryptoOrders,
-        cryptoAlerts,
-        cryptoWatchlist,
-        cryptoPortfolioSnapshots,
       ] = await Promise.all([
         Q.player.find({ discordId }),
         Q.auth.session.getActiveSessions(discordId),
@@ -123,7 +128,6 @@ export const accountRouter = router({
         }),
         Q.player.playtime.summary.findAll(mcFilter),
         Q.player.minecraft.stats.findAll(mcFilterAlt),
-        Q.player.achievement.findAll(mcFilterAlt),
         Q.player.ban.findAll(mcFilter, {
           orderBy: "bannedAt",
           orderDirection: "desc",
@@ -141,21 +145,6 @@ export const accountRouter = router({
           { creatorDiscordId: discordId },
           { orderBy: "createdAt", orderDirection: "desc" },
         ),
-        Q.crypto.holding.findAll(mcFilter),
-        Q.crypto.transaction.findAll(mcFilter, {
-          orderBy: "createdAt",
-          orderDirection: "desc",
-        }),
-        Q.crypto.order.findAll(mcFilter, {
-          orderBy: "createdAt",
-          orderDirection: "desc",
-        }),
-        Q.crypto.price.alert.findAll(mcFilter),
-        Q.crypto.watchlist.findAll(mcFilter),
-        Q.crypto.portfolio.snapshot.findAll(mcFilter, {
-          orderBy: "recordedAt",
-          orderDirection: "desc",
-        }),
       ]);
 
       const data = {
@@ -171,7 +160,6 @@ export const accountRouter = router({
           summary: playtimeSummary,
         },
         minecraftStats,
-        achievements,
         moderation: {
           bans,
           strikes,
@@ -179,14 +167,6 @@ export const accountRouter = router({
         rewardClaims,
         lotteryEntries,
         tickets,
-        crypto: {
-          holdings: cryptoHoldings,
-          transactions: cryptoTransactions,
-          orders: cryptoOrders,
-          alerts: cryptoAlerts,
-          watchlist: cryptoWatchlist,
-          portfolioSnapshots: cryptoPortfolioSnapshots,
-        },
       };
 
       // BigInt values can't be JSON-serialized, convert them to strings

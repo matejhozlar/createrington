@@ -1,7 +1,6 @@
 import { AnnouncementEmbedPresets } from "./announcements";
 import { CommandEmbedPresets } from "./commands";
 import { CommonEmbedPresets } from "./common";
-import { CryptoEmbedPresets } from "./crypto";
 import { DepartedEmbedPresets } from "./departed";
 import { FaqEmbedPresets } from "./faq";
 import { GhostEmbedPresets } from "./ghost";
@@ -17,7 +16,6 @@ export const EmbedPresets = {
   ...CommonEmbedPresets,
   announcements: AnnouncementEmbedPresets,
   commands: CommandEmbedPresets,
-  crypto: CryptoEmbedPresets,
   waitlist: WaitlistEmbedPresets,
   registration: RegistrationEmbedPresets,
   progress: ProgressEmbedPresets,

@@ -66,52 +66,6 @@ export const lotteryParticipant = pgTable("lottery_participant", {
     .defaultNow(),
 });
 
-// --- player_achievement ---
-
-export const playerAchievement = pgTable(
-  "player_achievement",
-  {
-    minecraftUuid: uuid("minecraft_uuid")
-      .notNull()
-      .references(() => player.minecraftUuid, {
-        onUpdate: "cascade",
-        onDelete: "cascade",
-      }),
-    serverId: integer("server_id")
-      .notNull()
-      .references(() => server.id, {
-        onUpdate: "cascade",
-        onDelete: "cascade",
-      }),
-    achievementGroupId: text("achievement_group_id").notNull(),
-    tier: integer("tier").notNull(),
-    completedAt: timestamp("completed_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    claimedAt: timestamp("claimed_at", { withTimezone: true }),
-    rewardAmount: integer("reward_amount").notNull(),
-  },
-  (table) => [
-    primaryKey({
-      columns: [
-        table.minecraftUuid,
-        table.serverId,
-        table.achievementGroupId,
-        table.tier,
-      ],
-    }),
-    check("chk_tier_positive", sql`${table.tier} > 0`),
-    check("chk_reward_non_negative", sql`${table.rewardAmount} >= 0`),
-    index("idx_player_achievement_player_server").on(
-      table.minecraftUuid,
-      table.serverId,
-    ),
-    index("idx_player_achievement_unclaimed")
-      .on(table.minecraftUuid, table.serverId)
-      .where(sql`claimed_at IS NULL`),
-  ],
-);
-
 // --- player_balance ---
 
 export const playerBalance = pgTable(

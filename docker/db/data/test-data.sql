@@ -21,7 +21,6 @@ TRUNCATE TABLE discord_guild_member_leave CASCADE;
 TRUNCATE TABLE faq_entry CASCADE;
 TRUNCATE TABLE faq_welcome_message CASCADE;
 TRUNCATE TABLE leaderboard_message CASCADE;
-TRUNCATE TABLE player_achievement CASCADE;
 TRUNCATE TABLE player_balance_transaction CASCADE;
 TRUNCATE TABLE player_minecraft_stats CASCADE;
 TRUNCATE TABLE reward_claim CASCADE;
@@ -65,7 +64,7 @@ ALTER SEQUENCE server_ally_qualified_player_id_seq RESTART WITH 1;
 -- ============================================================================
 
 INSERT INTO server (name, identifier, created_at) VALUES
-('Cogs SMP', 'cogs', NOW() - INTERVAL '6 months');
+('Rails ''n Sails', 'rails', NOW() - INTERVAL '6 months');
 
 -- ============================================================================
 -- PLAYERS
@@ -342,7 +341,7 @@ BEGIN
                     session_end
                 ) VALUES (
                     player_uuid,
-                    1, -- Cogs server
+                    1, -- Rails 'n Sails server
                     session_start,
                     session_start + (session_duration || ' seconds')::INTERVAL
                 );
@@ -665,7 +664,7 @@ INSERT INTO faq_entry (match_mode, pattern, title, response, enabled, priority) 
 ('keywords', 'whitelist,join,how to join,apply', 'How to Join', 'To join Createrington, fill out the application in #apply and wait for approval. Once accepted, you''ll be whitelisted automatically.', true, 10),
 ('keywords', 'ip,address,server ip,connect', 'Server IP', 'The server IP is `play.createrington.com`. Make sure you''re using Minecraft Java Edition 1.20+.', true, 9),
 ('keywords', 'rules,guidelines,policy', 'Server Rules', 'Please read our full rules in #rules. Key points: no griefing, no hacking, be respectful, and no spam.', true, 8),
-('keywords', 'balance,money,coins,economy', 'Economy System', 'Use `/balance` to check your coins. Earn coins by playing, completing achievements, and trading with other players.', true, 7),
+('keywords', 'balance,money,coins,economy', 'Economy System', 'Use `/balance` to check your coins. Earn coins by playing and trading with other players.', true, 7),
 ('keywords', 'ban,banned,appeal,unban', 'Ban Appeals', 'If you''ve been banned, you can submit an appeal by opening a ticket with `/ticket`. Include your username and reason for appeal.', true, 6),
 ('keywords', 'discord,role,rank', 'Discord Roles', 'Roles are assigned based on your playtime and contributions. Check #roles for more info on available ranks.', false, 3);
 
@@ -684,39 +683,13 @@ INSERT INTO faq_welcome_message (channel_id, message_id) VALUES
 -- when the leaderboard service tries to refresh them at startup.
 
 -- ============================================================================
--- PLAYER ACHIEVEMENTS
--- ============================================================================
-
-INSERT INTO player_achievement (minecraft_uuid, server_id, achievement_group_id, tier, completed_at, claimed_at, reward_amount) VALUES
--- saunhardy: veteran player with claimed achievements
-('091b900c-4174-478c-900c-a0fe5a31a329', 1, 'playtime', 1, NOW() - INTERVAL '150 days', NOW() - INTERVAL '149 days', 5000),
-('091b900c-4174-478c-900c-a0fe5a31a329', 1, 'playtime', 2, NOW() - INTERVAL '120 days', NOW() - INTERVAL '119 days', 15000),
-('091b900c-4174-478c-900c-a0fe5a31a329', 1, 'playtime', 3, NOW() - INTERVAL '60 days', NOW() - INTERVAL '59 days', 50000),
-('091b900c-4174-478c-900c-a0fe5a31a329', 1, 'mining', 1, NOW() - INTERVAL '140 days', NOW() - INTERVAL '140 days', 3000),
-('091b900c-4174-478c-900c-a0fe5a31a329', 1, 'mining', 2, NOW() - INTERVAL '90 days', NULL, 10000),
-
--- Steve: active player with some achievements
-('550e8400-e29b-41d4-a716-446655440001', 1, 'playtime', 1, NOW() - INTERVAL '60 days', NOW() - INTERVAL '59 days', 5000),
-('550e8400-e29b-41d4-a716-446655440001', 1, 'playtime', 2, NOW() - INTERVAL '30 days', NULL, 15000),
-('550e8400-e29b-41d4-a716-446655440001', 1, 'building', 1, NOW() - INTERVAL '45 days', NOW() - INTERVAL '44 days', 3000),
-
--- Alex: a few achievements
-('550e8400-e29b-41d4-a716-446655440002', 1, 'playtime', 1, NOW() - INTERVAL '50 days', NOW() - INTERVAL '49 days', 5000),
-('550e8400-e29b-41d4-a716-446655440002', 1, 'combat', 1, NOW() - INTERVAL '40 days', NOW() - INTERVAL '39 days', 4000),
-
--- Technoblade: combat-focused
-('550e8400-e29b-41d4-a716-446655440007', 1, 'combat', 1, NOW() - INTERVAL '45 days', NOW() - INTERVAL '44 days', 4000),
-('550e8400-e29b-41d4-a716-446655440007', 1, 'combat', 2, NOW() - INTERVAL '30 days', NOW() - INTERVAL '29 days', 12000),
-('550e8400-e29b-41d4-a716-446655440007', 1, 'combat', 3, NOW() - INTERVAL '10 days', NULL, 40000);
-
--- ============================================================================
 -- PLAYER BALANCE TRANSACTIONS
 -- ============================================================================
 
 INSERT INTO player_balance_transaction (player_minecraft_uuid, amount, balance_before, balance_after, transaction_type, description, related_player_uuid, metadata) VALUES
 -- Steve: earning and spending
 ('550e8400-e29b-41d4-a716-446655440001', 50000, 0, 50000, 'welcome_bonus', 'Welcome bonus for new player', NULL, '{}'),
-('550e8400-e29b-41d4-a716-446655440001', 5000, 50000, 55000, 'achievement', 'Playtime tier 1 achievement reward', NULL, '{"achievement_group_id":"playtime","tier":1}'),
+('550e8400-e29b-41d4-a716-446655440001', 5000, 50000, 55000, 'playtime_reward', 'Playtime milestone reward', NULL, '{}'),
 ('550e8400-e29b-41d4-a716-446655440001', 200500, 55000, 255500, 'playtime_reward', 'Weekly playtime reward', NULL, '{"week":"2026-W04"}'),
 ('550e8400-e29b-41d4-a716-446655440001', -5000, 255500, 250500, 'transfer', 'Sent to Alex', '550e8400-e29b-41d4-a716-446655440002', '{}'),
 ('550e8400-e29b-41d4-a716-446655440001', 1000000, 250500, 1250500, 'admin_adjust', 'Admin balance correction', NULL, '{"admin_discord_id":"818819241666281503","reason":"compensation for lost items"}'),
@@ -874,263 +847,10 @@ BEGIN
 END $$;
 
 -- ============================================================================
--- CRYPTO MARKET
--- ============================================================================
-
--- Clean up crypto tables (in dependency order)
-TRUNCATE TABLE crypto_cost_basis CASCADE;
-TRUNCATE TABLE crypto_transaction CASCADE;
-TRUNCATE TABLE crypto_order CASCADE;
-TRUNCATE TABLE crypto_holding CASCADE;
-TRUNCATE TABLE crypto_price_snapshot CASCADE;
-TRUNCATE TABLE crypto_market_event CASCADE;
-TRUNCATE TABLE crypto_price_alert CASCADE;
-TRUNCATE TABLE crypto_watchlist CASCADE;
-TRUNCATE TABLE crypto_portfolio_snapshot CASCADE;
-TRUNCATE TABLE crypto_token CASCADE;
-TRUNCATE TABLE crypto_treasury CASCADE;
-
-ALTER SEQUENCE crypto_token_id_seq RESTART WITH 1;
-ALTER SEQUENCE crypto_holding_id_seq RESTART WITH 1;
-ALTER SEQUENCE crypto_order_id_seq RESTART WITH 1;
-ALTER SEQUENCE crypto_transaction_id_seq RESTART WITH 1;
-ALTER SEQUENCE crypto_price_snapshot_id_seq RESTART WITH 1;
-ALTER SEQUENCE crypto_cost_basis_id_seq RESTART WITH 1;
-ALTER SEQUENCE crypto_treasury_id_seq RESTART WITH 1;
-ALTER SEQUENCE crypto_market_event_id_seq RESTART WITH 1;
-ALTER SEQUENCE crypto_price_alert_id_seq RESTART WITH 1;
-ALTER SEQUENCE crypto_watchlist_id_seq RESTART WITH 1;
-ALTER SEQUENCE crypto_portfolio_snapshot_id_seq RESTART WITH 1;
-
--- Treasury (single row)
-INSERT INTO crypto_treasury (total_collected, total_burned) VALUES (0, 0);
-
--- Stablecoins
-INSERT INTO crypto_token (name, symbol, description, category, total_supply, available_supply, price, floor_price)
-VALUES
-  ('Ringcoin', 'RGC', 'The official currency of Createrington. Pegged to server activity.', 'stable', 999999999, 999999999, 1.00000000, 1.00000000);
-
--- Initial Memecoins (supply range: 500–50,000 per CRYPTO_CONFIG)
-INSERT INTO crypto_token (name, symbol, description, category, total_supply, available_supply, price)
-VALUES
-  ('FluffCoin', 'FLF', 'Backed by the raw power of sheep wool. May crash during shearing season.', 'memecoin', 40000, 40000, 0.50000000),
-  ('CreeperCash', 'CRP', 'Explosive growth potential. Literally.', 'memecoin', 20000, 20000, 2.50000000),
-  ('DiamondDoge', 'DDG', 'To the bedrock and beyond!', 'memecoin', 5000, 5000, 15.00000000),
-  ('EnderToken', 'END', 'Teleports between price points with no warning.', 'memecoin', 50000, 50000, 0.01000000),
-  ('RedstoneRuble', 'RSR', 'Powers the Minecraft economy, one tick at a time.', 'memecoin', 30000, 30000, 5.00000000);
-
--- Token IDs (by insert order): 1=RGC, 2=FLF, 3=CRP, 4=DDG, 5=END, 6=RSR
-
--- Update available supply to reflect held tokens
-UPDATE crypto_token SET available_supply = 34500  WHERE symbol = 'FLF'; -- 5500 held
-UPDATE crypto_token SET available_supply = 19200  WHERE symbol = 'CRP'; -- 800 held
-UPDATE crypto_token SET available_supply = 4840   WHERE symbol = 'DDG'; -- 160 held
-UPDATE crypto_token SET available_supply = 40000  WHERE symbol = 'END'; -- 10000 held
-UPDATE crypto_token SET available_supply = 27200  WHERE symbol = 'RSR'; -- 2800 held
-
--- ============================================================================
--- CRYPTO HOLDINGS
--- ============================================================================
-
-INSERT INTO crypto_holding (player_minecraft_uuid, token_id, amount, total_cost_basis, created_at, updated_at) VALUES
--- saunhardy: 3000 FLF, 100 CRP, 50 DDG, 10000 END
-('091b900c-4174-478c-900c-a0fe5a31a329', 2, 3000, 900.00000000, NOW() - INTERVAL '28 days', NOW() - INTERVAL '5 days'),
-('091b900c-4174-478c-900c-a0fe5a31a329', 3, 100,  200.00000000, NOW() - INTERVAL '25 days', NOW() - INTERVAL '5 days'),
-('091b900c-4174-478c-900c-a0fe5a31a329', 4, 50,   600.00000000, NOW() - INTERVAL '20 days', NOW() - INTERVAL '20 days'),
-('091b900c-4174-478c-900c-a0fe5a31a329', 5, 10000, 80.00000000, NOW() - INTERVAL '10 days', NOW() - INTERVAL '10 days'),
--- Steve: 500 FLF, 500 RSR
-('550e8400-e29b-41d4-a716-446655440001', 2, 500,  175.00000000, NOW() - INTERVAL '20 days', NOW() - INTERVAL '7 days'),
-('550e8400-e29b-41d4-a716-446655440001', 6, 500,  2250.00000000, NOW() - INTERVAL '15 days', NOW() - INTERVAL '15 days'),
--- Alex: 10 DDG, 200 CRP
-('550e8400-e29b-41d4-a716-446655440002', 4, 10,   140.00000000, NOW() - INTERVAL '12 days', NOW() - INTERVAL '12 days'),
-('550e8400-e29b-41d4-a716-446655440002', 3, 200,  440.00000000, NOW() - INTERVAL '8 days', NOW() - INTERVAL '8 days'),
--- Notch: 2000 RSR, 100 DDG
-('550e8400-e29b-41d4-a716-446655440003', 6, 2000, 8000.00000000, NOW() - INTERVAL '25 days', NOW() - INTERVAL '25 days'),
-('550e8400-e29b-41d4-a716-446655440003', 4, 100,  1000.00000000, NOW() - INTERVAL '25 days', NOW() - INTERVAL '25 days'),
--- Herobrine: 2000 FLF
-('550e8400-e29b-41d4-a716-446655440004', 2, 2000, 800.00000000, NOW() - INTERVAL '18 days', NOW() - INTERVAL '5 days'),
--- Technoblade: 300 RSR, 500 CRP
-('550e8400-e29b-41d4-a716-446655440007', 6, 300,  1560.00000000, NOW() - INTERVAL '10 days', NOW() - INTERVAL '10 days'),
-('550e8400-e29b-41d4-a716-446655440007', 3, 500,  1150.00000000, NOW() - INTERVAL '7 days', NOW() - INTERVAL '3 days');
-
--- ============================================================================
--- CRYPTO TRANSACTIONS
--- ============================================================================
-
-INSERT INTO crypto_transaction (player_minecraft_uuid, token_id, type, trigger, amount, price_at_execution, fee_amount, total_cost, realized_pnl, created_at) VALUES
--- saunhardy buys
-('091b900c-4174-478c-900c-a0fe5a31a329', 2, 'buy', 'market', 5000, 0.30000000, 15.00000000, 1515.00000000, NULL, NOW() - INTERVAL '28 days'),
-('091b900c-4174-478c-900c-a0fe5a31a329', 3, 'buy', 'market', 200,  2.00000000, 4.00000000,  404.00000000, NULL, NOW() - INTERVAL '25 days'),
-('091b900c-4174-478c-900c-a0fe5a31a329', 4, 'buy', 'market', 50,   12.00000000, 6.00000000, 606.00000000, NULL, NOW() - INTERVAL '20 days'),
-('091b900c-4174-478c-900c-a0fe5a31a329', 5, 'buy', 'market', 10000, 0.00800000, 4.00000000, 84.00000000, NULL, NOW() - INTERVAL '10 days'),
--- saunhardy sells
-('091b900c-4174-478c-900c-a0fe5a31a329', 2, 'sell', 'market', 2000, 0.45000000, 9.00000000, 891.00000000, 300.00000000, NOW() - INTERVAL '15 days'),
-('091b900c-4174-478c-900c-a0fe5a31a329', 3, 'sell', 'market', 100,  2.80000000, 2.80000000, 277.20000000, 80.00000000, NOW() - INTERVAL '5 days'),
--- Steve buys
-('550e8400-e29b-41d4-a716-446655440001', 2, 'buy', 'market', 1000, 0.35000000, 3.50000000, 353.50000000, NULL, NOW() - INTERVAL '20 days'),
-('550e8400-e29b-41d4-a716-446655440001', 6, 'buy', 'market', 500,  4.50000000, 22.50000000, 2272.50000000, NULL, NOW() - INTERVAL '15 days'),
--- Steve sell
-('550e8400-e29b-41d4-a716-446655440001', 2, 'sell', 'market', 500,  0.50000000, 2.50000000, 247.50000000, 75.00000000, NOW() - INTERVAL '7 days'),
--- Alex buys
-('550e8400-e29b-41d4-a716-446655440002', 4, 'buy', 'market', 10,   14.00000000, 1.40000000, 141.40000000, NULL, NOW() - INTERVAL '12 days'),
-('550e8400-e29b-41d4-a716-446655440002', 3, 'buy', 'market', 200,  2.20000000, 4.40000000, 444.40000000, NULL, NOW() - INTERVAL '8 days'),
--- Notch buys
-('550e8400-e29b-41d4-a716-446655440003', 6, 'buy', 'market', 2000, 4.00000000, 80.00000000, 8080.00000000, NULL, NOW() - INTERVAL '25 days'),
-('550e8400-e29b-41d4-a716-446655440003', 4, 'buy', 'market', 100,  10.00000000, 10.00000000, 1010.00000000, NULL, NOW() - INTERVAL '25 days'),
--- Herobrine buys
-('550e8400-e29b-41d4-a716-446655440004', 5, 'buy', 'market', 5000, 0.00500000, 1.25000000, 26.25000000, NULL, NOW() - INTERVAL '22 days'),
-('550e8400-e29b-41d4-a716-446655440004', 2, 'buy', 'market', 3000, 0.40000000, 12.00000000, 1212.00000000, NULL, NOW() - INTERVAL '18 days'),
--- Herobrine sells
-('550e8400-e29b-41d4-a716-446655440004', 5, 'sell', 'market', 5000, 0.01200000, 3.00000000, 57.00000000, 35.00000000, NOW() - INTERVAL '10 days'),
-('550e8400-e29b-41d4-a716-446655440004', 2, 'sell', 'market', 1000, 0.48000000, 4.80000000, 475.20000000, 80.00000000, NOW() - INTERVAL '5 days'),
--- Technoblade buys
-('550e8400-e29b-41d4-a716-446655440007', 6, 'buy', 'market', 300,  5.20000000, 15.60000000, 1575.60000000, NULL, NOW() - INTERVAL '10 days'),
-('550e8400-e29b-41d4-a716-446655440007', 3, 'buy', 'market', 1000, 2.30000000, 23.00000000, 2323.00000000, NULL, NOW() - INTERVAL '7 days'),
--- Technoblade sell
-('550e8400-e29b-41d4-a716-446655440007', 3, 'sell', 'market', 500,  2.60000000, 13.00000000, 1287.00000000, 150.00000000, NOW() - INTERVAL '3 days');
-
--- ============================================================================
--- CRYPTO COST BASIS (remaining lots after sells, FIFO)
--- ============================================================================
-
-INSERT INTO crypto_cost_basis (player_minecraft_uuid, token_id, amount_remaining, price_per_unit, acquired_at) VALUES
--- saunhardy: remaining FLF (bought 5000 @ $0.30, sold 2000 → 3000 left)
-('091b900c-4174-478c-900c-a0fe5a31a329', 2, 3000, 0.30000000, NOW() - INTERVAL '28 days'),
--- saunhardy: remaining CRP (bought 200 @ $2.00, sold 100 → 100 left)
-('091b900c-4174-478c-900c-a0fe5a31a329', 3, 100, 2.00000000, NOW() - INTERVAL '25 days'),
--- saunhardy: DDG (full lot)
-('091b900c-4174-478c-900c-a0fe5a31a329', 4, 50, 12.00000000, NOW() - INTERVAL '20 days'),
--- saunhardy: END (full lot)
-('091b900c-4174-478c-900c-a0fe5a31a329', 5, 10000, 0.00800000, NOW() - INTERVAL '10 days'),
--- Steve: remaining FLF (bought 1000 @ $0.35, sold 500 → 500 left)
-('550e8400-e29b-41d4-a716-446655440001', 2, 500, 0.35000000, NOW() - INTERVAL '20 days'),
--- Steve: RSR (full lot)
-('550e8400-e29b-41d4-a716-446655440001', 6, 500, 4.50000000, NOW() - INTERVAL '15 days'),
--- Alex: DDG
-('550e8400-e29b-41d4-a716-446655440002', 4, 10, 14.00000000, NOW() - INTERVAL '12 days'),
--- Alex: CRP
-('550e8400-e29b-41d4-a716-446655440002', 3, 200, 2.20000000, NOW() - INTERVAL '8 days'),
--- Notch: RSR
-('550e8400-e29b-41d4-a716-446655440003', 6, 2000, 4.00000000, NOW() - INTERVAL '25 days'),
--- Notch: DDG
-('550e8400-e29b-41d4-a716-446655440003', 4, 100, 10.00000000, NOW() - INTERVAL '25 days'),
--- Herobrine: remaining FLF (bought 3000 @ $0.40, sold 1000 → 2000 left)
-('550e8400-e29b-41d4-a716-446655440004', 2, 2000, 0.40000000, NOW() - INTERVAL '18 days'),
--- Technoblade: RSR
-('550e8400-e29b-41d4-a716-446655440007', 6, 300, 5.20000000, NOW() - INTERVAL '10 days'),
--- Technoblade: remaining CRP (bought 1000 @ $2.30, sold 500 → 500 left)
-('550e8400-e29b-41d4-a716-446655440007', 3, 500, 2.30000000, NOW() - INTERVAL '7 days');
-
--- ============================================================================
--- CRYPTO PRICE SNAPSHOTS (minute interval around 24h ago for change24h)
--- ============================================================================
-
-INSERT INTO crypto_price_snapshot (token_id, interval, open_price, high_price, low_price, close_price, volume, recorded_at) VALUES
--- ~24h ago minute snapshots (used by get24hChange)
-(1, 'minute', 1.00000000, 1.00000000, 1.00000000, 1.00000000, 0, NOW() - INTERVAL '24 hours'),
-(2, 'minute', 0.47000000, 0.47500000, 0.46500000, 0.47000000, 120, NOW() - INTERVAL '24 hours'),
-(3, 'minute', 2.40000000, 2.42000000, 2.38000000, 2.40000000, 80, NOW() - INTERVAL '24 hours'),
-(4, 'minute', 14.50000000, 14.60000000, 14.40000000, 14.50000000, 15, NOW() - INTERVAL '24 hours'),
-(5, 'minute', 0.00950000, 0.00960000, 0.00940000, 0.00950000, 5000, NOW() - INTERVAL '24 hours'),
-(6, 'minute', 4.80000000, 4.85000000, 4.75000000, 4.80000000, 50, NOW() - INTERVAL '24 hours');
-
--- ============================================================================
--- CRYPTO PRICE SNAPSHOTS (daily interval for price chart)
--- ============================================================================
-
-INSERT INTO crypto_price_snapshot (token_id, interval, open_price, high_price, low_price, close_price, volume, recorded_at)
-SELECT token_id, 'daily', open_p, high_p, low_p, close_p, vol, ts
-FROM (VALUES
-  -- FLF (token 2): $0.30 → $0.50 over 30 days
-  (2, 0.30, 0.32, 0.29, 0.31, 800,  NOW() - INTERVAL '30 days'),
-  (2, 0.31, 0.33, 0.30, 0.32, 650,  NOW() - INTERVAL '27 days'),
-  (2, 0.32, 0.36, 0.31, 0.35, 1200, NOW() - INTERVAL '24 days'),
-  (2, 0.35, 0.38, 0.34, 0.37, 900,  NOW() - INTERVAL '21 days'),
-  (2, 0.37, 0.40, 0.35, 0.38, 1100, NOW() - INTERVAL '18 days'),
-  (2, 0.38, 0.42, 0.37, 0.41, 750,  NOW() - INTERVAL '15 days'),
-  (2, 0.41, 0.44, 0.40, 0.43, 600,  NOW() - INTERVAL '12 days'),
-  (2, 0.43, 0.46, 0.42, 0.45, 500,  NOW() - INTERVAL '9 days'),
-  (2, 0.45, 0.48, 0.44, 0.47, 400,  NOW() - INTERVAL '6 days'),
-  (2, 0.47, 0.51, 0.46, 0.50, 350,  NOW() - INTERVAL '3 days'),
-  (2, 0.50, 0.52, 0.49, 0.50, 300,  NOW() - INTERVAL '1 day'),
-  -- CRP (token 3): $2.00 → $2.50
-  (3, 2.00, 2.10, 1.95, 2.05, 200, NOW() - INTERVAL '30 days'),
-  (3, 2.05, 2.15, 2.00, 2.10, 180, NOW() - INTERVAL '25 days'),
-  (3, 2.10, 2.25, 2.08, 2.20, 300, NOW() - INTERVAL '20 days'),
-  (3, 2.20, 2.30, 2.15, 2.25, 250, NOW() - INTERVAL '15 days'),
-  (3, 2.25, 2.40, 2.22, 2.35, 280, NOW() - INTERVAL '10 days'),
-  (3, 2.35, 2.45, 2.30, 2.40, 200, NOW() - INTERVAL '5 days'),
-  (3, 2.40, 2.52, 2.38, 2.50, 150, NOW() - INTERVAL '1 day'),
-  -- DDG (token 4): $10.00 → $15.00
-  (4, 10.00, 10.50, 9.80,  10.30, 30, NOW() - INTERVAL '30 days'),
-  (4, 10.30, 11.00, 10.10, 10.80, 25, NOW() - INTERVAL '25 days'),
-  (4, 10.80, 12.00, 10.50, 11.50, 40, NOW() - INTERVAL '20 days'),
-  (4, 11.50, 12.50, 11.20, 12.20, 35, NOW() - INTERVAL '15 days'),
-  (4, 12.20, 13.50, 12.00, 13.00, 30, NOW() - INTERVAL '10 days'),
-  (4, 13.00, 14.20, 12.80, 14.00, 20, NOW() - INTERVAL '5 days'),
-  (4, 14.00, 15.20, 13.80, 15.00, 18, NOW() - INTERVAL '1 day'),
-  -- END (token 5): $0.005 → $0.01
-  (5, 0.005,  0.0055, 0.0048, 0.0052, 20000, NOW() - INTERVAL '30 days'),
-  (5, 0.0052, 0.006,  0.005,  0.0058, 18000, NOW() - INTERVAL '25 days'),
-  (5, 0.0058, 0.007,  0.0055, 0.0065, 25000, NOW() - INTERVAL '20 days'),
-  (5, 0.0065, 0.008,  0.006,  0.0075, 22000, NOW() - INTERVAL '15 days'),
-  (5, 0.0075, 0.009,  0.007,  0.0085, 15000, NOW() - INTERVAL '10 days'),
-  (5, 0.0085, 0.010,  0.008,  0.0095, 12000, NOW() - INTERVAL '5 days'),
-  (5, 0.0095, 0.011,  0.009,  0.0100, 10000, NOW() - INTERVAL '1 day'),
-  -- RSR (token 6): $4.00 → $5.00
-  (6, 4.00, 4.20, 3.90, 4.10, 100, NOW() - INTERVAL '30 days'),
-  (6, 4.10, 4.30, 4.00, 4.20, 90,  NOW() - INTERVAL '25 days'),
-  (6, 4.20, 4.50, 4.10, 4.40, 120, NOW() - INTERVAL '20 days'),
-  (6, 4.40, 4.60, 4.30, 4.50, 110, NOW() - INTERVAL '15 days'),
-  (6, 4.50, 4.70, 4.40, 4.60, 80,  NOW() - INTERVAL '10 days'),
-  (6, 4.60, 4.90, 4.55, 4.80, 70,  NOW() - INTERVAL '5 days'),
-  (6, 4.80, 5.10, 4.75, 5.00, 60,  NOW() - INTERVAL '1 day')
-) AS v(token_id, open_p, high_p, low_p, close_p, vol, ts);
-
--- ============================================================================
--- CRYPTO PORTFOLIO SNAPSHOTS (daily, for portfolio history chart)
--- ============================================================================
-
-INSERT INTO crypto_portfolio_snapshot (player_minecraft_uuid, total_value, total_invested, realized_pnl, token_count, recorded_at)
-SELECT uuid, tv, ti, rpnl, tc, ts
-FROM (VALUES
-  -- saunhardy: portfolio growing from ~$2000 to ~$3800
-  ('091b900c-4174-478c-900c-a0fe5a31a329'::uuid, 2000.00, 2500.00, 0.00,    2, NOW() - INTERVAL '28 days'),
-  ('091b900c-4174-478c-900c-a0fe5a31a329'::uuid, 2200.00, 2500.00, 0.00,    2, NOW() - INTERVAL '25 days'),
-  ('091b900c-4174-478c-900c-a0fe5a31a329'::uuid, 2500.00, 3100.00, 0.00,    3, NOW() - INTERVAL '20 days'),
-  ('091b900c-4174-478c-900c-a0fe5a31a329'::uuid, 2800.00, 3100.00, 300.00,  3, NOW() - INTERVAL '15 days'),
-  ('091b900c-4174-478c-900c-a0fe5a31a329'::uuid, 3200.00, 2500.00, 300.00,  4, NOW() - INTERVAL '10 days'),
-  ('091b900c-4174-478c-900c-a0fe5a31a329'::uuid, 3500.00, 2500.00, 380.00,  4, NOW() - INTERVAL '5 days'),
-  ('091b900c-4174-478c-900c-a0fe5a31a329'::uuid, 3800.00, 2500.00, 380.00,  4, NOW() - INTERVAL '1 day'),
-  -- Steve: portfolio ~$500 to ~$2750
-  ('550e8400-e29b-41d4-a716-446655440001'::uuid, 500.00,  350.00,  0.00,  1, NOW() - INTERVAL '20 days'),
-  ('550e8400-e29b-41d4-a716-446655440001'::uuid, 1200.00, 2600.00, 0.00,  2, NOW() - INTERVAL '15 days'),
-  ('550e8400-e29b-41d4-a716-446655440001'::uuid, 2000.00, 2600.00, 0.00,  2, NOW() - INTERVAL '10 days'),
-  ('550e8400-e29b-41d4-a716-446655440001'::uuid, 2400.00, 2425.00, 75.00, 2, NOW() - INTERVAL '7 days'),
-  ('550e8400-e29b-41d4-a716-446655440001'::uuid, 2600.00, 2425.00, 75.00, 2, NOW() - INTERVAL '3 days'),
-  ('550e8400-e29b-41d4-a716-446655440001'::uuid, 2750.00, 2425.00, 75.00, 2, NOW() - INTERVAL '1 day'),
-  -- Notch: buy-and-hold, ~$9000 to ~$11500
-  ('550e8400-e29b-41d4-a716-446655440003'::uuid, 9000.00,  9000.00, 0.00, 2, NOW() - INTERVAL '25 days'),
-  ('550e8400-e29b-41d4-a716-446655440003'::uuid, 9500.00,  9000.00, 0.00, 2, NOW() - INTERVAL '20 days'),
-  ('550e8400-e29b-41d4-a716-446655440003'::uuid, 10000.00, 9000.00, 0.00, 2, NOW() - INTERVAL '15 days'),
-  ('550e8400-e29b-41d4-a716-446655440003'::uuid, 10500.00, 9000.00, 0.00, 2, NOW() - INTERVAL '10 days'),
-  ('550e8400-e29b-41d4-a716-446655440003'::uuid, 11000.00, 9000.00, 0.00, 2, NOW() - INTERVAL '5 days'),
-  ('550e8400-e29b-41d4-a716-446655440003'::uuid, 11500.00, 9000.00, 0.00, 2, NOW() - INTERVAL '1 day'),
-  -- Herobrine: active trader, ~$250 to ~$1000
-  ('550e8400-e29b-41d4-a716-446655440004'::uuid, 350.00,  1450.00, 0.00,   2, NOW() - INTERVAL '18 days'),
-  ('550e8400-e29b-41d4-a716-446655440004'::uuid, 800.00,  1450.00, 350.00, 1, NOW() - INTERVAL '10 days'),
-  ('550e8400-e29b-41d4-a716-446655440004'::uuid, 900.00,  800.00,  430.00, 1, NOW() - INTERVAL '5 days'),
-  ('550e8400-e29b-41d4-a716-446655440004'::uuid, 1000.00, 800.00,  430.00, 1, NOW() - INTERVAL '1 day')
-) AS v(uuid, tv, ti, rpnl, tc, ts);
-
--- Treasury: total fees collected across all trades
-UPDATE crypto_treasury SET total_collected = 237.25, total_burned = 20.43;
-
--- ============================================================================
 -- SERVER FORCELOADS
 -- ============================================================================
 
--- Solo players with forceloaded chunks on Cogs SMP (server_id = 1)
+-- Solo players with forceloaded chunks on Rails 'n Sails (server_id = 1)
 INSERT INTO server_forceload_player (server_id, player_uuid, synced_at) VALUES
   -- id 1: Notch, synced recently
   (1, '550e8400-e29b-41d4-a716-446655440003'::uuid, NOW() - INTERVAL '10 minutes'),
@@ -1176,7 +896,7 @@ INSERT INTO server_forceload_chunk (player_id, party_id, dimension, x, z, active
 -- SERVER ALLIES (opac-fakeplayer)
 -- ============================================================================
 
--- Fake-player party on Cogs SMP (server_id = 1). The fake party UUIDs are
+-- Fake-player party on Rails 'n Sails (server_id = 1). The fake party UUIDs are
 -- synthetic and intentionally not in the player table — fake players aren't
 -- real accounts.
 INSERT INTO server_ally_fake_party (server_id, party_id, owner_uuid, owner_name, synced_at) VALUES

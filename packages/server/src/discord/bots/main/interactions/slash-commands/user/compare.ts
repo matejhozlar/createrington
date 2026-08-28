@@ -1,4 +1,4 @@
-import { Q, playerRepo } from "@/db";
+import { playerRepo } from "@/db";
 import { BalanceUtils } from "@/db/repositories/balance/utils";
 import { EmbedPresets } from "@/discord/embeds";
 import { replyError } from "@/discord/utils/interaction-reply";
@@ -120,30 +120,15 @@ export async function execute(
       });
     } else {
       // Text fallback if Puppeteer is unavailable
-      const tokens = await Q.crypto.token.getAll();
-      const tokenPriceMap = new Map(tokens.map((t) => [t.id, Number(t.price)]));
-
-      const computeNetworth = async (
-        details: typeof details1,
-      ): Promise<string> => {
+      const computeNetworth = (details: typeof details1): string => {
         const cash = details.balance
           ? BalanceUtils.fromStorage(details.balance.balance)
           : 0;
-        const holdings = await Q.crypto.holding
-          .where({ playerMinecraftUuid: details.player.minecraftUuid })
-          .all();
-        const cryptoValue = holdings.reduce((sum, h) => {
-          const price = tokenPriceMap.get(h.tokenId) ?? 0;
-          return sum + price * Number(h.amount);
-        }, 0);
-        const total = cash + cryptoValue;
-        return total.toFixed(3).replace(/\.?0+$/, "") || "0";
+        return cash.toFixed(3).replace(/\.?0+$/, "") || "0";
       };
 
-      const [nw1, nw2] = await Promise.all([
-        computeNetworth(details1),
-        computeNetworth(details2),
-      ]);
+      const nw1 = computeNetworth(details1);
+      const nw2 = computeNetworth(details2);
 
       const pt1 = formatPlaytime(details1.playtime.totalSeconds);
       const pt2 = formatPlaytime(details2.playtime.totalSeconds);

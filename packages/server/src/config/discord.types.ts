@@ -4,7 +4,7 @@ interface MemberRolesConfig {
   readonly admin: string;
   readonly developer: string;
   readonly theSleepless: string;
-  readonly cryptoBaron: string;
+  readonly capitalist: string;
   readonly clockworkArchitect: string;
   readonly masterAutomaton: string;
   readonly factoryOverseer: string;
@@ -33,6 +33,7 @@ interface MemberRolesConfig {
   readonly supporter: string;
   readonly verified: string;
   readonly cogsAndSteamnotifications: string;
+  readonly railsnsailsnotifications: string;
   readonly cryptonotifications: string;
   readonly unverified: string;
 }
@@ -87,6 +88,12 @@ interface ChannelConfig {
     readonly allMembers: string;
   };
 
+  readonly railsNSails: {
+    readonly notifications: string;
+    readonly changelog: string;
+    readonly minecraftChat: string;
+  };
+
   readonly verification: {
     readonly verify18: string;
   };
@@ -109,10 +116,6 @@ interface ChannelConfig {
   readonly crypto: {
     readonly discussion: string;
     readonly news: string;
-  };
-
-  readonly railsNSails: {
-    readonly changelog: string;
   };
 }
 

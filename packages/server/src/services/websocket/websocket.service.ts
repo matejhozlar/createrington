@@ -42,7 +42,7 @@ function getSocketClientIp(socket: Socket): string {
 
 /**
  * Real-time channel between the server and web clients, built on Socket.IO. Manages
- * subscription-based rooms (server status, players, messages, crypto market), serves
+ * subscription-based rooms (server status, players, messages), serves
  * initial state snapshots on demand, and bridges domain events from
  * `MessageCacheService` and each `PlaytimeService` into room broadcasts. The handshake
  * applies a per-IP connection cap (with nginx X-Real-IP awareness) and accepts an
@@ -243,8 +243,7 @@ export class WebSocketService {
         request.serverId === undefined &&
         request.type !== SubscriptionType.SERVER_STATUS &&
         request.type !== SubscriptionType.PLAYERS &&
-        request.type !== SubscriptionType.MESSAGES &&
-        request.type !== SubscriptionType.CRYPTO_MARKET
+        request.type !== SubscriptionType.MESSAGES
       ) {
         throw new Error(`Server ID required for ${request.type} subscription`);
       }
@@ -277,16 +276,6 @@ export class WebSocketService {
       }
 
       socket.emit(SocketEvent.SUBSCRIBED, confirmation);
-
-      // Push immediate price snapshot so client doesn't wait for the next tick
-      if (request.type === SubscriptionType.CRYPTO_MARKET) {
-        this.sendCryptoInitialSnapshot(socket).catch((err) =>
-          logger.error(
-            `Failed to send crypto initial snapshot to ${socket.id}:`,
-            err,
-          ),
-        );
-      }
     } catch (error) {
       logger.error(
         `Failed to subscribe client ${socket.id} to ${request.type}:`,
@@ -305,19 +294,6 @@ export class WebSocketService {
         callback(confirmation);
       }
     }
-  }
-
-  private async sendCryptoInitialSnapshot(socket: Socket): Promise<void> {
-    const { getService: getSvc } = await import("@/services/index.js");
-    const { Services: Svc } = await import("../container.js");
-    const cryptoService = await getSvc(Svc.CRYPTO_MARKET_SERVICE);
-
-    const [prices, overview] = await Promise.all([
-      cryptoService.buildFullPriceSnapshot(),
-      cryptoService.buildMarketOverview(),
-    ]);
-
-    socket.emit(SocketEvent.UPDATE_CRYPTO_PRICES, { prices, overview });
   }
 
   private async handleUnsubscribe(
@@ -592,7 +568,6 @@ export class WebSocketService {
       [SubscriptionType.SERVER_STATUS]: 0,
       [SubscriptionType.PLAYERS]: 0,
       [SubscriptionType.MESSAGES]: 0,
-      [SubscriptionType.CRYPTO_MARKET]: 0,
     };
 
     const socketRooms = await this.io.sockets.adapter.rooms;

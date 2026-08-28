@@ -41,7 +41,7 @@ const client = createTRPCClient<PanelRouter>({
 });
 
 const { players } = await client.presence.onlineByServer.query({
-  serverIdentifier: "cogs-test",
+  serverIdentifier: "rails-test",
 });
 ```
 

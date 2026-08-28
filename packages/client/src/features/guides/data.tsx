@@ -161,7 +161,7 @@ export const guides: Guide[] = [
               className="mt-4 w-full rounded-lg border border-border bg-muted object-cover"
             />
             <p className="mt-4">
-              You'll see <strong>Createrington: Cogs & Steam</strong> in the
+              You'll see <strong>Createrington Rails 'n Sails</strong> in the
               results. Click the green <strong>Install</strong> button to
               download the modpack.
             </p>
@@ -515,11 +515,6 @@ export const guides: Guide[] = [
         title: "Player Info",
         description: "Check stats, compare with others, and view profiles.",
         content: <DiscordCommandsGroup group="Player Info" />,
-      },
-      {
-        title: "Crypto",
-        description: "Trade and manage in-game cryptocurrency.",
-        content: <DiscordCommandsGroup group="Crypto" />,
       },
       {
         title: "Server",

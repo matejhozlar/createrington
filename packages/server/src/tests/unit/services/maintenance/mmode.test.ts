@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from "vitest";
 vi.mock("@/config", () => ({
   default: {
     servers: {
-      cogs: {
+      rails: {
         id: 1,
         name: "Test Server",
         rcon: { host: "127.0.0.1", port: 25575, password: "test" },

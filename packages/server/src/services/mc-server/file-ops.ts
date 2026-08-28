@@ -27,8 +27,8 @@ export function isFileOpsAllowed(): boolean {
 
 /** Resolves SFTP config for a given server ID */
 function getSftpConfig(serverId: number) {
-  if (serverId === config.servers.cogs.id) {
-    return config.servers.cogs.sftp;
+  if (serverId === config.servers.rails.id) {
+    return config.servers.rails.sftp;
   }
   throw new Error(`No SFTP config for server ${serverId}`);
 }
@@ -45,7 +45,7 @@ function getBasePath(serverId: number): string {
 
 /** Creates a connected SFTP client */
 async function createSftpClient(): Promise<SftpClient> {
-  const sftpConfig = getSftpConfig(config.servers.cogs.id);
+  const sftpConfig = getSftpConfig(config.servers.rails.id);
   const sftp = new SftpClient();
   await sftp.connect({
     host: sftpConfig.host,
@@ -58,7 +58,7 @@ async function createSftpClient(): Promise<SftpClient> {
 
 /** Gets the SFTP base path for the default server */
 function getDefaultBasePath(): string {
-  return getBasePath(config.servers.cogs.id);
+  return getBasePath(config.servers.rails.id);
 }
 
 export async function writeFile(

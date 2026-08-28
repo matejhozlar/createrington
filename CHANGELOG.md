@@ -1,3 +1,27 @@
+## v1.44.2 (2026-08-28)
+
+### @createrington/server (1.45.1 → 1.45.2)
+- [remove] Remove the crypto trading system: drop all 12 `crypto_*` tables, 8 enums, query classes, tRPC routers (admin, public, user), the price engine, trade executor, order manager, memecoin generator, event engine, article generator, portfolio tracker, leaderboard analytics, notifications, settings service, and the `/crypto` Discord slash command with its embed presets
+- [remove] Remove the achievement system: drop the `player_achievement` table, query class, service (definitions, triggers, types), tRPC router, and the total-earned balance query
+- [remove] Remove crypto and achievement service registrations from the DI container and bootstrap sequence
+- [remove] Remove crypto websocket room subscriptions and the crypto chart OG render script
+- [refactor] Rename all "Cogs & Steam" references to "Rails 'n Sails" across env vars, config, SFTP/RCON settings, CurseForge project ID, presence controller, trains API spec, leaderboard config, role management, playtime config, and stats-import service
+- [refactor] Drop the "Cogs and Steam" Discord role and selection entry from server-selection config and rescrape discord entities for the new Rails 'n Sails category
+- [fix] Require the `RAILS_N_SAILS_SERVER_IP` env var in production to prevent the dev fallback `0.0.0.0` from leaking into the live environment
+- [chore] Log modpack manifest fetch failures in the CurseForge service instead of silently swallowing them
+
+### @createrington/client (0.2.58 → 0.2.59)
+- [remove] Remove all crypto pages and components: market, token detail, portfolio, trade history, leaderboard, article page, crypto chart render, admin crypto panel, sidebar navigation, `CryptoDataProvider` context, and format utilities
+- [remove] Remove the achievements page and its route
+- [refactor] Rebrand the season from "Cogs & Steam" to "Rails 'n Sails": swap the season logo and modpack screenshot, update homepage copy and mod description ("100+ mods" to "200+ mods", factories to rail networks and airships), and replace five featured mods with Create Aeronautics, Create Railways Navigator, Create Deco, Naturalist, and Upgrade Aquatic
+- [refactor] Update economy section copy from "Trade, invest, and manage" to "Earn, spend, and manage" to reflect the crypto removal
+- [chore] Centralize the CurseForge modpack URL into a shared `CURSEFORGE_MODPACK_URL` constant
+- [chore] Update privacy policy and terms of service to remove references to crypto trading and achievements
+- [chore] Remove the Remotion marketing video package (all scenes, components, scripts, and config)
+
+### @createrington/shared (1.10.1 → 1.10.2)
+- [remove] Remove crypto socket events (`UPDATE_CRYPTO_PRICES`, `UPDATE_CRYPTO_ORDER`, `CRYPTO_MARKET_EVENT`, `CRYPTO_NEWS`), the `CRYPTO_MARKET` subscription type, and all crypto-related socket payload interfaces
+
 ## v1.44.1 (2026-08-27)
 
 ### @createrington/server (1.45.0 → 1.45.1)

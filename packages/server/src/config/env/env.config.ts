@@ -31,6 +31,11 @@ const ipv4 = (label = "IP") =>
       { message: `${label} must be a valid IPv4 address` },
     );
 
+// Placeholder the game-server IP falls back to when unset. Local dev never
+// talks to a real server, but production must never boot on it: the mod-API
+// allowlist and the IP-to-server playtime mapping are both keyed on this value.
+const DEV_FALLBACK_SERVER_IP = "0.0.0.0";
+
 const discordId = (label = "ID") =>
   z
     .string()
@@ -75,15 +80,15 @@ const envSchema = z
     DB_PASSWORD: z.string().min(1, "Database password is required"),
     DB_PORT: port("Database port").default(5432),
 
-    // SFTP: Cogs & Steam
+    // SFTP: Rails 'n Sails
     // Production-only: SFTP is gated behind `!isDev && !isDevDeployment`
     // (see services/mc-server/file-ops.ts), so dev never opens a connection.
     // Required at runtime by the prod superRefine below.
-    COGS_AND_STEAM_SFTP_HOST: z.string().optional(),
-    COGS_AND_STEAM_SFTP_PORT: port("Cogs and Steam SFTP port").optional(),
-    COGS_AND_STEAM_SFTP_USER: z.string().optional(),
-    COGS_AND_STEAM_SFTP_PASS: z.string().optional(),
-    COGS_AND_STEAM_SFTP_STATS_PATH: z.string().optional(),
+    RAILS_N_SAILS_SFTP_HOST: z.string().optional(),
+    RAILS_N_SAILS_SFTP_PORT: port("Rails 'n Sails SFTP port").optional(),
+    RAILS_N_SAILS_SFTP_USER: z.string().optional(),
+    RAILS_N_SAILS_SFTP_PASS: z.string().optional(),
+    RAILS_N_SAILS_SFTP_STATS_PATH: z.string().optional(),
 
     // Discord: required in every environment
     DISCORD_GUILD_ID: discordId("Guild ID"),
@@ -161,10 +166,10 @@ const envSchema = z
       .regex(/^\d{17,20}$/, "OWNER_DISCORD_ID must be a Discord snowflake"),
 
     // Minecraft Servers: defaults are local-dev safe; prod overrides via .env
-    COGS_AND_STEAM_SERVER_IP: ipv4("Cogs and Steam server IP").default(
-      "0.0.0.0",
+    RAILS_N_SAILS_SERVER_IP: ipv4("Rails 'n Sails server IP").default(
+      DEV_FALLBACK_SERVER_IP,
     ),
-    COGS_AND_STEAM_SERVER_PORT: port("Cogs and Steam server port").default(
+    RAILS_N_SAILS_SERVER_PORT: port("Rails 'n Sails server port").default(
       26980,
     ),
     LOCAL_SERVER_IP_ADDRESS: ipv4("Local server IP").default("127.0.0.1"),
@@ -176,11 +181,11 @@ const envSchema = z
       .default(100),
 
     // RCON
-    COGS_AND_STEAM_RCON_PORT: port("Cogs and Steam RCON port").default(25583),
+    RAILS_N_SAILS_RCON_PORT: port("Rails 'n Sails RCON port").default(25583),
     // Required at runtime by the prod superRefine below. Optional in dev:
     // point it at the local Docker server (docker/mc, password MC_RCON_PASSWORD)
     // to drive maintenance mode and the other RCON features locally.
-    COGS_AND_STEAM_RCON_PASSWORD: z
+    RAILS_N_SAILS_RCON_PASSWORD: z
       .string()
       .max(100, "RCON password is too long")
       .optional(),
@@ -227,7 +232,7 @@ const envSchema = z
       .number()
       .int()
       .positive()
-      .default(1316177),
+      .default(1660984),
 
     // Sandbox: shared secret the sandbox presents as a bearer token when it
     // reports a publish from a background job (no user session to forward)
@@ -288,15 +293,15 @@ const envSchema = z
     // (e.g. SFTP_PORT) reject NaN before this refinement runs, so by the
     // time we get here, missing values surface as `undefined` or `""`.
     const required: Array<[keyof typeof data, string]> = [
-      ["COGS_AND_STEAM_SFTP_HOST", "Cogs and Steam SFTP host required"],
-      ["COGS_AND_STEAM_SFTP_PORT", "Cogs and Steam SFTP port required"],
-      ["COGS_AND_STEAM_SFTP_USER", "Cogs and Steam SFTP user required"],
-      ["COGS_AND_STEAM_SFTP_PASS", "Cogs and Steam SFTP password required"],
+      ["RAILS_N_SAILS_SFTP_HOST", "Rails 'n Sails SFTP host required"],
+      ["RAILS_N_SAILS_SFTP_PORT", "Rails 'n Sails SFTP port required"],
+      ["RAILS_N_SAILS_SFTP_USER", "Rails 'n Sails SFTP user required"],
+      ["RAILS_N_SAILS_SFTP_PASS", "Rails 'n Sails SFTP password required"],
       [
-        "COGS_AND_STEAM_SFTP_STATS_PATH",
-        "Cogs and Steam SFTP stats path required",
+        "RAILS_N_SAILS_SFTP_STATS_PATH",
+        "Rails 'n Sails SFTP stats path required",
       ],
-      ["COGS_AND_STEAM_RCON_PASSWORD", "RCON password is required"],
+      ["RAILS_N_SAILS_RCON_PASSWORD", "RCON password is required"],
       [
         "DISCORD_OAUTH_REDIRECT_URI_PROD",
         "Production OAuth redirect URI is required",
@@ -315,6 +320,16 @@ const envSchema = z
           message,
         });
       }
+    }
+
+    // Defaulted, so the loop above can never catch it: an unset var still
+    // parses, and prod would silently allowlist and ping 0.0.0.0.
+    if (data.RAILS_N_SAILS_SERVER_IP === DEV_FALLBACK_SERVER_IP) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["RAILS_N_SAILS_SERVER_IP"],
+        message: `Rails 'n Sails server IP is required (${DEV_FALLBACK_SERVER_IP} is the dev fallback)`,
+      });
     }
   });
 

@@ -33,10 +33,8 @@ import { WebSocketService } from "./websocket";
 import { PlayerBanService } from "./player/ban";
 import { playerDeletionService } from "./player/deletion";
 import { StatsImportService, STATS_IMPORT_SERVERS } from "./stats-import";
-import { AchievementService } from "./achievement";
 import { FaqService } from "./discord/faq";
 import { PuppeteerService } from "./puppeteer";
-import { CryptoMarketService, CryptoSettingsService } from "./crypto";
 import { AiService } from "./ai";
 import { AutoMessageService } from "./discord/auto-message";
 import { lotteryService } from "./lottery";
@@ -300,20 +298,15 @@ export function registerServices(): void {
     Services.ROTATING_STATUS_SERVICE,
     async (c) => {
       const mainBot = await c.get(Services.DISCORD_MAIN_BOT);
-      const cryptoMarket = await c.get(Services.CRYPTO_MARKET_SERVICE);
       const service = new RotatingStatusService(
         mainBot,
-        buildMainBotStatuses({ cryptoMarket }),
+        buildMainBotStatuses(),
       );
       await service.initialize();
       return service;
     },
     {
-      dependencies: [
-        Services.DISCORD_MAIN_BOT,
-        Services.CRYPTO_MARKET_SERVICE,
-        Services.DATABASE,
-      ],
+      dependencies: [Services.DISCORD_MAIN_BOT, Services.DATABASE],
     },
   );
 
@@ -396,16 +389,6 @@ export function registerServices(): void {
   }
 
   container.register(
-    Services.ACHIEVEMENT_SERVICE,
-    async () => {
-      const service = new AchievementService();
-      await service.initialize();
-      return service;
-    },
-    { dependencies: [Services.DATABASE] },
-  );
-
-  container.register(
     Services.ROLE_MANAGEMENT_SERVICE,
     async (c) => {
       const mainBot = await c.get(Services.DISCORD_MAIN_BOT);
@@ -414,33 +397,6 @@ export function registerServices(): void {
       return service;
     },
     { dependencies: [Services.DISCORD_MAIN_BOT] },
-  );
-
-  container.register(
-    Services.CRYPTO_SETTINGS_SERVICE,
-    async () => {
-      const service = new CryptoSettingsService();
-      await service.initialize();
-      return service;
-    },
-    { dependencies: [Services.DATABASE] },
-  );
-
-  container.register(
-    Services.CRYPTO_MARKET_SERVICE,
-    async (c) => {
-      const settings = await c.get(Services.CRYPTO_SETTINGS_SERVICE);
-      const service = new CryptoMarketService(settings);
-      await service.initialize();
-      return service;
-    },
-    {
-      dependencies: [
-        Services.DATABASE,
-        Services.WEBSOCKET_SERVICE,
-        Services.CRYPTO_SETTINGS_SERVICE,
-      ],
-    },
   );
 
   if (config.stripe.enabled) {
@@ -511,21 +467,6 @@ export function registerServices(): void {
       const messageCache = await container.get(Services.MESSAGE_CACHE);
 
       playtimeManager.setupMessageCacheIntegration(messageCache);
-    }
-
-    // Hook achievement evaluation into stats import completion
-    if (
-      serviceName === Services.STATS_IMPORT_SERVICE &&
-      !config.envMode.isDev
-    ) {
-      const statsImport = await container.get(Services.STATS_IMPORT_SERVICE);
-      const achievement = await container.get(Services.ACHIEVEMENT_SERVICE);
-
-      statsImport.onImportComplete((serverId, uuids) => {
-        achievement
-          .evaluateServer(serverId, uuids)
-          .catch((err) => logger.error("Achievement evaluation failed:", err));
-      });
     }
 
     // Wire real-time role checks to playtime events on each server
@@ -601,7 +542,7 @@ export async function initializeServices(): Promise<void> {
   }
 
   maintenanceService
-    .initialize([config.servers.cogs.id])
+    .initialize([config.servers.rails.id])
     .catch((err) => logger.warn(`Maintenance service init failed: ${err}`));
 
   try {

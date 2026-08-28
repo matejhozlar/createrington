@@ -41,7 +41,6 @@ import { usePlayerData } from "@/contexts/player-data";
 import { NavUser } from "./nav-user";
 import { NavAdmin } from "./nav-admin";
 import { NavOwner } from "./nav-owner";
-import { NavCrypto } from "./nav-crypto";
 import { trpc } from "@/lib/trpc";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
@@ -216,9 +215,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 {user?.isAdmin && <NavAdmin items={data.adminNav} />}
               </>
             ) : undefined
-          }
-          insertions={
-            user ? [{ afterIndex: 0, element: <NavCrypto /> }] : undefined
           }
         />
       </SidebarContent>

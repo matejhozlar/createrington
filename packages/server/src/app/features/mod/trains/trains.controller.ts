@@ -48,14 +48,14 @@ const trainCrashSchema = z.object({
  * Handles train crash events reported by the Create: Trains Minecraft mod:
  * - Validates the incoming crash payload
  * - Resolves player display names (with Discord mentions where available)
- * - Sends a formatted notification embed to the Cogs & Steam notifications channel
+ * - Sends a formatted notification embed to the Rails 'n Sails notifications channel
  */
 export class TrainsController {
   /**
    * POST /api/trains/crash
    *
    * Receives train crash data from the Minecraft mod and sends
-   * a notification embed to the Cogs & Steam notifications channel.
+   * a notification embed to the Rails 'n Sails notifications channel.
    */
   static async reportCrash(req: Request, res: Response): Promise<void> {
     const parsed = trainCrashSchema.safeParse(req.body);
@@ -149,8 +149,8 @@ export class TrainsController {
     embed.footer(`ID: ${trainId}`).timestamp(timestamp ?? Date.now());
 
     await Discord.Messages.send({
-      channelId: Discord.Channels.cogsAndSteam.NOTIFICATIONS,
-      content: `||${Discord.Roles.mention(Discord.Roles.COGS_AND_STEAMNOTIFICATIONS)}||`,
+      channelId: Discord.Channels.railsNSails.NOTIFICATIONS,
+      content: `||${Discord.Roles.mention(Discord.Roles.RAILSNSAILSNOTIFICATIONS)}||`,
       embeds: embed.build(),
     });
 

@@ -1,4 +1,3 @@
-import config from "@/config";
 import { Discord } from "@/discord/constants";
 
 /**
@@ -23,14 +22,6 @@ export interface ServerConfig {
  * Server selection configuration
  */
 export const SERVER_CONFIGS: ServerConfig[] = [
-  {
-    id: config.servers.cogs.id,
-    label: "Cogs & Steam",
-    description: "Create focused server on NeoForge 1.21.1",
-    roleId: Discord.Roles.COGS_AND_STEAM,
-    emoji: "⚙️",
-    enabled: true,
-  },
   {
     id: 99,
     label: "Tester",

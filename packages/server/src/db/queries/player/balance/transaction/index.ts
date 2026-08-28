@@ -60,26 +60,4 @@ export class PlayerBalanceTransactionQueries extends PlayerBalanceTransactionBas
       totalDebits: Number(row.total_debits),
     }));
   }
-
-  /**
-   * Get the total amount earned (sum of positive transactions) for a player
-   *
-   * Returns 0 if no positive transactions exist.
-   *
-   * @param playerUuid - Minecraft UUID of the player
-   * @returns Total earned amount in storage format (bigint cast to number)
-   */
-  async getTotalEarned(playerUuid: string): Promise<number> {
-    const query = `
-      SELECT COALESCE(SUM(amount), 0) AS total_earned
-      FROM ${this.table}
-      WHERE player_minecraft_uuid = $1 AND amount > 0`;
-
-    const result = await this.runQuery<{ total_earned: bigint }>(
-      "get total earned",
-      query,
-      [playerUuid],
-    );
-    return Number(result.rows[0].total_earned);
-  }
 }
