@@ -1,6 +1,6 @@
 export const DISCORD_INVITE_URL = "https://discord.gg/mtF6MDHj4Z";
 export const CURSEFORGE_MODPACK_URL =
-  "https://www.curseforge.com/minecraft/modpacks/createrington-cogs-steam";
+  "https://www.curseforge.com/minecraft/modpacks/createrington-rails-n-sails";
 export const CONTACT_EMAIL = "admin@createrington.com";
 
 const MC_HEADS_BASE = "https://mc-heads.net";
