@@ -285,7 +285,7 @@ export function TermsOfService() {
         <div className="max-w-7xl mx-auto">
           <div className="max-w-5xl">
             <p className="text-sm text-muted-foreground mb-8">
-              Effective date: March 28, 2026
+              Effective date: August 29, 2026
             </p>
 
             <div className="flex flex-col gap-6">

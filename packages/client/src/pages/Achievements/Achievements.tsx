@@ -32,7 +32,6 @@ import {
   Compass,
   Coins,
   Clock,
-  TrendingUp,
 } from "lucide-react";
 
 const CATEGORY_META: Record<
@@ -48,7 +47,6 @@ const CATEGORY_META: Record<
   },
   economy: { label: "Economy", icon: Coins, color: "text-yellow-400" },
   playtime: { label: "Playtime", icon: Clock, color: "text-blue-400" },
-  trading: { label: "Trading", icon: TrendingUp, color: "text-purple-400" },
 };
 
 const TIER_LABELS = [

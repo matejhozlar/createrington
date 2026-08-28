@@ -135,7 +135,6 @@ router.get(
       ? BalanceUtils.fromStorage(details.balance.balance)
       : 0;
 
-    const networth = cashBalance;
     const fmt = (n: number) => n.toFixed(3).replace(/\.?0+$/, "") || "0";
 
     const statsRows = await Q.player.minecraft.stats.findAll({
@@ -173,7 +172,6 @@ router.get(
       username: details.player.minecraftUsername,
       uuid: details.player.minecraftUuid,
       online: details.player.online,
-      networth: fmt(networth),
       cashBalance: fmt(cashBalance),
       playtime: formatPlaytime(details.playtime.totalSeconds),
       playtimeSeconds: details.playtime.totalSeconds,

@@ -110,16 +110,16 @@ function parseArgs(): CliArgs {
 }
 
 // Git Bash on Windows (MSYS) rewrites leading-slash paths into Windows file
-// paths, so `--return-to /crypto` arrives as `C:/Program Files/Git/crypto`.
+// paths, so `--return-to /profile` arrives as `C:/Program Files/Git/profile`.
 // Recover the original path by stripping any drive-letter prefix and the
-// known Git install bits; otherwise accept bare paths like `crypto`.
+// known Git install bits; otherwise accept bare paths like `profile`.
 function normalizeReturnTo(value: string): string {
   // Already a clean absolute path
   if (value.startsWith("/") && !value.startsWith("//")) return value;
   // MSYS-converted: take the last path segment chain after the install dir
   const msys = value.match(/^[A-Za-z]:[\\/]Program Files[\\/]Git[\\/](.*)$/);
   if (msys) return "/" + msys[1].replace(/\\/g, "/");
-  // Bare path (`crypto` -> `/crypto`)
+  // Bare path (`profile` -> `/profile`)
   if (!value.startsWith("/")) return "/" + value;
   return "/";
 }

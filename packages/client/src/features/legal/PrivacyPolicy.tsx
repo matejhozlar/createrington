@@ -37,12 +37,6 @@ const sections = [
             and lottery participation
           </li>
           <li>
-            <strong>Virtual trading data</strong> — token holdings, buy/sell
-            transactions, pending orders (limit, stop-loss, take-profit), cost
-            basis records, price alerts, watchlist selections, and daily
-            portfolio value snapshots
-          </li>
-          <li>
             <strong>Achievement & reward data</strong> — achievements unlocked,
             tier progress, and reward claims
           </li>
@@ -82,10 +76,6 @@ const sections = [
         <li>Authenticating and identifying you across the platform</li>
         <li>Linking your Discord and Minecraft accounts for server access</li>
         <li>Tracking playtime, economy, and leaderboard statistics</li>
-        <li>
-          Operating the virtual trading system (executing trades, tracking
-          portfolios, triggering price alerts)
-        </li>
         <li>
           Assigning Discord roles automatically based on playtime, balance, and
           server tenure
@@ -318,7 +308,7 @@ export function PrivacyPolicy() {
         <div className="max-w-7xl mx-auto">
           <div className="max-w-5xl">
             <p className="text-sm text-muted-foreground mb-8">
-              Effective date: March 28, 2026
+              Effective date: August 29, 2026
             </p>
 
             <div className="flex flex-col gap-6">
