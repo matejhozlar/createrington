@@ -20,7 +20,7 @@ export enum RoleConditionType {
   BALANCE = "balance",
   SERVER_AGE = "server_age",
   TOP_PLAYTIME = "top_playtime",
-  TOP_CRYPTO_NETWORTH = "top_crypto_networth",
+  TOP_BALANCE = "top_balance",
   CUSTOM = "custom",
 }
 
@@ -84,13 +84,13 @@ export interface TopPlaytimeRoleRule extends RoleAssignmentRule {
 }
 
 /**
- * Top crypto networth role assignment rule (competitive, rank-based)
+ * Top balance role assignment rule (competitive, rank-based)
  *
- * Assigned to the single player with the highest crypto portfolio value.
+ * Assigned to the single player with the highest in-game balance.
  * Only one player holds this role at a time.
  */
-export interface TopCryptoNetworthRoleRule extends RoleAssignmentRule {
-  conditionType: RoleConditionType.TOP_CRYPTO_NETWORTH;
+export interface TopBalanceRoleRule extends RoleAssignmentRule {
+  conditionType: RoleConditionType.TOP_BALANCE;
 }
 
 /**
@@ -101,7 +101,7 @@ export type AnyRoleRule =
   | BalanceRoleRule
   | ServerAgeRoleRule
   | TopPlaytimeRoleRule
-  | TopCryptoNetworthRoleRule;
+  | TopBalanceRoleRule;
 
 /**
  * Result of checking a player's eligibility for a role

@@ -14,7 +14,6 @@ export const COMMAND_GROUPS: Record<string, string> = {
   seen: "Player Info",
   skin: "Player Info",
   top: "Player Info",
-  crypto: "Crypto",
   ping: "Server",
   status: "Server",
   list: "Server",
@@ -25,6 +24,5 @@ export const GROUP_ORDER = [
   "Getting Started",
   "Economy",
   "Player Info",
-  "Crypto",
   "Server",
 ];

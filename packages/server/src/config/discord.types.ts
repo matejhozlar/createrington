@@ -4,7 +4,7 @@ interface MemberRolesConfig {
   readonly admin: string;
   readonly developer: string;
   readonly theSleepless: string;
-  readonly cryptoBaron: string;
+  readonly capitalist: string;
   readonly clockworkArchitect: string;
   readonly masterAutomaton: string;
   readonly factoryOverseer: string;

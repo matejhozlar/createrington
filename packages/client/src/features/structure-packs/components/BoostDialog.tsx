@@ -40,7 +40,7 @@ export function BoostDialog({
     onOpenChange(nextOpen);
   };
 
-  const { data: balanceData } = trpc.user.crypto.balance.useQuery(undefined, {
+  const { data: balanceData } = trpc.user.account.balance.useQuery(undefined, {
     enabled: !!user && open,
   });
 
@@ -55,7 +55,7 @@ export function BoostDialog({
       );
       utils.public.structurePacks.pool.invalidate();
       utils.user.structurePacks.myBoosts.invalidate();
-      utils.user.crypto.balance.invalidate();
+      utils.user.account.balance.invalidate();
       onOpenChange(false);
       setUnits(1);
     },

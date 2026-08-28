@@ -7,9 +7,7 @@ interface ProfileData {
   username: string;
   uuid: string;
   online: boolean;
-  networth: string;
   cashBalance: string;
-  cryptoValue: string;
   playtime: string;
   playtimeSeconds: number;
   sessions: number;
@@ -169,24 +167,12 @@ export function ProfileRender() {
             </div>
           </div>
 
-          {/* Finance row */}
-          <div className="grid grid-cols-3 gap-2">
+          {/* Balance and activity row */}
+          <div className="grid grid-cols-4 gap-2">
             <StatPill
-              label="Networth"
-              value={`$${formatNumber(data.networth)}`}
-            />
-            <StatPill
-              label="Cash"
+              label="Balance"
               value={`$${formatNumber(data.cashBalance)}`}
             />
-            <StatPill
-              label="Crypto"
-              value={`$${formatNumber(data.cryptoValue)}`}
-            />
-          </div>
-
-          {/* Activity row */}
-          <div className="grid grid-cols-3 gap-2">
             <StatPill label="Playtime" value={data.playtime} />
             <StatPill label="Sessions" value={data.sessions.toLocaleString()} />
             <StatPill

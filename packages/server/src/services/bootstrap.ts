@@ -36,7 +36,6 @@ import { StatsImportService, STATS_IMPORT_SERVERS } from "./stats-import";
 import { AchievementService } from "./achievement";
 import { FaqService } from "./discord/faq";
 import { PuppeteerService } from "./puppeteer";
-import { CryptoMarketService, CryptoSettingsService } from "./crypto";
 import { AiService } from "./ai";
 import { AutoMessageService } from "./discord/auto-message";
 import { lotteryService } from "./lottery";
@@ -300,20 +299,15 @@ export function registerServices(): void {
     Services.ROTATING_STATUS_SERVICE,
     async (c) => {
       const mainBot = await c.get(Services.DISCORD_MAIN_BOT);
-      const cryptoMarket = await c.get(Services.CRYPTO_MARKET_SERVICE);
       const service = new RotatingStatusService(
         mainBot,
-        buildMainBotStatuses({ cryptoMarket }),
+        buildMainBotStatuses(),
       );
       await service.initialize();
       return service;
     },
     {
-      dependencies: [
-        Services.DISCORD_MAIN_BOT,
-        Services.CRYPTO_MARKET_SERVICE,
-        Services.DATABASE,
-      ],
+      dependencies: [Services.DISCORD_MAIN_BOT, Services.DATABASE],
     },
   );
 
@@ -414,33 +408,6 @@ export function registerServices(): void {
       return service;
     },
     { dependencies: [Services.DISCORD_MAIN_BOT] },
-  );
-
-  container.register(
-    Services.CRYPTO_SETTINGS_SERVICE,
-    async () => {
-      const service = new CryptoSettingsService();
-      await service.initialize();
-      return service;
-    },
-    { dependencies: [Services.DATABASE] },
-  );
-
-  container.register(
-    Services.CRYPTO_MARKET_SERVICE,
-    async (c) => {
-      const settings = await c.get(Services.CRYPTO_SETTINGS_SERVICE);
-      const service = new CryptoMarketService(settings);
-      await service.initialize();
-      return service;
-    },
-    {
-      dependencies: [
-        Services.DATABASE,
-        Services.WEBSOCKET_SERVICE,
-        Services.CRYPTO_SETTINGS_SERVICE,
-      ],
-    },
   );
 
   if (config.stripe.enabled) {

@@ -7,7 +7,6 @@ import {
   discordTimestamp,
 } from "@/utils/format";
 import { Discord } from "@/discord/constants";
-import { getHoldingValueByPlayer } from "@/services/crypto/analytics/leaderboard";
 import { rankNetWorth } from "./networth";
 
 const TITLE_IMAGE_BASE = "https://assets.createrington.com/titles";
@@ -67,17 +66,12 @@ export const LEADERBOARD_CONFIGS: Record<LeaderboardType, LeaderboardConfig> = {
   [LeaderboardType.NET_WORTH]: {
     type: LeaderboardType.NET_WORTH,
     title: "Top Players by Net Worth",
-    description: "Players with the highest combined balance and crypto value",
+    description: "Players with the highest in-game balance",
     emoji: "💰",
     titleImageUrl: `${TITLE_IMAGE_BASE}/net-worth.png`,
     channelId: Discord.Channels.general.LEADERBOARDS,
-    /**
-     * Computes net worth as in-game balance plus current crypto holding value,
-     * summed per player, then ranks the top players.
-     */
     fetchData: async (_serverId: number, limit: number) => {
-      const [holdingValues, balances, players] = await Promise.all([
-        getHoldingValueByPlayer(),
+      const [balances, players] = await Promise.all([
         Q.player.balance.getAllBalances(),
         Q.player.getAll(),
       ]);
@@ -89,7 +83,7 @@ export const LEADERBOARD_CONFIGS: Record<LeaderboardType, LeaderboardConfig> = {
         ]),
       );
 
-      return rankNetWorth(holdingValues, balances, nameMap, limit);
+      return rankNetWorth(balances, nameMap, limit);
     },
     formatValue: (value: number) => formatBalance(value),
   },
