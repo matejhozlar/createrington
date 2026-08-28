@@ -17,7 +17,7 @@
 Createrington is a community platform for a modded Minecraft server. One
 TypeScript monorepo ties the game servers, a Discord guild, and a web portal into
 a single system: players register once, and their playtime, balance, roles,
-achievements, and chat follow them across all three.
+and chat follow them across all three.
 
 ## Contents
 
@@ -49,33 +49,22 @@ Socket.io, and Discord webhooks carry it the rest of the way. Session time is
 tracked per player and rolled up into hourly, daily, and lifetime totals that
 drive playtime-tier Discord roles, leaderboards, and a daily top-player role.
 
-### Simulated crypto market
-
-A fully in-game exchange with three token tiers: volatile memecoins, a €1-pegged
-stablecoin, and mean-reverting blue chips. It supports market, limit, stop-loss,
-and take-profit orders with partial fills and expiry; broadcasts price ticks over
-WebSocket; and serves OHLCV candles at 1m, 5m, 1h, and 1d for TradingView-style
-charts. Layered on top are watchlists, price alerts, portfolio snapshots, wealth
-and return leaderboards, scheduled market events (crashes, new listings, IPOs),
-and AI-written market news that publishes to both the site and Discord.
-
 ### Community content
 
 The **workshop** lets players suggest and upvote mods for the next modpack
 season, with CurseForge metadata pulled in automatically and a per-player voting
 budget. **Structure packs** rotate through a weighted pool that players can see
 and influence. **Parties and chunk claims** sync land ownership between the game
-and the portal. **Donations** run through Stripe. Achievements, a lottery, and
-support tickets round out the player-facing surface.
+and the portal. **Donations** run through Stripe. A lottery and support tickets
+round out the player-facing surface.
 
 ### Admin dashboard
 
 A full operations panel: player profiles with ban, strike, and balance controls
-backed by an audit log; waitlist review; token and market-event management; a
-WYSIWYG Discord embed builder with preset categories and linked messages;
-scheduled auto-messages; in-game announcements; a FAQ editor; inactivity and
-ghost-member cleanup; changelog and modpack tooling; feature flags; and growth,
-economy, and moderation analytics.
+backed by an audit log; waitlist review; a WYSIWYG Discord embed builder with
+preset categories and linked messages; scheduled auto-messages; in-game
+announcements; a FAQ editor; inactivity and ghost-member cleanup; changelog and
+modpack tooling; feature flags; and growth, economy, and moderation analytics.
 
 ### Image rendering
 
@@ -87,19 +76,7 @@ Createrington skin API.
 ## Screenshots
 
 <details>
-<summary><b>Web portal</b> (5 images)</summary>
-
-**Crypto market**
-
-![Crypto market](screenshots/crypto-market.webp)
-
-**Token price chart**
-
-![Token chart](screenshots/crypto-chart.webp)
-
-**Portfolio**
-
-![Portfolio](screenshots/crypto-portfolio.webp)
+<summary><b>Web portal</b> (2 images)</summary>
 
 **Live player list**
 
@@ -112,7 +89,7 @@ Createrington skin API.
 </details>
 
 <details>
-<summary><b>Admin dashboard</b> (3 images)</summary>
+<summary><b>Admin dashboard</b> (2 images)</summary>
 
 **Overview**
 
@@ -121,10 +98,6 @@ Createrington skin API.
 **Player management**
 
 ![Player management](screenshots/admin-players.webp)
-
-**Token management**
-
-![Token management](screenshots/admin-crypto.webp)
 
 </details>
 
@@ -290,6 +263,5 @@ Thanks to each of them for keeping their APIs open to the community.
 
 Proprietary. All rights reserved by Matej Hozlar; see [LICENSE](LICENSE).
 
-Not affiliated with Mojang, Microsoft, or Discord. The in-game cryptocurrency
-market is a simulated economy for entertainment only and has no real-world
-monetary value.
+Not affiliated with Mojang, Microsoft, or Discord. The in-game economy is
+simulated for entertainment only and has no real-world monetary value.
