@@ -517,11 +517,6 @@ export const guides: Guide[] = [
         content: <DiscordCommandsGroup group="Player Info" />,
       },
       {
-        title: "Crypto",
-        description: "Trade and manage in-game cryptocurrency.",
-        content: <DiscordCommandsGroup group="Crypto" />,
-      },
-      {
         title: "Server",
         description: "Check server status and online players.",
         content: <DiscordCommandsGroup group="Server" />,

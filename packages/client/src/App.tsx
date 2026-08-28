@@ -29,10 +29,9 @@ import { Logo } from "./components/logo";
 import { Footer } from "./components/footer";
 import { Loading, LoadingScreen } from "./components/loading-spinner";
 import { AdminPlayerProvider } from "./contexts/admin";
-import { CryptoDataProvider } from "./contexts/crypto-data";
 
 // Lazy-loaded routes are code-split. Vite creates a chunk per lazy() call, so
-// a logged-out visitor hitting `/` never downloads the admin, crypto, or
+// a logged-out visitor hitting `/` never downloads the admin or
 // puppeteer-render bundles. `Home` stays eagerly imported above so the
 // first-paint experience has no Suspense fallback.
 
@@ -40,10 +39,6 @@ import { CryptoDataProvider } from "./contexts/crypto-data";
 const CompareRender = lazyNamed(
   () => import("./pages/Render/CompareRender"),
   "CompareRender",
-);
-const CryptoChartRender = lazyNamed(
-  () => import("./pages/Render/CryptoChartRender"),
-  "CryptoChartRender",
 );
 const ProfileRender = lazyNamed(
   () => import("./pages/Render/ProfileRender"),
@@ -148,36 +143,6 @@ const ServerStatus = lazyNamed(
 );
 const ServerChat = lazyNamed(() => import("./components/chat"), "ServerChat");
 
-// Crypto feature
-const CryptoLayout = lazyNamed(
-  () => import("./features/crypto/CryptoLayout"),
-  "CryptoLayout",
-);
-const CryptoMarket = lazyNamed(
-  () => import("./features/crypto/market/CryptoMarket"),
-  "CryptoMarket",
-);
-const TokenDetail = lazyNamed(
-  () => import("./features/crypto/token-detail/TokenDetail"),
-  "TokenDetail",
-);
-const CryptoPortfolio = lazyNamed(
-  () => import("./features/crypto/portfolio/Portfolio"),
-  "Portfolio",
-);
-const CryptoTradeHistory = lazyNamed(
-  () => import("./features/crypto/TradeHistory"),
-  "TradeHistory",
-);
-const CryptoLeaderboard = lazyNamed(
-  () => import("./features/crypto/Leaderboard"),
-  "Leaderboard",
-);
-const CryptoArticle = lazyNamed(
-  () => import("./features/crypto/ArticlePage"),
-  "ArticlePage",
-);
-
 // Admin feature
 const AdminLogs = lazyNamed(
   () => import("./features/admin/AdminLogs"),
@@ -252,10 +217,6 @@ const StructurePackDetail = lazyNamed(
   () =>
     import("./features/admin/structure-packs/structure-pack-detail/StructurePackDetail"),
   "StructurePackDetail",
-);
-const AdminCrypto = lazyNamed(
-  () => import("./features/admin/crypto/AdminCrypto"),
-  "AdminCrypto",
 );
 const OwnerDonations = lazyNamed(
   () => import("./features/admin/owner/OwnerDonations"),
@@ -401,7 +362,6 @@ function AppContent() {
         <Route path="/render/profile" element={<ProfileRender />} />
         <Route path="/render/activity" element={<ActivityRender />} />
         <Route path="/render/top" element={<TopRender />} />
-        <Route path="/render/crypto-chart" element={<CryptoChartRender />} />
 
         <Route element={<AppLayout />}>
           <Route path="/" element={<Home />} />
@@ -424,37 +384,6 @@ function AppContent() {
           <Route path="/donate/cancel" element={<DonationCancel />} />
           <Route path="/blue-map" element={<BlueMap />} />
           <Route path="/online-players" element={<OnlinePlayers />} />
-          <Route
-            path="/crypto"
-            element={
-              <ErrorBoundary>
-                <CryptoLayout />
-              </ErrorBoundary>
-            }
-          >
-            <Route index element={<CryptoMarket />} />
-            <Route
-              path="portfolio"
-              element={
-                <ProtectedRoute>
-                  <CryptoPortfolio />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="history"
-              element={
-                <ProtectedRoute>
-                  <CryptoTradeHistory />
-                </ProtectedRoute>
-              }
-            />
-            <Route path="leaderboard" element={<CryptoLeaderboard />} />
-            <Route path="news/:id" element={<CryptoArticle />} />
-            <Route path=":symbol" element={<TokenDetail />} />
-          </Route>
-
-          {/* Protected Routes */}
           <Route
             path="/profile"
             element={
@@ -581,7 +510,6 @@ function AppContent() {
                         path="tools/announcements"
                         element={<Announcements />}
                       />
-                      <Route path="tools/crypto" element={<AdminCrypto />} />
                       <Route
                         path="tools/command-docs"
                         element={<CommandDocs />}
@@ -641,7 +569,7 @@ function AppContent() {
  * Root application component.
  *
  * Establishes the full provider hierarchy required across the app:
- * tRPC → QueryClient → Auth → WebSocket → ServerData → PlayerData → Toast → CryptoData → Router
+ * tRPC → QueryClient → Auth → WebSocket → ServerData → PlayerData → Toast → Router
  */
 function App() {
   return (
@@ -659,18 +587,16 @@ function App() {
             <ServerDataProvider autoSubscribe>
               <PlayerDataProvider autoSubscribe>
                 <ToastProvider>
-                  <CryptoDataProvider autoSubscribe>
-                    <BrowserRouter>
-                      <ScrollToTop />
-                      <AdminChatBoundary>
-                        <ErrorBoundary>
-                          <SidebarProvider>
-                            <AppContent />
-                          </SidebarProvider>
-                        </ErrorBoundary>
-                      </AdminChatBoundary>
-                    </BrowserRouter>
-                  </CryptoDataProvider>
+                  <BrowserRouter>
+                    <ScrollToTop />
+                    <AdminChatBoundary>
+                      <ErrorBoundary>
+                        <SidebarProvider>
+                          <AppContent />
+                        </SidebarProvider>
+                      </ErrorBoundary>
+                    </AdminChatBoundary>
+                  </BrowserRouter>
                 </ToastProvider>
               </PlayerDataProvider>
             </ServerDataProvider>

@@ -30,15 +30,6 @@ export const NOTIFICATION_CONFIGS: NotificationConfig[] = [
     emoji: "🚂",
     enabled: true,
   },
-  {
-    id: "crypto-notifications",
-    label: "Crypto",
-    description:
-      "Get pinged for market events, token launches, and price alerts",
-    roleId: Discord.Roles.CRYPTONOTIFICATIONS,
-    emoji: "💰",
-    enabled: true,
-  },
 ];
 
 /**

@@ -5,7 +5,7 @@ import type {
   RoleNotificationConfig,
   ServerAgeRoleRule,
   TopPlaytimeRoleRule,
-  TopCryptoNetworthRoleRule,
+  TopBalanceRoleRule,
 } from "./types";
 import { RoleConditionType, RoleCheckInterval } from "./types";
 
@@ -170,28 +170,28 @@ export const TOP_PLAYTIME_ROLES: TopPlaytimeRoleRule[] = [
 ];
 
 /**
- * Top crypto networth role configuration (competitive, rank-based)
+ * Top balance role configuration (competitive, rank-based)
  *
  * Only one player holds this role at a time: the player with the highest
- * total crypto portfolio value. Checked daily.
+ * in-game balance. Checked daily.
  */
-export const TOP_CRYPTO_NETWORTH_ROLES: TopCryptoNetworthRoleRule[] = [
+export const TOP_BALANCE_ROLES: TopBalanceRoleRule[] = [
   {
-    roleId: Discord.Roles.CRYPTO_BARON,
+    roleId: Discord.Roles.CAPITALIST,
     checkInterval: RoleCheckInterval.DAILY,
-    label: "Crypto Baron",
-    conditionType: RoleConditionType.TOP_CRYPTO_NETWORTH,
+    label: "Capitalist",
+    conditionType: RoleConditionType.TOP_BALANCE,
     enabled: true,
   },
 ];
 
 /**
- * Gets top crypto networth role rules (competitive, rank-based)
+ * Gets top balance role rules (competitive, rank-based)
  *
- * @returns Array of top crypto networth role rules
+ * @returns Array of top balance role rules
  */
-export function getTopCryptoNetworthRoleRules(): TopCryptoNetworthRoleRule[] {
-  return TOP_CRYPTO_NETWORTH_ROLES.filter((rule) => rule.enabled !== false);
+export function getTopBalanceRoleRules(): TopBalanceRoleRule[] {
+  return TOP_BALANCE_ROLES.filter((rule) => rule.enabled !== false);
 }
 
 /**
@@ -346,11 +346,11 @@ export const ROLE_NOTIFICATION_CONFIGS: Record<
     customMessage: "has claimed the top spot and earned the legendary title of",
   },
 
-  [Discord.Roles.CRYPTO_BARON]: {
+  [Discord.Roles.CAPITALIST]: {
     enabled: true,
     emoji: "💰",
     isMilestone: true,
-    customMessage: "has dominated the crypto markets and earned the title of",
+    customMessage: "has amassed the greatest fortune and earned the title of",
   },
 
   ...SERVER_AGE_NOTIFICATION_CONFIGS,

@@ -356,8 +356,8 @@ function DeleteAccountButton() {
           <span className="block space-y-2">
             <span className="block">
               This will permanently delete all your data including playtime,
-              economy, crypto portfolio, achievements, and moderation records.
-              You will also be removed from the Discord server.
+              economy, achievements, and moderation records. You will also be
+              removed from the Discord server.
             </span>
             <span className="block font-medium text-destructive">
               This action cannot be undone.

@@ -9,13 +9,10 @@ import { asyncHandler } from "@/app/middleware/async-handler";
 import config from "@/config";
 import { Q, playerRepo } from "@/db";
 import { BalanceUtils } from "@/db/repositories/balance/utils";
-import { formatPlaytime, toUnixSeconds } from "@/utils/format";
+import { formatPlaytime } from "@/utils/format";
 import { UnauthorizedError } from "@/app/middleware";
 import { requireLoopback } from "@/app/middleware/server-ip.middleware";
-import { getService, Services } from "@/services";
 import { getSkinApiClient, MAX_QUALITY_RENDER } from "@/services/skin-api";
-import { getActiveEventsInMemory } from "@/services/crypto/events/event-engine";
-import { EVENT_DEFINITIONS } from "@/services/crypto/events/event-definitions";
 import { timingSafeEqualStrings } from "@/utils/timing-safe-equal";
 import { MC_UUID_REGEX } from "@/utils/zod-schemas";
 
@@ -92,29 +89,10 @@ router.get(
       playerRepo.getDetailed({ discordId: player2 }),
     ]);
 
-    const tokens = await Q.crypto.token.getAll();
-    const tokenPriceMap = new Map(tokens.map((t) => [t.id, Number(t.price)]));
-
-    const computeCryptoValue = async (uuid: string) => {
-      const holdings = await Q.crypto.holding
-        .where({ playerMinecraftUuid: uuid })
-        .all();
-      return holdings.reduce((sum, h) => {
-        const price = tokenPriceMap.get(h.tokenId) ?? 0;
-        return sum + price * Number(h.amount);
-      }, 0);
-    };
-
-    const [crypto1, crypto2] = await Promise.all([
-      computeCryptoValue(details1.player.minecraftUuid),
-      computeCryptoValue(details2.player.minecraftUuid),
-    ]);
-
-    const mapPlayer = (details: typeof details1, cryptoValue: number) => {
-      const cashBalance = details.balance
+    const mapPlayer = (details: typeof details1) => {
+      const networth = details.balance
         ? BalanceUtils.fromStorage(details.balance.balance)
         : 0;
-      const networth = cashBalance + cryptoValue;
       const formatted = networth.toFixed(3).replace(/\.?0+$/, "") || "0";
       return {
         username: details.player.minecraftUsername,
@@ -128,8 +106,8 @@ router.get(
     };
 
     res.json({
-      player1: mapPlayer(details1, crypto1),
-      player2: mapPlayer(details2, crypto2),
+      player1: mapPlayer(details1),
+      player2: mapPlayer(details2),
     });
   }),
 );
@@ -153,22 +131,11 @@ router.get(
 
     const details = await playerRepo.getDetailed({ discordId: player });
 
-    const tokens = await Q.crypto.token.getAll();
-    const tokenPriceMap = new Map(tokens.map((t) => [t.id, Number(t.price)]));
-
     const cashBalance = details.balance
       ? BalanceUtils.fromStorage(details.balance.balance)
       : 0;
 
-    const holdings = await Q.crypto.holding
-      .where({ playerMinecraftUuid: details.player.minecraftUuid })
-      .all();
-    const cryptoValue = holdings.reduce((sum, h) => {
-      const price = tokenPriceMap.get(h.tokenId) ?? 0;
-      return sum + price * Number(h.amount);
-    }, 0);
-
-    const networth = cashBalance + cryptoValue;
+    const networth = cashBalance;
     const fmt = (n: number) => n.toFixed(3).replace(/\.?0+$/, "") || "0";
 
     const statsRows = await Q.player.minecraft.stats.findAll({
@@ -208,7 +175,6 @@ router.get(
       online: details.player.online,
       networth: fmt(networth),
       cashBalance: fmt(cashBalance),
-      cryptoValue: fmt(cryptoValue),
       playtime: formatPlaytime(details.playtime.totalSeconds),
       playtimeSeconds: details.playtime.totalSeconds,
       sessions: details.playtime.totalSessions,
@@ -408,102 +374,6 @@ router.get(
         uuid: r.minecraftUuid,
         value: r.values[0] ?? 0,
       })),
-    });
-  }),
-);
-
-/**
- * GET /api/render/crypto-chart?secret=...&symbol=...&interval=...
- *
- * Returns token data and OHLCV price history for the chart render page.
- * Protected by puppeteer secret, not accessible to regular users.
- */
-router.get(
-  "/crypto-chart",
-  asyncHandler(requirePuppeteerSecret),
-  asyncHandler(async (req: Request, res: Response) => {
-    const { symbol, interval = "minute" } = req.query;
-
-    if (!symbol || typeof symbol !== "string") {
-      res.status(400).json({ error: "symbol query param required" });
-      return;
-    }
-
-    const validIntervals = [
-      "tick",
-      "minute",
-      "hourly",
-      "daily",
-      "weekly",
-    ] as const;
-    type PriceInterval = (typeof validIntervals)[number];
-    const resolvedInterval: PriceInterval =
-      typeof interval === "string" &&
-      validIntervals.includes(interval as PriceInterval)
-        ? (interval as PriceInterval)
-        : "minute";
-
-    const token = await Q.crypto.token.find({ symbol: symbol.toUpperCase() });
-
-    if (!token) {
-      res.status(404).json({ error: `Token ${symbol} not found` });
-      return;
-    }
-
-    const cryptoService = await getService(Services.CRYPTO_MARKET_SERVICE);
-    const change24h = cryptoService.get24hChange(token.id, token.price);
-    const volume24h = String(cryptoService.getTokenVolume24h(token.id));
-
-    const snapshots = await Q.crypto.price.snapshot
-      .where({ tokenId: token.id, interval: resolvedInterval })
-      .orderBy("recordedAt", "desc")
-      .limit(200)
-      .all();
-
-    const priceHistory = snapshots.reverse().map((s) => ({
-      time: toUnixSeconds(s.recordedAt),
-      open: Number(s.openPrice),
-      high: Number(s.highPrice),
-      low: Number(s.lowPrice),
-      close: Number(s.closePrice),
-      volume: Number(s.volume),
-    }));
-
-    const circulatingSupply = Number(token.totalSupply - token.availableSupply);
-    const marketCap = Number(token.price) * circulatingSupply;
-
-    // Check for active events affecting this token
-    const activeEvents = getActiveEventsInMemory();
-    const tokenEvent = activeEvents.find(
-      (e) => e.tokenId === token.id || e.tokenId === null,
-    );
-    const activeEvent = tokenEvent
-      ? {
-          name:
-            EVENT_DEFINITIONS[tokenEvent.type as keyof typeof EVENT_DEFINITIONS]
-              ?.name ?? tokenEvent.type,
-          activeUntil: tokenEvent.activeUntil?.toISOString() ?? null,
-        }
-      : null;
-
-    res.json({
-      token: {
-        name: token.name,
-        symbol: token.symbol,
-        category: token.category,
-        price: token.price,
-        totalSupply: String(token.totalSupply),
-        availableSupply: String(token.availableSupply),
-        circulatingSupply: String(circulatingSupply),
-        marketCap: marketCap.toFixed(2),
-        isCrashed: token.isCrashed,
-        ipoEndsAt: token.ipoEndsAt?.toISOString() ?? null,
-      },
-      change24h,
-      volume24h,
-      activeEvent,
-      interval: resolvedInterval,
-      priceHistory,
     });
   }),
 );

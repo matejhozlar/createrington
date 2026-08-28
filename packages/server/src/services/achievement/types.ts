@@ -5,18 +5,13 @@ export enum AchievementCategory {
   EXPLORATION = "exploration",
   ECONOMY = "economy",
   PLAYTIME = "playtime",
-  TRADING = "trading",
 }
 
 /** Discriminated union describing what data source and key to measure progress against */
 export type AchievementCriteria =
   | { source: "minecraft_stat"; statCategory: string; statKey: string }
   | { source: "balance_earned" }
-  | { source: "playtime" }
-  | { source: "crypto_trade_count" }
-  | { source: "crypto_unique_holdings" }
-  | { source: "crypto_portfolio_value" }
-  | { source: "crypto_event"; eventType: string };
+  | { source: "playtime" };
 
 /** A single milestone within an achievement group, unlocked when the player reaches the threshold */
 export interface AchievementTier {

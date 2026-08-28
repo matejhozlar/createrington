@@ -6,11 +6,11 @@ import {
   getDailyRoleRules,
   getRealtimeRoleRules,
   getTopPlaytimeRoleRules,
-  getTopCryptoNetworthRoleRules,
+  getTopBalanceRoleRules,
 } from "./config";
 import { RoleConditionType } from "./types";
-import type { TopPlaytimeRoleRule, TopCryptoNetworthRoleRule } from "./types";
-import { getLeaderboard } from "@/services/crypto/analytics/leaderboard";
+import type { TopPlaytimeRoleRule, TopBalanceRoleRule } from "./types";
+import { rankNetWorth } from "@/services/discord/leaderboard/networth";
 import { RoleManager } from "@/discord/utils/roles/role-manager";
 import { roleNotificationService } from "./role-notification.service";
 import config from "@/config";
@@ -21,9 +21,9 @@ import config from "@/config";
  * subscribing to per-server `PlaytimeService` `sessionAggregated` events, and
  * scheduled, via a daily timer aligned to `checkTimeHour` UTC (first run is
  * delayed to the next occurrence, then a 24h interval takes over). The daily
- * pass also reconciles competitive top-1 roles (top playtime, top crypto
- * networth) by stripping the role from former leaders and granting it to the
- * current #1. All scheduling stops on `shutdown`.
+ * pass also reconciles competitive top-1 roles (top playtime, top balance) by
+ * stripping the role from former leaders and granting it to the current #1.
+ * All scheduling stops on `shutdown`.
  */
 export class RoleManagementService {
   private roleAssignmentService: RoleAssignmentService;
@@ -182,10 +182,10 @@ export class RoleManagementService {
         if (result.removed) totalRemovals++;
       }
 
-      // Top crypto networth roles (competitive, rank-based: only one holder at a time)
-      const topCryptoRules = getTopCryptoNetworthRoleRules();
-      for (const rule of topCryptoRules) {
-        const result = await this.processTopCryptoNetworthRole(rule);
+      // Top balance roles (competitive, rank-based: only one holder at a time)
+      const topBalanceRules = getTopBalanceRoleRules();
+      for (const rule of topBalanceRules) {
+        const result = await this.processTopBalanceRole(rule);
         if (result.assigned) totalAssignments++;
         if (result.removed) totalRemovals++;
       }
@@ -285,14 +285,30 @@ export class RoleManagementService {
     }
   }
 
-  private async processTopCryptoNetworthRole(
-    rule: TopCryptoNetworthRoleRule,
+  private async getTopBalanceEntries(limit: number) {
+    const [balances, players] = await Promise.all([
+      Q.player.balance.getAllBalances(),
+      Q.player.getAll(),
+    ]);
+
+    const nameMap = new Map(
+      players.map((p) => [
+        p.minecraftUuid,
+        p.minecraftUsername ?? p.minecraftUuid,
+      ]),
+    );
+
+    return rankNetWorth(balances, nameMap, limit);
+  }
+
+  private async processTopBalanceRole(
+    rule: TopBalanceRoleRule,
   ): Promise<{ assigned: boolean; removed: boolean }> {
     try {
-      const leaderboard = await getLeaderboard("networth", 1);
+      const leaderboard = await this.getTopBalanceEntries(1);
 
       if (leaderboard.length === 0) {
-        logger.warn("No players found for top crypto networth role check");
+        logger.warn("No players found for top balance role check");
         return { assigned: false, removed: false };
       }
 
@@ -303,7 +319,7 @@ export class RoleManagementService {
 
       if (!topPlayer) {
         logger.warn(
-          `No player record found for top crypto player UUID ${topEntry.playerUuid}`,
+          `No player record found for top balance player UUID ${topEntry.playerUuid}`,
         );
         return { assigned: false, removed: false };
       }
@@ -320,7 +336,7 @@ export class RoleManagementService {
 
       if (topPlayerHasRole && membersWithRole.size === 1) {
         logger.debug(
-          `Top crypto networth role "${rule.label}" already held by ${topEntry.playerName}`,
+          `Top balance role "${rule.label}" already held by ${topEntry.playerName}`,
         );
         return { assigned: false, removed: false };
       }
@@ -331,7 +347,7 @@ export class RoleManagementService {
           await RoleManager.remove(
             member,
             rule.roleId,
-            `No longer the #1 player by crypto portfolio value`,
+            `No longer the #1 player by in-game balance`,
           );
           removed = true;
         }
@@ -341,11 +357,11 @@ export class RoleManagementService {
       if (!topPlayerHasRole) {
         try {
           const topMember = await guild.members.fetch(topPlayer.discordId);
-          const portfolioValue = parseFloat(topEntry.value);
+          const balanceValue = parseFloat(topEntry.value);
           const result = await RoleManager.assign(
             topMember,
             rule.roleId,
-            `#1 player by crypto portfolio value ($${topEntry.value})`,
+            `#1 player by in-game balance ($${topEntry.value})`,
           );
 
           if (result) {
@@ -356,24 +372,21 @@ export class RoleManagementService {
                 discordId: topPlayer.discordId,
                 username: topEntry.playerName,
                 role: rule,
-                currentValue: portfolioValue,
+                currentValue: balanceValue,
                 requiredValue: 0,
                 timestamp: new Date(),
               })
               .catch((error) => {
-                logger.error(
-                  "Failed to send crypto baron announcement:",
-                  error,
-                );
+                logger.error("Failed to send capitalist announcement:", error);
               });
 
             logger.info(
-              `Assigned top crypto networth role "${rule.label}" to ${topEntry.playerName}`,
+              `Assigned top balance role "${rule.label}" to ${topEntry.playerName}`,
             );
           }
         } catch (error) {
           logger.error(
-            `Failed to assign top crypto networth role to ${topPlayer.discordId}:`,
+            `Failed to assign top balance role to ${topPlayer.discordId}:`,
             error,
           );
         }
@@ -381,7 +394,7 @@ export class RoleManagementService {
 
       return { assigned, removed };
     } catch (error) {
-      logger.error("Failed to process top crypto networth role:", error);
+      logger.error("Failed to process top balance role:", error);
       return { assigned: false, removed: false };
     }
   }

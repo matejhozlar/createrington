@@ -25,7 +25,6 @@ export const commandRegistry: Record<string, CommandEnv> = {
   status: "prod",
   history: "prod",
   list: "prod",
-  crypto: "prod",
   profile: "prod",
   activity: "prod",
   top: "prod",

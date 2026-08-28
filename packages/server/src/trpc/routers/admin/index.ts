@@ -5,7 +5,6 @@ import { adminAiRouter } from "./ai";
 import { autoMessagesRouter } from "./auto-messages";
 import { announcementsRouter } from "./announcements";
 import { changelogRouter } from "./changelog";
-import { adminCryptoRouter } from "./crypto";
 import { dashboardRouter } from "./dashboard";
 import { discordCommandsRouter } from "./discord-commands";
 import { embedsRouter } from "./embeds";
@@ -46,7 +45,6 @@ export const adminRouter = router({
   autoMessages: autoMessagesRouter,
   announcements: announcementsRouter,
   changelog: changelogRouter,
-  crypto: adminCryptoRouter,
   dashboard: dashboardRouter,
   discordCommands: discordCommandsRouter,
   embeds: embedsRouter,

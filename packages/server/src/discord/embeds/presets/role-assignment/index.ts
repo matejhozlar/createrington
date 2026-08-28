@@ -21,9 +21,8 @@ function formatValue(value: number, conditionType: RoleConditionType): string {
     case RoleConditionType.TOP_PLAYTIME:
       return formatPlaytime(value);
     case RoleConditionType.BALANCE:
+    case RoleConditionType.TOP_BALANCE:
       return `${formatBalance(value)}`;
-    case RoleConditionType.TOP_CRYPTO_NETWORTH:
-      return `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     case RoleConditionType.SERVER_AGE:
       return `${formatDaysCount(value)} ${value > 0 ? "ago" : ""}`;
     default:
@@ -92,17 +91,12 @@ export const RoleAssignmentEmbedPresets = {
         formatValue(notification.currentValue, notification.role.conditionType),
         true,
       );
-    } else if (notification.role.conditionType === RoleConditionType.BALANCE) {
-      embed.field(
-        "Current Balance",
-        formatValue(notification.currentValue, notification.role.conditionType),
-        true,
-      );
     } else if (
-      notification.role.conditionType === RoleConditionType.TOP_CRYPTO_NETWORTH
+      notification.role.conditionType === RoleConditionType.BALANCE ||
+      notification.role.conditionType === RoleConditionType.TOP_BALANCE
     ) {
       embed.field(
-        "Portfolio Value",
+        "Current Balance",
         formatValue(notification.currentValue, notification.role.conditionType),
         true,
       );

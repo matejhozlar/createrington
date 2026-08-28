@@ -21,7 +21,6 @@ import type { StatsImportService } from "./stats-import";
 import type { AchievementService } from "./achievement";
 import type { FaqService } from "./discord/faq";
 import type { PuppeteerService } from "./puppeteer";
-import type { CryptoMarketService, CryptoSettingsService } from "./crypto";
 import type { AiService } from "./ai";
 import type { AutoMessageService } from "./discord/auto-message";
 import type { DonationService } from "./donation/donation.service";
@@ -419,8 +418,6 @@ export const Services = {
   ACHIEVEMENT_SERVICE: "achievement.achievementService",
   FAQ_SERVICE: "discord.faqService",
   PUPPETEER_SERVICE: "infra.puppeteerService",
-  CRYPTO_MARKET_SERVICE: "crypto.marketService",
-  CRYPTO_SETTINGS_SERVICE: "crypto.settingsService",
   AI_SERVICE: "infra.aiService",
   AUTO_MESSAGE_SERVICE: "discord.autoMessageService",
   DONATION_SERVICE: "donation.service",
@@ -460,8 +457,6 @@ export interface ServiceTypeMap {
   [Services.ACHIEVEMENT_SERVICE]: AchievementService;
   [Services.FAQ_SERVICE]: FaqService;
   [Services.PUPPETEER_SERVICE]: PuppeteerService;
-  [Services.CRYPTO_MARKET_SERVICE]: CryptoMarketService;
-  [Services.CRYPTO_SETTINGS_SERVICE]: CryptoSettingsService;
   [Services.AI_SERVICE]: AiService;
   [Services.AUTO_MESSAGE_SERVICE]: AutoMessageService;
   [Services.DONATION_SERVICE]: DonationService;

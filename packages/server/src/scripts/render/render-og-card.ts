@@ -73,15 +73,6 @@ const FRAMES: readonly FrameSpec[] = [
     angle: -7,
     z: 2,
   },
-  {
-    file: join(SHOTS, "crypto-chart.webp"),
-    url: "createrington.com/crypto",
-    centerX: 908,
-    centerY: 466,
-    width: 520,
-    angle: -7,
-    z: 3,
-  },
 ];
 
 interface TeamMember {

@@ -14,7 +14,7 @@ export interface LeaderboardEntry {
   value: string;
   /** Human-readable value (e.g., "24h 30m") */
   formattedValue: string;
-  /** Optional secondary line (e.g., "84 sessions", balance/crypto split) */
+  /** Optional secondary line (e.g., "84 sessions") */
   subtitle?: string;
 }
 

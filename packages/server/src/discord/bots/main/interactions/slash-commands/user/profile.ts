@@ -1,4 +1,4 @@
-import { Q, playerRepo } from "@/db";
+import { playerRepo } from "@/db";
 import { BalanceUtils } from "@/db/repositories/balance/utils";
 import { EmbedPresets } from "@/discord/embeds";
 import { replyError } from "@/discord/utils/interaction-reply";
@@ -99,20 +99,9 @@ export async function execute(
       });
     } else {
       // Text fallback if Puppeteer is unavailable
-      const tokens = await Q.crypto.token.getAll();
-      const tokenPriceMap = new Map(tokens.map((t) => [t.id, Number(t.price)]));
-
-      const cashBalance = details.balance
+      const networth = details.balance
         ? BalanceUtils.fromStorage(details.balance.balance)
         : 0;
-      const holdings = await Q.crypto.holding
-        .where({ playerMinecraftUuid: details.player.minecraftUuid })
-        .all();
-      const cryptoValue = holdings.reduce((sum, h) => {
-        const price = tokenPriceMap.get(h.tokenId) ?? 0;
-        return sum + price * Number(h.amount);
-      }, 0);
-      const networth = cashBalance + cryptoValue;
       const networthStr = networth.toFixed(3).replace(/\.?0+$/, "") || "0";
 
       const pt = formatPlaytime(details.playtime.totalSeconds);

@@ -84,47 +84,7 @@ const sections = [
     ),
   },
   {
-    title: "5. Virtual Trading System",
-    content: (
-      <>
-        <p>
-          Createrington offers a simulated cryptocurrency trading system as part
-          of the in-game economy. By using this feature, you acknowledge and
-          agree:
-        </p>
-        <ul className="list-disc pl-6 space-y-1 mt-2">
-          <li>
-            All tokens, balances, and trades are entirely virtual and have{" "}
-            <strong>no real-world monetary value</strong>
-          </li>
-          <li>
-            Token prices are algorithmically generated and do not represent any
-            real cryptocurrency or financial instrument
-          </li>
-          <li>
-            Tokens may crash (losing all value) or be delisted at any time
-            without prior notice
-          </li>
-          <li>Trading fees are automatically deducted from transactions</li>
-          <li>
-            We reserve the right to modify trading rules, fee structures, token
-            availability, and market mechanics at any time
-          </li>
-          <li>
-            Market manipulation, abuse of trading mechanics, or exploitation of
-            system bugs is prohibited and may result in balance resets or
-            account suspension
-          </li>
-          <li>
-            IPO (Initial Public Offering) participation is subject to per-player
-            purchase limits and time windows
-          </li>
-        </ul>
-      </>
-    ),
-  },
-  {
-    title: "6. Donations & Payments",
+    title: "5. Donations & Payments",
     content: (
       <>
         <p>
@@ -171,7 +131,7 @@ const sections = [
     ),
   },
   {
-    title: "7. Intellectual Property",
+    title: "6. Intellectual Property",
     content: (
       <>
         <p>
@@ -188,7 +148,7 @@ const sections = [
     ),
   },
   {
-    title: "8. Notifications & Communication",
+    title: "7. Notifications & Communication",
     content: (
       <>
         <p>
@@ -210,7 +170,7 @@ const sections = [
     ),
   },
   {
-    title: "9. Support Tickets",
+    title: "8. Support Tickets",
     content: (
       <ul className="list-disc pl-6 space-y-1">
         <li>
@@ -228,7 +188,7 @@ const sections = [
     ),
   },
   {
-    title: "10. Disclaimers",
+    title: "9. Disclaimers",
     content: (
       <ul className="list-disc pl-6 space-y-1">
         <li>
@@ -247,7 +207,7 @@ const sections = [
     ),
   },
   {
-    title: "11. Limitation of Liability",
+    title: "10. Limitation of Liability",
     content: (
       <p>
         To the maximum extent permitted by law, the Createrington team shall not
@@ -259,7 +219,7 @@ const sections = [
     ),
   },
   {
-    title: "12. Termination",
+    title: "11. Termination",
     content: (
       <>
         <p>
@@ -277,7 +237,7 @@ const sections = [
     ),
   },
   {
-    title: "13. Changes to These Terms",
+    title: "12. Changes to These Terms",
     content: (
       <p>
         We may update these Terms of Service from time to time. Changes will be
@@ -287,7 +247,7 @@ const sections = [
     ),
   },
   {
-    title: "14. Contact Us",
+    title: "13. Contact Us",
     content: (
       <p>
         If you have questions about these Terms of Service, you can reach us at{" "}

@@ -61,13 +61,6 @@ export class RoomManager {
   }
 
   /**
-   * Get room name for crypto market subscription
-   */
-  static getCryptoMarketRoom(): string {
-    return SubscriptionType.CRYPTO_MARKET;
-  }
-
-  /**
    * Get the owner-only room for a user; joined from the verified JWT at
    * connection time, never reachable via subscribe requests
    */
@@ -96,8 +89,6 @@ export class RoomManager {
         return this.getPlayersRoom(serverId);
       case SubscriptionType.MESSAGES:
         return this.getMessagesRoom(serverId);
-      case SubscriptionType.CRYPTO_MARKET:
-        return this.getCryptoMarketRoom();
       default:
         throw new Error(`Unknown subscription type: ${type}`);
     }
