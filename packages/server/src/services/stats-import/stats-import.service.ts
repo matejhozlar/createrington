@@ -13,27 +13,16 @@ const DEBOUNCE_MS = 30_000;
  * on startup (fire-and-forget, never blocks bootstrap) plus debounced re-imports on
  * `sessionStart`/`sessionEnd` from each `PlaytimeService` (30s window). A per-server
  * lock prevents overlapping runs; rows for UUIDs not present in the player table are
- * skipped. Registered import-complete callbacks (e.g. achievement evaluation) receive
- * the serverId plus imported UUIDs after each successful run.
+ * skipped.
  */
 export class StatsImportService {
   private debounceTimers: Map<number, NodeJS.Timeout> = new Map();
   private importInProgress: Map<number, boolean> = new Map();
-  private importCompleteCallbacks: Array<
-    (serverId: number, uuids: string[]) => void
-  > = [];
 
   constructor(
     private readonly playtimeManager: PlaytimeManagerService,
     private readonly configs: StatsImportServerConfig[],
   ) {}
-
-  /** Registers a callback fired after a successful import with the server ID and imported UUIDs. */
-  onImportComplete(
-    callback: (serverId: number, uuids: string[]) => void,
-  ): void {
-    this.importCompleteCallbacks.push(callback);
-  }
 
   /**
    * Subscribes to session events on each `PlaytimeService` and kicks off an initial
@@ -192,16 +181,6 @@ export class StatsImportService {
         `Stats import complete for server ${serverId} (${cfg.serverName}): ` +
           `${statsToUpsert.length} imported, ${skipped} skipped, ${duration}ms`,
       );
-
-      // Notify listeners (e.g. AchievementService)
-      const importedUuids = statsToUpsert.map((e) => e.minecraftUuid);
-      for (const callback of this.importCompleteCallbacks) {
-        try {
-          callback(serverId, importedUuids);
-        } catch (error) {
-          logger.error("Import complete callback failed:", error);
-        }
-      }
     } catch (error) {
       logger.error(
         `Stats import failed for server ${serverId} (${cfg.serverName}):`,

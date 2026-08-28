@@ -33,7 +33,6 @@ import { WebSocketService } from "./websocket";
 import { PlayerBanService } from "./player/ban";
 import { playerDeletionService } from "./player/deletion";
 import { StatsImportService, STATS_IMPORT_SERVERS } from "./stats-import";
-import { AchievementService } from "./achievement";
 import { FaqService } from "./discord/faq";
 import { PuppeteerService } from "./puppeteer";
 import { AiService } from "./ai";
@@ -390,16 +389,6 @@ export function registerServices(): void {
   }
 
   container.register(
-    Services.ACHIEVEMENT_SERVICE,
-    async () => {
-      const service = new AchievementService();
-      await service.initialize();
-      return service;
-    },
-    { dependencies: [Services.DATABASE] },
-  );
-
-  container.register(
     Services.ROLE_MANAGEMENT_SERVICE,
     async (c) => {
       const mainBot = await c.get(Services.DISCORD_MAIN_BOT);
@@ -478,21 +467,6 @@ export function registerServices(): void {
       const messageCache = await container.get(Services.MESSAGE_CACHE);
 
       playtimeManager.setupMessageCacheIntegration(messageCache);
-    }
-
-    // Hook achievement evaluation into stats import completion
-    if (
-      serviceName === Services.STATS_IMPORT_SERVICE &&
-      !config.envMode.isDev
-    ) {
-      const statsImport = await container.get(Services.STATS_IMPORT_SERVICE);
-      const achievement = await container.get(Services.ACHIEVEMENT_SERVICE);
-
-      statsImport.onImportComplete((serverId, uuids) => {
-        achievement
-          .evaluateServer(serverId, uuids)
-          .catch((err) => logger.error("Achievement evaluation failed:", err));
-      });
     }
 
     // Wire real-time role checks to playtime events on each server

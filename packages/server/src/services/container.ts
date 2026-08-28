@@ -18,7 +18,6 @@ import type { WebSocketService } from "./websocket";
 import type { PlayerBanService } from "./player/ban";
 import type { PlayerDeletionService } from "./player/deletion";
 import type { StatsImportService } from "./stats-import";
-import type { AchievementService } from "./achievement";
 import type { FaqService } from "./discord/faq";
 import type { PuppeteerService } from "./puppeteer";
 import type { AiService } from "./ai";
@@ -415,7 +414,6 @@ export const Services = {
   PLAYER_BAN_SERVICE: "player.banService",
   PLAYER_DELETION_SERVICE: "player.deletionService",
   STATS_IMPORT_SERVICE: "minecraft.statsImportService",
-  ACHIEVEMENT_SERVICE: "achievement.achievementService",
   FAQ_SERVICE: "discord.faqService",
   PUPPETEER_SERVICE: "infra.puppeteerService",
   AI_SERVICE: "infra.aiService",
@@ -454,7 +452,6 @@ export interface ServiceTypeMap {
   [Services.PLAYER_BAN_SERVICE]: PlayerBanService;
   [Services.PLAYER_DELETION_SERVICE]: PlayerDeletionService;
   [Services.STATS_IMPORT_SERVICE]: StatsImportService;
-  [Services.ACHIEVEMENT_SERVICE]: AchievementService;
   [Services.FAQ_SERVICE]: FaqService;
   [Services.PUPPETEER_SERVICE]: PuppeteerService;
   [Services.AI_SERVICE]: AiService;

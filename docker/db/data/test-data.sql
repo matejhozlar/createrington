@@ -21,7 +21,6 @@ TRUNCATE TABLE discord_guild_member_leave CASCADE;
 TRUNCATE TABLE faq_entry CASCADE;
 TRUNCATE TABLE faq_welcome_message CASCADE;
 TRUNCATE TABLE leaderboard_message CASCADE;
-TRUNCATE TABLE player_achievement CASCADE;
 TRUNCATE TABLE player_balance_transaction CASCADE;
 TRUNCATE TABLE player_minecraft_stats CASCADE;
 TRUNCATE TABLE reward_claim CASCADE;
@@ -665,7 +664,7 @@ INSERT INTO faq_entry (match_mode, pattern, title, response, enabled, priority) 
 ('keywords', 'whitelist,join,how to join,apply', 'How to Join', 'To join Createrington, fill out the application in #apply and wait for approval. Once accepted, you''ll be whitelisted automatically.', true, 10),
 ('keywords', 'ip,address,server ip,connect', 'Server IP', 'The server IP is `play.createrington.com`. Make sure you''re using Minecraft Java Edition 1.20+.', true, 9),
 ('keywords', 'rules,guidelines,policy', 'Server Rules', 'Please read our full rules in #rules. Key points: no griefing, no hacking, be respectful, and no spam.', true, 8),
-('keywords', 'balance,money,coins,economy', 'Economy System', 'Use `/balance` to check your coins. Earn coins by playing, completing achievements, and trading with other players.', true, 7),
+('keywords', 'balance,money,coins,economy', 'Economy System', 'Use `/balance` to check your coins. Earn coins by playing and trading with other players.', true, 7),
 ('keywords', 'ban,banned,appeal,unban', 'Ban Appeals', 'If you''ve been banned, you can submit an appeal by opening a ticket with `/ticket`. Include your username and reason for appeal.', true, 6),
 ('keywords', 'discord,role,rank', 'Discord Roles', 'Roles are assigned based on your playtime and contributions. Check #roles for more info on available ranks.', false, 3);
 
@@ -684,39 +683,13 @@ INSERT INTO faq_welcome_message (channel_id, message_id) VALUES
 -- when the leaderboard service tries to refresh them at startup.
 
 -- ============================================================================
--- PLAYER ACHIEVEMENTS
--- ============================================================================
-
-INSERT INTO player_achievement (minecraft_uuid, server_id, achievement_group_id, tier, completed_at, claimed_at, reward_amount) VALUES
--- saunhardy: veteran player with claimed achievements
-('091b900c-4174-478c-900c-a0fe5a31a329', 1, 'playtime', 1, NOW() - INTERVAL '150 days', NOW() - INTERVAL '149 days', 5000),
-('091b900c-4174-478c-900c-a0fe5a31a329', 1, 'playtime', 2, NOW() - INTERVAL '120 days', NOW() - INTERVAL '119 days', 15000),
-('091b900c-4174-478c-900c-a0fe5a31a329', 1, 'playtime', 3, NOW() - INTERVAL '60 days', NOW() - INTERVAL '59 days', 50000),
-('091b900c-4174-478c-900c-a0fe5a31a329', 1, 'mining', 1, NOW() - INTERVAL '140 days', NOW() - INTERVAL '140 days', 3000),
-('091b900c-4174-478c-900c-a0fe5a31a329', 1, 'mining', 2, NOW() - INTERVAL '90 days', NULL, 10000),
-
--- Steve: active player with some achievements
-('550e8400-e29b-41d4-a716-446655440001', 1, 'playtime', 1, NOW() - INTERVAL '60 days', NOW() - INTERVAL '59 days', 5000),
-('550e8400-e29b-41d4-a716-446655440001', 1, 'playtime', 2, NOW() - INTERVAL '30 days', NULL, 15000),
-('550e8400-e29b-41d4-a716-446655440001', 1, 'building', 1, NOW() - INTERVAL '45 days', NOW() - INTERVAL '44 days', 3000),
-
--- Alex: a few achievements
-('550e8400-e29b-41d4-a716-446655440002', 1, 'playtime', 1, NOW() - INTERVAL '50 days', NOW() - INTERVAL '49 days', 5000),
-('550e8400-e29b-41d4-a716-446655440002', 1, 'combat', 1, NOW() - INTERVAL '40 days', NOW() - INTERVAL '39 days', 4000),
-
--- Technoblade: combat-focused
-('550e8400-e29b-41d4-a716-446655440007', 1, 'combat', 1, NOW() - INTERVAL '45 days', NOW() - INTERVAL '44 days', 4000),
-('550e8400-e29b-41d4-a716-446655440007', 1, 'combat', 2, NOW() - INTERVAL '30 days', NOW() - INTERVAL '29 days', 12000),
-('550e8400-e29b-41d4-a716-446655440007', 1, 'combat', 3, NOW() - INTERVAL '10 days', NULL, 40000);
-
--- ============================================================================
 -- PLAYER BALANCE TRANSACTIONS
 -- ============================================================================
 
 INSERT INTO player_balance_transaction (player_minecraft_uuid, amount, balance_before, balance_after, transaction_type, description, related_player_uuid, metadata) VALUES
 -- Steve: earning and spending
 ('550e8400-e29b-41d4-a716-446655440001', 50000, 0, 50000, 'welcome_bonus', 'Welcome bonus for new player', NULL, '{}'),
-('550e8400-e29b-41d4-a716-446655440001', 5000, 50000, 55000, 'achievement', 'Playtime tier 1 achievement reward', NULL, '{"achievement_group_id":"playtime","tier":1}'),
+('550e8400-e29b-41d4-a716-446655440001', 5000, 50000, 55000, 'playtime_reward', 'Playtime milestone reward', NULL, '{}'),
 ('550e8400-e29b-41d4-a716-446655440001', 200500, 55000, 255500, 'playtime_reward', 'Weekly playtime reward', NULL, '{"week":"2026-W04"}'),
 ('550e8400-e29b-41d4-a716-446655440001', -5000, 255500, 250500, 'transfer', 'Sent to Alex', '550e8400-e29b-41d4-a716-446655440002', '{}'),
 ('550e8400-e29b-41d4-a716-446655440001', 1000000, 250500, 1250500, 'admin_adjust', 'Admin balance correction', NULL, '{"admin_discord_id":"818819241666281503","reason":"compensation for lost items"}'),

@@ -136,7 +136,7 @@ export abstract class BaseReward {
    *
    * @param playerUuid - Minecraft UUID of the player claiming
    * @param amount - Reward amount in display format (will be converted to storage)
-   * @param metadata - Optional additional data (achievement ID, bonus multiplier, etc.)
+   * @param metadata - Optional additional data (bonus multiplier, etc.)
    * @returns Promise resolving when claim is recorded
    *
    * @protected - Only for use by subclass implementations
@@ -177,7 +177,6 @@ export abstract class BaseReward {
    *
    * - DailyReward: Check if reset hour has passed since last claim
    * - WeeklyReward: Check if 7 days have passed since last claim
-   * - AchievementReward: Check if achievement is completed and not already claimed
    *
    * @param identifier - Player identifier (any accepted format)
    * @returns Promise resolving to eligibility result with:
