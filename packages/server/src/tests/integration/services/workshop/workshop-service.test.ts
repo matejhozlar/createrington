@@ -1447,6 +1447,21 @@ describe("WorkshopService.setModRequired", () => {
     });
   });
 
+  it("refuses mods in an archived workshop", async () => {
+    const workshop = await seedWorkshop(ctx, { status: "archived" });
+    const mod = await seedMod(ctx, workshop, {
+      submittedBy: USER_A,
+      status: "next_update",
+    });
+
+    await expect(workshopService.setModRequired(mod.id, false)).rejects.toThrow(
+      /archived/,
+    );
+    expect(await Q.workshop.mod.get({ id: mod.id })).toMatchObject({
+      required: true,
+    });
+  });
+
   it("throws NotFoundError for an unknown mod", async () => {
     await expect(
       workshopService.setModRequired(999_999_999, false),
