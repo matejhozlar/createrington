@@ -545,6 +545,7 @@ export function AdminWorkshopDetail() {
 
         {activeTab === "issues" && (
           <IssuesTab
+            workshopId={workshopId}
             items={issueItems}
             isLoading={attentionQuery.isLoading}
             error={attentionQuery.error?.message ?? null}

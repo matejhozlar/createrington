@@ -297,7 +297,7 @@ export class WorkshopService {
     if (options.userVisible) this.assertUserVisible(workshop);
     const modpack = await modpackService.getModpack(workshop.modpackId);
     const [mods, curseforgeUrl] = await Promise.all([
-      modpackService.getPackMods(modpack.id),
+      modpackService.getPackMods(modpack.id, { liveOnly: true }),
       modpackService.getPackCurseforgeUrl(modpack),
     ]);
     return {
@@ -306,7 +306,7 @@ export class WorkshopService {
         description: modpack.description,
         curseforgeUrl,
       },
-      mods: mods.filter((mod) => mod.droppedFromManifestAt === null),
+      mods,
     };
   }
 

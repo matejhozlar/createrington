@@ -65,6 +65,7 @@ function isDependencyGap(
 }
 
 export function IssuesTab({
+  workshopId,
   items,
   isLoading,
   error,
@@ -75,6 +76,7 @@ export function IssuesTab({
   envDisplay,
   onSetEnvironment,
 }: {
+  workshopId: number;
   items: AttentionItem[];
   isLoading: boolean;
   error: string | null;
@@ -235,6 +237,7 @@ export function IssuesTab({
         onConfirm={() =>
           removeTarget
             ? removeMutation.mutateAsync({
+                workshopId,
                 modpackModId: removeTarget.modpackModId,
               })
             : undefined

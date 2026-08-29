@@ -387,11 +387,16 @@ export class ModpackService {
     return { modpack, modCount, releaseCount };
   }
 
-  /** Members of a modpack with project summaries, credit, and live state. */
-  async getPackMods(modpackId: number): Promise<ModpackModListItem[]> {
+  /** Members of a modpack with project summaries, credit, and live state; liveOnly leaves out members the latest publish dropped. */
+  async getPackMods(
+    modpackId: number,
+    options: { liveOnly?: boolean } = {},
+  ): Promise<ModpackModListItem[]> {
     await this.getModpack(modpackId);
     const rows = await Q.modpack.mod.findAll(
-      { modpackId },
+      options.liveOnly
+        ? { modpackId, droppedFromManifestAt: null }
+        : { modpackId },
       { orderBy: "createdAt", orderDirection: "asc" },
     );
     return this.decoratePackMods(modpackId, rows);
@@ -1089,21 +1094,26 @@ export class ModpackService {
   }
 
   /**
-   * Resolve a dropped_from_pack item the way an admin means it: the mod is
-   * out of the pack for good. The member row is deleted, which takes it off
-   * the In Pack tab and the public pack page, and a suggestion behind it is
-   * ruled out so it stops queuing for the next update. Only a row the latest
-   * publish dropped can go through here; a live member leaves via a release
-   * that no longer ships it. A project that ships again later gets a fresh
-   * row from reconcile like any newcomer.
+   * Resolve a dropped_from_pack item: delete the member row and rule out the
+   * suggestion behind it, even one from a sibling workshop of the same pack,
+   * since a next_update entry anywhere would ship the mod again. Live members
+   * and archived workshops on either side are refused.
    */
   async removeDroppedMember(
+    workshop: Workshop,
     modpackModId: number,
     adminId: string,
   ): Promise<ModpackDroppedMemberRemoval> {
+    if (workshop.status === "archived") {
+      throw new BadRequestError(
+        "Cannot resolve pack issues in an archived workshop",
+      );
+    }
     const member = await Q.modpack.mod.find({ id: modpackModId });
-    if (!member) {
-      throw new NotFoundError(`Pack member #${modpackModId} not found`);
+    if (!member || member.modpackId !== workshop.modpackId) {
+      throw new NotFoundError(
+        `Pack member #${modpackModId} not found in this workshop's pack`,
+      );
     }
     if (member.droppedFromManifestAt === null) {
       throw new BadRequestError(
@@ -1117,6 +1127,14 @@ export class ModpackService {
         : Promise.resolve(null),
     ]);
     const toReject = mod && mod.status !== "rejected" ? mod : null;
+    if (toReject && toReject.workshopId !== workshop.id) {
+      const owner = await Q.workshop.find({ id: toReject.workshopId });
+      if (owner?.status === "archived") {
+        throw new BadRequestError(
+          "The suggestion behind this mod belongs to an archived workshop, so it cannot be ruled out from here",
+        );
+      }
+    }
     const now = new Date();
 
     await db.inTransaction(async (tx) => {
@@ -1137,7 +1155,7 @@ export class ModpackService {
           rejectNote: null,
           reviewedBy: adminId,
           reviewedAt: now,
-          fileChosen: false,
+          ...(toReject.status === "next_update" ? { fileChosen: false } : {}),
         },
         { id: toReject.id, status: toReject.status },
       );
@@ -1161,9 +1179,9 @@ export class ModpackService {
         toStatus: "rejected",
       });
       void announceReview(updated, "rejected");
-      const workshop = await Q.workshop.find({ id: toReject.workshopId });
-      if (workshop) await pruneStaleDependencyEdges(workshop);
     }
+    const workshops = await Q.workshop.findAll({ modpackId: member.modpackId });
+    await Promise.all(workshops.map((row) => pruneStaleDependencyEdges(row)));
     return {
       member,
       projectName: project?.name ?? `#${member.curseforgeProjectId}`,

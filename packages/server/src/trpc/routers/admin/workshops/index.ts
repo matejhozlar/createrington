@@ -338,10 +338,12 @@ export const adminWorkshopsRouter = router({
       description:
         "Resolve a dropped-from-pack issue: remove the member row and rule its suggestion out",
     })
-    .input(z.object({ modpackModId: id() }))
+    .input(z.object({ workshopId: id(), modpackModId: id() }))
     .mutation(async ({ ctx, input }) => {
       try {
+        const workshop = await workshopService.getWorkshop(input.workshopId);
         const result = await modpackService.removeDroppedMember(
+          workshop,
           input.modpackModId,
           ctx.user.discordId,
         );
@@ -350,6 +352,7 @@ export const adminWorkshopsRouter = router({
           actionType: "workshop_pack_member_remove",
           description: `Removed dropped pack member "${result.projectName}" from modpack #${result.member.modpackId}`,
           metadata: {
+            workshopId: workshop.id,
             modpackId: result.member.modpackId,
             modpackModId: result.member.id,
             curseforgeProjectId: result.member.curseforgeProjectId,

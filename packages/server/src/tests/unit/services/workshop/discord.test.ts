@@ -190,6 +190,28 @@ describe("announceReview", () => {
     });
   });
 
+  it("sheds the managed tag when a rejection carries no reason", async () => {
+    fakeThread("thread-42", {
+      archived: true,
+      appliedTags: ["tag-next-update", "tag-custom"],
+    });
+
+    await announceReview(fakeMod({ status: "rejected" }), "rejected");
+
+    expect(state.calls.map(([name]) => name)).toEqual([
+      "edit",
+      "send",
+      "setArchived",
+    ]);
+    expect(state.calls[0][1]).toMatchObject({
+      archived: false,
+      appliedTags: ["tag-custom"],
+    });
+    expect(state.calls[1][1]).toMatchObject({
+      content: "🚫 **Rejected.**",
+    });
+  });
+
   it("closes a drop-out with its own audit reason", async () => {
     fakeThread("thread-42", { archived: true, appliedTags: ["tag-in-pack"] });
 
