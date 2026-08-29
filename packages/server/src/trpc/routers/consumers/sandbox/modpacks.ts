@@ -95,12 +95,10 @@ export const sandboxModpacksRouter = router({
     .input(z.object({ modpackId: id() }))
     .query(async ({ input }) => {
       try {
-        const items = await modpackService.getPackMods(input.modpackId);
-        return {
-          mods: items
-            .filter((item) => item.droppedFromManifestAt === null)
-            .map(toSandboxPackMod),
-        };
+        const items = await modpackService.getPackMods(input.modpackId, {
+          liveOnly: true,
+        });
+        return { mods: items.map(toSandboxPackMod) };
       } catch (error) {
         rethrowTrpc(error);
       }

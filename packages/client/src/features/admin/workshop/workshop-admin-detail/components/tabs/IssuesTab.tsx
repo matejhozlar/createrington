@@ -1,4 +1,9 @@
-import { CircleCheck, ExternalLink, Eye } from "lucide-react";
+import { useState } from "react";
+import { CircleCheck, ExternalLink, Eye, PackageMinus } from "lucide-react";
+import { trpc } from "@/lib/trpc";
+import { useToastActions } from "@/hooks/use-toast";
+import { useStickyValue } from "@/hooks/use-sticky-value";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CellDate, CellText } from "@/components/cell-text";
 import {
@@ -40,6 +45,17 @@ const ATTENTION_MESSAGES: Record<
     "appears more than once in the published pack manifest. Publish a build that lists it once.",
 };
 
+type DroppedItem = Extract<AttentionItem, { type: "dropped_from_pack" }>;
+
+const REMOVE_COPY = {
+  common:
+    "This clears the issue and takes the mod off the In Pack tab and the public pack page.",
+  suggestion:
+    "Its suggestion is ruled out so it stops queuing for the next update; re-review it later if you change your mind.",
+  returning:
+    "If a future release ships the mod again, it rejoins the pack on its own.",
+};
+
 function isDependencyGap(
   item: AttentionItem,
 ): item is Extract<AttentionItem, { requiredBy: unknown }> {
@@ -49,24 +65,43 @@ function isDependencyGap(
 }
 
 export function IssuesTab({
+  workshopId,
   items,
   isLoading,
   error,
   onRetry,
   onView,
+  onResolved,
   unresolvedCount,
   envDisplay,
   onSetEnvironment,
 }: {
+  workshopId: number;
   items: AttentionItem[];
   isLoading: boolean;
   error: string | null;
   onRetry: () => void;
   onView: (workshopModId: number) => void;
+  onResolved: () => unknown;
   unresolvedCount: number;
   envDisplay: EnvironmentDisplay;
   onSetEnvironment: (projectId: number, environment: ModEnvironment) => void;
 }) {
+  const toast = useToastActions();
+  const [removeTarget, setRemoveTarget] = useState<DroppedItem | null>(null);
+  const displayTarget = useStickyValue(removeTarget);
+
+  const removeMutation = trpc.admin.workshops.removeDroppedMember.useMutation({
+    onSuccess: () => {
+      toast.success("Removed from the pack");
+      onResolved();
+    },
+    onError: (err) => {
+      toast.error(err.message);
+      onResolved();
+    },
+  });
+
   const columns: DataTableColumn<AttentionItem>[] = [
     {
       key: "mod",
@@ -131,45 +166,83 @@ export function IssuesTab({
   ];
 
   const itemActions = (item: AttentionItem): DataTableAction[] => {
+    const actions: DataTableAction[] = [];
     const workshopModId = "workshopModId" in item ? item.workshopModId : null;
-    if (workshopModId === null) return [];
-    return [
-      {
+    if (workshopModId !== null) {
+      actions.push({
         label: "View Mod",
         icon: Eye,
         onClick: () => onView(workshopModId),
-      },
-    ];
+      });
+    }
+    if (item.type === "dropped_from_pack") {
+      actions.push({
+        label: "Remove from Pack",
+        icon: PackageMinus,
+        variant: "destructive",
+        onClick: () => setRemoveTarget(item),
+      });
+    }
+    return actions;
   };
 
   return (
-    <Card className="gap-0">
-      <CardHeader className="gap-0 border-b">
-        <CardTitle>Issues ({unresolvedCount.toLocaleString()})</CardTitle>
-      </CardHeader>
+    <>
+      <Card className="gap-0">
+        <CardHeader className="gap-0 border-b">
+          <CardTitle>Issues ({unresolvedCount.toLocaleString()})</CardTitle>
+        </CardHeader>
 
-      {error ? (
-        <CardError message={error} onRetry={onRetry} />
-      ) : !isLoading && items.length === 0 ? (
-        <CardEmpty icon={CircleCheck} message="Nothing needs attention" />
-      ) : (
-        <CardContent className="px-0">
-          <DataTable
-            columns={columns}
-            rows={items}
-            loading={isLoading}
-            rowKey={(item) => `${item.type}-${item.curseforgeProjectId}`}
-            actions={itemActions}
-          />
+        {error ? (
+          <CardError message={error} onRetry={onRetry} />
+        ) : !isLoading && items.length === 0 ? (
+          <CardEmpty icon={CircleCheck} message="Nothing needs attention" />
+        ) : (
+          <CardContent className="px-0">
+            <DataTable
+              columns={columns}
+              rows={items}
+              loading={isLoading}
+              rowKey={(item) => `${item.type}-${item.curseforgeProjectId}`}
+              actions={itemActions}
+            />
 
-          {!isLoading && (
-            <p className="px-4 pt-4 text-xs text-muted-foreground">
-              Showing {unresolvedCount}{" "}
-              {unresolvedCount === 1 ? "issue" : "issues"}
-            </p>
-          )}
-        </CardContent>
-      )}
-    </Card>
+            {!isLoading && (
+              <p className="px-4 pt-4 text-xs text-muted-foreground">
+                Showing {unresolvedCount}{" "}
+                {unresolvedCount === 1 ? "issue" : "issues"}
+              </p>
+            )}
+          </CardContent>
+        )}
+      </Card>
+
+      <ConfirmDialog
+        open={removeTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setRemoveTarget(null);
+        }}
+        title={`Remove ${displayTarget?.name ?? "this mod"} from the pack?`}
+        description={[
+          REMOVE_COPY.common,
+          displayTarget && displayTarget.workshopModId !== null
+            ? REMOVE_COPY.suggestion
+            : null,
+          REMOVE_COPY.returning,
+        ]
+          .filter(Boolean)
+          .join(" ")}
+        confirmLabel="Remove"
+        variant="destructive"
+        onConfirm={() =>
+          removeTarget
+            ? removeMutation.mutateAsync({
+                workshopId,
+                modpackModId: removeTarget.modpackModId,
+              })
+            : undefined
+        }
+      />
+    </>
   );
 }

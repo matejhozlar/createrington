@@ -1129,6 +1129,29 @@ describe("WorkshopService.getPack", () => {
     );
   });
 
+  it("omits members the latest publish dropped", async () => {
+    const workshop = await seedWorkshop(ctx, { status: "open" });
+    const live = await seedPackMod(ctx, workshop, {
+      liveAt: new Date(),
+      liveInVersion: "1.0.0",
+    });
+    await seedPackMod(ctx, workshop, {
+      origin: "dependency",
+      droppedFromManifestAt: new Date(),
+    });
+
+    const pack = await workshopService.getPack(workshop.id);
+    expect(pack.mods.map((row) => row.id)).toEqual([live.id]);
+
+    const listed = (await workshopService.listVisibleWorkshops()).find(
+      (row) => row.id === workshop.id,
+    );
+    expect(listed?.summary?.packModCount).toBe(1);
+    expect(listed?.summary?.packModSample.map((row) => row.id)).toEqual([
+      live.id,
+    ]);
+  });
+
   it("hides packs of draft workshops from users but not admins", async () => {
     const workshop = await seedWorkshop(ctx, { status: "draft" });
 

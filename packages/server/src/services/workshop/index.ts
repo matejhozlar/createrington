@@ -297,7 +297,7 @@ export class WorkshopService {
     if (options.userVisible) this.assertUserVisible(workshop);
     const modpack = await modpackService.getModpack(workshop.modpackId);
     const [mods, curseforgeUrl] = await Promise.all([
-      modpackService.getPackMods(modpack.id),
+      modpackService.getPackMods(modpack.id, { liveOnly: true }),
       modpackService.getPackCurseforgeUrl(modpack),
     ]);
     return {
@@ -1159,7 +1159,10 @@ export class WorkshopService {
     const workshopId = workshop.id;
     const [packModCount, pendingModCount, participantIds, mods, packSample] =
       await Promise.all([
-        Q.modpack.mod.count({ modpackId: workshop.modpackId }),
+        Q.modpack.mod.count({
+          modpackId: workshop.modpackId,
+          droppedFromManifestAt: null,
+        }),
         Q.workshop.mod.count({ workshopId, status: "pending" }),
         Q.workshop.participantDiscordIds(workshopId),
         Q.workshop.mod.findAll(
@@ -1171,7 +1174,7 @@ export class WorkshopService {
           },
         ),
         Q.modpack.mod.findAll(
-          { modpackId: workshop.modpackId },
+          { modpackId: workshop.modpackId, droppedFromManifestAt: null },
           {
             orderBy: "createdAt",
             orderDirection: "desc",

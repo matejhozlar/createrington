@@ -288,8 +288,9 @@ export async function announceSuggestion(
 
 /**
  * Reflect a review outcome on the suggestion's thread: post the result, retag
- * with the new status's tag or the rejection reason's tag, and close the post
- * again once the mod has left review.
+ * with the new status's tag or the rejection reason's tag (a rejection with
+ * no reason just sheds the managed tag), and close the post again once the
+ * mod has left review.
  */
 export async function announceReview(
   mod: WorkshopMod,
@@ -315,17 +316,17 @@ export async function announceReview(
       status === "rejected" ? reasonTag?.name : STATUS_TAGS[status].name;
 
     let appliedTags: string[] | undefined;
-    if (tagName && thread.parent?.type === ChannelType.GuildForum) {
+    if (thread.parent?.type === ChannelType.GuildForum) {
       const tags = await ensureStatusTags(thread.parent);
-      const tagId = tags.get(tagName);
-      if (tagId) {
+      const tagId = tagName ? tags.get(tagName) : undefined;
+      if (tagId || tagName === undefined) {
         const managed = new Set(
           [...tags]
             .filter(([name]) => MANAGED_TAG_NAMES.has(name))
             .map(([, id]) => id),
         );
         const kept = thread.appliedTags.filter((id) => !managed.has(id));
-        appliedTags = [tagId, ...kept].slice(0, 5);
+        appliedTags = tagId ? [tagId, ...kept].slice(0, 5) : kept;
       }
     }
     await thread.edit({ archived: false, appliedTags, reason });

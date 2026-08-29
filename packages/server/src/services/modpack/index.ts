@@ -34,6 +34,7 @@ import { refreshProjects } from "@/services/curseforge/ingest";
 import {
   REQUIRED_DEPENDENCY,
   loadDependencyContext,
+  pruneStaleDependencyEdges,
   type DependencyCoverage,
 } from "@/services/workshop/dependencies";
 import {
@@ -210,10 +211,17 @@ interface AttentionSubject {
   websiteUrl: string | null;
 }
 
+export interface ModpackDroppedMemberRemoval {
+  member: ModpackMod;
+  projectName: string;
+  mod: WorkshopMod | null;
+}
+
 export type ModpackAttentionItem =
   | (AttentionSubject & {
       type: "dropped_from_pack";
       modpackModId: number;
+      workshopModId: number | null;
       droppedAt: Date;
     })
   | (AttentionSubject & {
@@ -379,11 +387,16 @@ export class ModpackService {
     return { modpack, modCount, releaseCount };
   }
 
-  /** Members of a modpack with project summaries, credit, and live state. */
-  async getPackMods(modpackId: number): Promise<ModpackModListItem[]> {
+  /** Members of a modpack with project summaries, credit, and live state; liveOnly leaves out members the latest publish dropped. */
+  async getPackMods(
+    modpackId: number,
+    options: { liveOnly?: boolean } = {},
+  ): Promise<ModpackModListItem[]> {
     await this.getModpack(modpackId);
     const rows = await Q.modpack.mod.findAll(
-      { modpackId },
+      options.liveOnly
+        ? { modpackId, droppedFromManifestAt: null }
+        : { modpackId },
       { orderBy: "createdAt", orderDirection: "asc" },
     );
     return this.decoratePackMods(modpackId, rows);
@@ -1033,6 +1046,7 @@ export class ModpackService {
       items.push({
         type: "dropped_from_pack",
         modpackModId: row.id,
+        workshopModId: row.workshopModId,
         ...attentionSubject(row.curseforgeProjectId),
         droppedAt: row.droppedFromManifestAt!,
       });
@@ -1077,6 +1091,102 @@ export class ModpackService {
       });
     }
     return items;
+  }
+
+  /**
+   * Resolve a dropped_from_pack item: delete the member row and rule out the
+   * suggestion behind it, even one from a sibling workshop of the same pack,
+   * since a next_update entry anywhere would ship the mod again. Live members
+   * and archived workshops on either side are refused.
+   */
+  async removeDroppedMember(
+    workshop: Workshop,
+    modpackModId: number,
+    adminId: string,
+  ): Promise<ModpackDroppedMemberRemoval> {
+    if (workshop.status === "archived") {
+      throw new BadRequestError(
+        "Cannot resolve pack issues in an archived workshop",
+      );
+    }
+    const member = await Q.modpack.mod.find({ id: modpackModId });
+    if (!member || member.modpackId !== workshop.modpackId) {
+      throw new NotFoundError(
+        `Pack member #${modpackModId} not found in this workshop's pack`,
+      );
+    }
+    if (member.droppedFromManifestAt === null) {
+      throw new BadRequestError(
+        "This mod is still in the published pack, publish a release without it first",
+      );
+    }
+    const [project, mod] = await Promise.all([
+      Q.curseforge.project.find({ id: member.curseforgeProjectId }),
+      member.workshopModId
+        ? Q.workshop.mod.find({ id: member.workshopModId })
+        : Promise.resolve(null),
+    ]);
+    const toReject = mod && mod.status !== "rejected" ? mod : null;
+    if (toReject && toReject.workshopId !== workshop.id) {
+      const owner = await Q.workshop.find({ id: toReject.workshopId });
+      if (owner?.status === "archived") {
+        throw new BadRequestError(
+          "The suggestion behind this mod belongs to an archived workshop, so it cannot be ruled out from here",
+        );
+      }
+    }
+    const now = new Date();
+
+    await db.inTransaction(async (tx) => {
+      const deleted = await tx.modpack.mod.deleteAll({
+        id: member.id,
+        droppedFromManifestAt: { $ne: null },
+      });
+      if (deleted === 0) {
+        throw new ConflictError(
+          "This pack member just changed, refresh and try again",
+        );
+      }
+      if (!toReject) return;
+      const changed = await tx.workshop.mod.updateAll(
+        {
+          status: "rejected",
+          rejectReason: null,
+          rejectNote: null,
+          reviewedBy: adminId,
+          reviewedAt: now,
+          ...(toReject.status === "next_update" ? { fileChosen: false } : {}),
+        },
+        { id: toReject.id, status: toReject.status },
+      );
+      if (changed === 0) {
+        throw new ConflictError(
+          "This mod was just reviewed by someone else, refresh and try again",
+        );
+      }
+    });
+
+    let updated = mod;
+    if (toReject) {
+      updated = await Q.workshop.mod.get({ id: toReject.id });
+      recordModEvent({
+        eventType: "rejected",
+        workshopId: toReject.workshopId,
+        workshopModId: toReject.id,
+        curseforgeProjectId: toReject.curseforgeProjectId,
+        actorDiscordId: adminId,
+        fromStatus: toReject.status,
+        toStatus: "rejected",
+      });
+      void announceReview(updated, "rejected");
+    }
+    const workshops = await Q.workshop.findAll({ modpackId: member.modpackId });
+    await Promise.all(workshops.map((row) => pruneStaleDependencyEdges(row)));
+    return {
+      member,
+      projectName: project?.name ?? `#${member.curseforgeProjectId}`,
+      mod: updated,
+    };
   }
 
   /** Decorate member rows; public so callers holding a subset can reuse it. */
@@ -1276,15 +1386,17 @@ export class ModpackService {
         await Q.modpack.mod.deleteAll({ id: row.id });
         continue;
       }
-      await Q.modpack.mod.updateAll(
-        {
-          liveAt: null,
-          liveInVersion: null,
-          droppedFromManifestAt: now,
-          updatedAt: now,
-        },
-        { id: row.id },
-      );
+      if (row.droppedFromManifestAt === null) {
+        await Q.modpack.mod.updateAll(
+          {
+            liveAt: null,
+            liveInVersion: null,
+            droppedFromManifestAt: now,
+            updatedAt: now,
+          },
+          { id: row.id },
+        );
+      }
       if (row.workshopModId) {
         droppedModIds.push(row.workshopModId);
         droppedRequired.set(row.workshopModId, row.required);
