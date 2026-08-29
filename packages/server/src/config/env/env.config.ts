@@ -100,7 +100,6 @@ const envSchema = z
     // OAuth client ID.
     DISCORD_MAIN_BOT_CLIENT_SECRET: z
       .string()
-      .min(1, "Main bot client secret is required")
       .min(32, "Main bot client secret must be at least 32 characters"),
     DISCORD_WEB_BOT_TOKEN: discordToken("Web bot token"),
     DISCORD_WEB_BOT_ID: discordId("Web bot ID"),
@@ -133,8 +132,8 @@ const envSchema = z
     // parent domain like ".createrington.com" to enable cross-subdomain SSO.
     COOKIE_DOMAIN: z.string().default(""),
     // Server-driven SSO callback URL. Must be registered as an OAuth2 redirect
-    // URI in the Discord developer portal. Used by /api/auth/sso/start +
-    // /api/auth/sso/callback.
+    // URI on the main bot's application, next to DISCORD_OAUTH_REDIRECT_URI.
+    // Used by /api/auth/sso/start + /api/auth/sso/callback.
     SSO_CALLBACK_URL: z.string().default(""),
     // Comma-separated list of additional CORS origins (e.g.
     // "https://sandbox.createrington.com") that are allowed to call the API
@@ -321,6 +320,17 @@ const envSchema = z
         code: z.ZodIssueCode.custom,
         path: ["RAILS_N_SAILS_SERVER_IP"],
         message: `Rails 'n Sails server IP is required (${DEV_FALLBACK_SERVER_IP} is the dev fallback)`,
+      });
+    }
+
+    // Required in every environment, so the loop above cannot tell a value
+    // copied from staging apart from the real one: prod would send users to
+    // dev.createrington.com and Discord would reject the unregistered URI.
+    if (isDevHostname(data.DISCORD_OAUTH_REDIRECT_URI)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["DISCORD_OAUTH_REDIRECT_URI"],
+        message: "OAuth redirect URI still points at a dev/local host",
       });
     }
   });

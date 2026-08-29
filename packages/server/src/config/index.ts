@@ -220,6 +220,7 @@ const config = {
     },
 
     oauth: {
+      // The main bot's application ID doubles as the OAuth client ID.
       clientId: env.DISCORD_MAIN_BOT_ID,
       clientSecret: env.DISCORD_MAIN_BOT_CLIENT_SECRET,
       redirectUri: env.DISCORD_OAUTH_REDIRECT_URI,
