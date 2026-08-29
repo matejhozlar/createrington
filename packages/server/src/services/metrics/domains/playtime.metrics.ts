@@ -33,8 +33,8 @@ export class PlaytimeMetrics {
     const liveHours = await Q.player.playtime.summary.getTotalHours(serverId);
     if (serverId !== undefined) return liveHours;
 
-    const archived = await Q.playtime.archive.getTotals();
-    return liveHours + archived.hours;
+    const archivedHours = await Q.playtime.archive.getTotalHours();
+    return liveHours + archivedHours;
   }
 
   /**
@@ -55,15 +55,15 @@ export class PlaytimeMetrics {
    * // }
    */
   async getTotalHoursBreakdown(): Promise<PlaytimeHoursBreakdown> {
-    const [breakdown, archived] = await Promise.all([
+    const [breakdown, archivedHours] = await Promise.all([
       Q.player.playtime.summary.getTotalHoursBreakdown(),
-      Q.playtime.archive.getTotals(),
+      Q.playtime.archive.getTotalHours(),
     ]);
 
     return {
       byServer: breakdown.byServer,
-      archivedHours: archived.hours,
-      total: breakdown.total + archived.hours,
+      archivedHours,
+      total: breakdown.total + archivedHours,
     };
   }
 }
