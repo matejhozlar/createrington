@@ -146,8 +146,9 @@ uploads, and the Minecraft mods. tRPC procedures come in four auth levels
 (`public`, `user`, `admin`, `owner`), plus a `consumers` namespace that exposes
 per-consumer sub-routers to external first-party apps. Services are wired through
 a custom DI container with declared dependencies and parallel startup. Two
-Discord bot users split the work: a main bot for slash commands, events, and
-leaderboards, and a web bot for OAuth and background tasks.
+Discord bot users split the work: a main bot for slash commands, events,
+leaderboards, and user login (Discord OAuth runs on its application), and a web
+bot for admin-panel messaging and background tasks.
 
 Data access goes through Drizzle-backed query classes with automatic
 camelCase/snake_case conversion. Raw SQL stays in the query layer, and all
