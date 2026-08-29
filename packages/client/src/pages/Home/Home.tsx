@@ -114,7 +114,7 @@ export function Home() {
         (playtimeData?.totalHours ?? "N/A")
       ),
       title: "Hours Played",
-      description: "Total playtime across all players",
+      description: "Total playtime across all seasons",
     },
   ];
 
