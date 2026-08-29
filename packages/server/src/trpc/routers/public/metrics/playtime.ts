@@ -7,7 +7,7 @@ export const playtimeRouter = router({
   getTotalHours: publicProcedure
     .meta({
       description:
-        "Returns total playtime hours across all players. Optionally filter by serverId to get hours for a specific server. Used for the 'Hours Played' metric on the home page",
+        "Returns total playtime hours across all players, including hours archived from retired seasons. Optionally filter by serverId for a single server's hours, which excludes the archive. Used for the 'Hours Played' metric on the home page",
     })
     .input(
       z.object({
@@ -28,7 +28,7 @@ export const playtimeRouter = router({
   getHoursBreakdown: publicProcedure
     .meta({
       description:
-        "Returns a breakdown of total playtime hours per server. Useful for comparing activity across servers",
+        "Returns a breakdown of total playtime hours per live server, plus the hours archived from retired seasons and the combined total. Useful for comparing activity across servers",
     })
     .query(async () => {
       const breakdown = await metricsService.playtime.getTotalHoursBreakdown();

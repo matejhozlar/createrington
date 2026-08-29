@@ -1,3 +1,13 @@
+## v1.45.0 (2026-08-29)
+
+### @createrington/server (1.45.2 → 1.46.0)
+- [add] Add `playtime_archive` table and query layer for preserving retired-season playtime totals, so hours from seasons whose per-player rows have been cleared still count toward the homepage showcase
+- [fix] Fix `getTotalHoursBreakdown` flooring per-server hours independently then summing, which could undercount the grand total by several hours; now floors once from the summed seconds to stay consistent with `getTotalHours`
+- [refactor] Extend `PlaytimeHoursBreakdown` in the metrics layer with an `archivedHours` field and rename the summary-level interface to `ServerHoursBreakdown` to clarify scope
+
+### @createrington/client (0.2.59 → 0.2.60)
+- [refactor] Update the homepage hours tile to show total playtime across all seasons instead of filtering to the current server, with updated description copy
+
 ## v1.44.2 (2026-08-28)
 
 ### @createrington/server (1.45.1 → 1.45.2)

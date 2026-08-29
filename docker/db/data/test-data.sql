@@ -32,6 +32,7 @@ TRUNCATE TABLE server_ally_fake_party_member CASCADE;
 TRUNCATE TABLE server_ally_fake_party CASCADE;
 TRUNCATE TABLE server_ally_party CASCADE;
 TRUNCATE TABLE server_ally_qualified_player CASCADE;
+TRUNCATE TABLE playtime_archive CASCADE;
 
 -- Reset sequences
 ALTER SEQUENCE server_id_seq RESTART WITH 1;
@@ -58,6 +59,7 @@ ALTER SEQUENCE server_ally_fake_party_id_seq RESTART WITH 1;
 ALTER SEQUENCE server_ally_fake_party_member_id_seq RESTART WITH 1;
 ALTER SEQUENCE server_ally_party_id_seq RESTART WITH 1;
 ALTER SEQUENCE server_ally_qualified_player_id_seq RESTART WITH 1;
+ALTER SEQUENCE playtime_archive_id_seq RESTART WITH 1;
 
 -- ============================================================================
 -- SERVERS
@@ -845,6 +847,15 @@ BEGIN
     RAISE NOTICE 'Active sessions: %', (SELECT COUNT(*) FROM player_session WHERE session_end IS NULL);
     RAISE NOTICE 'Completed sessions: %', (SELECT COUNT(*) FROM player_session WHERE session_end IS NOT NULL);
 END $$;
+
+-- ============================================================================
+-- PLAYTIME ARCHIVE
+-- ============================================================================
+
+-- Retired seasons: hours that still count toward the all-time showcase total
+-- but are no longer attributable to any player.
+INSERT INTO playtime_archive (label, total_seconds, total_sessions, player_count) VALUES
+  ('Cogs & Steam (season 2)', 18720000, 4210, 63);
 
 -- ============================================================================
 -- SERVER FORCELOADS
