@@ -1,3 +1,15 @@
+## v1.46.0 (2026-08-29)
+
+### @createrington/server (1.46.0 → 1.47.0)
+- [add] Add resolve action for dropped-from-pack workshop issues: deletes the member row, rules out the underlying suggestion (even from sibling workshops sharing the same pack), records an audit log, and prunes stale dependency edges
+- [add] Add `liveOnly` option to `getPackMods` so callers can exclude members dropped by the latest publish at the query level instead of post-filtering
+- [fix] Fix pack mod counts and public pack page including mods that the latest release dropped, by filtering on `droppedFromManifestAt` in workshop summaries and the sandbox modpacks router
+- [fix] Fix repeated reconciles overwriting the original drop date on already-dropped members by skipping the update when `droppedFromManifestAt` is already set
+- [fix] Fix Discord forum tag handling for rejections with no reason: the managed tag is now shed instead of leaving the old status tag in place
+
+### @createrington/client (0.2.60 → 0.2.61)
+- [add] Add "Remove from Pack" action on dropped-from-pack issues in the workshop admin Issues tab, with a destructive confirm dialog explaining the consequences for suggestions and future releases
+
 ## v1.45.0 (2026-08-29)
 
 ### @createrington/server (1.45.2 → 1.46.0)
