@@ -4,5 +4,6 @@ CREATE TABLE "playtime_archive" (
 	"total_seconds" bigint DEFAULT 0 NOT NULL,
 	"total_sessions" integer DEFAULT 0 NOT NULL,
 	"player_count" integer DEFAULT 0 NOT NULL,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "playtime_archive_label_unique" UNIQUE("label")
 );

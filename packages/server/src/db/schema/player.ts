@@ -492,7 +492,7 @@ export const rewardClaim = pgTable(
 export const playtimeArchive = pgTable("playtime_archive", {
   id: serial("id").primaryKey(),
   // Human-readable provenance, e.g. "Cogs & Steam (season 2)"
-  label: text("label").notNull(),
+  label: text("label").notNull().unique(),
   totalSeconds: bigint("total_seconds", { mode: "bigint" })
     .notNull()
     .default(sql`0`),

@@ -1,5 +1,5 @@
 {
-  "id": "61e698c2-089f-4832-b184-ef87a7806796",
+  "id": "2117521e-2223-4936-8492-5bc37065e5b1",
   "prevId": "75d724fe-5545-421c-9520-82f7373a57d2",
   "version": "7",
   "dialect": "postgresql",
@@ -4340,7 +4340,15 @@
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "playtime_archive_label_unique": {
+          "name": "playtime_archive_label_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "label"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
