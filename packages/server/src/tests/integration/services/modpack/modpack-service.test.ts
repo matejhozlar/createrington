@@ -536,6 +536,303 @@ describe("ModpackService.getWorkshopAttention", () => {
   });
 });
 
+describe("ModpackService.removeDroppedMember", () => {
+  it("removes a dropped suggestion member and rules its suggestion out", async () => {
+    const modpack = await seedModpack(ctx, {
+      curseforgeProjectId: ctx.nextProjectId++,
+    });
+    const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const mod = await seedMod(ctx, workshop, {
+      submittedBy: USER_A,
+      status: "next_update",
+      fileChosen: true,
+    });
+    const member = await seedPackMod(ctx, workshop, {
+      curseforgeProjectId: mod.curseforgeProjectId,
+      origin: "suggestion",
+      workshopModId: mod.id,
+      droppedFromManifestAt: new Date(),
+    });
+
+    const result = await modpackService.removeDroppedMember(
+      workshop,
+      member.id,
+      ADMIN,
+    );
+
+    expect(result.member.id).toBe(member.id);
+    expect(result.mod).toMatchObject({ id: mod.id, status: "rejected" });
+    expect(await Q.modpack.mod.find({ id: member.id })).toBeNull();
+    expect(await Q.workshop.mod.get({ id: mod.id })).toMatchObject({
+      status: "rejected",
+      rejectReason: null,
+      rejectNote: null,
+      reviewedBy: ADMIN,
+      fileChosen: false,
+    });
+    expect(vi.mocked(announceReview)).toHaveBeenCalledWith(
+      expect.objectContaining({ id: mod.id, status: "rejected" }),
+      "rejected",
+    );
+
+    await vi.waitFor(async () => {
+      expect(await modEvents(mod.id)).toHaveLength(1);
+    });
+    expect((await modEvents(mod.id))[0]).toMatchObject({
+      eventType: "rejected",
+      workshopId: workshop.id,
+      curseforgeProjectId: mod.curseforgeProjectId,
+      actorDiscordId: ADMIN,
+      fromStatus: "next_update",
+      toStatus: "rejected",
+      rejectReason: null,
+    });
+
+    const items = await modpackService.getWorkshopAttention(workshop);
+    expect(
+      items.filter((item) => item.type === "dropped_from_pack"),
+    ).toHaveLength(0);
+  });
+
+  it("rules out a sibling workshop's suggestion, which would ship the mod again", async () => {
+    const modpack = await seedModpack(ctx, {
+      curseforgeProjectId: ctx.nextProjectId++,
+    });
+    const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const sibling = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const mod = await seedMod(ctx, sibling, {
+      submittedBy: USER_A,
+      status: "next_update",
+    });
+    const member = await seedPackMod(ctx, workshop, {
+      curseforgeProjectId: mod.curseforgeProjectId,
+      origin: "suggestion",
+      workshopModId: mod.id,
+      droppedFromManifestAt: new Date(),
+    });
+
+    await modpackService.removeDroppedMember(workshop, member.id, ADMIN);
+
+    expect(await Q.workshop.mod.get({ id: mod.id })).toMatchObject({
+      status: "rejected",
+      reviewedBy: ADMIN,
+    });
+    await vi.waitFor(async () => {
+      expect(await modEvents(mod.id)).toHaveLength(1);
+    });
+    expect((await modEvents(mod.id))[0]).toMatchObject({
+      eventType: "rejected",
+      workshopId: sibling.id,
+    });
+  });
+
+  it("removes a dropped dependency member and prunes its stale edges", async () => {
+    const modpack = await seedModpack(ctx, {
+      curseforgeProjectId: ctx.nextProjectId++,
+    });
+    const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const member = await seedPackMod(ctx, workshop, {
+      origin: "dependency",
+      droppedFromManifestAt: new Date(),
+    });
+    const dependsOn = await seedProject(ctx);
+    await seedRequiredDependency(
+      workshop,
+      member.curseforgeProjectId,
+      dependsOn,
+    );
+
+    const result = await modpackService.removeDroppedMember(
+      workshop,
+      member.id,
+      ADMIN,
+    );
+
+    expect(result.mod).toBeNull();
+    expect(await Q.modpack.mod.find({ id: member.id })).toBeNull();
+    expect(vi.mocked(announceReview)).not.toHaveBeenCalled();
+    expect(
+      await Q.workshop.project.dependency.findAll({
+        workshopId: workshop.id,
+        curseforgeProjectId: member.curseforgeProjectId,
+      }),
+    ).toEqual([]);
+  });
+
+  it("leaves an already ruled-out suggestion as it is", async () => {
+    const modpack = await seedModpack(ctx, {
+      curseforgeProjectId: ctx.nextProjectId++,
+    });
+    const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const mod = await seedMod(ctx, workshop, {
+      submittedBy: USER_A,
+      status: "rejected",
+      rejectReason: "incompatible",
+    });
+    const member = await seedPackMod(ctx, workshop, {
+      curseforgeProjectId: mod.curseforgeProjectId,
+      origin: "suggestion",
+      workshopModId: mod.id,
+      droppedFromManifestAt: new Date(),
+    });
+    const eventSpy = vi.spyOn(Q.workshop.mod.event, "create");
+
+    try {
+      await modpackService.removeDroppedMember(workshop, member.id, ADMIN);
+
+      expect(await Q.modpack.mod.find({ id: member.id })).toBeNull();
+      expect(await Q.workshop.mod.get({ id: mod.id })).toMatchObject({
+        status: "rejected",
+        rejectReason: "incompatible",
+      });
+      expect(vi.mocked(announceReview)).not.toHaveBeenCalled();
+      expect(eventSpy).not.toHaveBeenCalled();
+    } finally {
+      eventSpy.mockRestore();
+    }
+  });
+
+  it("refuses a live member, an unknown one, and one from another pack", async () => {
+    const modpack = await seedModpack(ctx, {
+      curseforgeProjectId: ctx.nextProjectId++,
+    });
+    const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const live = await seedPackMod(ctx, workshop, {
+      origin: "dependency",
+      liveAt: new Date(),
+      liveInVersion: "1.0.0",
+    });
+    const other = await seedWorkshop(ctx);
+    const foreign = await seedPackMod(ctx, other, {
+      origin: "dependency",
+      droppedFromManifestAt: new Date(),
+    });
+
+    await expect(
+      modpackService.removeDroppedMember(workshop, live.id, ADMIN),
+    ).rejects.toThrow(BadRequestError);
+    expect(await Q.modpack.mod.find({ id: live.id })).not.toBeNull();
+    await expect(
+      modpackService.removeDroppedMember(workshop, live.id + 1_000_000, ADMIN),
+    ).rejects.toThrow(NotFoundError);
+    await expect(
+      modpackService.removeDroppedMember(workshop, foreign.id, ADMIN),
+    ).rejects.toThrow(NotFoundError);
+    expect(await Q.modpack.mod.find({ id: foreign.id })).not.toBeNull();
+  });
+
+  it("refuses archived workshops on either side", async () => {
+    const modpack = await seedModpack(ctx, {
+      curseforgeProjectId: ctx.nextProjectId++,
+    });
+    const archived = await seedWorkshop(ctx, {
+      modpackId: modpack.id,
+      status: "archived",
+    });
+    const member = await seedPackMod(ctx, archived, {
+      origin: "dependency",
+      droppedFromManifestAt: new Date(),
+    });
+    await expect(
+      modpackService.removeDroppedMember(archived, member.id, ADMIN),
+    ).rejects.toThrow(BadRequestError);
+    expect(await Q.modpack.mod.find({ id: member.id })).not.toBeNull();
+
+    const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const mod = await seedMod(ctx, archived, {
+      submittedBy: USER_A,
+      status: "next_update",
+    });
+    const linked = await seedPackMod(ctx, workshop, {
+      curseforgeProjectId: mod.curseforgeProjectId,
+      origin: "suggestion",
+      workshopModId: mod.id,
+      droppedFromManifestAt: new Date(),
+    });
+    await expect(
+      modpackService.removeDroppedMember(workshop, linked.id, ADMIN),
+    ).rejects.toThrow(BadRequestError);
+    expect(await Q.modpack.mod.find({ id: linked.id })).not.toBeNull();
+    expect(await Q.workshop.mod.get({ id: mod.id })).toMatchObject({
+      status: "next_update",
+    });
+  });
+
+  it("refuses when the member ships again between the read and the delete", async () => {
+    const modpack = await seedModpack(ctx, {
+      curseforgeProjectId: ctx.nextProjectId++,
+    });
+    const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const member = await seedPackMod(ctx, workshop, {
+      origin: "dependency",
+      droppedFromManifestAt: new Date(),
+    });
+    const find = Q.modpack.mod.find.bind(Q.modpack.mod);
+    const spy = vi
+      .spyOn(Q.modpack.mod, "find")
+      .mockImplementationOnce(async (filters) => {
+        const row = await find(filters);
+        await Q.modpack.mod.updateAll(
+          { droppedFromManifestAt: null, liveAt: new Date() },
+          { id: member.id },
+        );
+        return row;
+      });
+
+    try {
+      await expect(
+        modpackService.removeDroppedMember(workshop, member.id, ADMIN),
+      ).rejects.toThrow(ConflictError);
+    } finally {
+      spy.mockRestore();
+    }
+    expect(await Q.modpack.mod.get({ id: member.id })).toMatchObject({
+      droppedFromManifestAt: null,
+    });
+  });
+
+  it("rolls the delete back when the suggestion was reviewed meanwhile", async () => {
+    const modpack = await seedModpack(ctx, {
+      curseforgeProjectId: ctx.nextProjectId++,
+    });
+    const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const mod = await seedMod(ctx, workshop, {
+      submittedBy: USER_A,
+      status: "next_update",
+    });
+    const member = await seedPackMod(ctx, workshop, {
+      curseforgeProjectId: mod.curseforgeProjectId,
+      origin: "suggestion",
+      workshopModId: mod.id,
+      droppedFromManifestAt: new Date(),
+    });
+    const find = Q.workshop.mod.find.bind(Q.workshop.mod);
+    const spy = vi
+      .spyOn(Q.workshop.mod, "find")
+      .mockImplementationOnce(async (filters) => {
+        const row = await find(filters);
+        await Q.workshop.mod.updateAll({ status: "testing" }, { id: mod.id });
+        return row;
+      });
+    const eventSpy = vi.spyOn(Q.workshop.mod.event, "create");
+
+    try {
+      await expect(
+        modpackService.removeDroppedMember(workshop, member.id, ADMIN),
+      ).rejects.toThrow(ConflictError);
+      expect(eventSpy).not.toHaveBeenCalled();
+    } finally {
+      spy.mockRestore();
+      eventSpy.mockRestore();
+    }
+    expect(await Q.modpack.mod.find({ id: member.id })).not.toBeNull();
+    expect(await Q.workshop.mod.get({ id: mod.id })).toMatchObject({
+      status: "testing",
+    });
+    expect(vi.mocked(announceReview)).not.toHaveBeenCalled();
+  });
+});
+
 describe("ModpackService.reconcile", () => {
   it("gives a staged suggestion its row once the pack ships it", async () => {
     const modpack = await seedModpack(ctx, {
@@ -917,6 +1214,26 @@ describe("ModpackService.reconcile", () => {
     expect(healed.droppedFromManifestAt).toBeNull();
     expect(healed.liveAt).not.toBeNull();
     expect(healed.liveInVersion).toBe("1.0.0");
+  });
+
+  it("keeps the original drop date across repeated reconciles", async () => {
+    const modpack = await seedModpack(ctx, {
+      curseforgeProjectId: ctx.nextProjectId++,
+    });
+    const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const droppedAt = new Date("2026-01-01T00:00:00Z");
+    const member = await seedPackMod(ctx, workshop, {
+      origin: "dependency",
+      droppedFromManifestAt: droppedAt,
+    });
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      manifest({ version: "2.0.0", modIds: new Set<number>() }),
+    );
+
+    await modpackService.reconcile(modpack.id);
+
+    const row = await Q.modpack.mod.get({ id: member.id });
+    expect(row.droppedFromManifestAt).toEqual(droppedAt);
   });
 
   it("credits a shipped mod to its suggestion and ships it even mid review", async () => {
