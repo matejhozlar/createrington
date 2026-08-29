@@ -333,6 +333,35 @@ export const adminWorkshopsRouter = router({
       }
     }),
 
+  removeDroppedMember: adminProcedure
+    .meta({
+      description:
+        "Resolve a dropped-from-pack issue: remove the member row and rule its suggestion out",
+    })
+    .input(z.object({ modpackModId: id() }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        const result = await modpackService.removeDroppedMember(
+          input.modpackModId,
+          ctx.user.discordId,
+        );
+        await Q.admin.log.action.logAction({
+          ...auditActor(ctx),
+          actionType: "workshop_pack_member_remove",
+          description: `Removed dropped pack member "${result.projectName}" from modpack #${result.member.modpackId}`,
+          metadata: {
+            modpackId: result.member.modpackId,
+            modpackModId: result.member.id,
+            curseforgeProjectId: result.member.curseforgeProjectId,
+            workshopModId: result.mod?.id ?? null,
+          },
+        });
+        return { removed: true };
+      } catch (error) {
+        rethrowTrpc(error);
+      }
+    }),
+
   listDependencies: adminProcedure
     .meta({
       description:

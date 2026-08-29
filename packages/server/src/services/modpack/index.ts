@@ -34,6 +34,7 @@ import { refreshProjects } from "@/services/curseforge/ingest";
 import {
   REQUIRED_DEPENDENCY,
   loadDependencyContext,
+  pruneStaleDependencyEdges,
   type DependencyCoverage,
 } from "@/services/workshop/dependencies";
 import {
@@ -210,10 +211,17 @@ interface AttentionSubject {
   websiteUrl: string | null;
 }
 
+export interface ModpackDroppedMemberRemoval {
+  member: ModpackMod;
+  projectName: string;
+  mod: WorkshopMod | null;
+}
+
 export type ModpackAttentionItem =
   | (AttentionSubject & {
       type: "dropped_from_pack";
       modpackModId: number;
+      workshopModId: number | null;
       droppedAt: Date;
     })
   | (AttentionSubject & {
@@ -1033,6 +1041,7 @@ export class ModpackService {
       items.push({
         type: "dropped_from_pack",
         modpackModId: row.id,
+        workshopModId: row.workshopModId,
         ...attentionSubject(row.curseforgeProjectId),
         droppedAt: row.droppedFromManifestAt!,
       });
@@ -1077,6 +1086,89 @@ export class ModpackService {
       });
     }
     return items;
+  }
+
+  /**
+   * Resolve a dropped_from_pack item the way an admin means it: the mod is
+   * out of the pack for good. The member row is deleted, which takes it off
+   * the In Pack tab and the public pack page, and a suggestion behind it is
+   * ruled out so it stops queuing for the next update. Only a row the latest
+   * publish dropped can go through here; a live member leaves via a release
+   * that no longer ships it. A project that ships again later gets a fresh
+   * row from reconcile like any newcomer.
+   */
+  async removeDroppedMember(
+    modpackModId: number,
+    adminId: string,
+  ): Promise<ModpackDroppedMemberRemoval> {
+    const member = await Q.modpack.mod.find({ id: modpackModId });
+    if (!member) {
+      throw new NotFoundError(`Pack member #${modpackModId} not found`);
+    }
+    if (member.droppedFromManifestAt === null) {
+      throw new BadRequestError(
+        "This mod is still in the published pack, publish a release without it first",
+      );
+    }
+    const [project, mod] = await Promise.all([
+      Q.curseforge.project.find({ id: member.curseforgeProjectId }),
+      member.workshopModId
+        ? Q.workshop.mod.find({ id: member.workshopModId })
+        : Promise.resolve(null),
+    ]);
+    const toReject = mod && mod.status !== "rejected" ? mod : null;
+    const now = new Date();
+
+    await db.inTransaction(async (tx) => {
+      const deleted = await tx.modpack.mod.deleteAll({
+        id: member.id,
+        droppedFromManifestAt: { $ne: null },
+      });
+      if (deleted === 0) {
+        throw new ConflictError(
+          "This pack member just changed, refresh and try again",
+        );
+      }
+      if (!toReject) return;
+      const changed = await tx.workshop.mod.updateAll(
+        {
+          status: "rejected",
+          rejectReason: null,
+          rejectNote: null,
+          reviewedBy: adminId,
+          reviewedAt: now,
+          fileChosen: false,
+        },
+        { id: toReject.id, status: toReject.status },
+      );
+      if (changed === 0) {
+        throw new ConflictError(
+          "This mod was just reviewed by someone else, refresh and try again",
+        );
+      }
+    });
+
+    let updated = mod;
+    if (toReject) {
+      updated = await Q.workshop.mod.get({ id: toReject.id });
+      recordModEvent({
+        eventType: "rejected",
+        workshopId: toReject.workshopId,
+        workshopModId: toReject.id,
+        curseforgeProjectId: toReject.curseforgeProjectId,
+        actorDiscordId: adminId,
+        fromStatus: toReject.status,
+        toStatus: "rejected",
+      });
+      void announceReview(updated, "rejected");
+      const workshop = await Q.workshop.find({ id: toReject.workshopId });
+      if (workshop) await pruneStaleDependencyEdges(workshop);
+    }
+    return {
+      member,
+      projectName: project?.name ?? `#${member.curseforgeProjectId}`,
+      mod: updated,
+    };
   }
 
   /** Decorate member rows; public so callers holding a subset can reuse it. */
@@ -1276,15 +1368,17 @@ export class ModpackService {
         await Q.modpack.mod.deleteAll({ id: row.id });
         continue;
       }
-      await Q.modpack.mod.updateAll(
-        {
-          liveAt: null,
-          liveInVersion: null,
-          droppedFromManifestAt: now,
-          updatedAt: now,
-        },
-        { id: row.id },
-      );
+      if (row.droppedFromManifestAt === null) {
+        await Q.modpack.mod.updateAll(
+          {
+            liveAt: null,
+            liveInVersion: null,
+            droppedFromManifestAt: now,
+            updatedAt: now,
+          },
+          { id: row.id },
+        );
+      }
       if (row.workshopModId) {
         droppedModIds.push(row.workshopModId);
         droppedRequired.set(row.workshopModId, row.required);

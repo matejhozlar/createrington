@@ -306,7 +306,7 @@ export class WorkshopService {
         description: modpack.description,
         curseforgeUrl,
       },
-      mods,
+      mods: mods.filter((mod) => mod.droppedFromManifestAt === null),
     };
   }
 
@@ -1159,7 +1159,10 @@ export class WorkshopService {
     const workshopId = workshop.id;
     const [packModCount, pendingModCount, participantIds, mods, packSample] =
       await Promise.all([
-        Q.modpack.mod.count({ modpackId: workshop.modpackId }),
+        Q.modpack.mod.count({
+          modpackId: workshop.modpackId,
+          droppedFromManifestAt: null,
+        }),
         Q.workshop.mod.count({ workshopId, status: "pending" }),
         Q.workshop.participantDiscordIds(workshopId),
         Q.workshop.mod.findAll(
@@ -1171,7 +1174,7 @@ export class WorkshopService {
           },
         ),
         Q.modpack.mod.findAll(
-          { modpackId: workshop.modpackId },
+          { modpackId: workshop.modpackId, droppedFromManifestAt: null },
           {
             orderBy: "createdAt",
             orderDirection: "desc",

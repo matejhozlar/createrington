@@ -550,6 +550,7 @@ export function AdminWorkshopDetail() {
             error={attentionQuery.error?.message ?? null}
             onRetry={() => attentionQuery.refetch()}
             onView={setDetailModId}
+            onResolved={invalidate}
             unresolvedCount={attentionCount ?? 0}
             envDisplay={envDisplay}
             onSetEnvironment={handleSetEnvironment}
