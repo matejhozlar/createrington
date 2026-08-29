@@ -48,7 +48,7 @@ export type PlayerPlaytimeBreakdown = {
   };
 };
 
-export interface PlaytimeHoursBreakdown {
+export interface ServerHoursBreakdown {
   byServer: Array<{
     serverId: number;
     serverName: string;
@@ -277,7 +277,9 @@ export class PlayerPlaytimeSummaryQueries extends PlayerPlaytimeSummaryBaseQueri
   /**
    * Get total hours played with breakdown by server
    *
-   * Returns floored hours for each server plus global total.
+   * Returns floored hours for each server plus global total. The total is
+   * floored once from the summed seconds rather than summed from the
+   * per-server floors, so it always equals getTotalHours().
    * Useful for dashboard displays.
    *
    * @returns Object with server breakdown and global total
@@ -289,34 +291,38 @@ export class PlayerPlaytimeSummaryQueries extends PlayerPlaytimeSummaryBaseQueri
    * //     { serverId: 1, serverName: "Survival", hours: 1234 },
    * //     { serverId: 2, serverName: "Creative", hours: 987 }
    * //   ],
-   * //   total: 2221
+   * //   total: 2222
    * // }
    */
-  async getTotalHoursBreakdown(): Promise<PlaytimeHoursBreakdown> {
+  async getTotalHoursBreakdown(): Promise<ServerHoursBreakdown> {
     const query = `
-      SELECT 
+      SELECT
         s.server_id,
         srv.name as server_name,
-        FLOOR(SUM(s.total_seconds) / 3600) as hours
+        SUM(s.total_seconds) as total_seconds
       FROM ${this.table} s
       JOIN server srv ON srv.id = s.server_id
       GROUP BY s.server_id, srv.name
-      ORDER BY hours DESC
+      ORDER BY total_seconds DESC
     `;
 
     const result = await this.runQuery<{
       server_id: number;
       server_name: string;
-      hours: string;
+      total_seconds: string;
     }>("get total hours breakdown", query);
 
     const byServer = result.rows.map((row) => ({
       serverId: row.server_id,
       serverName: row.server_name,
-      hours: parseInt(row.hours, 10),
+      hours: Math.floor(Number(row.total_seconds) / 3600),
     }));
 
-    const total = byServer.reduce((sum, server) => sum + server.hours, 0);
+    const totalSeconds = result.rows.reduce(
+      (sum, row) => sum + Number(row.total_seconds),
+      0,
+    );
+    const total = Math.floor(totalSeconds / 3600);
 
     return { byServer, total };
   }

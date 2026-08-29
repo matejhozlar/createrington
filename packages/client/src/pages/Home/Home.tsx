@@ -52,7 +52,7 @@ export function Home() {
     trpc.public.players.count.useQuery({});
 
   const { data: playtimeData, isLoading: isLoadingPlaytime } =
-    trpc.public.metrics.playtime.getTotalHours.useQuery({ serverId });
+    trpc.public.metrics.playtime.getTotalHours.useQuery({});
 
   const heroImages = [
     "/assets/hero/gondola-station.webp",
@@ -114,7 +114,7 @@ export function Home() {
         (playtimeData?.totalHours ?? "N/A")
       ),
       title: "Hours Played",
-      description: "Total playtime across all players",
+      description: "Total playtime across all seasons",
     },
   ];
 
