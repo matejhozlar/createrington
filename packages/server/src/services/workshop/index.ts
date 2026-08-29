@@ -1375,6 +1375,12 @@ export class WorkshopService {
         "Only mods waiting for the next update can be enabled or disabled",
       );
     }
+    const workshop = await this.getWorkshop(mod.workshopId);
+    if (workshop.status === "archived") {
+      throw new BadRequestError(
+        "Cannot enable or disable mods in an archived workshop",
+      );
+    }
     if (mod.required === required) return { mod, changed: false };
     const claimed = await Q.workshop.mod.updateAll(
       { required },
