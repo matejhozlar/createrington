@@ -1,3 +1,9 @@
+## v1.46.1 (2026-08-29)
+
+### @createrington/server (1.47.0 → 1.47.1)
+- [refactor] Run Discord OAuth through the main bot's application instead of a separate OAuth app, reusing the bot's application ID as the OAuth client ID and replacing `DISCORD_OAUTH_CLIENT_SECRET` with `DISCORD_MAIN_BOT_CLIENT_SECRET`
+- [refactor] Consolidate the split dev/prod OAuth redirect URIs (`DISCORD_OAUTH_REDIRECT_URI_DEV` + `DISCORD_OAUTH_REDIRECT_URI_PROD`) into a single `DISCORD_OAUTH_REDIRECT_URI` with a production validation guard that rejects dev/local hostnames
+
 ## v1.46.0 (2026-08-29)
 
 ### @createrington/server (1.46.0 → 1.47.0)

@@ -95,22 +95,17 @@ const envSchema = z
     DISCORD_MAIN_BOT_TOKEN: discordToken("Main bot token"),
     DISCORD_MAIN_BOT_ID: discordId("Main bot ID"),
     DISCORD_MAIN_BOT_WEBHOOK_ID: discordId("Main bot webhook ID"),
+    // OAuth2 client secret of the main bot's Discord application. User login
+    // runs against that application, so DISCORD_MAIN_BOT_ID doubles as the
+    // OAuth client ID.
+    DISCORD_MAIN_BOT_CLIENT_SECRET: z
+      .string()
+      .min(32, "Main bot client secret must be at least 32 characters"),
     DISCORD_WEB_BOT_TOKEN: discordToken("Web bot token"),
     DISCORD_WEB_BOT_ID: discordId("Web bot ID"),
-    DISCORD_OAUTH_CLIENT_ID: discordId("OAuth client ID"),
-    DISCORD_OAUTH_CLIENT_SECRET: z
+    DISCORD_OAUTH_REDIRECT_URI: z
       .string()
-      .min(1, "OAuth client secret is required")
-      .min(32, "OAuth client secret must be at least 32 characters"),
-    DISCORD_OAUTH_REDIRECT_URI_DEV: z
-      .string()
-      .url("Development redirect URI must be a valid URL"),
-    // Production-only: only consumed when NODE_ENV === "production".
-    // Required at runtime by the prod superRefine below.
-    DISCORD_OAUTH_REDIRECT_URI_PROD: z
-      .string()
-      .url("Production redirect URI must be a valid URL")
-      .optional(),
+      .url("OAuth redirect URI must be a valid URL"),
 
     // Auth
     JWT_ACCESS_SECRET: z
@@ -137,8 +132,8 @@ const envSchema = z
     // parent domain like ".createrington.com" to enable cross-subdomain SSO.
     COOKIE_DOMAIN: z.string().default(""),
     // Server-driven SSO callback URL. Must be registered as an OAuth2 redirect
-    // URI in the Discord developer portal. Used by /api/auth/sso/start +
-    // /api/auth/sso/callback.
+    // URI on the main bot's application, next to DISCORD_OAUTH_REDIRECT_URI.
+    // Used by /api/auth/sso/start + /api/auth/sso/callback.
     SSO_CALLBACK_URL: z.string().default(""),
     // Comma-separated list of additional CORS origins (e.g.
     // "https://sandbox.createrington.com") that are allowed to call the API
@@ -302,10 +297,6 @@ const envSchema = z
         "Rails 'n Sails SFTP stats path required",
       ],
       ["RAILS_N_SAILS_RCON_PASSWORD", "RCON password is required"],
-      [
-        "DISCORD_OAUTH_REDIRECT_URI_PROD",
-        "Production OAuth redirect URI is required",
-      ],
       ["PUPPETEER_SECRET", "Puppeteer secret is required"],
       ["SKIN_API_KEY", "Skin API key is required"],
       ["RESEND_API_KEY", "Resend API key is required"],
@@ -329,6 +320,17 @@ const envSchema = z
         code: z.ZodIssueCode.custom,
         path: ["RAILS_N_SAILS_SERVER_IP"],
         message: `Rails 'n Sails server IP is required (${DEV_FALLBACK_SERVER_IP} is the dev fallback)`,
+      });
+    }
+
+    // Required in every environment, so the loop above cannot tell a value
+    // copied from staging apart from the real one: prod would send users to
+    // dev.createrington.com and Discord would reject the unregistered URI.
+    if (isDevHostname(data.DISCORD_OAUTH_REDIRECT_URI)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["DISCORD_OAUTH_REDIRECT_URI"],
+        message: "OAuth redirect URI still points at a dev/local host",
       });
     }
   });

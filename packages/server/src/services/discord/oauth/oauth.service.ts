@@ -57,17 +57,19 @@ interface OAuthConfig {
 /**
  * Singleton wrapper around the Discord OAuth 2.0 endpoints used for user
  * login: authorize URL generation, code-for-token exchange, profile lookup,
- * refresh, and revoke. `authenticate` glues those steps together and resolves
- * the caller's application role (ADMIN / USER / UNVERIFIED) from the player
- * and admin tables, throwing `UnverifiedUserError` when the Discord account
- * has no matching player. Required env vars are validated at construction so
- * misconfiguration fails on first `getInstance` rather than at first login.
+ * refresh, and revoke. Login runs against the main bot's Discord application
+ * (its ID doubles as the OAuth client ID, the client secret comes from that
+ * application's OAuth2 page). `authenticate` glues those steps together and
+ * resolves the caller's application role (ADMIN / USER / UNVERIFIED) from the
+ * player and admin tables, throwing `UnverifiedUserError` when the Discord
+ * account has no matching player. Required env vars are validated at
+ * construction so misconfiguration fails on first `getInstance` rather than
+ * at first login.
  */
 export class DiscordOAuthService {
   private static instance: DiscordOAuthService;
 
   private readonly config: OAuthConfig;
-  private readonly isDev = appConfig.envMode.isDev;
 
   private constructor() {
     this.config = appConfig.discord.oauth;
@@ -85,15 +87,11 @@ export class DiscordOAuthService {
   private validate(): void {
     const missing: string[] = [];
 
-    if (!this.config.clientId) missing.push("DISCORD_OAUTH_CLIENT_ID");
-    if (!this.config.clientSecret) missing.push("DISCORD_OAUTH_CLIENT_SECRET");
-    if (!this.config.redirectUri) {
-      missing.push(
-        this.isDev
-          ? "DISCORD_OAUTH_REDIRECT_URI_DEV"
-          : "DISCORD_OAUTH_REDIRECT_URI_PROD",
-      );
+    if (!this.config.clientId) missing.push("DISCORD_MAIN_BOT_ID");
+    if (!this.config.clientSecret) {
+      missing.push("DISCORD_MAIN_BOT_CLIENT_SECRET");
     }
+    if (!this.config.redirectUri) missing.push("DISCORD_OAUTH_REDIRECT_URI");
 
     if (missing.length > 0) {
       throw new Error(
