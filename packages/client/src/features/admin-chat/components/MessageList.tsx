@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { MessageRow } from "./MessageRow";
 import { TypingIndicator } from "./TypingIndicator";
+import { readingColumnClass, type ChatLayout } from "../layout";
 import type { ChatMessage } from "../types";
 
 interface MessageListProps {
@@ -10,6 +12,7 @@ interface MessageListProps {
   /** Whether a send is in-flight but no assistant content has arrived yet. */
   awaitingReply: boolean;
   navigate: (to: string) => void;
+  layout: ChatLayout;
 }
 
 /**
@@ -21,6 +24,7 @@ export function MessageList({
   messages,
   awaitingReply,
   navigate,
+  layout,
 }: MessageListProps): React.JSX.Element {
   const scrollRef = useRef<HTMLDivElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
@@ -47,6 +51,16 @@ export function MessageList({
     if (pinnedToBottom) scrollToBottom("smooth");
   }, [messages, awaitingReply, pinnedToBottom]);
 
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || !pinnedToBottom) return;
+    const observer = new ResizeObserver(() => {
+      el.scrollTop = el.scrollHeight;
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [pinnedToBottom]);
+
   // On first mount, snap to bottom without animation.
   useEffect(() => {
     scrollToBottom("auto");
@@ -56,25 +70,27 @@ export function MessageList({
     <div className="relative flex-1 overflow-hidden">
       <div
         ref={scrollRef}
-        className="flex h-full flex-col overflow-y-auto px-3 py-3"
+        className="flex h-full flex-col overflow-y-auto overscroll-contain px-3 py-3"
       >
-        {messages.map((msg, i) => {
-          const prev = messages[i - 1];
-          const next = messages[i + 1];
-          const isGroupStart = !prev || prev.role !== msg.role;
-          const showAvatar = !next || next.role !== msg.role;
-          return (
-            <MessageRow
-              key={msg.id}
-              message={msg}
-              navigate={navigate}
-              showAvatar={showAvatar}
-              isGroupStart={isGroupStart}
-            />
-          );
-        })}
-        {awaitingReply && <TypingIndicator />}
-        <div ref={endRef} />
+        <div className={cn("flex flex-col", readingColumnClass(layout))}>
+          {messages.map((msg, i) => {
+            const prev = messages[i - 1];
+            const next = messages[i + 1];
+            const isGroupStart = !prev || prev.role !== msg.role;
+            const showAvatar = !next || next.role !== msg.role;
+            return (
+              <MessageRow
+                key={msg.id}
+                message={msg}
+                navigate={navigate}
+                showAvatar={showAvatar}
+                isGroupStart={isGroupStart}
+              />
+            );
+          })}
+          {awaitingReply && <TypingIndicator />}
+          <div ref={endRef} />
+        </div>
       </div>
       {!pinnedToBottom && (
         <Button

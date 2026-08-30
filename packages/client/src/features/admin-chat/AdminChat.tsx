@@ -1,7 +1,7 @@
 import { useLocation, useNavigate } from "react-router";
-import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/auth";
 import { useAdminChat } from "@/contexts/admin-chat";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { ChatPanel } from "./components/ChatPanel";
 import { ChatToggle } from "./components/ChatToggle";
 import { useAdminChatSession } from "./hooks/use-admin-chat-session";
@@ -12,6 +12,7 @@ export function AdminChat(): React.JSX.Element | null {
   const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const { enabled, bubbleVisible, drawerOpen, openDrawer, closeDrawer } =
     useAdminChat();
 
@@ -30,6 +31,7 @@ export function AdminChat(): React.JSX.Element | null {
       {drawerOpen && (
         <ChatPanel
           pathname={location.pathname}
+          fullscreen={isMobile}
           messages={session.messages}
           sessionId={session.sessionId}
           sessionActive={session.sessionActive}
@@ -48,13 +50,13 @@ export function AdminChat(): React.JSX.Element | null {
           navigate={navigate}
         />
       )}
-      <div className={cn(drawerOpen && "hidden sm:block")}>
+      {!(drawerOpen && isMobile) && (
         <ChatToggle
           open={drawerOpen}
           unread={unread}
           onToggle={() => (drawerOpen ? closeDrawer() : openDrawer())}
         />
-      </div>
+      )}
     </div>
   );
 }

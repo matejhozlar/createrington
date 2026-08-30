@@ -1,14 +1,17 @@
 import { useRef } from "react";
 import { Loader2, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { MentionMenu } from "./MentionMenu";
 import { useMentions } from "../hooks/use-mentions";
+import { readingColumnClass, type ChatLayout } from "../layout";
 
 interface MessageInputProps {
   value: string;
   onChange: (value: string) => void;
   onSubmit: () => void;
   sending: boolean;
+  layout: ChatLayout;
   disabled?: boolean;
 }
 
@@ -17,6 +20,7 @@ export function MessageInput({
   onChange,
   onSubmit,
   sending,
+  layout,
   disabled = false,
 }: MessageInputProps): React.JSX.Element {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -76,38 +80,48 @@ export function MessageInput({
   const canSend = !sending && value.trim().length > 0 && !disabled;
 
   return (
-    <div className="relative flex shrink-0 items-end gap-2 border-t border-border px-3 py-2.5">
-      <MentionMenu
-        matches={mentions.matches}
-        activeIndex={mentions.index}
-        onSelect={acceptMention}
-        onHover={mentions.setIndex}
-      />
-      <textarea
-        ref={textareaRef}
-        value={value}
-        onChange={handleChange}
-        onKeyDown={handleKeyDown}
-        onKeyUp={(e) => mentions.syncFromCursor(e.currentTarget)}
-        onClick={(e) => mentions.syncFromCursor(e.currentTarget)}
-        placeholder="Ask anything... (type @ for repo)"
-        disabled={sending || disabled}
-        rows={1}
-        className="max-h-24 min-h-9 flex-1 resize-none rounded-lg border border-border bg-background px-3 py-2 text-[0.8125rem] leading-relaxed text-foreground outline-none focus:border-ring"
-      />
-      <Button
-        size="icon"
-        onClick={onSubmit}
-        disabled={!canSend}
-        aria-label="Send message"
-        className="mb-1"
-      >
-        {sending ? (
-          <Loader2 size={14} className="animate-spin" />
-        ) : (
-          <Send size={14} />
+    <div className="shrink-0 border-t border-border px-3 py-2.5">
+      <div
+        className={cn(
+          "relative flex items-end gap-2",
+          readingColumnClass(layout),
         )}
-      </Button>
+      >
+        <MentionMenu
+          matches={mentions.matches}
+          activeIndex={mentions.index}
+          onSelect={acceptMention}
+          onHover={mentions.setIndex}
+        />
+        <textarea
+          ref={textareaRef}
+          value={value}
+          onChange={handleChange}
+          onKeyDown={handleKeyDown}
+          onKeyUp={(e) => mentions.syncFromCursor(e.currentTarget)}
+          onClick={(e) => mentions.syncFromCursor(e.currentTarget)}
+          placeholder="Ask anything... (type @ for repo)"
+          disabled={sending || disabled}
+          rows={1}
+          className={cn(
+            "max-h-24 min-h-9 flex-1 resize-none rounded-lg border border-border bg-background px-3 py-2 leading-relaxed text-foreground outline-none focus:border-ring",
+            layout === "fullscreen" ? "text-base" : "text-[0.8125rem]",
+          )}
+        />
+        <Button
+          size="icon"
+          onClick={onSubmit}
+          disabled={!canSend}
+          aria-label="Send message"
+          className="mb-1"
+        >
+          {sending ? (
+            <Loader2 size={14} className="animate-spin" />
+          ) : (
+            <Send size={14} />
+          )}
+        </Button>
+      </div>
     </div>
   );
 }
