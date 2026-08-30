@@ -9,6 +9,12 @@ import { lotteryService } from "@/services/lottery";
 import { rewardService } from "@/services/reward/reward.service";
 import { formatDuration } from "@/utils/format";
 import type { Request, Response } from "express";
+import {
+  hashRequest,
+  parseIdempotencyKey,
+  runIdempotent,
+  sendOutcome,
+} from "./currency.idempotency";
 
 const moneyFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -114,57 +120,81 @@ export class CurrencyController {
 
   /**
    * POST /api/currency/deposit
-   * Body: { amount: number, reason?: string }
+   * Body: { amount: number, reason?: string, idempotencyKey?: string }
    *
-   * Adds currency to the authenticated player's balance.
+   * Adds currency to the authenticated player's balance. With an
+   * idempotencyKey, a replay of the same request returns the stored response
+   * without crediting again.
    */
   static async deposit(req: Request, res: Response): Promise<void> {
     const { uuid, name } = getAuthedPlayer(req);
-    const { amount: rawAmount, reason } = req.body;
+    const { amount: rawAmount, reason, idempotencyKey: rawKey } = req.body;
 
     if (rawAmount == null) {
       throw new BadRequestError("amount is required");
     }
 
     const amount = parsePositiveMoney(rawAmount, "amount");
+    const idempotencyKey = parseIdempotencyKey(rawKey);
+    const description = reason || "Deposit";
 
-    try {
-      const newBalance = await R.balanceRepo.add(
-        uuid,
-        amount,
-        reason || "Deposit",
-        BalanceTransactionType.DEPOSIT,
-      );
+    const outcome = await runIdempotent(
+      {
+        playerUuid: uuid,
+        key: idempotencyKey,
+        requestHash: hashRequest("deposit", { amount, description }),
+      },
+      async (tx) => {
+        try {
+          const newBalance = await R.balanceRepo.add(
+            uuid,
+            amount,
+            description,
+            BalanceTransactionType.DEPOSIT,
+            { idempotencyKey, tx },
+          );
 
-      respondSuccess(res, {
-        message: `Deposited ${amount} for player ${name}`,
-        playerMessage: `Deposited ${formatMoney(amount)}. New balance: ${formatMoney(newBalance)}`,
-        data: {
-          new_balance: newBalance,
-        },
-      });
-    } catch (error) {
-      if (error instanceof Error) {
-        if (error.message.includes("would exceed maximum balance")) {
-          throw new BadRequestError("Would exceed maximum balance", undefined, {
-            playerMessage: "Deposit would exceed your maximum balance.",
-          });
+          return {
+            message: `Deposited ${amount} for player ${name}`,
+            playerMessage: `Deposited ${formatMoney(amount)}. New balance: ${formatMoney(newBalance)}`,
+            data: {
+              new_balance: newBalance,
+            },
+          };
+        } catch (error) {
+          if (
+            error instanceof Error &&
+            error.message.includes("would exceed maximum balance")
+          ) {
+            throw new BadRequestError(
+              "Would exceed maximum balance",
+              undefined,
+              { playerMessage: "Deposit would exceed your maximum balance." },
+            );
+          }
+          throw error;
         }
-      }
-      throw error;
-    }
+      },
+    );
+
+    sendOutcome(res, outcome);
   }
 
   /**
    * POST /api/currency/withdraw
-   * Body: { denomination: number, count: number }
+   * Body: { denomination: number, count: number, idempotencyKey?: string }
    *
    * Withdraws currency from the authenticated player's balance.
-   * Total withdrawn = denomination * count.
+   * Total withdrawn = denomination * count. With an idempotencyKey, a replay
+   * of the same request returns the stored response without debiting again.
    */
   static async withdraw(req: Request, res: Response): Promise<void> {
     const { uuid, name } = getAuthedPlayer(req);
-    const { denomination: rawDenomination, count: rawCount } = req.body;
+    const {
+      denomination: rawDenomination,
+      count: rawCount,
+      idempotencyKey: rawKey,
+    } = req.body;
 
     if (rawDenomination == null || rawCount == null) {
       throw new BadRequestError("denomination and count are required");
@@ -191,34 +221,49 @@ export class CurrencyController {
       );
     }
 
-    try {
-      const newBalance = await R.balanceRepo.deduct(
-        uuid,
-        totalAmount,
-        `Withdraw ${count}x${denomination}`,
-        BalanceTransactionType.WITHDRAW,
-      );
+    const idempotencyKey = parseIdempotencyKey(rawKey);
 
-      respondSuccess(res, {
-        message: `Withdrew ${totalAmount} for player ${name} (${count}x${denomination})`,
-        playerMessage: `Withdrew ${formatMoney(totalAmount)}.`,
-        data: {
-          withdrawn: totalAmount,
-          new_balance: newBalance,
-          denomination,
-          count,
-        },
-      });
-    } catch (error) {
-      if (error instanceof Error) {
-        if (error.message.includes("Insufficient balance")) {
-          throw new BadRequestError("Insufficient balance", undefined, {
-            playerMessage: "You don't have enough money to withdraw that.",
-          });
+    const outcome = await runIdempotent(
+      {
+        playerUuid: uuid,
+        key: idempotencyKey,
+        requestHash: hashRequest("withdraw", { denomination, count }),
+      },
+      async (tx) => {
+        try {
+          const newBalance = await R.balanceRepo.deduct(
+            uuid,
+            totalAmount,
+            `Withdraw ${count}x${denomination}`,
+            BalanceTransactionType.WITHDRAW,
+            { idempotencyKey, tx },
+          );
+
+          return {
+            message: `Withdrew ${totalAmount} for player ${name} (${count}x${denomination})`,
+            playerMessage: `Withdrew ${formatMoney(totalAmount)}.`,
+            data: {
+              withdrawn: totalAmount,
+              new_balance: newBalance,
+              denomination,
+              count,
+            },
+          };
+        } catch (error) {
+          if (
+            error instanceof Error &&
+            error.message.includes("Insufficient balance")
+          ) {
+            throw new BadRequestError("Insufficient balance", undefined, {
+              playerMessage: "You don't have enough money to withdraw that.",
+            });
+          }
+          throw error;
         }
-      }
-      throw error;
-    }
+      },
+    );
+
+    sendOutcome(res, outcome);
   }
 
   /**
