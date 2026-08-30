@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLockBodyScroll } from "@/hooks/use-lock-body-scroll";
@@ -104,7 +104,7 @@ export function ChatPanel({
   const viewport = useVisualViewport();
   useLockBodyScroll(layout === "fullscreen");
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const previous = document.activeElement;
     const panel = panelRef.current;
     if (panel && !panel.contains(document.activeElement)) {

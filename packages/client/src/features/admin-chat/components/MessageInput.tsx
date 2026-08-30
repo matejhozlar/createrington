@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { Loader2, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -25,6 +25,11 @@ export function MessageInput({
 }: MessageInputProps): React.JSX.Element {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const mentions = useMentions();
+  const autoFocus = layout !== "fullscreen";
+
+  useEffect(() => {
+    if (autoFocus) textareaRef.current?.focus({ preventScroll: true });
+  }, [autoFocus]);
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>): void => {
     const next = e.target.value;
@@ -102,7 +107,6 @@ export function MessageInput({
           onClick={(e) => mentions.syncFromCursor(e.currentTarget)}
           placeholder="Ask anything... (type @ for repo)"
           disabled={sending || disabled}
-          autoFocus={layout !== "fullscreen"}
           rows={1}
           className={cn(
             "max-h-24 min-h-9 flex-1 resize-none rounded-lg border border-border bg-background px-3 py-2 leading-relaxed text-foreground outline-none focus:border-ring",
