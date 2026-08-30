@@ -144,7 +144,7 @@ export function ChatHeader({
                 </Button>
               </TooltipTrigger>
               <TooltipContent className="z-[10000]">
-                Close (Ctrl+I to hide)
+                Close (Ctrl+I to toggle)
               </TooltipContent>
             </Tooltip>
           </>

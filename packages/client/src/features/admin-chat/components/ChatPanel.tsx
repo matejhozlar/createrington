@@ -19,6 +19,11 @@ const DOCKED_GEOMETRY = {
   "--chat-bottom": "5rem",
 } as React.CSSProperties;
 
+const DOCKED_GEOMETRY_WITHOUT_LAUNCHER = {
+  ...DOCKED_GEOMETRY,
+  "--chat-bottom": "1.25rem",
+} as React.CSSProperties;
+
 const EXPANDED_WIDTH = "min(64rem, 100% - 4rem)";
 const EXPANDED_HEIGHT = "min(60rem, 85%)";
 const EXPANDED_GEOMETRY = {
@@ -31,6 +36,9 @@ const EXPANDED_GEOMETRY = {
 interface ChatPanelProps {
   pathname: string;
   fullscreen: boolean;
+  expanded: boolean;
+  onExpandedChange: (expanded: boolean) => void;
+  withLauncher: boolean;
   messages: ChatMessage[];
   sessionId: number | null;
   sessionActive: boolean;
@@ -50,6 +58,9 @@ interface ChatPanelProps {
 export function ChatPanel({
   pathname,
   fullscreen,
+  expanded,
+  onExpandedChange,
+  withLauncher,
   messages,
   sessionId,
   sessionActive,
@@ -66,7 +77,6 @@ export function ChatPanel({
   navigate,
 }: ChatPanelProps): React.JSX.Element {
   const [input, setInput] = useState("");
-  const [expanded, setExpanded] = useState(false);
   const layout: ChatLayout = fullscreen
     ? "fullscreen"
     : expanded
@@ -78,11 +88,11 @@ export function ChatPanel({
   useEffect(() => {
     if (layout !== "expanded") return;
     const onKeyDown = (e: KeyboardEvent): void => {
-      if (e.key === "Escape" && !e.defaultPrevented) setExpanded(false);
+      if (e.key === "Escape" && !e.defaultPrevented) onExpandedChange(false);
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [layout]);
+  }, [layout, onExpandedChange]);
 
   const handleSend = (): void => {
     if (!input.trim()) return;
@@ -100,14 +110,16 @@ export function ChatPanel({
         : {}
       : layout === "expanded"
         ? EXPANDED_GEOMETRY
-        : DOCKED_GEOMETRY;
+        : withLauncher
+          ? DOCKED_GEOMETRY
+          : DOCKED_GEOMETRY_WITHOUT_LAUNCHER;
 
   return (
     <>
       {layout !== "fullscreen" && (
         <div
           aria-hidden
-          onClick={() => setExpanded(false)}
+          onClick={() => onExpandedChange(false)}
           className={cn(
             "fixed inset-0 z-10 bg-black/50 transition-opacity duration-300",
             layout === "expanded"
@@ -143,7 +155,7 @@ export function ChatPanel({
           canStartNew={sessionId !== null && !sessionActive}
           onNewChat={() => onStart()}
           onEndSession={onEnd}
-          onToggleExpand={() => setExpanded((v) => !v)}
+          onToggleExpand={() => onExpandedChange(!expanded)}
           onClose={onClose}
         />
 

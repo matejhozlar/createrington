@@ -102,6 +102,7 @@ export function MessageInput({
           onClick={(e) => mentions.syncFromCursor(e.currentTarget)}
           placeholder="Ask anything... (type @ for repo)"
           disabled={sending || disabled}
+          autoFocus={layout !== "fullscreen"}
           rows={1}
           className={cn(
             "max-h-24 min-h-9 flex-1 resize-none rounded-lg border border-border bg-background px-3 py-2 leading-relaxed text-foreground outline-none focus:border-ring",

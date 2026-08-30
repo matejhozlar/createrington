@@ -15,8 +15,15 @@ export function AdminChat(): React.JSX.Element | null {
   const location = useLocation();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const { enabled, bubbleVisible, drawerOpen, openDrawer, closeDrawer } =
-    useAdminChat();
+  const {
+    enabled,
+    bubbleVisible,
+    drawerOpen,
+    expanded,
+    openDrawer,
+    closeDrawer,
+    setExpanded,
+  } = useAdminChat();
 
   const isAdmin = Boolean(user?.isAdmin);
   const liveSession = useAdminChatSession({ isAdmin, open: drawerOpen });
@@ -29,7 +36,9 @@ export function AdminChat(): React.JSX.Element | null {
   const unread = useUnreadTracker(session.messages, drawerOpen);
 
   if (!enabled) return null;
-  if (!bubbleVisible) return null;
+  if (!bubbleVisible && !drawerOpen) return null;
+
+  const showToggle = bubbleVisible && !(drawerOpen && isMobile);
 
   return (
     <div className="fixed right-5 bottom-5 z-[9999]">
@@ -37,6 +46,9 @@ export function AdminChat(): React.JSX.Element | null {
         <ChatPanel
           pathname={location.pathname}
           fullscreen={isMobile}
+          expanded={expanded}
+          onExpandedChange={setExpanded}
+          withLauncher={bubbleVisible}
           messages={session.messages}
           sessionId={session.sessionId}
           sessionActive={session.sessionActive}
@@ -55,7 +67,7 @@ export function AdminChat(): React.JSX.Element | null {
           navigate={navigate}
         />
       )}
-      {!(drawerOpen && isMobile) && (
+      {showToggle && (
         <ChatToggle
           open={drawerOpen}
           unread={unread}
