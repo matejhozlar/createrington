@@ -1,6 +1,8 @@
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { ModelChip } from "./ModelChip";
+import { readingColumnClass, type ChatLayout } from "../layout";
 import type { AdminChatModel } from "../types";
 
 const QUICK_PROMPTS: string[] = [
@@ -11,6 +13,7 @@ const QUICK_PROMPTS: string[] = [
 ];
 
 interface EmptyStateProps {
+  layout: ChatLayout;
   starting: boolean;
   onStart: (prefillMessage?: string) => void;
   selectedModel: AdminChatModel;
@@ -18,13 +21,19 @@ interface EmptyStateProps {
 }
 
 export function EmptyState({
+  layout,
   starting,
   onStart,
   selectedModel,
   onSelectModel,
 }: EmptyStateProps): React.JSX.Element {
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 py-8 text-center">
+    <div
+      className={cn(
+        "flex flex-1 flex-col items-center justify-center gap-4 px-6 py-8 text-center",
+        readingColumnClass(layout),
+      )}
+    >
       <div className="flex size-12 items-center justify-center overflow-hidden rounded-full bg-primary/15">
         <img
           src="/assets/logo/createrington-bot.webp"
