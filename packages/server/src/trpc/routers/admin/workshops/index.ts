@@ -1,7 +1,13 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
-import { auditActor, rethrowTrpc, id } from "@/trpc/utils";
+import {
+  auditActor,
+  buildPagination,
+  id,
+  paginationInput,
+  rethrowTrpc,
+} from "@/trpc/utils";
 import { createRateLimit } from "@/trpc/middleware/rate-limit";
 import { workshopService } from "@/services/workshop";
 import { modpackService } from "@/services/modpack";
@@ -11,6 +17,7 @@ import { logModReview, logProjectEnvironment } from "@/services/workshop/audit";
 import { adminWorkshopBansRouter } from "./bans";
 import {
   MOD_ENVIRONMENTS,
+  WORKSHOP_MOD_EVENT_TYPES,
   WORKSHOP_MOD_REJECT_REASONS,
   WORKSHOP_MOD_REVIEW_ACTIONS,
   WORKSHOP_STATUSES,
@@ -374,6 +381,39 @@ export const adminWorkshopsRouter = router({
     .query(async ({ input }) => {
       try {
         return await workshopService.getWorkshopDependencies(input.workshopId);
+      } catch (error) {
+        rethrowTrpc(error);
+      }
+    }),
+
+  listEvents: adminProcedure
+    .meta({
+      description:
+        "Paginated timeline of suggestion, review, and pack events in a workshop, newest first",
+    })
+    .input(
+      z.object({
+        workshopId: id(),
+        ...paginationInput({ defaultLimit: 25 }),
+        search: z.string().trim().max(100).optional(),
+        eventType: z.enum(WORKSHOP_MOD_EVENT_TYPES).optional(),
+      }),
+    )
+    .query(async ({ input }) => {
+      try {
+        const { events, total } = await workshopService.getWorkshopEvents(
+          input.workshopId,
+          {
+            eventType: input.eventType,
+            search: input.search || undefined,
+            limit: input.limit,
+            offset: input.page * input.limit,
+          },
+        );
+        return {
+          events,
+          pagination: buildPagination(input.page, input.limit, total),
+        };
       } catch (error) {
         rethrowTrpc(error);
       }

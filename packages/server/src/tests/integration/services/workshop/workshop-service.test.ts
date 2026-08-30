@@ -1310,6 +1310,143 @@ describe("WorkshopService timeline events", () => {
   });
 });
 
+describe("WorkshopService.getWorkshopEvents", () => {
+  const ACTOR = "999900000000000004";
+  const ACTOR_UUID = "99990000-0000-4000-8000-000000000004";
+
+  afterEach(async () => {
+    await Q.player.deleteAll({ discordId: ACTOR });
+  });
+
+  async function seedActor() {
+    await Q.player.create({
+      minecraftUuid: ACTOR_UUID,
+      minecraftUsername: "vitest_actor",
+      discordId: ACTOR,
+    });
+  }
+
+  it("lists events newest first with the project, actor, and live row resolved", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const projectId = await seedProject(ctx, "Create Aeronautics");
+    await seedActor();
+
+    const item = await workshopService.suggestMod(workshop.id, ACTOR, {
+      projectId,
+      note: "flying trains",
+    });
+    await workshopService.reviewMod(item.id, "approve", ADMIN);
+    await vi.waitFor(async () => {
+      expect(await modEvents(item.id)).toHaveLength(2);
+    });
+
+    const { events, total } = await workshopService.getWorkshopEvents(
+      workshop.id,
+      { limit: 10, offset: 0 },
+    );
+
+    expect(total).toBe(2);
+    expect(events.map((event) => event.eventType)).toEqual([
+      "approved",
+      "suggested",
+    ]);
+    expect(events[1]).toMatchObject({
+      workshopModId: item.id,
+      note: "flying trains",
+      project: { name: "Create Aeronautics", classId: 6 },
+      actor: { minecraftUsername: "vitest_actor", minecraftUuid: ACTOR_UUID },
+      modExists: true,
+    });
+    expect(events[0]).toMatchObject({
+      actorDiscordId: ADMIN,
+      actor: null,
+      fromStatus: "pending",
+      toStatus: "approved",
+    });
+  });
+
+  it("filters by event type, searches by mod or player, and paginates", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const alphaId = await seedProject(ctx, "Alpha Tools");
+    const betaId = await seedProject(ctx, "Beta Blocks");
+    await seedActor();
+
+    const alpha = await workshopService.suggestMod(workshop.id, ACTOR, {
+      projectId: alphaId,
+    });
+    const beta = await workshopService.suggestMod(workshop.id, USER_B, {
+      projectId: betaId,
+    });
+    await workshopService.reviewMod(alpha.id, "approve", ADMIN);
+    await vi.waitFor(async () => {
+      expect(await modEvents(alpha.id)).toHaveLength(2);
+      expect(await modEvents(beta.id)).toHaveLength(1);
+    });
+
+    const approved = await workshopService.getWorkshopEvents(workshop.id, {
+      eventType: "approved",
+      limit: 10,
+      offset: 0,
+    });
+    expect(approved.total).toBe(1);
+    expect(approved.events[0]?.project.name).toBe("Alpha Tools");
+
+    const byMod = await workshopService.getWorkshopEvents(workshop.id, {
+      search: "beta",
+      limit: 10,
+      offset: 0,
+    });
+    expect(byMod.total).toBe(1);
+    expect(byMod.events[0]?.workshopModId).toBe(beta.id);
+
+    const byPlayer = await workshopService.getWorkshopEvents(workshop.id, {
+      search: "vitest_act",
+      limit: 10,
+      offset: 0,
+    });
+    expect(byPlayer.total).toBe(1);
+    expect(byPlayer.events[0]).toMatchObject({
+      eventType: "suggested",
+      workshopModId: alpha.id,
+    });
+
+    const secondPage = await workshopService.getWorkshopEvents(workshop.id, {
+      limit: 2,
+      offset: 2,
+    });
+    expect(secondPage.total).toBe(3);
+    expect(secondPage.events).toHaveLength(1);
+  });
+
+  it("keeps withdrawn suggestions in the timeline without a live row", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const projectId = await seedProject(ctx);
+    const item = await workshopService.suggestMod(workshop.id, USER_A, {
+      projectId,
+    });
+    await workshopService.removeSuggestion(item.id, USER_A);
+    await vi.waitFor(async () => {
+      expect(await modEvents(item.id)).toHaveLength(2);
+    });
+
+    const { events } = await workshopService.getWorkshopEvents(workshop.id, {
+      limit: 10,
+      offset: 0,
+    });
+    expect(events.map((event) => event.eventType)).toEqual([
+      "withdrawn",
+      "suggested",
+    ]);
+    expect(events.every((event) => !event.modExists)).toBe(true);
+  });
+
+  it("throws NotFoundError for an unknown workshop", async () => {
+    await expect(
+      workshopService.getWorkshopEvents(0, { limit: 10, offset: 0 }),
+    ).rejects.toThrow(NotFoundError);
+  });
+});
+
 describe("WorkshopService.deleteWorkshop", () => {
   it("refuses a workshop that is not archived", async () => {
     const workshop = await seedWorkshop(ctx, { status: "open" });
