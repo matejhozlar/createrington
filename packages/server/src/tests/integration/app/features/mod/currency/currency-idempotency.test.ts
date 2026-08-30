@@ -9,7 +9,11 @@ import {
 } from "vitest";
 import { R, Q } from "@/db";
 import { BalanceTransactionType } from "@/db/repositories/balance";
-import { BadRequestError, ConflictError } from "@/app/middleware/error-handler";
+import {
+  AppError,
+  BadRequestError,
+  ConflictError,
+} from "@/app/middleware/error-handler";
 import {
   hashRequest,
   parseIdempotencyKey,
@@ -113,6 +117,15 @@ describe("parseIdempotencyKey", () => {
     expect(() => parseIdempotencyKey("x".repeat(129))).toThrow(BadRequestError);
     expect(() => parseIdempotencyKey(42)).toThrow(BadRequestError);
   });
+
+  it("rejects whitespace and control characters, accepts the documented charset", () => {
+    expect(() => parseIdempotencyKey("a b")).toThrow(BadRequestError);
+    expect(() => parseIdempotencyKey("   ")).toThrow(BadRequestError);
+    expect(() => parseIdempotencyKey("key\nforged log line")).toThrow(
+      BadRequestError,
+    );
+    expect(parseIdempotencyKey("attempt:1.2_3-x")).toBe("attempt:1.2_3-x");
+  });
 });
 
 describe("hashRequest", () => {
@@ -214,6 +227,92 @@ describe("runIdempotent (integration)", () => {
 
     expect(await R.balanceRepo.getRaw(ALICE)).toBe(5_000n);
     expect(await withdrawLedger()).toHaveLength(0);
+  });
+
+  it("carries code and details of an operational failure through the stored body", async () => {
+    await seedAlice(100);
+    const operation = vi.fn<IdempotentOperation>(async () => {
+      throw new AppError(
+        "Denied",
+        422,
+        true,
+        { field: "amount" },
+        { code: "TEST_CODE" },
+      );
+    });
+    const params = {
+      playerUuid: ALICE,
+      key: KEY,
+      requestHash: hashRequest("withdraw", { denomination: 10, count: 1 }),
+    };
+
+    const first = await runIdempotent(params, operation);
+    const second = await runIdempotent(params, operation);
+
+    expect(operation).toHaveBeenCalledTimes(1);
+    expect(first.statusCode).toBe(422);
+    expect(first.body).toEqual({
+      success: false,
+      message: "Denied",
+      code: "TEST_CODE",
+      details: { field: "amount" },
+    });
+    expect(second.replayed).toBe(true);
+    expect(second.body).toEqual(first.body);
+  });
+
+  it("rolls back writes made before an operational failure and still memoizes it", async () => {
+    await seedAlice(100);
+    const operation = vi.fn<IdempotentOperation>(async (tx) => {
+      await R.balanceRepo.add(
+        ALICE,
+        5,
+        "credited before rejection",
+        BalanceTransactionType.DEPOSIT,
+        { tx },
+      );
+      throw new BadRequestError("Rejected after write", undefined, {
+        playerMessage: "Rejected.",
+      });
+    });
+    const params = {
+      playerUuid: ALICE,
+      key: KEY,
+      requestHash: hashRequest("withdraw", { denomination: 10, count: 1 }),
+    };
+
+    const first = await runIdempotent(params, operation);
+    const second = await runIdempotent(params, operation);
+
+    expect(operation).toHaveBeenCalledTimes(1);
+    expect(first.statusCode).toBe(400);
+    expect(second.replayed).toBe(true);
+    expect(second.body).toEqual(first.body);
+
+    expect(await R.balanceRepo.getRaw(ALICE)).toBe(100_000n);
+    const history = await R.balanceRepo.getHistory(ALICE);
+    expect(
+      history.filter(
+        (t) => t.transactionType === BalanceTransactionType.DEPOSIT,
+      ),
+    ).toHaveLength(0);
+  });
+
+  it("treats a malformed stored body as unavailable instead of replaying it", async () => {
+    await seedAlice(100);
+    const { run, operation } = withdrawRequest(10, KEY);
+    await run();
+    await getTestPool().query(
+      `UPDATE player_balance_idempotency
+       SET response_body = '"garbage"'::jsonb
+       WHERE player_minecraft_uuid = $1 AND idempotency_key = $2`,
+      [ALICE, KEY],
+    );
+
+    await expect(run()).rejects.toThrow(ConflictError);
+
+    expect(operation).toHaveBeenCalledTimes(1);
+    expect(await R.balanceRepo.getRaw(ALICE)).toBe(90_000n);
   });
 
   it("does not memoize unexpected failures, so a retry runs the operation again", async () => {

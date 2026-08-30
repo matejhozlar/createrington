@@ -59,7 +59,7 @@ export default defineApiSpec({
       path: "/deposit",
       name: "Deposit",
       description:
-        "Adds currency to the authenticated player's balance. Send an idempotencyKey to make the request safe to retry after a timeout: a replay with the same key and body returns the stored response without crediting again, a replay with the same key and a different body is rejected with 409. Keys are retained for 24 hours.",
+        "Adds currency to the authenticated player's balance. Send an idempotencyKey to make the request safe to retry after a timeout: a replay with the same key and body returns the stored response without crediting again, a replay with the same key and a different body is rejected with 409. The replayed response is the original one, so its new_balance is the balance right after the original attempt, not the current balance. Keys are retained for 24 hours.",
       request: {
         name: "DepositRequest",
         fields: [
@@ -79,7 +79,7 @@ export default defineApiSpec({
             type: "string",
             nullable: true,
             description:
-              "Client-generated key unique per attempt (e.g. a random UUID), max 128 characters. Reuse it on retries of the same request.",
+              "Client-generated key unique per attempt (e.g. a random UUID): 1 to 128 characters of letters, digits, '.', '_', ':' or '-'. Reuse it on retries of the same request.",
           },
         ],
       },
@@ -100,7 +100,7 @@ export default defineApiSpec({
       path: "/withdraw",
       name: "Withdraw",
       description:
-        "Withdraws currency from the authenticated player's balance. Total withdrawn = denomination * count. The funds check and debit are one atomic step, so concurrent withdrawals can never overdraw. Send an idempotencyKey to make the request safe to retry after a timeout: a replay with the same key and body returns the stored response without debiting again, a replay with the same key and a different body is rejected with 409. Keys are retained for 24 hours.",
+        "Withdraws currency from the authenticated player's balance. Total withdrawn = denomination * count. The funds check and debit are one atomic step, so concurrent withdrawals can never overdraw. Send an idempotencyKey to make the request safe to retry after a timeout: a replay with the same key and body returns the stored response without debiting again, a replay with the same key and a different body is rejected with 409. The replayed response is the original one, so its new_balance is the balance right after the original attempt, not the current balance. Keys are retained for 24 hours.",
       request: {
         name: "WithdrawRequest",
         fields: [
@@ -119,7 +119,7 @@ export default defineApiSpec({
             type: "string",
             nullable: true,
             description:
-              "Client-generated key unique per attempt (e.g. a random UUID), max 128 characters. Reuse it on retries of the same request.",
+              "Client-generated key unique per attempt (e.g. a random UUID): 1 to 128 characters of letters, digits, '.', '_', ':' or '-'. Reuse it on retries of the same request.",
           },
         ],
       },

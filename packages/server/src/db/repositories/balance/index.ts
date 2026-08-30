@@ -67,12 +67,13 @@ export class BalanceRepository {
 
   private async resolvePlayerUuid(
     identifier: PlayerIdentifier,
+    tx?: DatabaseQueries,
   ): Promise<string> {
     if (typeof identifier === "string") return identifier;
     if ("minecraftUuid" in identifier && identifier.minecraftUuid) {
       return identifier.minecraftUuid;
     }
-    const player = await db.player.get(identifier);
+    const player = await (tx ?? db).player.get(identifier);
     return player.minecraftUuid;
   }
 
@@ -202,7 +203,7 @@ export class BalanceRepository {
     }
 
     BalanceUtils.validate(amount);
-    const uuid = await this.resolvePlayerUuid(identifier);
+    const uuid = await this.resolvePlayerUuid(identifier, options.tx);
     const amountBigInt = BalanceUtils.toStorage(amount);
 
     return await (options.tx ?? db).inTransaction(async (tx) => {
@@ -256,7 +257,7 @@ export class BalanceRepository {
     }
 
     BalanceUtils.validate(amount);
-    const uuid = await this.resolvePlayerUuid(identifier);
+    const uuid = await this.resolvePlayerUuid(identifier, options.tx);
     const amountBigInt = BalanceUtils.toStorage(amount);
 
     return await (options.tx ?? db).inTransaction(async (tx) => {
