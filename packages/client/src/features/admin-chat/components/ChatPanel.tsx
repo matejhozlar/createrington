@@ -119,14 +119,20 @@ export function ChatPanel({
       <div
         style={panelStyle}
         className={cn(
-          "fixed z-20 flex flex-col overflow-hidden bg-card",
+          "fixed z-20 flex flex-col overflow-hidden",
           "animate-in fade-in slide-in-from-bottom-4 duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]",
           layout === "fullscreen"
-            ? "inset-0"
+            ? "inset-0 bg-card"
             : cn(
                 "right-(--chat-right) bottom-(--chat-bottom) h-(--chat-h) w-(--chat-w)",
-                "rounded-xl border border-border shadow-2xl",
-                "transition-[right,bottom,width,height]",
+                "border shadow-2xl backdrop-blur-2xl",
+                "transition-[right,bottom,width,height,border-radius,background-color,border-color]",
+                layout === "expanded"
+                  ? cn(
+                      "rounded-3xl border-white/10 bg-card/60 backdrop-saturate-150",
+                      "before:pointer-events-none before:absolute before:inset-0 before:-z-10 before:bg-linear-to-b before:from-white/5 before:to-transparent",
+                    )
+                  : "rounded-2xl border-border bg-card",
               ),
         )}
       >

@@ -1,5 +1,9 @@
 export type ChatLayout = "docked" | "expanded" | "fullscreen";
 
 export function readingColumnClass(layout: ChatLayout): string | undefined {
-  return layout === "expanded" ? "mx-auto w-full max-w-3xl" : undefined;
+  if (layout === "docked") return "mx-auto w-full max-w-[22.5rem]";
+  if (layout === "expanded") {
+    return "mx-auto w-full max-w-3xl transition-[max-width] delay-100 duration-200 ease-out";
+  }
+  return undefined;
 }

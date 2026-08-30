@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ArrowDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -15,6 +15,14 @@ interface MessageListProps {
   layout: ChatLayout;
 }
 
+function pinToBottom(
+  el: HTMLDivElement,
+  pinnedTop: React.RefObject<number | null>,
+): void {
+  el.scrollTop = el.scrollHeight;
+  pinnedTop.current = el.scrollTop;
+}
+
 /**
  * Scrollable message list with auto-scroll on new content. If the admin
  * has scrolled up to read history, new messages don't yank them down;
@@ -27,11 +35,21 @@ export function MessageList({
   layout,
 }: MessageListProps): React.JSX.Element {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const endRef = useRef<HTMLDivElement>(null);
+  const nearBottomRef = useRef(true);
+  const atBottomRef = useRef(true);
+  const pinnedTopRef = useRef<number | null>(null);
   const [pinnedToBottom, setPinnedToBottom] = useState(true);
 
+  const syncPosition = (el: HTMLDivElement): void => {
+    const dist = el.scrollHeight - el.scrollTop - el.clientHeight;
+    nearBottomRef.current = dist < 64;
+    atBottomRef.current = dist < 2;
+    setPinnedToBottom(dist < 64);
+  };
+
   const scrollToBottom = (behavior: ScrollBehavior = "smooth"): void => {
-    endRef.current?.scrollIntoView({ behavior, block: "end" });
+    const el = scrollRef.current;
+    el?.scrollTo({ top: el.scrollHeight, behavior });
   };
 
   // Track whether the user is near the bottom. 64px tolerance so a small
@@ -40,26 +58,40 @@ export function MessageList({
     const el = scrollRef.current;
     if (!el) return;
     const onScroll = (): void => {
-      const dist = el.scrollHeight - el.scrollTop - el.clientHeight;
-      setPinnedToBottom(dist < 64);
+      const pinnedTop = pinnedTopRef.current;
+      pinnedTopRef.current = null;
+      if (pinnedTop !== null && Math.abs(el.scrollTop - pinnedTop) < 1) return;
+      syncPosition(el);
     };
     el.addEventListener("scroll", onScroll, { passive: true });
     return () => el.removeEventListener("scroll", onScroll);
   }, []);
 
   useEffect(() => {
-    if (pinnedToBottom) scrollToBottom("smooth");
-  }, [messages, awaitingReply, pinnedToBottom]);
+    if (nearBottomRef.current) scrollToBottom("smooth");
+  }, [messages, awaitingReply]);
 
   useEffect(() => {
     const el = scrollRef.current;
-    if (!el || !pinnedToBottom) return;
-    const observer = new ResizeObserver(() => {
-      el.scrollTop = el.scrollHeight;
+    if (!el) return;
+    let last: { width: number; height: number } | null = null;
+    const observer = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      const changed =
+        last !== null && (last.width !== width || last.height !== height);
+      last = { width, height };
+      if (!changed) return;
+      if (atBottomRef.current) pinToBottom(el, pinnedTopRef);
+      else syncPosition(el);
     });
     observer.observe(el);
     return () => observer.disconnect();
-  }, [pinnedToBottom]);
+  }, []);
+
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (el && atBottomRef.current) pinToBottom(el, pinnedTopRef);
+  }, [layout]);
 
   // On first mount, snap to bottom without animation.
   useEffect(() => {
@@ -89,7 +121,6 @@ export function MessageList({
             );
           })}
           {awaitingReply && <TypingIndicator />}
-          <div ref={endRef} />
         </div>
       </div>
       {!pinnedToBottom && (
