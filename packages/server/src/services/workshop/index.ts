@@ -5,11 +5,13 @@ import {
   NotFoundError,
 } from "@/app/middleware/error-handler";
 import { ConstraintViolationError, DatabaseError } from "@/db/utils/errors";
+import type { WorkshopModEventListItem } from "@/db/queries/workshop/mod/event";
 import type {
   CurseforgeProject,
   ModEnvironment,
   Workshop,
   WorkshopMod,
+  WorkshopModEventType,
   WorkshopModRejectReason,
   WorkshopModStatus,
   WorkshopProjectDependency,
@@ -1274,6 +1276,20 @@ export class WorkshopService {
       throw new BadRequestError("This workshop is not open for suggestions");
     }
     return workshop;
+  }
+
+  /** Newest-first page of everything that happened to this workshop's mods. */
+  async getWorkshopEvents(
+    workshopId: number,
+    options: {
+      eventType?: WorkshopModEventType;
+      search?: string;
+      limit: number;
+      offset: number;
+    },
+  ): Promise<{ events: WorkshopModEventListItem[]; total: number }> {
+    await this.getWorkshop(workshopId);
+    return Q.workshop.mod.event.search({ workshopId, ...options });
   }
 
   private async decorateMods(

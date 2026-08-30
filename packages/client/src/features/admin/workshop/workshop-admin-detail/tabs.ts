@@ -18,7 +18,12 @@ export const MOD_TAB_IDS = [
   "all",
 ] as const;
 
-const STANDALONE_TAB_IDS = ["dependencies", "issues", "releases"] as const;
+const STANDALONE_TAB_IDS = [
+  "dependencies",
+  "issues",
+  "activity",
+  "releases",
+] as const;
 
 export const WORKSHOP_TAB_IDS = [
   ...MOD_TAB_IDS,
