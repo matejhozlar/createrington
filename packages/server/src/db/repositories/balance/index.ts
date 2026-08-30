@@ -1,4 +1,5 @@
 import { db, Q } from "@/db";
+import { NotFoundError } from "@/db/utils";
 import { DatabaseTable, type DatabaseQueries } from "@/generated/db";
 import type {
   Player,
@@ -13,6 +14,15 @@ export type PlayerIdentifier =
   | { discordId: string }
   | Player
   | string;
+
+export interface BalanceMutationOptions {
+  /** Free-form context stored on the ledger row. */
+  metadata?: Record<string, unknown>;
+  /** Client-generated request key, persisted on the ledger row for reconciliation. */
+  idempotencyKey?: string;
+  /** Join an existing outer transaction instead of starting a new one. */
+  tx?: DatabaseQueries;
+}
 
 export enum BalanceTransactionType {
   TRANSFER_SEND = "transfer_send",
@@ -44,29 +54,26 @@ export enum BalanceTransactionType {
 export class BalanceRepository {
   constructor() {}
 
-  // Acquires a row-level lock on a player_balance row so the surrounding
-  // read-modify-write sequence is serialized against concurrent mutators.
-  // Without this, two parallel add/deduct/transfer calls under READ COMMITTED
-  // can both read the same balance and one update is lost.
   private async lockBalance(
     tx: DatabaseQueries,
     minecraftUuid: string,
-  ): Promise<void> {
-    const client = tx.getDb();
-    await client.query(
-      "SELECT 1 FROM player_balance WHERE minecraft_uuid = $1 FOR UPDATE",
-      [minecraftUuid],
-    );
+  ): Promise<bigint> {
+    const balance = await tx.player.balance.getForUpdate(minecraftUuid);
+    if (balance === null) {
+      throw new NotFoundError("player_balance", { minecraftUuid });
+    }
+    return balance;
   }
 
   private async resolvePlayerUuid(
     identifier: PlayerIdentifier,
+    tx?: DatabaseQueries,
   ): Promise<string> {
     if (typeof identifier === "string") return identifier;
     if ("minecraftUuid" in identifier && identifier.minecraftUuid) {
       return identifier.minecraftUuid;
     }
-    const player = await db.player.get(identifier);
+    const player = await (tx ?? db).player.get(identifier);
     return player.minecraftUuid;
   }
 
@@ -80,6 +87,7 @@ export class BalanceRepository {
       description?: string;
       relatedPlayerUuid?: string;
       metadata?: Record<string, unknown>;
+      idempotencyKey?: string;
     },
     txOverride?: DatabaseQueries,
   ): Promise<void> {
@@ -93,6 +101,7 @@ export class BalanceRepository {
       description: data.description,
       relatedPlayerUuid: data.relatedPlayerUuid,
       metadata: data.metadata || {},
+      idempotencyKey: data.idempotencyKey,
     });
 
     logger.info(
@@ -177,35 +186,34 @@ export class BalanceRepository {
   }
 
   /**
-   * Add to a player's balance inside a row-locked transaction. Pass txOverride
-   * to join an existing outer transaction instead of starting a new one.
-   * Resolves to the new balance as a decimal.
+   * Add to a player's balance. The balance row is read under a row lock and
+   * the overflow check, update, and ledger insert all commit together; pass
+   * options.tx to join an existing outer transaction. Resolves to the new
+   * balance as a decimal.
    */
   async add(
     identifier: PlayerIdentifier,
     amount: number,
     reason: string,
     type: BalanceTransactionType,
-    metadata?: Record<string, unknown>,
-    txOverride?: DatabaseQueries,
+    options: BalanceMutationOptions = {},
   ): Promise<number> {
     if (amount <= 0) {
       throw new Error("Amount must be positive");
     }
 
     BalanceUtils.validate(amount);
-    const uuid = await this.resolvePlayerUuid(identifier);
+    const uuid = await this.resolvePlayerUuid(identifier, options.tx);
     const amountBigInt = BalanceUtils.toStorage(amount);
 
-    return await (txOverride ?? db).inTransaction(async (tx) => {
-      await this.lockBalance(tx, uuid);
-      const current = await tx.player.balance.get({ minecraftUuid: uuid });
+    return await (options.tx ?? db).inTransaction(async (tx) => {
+      const balance = await this.lockBalance(tx, uuid);
 
-      if (BalanceUtils.wouldOverflow(current.balance, amount)) {
+      if (BalanceUtils.wouldOverflow(balance, amount)) {
         throw new Error(`Cannot add ${amount}: would exceed maximum balance`);
       }
 
-      const newBalance = BalanceUtils.add(current.balance, amountBigInt);
+      const newBalance = BalanceUtils.add(balance, amountBigInt);
 
       await tx.player.balance.update(
         { minecraftUuid: uuid },
@@ -216,11 +224,12 @@ export class BalanceRepository {
         {
           playerMinecraftUuid: uuid,
           amount: amountBigInt,
-          balanceBefore: current.balance,
+          balanceBefore: balance,
           balanceAfter: newBalance,
           transactionType: type,
           description: reason,
-          metadata,
+          metadata: options.metadata,
+          idempotencyKey: options.idempotencyKey,
         },
         tx,
       );
@@ -230,37 +239,37 @@ export class BalanceRepository {
   }
 
   /**
-   * Deduct from a player's balance inside a row-locked transaction. Throws if
-   * the player has insufficient funds. Pass txOverride to join an existing
-   * outer transaction. Resolves to the new balance as a decimal.
+   * Deduct from a player's balance. The balance row is read under a row lock
+   * and the funds check, update, and ledger insert all commit together, so
+   * concurrent debits are serialized and "Insufficient balance" always
+   * reflects the locked value. Pass options.tx to join an existing outer
+   * transaction. Resolves to the new balance as a decimal.
    */
   async deduct(
     identifier: PlayerIdentifier,
     amount: number,
     reason: string,
     type: BalanceTransactionType,
-    metadata?: Record<string, unknown>,
-    txOverride?: DatabaseQueries,
+    options: BalanceMutationOptions = {},
   ): Promise<number> {
     if (amount <= 0) {
       throw new Error("Amount must be positive");
     }
 
     BalanceUtils.validate(amount);
-    const uuid = await this.resolvePlayerUuid(identifier);
+    const uuid = await this.resolvePlayerUuid(identifier, options.tx);
     const amountBigInt = BalanceUtils.toStorage(amount);
 
-    return await (txOverride ?? db).inTransaction(async (tx) => {
-      await this.lockBalance(tx, uuid);
-      const current = await tx.player.balance.get({ minecraftUuid: uuid });
+    return await (options.tx ?? db).inTransaction(async (tx) => {
+      const balance = await this.lockBalance(tx, uuid);
 
-      if (current.balance < amountBigInt) {
+      if (balance < amountBigInt) {
         throw new Error(
-          `Insufficient balance: has ${BalanceUtils.format(current.balance)}, needs ${BalanceUtils.format(amountBigInt)}`,
+          `Insufficient balance: has ${BalanceUtils.format(balance)}, needs ${BalanceUtils.format(amountBigInt)}`,
         );
       }
 
-      const newBalance = BalanceUtils.subtract(current.balance, amountBigInt);
+      const newBalance = BalanceUtils.subtract(balance, amountBigInt);
 
       await tx.player.balance.update(
         { minecraftUuid: uuid },
@@ -271,11 +280,12 @@ export class BalanceRepository {
         {
           playerMinecraftUuid: uuid,
           amount: -amountBigInt,
-          balanceBefore: current.balance,
+          balanceBefore: balance,
           balanceAfter: newBalance,
           transactionType: type,
           description: reason,
-          metadata,
+          metadata: options.metadata,
+          idempotencyKey: options.idempotencyKey,
         },
         tx,
       );
@@ -304,29 +314,26 @@ export class BalanceRepository {
     const amountBigInt = BalanceUtils.toStorage(amount);
 
     return await db.inTransaction(async (tx) => {
-      await this.lockBalance(tx, uuid);
-      const current = await tx.player.balance.get({
-        minecraftUuid: uuid,
-      });
-      // Compute the net delta so the transaction log records the signed change, not the new absolute value
-      const difference = amountBigInt - current.balance;
+      const balance = await this.lockBalance(tx, uuid);
+      const difference = amountBigInt - balance;
 
       await tx.player.balance.update(
-        {
-          minecraftUuid: uuid,
-        },
+        { minecraftUuid: uuid },
         { balance: amountBigInt },
       );
 
-      await this.logTransaction({
-        playerMinecraftUuid: uuid,
-        amount: difference,
-        balanceBefore: current.balance,
-        balanceAfter: amountBigInt,
-        transactionType: type,
-        description: reason,
-        metadata,
-      });
+      await this.logTransaction(
+        {
+          playerMinecraftUuid: uuid,
+          amount: difference,
+          balanceBefore: balance,
+          balanceAfter: amountBigInt,
+          transactionType: type,
+          description: reason,
+          metadata,
+        },
+        tx,
+      );
 
       return BalanceUtils.fromStorage(amountBigInt);
     });
@@ -360,34 +367,31 @@ export class BalanceRepository {
     }
 
     return await db.inTransaction(async (tx) => {
-      // Lock both rows in lexicographic UUID order so two concurrent
-      // transfer(A->B) and transfer(B->A) calls can't deadlock.
-      const [firstLock, secondLock] = [senderUuid, recipientUuid].sort();
-      await this.lockBalance(tx, firstLock);
-      await this.lockBalance(tx, secondLock);
+      const senderFirst = senderUuid < recipientUuid;
+      const firstBalance = await this.lockBalance(
+        tx,
+        senderFirst ? senderUuid : recipientUuid,
+      );
+      const secondBalance = await this.lockBalance(
+        tx,
+        senderFirst ? recipientUuid : senderUuid,
+      );
+      const [senderBalance, recipientBalance] = senderFirst
+        ? [firstBalance, secondBalance]
+        : [secondBalance, firstBalance];
 
-      const senderBalance = await tx.player.balance.get({
-        minecraftUuid: senderUuid,
-      });
-      const recipientBalance = await tx.player.balance.get({
-        minecraftUuid: recipientUuid,
-      });
-
-      if (senderBalance.balance < amountBigInt) {
+      if (senderBalance < amountBigInt) {
         throw new Error(
-          `Insufficient balance: has ${BalanceUtils.format(senderBalance.balance)}, needs ${BalanceUtils.format(amountBigInt)}`,
+          `Insufficient balance: has ${BalanceUtils.format(senderBalance)}, needs ${BalanceUtils.format(amountBigInt)}`,
         );
       }
 
-      logger.debug(
-        `Transfer: sender balance=${senderBalance.balance} (${typeof senderBalance.balance}), amount=${amountBigInt} (${typeof amountBigInt})`,
-      );
       const newSenderBalance = BalanceUtils.subtract(
-        senderBalance.balance,
+        senderBalance,
         amountBigInt,
       );
       const newRecipientBalance = BalanceUtils.add(
-        recipientBalance.balance,
+        recipientBalance,
         amountBigInt,
       );
 
@@ -401,25 +405,31 @@ export class BalanceRepository {
         { balance: newRecipientBalance },
       );
 
-      await this.logTransaction({
-        playerMinecraftUuid: senderUuid,
-        amount: -amountBigInt,
-        balanceBefore: senderBalance.balance,
-        balanceAfter: newSenderBalance,
-        transactionType: BalanceTransactionType.TRANSFER_SEND,
-        description: description || `Transfer to ${recipientUuid}`,
-        relatedPlayerUuid: recipientUuid,
-      });
+      await this.logTransaction(
+        {
+          playerMinecraftUuid: senderUuid,
+          amount: -amountBigInt,
+          balanceBefore: senderBalance,
+          balanceAfter: newSenderBalance,
+          transactionType: BalanceTransactionType.TRANSFER_SEND,
+          description: description || `Transfer to ${recipientUuid}`,
+          relatedPlayerUuid: recipientUuid,
+        },
+        tx,
+      );
 
-      await this.logTransaction({
-        playerMinecraftUuid: recipientUuid,
-        amount: amountBigInt,
-        balanceBefore: recipientBalance.balance,
-        balanceAfter: newRecipientBalance,
-        transactionType: BalanceTransactionType.TRANSFER_RECEIVE,
-        description: description || `Transfer from ${senderUuid}`,
-        relatedPlayerUuid: senderUuid,
-      });
+      await this.logTransaction(
+        {
+          playerMinecraftUuid: recipientUuid,
+          amount: amountBigInt,
+          balanceBefore: recipientBalance,
+          balanceAfter: newRecipientBalance,
+          transactionType: BalanceTransactionType.TRANSFER_RECEIVE,
+          description: description || `Transfer from ${senderUuid}`,
+          relatedPlayerUuid: senderUuid,
+        },
+        tx,
+      );
 
       return {
         senderBalance: BalanceUtils.fromStorage(newSenderBalance),
@@ -445,10 +455,7 @@ export class BalanceRepository {
       amount,
       reason,
       BalanceTransactionType.ADMIN_GRANT,
-      {
-        adminDiscordId,
-        adminUsername,
-      },
+      { metadata: { adminDiscordId, adminUsername } },
     );
 
     await db.admin.log.action.logAction({
@@ -487,10 +494,7 @@ export class BalanceRepository {
       amount,
       reason,
       BalanceTransactionType.ADMIN_DEDUCT,
-      {
-        adminDiscordId,
-        adminUsername,
-      },
+      { metadata: { adminDiscordId, adminUsername } },
     );
 
     await db.admin.log.action.logAction({

@@ -124,8 +124,7 @@ export class DailyReward extends BaseReward {
           this.config.amount,
           `Daily reward claimed`,
           BalanceTransactionType.REWARD,
-          { rewardType: this.config.type },
-          tx,
+          { metadata: { rewardType: this.config.type }, tx },
         );
       });
 

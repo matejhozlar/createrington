@@ -307,8 +307,9 @@ export class StructurePackRotationService {
   /**
    * Records a player's boost purchase for a structure pack in the current cycle.
    *
-   * Validates that the target pack is available and not currently active, deducts
-   * the cost from the player's balance, then creates the boost record.
+   * Validates that the target pack is available and not currently active, then
+   * deducts the cost from the player's balance and creates the boost record in
+   * one transaction, so a failed insert never leaves the player charged.
    *
    * @param discordId - Discord ID of the purchasing player
    * @param packId - ID of the pack to boost
@@ -333,20 +334,22 @@ export class StructurePackRotationService {
     const cost = units * rotationConfig.boostUnitPrice;
     const cycleStart = computeCycleStart(rotationConfig);
 
-    await balanceRepo.deduct(
-      { discordId },
-      cost,
-      `Structure pack boost: ${units} unit(s) for "${pack.name}"`,
-      BalanceTransactionType.PURCHASE,
-      { packId, units, packName: pack.name },
-    );
+    return db.inTransaction(async (tx) => {
+      await balanceRepo.deduct(
+        { discordId },
+        cost,
+        `Structure pack boost: ${units} unit(s) for "${pack.name}"`,
+        BalanceTransactionType.PURCHASE,
+        { metadata: { packId, units, packName: pack.name }, tx },
+      );
 
-    return Q.structure.pack.boost.createAndReturn({
-      discordId,
-      packId,
-      units,
-      currencySpent: cost,
-      cycleStart,
+      return tx.structure.pack.boost.createAndReturn({
+        discordId,
+        packId,
+        units,
+        currencySpent: cost,
+        cycleStart,
+      });
     });
   }
 

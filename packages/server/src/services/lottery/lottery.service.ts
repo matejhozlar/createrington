@@ -109,8 +109,7 @@ export class LotteryService {
           amount,
           "Lottery entry",
           BalanceTransactionType.LOTTERY_ENTRY,
-          undefined,
-          tx,
+          { tx },
         );
 
         await tx.lottery.participant.create({
@@ -179,8 +178,7 @@ export class LotteryService {
           amount,
           "Lottery entry",
           BalanceTransactionType.LOTTERY_ENTRY,
-          undefined,
-          tx,
+          { tx },
         );
 
         await tx.lottery.participant.create({
@@ -262,11 +260,13 @@ export class LotteryService {
           `Lottery win (${participants.length} participants)`,
           BalanceTransactionType.LOTTERY_WIN,
           {
-            participants: participants.map((p) => ({
-              uuid: p.minecraftUuid,
-              username: p.minecraftUsername,
-              amount: p.amount,
-            })),
+            metadata: {
+              participants: participants.map((p) => ({
+                uuid: p.minecraftUuid,
+                username: p.minecraftUsername,
+                amount: p.amount,
+              })),
+            },
           },
         );
 
