@@ -38,8 +38,9 @@ export function AdminChatProvider({ children }: { children: ReactNode }) {
   const isAdmin = Boolean(user?.isAdmin);
 
   const [enabledFromServer, setEnabledFromServer] = useState<boolean>(false);
+  // TEMP: local design preview, strip before PR
   const [bubbleVisible, setBubbleVisibleState] = useState<boolean>(
-    readInitialBubbleVisible,
+    () => import.meta.env.DEV || readInitialBubbleVisible(),
   );
   const [drawerOpen, setDrawerOpen] = useState<boolean>(false);
 
@@ -56,7 +57,8 @@ export function AdminChatProvider({ children }: { children: ReactNode }) {
     };
   }, [isAdmin]);
 
-  const enabled = isAdmin && enabledFromServer;
+  // TEMP: local design preview, strip before PR
+  const enabled = isAdmin && (enabledFromServer || import.meta.env.DEV);
 
   useEffect(() => {
     try {

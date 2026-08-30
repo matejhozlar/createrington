@@ -7,6 +7,8 @@ import { ChatToggle } from "./components/ChatToggle";
 import { useAdminChatSession } from "./hooks/use-admin-chat-session";
 import { useModelSelection } from "./hooks/use-model-selection";
 import { useUnreadTracker } from "./hooks/use-unread-tracker";
+// TEMP: local design preview, strip before PR
+import { usePreviewSession } from "./preview-session";
 
 export function AdminChat(): React.JSX.Element | null {
   const { user } = useAuth();
@@ -17,7 +19,10 @@ export function AdminChat(): React.JSX.Element | null {
     useAdminChat();
 
   const isAdmin = Boolean(user?.isAdmin);
-  const session = useAdminChatSession({ isAdmin, open: drawerOpen });
+  const liveSession = useAdminChatSession({ isAdmin, open: drawerOpen });
+  // TEMP: local design preview, strip before PR
+  const previewSession = usePreviewSession();
+  const session = import.meta.env.DEV ? previewSession : liveSession;
   const { selectedModel, setSelectedModel } = useModelSelection(
     user?.minecraftUsername,
   );
