@@ -73,11 +73,6 @@ export function AdminChatProvider({ children }: { children: ReactNode }) {
     }
   }, [bubbleVisible]);
 
-  const setBubbleVisible = useCallback((visible: boolean) => {
-    setBubbleVisibleState(visible);
-    if (!visible) setPanel(PANEL_CLOSED);
-  }, []);
-
   const openDrawer = useCallback((options?: OpenDrawerOptions) => {
     setPanel({ open: true, expanded: options?.expanded ?? false });
   }, []);
@@ -124,7 +119,7 @@ export function AdminChatProvider({ children }: { children: ReactNode }) {
       closeDrawer,
       toggleDrawer,
       setExpanded,
-      setBubbleVisible,
+      setBubbleVisible: setBubbleVisibleState,
     }),
     [
       enabled,
@@ -134,7 +129,6 @@ export function AdminChatProvider({ children }: { children: ReactNode }) {
       closeDrawer,
       toggleDrawer,
       setExpanded,
-      setBubbleVisible,
     ],
   );
 

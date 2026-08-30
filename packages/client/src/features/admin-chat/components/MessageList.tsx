@@ -7,6 +7,9 @@ import { TypingIndicator } from "./TypingIndicator";
 import { readingColumnClass, type ChatLayout } from "../layout";
 import type { ChatMessage } from "../types";
 
+const NEAR_BOTTOM_PX = 64;
+const AT_BOTTOM_PX = 4;
+
 interface MessageListProps {
   messages: ChatMessage[];
   /** Whether a send is in-flight but no assistant content has arrived yet. */
@@ -15,12 +18,17 @@ interface MessageListProps {
   layout: ChatLayout;
 }
 
+function distanceFromBottom(el: HTMLDivElement): number {
+  return el.scrollHeight - el.scrollTop - el.clientHeight;
+}
+
 function pinToBottom(
   el: HTMLDivElement,
   pinnedTop: React.RefObject<number | null>,
 ): void {
+  const before = el.scrollTop;
   el.scrollTop = el.scrollHeight;
-  pinnedTop.current = el.scrollTop;
+  pinnedTop.current = el.scrollTop === before ? null : el.scrollTop;
 }
 
 /**
@@ -38,18 +46,26 @@ export function MessageList({
   const nearBottomRef = useRef(true);
   const atBottomRef = useRef(true);
   const pinnedTopRef = useRef<number | null>(null);
+  const smoothScrollingRef = useRef(false);
   const [pinnedToBottom, setPinnedToBottom] = useState(true);
 
   const syncPosition = (el: HTMLDivElement): void => {
-    const dist = el.scrollHeight - el.scrollTop - el.clientHeight;
-    nearBottomRef.current = dist < 64;
-    atBottomRef.current = dist < 2;
-    setPinnedToBottom(dist < 64);
+    const dist = distanceFromBottom(el);
+    nearBottomRef.current = dist < NEAR_BOTTOM_PX;
+    atBottomRef.current = dist < AT_BOTTOM_PX;
+    setPinnedToBottom(dist < NEAR_BOTTOM_PX);
   };
 
   const scrollToBottom = (behavior: ScrollBehavior = "smooth"): void => {
     const el = scrollRef.current;
-    el?.scrollTo({ top: el.scrollHeight, behavior });
+    if (!el) return;
+    if (behavior !== "smooth") {
+      pinToBottom(el, pinnedTopRef);
+      return;
+    }
+    if (distanceFromBottom(el) < AT_BOTTOM_PX) return;
+    smoothScrollingRef.current = true;
+    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   };
 
   // Track whether the user is near the bottom. 64px tolerance so a small
@@ -61,14 +77,35 @@ export function MessageList({
       const pinnedTop = pinnedTopRef.current;
       pinnedTopRef.current = null;
       if (pinnedTop !== null && Math.abs(el.scrollTop - pinnedTop) < 1) return;
+      if (smoothScrollingRef.current) {
+        if (distanceFromBottom(el) >= AT_BOTTOM_PX) return;
+        smoothScrollingRef.current = false;
+      }
       syncPosition(el);
     };
+    const onScrollEnd = (): void => {
+      smoothScrollingRef.current = false;
+      syncPosition(el);
+    };
+    const onUserScroll = (): void => {
+      smoothScrollingRef.current = false;
+    };
     el.addEventListener("scroll", onScroll, { passive: true });
-    return () => el.removeEventListener("scroll", onScroll);
+    el.addEventListener("scrollend", onScrollEnd);
+    el.addEventListener("wheel", onUserScroll, { passive: true });
+    el.addEventListener("touchmove", onUserScroll, { passive: true });
+    return () => {
+      el.removeEventListener("scroll", onScroll);
+      el.removeEventListener("scrollend", onScrollEnd);
+      el.removeEventListener("wheel", onUserScroll);
+      el.removeEventListener("touchmove", onUserScroll);
+    };
   }, []);
 
   useEffect(() => {
-    if (nearBottomRef.current) scrollToBottom("smooth");
+    if (nearBottomRef.current || smoothScrollingRef.current) {
+      scrollToBottom("smooth");
+    }
   }, [messages, awaitingReply]);
 
   useEffect(() => {

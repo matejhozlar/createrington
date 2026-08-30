@@ -4,6 +4,7 @@ export function useLockBodyScroll(locked: boolean): void {
   useEffect(() => {
     if (!locked) return;
     const { body, documentElement } = document;
+    const scrollX = window.scrollX;
     const scrollY = window.scrollY;
     const previous = {
       position: body.style.position,
@@ -26,7 +27,7 @@ export function useLockBodyScroll(locked: boolean): void {
       body.style.right = previous.right;
       body.style.overflow = previous.overflow;
       documentElement.style.overscrollBehavior = previous.overscrollBehavior;
-      window.scrollTo({ top: scrollY, behavior: "instant" });
+      window.scrollTo({ left: scrollX, top: scrollY, behavior: "instant" });
     };
   }, [locked]);
 }

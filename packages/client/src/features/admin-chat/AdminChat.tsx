@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { useAuth } from "@/contexts/auth";
 import { useAdminChat } from "@/contexts/admin-chat";
@@ -23,6 +24,7 @@ export function AdminChat(): React.JSX.Element | null {
     setExpanded,
   } = useAdminChat();
 
+  const [draft, setDraft] = useState("");
   const isAdmin = Boolean(user?.isAdmin);
   const session = useAdminChatSession({ isAdmin, open: drawerOpen });
   const { selectedModel, setSelectedModel } = useModelSelection(
@@ -44,6 +46,8 @@ export function AdminChat(): React.JSX.Element | null {
           expanded={expanded}
           onExpandedChange={setExpanded}
           withLauncher={bubbleVisible}
+          input={draft}
+          onInputChange={setDraft}
           messages={session.messages}
           sessionId={session.sessionId}
           sessionActive={session.sessionActive}

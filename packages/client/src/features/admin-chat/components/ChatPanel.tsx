@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLockBodyScroll } from "@/hooks/use-lock-body-scroll";
@@ -12,11 +12,15 @@ import { ModelChip } from "./ModelChip";
 import { readingColumnClass, type ChatLayout } from "../layout";
 import type { AdminChatModel, ChatMessage } from "../types";
 
+const DOCKED_WIDTH_REM = 24;
+const CONTENT_PADDING_X_REM = 0.75;
+
 const DOCKED_GEOMETRY = {
-  "--chat-w": "min(24rem, 100% - 2.5rem)",
+  "--chat-w": `min(${DOCKED_WIDTH_REM}rem, 100% - 2.5rem)`,
   "--chat-h": "min(32rem, 100% - 7rem)",
   "--chat-right": "1.25rem",
   "--chat-bottom": "5rem",
+  "--chat-column-w": `${DOCKED_WIDTH_REM - 2 * CONTENT_PADDING_X_REM}rem`,
 } as React.CSSProperties;
 
 const DOCKED_GEOMETRY_WITHOUT_LAUNCHER = {
@@ -31,7 +35,17 @@ const EXPANDED_GEOMETRY = {
   "--chat-h": EXPANDED_HEIGHT,
   "--chat-right": `calc((100% - ${EXPANDED_WIDTH}) / 2)`,
   "--chat-bottom": `calc((100% - ${EXPANDED_HEIGHT}) / 2)`,
+  "--chat-column-w": "48rem",
 } as React.CSSProperties;
+
+const FOCUSABLE_SELECTOR = [
+  "a[href]",
+  "button:not([disabled])",
+  "textarea:not([disabled])",
+  "input:not([disabled])",
+  "select:not([disabled])",
+  '[tabindex]:not([tabindex="-1"])',
+].join(", ");
 
 interface ChatPanelProps {
   pathname: string;
@@ -39,6 +53,8 @@ interface ChatPanelProps {
   expanded: boolean;
   onExpandedChange: (expanded: boolean) => void;
   withLauncher: boolean;
+  input: string;
+  onInputChange: (value: string) => void;
   messages: ChatMessage[];
   sessionId: number | null;
   sessionActive: boolean;
@@ -61,6 +77,8 @@ export function ChatPanel({
   expanded,
   onExpandedChange,
   withLauncher,
+  input,
+  onInputChange,
   messages,
   sessionId,
   sessionActive,
@@ -76,14 +94,28 @@ export function ChatPanel({
   onClose,
   navigate,
 }: ChatPanelProps): React.JSX.Element {
-  const [input, setInput] = useState("");
+  const panelRef = useRef<HTMLDivElement>(null);
   const layout: ChatLayout = fullscreen
     ? "fullscreen"
     : expanded
       ? "expanded"
       : "docked";
+  const modal = layout !== "docked";
   const viewport = useVisualViewport();
   useLockBodyScroll(layout === "fullscreen");
+
+  useEffect(() => {
+    const previous = document.activeElement;
+    const panel = panelRef.current;
+    if (panel && !panel.contains(document.activeElement)) {
+      panel.focus({ preventScroll: true });
+    }
+    return () => {
+      if (previous instanceof HTMLElement && previous.isConnected) {
+        previous.focus({ preventScroll: true });
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (layout !== "expanded") return;
@@ -94,10 +126,27 @@ export function ChatPanel({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [layout, onExpandedChange]);
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>): void => {
+    if (e.key !== "Tab" || !modal) return;
+    const focusable = Array.from(
+      e.currentTarget.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
+    );
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  };
+
   const handleSend = (): void => {
     if (!input.trim()) return;
     onSend(input);
-    setInput("");
+    onInputChange("");
   };
 
   const showEmpty = !sessionId || (!sessionActive && messages.length === 0);
@@ -129,9 +178,15 @@ export function ChatPanel({
         />
       )}
       <div
+        ref={panelRef}
+        role={modal ? "dialog" : undefined}
+        aria-modal={modal || undefined}
+        aria-label={modal ? "Createrington Assistant" : undefined}
+        tabIndex={-1}
+        onKeyDown={handleKeyDown}
         style={panelStyle}
         className={cn(
-          "fixed z-20 flex flex-col overflow-hidden",
+          "fixed z-20 flex flex-col overflow-hidden outline-none",
           "animate-in fade-in slide-in-from-bottom-4 duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]",
           layout === "fullscreen"
             ? "inset-0 bg-card"
@@ -161,6 +216,7 @@ export function ChatPanel({
 
         {showEmpty ? (
           <EmptyState
+            layout={layout}
             starting={starting}
             onStart={onStart}
             selectedModel={selectedModel}
@@ -185,7 +241,7 @@ export function ChatPanel({
                 )}
                 <MessageInput
                   value={input}
-                  onChange={setInput}
+                  onChange={onInputChange}
                   onSubmit={handleSend}
                   sending={sending}
                   layout={layout}
