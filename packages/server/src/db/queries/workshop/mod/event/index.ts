@@ -1,5 +1,6 @@
 import type { Pool, PoolClient } from "pg";
 import { WorkshopModEventBaseQueries } from "@/generated/db/workshop_mod_event.queries";
+import { escapeLike } from "@/db/utils";
 import type {
   WorkshopModEvent,
   WorkshopModEventType,
@@ -10,7 +11,6 @@ export interface WorkshopModEventListItem extends WorkshopModEvent {
     name: string | null;
     slug: string | null;
     thumbnailUrl: string | null;
-    websiteUrl: string | null;
     classId: number | null;
   };
   actor: { minecraftUsername: string; minecraftUuid: string } | null;
@@ -21,7 +21,6 @@ interface SearchRow extends Record<string, unknown> {
   project_name: string | null;
   project_slug: string | null;
   project_thumbnail_url: string | null;
-  project_website_url: string | null;
   project_class_id: number | null;
   actor_username: string | null;
   actor_uuid: string | null;
@@ -29,9 +28,10 @@ interface SearchRow extends Record<string, unknown> {
 }
 
 const SEARCH_JOINS = `
-  FROM workshop_mod_event e
   LEFT JOIN curseforge_project cp ON cp.id = e.curseforge_project_id
-  LEFT JOIN player p ON p.discord_id = e.actor_discord_id
+  LEFT JOIN player p ON p.discord_id = e.actor_discord_id`;
+
+const ROW_JOINS = `${SEARCH_JOINS}
   LEFT JOIN workshop_mod m ON m.id = e.workshop_mod_id`;
 
 /**
@@ -67,13 +67,14 @@ export class WorkshopModEventQueries extends WorkshopModEventBaseQueries {
     }
 
     if (opts.search) {
-      params.push(`%${opts.search}%`);
+      params.push(`%${escapeLike(opts.search)}%`);
       conditions.push(
         `(cp.name ILIKE $${params.length} OR p.minecraft_username ILIKE $${params.length})`,
       );
     }
 
     const where = `WHERE ${conditions.join(" AND ")}`;
+    const countJoins = opts.search ? SEARCH_JOINS : "";
 
     const [dataResult, countResult] = await Promise.all([
       this.db.query<SearchRow>(
@@ -81,19 +82,22 @@ export class WorkshopModEventQueries extends WorkshopModEventBaseQueries {
            cp.name AS project_name,
            cp.slug AS project_slug,
            cp.thumbnail_url AS project_thumbnail_url,
-           cp.website_url AS project_website_url,
            cp.class_id AS project_class_id,
            p.minecraft_username AS actor_username,
            p.minecraft_uuid AS actor_uuid,
            (m.id IS NOT NULL) AS mod_exists
-         ${SEARCH_JOINS}
+         FROM workshop_mod_event e
+         ${ROW_JOINS}
          ${where}
          ORDER BY e.created_at DESC, e.id DESC
          LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
         [...params, opts.limit, opts.offset],
       ),
       this.db.query<{ count: number }>(
-        `SELECT COUNT(*)::int AS count ${SEARCH_JOINS} ${where}`,
+        `SELECT COUNT(*)::int AS count
+         FROM workshop_mod_event e
+         ${countJoins}
+         ${where}`,
         params,
       ),
     ]);
@@ -109,7 +113,6 @@ export class WorkshopModEventQueries extends WorkshopModEventBaseQueries {
       project_name,
       project_slug,
       project_thumbnail_url,
-      project_website_url,
       project_class_id,
       actor_username,
       actor_uuid,
@@ -122,7 +125,6 @@ export class WorkshopModEventQueries extends WorkshopModEventBaseQueries {
         name: project_name,
         slug: project_slug,
         thumbnailUrl: project_thumbnail_url,
-        websiteUrl: project_website_url,
         classId: project_class_id,
       },
       actor:

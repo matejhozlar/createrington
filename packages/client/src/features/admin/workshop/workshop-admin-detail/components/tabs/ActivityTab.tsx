@@ -18,7 +18,10 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
-import { formatRelativeDate } from "@/lib/format";
+import {
+  formatFullDateSafe,
+  formatRelativeDate,
+} from "@/features/admin/format";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -95,15 +98,6 @@ const EVENT_STYLES: Record<
     icon: PackageMinus,
     className: "border-rose-500/20 bg-rose-500/10 text-rose-400",
   },
-};
-
-const FULL_DATE_FORMAT: Intl.DateTimeFormatOptions = {
-  weekday: "short",
-  month: "short",
-  day: "numeric",
-  year: "numeric",
-  hour: "numeric",
-  minute: "2-digit",
 };
 
 const PACK_SYNC_TITLE =
@@ -196,33 +190,24 @@ function DetailsCell({ event }: { event: WorkshopEvent }) {
 }
 
 function ActorCell({ event }: { event: WorkshopEvent }) {
-  if (event.actor) {
-    return (
-      <PlayerLabel
-        uuid={event.actor.minecraftUuid}
-        name={event.actor.minecraftUsername}
-        size={20}
-      />
-    );
-  }
-  if (event.actorDiscordId) {
+  if (!event.actorDiscordId) {
     return (
       <span
-        className="text-sm italic text-muted-foreground"
-        title={`Discord ID ${event.actorDiscordId}`}
+        className="flex items-center gap-1.5 text-sm text-muted-foreground"
+        title={PACK_SYNC_TITLE}
       >
-        Former player
+        <RefreshCw className="size-3.5 shrink-0" />
+        Pack sync
       </span>
     );
   }
   return (
-    <span
-      className="flex items-center gap-1.5 text-sm text-muted-foreground"
-      title={PACK_SYNC_TITLE}
-    >
-      <RefreshCw className="size-3.5 shrink-0" />
-      Pack sync
-    </span>
+    <PlayerLabel
+      uuid={event.actor?.minecraftUuid}
+      name={event.actor?.minecraftUsername ?? event.actorDiscordId}
+      playerId={event.actorDiscordId}
+      size={20}
+    />
   );
 }
 
@@ -232,17 +217,6 @@ function ActorCellSkeleton() {
       <Skeleton className="size-5 shrink-0 rounded-xs" />
       <Skeleton className="h-4 w-24" />
     </div>
-  );
-}
-
-function WhenCell({ value }: { value: string | Date }) {
-  const date = value instanceof Date ? value : new Date(value);
-  return (
-    <CellText
-      value={date.toLocaleDateString("en-US", FULL_DATE_FORMAT)}
-      display={formatRelativeDate(date)}
-      className="text-sm text-muted-foreground"
-    />
   );
 }
 
@@ -322,7 +296,13 @@ export function ActivityTab({
       key: "when",
       header: "When",
       width: 120,
-      render: (event) => <WhenCell value={event.createdAt} />,
+      render: (event) => (
+        <CellText
+          value={formatFullDateSafe(event.createdAt)}
+          display={formatRelativeDate(event.createdAt)}
+          className="text-sm text-muted-foreground"
+        />
+      ),
     },
   ];
 
@@ -332,7 +312,7 @@ export function ActivityTab({
         search={search}
         onSearchChange={onSearchChange}
         placeholder="Search by mod or player..."
-        activeCount={(search ? 1 : 0) + (eventType !== "all" ? 1 : 0)}
+        activeCount={(search.trim() ? 1 : 0) + (eventType !== "all" ? 1 : 0)}
       >
         <Select
           value={eventType}
