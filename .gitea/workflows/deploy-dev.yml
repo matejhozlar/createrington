@@ -60,20 +60,20 @@ jobs:
         id: spec-check
         run: |
           changed=false
-          if [ "${{ github.event_name }}" != "pull_request" ]; then
-            echo "Not a PR merge, skipping mod API spec check."
-            echo "changed=$changed" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          BASE='${{ github.event.pull_request.base.sha }}'
-          if git diff "$BASE"..HEAD --name-only -- '*.api-spec.ts' | grep -q .; then
+          VERSION=$(grep '^version=' mod-api/gradle.properties | cut -d'=' -f2)
+          JAR_URL="https://raw.githubusercontent.com/matejhozlar/maven/main/com/saunhardy/createrington-api/${VERSION}/createrington-api-${VERSION}.jar"
+          if curl --silent --head --fail "$JAR_URL" > /dev/null 2>&1; then
+            echo "createrington-api:${VERSION} is already published."
+          else
+            echo "createrington-api:${VERSION} is not published yet, will publish."
             changed=true
           fi
-          OLD_VERSION=$(git show "$BASE":mod-api/gradle.properties 2>/dev/null | grep '^version=' | cut -d'=' -f2 || echo "")
-          NEW_VERSION=$(grep '^version=' mod-api/gradle.properties | cut -d'=' -f2)
-          if [ "$OLD_VERSION" != "$NEW_VERSION" ]; then
+          if [ "${{ github.event_name }}" = "pull_request" ] && git diff HEAD^1..HEAD --name-only -- '*.api-spec.ts' | grep -q .; then
+            echo "Mod API spec files changed in this merge."
             changed=true
           fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "jar_url=$JAR_URL" >> "$GITHUB_OUTPUT"
           echo "changed=$changed" >> "$GITHUB_OUTPUT"
 
       - name: Setup JDK 21
@@ -91,11 +91,12 @@ jobs:
 
       - name: Generate and publish mod API
         if: steps.spec-check.outputs.changed == 'true'
+        env:
+          VERSION: ${{ steps.spec-check.outputs.version }}
+          JAR_URL: ${{ steps.spec-check.outputs.jar_url }}
         run: |
           pnpm generate-mod-api
           cd mod-api
-          VERSION=$(grep '^version=' gradle.properties | cut -d'=' -f2)
-          JAR_URL="https://raw.githubusercontent.com/matejhozlar/maven/main/com/saunhardy/createrington-api/${VERSION}/createrington-api-${VERSION}.jar"
           if curl --silent --head --fail "$JAR_URL" > /dev/null 2>&1; then
             echo "ERROR: createrington-api:${VERSION} already published. Bump version in mod-api/gradle.properties"
             exit 1
