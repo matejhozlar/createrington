@@ -192,6 +192,10 @@ jobs:
           CURRENT=$(node -p "require('./packages/api-types/package.json').version")
           PUBLISHED=$(npm view @createrington/api-types@$CURRENT version --registry=$REGISTRY 2>/dev/null || echo "")
           if [ -n "$PUBLISHED" ]; then
+            if [ "${{ github.event_name }}" = "pull_request" ] && git diff HEAD^1..HEAD --name-only -- 'packages/server/src/trpc/routers/consumers' 'packages/api-types' | grep -q .; then
+              echo "ERROR: consumer router types changed in this merge but @createrington/api-types@$CURRENT is already on Gitea. Bump packages/api-types/package.json"
+              exit 1
+            fi
             echo "@createrington/api-types@$CURRENT already on Gitea, skipping publish"
             echo "should_publish=false" >> "$GITHUB_OUTPUT"
           else
