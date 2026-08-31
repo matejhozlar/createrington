@@ -1,4 +1,8 @@
-import { BadRequestError, InternalServerError } from "@/app/middleware";
+import {
+  BadRequestError,
+  ForbiddenError,
+  InternalServerError,
+} from "@/app/middleware";
 import { getService, Services } from "@/services";
 import type {
   MinecraftPlayer,
@@ -46,6 +50,14 @@ export class PresenceController {
 
     if (!MC_UUID_REGEX.test(uuid)) {
       throw new BadRequestError("Invalid UUID format");
+    }
+
+    const tokenUuid = req.modAuth?.uuid;
+    if (tokenUuid && tokenUuid.toLowerCase() !== uuid.toLowerCase()) {
+      logger.warn(
+        `Presence update rejected: token player ${tokenUuid} does not match reported player ${uuid}`,
+      );
+      throw new ForbiddenError("Token player does not match reported player");
     }
 
     const targetServerId = resolveServerId(req, "Presence update");
@@ -132,6 +144,13 @@ export class PresenceController {
    * @param res - Express response
    */
   static async heartbeat(req: Request, res: Response): Promise<void> {
+    if (req.modAuth?.uuid) {
+      logger.warn(
+        `Heartbeat rejected: per-player token (${req.modAuth.uuid}) used on a server-level endpoint`,
+      );
+      throw new ForbiddenError("Heartbeat requires a server-level token");
+    }
+
     const { players } = req.body;
 
     if (!Array.isArray(players)) {
