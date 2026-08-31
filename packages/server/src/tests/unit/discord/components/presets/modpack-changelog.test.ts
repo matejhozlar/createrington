@@ -51,6 +51,7 @@ function input(overrides: Partial<ChangelogInput> = {}): ChangelogInput {
     updated: [],
     removed: [],
     unchanged: 200,
+    notes: null,
     ...overrides,
   };
 }
@@ -326,5 +327,65 @@ describe("ModpackChangelogComponentPresets.release", () => {
     if (header.type !== "text") throw new Error("expected the header text");
     expect(header.content.length).toBeLessThan(600);
     expect(header.content).toContain("…");
+  });
+
+  it("appends the notes after the groups under their own heading", () => {
+    const [message] = ModpackChangelogComponentPresets.release(
+      input({
+        added: entries(2),
+        notes: "Rebalanced ore generation.\nSee the pinned post.",
+      }),
+    );
+    const nodes = children(message);
+    expect(headings(nodes)).toEqual(["### Added (2)", "### Additional notes"]);
+    const content = texts(nodes);
+    expect(content[content.length - 1]).toBe(
+      "Rebalanced ore generation.\nSee the pinned post.",
+    );
+    expect(hasDownloadRow(nodes)).toBe(true);
+  });
+
+  it("renders notes alongside the no-changes line when the diff is empty", () => {
+    const messages = ModpackChangelogComponentPresets.release(
+      input({ notes: "Maintenance release." }),
+    );
+    expect(messages).toHaveLength(1);
+    const content = texts(children(messages[0]));
+    expect(content).toContain("No mod changes in this release.");
+    expect(content).toContain("### Additional notes");
+    expect(content[content.length - 1]).toBe("Maintenance release.");
+  });
+
+  it("splits long notes across messages that all stay valid", () => {
+    const notes = Array.from(
+      { length: 120 },
+      (_, i) => `Line ${i + 1}: ${"x".repeat(80)}`,
+    ).join("\n");
+    const messages = ModpackChangelogComponentPresets.release(
+      input({ added: entries(8), notes }),
+    );
+    expect(messages.length).toBeGreaterThan(1);
+    for (const message of messages) {
+      expect(validateComponentsV2(message)).toBeNull();
+    }
+    const all = messages.flatMap((m) => texts(children(m))).join("\n");
+    expect(all).toContain("Line 1:");
+    expect(all).toContain("Line 120:");
+    expect(hasDownloadRow(children(messages[messages.length - 1]))).toBe(true);
+  });
+
+  it("hard-splits a single line longer than a message and stays valid", () => {
+    const messages = ModpackChangelogComponentPresets.release(
+      input({ notes: "y".repeat(9000) }),
+    );
+    expect(messages.length).toBeGreaterThan(1);
+    for (const message of messages) {
+      expect(validateComponentsV2(message)).toBeNull();
+    }
+    const joined = messages
+      .flatMap((m) => texts(children(m)))
+      .filter((content) => content.startsWith("y"))
+      .join("");
+    expect(joined).toBe("y".repeat(9000));
   });
 });
