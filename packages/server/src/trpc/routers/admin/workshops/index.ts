@@ -22,7 +22,7 @@ import {
   WORKSHOP_MOD_REVIEW_ACTIONS,
   WORKSHOP_STATUSES,
 } from "@createrington/shared/workshop";
-import { DISCORD_ID_REGEX } from "@/utils/zod-schemas";
+import { discordId } from "@/utils/zod-schemas";
 
 const searchLimit = createRateLimit({
   name: "admin.workshops.searchProjects",
@@ -41,11 +41,6 @@ const workshopSlug = z
     "Slug may only contain lowercase letters, numbers, and hyphens",
   );
 
-const discordChannelId = z
-  .string()
-  .trim()
-  .regex(DISCORD_ID_REGEX, "Must be a Discord channel ID");
-
 const workshopPatch = z.object({
   name: z.string().trim().min(1).max(120).optional(),
   slug: workshopSlug.optional(),
@@ -56,7 +51,7 @@ const workshopPatch = z.object({
   modpackId: id().optional(),
   maxModsPerUser: z.number().int().min(1).max(25).optional(),
   maxUpvotesPerUser: z.number().int().min(1).max(100).optional(),
-  discordForumChannelId: discordChannelId.nullable().optional(),
+  discordForumChannelId: discordId.nullable().optional(),
 });
 
 export const adminWorkshopsRouter = router({
@@ -81,7 +76,7 @@ export const adminWorkshopsRouter = router({
         newModpackName: z.string().trim().min(1).max(120).optional(),
         maxModsPerUser: z.number().int().min(1).max(25).optional(),
         maxUpvotesPerUser: z.number().int().min(1).max(100).optional(),
-        discordForumChannelId: discordChannelId.optional(),
+        discordForumChannelId: discordId.optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
