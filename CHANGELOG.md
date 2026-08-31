@@ -1,3 +1,11 @@
+## v1.48.0 (2026-08-31)
+
+### @createrington/server (1.48.0 → 1.49.0)
+- [add] Add optional publish notes to modpack changelog announcements: the sandbox can attach free-text markdown (up to 10k chars) to a publish report via `recordPublish`, stored in a new `notes` column on `modpack_publish` and appended under an "Additional notes" heading in the Discord announcement; resending without notes preserves the stored value, an empty string clears it
+- [refactor] Refactor modpack changelog message builder to use a shared section-appending helper and derive chunk sizes from the components-v2 text ceiling
+- [chore] Bump `@createrington/api-types` to 0.10.0
+- [chore] Add api-types drift detection to the dev deploy gate, comparing built types against the published tarball and failing the deploy when they diverge without a version bump
+
 ## v1.47.0 (2026-08-30)
 
 ### @createrington/server (1.47.1 → 1.48.0)
