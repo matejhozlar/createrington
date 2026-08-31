@@ -34,7 +34,8 @@ export default defineApiSpec({
             name: "serverId",
             type: "int",
             nullable: true,
-            description: "Overrides IP-derived server",
+            description:
+              "Optional; must match the server derived from the caller IP",
           },
           {
             name: "position",
@@ -89,7 +90,7 @@ export default defineApiSpec({
       path: "/heartbeat",
       name: "Heartbeat",
       description:
-        "Receives the full online player list from a server. Reconciles tracked sessions against reality to clean up stale sessions.",
+        "Receives the full online player list from a server. Reconciles tracked sessions against reality to clean up stale sessions. Requires a server-level mod token; per-player tokens are rejected.",
       request: {
         name: "HeartbeatRequest",
         fields: [
@@ -115,7 +116,8 @@ export default defineApiSpec({
             name: "serverId",
             type: "int",
             nullable: true,
-            description: "Overrides IP-derived server",
+            description:
+              "Optional; must match the server derived from the caller IP",
           },
           {
             name: "timestamp",
