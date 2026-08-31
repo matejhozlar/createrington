@@ -109,6 +109,7 @@ export function ServerDataProvider({
         updated.set(payload.serverId, {
           serverId: payload.serverId,
           serverName: existing?.serverName || `Server ${payload.serverId}`,
+          serverSlug: payload.serverSlug,
           online: payload.online,
           maintenance: payload.maintenance,
           scheduledMaintenance: payload.scheduledMaintenance,

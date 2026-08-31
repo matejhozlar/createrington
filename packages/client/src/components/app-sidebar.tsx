@@ -142,7 +142,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         : []),
       {
         title: "Chat",
-        url: "/chat/1",
+        url: "/chat",
         icon: MessageCircleIcon,
       },
       {

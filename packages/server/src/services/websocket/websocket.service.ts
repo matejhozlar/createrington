@@ -448,6 +448,7 @@ export class WebSocketService {
 
       const payload: ServerStatusUpdatePayload = {
         serverId,
+        serverSlug: status.serverSlug,
         online,
         maintenance: status.maintenance,
         scheduledMaintenance: status.scheduledMaintenance,

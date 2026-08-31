@@ -232,6 +232,7 @@ const config = {
       ip: env.RAILS_N_SAILS_SERVER_IP,
       port: env.RAILS_N_SAILS_SERVER_PORT,
       name: "Rails 'n Sails",
+      identifier: "rails",
       id: 1,
       rcon: {
         host: env.RAILS_N_SAILS_SERVER_IP,
