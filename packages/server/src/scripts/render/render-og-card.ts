@@ -73,6 +73,15 @@ const FRAMES: readonly FrameSpec[] = [
     angle: -7,
     z: 2,
   },
+  {
+    file: join(SHOTS, "blue-map.webp"),
+    url: "createrington.com/blue-map",
+    centerX: 908,
+    centerY: 466,
+    width: 520,
+    angle: -7,
+    z: 3,
+  },
 ];
 
 interface TeamMember {
