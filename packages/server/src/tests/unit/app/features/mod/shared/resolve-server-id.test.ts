@@ -80,4 +80,10 @@ describe("resolveServerId", () => {
       InternalServerError,
     );
   });
+
+  it("throws when the middleware did not attach a server IP even with a body serverId", () => {
+    expect(() => resolveServerId(makeReq({ serverId: 1 }), "test")).toThrow(
+      InternalServerError,
+    );
+  });
 });

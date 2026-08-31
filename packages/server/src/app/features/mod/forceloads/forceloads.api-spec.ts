@@ -43,7 +43,8 @@ export default defineApiSpec({
           {
             name: "serverId",
             type: "int",
-            description: "Server identifier",
+            description:
+              "Server identifier; must match the server derived from the caller IP",
           },
           {
             name: "timestamp",
