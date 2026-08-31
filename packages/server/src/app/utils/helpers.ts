@@ -1,4 +1,4 @@
-import { MC_UUID_REGEX } from "@/utils/zod-schemas";
+import { DISCORD_ID_REGEX, MC_UUID_REGEX } from "@/utils/zod-schemas";
 
 /**
  * Function to detect ID type
@@ -13,7 +13,7 @@ export function getIdType(
   const isMinecraftUUID = MC_UUID_REGEX.test(id);
   if (isMinecraftUUID) return "minecraftUuid";
 
-  const isDiscordID = /^\d{17,20}$/.test(id);
+  const isDiscordID = DISCORD_ID_REGEX.test(id);
   if (isDiscordID) return "discord";
 
   // Minecraft usernames: 3-16 characters, alphanumeric and underscore only

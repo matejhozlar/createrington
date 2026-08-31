@@ -9,6 +9,7 @@ import {
   auditActor,
 } from "@/trpc/utils";
 import config from "@/config";
+import { discordId } from "@/utils/zod-schemas";
 import { getService, getServiceSync, Services } from "@/services";
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
@@ -104,7 +105,7 @@ export const ghostsRouter = router({
       description:
         "Re-checks a single user against Discord. Mutation (not query) because it mutates the cache: if the user has rejoined, they're evicted",
     })
-    .input(z.object({ discordId: z.string().min(1) }))
+    .input(z.object({ discordId }))
     .mutation(async ({ input }) => {
       const service = await getGhostService();
       return service.verify(input.discordId);
@@ -115,7 +116,7 @@ export const ghostsRouter = router({
       description:
         "Remove a ghost member: re-verify, RCON whitelist remove on all servers, delete player record",
     })
-    .input(z.object({ discordId: z.string().min(1) }))
+    .input(z.object({ discordId }))
     .mutation(async ({ input, ctx }) => {
       if (!isManualActionsEnabled()) {
         throw trpcError.forbidden(
