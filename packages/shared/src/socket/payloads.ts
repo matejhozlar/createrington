@@ -18,6 +18,7 @@ export interface ScheduledMaintenance {
 export interface ServerStatus {
   serverId: number;
   serverName: string;
+  serverSlug: string;
   online: boolean;
   maintenance: boolean;
   scheduledMaintenance: ScheduledMaintenance | null;
@@ -63,6 +64,7 @@ export interface ServerInitialDataPayload {
  */
 export interface ServerStatusUpdatePayload {
   serverId: number;
+  serverSlug: string;
   online: boolean;
   maintenance: boolean;
   scheduledMaintenance: ScheduledMaintenance | null;

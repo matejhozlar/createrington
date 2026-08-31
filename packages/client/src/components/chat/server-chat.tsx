@@ -6,7 +6,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { useParams } from "react-router";
+import { Navigate, useParams } from "react-router";
 import { ChevronDown, Paperclip, Send, Users } from "lucide-react";
 import type {
   CachedMessage,
@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { messagesApi } from "@/services/api/user/messages";
 import { Loading } from "../loading-spinner";
+import { ChatFallback } from "./chat-fallback";
 import { ImagePreview } from "./image-preview";
 import { MessageGroupComponent } from "./message-group";
 import { PlayerListPanel } from "./player-list-panel";
@@ -29,12 +30,34 @@ import { useAutoResize, useRelativeTick } from "./hooks";
 import { groupHasHighlight, groupMessages } from "./utils";
 
 export function ServerChat() {
-  const { serverId: serverIdParam } = useParams<{ serverId: string }>();
-  const serverId = serverIdParam ? parseInt(serverIdParam, 10) : null;
+  const { serverSlug } = useParams<{ serverSlug: string }>();
 
-  const { isConnected, subscribe, unsubscribe, requestInitialData, on } =
-    useWebSocket();
-  const { servers } = useServerData();
+  const {
+    isConnected,
+    connectionState,
+    subscribe,
+    unsubscribe,
+    requestInitialData,
+    on,
+  } = useWebSocket();
+  const {
+    servers,
+    loading: serversLoading,
+    error: serversError,
+  } = useServerData();
+
+  const server = useMemo(
+    () => servers.find((s) => s.serverSlug === serverSlug),
+    [servers, serverSlug],
+  );
+
+  const legacyServer = useMemo(() => {
+    if (server || !serverSlug || !/^\d+$/.test(serverSlug)) return undefined;
+    const legacyId = parseInt(serverSlug, 10);
+    return servers.find((s) => s.serverId === legacyId);
+  }, [server, servers, serverSlug]);
+
+  const serverId = server?.serverId ?? null;
   const { user } = useAuth();
   const { getPlayerByUsername } = usePlayerData();
   const isMobile = useIsMobile();
@@ -80,11 +103,6 @@ export function ServerChat() {
     setShowScrollButton(!atBottom);
     if (atBottom) setUnreadCount(0);
   }, []);
-
-  const server = useMemo(
-    () => servers.find((s) => s.serverId === serverId),
-    [servers, serverId],
-  );
 
   const canSend = !!user && serverId !== null && !sending;
 
@@ -272,12 +290,15 @@ export function ServerChat() {
     lastMessageCountRef.current = currentCount;
   }, [totalCount, scrollToBottom]);
 
-  if (!serverId) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <p className="text-muted-foreground">Invalid server ID</p>
-      </div>
-    );
+  if (legacyServer) {
+    return <Navigate to={`/chat/${legacyServer.serverSlug}`} replace />;
+  }
+
+  if (!server) {
+    if (serversError || connectionState === "error") {
+      return <ChatFallback message="Chat is unavailable right now" />;
+    }
+    return <ChatFallback loading={serversLoading} message="Server not found" />;
   }
 
   return (
@@ -296,10 +317,10 @@ export function ServerChat() {
         {/* Left side: server name + status */}
         <div>
           <h1 className="text-lg font-semibold text-foreground">
-            {server?.serverName ?? `Server ${serverId}`}
+            {server.serverName}
           </h1>
           <p className="text-sm text-muted-foreground">
-            {server?.online ? (
+            {server.online ? (
               <>
                 <span className="mr-2 inline-block size-2 rounded-full bg-green-500"></span>
                 {server.playerCount} / {server.maxPlayers} online

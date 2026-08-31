@@ -138,6 +138,10 @@ const ServerStatus = lazyNamed(
   "ServerStatus",
 );
 const ServerChat = lazyNamed(() => import("./components/chat"), "ServerChat");
+const ChatRedirect = lazyNamed(
+  () => import("./components/chat"),
+  "ChatRedirect",
+);
 
 // Admin feature
 const AdminLogs = lazyNamed(
@@ -432,7 +436,7 @@ function AppContent() {
 
           {/* Server Routes */}
           <Route
-            path="/servers/:serverId"
+            path="/servers/:serverSlug"
             element={
               <ProtectedRoute>
                 <ServerDetail />
@@ -442,7 +446,8 @@ function AppContent() {
           <Route path="/servers/status" element={<ServerStatus />} />
 
           {/* Full-screen Routes (no footer) */}
-          <Route path="/chat/:serverId" element={<ServerChat />} />
+          <Route path="/chat" element={<ChatRedirect />} />
+          <Route path="/chat/:serverSlug" element={<ServerChat />} />
 
           {/* Admin Routes (no footer) */}
           <Route
