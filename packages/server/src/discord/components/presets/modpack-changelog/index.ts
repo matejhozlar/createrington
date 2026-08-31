@@ -67,7 +67,7 @@ const NAME_MAX = 80;
 const LABEL_MAX = 60;
 const TITLE_MAX = 200;
 const NOTES_HEADING = "### Additional notes";
-const NOTES_CHUNK_MAX = 2000;
+const NOTES_CHUNK_MAX = COMPONENTS_V2_MAX_TEXT - 1000;
 const DOWNLOAD_LABEL = "Download on CurseForge";
 const NO_CHANGES = "No mod changes in this release.";
 
