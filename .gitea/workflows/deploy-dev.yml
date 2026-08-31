@@ -192,8 +192,22 @@ jobs:
           CURRENT=$(node -p "require('./packages/api-types/package.json').version")
           PUBLISHED=$(npm view @createrington/api-types@$CURRENT version --registry=$REGISTRY 2>/dev/null || echo "")
           if [ -n "$PUBLISHED" ]; then
-            echo "@createrington/api-types@$CURRENT already on Gitea, skipping publish"
-            echo "should_publish=false" >> "$GITHUB_OUTPUT"
+            # The version is taken, so the built types must match the published
+            # ones exactly; a drift means someone changed the contract without
+            # bumping packages/api-types/package.json
+            pnpm --filter @createrington/api-types build
+            TARBALL=$(npm pack @createrington/api-types@$CURRENT --registry=$REGISTRY --silent)
+            tar -xzf "$TARBALL" package/dist/index.d.ts
+            if diff -q packages/api-types/dist/index.d.ts package/dist/index.d.ts > /dev/null; then
+              echo "@createrington/api-types@$CURRENT already on Gitea with identical types, skipping publish"
+              rm -rf package "$TARBALL"
+              echo "should_publish=false" >> "$GITHUB_OUTPUT"
+            else
+              echo "ERROR: the built api-types differ from the published $CURRENT. Bump packages/api-types/package.json"
+              diff packages/api-types/dist/index.d.ts package/dist/index.d.ts || true
+              rm -rf package "$TARBALL"
+              exit 1
+            fi
           else
             echo "@createrington/api-types@$CURRENT not on Gitea, will publish"
             echo "should_publish=true" >> "$GITHUB_OUTPUT"

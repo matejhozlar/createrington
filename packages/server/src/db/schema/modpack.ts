@@ -99,7 +99,12 @@ export const modpackMod = pgTable(
 // the server pack it uploaded, both live on CurseForge. The CurseForge API
 // never links a server pack uploaded through it, so reconcile reads the
 // reported pair directly. ingestedAt set = the release was read from both
-// files; lastError keeps the last refusal for the sandbox to show.
+// files; lastError keeps the last refusal for the sandbox to show. notes is
+// the publisher's free text from the sandbox's changelog, appended to the
+// Discord announcement as raw markdown by design (the procedure is gated on
+// the shared service token and messages send with mentions disabled, so
+// nothing is escaped). A report without notes keeps the stored ones; an
+// empty string clears them.
 
 export const modpackPublish = pgTable(
   "modpack_publish",
@@ -115,6 +120,7 @@ export const modpackPublish = pgTable(
       .defaultNow(),
     ingestedAt: timestamp("ingested_at", { withTimezone: true }),
     lastError: text("last_error"),
+    notes: text("notes"),
   },
   (table) => [
     uniqueIndex("idx_modpack_publish_unique").on(

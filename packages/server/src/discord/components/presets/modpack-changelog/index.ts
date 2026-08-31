@@ -51,6 +51,7 @@ export interface ChangelogInput {
   updated: ChangelogEntry[];
   removed: ChangelogEntry[];
   unchanged: number;
+  notes: string | null;
 }
 
 type ChangeGroup = "added" | "updated" | "removed";
@@ -65,6 +66,8 @@ const GROUPS: Array<{ key: ChangeGroup; heading: string }> = [
 const NAME_MAX = 80;
 const LABEL_MAX = 60;
 const TITLE_MAX = 200;
+const NOTES_HEADING = "### Additional notes";
+const NOTES_CHUNK_MAX = COMPONENTS_V2_MAX_TEXT - 1000;
 const DOWNLOAD_LABEL = "Download on CurseForge";
 const NO_CHANGES = "No mod changes in this release.";
 
@@ -174,20 +177,39 @@ function fits(open: Child[], children: Child[]): boolean {
   );
 }
 
+function noteNodes(notes: string): Child[] {
+  const chunks: string[] = [];
+  let current = "";
+  for (const line of notes.split("\n")) {
+    if (line.length > NOTES_CHUNK_MAX) {
+      if (current !== "") chunks.push(current);
+      current = "";
+      for (let i = 0; i < line.length; i += NOTES_CHUNK_MAX) {
+        chunks.push(line.slice(i, i + NOTES_CHUNK_MAX));
+      }
+      continue;
+    }
+    const next = current === "" ? line : `${current}\n${line}`;
+    if (next.length > NOTES_CHUNK_MAX) {
+      chunks.push(current);
+      current = line;
+    } else {
+      current = next;
+    }
+  }
+  if (current !== "") chunks.push(current);
+  return chunks.map((chunk) => text(chunk));
+}
+
 function pack(input: ChangelogInput): Child[][] {
   const openings = { first: opening(input, true), rest: opening(input, false) };
   const parts: Child[][] = [];
   let current: Child[] = [];
 
-  for (const group of GROUPS) {
-    const entries = input[group.key];
-    if (entries.length === 0) continue;
+  const appendSection = (heading: Child, nodes: Child[]) => {
     let opened = false;
-    for (const entry of entries) {
-      const node = entryNode(entry, group.key);
-      const pending: Child[] = opened
-        ? [node]
-        : [headingNode(group.heading, entries.length), node];
+    for (const node of nodes) {
+      const pending: Child[] = opened ? [node] : [heading, node];
       const open = parts.length === 0 ? openings.first : openings.rest;
       if (fits(open, [...current, ...pending])) {
         current.push(...pending);
@@ -198,11 +220,24 @@ function pack(input: ChangelogInput): Child[][] {
       current = pending;
       opened = true;
     }
+  };
+
+  for (const group of GROUPS) {
+    const entries = input[group.key];
+    if (entries.length === 0) continue;
+    appendSection(
+      headingNode(group.heading, entries.length),
+      entries.map((entry) => entryNode(entry, group.key)),
+    );
+  }
+  if (GROUPS.every((group) => input[group.key].length === 0)) {
+    current.push(text(NO_CHANGES));
+  }
+  if (input.notes !== null && input.notes !== "") {
+    appendSection(text(NOTES_HEADING), noteNodes(input.notes));
   }
 
-  if (current.length > 0 || parts.length === 0) {
-    parts.push(current.length > 0 ? current : [text(NO_CHANGES)]);
-  }
+  if (current.length > 0) parts.push(current);
   return parts;
 }
 

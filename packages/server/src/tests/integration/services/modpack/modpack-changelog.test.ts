@@ -294,6 +294,30 @@ describe("announceReleaseChangelog", () => {
     expect(sendMock).toHaveBeenCalledTimes(1);
   });
 
+  it("appends the sandbox's publish notes under their own heading", async () => {
+    const modpack = await seedPack();
+    const [kept] = await seedProjects(1);
+    await seedRelease(modpack, "1.0.0", [fileRow(kept, "1.0.0")]);
+    const release = await seedRelease(modpack, "1.1.0", [
+      fileRow(kept, "1.1.0"),
+    ]);
+    await Q.modpack.publish.create({
+      modpackId: modpack.id,
+      clientFileId: release.curseforgeFileId,
+      serverPackFileId: release.serverPackFileId,
+      notes: "Rebalanced ore generation.\nDelete your old configs.",
+    });
+
+    await announce(modpack, release, true);
+
+    expect(sendMock).toHaveBeenCalledTimes(1);
+    const [message] = sentMessages();
+    expect(message.texts).toContain("### Additional notes");
+    expect(message.texts).toContain(
+      "Rebalanced ore generation.\nDelete your old configs.",
+    );
+  });
+
   it("splits a long diff into parts and resumes only the unsent ones", async () => {
     const modpack = await seedPack();
     const projects = await seedProjects(30);
