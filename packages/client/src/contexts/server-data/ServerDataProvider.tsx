@@ -107,9 +107,10 @@ export function ServerDataProvider({
         const existing = updated.get(payload.serverId);
 
         updated.set(payload.serverId, {
+          ...existing,
           serverId: payload.serverId,
-          serverName: existing?.serverName || `Server ${payload.serverId}`,
-          serverSlug: payload.serverSlug,
+          serverName: existing?.serverName ?? `Server ${payload.serverId}`,
+          serverSlug: payload.serverSlug ?? existing?.serverSlug ?? "",
           online: payload.online,
           maintenance: payload.maintenance,
           scheduledMaintenance: payload.scheduledMaintenance,

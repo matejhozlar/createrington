@@ -38,7 +38,7 @@ export const MINECRAFT_SERVER_MAPPING: Record<string, ServerInfo> = {
 export interface ServerConfig {
   id: number;
   name: string;
-  identifier: string;
+  slug: string;
   ip: string;
   port: number;
   maxPlayers: number;
@@ -48,7 +48,7 @@ export const MINECRAFT_SERVERS: Record<number, ServerConfig> = {
   [config.servers.rails.id]: {
     id: config.servers.rails.id,
     name: config.servers.rails.name,
-    identifier: config.servers.rails.identifier,
+    slug: config.servers.rails.slug,
     ip: config.servers.rails.ip,
     port: config.servers.rails.port,
     maxPlayers: 20,

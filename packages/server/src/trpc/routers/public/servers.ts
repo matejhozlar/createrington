@@ -63,7 +63,7 @@ export function buildServerStatus(
   id: number,
   serverConfig: {
     name: string;
-    identifier: string;
+    slug: string;
     ip: string;
     port: number;
     maxPlayers: number;
@@ -74,7 +74,7 @@ export function buildServerStatus(
     return {
       serverId: id,
       serverName: serverConfig.name,
-      serverSlug: serverConfig.identifier,
+      serverSlug: serverConfig.slug,
       ip: serverConfig.ip,
       port: serverConfig.port,
       maxPlayers: serverConfig.maxPlayers,
@@ -96,7 +96,7 @@ export function buildServerStatus(
   return {
     serverId: id,
     serverName: serverConfig.name,
-    serverSlug: serverConfig.identifier,
+    serverSlug: serverConfig.slug,
     ip: serverConfig.ip,
     port: serverConfig.port,
     maxPlayers: serverConfig.maxPlayers,

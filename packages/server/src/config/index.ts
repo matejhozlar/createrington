@@ -232,7 +232,9 @@ const config = {
       ip: env.RAILS_N_SAILS_SERVER_IP,
       port: env.RAILS_N_SAILS_SERVER_PORT,
       name: "Rails 'n Sails",
-      identifier: "rails",
+      // Public URL slug (surfaced as serverSlug, e.g. /chat/rails). Keep in
+      // sync with this server's row in the server table (identifier column).
+      slug: "rails",
       id: 1,
       rcon: {
         host: env.RAILS_N_SAILS_SERVER_IP,

@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { messagesApi } from "@/services/api/user/messages";
 import { Loading } from "../loading-spinner";
+import { ChatFallback } from "./chat-fallback";
 import { ImagePreview } from "./image-preview";
 import { MessageGroupComponent } from "./message-group";
 import { PlayerListPanel } from "./player-list-panel";
@@ -31,21 +32,32 @@ import { groupHasHighlight, groupMessages } from "./utils";
 export function ServerChat() {
   const { serverSlug } = useParams<{ serverSlug: string }>();
 
-  const { isConnected, subscribe, unsubscribe, requestInitialData, on } =
-    useWebSocket();
-  const { servers, loading: serversLoading } = useServerData();
+  const {
+    isConnected,
+    connectionState,
+    subscribe,
+    unsubscribe,
+    requestInitialData,
+    on,
+  } = useWebSocket();
+  const {
+    servers,
+    loading: serversLoading,
+    error: serversError,
+  } = useServerData();
 
-  const isLegacyIdParam = /^\d+$/.test(serverSlug ?? "");
-  const server = useMemo(() => {
-    if (!serverSlug) return undefined;
-    if (isLegacyIdParam) {
-      const legacyId = parseInt(serverSlug, 10);
-      return servers.find((s) => s.serverId === legacyId);
-    }
-    return servers.find((s) => s.serverSlug === serverSlug);
-  }, [servers, serverSlug, isLegacyIdParam]);
+  const server = useMemo(
+    () => servers.find((s) => s.serverSlug === serverSlug),
+    [servers, serverSlug],
+  );
 
-  const serverId = !isLegacyIdParam && server ? server.serverId : null;
+  const legacyServer = useMemo(() => {
+    if (server || !serverSlug || !/^\d+$/.test(serverSlug)) return undefined;
+    const legacyId = parseInt(serverSlug, 10);
+    return servers.find((s) => s.serverId === legacyId);
+  }, [server, servers, serverSlug]);
+
+  const serverId = server?.serverId ?? null;
   const { user } = useAuth();
   const { getPlayerByUsername } = usePlayerData();
   const isMobile = useIsMobile();
@@ -278,20 +290,15 @@ export function ServerChat() {
     lastMessageCountRef.current = currentCount;
   }, [totalCount, scrollToBottom]);
 
-  if (isLegacyIdParam && server) {
-    return <Navigate to={`/chat/${server.serverSlug}`} replace />;
+  if (legacyServer) {
+    return <Navigate to={`/chat/${legacyServer.serverSlug}`} replace />;
   }
 
-  if (!server || serverId === null) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        {serversLoading ? (
-          <Loading size="medium" text="Loading chat..." />
-        ) : (
-          <p className="text-muted-foreground">Server not found</p>
-        )}
-      </div>
-    );
+  if (!server) {
+    if (serversError || connectionState === "error") {
+      return <ChatFallback message="Chat is unavailable right now" />;
+    }
+    return <ChatFallback loading={serversLoading} message="Server not found" />;
   }
 
   return (

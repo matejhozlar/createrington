@@ -61,7 +61,7 @@ export class WebSocketDataProvider {
     return {
       serverId,
       serverName: config.name,
-      serverSlug: config.identifier,
+      serverSlug: config.slug,
       online: isOnline,
       maintenance: maintenanceService.isInMaintenance(serverId),
       scheduledMaintenance: schedule

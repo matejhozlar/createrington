@@ -1,23 +1,25 @@
 import { Navigate } from "react-router";
+import type { ServerStatus } from "@createrington/shared/socket";
 import { useServerData } from "@/contexts/server-data";
-import { Loading } from "../loading-spinner";
+import { useWebSocket } from "@/contexts/websocket";
+import { ChatFallback } from "./chat-fallback";
 
 export function ChatRedirect() {
-  const { servers, loading } = useServerData();
+  const { servers, loading, error } = useServerData();
+  const { connectionState } = useWebSocket();
 
-  const target = [...servers].sort((a, b) => a.serverId - b.serverId)[0];
+  const target = servers.reduce<ServerStatus | undefined>(
+    (min, s) => (!min || s.serverId < min.serverId ? s : min),
+    undefined,
+  );
 
   if (target) {
     return <Navigate to={`/chat/${target.serverSlug}`} replace />;
   }
 
-  return (
-    <div className="flex h-full items-center justify-center">
-      {loading ? (
-        <Loading size="medium" text="Loading chat..." />
-      ) : (
-        <p className="text-muted-foreground">No servers available</p>
-      )}
-    </div>
-  );
+  if (error || connectionState === "error") {
+    return <ChatFallback message="Chat is unavailable right now" />;
+  }
+
+  return <ChatFallback loading={loading} message="No servers available" />;
 }
