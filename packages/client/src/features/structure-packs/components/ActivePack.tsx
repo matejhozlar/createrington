@@ -77,7 +77,8 @@ export function ActivePack({ onOpenPortal }: ActivePackProps) {
   const rotatedInLabel = activePack.lastActivatedAt
     ? formatRotatedIn(now - new Date(activePack.lastActivatedAt).getTime())
     : "—";
-  const rotatesOutLabel = countdown ?? "—";
+  const rotatesOutLabel =
+    countdown ?? (rotationInfo?.enabled === false ? "Paused" : "—");
   const dimensionLabel = `dim ${String(activePack.id).padStart(3, "0")}`;
 
   return (

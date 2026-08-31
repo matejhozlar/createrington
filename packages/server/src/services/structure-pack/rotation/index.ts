@@ -41,7 +41,8 @@ import type { RotationPeriod, WeightEntry } from "./types";
  *   auditing; attempts with no eligible packs are log-only and leave no history row
  * - Handles player-purchased boost units that increase a pack's selection weight for a cycle
  * - Can be disabled entirely via the `enabled` flag on the rotation config: no scheduling,
- *   no automatic rotations, and no boost purchases while disabled (manual rotation still works)
+ *   no automatic rotations, and no boost purchases while disabled (manual rotation still
+ *   works); disabling refunds all open boosts
  *
  * NOTE: File operations (mod installs/removals) are skipped when `isFileOpsAllowed()` returns
  * false; the rotation is still recorded in the database in that case.
@@ -74,7 +75,7 @@ export class StructurePackRotationService {
     const rotationConfig =
       await Q.structure.pack.rotation.config.getOrCreateDefault();
     if (!rotationConfig.enabled) {
-      logger.warn("Structure pack rotation is disabled, scheduler not started");
+      logger.info("Structure pack rotation is disabled, scheduler not started");
       return;
     }
 
@@ -180,7 +181,9 @@ export class StructurePackRotationService {
    *
    * Automatic rotations are skipped while rotation is disabled in the config;
    * manual triggers still run. When no packs are eligible, nothing is rotated
-   * and no history row is recorded.
+   * and no history row is recorded. Manual triggers rethrow failures to the
+   * caller; expected ones (empty pool, file ops) are raised as BadRequestError
+   * at their handling site and bypass the generic recovery catch.
    *
    * @param manual - Whether this rotation was triggered manually by an admin
    * @returns Promise that resolves when the rotation (or its failure path) is complete
@@ -315,6 +318,9 @@ export class StructurePackRotationService {
 
       this.scheduleNextRotation(rotationConfig);
     } catch (error) {
+      if (manual && error instanceof BadRequestError) {
+        throw error;
+      }
       logger.error("Rotation failed:", error);
       // Try to reschedule even on failure
       try {
@@ -466,6 +472,7 @@ export class StructurePackRotationService {
    * cycle number. The next rotation time is null while rotation is disabled.
    */
   async getNextRotationInfo(): Promise<{
+    enabled: boolean;
     nextRotationAt: string | null;
     boostUnitPrice: number;
     cycle: number;
@@ -473,6 +480,7 @@ export class StructurePackRotationService {
     const cfg = await this.getConfig();
     const pastRotations = await Q.structure.pack.rotation.count();
     return {
+      enabled: cfg.enabled,
       nextRotationAt: cfg.enabled
         ? computeNextRotationTime(cfg).toISOString()
         : null,
@@ -483,7 +491,9 @@ export class StructurePackRotationService {
 
   /**
    * Persists partial updates to the rotation configuration and immediately
-   * reschedules the next rotation to reflect the new settings.
+   * reschedules the next rotation to reflect the new settings. Disabling
+   * rotation refunds and removes all open boosts in the same transaction, so
+   * players never pay for a rotation that will not happen.
    *
    * @param data - Fields to update; unspecified fields retain their current values
    * @returns The updated rotation configuration
@@ -506,10 +516,42 @@ export class StructurePackRotationService {
     >,
   ): Promise<StructurePackRotationConfig> {
     const current = await Q.structure.pack.rotation.config.getOrCreateDefault();
-    const updated = await Q.structure.pack.rotation.config.updateAndReturn(
-      { id: current.id },
-      data,
-    );
+    const disabling = current.enabled && data.enabled === false;
+
+    const updated = await db.inTransaction(async (tx) => {
+      const next = await tx.structure.pack.rotation.config.updateAndReturn(
+        { id: current.id },
+        data,
+      );
+
+      if (disabling) {
+        const openBoosts = await tx.structure.pack.boost.findAll({});
+        for (const boost of openBoosts) {
+          await balanceRepo.add(
+            { discordId: boost.discordId },
+            boost.currencySpent,
+            `Structure pack boost refund: ${boost.units} unit(s), rotations disabled`,
+            BalanceTransactionType.REFUND,
+            {
+              metadata: {
+                packId: boost.packId,
+                units: boost.units,
+                boostId: boost.id,
+              },
+              tx,
+            },
+          );
+          await tx.structure.pack.boost.delete({ id: boost.id });
+        }
+        if (openBoosts.length > 0) {
+          logger.info(
+            `Refunded ${openBoosts.length} open structure pack boost(s) after disabling rotation`,
+          );
+        }
+      }
+
+      return next;
+    });
 
     this.scheduleNextRotation(updated);
     logger.info("Rotation config updated");

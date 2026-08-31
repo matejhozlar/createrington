@@ -49,11 +49,25 @@ export const structurePackRotationProcedures = {
     .meta({ description: "Trigger a manual rotation" })
     .mutation(async ({ ctx }) => {
       const service = await getRotationService();
-      await service.executeRotation(true);
+      try {
+        await service.executeRotation(true);
+      } catch (error) {
+        await Q.admin.log.action.logAction({
+          ...auditActor(ctx),
+          actionType: "structure_pack_force_rotation",
+          description: "Manual structure pack rotation failed",
+          metadata: {
+            success: false,
+            reason: error instanceof Error ? error.message : String(error),
+          },
+        });
+        throw error;
+      }
       await Q.admin.log.action.logAction({
         ...auditActor(ctx),
         actionType: "structure_pack_force_rotation",
         description: "Triggered manual structure pack rotation",
+        metadata: { success: true },
       });
       return { triggered: true };
     }),

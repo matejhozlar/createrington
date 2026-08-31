@@ -165,7 +165,8 @@ export function RotationConfig() {
             </div>
             <div className="text-xs text-muted-foreground">
               While off, no rotations are scheduled or executed and players
-              cannot purchase boosts. Force Rotation still works.
+              cannot purchase boosts. Turning rotations off refunds all open
+              boosts. Force Rotation still works.
             </div>
           </div>
         </label>
