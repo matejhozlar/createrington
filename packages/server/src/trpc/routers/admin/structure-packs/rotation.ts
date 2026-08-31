@@ -16,6 +16,7 @@ const rotationConfigRouter = router({
     .meta({ description: "Update rotation schedule config" })
     .input(
       z.object({
+        enabled: z.boolean().optional(),
         period: z.enum(["daily", "weekly", "monthly"]).optional(),
         dayOfWeek: z.number().int().min(0).max(6).optional(),
         dayOfMonth: z.number().int().min(1).max(28).optional(),

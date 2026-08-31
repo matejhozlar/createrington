@@ -97,6 +97,7 @@ export const structurePackRotationConfig = pgTable(
   "structure_pack_rotation_config",
   {
     id: serial("id").primaryKey(),
+    enabled: boolean("enabled").notNull().default(true),
     period: text("period").notNull().default("weekly"),
     dayOfWeek: integer("day_of_week").notNull().default(1),
     dayOfMonth: integer("day_of_month").notNull().default(1),

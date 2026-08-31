@@ -1,0 +1,1 @@
+ALTER TABLE "structure_pack_rotation_config" ADD COLUMN "enabled" boolean DEFAULT true NOT NULL;
