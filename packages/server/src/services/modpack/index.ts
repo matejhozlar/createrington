@@ -512,7 +512,7 @@ export class ModpackService {
       modpack.id,
       client.id,
       server.id,
-      report.notes?.trim() || null,
+      report.notes === undefined ? undefined : report.notes.trim() || null,
     );
     if (!modpack.shipsServerPack) {
       await Q.modpack.updateAll(
@@ -549,17 +549,17 @@ export class ModpackService {
     modpackId: number,
     clientFileId: number,
     serverPackFileId: number,
-    notes: string | null,
+    notes: string | null | undefined,
   ): Promise<ModpackPublish> {
     const refresh = async (id: number) =>
       Q.modpack.publish.updateAndReturn(
         { id },
         {
           serverPackFileId,
-          notes,
           reportedAt: new Date(),
           ingestedAt: null,
           lastError: null,
+          ...(notes !== undefined && { notes }),
         },
       );
     const existing = await Q.modpack.publish.find({ modpackId, clientFileId });
@@ -569,7 +569,7 @@ export class ModpackService {
         modpackId,
         clientFileId,
         serverPackFileId,
-        notes,
+        notes: notes ?? null,
       });
     } catch (error) {
       if (!(error instanceof ConstraintViolationError)) throw error;

@@ -16,6 +16,7 @@ export interface SandboxModpackPublish {
   reportedAt: string;
   ingestedAt: string | null;
   lastError: string | null;
+  notes: string | null;
 }
 
 export function toSandboxModpackPublish(
@@ -27,6 +28,7 @@ export function toSandboxModpackPublish(
     reportedAt: publish.reportedAt.toISOString(),
     ingestedAt: publish.ingestedAt?.toISOString() ?? null,
     lastError: publish.lastError,
+    notes: publish.notes,
   };
 }
 
@@ -107,7 +109,7 @@ export const sandboxModpacksRouter = router({
   recordPublish: sandboxServiceProcedure
     .meta({
       description:
-        "Reports a release the sandbox published to CurseForge: the client file and the server pack uploaded as its additional file, once both are served by CurseForge. The CurseForge API never links a server pack uploaded through it, so without this report the main app would read the client manifest alone and treat every server-side member as dropped. The pair is validated against CurseForge (both served, the server pack a child of the client file), stored, and a forced reconcile runs right away; a refused or failed reconcile comes back as error and stays on the report. Idempotent per client file, safe to resend. Authenticates with the shared SANDBOX_SERVICE_TOKEN, not a user JWT.",
+        "Reports a release the sandbox published to CurseForge: the client file and the server pack uploaded as its additional file, once both are served by CurseForge. The CurseForge API never links a server pack uploaded through it, so without this report the main app would read the client manifest alone and treat every server-side member as dropped. The pair is validated against CurseForge (both served, the server pack a child of the client file), stored, and a forced reconcile runs right away; a refused or failed reconcile comes back as error and stays on the report. Optional notes (max 10k chars) are stored with the report and appended to the Discord changelog announcement as raw markdown; they never go to CurseForge. A resend that omits notes keeps the stored ones, an empty string clears them. Idempotent per client file, safe to resend. Authenticates with the shared SANDBOX_SERVICE_TOKEN, not a user JWT.",
     })
     .input(
       z.object({
