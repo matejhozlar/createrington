@@ -6,6 +6,7 @@ import { HeaderActions } from "@/features/admin/components/HeaderActions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -44,6 +45,7 @@ export function RotationConfig() {
   // Local state is null until the user edits a field; the resolved `current*`
   // values below fall back to the server config so the form always reflects
   // the saved state before any edits are made.
+  const [enabled, setEnabled] = useState<boolean | null>(null);
   const [period, setPeriod] = useState<string | null>(null);
   const [dayOfWeek, setDayOfWeek] = useState<number | null>(null);
   const [dayOfMonth, setDayOfMonth] = useState<number | null>(null);
@@ -62,6 +64,7 @@ export function RotationConfig() {
   const [clearOpen, setClearOpen] = useState(false);
   const [forceOpen, setForceOpen] = useState(false);
 
+  const currentEnabled = enabled ?? config?.enabled ?? true;
   const currentPeriod = period ?? config?.period ?? "weekly";
   const currentDayOfWeek = dayOfWeek ?? config?.dayOfWeek ?? 1;
   const currentDayOfMonth = dayOfMonth ?? config?.dayOfMonth ?? 1;
@@ -154,6 +157,20 @@ export function RotationConfig() {
       </div>
 
       <div className="space-y-4">
+        <label className="flex cursor-pointer items-start gap-3 rounded-md border border-border bg-card p-3 hover:border-[var(--border-strong)]">
+          <Switch checked={currentEnabled} onCheckedChange={setEnabled} />
+          <div className="space-y-0.5">
+            <div className="text-[13px] font-medium text-foreground">
+              Rotations enabled
+            </div>
+            <div className="text-xs text-muted-foreground">
+              While off, no rotations are scheduled or executed and players
+              cannot purchase boosts. Turning rotations off refunds all open
+              boosts. Force Rotation still works.
+            </div>
+          </div>
+        </label>
+
         {/* Schedule section */}
         <div>
           <h3 className="mb-2 text-sm font-medium text-muted-foreground">
@@ -308,6 +325,7 @@ export function RotationConfig() {
           className="w-full"
           onClick={() =>
             updateMutation.mutate({
+              enabled: currentEnabled,
               period: currentPeriod as "daily" | "weekly" | "monthly",
               dayOfWeek: currentDayOfWeek,
               dayOfMonth: currentDayOfMonth,

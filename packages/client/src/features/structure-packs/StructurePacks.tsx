@@ -109,6 +109,7 @@ export function StructurePacks() {
         nextRotationAt={rotationInfo?.nextRotationAt ?? null}
         cycleNumber={rotationInfo?.cycle ?? null}
         canBoost={!!user}
+        rotationPaused={rotationInfo?.enabled === false}
       />
     </div>
   );

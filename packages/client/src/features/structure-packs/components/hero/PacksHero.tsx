@@ -44,7 +44,9 @@ export const PacksHero = forwardRef<PacksHeroHandle, PacksHeroProps>(
     const { data: rotationInfo } =
       trpc.public.structurePacks.rotationInfo.useQuery();
 
-    const countdown = useCountdown(rotationInfo?.nextRotationAt ?? null);
+    const countdown =
+      useCountdown(rotationInfo?.nextRotationAt ?? null) ??
+      (rotationInfo?.enabled === false ? "Paused" : null);
 
     const totalBoosts =
       pool?.reduce((sum, entry) => sum + entry.boostUnits, 0) ?? 0;
