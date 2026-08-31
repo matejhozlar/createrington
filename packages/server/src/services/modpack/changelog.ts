@@ -373,6 +373,10 @@ async function toChangelogInput(
   const project = modpack.curseforgeProjectId
     ? await Q.curseforge.project.find({ id: modpack.curseforgeProjectId })
     : null;
+  const publish = await Q.modpack.publish.find({
+    modpackId: modpack.id,
+    clientFileId: release.curseforgeFileId,
+  });
   const packUrl = httpUrl(project?.websiteUrl);
   return {
     release: {
@@ -396,5 +400,6 @@ async function toChangelogInput(
     updated: diff.updated.map(toEntry),
     removed: diff.removed.map(toEntry),
     unchanged: diff.unchanged,
+    notes: publish?.notes ?? null,
   };
 }

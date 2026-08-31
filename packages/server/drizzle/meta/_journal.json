@@ -456,6 +456,13 @@
       "when": 1788096381808,
       "tag": "0064_curvy_groot",
       "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1788195348165,
+      "tag": "0065_supreme_eternity",
+      "breakpoints": true
     }
   ]
 }

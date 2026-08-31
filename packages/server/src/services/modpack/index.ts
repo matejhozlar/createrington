@@ -134,6 +134,7 @@ export interface ModpackPublishReport {
   projectId: number;
   clientFileId: number;
   serverPackFileId: number;
+  notes?: string;
 }
 
 export interface ModpackPublishResult {
@@ -507,7 +508,12 @@ export class ModpackService {
       );
     }
 
-    const publish = await this.upsertPublish(modpack.id, client.id, server.id);
+    const publish = await this.upsertPublish(
+      modpack.id,
+      client.id,
+      server.id,
+      report.notes?.trim() || null,
+    );
     if (!modpack.shipsServerPack) {
       await Q.modpack.updateAll(
         { shipsServerPack: true, updatedAt: new Date() },
@@ -543,12 +549,14 @@ export class ModpackService {
     modpackId: number,
     clientFileId: number,
     serverPackFileId: number,
+    notes: string | null,
   ): Promise<ModpackPublish> {
     const refresh = async (id: number) =>
       Q.modpack.publish.updateAndReturn(
         { id },
         {
           serverPackFileId,
+          notes,
           reportedAt: new Date(),
           ingestedAt: null,
           lastError: null,
@@ -561,6 +569,7 @@ export class ModpackService {
         modpackId,
         clientFileId,
         serverPackFileId,
+        notes,
       });
     } catch (error) {
       if (!(error instanceof ConstraintViolationError)) throw error;

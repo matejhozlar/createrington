@@ -114,6 +114,7 @@ export const sandboxModpacksRouter = router({
         projectId: id(),
         clientFileId: id(),
         serverPackFileId: id(),
+        notes: z.string().trim().max(10_000).optional(),
       }),
     )
     .mutation(async ({ input }) => {

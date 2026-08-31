@@ -1,0 +1,1 @@
+ALTER TABLE "modpack_publish" ADD COLUMN "notes" text;
