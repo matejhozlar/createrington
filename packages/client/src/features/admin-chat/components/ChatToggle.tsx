@@ -15,7 +15,7 @@ export function ChatToggle({
   return (
     <button
       onClick={onToggle}
-      title="Createrington Assistant (Ctrl+I to hide)"
+      title="Createrington Assistant (Ctrl+I to toggle)"
       aria-label={open ? "Close assistant" : "Open assistant"}
       className={cn(
         "relative flex size-12 items-center justify-center overflow-hidden rounded-full bg-primary text-primary-foreground shadow-lg transition-transform",

@@ -111,6 +111,30 @@ export class PlayerBalanceQueries extends PlayerBalanceBaseQueries {
   }
 
   /**
+   * Reads a player's balance under a row lock (SELECT ... FOR UPDATE). Must be
+   * called on a transaction-bound instance; the lock is held until the
+   * surrounding transaction ends, serializing every concurrent mutation of
+   * the same row.
+   *
+   * @returns Balance in storage format, or null when the player has no balance row
+   */
+  async getForUpdate(minecraftUuid: string): Promise<bigint | null> {
+    const query = `
+      SELECT balance
+      FROM ${this.table}
+      WHERE minecraft_uuid = $1
+      FOR UPDATE`;
+
+    const result = await this.runQuery<{ balance: bigint }>(
+      "get balance for update",
+      query,
+      [minecraftUuid],
+    );
+
+    return result.rows[0]?.balance ?? null;
+  }
+
+  /**
    * Gets top N players by balance, joined with player table for usernames
    *
    * @param limit - Maximum entries to return (default: 10)

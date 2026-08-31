@@ -1,3 +1,26 @@
+## v1.47.0 (2026-08-30)
+
+### @createrington/server (1.47.1 → 1.48.0)
+- [add] Add idempotency keys to currency deposit and withdraw endpoints: replayed requests with the same key and body return the stored response without double-crediting or double-debiting, mismatched replays are rejected with 409, and keys are retained for 24 hours
+- [add] Add `player_balance_idempotency` table for deduplication of mod currency requests, with automatic retention cleanup
+- [add] Add `listEvents` admin procedure for a paginated workshop activity timeline with search by mod name or player and event-type filtering
+- [fix] Fix balance debits and their ledger writes running outside a single locked transaction: the balance row is now locked with `SELECT ... FOR UPDATE` and all mutations commit atomically, preventing lost-update races on concurrent debits
+- [fix] Fix structure pack boost purchases leaving the player charged when the boost record insert fails, by wrapping the debit and insert in one transaction
+- [fix] Fix balance transfer ledger entries being written outside the transfer transaction, so a mid-transfer failure no longer leaves orphaned log rows
+- [fix] Refuse `setModRequired` on mods belonging to archived workshops
+- [refactor] Consolidate `BalanceRepository.add`/`deduct` signatures: replace positional `metadata` and `txOverride` params with a single `BalanceMutationOptions` object
+- [chore] Bump createrington-api to 1.11.1 and add `idempotencyKey` field to deposit/withdraw API specs
+- [chore] Fix CI mod API publish gate to check Maven for the current version instead of relying on PR diff detection
+
+### @createrington/client (0.2.61 → 0.2.62)
+- [add] Add activity tab to the admin workshop detail page: paginated, searchable timeline of suggestion, review, and pack events with type filtering
+- [add] Add Ctrl+I keyboard shortcut to summon and dismiss the admin chat
+- [refactor] Rework admin chat expanded and mobile layouts with glass-morphism modal, body scroll locking, and visual-viewport-aware input positioning
+- [refactor] Remove reveal eye icon from the Sensitive component, keeping click-to-reveal behavior
+
+### @createrington/shared (1.10.2 → 1.11.0)
+- [add] Add `WORKSHOP_MOD_EVENT_TYPE_LABELS` map for human-readable event type names in the workshop activity timeline
+
 ## v1.46.1 (2026-08-29)
 
 ### @createrington/server (1.47.0 → 1.47.1)

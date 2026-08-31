@@ -7,9 +7,11 @@ const NO_PROVIDER_DEFAULT: AdminChatContextValue = {
   enabled: false,
   bubbleVisible: false,
   drawerOpen: false,
+  expanded: false,
   openDrawer: () => {},
   closeDrawer: () => {},
   toggleDrawer: () => {},
+  setExpanded: () => {},
   setBubbleVisible: () => {},
 };
 

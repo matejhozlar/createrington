@@ -1,4 +1,4 @@
-import { Maximize2, Minimize2, Plus, Square, X } from "lucide-react";
+import { ArrowLeft, Maximize2, Minimize2, Plus, Square, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -6,12 +6,13 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import type { ChatLayout } from "../layout";
 
 interface ChatHeaderProps {
   breadcrumb: string;
+  layout: ChatLayout;
   sessionActive: boolean;
   canStartNew: boolean;
-  expanded: boolean;
   onNewChat: () => void;
   onEndSession: () => void;
   onToggleExpand: () => void;
@@ -20,17 +21,30 @@ interface ChatHeaderProps {
 
 export function ChatHeader({
   breadcrumb,
+  layout,
   sessionActive,
   canStartNew,
-  expanded,
   onNewChat,
   onEndSession,
   onToggleExpand,
   onClose,
 }: ChatHeaderProps): React.JSX.Element {
+  const expanded = layout === "expanded";
+
   return (
     <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-2.5">
       <div className="flex min-w-0 items-center gap-2">
+        {layout === "fullscreen" && (
+          <Button
+            size="icon-sm"
+            variant="ghost"
+            onClick={onClose}
+            aria-label="Back"
+            className="-ml-1.5 shrink-0"
+          >
+            <ArrowLeft />
+          </Button>
+        )}
         <img
           src="/assets/logo/createrington-bot.webp"
           alt="Createrington Assistant"
@@ -101,37 +115,40 @@ export function ChatHeader({
             <TooltipContent className="z-[10000]">End session</TooltipContent>
           </Tooltip>
         )}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              size="icon-xs"
-              variant="ghost"
-              onClick={onToggleExpand}
-              aria-label={expanded ? "Collapse" : "Expand"}
-              className="hidden sm:inline-flex"
-            >
-              {expanded ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent className="z-[10000]">
-            {expanded ? "Collapse panel" : "Expand panel"}
-          </TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              size="icon-xs"
-              variant="ghost"
-              onClick={onClose}
-              aria-label="Close"
-            >
-              <X size={14} />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent className="z-[10000]">
-            Close (Ctrl+I to hide)
-          </TooltipContent>
-        </Tooltip>
+        {layout !== "fullscreen" && (
+          <>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon-xs"
+                  variant="ghost"
+                  onClick={onToggleExpand}
+                  aria-label={expanded ? "Collapse" : "Expand"}
+                >
+                  {expanded ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent className="z-[10000]">
+                {expanded ? "Collapse panel" : "Expand panel"}
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon-xs"
+                  variant="ghost"
+                  onClick={onClose}
+                  aria-label="Close"
+                >
+                  <X size={14} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent className="z-[10000]">
+                Close (Ctrl+I to toggle)
+              </TooltipContent>
+            </Tooltip>
+          </>
+        )}
       </div>
     </div>
   );

@@ -36,6 +36,7 @@ export { ModpackReleaseAnnouncementQueries } from "./modpack/release/announcemen
 export { ModpackReleaseModQueries } from "./modpack/release/mod";
 export { PlayerQueries } from "./player";
 export { PlayerBalanceQueries } from "./player/balance";
+export { PlayerBalanceIdempotencyQueries } from "./player/balance/idempotency";
 export { PlayerBalanceTransactionQueries } from "./player/balance/transaction";
 export { PlayerBanQueries } from "./player/ban";
 export { PlayerInactivityWarningQueries } from "./player/inactivity/warning";

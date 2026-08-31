@@ -45,6 +45,7 @@ import {
 import { RejectModDialog } from "./components/RejectModDialog";
 import { WorkshopSettingsDialog } from "./components/WorkshopSettingsDialog";
 import { WorkshopTabs } from "./components/WorkshopTabs";
+import { ActivityTab } from "./components/tabs/ActivityTab";
 import { AllModsTab } from "./components/tabs/AllModsTab";
 import { DependenciesTab } from "./components/tabs/DependenciesTab";
 import { InPackTab } from "./components/tabs/InPackTab";
@@ -172,6 +173,7 @@ export function AdminWorkshopDetail() {
       utils.admin.workshops.listPackMods.invalidate({ workshopId }),
       utils.admin.workshops.getAttention.invalidate({ workshopId }),
       utils.admin.workshops.listDependencies.invalidate({ workshopId }),
+      utils.admin.workshops.listEvents.invalidate({ workshopId }),
       utils.user.workshops.list.invalidate(),
       utils.user.workshops.get.invalidate(),
       utils.user.workshops.listRejected.invalidate({ workshopId }),
@@ -555,6 +557,17 @@ export function AdminWorkshopDetail() {
             unresolvedCount={attentionCount ?? 0}
             envDisplay={envDisplay}
             onSetEnvironment={handleSetEnvironment}
+          />
+        )}
+
+        {activeTab === "activity" && (
+          <ActivityTab
+            workshopId={workshopId}
+            search={search}
+            onSearchChange={handleSearchChange}
+            page={page}
+            onPageChange={setPage}
+            onView={setDetailModId}
           />
         )}
 

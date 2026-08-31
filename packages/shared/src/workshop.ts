@@ -105,6 +105,20 @@ export const WORKSHOP_MOD_EVENT_TYPES = [
   "dropped",
 ] as const;
 
+export const WORKSHOP_MOD_EVENT_TYPE_LABELS: Record<
+  (typeof WORKSHOP_MOD_EVENT_TYPES)[number],
+  string
+> = {
+  suggested: "Suggested",
+  withdrawn: "Withdrawn",
+  approved: "Approved",
+  rejected: "Ruled out",
+  testing_started: "Testing started",
+  sent_back: "Sent back",
+  shipped: "Shipped",
+  dropped: "Dropped",
+};
+
 export const WORKSHOP_MOD_REVIEW_ACTIONS = [
   "approve",
   "start_testing",

@@ -10,3 +10,5 @@ export type WorkshopDependency =
   RouterOutput["admin"]["workshops"]["listDependencies"][number];
 export type ReleaseMod =
   RouterOutput["admin"]["modpacks"]["listReleaseMods"][number];
+export type WorkshopEvent =
+  RouterOutput["admin"]["workshops"]["listEvents"]["events"][number];

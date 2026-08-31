@@ -5,11 +5,13 @@ import {
   NotFoundError,
 } from "@/app/middleware/error-handler";
 import { ConstraintViolationError, DatabaseError } from "@/db/utils/errors";
+import type { WorkshopModEventListItem } from "@/db/queries/workshop/mod/event";
 import type {
   CurseforgeProject,
   ModEnvironment,
   Workshop,
   WorkshopMod,
+  WorkshopModEventType,
   WorkshopModRejectReason,
   WorkshopModStatus,
   WorkshopProjectDependency,
@@ -1276,6 +1278,20 @@ export class WorkshopService {
     return workshop;
   }
 
+  /** Newest-first page of everything that happened to this workshop's mods. */
+  async getWorkshopEvents(
+    workshopId: number,
+    options: {
+      eventType?: WorkshopModEventType;
+      search?: string;
+      limit: number;
+      offset: number;
+    },
+  ): Promise<{ events: WorkshopModEventListItem[]; total: number }> {
+    await this.getWorkshop(workshopId);
+    return Q.workshop.mod.event.search({ workshopId, ...options });
+  }
+
   private async decorateMods(
     workshop: Workshop,
     mods: WorkshopMod[],
@@ -1373,6 +1389,12 @@ export class WorkshopService {
     if (mod.status !== "next_update") {
       throw new BadRequestError(
         "Only mods waiting for the next update can be enabled or disabled",
+      );
+    }
+    const workshop = await this.getWorkshop(mod.workshopId);
+    if (workshop.status === "archived") {
+      throw new BadRequestError(
+        "Cannot enable or disable mods in an archived workshop",
       );
     }
     if (mod.required === required) return { mod, changed: false };

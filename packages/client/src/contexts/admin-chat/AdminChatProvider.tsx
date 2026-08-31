@@ -8,13 +8,20 @@ import {
 import { useAuth } from "@/contexts/auth";
 import { api } from "@/services/api/client";
 import { AdminChatContext } from "./context";
-import type { AdminChatContextValue } from "./types";
+import type { AdminChatContextValue, OpenDrawerOptions } from "./types";
 
 const BUBBLE_KEY = "admin-chat:bubble-visible";
 // Inlined here (rather than imported from features/admin-chat/api) so this
 // provider stays outside the lazy admin-chat chunk: the rest of admin-chat
 // is still split.
 const ENABLED_ENDPOINT = "api/claude-chat/enabled";
+
+interface PanelState {
+  open: boolean;
+  expanded: boolean;
+}
+
+const PANEL_CLOSED: PanelState = { open: false, expanded: false };
 
 async function fetchEnabled(): Promise<boolean> {
   try {
@@ -41,7 +48,7 @@ export function AdminChatProvider({ children }: { children: ReactNode }) {
   const [bubbleVisible, setBubbleVisibleState] = useState<boolean>(
     readInitialBubbleVisible,
   );
-  const [drawerOpen, setDrawerOpen] = useState<boolean>(false);
+  const [panel, setPanel] = useState<PanelState>(PANEL_CLOSED);
 
   // Server kill-switch: only fetched for admins. Non-admins keep the
   // initial `false`, so no setState is needed in the early-return branch.
@@ -66,39 +73,35 @@ export function AdminChatProvider({ children }: { children: ReactNode }) {
     }
   }, [bubbleVisible]);
 
-  const setBubbleVisible = useCallback((visible: boolean) => {
-    setBubbleVisibleState(visible);
-    if (!visible) setDrawerOpen(false);
-  }, []);
-
-  const openDrawer = useCallback(() => {
-    setBubbleVisibleState(true);
-    setDrawerOpen(true);
+  const openDrawer = useCallback((options?: OpenDrawerOptions) => {
+    setPanel({ open: true, expanded: options?.expanded ?? false });
   }, []);
 
   const closeDrawer = useCallback(() => {
-    setDrawerOpen(false);
+    setPanel(PANEL_CLOSED);
   }, []);
 
   const toggleDrawer = useCallback(() => {
-    setDrawerOpen((prev) => {
-      const next = !prev;
-      if (next) setBubbleVisibleState(true);
-      return next;
-    });
+    setPanel((prev) =>
+      prev.open ? PANEL_CLOSED : { open: true, expanded: false },
+    );
   }, []);
 
-  // Ctrl/Cmd+I toggles the bubble's visibility (closes the drawer when hiding).
+  const setExpanded = useCallback((expanded: boolean) => {
+    setPanel((prev) => (prev.open ? { ...prev, expanded } : prev));
+  }, []);
+
+  // Ctrl/Cmd+I summons the assistant as the expanded modal, or dismisses
+  // it when it is already open. The launcher bubble is left untouched.
   useEffect(() => {
     if (!enabled) return;
     const handler = (e: KeyboardEvent): void => {
       if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey) {
         if (e.key === "i" || e.key === "I") {
           e.preventDefault();
-          setBubbleVisibleState((v) => {
-            if (v) setDrawerOpen(false);
-            return !v;
-          });
+          setPanel((prev) =>
+            prev.open ? PANEL_CLOSED : { open: true, expanded: true },
+          );
         }
       }
     };
@@ -110,20 +113,22 @@ export function AdminChatProvider({ children }: { children: ReactNode }) {
     () => ({
       enabled,
       bubbleVisible,
-      drawerOpen,
+      drawerOpen: panel.open,
+      expanded: panel.expanded,
       openDrawer,
       closeDrawer,
       toggleDrawer,
-      setBubbleVisible,
+      setExpanded,
+      setBubbleVisible: setBubbleVisibleState,
     }),
     [
       enabled,
       bubbleVisible,
-      drawerOpen,
+      panel,
       openDrawer,
       closeDrawer,
       toggleDrawer,
-      setBubbleVisible,
+      setExpanded,
     ],
   );
 

@@ -180,6 +180,145 @@ describe("BalanceRepository (integration)", () => {
     });
   });
 
+  describe("concurrency", () => {
+    it("lets exactly one of N concurrent full-balance deducts through", async () => {
+      await seedPlayer(ALICE, "alice", "100", 100);
+
+      const results = await Promise.allSettled(
+        Array.from({ length: 8 }, () =>
+          R.balanceRepo.deduct(
+            ALICE,
+            100,
+            "withdraw",
+            BalanceTransactionType.WITHDRAW,
+          ),
+        ),
+      );
+
+      const fulfilled = results.filter((r) => r.status === "fulfilled");
+      const rejected = results.filter(
+        (r): r is PromiseRejectedResult => r.status === "rejected",
+      );
+      expect(fulfilled).toHaveLength(1);
+      expect(rejected).toHaveLength(7);
+      for (const { reason } of rejected) {
+        expect((reason as Error).message).toContain("Insufficient balance");
+      }
+
+      expect(await R.balanceRepo.getRaw(ALICE)).toBe(0n);
+
+      const history = await R.balanceRepo.getHistory(ALICE);
+      const withdrawals = history.filter(
+        (t) => t.transactionType === BalanceTransactionType.WITHDRAW,
+      );
+      expect(withdrawals).toHaveLength(1);
+      expect(history.reduce((sum, t) => sum + t.amount, 0n)).toBe(0n);
+    });
+
+    it("applies every concurrent partial deduct exactly once with a contiguous ledger", async () => {
+      await seedPlayer(ALICE, "alice", "100", 100);
+
+      await Promise.all(
+        Array.from({ length: 10 }, () =>
+          R.balanceRepo.deduct(
+            ALICE,
+            10,
+            "spend",
+            BalanceTransactionType.PURCHASE,
+          ),
+        ),
+      );
+
+      expect(await R.balanceRepo.getRaw(ALICE)).toBe(0n);
+
+      const history = await R.balanceRepo.getHistory(ALICE);
+      expect(
+        history.filter(
+          (t) => t.transactionType === BalanceTransactionType.PURCHASE,
+        ),
+      ).toHaveLength(10);
+      expect(history.reduce((sum, t) => sum + t.amount, 0n)).toBe(0n);
+
+      const oldestFirst = [...history].reverse();
+      for (let i = 1; i < oldestFirst.length; i++) {
+        expect(oldestFirst[i].balanceBefore).toBe(
+          oldestFirst[i - 1].balanceAfter,
+        );
+      }
+    });
+
+    it("lets exactly one of N concurrent full-balance transfers through", async () => {
+      await seedPlayer(ALICE, "alice", "100", 100);
+      await seedPlayer(BOB, "bob", "200", 0);
+
+      const results = await Promise.allSettled(
+        Array.from({ length: 8 }, () =>
+          R.balanceRepo.transfer(ALICE, BOB, 100),
+        ),
+      );
+
+      expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+      expect(await R.balanceRepo.getRaw(ALICE)).toBe(0n);
+      expect(await R.balanceRepo.getRaw(BOB)).toBe(100_000n);
+
+      const senderHistory = await R.balanceRepo.getHistory(ALICE);
+      expect(
+        senderHistory.filter(
+          (t) => t.transactionType === BalanceTransactionType.TRANSFER_SEND,
+        ),
+      ).toHaveLength(1);
+
+      const recipientHistory = await R.balanceRepo.getHistory(BOB);
+      expect(
+        recipientHistory.filter(
+          (t) => t.transactionType === BalanceTransactionType.TRANSFER_RECEIVE,
+        ),
+      ).toHaveLength(1);
+      expect(recipientHistory.reduce((sum, t) => sum + t.amount, 0n)).toBe(
+        100_000n,
+      );
+    });
+
+    it("completes concurrent opposite-direction transfers without deadlocking", async () => {
+      await seedPlayer(ALICE, "alice", "100", 50);
+      await seedPlayer(BOB, "bob", "200", 50);
+
+      await Promise.all(
+        Array.from({ length: 5 }, () => [
+          R.balanceRepo.transfer(ALICE, BOB, 5),
+          R.balanceRepo.transfer(BOB, ALICE, 5),
+        ]).flat(),
+      );
+
+      expect(await R.balanceRepo.getRaw(ALICE)).toBe(50_000n);
+      expect(await R.balanceRepo.getRaw(BOB)).toBe(50_000n);
+    });
+  });
+
+  describe("idempotency key on the ledger", () => {
+    it("persists the key passed through the mutation options", async () => {
+      await seedPlayer(ALICE, "alice", "100", 20);
+
+      await R.balanceRepo.deduct(
+        ALICE,
+        5,
+        "withdraw",
+        BalanceTransactionType.WITHDRAW,
+        { idempotencyKey: "attempt-1" },
+      );
+      await R.balanceRepo.add(
+        ALICE,
+        5,
+        "deposit",
+        BalanceTransactionType.DEPOSIT,
+      );
+
+      const history = await R.balanceRepo.getHistory(ALICE);
+      expect(history[0].idempotencyKey).toBeNull();
+      expect(history[1].idempotencyKey).toBe("attempt-1");
+    });
+  });
+
   describe("hasSufficient", () => {
     it("compares the stored balance against a decimal amount", async () => {
       await seedPlayer(ALICE, "alice", "100", 10);

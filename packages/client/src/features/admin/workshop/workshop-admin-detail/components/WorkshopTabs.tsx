@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useLayoutEffect, useRef } from "react";
+import { useCallback, useLayoutEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -17,7 +17,6 @@ const TOP_TAB_CONFIG: Record<
     label: string;
     badgeTab?: WorkshopTabId;
     badgeClassName?: string;
-    soonAfter?: string;
   }
 > = {
   mods: { label: "Mods", badgeTab: "review" },
@@ -26,8 +25,8 @@ const TOP_TAB_CONFIG: Record<
     label: "Issues",
     badgeTab: "issues",
     badgeClassName: "border-amber-500/20 bg-amber-500/10 text-amber-400",
-    soonAfter: "Activity",
   },
+  activity: { label: "Activity" },
   releases: { label: "Releases" },
 };
 
@@ -124,43 +123,31 @@ export function WorkshopTabs({
             const isActive = group === topId;
             const count = tab.badgeTab ? counts[tab.badgeTab] : undefined;
             return (
-              <Fragment key={topId}>
-                <button
-                  ref={isActive ? activeTopRef : undefined}
-                  type="button"
-                  onClick={() => onGroupChange(topId)}
-                  className={cn(
-                    "relative flex shrink-0 cursor-pointer items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors",
-                    isActive
-                      ? "text-foreground"
-                      : "text-muted-foreground hover:text-foreground/80",
-                  )}
-                >
-                  {tab.label}
-                  {count !== undefined && count > 0 && (
-                    <Badge
-                      variant="outline"
-                      className={cn("text-xs", tab.badgeClassName)}
-                    >
-                      {count.toLocaleString()}
-                    </Badge>
-                  )}
-                  {isActive && (
-                    <span className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-primary" />
-                  )}
-                </button>
-                {tab.soonAfter && (
-                  <span className="flex shrink-0 items-center gap-1.5 px-3 py-2 text-sm font-medium text-muted-foreground/50">
-                    {tab.soonAfter}
-                    <Badge
-                      variant="outline"
-                      className="text-xs text-muted-foreground/70"
-                    >
-                      Soon
-                    </Badge>
-                  </span>
+              <button
+                key={topId}
+                ref={isActive ? activeTopRef : undefined}
+                type="button"
+                onClick={() => onGroupChange(topId)}
+                className={cn(
+                  "relative flex shrink-0 cursor-pointer items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors",
+                  isActive
+                    ? "text-foreground"
+                    : "text-muted-foreground hover:text-foreground/80",
                 )}
-              </Fragment>
+              >
+                {tab.label}
+                {count !== undefined && count > 0 && (
+                  <Badge
+                    variant="outline"
+                    className={cn("text-xs", tab.badgeClassName)}
+                  >
+                    {count.toLocaleString()}
+                  </Badge>
+                )}
+                {isActive && (
+                  <span className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-primary" />
+                )}
+              </button>
             );
           })}
         </div>

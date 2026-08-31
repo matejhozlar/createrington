@@ -112,6 +112,9 @@ export const playerBalanceTransaction = pgTable(
       { onUpdate: "cascade", onDelete: "set null" },
     ),
     metadata: jsonb("metadata").default({}),
+    // Client-generated key of the mod request that produced this entry, so a
+    // mod-side ERROR log line can be matched to the ledger during reconciliation.
+    idempotencyKey: text("idempotency_key"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -123,6 +126,43 @@ export const playerBalanceTransaction = pgTable(
     index("idx_balance_transaction_related")
       .on(table.relatedPlayerUuid)
       .where(sql`related_player_uuid IS NOT NULL`),
+    index("idx_balance_transaction_idempotency_key")
+      .on(table.idempotencyKey)
+      .where(sql`idempotency_key IS NOT NULL`),
+  ],
+);
+
+// --- player_balance_idempotency ---
+// Dedup store for mod deposit/withdraw requests that carry an idempotency key.
+// A row is claimed at the start of the request transaction and filled with the
+// final status + envelope before commit, so a replay (same player, same key,
+// same request hash) returns the stored response without touching the balance.
+
+export const playerBalanceIdempotency = pgTable(
+  "player_balance_idempotency",
+  {
+    playerMinecraftUuid: uuid("player_minecraft_uuid")
+      .notNull()
+      .references(() => player.minecraftUuid, {
+        onUpdate: "cascade",
+        onDelete: "cascade",
+      }),
+    idempotencyKey: text("idempotency_key").notNull(),
+    // sha256 of the operation name + normalized request body; a replay with a
+    // different hash is rejected instead of served from the store.
+    requestHash: text("request_hash").notNull(),
+    // Null only while the claiming transaction is still open.
+    statusCode: integer("status_code"),
+    responseBody: jsonb("response_body"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.playerMinecraftUuid, table.idempotencyKey],
+    }),
+    index("idx_balance_idempotency_created").on(table.createdAt),
   ],
 );
 

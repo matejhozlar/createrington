@@ -19,7 +19,7 @@ export function MentionMenu({
   return (
     <div
       role="listbox"
-      className="absolute right-3 bottom-[calc(100%-0.25rem)] left-3 z-10 flex max-h-56 flex-col gap-0.5 overflow-y-auto rounded-lg border border-border bg-popover p-1 shadow-lg"
+      className="absolute inset-x-0 bottom-[calc(100%+0.375rem)] z-10 flex max-h-56 flex-col gap-0.5 overflow-y-auto rounded-lg border border-border bg-popover p-1 shadow-lg"
     >
       {matches.map((repo, i) => (
         <button
