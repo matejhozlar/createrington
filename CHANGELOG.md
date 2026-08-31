@@ -1,3 +1,12 @@
+## v1.49.0 (2026-08-31)
+
+### @createrington/server (1.49.0 → 1.50.0)
+- [remove] Remove crypto screenshot frame from the OG card, replacing it with a blue-map frame showcasing the Bluemap page
+- [chore] Update screenshots used in OG card generation (online-players, web-chat replaced with higher-resolution captures)
+
+### @createrington/client (0.2.62 → 0.2.63)
+- [chore] Regenerate OG card image with updated screenshot frames
+
 ## v1.48.0 (2026-08-31)
 
 ### @createrington/server (1.48.0 → 1.49.0)
