@@ -30,6 +30,7 @@ import {
   getFilesDetails,
   getMod,
   getModpackModIds,
+  LOADERLESS_CLASSES,
   searchMods,
   type CurseForgeFileDetail,
   type CurseForgeProjectData,
@@ -392,8 +393,9 @@ export class WorkshopService {
     }
     const results = await searchMods(query, 20, {
       gameVersion: workshop.gameVersion,
-      modLoaderType:
-        classId === CurseForgeClass.mods ? workshop.modLoaderType : null,
+      modLoaderType: LOADERLESS_CLASSES.has(classId)
+        ? null
+        : workshop.modLoaderType,
       classId,
       packProjectId: workshop.baseModpackProjectId ?? null,
     });
@@ -1572,14 +1574,16 @@ export class WorkshopService {
     };
   }
 
+  private addableClasses(workshop: Workshop): Set<number> {
+    return workshop.classId === CurseForgeClass.mods
+      ? new Set([workshop.classId, ...WORKSHOP_ADMIN_EXTRA_CLASSES])
+      : new Set([workshop.classId]);
+  }
+
   /**
    * Run every submit-time guard over the requested projects and return
    * entries carrying the file snapshot for the workshop's target.
    */
-  private addableClasses(workshop: Workshop): Set<number> {
-    return new Set([workshop.classId, ...WORKSHOP_ADMIN_EXTRA_CLASSES]);
-  }
-
   private async prepareEntries(
     workshop: Workshop,
     entries: WorkshopModEntry[],

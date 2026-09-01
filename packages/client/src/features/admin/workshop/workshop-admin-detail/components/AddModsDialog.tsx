@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Plus, Search, X } from "lucide-react";
 import {
-  curseforgeClassLabel,
+  CURSEFORGE_CLASSES,
+  curseforgeClassLabelPlural,
   WORKSHOP_ADMIN_EXTRA_CLASSES,
 } from "@createrington/shared/workshop";
 import { trpc } from "@/lib/trpc";
@@ -57,10 +58,13 @@ export function AddModsDialog({
   const [classId, setClassId] = useState(workshopClassId);
   const debouncedSearch = useDebouncedValue(searchQuery.trim(), 400);
 
-  const classOptions = [
-    workshopClassId,
-    ...WORKSHOP_ADMIN_EXTRA_CLASSES.filter((c) => c !== workshopClassId),
-  ];
+  const classOptions =
+    workshopClassId === CURSEFORGE_CLASSES.mods
+      ? [
+          workshopClassId,
+          ...WORKSHOP_ADMIN_EXTRA_CLASSES.filter((c) => c !== workshopClassId),
+        ]
+      : [workshopClassId];
 
   const searchResults = trpc.admin.workshops.searchProjects.useQuery(
     { workshopId, query: debouncedSearch, classId },
@@ -102,7 +106,7 @@ export function AddModsDialog({
         onOpenAutoFocus={(event) => event.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle>Add Mods</DialogTitle>
+          <DialogTitle>Add Projects</DialogTitle>
           <DialogDescription>
             Mods and resource packs added here become suggestions credited to
             you, already approved. They still go through testing before reaching
@@ -154,7 +158,11 @@ export function AddModsDialog({
         )}
 
         {classOptions.length > 1 && (
-          <div className="inline-flex h-9 w-fit items-center justify-center rounded-lg bg-muted p-1">
+          <div
+            role="group"
+            aria-label="Project type"
+            className="inline-flex h-9 w-fit items-center justify-center rounded-lg bg-muted p-1"
+          >
             {classOptions.map((option) => (
               <button
                 key={option}
@@ -167,7 +175,7 @@ export function AddModsDialog({
                     "bg-background text-foreground shadow-sm",
                 )}
               >
-                {`${curseforgeClassLabel(option)}s`}
+                {curseforgeClassLabelPlural(option)}
               </button>
             ))}
           </div>
@@ -285,8 +293,8 @@ export function AddModsDialog({
             !searchResults.isLoading &&
             searchResults.data?.length === 0 && (
               <p className="py-4 text-center text-sm text-muted-foreground">
-                No compatible {curseforgeClassLabel(classId).toLowerCase()}s
-                found
+                No compatible{" "}
+                {curseforgeClassLabelPlural(classId).toLowerCase()} found
               </p>
             )}
         </div>
@@ -295,7 +303,7 @@ export function AddModsDialog({
           <Label htmlFor="add-mods-note">Note (Optional)</Label>
           <Input
             id="add-mods-note"
-            placeholder="Why these? Shown to players on every mod in this add."
+            placeholder="Why these? Shown to players on every project in this add."
             maxLength={500}
             value={note}
             onChange={(event) => setNote(event.target.value)}

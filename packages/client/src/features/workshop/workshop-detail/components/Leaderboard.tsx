@@ -18,7 +18,9 @@ import { SocialLinks } from "../../components/SocialLinks";
 import {
   MOD_STATUS_STYLES,
   liveTitle,
+  PROJECT_KIND_BADGE_CLASS,
   projectCategories,
+  projectKindLabel,
   REJECT_REASON_LABELS,
 } from "../../format";
 
@@ -142,6 +144,7 @@ function openOnActivate(onActivate: () => void) {
 
 function RaceRow({ item, onOpen, onUpvote }: RaceItemProps) {
   const { mod } = item;
+  const kind = projectKindLabel(mod.project.classId);
   return (
     <div
       className="group relative flex cursor-pointer items-center gap-4 overflow-hidden rounded-xl border border-border bg-card px-5 py-3.5 transition-colors hover:border-primary/40 focus-visible:border-primary/40"
@@ -166,8 +169,15 @@ function RaceRow({ item, onOpen, onUpvote }: RaceItemProps) {
         className="relative size-11 rounded-[10px] text-[13px]"
       />
       <div className="relative min-w-0 flex-1">
-        <div className="truncate text-[15px] font-semibold">
-          {mod.project.name}
+        <div className="flex items-center gap-1.5">
+          <span className="truncate text-[15px] font-semibold">
+            {mod.project.name}
+          </span>
+          {kind && (
+            <Badge variant="outline" className={PROJECT_KIND_BADGE_CLASS}>
+              {kind}
+            </Badge>
+          )}
         </div>
         <div className="mt-[3px] flex items-center gap-1.5 overflow-hidden text-xs whitespace-nowrap text-muted-foreground">
           <DotSeparated
@@ -198,6 +208,7 @@ function RaceRow({ item, onOpen, onUpvote }: RaceItemProps) {
 function RaceCard({ item, onOpen, onUpvote }: RaceItemProps) {
   const { mod } = item;
   const category = projectCategories(mod.project.categories)[0] ?? null;
+  const kind = projectKindLabel(mod.project.classId);
   return (
     <div
       className="group relative flex cursor-pointer flex-col gap-3 overflow-hidden rounded-xl border border-border bg-card p-[18px] pb-5 transition-colors hover:border-primary/40 focus-visible:border-primary/40"
@@ -217,8 +228,15 @@ function RaceCard({ item, onOpen, onUpvote }: RaceItemProps) {
           className="relative size-13 rounded-[10px] text-sm"
         />
         <div className="min-w-0 flex-1">
-          <div className="truncate text-[15px] font-semibold">
-            {mod.project.name}
+          <div className="flex items-center gap-1.5">
+            <span className="truncate text-[15px] font-semibold">
+              {mod.project.name}
+            </span>
+            {kind && (
+              <Badge variant="outline" className={PROJECT_KIND_BADGE_CLASS}>
+                {kind}
+              </Badge>
+            )}
           </div>
           {mod.project.primaryAuthor && (
             <div className="mt-0.5 truncate text-xs text-muted-foreground">

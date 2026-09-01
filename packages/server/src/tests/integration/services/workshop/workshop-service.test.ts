@@ -606,6 +606,7 @@ describe("WorkshopService.suggestMod", () => {
     await expect(
       workshopService.suggestMod(workshop.id, USER_A, { projectId }),
     ).rejects.toThrow(BadRequestError);
+    expect(ingestProjects).toHaveBeenCalledTimes(1);
   });
 
   it("starts the suggestion with the caller's own upvote", async () => {
@@ -1073,6 +1074,7 @@ describe("WorkshopService.addModsAsAdmin", () => {
     await expect(
       workshopService.addModsAsAdmin(workshop.id, [projectId], ADMIN),
     ).rejects.toThrow(BadRequestError);
+    expect(ingestProjects).toHaveBeenCalledTimes(1);
     expect(await Q.workshop.mod.count({ workshopId: workshop.id })).toBe(0);
   });
 });
@@ -1112,6 +1114,54 @@ describe("WorkshopService.searchProjects", () => {
     await expect(
       workshopService.searchProjects(workshop.id, "anything", {
         classId: CurseForgeClass.modpacks,
+      }),
+    ).rejects.toThrow(BadRequestError);
+    expect(searchMods).not.toHaveBeenCalled();
+  });
+
+  it("ignores a class override on user-visible searches", async () => {
+    const workshop = await seedWorkshop(ctx);
+
+    await workshopService.searchProjects(workshop.id, "faithful", {
+      userVisible: true,
+      classId: CurseForgeClass.resourcePacks,
+    });
+
+    expect(searchMods).toHaveBeenCalledWith(
+      "faithful",
+      20,
+      expect.objectContaining({
+        classId: CurseForgeClass.mods,
+        modLoaderType: MOD_LOADER_TYPE,
+      }),
+    );
+  });
+
+  it("keeps the loader filter for a non-mods class with loader-tagged files", async () => {
+    const workshop = await seedWorkshop(ctx, {
+      classId: CurseForgeClass.modpacks,
+    });
+
+    await workshopService.searchProjects(workshop.id, "skyfactory");
+
+    expect(searchMods).toHaveBeenCalledWith(
+      "skyfactory",
+      20,
+      expect.objectContaining({
+        classId: CurseForgeClass.modpacks,
+        modLoaderType: MOD_LOADER_TYPE,
+      }),
+    );
+  });
+
+  it("offers no extra classes on a non-mods workshop", async () => {
+    const workshop = await seedWorkshop(ctx, {
+      classId: CurseForgeClass.modpacks,
+    });
+
+    await expect(
+      workshopService.searchProjects(workshop.id, "faithful", {
+        classId: CurseForgeClass.resourcePacks,
       }),
     ).rejects.toThrow(BadRequestError);
     expect(searchMods).not.toHaveBeenCalled();

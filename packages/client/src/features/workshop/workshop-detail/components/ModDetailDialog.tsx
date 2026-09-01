@@ -36,6 +36,8 @@ import {
   isHttpUrl,
   modCredit,
   MOD_STATUS_STYLES,
+  PROJECT_KIND_BADGE_CLASS,
+  projectKindLabel,
   REJECT_REASON_LABELS,
 } from "../../format";
 
@@ -82,6 +84,7 @@ export function ModDetailDialog({
     (shot) => isHttpUrl(shot.url),
   );
   const status = data ? MOD_STATUS_STYLES[data.mod.status] : null;
+  const kind = project ? projectKindLabel(project.classId) : null;
   const credit = modCredit(data?.mod.submitterName ?? null);
 
   return (
@@ -133,6 +136,14 @@ export function ModDetailDialog({
                         className={cn("text-xs", status.className)}
                       >
                         {status.label}
+                      </Badge>
+                    )}
+                    {kind && (
+                      <Badge
+                        variant="outline"
+                        className={PROJECT_KIND_BADGE_CLASS}
+                      >
+                        {kind}
                       </Badge>
                     )}
                     {categories.slice(0, 4).map((c) => (

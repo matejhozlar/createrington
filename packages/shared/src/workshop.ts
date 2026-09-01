@@ -24,8 +24,14 @@ export function curseforgeClassLabel(classId: number): string {
   return CURSEFORGE_CLASS_LABELS[classId] ?? `Class ${classId}`;
 }
 
-// Client-side project classes admins may add to a workshop on top of its own
-// class. User suggestions stay restricted to the workshop's class.
+export function curseforgeClassLabelPlural(classId: number): string {
+  const label = CURSEFORGE_CLASS_LABELS[classId];
+  return label ? `${label}s` : `Class ${classId}`;
+}
+
+// Client-side project classes admins may add to a mods workshop alongside
+// mods. Other workshop classes take no extras, and user suggestions stay
+// restricted to the workshop's class either way.
 export const WORKSHOP_ADMIN_EXTRA_CLASSES: readonly number[] = [
   CURSEFORGE_CLASSES.resourcePacks,
 ];

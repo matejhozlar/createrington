@@ -466,6 +466,12 @@ const CLIENT_ONLY_CLASSES: ReadonlySet<number> = new Set([
   CurseForgeClass.resourcePacks,
 ]);
 
+/** Classes whose files carry no loader tags, so a loader-filtered search returns nothing */
+export const LOADERLESS_CLASSES: ReadonlySet<number> = new Set([
+  CurseForgeClass.shaders,
+  CurseForgeClass.resourcePacks,
+]);
+
 export function classEnvironmentHint(
   classId: number,
 ): CurseForgeEnvironmentHint | null {
