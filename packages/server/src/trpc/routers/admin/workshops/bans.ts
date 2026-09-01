@@ -2,19 +2,14 @@ import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { rethrowTrpc, id } from "@/trpc/utils";
 import { issueBan, liftBan, listBansForUser } from "@/services/workshop/bans";
-
-const discordId = () =>
-  z
-    .string()
-    .trim()
-    .regex(/^\d{17,20}$/, "Must be a Discord ID");
+import { discordId } from "@/utils/zod-schemas";
 
 export const adminWorkshopBansRouter = router({
   listForUser: adminProcedure
     .meta({ description: "Workshop suggestion bans issued to a user" })
     .input(
       z.object({
-        discordId: discordId(),
+        discordId,
         includeInactive: z.boolean().default(false),
       }),
     )
@@ -33,7 +28,7 @@ export const adminWorkshopBansRouter = router({
     })
     .input(
       z.object({
-        discordId: discordId(),
+        discordId,
         workshopId: id().nullable(),
         reason: z.string().trim().min(1).max(500),
         durationDays: z.number().int().min(1).max(365).optional(),

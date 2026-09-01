@@ -17,7 +17,12 @@ export default defineApiSpec({
       request: {
         name: "ChunkSyncRequest",
         fields: [
-          { name: "serverId", type: "int", description: "Server identifier" },
+          {
+            name: "serverId",
+            type: "int",
+            description:
+              "Server identifier; must match the server derived from the caller IP",
+          },
           {
             name: "timestamp",
             type: "long",

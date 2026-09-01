@@ -18,6 +18,7 @@ import type {
 } from "@createrington/shared/db";
 import {
   hasRuledOutRequiredDependency,
+  WORKSHOP_ADMIN_EXTRA_CLASSES,
   WORKSHOP_MOD_REVIEW_ACTION_LABELS,
   WORKSHOP_MOD_REVIEW_TARGETS,
   WORKSHOP_MOD_STATUS_LABELS,
@@ -29,6 +30,7 @@ import {
   getFilesDetails,
   getMod,
   getModpackModIds,
+  LOADERLESS_CLASSES,
   searchMods,
   type CurseForgeFileDetail,
   type CurseForgeProjectData,
@@ -370,20 +372,31 @@ export class WorkshopService {
   /**
    * CurseForge search scoped to the workshop's target, annotated with submit
    * guards. User-visible searches require an open workshop, since search
-   * exists to feed suggestions and proxies the live API.
+   * exists to feed suggestions and proxies the live API. Admin searches may
+   * target another addable class, such as resource packs.
    */
   async searchProjects(
     workshopId: number,
     query: string,
-    options: { userVisible?: boolean } = {},
+    options: { userVisible?: boolean; classId?: number } = {},
   ): Promise<WorkshopProjectSearchResult[]> {
     const workshop = options.userVisible
       ? await this.getOpenWorkshop(workshopId)
       : await this.getWorkshop(workshopId);
+    const classId = options.userVisible
+      ? workshop.classId
+      : (options.classId ?? workshop.classId);
+    if (!this.addableClasses(workshop).has(classId)) {
+      throw new BadRequestError(
+        "That project type cannot be added to this workshop",
+      );
+    }
     const results = await searchMods(query, 20, {
       gameVersion: workshop.gameVersion,
-      modLoaderType: workshop.modLoaderType,
-      classId: workshop.classId,
+      modLoaderType: LOADERLESS_CLASSES.has(classId)
+        ? null
+        : workshop.modLoaderType,
+      classId,
       packProjectId: workshop.baseModpackProjectId ?? null,
     });
     if (results.length === 0) return [];
@@ -1016,7 +1029,8 @@ export class WorkshopService {
   /**
    * Add mods on the team's behalf. They enter as ordinary suggestions credited
    * to the acting admin and already approved, so they still walk testing and
-   * next_update before reaching the pack.
+   * next_update before reaching the pack. Unlike user suggestions, admin adds
+   * also take the extra addable classes, such as resource packs.
    *
    * Unlike suggesting, this works on draft and closed workshops. Threads are
    * only ever posted for open ones: a draft workshop's adds pick theirs up from
@@ -1035,6 +1049,7 @@ export class WorkshopService {
     const prepared = await this.prepareEntries(
       workshop,
       projectIds.map((projectId) => ({ projectId, note })),
+      this.addableClasses(workshop),
     );
 
     let created: WorkshopMod[];
@@ -1559,6 +1574,12 @@ export class WorkshopService {
     };
   }
 
+  private addableClasses(workshop: Workshop): Set<number> {
+    return workshop.classId === CurseForgeClass.mods
+      ? new Set([workshop.classId, ...WORKSHOP_ADMIN_EXTRA_CLASSES])
+      : new Set([workshop.classId]);
+  }
+
   /**
    * Run every submit-time guard over the requested projects and return
    * entries carrying the file snapshot for the workshop's target.
@@ -1566,6 +1587,7 @@ export class WorkshopService {
   private async prepareEntries(
     workshop: Workshop,
     entries: WorkshopModEntry[],
+    allowedClasses: ReadonlySet<number> = new Set([workshop.classId]),
   ): Promise<PreparedEntry[]> {
     if (entries.length === 0) return [];
 
@@ -1646,7 +1668,7 @@ export class WorkshopService {
           `Could not resolve CurseForge project #${entry.projectId}`,
         );
       }
-      if (data.classId !== workshop.classId) {
+      if (!allowedClasses.has(data.classId)) {
         throw new BadRequestError(
           `"${data.name}" is not the right kind of CurseForge project for this workshop`,
         );
@@ -1670,14 +1692,16 @@ export class WorkshopService {
         idx.gameVersion === workshop.gameVersion &&
         idx.modLoader === workshop.modLoaderType,
     );
-    if (!index && workshop.classId !== CurseForgeClass.mods) {
+    if (!index && data.classId !== CurseForgeClass.mods) {
       index = data.latestFilesIndexes.find(
         (idx) => idx.gameVersion === workshop.gameVersion,
       );
     }
     if (!index) {
       throw new BadRequestError(
-        `"${data.name}" has no file for ${workshop.gameVersion} with the workshop's mod loader`,
+        data.classId === CurseForgeClass.mods
+          ? `"${data.name}" has no file for ${workshop.gameVersion} with the workshop's mod loader`
+          : `"${data.name}" has no file for ${workshop.gameVersion}`,
       );
     }
 

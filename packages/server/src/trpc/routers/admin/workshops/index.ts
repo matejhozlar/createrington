@@ -22,6 +22,7 @@ import {
   WORKSHOP_MOD_REVIEW_ACTIONS,
   WORKSHOP_STATUSES,
 } from "@createrington/shared/workshop";
+import { discordId } from "@/utils/zod-schemas";
 
 const searchLimit = createRateLimit({
   name: "admin.workshops.searchProjects",
@@ -50,12 +51,7 @@ const workshopPatch = z.object({
   modpackId: id().optional(),
   maxModsPerUser: z.number().int().min(1).max(25).optional(),
   maxUpvotesPerUser: z.number().int().min(1).max(100).optional(),
-  discordForumChannelId: z
-    .string()
-    .trim()
-    .regex(/^\d{17,20}$/, "Must be a Discord channel ID")
-    .nullable()
-    .optional(),
+  discordForumChannelId: discordId.nullable().optional(),
 });
 
 export const adminWorkshopsRouter = router({
@@ -80,11 +76,7 @@ export const adminWorkshopsRouter = router({
         newModpackName: z.string().trim().min(1).max(120).optional(),
         maxModsPerUser: z.number().int().min(1).max(25).optional(),
         maxUpvotesPerUser: z.number().int().min(1).max(100).optional(),
-        discordForumChannelId: z
-          .string()
-          .trim()
-          .regex(/^\d{17,20}$/, "Must be a Discord channel ID")
-          .optional(),
+        discordForumChannelId: discordId.optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -181,12 +173,14 @@ export const adminWorkshopsRouter = router({
   searchProjects: adminProcedure
     .use(searchLimit)
     .meta({
-      description: "Search CurseForge for projects to add to a workshop",
+      description:
+        "Search CurseForge for projects to add to a workshop, optionally in another addable class such as resource packs",
     })
     .input(
       z.object({
         workshopId: id(),
         query: z.string().trim().min(2).max(100),
+        classId: id().optional(),
       }),
     )
     .query(async ({ input }) => {
@@ -194,6 +188,7 @@ export const adminWorkshopsRouter = router({
         return await workshopService.searchProjects(
           input.workshopId,
           input.query,
+          { classId: input.classId },
         );
       } catch (error) {
         rethrowTrpc(error);
@@ -268,7 +263,8 @@ export const adminWorkshopsRouter = router({
 
   addMods: adminProcedure
     .meta({
-      description: "Add mods to a workshop as suggestions that are approved",
+      description:
+        "Add mods or resource packs to a workshop as suggestions that are approved",
     })
     .input(
       z.object({

@@ -24,6 +24,7 @@ export interface PlayerInfo {
 export interface ServerStatus {
   serverId: number;
   serverName: string;
+  serverSlug: string;
   ip: string;
   port: number;
   maxPlayers: number;
@@ -60,13 +61,20 @@ function mapSessionToPlayerInfo(
 /** Builds a ServerStatus object from config and an optional PlaytimeService instance. */
 export function buildServerStatus(
   id: number,
-  serverConfig: { name: string; ip: string; port: number; maxPlayers: number },
+  serverConfig: {
+    name: string;
+    slug: string;
+    ip: string;
+    port: number;
+    maxPlayers: number;
+  },
   service: PlaytimeService | undefined,
 ): ServerStatus {
   if (!service) {
     return {
       serverId: id,
       serverName: serverConfig.name,
+      serverSlug: serverConfig.slug,
       ip: serverConfig.ip,
       port: serverConfig.port,
       maxPlayers: serverConfig.maxPlayers,
@@ -88,6 +96,7 @@ export function buildServerStatus(
   return {
     serverId: id,
     serverName: serverConfig.name,
+    serverSlug: serverConfig.slug,
     ip: serverConfig.ip,
     port: serverConfig.port,
     maxPlayers: serverConfig.maxPlayers,

@@ -9,6 +9,7 @@ import {
 } from "@/trpc/utils";
 import { getServiceSync, Services } from "@/services";
 import { Discord } from "@/discord/constants";
+import { discordId } from "@/utils/zod-schemas";
 import {
   MAX_ENTRIES_PER_PLAYER,
   MAX_PROMPT_COOLDOWN_SECONDS,
@@ -30,10 +31,10 @@ const createInput = z
       .pipe(z.string().min(1)),
     description: z.string().max(2000).optional(),
     durationMs: z.number().int().min(MIN_DURATION_MS).max(MAX_DURATION_MS),
-    rolePingId: z.string().regex(/^\d+$/).optional(),
+    rolePingId: discordId.optional(),
     // Optional, defaults to the announcements channel. Admins can target
     // any configured channel via the client picker.
-    channelId: z.string().regex(/^\d+$/).optional(),
+    channelId: discordId.optional(),
     entryMode: z.enum(PLAYER_PROMPT_ENTRY_MODES).default("single"),
     // Multi mode only. Omit for unlimited entries / no cooldown.
     maxEntries: z

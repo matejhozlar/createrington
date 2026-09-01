@@ -52,6 +52,7 @@ interface PortalZoomOverlayProps {
   nextRotationAt: string | null;
   cycleNumber: number | null;
   canBoost: boolean;
+  rotationPaused: boolean;
 }
 
 const PORTAL_BLOCK_SIZE = 72;
@@ -92,6 +93,7 @@ export function PortalZoomOverlay({
   nextRotationAt,
   cycleNumber,
   canBoost,
+  rotationPaused,
 }: PortalZoomOverlayProps) {
   const [phase, setPhase] = useState<Phase>("closed");
   const onClosedRef = useRef(onClosed);
@@ -271,8 +273,16 @@ export function PortalZoomOverlay({
         }}
       >
         <div className="flex h-full w-full flex-col">
-          <OverlayHeader cycleNumber={cycleNumber} onClose={onClose} />
-          <OverlayHero pool={pool} nextRotationAt={nextRotationAt} />
+          <OverlayHeader
+            cycleNumber={cycleNumber}
+            rotationPaused={rotationPaused}
+            onClose={onClose}
+          />
+          <OverlayHero
+            pool={pool}
+            nextRotationAt={nextRotationAt}
+            rotationPaused={rotationPaused}
+          />
           <div className="mx-10 h-px bg-white/10" />
           <OverlayBody
             pool={pool}
@@ -281,6 +291,7 @@ export function PortalZoomOverlay({
             myBoostMap={myBoostMap}
             boostUnitPrice={boostUnitPrice}
             canBoost={canBoost}
+            rotationPaused={rotationPaused}
           />
         </div>
       </div>
@@ -291,14 +302,23 @@ export function PortalZoomOverlay({
 
 interface OverlayHeaderProps {
   cycleNumber: number | null;
+  rotationPaused: boolean;
   onClose: () => void;
 }
 
-function OverlayHeader({ cycleNumber, onClose }: OverlayHeaderProps) {
+function OverlayHeader({
+  cycleNumber,
+  rotationPaused,
+  onClose,
+}: OverlayHeaderProps) {
   return (
     <header className="flex items-center justify-between px-10 pt-7 pb-6">
       <div className="font-mono text-[11px] uppercase tracking-[0.3em] text-white/55">
-        {cycleNumber != null ? `Cycle ${cycleNumber}` : "Cycle"}
+        {rotationPaused
+          ? "Paused"
+          : cycleNumber != null
+            ? `Cycle ${cycleNumber}`
+            : "Cycle"}
       </div>
       <button
         type="button"
@@ -315,10 +335,16 @@ function OverlayHeader({ cycleNumber, onClose }: OverlayHeaderProps) {
 interface OverlayHeroProps {
   pool: PoolEntry[] | undefined;
   nextRotationAt: string | null;
+  rotationPaused: boolean;
 }
 
-function OverlayHero({ pool, nextRotationAt }: OverlayHeroProps) {
-  const countdown = useCountdown(nextRotationAt) ?? "—";
+function OverlayHero({
+  pool,
+  nextRotationAt,
+  rotationPaused,
+}: OverlayHeroProps) {
+  const countdown =
+    useCountdown(nextRotationAt) ?? (rotationPaused ? "Paused" : "—");
 
   const leader = useMemo(() => {
     if (!pool || pool.length === 0) return null;
@@ -379,6 +405,7 @@ interface OverlayBodyProps {
   myBoostMap: Map<number, number>;
   boostUnitPrice: number;
   canBoost: boolean;
+  rotationPaused: boolean;
 }
 
 function OverlayBody({
@@ -388,6 +415,7 @@ function OverlayBody({
   myBoostMap,
   boostUnitPrice,
   canBoost,
+  rotationPaused,
 }: OverlayBodyProps) {
   const sortedPool = useMemo(() => {
     if (!pool) return [];
@@ -423,6 +451,7 @@ function OverlayBody({
               rank={i + 1}
               leader={entry.pack.id === leaderId}
               canBoost={canBoost}
+              rotationPaused={rotationPaused}
             />
           ))}
         </div>
@@ -454,6 +483,7 @@ interface PackRowV3Props {
   rank: number;
   leader: boolean;
   canBoost: boolean;
+  rotationPaused: boolean;
 }
 
 function PackRowV3({
@@ -466,6 +496,7 @@ function PackRowV3({
   rank,
   leader,
   canBoost,
+  rotationPaused,
 }: PackRowV3Props) {
   const { login } = useAuth();
   const [boostOpen, setBoostOpen] = useState(false);
@@ -548,7 +579,15 @@ function PackRowV3({
           >
             Inspect
           </button>
-          {canBoost ? (
+          {rotationPaused ? (
+            <button
+              type="button"
+              disabled
+              className="flex-1 rounded-md border border-white/10 px-3 py-1.5 text-[12px] font-semibold text-white/40 disabled:pointer-events-none"
+            >
+              Rotations paused
+            </button>
+          ) : canBoost ? (
             <button
               type="button"
               onClick={() => setBoostOpen(true)}

@@ -11,6 +11,7 @@ import {
   buildPagination,
   trpcError,
 } from "@/trpc/utils";
+import { discordId } from "@/utils/zod-schemas";
 import type { Player, PlayerFilters } from "@createrington/shared/db";
 
 /** Admin players CRUD router: stats, list, get, update, and delete players. */
@@ -201,10 +202,7 @@ export const playersRouter = router({
           .string()
           .regex(/^[a-zA-Z0-9_]{3,16}$/, "Invalid Minecraft username")
           .optional(),
-        discordId: z
-          .string()
-          .regex(/^\d{17,20}$/, "Invalid Discord snowflake")
-          .optional(),
+        discordId: discordId.optional(),
         reason: z.string().min(1, "Reason is required"),
       }),
     )

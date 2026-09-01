@@ -37,8 +37,12 @@ import type { RotationPeriod, WeightEntry } from "./types";
  * - Detects and recovers from missed rotations on startup
  * - Selects the next pack via a weighted-random algorithm (time-since-last + boost units)
  * - Downloads and caches mod files from CurseForge before installing them on the server
- * - Records every rotation attempt (success or failure) with a weights snapshot for auditing
+ * - Records every rotation attempt (success or failure) with a weights snapshot for
+ *   auditing; attempts with no eligible packs are log-only and leave no history row
  * - Handles player-purchased boost units that increase a pack's selection weight for a cycle
+ * - Can be disabled entirely via the `enabled` flag on the rotation config: no scheduling,
+ *   no automatic rotations, and no boost purchases while disabled (manual rotation still
+ *   works); disabling refunds all open boosts
  *
  * NOTE: File operations (mod installs/removals) are skipped when `isFileOpsAllowed()` returns
  * false; the rotation is still recorded in the database in that case.
@@ -57,7 +61,8 @@ export class StructurePackRotationService {
    *
    * Loads the rotation config, logs the active schedule, and either triggers an
    * immediate rotation (if one was missed while the server was down) or schedules
-   * the next rotation at the configured time.
+   * the next rotation at the configured time. Does nothing while rotation is
+   * disabled in the config.
    */
   async initialize(): Promise<void> {
     if (config.envMode.isDev) {
@@ -69,6 +74,11 @@ export class StructurePackRotationService {
 
     const rotationConfig =
       await Q.structure.pack.rotation.config.getOrCreateDefault();
+    if (!rotationConfig.enabled) {
+      logger.info("Structure pack rotation is disabled, scheduler not started");
+      return;
+    }
+
     const period = rotationConfig.period as RotationPeriod;
     const scheduleDesc =
       period === "daily"
@@ -118,6 +128,12 @@ export class StructurePackRotationService {
   ): void {
     if (this.nextRotationTimer) {
       clearTimeout(this.nextRotationTimer);
+      this.nextRotationTimer = null;
+    }
+
+    if (!rotationConfig.enabled) {
+      logger.info("Structure pack rotation is disabled, no rotation scheduled");
+      return;
     }
 
     const nextTime = computeNextRotationTime(rotationConfig);
@@ -163,10 +179,16 @@ export class StructurePackRotationService {
    * next rotation is still scheduled. On unexpected errors the timer is also
    * rescheduled so the service recovers automatically.
    *
-   * @param _manual - Reserved for future use to distinguish manual vs automatic triggers
+   * Automatic rotations are skipped while rotation is disabled in the config;
+   * manual triggers still run. When no packs are eligible, nothing is rotated
+   * and no history row is recorded. Manual triggers rethrow failures to the
+   * caller; expected ones (empty pool, file ops) are raised as BadRequestError
+   * at their handling site and bypass the generic recovery catch.
+   *
+   * @param manual - Whether this rotation was triggered manually by an admin
    * @returns Promise that resolves when the rotation (or its failure path) is complete
    */
-  async executeRotation(_manual = false): Promise<void> {
+  async executeRotation(manual = false): Promise<void> {
     if (this.rotationInProgress) {
       throw new BadRequestError("A rotation is already in progress");
     }
@@ -177,19 +199,21 @@ export class StructurePackRotationService {
     try {
       const rotationConfig =
         await Q.structure.pack.rotation.config.getOrCreateDefault();
+      if (!rotationConfig.enabled && !manual) {
+        logger.info("Structure pack rotation is disabled, skipping rotation");
+        return;
+      }
+
       const activePack = await this.packService.getActivePack();
       const eligible = await Q.structure.pack.getEligibleForRotation(
         activePack?.id,
       );
 
       if (eligible.length === 0) {
-        logger.warn("No eligible packs for rotation");
-        await this.recordRotation(
-          activePack?.id ?? null,
-          0,
-          false,
-          "No eligible packs",
-        );
+        logger.warn("No eligible packs for rotation, skipping");
+        if (manual) {
+          throw new BadRequestError("No eligible packs for rotation");
+        }
         this.scheduleNextRotation(rotationConfig);
         return;
       }
@@ -253,6 +277,9 @@ export class StructurePackRotationService {
             reason,
           );
           this.scheduleNextRotation(rotationConfig);
+          if (manual) {
+            throw new BadRequestError(`Rotation failed: ${reason}`);
+          }
           return;
         }
       } else {
@@ -291,6 +318,9 @@ export class StructurePackRotationService {
 
       this.scheduleNextRotation(rotationConfig);
     } catch (error) {
+      if (manual && error instanceof BadRequestError) {
+        throw error;
+      }
       logger.error("Rotation failed:", error);
       // Try to reschedule even on failure
       try {
@@ -298,6 +328,9 @@ export class StructurePackRotationService {
         this.scheduleNextRotation(cfg);
       } catch {
         logger.error("Failed to reschedule after rotation error");
+      }
+      if (manual) {
+        throw error;
       }
     } finally {
       this.rotationInProgress = false;
@@ -331,6 +364,9 @@ export class StructurePackRotationService {
 
     const rotationConfig =
       await Q.structure.pack.rotation.config.getOrCreateDefault();
+    if (!rotationConfig.enabled) {
+      throw new BadRequestError("Rotations are currently disabled");
+    }
     const cost = units * rotationConfig.boostUnitPrice;
     const cycleStart = computeCycleStart(rotationConfig);
 
@@ -431,17 +467,23 @@ export class StructurePackRotationService {
     return Q.structure.pack.rotation.config.getOrCreateDefault();
   }
 
-  /** Returns the next scheduled rotation time, boost unit price, and current cycle number. */
+  /**
+   * Returns the next scheduled rotation time, boost unit price, and current
+   * cycle number. The next rotation time is null while rotation is disabled.
+   */
   async getNextRotationInfo(): Promise<{
-    nextRotationAt: string;
+    enabled: boolean;
+    nextRotationAt: string | null;
     boostUnitPrice: number;
     cycle: number;
   }> {
     const cfg = await this.getConfig();
-    const next = computeNextRotationTime(cfg);
     const pastRotations = await Q.structure.pack.rotation.count();
     return {
-      nextRotationAt: next.toISOString(),
+      enabled: cfg.enabled,
+      nextRotationAt: cfg.enabled
+        ? computeNextRotationTime(cfg).toISOString()
+        : null,
       boostUnitPrice: cfg.boostUnitPrice,
       cycle: pastRotations + 1,
     };
@@ -449,7 +491,9 @@ export class StructurePackRotationService {
 
   /**
    * Persists partial updates to the rotation configuration and immediately
-   * reschedules the next rotation to reflect the new settings.
+   * reschedules the next rotation to reflect the new settings. Disabling
+   * rotation refunds and removes all open boosts in the same transaction, so
+   * players never pay for a rotation that will not happen.
    *
    * @param data - Fields to update; unspecified fields retain their current values
    * @returns The updated rotation configuration
@@ -458,6 +502,7 @@ export class StructurePackRotationService {
     data: Partial<
       Pick<
         StructurePackRotationConfig,
+        | "enabled"
         | "period"
         | "dayOfWeek"
         | "dayOfMonth"
@@ -471,13 +516,45 @@ export class StructurePackRotationService {
     >,
   ): Promise<StructurePackRotationConfig> {
     const current = await Q.structure.pack.rotation.config.getOrCreateDefault();
-    const updated = await Q.structure.pack.rotation.config.updateAndReturn(
-      { id: current.id },
-      data,
-    );
+    const disabling = current.enabled && data.enabled === false;
+
+    const updated = await db.inTransaction(async (tx) => {
+      const next = await tx.structure.pack.rotation.config.updateAndReturn(
+        { id: current.id },
+        data,
+      );
+
+      if (disabling) {
+        const openBoosts = await tx.structure.pack.boost.findAll({});
+        for (const boost of openBoosts) {
+          await balanceRepo.add(
+            { discordId: boost.discordId },
+            boost.currencySpent,
+            `Structure pack boost refund: ${boost.units} unit(s), rotations disabled`,
+            BalanceTransactionType.REFUND,
+            {
+              metadata: {
+                packId: boost.packId,
+                units: boost.units,
+                boostId: boost.id,
+              },
+              tx,
+            },
+          );
+          await tx.structure.pack.boost.delete({ id: boost.id });
+        }
+        if (openBoosts.length > 0) {
+          logger.info(
+            `Refunded ${openBoosts.length} open structure pack boost(s) after disabling rotation`,
+          );
+        }
+      }
+
+      return next;
+    });
 
     this.scheduleNextRotation(updated);
-    logger.info("Rotation config updated, next rotation rescheduled");
+    logger.info("Rotation config updated");
 
     return updated;
   }

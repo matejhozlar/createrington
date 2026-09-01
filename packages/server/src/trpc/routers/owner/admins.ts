@@ -10,10 +10,7 @@ import { RoleManager } from "@/discord/utils/roles/role-manager";
 import { Discord } from "@/discord/constants";
 import { minecraftRcon } from "@/utils/rcon";
 import { MINECRAFT_SERVERS } from "@/services/playtime/config";
-
-const discordIdSchema = z
-  .string()
-  .regex(/^\d{17,20}$/, "Discord ID must be a snowflake");
+import { discordId, DISCORD_ID_REGEX } from "@/utils/zod-schemas";
 
 const ACTION_PROMOTE = "admin_promote";
 const ACTION_DEMOTE = "admin_demote";
@@ -62,7 +59,7 @@ export const ownerAdminsRouter = router({
       if (!query) return { players: [] };
 
       const likeQuery = `%${escapeLike(query)}%`;
-      const results = /^\d{17,20}$/.test(query)
+      const results = DISCORD_ID_REGEX.test(query)
         ? await Q.player.findAll({ discordId: query })
         : await Q.player
             .where({ minecraftUsername: { $ilike: likeQuery } })
@@ -90,7 +87,7 @@ export const ownerAdminsRouter = router({
       description:
         "Preview the effects of demoting a user without applying them. Fetches Discord role state live, only runs when a demote is actually being considered.",
     })
-    .input(z.object({ discordId: discordIdSchema }))
+    .input(z.object({ discordId }))
     .query(async ({ input }) => {
       const player = await Q.player.find({ discordId: input.discordId });
       const inDb = !!(await Q.admin.find({ discordId: input.discordId }));
@@ -129,7 +126,7 @@ export const ownerAdminsRouter = router({
     })
     .input(
       z.object({
-        discordId: discordIdSchema,
+        discordId,
         reason: z.string().max(500).optional(),
       }),
     )
@@ -191,7 +188,7 @@ export const ownerAdminsRouter = router({
     })
     .input(
       z.object({
-        discordId: discordIdSchema,
+        discordId,
         reason: z.string().max(500).optional(),
       }),
     )
