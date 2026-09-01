@@ -467,7 +467,7 @@ export function AdminWorkshopDetail() {
               </Button>
               <Button onClick={() => setAddOpen(true)}>
                 <PackagePlus className="mr-2 size-4" />
-                Add Mods
+                Add Projects
               </Button>
             </>
           }
@@ -583,9 +583,11 @@ export function AdminWorkshopDetail() {
       />
 
       <AddModsDialog
+        key={workshopId}
         open={addOpen}
         onOpenChange={setAddOpen}
         workshopId={workshopId}
+        workshopClassId={workshop.classId}
         onAdded={invalidate}
       />
 

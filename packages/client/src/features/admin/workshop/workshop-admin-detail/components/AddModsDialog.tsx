@@ -1,5 +1,10 @@
 import { useState } from "react";
 import { Plus, Search, X } from "lucide-react";
+import {
+  CURSEFORGE_CLASSES,
+  curseforgeClassLabelPlural,
+  WORKSHOP_ADMIN_EXTRA_CLASSES,
+} from "@createrington/shared/workshop";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
@@ -17,12 +22,17 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ProjectThumb } from "@/features/workshop/components/ProjectThumb";
-import { MOD_STATUS_STYLES } from "@/features/workshop/format";
+import {
+  MOD_STATUS_STYLES,
+  PROJECT_KIND_BADGE_CLASS,
+  projectKindLabel,
+} from "@/features/workshop/format";
 
 interface SelectedProject {
   id: number;
   name: string;
   thumbnailUrl: string | null;
+  classId: number;
 }
 
 const MAX_MODS_PER_ADD = 20;
@@ -31,11 +41,13 @@ export function AddModsDialog({
   open,
   onOpenChange,
   workshopId,
+  workshopClassId,
   onAdded,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   workshopId: number;
+  workshopClassId: number;
   onAdded: () => void;
 }) {
   const toast = useToastActions();
@@ -43,22 +55,32 @@ export function AddModsDialog({
   const [selected, setSelected] = useState<SelectedProject[]>([]);
   const [note, setNote] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [classId, setClassId] = useState(workshopClassId);
   const debouncedSearch = useDebouncedValue(searchQuery.trim(), 400);
 
+  const classOptions =
+    workshopClassId === CURSEFORGE_CLASSES.mods
+      ? [
+          workshopClassId,
+          ...WORKSHOP_ADMIN_EXTRA_CLASSES.filter((c) => c !== workshopClassId),
+        ]
+      : [workshopClassId];
+
   const searchResults = trpc.admin.workshops.searchProjects.useQuery(
-    { workshopId, query: debouncedSearch },
+    { workshopId, query: debouncedSearch, classId },
     { enabled: open && debouncedSearch.length >= 2 },
   );
 
   const addMutation = trpc.admin.workshops.addMods.useMutation({
     onSuccess: (mods) => {
       toast.success(
-        `Added ${mods.length} mod${mods.length !== 1 ? "s" : ""} as approved`,
+        `Added ${mods.length} project${mods.length !== 1 ? "s" : ""} as approved`,
       );
       onAdded();
       setSelected([]);
       setNote("");
       setSearchQuery("");
+      setClassId(workshopClassId);
       onOpenChange(false);
     },
     onError: (err) => toast.error(err.message),
@@ -69,6 +91,7 @@ export function AddModsDialog({
       setSelected([]);
       setNote("");
       setSearchQuery("");
+      setClassId(workshopClassId);
     }
     if (!addMutation.isPending) onOpenChange(next);
   };
@@ -83,41 +106,77 @@ export function AddModsDialog({
         onOpenAutoFocus={(event) => event.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle>Add Mods</DialogTitle>
+          <DialogTitle>Add Projects</DialogTitle>
           <DialogDescription>
-            Mods added here become suggestions credited to you, already
-            approved. They still go through testing before reaching the pack.
+            Mods and resource packs added here become suggestions credited to
+            you, already approved. They still go through testing before reaching
+            the pack.
           </DialogDescription>
         </DialogHeader>
 
         {selected.length > 0 && (
           <div className="flex flex-wrap gap-2">
-            {selected.map((project) => (
-              <Badge
-                key={project.id}
-                variant="secondary"
-                className="gap-1.5 py-1 pl-1.5"
-              >
-                {project.thumbnailUrl && (
-                  <img
-                    src={project.thumbnailUrl}
-                    alt=""
-                    className="size-4 rounded-sm"
-                  />
-                )}
-                {project.name}
-                <button
-                  type="button"
-                  aria-label={`Remove ${project.name}`}
-                  onClick={() =>
-                    setSelected((prev) =>
-                      prev.filter((p) => p.id !== project.id),
-                    )
-                  }
+            {selected.map((project) => {
+              const kind = projectKindLabel(project.classId);
+              return (
+                <Badge
+                  key={project.id}
+                  variant="secondary"
+                  className="gap-1.5 py-1 pl-1.5"
                 >
-                  <X className="size-3" />
-                </button>
-              </Badge>
+                  {project.thumbnailUrl && (
+                    <img
+                      src={project.thumbnailUrl}
+                      alt=""
+                      className="size-4 rounded-sm"
+                    />
+                  )}
+                  {project.name}
+                  {kind && (
+                    <Badge
+                      variant="outline"
+                      className={PROJECT_KIND_BADGE_CLASS}
+                    >
+                      {kind}
+                    </Badge>
+                  )}
+                  <button
+                    type="button"
+                    aria-label={`Remove ${project.name}`}
+                    onClick={() =>
+                      setSelected((prev) =>
+                        prev.filter((p) => p.id !== project.id),
+                      )
+                    }
+                  >
+                    <X className="size-3" />
+                  </button>
+                </Badge>
+              );
+            })}
+          </div>
+        )}
+
+        {classOptions.length > 1 && (
+          <div
+            role="group"
+            aria-label="Project type"
+            className="inline-flex h-9 w-fit items-center justify-center rounded-lg bg-muted p-1"
+          >
+            {classOptions.map((option) => (
+              <button
+                key={option}
+                type="button"
+                aria-pressed={option === classId}
+                onClick={() => setClassId(option)}
+                className={cn(
+                  "inline-flex cursor-pointer items-center justify-center whitespace-nowrap rounded-md px-2.5 py-1 text-sm font-medium text-foreground/80 transition-[color,box-shadow]",
+                  option === classId &&
+                    "bg-background text-foreground shadow-sm",
+                )}
+              >
+                {curseforgeClassLabelPlural(option)}
+              </button>
             ))}
           </div>
         )}
@@ -162,7 +221,7 @@ export function AddModsDialog({
                 onClick={() => {
                   if (selected.length >= MAX_MODS_PER_ADD) {
                     toast.error(
-                      `You can add up to ${MAX_MODS_PER_ADD} mods at a time`,
+                      `You can add up to ${MAX_MODS_PER_ADD} projects at a time`,
                     );
                     return;
                   }
@@ -172,6 +231,7 @@ export function AddModsDialog({
                       id: result.id,
                       name: result.name,
                       thumbnailUrl: result.thumbnailUrl ?? null,
+                      classId,
                     },
                   ]);
                 }}
@@ -233,7 +293,8 @@ export function AddModsDialog({
             !searchResults.isLoading &&
             searchResults.data?.length === 0 && (
               <p className="py-4 text-center text-sm text-muted-foreground">
-                No compatible mods found
+                No compatible{" "}
+                {curseforgeClassLabelPlural(classId).toLowerCase()} found
               </p>
             )}
         </div>
@@ -242,7 +303,7 @@ export function AddModsDialog({
           <Label htmlFor="add-mods-note">Note (Optional)</Label>
           <Input
             id="add-mods-note"
-            placeholder="Why these? Shown to players on every mod in this add."
+            placeholder="Why these? Shown to players on every project in this add."
             maxLength={500}
             value={note}
             onChange={(event) => setNote(event.target.value)}
