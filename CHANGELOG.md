@@ -1,3 +1,23 @@
+## v1.50.0 (2026-09-01)
+
+### @createrington/server (1.50.0 → 1.51.0)
+- [add] Add structure pack rotation disable toggle: admins can pause automatic rotations via an `enabled` flag on the rotation config; disabling refunds all open boosts, prevents new boost purchases, and stops the scheduler, while manual rotation still works
+- [add] Let admins add client resource packs to a mods workshop alongside mods: the Add Projects dialog now offers a project type switcher, CurseForge searches omit the mod-loader filter for loader-less classes (resource packs, shaders), and the server validates addable classes per workshop type
+- [fix] Validate mod-supplied `serverId` against configured servers and reject mismatches with the originating IP; enforce that per-player tokens cannot call the server-level heartbeat endpoint and that the token's player identity matches the reported UUID on presence updates
+- [refactor] Centralize Discord ID validation into a shared `discordId` Zod schema and `DISCORD_ID_REGEX` constant, replacing scattered inline regex patterns across tRPC routers (ghosts, players, prompts, workshops, owner admins)
+- [refactor] Harden `resolveServerId` to require a verified server IP upfront and validate explicit `serverId` values against the server config before accepting them
+- [chore] Bump browserslist (and transitive caniuse-lite, electron-to-chromium, node-releases) to resolve pnpm audit findings
+- [chore] Bump createrington-api to 1.11.2
+
+### @createrington/client (0.2.63 → 0.2.64)
+- [add] Add structure pack rotation paused state to the portal overlay, hero countdown, active pack card, and boost buttons, showing "Paused" and disabling boost purchases when rotations are off
+- [add] Add project type badge and switcher to the admin Add Projects dialog, letting admins search and add resource packs to a mods workshop with kind badges shown in selected chips, the leaderboard, and the mod detail dialog
+- [refactor] Replace numeric server IDs with server slugs in chat and server detail URLs, adding a `/chat` redirect route that resolves to the lowest-ID server and transparent legacy-ID redirects so old bookmarks keep working
+
+### @createrington/shared (1.11.0 → 1.12.0)
+- [add] Add `serverSlug` field to `ServerStatus` and `ServerStatusUpdatePayload` socket payloads, enabling slug-based URL routing on the client
+- [add] Add `WORKSHOP_ADMIN_EXTRA_CLASSES` constant and `curseforgeClassLabelPlural` helper for admin resource pack additions
+
 ## v1.49.0 (2026-08-31)
 
 ### @createrington/server (1.49.0 → 1.50.0)
