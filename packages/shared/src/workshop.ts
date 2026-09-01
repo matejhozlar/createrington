@@ -24,6 +24,12 @@ export function curseforgeClassLabel(classId: number): string {
   return CURSEFORGE_CLASS_LABELS[classId] ?? `Class ${classId}`;
 }
 
+// Client-side project classes admins may add to a workshop on top of its own
+// class. User suggestions stay restricted to the workshop's class.
+export const WORKSHOP_ADMIN_EXTRA_CLASSES: readonly number[] = [
+  CURSEFORGE_CLASSES.resourcePacks,
+];
+
 export const WORKSHOP_MOD_REJECT_REASONS = [
   "on_hold",
   "incompatible",

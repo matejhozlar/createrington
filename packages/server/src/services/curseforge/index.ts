@@ -196,7 +196,10 @@ export interface CurseForgeTarget {
   modLoaderType?: number;
 }
 
-export interface CurseForgeSearchOptions extends CurseForgeTarget {
+export interface CurseForgeSearchOptions {
+  gameVersion?: string;
+  /** null omits the loader filter, for classes whose files carry no loader tags */
+  modLoaderType?: number | null;
   classId?: number;
   /** Modpack used for the inModpack annotation; null skips the check entirely */
   packProjectId?: number | null;
@@ -301,7 +304,9 @@ export async function searchMods(
   url.searchParams.set("sortField", "2"); // popularity
   url.searchParams.set("sortOrder", "desc");
   url.searchParams.set("classId", String(classId));
-  url.searchParams.set("modLoaderType", String(modLoaderType));
+  if (modLoaderType !== null) {
+    url.searchParams.set("modLoaderType", String(modLoaderType));
+  }
   url.searchParams.set("gameVersion", gameVersion);
 
   const res = await fetch(url.toString(), {

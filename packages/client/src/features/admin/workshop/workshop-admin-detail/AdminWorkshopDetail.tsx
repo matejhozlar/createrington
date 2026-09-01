@@ -586,6 +586,7 @@ export function AdminWorkshopDetail() {
         open={addOpen}
         onOpenChange={setAddOpen}
         workshopId={workshopId}
+        workshopClassId={workshop.classId}
         onAdded={invalidate}
       />
 

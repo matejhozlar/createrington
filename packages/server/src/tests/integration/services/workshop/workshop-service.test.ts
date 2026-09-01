@@ -51,7 +51,12 @@ import {
 } from "@/app/middleware/error-handler";
 import { workshopService } from "@/services/workshop";
 import { issueBan, liftBan } from "@/services/workshop/bans";
-import { getFilesDependencies, getFilesDetails } from "@/services/curseforge";
+import {
+  CurseForgeClass,
+  getFilesDependencies,
+  getFilesDetails,
+  searchMods,
+} from "@/services/curseforge";
 import type { WorkshopModStatus } from "@createrington/shared/db";
 import { ingestProject, ingestProjects } from "@/services/curseforge/ingest";
 import {
@@ -95,6 +100,29 @@ afterEach(async () => {
 afterAll(async () => {
   await pool.end();
 });
+
+function mockNextIngestAs(classId: number): void {
+  vi.mocked(ingestProjects).mockImplementationOnce(
+    async (projectIds: number[]) =>
+      new Map(
+        projectIds.map((id) => [
+          id,
+          makeProjectData(id, {
+            classId,
+            latestFilesIndexes: [
+              {
+                gameVersion: GAME_VERSION,
+                fileId: id + 1,
+                filename: `vitest-project-${id}.zip`,
+                releaseType: 1,
+                modLoader: null,
+              },
+            ],
+          }),
+        ]),
+      ),
+  );
+}
 
 describe("WorkshopService.reviewMod", () => {
   it("throws BadRequestError when rejecting without a reason", async () => {
@@ -568,6 +596,18 @@ describe("WorkshopService.suggestMod", () => {
     expect(item.project.id).toBe(projectId);
   });
 
+  it("refuses a resource pack, which only admins can add", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const projectId = await seedProject(ctx, "Vitest Resource Pack", {
+      classId: CurseForgeClass.resourcePacks,
+    });
+    mockNextIngestAs(CurseForgeClass.resourcePacks);
+
+    await expect(
+      workshopService.suggestMod(workshop.id, USER_A, { projectId }),
+    ).rejects.toThrow(BadRequestError);
+  });
+
   it("starts the suggestion with the caller's own upvote", async () => {
     const workshop = await seedWorkshop(ctx, { maxUpvotesPerUser: 1 });
     const projectId = await seedProject(ctx);
@@ -1000,6 +1040,81 @@ describe("WorkshopService.addModsAsAdmin", () => {
     await expect(
       workshopService.addModsAsAdmin(workshop.id, [projectId], ADMIN),
     ).rejects.toThrow("Cannot add mods to an archived workshop");
+  });
+
+  it("accepts a resource pack and snapshots its loaderless file", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const projectId = await seedProject(ctx, "Vitest Resource Pack", {
+      classId: CurseForgeClass.resourcePacks,
+    });
+    mockNextIngestAs(CurseForgeClass.resourcePacks);
+
+    const [added] = await workshopService.addModsAsAdmin(
+      workshop.id,
+      [projectId],
+      ADMIN,
+    );
+
+    expect(added).toMatchObject({
+      status: "approved",
+      fileId: projectId + 1,
+      fileName: `vitest-project-${projectId}.zip`,
+    });
+    expect(added!.project.classId).toBe(CurseForgeClass.resourcePacks);
+  });
+
+  it("rejects a project class the workshop cannot take", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const projectId = await seedProject(ctx, "Vitest Modpack Project", {
+      classId: CurseForgeClass.modpacks,
+    });
+    mockNextIngestAs(CurseForgeClass.modpacks);
+
+    await expect(
+      workshopService.addModsAsAdmin(workshop.id, [projectId], ADMIN),
+    ).rejects.toThrow(BadRequestError);
+    expect(await Q.workshop.mod.count({ workshopId: workshop.id })).toBe(0);
+  });
+});
+
+describe("WorkshopService.searchProjects", () => {
+  it("searches an extra addable class without the loader filter", async () => {
+    const workshop = await seedWorkshop(ctx);
+
+    await workshopService.searchProjects(workshop.id, "faithful", {
+      classId: CurseForgeClass.resourcePacks,
+    });
+
+    expect(searchMods).toHaveBeenCalledWith("faithful", 20, {
+      gameVersion: GAME_VERSION,
+      modLoaderType: null,
+      classId: CurseForgeClass.resourcePacks,
+      packProjectId: null,
+    });
+  });
+
+  it("keeps the loader filter for the workshop's own class", async () => {
+    const workshop = await seedWorkshop(ctx);
+
+    await workshopService.searchProjects(workshop.id, "sodium");
+
+    expect(searchMods).toHaveBeenCalledWith("sodium", 20, {
+      gameVersion: GAME_VERSION,
+      modLoaderType: MOD_LOADER_TYPE,
+      classId: CurseForgeClass.mods,
+      packProjectId: null,
+    });
+  });
+
+  it("rejects a class the workshop cannot take", async () => {
+    const workshop = await seedWorkshop(ctx);
+
+    await expect(
+      workshopService.searchProjects(workshop.id, "anything", {
+        classId: CurseForgeClass.modpacks,
+      }),
+    ).rejects.toThrow(BadRequestError);
+    expect(searchMods).not.toHaveBeenCalled();
   });
 });
 
