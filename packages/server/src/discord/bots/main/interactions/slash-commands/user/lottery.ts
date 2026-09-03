@@ -113,6 +113,9 @@ export async function execute(
     );
   } catch (error) {
     if (error instanceof LotteryCooldownError) {
+      logger.info(
+        `User ${interaction.user.tag} (${interaction.user.id}) hit the lottery start cooldown, next start at ${error.nextStartAt.toISOString()}`,
+      );
       await replyError(
         interaction,
         "Lottery Cooldown",

@@ -5,7 +5,7 @@ import { formatDuration } from "@/utils/format";
 export class LotteryCooldownError extends AppError {
   constructor(
     public readonly nextStartAt: Date,
-    now: Date = new Date(),
+    now: Date,
   ) {
     const message = `Next lottery can start in ${formatDuration(now, nextStartAt)}`;
     super(

@@ -4,6 +4,7 @@ const state = vi.hoisted(() => ({
   failTransaction: false,
   deducted: [] as Array<{ uuid: string; amount: number }>,
   credited: [] as Array<{ uuid: string; amount: number }>,
+  ledger: [] as Array<{ transactionType: string; createdAt: string }>,
 }));
 
 vi.mock("@/config", () => ({
@@ -26,6 +27,22 @@ vi.mock("@/db", () => ({
       await fn({ lottery: { participant: { create: async () => {} } } });
     },
     lottery: { participant: { findAll: async () => [], drop: async () => {} } },
+  },
+  Q: {
+    player: {
+      balance: {
+        transaction: {
+          findAll: async (
+            filter: { transactionType: string },
+            options: { limit: number },
+          ) =>
+            state.ledger
+              .filter((e) => e.transactionType === filter.transactionType)
+              .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+              .slice(0, options.limit),
+        },
+      },
+    },
   },
   R: {
     balanceRepo: {
@@ -72,7 +89,12 @@ import { LotteryService } from "@/services/lottery/lottery.service";
 import { LotteryCooldownError } from "@/services/lottery/errors";
 
 const T0 = new Date("2026-09-03T12:00:00.000Z");
-const MINUTE = 60 * 1000;
+const SECOND = 1000;
+const MINUTE = 60 * SECOND;
+
+function at(offsetMs: number): string {
+  return new Date(T0.getTime() + offsetMs).toISOString();
+}
 
 describe("LotteryService start cooldown", () => {
   let service: LotteryService;
@@ -83,6 +105,7 @@ describe("LotteryService start cooldown", () => {
     state.failTransaction = false;
     state.deducted = [];
     state.credited = [];
+    state.ledger = [];
     service = new LotteryService();
   });
 
@@ -108,9 +131,15 @@ describe("LotteryService start cooldown", () => {
     expect(state.deducted).toEqual([{ uuid: "host", amount: 50 }]);
   });
 
-  it("allows a new round once the hour has passed", async () => {
+  it("still refuses one second before the hour is up, then allows the next second", async () => {
     await service.start("host", "Host", 50);
-    await vi.advanceTimersByTimeAsync(60 * MINUTE);
+    await vi.advanceTimersByTimeAsync(60 * MINUTE - SECOND);
+
+    await expect(service.start("other", "Other", 20)).rejects.toMatchObject({
+      message: "Next lottery can start in 1 second",
+    });
+
+    await vi.advanceTimersByTimeAsync(SECOND);
 
     await expect(service.start("other", "Other", 20)).resolves.toMatchObject({
       success: true,
@@ -144,6 +173,42 @@ describe("LotteryService start cooldown", () => {
     await expect(service.join("other", "Other", 30)).resolves.toMatchObject({
       totalPot: 80,
       participantCount: 2,
+    });
+  });
+
+  describe("initialize", () => {
+    it("restores the cooldown from the newest lottery entry in the ledger", async () => {
+      state.ledger = [
+        { transactionType: "lottery_entry", createdAt: at(-50 * MINUTE) },
+        { transactionType: "lottery_entry", createdAt: at(-10 * MINUTE) },
+        { transactionType: "lottery_win", createdAt: at(-5 * MINUTE) },
+      ];
+
+      await service.initialize();
+
+      await expect(service.start("host", "Host", 50)).rejects.toMatchObject({
+        nextStartAt: new Date(T0.getTime() + 50 * MINUTE),
+      });
+    });
+
+    it("ignores ledger entries older than the cooldown", async () => {
+      state.ledger = [
+        { transactionType: "lottery_entry", createdAt: at(-61 * MINUTE) },
+      ];
+
+      await service.initialize();
+
+      await expect(service.start("host", "Host", 50)).resolves.toMatchObject({
+        success: true,
+      });
+    });
+
+    it("starts open with an empty ledger", async () => {
+      await service.initialize();
+
+      await expect(service.start("host", "Host", 50)).resolves.toMatchObject({
+        success: true,
+      });
     });
   });
 });
