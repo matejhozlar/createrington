@@ -21,8 +21,7 @@ type NavMainItem = {
   title: string;
   url: string;
   icon?: AnimatedIcon;
-  badge?: number | string;
-  badgeClassName?: string;
+  badge?: number;
 };
 
 function NavMainRow({ item }: { item: NavMainItem }) {
@@ -64,12 +63,7 @@ function NavMainRow({ item }: { item: NavMainItem }) {
 
                 {item.badge && (
                   <SidebarMenuBadge>
-                    <Badge
-                      className={cn(
-                        "font-semibold bg-primary/90",
-                        item.badgeClassName,
-                      )}
-                    >
+                    <Badge className="font-semibold bg-primary/90">
                       {item.badge}
                     </Badge>
                   </SidebarMenuBadge>

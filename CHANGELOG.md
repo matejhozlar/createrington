@@ -1,3 +1,14 @@
+## v1.51.0 (2026-09-03)
+
+### @createrington/server (1.51.0 → 1.52.0)
+- [add] Add FTB Ranks game-server sync for competitive top-1 roles: the daily role check now mirrors "The Sleepless" (top playtime) and "Capitalist" (top balance) Discord roles into FTB Ranks on the Rails 'n Sails server over RCON, granting the in-game rank after the Discord role is confirmed and revoking it before the Discord role is stripped
+- [fix] Fix in-game rank lifecycle ordering: grants now run only after the Discord role is successfully assigned, and failed RCON revokes keep the Discord role on the former holder as a retry ledger for the next daily pass
+- [refactor] Extract shared RCON mod-command utilities (formatting strip, unknown-command check, username validation, default send) from the maintenance client into `utils/rcon/mod-command.ts`, reused by both the maintenance and FTB Ranks clients
+- [refactor] Consolidate duplicated top-playtime and top-balance role reconciliation into a single `reconcileTopRole` method on `RoleManagementService`
+
+### @createrington/client (0.2.64 → 0.2.65)
+- [remove] Remove the "New" badge from the Workshop sidebar nav item and simplify badge type to accept only numeric values
+
 ## v1.50.0 (2026-09-01)
 
 ### @createrington/server (1.50.0 → 1.51.0)

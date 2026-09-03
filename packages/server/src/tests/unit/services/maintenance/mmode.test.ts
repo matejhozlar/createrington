@@ -17,8 +17,8 @@ import {
   MaintenanceModeCommandError,
   parseAllowList,
   parseStatus,
-  stripFormatting,
 } from "@/services/maintenance/mmode";
+import { stripFormatting } from "@/utils/rcon";
 
 function clientWith(responses: Record<string, string>) {
   const sent: string[] = [];
