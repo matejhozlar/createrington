@@ -135,8 +135,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               title: "Workshop",
               url: "/workshop",
               icon: HammerIcon,
-              badge: "New",
-              badgeClassName: "bg-blue-500/90 text-white",
             },
           ]
         : []),
