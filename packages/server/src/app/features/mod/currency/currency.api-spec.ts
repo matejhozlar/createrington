@@ -246,7 +246,8 @@ export default defineApiSpec({
       method: "POST",
       path: "/lottery/start",
       name: "LotteryStart",
-      description: "Starts a new lottery round with the given buy-in amount.",
+      description:
+        "Starts a new lottery round with the given buy-in amount. Only one round runs at a time, and a new round can start at most once every 60 minutes server-wide, counted from the previous start regardless of how that round ended. While the cooldown is running the request is rejected with 409, code LOTTERY_COOLDOWN, and error.details.nextStartAt carries the ISO 8601 time the next round may begin. The same limit applies to lotteries started from Discord.",
       request: {
         name: "LotteryStartRequest",
         fields: [

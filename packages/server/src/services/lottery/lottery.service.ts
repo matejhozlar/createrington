@@ -6,6 +6,7 @@ import { Discord } from "@/discord/constants";
 import { getService, Services } from "@/services";
 import config from "@/config";
 import { pickWeightedWinner } from "./weighted-winner";
+import { LotteryCooldownError } from "./errors";
 import type {
   ActiveLottery,
   LotteryParticipant,
@@ -16,13 +17,18 @@ import type {
 
 /**
  * Runs the in-memory lottery: one active round at a time, started by a host
- * and resolved after a fixed duration with a weighted random winner. Balance
- * deductions go through BalanceRepository inside a transaction with the
- * participant row, so DB failures roll the in-memory state back. Participants
- * are also persisted so `initialize()` can refund orphans after a crash.
+ * and resolved after a fixed duration with a weighted random winner. Starts
+ * are also rate limited server-wide: once a round has started, the next one
+ * may begin only after `startCooldownMs`, counted from that start and
+ * regardless of how the round ended. The cooldown lives in memory, so a
+ * process restart clears it. Balance deductions go through BalanceRepository
+ * inside a transaction with the participant row, so DB failures roll the
+ * in-memory state back. Participants are also persisted so `initialize()`
+ * can refund orphans after a crash.
  */
 export class LotteryService {
   private activeLottery: ActiveLottery | null = null;
+  private nextStartAt: Date | null = null;
   private resolving = false;
 
   /** Refunds every participant row left in the DB by a previous crash, then clears the table. */
@@ -62,8 +68,9 @@ export class LotteryService {
   /**
    * Starts a new round: claims the singleton slot, deducts the host's balance,
    * persists the entry, and arms the resolution timer. Throws ConflictError if
-   * a round is already running and BadRequestError if `amount` is below the
-   * configured minimum.
+   * a round is already running, LotteryCooldownError while the start cooldown
+   * from the previous round is running, and BadRequestError if `amount` is
+   * below the configured minimum.
    */
   async start(
     uuid: string,
@@ -74,6 +81,11 @@ export class LotteryService {
       throw new ConflictError("A lottery is already in progress");
     }
 
+    const now = new Date();
+    if (this.nextStartAt && now < this.nextStartAt) {
+      throw new LotteryCooldownError(this.nextStartAt, now);
+    }
+
     const { minAmount } = config.economy.lottery;
 
     if (typeof amount !== "number" || amount < minAmount) {
@@ -81,7 +93,7 @@ export class LotteryService {
     }
 
     // Synchronously claim the slot before any await
-    const endsAt = new Date(Date.now() + config.economy.lottery.durationMs);
+    const endsAt = new Date(now.getTime() + config.economy.lottery.durationMs);
     const participant: LotteryParticipant = {
       minecraftUuid: uuid,
       minecraftUsername: username,
@@ -98,7 +110,7 @@ export class LotteryService {
       startedBy: participant,
       participants: [participant],
       totalPot: amount,
-      startedAt: new Date(),
+      startedAt: now,
       timer,
     };
 
@@ -124,6 +136,10 @@ export class LotteryService {
       this.activeLottery = null;
       throw error;
     }
+
+    this.nextStartAt = new Date(
+      now.getTime() + config.economy.lottery.startCooldownMs,
+    );
 
     const message = `🎲 **Lottery Started**\nHost: **${username}**\nType \`/join <amount>\` to participate!\nWinner will be announced in 2 minutes...`;
     this.announceToDiscord(message);
