@@ -1,3 +1,11 @@
+## v1.52.0 (2026-09-03)
+
+### @createrington/server (1.52.0 → 1.53.0)
+- [add] Add a global 60-minute cooldown between lottery starts, enforced server-wide regardless of whether the round was started from a mod endpoint or Discord: while the cooldown is running, start attempts are rejected with a 409 containing the `LOTTERY_COOLDOWN` code and the ISO 8601 time the next round may begin
+- [fix] Restore the lottery start cooldown from the balance ledger on service initialization so a server restart does not reopen the window early
+- [add] Add dedicated `LotteryCooldownError` that carries `nextStartAt` and surfaces a player-friendly duration message, with the Discord `/lottery` command catching it and replying with a relative Discord timestamp instead of the generic error
+- [chore] Bump createrington-api to 1.11.3
+
 ## v1.51.0 (2026-09-03)
 
 ### @createrington/server (1.51.0 → 1.52.0)
