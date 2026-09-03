@@ -61,42 +61,48 @@ describe("FtbRanksClient", () => {
     );
   });
 
-  it("strips formatting codes before matching", async () => {
+  it("strips legacy and hex formatting codes before matching", async () => {
     const { client } = clientWith({
-      "ftbranks add": "§ePlayer Steve added to rank 'Capitalist'!§r",
+      "ftbranks add":
+        "§x§f§f§5§5§0§0Player Steve §eadded to rank 'Capitalist'!§r",
     });
     await expect(client.add(1, "Steve", "capitalist")).resolves.toBe(true);
   });
 
   it("rejects a rank that is not declared on the server", async () => {
     const { client } = clientWith({ "ftbranks add": "Unknown rank: nope" });
-    await expect(client.add(1, "Steve", "nope")).rejects.toBeInstanceOf(
-      FtbRanksCommandError,
-    );
+    const failure = client.add(1, "Steve", "nope");
+    await expect(failure).rejects.toBeInstanceOf(FtbRanksCommandError);
+    await expect(failure).rejects.toMatchObject({ reason: "unknown_rank" });
   });
 
   it("rejects a player the server cannot resolve", async () => {
     const { client } = clientWith({
       "ftbranks add": "That player does not exist",
     });
-    await expect(client.add(1, "Nobody", "capitalist")).rejects.toThrow(
-      /unknown to the server/,
-    );
+    await expect(client.add(1, "Nobody", "capitalist")).rejects.toMatchObject({
+      reason: "unknown_player",
+      message: /unknown to the server/,
+    });
   });
 
   it("fails when the mod is not installed", async () => {
     const { client } = clientWith({
       "ftbranks remove": "Unknown or incomplete command, see below for error",
     });
-    await expect(client.remove(1, "Steve", "capitalist")).rejects.toThrow(
-      /did not recognise/,
+    await expect(client.remove(1, "Steve", "capitalist")).rejects.toMatchObject(
+      {
+        reason: "unknown_command",
+        message: /did not recognise/,
+      },
     );
   });
 
   it("fails on an unexpected reply", async () => {
-    const { client } = clientWith({ "ftbranks add": "Something odd" });
+    const { client } = clientWith({ "ftbranks add": "§cSomething odd" });
     await expect(client.add(1, "Steve", "capitalist")).rejects.toMatchObject({
       name: "FtbRanksCommandError",
+      reason: "unexpected_reply",
       command: "ftbranks add Steve capitalist",
       response: "Something odd",
     });

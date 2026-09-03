@@ -12,9 +12,8 @@ export {
   MaintenanceModeCommandError,
   parseAllowList,
   parseStatus,
-  stripFormatting,
 } from "./mmode";
-export type { MaintenanceAllowList, RconSend } from "./mmode";
+export type { MaintenanceAllowList } from "./mmode";
 export {
   MAINTENANCE_MESSAGE_PRESET,
   MAINTENANCE_MOTD_PRESET,
