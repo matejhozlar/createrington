@@ -14,6 +14,7 @@ import { rankNetWorth } from "@/services/discord/leaderboard/networth";
 import { RoleManager } from "@/discord/utils/roles/role-manager";
 import { roleNotificationService } from "./role-notification.service";
 import config from "@/config";
+import { GameRankSync } from "./game-rank-sync";
 
 /**
  * Top-level coordinator for automatic role assignment. Owns a
@@ -22,8 +23,9 @@ import config from "@/config";
  * scheduled, via a daily timer aligned to `checkTimeHour` UTC (first run is
  * delayed to the next occurrence, then a 24h interval takes over). The daily
  * pass also reconciles competitive top-1 roles (top playtime, top balance) by
- * stripping the role from former leaders and granting it to the current #1.
- * All scheduling stops on `shutdown`.
+ * stripping the role from former leaders and granting it to the current #1,
+ * then mirrors the outcome into FTB Ranks on the game server through
+ * `GameRankSync`. All scheduling stops on `shutdown`.
  */
 export class RoleManagementService {
   private roleAssignmentService: RoleAssignmentService;
@@ -33,6 +35,7 @@ export class RoleManagementService {
   constructor(
     private readonly client: Client,
     private readonly checkTimeHour: number = 0,
+    private readonly gameRankSync: GameRankSync = new GameRankSync(),
   ) {
     this.roleAssignmentService = new RoleAssignmentService(client);
   }
@@ -221,6 +224,14 @@ export class RoleManagementService {
         (m) => m.id === topPlayer.discordId,
       );
 
+      await this.gameRankSync.sync(
+        rule,
+        topPlayer.minecraftUsername,
+        membersWithRole
+          .filter((m) => m.id !== topPlayer.discordId)
+          .map((m) => m.id),
+      );
+
       if (topPlayerHasRole && membersWithRole.size === 1) {
         logger.debug(
           `Top playtime role "${rule.label}" already held by ${topPlayer.minecraftUsername}`,
@@ -332,6 +343,14 @@ export class RoleManagementService {
 
       const topPlayerHasRole = membersWithRole.some(
         (m) => m.id === topPlayer.discordId,
+      );
+
+      await this.gameRankSync.sync(
+        rule,
+        topPlayer.minecraftUsername,
+        membersWithRole
+          .filter((m) => m.id !== topPlayer.discordId)
+          .map((m) => m.id),
       );
 
       if (topPlayerHasRole && membersWithRole.size === 1) {
