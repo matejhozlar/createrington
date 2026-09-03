@@ -162,6 +162,7 @@ export const SERVER_AGE_ROLE_HIERARCHY: ServerAgeRoleRule[] = [
 export const TOP_PLAYTIME_ROLES: TopPlaytimeRoleRule[] = [
   {
     roleId: Discord.Roles.THE_SLEEPLESS,
+    gameRankId: "the_sleepless",
     checkInterval: RoleCheckInterval.DAILY,
     label: "The Sleepless",
     conditionType: RoleConditionType.TOP_PLAYTIME,
@@ -178,6 +179,7 @@ export const TOP_PLAYTIME_ROLES: TopPlaytimeRoleRule[] = [
 export const TOP_BALANCE_ROLES: TopBalanceRoleRule[] = [
   {
     roleId: Discord.Roles.CAPITALIST,
+    gameRankId: "capitalist",
     checkInterval: RoleCheckInterval.DAILY,
     label: "Capitalist",
     conditionType: RoleConditionType.TOP_BALANCE,

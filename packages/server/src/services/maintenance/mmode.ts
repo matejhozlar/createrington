@@ -1,12 +1,17 @@
-import { MinecraftRconManager } from "@/utils/rcon";
+import {
+  MINECRAFT_USERNAME,
+  defaultRconSend,
+  isUnknownCommand,
+  requireUsername,
+  stripFormatting,
+  type RconSend,
+} from "@/utils/rcon";
 
 export interface MaintenanceAllowList {
   players: string[];
   groups: string[];
   ignored: string[];
 }
-
-export type RconSend = (serverId: number, command: string) => Promise<string>;
 
 /** Raised when `/maintenance` answers with something other than the expected confirmation. */
 export class MaintenanceModeCommandError extends Error {
@@ -20,19 +25,10 @@ export class MaintenanceModeCommandError extends Error {
   }
 }
 
-export const MINECRAFT_USERNAME = /^[A-Za-z0-9_]{1,16}$/;
-
-const UNKNOWN_COMMAND =
-  /unknown or incomplete command|unknown command|incorrect argument/i;
-const FORMATTING_CODE = /§[0-9a-fk-or]/gi;
 const LEGACY_AMPERSAND_CODE = /&([0-9a-fk-or])/gi;
 const PLAYER_LIST = /allowed player\(s\):\s*(.*?)(?=\s*(?:\n|There are|$))/is;
 const GROUP_LIST =
   /allowed luckperms groups\(s\):\s*(.*?)(?=\s*(?:\n|There are|$))/is;
-
-export function stripFormatting(text: string): string {
-  return text.replace(FORMATTING_CODE, "").trim();
-}
 
 export function parseStatus(response: string): boolean | null {
   if (/\bEnabled/.test(response)) return true;
@@ -65,17 +61,6 @@ export function toPhrase(text: string): string {
     .trim();
 }
 
-function requireUsername(username: string): string {
-  const name = username.trim();
-  if (!MINECRAFT_USERNAME.test(name)) {
-    throw new Error(`Invalid Minecraft username: ${JSON.stringify(username)}`);
-  }
-  return name;
-}
-
-const defaultSend: RconSend = (serverId, command) =>
-  MinecraftRconManager.getInstance().send(serverId, command);
-
 /**
  * Typed client for the Maintenance Mode mod's `/maintenance` command tree,
  * spoken over RCON. Every method sends exactly one command and validates the
@@ -94,12 +79,12 @@ const defaultSend: RconSend = (serverId, command) =>
  * which are translated here.
  */
 export class MaintenanceModeClient {
-  constructor(private readonly send: RconSend = defaultSend) {}
+  constructor(private readonly send: RconSend = defaultRconSend) {}
 
   private async run(serverId: number, subcommand: string): Promise<string> {
     const command = `maintenance ${subcommand}`;
     const response = stripFormatting(await this.send(serverId, command));
-    if (UNKNOWN_COMMAND.test(response)) {
+    if (isUnknownCommand(response)) {
       throw new MaintenanceModeCommandError(
         "The Maintenance Mode mod did not recognise the command (is it installed on the server?)",
         command,
