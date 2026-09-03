@@ -2,7 +2,7 @@ import { player } from "@/db";
 import { EmbedPresets } from "@/discord/embeds";
 import { replyError } from "@/discord/utils/interaction-reply";
 import { CooldownType } from "@/discord/utils/cooldown";
-import { lotteryService } from "@/services/lottery";
+import { lotteryService, LotteryCooldownError } from "@/services/lottery";
 import { discordTimestamp, formatBalance } from "@/utils/format";
 import { BalanceUtils } from "@/db/repositories/balance/utils";
 import config from "@/config";
@@ -112,6 +112,18 @@ export async function execute(
       `User ${interaction.user.tag} (${interaction.user.id}) used /lottery with $${amount}`,
     );
   } catch (error) {
+    if (error instanceof LotteryCooldownError) {
+      logger.info(
+        `User ${interaction.user.tag} (${interaction.user.id}) hit the lottery start cooldown, next start at ${error.nextStartAt.toISOString()}`,
+      );
+      await replyError(
+        interaction,
+        "Lottery Cooldown",
+        `The next lottery can start ${discordTimestamp(error.nextStartAt, "R")}.`,
+      );
+      return;
+    }
+
     logger.error("/lottery failed:", error);
 
     await replyError(
