@@ -89,6 +89,7 @@ vi.mock("@/app/middleware", () =>
 
 import { LotteryService } from "@/services/lottery/lottery.service";
 import { LotteryCooldownError } from "@/services/lottery/errors";
+import { ConflictError } from "@/app/middleware/error-handler";
 
 const T0 = new Date("2026-09-03T12:00:00.000Z");
 const SECOND = 1000;
@@ -98,7 +99,7 @@ function at(offsetMs: number): string {
   return new Date(T0.getTime() + offsetMs).toISOString();
 }
 
-describe("LotteryService start cooldown", () => {
+describe("LotteryService", () => {
   let service: LotteryService;
 
   beforeEach(() => {
@@ -185,9 +186,12 @@ describe("LotteryService start cooldown", () => {
       state.holdTransaction = new Promise((resolve) => (release = resolve));
 
       const start = service.start("host", "Host", 50);
-      await expect(service.join("other", "Other", 30)).rejects.toThrow(
-        "The lottery is still starting, try again in a moment",
-      );
+      const join = service.join("other", "Other", 30);
+      await expect(join).rejects.toBeInstanceOf(ConflictError);
+      await expect(join).rejects.toMatchObject({
+        statusCode: 409,
+        message: "The lottery is still starting, try again in a moment",
+      });
       expect(state.deducted).toEqual([]);
 
       release();
@@ -198,15 +202,32 @@ describe("LotteryService start cooldown", () => {
       });
     });
 
+    it("does not fire the resolution timer while the start transaction is in flight", async () => {
+      let release!: () => void;
+      state.holdTransaction = new Promise((resolve) => (release = resolve));
+
+      const start = service.start("host", "Host", 50);
+      await vi.advanceTimersByTimeAsync(2 * MINUTE);
+      expect(state.credited).toEqual([]);
+      expect(service.isActive()).toBe(true);
+
+      release();
+      await expect(start).resolves.toMatchObject({ success: true });
+      await vi.advanceTimersByTimeAsync(2 * MINUTE);
+      expect(state.credited).toEqual([{ uuid: "host", amount: 50 }]);
+      expect(service.isActive()).toBe(false);
+    });
+
     it("leaves the rejected joiner untouched when the start then fails", async () => {
       let release!: () => void;
       state.holdTransaction = new Promise((resolve) => (release = resolve));
       state.failTransaction = true;
 
       const start = service.start("host", "Host", 50);
-      await expect(service.join("other", "Other", 30)).rejects.toThrow(
-        "The lottery is still starting, try again in a moment",
-      );
+      await expect(service.join("other", "Other", 30)).rejects.toMatchObject({
+        statusCode: 409,
+        message: "The lottery is still starting, try again in a moment",
+      });
 
       release();
       await expect(start).rejects.toThrow("db down");

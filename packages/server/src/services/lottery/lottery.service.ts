@@ -26,9 +26,11 @@ import type {
  * late, by at most the round duration). Balance deductions go through
  * BalanceRepository inside a transaction with the participant row, so DB
  * failures roll the in-memory state back. A round stays pending until the
- * host's transaction commits, and `join()` rejects while it is, so a failed
- * start can never strand a joiner's deduction. Participants are also
- * persisted so `initialize()` can refund orphans after a crash.
+ * host's transaction commits: `join()` rejects while it is, so a failed
+ * start can never strand a joiner's deduction, and the resolution timer is
+ * armed only after the commit, so a stalled start can never resolve or
+ * refund a round that was never funded. Participants are also persisted so
+ * `initialize()` can refund orphans after a crash.
  */
 export class LotteryService {
   private activeLottery: ActiveLottery | null = null;
@@ -106,19 +108,13 @@ export class LotteryService {
       amount,
     };
 
-    const timer = setTimeout(() => {
-      this.resolve().catch((err) =>
-        logger.error("Lottery resolve failed:", err),
-      );
-    }, config.economy.lottery.durationMs);
-
     const round: ActiveLottery = {
       startedBy: participant,
       participants: [participant],
       totalPot: amount,
       startedAt: now,
       pending: true,
-      timer,
+      timer: null,
     };
     this.activeLottery = round;
 
@@ -140,12 +136,18 @@ export class LotteryService {
       });
     } catch (error) {
       // Rollback in-memory state if DB operations fail
-      clearTimeout(timer);
-      this.activeLottery = null;
+      if (this.activeLottery === round) {
+        this.activeLottery = null;
+      }
       throw error;
     }
 
     round.pending = false;
+    round.timer = setTimeout(() => {
+      this.resolve().catch((err) =>
+        logger.error("Lottery resolve failed:", err),
+      );
+    }, config.economy.lottery.durationMs);
 
     this.nextStartAt = new Date(
       now.getTime() + config.economy.lottery.startCooldownMs,
