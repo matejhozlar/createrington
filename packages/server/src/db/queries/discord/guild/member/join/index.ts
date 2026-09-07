@@ -49,9 +49,10 @@ export class DiscordGuildMemberJoinQueries extends DiscordGuildMemberJoinBaseQue
    * consuming a value from the join_number sequence, so rejoins and repeated
    * calls for the same member never leave gaps in the numbering
    *
-   * @param userId - Discord user ID
-   * @param username - Discord username
-   * @returns The user's join number
+   * The fallback lookup is deliberately a separate statement: it runs in a
+   * fresh snapshot and sees the row a concurrent first-time insert has just
+   * committed. Folding it into the insert as a CTE would read the insert's
+   * own snapshot and return nothing in that race
    */
   async recordJoin(userId: string, username: string): Promise<number> {
     const query = `
