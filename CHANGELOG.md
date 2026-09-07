@@ -1,3 +1,9 @@
+## v1.52.1 (2026-09-07)
+
+### @createrington/server (1.53.0 → 1.53.1)
+- [fix] Fix `recordJoin` consuming a sequence value on every call for existing members by guarding the insert with a `WHERE NOT EXISTS` check, preventing gaps in join number assignment when members rejoin or the method is called repeatedly
+- [add] Add integration tests for `recordJoin` covering sequential numbering, idempotent re-recording, and sequence gap prevention
+
 ## v1.52.0 (2026-09-03)
 
 ### @createrington/server (1.52.0 → 1.53.0)
