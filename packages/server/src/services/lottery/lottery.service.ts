@@ -29,8 +29,10 @@ import type {
  * host's transaction commits: `join()` rejects while it is, so a failed
  * start can never strand a joiner's deduction, and the resolution timer is
  * armed only after the commit, so a stalled start can never resolve or
- * refund a round that was never funded. Participants are also persisted so
- * `initialize()` can refund orphans after a crash.
+ * refund a round that was never funded. Resolution closes the round to new
+ * joins and waits for in-flight join transactions to settle first, so the
+ * paid pot only ever contains committed entries. Participants are also
+ * persisted so `initialize()` can refund orphans after a crash.
  */
 export class LotteryService {
   private activeLottery: ActiveLottery | null = null;
@@ -114,6 +116,7 @@ export class LotteryService {
       totalPot: amount,
       startedAt: now,
       pending: true,
+      inFlightJoins: new Set(),
       timer: null,
     };
     this.activeLottery = round;
@@ -167,27 +170,32 @@ export class LotteryService {
   /**
    * Adds the caller to the active round, deducts their balance, and persists
    * the entry. Rolls in-memory pot back on DB failure. Throws BadRequestError
-   * if no round is active or amount is non-positive, ConflictError if the
-   * round is still pending or the caller has already joined.
+   * if no round is active, the round has begun resolving, or amount is
+   * non-positive, ConflictError if the round is still pending or the caller
+   * has already joined.
    */
   async join(
     uuid: string,
     username: string,
     amount: number,
   ): Promise<LotteryJoinResult> {
-    if (!this.activeLottery) {
+    const round = this.activeLottery;
+
+    if (!round) {
       throw new BadRequestError("No lottery is currently active");
     }
 
-    if (this.activeLottery.pending) {
+    if (round.pending) {
       throw new ConflictError(
         "The lottery is still starting, try again in a moment",
       );
     }
 
-    const existing = this.activeLottery.participants.find(
-      (p) => p.minecraftUuid === uuid,
-    );
+    if (this.resolving) {
+      throw new BadRequestError("The lottery has just ended");
+    }
+
+    const existing = round.participants.find((p) => p.minecraftUuid === uuid);
     if (existing) {
       throw new ConflictError("You have already joined this lottery");
     }
@@ -202,41 +210,46 @@ export class LotteryService {
       minecraftUsername: username,
       amount,
     };
-    this.activeLottery.participants.push(participant);
-    this.activeLottery.totalPot += amount;
+    round.participants.push(participant);
+    round.totalPot += amount;
+
+    const entryTransaction = db.inTransaction(async (tx) => {
+      await R.balanceRepo.deduct(
+        uuid,
+        amount,
+        "Lottery entry",
+        BalanceTransactionType.LOTTERY_ENTRY,
+        { tx },
+      );
+
+      await tx.lottery.participant.create({
+        minecraftUuid: uuid,
+        minecraftUsername: username,
+        amount: BalanceUtils.toStorage(amount),
+      });
+    });
+    round.inFlightJoins.add(entryTransaction);
 
     try {
-      await db.inTransaction(async (tx) => {
-        await R.balanceRepo.deduct(
-          uuid,
-          amount,
-          "Lottery entry",
-          BalanceTransactionType.LOTTERY_ENTRY,
-          { tx },
-        );
-
-        await tx.lottery.participant.create({
-          minecraftUuid: uuid,
-          minecraftUsername: username,
-          amount: BalanceUtils.toStorage(amount),
-        });
-      });
+      await entryTransaction;
     } catch (error) {
       // Rollback in-memory state if DB operations fail
-      const idx = this.activeLottery.participants.indexOf(participant);
+      const idx = round.participants.indexOf(participant);
       if (idx !== -1) {
-        this.activeLottery.participants.splice(idx, 1);
-        this.activeLottery.totalPot -= amount;
+        round.participants.splice(idx, 1);
+        round.totalPot -= amount;
       }
       throw error;
+    } finally {
+      round.inFlightJoins.delete(entryTransaction);
     }
 
     return {
       success: true,
       message: `Joined the lottery with $${amount}`,
       entryAmount: amount,
-      totalPot: this.activeLottery.totalPot,
-      participantCount: this.activeLottery.participants.length,
+      totalPot: round.totalPot,
+      participantCount: round.participants.length,
     };
   }
 
@@ -286,9 +299,14 @@ export class LotteryService {
   private async resolve(): Promise<void> {
     if (this.resolving || !this.activeLottery) return;
     this.resolving = true;
+    const round = this.activeLottery;
 
     try {
-      const { participants, totalPot } = this.activeLottery;
+      if (round.inFlightJoins.size > 0) {
+        await Promise.allSettled([...round.inFlightJoins]);
+      }
+
+      const { participants, totalPot } = round;
 
       if (participants.length < 2) {
         // Solo entrant: refund
@@ -337,7 +355,9 @@ export class LotteryService {
     } catch (error) {
       logger.error("Lottery resolution error:", error);
     } finally {
-      this.activeLottery = null;
+      if (this.activeLottery === round) {
+        this.activeLottery = null;
+      }
       this.resolving = false;
     }
   }

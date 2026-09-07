@@ -18,6 +18,8 @@ export interface ActiveLottery {
   startedAt: Date;
   /** True until the host's start transaction commits; joins are rejected while set */
   pending: boolean;
+  /** Join transactions that have not settled yet; resolution waits for them before paying out */
+  inFlightJoins: Set<Promise<unknown>>;
   /** Timer handle for automatic resolution; null until the host's start transaction commits */
   timer: ReturnType<typeof setTimeout> | null;
 }
