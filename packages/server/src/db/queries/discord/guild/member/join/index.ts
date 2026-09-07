@@ -45,37 +45,37 @@ export class DiscordGuildMemberJoinQueries extends DiscordGuildMemberJoinBaseQue
   /**
    * Records a new member join and returns their join number
    *
-   * If the user already exists, returns their existing join number
-   * This handles cases where a user leaves and rejoins
+   * If the user already exists, returns their existing join number without
+   * consuming a value from the join_number sequence, so rejoins and repeated
+   * calls for the same member never leave gaps in the numbering
    *
-   * @param userId - Discord user ID
-   * @param username - Discord username
-   * @returns The user's join number
+   * The fallback lookup is deliberately a separate statement: it runs in a
+   * fresh snapshot and sees the row a concurrent first-time insert has just
+   * committed. Folding it into the insert as a CTE would read the insert's
+   * own snapshot and return nothing in that race
    */
   async recordJoin(userId: string, username: string): Promise<number> {
-    {
-      const query = `
-            INSERT INTO ${this.table} (user_id, username, joined_at)
-            VALUES ($1, $2, CURRENT_TIMESTAMP)
-            ON CONFLICT (user_id)
-            DO NOTHING
-            RETURNING join_number`;
+    const query = `
+      INSERT INTO ${this.table} (user_id, username, joined_at)
+      SELECT $1::varchar, $2::varchar, CURRENT_TIMESTAMP
+      WHERE NOT EXISTS (SELECT 1 FROM ${this.table} WHERE user_id = $1::varchar)
+      ON CONFLICT (user_id) DO NOTHING
+      RETURNING join_number`;
 
-      const result = await this.runQuery<{ join_number: number }>(
-        "record member join",
-        query,
-        [userId, username],
-      );
+    const result = await this.runQuery<{ join_number: number }>(
+      "record member join",
+      query,
+      [userId, username],
+    );
 
-      if (result.rows.length === 0) {
-        const existing = await this.find({ userId });
-        if (!existing) {
-          throw new Error("Failed to record join - no result returned");
-        }
-        return existing.joinNumber;
-      }
-
+    if (result.rows.length > 0) {
       return result.rows[0].join_number;
     }
+
+    const existing = await this.find({ userId });
+    if (!existing) {
+      throw new Error("Failed to record join - no result returned");
+    }
+    return existing.joinNumber;
   }
 }
