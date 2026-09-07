@@ -25,7 +25,11 @@ import type {
  * reopen it early (joins are entries too, so the restored time can only run
  * late, by at most the round duration). Balance deductions go through
  * BalanceRepository inside a transaction with the participant row, so DB
- * failures roll the in-memory state back. Participants are also persisted so
+ * failures roll the in-memory state back. A round stays pending until the
+ * host's transaction commits: `join()` rejects while it is, so a failed
+ * start can never strand a joiner's deduction, and the resolution timer is
+ * armed only after the commit, so a stalled start can never resolve or
+ * refund a round that was never funded. Participants are also persisted so
  * `initialize()` can refund orphans after a crash.
  */
 export class LotteryService {
@@ -104,19 +108,15 @@ export class LotteryService {
       amount,
     };
 
-    const timer = setTimeout(() => {
-      this.resolve().catch((err) =>
-        logger.error("Lottery resolve failed:", err),
-      );
-    }, config.economy.lottery.durationMs);
-
-    this.activeLottery = {
+    const round: ActiveLottery = {
       startedBy: participant,
       participants: [participant],
       totalPot: amount,
       startedAt: now,
-      timer,
+      pending: true,
+      timer: null,
     };
+    this.activeLottery = round;
 
     try {
       await db.inTransaction(async (tx) => {
@@ -136,10 +136,18 @@ export class LotteryService {
       });
     } catch (error) {
       // Rollback in-memory state if DB operations fail
-      clearTimeout(timer);
-      this.activeLottery = null;
+      if (this.activeLottery === round) {
+        this.activeLottery = null;
+      }
       throw error;
     }
+
+    round.pending = false;
+    round.timer = setTimeout(() => {
+      this.resolve().catch((err) =>
+        logger.error("Lottery resolve failed:", err),
+      );
+    }, config.economy.lottery.durationMs);
 
     this.nextStartAt = new Date(
       now.getTime() + config.economy.lottery.startCooldownMs,
@@ -160,7 +168,7 @@ export class LotteryService {
    * Adds the caller to the active round, deducts their balance, and persists
    * the entry. Rolls in-memory pot back on DB failure. Throws BadRequestError
    * if no round is active or amount is non-positive, ConflictError if the
-   * caller has already joined.
+   * round is still pending or the caller has already joined.
    */
   async join(
     uuid: string,
@@ -169,6 +177,12 @@ export class LotteryService {
   ): Promise<LotteryJoinResult> {
     if (!this.activeLottery) {
       throw new BadRequestError("No lottery is currently active");
+    }
+
+    if (this.activeLottery.pending) {
+      throw new ConflictError(
+        "The lottery is still starting, try again in a moment",
+      );
     }
 
     const existing = this.activeLottery.participants.find(
