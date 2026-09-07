@@ -25,13 +25,10 @@ import type {
  * reopen it early (joins are entries too, so the restored time can only run
  * late, by at most the round duration). Balance deductions go through
  * BalanceRepository inside a transaction with the participant row, so DB
- * failures roll the in-memory state back. A round stays pending until the
- * host's transaction commits: `join()` rejects while it is, so a failed
- * start can never strand a joiner's deduction, and the resolution timer is
- * armed only after the commit, so a stalled start can never resolve or
- * refund a round that was never funded. Resolution closes the round to new
- * joins and waits for in-flight join transactions to settle first, so the
- * paid pot only ever contains committed entries. Participants are also
+ * failures roll the in-memory state back. A round is closed to joins while
+ * the host's start transaction is pending and again once resolution begins,
+ * and resolution drains in-flight join transactions before paying out, so
+ * the pot only ever contains committed entries. Participants are also
  * persisted so `initialize()` can refund orphans after a crash.
  */
 export class LotteryService {
@@ -213,25 +210,26 @@ export class LotteryService {
     round.participants.push(participant);
     round.totalPot += amount;
 
-    const entryTransaction = db.inTransaction(async (tx) => {
-      await R.balanceRepo.deduct(
-        uuid,
-        amount,
-        "Lottery entry",
-        BalanceTransactionType.LOTTERY_ENTRY,
-        { tx },
-      );
-
-      await tx.lottery.participant.create({
-        minecraftUuid: uuid,
-        minecraftUsername: username,
-        amount: BalanceUtils.toStorage(amount),
-      });
-    });
-    round.inFlightJoins.add(entryTransaction);
+    let joinSettled!: () => void;
+    const settled = new Promise<void>((resolve) => (joinSettled = resolve));
+    round.inFlightJoins.add(settled);
 
     try {
-      await entryTransaction;
+      await db.inTransaction(async (tx) => {
+        await R.balanceRepo.deduct(
+          uuid,
+          amount,
+          "Lottery entry",
+          BalanceTransactionType.LOTTERY_ENTRY,
+          { tx },
+        );
+
+        await tx.lottery.participant.create({
+          minecraftUuid: uuid,
+          minecraftUsername: username,
+          amount: BalanceUtils.toStorage(amount),
+        });
+      });
     } catch (error) {
       // Rollback in-memory state if DB operations fail
       const idx = round.participants.indexOf(participant);
@@ -241,7 +239,8 @@ export class LotteryService {
       }
       throw error;
     } finally {
-      round.inFlightJoins.delete(entryTransaction);
+      round.inFlightJoins.delete(settled);
+      joinSettled();
     }
 
     return {
@@ -302,9 +301,7 @@ export class LotteryService {
     const round = this.activeLottery;
 
     try {
-      if (round.inFlightJoins.size > 0) {
-        await Promise.allSettled([...round.inFlightJoins]);
-      }
+      await Promise.allSettled([...round.inFlightJoins]);
 
       const { participants, totalPot } = round;
 

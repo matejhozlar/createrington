@@ -26,16 +26,24 @@ vi.mock("@/db", () => ({
   db: {
     inTransaction: async (fn: (tx: unknown) => Promise<void>) => {
       if (state.holdTransaction) await state.holdTransaction;
-      if (state.failTransaction) throw new Error("db down");
-      await fn({
-        lottery: {
-          participant: {
-            create: async (row: { minecraftUuid: string }) => {
-              state.rows.push(row.minecraftUuid);
+      const deductedBefore = state.deducted.length;
+      const rowsBefore = state.rows.length;
+      try {
+        await fn({
+          lottery: {
+            participant: {
+              create: async (row: { minecraftUuid: string }) => {
+                state.rows.push(row.minecraftUuid);
+              },
             },
           },
-        },
-      });
+        });
+        if (state.failTransaction) throw new Error("db down");
+      } catch (error) {
+        state.deducted.length = deductedBefore;
+        state.rows.length = rowsBefore;
+        throw error;
+      }
     },
     lottery: {
       participant: {
