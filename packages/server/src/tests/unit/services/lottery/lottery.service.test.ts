@@ -5,6 +5,7 @@ const state = vi.hoisted(() => ({
   holdTransaction: null as Promise<void> | null,
   deducted: [] as Array<{ uuid: string; amount: number }>,
   credited: [] as Array<{ uuid: string; amount: number }>,
+  rows: [] as string[],
   ledger: [] as Array<{ transactionType: string; createdAt: string }>,
 }));
 
@@ -25,10 +26,33 @@ vi.mock("@/db", () => ({
   db: {
     inTransaction: async (fn: (tx: unknown) => Promise<void>) => {
       if (state.holdTransaction) await state.holdTransaction;
-      if (state.failTransaction) throw new Error("db down");
-      await fn({ lottery: { participant: { create: async () => {} } } });
+      const deductedBefore = state.deducted.length;
+      const rowsBefore = state.rows.length;
+      try {
+        await fn({
+          lottery: {
+            participant: {
+              create: async (row: { minecraftUuid: string }) => {
+                state.rows.push(row.minecraftUuid);
+              },
+            },
+          },
+        });
+        if (state.failTransaction) throw new Error("db down");
+      } catch (error) {
+        state.deducted.length = deductedBefore;
+        state.rows.length = rowsBefore;
+        throw error;
+      }
     },
-    lottery: { participant: { findAll: async () => [], drop: async () => {} } },
+    lottery: {
+      participant: {
+        findAll: async () => [],
+        drop: async () => {
+          state.rows = [];
+        },
+      },
+    },
   },
   Q: {
     player: {
@@ -109,6 +133,7 @@ describe("LotteryService", () => {
     state.holdTransaction = null;
     state.deducted = [];
     state.credited = [];
+    state.rows = [];
     state.ledger = [];
     service = new LotteryService();
   });
@@ -237,6 +262,60 @@ describe("LotteryService", () => {
       await expect(service.join("other", "Other", 30)).rejects.toThrow(
         "No lottery is currently active",
       );
+    });
+  });
+
+  describe("resolve with joins in flight", () => {
+    it("excludes a join whose transaction fails while the round resolves", async () => {
+      await service.start("host", "Host", 50);
+
+      let release!: () => void;
+      state.holdTransaction = new Promise((resolve) => (release = resolve));
+      state.failTransaction = true;
+      const join = service.join("other", "Other", 30);
+
+      await vi.advanceTimersByTimeAsync(2 * MINUTE);
+      expect(state.credited).toEqual([]);
+      expect(service.isActive()).toBe(true);
+
+      release();
+      await expect(join).rejects.toThrow("db down");
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(state.credited).toEqual([{ uuid: "host", amount: 50 }]);
+      expect(state.rows).toEqual([]);
+      expect(service.isActive()).toBe(false);
+    });
+
+    it("counts a join that commits while the round resolves and leaves no orphan row", async () => {
+      await service.start("host", "Host", 50);
+
+      let release!: () => void;
+      state.holdTransaction = new Promise((resolve) => (release = resolve));
+      const join = service.join("other", "Other", 30);
+
+      await vi.advanceTimersByTimeAsync(2 * MINUTE);
+      expect(state.credited).toEqual([]);
+
+      await expect(service.join("late", "Late", 10)).rejects.toThrow(
+        "The lottery has just ended",
+      );
+
+      release();
+      await expect(join).resolves.toMatchObject({
+        totalPot: 80,
+        participantCount: 2,
+      });
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(state.credited).toHaveLength(1);
+      expect(state.credited[0].amount).toBe(80);
+      expect(state.deducted).toEqual([
+        { uuid: "host", amount: 50 },
+        { uuid: "other", amount: 30 },
+      ]);
+      expect(state.rows).toEqual([]);
+      expect(service.isActive()).toBe(false);
     });
   });
 
