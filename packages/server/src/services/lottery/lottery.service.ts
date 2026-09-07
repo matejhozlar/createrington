@@ -25,8 +25,10 @@ import type {
  * reopen it early (joins are entries too, so the restored time can only run
  * late, by at most the round duration). Balance deductions go through
  * BalanceRepository inside a transaction with the participant row, so DB
- * failures roll the in-memory state back. Participants are also persisted so
- * `initialize()` can refund orphans after a crash.
+ * failures roll the in-memory state back. A round stays pending until the
+ * host's transaction commits, and `join()` rejects while it is, so a failed
+ * start can never strand a joiner's deduction. Participants are also
+ * persisted so `initialize()` can refund orphans after a crash.
  */
 export class LotteryService {
   private activeLottery: ActiveLottery | null = null;
@@ -110,13 +112,15 @@ export class LotteryService {
       );
     }, config.economy.lottery.durationMs);
 
-    this.activeLottery = {
+    const round: ActiveLottery = {
       startedBy: participant,
       participants: [participant],
       totalPot: amount,
       startedAt: now,
+      pending: true,
       timer,
     };
+    this.activeLottery = round;
 
     try {
       await db.inTransaction(async (tx) => {
@@ -141,6 +145,8 @@ export class LotteryService {
       throw error;
     }
 
+    round.pending = false;
+
     this.nextStartAt = new Date(
       now.getTime() + config.economy.lottery.startCooldownMs,
     );
@@ -160,7 +166,7 @@ export class LotteryService {
    * Adds the caller to the active round, deducts their balance, and persists
    * the entry. Rolls in-memory pot back on DB failure. Throws BadRequestError
    * if no round is active or amount is non-positive, ConflictError if the
-   * caller has already joined.
+   * round is still pending or the caller has already joined.
    */
   async join(
     uuid: string,
@@ -169,6 +175,12 @@ export class LotteryService {
   ): Promise<LotteryJoinResult> {
     if (!this.activeLottery) {
       throw new BadRequestError("No lottery is currently active");
+    }
+
+    if (this.activeLottery.pending) {
+      throw new ConflictError(
+        "The lottery is still starting, try again in a moment",
+      );
     }
 
     const existing = this.activeLottery.participants.find(

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 const state = vi.hoisted(() => ({
   failTransaction: false,
+  holdTransaction: null as Promise<void> | null,
   deducted: [] as Array<{ uuid: string; amount: number }>,
   credited: [] as Array<{ uuid: string; amount: number }>,
   ledger: [] as Array<{ transactionType: string; createdAt: string }>,
@@ -23,6 +24,7 @@ vi.mock("@/config", () => ({
 vi.mock("@/db", () => ({
   db: {
     inTransaction: async (fn: (tx: unknown) => Promise<void>) => {
+      if (state.holdTransaction) await state.holdTransaction;
       if (state.failTransaction) throw new Error("db down");
       await fn({ lottery: { participant: { create: async () => {} } } });
     },
@@ -103,6 +105,7 @@ describe("LotteryService start cooldown", () => {
     vi.useFakeTimers();
     vi.setSystemTime(T0);
     state.failTransaction = false;
+    state.holdTransaction = null;
     state.deducted = [];
     state.credited = [];
     state.ledger = [];
@@ -173,6 +176,46 @@ describe("LotteryService start cooldown", () => {
     await expect(service.join("other", "Other", 30)).resolves.toMatchObject({
       totalPot: 80,
       participantCount: 2,
+    });
+  });
+
+  describe("start pending window", () => {
+    it("rejects a join while the host's start transaction is in flight", async () => {
+      let release!: () => void;
+      state.holdTransaction = new Promise((resolve) => (release = resolve));
+
+      const start = service.start("host", "Host", 50);
+      await expect(service.join("other", "Other", 30)).rejects.toThrow(
+        "The lottery is still starting, try again in a moment",
+      );
+      expect(state.deducted).toEqual([]);
+
+      release();
+      await expect(start).resolves.toMatchObject({ success: true });
+      await expect(service.join("other", "Other", 30)).resolves.toMatchObject({
+        totalPot: 80,
+        participantCount: 2,
+      });
+    });
+
+    it("leaves the rejected joiner untouched when the start then fails", async () => {
+      let release!: () => void;
+      state.holdTransaction = new Promise((resolve) => (release = resolve));
+      state.failTransaction = true;
+
+      const start = service.start("host", "Host", 50);
+      await expect(service.join("other", "Other", 30)).rejects.toThrow(
+        "The lottery is still starting, try again in a moment",
+      );
+
+      release();
+      await expect(start).rejects.toThrow("db down");
+      expect(service.isActive()).toBe(false);
+      expect(state.deducted).toEqual([]);
+      expect(state.credited).toEqual([]);
+      await expect(service.join("other", "Other", 30)).rejects.toThrow(
+        "No lottery is currently active",
+      );
     });
   });
 
