@@ -1,6 +1,13 @@
 import { lazy, Suspense } from "react";
 import { useLocation, useNavigate, type NavigateFunction } from "react-router";
-import { AlertTriangle, ArrowLeft, Home, type LucideIcon } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  Hand,
+  Home,
+  Keyboard,
+  type LucideIcon,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useAuth } from "@/contexts/auth";
@@ -36,12 +43,26 @@ const ACTIONS: Action[] = [
 const CARD_CLASS =
   "border-border bg-card/60 backdrop-blur supports-[backdrop-filter]:bg-card/50";
 
+const KBD_CLASS =
+  "rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-foreground";
+
+const KEY_CONTROLS = [
+  { key: "Space", hold: false, action: "Jump" },
+  { key: "Space", hold: true, action: "Jump higher" },
+  { key: "↓", hold: false, action: "Duck" },
+];
+
+const TOUCH_CONTROLS = [
+  { gesture: "Tap", action: "Jump" },
+  { gesture: "Hold", action: "Jump higher" },
+  { gesture: "Swipe down", action: "Duck" },
+];
+
 export function NotFound() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const { user } = useAuth();
 
-  const loggedIn = Boolean(user?.minecraftUuid);
   const player = user?.minecraftUuid
     ? { uuid: user.minecraftUuid, username: user.minecraftUsername }
     : DEFAULT_PLAYER;
@@ -57,17 +78,32 @@ export function NotFound() {
               <SkinRunner uuid={player.uuid} username={player.username} />
             </Suspense>
           </div>
-          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-border px-4 py-2 text-xs text-muted-foreground">
-            <p>
-              Running as{" "}
-              <span className="font-medium text-foreground">
-                {player.username}
-              </span>
-              {!loggedIn && ". Log in to run as yourself."}
-            </p>
-            <p className="hidden sm:block">
-              Space jumps, hold for a higher jump, arrow down ducks.
-            </p>
+          <div className="border-t border-border px-4 py-2.5 text-xs text-muted-foreground">
+            <ul className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5 pointer-coarse:hidden">
+              <li className="flex items-center gap-1.5 font-medium text-foreground">
+                <Keyboard className="size-3.5" />
+                Controls
+              </li>
+              {KEY_CONTROLS.map(({ key, hold, action }) => (
+                <li key={action} className="flex items-center gap-1.5">
+                  {hold && <span>Hold</span>}
+                  <kbd className={KBD_CLASS}>{key}</kbd>
+                  <span>{action}</span>
+                </li>
+              ))}
+            </ul>
+            <ul className="hidden flex-wrap items-center justify-center gap-x-5 gap-y-1.5 pointer-coarse:flex">
+              <li className="flex items-center gap-1.5 font-medium text-foreground">
+                <Hand className="size-3.5" />
+                Controls
+              </li>
+              {TOUCH_CONTROLS.map(({ gesture, action }) => (
+                <li key={action} className="flex items-center gap-1.5">
+                  <kbd className={KBD_CLASS}>{gesture}</kbd>
+                  <span>{action}</span>
+                </li>
+              ))}
+            </ul>
           </div>
         </Card>
 

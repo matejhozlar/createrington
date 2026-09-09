@@ -10,12 +10,10 @@ const RELOAD_DELAY_MS = 1500;
 const SELF_PATH = "/maintenance.html";
 
 const canvas = document.querySelector<HTMLCanvasElement>("#runner");
-const nameLabel = document.querySelector<HTMLElement>("#player-name");
 const deploying = document.querySelector<HTMLElement>("#deploying");
 const backOnlineBanner = document.querySelector<HTMLElement>("#back-online");
 
 const player = readPlayerHint();
-if (nameLabel) nameLabel.textContent = player.username;
 
 let state: RunnerState = "loading";
 let backOnline = false;

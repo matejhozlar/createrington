@@ -96,31 +96,61 @@ body {
   box-shadow: inset 0 0 0 2px var(--primary);
 }
 
-.runner-meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.25rem 1rem;
-  padding: 0.5rem 1rem;
+.legend {
+  padding: 0.625rem 1rem;
   border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
   font-size: 0.75rem;
   color: var(--muted);
 }
 
-.runner-meta strong {
+.legend ul {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem 1.25rem;
+}
+
+.legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.legend-title {
   color: var(--fg);
   font-weight: 500;
 }
 
-.runner-hint {
-  display: none;
+.legend-title svg {
+  width: 0.875rem;
+  height: 0.875rem;
 }
 
-@media (min-width: 640px) {
-  .runner-hint {
-    display: block;
+.legend kbd {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.625rem;
+  line-height: 1;
+  padding: 0.1875rem 0.375rem;
+  border: 1px solid var(--border);
+  border-radius: 0.25rem;
+  background: var(--accent);
+  color: var(--fg);
+}
+
+.legend-touch {
+  display: none !important;
+}
+
+@media (hover: none) {
+  .legend-keys {
+    display: none !important;
+  }
+
+  .legend-touch {
+    display: flex !important;
   }
 }
 

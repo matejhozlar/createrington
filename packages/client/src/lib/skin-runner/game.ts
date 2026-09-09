@@ -1203,7 +1203,7 @@ class Runner {
     const { W, S } = this;
     const T = Math.max(S, MIN_TEXT_SCALE);
     const top = 3 * S + 6 * T;
-    const pulse = 0.55 + 0.45 * Math.sin(this.time * 3);
+    const pulse = 0.8 + 0.2 * Math.sin(this.time * 3);
 
     if (this.state === "loading") {
       this.text("LOADING SKIN...", W / 2, top, 3.5 * T, "center", pulse);
@@ -1212,17 +1212,12 @@ class Runner {
 
     if (this.state === "idle") {
       const prompt = this.touchUi ? "TAP TO RUN" : "PRESS SPACE OR TAP TO RUN";
-      this.text(prompt, W / 2, top, 3.5 * T, "center", pulse);
-      if (!this.touchUi) {
-        this.text(
-          "HOLD SPACE FOR A HIGHER JUMP, ARROW DOWN TO DUCK",
-          W / 2,
-          top + 5 * T,
-          2.5 * T,
-          "center",
-          0.75,
-        );
-      }
+      const hint = this.touchUi
+        ? "HOLD TO JUMP HIGHER, SWIPE DOWN TO DUCK"
+        : "HOLD SPACE TO JUMP HIGHER, ARROW DOWN TO DUCK";
+      this.band(top - 2 * T, 12 * T);
+      this.text(prompt, W / 2, top, 4.5 * T, "center", pulse);
+      this.text(hint, W / 2, top + 6.5 * T, 2.5 * T, "center", 0.85);
       return;
     }
 
