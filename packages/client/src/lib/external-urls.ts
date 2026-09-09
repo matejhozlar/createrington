@@ -19,6 +19,10 @@ export function mcHeadsBody(uuid: string, size = MC_HEADS_BODY_MAX): string {
   return `${MC_HEADS_BASE}/body/${encodeURIComponent(uuid)}/${size}`;
 }
 
+export function mcHeadsSkin(uuid: string): string {
+  return `${MC_HEADS_BASE}/skin/${encodeURIComponent(uuid)}`;
+}
+
 export function mcBodyFront(uuid: string): string {
   return `https://api.mineatar.io/body/front/${uuid}?scale=6`;
 }
