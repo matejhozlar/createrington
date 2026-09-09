@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { trpc } from "@/lib/trpc";
 import type { RemoveTarget } from "../types";
 
@@ -58,13 +59,14 @@ export function RemoveModDialog({
 
   const selectedRemoveDeps = removeDepOverrides ?? defaultRemoveSelection;
 
-  const removeModMutation = trpc.admin.structurePacks.removeMod.useMutation({
-    onSuccess: () => {
-      utils.admin.structurePacks.get.invalidate({ id: packId });
-      utils.admin.structurePacks.list.invalidate();
-    },
-    onError: (err) => toast.error(err.message),
-  });
+  const removeModMutation = trpc.admin.structurePacks.removeMod.useMutation(
+    useMutationToast({
+      onSuccess: () => {
+        utils.admin.structurePacks.get.invalidate({ id: packId });
+        utils.admin.structurePacks.list.invalidate();
+      },
+    }),
+  );
 
   const handleDialogOpenChange = (next: boolean) => {
     if (!next && !removingBatch) {

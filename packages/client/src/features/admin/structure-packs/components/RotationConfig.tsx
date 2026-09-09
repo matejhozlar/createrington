@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
-import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { Settings, Save, Zap, Trash2 } from "lucide-react";
 import { HeaderActions } from "@/features/admin/components/HeaderActions";
 import { Button } from "@/components/ui/button";
@@ -36,7 +36,6 @@ const DAYS_OF_MONTH = Array.from({ length: 28 }, (_, i) => i + 1);
 
 /** Admin panel card for viewing and updating the structure pack rotation schedule and weighting parameters. */
 export function RotationConfig() {
-  const toast = useToastActions();
   const utils = trpc.useUtils();
 
   const configQuery = trpc.admin.structurePacks.rotationConfig.get.useQuery();
@@ -79,33 +78,36 @@ export function RotationConfig() {
     gracePeriodMinutes ?? config?.gracePeriodMinutes ?? 30;
 
   const updateMutation =
-    trpc.admin.structurePacks.rotationConfig.update.useMutation({
-      onSuccess: () => {
-        toast.success("Rotation config updated");
-        utils.admin.structurePacks.rotationConfig.get.invalidate();
-      },
-      onError: (err) => toast.error(err.message),
-    });
+    trpc.admin.structurePacks.rotationConfig.update.useMutation(
+      useMutationToast({
+        success: "Rotation config updated",
+        onSuccess: () => {
+          utils.admin.structurePacks.rotationConfig.get.invalidate();
+        },
+      }),
+    );
 
   const forceRotationMutation =
-    trpc.admin.structurePacks.forceRotation.useMutation({
-      onSuccess: () => {
-        toast.success("Rotation triggered");
-        utils.admin.structurePacks.list.invalidate();
-        utils.admin.structurePacks.rotationConfig.get.invalidate();
-      },
-      onError: (err) => toast.error(err.message),
-    });
+    trpc.admin.structurePacks.forceRotation.useMutation(
+      useMutationToast({
+        success: "Rotation triggered",
+        onSuccess: () => {
+          utils.admin.structurePacks.list.invalidate();
+          utils.admin.structurePacks.rotationConfig.get.invalidate();
+        },
+      }),
+    );
 
   const clearRotationMutation =
-    trpc.admin.structurePacks.clearRotation.useMutation({
-      onSuccess: () => {
-        toast.success("Rotation cleared — no active structure pack");
-        utils.admin.structurePacks.list.invalidate();
-        utils.admin.structurePacks.rotationConfig.get.invalidate();
-      },
-      onError: (err) => toast.error(err.message),
-    });
+    trpc.admin.structurePacks.clearRotation.useMutation(
+      useMutationToast({
+        success: "Rotation cleared — no active structure pack",
+        onSuccess: () => {
+          utils.admin.structurePacks.list.invalidate();
+          utils.admin.structurePacks.rotationConfig.get.invalidate();
+        },
+      }),
+    );
 
   return (
     <div className="rounded-lg border border-border bg-card p-6">

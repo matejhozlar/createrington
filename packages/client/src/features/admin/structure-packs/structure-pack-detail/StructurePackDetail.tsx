@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { Loading } from "@/components/loading-spinner";
 import { trpc } from "@/lib/trpc";
-import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { PackHeader } from "./components/PackHeader";
 import { ModsList } from "./components/ModsList";
@@ -16,7 +16,6 @@ export function StructurePackDetail() {
   const { id } = useParams<{ id: string }>();
   const packId = parseInt(id ?? "0", 10);
   const navigate = useNavigate();
-  const toast = useToastActions();
   const utils = trpc.useUtils();
 
   const packQuery = trpc.admin.structurePacks.get.useQuery(
@@ -29,23 +28,25 @@ export function StructurePackDetail() {
   const [addModOpen, setAddModOpen] = useState(false);
   const [removeTarget, setRemoveTarget] = useState<RemoveTarget | null>(null);
 
-  const deleteMutation = trpc.admin.structurePacks.delete.useMutation({
-    onSuccess: () => {
-      toast.success("Pack deleted");
-      utils.admin.structurePacks.list.invalidate();
-      navigate("/admin/tools/structure-packs");
-    },
-    onError: (err) => toast.error(err.message),
-  });
+  const deleteMutation = trpc.admin.structurePacks.delete.useMutation(
+    useMutationToast({
+      success: "Pack deleted",
+      onSuccess: () => {
+        utils.admin.structurePacks.list.invalidate();
+        navigate("/admin/tools/structure-packs");
+      },
+    }),
+  );
 
   const toggleEnabledMutation =
-    trpc.admin.structurePacks.toggleEnabled.useMutation({
-      onSuccess: () => {
-        utils.admin.structurePacks.get.invalidate({ id: packId });
-        utils.admin.structurePacks.list.invalidate();
-      },
-      onError: (err) => toast.error(err.message),
-    });
+    trpc.admin.structurePacks.toggleEnabled.useMutation(
+      useMutationToast({
+        onSuccess: () => {
+          utils.admin.structurePacks.get.invalidate({ id: packId });
+          utils.admin.structurePacks.list.invalidate();
+        },
+      }),
+    );
 
   if (packQuery.isLoading) {
     return (
