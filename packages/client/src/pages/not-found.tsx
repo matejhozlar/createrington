@@ -47,14 +47,12 @@ const KBD_CLASS =
   "rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-foreground";
 
 const KEY_CONTROLS = [
-  { key: "Space", hold: false, action: "Jump" },
-  { key: "Space", hold: true, action: "Jump higher" },
-  { key: "↓", hold: false, action: "Duck" },
+  { key: "Space", action: "Jump" },
+  { key: "↓", action: "Duck" },
 ];
 
 const TOUCH_CONTROLS = [
   { gesture: "Tap", action: "Jump" },
-  { gesture: "Hold", action: "Jump higher" },
   { gesture: "Swipe down", action: "Duck" },
 ];
 
@@ -84,9 +82,8 @@ export function NotFound() {
                 <Keyboard className="size-3.5" />
                 Controls
               </li>
-              {KEY_CONTROLS.map(({ key, hold, action }) => (
+              {KEY_CONTROLS.map(({ key, action }) => (
                 <li key={action} className="flex items-center gap-1.5">
-                  {hold && <span>Hold</span>}
                   <kbd className={KBD_CLASS}>{key}</kbd>
                   <span>{action}</span>
                 </li>

@@ -62,8 +62,12 @@ type Particle = {
 type Pose = {
   nearLeg: number;
   farLeg: number;
+  nearKnee: number;
+  farKnee: number;
   nearArm: number;
   farArm: number;
+  nearElbow: number;
+  farElbow: number;
   lean: number;
   headTilt: number;
   crouch: number;
@@ -103,7 +107,15 @@ const FAST_FALL = 2.2;
 const BASE_SPEED = 110;
 const SPEED_PER_POINT = 0.12;
 const MAX_SPEED = 240;
-const STRIDE = 26;
+const STRIDE_BASE = 44;
+const STRIDE_PER_SPEED = 0.1;
+const LEG_SWING = 0.8;
+const KNEE_BEND = 1.1;
+const ARM_SWING = 0.55;
+const ELBOW_BEND = 1.3;
+const ELBOW_PUMP = 0.2;
+const RUN_BOB = 0.7;
+const CROUCH_DROP = 5;
 const POINTS_PER_TP = 0.1;
 const MILESTONE = 100;
 const MILESTONE_BLINK = 0.7;
@@ -165,8 +177,12 @@ const DUCK_KEYS = new Set(["ArrowDown", "KeyS"]);
 const RUN_POSE: Pose = {
   nearLeg: 0,
   farLeg: 0,
+  nearKnee: 0,
+  farKnee: 0,
   nearArm: 0,
   farArm: 0,
+  nearElbow: 0,
+  farElbow: 0,
   lean: 0,
   headTilt: 0,
   crouch: 0,
@@ -177,41 +193,57 @@ const RUN_POSE: Pose = {
 
 const LEAP_POSE: Pose = {
   ...RUN_POSE,
-  nearLeg: -0.6,
-  farLeg: 0.9,
-  nearArm: 1.9,
-  farArm: 1.2,
-  lean: 0.25,
+  nearLeg: -0.7,
+  nearKnee: -1.3,
+  farLeg: 1.1,
+  farKnee: -1,
+  nearArm: 0.9,
+  nearElbow: 1,
+  farArm: -0.4,
+  farElbow: 1.2,
+  lean: 0.2,
   headTilt: -0.1,
 };
 
 const FALL_POSE: Pose = {
   ...RUN_POSE,
-  nearLeg: 0.3,
-  farLeg: 0.15,
-  nearArm: 1.3,
-  farArm: 0.9,
-  lean: 0.25,
+  nearLeg: 0.5,
+  nearKnee: -0.6,
+  farLeg: 0.3,
+  farKnee: -0.5,
+  nearArm: 0.8,
+  nearElbow: 0.8,
+  farArm: 0.4,
+  farElbow: 0.9,
+  lean: 0.2,
   headTilt: 0.1,
 };
 
 const DUCK_POSE: Pose = {
   ...RUN_POSE,
-  nearLeg: 0.7,
-  farLeg: -0.4,
-  nearArm: 0.5,
+  nearLeg: 1,
+  nearKnee: -1.9,
+  farLeg: 0.85,
+  farKnee: -1.9,
+  nearArm: 0.4,
+  nearElbow: 0.9,
   farArm: 0.2,
-  lean: 1,
-  headTilt: -0.3,
+  farElbow: 0.9,
+  lean: 0.9,
+  headTilt: -0.4,
   crouch: 1,
 };
 
 const DEATH_POSE: Pose = {
   ...RUN_POSE,
-  nearLeg: 0.4,
-  farLeg: -0.3,
-  nearArm: -1.3,
-  farArm: -1,
+  nearLeg: 0.5,
+  nearKnee: -0.4,
+  farLeg: -0.4,
+  farKnee: -0.9,
+  nearArm: -1.4,
+  nearElbow: -0.3,
+  farArm: -1.1,
+  farElbow: -0.4,
   lean: -0.45,
   headTilt: 0.35,
 };
@@ -630,7 +662,8 @@ class Runner {
     this.squashT = Math.max(0, this.squashT - dt);
 
     if (this.grounded) {
-      this.phase = (this.phase + (this.speed / STRIDE) * dt * TWO_PI) % TWO_PI;
+      const stride = STRIDE_BASE + this.speed * STRIDE_PER_SPEED;
+      this.phase = (this.phase + (this.speed / stride) * dt * TWO_PI) % TWO_PI;
     }
 
     if (!this.grounded) {
@@ -642,16 +675,22 @@ class Runner {
       return;
     }
 
-    const swing = Math.sin(this.phase);
+    const near = this.phase;
+    const far = this.phase + Math.PI;
     const speedNorm = (this.speed - BASE_SPEED) / (MAX_SPEED - BASE_SPEED);
-    this.pose.nearLeg = swing * 0.65;
-    this.pose.farLeg = -swing * 0.65;
-    this.pose.nearArm = -swing * 0.6;
-    this.pose.farArm = swing * 0.6;
-    this.pose.lean = 0.1 + speedNorm * 0.15;
-    this.pose.headTilt = 0;
-    this.pose.bob = Math.abs(Math.cos(this.phase)) * 0.8;
-    this.pose.crouch = Math.max(0, this.pose.crouch - dt * 8);
+    const p = this.pose;
+    p.nearLeg = Math.sin(near) * LEG_SWING;
+    p.farLeg = Math.sin(far) * LEG_SWING;
+    p.nearKnee = -KNEE_BEND * Math.max(0, Math.cos(near));
+    p.farKnee = -KNEE_BEND * Math.max(0, Math.cos(far));
+    p.nearArm = -Math.sin(near) * ARM_SWING;
+    p.farArm = -Math.sin(far) * ARM_SWING;
+    p.nearElbow = ELBOW_BEND + ELBOW_PUMP * Math.sin(near);
+    p.farElbow = ELBOW_BEND + ELBOW_PUMP * Math.sin(far);
+    p.lean = 0.06 + speedNorm * 0.12;
+    p.headTilt = -p.lean * 0.6;
+    p.bob = Math.abs(Math.cos(this.phase)) * RUN_BOB;
+    p.crouch = Math.max(0, p.crouch - dt * 8);
 
     this.dustT += dt;
     if (this.dustT >= RUN_DUST_INTERVAL) {
@@ -1095,6 +1134,26 @@ class Runner {
     pc.restore();
   }
 
+  private jointedLimb(
+    pc: CanvasRenderingContext2D,
+    part: Sprite,
+    px: number,
+    py: number,
+    upper: number,
+    lower: number,
+  ): void {
+    const width = part.width;
+    const half = part.height / 2;
+    pc.save();
+    pc.translate(px, py);
+    pc.rotate(-upper);
+    pc.drawImage(part, 0, 0, width, half, -width / 2, 0, width, half);
+    pc.translate(0, half - 0.5);
+    pc.rotate(-lower);
+    pc.drawImage(part, 0, half, width, half, -width / 2, 0, width, half + 0.5);
+    pc.restore();
+  }
+
   private drawFront(pc: CanvasRenderingContext2D, skin: SkinParts): void {
     const { front, armWidth: aw } = skin;
     const p = this.pose;
@@ -1116,30 +1175,33 @@ class Runner {
   private drawSide(pc: CanvasRenderingContext2D, skin: SkinParts): void {
     const { side } = skin;
     const p = this.pose;
-    const legScale = 1 - 0.4 * p.crouch;
-    const hipY = -12 * legScale;
-    const legLength = 12 * legScale;
-
-    this.limb(pc, side.farLeg, 0, hipY, p.farLeg, legLength);
+    const hipY = -12 + CROUCH_DROP * p.crouch;
 
     pc.save();
-    pc.translate(0, hipY - p.bob);
+    pc.translate(0, -p.bob);
+
+    this.jointedLimb(pc, side.farLeg, 0, hipY, p.farLeg, p.farKnee);
+
+    pc.save();
+    pc.translate(0, hipY);
     pc.rotate(p.lean);
-    this.limb(pc, side.farArm, 0, -12, p.farArm, 12);
+    this.jointedLimb(pc, side.farArm, 0, -12, p.farArm, p.farElbow);
     pc.drawImage(side.body, -2, -12, 4, 12);
     pc.restore();
 
-    this.limb(pc, side.nearLeg, 0, hipY, p.nearLeg, legLength);
+    this.jointedLimb(pc, side.nearLeg, 0, hipY, p.nearLeg, p.nearKnee);
 
     pc.save();
-    pc.translate(0, hipY - p.bob);
+    pc.translate(0, hipY);
     pc.rotate(p.lean);
-    this.limb(pc, side.nearArm, 0, -12, p.nearArm, 12);
+    this.jointedLimb(pc, side.nearArm, 0, -12, p.nearArm, p.nearElbow);
     pc.save();
     pc.translate(0, -12);
     pc.rotate(p.headTilt);
     pc.drawImage(side.head, -4, -8, 8, 8);
     pc.restore();
+    pc.restore();
+
     pc.restore();
   }
 
@@ -1212,12 +1274,8 @@ class Runner {
 
     if (this.state === "idle") {
       const prompt = this.touchUi ? "TAP TO RUN" : "PRESS SPACE OR TAP TO RUN";
-      const hint = this.touchUi
-        ? "HOLD TO JUMP HIGHER, SWIPE DOWN TO DUCK"
-        : "HOLD SPACE TO JUMP HIGHER, ARROW DOWN TO DUCK";
-      this.band(top - 2 * T, 12 * T);
+      this.band(top - 2 * T, 8.5 * T);
       this.text(prompt, W / 2, top, 4.5 * T, "center", pulse);
-      this.text(hint, W / 2, top + 6.5 * T, 2.5 * T, "center", 0.85);
       return;
     }
 
