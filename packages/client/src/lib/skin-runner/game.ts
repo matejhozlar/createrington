@@ -1,10 +1,27 @@
+import {
+  LEVELS,
+  type Level,
+  type ObstacleKind,
+  type PortalKind,
+} from "./levels";
+import {
+  loadPortalFrames,
+  PORTAL_FRAME_DURATION,
+  PORTAL_TILE,
+  type PortalFrames,
+} from "./portal";
+import { drawNightTint, drawScene, type Drifter, type View } from "./scenery";
 import { context2d, createCanvas, loadSkinParts, type SkinParts } from "./skin";
 import {
   buildSprites,
+  GROUND_ROWS,
+  PORTAL_BLOCK,
   type ObstacleSprite,
+  type PitKind,
   type Sprite,
   type Sprites,
 } from "./sprites";
+import { clamp, pick, rand, smoothstep } from "./util";
 
 export type RunnerState = "loading" | "idle" | "running" | "dead";
 
@@ -20,22 +37,6 @@ export type SkinRunnerHandle = {
   getState: () => RunnerState;
 };
 
-type Rgb = readonly [number, number, number];
-
-type Palette = {
-  skyTop: Rgb;
-  skyBottom: Rgb;
-  far: Rgb;
-  near: Rgb;
-  trees: Rgb;
-  grassTop: Rgb;
-  grassEdge: Rgb;
-  dirt: Rgb;
-  dirtDot: Rgb;
-};
-
-type ObstacleKind = "cactus" | "creeper" | "minecart" | "phantom";
-
 type Obstacle = {
   kind: ObstacleKind;
   sprite: ObstacleSprite;
@@ -46,8 +47,11 @@ type Obstacle = {
   frameT: number;
 };
 
-type Cloud = { x: number; y: number; depth: number; scale: number };
 type Decor = { x: number; sprite: Sprite };
+
+type Portal = { kind: PortalKind; x: number; color: string; entered: boolean };
+
+type DeathCause = "hit" | PitKind;
 
 type Particle = {
   x: number;
@@ -57,6 +61,8 @@ type Particle = {
   life: number;
   maxLife: number;
   size: number;
+  color: string;
+  gravity: number;
 };
 
 type Pose = {
@@ -84,7 +90,6 @@ const TWO_PI = Math.PI * 2;
 
 const VIEW_ROWS = 96;
 const MIN_TEXT_SCALE = 4;
-const GROUND_ROWS = 14;
 const MIN_SCALE = 2;
 const MAX_SCALE = 10;
 const PLAYER_X_RATIO = 0.18;
@@ -122,14 +127,22 @@ const LEAN_RAMP = 1.4;
 const POINTS_PER_TP = 0.1;
 const MILESTONE = 100;
 const MILESTONE_BLINK = 0.7;
-const DAY_LENGTH = 400;
-const NIGHT_FADE = 1.6;
+const SUNSET_START = 0.5;
+const SUNSET_END = 0.82;
 const FIRST_OBSTACLE_GAP = 150;
 const RESTART_GAP = 120;
-const PHANTOM_SCORE = 200;
-const MINECART_SCORE = 100;
-const TRIPLE_CACTUS_SCORE = 300;
-const PHANTOM_ALTITUDES = [4, 24, 48];
+const LEVEL_ENTRY_GAP = 140;
+
+const PORTAL_COLS = 4;
+const PORTAL_ROWS = 5;
+const PORTAL_SINK = PORTAL_BLOCK;
+const PORTAL_W = PORTAL_COLS * PORTAL_BLOCK;
+const PORTAL_H = PORTAL_ROWS * PORTAL_BLOCK;
+const PORTAL_SPARK_INTERVAL = 0.05;
+const TRANSITION = 1.6;
+const BANNER = 2.6;
+const BANNER_FADE_IN = 0.25;
+const BANNER_FADE_OUT = 0.6;
 
 const TURN_DURATION = 0.22;
 const POSE_RATE = 14;
@@ -137,50 +150,30 @@ const DEATH_POSE_RATE = 9;
 const SQUASH_DURATION = 0.14;
 const DEATH_DELAY = 0.45;
 const DEATH_FLASH = 0.4;
+const DEATH_SLIDE = 0.12;
 const SHAKE_DURATION = 0.35;
 const SHAKE_AMPLITUDE = 1.5;
 const RUN_DUST_INTERVAL = 0.11;
 const SLIDE_DUST_INTERVAL = 0.05;
 const LANDING_DUST = 6;
 const CREEPER_HISS_RANGE = 34;
-const CLOUD_COUNT = 5;
-const CLOUD_DRIFT = 3;
-const STAR_COUNT = 40;
+const LAVA_SINK = 9;
+const LAVA_SINK_LIMIT = -12;
+const VOID_FALL_LIMIT = -80;
+const FIRE_INTERVAL = 0.06;
 const MAX_DT = 0.05;
 const MAX_SUBSTEP = 3;
-const PHANTOM_SPEED = 1.25;
-const MINECART_SPEED = 1.35;
-const FASTEST_OBSTACLE = MINECART_SPEED;
-const GROUND_TILE = 64;
+const FASTEST_OBSTACLE = Math.max(
+  ...LEVELS.flatMap((level) => level.roster.map((s) => s.speedMul ?? 1)),
+);
 
-const DAY: Palette = {
-  skyTop: [111, 178, 232],
-  skyBottom: [201, 223, 245],
-  far: [122, 160, 176],
-  near: [82, 132, 96],
-  trees: [52, 98, 60],
-  grassTop: [124, 182, 64],
-  grassEdge: [91, 140, 47],
-  dirt: [121, 85, 58],
-  dirtDot: [92, 63, 42],
-};
-
-const NIGHT: Palette = {
-  skyTop: [12, 18, 44],
-  skyBottom: [34, 46, 90],
-  far: [40, 50, 86],
-  near: [30, 42, 70],
-  trees: [20, 30, 52],
-  grassTop: [64, 98, 60],
-  grassEdge: [46, 74, 44],
-  dirt: [64, 48, 40],
-  dirtDot: [46, 34, 28],
-};
-
-const NIGHT_TINT = "12, 18, 44";
-const DUST_COLOR = "201, 180, 138";
+const DUST_GRAVITY = 90;
+const SPARK_GRAVITY = -12;
+const FIRE_COLOR = "255, 150, 40";
+const HIT_FLASH = "rgba(255, 70, 70, 0.55)";
+const LAVA_FLASH = "rgba(255, 160, 40, 0.6)";
 const JUMP_KEYS = new Set(["Space", "ArrowUp", "KeyW"]);
-const SLIDE_KEYS = new Set(["ArrowDown", "KeyS"]);
+const SLIDE_KEYS = new Set(["ArrowDown", "KeyS", "ShiftLeft", "ShiftRight"]);
 
 const RUN_POSE: Pose = {
   nearLeg: 0,
@@ -256,29 +249,14 @@ const DEATH_POSE: Pose = {
   headTilt: 0.35,
 };
 
-function mix(a: Rgb, b: Rgb, t: number): string {
-  const channel = (i: number) => Math.round(a[i] + (b[i] - a[i]) * t);
-  return `rgb(${channel(0)}, ${channel(1)}, ${channel(2)})`;
-}
-
-function hash(n: number, seed: number): number {
-  const x = Math.sin(n * 12.9898 + seed * 78.233) * 43758.5453;
-  return x - Math.floor(x);
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
-}
-
-function rand(min: number, max: number): number {
-  return min + Math.random() * (max - min);
-}
-
-function pick<T>(items: readonly T[]): T {
-  const item = items[Math.floor(Math.random() * items.length)];
-  if (item === undefined) throw new Error("pick from empty list");
-  return item;
-}
+const PLUNGE_POSE: Pose = {
+  ...RUN_POSE,
+  nearArm: 2.9,
+  farArm: 2.9,
+  nearElbow: 0.1,
+  farElbow: 0.1,
+  headTilt: 0.2,
+};
 
 function pad(value: number): string {
   return String(Math.floor(value)).padStart(5, "0");
@@ -334,6 +312,7 @@ class Runner {
   private inView = true;
   private skinFailed = false;
   private skin: SkinParts | null = null;
+  private portalFrames: PortalFrames | null = null;
   private state: RunnerState = "loading";
   private destroyed = false;
   private raf = 0;
@@ -353,18 +332,28 @@ class Runner {
   private speed = BASE_SPEED;
   private score = 0;
   private best = 0;
+  private newBest = false;
   private lastMilestone = 0;
   private milestoneT = 0;
   private nightMix = 0;
+  private levelIndex = 0;
+  private levelStart = 0;
+  private fromLevel: Level | null = null;
+  private transitionT = 0;
+  private bannerT = 0;
+  private portal: Portal | null = null;
+  private portalSparkT = 0;
+  private veilColor = "255, 255, 255";
   private obstacles: Obstacle[] = [];
-  private clouds: Cloud[] = [];
+  private drifters: Drifter[] = [];
+  private scatterDrifters = true;
+  private nextDrifterAt = 0;
   private decor: Decor[] = [];
+  private decorFrom: Decor[] = [];
   private particles: Particle[] = [];
   private nextObstacleAt = 0;
   private pending: Obstacle | null = null;
   private nextDecorAt = 0;
-  private groundTile: Sprite | null = null;
-  private groundTileKey = -1;
 
   private y = 0;
   private vy = 0;
@@ -380,6 +369,10 @@ class Runner {
   private glanceT = -1;
   private dustT = 0;
   private deathT = 0;
+  private deathCause: DeathCause = "hit";
+  private deathAnchor: number | null = null;
+  private deathSlideT = 0;
+  private fireT = 0;
   private shakeT = 0;
 
   private jumpHeld = false;
@@ -444,6 +437,12 @@ class Runner {
       .catch(() => {
         this.skinFailed = true;
       });
+
+    void loadPortalFrames()
+      .then((frames) => {
+        if (!this.destroyed) this.portalFrames = frames;
+      })
+      .catch(() => undefined);
   }
 
   getState(): RunnerState {
@@ -465,6 +464,10 @@ class Runner {
     window.removeEventListener("pointerup", this.onPointerUp);
     window.removeEventListener("pointercancel", this.onPointerUp);
     document.removeEventListener("visibilitychange", this.onVisibility);
+  }
+
+  private get level(): Level {
+    return LEVELS[this.levelIndex] ?? LEVELS[0];
   }
 
   private setState(state: RunnerState): void {
@@ -492,11 +495,11 @@ class Runner {
     );
     this.playerCanvas.width = PLAYER_CANVAS_W * this.texel;
     this.playerCanvas.height = PLAYER_CANVAS_H * this.texel;
-    this.groundTileKey = -1;
   }
 
   private readonly onKeyDown = (event: KeyboardEvent): void => {
     if (!this.inView || isInteractive(event.target)) return;
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
     if (JUMP_KEYS.has(event.code)) {
       event.preventDefault();
       if (!event.repeat) this.pressJump();
@@ -568,7 +571,7 @@ class Runner {
 
   private update(dt: number): void {
     this.time += dt;
-    this.updateClouds(dt);
+    this.updateDrifters(dt);
     if (this.state === "loading") return;
     if (this.state === "idle") {
       this.updateIdle(dt);
@@ -623,19 +626,33 @@ class Runner {
   }
 
   private resetRun(gap: number): void {
+    if (this.levelIndex !== 0) {
+      this.drifters = [];
+      this.scatterDrifters = true;
+    }
     this.pose = { ...RUN_POSE };
     this.distance = 0;
     this.speed = BASE_SPEED;
     this.score = 0;
+    this.newBest = false;
     this.lastMilestone = 0;
     this.milestoneT = 0;
     this.nightMix = 0;
+    this.levelIndex = 0;
+    this.levelStart = 0;
+    this.fromLevel = null;
+    this.transitionT = 0;
+    this.bannerT = 0;
+    this.portal = null;
+    this.portalSparkT = 0;
     this.obstacles = [];
     this.decor = [];
+    this.decorFrom = [];
     this.particles = [];
     this.nextObstacleAt = gap;
     this.pending = null;
     this.nextDecorAt = 20;
+    this.nextDrifterAt = 0;
     this.y = 0;
     this.vy = 0;
     this.grounded = true;
@@ -643,9 +660,17 @@ class Runner {
     this.phase = 0;
     this.squashT = 0;
     this.deathT = 0;
+    this.deathCause = "hit";
+    this.deathAnchor = null;
+    this.deathSlideT = 0;
+    this.fireT = 0;
     this.shakeT = 0;
     this.dustT = 0;
     this.paused = false;
+  }
+
+  private progress(): number {
+    return this.score - this.levelStart;
   }
 
   private updateRun(dt: number): void {
@@ -662,9 +687,11 @@ class Runner {
       this.score = this.distance * POINTS_PER_TP;
       this.updatePlayer(subDt);
       this.updateEntities(step, subDt);
+      this.updatePortal(step, subDt);
       this.spawn();
-      if (this.collides()) {
-        this.die();
+      const hit = this.collides();
+      if (hit) {
+        this.die(hit);
         return;
       }
     }
@@ -675,14 +702,12 @@ class Runner {
       this.milestoneT = MILESTONE_BLINK;
     }
     this.milestoneT = Math.max(0, this.milestoneT - dt);
-
-    const nightTarget = Math.floor(this.score / DAY_LENGTH) % 2;
-    const direction = Math.sign(nightTarget - this.nightMix);
-    if (direction !== 0) {
-      this.nightMix = clamp(
-        this.nightMix + (direction * dt) / NIGHT_FADE,
-        0,
-        1,
+    this.updateTransition(dt);
+    if (this.level.id === "overworld") {
+      this.nightMix = smoothstep(
+        SUNSET_START,
+        SUNSET_END,
+        this.progress() / this.level.span,
       );
     }
   }
@@ -782,7 +807,7 @@ class Runner {
       o.x -= step * o.speedMul;
       if (o.sprite.frames.length > 1) {
         o.frameT += dt;
-        if (o.frameT >= 1 / 6) {
+        if (o.frameT >= 1 / (o.sprite.fps ?? 6)) {
           o.frameT = 0;
           o.frame = (o.frame + 1) % o.sprite.frames.length;
         }
@@ -792,15 +817,75 @@ class Runner {
 
     for (const d of this.decor) d.x -= step;
     this.decor = this.decor.filter((d) => d.x + d.sprite.width > -10);
+    for (const d of this.decorFrom) d.x -= step;
+    this.decorFrom = this.decorFrom.filter((d) => d.x + d.sprite.width > -10);
 
     this.updateParticles(dt, step);
+  }
+
+  private updatePortal(step: number, dt: number): void {
+    const portal = this.portal;
+    if (!portal) return;
+    portal.x -= step;
+    if (portal.x + PORTAL_W < -10) {
+      this.portal = null;
+      return;
+    }
+    if (!portal.entered && portal.x + PORTAL_W / 2 <= this.playerX) {
+      portal.entered = true;
+      this.enterPortal(portal);
+      return;
+    }
+    this.portalSparkT += dt;
+    if (this.portalSparkT >= PORTAL_SPARK_INTERVAL) {
+      this.portalSparkT = 0;
+      this.sparkle(
+        portal.x + PORTAL_BLOCK + rand(0, 2 * PORTAL_BLOCK),
+        rand(0, 3 * PORTAL_BLOCK),
+        1,
+        portal.color,
+      );
+    }
+  }
+
+  private enterPortal(portal: Portal): void {
+    this.veilColor = portal.color;
+    this.fromLevel = this.level;
+    this.levelIndex = Math.min(this.levelIndex + 1, LEVELS.length - 1);
+    this.levelStart = this.score;
+    this.transitionT = 0;
+    this.decorFrom = this.decor;
+    this.decor = [];
+    this.obstacles = [];
+    this.drifters = [];
+    this.scatterDrifters = false;
+    this.nextDrifterAt = this.time + 0.5;
+    this.nextDecorAt = this.distance + 30;
+    this.nextObstacleAt = Infinity;
+    this.pending = null;
+    this.sparkle(this.playerX, 16, 30, this.veilColor);
+  }
+
+  private updateTransition(dt: number): void {
+    if (this.fromLevel) {
+      this.transitionT += dt;
+      this.sparkle(this.playerX + rand(-6, 6), rand(0, 32), 1, this.veilColor);
+      if (this.transitionT >= TRANSITION) {
+        this.fromLevel = null;
+        this.decorFrom = [];
+        this.bannerT = BANNER;
+        this.nextObstacleAt =
+          this.distance + LEVEL_ENTRY_GAP + this.speed * 0.3;
+      }
+    }
+    this.bannerT = Math.max(0, this.bannerT - dt);
   }
 
   private updateParticles(dt: number, step: number): void {
     for (const p of this.particles) {
       p.x += p.vx * dt - step;
       p.y += p.vy * dt;
-      p.vy -= 90 * dt;
+      p.vy -= p.gravity * dt;
       p.life -= dt;
     }
     this.particles = this.particles.filter((p) => p.life > 0 && p.y >= 0);
@@ -818,90 +903,134 @@ class Runner {
         life,
         maxLife: life,
         size: Math.random() < 0.6 ? 1 : 2,
+        color: this.level.dust,
+        gravity: DUST_GRAVITY,
+      });
+    }
+  }
+
+  private sparkle(x: number, y: number, count: number, color: string): void {
+    if (this.reducedMotion) return;
+    for (let i = 0; i < count; i++) {
+      const life = rand(0.4, 0.8);
+      this.particles.push({
+        x: x + rand(-2, 2),
+        y: Math.max(0, y + rand(-2, 2)),
+        vx: rand(-14, 6),
+        vy: rand(6, 26),
+        life,
+        maxLife: life,
+        size: Math.random() < 0.5 ? 1 : 2,
+        color,
+        gravity: SPARK_GRAVITY,
       });
     }
   }
 
   private spawn(): void {
     if (this.distance >= this.nextObstacleAt) {
-      const obstacle = this.pending ?? this.makeObstacle();
-      obstacle.x = this.worldWidth + 8;
-      this.obstacles.push(obstacle);
-      this.pending = this.makeObstacle();
-      const travel = this.worldWidth + 8 - this.playerX;
-      const catchUp = Math.max(
-        0,
-        1 / obstacle.speedMul - 1 / this.pending.speedMul,
-      );
-      this.nextObstacleAt =
-        this.distance +
-        obstacle.sprite.w +
-        rand(110, 220) +
-        this.speed * 0.3 +
-        travel * catchUp;
+      const exit = this.level.portal;
+      const destination = LEVELS[this.levelIndex + 1];
+      if (exit && destination && this.progress() >= this.level.span) {
+        this.portal = {
+          kind: exit.kind,
+          x: this.worldWidth + 8,
+          color: exit.color,
+          entered: false,
+        };
+        this.pending = null;
+        this.nextObstacleAt = Infinity;
+      } else {
+        const obstacle = this.pending ?? this.makeObstacle();
+        obstacle.x = this.worldWidth + 8;
+        this.obstacles.push(obstacle);
+        this.pending = this.makeObstacle();
+        const travel = this.worldWidth + 8 - this.playerX;
+        const catchUp = Math.max(
+          0,
+          1 / obstacle.speedMul - 1 / this.pending.speedMul,
+        );
+        const [gapMin, gapMax] = this.level.gap;
+        this.nextObstacleAt =
+          this.distance +
+          obstacle.sprite.w +
+          rand(gapMin, gapMax) +
+          this.speed * 0.3 +
+          travel * catchUp;
+      }
     }
     if (this.distance >= this.nextDecorAt) {
       this.decor.push({
         x: this.worldWidth + 4,
-        sprite: pick(this.sprites.decor),
+        sprite: pick(this.sprites.levels[this.level.id].decor),
       });
       this.nextDecorAt = this.distance + rand(16, 60);
     }
   }
 
   private makeObstacle(): Obstacle {
-    const x = this.worldWidth + 8;
-    const roll = Math.random();
-    const base = { x, bottom: 0, speedMul: 1, frame: 0, frameT: 0 };
-    if (this.score > PHANTOM_SCORE && roll < 0.15) {
-      return {
-        ...base,
-        kind: "phantom",
-        sprite: this.sprites.phantom,
-        bottom: pick(PHANTOM_ALTITUDES),
-        speedMul: PHANTOM_SPEED,
-      };
+    const progress = this.progress();
+    const unlocked = this.level.roster.filter((s) => progress >= s.unlock);
+    const total = unlocked.reduce((sum, s) => sum + s.weight, 0);
+    let roll = Math.random() * total;
+    let spawn = unlocked[0] ?? this.level.roster[0];
+    for (const candidate of unlocked) {
+      roll -= candidate.weight;
+      if (roll < 0) {
+        spawn = candidate;
+        break;
+      }
     }
-    if (this.score > MINECART_SCORE && roll < 0.3) {
-      return {
-        ...base,
-        kind: "minecart",
-        sprite: this.sprites.minecart,
-        speedMul: MINECART_SPEED,
-      };
-    }
-    if (roll < 0.55) {
-      return { ...base, kind: "creeper", sprite: this.sprites.creeper };
-    }
-    const variants =
-      this.score > TRIPLE_CACTUS_SCORE
-        ? this.sprites.cactus
-        : this.sprites.cactus.slice(0, 3);
-    return { ...base, kind: "cactus", sprite: pick(variants) };
+    if (!spawn) throw new Error("level without obstacles");
+    const sprite = pick(spawn.pick(this.sprites));
+    const bottom = spawn.altitudes ? pick(spawn.altitudes) : (sprite.rest ?? 0);
+    return {
+      kind: spawn.kind,
+      sprite,
+      x: this.worldWidth + 8,
+      bottom,
+      speedMul: spawn.speedMul ?? 1,
+      frame: 0,
+      frameT: 0,
+    };
   }
 
-  private collides(): boolean {
+  private collides(): Obstacle | null {
     const hit = this.grounded && this.downHeld ? SLIDE_HIT : STAND_HIT;
     const left = this.playerX + hit.x;
     const right = left + hit.w;
     const bottom = this.y;
     const top = this.y + hit.h;
-    return this.obstacles.some((o) => {
+    for (const o of this.obstacles) {
       const box = o.sprite.hit;
       const oLeft = o.x + box.x;
       const oRight = oLeft + box.w;
       const oTop = o.bottom + o.sprite.h - box.y;
       const oBottom = oTop - box.h;
-      return left < oRight && right > oLeft && bottom < oTop && top > oBottom;
-    });
+      if (left < oRight && right > oLeft && bottom < oTop && top > oBottom) {
+        return o;
+      }
+    }
+    return null;
   }
 
-  private die(): void {
+  private die(obstacle: Obstacle): void {
+    const cause = obstacle.sprite.pit ?? "hit";
+    this.deathCause = cause;
+    this.deathAnchor =
+      cause === "hit" ? null : obstacle.x + obstacle.sprite.w / 2;
+    this.deathSlideT = 0;
+    if (cause !== "hit") this.vy = Math.max(0, this.vy);
     this.deathT = 0;
-    this.shakeT = this.reducedMotion ? 0 : SHAKE_DURATION;
-    if (this.score > this.best) {
+    this.fireT = 0;
+    this.shakeT = this.reducedMotion || cause === "void" ? 0 : SHAKE_DURATION;
+    this.newBest = this.score > this.best;
+    if (this.newBest) {
       this.best = Math.floor(this.score);
       writeBest(this.best);
+    }
+    if (cause === "lava") {
+      this.sparkle(this.deathAnchor ?? this.playerX, 4, 14, FIRE_COLOR);
     }
     this.setState("dead");
   }
@@ -909,7 +1038,24 @@ class Runner {
   private updateDead(dt: number): void {
     this.deathT += dt;
     this.shakeT = Math.max(0, this.shakeT - dt);
-    this.approach(DEATH_POSE, DEATH_POSE_RATE * dt);
+    if (this.deathCause === "hit") {
+      this.approach(DEATH_POSE, DEATH_POSE_RATE * dt);
+    } else {
+      this.deathSlideT = Math.min(1, this.deathSlideT + dt / DEATH_SLIDE);
+      this.approach(PLUNGE_POSE, DEATH_POSE_RATE * dt);
+      if (this.deathCause === "void") {
+        this.vy += GRAVITY * 0.5 * dt;
+        this.y = Math.max(VOID_FALL_LIMIT, this.y - this.vy * dt);
+      } else {
+        this.y = Math.max(LAVA_SINK_LIMIT, this.y - LAVA_SINK * dt);
+        this.fireT += dt;
+        if (this.fireT >= FIRE_INTERVAL) {
+          this.fireT = 0;
+          const x = this.playerX + this.deathOffset() + rand(-3, 3);
+          this.sparkle(x, rand(0, 6), 1, FIRE_COLOR);
+        }
+      }
+    }
     this.updateParticles(dt, 0);
     if (this.jumpQueued) {
       this.jumpQueued = false;
@@ -917,24 +1063,47 @@ class Runner {
     }
   }
 
-  private updateClouds(dt: number): void {
-    const cloudWidth = this.sprites.cloud.width;
-    while (this.clouds.length < CLOUD_COUNT) {
-      const initial = this.time === 0;
-      this.clouds.push({
-        x: initial ? rand(0, this.worldWidth) : this.worldWidth + rand(4, 30),
-        y: rand(4, 28),
-        depth: Math.random() < 0.5 ? 0.12 : 0.25,
-        scale: Math.random() < 0.4 ? 2 : 1,
+  private updateDrifters(dt: number): void {
+    const config = this.level.drifters;
+    const frames = this.sprites.levels[this.level.id].drifter;
+    const width = frames[0]?.width ?? 16;
+    if (
+      this.drifters.length < config.count &&
+      this.time >= this.nextDrifterAt
+    ) {
+      this.drifters.push({
+        x: this.scatterDrifters
+          ? rand(0, this.worldWidth)
+          : this.worldWidth + rand(4, 30),
+        y: rand(config.y[0], config.y[1]),
+        depth: rand(config.depth[0], config.depth[1]),
+        scale: Math.random() < config.bigChance ? 2 : 1,
+        frame: 0,
+        frameT: 0,
       });
+      this.nextDrifterAt = this.time + config.interval;
+      if (this.drifters.length >= config.count) this.scatterDrifters = false;
     }
     const running = this.state === "running" && !this.paused;
-    const drift = this.reducedMotion && !running ? 0 : CLOUD_DRIFT;
-    for (const c of this.clouds) {
-      const scrollSpeed = running ? this.speed * c.depth : 0;
-      c.x -= (drift + scrollSpeed) * dt;
+    const drift = this.reducedMotion && !running ? 0 : config.drift;
+    for (const d of this.drifters) {
+      d.x -= (drift + (running ? this.speed * d.depth : 0)) * dt;
+      if (config.fps > 0) {
+        d.frameT += dt;
+        if (d.frameT >= 1 / config.fps) {
+          d.frameT = 0;
+          d.frame = (d.frame + 1) % frames.length;
+        }
+      }
     }
-    this.clouds = this.clouds.filter((c) => c.x + cloudWidth * c.scale > -4);
+    this.drifters = this.drifters.filter((d) => d.x + width * d.scale > -4);
+  }
+
+  private deathOffset(): number {
+    if (this.deathAnchor === null) return 0;
+    return (
+      (this.deathAnchor - this.playerX) * smoothstep(0, 1, this.deathSlideT)
+    );
   }
 
   private screenX(x: number): number {
@@ -955,6 +1124,20 @@ class Runner {
     );
   }
 
+  private view(): View {
+    return {
+      ctx: this.ctx,
+      W: this.W,
+      H: this.H,
+      texel: this.texel,
+      groundPx: this.groundPx,
+      worldWidth: this.worldWidth,
+      scroll: this.scroll,
+      time: this.time,
+      nightMix: this.nightMix,
+    };
+  }
+
   private render(): void {
     const { ctx, W, H, texel } = this;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -971,182 +1154,117 @@ class Runner {
         Math.round(rand(-amplitude, amplitude)),
       );
     }
-    this.renderSky();
-    this.renderBackdrop();
-    this.renderGround();
-    this.renderDecor();
+
+    const view = this.view();
+    const from = this.fromLevel;
+    const fade = from ? smoothstep(0.2, 0.8, this.transitionT / TRANSITION) : 1;
+    drawScene(
+      view,
+      from ?? this.level,
+      this.sprites,
+      from ? [] : this.drifters,
+    );
+    this.renderDecor(from ? this.decorFrom : this.decor);
+    if (from) {
+      ctx.globalAlpha = fade;
+      drawScene(view, this.level, this.sprites, this.drifters);
+      this.renderDecor(this.decor);
+      ctx.globalAlpha = 1;
+    }
+    this.renderPortal();
+    const sinking = this.state === "dead" && this.deathCause !== "hit";
+    if (sinking) this.renderPlayer();
     this.renderObstacles();
     this.renderParticles();
-    this.renderPlayer();
-    this.renderNight();
+    if (!sinking) this.renderPlayer();
+    if ((from ?? this.level).id === "overworld") {
+      drawNightTint(view, this.nightMix * (from ? 1 - fade : 1));
+    }
+    this.renderVeil();
     ctx.restore();
 
     this.renderHud();
     this.renderScore();
   }
 
-  private renderSky(): void {
-    const { ctx, W, H, texel, groundPx } = this;
-    const m = this.nightMix;
-    const gradient = ctx.createLinearGradient(0, 0, 0, groundPx);
-    gradient.addColorStop(0, mix(DAY.skyTop, NIGHT.skyTop, m));
-    gradient.addColorStop(1, mix(DAY.skyBottom, NIGHT.skyBottom, m));
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, W, H);
+  private renderDecor(list: Decor[]): void {
+    for (const d of list) {
+      this.blit(d.sprite, this.screenX(d.x), this.screenY(d.sprite.height));
+    }
+  }
 
-    if (m > 0.02) {
-      ctx.fillStyle = "#ffffff";
-      for (let i = 0; i < STAR_COUNT; i++) {
-        const twinkle =
-          0.55 + 0.45 * Math.sin(this.time * (1.5 + hash(i, 3) * 2) + i);
-        ctx.globalAlpha = m * twinkle;
-        const size =
-          hash(i, 4) > 0.8 ? texel : Math.max(1, Math.floor(texel / 2));
-        ctx.fillRect(
-          Math.round(hash(i, 1) * W),
-          Math.round(hash(i, 2) * groundPx * 0.7),
-          size,
-          size,
-        );
+  private renderPortal(): void {
+    const portal = this.portal;
+    if (!portal) return;
+    const { ctx, texel } = this;
+    const x = this.screenX(portal.x);
+    const topY = this.screenY(PORTAL_H - PORTAL_SINK);
+    const interiorX = x + PORTAL_BLOCK * texel;
+    const interiorY = this.screenY(3 * PORTAL_BLOCK);
+    const interiorW = 2 * PORTAL_BLOCK * texel;
+    const interiorH = 3 * PORTAL_BLOCK * texel;
+    const tileCols = Math.ceil((2 * PORTAL_BLOCK) / PORTAL_TILE);
+    const tileRows = Math.ceil((3 * PORTAL_BLOCK) / PORTAL_TILE);
+    const cx = interiorX + interiorW / 2;
+    const cy = interiorY + interiorH / 2;
+    const radius = PORTAL_H * 0.7 * texel;
+
+    const glow = ctx.createRadialGradient(cx, cy, 4 * texel, cx, cy, radius);
+    glow.addColorStop(0, `rgba(${portal.color}, 0.35)`);
+    glow.addColorStop(1, `rgba(${portal.color}, 0)`);
+    ctx.fillStyle = glow;
+    ctx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
+
+    const frames = this.portalFrames?.[portal.kind];
+    if (frames && frames.length > 0) {
+      const cycle = (this.time / PORTAL_FRAME_DURATION) % frames.length;
+      const current = Math.floor(cycle);
+      const next = (current + 1) % frames.length;
+      const layers: [Sprite | undefined, number][] = [
+        [frames[current], 1],
+        [frames[next], cycle - current],
+      ];
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(interiorX, interiorY, interiorW, interiorH);
+      ctx.clip();
+      for (const [frame, alpha] of layers) {
+        if (!frame) continue;
+        ctx.globalAlpha = alpha;
+        for (let ty = 0; ty < tileRows; ty++) {
+          for (let tx = 0; tx < tileCols; tx++) {
+            ctx.drawImage(
+              frame,
+              interiorX + tx * PORTAL_TILE * texel,
+              interiorY + ty * PORTAL_TILE * texel,
+              PORTAL_TILE * texel,
+              PORTAL_TILE * texel,
+            );
+          }
+        }
       }
       ctx.globalAlpha = 1;
+      ctx.restore();
+    } else {
+      ctx.fillStyle = `rgba(${portal.color}, 0.8)`;
+      ctx.fillRect(interiorX, interiorY, interiorW, interiorH);
     }
 
-    this.blit(this.sprites.sun, W * 0.82 - 4 * texel, 8 * texel + m * groundPx);
-    this.blit(
-      this.sprites.moon,
-      W * 0.76 - 4 * texel,
-      groundPx + 2 * texel - m * (groundPx - 6 * texel),
-    );
-
-    ctx.globalAlpha = 0.92;
-    for (const c of this.clouds) {
-      this.blit(this.sprites.cloud, this.screenX(c.x), c.y * texel, c.scale);
-    }
-    ctx.globalAlpha = 1;
-  }
-
-  private renderBackdrop(): void {
-    const m = this.nightMix;
-    this.silhouette(0.18, 24, 10, 16, mix(DAY.far, NIGHT.far, m), 11);
-    this.silhouette(0.32, 18, 5, 9, mix(DAY.near, NIGHT.near, m), 23);
-    this.trees(0.55, mix(DAY.trees, NIGHT.trees, m), 37);
-  }
-
-  private silhouette(
-    depth: number,
-    segment: number,
-    base: number,
-    amplitude: number,
-    color: string,
-    seed: number,
-  ): void {
-    const { ctx, texel } = this;
-    const offset = this.scroll * depth;
-    const first = Math.floor(offset / segment);
-    const count = Math.ceil(this.worldWidth / segment) + 2;
-    ctx.fillStyle = color;
-    for (let k = 0; k < count; k++) {
-      const i = first + k;
-      const x = i * segment - offset;
-      const h = base + hash(i, seed) * amplitude;
-      const top = this.screenY(h);
-      ctx.fillRect(
-        this.screenX(x),
-        top,
-        segment * texel + 1,
-        this.groundPx - top + 1,
-      );
-      const cap = hash(i, seed + 1) * amplitude * 0.5;
-      const capTop = this.screenY(h + cap);
-      ctx.fillRect(
-        this.screenX(x + segment * 0.25),
-        capTop,
-        segment * 0.5 * texel,
-        top - capTop + 1,
-      );
-    }
-  }
-
-  private trees(depth: number, color: string, seed: number): void {
-    const { ctx, texel } = this;
-    const segment = 22;
-    const offset = this.scroll * depth;
-    const first = Math.floor(offset / segment);
-    const count = Math.ceil(this.worldWidth / segment) + 2;
-    ctx.fillStyle = color;
-    for (let k = 0; k < count; k++) {
-      const i = first + k;
-      if (hash(i, seed) >= 0.38) continue;
-      const x = i * segment - offset;
-      const trunk = 7 + Math.round(hash(i, seed + 1) * 5);
-      ctx.fillRect(
-        this.screenX(x + 10),
-        this.screenY(trunk),
-        2 * texel,
-        trunk * texel,
-      );
-      ctx.fillRect(
-        this.screenX(x + 6),
-        this.screenY(trunk + 8),
-        10 * texel,
-        8 * texel,
-      );
-      ctx.fillRect(
-        this.screenX(x + 8),
-        this.screenY(trunk + 10),
-        6 * texel,
-        2 * texel,
-      );
-    }
-  }
-
-  private groundSprite(): Sprite {
-    const key = Math.round(this.nightMix * 16);
-    if (this.groundTile && key === this.groundTileKey) return this.groundTile;
-    const m = key / 16;
-    const tile = createCanvas(GROUND_TILE, GROUND_ROWS);
-    const ctx = context2d(tile);
-    ctx.fillStyle = mix(DAY.dirt, NIGHT.dirt, m);
-    ctx.fillRect(0, 0, GROUND_TILE, GROUND_ROWS);
-    ctx.fillStyle = mix(DAY.grassTop, NIGHT.grassTop, m);
-    ctx.fillRect(0, 0, GROUND_TILE, 2);
-    ctx.fillStyle = mix(DAY.grassEdge, NIGHT.grassEdge, m);
-    ctx.fillRect(0, 2, GROUND_TILE, 1);
-    for (let i = 0; i < 12; i++) {
-      if (hash(i, 51) < 0.5)
-        ctx.fillRect(Math.floor(hash(i, 52) * GROUND_TILE), 3, 1, 1);
-    }
-    ctx.fillStyle = mix(DAY.dirtDot, NIGHT.dirtDot, m);
-    for (let i = 0; i < 26; i++) {
-      const x = Math.floor(hash(i, 61) * GROUND_TILE);
-      const y = 4 + Math.floor(hash(i, 62) * (GROUND_ROWS - 4));
-      ctx.fillRect(x, y, hash(i, 63) > 0.7 ? 2 : 1, 1);
-    }
-    this.groundTile = tile;
-    this.groundTileKey = key;
-    return tile;
-  }
-
-  private renderGround(): void {
-    const { texel, groundPx } = this;
-    const tile = this.groundSprite();
-    const offset = this.scroll % GROUND_TILE;
-    const count = Math.ceil(this.worldWidth / GROUND_TILE) + 2;
-    for (let k = 0; k < count; k++) {
-      this.ctx.drawImage(
-        tile,
-        this.screenX(k * GROUND_TILE - offset),
-        groundPx,
-        GROUND_TILE * texel + 1,
-        GROUND_ROWS * texel,
-      );
-    }
-  }
-
-  private renderDecor(): void {
-    for (const d of this.decor) {
-      this.blit(d.sprite, this.screenX(d.x), this.screenY(d.sprite.height));
+    for (let r = 0; r < PORTAL_ROWS; r++) {
+      for (let c = 0; c < PORTAL_COLS; c++) {
+        if (r >= 1 && r <= 3 && c >= 1 && c <= 2) continue;
+        const block =
+          portal.kind === "nether"
+            ? this.sprites.obsidian
+            : r === 0
+              ? this.sprites.endFrameEye
+              : this.sprites.endFrame;
+        this.blit(
+          block,
+          x + c * PORTAL_BLOCK * texel,
+          topY + r * PORTAL_BLOCK * texel,
+        );
+      }
     }
   }
 
@@ -1164,7 +1282,7 @@ class Runner {
   private renderParticles(): void {
     const { ctx, texel } = this;
     for (const p of this.particles) {
-      ctx.fillStyle = `rgba(${DUST_COLOR}, ${(p.life / p.maxLife) * 0.9})`;
+      ctx.fillStyle = `rgba(${p.color}, ${(p.life / p.maxLife) * 0.9})`;
       ctx.fillRect(
         this.screenX(p.x),
         this.screenY(p.y),
@@ -1172,6 +1290,28 @@ class Runner {
         p.size * texel,
       );
     }
+  }
+
+  private renderVeil(): void {
+    const from = this.fromLevel;
+    if (!from || this.reducedMotion) return;
+    const { ctx, W, H } = this;
+    const strength = Math.sin(Math.PI * (this.transitionT / TRANSITION));
+    const color = this.veilColor;
+    ctx.fillStyle = `rgba(${color}, ${strength * 0.5})`;
+    ctx.fillRect(0, 0, W, H);
+    const vignette = ctx.createRadialGradient(
+      W / 2,
+      H / 2,
+      H * 0.2,
+      W / 2,
+      H / 2,
+      Math.max(W, H) * 0.7,
+    );
+    vignette.addColorStop(0, `rgba(${color}, 0)`);
+    vignette.addColorStop(1, `rgba(${color}, ${strength * 0.9})`);
+    ctx.fillStyle = vignette;
+    ctx.fillRect(0, 0, W, H);
   }
 
   private renderPlayer(): void {
@@ -1213,19 +1353,28 @@ class Runner {
 
     const flashing =
       this.state === "dead" &&
+      this.deathCause !== "void" &&
       this.deathT < DEATH_FLASH &&
       Math.floor(this.deathT / 0.08) % 2 === 0;
-    if (flashing) {
+    const portalTint =
+      this.fromLevel && !this.reducedMotion
+        ? Math.sin(Math.PI * (this.transitionT / TRANSITION)) * 0.6
+        : 0;
+    if (flashing || portalTint > 0.02) {
       pc.setTransform(1, 0, 0, 1, 0, 0);
       pc.globalCompositeOperation = "source-atop";
-      pc.fillStyle = "rgba(255, 70, 70, 0.55)";
+      pc.fillStyle = flashing
+        ? this.deathCause === "lava"
+          ? LAVA_FLASH
+          : HIT_FLASH
+        : `rgba(${this.veilColor}, ${portalTint})`;
       pc.fillRect(0, 0, width, height);
       pc.globalCompositeOperation = "source-over";
     }
 
     this.ctx.drawImage(
       this.playerCanvas,
-      this.screenX(this.playerX) - PLAYER_ORIGIN_X * texel,
+      this.screenX(this.playerX + this.deathOffset()) - PLAYER_ORIGIN_X * texel,
       this.screenY(this.y) - PLAYER_ORIGIN_Y * texel,
     );
   }
@@ -1317,12 +1466,6 @@ class Runner {
     pc.restore();
   }
 
-  private renderNight(): void {
-    if (this.nightMix <= 0) return;
-    this.ctx.fillStyle = `rgba(${NIGHT_TINT}, ${this.nightMix * 0.35})`;
-    this.ctx.fillRect(0, 0, this.W, this.H);
-  }
-
   private text(
     value: string,
     x: number,
@@ -1344,8 +1487,8 @@ class Runner {
     ctx.globalAlpha = 1;
   }
 
-  private band(top: number, height: number): void {
-    this.ctx.fillStyle = "rgba(0, 0, 0, 0.42)";
+  private band(top: number, height: number, alpha = 1): void {
+    this.ctx.fillStyle = `rgba(0, 0, 0, ${0.42 * alpha})`;
     this.ctx.fillRect(0, top, this.W, height);
   }
 
@@ -1403,16 +1546,38 @@ class Runner {
       return;
     }
 
+    if (this.state === "running" && this.bannerT > 0) {
+      const alpha = Math.min(
+        1,
+        (BANNER - this.bannerT) / BANNER_FADE_IN,
+        this.bannerT / BANNER_FADE_OUT,
+      );
+      this.band(top - 2 * T, 9 * T, alpha);
+      this.text(this.level.name, W / 2, top, 5 * T, "center", alpha);
+      return;
+    }
+
     if (this.state === "dead" && this.deathT > DEATH_DELAY) {
       this.band(top - 2 * T, 19 * T);
       this.text("GAME OVER", W / 2, top, 6 * T, "center");
-      this.text(
-        `SCORE ${pad(this.score)}   BEST ${pad(this.best)}`,
-        W / 2,
-        top + 8 * T,
-        3.5 * T,
-        "center",
-      );
+      if (this.newBest) {
+        this.text(
+          `NEW BEST ${pad(this.best)}`,
+          W / 2,
+          top + 8 * T,
+          3.5 * T,
+          "center",
+          pulse,
+        );
+      } else {
+        this.text(
+          `SCORE ${pad(this.score)}   BEST ${pad(this.best)}`,
+          W / 2,
+          top + 8 * T,
+          3.5 * T,
+          "center",
+        );
+      }
       const prompt = this.touchUi ? "TAP TO RETRY" : "PRESS SPACE TO RETRY";
       this.text(prompt, W / 2, top + 13 * T, 3 * T, "center", pulse);
     }

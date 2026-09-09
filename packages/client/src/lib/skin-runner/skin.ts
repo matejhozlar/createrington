@@ -57,7 +57,7 @@ export async function loadSkinParts(uuid: string): Promise<SkinParts> {
   return buildParts(image);
 }
 
-function loadImage(src: string): Promise<HTMLImageElement> {
+export function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const image = new Image();
     image.crossOrigin = "anonymous";
