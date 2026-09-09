@@ -1,6 +1,6 @@
 import config from "@/config";
 import { R } from "@/db";
-import { formatPlaytime } from "@/utils/format";
+import { formatPlaytime } from "@createrington/shared/format";
 
 export interface StatusConfig {
   /** Fallback text shown when the dynamic resolver throws or returns null */

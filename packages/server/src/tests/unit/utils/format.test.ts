@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
+import { formatPlaytime } from "@createrington/shared/format";
 import {
-  formatPlaytime,
   formatBalance,
   formatDaysCount,
   formatDuration,

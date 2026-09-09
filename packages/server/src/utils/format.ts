@@ -5,8 +5,6 @@
  * currency, numbers, and dates across the application
  */
 
-export { formatPlaytime } from "@createrington/shared/format";
-
 /**
  * Formats a balance/currency value in American format
  *
