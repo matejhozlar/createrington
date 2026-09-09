@@ -1,116 +1,138 @@
-import { useMemo } from "react";
-import { useLocation, useNavigate } from "react-router";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { lazy, Suspense } from "react";
+import { useLocation, useNavigate, type NavigateFunction } from "react-router";
+import { AlertTriangle, ArrowLeft, Home, type LucideIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Home, ArrowLeft, Search, Compass, AlertTriangle } from "lucide-react";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { useAuth } from "@/contexts/auth";
+import { DEFAULT_PLAYER } from "@/lib/skin-runner/player-hint";
 import { cn } from "@/lib/utils";
+
+const SkinRunner = lazy(() =>
+  import("@/components/skin-runner").then((m) => ({ default: m.SkinRunner })),
+);
+
+type Action = {
+  icon: LucideIcon;
+  label: string;
+  description: string;
+  go: (navigate: NavigateFunction) => void;
+};
+
+const ACTIONS: Action[] = [
+  {
+    icon: ArrowLeft,
+    label: "Go back",
+    description: "Return to the previous page",
+    go: (navigate) => navigate(-1),
+  },
+  {
+    icon: Home,
+    label: "Home",
+    description: "Go to the homepage",
+    go: (navigate) => navigate("/"),
+  },
+];
+
+const CARD_CLASS =
+  "border-border bg-card/60 backdrop-blur supports-[backdrop-filter]:bg-card/50";
 
 export function NotFound() {
   const navigate = useNavigate();
-  const location = useLocation();
+  const { pathname } = useLocation();
+  const { user } = useAuth();
 
-  const path = useMemo(() => location.pathname, [location.pathname]);
+  const loggedIn = Boolean(user?.minecraftUuid);
+  const player = user?.minecraftUuid
+    ? { uuid: user.minecraftUuid, username: user.minecraftUsername }
+    : DEFAULT_PLAYER;
 
   return (
-    <div className="min-h-[calc(100vh-3.5rem)] md:min-h-screen flex items-center justify-center p-6 bg-background select-none">
-      <Card className="w-full max-w-xl border-border bg-card/60 backdrop-blur supports-[backdrop-filter]:bg-card/50">
-        <CardHeader className="space-y-3">
-          <div className="flex items-center gap-2">
-            <div className="flex size-10 items-center justify-center rounded-lg bg-sidebar-accent">
-              <AlertTriangle className="size-5 text-muted-foreground" />
-            </div>
-
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-lg font-semibold text-foreground">
-                  Page not found
-                </h1>
-                <Badge variant="outline" className="text-muted-foreground">
-                  404
-                </Badge>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                The page you’re looking for doesn’t exist (or moved).
-              </p>
-            </div>
-          </div>
-
-          <div
-            className={cn(
-              "rounded-lg border border-border bg-sidebar-accent/40 px-3 py-2",
-              "text-sm text-muted-foreground font-mono",
-            )}
-          >
-            {path}
-          </div>
-        </CardHeader>
-
-        <CardContent className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <button
-              type="button"
-              onClick={() => navigate(-1)}
-              className={cn(
-                "group flex items-center gap-3 rounded-lg border border-border bg-background/40 p-3 text-left",
-                "transition-colors hover:bg-sidebar-accent/30 cursor-pointer",
-              )}
+    <div className="min-h-[calc(100vh-3.5rem)] md:min-h-screen flex items-center justify-center p-4 sm:p-6 bg-background select-none">
+      <div className="w-full max-w-3xl space-y-4">
+        <Card className={cn(CARD_CLASS, "gap-0 overflow-hidden py-0")}>
+          <div className="relative h-52 sm:h-64 md:h-72">
+            <Suspense
+              fallback={<div className="size-full bg-sidebar-accent/40" />}
             >
-              <div className="flex size-9 items-center justify-center rounded-md bg-sidebar-accent">
-                <ArrowLeft className="size-4 text-muted-foreground transition-colors group-hover:text-foreground" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-foreground">Go back</p>
-                <p className="text-xs text-muted-foreground">
-                  Return to the previous page
-                </p>
-              </div>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => navigate("/")}
-              className={cn(
-                "group flex items-center gap-3 rounded-lg border border-border bg-background/40 p-3 text-left",
-                "transition-colors hover:bg-sidebar-accent/30 cursor-pointer",
-              )}
-            >
-              <div className="flex size-9 items-center justify-center rounded-md bg-sidebar-accent">
-                <Home className="size-4 text-muted-foreground transition-colors group-hover:text-foreground" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-foreground">Home</p>
-                <p className="text-xs text-muted-foreground">
-                  Go to the homepage
-                </p>
-              </div>
-            </button>
+              <SkinRunner uuid={player.uuid} username={player.username} />
+            </Suspense>
           </div>
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-border px-4 py-2 text-xs text-muted-foreground">
+            <p>
+              Running as{" "}
+              <span className="font-medium text-foreground">
+                {player.username}
+              </span>
+              {!loggedIn && ". Log in to run as yourself."}
+            </p>
+            <p className="hidden sm:block">
+              Space jumps, hold for a higher jump, arrow down ducks.
+            </p>
+          </div>
+        </Card>
 
-          <div className="rounded-lg border border-border bg-background/40 p-4">
+        <Card className={CARD_CLASS}>
+          <CardHeader className="space-y-3">
             <div className="flex items-center gap-2">
-              <Compass className="size-4 text-muted-foreground" />
-              <p className="text-sm font-medium text-foreground">
-                Quick suggestions
-              </p>
+              <div className="flex size-10 items-center justify-center rounded-lg bg-sidebar-accent">
+                <AlertTriangle className="size-5 text-muted-foreground" />
+              </div>
+
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="text-lg font-semibold text-foreground">
+                    Page not found
+                  </h1>
+                  <Badge variant="outline" className="text-muted-foreground">
+                    404
+                  </Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  The page you’re looking for doesn’t exist (or moved). Jump a
+                  few cacti while you’re here.
+                </p>
+              </div>
             </div>
 
-            <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-              <li className="flex items-center gap-2">
-                <span className="inline-flex size-6 items-center justify-center rounded-md bg-sidebar-accent">
-                  <Search className="size-3.5" />
-                </span>
-                Check the URL for typos.
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="inline-flex size-6 items-center justify-center rounded-md bg-sidebar-accent">
-                  <Search className="size-3.5" />
-                </span>
-                If this should exist, it may be behind permissions.
-              </li>
-            </ul>
-          </div>
-        </CardContent>
-      </Card>
+            <div
+              className={cn(
+                "rounded-lg border border-border bg-sidebar-accent/40 px-3 py-2",
+                "text-sm text-muted-foreground font-mono",
+              )}
+            >
+              {pathname}
+            </div>
+          </CardHeader>
+
+          <CardContent>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {ACTIONS.map(({ icon: Icon, label, description, go }) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => go(navigate)}
+                  className={cn(
+                    "group flex items-center gap-3 rounded-lg border border-border bg-background/40 p-3 text-left",
+                    "transition-colors hover:bg-sidebar-accent/30 cursor-pointer",
+                  )}
+                >
+                  <div className="flex size-9 items-center justify-center rounded-md bg-sidebar-accent">
+                    <Icon className="size-4 text-muted-foreground transition-colors group-hover:text-foreground" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-foreground">
+                      {label}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {description}
+                    </p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

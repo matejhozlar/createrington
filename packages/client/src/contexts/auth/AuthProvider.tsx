@@ -6,6 +6,7 @@ import {
   setAccessToken,
   refreshAccessToken,
 } from "@/services/auth/token-manager";
+import { writePlayerHint } from "@/lib/skin-runner/player-hint";
 import { toast } from "sonner";
 
 interface AuthProviderProps {
@@ -220,6 +221,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     return () => clearInterval(refreshInterval);
   }, [user, silentRefresh]);
+
+  useEffect(() => {
+    writePlayerHint(
+      user?.minecraftUuid
+        ? { uuid: user.minecraftUuid, username: user.minecraftUsername }
+        : null,
+    );
+  }, [user]);
 
   // Listen for session-expired events dispatched by the API client / tRPC.
   useEffect(() => {
