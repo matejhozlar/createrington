@@ -14,54 +14,54 @@ const sections = [
         </p>
         <ul className="list-disc pl-6 space-y-1 mt-2">
           <li>
-            <strong>Discord account data</strong> — your Discord ID, username,
+            <strong>Discord account data:</strong> your Discord ID, username,
             and avatar (obtained via Discord OAuth using the identify scope)
           </li>
           <li>
-            <strong>Minecraft account data</strong> — your Minecraft UUID and
+            <strong>Minecraft account data:</strong> your Minecraft UUID and
             username, linked during the verification process
           </li>
           <li>
-            <strong>Session & device data</strong> — your IP address and browser
+            <strong>Session & device data:</strong> your IP address and browser
             user agent, stored with each login session for security purposes
           </li>
           <li>
-            <strong>Gameplay data</strong> — playtime (per-session, hourly,
+            <strong>Gameplay data:</strong> playtime (per-session, hourly,
             daily, and cumulative), online status, server activity, and full
             Minecraft statistics (blocks mined, items crafted, kills, deaths,
             advancements, etc.)
           </li>
           <li>
-            <strong>Economy data</strong> — in-game currency balances, every
+            <strong>Economy data:</strong> in-game currency balances, every
             balance transaction (amount, type, reason, before/after balances),
             and lottery participation
           </li>
           <li>
-            <strong>Reward data</strong> — daily reward claims
+            <strong>Reward data:</strong> daily reward claims
           </li>
           <li>
-            <strong>Waitlist information</strong> — your Discord ID and
-            username, queue timestamps, and queue status, recorded when you join
-            the waitlist from our Discord server. No email address is collected
+            <strong>Waitlist information:</strong> your Discord ID and username,
+            queue timestamps, and queue status, recorded when you join the
+            waitlist from our Discord server. No email address is collected
           </li>
           <li>
-            <strong>Moderation records</strong> — strikes (with classification
+            <strong>Moderation records:</strong> strikes (with classification
             and severity), bans (temporary and permanent), and related
             administrator notes
           </li>
           <li>
-            <strong>Support tickets</strong> — ticket type, messages exchanged,
+            <strong>Support tickets:</strong> ticket type, messages exchanged,
             and resolution status
           </li>
           <li>
-            <strong>Discord activity</strong> — guild join and leave events
-            (user ID, username, timestamp) for community tracking
+            <strong>Discord activity:</strong> guild join and leave events (user
+            ID, username, timestamp) for community tracking
           </li>
           <li>
-            <strong>Donation data</strong> — your Discord ID, donation amount,
+            <strong>Donation data:</strong> your Discord ID, donation amount,
             currency, donation type (one-time or monthly), Stripe session ID,
             Stripe customer ID, and Stripe subscription ID. We do not store your
-            card number, billing address, or other payment details — these are
+            card number, billing address, or other payment details. These are
             handled entirely by Stripe
           </li>
         </ul>
@@ -108,21 +108,21 @@ const sections = [
         <p>We rely on the following third-party services:</p>
         <ul className="list-disc pl-6 space-y-1 mt-2">
           <li>
-            <strong>Discord API</strong> — for OAuth authentication, bot
+            <strong>Discord API:</strong> for OAuth authentication, bot
             functionality, role management, and sending notifications
           </li>
           <li>
-            <strong>Stripe</strong> — for processing donation payments and
+            <strong>Stripe:</strong> for processing donation payments and
             managing subscriptions. Stripe receives your payment details
             directly; we only store transaction references (session IDs,
             customer IDs, subscription IDs)
           </li>
           <li>
-            <strong>Email delivery service</strong> — for sending occasional
+            <strong>Email delivery service:</strong> for sending occasional
             service emails and admin alerts
           </li>
           <li>
-            <strong>Cloudflare</strong> — routes and protects all traffic to the
+            <strong>Cloudflare:</strong> routes and protects all traffic to the
             site (Cloudflare therefore processes your IP address and request
             metadata) and provides cookieless, aggregate visitor analytics that
             do not identify or track individual visitors
@@ -146,18 +146,18 @@ const sections = [
         </p>
         <ul className="list-disc pl-6 space-y-1 mt-2">
           <li>
-            <strong>Authentication cookies</strong> — a short-lived cookie used
+            <strong>Authentication cookies:</strong> a short-lived cookie used
             during Discord sign-in and session cookies that keep you signed in
             across createrington.com and its subdomains for up to 30 days. All
             are HttpOnly and never used for tracking
           </li>
           <li>
-            <strong>Preference storage</strong> — sidebar state, guide progress,
+            <strong>Preference storage:</strong> sidebar state, guide progress,
             and similar interface settings are kept in a first-party cookie or
             your browser's local storage and used only to restore your settings
           </li>
           <li>
-            <strong>Cloudflare security cookies</strong> — Cloudflare may set
+            <strong>Cloudflare security cookies:</strong> Cloudflare may set
             short-lived cookies to distinguish humans from bots and protect the
             site from abuse
           </li>
@@ -205,24 +205,23 @@ const sections = [
         </p>
         <ul className="list-disc pl-6 space-y-1 mt-2">
           <li>
-            <strong>Waitlist entries</strong> — marked as expired when you leave
+            <strong>Waitlist entries:</strong> marked as expired when you leave
             the queue or the Discord server; the entry itself (Discord ID,
             username and timestamps) is retained for auditing
           </li>
           <li>
-            <strong>Login sessions</strong> — automatically expire after 30 days
+            <strong>Login sessions:</strong> automatically expire after 30 days
           </li>
           <li>
-            <strong>Gameplay & economy data</strong> — retained for the lifetime
+            <strong>Gameplay & economy data:</strong> retained for the lifetime
             of your account
           </li>
           <li>
-            <strong>Moderation records</strong> — strikes and bans may be
-            removed by administrators but are retained for the duration of your
-            account
+            <strong>Moderation records:</strong> strikes and bans may be removed
+            by administrators but are retained for the duration of your account
           </li>
           <li>
-            <strong>Donation records</strong> — retained indefinitely for
+            <strong>Donation records:</strong> retained indefinitely for
             accounting and tax purposes, even after account deletion
           </li>
         </ul>
@@ -273,19 +272,19 @@ const sections = [
         <p>You have the right to:</p>
         <ul className="list-disc pl-6 space-y-1 mt-2">
           <li>
-            <strong>Access</strong> — request a copy of the personal data we
-            hold about you
+            <strong>Access:</strong> request a copy of the personal data we hold
+            about you
           </li>
           <li>
-            <strong>Rectification</strong> — request correction of inaccurate
+            <strong>Rectification:</strong> request correction of inaccurate
             data
           </li>
           <li>
-            <strong>Deletion</strong> — request removal of your personal data
+            <strong>Deletion:</strong> request removal of your personal data
             from our systems
           </li>
           <li>
-            <strong>Data portability</strong> — receive your data in a
+            <strong>Data portability:</strong> receive your data in a
             structured, commonly used format
           </li>
         </ul>
