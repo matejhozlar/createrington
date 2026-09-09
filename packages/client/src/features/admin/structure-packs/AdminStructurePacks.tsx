@@ -3,6 +3,7 @@ import { useStickyValue } from "@/hooks/use-sticky-value";
 import { useNavigate } from "react-router";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import {
   Plus,
   Package,
@@ -101,18 +102,21 @@ export function AdminStructurePacks() {
     return result;
   }, [packs, searchQuery, statusFilter, activeFilter]);
 
-  const importMutation = trpc.admin.structurePacks.importPacks.useMutation({
-    onSuccess: (result) => {
-      const parts: string[] = [];
-      if (result.created.length > 0)
-        parts.push(`Created: ${result.created.join(", ")}`);
-      if (result.skipped.length > 0)
-        parts.push(`Skipped (already exist): ${result.skipped.join(", ")}`);
-      toast.success(parts.join(". ") || "Nothing to import");
-      utils.admin.structurePacks.list.invalidate();
-    },
-    onError: (err) => toast.error(err.message),
-  });
+  const importMutation = trpc.admin.structurePacks.importPacks.useMutation(
+    useMutationToast({
+      success: (result: { created: string[]; skipped: string[] }) => {
+        const parts: string[] = [];
+        if (result.created.length > 0)
+          parts.push(`Created: ${result.created.join(", ")}`);
+        if (result.skipped.length > 0)
+          parts.push(`Skipped (already exist): ${result.skipped.join(", ")}`);
+        return parts.join(". ") || "Nothing to import";
+      },
+      onSuccess: () => {
+        utils.admin.structurePacks.list.invalidate();
+      },
+    }),
+  );
 
   function copyPackJson(pack: (typeof packs)[number]) {
     const exported = {
@@ -146,35 +150,39 @@ export function AdminStructurePacks() {
     }
   }
 
-  const createMutation = trpc.admin.structurePacks.create.useMutation({
-    onSuccess: (pack) => {
-      toast.success("Structure pack created");
-      utils.admin.structurePacks.list.invalidate();
-      setCreateOpen(false);
-      setName("");
-      setDescription("");
-      navigate(`/admin/tools/structure-packs/${pack.id}`);
-    },
-    onError: (err) => toast.error(err.message),
-  });
+  const createMutation = trpc.admin.structurePacks.create.useMutation(
+    useMutationToast({
+      success: "Structure pack created",
+      onSuccess: (pack: { id: number }) => {
+        utils.admin.structurePacks.list.invalidate();
+        setCreateOpen(false);
+        setName("");
+        setDescription("");
+        navigate(`/admin/tools/structure-packs/${pack.id}`);
+      },
+    }),
+  );
 
   const toggleEnabledMutation =
-    trpc.admin.structurePacks.toggleEnabled.useMutation({
-      onSuccess: (_data, variables) => {
-        toast.success(variables.enabled ? "Pack enabled" : "Pack disabled");
-        utils.admin.structurePacks.list.invalidate();
-      },
-      onError: (err) => toast.error(err.message),
-    });
+    trpc.admin.structurePacks.toggleEnabled.useMutation(
+      useMutationToast({
+        success: (_data, variables: { enabled: boolean }) =>
+          variables.enabled ? "Pack enabled" : "Pack disabled",
+        onSuccess: () => {
+          utils.admin.structurePacks.list.invalidate();
+        },
+      }),
+    );
 
-  const deleteMutation = trpc.admin.structurePacks.delete.useMutation({
-    onSuccess: () => {
-      toast.success("Pack deleted");
-      utils.admin.structurePacks.list.invalidate();
-      setDeleteTarget(null);
-    },
-    onError: (err) => toast.error(err.message),
-  });
+  const deleteMutation = trpc.admin.structurePacks.delete.useMutation(
+    useMutationToast({
+      success: "Pack deleted",
+      onSuccess: () => {
+        utils.admin.structurePacks.list.invalidate();
+        setDeleteTarget(null);
+      },
+    }),
+  );
 
   type Pack = (typeof packs)[number];
 
