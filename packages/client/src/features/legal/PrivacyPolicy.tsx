@@ -121,6 +121,12 @@ const sections = [
             <strong>Email delivery service</strong> — for sending occasional
             service emails and admin alerts
           </li>
+          <li>
+            <strong>Cloudflare</strong> — routes and protects all traffic to the
+            site (Cloudflare therefore processes your IP address and request
+            metadata) and provides cookieless, aggregate visitor analytics that
+            do not identify or track individual visitors
+          </li>
         </ul>
         <p className="mt-2">
           These services have their own privacy policies. We recommend reviewing
@@ -130,7 +136,41 @@ const sections = [
     ),
   },
   {
-    title: "4. Data Storage & Security",
+    title: "4. Cookies & Local Storage",
+    content: (
+      <>
+        <p>
+          We do not use advertising or cross-site tracking cookies. Everything
+          stored in your browser is either required for the site to work or
+          remembers a preference you set, so no consent banner is shown:
+        </p>
+        <ul className="list-disc pl-6 space-y-1 mt-2">
+          <li>
+            <strong>Authentication cookies</strong> — a short-lived cookie used
+            during Discord sign-in and session cookies that keep you signed in
+            across createrington.com and its subdomains for up to 30 days. All
+            are HttpOnly and never used for tracking
+          </li>
+          <li>
+            <strong>Preference storage</strong> — sidebar state, guide progress,
+            and similar interface settings are kept in a first-party cookie or
+            your browser's local storage and used only to restore your settings
+          </li>
+          <li>
+            <strong>Cloudflare security cookies</strong> — Cloudflare may set
+            short-lived cookies to distinguish humans from bots and protect the
+            site from abuse
+          </li>
+        </ul>
+        <p className="mt-2">
+          You can clear or block these in your browser settings, but you will be
+          signed out and your preferences will reset.
+        </p>
+      </>
+    ),
+  },
+  {
+    title: "5. Data Storage & Security",
     content: (
       <ul className="list-disc pl-6 space-y-1">
         <li>
@@ -142,8 +182,7 @@ const sections = [
           servers
         </li>
         <li>
-          Authentication tokens are stored as salted hashes and expire after 7
-          days
+          Authentication tokens are stored as hashes and expire after 30 days
         </li>
         <li>
           Access to the database and admin tools is restricted to authorized
@@ -157,7 +196,7 @@ const sections = [
     ),
   },
   {
-    title: "5. Data Retention",
+    title: "6. Data Retention",
     content: (
       <>
         <p>
@@ -171,7 +210,7 @@ const sections = [
             username and timestamps) is retained for auditing
           </li>
           <li>
-            <strong>Login sessions</strong> — automatically expire after 7 days
+            <strong>Login sessions</strong> — automatically expire after 30 days
           </li>
           <li>
             <strong>Gameplay & economy data</strong> — retained for the lifetime
@@ -196,7 +235,7 @@ const sections = [
     ),
   },
   {
-    title: "6. Data Deletion",
+    title: "7. Data Deletion",
     content: (
       <>
         <p>
@@ -228,7 +267,7 @@ const sections = [
     ),
   },
   {
-    title: "7. Your Rights",
+    title: "8. Your Rights",
     content: (
       <>
         <p>You have the right to:</p>
@@ -258,7 +297,7 @@ const sections = [
     ),
   },
   {
-    title: "8. Changes to This Policy",
+    title: "9. Changes to This Policy",
     content: (
       <p>
         We may update this Privacy Policy from time to time. Changes will be
@@ -268,7 +307,7 @@ const sections = [
     ),
   },
   {
-    title: "9. Contact Us",
+    title: "10. Contact Us",
     content: (
       <p>
         If you have questions about this Privacy Policy or want to exercise your
@@ -307,7 +346,7 @@ export function PrivacyPolicy() {
         <div className="max-w-7xl mx-auto">
           <div className="max-w-5xl">
             <p className="text-sm text-muted-foreground mb-8">
-              Effective date: August 29, 2026
+              Effective date: September 9, 2026
             </p>
 
             <div className="flex flex-col gap-6">
