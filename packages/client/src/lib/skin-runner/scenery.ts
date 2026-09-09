@@ -133,11 +133,12 @@ function sky(view: View, stops: readonly (readonly [number, string])[]) {
 
 function stars(view: View, intensity: number) {
   const { ctx, W, texel, groundPx } = view;
+  const base = ctx.globalAlpha;
   ctx.fillStyle = "#ffffff";
   for (let i = 0; i < STAR_COUNT; i++) {
     const twinkle =
       0.55 + 0.45 * Math.sin(view.time * (1.5 + hash(i, 3) * 2) + i);
-    ctx.globalAlpha = intensity * twinkle;
+    ctx.globalAlpha = base * intensity * twinkle;
     const size = hash(i, 4) > 0.8 ? texel : Math.max(1, Math.floor(texel / 2));
     ctx.fillRect(
       Math.round(hash(i, 1) * W),
@@ -146,7 +147,7 @@ function stars(view: View, intensity: number) {
       size,
     );
   }
-  ctx.globalAlpha = 1;
+  ctx.globalAlpha = base;
 }
 
 function drifters(
@@ -155,12 +156,13 @@ function drifters(
   list: Drifter[],
   alpha: number,
 ) {
-  view.ctx.globalAlpha = alpha;
+  const base = view.ctx.globalAlpha;
+  view.ctx.globalAlpha = base * alpha;
   for (const d of list) {
     const sprite = frames[d.frame % frames.length];
     if (sprite) blit(view, sprite, sx(view, d.x), d.y * view.texel, d.scale);
   }
-  view.ctx.globalAlpha = 1;
+  view.ctx.globalAlpha = base;
 }
 
 function segments(

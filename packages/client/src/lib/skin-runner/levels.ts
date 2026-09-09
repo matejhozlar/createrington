@@ -3,8 +3,26 @@ import type { ObstacleSprite, Sprites } from "./sprites";
 export type LevelId = "overworld" | "nether" | "end";
 export type PortalKind = "nether" | "end";
 
+export type ObstacleKind =
+  | "cactus"
+  | "creeper"
+  | "minecart"
+  | "oak"
+  | "phantom"
+  | "lava"
+  | "magma"
+  | "stalactite"
+  | "blaze"
+  | "hoglin"
+  | "chorus"
+  | "enderman"
+  | "gap"
+  | "island"
+  | "bullet"
+  | "endermite";
+
 export type Spawn = {
-  kind: string;
+  kind: ObstacleKind;
   weight: number;
   unlock: number;
   pick: (sprites: Sprites) => readonly ObstacleSprite[];
@@ -22,28 +40,29 @@ export type DrifterConfig = {
   fps: number;
 };
 
+export type ExitPortal = {
+  kind: PortalKind;
+  color: string;
+};
+
 export type Level = {
   id: LevelId;
   name: string;
   span: number;
-  portal: PortalKind | null;
+  portal: ExitPortal | null;
   dust: string;
-  veil: string;
   gap: readonly [number, number];
   drifters: DrifterConfig;
   roster: readonly Spawn[];
 };
-
-export const FLYER_ALTITUDES = [4, 22] as const;
 
 export const LEVELS: readonly [Level, ...Level[]] = [
   {
     id: "overworld",
     name: "OVERWORLD",
     span: 500,
-    portal: "nether",
+    portal: { kind: "nether", color: "120, 80, 240" },
     dust: "201, 180, 138",
-    veil: "120, 80, 240",
     gap: [110, 220],
     drifters: {
       count: 5,
@@ -82,7 +101,7 @@ export const LEVELS: readonly [Level, ...Level[]] = [
         unlock: 200,
         pick: (s) => [s.phantom],
         speedMul: 1.25,
-        altitudes: FLYER_ALTITUDES,
+        altitudes: [4, 25],
       },
     ],
   },
@@ -90,9 +109,8 @@ export const LEVELS: readonly [Level, ...Level[]] = [
     id: "nether",
     name: "THE NETHER",
     span: 700,
-    portal: "end",
+    portal: { kind: "end", color: "50, 190, 160" },
     dust: "150, 90, 80",
-    veil: "120, 80, 240",
     gap: [100, 200],
     drifters: {
       count: 2,
@@ -118,7 +136,7 @@ export const LEVELS: readonly [Level, ...Level[]] = [
         unlock: 80,
         pick: (s) => [s.blaze],
         speedMul: 1.2,
-        altitudes: FLYER_ALTITUDES,
+        altitudes: [4, 22],
       },
       {
         kind: "hoglin",
@@ -135,7 +153,6 @@ export const LEVELS: readonly [Level, ...Level[]] = [
     span: Infinity,
     portal: null,
     dust: "214, 214, 178",
-    veil: "50, 190, 160",
     gap: [90, 180],
     drifters: {
       count: 1,
@@ -168,7 +185,7 @@ export const LEVELS: readonly [Level, ...Level[]] = [
         unlock: 120,
         pick: (s) => [s.bullet],
         speedMul: 1.3,
-        altitudes: FLYER_ALTITUDES,
+        altitudes: [4, 27],
       },
       {
         kind: "endermite",

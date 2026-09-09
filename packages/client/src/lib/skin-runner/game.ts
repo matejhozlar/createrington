@@ -1,4 +1,9 @@
-import { LEVELS, type Level, type PortalKind } from "./levels";
+import {
+  LEVELS,
+  type Level,
+  type ObstacleKind,
+  type PortalKind,
+} from "./levels";
 import {
   loadPortalFrames,
   PORTAL_FRAME_DURATION,
@@ -33,7 +38,7 @@ export type SkinRunnerHandle = {
 };
 
 type Obstacle = {
-  kind: string;
+  kind: ObstacleKind;
   sprite: ObstacleSprite;
   x: number;
   bottom: number;
@@ -338,6 +343,7 @@ class Runner {
   private bannerT = 0;
   private portal: Portal | null = null;
   private portalSparkT = 0;
+  private veilColor = "255, 255, 255";
   private obstacles: Obstacle[] = [];
   private drifters: Drifter[] = [];
   private scatterDrifters = true;
@@ -432,9 +438,11 @@ class Runner {
         this.skinFailed = true;
       });
 
-    void loadPortalFrames().then((frames) => {
-      if (!this.destroyed) this.portalFrames = frames;
-    });
+    void loadPortalFrames()
+      .then((frames) => {
+        if (!this.destroyed) this.portalFrames = frames;
+      })
+      .catch(() => undefined);
   }
 
   getState(): RunnerState {
@@ -491,6 +499,7 @@ class Runner {
 
   private readonly onKeyDown = (event: KeyboardEvent): void => {
     if (!this.inView || isInteractive(event.target)) return;
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
     if (JUMP_KEYS.has(event.code)) {
       event.preventDefault();
       if (!event.repeat) this.pressJump();
@@ -824,7 +833,7 @@ class Runner {
     }
     if (!portal.entered && portal.x + PORTAL_W / 2 <= this.playerX) {
       portal.entered = true;
-      this.enterPortal();
+      this.enterPortal(portal);
       return;
     }
     this.portalSparkT += dt;
@@ -839,26 +848,28 @@ class Runner {
     }
   }
 
-  private enterPortal(): void {
+  private enterPortal(portal: Portal): void {
+    this.veilColor = portal.color;
     this.fromLevel = this.level;
     this.levelIndex = Math.min(this.levelIndex + 1, LEVELS.length - 1);
     this.levelStart = this.score;
     this.transitionT = 0;
     this.decorFrom = this.decor;
     this.decor = [];
+    this.obstacles = [];
     this.drifters = [];
     this.scatterDrifters = false;
     this.nextDrifterAt = this.time + 0.5;
     this.nextDecorAt = this.distance + 30;
     this.nextObstacleAt = Infinity;
     this.pending = null;
-    this.sparkle(this.playerX, 16, 30, this.level.veil);
+    this.sparkle(this.playerX, 16, 30, this.veilColor);
   }
 
   private updateTransition(dt: number): void {
     if (this.fromLevel) {
       this.transitionT += dt;
-      this.sparkle(this.playerX + rand(-6, 6), rand(0, 32), 1, this.level.veil);
+      this.sparkle(this.playerX + rand(-6, 6), rand(0, 32), 1, this.veilColor);
       if (this.transitionT >= TRANSITION) {
         this.fromLevel = null;
         this.decorFrom = [];
@@ -922,9 +933,9 @@ class Runner {
       const destination = LEVELS[this.levelIndex + 1];
       if (exit && destination && this.progress() >= this.level.span) {
         this.portal = {
-          kind: exit,
+          kind: exit.kind,
           x: this.worldWidth + 8,
-          color: destination.veil,
+          color: exit.color,
           entered: false,
         };
         this.pending = null;
@@ -1009,6 +1020,7 @@ class Runner {
     this.deathAnchor =
       cause === "hit" ? null : obstacle.x + obstacle.sprite.w / 2;
     this.deathSlideT = 0;
+    if (cause !== "hit") this.vy = Math.max(0, this.vy);
     this.deathT = 0;
     this.fireT = 0;
     this.shakeT = this.reducedMotion || cause === "void" ? 0 : SHAKE_DURATION;
@@ -1191,6 +1203,8 @@ class Runner {
     const interiorY = this.screenY(3 * PORTAL_BLOCK);
     const interiorW = 2 * PORTAL_BLOCK * texel;
     const interiorH = 3 * PORTAL_BLOCK * texel;
+    const tileCols = Math.ceil((2 * PORTAL_BLOCK) / PORTAL_TILE);
+    const tileRows = Math.ceil((3 * PORTAL_BLOCK) / PORTAL_TILE);
     const cx = interiorX + interiorW / 2;
     const cy = interiorY + interiorH / 2;
     const radius = PORTAL_H * 0.7 * texel;
@@ -1217,8 +1231,8 @@ class Runner {
       for (const [frame, alpha] of layers) {
         if (!frame) continue;
         ctx.globalAlpha = alpha;
-        for (let ty = 0; ty < 3; ty++) {
-          for (let tx = 0; tx < 2; tx++) {
+        for (let ty = 0; ty < tileRows; ty++) {
+          for (let tx = 0; tx < tileCols; tx++) {
             ctx.drawImage(
               frame,
               interiorX + tx * PORTAL_TILE * texel,
@@ -1280,10 +1294,10 @@ class Runner {
 
   private renderVeil(): void {
     const from = this.fromLevel;
-    if (!from) return;
+    if (!from || this.reducedMotion) return;
     const { ctx, W, H } = this;
     const strength = Math.sin(Math.PI * (this.transitionT / TRANSITION));
-    const color = this.level.veil;
+    const color = this.veilColor;
     ctx.fillStyle = `rgba(${color}, ${strength * 0.5})`;
     ctx.fillRect(0, 0, W, H);
     const vignette = ctx.createRadialGradient(
@@ -1342,9 +1356,10 @@ class Runner {
       this.deathCause !== "void" &&
       this.deathT < DEATH_FLASH &&
       Math.floor(this.deathT / 0.08) % 2 === 0;
-    const portalTint = this.fromLevel
-      ? Math.sin(Math.PI * (this.transitionT / TRANSITION)) * 0.6
-      : 0;
+    const portalTint =
+      this.fromLevel && !this.reducedMotion
+        ? Math.sin(Math.PI * (this.transitionT / TRANSITION)) * 0.6
+        : 0;
     if (flashing || portalTint > 0.02) {
       pc.setTransform(1, 0, 0, 1, 0, 0);
       pc.globalCompositeOperation = "source-atop";
@@ -1352,7 +1367,7 @@ class Runner {
         ? this.deathCause === "lava"
           ? LAVA_FLASH
           : HIT_FLASH
-        : `rgba(${this.level.veil}, ${portalTint})`;
+        : `rgba(${this.veilColor}, ${portalTint})`;
       pc.fillRect(0, 0, width, height);
       pc.globalCompositeOperation = "source-over";
     }
