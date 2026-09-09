@@ -1,3 +1,14 @@
+## v1.52.4 (2026-09-09)
+
+### @createrington/client (0.2.67 → 0.2.68)
+- [add] Add three dimension-based levels to the skin runner (Overworld, Nether, The End) with animated portal transitions between them, each featuring unique scenery palettes, terrain, background drifters (clouds, ghasts, ender dragon), and decorative foliage
+- [add] Add dimension-specific obstacles: oak trees for overworld; lava pits, magma cubes, stalactites, blazes, and hoglins for nether; chorus plants, endermen, void gaps, end stone islands, shulker bullets, and endermites for the end
+- [add] Add pit-type obstacles (lava and void) that kill the player by falling rather than collision, with per-pit death animations and colored particle effects
+- [refactor] Extract scenery rendering (sky gradients, ground tiles, parallax layers, stars, night tint) into a dedicated `scenery.ts` module with per-level palette support, reducing `game.ts` by ~400 lines
+- [refactor] Extract level definitions, obstacle rosters, and portal configurations into `levels.ts`, portal sprite loading and tinting into `portal.ts`, and shared math helpers into `util.ts`
+- [fix] Expand keyboard controls to accept W/Up/Space for jump and S/Down/Shift for slide, and update the controls legend on both the 404 page and maintenance page to show all accepted keys
+- [fix] Switch PortalTile component from a static `/assets/` path to a Vite-resolved import so the portal sprite is included in the build hash and works correctly in production
+
 ## v1.52.3 (2026-09-09)
 
 ### @createrington/client (0.2.66 → 0.2.67)
