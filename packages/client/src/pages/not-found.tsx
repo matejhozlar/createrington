@@ -47,8 +47,8 @@ const KBD_CLASS =
   "rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-foreground";
 
 const KEY_CONTROLS = [
-  { key: "Space", action: "Jump" },
-  { key: "↓", action: "Slide" },
+  { keys: ["↑", "W", "Space"], action: "Jump" },
+  { keys: ["↓", "S", "Shift"], action: "Slide" },
 ];
 
 const TOUCH_CONTROLS = [
@@ -82,9 +82,15 @@ export function NotFound() {
                 <Keyboard className="size-3.5" />
                 Controls
               </li>
-              {KEY_CONTROLS.map(({ key, action }) => (
+              {KEY_CONTROLS.map(({ keys, action }) => (
                 <li key={action} className="flex items-center gap-1.5">
-                  <kbd className={KBD_CLASS}>{key}</kbd>
+                  <span className="flex items-center gap-0.5">
+                    {keys.map((key) => (
+                      <kbd key={key} className={KBD_CLASS}>
+                        {key}
+                      </kbd>
+                    ))}
+                  </span>
                   <span>{action}</span>
                 </li>
               ))}
