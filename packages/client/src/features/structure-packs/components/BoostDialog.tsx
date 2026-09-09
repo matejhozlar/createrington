@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { formatMoney } from "@/lib/format";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/auth";
 import {
@@ -136,13 +137,13 @@ export function BoostDialog({
             <div className="flex justify-between">
               <span className="text-white/55">Price per unit</span>
               <span className="font-mono tabular-nums text-white/85">
-                ${boostUnitPrice.toLocaleString()}
+                {formatMoney(boostUnitPrice)}
               </span>
             </div>
             <div className="flex justify-between font-medium">
               <span className="text-white">Total cost</span>
               <span className="font-mono tabular-nums text-white">
-                ${totalCost.toLocaleString()}
+                {formatMoney(totalCost)}
               </span>
             </div>
             <div className="flex justify-between border-t border-white/10 pt-1.5">
@@ -152,10 +153,7 @@ export function BoostDialog({
                   canAfford ? "text-[var(--blue-bright)]" : "text-destructive"
                 }`}
               >
-                $
-                {balance.toLocaleString(undefined, {
-                  maximumFractionDigits: 2,
-                })}
+                {formatMoney(balance)}
               </span>
             </div>
           </div>

@@ -44,6 +44,7 @@ import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { keepPreviousData } from "@tanstack/react-query";
 import { trpc } from "@/lib/trpc";
+import { formatMoney } from "@/lib/format";
 import { formatRelativeDate, formatFullDate } from "./format";
 
 interface PlayerWithCounts extends PlayerApiData {
@@ -339,10 +340,10 @@ export function AdminPlayers() {
                 <div>
                   <CardDescription>Total Balance</CardDescription>
                   <CardTitle className="text-2xl">
-                    ${parseFloat(stats.balance.total).toLocaleString()}
+                    {formatMoney(stats.balance.total)}
                   </CardTitle>
                   <p className="mt-2 text-xs text-muted-foreground">
-                    Avg: ${parseFloat(stats.balance.average).toFixed(2)}
+                    Avg: {formatMoney(stats.balance.average)}
                   </p>
                 </div>
                 <div className="flex size-12 items-center justify-center rounded-full bg-chart-3/10">

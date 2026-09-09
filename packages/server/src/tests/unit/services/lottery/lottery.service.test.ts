@@ -2,8 +2,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 const state = vi.hoisted(() => ({
   failTransaction: false,
+  holdTransaction: null as Promise<void> | null,
   deducted: [] as Array<{ uuid: string; amount: number }>,
   credited: [] as Array<{ uuid: string; amount: number }>,
+  rows: [] as string[],
   ledger: [] as Array<{ transactionType: string; createdAt: string }>,
 }));
 
@@ -23,10 +25,34 @@ vi.mock("@/config", () => ({
 vi.mock("@/db", () => ({
   db: {
     inTransaction: async (fn: (tx: unknown) => Promise<void>) => {
-      if (state.failTransaction) throw new Error("db down");
-      await fn({ lottery: { participant: { create: async () => {} } } });
+      if (state.holdTransaction) await state.holdTransaction;
+      const deductedBefore = state.deducted.length;
+      const rowsBefore = state.rows.length;
+      try {
+        await fn({
+          lottery: {
+            participant: {
+              create: async (row: { minecraftUuid: string }) => {
+                state.rows.push(row.minecraftUuid);
+              },
+            },
+          },
+        });
+        if (state.failTransaction) throw new Error("db down");
+      } catch (error) {
+        state.deducted.length = deductedBefore;
+        state.rows.length = rowsBefore;
+        throw error;
+      }
     },
-    lottery: { participant: { findAll: async () => [], drop: async () => {} } },
+    lottery: {
+      participant: {
+        findAll: async () => [],
+        drop: async () => {
+          state.rows = [];
+        },
+      },
+    },
   },
   Q: {
     player: {
@@ -87,6 +113,7 @@ vi.mock("@/app/middleware", () =>
 
 import { LotteryService } from "@/services/lottery/lottery.service";
 import { LotteryCooldownError } from "@/services/lottery/errors";
+import { ConflictError } from "@/app/middleware/error-handler";
 
 const T0 = new Date("2026-09-03T12:00:00.000Z");
 const SECOND = 1000;
@@ -96,15 +123,17 @@ function at(offsetMs: number): string {
   return new Date(T0.getTime() + offsetMs).toISOString();
 }
 
-describe("LotteryService start cooldown", () => {
+describe("LotteryService", () => {
   let service: LotteryService;
 
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(T0);
     state.failTransaction = false;
+    state.holdTransaction = null;
     state.deducted = [];
     state.credited = [];
+    state.rows = [];
     state.ledger = [];
     service = new LotteryService();
   });
@@ -173,6 +202,120 @@ describe("LotteryService start cooldown", () => {
     await expect(service.join("other", "Other", 30)).resolves.toMatchObject({
       totalPot: 80,
       participantCount: 2,
+    });
+  });
+
+  describe("start pending window", () => {
+    it("rejects a join while the host's start transaction is in flight", async () => {
+      let release!: () => void;
+      state.holdTransaction = new Promise((resolve) => (release = resolve));
+
+      const start = service.start("host", "Host", 50);
+      const join = service.join("other", "Other", 30);
+      await expect(join).rejects.toBeInstanceOf(ConflictError);
+      await expect(join).rejects.toMatchObject({
+        statusCode: 409,
+        message: "The lottery is still starting, try again in a moment",
+      });
+      expect(state.deducted).toEqual([]);
+
+      release();
+      await expect(start).resolves.toMatchObject({ success: true });
+      await expect(service.join("other", "Other", 30)).resolves.toMatchObject({
+        totalPot: 80,
+        participantCount: 2,
+      });
+    });
+
+    it("does not fire the resolution timer while the start transaction is in flight", async () => {
+      let release!: () => void;
+      state.holdTransaction = new Promise((resolve) => (release = resolve));
+
+      const start = service.start("host", "Host", 50);
+      await vi.advanceTimersByTimeAsync(2 * MINUTE);
+      expect(state.credited).toEqual([]);
+      expect(service.isActive()).toBe(true);
+
+      release();
+      await expect(start).resolves.toMatchObject({ success: true });
+      await vi.advanceTimersByTimeAsync(2 * MINUTE);
+      expect(state.credited).toEqual([{ uuid: "host", amount: 50 }]);
+      expect(service.isActive()).toBe(false);
+    });
+
+    it("leaves the rejected joiner untouched when the start then fails", async () => {
+      let release!: () => void;
+      state.holdTransaction = new Promise((resolve) => (release = resolve));
+      state.failTransaction = true;
+
+      const start = service.start("host", "Host", 50);
+      await expect(service.join("other", "Other", 30)).rejects.toMatchObject({
+        statusCode: 409,
+        message: "The lottery is still starting, try again in a moment",
+      });
+
+      release();
+      await expect(start).rejects.toThrow("db down");
+      expect(service.isActive()).toBe(false);
+      expect(state.deducted).toEqual([]);
+      expect(state.credited).toEqual([]);
+      await expect(service.join("other", "Other", 30)).rejects.toThrow(
+        "No lottery is currently active",
+      );
+    });
+  });
+
+  describe("resolve with joins in flight", () => {
+    it("excludes a join whose transaction fails while the round resolves", async () => {
+      await service.start("host", "Host", 50);
+
+      let release!: () => void;
+      state.holdTransaction = new Promise((resolve) => (release = resolve));
+      state.failTransaction = true;
+      const join = service.join("other", "Other", 30);
+
+      await vi.advanceTimersByTimeAsync(2 * MINUTE);
+      expect(state.credited).toEqual([]);
+      expect(service.isActive()).toBe(true);
+
+      release();
+      await expect(join).rejects.toThrow("db down");
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(state.credited).toEqual([{ uuid: "host", amount: 50 }]);
+      expect(state.rows).toEqual([]);
+      expect(service.isActive()).toBe(false);
+    });
+
+    it("counts a join that commits while the round resolves and leaves no orphan row", async () => {
+      await service.start("host", "Host", 50);
+
+      let release!: () => void;
+      state.holdTransaction = new Promise((resolve) => (release = resolve));
+      const join = service.join("other", "Other", 30);
+
+      await vi.advanceTimersByTimeAsync(2 * MINUTE);
+      expect(state.credited).toEqual([]);
+
+      await expect(service.join("late", "Late", 10)).rejects.toThrow(
+        "The lottery has just ended",
+      );
+
+      release();
+      await expect(join).resolves.toMatchObject({
+        totalPot: 80,
+        participantCount: 2,
+      });
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(state.credited).toHaveLength(1);
+      expect(state.credited[0].amount).toBe(80);
+      expect(state.deducted).toEqual([
+        { uuid: "host", amount: 50 },
+        { uuid: "other", amount: 30 },
+      ]);
+      expect(state.rows).toEqual([]);
+      expect(service.isActive()).toBe(false);
     });
   });
 

@@ -14,6 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { trpc } from "@/lib/trpc";
 import { REQUIRED_DEPENDENCY } from "@createrington/shared/workshop";
 
@@ -88,13 +89,14 @@ export function AddModDialog({
 
   const selectedDeps = depOverrides ?? defaultDepSelection;
 
-  const addModMutation = trpc.admin.structurePacks.addMod.useMutation({
-    onSuccess: () => {
-      utils.admin.structurePacks.get.invalidate({ id: packId });
-      utils.admin.structurePacks.list.invalidate();
-    },
-    onError: (err) => toast.error(err.message),
-  });
+  const addModMutation = trpc.admin.structurePacks.addMod.useMutation(
+    useMutationToast({
+      onSuccess: () => {
+        utils.admin.structurePacks.get.invalidate({ id: packId });
+        utils.admin.structurePacks.list.invalidate();
+      },
+    }),
+  );
 
   const handleDialogOpenChange = (next: boolean) => {
     if (!next) {

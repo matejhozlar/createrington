@@ -1,3 +1,4 @@
+import { formatCompactDuration } from "@createrington/shared/format";
 import { CellDate, CellText } from "@/components/cell-text";
 import {
   DataTable,
@@ -37,19 +38,6 @@ export function SessionsTab({ playerId, getServerName }: SessionsTabProps) {
   const loading = sessionsQuery.isLoading || sessionsQuery.isPlaceholderData;
   const loadingRows = loadingRowCount(page, limit, total);
   const error = sessionsQuery.error?.message ?? null;
-
-  const formatDuration = (seconds: number): string => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-
-    if (hours > 0) {
-      return `${hours}h ${minutes}m ${secs}s`;
-    } else if (minutes > 0) {
-      return `${minutes}m ${secs}s`;
-    }
-    return `${secs}s`;
-  };
 
   type Session =
     RouterOutput["admin"]["players"]["sessions"]["list"]["sessions"][number];
@@ -104,7 +92,7 @@ export function SessionsTab({ playerId, getServerName }: SessionsTabProps) {
         return (
           <>
             <p className="font-semibold">
-              {duration > 0 ? formatDuration(duration) : "In progress"}
+              {duration > 0 ? formatCompactDuration(duration) : "In progress"}
             </p>
             <p className="text-xs text-muted-foreground">
               Session #{session.id}

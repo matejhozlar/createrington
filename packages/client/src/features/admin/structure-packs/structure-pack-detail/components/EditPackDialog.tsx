@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { trpc } from "@/lib/trpc";
 
 /**
@@ -31,21 +31,21 @@ export function EditPackDialog({
   initialName: string;
   initialDescription: string;
 }) {
-  const toast = useToastActions();
   const utils = trpc.useUtils();
 
   const [name, setName] = useState(initialName);
   const [description, setDescription] = useState(initialDescription);
 
-  const updateMutation = trpc.admin.structurePacks.update.useMutation({
-    onSuccess: () => {
-      toast.success("Pack updated");
-      utils.admin.structurePacks.get.invalidate({ id: packId });
-      utils.admin.structurePacks.list.invalidate();
-      onClose();
-    },
-    onError: (err) => toast.error(err.message),
-  });
+  const updateMutation = trpc.admin.structurePacks.update.useMutation(
+    useMutationToast({
+      success: "Pack updated",
+      onSuccess: () => {
+        utils.admin.structurePacks.get.invalidate({ id: packId });
+        utils.admin.structurePacks.list.invalidate();
+        onClose();
+      },
+    }),
+  );
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>

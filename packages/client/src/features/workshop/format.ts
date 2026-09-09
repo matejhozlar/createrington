@@ -13,6 +13,7 @@ import {
 } from "@createrington/shared/workshop";
 
 export { WORKSHOP_MOD_REJECT_REASON_LABELS as REJECT_REASON_LABELS } from "@createrington/shared/workshop";
+export { formatDate } from "@createrington/shared/format";
 
 export const LOADER_NAMES: Record<number, string> = {
   1: "Forge",
@@ -30,15 +31,6 @@ export function formatDownloads(count: number): string {
   if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1)}M`;
   if (count >= 1_000) return `${(count / 1_000).toFixed(1)}K`;
   return String(count);
-}
-
-export function formatDate(value: string | Date | null): string {
-  if (!value) return "Unknown";
-  return new Date(value).toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
 }
 
 export function retryUnlessForbidden(

@@ -32,15 +32,9 @@ import {
   Terminal,
 } from "lucide-react";
 
-import { formatFullDate, formatRelativeDate } from "./format";
+import { formatDate } from "@createrington/shared/format";
 
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
+import { formatFullDate, formatRelativeDate } from "./format";
 
 export function AdminDashboard() {
   const { user } = useAuth();
@@ -181,12 +175,7 @@ export function AdminDashboard() {
                   </p>
                   {profile?.adminSince && (
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Admin since{" "}
-                      {formatDate(
-                        typeof profile.adminSince === "string"
-                          ? profile.adminSince
-                          : new Date(profile.adminSince).toISOString(),
-                      )}
+                      Admin since {formatDate(profile.adminSince)}
                     </p>
                   )}
                 </div>

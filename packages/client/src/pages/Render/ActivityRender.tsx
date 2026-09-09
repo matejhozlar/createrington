@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router";
+import { formatPlaytime } from "@createrington/shared/format";
 import { mcHeadsAvatar } from "@/lib/external-urls";
 
 interface ActivityData {
@@ -46,13 +47,6 @@ function getLevel(seconds: number): number {
   if (seconds < 7200) return 2;
   if (seconds < 14400) return 3;
   return 4;
-}
-
-function formatPlaytime(seconds: number): string {
-  const totalMinutes = Math.floor(seconds / 60);
-  const totalHours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-  return `${totalHours}h ${minutes}m`;
 }
 
 function toDateStr(d: Date): string {

@@ -270,7 +270,8 @@ export default defineApiSpec({
       method: "POST",
       path: "/lottery/join",
       name: "LotteryJoin",
-      description: "Joins an active lottery round with the given bet amount.",
+      description:
+        "Joins an active lottery round with the given bet amount. For a brief moment after a round is started, while the host's entry is still committing, the request is rejected with 409 and can safely be retried right away. Once the round has begun resolving, the request is rejected with 400, meaning the round is over and the request should not be retried.",
       request: {
         name: "LotteryJoinRequest",
         fields: [{ name: "amount", type: "double", description: "Bet amount" }],

@@ -1,5 +1,6 @@
 import type React from "react";
 import { useState } from "react";
+import { formatDate } from "@createrington/shared/format";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/auth";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
@@ -44,15 +45,6 @@ function parseUserAgent(ua: string | null): {
     label: `${browser}${os ? ` — ${os}` : ""}`,
     icon: isMobile ? Smartphone : Monitor,
   };
-}
-
-/** Formats an ISO date string as a short locale date (e.g. "Jan 1, 2024") */
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
 }
 
 /** Formats an ISO date string as a relative time label (e.g. "3h ago", "Just now") */

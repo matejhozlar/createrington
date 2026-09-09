@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router";
+import { formatDate } from "@createrington/shared/format";
+import { formatMoney } from "@/lib/format";
 import { loadSkin, randomPose } from "./skin-utils";
 
 interface PlayerData {
@@ -15,20 +17,6 @@ interface PlayerData {
 interface CompareData {
   player1: PlayerData;
   player2: PlayerData;
-}
-
-function formatNumber(value: string): string {
-  const num = parseFloat(value);
-  if (isNaN(num)) return value;
-  return num.toLocaleString("en-US", { maximumFractionDigits: 3 });
-}
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
 }
 
 /** Returns 1 if a > b, 2 if b > a, 0 if equal */
@@ -191,8 +179,8 @@ export function CompareRender() {
           <div className="flex flex-col gap-2.5 w-full">
             <StatRow
               label="NETWORTH"
-              value1={`$${formatNumber(left.networth)}`}
-              value2={`$${formatNumber(right.networth)}`}
+              value1={formatMoney(left.networth)}
+              value2={formatMoney(right.networth)}
               win={networthWin}
             />
             <StatRow

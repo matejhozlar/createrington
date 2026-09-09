@@ -3,7 +3,8 @@ import { BalanceUtils } from "@/db/repositories/balance/utils";
 import { EmbedPresets } from "@/discord/embeds";
 import { replyError } from "@/discord/utils/interaction-reply";
 import { CooldownType } from "@/discord/utils/cooldown";
-import { discordTimestamp, formatPlaytime } from "@/utils/format";
+import { formatPlaytime } from "@createrington/shared/format";
+import { discordTimestamp } from "@/utils/format";
 import { getService, Services } from "@/services";
 import config from "@/config";
 import {

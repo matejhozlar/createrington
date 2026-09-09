@@ -9,7 +9,7 @@ import { asyncHandler } from "@/app/middleware/async-handler";
 import config from "@/config";
 import { Q, playerRepo } from "@/db";
 import { BalanceUtils } from "@/db/repositories/balance/utils";
-import { formatPlaytime } from "@/utils/format";
+import { formatPlaytime } from "@createrington/shared/format";
 import { UnauthorizedError } from "@/app/middleware";
 import { requireLoopback } from "@/app/middleware/server-ip.middleware";
 import { getSkinApiClient, MAX_QUALITY_RENDER } from "@/services/skin-api";

@@ -3,7 +3,7 @@ import type { PlayerPlaytimeBreakdown } from "@/db/queries/player/playtime/summa
 import { EmbedPresets } from "@/discord/embeds";
 import { replyError } from "@/discord/utils/interaction-reply";
 import { CooldownType } from "@/discord/utils/cooldown";
-import { formatPlaytime } from "@/utils/format";
+import { formatPlaytime } from "@createrington/shared/format";
 import {
   ChatInputCommandInteraction,
   MessageFlags,
