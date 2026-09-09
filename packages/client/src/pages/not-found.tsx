@@ -48,12 +48,12 @@ const KBD_CLASS =
 
 const KEY_CONTROLS = [
   { key: "Space", action: "Jump" },
-  { key: "↓", action: "Duck" },
+  { key: "↓", action: "Slide" },
 ];
 
 const TOUCH_CONTROLS = [
   { gesture: "Tap", action: "Jump" },
-  { gesture: "Swipe down", action: "Duck" },
+  { gesture: "Swipe down", action: "Slide" },
 ];
 
 export function NotFound() {

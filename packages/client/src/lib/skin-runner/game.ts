@@ -70,7 +70,7 @@ type Pose = {
   farElbow: number;
   lean: number;
   headTilt: number;
-  crouch: number;
+  slide: number;
   bob: number;
   frontArm: number;
   breathe: number;
@@ -96,7 +96,7 @@ const PLAYER_CANVAS_W = 48;
 const PLAYER_CANVAS_H = 56;
 
 const STAND_HIT = { x: -3, w: 6, h: 30 };
-const DUCK_HIT = { x: -3, w: 14, h: 18 };
+const SLIDE_HIT = { x: -10, w: 22, h: 11 };
 
 const GRAVITY = 560;
 const JUMP_VELOCITY = 190;
@@ -115,7 +115,10 @@ const ARM_SWING = 0.55;
 const ELBOW_BEND = 1.3;
 const ELBOW_PUMP = 0.2;
 const RUN_BOB = 0.7;
-const CROUCH_DROP = 5;
+const SLIDE_DROP = 8;
+const LEAN_MIN = 0.08;
+const LEAN_MAX = 0.34;
+const LEAN_RAMP = 1.4;
 const POINTS_PER_TP = 0.1;
 const MILESTONE = 100;
 const MILESTONE_BLINK = 0.7;
@@ -137,6 +140,7 @@ const DEATH_FLASH = 0.4;
 const SHAKE_DURATION = 0.35;
 const SHAKE_AMPLITUDE = 1.5;
 const RUN_DUST_INTERVAL = 0.11;
+const SLIDE_DUST_INTERVAL = 0.05;
 const LANDING_DUST = 6;
 const CREEPER_HISS_RANGE = 34;
 const CLOUD_COUNT = 5;
@@ -172,7 +176,7 @@ const NIGHT: Palette = {
 const NIGHT_TINT = "12, 18, 44";
 const DUST_COLOR = "201, 180, 138";
 const JUMP_KEYS = new Set(["Space", "ArrowUp", "KeyW"]);
-const DUCK_KEYS = new Set(["ArrowDown", "KeyS"]);
+const SLIDE_KEYS = new Set(["ArrowDown", "KeyS"]);
 
 const RUN_POSE: Pose = {
   nearLeg: 0,
@@ -185,7 +189,7 @@ const RUN_POSE: Pose = {
   farElbow: 0,
   lean: 0,
   headTilt: 0,
-  crouch: 0,
+  slide: 0,
   bob: 0,
   frontArm: 0,
   breathe: 0,
@@ -197,41 +201,41 @@ const LEAP_POSE: Pose = {
   nearKnee: -1.3,
   farLeg: 1.1,
   farKnee: -1,
-  nearArm: 0.9,
-  nearElbow: 1,
-  farArm: -0.4,
-  farElbow: 1.2,
-  lean: 0.2,
-  headTilt: -0.1,
+  nearArm: 2.3,
+  nearElbow: 0.35,
+  farArm: 2,
+  farElbow: 0.45,
+  lean: 0.15,
+  headTilt: -0.15,
 };
 
 const FALL_POSE: Pose = {
   ...RUN_POSE,
-  nearLeg: 0.5,
-  nearKnee: -0.6,
-  farLeg: 0.3,
+  nearLeg: 0.6,
+  nearKnee: -0.5,
+  farLeg: 0.25,
   farKnee: -0.5,
-  nearArm: 0.8,
-  nearElbow: 0.8,
-  farArm: 0.4,
-  farElbow: 0.9,
-  lean: 0.2,
+  nearArm: 1,
+  nearElbow: 0.7,
+  farArm: 0.45,
+  farElbow: 0.85,
+  lean: 0.1,
   headTilt: 0.1,
 };
 
-const DUCK_POSE: Pose = {
+const SLIDE_POSE: Pose = {
   ...RUN_POSE,
-  nearLeg: 1,
-  nearKnee: -1.9,
-  farLeg: 0.85,
-  farKnee: -1.9,
-  nearArm: 0.4,
-  nearElbow: 0.9,
-  farArm: 0.2,
-  farElbow: 0.9,
-  lean: 0.9,
-  headTilt: -0.4,
-  crouch: 1,
+  nearLeg: 1.35,
+  nearKnee: -0.2,
+  farLeg: 1.25,
+  farKnee: -0.05,
+  nearArm: -1.65,
+  nearElbow: -0.3,
+  farArm: 0.74,
+  farElbow: 0.4,
+  lean: -1.15,
+  headTilt: 0.9,
+  slide: 1,
 };
 
 const DEATH_POSE: Pose = {
@@ -298,6 +302,14 @@ function writeBest(value: number): void {
   } catch {
     return;
   }
+}
+
+function mixPose(a: Pose, b: Pose, t: number): Pose {
+  const out = { ...a };
+  for (const key of Object.keys(out) as (keyof Pose)[]) {
+    out[key] = a[key] + (b[key] - a[key]) * t;
+  }
+  return out;
 }
 
 class Runner {
@@ -457,7 +469,7 @@ class Runner {
       event.preventDefault();
       if (!event.repeat) this.pressJump();
       this.jumpHeld = true;
-    } else if (DUCK_KEYS.has(event.code)) {
+    } else if (SLIDE_KEYS.has(event.code)) {
       event.preventDefault();
       this.downHeld = true;
     }
@@ -465,7 +477,7 @@ class Runner {
 
   private readonly onKeyUp = (event: KeyboardEvent): void => {
     if (JUMP_KEYS.has(event.code)) this.jumpHeld = false;
-    if (DUCK_KEYS.has(event.code)) this.downHeld = false;
+    if (SLIDE_KEYS.has(event.code)) this.downHeld = false;
   };
 
   private readonly onPointerDown = (event: PointerEvent): void => {
@@ -667,11 +679,21 @@ class Runner {
     }
 
     if (!this.grounded) {
-      this.approach(this.vy < 0 ? LEAP_POSE : FALL_POSE, POSE_RATE * dt);
+      const fall = clamp(
+        (this.vy + JUMP_VELOCITY * 0.25) / (JUMP_VELOCITY * 0.75),
+        0,
+        1,
+      );
+      this.approach(mixPose(LEAP_POSE, FALL_POSE, fall), POSE_RATE * dt);
       return;
     }
     if (this.downHeld) {
-      this.approach(DUCK_POSE, POSE_RATE * dt);
+      this.approach(SLIDE_POSE, POSE_RATE * dt);
+      this.dustT += dt;
+      if (this.dustT >= SLIDE_DUST_INTERVAL) {
+        this.dustT = 0;
+        this.burst(2);
+      }
       return;
     }
 
@@ -687,10 +709,11 @@ class Runner {
     p.farArm = -Math.sin(far) * ARM_SWING;
     p.nearElbow = ELBOW_BEND + ELBOW_PUMP * Math.sin(near);
     p.farElbow = ELBOW_BEND + ELBOW_PUMP * Math.sin(far);
-    p.lean = 0.06 + speedNorm * 0.12;
+    p.lean =
+      LEAN_MIN + (LEAN_MAX - LEAN_MIN) * Math.min(1, speedNorm * LEAN_RAMP);
     p.headTilt = -p.lean * 0.6;
     p.bob = Math.abs(Math.cos(this.phase)) * RUN_BOB;
-    p.crouch = Math.max(0, p.crouch - dt * 8);
+    p.slide = Math.max(0, p.slide - dt * 8);
 
     this.dustT += dt;
     if (this.dustT >= RUN_DUST_INTERVAL) {
@@ -796,7 +819,7 @@ class Runner {
   }
 
   private collides(): boolean {
-    const hit = this.grounded && this.downHeld ? DUCK_HIT : STAND_HIT;
+    const hit = this.grounded && this.downHeld ? SLIDE_HIT : STAND_HIT;
     const left = this.playerX + hit.x;
     const right = left + hit.w;
     const bottom = this.y;
@@ -1175,7 +1198,7 @@ class Runner {
   private drawSide(pc: CanvasRenderingContext2D, skin: SkinParts): void {
     const { side } = skin;
     const p = this.pose;
-    const hipY = -12 + CROUCH_DROP * p.crouch;
+    const hipY = -12 + SLIDE_DROP * p.slide;
 
     pc.save();
     pc.translate(0, -p.bob);
@@ -1194,12 +1217,12 @@ class Runner {
     pc.save();
     pc.translate(0, hipY);
     pc.rotate(p.lean);
-    this.jointedLimb(pc, side.nearArm, 0, -12, p.nearArm, p.nearElbow);
     pc.save();
     pc.translate(0, -12);
     pc.rotate(p.headTilt);
     pc.drawImage(side.head, -4, -8, 8, 8);
     pc.restore();
+    this.jointedLimb(pc, side.nearArm, 0, -12, p.nearArm, p.nearElbow);
     pc.restore();
 
     pc.restore();
