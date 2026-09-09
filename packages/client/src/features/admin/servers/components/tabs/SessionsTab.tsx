@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { keepPreviousData } from "@tanstack/react-query";
 import { Link } from "react-router";
-import { formatDuration } from "@createrington/shared/format";
+import { formatCompactDuration } from "@createrington/shared/format";
 import { Badge } from "@/components/ui/badge";
 import { CellDate, CellText } from "@/components/cell-text";
 import {
@@ -76,7 +76,7 @@ const COLUMNS: DataTableColumn<ServerSession>[] = [
     render: (session) =>
       session.secondsPlayed === null
         ? "Active"
-        : formatDuration(session.secondsPlayed),
+        : formatCompactDuration(session.secondsPlayed),
   },
 ];
 

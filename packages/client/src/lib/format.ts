@@ -1,10 +1,12 @@
-export function formatMoney(value: number | string): string {
+export function formatMoney(value: number | string, fallback = "$0"): string {
   const num = typeof value === "string" ? parseFloat(value) : value;
-  if (Number.isNaN(num)) return "$0";
-  return `$${num.toLocaleString("en-US", {
+  if (Number.isNaN(num)) return fallback;
+  return num.toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
     minimumFractionDigits: Number.isInteger(num) ? 0 : 2,
     maximumFractionDigits: 2,
-  })}`;
+  });
 }
 
 export function formatRelativeDate(value: string | Date): string {

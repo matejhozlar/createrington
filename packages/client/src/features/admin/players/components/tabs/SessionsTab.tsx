@@ -1,4 +1,4 @@
-import { formatDuration } from "@createrington/shared/format";
+import { formatCompactDuration } from "@createrington/shared/format";
 import { CellDate, CellText } from "@/components/cell-text";
 import {
   DataTable,
@@ -92,7 +92,7 @@ export function SessionsTab({ playerId, getServerName }: SessionsTabProps) {
         return (
           <>
             <p className="font-semibold">
-              {duration > 0 ? formatDuration(duration) : "In progress"}
+              {duration > 0 ? formatCompactDuration(duration) : "In progress"}
             </p>
             <p className="text-xs text-muted-foreground">
               Session #{session.id}

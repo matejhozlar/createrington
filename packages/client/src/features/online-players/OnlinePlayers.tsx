@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router";
-import { formatDuration } from "@createrington/shared/format";
+import { formatCompactDuration } from "@createrington/shared/format";
 import { usePlayerData } from "@/contexts/player-data";
 import { useServerData } from "@/contexts/server-data";
 import { useAuth } from "@/contexts/auth";
@@ -42,7 +42,7 @@ function SessionTimer({ player }: { player: PlayerData }) {
 
   return (
     <span className="tabular-nums text-muted-foreground text-sm font-mono">
-      {formatDuration(seconds)}
+      {formatCompactDuration(seconds)}
     </span>
   );
 }
@@ -265,7 +265,7 @@ export function OnlinePlayers() {
             />
             <StatBlock
               icon={<Clock className="size-5 text-primary" />}
-              value={avgSession > 0 ? formatDuration(avgSession) : "—"}
+              value={avgSession > 0 ? formatCompactDuration(avgSession) : "—"}
               label="Avg session"
             />
           </div>

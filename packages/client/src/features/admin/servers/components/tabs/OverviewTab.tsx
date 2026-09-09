@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import { formatDuration } from "@createrington/shared/format";
+import { formatCompactDuration } from "@createrington/shared/format";
 import { CellDate, CellText } from "@/components/cell-text";
 import { DataTable, type DataTableColumn } from "@/components/data-table";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
@@ -48,7 +48,7 @@ export function OverviewTab({ serverId, serverData }: OverviewTabProps) {
       header: "Session Duration",
       width: 170,
       cellClassName: "text-sm text-muted-foreground",
-      render: (player) => formatDuration(player.sessionDuration),
+      render: (player) => formatCompactDuration(player.sessionDuration),
     },
   ];
 
