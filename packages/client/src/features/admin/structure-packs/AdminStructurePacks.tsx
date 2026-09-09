@@ -104,7 +104,7 @@ export function AdminStructurePacks() {
 
   const importMutation = trpc.admin.structurePacks.importPacks.useMutation(
     useMutationToast({
-      success: (result: { created: string[]; skipped: string[] }) => {
+      success: (result) => {
         const parts: string[] = [];
         if (result.created.length > 0)
           parts.push(`Created: ${result.created.join(", ")}`);
@@ -153,7 +153,7 @@ export function AdminStructurePacks() {
   const createMutation = trpc.admin.structurePacks.create.useMutation(
     useMutationToast({
       success: "Structure pack created",
-      onSuccess: (pack: { id: number }) => {
+      onSuccess: (pack) => {
         utils.admin.structurePacks.list.invalidate();
         setCreateOpen(false);
         setName("");
@@ -166,7 +166,7 @@ export function AdminStructurePacks() {
   const toggleEnabledMutation =
     trpc.admin.structurePacks.toggleEnabled.useMutation(
       useMutationToast({
-        success: (_data, variables: { enabled: boolean }) =>
+        success: (_data, variables) =>
           variables.enabled ? "Pack enabled" : "Pack disabled",
         onSuccess: () => {
           utils.admin.structurePacks.list.invalidate();
