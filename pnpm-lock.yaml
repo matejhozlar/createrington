@@ -143,8 +143,8 @@ importers:
         specifier: ^2.1.1
         version: 2.1.1
       createrington-skin-api:
-        specifier: ^2.9.0
-        version: 2.9.0
+        specifier: ^2.10.0
+        version: 2.10.0
       embla-carousel-autoplay:
         specifier: ^8.6.0
         version: 8.6.0(embla-carousel@8.6.0)
@@ -269,6 +269,9 @@ importers:
       vite:
         specifier: ^7.3.5
         version: 7.3.6(@types/node@24.13.3)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.101.0)(tsx@4.23.1)(yaml@2.9.0)
+      vite-plugin-singlefile:
+        specifier: 2.3.3
+        version: 2.3.3(rollup@4.62.2)(vite@7.3.6(@types/node@24.13.3)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.101.0)(tsx@4.23.1)(yaml@2.9.0))
       zod:
         specifier: ^4.4.3
         version: 4.4.3
@@ -297,8 +300,8 @@ importers:
         specifier: ^2.8.5
         version: 2.8.6
       createrington-skin-api:
-        specifier: ^2.9.0
-        version: 2.9.0
+        specifier: ^2.10.0
+        version: 2.10.0
       discord-html-transcripts:
         specifier: ^3.2.0
         version: 3.3.0(discord.js@14.27.0)
@@ -2905,8 +2908,8 @@ packages:
     resolution: {integrity: sha512-9IkYqtX3YHPCzoVg1Py+o9057a3i0fp7S530UWokCSaFVTc7CwXPRiOjRjBQQ18ZCNafx78YfnG+HALxtVmOGA==}
     engines: {node: '>=10.0.0'}
 
-  createrington-skin-api@2.9.0:
-    resolution: {integrity: sha512-ZdQRAYUUONL/uY61LBGMRRibfNEKsoIunHL01XkBV+iSF2ZzsywxLkIZYfFxAaAeLMm2D5XLbJLzcae6OdREwQ==}
+  createrington-skin-api@2.10.0:
+    resolution: {integrity: sha512-Oeapq05/2nMG6DzExiu07VFGGf7M62Y32rV53tLT/JLI2BJhjFbtdcYqFpee7ke7PDF6/Wf0yjWm88wJIjqb9Q==}
 
   cross-env@10.1.0:
     resolution: {integrity: sha512-GsYosgnACZTADcmEyJctkJIoqAhHjttw7RsFrVoJNXbsWWqaq6Ym+7kZjq6mS45O0jij6vtiReppKQEtqWy6Dw==}
@@ -5299,6 +5302,16 @@ packages:
 
   victory-vendor@37.3.6:
     resolution: {integrity: sha512-SbPDPdDBYp+5MJHhBCAyI7wKM3d5ivekigc2Dk2s7pgbZ9wIgIBYGVw4zGHBml/qTFbexrofXW6Gu4noGxrOwQ==}
+
+  vite-plugin-singlefile@2.3.3:
+    resolution: {integrity: sha512-XVnGH0QzbOa8fxRSsHdCarVN1BSBXNi7uLMQYlrGRN5apdHkk62XQWRJhVever0lnfuyBkwn+kvVChdm/OoOUg==}
+    engines: {node: '>18.0.0'}
+    peerDependencies:
+      rollup: ^4.59.0
+      vite: ^5.4.21 || ^6.0.0 || ^7.0.0 || ^8.0.0
+    peerDependenciesMeta:
+      rollup:
+        optional: true
 
   vite@7.3.6:
     resolution: {integrity: sha512-4XP60spRGjSZFf1qYH+dJIkK2znL3zQfl9KkOV9MkkRR/3Dls0dxaBsQPTloEc5BLXWPL9vsOxopxyKoMmDueg==}
@@ -7841,7 +7854,7 @@ snapshots:
       nan: 2.28.0
     optional: true
 
-  createrington-skin-api@2.9.0: {}
+  createrington-skin-api@2.10.0: {}
 
   cross-env@10.1.0:
     dependencies:
@@ -10516,6 +10529,13 @@ snapshots:
       d3-shape: 3.2.0
       d3-time: 3.1.0
       d3-timer: 3.0.1
+
+  vite-plugin-singlefile@2.3.3(rollup@4.62.2)(vite@7.3.6(@types/node@24.13.3)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.101.0)(tsx@4.23.1)(yaml@2.9.0)):
+    dependencies:
+      micromatch: 4.0.8
+      vite: 7.3.6(@types/node@24.13.3)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.101.0)(tsx@4.23.1)(yaml@2.9.0)
+    optionalDependencies:
+      rollup: 4.62.2
 
   vite@7.3.6(@types/node@24.13.3)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.101.0)(tsx@4.23.1)(yaml@2.9.0):
     dependencies:

@@ -6,6 +6,7 @@ import {
   setAccessToken,
   refreshAccessToken,
 } from "@/services/auth/token-manager";
+import { writePlayerHint } from "@/lib/skin-runner/player-hint";
 import { toast } from "sonner";
 
 interface AuthProviderProps {
@@ -119,6 +120,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } finally {
       setAccessToken(null);
       localStorage.removeItem("auth_token"); // clean up legacy
+      writePlayerHint(null);
       setUser(null);
       setError(null);
     }
@@ -138,6 +140,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (import.meta.env.DEV) console.error("Logout-all error:", error);
     } finally {
       setAccessToken(null);
+      writePlayerHint(null);
       setUser(null);
       setError(null);
     }
@@ -220,6 +223,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     return () => clearInterval(refreshInterval);
   }, [user, silentRefresh]);
+
+  useEffect(() => {
+    if (!user?.minecraftUuid) return;
+    writePlayerHint({
+      uuid: user.minecraftUuid,
+      username: user.minecraftUsername,
+    });
+  }, [user]);
 
   // Listen for session-expired events dispatched by the API client / tRPC.
   useEffect(() => {

@@ -1,3 +1,14 @@
+## v1.52.3 (2026-09-09)
+
+### @createrington/client (0.2.66 → 0.2.67)
+- [add] Add a skin runner endless game to the 404 and maintenance pages: the player's Minecraft skin runs through a procedurally generated landscape dodging cacti, creepers, minecarts, and phantoms with jump and slide controls, progressive speed scaling, day/night cycles, score tracking, and best-score persistence
+- [refactor] Redesign the 404 page to feature the skin runner canvas prominently above the error card, with a controls legend strip adapting between keyboard and touch inputs
+- [add] Add a standalone maintenance page built as a single-file HTML bundle via a dedicated Vite config, replacing the previous static maintenance page
+- [chore] Bump createrington-skin-api from 2.9.0 to 2.10.0
+
+### @createrington/server (1.53.2 → 1.53.3)
+- [chore] Bump createrington-skin-api from 2.9.0 to 2.10.0
+
 ## v1.52.2 (2026-09-09)
 
 ### @createrington/server (1.53.1 → 1.53.2)
