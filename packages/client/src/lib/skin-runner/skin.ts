@@ -1,3 +1,4 @@
+import { mcHeadsSkin } from "@/lib/external-urls";
 import { STEVE_SKIN_DATA_URI } from "./steve";
 
 export type SkinModel = "classic" | "slim";
@@ -35,10 +36,6 @@ const SLIM_PROBE_X = 55;
 const SLIM_PROBE_Y = 20;
 const FAR_LIMB_SHADE = "rgba(0, 0, 0, 0.32)";
 
-export function skinUrl(uuid: string): string {
-  return `https://mc-heads.net/skin/${encodeURIComponent(uuid)}`;
-}
-
 export function createCanvas(width: number, height: number): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
   canvas.width = width;
@@ -54,7 +51,7 @@ export function context2d(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
 }
 
 export async function loadSkinParts(uuid: string): Promise<SkinParts> {
-  const image = await loadImage(skinUrl(uuid)).catch(() =>
+  const image = await loadImage(mcHeadsSkin(uuid)).catch(() =>
     loadImage(STEVE_SKIN_DATA_URI),
   );
   return buildParts(image);

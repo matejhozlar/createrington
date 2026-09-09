@@ -147,6 +147,10 @@ const CLOUD_COUNT = 5;
 const CLOUD_DRIFT = 3;
 const STAR_COUNT = 40;
 const MAX_DT = 0.05;
+const MAX_SUBSTEP = 3;
+const PHANTOM_SPEED = 1.25;
+const MINECART_SPEED = 1.35;
+const FASTEST_OBSTACLE = MINECART_SPEED;
 const GROUND_TILE = 64;
 
 const DAY: Palette = {
@@ -280,7 +284,7 @@ function pad(value: number): string {
   return String(Math.floor(value)).padStart(5, "0");
 }
 
-function isEditable(target: EventTarget | null): boolean {
+function isInteractive(target: EventTarget | null): boolean {
   return (
     target instanceof Element &&
     target.closest("input, textarea, select, button, a, [contenteditable]") !==
@@ -320,10 +324,15 @@ class Runner {
   private readonly sprites: Sprites;
   private readonly playerCanvas: HTMLCanvasElement;
   private readonly playerCtx: CanvasRenderingContext2D;
-  private readonly reducedMotion: boolean;
-  private readonly touchUi: boolean;
   private readonly observer: ResizeObserver | null;
+  private readonly viewObserver: IntersectionObserver | null;
+  private readonly motionQuery: MediaQueryList;
+  private readonly hoverQuery: MediaQueryList;
 
+  private reducedMotion: boolean;
+  private touchUi: boolean;
+  private inView = true;
+  private skinFailed = false;
   private skin: SkinParts | null = null;
   private state: RunnerState = "loading";
   private destroyed = false;
@@ -334,9 +343,9 @@ class Runner {
 
   private W = 0;
   private H = 0;
-  private S = 4;
-  private gy = 0;
-  private Wt = 0;
+  private texel = 4;
+  private groundPx = 0;
+  private worldWidth = 0;
   private playerX = PLAYER_X_MIN;
 
   private scroll = 0;
@@ -352,6 +361,7 @@ class Runner {
   private decor: Decor[] = [];
   private particles: Particle[] = [];
   private nextObstacleAt = 0;
+  private pending: Obstacle | null = null;
   private nextDecorAt = 0;
   private groundTile: Sprite | null = null;
   private groundTileKey = -1;
@@ -386,10 +396,10 @@ class Runner {
     this.sprites = buildSprites();
     this.playerCanvas = createCanvas(1, 1);
     this.playerCtx = context2d(this.playerCanvas);
-    this.reducedMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
-    this.touchUi = window.matchMedia("(hover: none)").matches;
+    this.motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    this.hoverQuery = window.matchMedia("(hover: none)");
+    this.reducedMotion = this.motionQuery.matches;
+    this.touchUi = this.hoverQuery.matches;
     this.best = readBest();
 
     canvas.style.touchAction = "none";
@@ -402,6 +412,17 @@ class Runner {
       this.observer = null;
     }
 
+    if (typeof IntersectionObserver !== "undefined") {
+      this.viewObserver = new IntersectionObserver((entries) => {
+        for (const entry of entries) this.inView = entry.isIntersecting;
+      });
+      this.viewObserver.observe(canvas);
+    } else {
+      this.viewObserver = null;
+    }
+
+    this.motionQuery.addEventListener("change", this.onMediaChange);
+    this.hoverQuery.addEventListener("change", this.onMediaChange);
     window.addEventListener("keydown", this.onKeyDown);
     window.addEventListener("keyup", this.onKeyUp);
     canvas.addEventListener("pointerdown", this.onPointerDown);
@@ -414,11 +435,15 @@ class Runner {
     document.fonts?.load(`16px ${this.font}`).catch(() => undefined);
     this.raf = requestAnimationFrame(this.frame);
 
-    void loadSkinParts(options.uuid).then((parts) => {
-      if (this.destroyed) return;
-      this.skin = parts;
-      this.setState("idle");
-    });
+    void loadSkinParts(options.uuid)
+      .then((parts) => {
+        if (this.destroyed) return;
+        this.skin = parts;
+        this.setState("idle");
+      })
+      .catch(() => {
+        this.skinFailed = true;
+      });
   }
 
   getState(): RunnerState {
@@ -429,6 +454,9 @@ class Runner {
     this.destroyed = true;
     cancelAnimationFrame(this.raf);
     this.observer?.disconnect();
+    this.viewObserver?.disconnect();
+    this.motionQuery.removeEventListener("change", this.onMediaChange);
+    this.hoverQuery.removeEventListener("change", this.onMediaChange);
     window.removeEventListener("keydown", this.onKeyDown);
     window.removeEventListener("keyup", this.onKeyUp);
     this.canvas.removeEventListener("pointerdown", this.onPointerDown);
@@ -454,17 +482,21 @@ class Runner {
     this.H = H;
     this.canvas.width = W;
     this.canvas.height = H;
-    this.S = clamp(Math.floor(H / VIEW_ROWS), MIN_SCALE, MAX_SCALE);
-    this.gy = H - GROUND_ROWS * this.S;
-    this.Wt = W / this.S;
-    this.playerX = clamp(this.Wt * PLAYER_X_RATIO, PLAYER_X_MIN, PLAYER_X_MAX);
-    this.playerCanvas.width = PLAYER_CANVAS_W * this.S;
-    this.playerCanvas.height = PLAYER_CANVAS_H * this.S;
+    this.texel = clamp(Math.floor(H / VIEW_ROWS), MIN_SCALE, MAX_SCALE);
+    this.groundPx = H - GROUND_ROWS * this.texel;
+    this.worldWidth = W / this.texel;
+    this.playerX = clamp(
+      this.worldWidth * PLAYER_X_RATIO,
+      PLAYER_X_MIN,
+      PLAYER_X_MAX,
+    );
+    this.playerCanvas.width = PLAYER_CANVAS_W * this.texel;
+    this.playerCanvas.height = PLAYER_CANVAS_H * this.texel;
     this.groundTileKey = -1;
   }
 
   private readonly onKeyDown = (event: KeyboardEvent): void => {
-    if (isEditable(event.target)) return;
+    if (!this.inView || isInteractive(event.target)) return;
     if (JUMP_KEYS.has(event.code)) {
       event.preventDefault();
       if (!event.repeat) this.pressJump();
@@ -481,6 +513,7 @@ class Runner {
   };
 
   private readonly onPointerDown = (event: PointerEvent): void => {
+    if (event.button !== 0 || this.pointerId !== null) return;
     event.preventDefault();
     this.canvas.focus({ preventScroll: true });
     this.pointerId = event.pointerId;
@@ -506,6 +539,11 @@ class Runner {
 
   private readonly onContextMenu = (event: Event): void => {
     event.preventDefault();
+  };
+
+  private readonly onMediaChange = (): void => {
+    this.reducedMotion = this.motionQuery.matches;
+    this.touchUi = this.hoverQuery.matches;
   };
 
   private readonly onVisibility = (): void => {
@@ -596,6 +634,7 @@ class Runner {
     this.decor = [];
     this.particles = [];
     this.nextObstacleAt = gap;
+    this.pending = null;
     this.nextDecorAt = 20;
     this.y = 0;
     this.vy = 0;
@@ -611,10 +650,24 @@ class Runner {
 
   private updateRun(dt: number): void {
     this.speed = Math.min(MAX_SPEED, BASE_SPEED + this.score * SPEED_PER_POINT);
-    const step = this.speed * dt;
-    this.scroll += step;
-    this.distance += step;
-    this.score = this.distance * POINTS_PER_TP;
+    const substeps = Math.max(
+      1,
+      Math.ceil((this.speed * dt * FASTEST_OBSTACLE) / MAX_SUBSTEP),
+    );
+    const subDt = dt / substeps;
+    for (let i = 0; i < substeps; i++) {
+      const step = this.speed * subDt;
+      this.scroll += step;
+      this.distance += step;
+      this.score = this.distance * POINTS_PER_TP;
+      this.updatePlayer(subDt);
+      this.updateEntities(step, subDt);
+      this.spawn();
+      if (this.collides()) {
+        this.die();
+        return;
+      }
+    }
 
     const milestone = Math.floor(this.score / MILESTONE);
     if (milestone > this.lastMilestone) {
@@ -632,11 +685,6 @@ class Runner {
         1,
       );
     }
-
-    this.updatePlayer(dt);
-    this.updateEntities(step, dt);
-    this.spawn();
-    if (this.collides()) this.die();
   }
 
   private updatePlayer(dt: number): void {
@@ -776,19 +824,33 @@ class Runner {
 
   private spawn(): void {
     if (this.distance >= this.nextObstacleAt) {
-      const obstacle = this.makeObstacle();
+      const obstacle = this.pending ?? this.makeObstacle();
+      obstacle.x = this.worldWidth + 8;
       this.obstacles.push(obstacle);
+      this.pending = this.makeObstacle();
+      const travel = this.worldWidth + 8 - this.playerX;
+      const catchUp = Math.max(
+        0,
+        1 / obstacle.speedMul - 1 / this.pending.speedMul,
+      );
       this.nextObstacleAt =
-        this.distance + obstacle.sprite.w + rand(110, 220) + this.speed * 0.3;
+        this.distance +
+        obstacle.sprite.w +
+        rand(110, 220) +
+        this.speed * 0.3 +
+        travel * catchUp;
     }
     if (this.distance >= this.nextDecorAt) {
-      this.decor.push({ x: this.Wt + 4, sprite: pick(this.sprites.decor) });
+      this.decor.push({
+        x: this.worldWidth + 4,
+        sprite: pick(this.sprites.decor),
+      });
       this.nextDecorAt = this.distance + rand(16, 60);
     }
   }
 
   private makeObstacle(): Obstacle {
-    const x = this.Wt + 8;
+    const x = this.worldWidth + 8;
     const roll = Math.random();
     const base = { x, bottom: 0, speedMul: 1, frame: 0, frameT: 0 };
     if (this.score > PHANTOM_SCORE && roll < 0.15) {
@@ -797,7 +859,7 @@ class Runner {
         kind: "phantom",
         sprite: this.sprites.phantom,
         bottom: pick(PHANTOM_ALTITUDES),
-        speedMul: 1.25,
+        speedMul: PHANTOM_SPEED,
       };
     }
     if (this.score > MINECART_SCORE && roll < 0.3) {
@@ -805,7 +867,7 @@ class Runner {
         ...base,
         kind: "minecart",
         sprite: this.sprites.minecart,
-        speedMul: 1.35,
+        speedMul: MINECART_SPEED,
       };
     }
     if (roll < 0.55) {
@@ -838,7 +900,7 @@ class Runner {
     this.deathT = 0;
     this.shakeT = this.reducedMotion ? 0 : SHAKE_DURATION;
     if (this.score > this.best) {
-      this.best = this.score;
+      this.best = Math.floor(this.score);
       writeBest(this.best);
     }
     this.setState("dead");
@@ -860,7 +922,7 @@ class Runner {
     while (this.clouds.length < CLOUD_COUNT) {
       const initial = this.time === 0;
       this.clouds.push({
-        x: initial ? rand(0, this.Wt) : this.Wt + rand(4, 30),
+        x: initial ? rand(0, this.worldWidth) : this.worldWidth + rand(4, 30),
         y: rand(4, 28),
         depth: Math.random() < 0.5 ? 0.12 : 0.25,
         scale: Math.random() < 0.4 ? 2 : 1,
@@ -875,12 +937,12 @@ class Runner {
     this.clouds = this.clouds.filter((c) => c.x + cloudWidth * c.scale > -4);
   }
 
-  private X(x: number): number {
-    return Math.round(x * this.S);
+  private screenX(x: number): number {
+    return Math.round(x * this.texel);
   }
 
-  private Y(height: number): number {
-    return this.gy - Math.round(height * this.S);
+  private screenY(height: number): number {
+    return this.groundPx - Math.round(height * this.texel);
   }
 
   private blit(sprite: Sprite, x: number, y: number, scale = 1): void {
@@ -888,13 +950,13 @@ class Runner {
       sprite,
       Math.round(x),
       Math.round(y),
-      sprite.width * this.S * scale,
-      sprite.height * this.S * scale,
+      sprite.width * this.texel * scale,
+      sprite.height * this.texel * scale,
     );
   }
 
   private render(): void {
-    const { ctx, W, H, S } = this;
+    const { ctx, W, H, texel } = this;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.imageSmoothingEnabled = false;
     ctx.globalAlpha = 1;
@@ -902,7 +964,8 @@ class Runner {
 
     ctx.save();
     if (this.shakeT > 0) {
-      const amplitude = (this.shakeT / SHAKE_DURATION) * SHAKE_AMPLITUDE * S;
+      const amplitude =
+        (this.shakeT / SHAKE_DURATION) * SHAKE_AMPLITUDE * texel;
       ctx.translate(
         Math.round(rand(-amplitude, amplitude)),
         Math.round(rand(-amplitude, amplitude)),
@@ -923,9 +986,9 @@ class Runner {
   }
 
   private renderSky(): void {
-    const { ctx, W, H, S, gy } = this;
+    const { ctx, W, H, texel, groundPx } = this;
     const m = this.nightMix;
-    const gradient = ctx.createLinearGradient(0, 0, 0, gy);
+    const gradient = ctx.createLinearGradient(0, 0, 0, groundPx);
     gradient.addColorStop(0, mix(DAY.skyTop, NIGHT.skyTop, m));
     gradient.addColorStop(1, mix(DAY.skyBottom, NIGHT.skyBottom, m));
     ctx.fillStyle = gradient;
@@ -937,10 +1000,11 @@ class Runner {
         const twinkle =
           0.55 + 0.45 * Math.sin(this.time * (1.5 + hash(i, 3) * 2) + i);
         ctx.globalAlpha = m * twinkle;
-        const size = hash(i, 4) > 0.8 ? S : Math.max(1, Math.floor(S / 2));
+        const size =
+          hash(i, 4) > 0.8 ? texel : Math.max(1, Math.floor(texel / 2));
         ctx.fillRect(
           Math.round(hash(i, 1) * W),
-          Math.round(hash(i, 2) * gy * 0.7),
+          Math.round(hash(i, 2) * groundPx * 0.7),
           size,
           size,
         );
@@ -948,16 +1012,16 @@ class Runner {
       ctx.globalAlpha = 1;
     }
 
-    this.blit(this.sprites.sun, W * 0.82 - 4 * S, 8 * S + m * gy);
+    this.blit(this.sprites.sun, W * 0.82 - 4 * texel, 8 * texel + m * groundPx);
     this.blit(
       this.sprites.moon,
-      W * 0.76 - 4 * S,
-      gy + 2 * S - m * (gy - 6 * S),
+      W * 0.76 - 4 * texel,
+      groundPx + 2 * texel - m * (groundPx - 6 * texel),
     );
 
     ctx.globalAlpha = 0.92;
     for (const c of this.clouds) {
-      this.blit(this.sprites.cloud, this.X(c.x), c.y * S, c.scale);
+      this.blit(this.sprites.cloud, this.screenX(c.x), c.y * texel, c.scale);
     }
     ctx.globalAlpha = 1;
   }
@@ -977,43 +1041,63 @@ class Runner {
     color: string,
     seed: number,
   ): void {
-    const { ctx, S } = this;
+    const { ctx, texel } = this;
     const offset = this.scroll * depth;
     const first = Math.floor(offset / segment);
-    const count = Math.ceil(this.Wt / segment) + 2;
+    const count = Math.ceil(this.worldWidth / segment) + 2;
     ctx.fillStyle = color;
     for (let k = 0; k < count; k++) {
       const i = first + k;
       const x = i * segment - offset;
       const h = base + hash(i, seed) * amplitude;
-      const top = this.Y(h);
-      ctx.fillRect(this.X(x), top, segment * S + 1, this.gy - top + 1);
-      const cap = hash(i, seed + 1) * amplitude * 0.5;
-      const capTop = this.Y(h + cap);
+      const top = this.screenY(h);
       ctx.fillRect(
-        this.X(x + segment * 0.25),
+        this.screenX(x),
+        top,
+        segment * texel + 1,
+        this.groundPx - top + 1,
+      );
+      const cap = hash(i, seed + 1) * amplitude * 0.5;
+      const capTop = this.screenY(h + cap);
+      ctx.fillRect(
+        this.screenX(x + segment * 0.25),
         capTop,
-        segment * 0.5 * S,
+        segment * 0.5 * texel,
         top - capTop + 1,
       );
     }
   }
 
   private trees(depth: number, color: string, seed: number): void {
-    const { ctx, S } = this;
+    const { ctx, texel } = this;
     const segment = 22;
     const offset = this.scroll * depth;
     const first = Math.floor(offset / segment);
-    const count = Math.ceil(this.Wt / segment) + 2;
+    const count = Math.ceil(this.worldWidth / segment) + 2;
     ctx.fillStyle = color;
     for (let k = 0; k < count; k++) {
       const i = first + k;
       if (hash(i, seed) >= 0.38) continue;
       const x = i * segment - offset;
       const trunk = 7 + Math.round(hash(i, seed + 1) * 5);
-      ctx.fillRect(this.X(x + 10), this.Y(trunk), 2 * S, trunk * S);
-      ctx.fillRect(this.X(x + 6), this.Y(trunk + 8), 10 * S, 8 * S);
-      ctx.fillRect(this.X(x + 8), this.Y(trunk + 10), 6 * S, 2 * S);
+      ctx.fillRect(
+        this.screenX(x + 10),
+        this.screenY(trunk),
+        2 * texel,
+        trunk * texel,
+      );
+      ctx.fillRect(
+        this.screenX(x + 6),
+        this.screenY(trunk + 8),
+        10 * texel,
+        8 * texel,
+      );
+      ctx.fillRect(
+        this.screenX(x + 8),
+        this.screenY(trunk + 10),
+        6 * texel,
+        2 * texel,
+      );
     }
   }
 
@@ -1045,24 +1129,24 @@ class Runner {
   }
 
   private renderGround(): void {
-    const { S, gy } = this;
+    const { texel, groundPx } = this;
     const tile = this.groundSprite();
     const offset = this.scroll % GROUND_TILE;
-    const count = Math.ceil(this.Wt / GROUND_TILE) + 2;
+    const count = Math.ceil(this.worldWidth / GROUND_TILE) + 2;
     for (let k = 0; k < count; k++) {
       this.ctx.drawImage(
         tile,
-        this.X(k * GROUND_TILE - offset),
-        gy,
-        GROUND_TILE * S + 1,
-        GROUND_ROWS * S,
+        this.screenX(k * GROUND_TILE - offset),
+        groundPx,
+        GROUND_TILE * texel + 1,
+        GROUND_ROWS * texel,
       );
     }
   }
 
   private renderDecor(): void {
     for (const d of this.decor) {
-      this.blit(d.sprite, this.X(d.x), this.Y(d.sprite.height));
+      this.blit(d.sprite, this.screenX(d.x), this.screenY(d.sprite.height));
     }
   }
 
@@ -1073,22 +1157,27 @@ class Runner {
       const frame = hissing ? Math.floor(this.time / 0.08) % 2 : o.frame;
       const sprite = o.sprite.frames[frame] ?? o.sprite.frames[0];
       if (!sprite) continue;
-      this.blit(sprite, this.X(o.x), this.Y(o.bottom + o.sprite.h));
+      this.blit(sprite, this.screenX(o.x), this.screenY(o.bottom + o.sprite.h));
     }
   }
 
   private renderParticles(): void {
-    const { ctx, S } = this;
+    const { ctx, texel } = this;
     for (const p of this.particles) {
       ctx.fillStyle = `rgba(${DUST_COLOR}, ${(p.life / p.maxLife) * 0.9})`;
-      ctx.fillRect(this.X(p.x), this.Y(p.y), p.size * S, p.size * S);
+      ctx.fillRect(
+        this.screenX(p.x),
+        this.screenY(p.y),
+        p.size * texel,
+        p.size * texel,
+      );
     }
   }
 
   private renderPlayer(): void {
     const skin = this.skin;
     if (!skin) return;
-    const { S } = this;
+    const { texel } = this;
     const pc = this.playerCtx;
     const width = this.playerCanvas.width;
     const height = this.playerCanvas.height;
@@ -1102,20 +1191,20 @@ class Runner {
     const sx = 1 + 0.18 * squash - stretch * 0.6;
     const sy = 1 - 0.18 * squash + stretch;
     pc.setTransform(
-      S * sx,
+      texel * sx,
       0,
       0,
-      S * sy,
-      PLAYER_ORIGIN_X * S,
-      PLAYER_ORIGIN_Y * S,
+      texel * sy,
+      PLAYER_ORIGIN_X * texel,
+      PLAYER_ORIGIN_Y * texel,
     );
 
     if (this.facing === "front") {
       this.drawFront(pc, skin);
     } else if (this.facing === "turning") {
       const t = this.turnT / TURN_DURATION;
-      const width = Math.max(0.02, Math.abs(Math.cos(t * Math.PI)));
-      pc.scale(width, 1);
+      const squeeze = Math.max(0.02, Math.abs(Math.cos(t * Math.PI)));
+      pc.scale(squeeze, 1);
       if (t < 0.5) this.drawFront(pc, skin);
       else this.drawSide(pc, skin);
     } else {
@@ -1136,8 +1225,8 @@ class Runner {
 
     this.ctx.drawImage(
       this.playerCanvas,
-      this.X(this.playerX) - PLAYER_ORIGIN_X * S,
-      this.Y(this.y) - PLAYER_ORIGIN_Y * S,
+      this.screenX(this.playerX) - PLAYER_ORIGIN_X * texel,
+      this.screenY(this.y) - PLAYER_ORIGIN_Y * texel,
     );
   }
 
@@ -1242,8 +1331,8 @@ class Runner {
     align: CanvasTextAlign,
     alpha = 1,
   ): void {
-    const { ctx, S } = this;
-    const shadow = Math.max(1, Math.round(S / 2));
+    const { ctx, texel } = this;
+    const shadow = Math.max(1, Math.round(texel / 2));
     ctx.font = `${Math.round(size)}px ${this.font}`;
     ctx.textAlign = align;
     ctx.textBaseline = "top";
@@ -1262,9 +1351,9 @@ class Runner {
 
   private renderScore(): void {
     if (this.state === "loading") return;
-    const { ctx, W, S } = this;
-    const T = Math.max(S, MIN_TEXT_SCALE);
-    const margin = 3 * S;
+    const { ctx, W, texel } = this;
+    const T = Math.max(texel, MIN_TEXT_SCALE);
+    const margin = 3 * texel;
     const size = 4 * T;
     const current = pad(this.score);
     const blinkOff =
@@ -1285,13 +1374,17 @@ class Runner {
   }
 
   private renderHud(): void {
-    const { W, S } = this;
-    const T = Math.max(S, MIN_TEXT_SCALE);
-    const top = 3 * S + 6 * T;
+    const { W, texel } = this;
+    const T = Math.max(texel, MIN_TEXT_SCALE);
+    const top = 3 * texel + 6 * T;
     const pulse = 0.8 + 0.2 * Math.sin(this.time * 3);
 
     if (this.state === "loading") {
-      this.text("LOADING SKIN...", W / 2, top, 3.5 * T, "center", pulse);
+      const message = this.skinFailed
+        ? "SKIN UNAVAILABLE, REFRESH TO RETRY"
+        : "LOADING SKIN...";
+      const alpha = this.skinFailed ? 1 : pulse;
+      this.text(message, W / 2, top, 3.5 * T, "center", alpha);
       return;
     }
 
