@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { keepPreviousData } from "@tanstack/react-query";
 import { Link } from "react-router";
+import { formatDuration } from "@createrington/shared/format";
 import { Badge } from "@/components/ui/badge";
 import { CellDate, CellText } from "@/components/cell-text";
 import {
@@ -19,14 +20,6 @@ interface SessionsTabProps {
 
 type ServerSession =
   RouterOutput["admin"]["servers"]["sessions"]["sessions"][number];
-
-function formatDuration(seconds: number | null): string {
-  if (seconds === null) return "Active";
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  if (h > 0) return `${h}h ${m}m`;
-  return `${m}m`;
-}
 
 const COLUMNS: DataTableColumn<ServerSession>[] = [
   {
@@ -80,7 +73,10 @@ const COLUMNS: DataTableColumn<ServerSession>[] = [
     width: 120,
     align: "right",
     cellClassName: "text-sm",
-    render: (session) => formatDuration(session.secondsPlayed),
+    render: (session) =>
+      session.secondsPlayed === null
+        ? "Active"
+        : formatDuration(session.secondsPlayed),
   },
 ];
 

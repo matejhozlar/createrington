@@ -1,4 +1,5 @@
 import { Link } from "react-router";
+import { formatDuration } from "@createrington/shared/format";
 import { CellDate, CellText } from "@/components/cell-text";
 import { DataTable, type DataTableColumn } from "@/components/data-table";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
@@ -10,13 +11,6 @@ type ServerDetail = RouterOutput["admin"]["servers"]["get"];
 interface OverviewTabProps {
   serverId: number;
   serverData: ServerDetail;
-}
-
-function formatDuration(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  if (h > 0) return `${h}h ${m}m`;
-  return `${m}m`;
 }
 
 function PlayerCell({ uuid, username }: { uuid: string; username: string }) {

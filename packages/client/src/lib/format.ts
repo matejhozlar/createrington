@@ -1,3 +1,12 @@
+export function formatMoney(value: number | string): string {
+  const num = typeof value === "string" ? parseFloat(value) : value;
+  if (Number.isNaN(num)) return "$0";
+  return `$${num.toLocaleString("en-US", {
+    minimumFractionDigits: Number.isInteger(num) ? 0 : 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
 export function formatRelativeDate(value: string | Date): string {
   const date = value instanceof Date ? value : new Date(value);
   const now = new Date();

@@ -5,30 +5,7 @@
  * currency, numbers, and dates across the application
  */
 
-/**
- * Formats playtime in seconds to a human-readable string
- *
- * Converts total seconds into hours and minutes format.
- * Always displays as hours and minutes, no matter how large.
- *
- * @param seconds - Total playtime in seconds
- * @returns Formatted string
- *
- * @example
- * formatPlaytime(0)        // "0h 0m"
- * formatPlaytime(120)      // "0h 2m"
- * formatPlaytime(3661)     // "1h 1m"
- * formatPlaytime(36000)    // "10h 0m"
- * formatPlaytime(90000)    // "25h 0m"
- * formatPlaytime(360000)   // "100h 0m"
- */
-export function formatPlaytime(seconds: number): string {
-  const totalMinutes = Math.floor(seconds / 60);
-  const totalHours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-
-  return `${totalHours}h ${minutes}m`;
-}
+export { formatPlaytime } from "@createrington/shared/format";
 
 /**
  * Formats a balance/currency value in American format

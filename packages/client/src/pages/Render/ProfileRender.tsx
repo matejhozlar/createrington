@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router";
+import { formatDate } from "@createrington/shared/format";
+import { formatMoney } from "@/lib/format";
 import { mcHeadsBody } from "@/lib/external-urls";
 import { randomPose, skinApiUrl } from "./skin-utils";
 
@@ -16,20 +18,6 @@ interface ProfileData {
   mobsKilled: number;
   deaths: number;
   distanceKm: number;
-}
-
-function formatNumber(value: string): string {
-  const num = parseFloat(value);
-  if (isNaN(num)) return value;
-  return num.toLocaleString("en-US", { maximumFractionDigits: 3 });
-}
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
 }
 
 function StatPill({
@@ -169,10 +157,7 @@ export function ProfileRender() {
 
           {/* Balance and activity row */}
           <div className="grid grid-cols-4 gap-2">
-            <StatPill
-              label="Balance"
-              value={`$${formatNumber(data.cashBalance)}`}
-            />
+            <StatPill label="Balance" value={formatMoney(data.cashBalance)} />
             <StatPill label="Playtime" value={data.playtime} />
             <StatPill label="Sessions" value={data.sessions.toLocaleString()} />
             <StatPill

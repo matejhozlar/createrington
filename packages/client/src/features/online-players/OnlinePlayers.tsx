@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router";
+import { formatDuration } from "@createrington/shared/format";
 import { usePlayerData } from "@/contexts/player-data";
 import { useServerData } from "@/contexts/server-data";
 import { useAuth } from "@/contexts/auth";
@@ -19,20 +20,6 @@ import {
   WifiOff,
 } from "lucide-react";
 import type { PlayerData } from "@createrington/shared/socket";
-
-function formatDuration(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = Math.floor(seconds % 60);
-
-  if (h > 0) {
-    return `${h}h ${m}m`;
-  }
-  if (m > 0) {
-    return `${m}m ${s}s`;
-  }
-  return `${s}s`;
-}
 
 function getSessionSeconds(player: PlayerData): number {
   const start =
