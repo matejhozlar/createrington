@@ -1,3 +1,21 @@
+## v1.52.2 (2026-09-09)
+
+### @createrington/server (1.53.1 → 1.53.2)
+- [fix] Fix lottery race where a player joining during the host's start transaction would be silently stranded: the round now rejects joins with a retryable 409 until the host's entry commits, and arms the resolve timer only after the start transaction settles
+- [fix] Fix lottery race where a late join's balance deduction could commit after resolution already read the participant list: resolution now drains all in-flight join transactions before selecting a winner, so the pot only ever contains committed entries
+- [refactor] Move `formatPlaytime` imports across Discord commands, embeds, leaderboard config, and render routes from the server-local `utils/format` to `@createrington/shared/format`
+- [chore] Bump multer 2.2.0 to 2.3.0, sanitize-html 2.17.6 to 2.17.7, and vitest/ui 4.1.0 to 4.1.11 to resolve pnpm audit findings
+
+### @createrington/client (0.2.65 → 0.2.66)
+- [fix] Add a "Cookies & Local Storage" section to the privacy policy explaining authentication cookies, preference storage, and Cloudflare security cookies, and add Cloudflare to the third-party services disclosure
+- [fix] Update the privacy policy token expiry from 7 days to 30 days and replace "salted hashes" with "hashes" to match the current auth implementation
+- [refactor] Extract `useMutationToast` hook that returns typed `onSuccess`/`onError` callbacks for tRPC mutations, adopted across all structure pack admin pages to replace repetitive inline toast wiring
+- [refactor] Consolidate duplicated `formatDate`, `formatDuration`, `formatPlaytime`, and `formatNumber` helpers scattered across admin pages, render pages, chat, and online players into shared imports (`@createrington/shared/format` and `@/lib/format`)
+- [chore] Remove unused Google Fonts preconnect links and font-src CSP directive from index.html
+
+### @createrington/shared (1.12.0 → 1.12.1)
+- [refactor] Add `format.ts` module exporting `formatDate`, `parseDateOnly`, `formatPlaytime`, and `formatCompactDuration`, consolidating identical helpers previously duplicated across server and client packages
+
 ## v1.52.1 (2026-09-07)
 
 ### @createrington/server (1.53.0 → 1.53.1)
