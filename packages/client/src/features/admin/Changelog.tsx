@@ -1,3 +1,4 @@
+import { formatDate, parseDateOnly } from "@createrington/shared/format";
 import { trpc } from "@/lib/trpc";
 import { Loading } from "@/components/loading-spinner";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
@@ -111,17 +112,8 @@ function versionBump(version: string): Bump {
   return "major";
 }
 
-function formatDate(dateStr: string): string {
-  const d = new Date(dateStr + "T12:00:00");
-  return d.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
 function relativeDate(dateStr: string): string {
-  const d = new Date(dateStr + "T12:00:00");
+  const d = parseDateOnly(dateStr);
   const now = new Date();
   const diff = Math.round(
     (now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24),

@@ -1,38 +1,10 @@
 import { describe, it, expect } from "vitest";
 import {
-  formatPlaytime,
   formatBalance,
   formatDaysCount,
   formatDuration,
   pluralize,
 } from "@/utils/format";
-
-describe("formatPlaytime", () => {
-  it("returns 0h 0m for 0 seconds", () => {
-    expect(formatPlaytime(0)).toBe("0h 0m");
-  });
-
-  it("rounds sub-minute values down to 0m", () => {
-    expect(formatPlaytime(59)).toBe("0h 0m");
-  });
-
-  it("formats minutes-only durations", () => {
-    expect(formatPlaytime(120)).toBe("0h 2m");
-  });
-
-  it("formats hour + minute combinations", () => {
-    expect(formatPlaytime(3661)).toBe("1h 1m");
-  });
-
-  it("formats whole-hour values", () => {
-    expect(formatPlaytime(36000)).toBe("10h 0m");
-  });
-
-  it("does not roll hours over into days", () => {
-    expect(formatPlaytime(90000)).toBe("25h 0m");
-    expect(formatPlaytime(360000)).toBe("100h 0m");
-  });
-});
 
 describe("formatBalance", () => {
   it("formats zero", () => {

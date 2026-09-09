@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { useRelativeTick } from "./hooks";
-import { formatDuration } from "./utils";
+import { formatCompactDuration } from "@createrington/shared/format";
 
 /**
  * A single row in the player list panel.
@@ -87,7 +87,10 @@ function PlayerRow({
             {username}
           </p>
           <p className="text-[11px] text-muted-foreground/60">
-            Playing for {formatDuration(sessionMs)}
+            Playing for{" "}
+            {sessionMs < 60_000
+              ? "< 1m"
+              : formatCompactDuration(sessionMs / 1000)}
           </p>
         </div>
       )}

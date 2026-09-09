@@ -2,7 +2,7 @@ import type { CooldownStats } from "@/discord/utils/cooldown/cooldown-manager";
 import { createEmbed, DiscordEmbedBuilder } from "../../embed-builder";
 import { EmbedColors } from "../../colors";
 import { type ActiveSession, PlaytimeService } from "@/services/playtime";
-import { formatPlaytime } from "@/utils/format";
+import { formatPlaytime } from "@createrington/shared/format";
 
 /** Embed presets for bot slash-command responses (cooldown stats, online player list) */
 export const CommandEmbedPresets = {

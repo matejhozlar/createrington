@@ -6,7 +6,8 @@ import {
 import { createEmbed } from "../../embed-builder";
 import { EmbedColors } from "../../colors";
 import { Discord } from "@/discord/constants";
-import { formatBalance, formatDaysCount, formatPlaytime } from "@/utils/format";
+import { formatPlaytime } from "@createrington/shared/format";
+import { formatBalance, formatDaysCount } from "@/utils/format";
 
 /**
  * Formats a value based on condition type

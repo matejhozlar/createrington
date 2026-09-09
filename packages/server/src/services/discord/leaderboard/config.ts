@@ -1,11 +1,8 @@
 import config from "@/config";
 import { type LeaderboardConfig, LeaderboardType } from "./types";
 import { Q } from "@/db";
-import {
-  formatPlaytime,
-  formatBalance,
-  discordTimestamp,
-} from "@/utils/format";
+import { formatPlaytime } from "@createrington/shared/format";
+import { formatBalance, discordTimestamp } from "@/utils/format";
 import { Discord } from "@/discord/constants";
 import { rankNetWorth } from "./networth";
 
