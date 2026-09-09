@@ -128,6 +128,12 @@ body {
   height: 0.875rem;
 }
 
+.legend .keys {
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+}
+
 .legend kbd {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 0.625rem;

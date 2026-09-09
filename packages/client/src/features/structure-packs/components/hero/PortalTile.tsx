@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
+import portalSprite from "@/assets/parallel-worlds/pw-portal.png";
 
 const TOTAL_FRAMES = 32;
 const FRAME_DURATION_MS = 85;
-const SPRITE_SRC = "/assets/parallel-worlds/pw-portal.png";
+const SPRITE_SRC = portalSprite;
 
 let cachedSprite: HTMLImageElement | null = null;
 let spritePromise: Promise<HTMLImageElement> | null = null;
