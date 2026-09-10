@@ -18,6 +18,7 @@ function entry(
   overrides: Partial<ChangelogEntry> = {},
 ): ChangelogEntry {
   return {
+    projectId: 1000 + index,
     name: `Mod ${index}`,
     url: `https://www.curseforge.com/minecraft/mc-mods/mod-${index}`,
     thumbnailUrl: `https://media.forgecdn.net/avatars/mod-${index}.png`,

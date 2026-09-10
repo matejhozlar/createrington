@@ -35,6 +35,7 @@ export interface ChangelogRelease {
 }
 
 export interface ChangelogEntry {
+  projectId: number;
   name: string;
   url: string | null;
   thumbnailUrl: string | null;
