@@ -35,6 +35,7 @@ export interface ChangelogRelease {
 }
 
 export interface ChangelogEntry {
+  projectId: number;
   name: string;
   url: string | null;
   thumbnailUrl: string | null;
@@ -54,10 +55,13 @@ export interface ChangelogInput {
   notes: string | null;
 }
 
-type ChangeGroup = "added" | "updated" | "removed";
+export type ChangelogGroup = "added" | "updated" | "removed";
 type Child = ComponentContainer["components"][number];
 
-const GROUPS: Array<{ key: ChangeGroup; heading: string }> = [
+export const CHANGELOG_GROUPS: ReadonlyArray<{
+  key: ChangelogGroup;
+  heading: string;
+}> = [
   { key: "added", heading: "Added" },
   { key: "updated", heading: "Updated" },
   { key: "removed", heading: "Removed" },
@@ -82,7 +86,7 @@ function code(value: string): string {
   return `\`${clip(value, LABEL_MAX).replace(/`/g, "'")}\``;
 }
 
-function entryBody(entry: ChangelogEntry, group: ChangeGroup): string {
+function entryBody(entry: ChangelogEntry, group: ChangelogGroup): string {
   const name = escapeMarkdown(clip(entry.name, NAME_MAX));
   const title = entry.url
     ? `**[${name}](${entry.url.replace(/\)/g, "%29")})**`
@@ -100,7 +104,7 @@ function entryBody(entry: ChangelogEntry, group: ChangeGroup): string {
   return `${head}\n${version}`;
 }
 
-function entryNode(entry: ChangelogEntry, group: ChangeGroup): Child {
+function entryNode(entry: ChangelogEntry, group: ChangelogGroup): Child {
   const body = entryBody(entry, group);
   if (entry.thumbnailUrl) return section([body], thumbnail(entry.thumbnailUrl));
   if (entry.url) return section([body], linkButton("CurseForge", entry.url));
@@ -222,7 +226,7 @@ function pack(input: ChangelogInput): Child[][] {
     }
   };
 
-  for (const group of GROUPS) {
+  for (const group of CHANGELOG_GROUPS) {
     const entries = input[group.key];
     if (entries.length === 0) continue;
     appendSection(
@@ -230,7 +234,7 @@ function pack(input: ChangelogInput): Child[][] {
       entries.map((entry) => entryNode(entry, group.key)),
     );
   }
-  if (GROUPS.every((group) => input[group.key].length === 0)) {
+  if (CHANGELOG_GROUPS.every((group) => input[group.key].length === 0)) {
     current.push(text(NO_CHANGES));
   }
   if (input.notes !== null && input.notes !== "") {

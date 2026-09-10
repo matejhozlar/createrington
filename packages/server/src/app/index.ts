@@ -8,6 +8,7 @@ import {
   notFoundHandler,
   globalLimiter,
   authLimiter,
+  modpacksLimiter,
   requestLogger,
 } from "./middleware";
 import { appRouter } from "@/trpc/router";
@@ -70,6 +71,7 @@ export function createApp(): Express {
   app.use(requestLogger);
   app.use(globalLimiter);
   app.use("/api/auth", authLimiter);
+  app.use("/api/modpacks", modpacksLimiter);
 
   registerHealthRoute(app);
 

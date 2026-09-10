@@ -78,6 +78,15 @@ const ROUTE_MODULES: RouteModule[] = [
     authNote: "Public",
   },
   {
+    name: "Modpacks",
+    prefix: "/api/modpacks",
+    routeFile: "modpacks/modpacks.routes.ts",
+    controllerFile: "modpacks/modpacks.controller.ts",
+    description:
+      "Public modpack release changelogs rendered as Markdown for in-game menu integrations such as FancyMenu.",
+    authNote: "Public",
+  },
+  {
     name: "Donations",
     prefix: "/api/donations",
     routeFile: "donation/donation.routes.ts",
