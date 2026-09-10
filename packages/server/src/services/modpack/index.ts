@@ -42,8 +42,21 @@ import {
   announceReview,
 } from "@/services/workshop/discord";
 import { recordModEvent } from "@/services/workshop/events";
-import { announceReleaseChangelog } from "./changelog";
+import { announceReleaseChangelog, toChangelogInput } from "./changelog";
+import {
+  renderChangelogMarkdown,
+  type ChangelogMarkdownSection,
+} from "./changelog-markdown";
+import { renderChangelogRow, type ChangelogRowImage } from "./changelog-row";
 import type { ReleaseAnnouncementRow } from "@/db/queries/modpack/release/announcement";
+import {
+  CHANGELOG_GROUPS,
+  type ChangelogInput,
+} from "@/discord/components/presets/modpack-changelog";
+import config from "@/config";
+
+const CHANGELOG_CACHE_TTL_MS = 5 * 60_000;
+const CHANGELOG_CACHE_MAX = 16;
 
 const SHIP_CLAIMABLE_STATUSES: WorkshopModStatus[] = [
   "pending",
@@ -252,6 +265,11 @@ export type ModpackAttentionItem =
  * CurseForge pack's manifest by reconcile, never set by hand.
  */
 export class ModpackService {
+  private readonly changelogCache = new Map<
+    number,
+    { expiresAt: number; changelog: Promise<ChangelogInput> }
+  >();
+
   /** All modpacks with member counts and attached workshops, for the admin panel. */
   async listModpacks(): Promise<ModpackListItem[]> {
     const [modpacks, workshops] = await Promise.all([
@@ -747,6 +765,116 @@ export class ModpackService {
     const release = await Q.modpack.release.get({ id: releaseId });
     const rows = await Q.modpack.release.mod.listForReleases([release.id]);
     return rows.map(({ releaseId: _releaseId, ...row }) => row);
+  }
+
+  /** In-game changelog Markdown of a CurseForge-published pack's newest release, plus the installed one when it is an older recorded release; throws NotFoundError without a pack or release. */
+  async getChangelogMarkdown(options: {
+    curseforgeProjectId: number;
+    installedVersion?: string;
+  }): Promise<string> {
+    const modpack = await this.getPublishedModpack(options.curseforgeProjectId);
+    const [latest] = await Q.modpack.release.findAll(
+      { modpackId: modpack.id },
+      { orderBy: "id", orderDirection: "desc", limit: 1 },
+    );
+    if (!latest) {
+      throw new NotFoundError(`${modpack.name} has no recorded release yet`);
+    }
+    const { installedVersion } = options;
+    const [installed] =
+      installedVersion !== undefined && installedVersion !== latest.version
+        ? await Q.modpack.release.findAll(
+            { modpackId: modpack.id, version: installedVersion },
+            { orderBy: "id", orderDirection: "desc", limit: 1 },
+          )
+        : [];
+    const website = config.meta.links.website.replace(/\/+$/, "");
+    const sectionOf = async (
+      release: ModpackRelease,
+    ): Promise<ChangelogMarkdownSection> => ({
+      changelog: await this.getChangelog(modpack, release),
+      rowImageBaseUrl: `${website}/api/modpacks/${options.curseforgeProjectId}/changelog/rows/${release.curseforgeFileId}`,
+    });
+    const [latestSection, installedSection] = await Promise.all([
+      sectionOf(latest),
+      installed ? sectionOf(installed) : null,
+    ]);
+    return renderChangelogMarkdown({
+      latest: latestSection,
+      installed: installedSection,
+    });
+  }
+
+  /** PNG row of one entry of a recorded release's changelog; throws NotFoundError when the pack, release or entry is unknown. */
+  async getChangelogRow(options: {
+    curseforgeProjectId: number;
+    releaseFileId: number;
+    entryProjectId: number;
+  }): Promise<ChangelogRowImage> {
+    const modpack = await this.getPublishedModpack(options.curseforgeProjectId);
+    const release = await Q.modpack.release.find({
+      modpackId: modpack.id,
+      curseforgeFileId: options.releaseFileId,
+    });
+    if (!release) {
+      throw new NotFoundError(
+        `${modpack.name} has no recorded release for file ${options.releaseFileId}`,
+      );
+    }
+    const changelog = await this.getChangelog(modpack, release);
+    for (const { key } of CHANGELOG_GROUPS) {
+      const entry = changelog[key].find(
+        (candidate) => candidate.projectId === options.entryProjectId,
+      );
+      if (entry) return renderChangelogRow(entry, key);
+    }
+    throw new NotFoundError(
+      `Project ${options.entryProjectId} did not change in ${modpack.name} file ${options.releaseFileId}`,
+    );
+  }
+
+  private async getPublishedModpack(
+    curseforgeProjectId: number,
+  ): Promise<Modpack> {
+    const modpack = await Q.modpack.find({ curseforgeProjectId });
+    if (!modpack) {
+      throw new NotFoundError(
+        `No modpack is published as CurseForge project ${curseforgeProjectId}`,
+      );
+    }
+    return modpack;
+  }
+
+  private getChangelog(
+    modpack: Modpack,
+    release: ModpackRelease,
+  ): Promise<ChangelogInput> {
+    const now = Date.now();
+    const cached = this.changelogCache.get(release.id);
+    if (cached && cached.expiresAt > now) {
+      this.changelogCache.delete(release.id);
+      this.changelogCache.set(release.id, cached);
+      return cached.changelog;
+    }
+    this.changelogCache.delete(release.id);
+    const changelog = this.getReleaseDiff(release.id).then((diff) =>
+      toChangelogInput(modpack, diff),
+    );
+    this.changelogCache.set(release.id, {
+      expiresAt: now + CHANGELOG_CACHE_TTL_MS,
+      changelog,
+    });
+    changelog.catch(() => {
+      if (this.changelogCache.get(release.id)?.changelog === changelog) {
+        this.changelogCache.delete(release.id);
+      }
+    });
+    if (this.changelogCache.size > CHANGELOG_CACHE_MAX) {
+      this.changelogCache.delete(
+        this.changelogCache.keys().next().value as number,
+      );
+    }
+    return changelog;
   }
 
   /**

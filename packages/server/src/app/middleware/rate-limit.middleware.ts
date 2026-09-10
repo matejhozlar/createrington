@@ -27,7 +27,18 @@ export const globalLimiter = rateLimit({
   // other browsing. Also skip /api/health so high-frequency external probes
   // don't share a bucket with regular traffic from the same upstream IP.
   skip: (req) =>
-    req.path === "/api/claude-chat/stream" || req.path === "/api/health",
+    req.path === "/api/claude-chat/stream" ||
+    req.path === "/api/health" ||
+    req.path.startsWith("/api/modpacks/"),
+});
+
+/** Changelog card limiter: 3000 requests per 15-minute window per IP, sized for one row image request per changelog entry */
+export const modpacksLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 3000,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  handler: rateLimitHandler,
 });
 
 /** Auth-specific rate limiter: 20 requests per 15-minute window per IP */

@@ -5,6 +5,7 @@ import authRoutes from "./auth/auth.routes";
 import donationRoutes from "./donation/donation.routes";
 import skinRoutes from "./skin/skin.routes";
 import serversRoutes from "./servers/servers.routes";
+import modpacksRoutes from "./modpacks/modpacks.routes";
 import currencyRoutes from "./mod/currency/currency.routes";
 import alliesRoutes from "./mod/allies/allies.routes";
 import forceloadsRoutes from "./mod/forceloads/forceloads.routes";
@@ -25,6 +26,7 @@ export function registerRoutes(app: Express): void {
   app.use(`${API_PREFIX}/donations`, donationRoutes);
   app.use(`${API_PREFIX}/skin`, skinRoutes);
   app.use(`${API_PREFIX}/servers`, serversRoutes);
+  app.use(`${API_PREFIX}/modpacks`, modpacksRoutes);
   app.use(`${API_PREFIX}/currency`, currencyRoutes);
   app.use(`${API_PREFIX}/allies`, alliesRoutes);
   app.use(`${API_PREFIX}/chunks`, chunksRoutes);

@@ -350,6 +350,7 @@ function toEntry(entry: ModpackReleaseDiffEntry): ChangelogEntry {
     previous.fileId === entry.fileId &&
     previous.required !== entry.required;
   return {
+    projectId: entry.curseforgeProjectId,
     name: entry.projectName,
     url: projectUrl(entry),
     thumbnailUrl: httpUrl(entry.thumbnailUrl),
@@ -365,7 +366,8 @@ function toEntry(entry: ModpackReleaseDiffEntry): ChangelogEntry {
   };
 }
 
-async function toChangelogInput(
+/** Presentation-ready changelog of a release diff: labels, CurseForge links, download link and publish notes. */
+export async function toChangelogInput(
   modpack: Modpack,
   diff: ModpackReleaseDiff,
 ): Promise<ChangelogInput> {
