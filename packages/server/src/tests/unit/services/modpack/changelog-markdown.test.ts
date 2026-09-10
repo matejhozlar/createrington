@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   CHANGELOG_MARKDOWN_MAX_LENGTH,
+  CHANGELOG_ROWS_PER_GROUP_MAX,
   renderChangelogMarkdown,
   type ChangelogMarkdownSection,
 } from "@/services/modpack/changelog-markdown";
@@ -192,30 +193,108 @@ describe("renderChangelogMarkdown", () => {
     ]);
   });
 
-  it("drops the links before trimming a changelog that would be too long", () => {
-    const markdown = render(section("1.3.0", { updated: entries(150) }));
+  it("shows at most CHANGELOG_ROWS_PER_GROUP_MAX rows per group", () => {
+    const markdown = render(
+      section("1.3.0", {
+        added: entries(CHANGELOG_ROWS_PER_GROUP_MAX + 5),
+        updated: entries(3, 100),
+      }),
+    );
 
-    expect(markdown.length).toBeLessThanOrEqual(CHANGELOG_MARKDOWN_MAX_LENGTH);
-    expect(markdown).not.toContain("[![](");
-    expect(rowLines(markdown)).toHaveLength(150);
-    expect(markdown).not.toContain("more%#%");
+    const added = markdown.split("### Updated")[0];
+    expect(rowLines(added)).toHaveLength(CHANGELOG_ROWS_PER_GROUP_MAX);
+    expect(added).toContain("%#AAAAAA%…and 5 more%#%");
+    expect(rowLines(markdown.split("### Updated")[1])).toHaveLength(3);
+    expect(markdown).toContain("[![](");
   });
 
-  it("caps every change group once dropping links is not enough", () => {
+  it("drops the links before trimming a changelog that would be too long", () => {
+    const full = {
+      added: entries(CHANGELOG_ROWS_PER_GROUP_MAX),
+      updated: entries(CHANGELOG_ROWS_PER_GROUP_MAX, 100),
+      removed: entries(CHANGELOG_ROWS_PER_GROUP_MAX, 200),
+    };
     const markdown = render(
-      section("1.3.0", { added: entries(400), updated: entries(10, 400) }),
-      section("1.1.0", { removed: entries(400, 500) }, 300),
+      section("1.3.0", full),
+      section("1.1.0", full, 300),
     );
 
     expect(markdown.length).toBeLessThanOrEqual(CHANGELOG_MARKDOWN_MAX_LENGTH);
+    expect(markdown).not.toContain("[![](");
+    expect(rowLines(markdown)).toHaveLength(6 * CHANGELOG_ROWS_PER_GROUP_MAX);
+    expect(markdown).not.toContain("more%#%");
+  });
+
+  it("lowers the per-group cap evenly once dropping links is not enough", () => {
+    const longBase = `${ROWS}/${"9".repeat(200)}`;
+    const newest = section("1.3.0", {
+      added: entries(400),
+      updated: entries(10, 400),
+    });
+    const installed = section("1.1.0", { removed: entries(400, 500) }, 300);
+    newest.rowImageBaseUrl = longBase;
+    installed.rowImageBaseUrl = longBase;
+
+    const markdown = render(newest, installed);
+
+    expect(markdown.length).toBeLessThanOrEqual(CHANGELOG_MARKDOWN_MAX_LENGTH);
     expect(markdown).toContain("### Added (400)");
-    expect(markdown).toMatch(/^%#AAAAAA%…and \d+ more%#%$/m);
-    expect(markdown).toContain(`${ROWS}/500/1410.png`);
     expect(markdown).toContain("## Your version: 1.1.0");
     expect(markdown).toContain("### Removed (400)");
-    const [newest, installed] = markdown.split("\n---\n");
-    const shownAdded = rowLines(newest.split("### Updated")[0]).length;
-    expect(shownAdded).toBeGreaterThan(10);
-    expect(rowLines(installed)).toHaveLength(shownAdded);
+    const [top, bottom] = markdown.split("\n---\n");
+    const shownAdded = rowLines(top.split("### Updated")[0]).length;
+    expect(shownAdded).toBeGreaterThan(0);
+    expect(shownAdded).toBeLessThan(CHANGELOG_ROWS_PER_GROUP_MAX);
+    expect(rowLines(bottom)).toHaveLength(shownAdded);
+  });
+
+  it("stays within the budget with the longest notes and groups in both sections", () => {
+    const worst = {
+      added: entries(400),
+      updated: entries(400, 400),
+      removed: entries(400, 800),
+      notes: "n".repeat(10_000),
+    };
+    const newest = section("x".repeat(200), worst);
+    const installed = section("y".repeat(200), worst, 300);
+    newest.rowImageBaseUrl = `${ROWS}/${"9".repeat(2_000)}`;
+    installed.rowImageBaseUrl = newest.rowImageBaseUrl;
+
+    const markdown = render(newest, installed);
+
+    expect(markdown.length).toBeLessThanOrEqual(CHANGELOG_MARKDOWN_MAX_LENGTH);
+  });
+
+  it("keeps one note line's stray markers from formatting the rest of the text", () => {
+    const markdown = render(
+      section("1.3.0", {
+        notes: [
+          "Keep **bold** and *italic* when they pair up.",
+          "Set max_speed to 50% in create-server.toml",
+          "2 * 3 = 6 and ~approx `code",
+        ].join("\n"),
+      }),
+    );
+
+    expect(markdown).toContain(
+      [
+        "### Additional notes",
+        "Keep **bold** and *italic* when they pair up.",
+        "Set max\\_speed to 50％ in create-server.toml",
+        "2 \\* 3 = 6 and \\~approx \\`code",
+      ].join("\n"),
+    );
+  });
+
+  it("never cuts a label in half of a surrogate pair", () => {
+    const label = `${"a".repeat(58)}😀bb`;
+    const heading = render(section(label)).split("\n")[0];
+
+    expect(heading).toBe(`## What's new in ${"a".repeat(58)}😀…`);
+    const lone = Array.from(heading).filter((char) => {
+      const code = char.charCodeAt(0);
+      return char.length === 1 && code >= 0xd800 && code <= 0xdfff;
+    });
+    expect(lone).toEqual([]);
   });
 });

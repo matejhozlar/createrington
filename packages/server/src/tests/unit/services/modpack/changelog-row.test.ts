@@ -2,8 +2,10 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { loadImage } from "@napi-rs/canvas";
 import {
   CHANGELOG_ROW_HEIGHT,
+  CHANGELOG_ROW_RETRY_MS,
   CHANGELOG_ROW_WIDTH,
   changelogRowDetail,
+  changelogRowName,
   renderChangelogRow,
   versionChange,
 } from "@/services/modpack/changelog-row";
@@ -74,6 +76,39 @@ describe("changelogRowDetail", () => {
       ),
     ).toBe("Resource pack · disabled · create-1.21.1-6.0.6");
   });
+
+  it("drops glyphs the row fonts lack", () => {
+    expect(
+      changelogRowDetail(
+        entry({ label: "✨ Shiny-1.0 ✨", previousLabel: null }),
+        "added",
+      ),
+    ).toBe("Shiny-1.0");
+  });
+});
+
+describe("changelogRowName", () => {
+  it("keeps names the row fonts can draw, accents included", () => {
+    expect(changelogRowName(entry({ name: "Café Décor" }))).toBe("Café Décor");
+  });
+
+  it("drops symbols the fonts lack but keeps the rest of the name", () => {
+    expect(changelogRowName(entry({ name: "Jade 🔍 Addons" }))).toBe(
+      "Jade Addons",
+    );
+  });
+
+  it("falls back to the CurseForge slug for letters the fonts cannot draw", () => {
+    const url = "https://www.curseforge.com/minecraft/mc-mods/nihongo-mod";
+    expect(changelogRowName(entry({ name: "日本語Mod", url }))).toBe(
+      "nihongo-mod",
+    );
+    expect(changelogRowName(entry({ name: "Мод", url }))).toBe("nihongo-mod");
+  });
+
+  it("keeps the raw name when there is no slug to fall back to", () => {
+    expect(changelogRowName(entry({ name: "Мод", url: null }))).toBe("Мод");
+  });
 });
 
 describe("renderChangelogRow", () => {
@@ -111,26 +146,105 @@ describe("renderChangelogRow", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("requests the 64px CurseForge thumbnail and flags a failed fetch as incomplete", async () => {
+  it("requests the 64px CurseForge thumbnail without following redirects", async () => {
     const fetchMock = vi.fn(
-      async (_url: string) => new Response(null, { status: 503 }),
+      async (_url: string, _init?: RequestInit) =>
+        new Response(null, { status: 503 }),
     );
     vi.stubGlobal("fetch", fetchMock);
+
+    const row = await renderChangelogRow(
+      entry({
+        name: "Redirect Icon Mod",
+        thumbnailUrl:
+          "https://media.forgecdn.net/avatars/thumbnails/1/2/256/256/icon.png",
+      }),
+      "updated",
+    );
+
+    expect(row.complete).toBe(false);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://media.forgecdn.net/avatars/thumbnails/1/2/64/64/icon.png",
+      expect.objectContaining({ redirect: "error" }),
+    );
+  });
+
+  it("keeps a row with a failed icon for CHANGELOG_ROW_RETRY_MS, then tries again", async () => {
+    const fetchMock = vi.fn(async () => new Response(null, { status: 503 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const now = vi.spyOn(Date, "now").mockReturnValue(1_000_000);
     const failing = entry({
       name: "Flaky Icon Mod",
       thumbnailUrl:
-        "https://media.forgecdn.net/avatars/thumbnails/1/2/256/256/icon.png",
+        "https://media.forgecdn.net/avatars/thumbnails/1/3/256/256/icon.png",
     });
 
     const first = await renderChangelogRow(failing, "updated");
+    now.mockReturnValue(1_000_000 + CHANGELOG_ROW_RETRY_MS - 1);
     const second = await renderChangelogRow(failing, "updated");
+    now.mockReturnValue(1_000_000 + CHANGELOG_ROW_RETRY_MS + 1);
+    const third = await renderChangelogRow(failing, "updated");
 
     expect(first.complete).toBe(false);
-    expect(second.complete).toBe(false);
+    expect(second).toBe(first);
+    expect(third).not.toBe(first);
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(fetchMock.mock.calls[0][0]).toBe(
-      "https://media.forgecdn.net/avatars/thumbnails/1/2/64/64/icon.png",
+    now.mockRestore();
+  });
+
+  it("refuses icons on another port and bodies over 1 MB", async () => {
+    const fetchMock = vi.fn(
+      async () => new Response(new Uint8Array(1024 * 1024 + 1)),
     );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const ported = await renderChangelogRow(
+      entry({
+        name: "Ported Icon Mod",
+        thumbnailUrl: "https://media.forgecdn.net:1337/avatars/icon.png",
+      }),
+      "added",
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(ported.complete).toBe(true);
+
+    const huge = await renderChangelogRow(
+      entry({
+        name: "Huge Icon Mod",
+        thumbnailUrl: "https://media.forgecdn.net/avatars/huge.png",
+      }),
+      "added",
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(huge.complete).toBe(false);
+  });
+
+  it("runs at most six icon fetches at once", async () => {
+    let active = 0;
+    let peak = 0;
+    const fetchMock = vi.fn(async () => {
+      active++;
+      peak = Math.max(peak, active);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      active--;
+      return new Response(null, { status: 404 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await Promise.all(
+      Array.from({ length: 15 }, (_, i) =>
+        renderChangelogRow(
+          entry({
+            name: `Burst Mod ${i}`,
+            thumbnailUrl: `https://media.forgecdn.net/avatars/burst-${i}.png`,
+          }),
+          "added",
+        ),
+      ),
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(15);
+    expect(peak).toBe(6);
   });
 
   it("reuses a complete row and shares one render between concurrent requests", async () => {

@@ -49,7 +49,10 @@ import {
 } from "./changelog-markdown";
 import { renderChangelogRow, type ChangelogRowImage } from "./changelog-row";
 import type { ReleaseAnnouncementRow } from "@/db/queries/modpack/release/announcement";
-import type { ChangelogInput } from "@/discord/components/presets/modpack-changelog";
+import {
+  CHANGELOG_GROUPS,
+  type ChangelogInput,
+} from "@/discord/components/presets/modpack-changelog";
 import config from "@/config";
 
 const CHANGELOG_CACHE_TTL_MS = 5 * 60_000;
@@ -819,11 +822,11 @@ export class ModpackService {
       );
     }
     const changelog = await this.getChangelog(modpack, release);
-    for (const group of ["added", "updated", "removed"] as const) {
-      const entry = changelog[group].find(
+    for (const { key } of CHANGELOG_GROUPS) {
+      const entry = changelog[key].find(
         (candidate) => candidate.projectId === options.entryProjectId,
       );
-      if (entry) return renderChangelogRow(entry, group);
+      if (entry) return renderChangelogRow(entry, key);
     }
     throw new NotFoundError(
       `Project ${options.entryProjectId} did not change in ${modpack.name} file ${options.releaseFileId}`,
@@ -848,7 +851,12 @@ export class ModpackService {
   ): Promise<ChangelogInput> {
     const now = Date.now();
     const cached = this.changelogCache.get(release.id);
-    if (cached && cached.expiresAt > now) return cached.changelog;
+    if (cached && cached.expiresAt > now) {
+      this.changelogCache.delete(release.id);
+      this.changelogCache.set(release.id, cached);
+      return cached.changelog;
+    }
+    this.changelogCache.delete(release.id);
     const changelog = this.getReleaseDiff(release.id).then((diff) =>
       toChangelogInput(modpack, diff),
     );
