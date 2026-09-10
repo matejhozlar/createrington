@@ -1,3 +1,15 @@
+## v1.54.0 (2026-09-10)
+
+### @createrington/server (1.54.0 → 1.55.0)
+- [add] Add public REST endpoints under `/api/modpacks/` for in-game modpack changelogs: `GET /:curseforgeProjectId/changelog` returns FancyMenu-flavored Markdown comparing the latest release against an optional installed version, and `GET /:curseforgeProjectId/changelog/rows/:fileId/:projectId.png` serves individual changelog entry rows as transparent PNG images rendered with the Minecraft font
+- [add] Add changelog Markdown renderer that produces a two-section document (latest release, then outdated installed release) with per-group headings, inline row images, colored metadata lines, and release notes, with automatic length trimming via binary-search cap reduction to stay within FancyMenu's 16K character limit
+- [add] Add changelog row image renderer using @napi-rs/canvas that draws each mod entry as a 752x72 transparent PNG with the project icon (fetched from ForgeCDN with concurrency-limited requests), name, and version detail in the Minecraft bitmap font, with LRU caching and automatic retry for failed icon fetches
+- [add] Add a dedicated rate limiter for the modpacks endpoints (3000 req/15min per IP) and exclude them from the global rate limiter and request logger to handle high-volume row image traffic
+- [chore] Bump createrington-skin-api from 2.10.0 to 2.11.0 and update pose width measurements in the quality module (widest pose is now `boxed` at 1241px, with notes on `shipped` and `toasty` edge-clipping behavior)
+
+### @createrington/client (0.2.68 → 0.2.69)
+- [chore] Bump createrington-skin-api from 2.10.0 to 2.11.0
+
 ## v1.53.0 (2026-09-10)
 
 ### @createrington/server (1.53.3 → 1.54.0)
