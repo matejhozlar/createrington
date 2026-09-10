@@ -1,3 +1,11 @@
+## v1.53.0 (2026-09-10)
+
+### @createrington/server (1.53.3 → 1.54.0)
+- [add] Add public REST endpoint `GET /api/servers/status` returning online state, maintenance flag, and player counts for every configured Minecraft server, with optional `?server=<slug>` filtering and 10-second cache headers, built for launcher and FancyMenu integrations
+- [refactor] Extract server status types and builder functions (`buildServerStatusSummary`, `buildServerStatus`) from the tRPC public servers router into a dedicated `server-status.ts` module, reused by both the new REST endpoint and the existing admin stats tRPC procedure
+- [add] Add unit tests for the servers controller covering multi-server responses, slug filtering, maintenance flag reflection, graceful degradation when the playtime manager is unavailable, and input validation
+- [chore] Register the servers module in the API docs generator so `generate-api-docs` includes the new endpoint
+
 ## v1.52.4 (2026-09-09)
 
 ### @createrington/client (0.2.67 → 0.2.68)
