@@ -13,12 +13,18 @@ import type { RenderOptions } from "createrington-skin-api";
  * buy any. The crop is always 2:3, so at this height it can never be wider
  * than 2048 * 2/3; a pose whose silhouette exceeded that would be cut by the
  * crop at any canvas width, so a wider canvas protects nothing. A square
- * 2048x2048 request returns a byte-identical PNG for ~33% more render work.
+ * 2048x2048 request returns the same crop for ~33% more render work.
  *
- * The widest pose in the catalogue (`mojavatar`) measures 1234px here, so
- * there is 132px of headroom. That is a measured fact about a catalogue the
- * SDK can grow, not an invariant anything enforces: re-measure the widest
- * pose when bumping createrington-skin-api.
+ * The widest pose in the catalogue (`boxed`) measures 1241px here, so there
+ * is 125px of headroom. That is a measured fact about a catalogue the SDK can
+ * grow, not an invariant anything enforces: re-measure the widest pose when
+ * bumping createrington-skin-api.
+ *
+ * Two poses are framed past the 2:3 box and excluded from that figure, since
+ * they clip the same way at the API's default 400x600: `shipped` runs its
+ * belt off both edges by design, and `toasty` sits off-center and loses the
+ * right edge of its blaze burner. A 2048px canvas would recover the burner,
+ * but it would also slide `shipped`'s crop off its package.
  *
  * Silhouette edges come back aliased (the model uses alphaTest, and the API
  * exposes no supersampling), so consumers should downscale this with
