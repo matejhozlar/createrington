@@ -12,6 +12,7 @@ import messageRoutes from "./user/message/message.routes";
 import renderRoutes from "./render/render.routes";
 import chunksRoutes from "./mod/chunks/chunks.routes";
 import trainRoutes from "./mod/trains/trains.routes";
+import serverRoutes from "./mod/servers/servers.routes";
 import internalPresenceRoutes from "./internal/presence/presence.routes";
 import internalSsoExchangeRoutes from "./internal/sso-exchange/sso-exchange.routes";
 import adminChatRoutes from "./admin-chat/admin-chat.routes";
@@ -31,6 +32,7 @@ export function registerRoutes(app: Express): void {
   app.use(`${API_PREFIX}/messages`, messageRoutes);
   app.use(`${API_PREFIX}/render`, renderRoutes);
   app.use(`${API_PREFIX}/trains`, trainRoutes);
+  app.use(`${API_PREFIX}/servers`, serverRoutes);
 
   // Internal cross-environment routes (only active when sync secret is set)
   if (config.sync.secret) {
