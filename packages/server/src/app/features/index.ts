@@ -4,7 +4,7 @@ import { env } from "@/config/env/env.config";
 import authRoutes from "./auth/auth.routes";
 import donationRoutes from "./donation/donation.routes";
 import skinRoutes from "./skin/skin.routes";
-import serverRoutes from "./servers/servers.routes";
+import serversRoutes from "./servers/servers.routes";
 import currencyRoutes from "./mod/currency/currency.routes";
 import alliesRoutes from "./mod/allies/allies.routes";
 import forceloadsRoutes from "./mod/forceloads/forceloads.routes";
@@ -24,7 +24,7 @@ export function registerRoutes(app: Express): void {
   app.use(`${API_PREFIX}/auth`, authRoutes);
   app.use(`${API_PREFIX}/donations`, donationRoutes);
   app.use(`${API_PREFIX}/skin`, skinRoutes);
-  app.use(`${API_PREFIX}/servers`, serverRoutes);
+  app.use(`${API_PREFIX}/servers`, serversRoutes);
   app.use(`${API_PREFIX}/currency`, currencyRoutes);
   app.use(`${API_PREFIX}/allies`, alliesRoutes);
   app.use(`${API_PREFIX}/chunks`, chunksRoutes);

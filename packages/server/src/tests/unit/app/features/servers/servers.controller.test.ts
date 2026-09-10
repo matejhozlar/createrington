@@ -44,6 +44,7 @@ import {
   ServersController,
   type ServerStatusResponse,
 } from "@/app/features/servers/servers.controller";
+import { ServerState } from "@/services/playtime/types";
 import type { Request, Response } from "express";
 
 type MockRes = Response & {
@@ -59,16 +60,25 @@ function makeReq(query: Record<string, unknown> = {}): Request {
   return { query } as unknown as Request;
 }
 
-function makePlaytimeService(sessions: number, initialized = true) {
+function makePlaytimeService(
+  sessions: number,
+  state: ServerState = ServerState.ONLINE,
+) {
   return {
-    getActiveSessions: () =>
+    getActiveSessions: vi.fn(() =>
       Array.from({ length: sessions }, (_, i) => ({
         uuid: `uuid-${i}`,
         username: `player${i}`,
         serverId: 1,
         sessionStart: new Date(),
       })),
-    getStatus: () => ({ isInitialized: initialized }),
+    ),
+    getStatus: () => ({
+      isInitialized: true,
+      activeSessions: sessions,
+      serverState: state,
+    }),
+    getServerState: () => state,
     getSessionDuration: () => 0,
   };
 }
@@ -123,7 +133,16 @@ describe("ServersController.getStatus", () => {
       },
     ]);
     expect(body.totalPlayers).toBe(4);
-    expect(new Date(body.checkedAt).toISOString()).toBe(body.checkedAt);
+    expect(new Date(body.generatedAt).toISOString()).toBe(body.generatedAt);
+  });
+
+  it("does not build the player list on the public path", async () => {
+    const rails = makePlaytimeService(3);
+    mockManager({ 1: rails });
+
+    await ServersController.getStatus(makeReq({ server: "rails" }), makeRes());
+
+    expect(rails.getActiveSessions).not.toHaveBeenCalled();
   });
 
   it("narrows the list to a single server by slug", async () => {
@@ -136,6 +155,35 @@ describe("ServersController.getStatus", () => {
     expect(body.servers).toHaveLength(1);
     expect(body.servers[0]).toMatchObject({ slug: "test", playerCount: 1 });
     expect(body.totalPlayers).toBe(1);
+  });
+
+  it("treats an empty server filter as no filter", async () => {
+    mockManager({ 1: makePlaytimeService(1), 2: makePlaytimeService(1) });
+    const res = makeRes();
+
+    await ServersController.getStatus(makeReq({ server: "" }), res);
+
+    expect(responseBody(res).servers).toHaveLength(2);
+  });
+
+  it("mirrors the tracked server state, keeping the tracked session count", async () => {
+    mockManager({
+      1: makePlaytimeService(2, ServerState.OFFLINE),
+      2: makePlaytimeService(0, ServerState.UNKNOWN),
+    });
+    const res = makeRes();
+
+    await ServersController.getStatus(makeReq(), res);
+
+    const body = responseBody(res);
+    expect(body.servers[0]).toMatchObject({
+      status: "offline",
+      playerCount: 2,
+    });
+    expect(body.servers[1]).toMatchObject({
+      status: "unknown",
+      playerCount: 0,
+    });
   });
 
   it("reports unknown status with zero players when no playtime service exists", async () => {
@@ -153,16 +201,20 @@ describe("ServersController.getStatus", () => {
     expect(body.totalPlayers).toBe(2);
   });
 
-  it("reports offline when the playtime service is not initialized", async () => {
-    mockManager({ 1: makePlaytimeService(0, false) });
+  it("degrades to unknown status when the playtime manager is unavailable", async () => {
+    getServiceMock.mockRejectedValue(
+      new Error("No PlaytimeServices initialized"),
+    );
     const res = makeRes();
 
-    await ServersController.getStatus(makeReq({ server: "rails" }), res);
+    await ServersController.getStatus(makeReq(), res);
 
-    expect(responseBody(res).servers[0]).toMatchObject({
-      status: "offline",
-      playerCount: 0,
-    });
+    const body = responseBody(res);
+    expect(body.servers.map((server) => server.status)).toEqual([
+      "unknown",
+      "unknown",
+    ]);
+    expect(body.totalPlayers).toBe(0);
   });
 
   it("reflects the maintenance flag per server", async () => {
