@@ -4,10 +4,8 @@ import { Q, R } from "@/db";
 import { getService, Services } from "@/services";
 import { MINECRAFT_SERVERS, getServerById } from "@/services/playtime/config";
 import { buildPagination, paginationInput, trpcError } from "@/trpc/utils";
-import {
-  buildServerStatus,
-  type ServerStatus,
-} from "@/trpc/routers/public/servers";
+import { buildServerStatus } from "@/services/playtime/server-status";
+import type { ServerStatus } from "@/services/playtime/server-status";
 
 export const serverStatsProcedures = {
   list: adminProcedure

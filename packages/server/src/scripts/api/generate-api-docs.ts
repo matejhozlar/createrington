@@ -69,6 +69,15 @@ const ROUTE_MODULES: RouteModule[] = [
     authNote: "Public",
   },
   {
+    name: "Servers",
+    prefix: "/api/servers",
+    routeFile: "servers/servers.routes.ts",
+    controllerFile: "servers/servers.controller.ts",
+    description:
+      "Public Minecraft server status: online state, maintenance flag and player counts. Built for launcher and in-game menu integrations such as FancyMenu.",
+    authNote: "Public",
+  },
+  {
     name: "Donations",
     prefix: "/api/donations",
     routeFile: "donation/donation.routes.ts",
