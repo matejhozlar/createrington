@@ -43,7 +43,7 @@ import { BadRequestError, NotFoundError } from "@/app/middleware/error-handler";
 import {
   ServersController,
   type ServerStatusResponse,
-} from "@/app/features/mod/servers/servers.controller";
+} from "@/app/features/servers/servers.controller";
 import type { Request, Response } from "express";
 
 type MockRes = Response & {

@@ -4,6 +4,7 @@ import { env } from "@/config/env/env.config";
 import authRoutes from "./auth/auth.routes";
 import donationRoutes from "./donation/donation.routes";
 import skinRoutes from "./skin/skin.routes";
+import serverRoutes from "./servers/servers.routes";
 import currencyRoutes from "./mod/currency/currency.routes";
 import alliesRoutes from "./mod/allies/allies.routes";
 import forceloadsRoutes from "./mod/forceloads/forceloads.routes";
@@ -12,7 +13,6 @@ import messageRoutes from "./user/message/message.routes";
 import renderRoutes from "./render/render.routes";
 import chunksRoutes from "./mod/chunks/chunks.routes";
 import trainRoutes from "./mod/trains/trains.routes";
-import serverRoutes from "./mod/servers/servers.routes";
 import internalPresenceRoutes from "./internal/presence/presence.routes";
 import internalSsoExchangeRoutes from "./internal/sso-exchange/sso-exchange.routes";
 import adminChatRoutes from "./admin-chat/admin-chat.routes";
@@ -24,6 +24,7 @@ export function registerRoutes(app: Express): void {
   app.use(`${API_PREFIX}/auth`, authRoutes);
   app.use(`${API_PREFIX}/donations`, donationRoutes);
   app.use(`${API_PREFIX}/skin`, skinRoutes);
+  app.use(`${API_PREFIX}/servers`, serverRoutes);
   app.use(`${API_PREFIX}/currency`, currencyRoutes);
   app.use(`${API_PREFIX}/allies`, alliesRoutes);
   app.use(`${API_PREFIX}/chunks`, chunksRoutes);
@@ -32,7 +33,6 @@ export function registerRoutes(app: Express): void {
   app.use(`${API_PREFIX}/messages`, messageRoutes);
   app.use(`${API_PREFIX}/render`, renderRoutes);
   app.use(`${API_PREFIX}/trains`, trainRoutes);
-  app.use(`${API_PREFIX}/servers`, serverRoutes);
 
   // Internal cross-environment routes (only active when sync secret is set)
   if (config.sync.secret) {

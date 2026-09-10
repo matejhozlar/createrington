@@ -69,6 +69,15 @@ const ROUTE_MODULES: RouteModule[] = [
     authNote: "Public",
   },
   {
+    name: "Servers",
+    prefix: "/api/servers",
+    routeFile: "servers/servers.routes.ts",
+    controllerFile: null,
+    description:
+      "Public Minecraft server status: online state, maintenance flag and player counts. Built for launcher and in-game menu integrations such as FancyMenu.",
+    authNote: "Public",
+  },
+  {
     name: "Donations",
     prefix: "/api/donations",
     routeFile: "donation/donation.routes.ts",
@@ -423,7 +432,6 @@ const MOD_SPECS: ApiModuleSpec[] = [
   (await import("@/app/features/mod/currency/currency.api-spec")).default,
   (await import("@/app/features/mod/forceloads/forceloads.api-spec")).default,
   (await import("@/app/features/mod/presence/presence.api-spec")).default,
-  (await import("@/app/features/mod/servers/servers.api-spec")).default,
   (await import("@/app/features/mod/trains/trains.api-spec")).default,
 ];
 
