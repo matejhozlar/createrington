@@ -1,3 +1,11 @@
+## v1.54.1 (2026-09-11)
+
+### @createrington/server (1.55.0 → 1.55.1)
+- [chore] Bump createrington-skin-api from 2.11.0 to 2.12.0 and update pose width measurements in the quality module (widest pose is now `licked` at 1267px, with notes on `glazed` tall-pose framing)
+
+### @createrington/client (0.2.69 → 0.2.70)
+- [chore] Bump createrington-skin-api from 2.11.0 to 2.12.0
+
 ## v1.54.0 (2026-09-10)
 
 ### @createrington/server (1.54.0 → 1.55.0)
