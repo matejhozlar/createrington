@@ -15,10 +15,14 @@ import type { RenderOptions } from "createrington-skin-api";
  * crop at any canvas width, so a wider canvas protects nothing. A square
  * 2048x2048 request returns the same crop for ~33% more render work.
  *
- * The widest pose in the catalogue (`boxed`) measures 1241px here, so there
- * is 125px of headroom. That is a measured fact about a catalogue the SDK can
+ * The widest pose in the catalogue (`licked`) measures 1267px here, so there
+ * is 99px of headroom. That is a measured fact about a catalogue the SDK can
  * grow, not an invariant anything enforces: re-measure the widest pose when
  * bumping createrington-skin-api.
+ *
+ * `glazed` returns a wider 1316px crop without eating into that headroom: its
+ * spout makes the pose tall, so the 2:3 box is sized by height and the
+ * silhouette inside it is only 748px wide.
  *
  * Two poses are framed past the 2:3 box and excluded from that figure, since
  * they clip the same way at the API's default 400x600: `shipped` runs its

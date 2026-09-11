@@ -143,8 +143,8 @@ importers:
         specifier: ^2.1.1
         version: 2.1.1
       createrington-skin-api:
-        specifier: ^2.11.0
-        version: 2.11.0
+        specifier: ^2.12.0
+        version: 2.12.0
       embla-carousel-autoplay:
         specifier: ^8.6.0
         version: 8.6.0(embla-carousel@8.6.0)
@@ -300,8 +300,8 @@ importers:
         specifier: ^2.8.5
         version: 2.8.6
       createrington-skin-api:
-        specifier: ^2.11.0
-        version: 2.11.0
+        specifier: ^2.12.0
+        version: 2.12.0
       discord-html-transcripts:
         specifier: ^3.2.0
         version: 3.3.0(discord.js@14.27.0)
@@ -2908,8 +2908,8 @@ packages:
     resolution: {integrity: sha512-9IkYqtX3YHPCzoVg1Py+o9057a3i0fp7S530UWokCSaFVTc7CwXPRiOjRjBQQ18ZCNafx78YfnG+HALxtVmOGA==}
     engines: {node: '>=10.0.0'}
 
-  createrington-skin-api@2.11.0:
-    resolution: {integrity: sha512-8FTjxGLvnZOJEKmvvVMT9warAQfXx3BRbsaKs9xvOOx6xKxJQDR9R59phAE5sBxETO3T9lYhGE+j5X38yCr5VQ==}
+  createrington-skin-api@2.12.0:
+    resolution: {integrity: sha512-fLRXRF63v18kF7z9FYNEr4Gjuw+CGhBCzhPg6Yso1O5OGkMUFC0XwwzH/2V5z6uD4nvDNk0iY+hrbCQuDpAuFw==}
 
   cross-env@10.1.0:
     resolution: {integrity: sha512-GsYosgnACZTADcmEyJctkJIoqAhHjttw7RsFrVoJNXbsWWqaq6Ym+7kZjq6mS45O0jij6vtiReppKQEtqWy6Dw==}
@@ -7854,7 +7854,7 @@ snapshots:
       nan: 2.28.0
     optional: true
 
-  createrington-skin-api@2.11.0: {}
+  createrington-skin-api@2.12.0: {}
 
   cross-env@10.1.0:
     dependencies:
