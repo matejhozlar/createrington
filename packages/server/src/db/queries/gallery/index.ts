@@ -1,22 +1,22 @@
 import type { Pool, PoolClient } from "pg";
-import { FaqEntryQueries } from "@/db/queries/faq/entry";
+import { GallerySubmissionQueries } from "@/db/queries/gallery/submission";
 
 /**
- * Namespace queries for faq
+ * Namespace queries for gallery
  *
  * This is a pure organizational namespace that groups related query classes.
  * It does not correspond to an actual database table but provides hierarchical
- * access to child tables that share the 'faq_' prefix.
+ * access to child tables that share the 'gallery_' prefix.
  *
  * Uses singleton pattern with lazy loading for optimal performance:
  * - Child instances created once per database connection
  * - Cached in WeakMap for automatic garbage collection
- * - Shared across all FaqQueries instances using same connection
+ * - Shared across all GalleryQueries instances using same connection
  *
  * Auto-generated from database schema
  * DO NOT EDIT MANUALLY - regenerate with: pnpm generate
  */
-export class FaqQueries {
+export class GalleryQueries {
   /**
    * Static singleton registry for child query instances
    *
@@ -24,7 +24,7 @@ export class FaqQueries {
    * - Allows garbage collection when connection is closed
    * - Prevents memory leaks in long-running applications
    * - Each connection has its own cache map
-   * - Keys are fully qualified (e.g., "faq.actions")
+   * - Keys are fully qualified (e.g., "gallery.actions")
    */
   private static queryInstances = new WeakMap<
     Pool | PoolClient,
@@ -43,7 +43,7 @@ export class FaqQueries {
    * @returns Cached or newly created child query instance
    *
    * @remarks
-   * - Cache key is prefixed with namespace (e.g., "faq.actions")
+   * - Cache key is prefixed with namespace (e.g., "gallery.actions")
    * - Ensures child shares the same database connection as parent
    * - Type-safe through generic parameter T
    */
@@ -52,12 +52,12 @@ export class FaqQueries {
     QueryClass: new (db: Pool | PoolClient) => T,
   ): T {
     // Initialize cache for this connection if not exists
-    if (!FaqQueries.queryInstances.has(this.db)) {
-      FaqQueries.queryInstances.set(this.db, new Map());
+    if (!GalleryQueries.queryInstances.has(this.db)) {
+      GalleryQueries.queryInstances.set(this.db, new Map());
     }
 
-    const cache = FaqQueries.queryInstances.get(this.db)!;
-    const fullKey = `faq.${key}`;
+    const cache = GalleryQueries.queryInstances.get(this.db)!;
+    const fullKey = `gallery.${key}`;
 
     // Create and cache child instance if not exists
     if (!cache.has(fullKey)) {
@@ -72,25 +72,25 @@ export class FaqQueries {
    */
   constructor(protected db: Pool | PoolClient) {}
 
-  /** Private backing field for lazy-loaded faq_entry queries */
-  private _entry?: FaqEntryQueries;
+  /** Private backing field for lazy-loaded gallery_submission queries */
+  private _submission?: GallerySubmissionQueries;
 
   /**
-   * Lazy-loaded singleton accessor for faq_entry
+   * Lazy-loaded singleton accessor for gallery_submission
    *
-   * Returns a FaqEntryQueries instance that shares this namespace's
+   * Returns a GallerySubmissionQueries instance that shares this namespace's
    * database connection. The instance is created once on first access and
    * cached for all subsequent calls.
    *
-   * @returns Singleton FaqEntryQueries instance
+   * @returns Singleton GallerySubmissionQueries instance
    */
-  get entry(): FaqEntryQueries {
-    if (!this._entry) {
-      this._entry = this.getOrCreateChild<FaqEntryQueries>(
-        "entry",
-        FaqEntryQueries,
+  get submission(): GallerySubmissionQueries {
+    if (!this._submission) {
+      this._submission = this.getOrCreateChild<GallerySubmissionQueries>(
+        "submission",
+        GallerySubmissionQueries,
       );
     }
-    return this._entry;
+    return this._submission;
   }
 }

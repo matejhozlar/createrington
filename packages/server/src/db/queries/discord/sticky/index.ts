@@ -1,22 +1,22 @@
 import type { Pool, PoolClient } from "pg";
-import { FaqWelcomeMessageQueries } from "@/db/queries/faq/welcome/message";
+import { DiscordStickyMessageQueries } from "@/db/queries/discord/sticky/message";
 
 /**
- * Namespace queries for faq_welcome
+ * Namespace queries for discord_sticky
  *
  * This is a pure organizational namespace that groups related query classes.
  * It does not correspond to an actual database table but provides hierarchical
- * access to child tables that share the 'faq_welcome_' prefix.
+ * access to child tables that share the 'discord_sticky_' prefix.
  *
  * Uses singleton pattern with lazy loading for optimal performance:
  * - Child instances created once per database connection
  * - Cached in WeakMap for automatic garbage collection
- * - Shared across all FaqWelcomeQueries instances using same connection
+ * - Shared across all DiscordStickyQueries instances using same connection
  *
  * Auto-generated from database schema
  * DO NOT EDIT MANUALLY - regenerate with: pnpm generate
  */
-export class FaqWelcomeQueries {
+export class DiscordStickyQueries {
   /**
    * Static singleton registry for child query instances
    *
@@ -24,7 +24,7 @@ export class FaqWelcomeQueries {
    * - Allows garbage collection when connection is closed
    * - Prevents memory leaks in long-running applications
    * - Each connection has its own cache map
-   * - Keys are fully qualified (e.g., "faq_welcome.actions")
+   * - Keys are fully qualified (e.g., "discord_sticky.actions")
    */
   private static queryInstances = new WeakMap<
     Pool | PoolClient,
@@ -43,7 +43,7 @@ export class FaqWelcomeQueries {
    * @returns Cached or newly created child query instance
    *
    * @remarks
-   * - Cache key is prefixed with namespace (e.g., "faq_welcome.actions")
+   * - Cache key is prefixed with namespace (e.g., "discord_sticky.actions")
    * - Ensures child shares the same database connection as parent
    * - Type-safe through generic parameter T
    */
@@ -52,12 +52,12 @@ export class FaqWelcomeQueries {
     QueryClass: new (db: Pool | PoolClient) => T,
   ): T {
     // Initialize cache for this connection if not exists
-    if (!FaqWelcomeQueries.queryInstances.has(this.db)) {
-      FaqWelcomeQueries.queryInstances.set(this.db, new Map());
+    if (!DiscordStickyQueries.queryInstances.has(this.db)) {
+      DiscordStickyQueries.queryInstances.set(this.db, new Map());
     }
 
-    const cache = FaqWelcomeQueries.queryInstances.get(this.db)!;
-    const fullKey = `faq_welcome.${key}`;
+    const cache = DiscordStickyQueries.queryInstances.get(this.db)!;
+    const fullKey = `discord_sticky.${key}`;
 
     // Create and cache child instance if not exists
     if (!cache.has(fullKey)) {
@@ -72,23 +72,23 @@ export class FaqWelcomeQueries {
    */
   constructor(protected db: Pool | PoolClient) {}
 
-  /** Private backing field for lazy-loaded faq_welcome_message queries */
-  private _message?: FaqWelcomeMessageQueries;
+  /** Private backing field for lazy-loaded discord_sticky_message queries */
+  private _message?: DiscordStickyMessageQueries;
 
   /**
-   * Lazy-loaded singleton accessor for faq_welcome_message
+   * Lazy-loaded singleton accessor for discord_sticky_message
    *
-   * Returns a FaqWelcomeMessageQueries instance that shares this namespace's
+   * Returns a DiscordStickyMessageQueries instance that shares this namespace's
    * database connection. The instance is created once on first access and
    * cached for all subsequent calls.
    *
-   * @returns Singleton FaqWelcomeMessageQueries instance
+   * @returns Singleton DiscordStickyMessageQueries instance
    */
-  get message(): FaqWelcomeMessageQueries {
+  get message(): DiscordStickyMessageQueries {
     if (!this._message) {
-      this._message = this.getOrCreateChild<FaqWelcomeMessageQueries>(
+      this._message = this.getOrCreateChild<DiscordStickyMessageQueries>(
         "message",
-        FaqWelcomeMessageQueries,
+        DiscordStickyMessageQueries,
       );
     }
     return this._message;

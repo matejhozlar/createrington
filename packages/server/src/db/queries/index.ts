@@ -22,10 +22,12 @@ export { DiscordEmbedPresetCategoryQueries } from "./discord/embed/preset/catego
 export { DiscordEmbedPresetMessageQueries } from "./discord/embed/preset/message";
 export { DiscordGuildMemberJoinQueries } from "./discord/guild/member/join";
 export { DiscordGuildMemberLeaveQueries } from "./discord/guild/member/leave";
+export { DiscordStickyMessageQueries } from "./discord/sticky/message";
 export { DonationQueries } from "./donation";
 export { FaqEntryQueries } from "./faq/entry";
-export { FaqWelcomeMessageQueries } from "./faq/welcome/message";
 export { FeatureFlagQueries } from "./feature/flag";
+export { GallerySubmissionQueries } from "./gallery/submission";
+export { GallerySubmissionCreditQueries } from "./gallery/submission/credit";
 export { LeaderboardMessageQueries } from "./leaderboard/message";
 export { LotteryParticipantQueries } from "./lottery/participant";
 export { ModpackQueries } from "./modpack";

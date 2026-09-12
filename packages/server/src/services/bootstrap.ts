@@ -34,6 +34,8 @@ import { PlayerBanService } from "./player/ban";
 import { playerDeletionService } from "./player/deletion";
 import { StatsImportService, STATS_IMPORT_SERVERS } from "./stats-import";
 import { FaqService } from "./discord/faq";
+import { DiscordStickyMessageService } from "./discord/sticky-message";
+import { GalleryService } from "./gallery";
 import { PuppeteerService } from "./puppeteer";
 import { AiService } from "./ai";
 import { AutoMessageService } from "./discord/auto-message";
@@ -180,12 +182,10 @@ export function registerServices(): void {
   );
 
   container.register(
-    Services.FAQ_SERVICE,
+    Services.STICKY_MESSAGE_SERVICE,
     async (c) => {
       const mainBot = await c.get(Services.DISCORD_MAIN_BOT);
-      const service = new FaqService(mainBot);
-      await service.initialize();
-      return service;
+      return new DiscordStickyMessageService(mainBot);
     },
     {
       dependencies: [
@@ -194,6 +194,32 @@ export function registerServices(): void {
         Services.MESSAGE_SERVICE,
       ],
     },
+  );
+
+  container.register(
+    Services.FAQ_SERVICE,
+    async (c) => {
+      const sticky = await c.get(Services.STICKY_MESSAGE_SERVICE);
+      const service = new FaqService(sticky);
+      await service.initialize();
+      return service;
+    },
+    { dependencies: [Services.STICKY_MESSAGE_SERVICE] },
+  );
+
+  container.register(
+    Services.GALLERY_SERVICE,
+    async (c) => {
+      const sticky = await c.get(Services.STICKY_MESSAGE_SERVICE);
+      const service = new GalleryService(sticky, {
+        intakeChannelId: config.gallery.intakeChannelId,
+        originalsDir: config.gallery.originalsDir,
+        serverId: config.servers.rails.id,
+      });
+      await service.initialize();
+      return service;
+    },
+    { dependencies: [Services.STICKY_MESSAGE_SERVICE] },
   );
 
   container.register(

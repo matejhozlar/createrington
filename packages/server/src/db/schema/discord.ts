@@ -214,3 +214,20 @@ export const discordAutoMessageFollowup = pgTable(
     ),
   ],
 );
+
+// --- discord_sticky_message ---
+// Bot-owned notice kept at the bottom of a channel: deleted and reposted
+// after channel activity. One per channel; the row only tracks the current
+// message id so a restart can verify or recreate it.
+
+export const discordStickyMessage = pgTable("discord_sticky_message", {
+  id: serial("id").primaryKey(),
+  channelId: text("channel_id").notNull().unique(),
+  messageId: text("message_id").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});

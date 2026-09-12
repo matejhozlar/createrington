@@ -52,6 +52,12 @@ function deriveCookieName(base: string): string {
   return envMode.isDevDeployment ? `${base}_dev` : base;
 }
 
+// Resolved against CWD so relative paths work predictably across the
+// dev server (runs from repo root) and prod (runs from /opt/...).
+// Empty string when validation is skipped (generate scripts, unit tests)
+// since no consumer that needs the path runs in those modes.
+const storagePath = env.STORAGE_PATH ? path.resolve(env.STORAGE_PATH) : "";
+
 const config = {
   envMode,
 
@@ -300,11 +306,19 @@ const config = {
   },
 
   storage: {
-    // Resolved against CWD so relative paths work predictably across the
-    // dev server (runs from repo root) and prod (runs from /opt/...).
-    // Empty string when validation is skipped (generate scripts, unit tests)
-    // since no consumer that needs the path runs in those modes.
-    path: env.STORAGE_PATH ? path.resolve(env.STORAGE_PATH) : "",
+    path: storagePath,
+  },
+
+  gallery: {
+    // Players post screenshots in gallery-submissions; approved ones are
+    // announced in gallery. Both undefined when the guild lacks the channels
+    // under the Createrington Official category
+    intakeChannelId:
+      discordEntities.channels.createringtonOfficial?.gallerySubmissions,
+    announcementChannelId:
+      discordEntities.channels.createringtonOfficial?.gallery,
+    // Pending originals are kept out of any public bucket until approval
+    originalsDir: path.join(storagePath, "gallery", "originals"),
   },
 
   puppeteer: {

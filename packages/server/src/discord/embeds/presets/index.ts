@@ -3,6 +3,7 @@ import { CommandEmbedPresets } from "./commands";
 import { CommonEmbedPresets } from "./common";
 import { DepartedEmbedPresets } from "./departed";
 import { FaqEmbedPresets } from "./faq";
+import { GalleryEmbedPresets } from "./gallery";
 import { GhostEmbedPresets } from "./ghost";
 import { InactivityEmbedPresets } from "./inactivity";
 import { ProgressEmbedPresets } from "./progress";
@@ -23,6 +24,7 @@ export const EmbedPresets = {
   roleAssignment: RoleAssignmentEmbedPresets,
   departed: DepartedEmbedPresets,
   faq: FaqEmbedPresets,
+  gallery: GalleryEmbedPresets,
   ghost: GhostEmbedPresets,
   inactivity: InactivityEmbedPresets,
 };
