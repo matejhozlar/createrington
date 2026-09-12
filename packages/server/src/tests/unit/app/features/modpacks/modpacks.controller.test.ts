@@ -4,15 +4,18 @@ vi.mock("@/app/middleware", () =>
   vi.importActual("@/app/middleware/error-handler"),
 );
 
-const { getChangelogMarkdownMock, getChangelogRowMock } = vi.hoisted(() => ({
-  getChangelogMarkdownMock: vi.fn(),
-  getChangelogRowMock: vi.fn(),
-}));
+const { getChangelogMarkdownMock, getChangelogRowMock, getVersionStatusMock } =
+  vi.hoisted(() => ({
+    getChangelogMarkdownMock: vi.fn(),
+    getChangelogRowMock: vi.fn(),
+    getVersionStatusMock: vi.fn(),
+  }));
 
 vi.mock("@/services/modpack", () => ({
   modpackService: {
     getChangelogMarkdown: getChangelogMarkdownMock,
     getChangelogRow: getChangelogRowMock,
+    getVersionStatus: getVersionStatusMock,
   },
 }));
 
@@ -24,10 +27,16 @@ type MockRes = Response & {
   send: ReturnType<typeof vi.fn>;
   setHeader: ReturnType<typeof vi.fn>;
   type: ReturnType<typeof vi.fn>;
+  json: ReturnType<typeof vi.fn>;
 };
 
 function makeRes(): MockRes {
-  const res = { send: vi.fn(), setHeader: vi.fn(), type: vi.fn() };
+  const res = {
+    send: vi.fn(),
+    setHeader: vi.fn(),
+    type: vi.fn(),
+    json: vi.fn(),
+  };
   res.type.mockReturnValue(res);
   return res as unknown as MockRes;
 }
@@ -43,6 +52,11 @@ beforeEach(() => {
   getChangelogRowMock
     .mockReset()
     .mockResolvedValue({ png: PNG, complete: true });
+  getVersionStatusMock.mockReset().mockResolvedValue({
+    latest: "1.0.8",
+    installed: "1.0.6",
+    outdated: true,
+  });
 });
 
 describe("ModpacksController.getChangelog", () => {
@@ -158,5 +172,70 @@ describe("ModpacksController.getChangelogRow", () => {
       ).rejects.toBeInstanceOf(BadRequestError);
     }
     expect(getChangelogRowMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("ModpacksController.getVersionStatus", () => {
+  it("sends the status as cacheable JSON", async () => {
+    const res = makeRes();
+
+    await ModpacksController.getVersionStatus(
+      makeReq({ project: "1660984", version: "1.0.6" }),
+      res,
+    );
+
+    expect(getVersionStatusMock).toHaveBeenCalledWith({
+      curseforgeProjectId: 1660984,
+      installedVersion: "1.0.6",
+    });
+    expect(res.setHeader).toHaveBeenCalledWith(
+      "Cache-Control",
+      "public, max-age=300",
+    );
+    expect(res.json).toHaveBeenCalledWith({
+      latest: "1.0.8",
+      installed: "1.0.6",
+      outdated: true,
+    });
+  });
+
+  it("trims the version and ignores a blank or overlong one", async () => {
+    for (const version of ["  1.0.6 ", "   ", "9".repeat(65)]) {
+      await ModpacksController.getVersionStatus(
+        makeReq({ project: "1", version }),
+        makeRes(),
+      );
+    }
+
+    expect(getVersionStatusMock.mock.calls.map(([options]) => options)).toEqual(
+      [
+        { curseforgeProjectId: 1, installedVersion: "1.0.6" },
+        { curseforgeProjectId: 1, installedVersion: undefined },
+        { curseforgeProjectId: 1, installedVersion: undefined },
+      ],
+    );
+  });
+
+  it("rejects a malformed project id before loading anything", async () => {
+    for (const project of [undefined, "", "0", "12ab", "2147483648"]) {
+      await expect(
+        ModpacksController.getVersionStatus(
+          makeReq({ project, version: "1.0.6" }),
+          makeRes(),
+        ),
+      ).rejects.toBeInstanceOf(BadRequestError);
+    }
+    expect(getVersionStatusMock).not.toHaveBeenCalled();
+  });
+
+  it("lets a missing pack or release surface as 404", async () => {
+    getVersionStatusMock.mockRejectedValue(new NotFoundError("nope"));
+
+    await expect(
+      ModpacksController.getVersionStatus(
+        makeReq({ project: "42", version: "1.0.6" }),
+        makeRes(),
+      ),
+    ).rejects.toBeInstanceOf(NotFoundError);
   });
 });
