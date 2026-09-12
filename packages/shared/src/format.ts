@@ -55,17 +55,28 @@ export function formatCompactDuration(seconds: number): string {
   return `${whole}s`;
 }
 
-const moneyFormatter = new Intl.NumberFormat("en-US", {
+const wholeMoneyFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
   minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
+});
+
+const fractionalMoneyFormatter = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  minimumFractionDigits: 2,
   maximumFractionDigits: 2,
 });
 
 /**
  * Formats an in-game currency amount the way players see it everywhere:
- * "$50", "$1,250", "$3.50".
+ * "$50", "$1,250", "$3.50". Whole amounts render without cents; anything
+ * with a fraction renders both digits, so a balance never reads "$3.5".
+ * Amounts below a cent round to "$0.00" rather than disappearing.
  */
 export function formatMoney(amount: number): string {
-  return moneyFormatter.format(amount);
+  return Number.isInteger(amount)
+    ? wholeMoneyFormatter.format(amount)
+    : fractionalMoneyFormatter.format(amount);
 }
