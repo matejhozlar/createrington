@@ -5,7 +5,7 @@ import type { Request, Response } from "express";
 const CURSEFORGE_ID_RE = /^[1-9]\d{0,9}$/;
 const CURSEFORGE_ID_MAX = 2_147_483_647;
 const VERSION_MAX = 64;
-const CHANGELOG_CACHE_CONTROL = "public, max-age=300";
+const IN_GAME_CONTENT_CACHE_CONTROL = "public, max-age=300";
 const ROW_CACHE_CONTROL = "public, max-age=86400";
 const ROW_RETRY_CACHE_CONTROL = "public, max-age=60";
 
@@ -48,9 +48,28 @@ export class ModpacksController {
       installedVersion: parseVersion(req.params.version),
     });
 
-    res.setHeader("Cache-Control", CHANGELOG_CACHE_CONTROL);
+    res.setHeader("Cache-Control", IN_GAME_CONTENT_CACHE_CONTROL);
     res.type("text/plain; charset=utf-8");
     res.send(markdown);
+  }
+
+  /**
+   * GET /api/modpacks/:project/version/:version.json
+   *
+   * Whether the pack `manifest.json` version `:version` the player runs is behind the newest recorded release of the modpack published as CurseForge project `:project`. Built for in-game update notices that fetch the URL directly.
+   *
+   * Responds with the flat, non-enveloped body `{ latest, installed, outdated }`. Errors use the standard `{ success: false, message, error }` envelope: 400 for a malformed project id, 404 when no modpack is published under it, it has no recorded release, or its newest release carries no version string.
+   *
+   * `outdated` is true only when the installed version is recorded as an older release, or parses as a lower dot-separated number than `latest`. A version that is unknown, newer, or not comparable reads as current, so a player on a dev or pre-release build is never told to update. `installed` is null when `:version` is malformed or longer than 64 characters. Cacheable for 5 minutes.
+   */
+  static async getVersionStatus(req: Request, res: Response): Promise<void> {
+    const status = await modpackService.getVersionStatus({
+      curseforgeProjectId: parseProjectId(req.params.project),
+      installedVersion: parseVersion(req.params.version),
+    });
+
+    res.setHeader("Cache-Control", IN_GAME_CONTENT_CACHE_CONTROL);
+    res.json(status);
   }
 
   /**

@@ -24,6 +24,12 @@ router.get(
   ...route("public", ModpacksController.getChangelog),
 );
 
+// GET /api/modpacks/:project/version/:version.json - Whether the installed pack version is behind the newest release
+router.get(
+  "/:project/version/:version.json",
+  ...route("public", ModpacksController.getVersionStatus),
+);
+
 // GET /api/modpacks/:project/changelog/rows/:release/:mod.png - One changelog entry rendered as a PNG row (icon, name, version change)
 router.get(
   "/:project/changelog/rows/:release/:mod.png",

@@ -1,3 +1,9 @@
+## v1.55.0 (2026-09-12)
+
+### @createrington/server (1.55.1 → 1.56.0)
+- [add] Add modpack version status endpoint `GET /api/modpacks/:project/version/:version.json` that returns whether the player's installed pack version is behind the newest recorded release, for in-game update notices with 5-minute caching
+- [fix] Fix version comparison so a numerically newer or non-comparable installed version (dev builds, pre-releases, unknown versions) is never reported as outdated
+
 ## v1.54.1 (2026-09-11)
 
 ### @createrington/server (1.55.0 → 1.55.1)
