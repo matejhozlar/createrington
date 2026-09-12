@@ -10,7 +10,8 @@ import {
 import { PlayerLabel } from "@/components/player-label";
 import { Button } from "@/components/ui/button";
 import { formatRelativeDate } from "@/lib/format";
-import { aspectRatio, altText, creditName, type GalleryItem } from "../types";
+import { cn } from "@/lib/utils";
+import { aspectRatio, altText, creditName, type GalleryItem } from "../format";
 
 interface GalleryLightboxProps {
   items: GalleryItem[];
@@ -41,7 +42,7 @@ export function GalleryLightbox({
       <DialogContent
         onKeyDown={handleKeyDown}
         showCloseButton={false}
-        className="max-w-[calc(100%-1rem)] gap-0 overflow-hidden p-0 sm:max-w-5xl"
+        className="max-h-[90dvh] max-w-[calc(100%-1rem)] gap-0 overflow-x-hidden overflow-y-auto p-0 sm:max-w-5xl"
       >
         <DialogTitle className="sr-only">{altText(item)}</DialogTitle>
         <DialogDescription className="sr-only">
@@ -55,7 +56,7 @@ export function GalleryLightbox({
             width={item.width ?? undefined}
             height={item.height ?? undefined}
             style={{ aspectRatio: aspectRatio(item) }}
-            className="mx-auto max-h-[70vh] w-full object-contain"
+            className="mx-auto max-h-[55dvh] w-full object-contain sm:max-h-[70dvh]"
           />
 
           <DialogClose asChild>
@@ -127,8 +128,6 @@ interface NavButtonProps {
 }
 
 function NavButton({ side, disabled, onClick }: NavButtonProps) {
-  if (disabled) return null;
-
   const Icon = side === "left" ? ChevronLeft : ChevronRight;
 
   return (
@@ -136,11 +135,13 @@ function NavButton({ side, disabled, onClick }: NavButtonProps) {
       type="button"
       variant="secondary"
       size="icon"
+      disabled={disabled}
       onClick={onClick}
       aria-label={side === "left" ? "Previous screenshot" : "Next screenshot"}
-      className={`absolute top-1/2 -translate-y-1/2 rounded-full opacity-80 hover:opacity-100 ${
-        side === "left" ? "left-2 sm:left-3" : "right-2 sm:right-3"
-      }`}
+      className={cn(
+        "absolute top-1/2 -translate-y-1/2 rounded-full opacity-80 hover:opacity-100 disabled:opacity-25",
+        side === "left" ? "left-2 sm:left-3" : "right-2 sm:right-3",
+      )}
     >
       <Icon className="size-5" />
     </Button>

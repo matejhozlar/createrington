@@ -13,6 +13,7 @@ import {
   type Image,
   type SKRSContext2D,
 } from "@napi-rs/canvas";
+import { computeBBox } from "@/utils/canvas";
 
 // Deep import on purpose: the @/services/skin-api barrel pulls in @/config,
 // whose env validation these standalone scripts cannot satisfy.
@@ -87,6 +88,50 @@ export function drawImageCover(
   }
 }
 
+// Radial gradient stretched to an ellipse and painted over the whole card:
+// ground shadows, vignettes, and glow pools.
+export function paintEllipseGradient(
+  ctx: SKRSContext2D,
+  cx: number,
+  cy: number,
+  rx: number,
+  ry: number,
+  stops: readonly (readonly [number, string])[],
+): void {
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(rx, ry);
+  const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
+  for (const [offset, color] of stops) g.addColorStop(offset, color);
+  ctx.fillStyle = g;
+  ctx.fillRect(-cx / rx, -cy / ry, W / rx, H / ry);
+  ctx.restore();
+}
+
+// Greedy word wrap against the measured width of `font`. Leaves ctx.font set
+// to `font`.
+export function wrapText(
+  ctx: SKRSContext2D,
+  text: string,
+  font: string,
+  maxWidth: number,
+): string[] {
+  ctx.font = font;
+  const lines: string[] = [];
+  let line = "";
+  for (const word of text.split(" ")) {
+    const probe = line ? `${line} ${word}` : word;
+    if (ctx.measureText(probe).width > maxWidth && line) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = probe;
+    }
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
 const WORDMARK_W = 330;
 
 export async function paintWordmark(
@@ -159,6 +204,90 @@ export async function getPoseFigure(req: PoseFigureRequest): Promise<Image> {
     await writeFile(file, png);
   }
   return loadImage(await readFile(file));
+}
+
+export interface PosedFigureSpec extends PoseFigureRequest {
+  /** Painted height in card pixels; the cached render is scaled to match. */
+  height: number;
+  centerX: number;
+  groundY: number;
+  /** Flip horizontally, e.g. so a pointing arm aims into the scene. */
+  mirror?: boolean;
+}
+
+export interface PosedFigureStyle {
+  /** Rim glow drawn as a shadow pass behind the figure. */
+  glow: string;
+  glowBlur: number;
+  /** Ground shadow ellipse, as a fraction of the figure width and in pixels. */
+  shadowScale: number;
+  shadowRy: number;
+  shadowAlpha: number;
+}
+
+// Paints one posed figure standing on `groundY`: soft ground shadow, a
+// blurred glow pass, then the figure itself, trimmed to its bounding box so
+// the transparent margin of the skin render does not offset it.
+export async function paintPosedFigure(
+  ctx: SKRSContext2D,
+  spec: PosedFigureSpec,
+  style: PosedFigureStyle,
+): Promise<void> {
+  const img = await getPoseFigure(spec);
+  const bbox = computeBBox(img);
+  if (!bbox) throw new Error(`Empty figure render for ${spec.username}`);
+
+  const scale = spec.height / bbox.height;
+  const w = bbox.width * scale;
+  const x = spec.centerX - w / 2;
+  const y = spec.groundY - spec.height;
+
+  paintEllipseGradient(
+    ctx,
+    spec.centerX,
+    spec.groundY - 3,
+    w * style.shadowScale,
+    style.shadowRy,
+    [
+      [0, `rgba(0,0,0,${style.shadowAlpha})`],
+      [1, "rgba(0,0,0,0)"],
+    ],
+  );
+
+  ctx.save();
+  if (spec.mirror) {
+    ctx.translate(spec.centerX * 2, 0);
+    ctx.scale(-1, 1);
+  }
+
+  ctx.save();
+  ctx.shadowColor = style.glow;
+  ctx.shadowBlur = style.glowBlur;
+  ctx.drawImage(
+    img,
+    bbox.minX,
+    bbox.minY,
+    bbox.width,
+    bbox.height,
+    x,
+    y,
+    w,
+    spec.height,
+  );
+  ctx.restore();
+
+  ctx.drawImage(
+    img,
+    bbox.minX,
+    bbox.minY,
+    bbox.width,
+    bbox.height,
+    x,
+    y,
+    w,
+    spec.height,
+  );
+  ctx.restore();
 }
 
 export async function writeCard(

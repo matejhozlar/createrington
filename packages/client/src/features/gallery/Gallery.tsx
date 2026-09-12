@@ -8,7 +8,7 @@ import { GalleryTile } from "./components/GalleryTile";
 import { GalleryLightbox } from "./components/GalleryLightbox";
 import { GalleryGridSkeleton } from "./components/GalleryGridSkeleton";
 import { GalleryEmpty } from "./components/GalleryEmpty";
-import { GALLERY_PAGE_SIZE } from "./types";
+import { GALLERY_PAGE_SIZE } from "./format";
 
 export function Gallery() {
   const [page, setPage] = useState(0);
@@ -32,6 +32,7 @@ export function Gallery() {
 
   const items = listQuery.data?.items ?? [];
   const pagination = listQuery.data?.pagination;
+  const strandedPage = items.length === 0 && (pagination?.total ?? 0) > 0;
 
   const changePage = (next: number) => {
     setPage(next);
@@ -56,7 +57,9 @@ export function Gallery() {
               Failed to load the gallery. Please try again later.
             </p>
           ) : items.length === 0 ? (
-            <GalleryEmpty />
+            <GalleryEmpty
+              onBackToStart={strandedPage ? () => changePage(0) : undefined}
+            />
           ) : (
             <div className="columns-1 gap-4 sm:columns-2 lg:columns-3 xl:columns-4">
               {items.map((item, index) => (
@@ -69,7 +72,7 @@ export function Gallery() {
             </div>
           )}
 
-          {pagination && items.length > 0 ? (
+          {pagination && pagination.total > 0 ? (
             <Paginator
               page={pagination.page}
               limit={pagination.limit}

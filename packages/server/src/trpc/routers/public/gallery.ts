@@ -2,6 +2,7 @@ import { z } from "zod";
 import { router, publicProcedure, middleware } from "@/trpc/trpc";
 import { Q } from "@/db";
 import { buildPagination, paginationInput, trpcError } from "@/trpc/utils";
+import { createRateLimit } from "@/trpc/middleware/rate-limit";
 import { featureFlagService, FeatureFlags } from "@/services/feature-flag";
 import { galleryImageUrls } from "@/services/gallery/urls";
 import type { GallerySubmission } from "@createrington/shared/db";
@@ -11,6 +12,13 @@ const requireGalleryEnabled = middleware(async ({ next }) => {
     throw trpcError.forbidden("The gallery is currently disabled");
   }
   return next();
+});
+
+const galleryReadLimit = createRateLimit({
+  name: "public.gallery.read",
+  limit: 60,
+  windowMs: 60 * 1000,
+  key: (ctx) => ctx.ip || "anon",
 });
 
 const galleryProcedure = publicProcedure.use(requireGalleryEnabled);
@@ -26,6 +34,7 @@ async function serialize(rows: GallerySubmission[]) {
     rows.length > 0
       ? await Q.gallery.submission.credit
           .where({ submissionId: { $in: rows.map((row) => row.id) } })
+          .orderBy("id")
           .all()
       : [];
 
@@ -80,6 +89,7 @@ export const publicGalleryRouter = router({
     })),
 
   list: galleryProcedure
+    .use(galleryReadLimit)
     .meta({
       description: "List published gallery screenshots, newest approval first",
     })

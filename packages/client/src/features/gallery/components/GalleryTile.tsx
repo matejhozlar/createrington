@@ -1,5 +1,5 @@
 import { PlayerLabel } from "@/components/player-label";
-import { aspectRatio, altText, creditName, type GalleryItem } from "../types";
+import { aspectRatio, altText, creditName, type GalleryItem } from "../format";
 
 interface GalleryTileProps {
   item: GalleryItem;
