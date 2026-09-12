@@ -9,6 +9,7 @@ import {
 } from "@/app/middleware/error-handler";
 import { balanceRepo, db, Q } from "@/db";
 import { BalanceTransactionType } from "@/db/repositories/balance";
+import { ConstraintViolationError, translateDbError } from "@/db/utils/errors";
 import { EmbedPresets } from "@/discord/embeds";
 import type {
   DiscordStickyMessageService,
@@ -18,7 +19,10 @@ import { FeatureFlags, featureFlagService } from "@/services/feature-flag";
 import { settings } from "@/services/settings";
 import { objectStorage } from "@/services/storage";
 import type { GallerySubmission } from "@createrington/shared/db";
-import { GALLERY_MAX_ORIGINAL_BYTES } from "@createrington/shared/gallery";
+import {
+  galleryCaption,
+  GALLERY_MAX_ORIGINAL_BYTES,
+} from "@createrington/shared/gallery";
 import {
   announceApproval,
   deleteAnnouncement,
@@ -166,7 +170,7 @@ export class GalleryService {
       return none;
     }
 
-    const caption = message.content.trim() || null;
+    const caption = galleryCaption(message.content);
     const created: GallerySubmission[] = [];
 
     for (const attachment of images) {
@@ -218,7 +222,7 @@ export class GalleryService {
 
   /** Copies an edited message text onto every pending submission harvested from that message. */
   async updateCaption(messageId: string, content: string): Promise<number> {
-    const caption = content.trim() || null;
+    const caption = galleryCaption(content);
     const pending = await this.pendingFromMessage(messageId);
 
     for (const submission of pending) {
@@ -272,7 +276,7 @@ export class GalleryService {
       this.weeklyRewardsUsed(author.minecraftUuid),
     ]);
     const requested = input.rewardAmount ?? defaultAmount;
-    const capReached = requested > 0 && used >= cap;
+    const capReached = used >= cap;
     const rewardAmount = capReached ? 0 : requested;
 
     const creditUuids = [...new Set(input.creditPlayerUuids ?? [])].filter(
@@ -281,7 +285,7 @@ export class GalleryService {
     const caption =
       input.caption === undefined
         ? submission.caption
-        : input.caption?.trim() || null;
+        : galleryCaption(input.caption ?? "");
 
     if (rewardAmount > 0) {
       const balance = await Q.player.balance.find({
@@ -292,51 +296,62 @@ export class GalleryService {
       }
     }
 
-    const approved = await db.inTransaction(async (tx) => {
-      let rewardTransactionId: number | null = null;
+    const approved = await this.withUploadCleanup(
+      [fullKey, thumbKey],
+      async () =>
+        db.inTransaction(async (tx) => {
+          const locked = await tx.gallery.submission.getForUpdate(id);
+          if (!locked || locked.status !== "pending") {
+            throw new ConflictError(
+              `Gallery submission is already ${locked?.status ?? "gone"}`,
+            );
+          }
 
-      if (rewardAmount > 0) {
-        const idempotencyKey = `gallery-reward:${id}`;
-        await balanceRepo.add(
-          { minecraftUuid: author.minecraftUuid },
-          rewardAmount,
-          `Gallery screenshot #${id} approved`,
-          BalanceTransactionType.GALLERY_REWARD,
-          { tx, idempotencyKey, metadata: { gallerySubmissionId: id } },
-        );
-        const ledger = await tx.player.balance.transaction
-          .where({ idempotencyKey })
-          .orderBy("id", "desc")
-          .limit(1)
-          .all();
-        rewardTransactionId = ledger[0]?.id ?? null;
-      }
+          let rewardTransactionId: number | null = null;
 
-      const row = await tx.gallery.submission.updateAndReturn(
-        { id },
-        {
-          status: "approved",
-          caption,
-          fullKey,
-          thumbKey,
-          width: variants.full.width,
-          height: variants.full.height,
-          reviewedBy: reviewer.discordId,
-          reviewedAt: new Date(),
-          rewardAmount,
-          rewardTransactionId,
-        },
-      );
+          if (rewardAmount > 0) {
+            const idempotencyKey = `gallery-reward:${id}`;
+            await balanceRepo.add(
+              { minecraftUuid: author.minecraftUuid },
+              rewardAmount,
+              `Gallery screenshot #${id} approved`,
+              BalanceTransactionType.GALLERY_REWARD,
+              { tx, idempotencyKey, metadata: { gallerySubmissionId: id } },
+            );
+            const ledger = await tx.player.balance.transaction
+              .where({ idempotencyKey })
+              .orderBy("id", "desc")
+              .limit(1)
+              .all();
+            rewardTransactionId = ledger[0]?.id ?? null;
+          }
 
-      for (const playerMinecraftUuid of creditUuids) {
-        await tx.gallery.submission.credit.create({
-          submissionId: id,
-          playerMinecraftUuid,
-        });
-      }
+          const row = await tx.gallery.submission.updateAndReturn(
+            { id },
+            {
+              status: "approved",
+              caption,
+              fullKey,
+              thumbKey,
+              width: variants.full.width,
+              height: variants.full.height,
+              reviewedBy: reviewer.discordId,
+              reviewedAt: new Date(),
+              rewardAmount,
+              rewardTransactionId,
+            },
+          );
 
-      return row;
-    });
+          for (const playerMinecraftUuid of creditUuids) {
+            await tx.gallery.submission.credit.create({
+              submissionId: id,
+              playerMinecraftUuid,
+            });
+          }
+
+          return row;
+        }),
+    );
 
     const creditNames =
       creditUuids.length > 0
@@ -576,7 +591,31 @@ export class GalleryService {
         height: attachment.height,
       });
     } catch (error) {
-      await this.removeOriginal(originalPath);
+      const translated = translateDbError(error);
+      // A unique violation means a concurrent delivery of the same message
+      // already owns this file, so deleting it would strand that row.
+      if (!(translated instanceof ConstraintViolationError)) {
+        await this.removeOriginal(originalPath);
+      }
+      throw translated;
+    }
+  }
+
+  private async withUploadCleanup<T>(
+    keys: string[],
+    work: () => Promise<T>,
+  ): Promise<T> {
+    try {
+      return await work();
+    } catch (error) {
+      try {
+        await objectStorage.delete(keys);
+      } catch (cleanupError) {
+        logger.error(
+          `Gallery: failed to delete the uploads of an abandoned approval (${keys.join(", ")}):`,
+          cleanupError,
+        );
+      }
       throw error;
     }
   }

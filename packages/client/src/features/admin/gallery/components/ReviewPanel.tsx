@@ -94,7 +94,7 @@ export function ReviewPanel({
     approveMutation.mutate({
       id: item.id,
       caption: caption.trim() || null,
-      rewardAmount: capReached ? 0 : parsedReward,
+      rewardAmount: parsedReward,
       creditPlayerUuids: credits.map((credit) => credit.minecraftUuid),
     });
   };

@@ -16,12 +16,14 @@ import {
   settings,
 } from "@/services/settings";
 import type { GallerySubmission, Player } from "@createrington/shared/db";
-import { GALLERY_SUBMISSION_STATUSES } from "@createrington/shared/gallery";
+import {
+  GALLERY_MAX_CAPTION_LENGTH,
+  GALLERY_SUBMISSION_STATUSES,
+} from "@createrington/shared/gallery";
 
 const statusSchema = z.enum(GALLERY_SUBMISSION_STATUSES);
 const idInput = z.object({ id: z.number().int().positive() });
 
-const MAX_CAPTION_LENGTH = 500;
 const MAX_NOTE_LENGTH = 500;
 const MAX_CREDITS = 10;
 
@@ -237,7 +239,11 @@ export const adminGalleryRouter = router({
     })
     .input(
       idInput.extend({
-        caption: z.string().max(MAX_CAPTION_LENGTH).nullable().optional(),
+        caption: z
+          .string()
+          .max(GALLERY_MAX_CAPTION_LENGTH)
+          .nullable()
+          .optional(),
         rewardAmount: galleryRewardAmountSchema.optional(),
         creditPlayerUuids: z
           .array(z.string().uuid())

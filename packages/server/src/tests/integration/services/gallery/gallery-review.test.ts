@@ -186,7 +186,9 @@ beforeEach(async () => {
   vi.clearAllMocks();
   storage.enabled = true;
   await settings.setGalleryRewardAmount(120, ADMIN_DISCORD_ID);
-  await settings.setGalleryWeeklyRewardCap(3, ADMIN_DISCORD_ID);
+  // High enough that rewards paid by earlier cases in this file cannot push
+  // the shared author over the rolling window; the cap cases lower it.
+  await settings.setGalleryWeeklyRewardCap(100, ADMIN_DISCORD_ID);
 });
 
 afterAll(async () => {
@@ -327,6 +329,61 @@ describe("GalleryService.approve", () => {
     });
     expect(result.submission.status).toBe("approved");
     expect(result.submission.rewardTransactionId).toBeNull();
+  });
+
+  it("reports the cap even when the reviewer also asked for nothing", async () => {
+    await settings.setGalleryWeeklyRewardCap(1, ADMIN_DISCORD_ID);
+
+    const pending = await submit();
+    const result = await service.approve(
+      pending.id,
+      { discordId: ADMIN_DISCORD_ID },
+      { rewardAmount: 0 },
+    );
+
+    expect(result).toMatchObject({ rewardPaid: 0, capReached: true });
+  });
+
+  it("pays only once when the same submission is approved concurrently", async () => {
+    const pending = await submit();
+    const balanceBefore = await balanceRepo.getAmount({
+      minecraftUuid: AUTHOR.uuid,
+    });
+
+    const results = await Promise.allSettled([
+      service.approve(pending.id, { discordId: ADMIN_DISCORD_ID }),
+      service.approve(pending.id, { discordId: ADMIN_DISCORD_ID }),
+    ]);
+
+    const fulfilled = results.filter((r) => r.status === "fulfilled");
+    const rejected = results.filter((r) => r.status === "rejected");
+    expect(fulfilled).toHaveLength(1);
+    expect(rejected).toHaveLength(1);
+    expect((rejected[0] as PromiseRejectedResult).reason).toBeInstanceOf(
+      ConflictError,
+    );
+
+    const ledger = await Q.player.balance.transaction
+      .where({ idempotencyKey: `gallery-reward:${pending.id}` })
+      .all();
+    expect(ledger).toHaveLength(1);
+    expect(await balanceRepo.getAmount({ minecraftUuid: AUTHOR.uuid })).toBe(
+      balanceBefore + 120,
+    );
+
+    const winner = (
+      fulfilled[0] as PromiseFulfilledResult<
+        Awaited<ReturnType<typeof service.approve>>
+      >
+    ).value.submission;
+    expect(storage.objects.has(winner.fullKey!)).toBe(true);
+    const orphans = [...storage.objects.keys()].filter(
+      (key) =>
+        key.startsWith(`gallery/${pending.id}-`) &&
+        key !== winner.fullKey &&
+        key !== winner.thumbKey,
+    );
+    expect(orphans).toEqual([]);
   });
 
   it("refuses to publish when the stored original is gone", async () => {

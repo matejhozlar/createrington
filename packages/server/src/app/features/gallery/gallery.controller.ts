@@ -38,6 +38,13 @@ export class GalleryController {
             resolve();
             return;
           }
+          // Once the body is streaming there is no status left to set, so a
+          // late failure (an aborted download) must not reach the error
+          // handler, which would throw on the already-sent headers.
+          if (res.headersSent) {
+            resolve();
+            return;
+          }
           const code = (error as NodeJS.ErrnoException).code;
           reject(
             code === "ENOENT"
