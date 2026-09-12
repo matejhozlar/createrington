@@ -3,7 +3,7 @@ import { Coins, ExternalLink, ImageOff, Trash2 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { useStickyValue } from "@/hooks/use-sticky-value";
-import { formatRelativeDate } from "@/lib/format";
+import { formatMoney, formatRelativeDate } from "@/lib/format";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Paginator } from "@/components/paginator";
 import { PlayerLabel } from "@/components/player-label";
@@ -197,7 +197,7 @@ function SubmissionCard({
           {item.rewardAmount !== null && item.rewardAmount > 0 && (
             <span className="flex items-center gap-1 text-xs text-muted-foreground">
               <Coins className="size-3.5" />
-              {item.rewardAmount}
+              {formatMoney(item.rewardAmount)}
             </span>
           )}
         </div>

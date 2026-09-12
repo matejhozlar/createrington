@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
-import { formatRelativeDate } from "@/lib/format";
+import { formatMoney, formatRelativeDate } from "@/lib/format";
 import { PlayerLabel } from "@/components/player-label";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -64,7 +64,7 @@ export function ReviewPanel({
         result.capReached
           ? "Approved. The weekly cap is reached, so no reward was paid"
           : result.rewardPaid > 0
-            ? `Approved. ${result.rewardPaid} coins paid to ${item.author.minecraftUsername}`
+            ? `Approved. ${formatMoney(result.rewardPaid)} paid to ${item.author.minecraftUsername}`
             : "Approved without a reward",
       onSuccess: () => {
         invalidate();

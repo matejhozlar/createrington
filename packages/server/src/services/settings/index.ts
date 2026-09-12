@@ -9,7 +9,7 @@ export const playerLimitSchema = z.number().int().min(0).max(1000);
 export const galleryRewardAmountSchema = z.number().int().min(0).max(1_000_000);
 export const galleryWeeklyRewardCapSchema = z.number().int().min(0).max(100);
 
-export const GALLERY_REWARD_AMOUNT_DEFAULT = 250;
+export const GALLERY_REWARD_AMOUNT_DEFAULT = 50;
 export const GALLERY_WEEKLY_REWARD_CAP_DEFAULT = 3;
 
 const SettingKeys = {

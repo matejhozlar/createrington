@@ -1,5 +1,6 @@
 import { z } from "zod";
 import config from "@/config";
+import { formatMoney } from "@createrington/shared/format";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
 import {
@@ -151,7 +152,7 @@ const settingsRouter = router({
       await Q.admin.log.action.logAction({
         ...auditActor(ctx),
         actionType: "gallery_settings_update",
-        description: `Gallery reward set to ${input.rewardAmount} coins, weekly cap ${input.weeklyRewardCap}`,
+        description: `Gallery reward set to ${formatMoney(input.rewardAmount)}, weekly cap ${input.weeklyRewardCap}`,
       });
 
       gallery()
@@ -268,7 +269,7 @@ export const adminGalleryRouter = router({
         await Q.admin.log.action.logAction({
           ...auditActor(ctx),
           actionType: "gallery_submission_approve",
-          description: `Approved gallery screenshot #${input.id} (reward ${result.rewardPaid}${result.capReached ? ", weekly cap reached" : ""})`,
+          description: `Approved gallery screenshot #${input.id} (reward ${formatMoney(result.rewardPaid)}${result.capReached ? ", weekly cap reached" : ""})`,
           targetPlayerUuid: item.author.minecraftUuid,
           targetPlayerName: item.author.minecraftUsername,
         });
