@@ -329,6 +329,19 @@ describe("GalleryService.approve", () => {
     expect(result.submission.rewardTransactionId).toBeNull();
   });
 
+  it("refuses to publish when the stored original is gone", async () => {
+    const pending = await submit();
+    await fs.rm(service.originalFilePath(pending));
+
+    await expect(
+      service.approve(pending.id, { discordId: ADMIN_DISCORD_ID }),
+    ).rejects.toBeInstanceOf(ConflictError);
+
+    const row = await Q.gallery.submission.find({ id: pending.id });
+    expect(row?.status).toBe("pending");
+    expect(storage.put).not.toHaveBeenCalled();
+  });
+
   it("refuses non-pending, unknown, and storage-less approvals", async () => {
     const pending = await submit();
     await service.approve(pending.id, { discordId: ADMIN_DISCORD_ID });

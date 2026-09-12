@@ -249,7 +249,7 @@ export class GalleryService {
       throw new NotFoundError("Submitting player no longer exists");
     }
 
-    const original = await fs.readFile(this.originalFilePath(submission));
+    const original = await this.readOriginal(submission);
     const variants = await createGalleryVariants(original);
     const token = randomBytes(6).toString("hex");
     const fullKey = `${STORAGE_PREFIX}/${id}-${token}.webp`;
@@ -577,6 +577,21 @@ export class GalleryService {
       });
     } catch (error) {
       await this.removeOriginal(originalPath);
+      throw error;
+    }
+  }
+
+  private async readOriginal(
+    submission: Pick<GallerySubmission, "id" | "originalPath">,
+  ): Promise<Buffer> {
+    try {
+      return await fs.readFile(this.originalFilePath(submission));
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+        throw new ConflictError(
+          "The stored image is gone, so this screenshot can no longer be published. Reject it and ask the player to post it again.",
+        );
+      }
       throw error;
     }
   }
