@@ -822,13 +822,22 @@ export class ModpackService {
       { modpackId: modpack.id },
       { orderBy: "id", orderDirection: "desc", limit: 1 },
     );
-    if (!latest?.version) {
+    if (!latest) {
       throw new NotFoundError(`${modpack.name} has no recorded release yet`);
+    }
+    if (!latest.version) {
+      throw new NotFoundError(
+        `${modpack.name} has no version recorded for its newest release`,
+      );
     }
 
     const latestVersion = latest.version;
     const installed = options.installedVersion ?? null;
-    if (installed === null || installed === latestVersion) {
+    if (
+      installed === null ||
+      installed === latestVersion ||
+      isOlderVersion(latestVersion, installed)
+    ) {
       return { latest: latestVersion, installed, outdated: false };
     }
 

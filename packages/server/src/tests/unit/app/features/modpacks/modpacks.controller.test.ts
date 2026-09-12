@@ -199,7 +199,7 @@ describe("ModpacksController.getVersionStatus", () => {
     });
   });
 
-  it("trims the version and ignores a blank or overlong one", async () => {
+  it("trims the version and ignores a whitespace-only or overlong one", async () => {
     for (const version of ["  1.0.6 ", "   ", "9".repeat(65)]) {
       await ModpacksController.getVersionStatus(
         makeReq({ project: "1", version }),
