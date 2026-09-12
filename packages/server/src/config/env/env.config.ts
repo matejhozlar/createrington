@@ -248,6 +248,18 @@ const envSchema = z
     STRIPE_SECRET_KEY: z.string().min(1).optional(),
     STRIPE_WEBHOOK_SECRET: z.string().min(1).optional(),
 
+    // Cloudflare R2 (optional; gallery publishing is disabled when not configured)
+    // One bucket and one bucket-scoped API token per environment, so a dev
+    // token can never write into the prod bucket.
+    R2_ACCOUNT_ID: z.string().min(1).optional(),
+    R2_ACCESS_KEY_ID: z.string().min(1).optional(),
+    R2_SECRET_ACCESS_KEY: z.string().min(1).optional(),
+    R2_BUCKET: z.string().min(1).optional(),
+    R2_PUBLIC_URL: z
+      .string()
+      .url("R2 public URL must be a valid URL")
+      .optional(),
+
     // Email: Resend transactional API
     // Production-only: waitlist mailer is the only consumer; in dev the
     // EmailService short-circuits when the key is absent. Required at runtime

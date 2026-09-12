@@ -5,7 +5,7 @@ import { MessageFlags, type Client } from "discord.js";
 
 export interface StickyMessageSpec {
   channelId: string;
-  build: () => DiscordEmbedBuilder;
+  build: () => DiscordEmbedBuilder | Promise<DiscordEmbedBuilder>;
   repostDelayMs: number;
 }
 
@@ -74,7 +74,7 @@ export class DiscordStickyMessageService {
 
       const result = await Discord.Messages.send({
         channelId: spec.channelId,
-        embeds: spec.build().build(),
+        embeds: (await spec.build()).build(),
         flags: MessageFlags.SuppressNotifications,
       });
 

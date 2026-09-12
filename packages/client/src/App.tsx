@@ -208,6 +208,10 @@ const AdminWorkshop = lazyNamed(
   () => import("./features/admin/workshop/AdminWorkshop"),
   "AdminWorkshop",
 );
+const AdminGallery = lazyNamed(
+  () => import("./features/admin/gallery/AdminGallery"),
+  "AdminGallery",
+);
 const AdminWorkshopDetail = lazyNamed(
   () =>
     import("./features/admin/workshop/workshop-admin-detail/AdminWorkshopDetail"),
@@ -481,6 +485,7 @@ function AppContent() {
                         path="tools/workshop"
                         element={<AdminWorkshop />}
                       />
+                      <Route path="tools/gallery" element={<AdminGallery />} />
                       <Route
                         path="tools/workshop/:slug"
                         element={<AdminWorkshopDetail />}

@@ -349,6 +349,23 @@ const config = {
     },
   },
 
+  r2: {
+    accountId: env.R2_ACCOUNT_ID ?? "",
+    accessKeyId: env.R2_ACCESS_KEY_ID ?? "",
+    secretAccessKey: env.R2_SECRET_ACCESS_KEY ?? "",
+    bucket: env.R2_BUCKET ?? "",
+    publicUrl: (env.R2_PUBLIC_URL ?? "").replace(/[/]+$/, ""),
+    get enabled() {
+      return Boolean(
+        this.accountId &&
+        this.accessKeyId &&
+        this.secretAccessKey &&
+        this.bucket &&
+        this.publicUrl,
+      );
+    },
+  },
+
   economy: {
     reward: {
       daily: 50,

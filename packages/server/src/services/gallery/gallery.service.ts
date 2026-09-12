@@ -1,20 +1,36 @@
+import { randomBytes } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { Q } from "@/db";
+import {
+  BadRequestError,
+  ConflictError,
+  ForbiddenError,
+  NotFoundError,
+} from "@/app/middleware/error-handler";
+import { balanceRepo, db, Q } from "@/db";
+import { BalanceTransactionType } from "@/db/repositories/balance";
 import { EmbedPresets } from "@/discord/embeds";
 import type {
   DiscordStickyMessageService,
   StickyMessageSpec,
 } from "@/services/discord/sticky-message";
 import { FeatureFlags, featureFlagService } from "@/services/feature-flag";
+import { settings } from "@/services/settings";
+import { objectStorage } from "@/services/storage";
 import type { GallerySubmission } from "@createrington/shared/db";
 import { GALLERY_MAX_ORIGINAL_BYTES } from "@createrington/shared/gallery";
+import {
+  announceApproval,
+  deleteAnnouncement,
+  markSourceMessage,
+} from "./discord";
 import { detectImageType } from "./image";
 import {
   isImageAttachment,
   type IntakeAttachment,
   type IntakeMessage,
 } from "./intake";
+import { createGalleryVariants } from "./variants";
 
 export interface GalleryServiceOptions {
   intakeChannelId: string | undefined;
@@ -28,16 +44,48 @@ export interface GalleryIngestResult {
   created: GallerySubmission[];
 }
 
+export interface GalleryReviewer {
+  discordId: string;
+}
+
+export interface GalleryApproveInput {
+  caption?: string | null;
+  rewardAmount?: number;
+  creditPlayerUuids?: string[];
+}
+
+export interface GalleryApproveResult {
+  submission: GallerySubmission;
+  rewardPaid: number;
+  capReached: boolean;
+  announced: boolean;
+}
+
+export interface GalleryRemover {
+  discordId: string;
+  isAdmin: boolean;
+}
+
+export interface GalleryImageUrls {
+  full: string;
+  thumb: string;
+}
+
 const DOWNLOAD_TIMEOUT_MS = 30_000;
 const NOTICE_REPOST_DELAY_MS = 5 * 60_000;
+const REWARD_WINDOW_MS = 7 * 24 * 60 * 60_000;
+const STORAGE_PREFIX = "gallery";
 
 /**
- * Harvests screenshot submissions from the Discord intake channel. Every
- * image attachment posted there by a registered player becomes a pending
- * gallery_submission, with the original bytes saved under the private
- * originals directory at intake time (Discord attachment links expire). The
- * consent notice of the channel is kept at the bottom through
- * DiscordStickyMessageService. Everything is gated by the `gallery` feature
+ * Owns the screenshot gallery lifecycle. Intake harvests image attachments
+ * posted in the Discord submissions channel by registered players into
+ * pending gallery_submission rows, saving the original bytes under the
+ * private originals directory (Discord attachment links expire). Review
+ * moves a row to approved (webp variants uploaded to object storage,
+ * reward paid once under a rolling weekly cap, announcement posted) or
+ * rejected (original deleted); the author or an admin can later withdraw an
+ * approved one. The submissions channel carries a sticky rules notice via
+ * DiscordStickyMessageService. Intake is gated by the `gallery` feature
  * flag, so the service is inert until the flag is switched on.
  */
 export class GalleryService {
@@ -52,19 +100,22 @@ export class GalleryService {
     this.notice = options.intakeChannelId
       ? {
           channelId: options.intakeChannelId,
-          build: () => EmbedPresets.gallery.intakeNotice(),
+          build: async () =>
+            EmbedPresets.gallery.intakeNotice(
+              await settings.getGalleryRewardAmount(),
+            ),
           repostDelayMs: options.noticeRepostDelayMs ?? NOTICE_REPOST_DELAY_MS,
         }
       : null;
   }
 
-  /** Creates the originals directory and, when the feature is enabled, makes sure the consent notice is present in the intake channel. */
+  /** Creates the originals directory and, when the feature is enabled, makes sure the rules notice is present in the submissions channel. */
   async initialize(): Promise<void> {
     await fs.mkdir(this.options.originalsDir, { recursive: true });
 
     if (!this.notice) {
       logger.warn(
-        "Gallery intake channel is not configured, screenshot submissions are disabled",
+        "Gallery submissions channel is not configured, screenshot submissions are disabled",
       );
       return;
     }
@@ -81,7 +132,14 @@ export class GalleryService {
     return this.options.intakeChannelId;
   }
 
-  /** Turns a message from the intake channel into pending submissions, one per image attachment. Bot messages, unregistered authors, and a disabled flag yield nothing. */
+  /** Reposts the rules notice so it reflects the current reward setting; no-op while the feature is off. */
+  async refreshNotice(): Promise<void> {
+    if (this.notice && (await this.isEnabled())) {
+      await this.sticky.repost(this.notice);
+    }
+  }
+
+  /** Turns a message from the submissions channel into pending submissions, one per image attachment. Bot messages, unregistered authors, and a disabled flag yield nothing. */
   async ingest(message: IntakeMessage): Promise<GalleryIngestResult> {
     const none: GalleryIngestResult = { created: [] };
 
@@ -170,6 +228,270 @@ export class GalleryService {
     return pending.length;
   }
 
+  /** Publishes a pending submission: uploads webp variants, pays the reward (skipped past the weekly cap), records credits, and announces it in the gallery channel. */
+  async approve(
+    id: number,
+    reviewer: GalleryReviewer,
+    input: GalleryApproveInput = {},
+  ): Promise<GalleryApproveResult> {
+    const submission = await this.requirePending(id);
+
+    if (!objectStorage.enabled) {
+      throw new BadRequestError(
+        "Object storage is not configured, set the R2_* environment variables",
+      );
+    }
+
+    const author = await Q.player.find({
+      minecraftUuid: submission.playerMinecraftUuid,
+    });
+    if (!author) {
+      throw new NotFoundError("Submitting player no longer exists");
+    }
+
+    const original = await fs.readFile(this.originalFilePath(submission));
+    const variants = await createGalleryVariants(original);
+    const token = randomBytes(6).toString("hex");
+    const fullKey = `${STORAGE_PREFIX}/${id}-${token}.webp`;
+    const thumbKey = `${STORAGE_PREFIX}/${id}-${token}-thumb.webp`;
+
+    await objectStorage.put({
+      key: fullKey,
+      body: variants.full.body,
+      contentType: variants.full.contentType,
+    });
+    await objectStorage.put({
+      key: thumbKey,
+      body: variants.thumb.body,
+      contentType: variants.thumb.contentType,
+    });
+
+    const [defaultAmount, cap, used] = await Promise.all([
+      settings.getGalleryRewardAmount(),
+      settings.getGalleryWeeklyRewardCap(),
+      this.weeklyRewardsUsed(author.minecraftUuid),
+    ]);
+    const requested = input.rewardAmount ?? defaultAmount;
+    const capReached = requested > 0 && used >= cap;
+    const rewardAmount = capReached ? 0 : requested;
+
+    const creditUuids = [...new Set(input.creditPlayerUuids ?? [])].filter(
+      (uuid) => uuid !== author.minecraftUuid,
+    );
+    const caption =
+      input.caption === undefined
+        ? submission.caption
+        : input.caption?.trim() || null;
+
+    if (rewardAmount > 0) {
+      const balance = await Q.player.balance.find({
+        minecraftUuid: author.minecraftUuid,
+      });
+      if (!balance) {
+        await balanceRepo.create(author.minecraftUuid, 0);
+      }
+    }
+
+    const approved = await db.inTransaction(async (tx) => {
+      let rewardTransactionId: number | null = null;
+
+      if (rewardAmount > 0) {
+        const idempotencyKey = `gallery-reward:${id}`;
+        await balanceRepo.add(
+          { minecraftUuid: author.minecraftUuid },
+          rewardAmount,
+          `Gallery screenshot #${id} approved`,
+          BalanceTransactionType.GALLERY_REWARD,
+          { tx, idempotencyKey, metadata: { gallerySubmissionId: id } },
+        );
+        const ledger = await tx.player.balance.transaction
+          .where({ idempotencyKey })
+          .orderBy("id", "desc")
+          .limit(1)
+          .all();
+        rewardTransactionId = ledger[0]?.id ?? null;
+      }
+
+      const row = await tx.gallery.submission.updateAndReturn(
+        { id },
+        {
+          status: "approved",
+          caption,
+          fullKey,
+          thumbKey,
+          width: variants.full.width,
+          height: variants.full.height,
+          reviewedBy: reviewer.discordId,
+          reviewedAt: new Date(),
+          rewardAmount,
+          rewardTransactionId,
+        },
+      );
+
+      for (const playerMinecraftUuid of creditUuids) {
+        await tx.gallery.submission.credit.create({
+          submissionId: id,
+          playerMinecraftUuid,
+        });
+      }
+
+      return row;
+    });
+
+    const creditNames =
+      creditUuids.length > 0
+        ? (
+            await Q.player.where({ minecraftUuid: { $in: creditUuids } }).all()
+          ).map((player) => player.minecraftUsername)
+        : [];
+
+    const announcement = await announceApproval({
+      submissionId: id,
+      authorDiscordId: author.discordId,
+      caption,
+      creditNames,
+      rewardAmount,
+      imageUrl: objectStorage.publicUrl(fullKey),
+    });
+
+    let final = approved;
+    if (announcement) {
+      final = await Q.gallery.submission.updateAndReturn(
+        { id },
+        {
+          announcementChannelId: announcement.channelId,
+          announcementMessageId: announcement.messageId,
+        },
+      );
+    }
+
+    await markSourceMessage(
+      submission.sourceChannelId,
+      submission.sourceMessageId,
+      "approved",
+    );
+
+    logger.info(
+      `Gallery: submission #${id} by ${author.minecraftUsername} approved by ${reviewer.discordId} (reward ${rewardAmount}${capReached ? ", weekly cap reached" : ""})`,
+    );
+
+    return {
+      submission: final,
+      rewardPaid: rewardAmount,
+      capReached,
+      announced: announcement !== null,
+    };
+  }
+
+  /** Rejects a pending submission with an optional note for the audit trail and deletes its stored original. */
+  async reject(
+    id: number,
+    reviewer: GalleryReviewer,
+    note?: string,
+  ): Promise<GallerySubmission> {
+    const submission = await this.requirePending(id);
+
+    const rejected = await Q.gallery.submission.updateAndReturn(
+      { id },
+      {
+        status: "rejected",
+        reviewedBy: reviewer.discordId,
+        reviewedAt: new Date(),
+        rejectNote: note?.trim() || null,
+      },
+    );
+
+    await this.removeOriginal(submission.originalPath);
+    await markSourceMessage(
+      submission.sourceChannelId,
+      submission.sourceMessageId,
+      "rejected",
+    );
+
+    logger.info(`Gallery: submission #${id} rejected by ${reviewer.discordId}`);
+
+    return rejected;
+  }
+
+  /** Pulls an approved submission from the gallery: only the author or an admin may do it. Published variants, the announcement, and the original are deleted; the reward is kept. */
+  async remove(id: number, actor: GalleryRemover): Promise<GallerySubmission> {
+    const submission = await Q.gallery.submission.find({ id });
+    if (!submission) {
+      throw new NotFoundError("Gallery submission not found");
+    }
+    if (submission.status !== "approved") {
+      throw new ConflictError("Only approved screenshots can be removed");
+    }
+
+    if (!actor.isAdmin) {
+      const author = await Q.player.find({
+        minecraftUuid: submission.playerMinecraftUuid,
+      });
+      if (author?.discordId !== actor.discordId) {
+        throw new ForbiddenError(
+          "Only the author or an admin can remove this screenshot",
+        );
+      }
+    }
+
+    const removed = await Q.gallery.submission.updateAndReturn(
+      { id },
+      {
+        status: "withdrawn",
+        announcementChannelId: null,
+        announcementMessageId: null,
+      },
+    );
+
+    const keys = [submission.fullKey, submission.thumbKey].filter(
+      (key): key is string => key !== null,
+    );
+    if (keys.length > 0 && objectStorage.enabled) {
+      try {
+        await objectStorage.delete(keys);
+      } catch (error) {
+        logger.error(
+          `Gallery: failed to delete published files of #${id}:`,
+          error,
+        );
+      }
+    }
+
+    if (submission.announcementChannelId && submission.announcementMessageId) {
+      await deleteAnnouncement({
+        channelId: submission.announcementChannelId,
+        messageId: submission.announcementMessageId,
+      });
+    }
+
+    await this.removeOriginal(submission.originalPath);
+
+    logger.info(`Gallery: submission #${id} removed by ${actor.discordId}`);
+
+    return removed;
+  }
+
+  /** Number of rewarded approvals a player received in the rolling weekly window. */
+  async weeklyRewardsUsed(playerMinecraftUuid: string): Promise<number> {
+    return Q.gallery.submission.count({
+      playerMinecraftUuid,
+      rewardTransactionId: { $exists: true },
+      reviewedAt: { $gte: new Date(Date.now() - REWARD_WINDOW_MS) },
+    });
+  }
+
+  /** Public URLs of the published variants; null until the submission is approved. */
+  imageUrls(
+    submission: Pick<GallerySubmission, "fullKey" | "thumbKey">,
+  ): GalleryImageUrls | null {
+    if (!submission.fullKey || !submission.thumbKey) return null;
+
+    return {
+      full: objectStorage.publicUrl(submission.fullKey),
+      thumb: objectStorage.publicUrl(submission.thumbKey),
+    };
+  }
+
   /** Absolute path of the stored original of a submission. */
   originalFilePath(
     submission: Pick<GallerySubmission, "originalPath">,
@@ -179,6 +501,19 @@ export class GalleryService {
 
   private isEnabled(): Promise<boolean> {
     return featureFlagService.isEnabled(FeatureFlags.gallery);
+  }
+
+  private async requirePending(id: number): Promise<GallerySubmission> {
+    const submission = await Q.gallery.submission.find({ id });
+    if (!submission) {
+      throw new NotFoundError("Gallery submission not found");
+    }
+    if (submission.status !== "pending") {
+      throw new ConflictError(
+        `Gallery submission is already ${submission.status}`,
+      );
+    }
+    return submission;
   }
 
   private pendingFromMessage(messageId: string): Promise<GallerySubmission[]> {

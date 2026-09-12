@@ -88,6 +88,7 @@
     "vitest": "^4.1.11"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1130.0",
     "@createrington/logger": "^0.2.0",
     "@createrington/shared": "workspace:*",
     "@napi-rs/canvas": "^0.1.100",
@@ -113,6 +114,7 @@
     "rcon-client": "^4.2.5",
     "resend": "^6.12.2",
     "sanitize-html": "^2.17.7",
+    "sharp": "^0.35.4",
     "socket.io": "^4.8.3",
     "ssh2-sftp-client": "^12.0.1",
     "stripe": "^20.4.1",

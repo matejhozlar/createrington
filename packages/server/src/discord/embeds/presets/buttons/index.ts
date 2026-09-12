@@ -33,4 +33,26 @@ export const ButtonPresets = {
         .setStyle(ButtonStyle.Danger);
     },
   },
+
+  gallery: {
+    /**
+     * Lets the author (or an admin) pull an approved screenshot from the gallery
+     */
+    remove(submissionId: number): ButtonBuilder {
+      return new ButtonBuilder()
+        .setCustomId(`gallery:remove:${submissionId}`)
+        .setLabel("Remove from gallery")
+        .setStyle(ButtonStyle.Secondary);
+    },
+
+    /**
+     * Link to the website gallery
+     */
+    open(url: string): ButtonBuilder {
+      return new ButtonBuilder()
+        .setLabel("Open gallery")
+        .setStyle(ButtonStyle.Link)
+        .setURL(url);
+    },
+  },
 };
