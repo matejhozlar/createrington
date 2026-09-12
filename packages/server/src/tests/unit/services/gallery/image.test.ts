@@ -1,6 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { detectImageType } from "@/services/gallery/image";
-import { isImageAttachment, type IntakeAttachment } from "@/services/gallery";
+import {
+  isImageAttachment,
+  type IntakeAttachment,
+} from "@/services/gallery/intake";
 import { GALLERY_MAX_ORIGINAL_BYTES } from "@createrington/shared/gallery";
 
 const PNG = Buffer.concat([
