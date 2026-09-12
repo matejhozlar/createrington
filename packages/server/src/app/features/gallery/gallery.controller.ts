@@ -21,12 +21,13 @@ export class GalleryController {
     }
 
     const gallery = container.getSync(Services.GALLERY_SERVICE);
-    const filePath = gallery.originalFilePath(submission);
 
     await new Promise<void>((resolve, reject) => {
       res.sendFile(
-        filePath,
+        submission.originalPath,
         {
+          root: gallery.originalsDir,
+          dotfiles: "deny",
           headers: {
             "Content-Type": submission.originalContentType,
             "Cache-Control": ORIGINAL_CACHE_CONTROL,

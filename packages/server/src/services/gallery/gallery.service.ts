@@ -499,6 +499,11 @@ export class GalleryService {
     return path.join(this.options.originalsDir, submission.originalPath);
   }
 
+  /** Directory holding the stored originals, for serving them with a root constraint. */
+  get originalsDir(): string {
+    return this.options.originalsDir;
+  }
+
   private isEnabled(): Promise<boolean> {
     return featureFlagService.isEnabled(FeatureFlags.gallery);
   }
