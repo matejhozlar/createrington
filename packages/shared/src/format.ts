@@ -54,3 +54,18 @@ export function formatCompactDuration(seconds: number): string {
   if (minutes > 0) return `${minutes}m`;
   return `${whole}s`;
 }
+
+const moneyFormatter = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
+});
+
+/**
+ * Formats an in-game currency amount the way players see it everywhere:
+ * "$50", "$1,250", "$3.50".
+ */
+export function formatMoney(amount: number): string {
+  return moneyFormatter.format(amount);
+}

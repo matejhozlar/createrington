@@ -1,5 +1,6 @@
 import { createEmbed } from "@/discord/embeds/embed-builder";
 import { EmbedColors } from "@/discord/embeds/colors";
+import { formatMoney } from "@createrington/shared/format";
 
 export interface GalleryApprovalEmbedInput {
   authorDiscordId: string;
@@ -23,7 +24,7 @@ export const GalleryEmbedPresets = {
   intakeNotice(rewardAmount: number) {
     const reward =
       rewardAmount > 0
-        ? `Approved screenshots are published on the website with credit to you and earn **${rewardAmount} coins**.`
+        ? `Approved screenshots are published on the website with credit to you and earn **${formatMoney(rewardAmount)}** in-game currency.`
         : "Approved screenshots are published on the website with credit to you.";
 
     return createEmbed()
@@ -50,7 +51,10 @@ export const GalleryEmbedPresets = {
     }
 
     if (input.rewardAmount > 0) {
-      lines.push("", `Reward: **${input.rewardAmount}** coins`);
+      lines.push(
+        "",
+        `Reward: **${formatMoney(input.rewardAmount)}** in-game currency`,
+      );
     }
 
     return createEmbed()

@@ -117,7 +117,8 @@ function SettingsForm({
             onChange={(e) => setRewardAmount(e.target.value)}
           />
           <FieldDescription>
-            Coins per approved screenshot. Set 0 to publish without paying.
+            In-game currency paid per approved screenshot. Set 0 to publish
+            without paying.
           </FieldDescription>
         </Field>
         <Field>
