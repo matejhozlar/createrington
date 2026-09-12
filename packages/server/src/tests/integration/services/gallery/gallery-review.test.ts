@@ -67,6 +67,7 @@ import {
 import type { DiscordStickyMessageService } from "@/services/discord/sticky-message";
 import {
   GalleryService,
+  galleryImageUrls,
   type IntakeAttachment,
   type IntakeMessage,
 } from "@/services/gallery";
@@ -285,7 +286,7 @@ describe("GalleryService.approve", () => {
       "approved",
     );
     expect(await fileExists(service.originalFilePath(pending))).toBe(true);
-    expect(service.imageUrls(submission)).toEqual({
+    expect(galleryImageUrls(submission)).toEqual({
       full: `https://cdn.test/${submission.fullKey}`,
       thumb: `https://cdn.test/${submission.thumbKey}`,
     });

@@ -70,11 +70,6 @@ export interface GalleryRemover {
   isAdmin: boolean;
 }
 
-export interface GalleryImageUrls {
-  full: string;
-  thumb: string;
-}
-
 const DOWNLOAD_TIMEOUT_MS = 30_000;
 const NOTICE_REPOST_DELAY_MS = 5 * 60_000;
 const REWARD_WINDOW_MS = 7 * 24 * 60 * 60_000;
@@ -493,18 +488,6 @@ export class GalleryService {
       rewardTransactionId: { $exists: true },
       reviewedAt: { $gte: new Date(Date.now() - REWARD_WINDOW_MS) },
     });
-  }
-
-  /** Public URLs of the published variants; null until the submission is approved. */
-  imageUrls(
-    submission: Pick<GallerySubmission, "fullKey" | "thumbKey">,
-  ): GalleryImageUrls | null {
-    if (!submission.fullKey || !submission.thumbKey) return null;
-
-    return {
-      full: objectStorage.publicUrl(submission.fullKey),
-      thumb: objectStorage.publicUrl(submission.thumbKey),
-    };
   }
 
   /** Absolute path of the stored original of a submission. */

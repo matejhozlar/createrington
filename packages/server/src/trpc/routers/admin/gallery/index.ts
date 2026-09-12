@@ -10,6 +10,7 @@ import {
   trpcError,
 } from "@/trpc/utils";
 import { container, Services } from "@/services/container";
+import { galleryImageUrls } from "@/services/gallery/urls";
 import {
   galleryRewardAmountSchema,
   galleryWeeklyRewardCapSchema,
@@ -94,7 +95,7 @@ async function serialize(rows: GallerySubmission[]) {
           credit.playerMinecraftUuid,
         ),
       ),
-    images: gallery().imageUrls(row),
+    images: galleryImageUrls(row),
     originalUrl:
       row.status === "pending" || row.status === "approved"
         ? `/api/gallery/submissions/${row.id}/original`
