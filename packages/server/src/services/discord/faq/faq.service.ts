@@ -2,7 +2,11 @@ import config from "@/config";
 import { Q } from "@/db";
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
-import { MessageFlags, type Client, type Message } from "discord.js";
+import type {
+  DiscordStickyMessageService,
+  StickyMessageSpec,
+} from "@/services/discord/sticky-message";
+import { MessageFlags, type Message } from "discord.js";
 
 interface CompiledPattern {
   id: number;
@@ -20,35 +24,32 @@ const FAQ_MAX_MATCH_LENGTH = 4000;
  * database. Patterns are compiled once (keywords are escaped + alternated into
  * a case-insensitive regex; raw regex entries are validated and skipped on
  * parse failure) and matched priority-first against a length-capped slice of
- * the incoming message to bound regex cost. Also owns a sticky welcome embed:
- * any activity in the channel debounces a `REPOST_DELAY_MS` timer that
- * deletes and reposts it so it stays pinned to the bottom. Disabled in dev:
- * `handleMessage` and `repostWelcomeMessage` early-return.
+ * the incoming message to bound regex cost. The channel's sticky welcome
+ * embed is delegated to DiscordStickyMessageService: any activity debounces a
+ * `REPOST_DELAY_MS` repost so it stays at the bottom. Disabled in dev:
+ * `handleMessage` and `repostWelcomeMessage` early-return and the welcome
+ * message is not verified on startup.
  */
 export class FaqService {
   private patterns: CompiledPattern[] = [];
-  private repostTimer?: ReturnType<typeof setTimeout>;
-  private readonly channelId = Discord.Channels.general.QUESTIONS;
+  private readonly welcome: StickyMessageSpec = {
+    channelId: Discord.Channels.general.QUESTIONS,
+    build: () => EmbedPresets.faq.welcomeMessage(),
+    repostDelayMs: REPOST_DELAY_MS,
+  };
 
-  constructor(private readonly bot: Client) {}
+  constructor(private readonly sticky: DiscordStickyMessageService) {}
 
   /** Compiles FAQ patterns from the DB and ensures the sticky welcome message exists in the channel (reposting it if the stored ID is missing). */
   async initialize(): Promise<void> {
     logger.info("Initializing FaqService...");
 
     await this.refreshPatterns();
-    await this.ensureWelcomeMessage();
+    if (!config.envMode.isDev) {
+      await this.sticky.ensure(this.welcome);
+    }
 
     logger.info("FaqService initialized");
-  }
-
-  /** Cancels the pending welcome-repost timer; in-flight Discord calls are not interrupted. */
-  async shutdown(): Promise<void> {
-    if (this.repostTimer) {
-      clearTimeout(this.repostTimer);
-      this.repostTimer = undefined;
-      logger.info("FaqService repost timer stopped");
-    }
   }
 
   /** Replies with the first matching FAQ pattern (if any) and debounces a welcome-message repost regardless of match. No-op in dev. */
@@ -70,7 +71,7 @@ export class FaqService {
       );
     }
 
-    this.scheduleWelcomeRepost();
+    this.sticky.touch(this.welcome);
   }
 
   /** Recompiles the in-memory pattern cache from enabled DB entries (priority desc). Invalid regex entries are logged and skipped, not thrown. */
@@ -106,50 +107,11 @@ export class FaqService {
     logger.info(`Loaded ${this.patterns.length} FAQ patterns`);
   }
 
-  /** Deletes the prior welcome message (if any) and sends a fresh one to keep it at the bottom of the channel, updating the stored message ID. No-op in dev. */
+  /** Deletes the prior welcome message (if any) and sends a fresh one to keep it at the bottom of the channel. No-op in dev. */
   async repostWelcomeMessage(): Promise<void> {
     if (config.envMode.isDev) return;
 
-    try {
-      const existing = await Q.faq.welcome.message.find({
-        channelId: this.channelId,
-      });
-
-      if (existing) {
-        await Discord.Messages.delete({
-          channelId: this.channelId,
-          messageId: existing.messageId,
-        });
-      }
-
-      const embed = EmbedPresets.faq.welcomeMessage();
-      const result = await Discord.Messages.send({
-        channelId: this.channelId,
-        embeds: embed.build(),
-        flags: MessageFlags.SuppressNotifications,
-      });
-
-      if (!result.success || !result.messageId) {
-        logger.error("Failed to send FAQ welcome message");
-        return;
-      }
-
-      if (existing) {
-        await Q.faq.welcome.message.update(
-          { id: existing.id },
-          { messageId: result.messageId },
-        );
-      } else {
-        await Q.faq.welcome.message.create({
-          channelId: this.channelId,
-          messageId: result.messageId,
-        });
-      }
-
-      logger.info(`FAQ welcome message posted: ${result.messageId}`);
-    } catch (error) {
-      logger.error("Failed to repost FAQ welcome message:", error);
-    }
+    await this.sticky.repost(this.welcome);
   }
 
   private matchPattern(content: string): CompiledPattern | null {
@@ -166,43 +128,9 @@ export class FaqService {
     return null;
   }
 
-  private scheduleWelcomeRepost(): void {
-    if (this.repostTimer) {
-      clearTimeout(this.repostTimer);
-    }
-
-    this.repostTimer = setTimeout(async () => {
-      this.repostTimer = undefined;
-      await this.repostWelcomeMessage();
-    }, REPOST_DELAY_MS);
-  }
-
   /** Converts a comma-separated keywords string to a case-insensitive alternation regex; throws when the input contains no keywords. */
   static keywordsToRegex(keywords: string): RegExp {
     return keywordsToRegex(keywords);
-  }
-
-  private async ensureWelcomeMessage(): Promise<void> {
-    const existing = await Q.faq.welcome.message.find({
-      channelId: this.channelId,
-    });
-
-    if (existing) {
-      try {
-        const channel = await this.bot.channels.fetch(this.channelId);
-        if (channel && channel.isTextBased() && "messages" in channel) {
-          await channel.messages.fetch(existing.messageId);
-          logger.info(
-            `FAQ welcome message already exists: ${existing.messageId}`,
-          );
-          return;
-        }
-      } catch {
-        logger.info("FAQ welcome message not found in channel, reposting...");
-      }
-    }
-
-    await this.repostWelcomeMessage();
   }
 }
 

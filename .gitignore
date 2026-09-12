@@ -41,6 +41,7 @@ docker/mc/data/
 IDEAS.md
 .mcp.json
 storage/transcripts
+packages/server/storage/
 tmp/
 
 # Auto-generated files

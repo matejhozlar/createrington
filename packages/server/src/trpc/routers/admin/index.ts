@@ -9,6 +9,7 @@ import { dashboardRouter } from "./dashboard";
 import { discordCommandsRouter } from "./discord-commands";
 import { embedsRouter } from "./embeds";
 import { faqRouter } from "./faq";
+import { adminGalleryRouter } from "./gallery";
 import { inactivityRouter } from "./inactivity";
 import { logsRouter } from "./logs";
 import { adminMetricsRouter } from "./metrics";
@@ -50,6 +51,7 @@ export const adminRouter = router({
   embeds: embedsRouter,
   faq: faqRouter,
   features: adminFeaturesRouter,
+  gallery: adminGalleryRouter,
   parties: adminPartiesRouter,
   inactivity: inactivityRouter,
   logs: logsRouter,

@@ -18,6 +18,7 @@ import {
 import {
   BarChart3,
   Blocks,
+  Images,
   ChevronRight,
   Clock,
   Megaphone,
@@ -104,6 +105,18 @@ const TOOL_SECTIONS: ToolSection[] = [
           "Forceload chunks, ally status, members, and qualified players in one place.",
         icon: Users,
         href: "/admin/tools/parties",
+      },
+    ],
+  },
+  {
+    title: "Community",
+    tools: [
+      {
+        title: "Gallery",
+        description:
+          "Review screenshots posted in Discord and publish them to the website gallery.",
+        icon: Images,
+        href: "/admin/tools/gallery",
       },
     ],
   },

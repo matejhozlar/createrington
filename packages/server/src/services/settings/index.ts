@@ -6,10 +6,17 @@ export type IntakeMode = "auto" | "closed";
 
 export const intakeModeSchema = z.enum(["auto", "closed"]);
 export const playerLimitSchema = z.number().int().min(0).max(1000);
+export const galleryRewardAmountSchema = z.number().int().min(0).max(1_000_000);
+export const galleryWeeklyRewardCapSchema = z.number().int().min(0).max(100);
+
+export const GALLERY_REWARD_AMOUNT_DEFAULT = 250;
+export const GALLERY_WEEKLY_REWARD_CAP_DEFAULT = 3;
 
 const SettingKeys = {
   playerLimit: "player_limit",
   intakeMode: "intake_mode",
+  galleryRewardAmount: "gallery_reward_amount",
+  galleryWeeklyRewardCap: "gallery_weekly_reward_cap",
 } as const;
 
 const CACHE_TTL_MS = 10_000;
@@ -107,6 +114,48 @@ export class SettingsService {
     await this.write(
       SettingKeys.intakeMode,
       intakeModeSchema.parse(value),
+      updatedBy,
+    );
+  }
+
+  /** Currency paid to the submitter when a gallery screenshot is approved (0 disables the reward). */
+  async getGalleryRewardAmount(): Promise<number> {
+    return this.read(
+      SettingKeys.galleryRewardAmount,
+      galleryRewardAmountSchema,
+      GALLERY_REWARD_AMOUNT_DEFAULT,
+    );
+  }
+
+  /** Maximum rewarded gallery approvals per player in a rolling 7 days; approvals past the cap publish without paying. */
+  async getGalleryWeeklyRewardCap(): Promise<number> {
+    return this.read(
+      SettingKeys.galleryWeeklyRewardCap,
+      galleryWeeklyRewardCapSchema,
+      GALLERY_WEEKLY_REWARD_CAP_DEFAULT,
+    );
+  }
+
+  /** Update the gallery reward amount; the change takes effect within the cache TTL. */
+  async setGalleryRewardAmount(
+    value: number,
+    updatedBy: string,
+  ): Promise<void> {
+    await this.write(
+      SettingKeys.galleryRewardAmount,
+      galleryRewardAmountSchema.parse(value),
+      updatedBy,
+    );
+  }
+
+  /** Update the weekly gallery reward cap; the change takes effect within the cache TTL. */
+  async setGalleryWeeklyRewardCap(
+    value: number,
+    updatedBy: string,
+  ): Promise<void> {
+    await this.write(
+      SettingKeys.galleryWeeklyRewardCap,
+      galleryWeeklyRewardCapSchema.parse(value),
       updatedBy,
     );
   }
