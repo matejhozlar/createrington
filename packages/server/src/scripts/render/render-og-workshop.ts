@@ -31,9 +31,12 @@ import {
   ASSETS,
   registerBrandFonts,
   roundRectPath,
+  paintEllipseGradient,
   paintWordmark,
-  getPoseFigure,
+  paintPosedFigure,
+  wrapText,
   writeCard,
+  type PosedFigureSpec,
 } from "./og-shared";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -61,20 +64,10 @@ const LID_SPACE = 130;
 const CHEST_OPEN_DEPTH = 24;
 const CHEST_LID_RISE = 72;
 
-interface FigureSpec {
-  username: string;
-  uuid: string;
-  pose: string;
-  height: number;
-  centerX: number;
-  groundY: number;
-  mirror?: boolean;
-}
-
 // Gathered around the pack: diablothe2nd points at the votes raining in
 // (mirrored so the arm aims at the hearts), Tetsuoken cheers them on,
 // The_BigShot weighs his next suggestion.
-const FIGURES: readonly FigureSpec[] = [
+const FIGURES: readonly PosedFigureSpec[] = [
   {
     username: "The_BigShot",
     uuid: "4cada83a-c012-4a31-8d80-942f3f79e8a1",
@@ -206,46 +199,6 @@ const CHEST_LID_UNDERSIDE: readonly string[] = [
   "duuuuuuuuuud",
   "dddddddddddd",
 ];
-
-function paintEllipseGradient(
-  ctx: SKRSContext2D,
-  cx: number,
-  cy: number,
-  rx: number,
-  ry: number,
-  stops: readonly (readonly [number, string])[],
-): void {
-  ctx.save();
-  ctx.translate(cx, cy);
-  ctx.scale(rx, ry);
-  const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
-  for (const [offset, color] of stops) g.addColorStop(offset, color);
-  ctx.fillStyle = g;
-  ctx.fillRect(-cx / rx, -cy / ry, W / rx, H / ry);
-  ctx.restore();
-}
-
-function wrapText(
-  ctx: SKRSContext2D,
-  text: string,
-  font: string,
-  maxWidth: number,
-): string[] {
-  ctx.font = font;
-  const lines: string[] = [];
-  let line = "";
-  for (const word of text.split(" ")) {
-    const probe = line ? `${line} ${word}` : word;
-    if (ctx.measureText(probe).width > maxWidth && line) {
-      lines.push(line);
-      line = word;
-    } else {
-      line = probe;
-    }
-  }
-  if (line) lines.push(line);
-  return lines;
-}
 
 function drawPixelMap(
   ctx: SKRSContext2D,
@@ -527,58 +480,13 @@ function paintChest(ctx: SKRSContext2D): void {
 
 async function paintFigures(ctx: SKRSContext2D): Promise<void> {
   for (const spec of FIGURES) {
-    const img = await getPoseFigure({
-      uuid: spec.uuid,
-      pose: spec.pose,
-      username: spec.username,
+    await paintPosedFigure(ctx, spec, {
+      glow: amber(0.35),
+      glowBlur: 12,
+      shadowScale: 0.62,
+      shadowRy: 11,
+      shadowAlpha: 0.5,
     });
-    const bbox = computeBBox(img);
-    if (!bbox) throw new Error(`Empty figure render for ${spec.username}`);
-
-    const scale = spec.height / bbox.height;
-    const w = bbox.width * scale;
-    const x = spec.centerX - w / 2;
-    const y = spec.groundY - spec.height;
-
-    paintEllipseGradient(ctx, spec.centerX, spec.groundY - 3, w * 0.62, 11, [
-      [0, "rgba(0,0,0,0.5)"],
-      [1, "rgba(0,0,0,0)"],
-    ]);
-
-    ctx.save();
-    if (spec.mirror) {
-      ctx.translate(spec.centerX * 2, 0);
-      ctx.scale(-1, 1);
-    }
-
-    ctx.save();
-    ctx.shadowColor = amber(0.35);
-    ctx.shadowBlur = 12;
-    ctx.drawImage(
-      img,
-      bbox.minX,
-      bbox.minY,
-      bbox.width,
-      bbox.height,
-      x,
-      y,
-      w,
-      spec.height,
-    );
-    ctx.restore();
-
-    ctx.drawImage(
-      img,
-      bbox.minX,
-      bbox.minY,
-      bbox.width,
-      bbox.height,
-      x,
-      y,
-      w,
-      spec.height,
-    );
-    ctx.restore();
   }
 }
 

@@ -1,5 +1,6 @@
 import { NavLink } from "react-router";
 import { Mail } from "lucide-react";
+import { trpc } from "@/lib/trpc";
 import { DiscordIcon } from "@/components/icons/discord";
 import { CurseForgeIcon } from "@/components/icons/curseforge";
 import {
@@ -30,6 +31,8 @@ const SOCIAL_LINKS = [
 ] as const;
 
 export const Footer = () => {
+  const galleryQuery = trpc.public.gallery.isEnabled.useQuery();
+
   return (
     <footer className="w-full border-t bg-background px-5 md:px-8 py-12">
       <div className="max-w-7xl mx-auto">
@@ -132,6 +135,15 @@ export const Footer = () => {
               >
                 Players
               </NavLink>
+
+              {galleryQuery.data?.enabled ? (
+                <NavLink
+                  to="/gallery"
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Gallery
+                </NavLink>
+              ) : null}
 
               <NavLink
                 to="/donate"

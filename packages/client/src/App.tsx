@@ -70,6 +70,10 @@ const TermsOfService = lazyNamed(
   "TermsOfService",
 );
 const Team = lazyNamed(() => import("./features/team/Team"), "Team");
+const Gallery = lazyNamed(
+  () => import("./features/gallery/Gallery"),
+  "Gallery",
+);
 const GuideList = lazyNamed(
   () => import("./features/guides/GuideList"),
   "GuideList",
@@ -373,6 +377,7 @@ function AppContent() {
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/terms" element={<TermsOfService />} />
           <Route path="/team" element={<Team />} />
+          <Route path="/gallery" element={<Gallery />} />
           <Route path="/guides" element={<GuideList />} />
           <Route path="/guides/:slug" element={<GuideDetail />} />
           <Route path="/apply-to-join" element={<ApplyToJoin />} />

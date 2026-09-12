@@ -18,6 +18,8 @@ import { server } from "./server";
 // is relative to the private originals directory and is never served
 // publicly; full_key / thumb_key are object storage keys filled on approval.
 // reward_transaction_id is set exactly once when the approval reward is paid.
+// Two status indexes: created_at backs the admin queue, reviewed_at the
+// public gallery, which orders by publication rather than submission.
 
 export const gallerySubmission = pgTable(
   "gallery_submission",
@@ -65,6 +67,10 @@ export const gallerySubmission = pgTable(
     index("idx_gallery_submission_status_created").on(
       table.status,
       table.createdAt.desc(),
+    ),
+    index("idx_gallery_submission_status_reviewed").on(
+      table.status,
+      table.reviewedAt.desc().nullsFirst(),
     ),
     index("idx_gallery_submission_player").on(table.playerMinecraftUuid),
     uniqueIndex("idx_gallery_submission_source").on(
