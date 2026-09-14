@@ -9,7 +9,6 @@ import { PlayerInactivityExemptionBaseQueries } from "@/generated/db/player_inac
 export interface ExemptionListItem {
   playerMinecraftUuid: string;
   minecraftUsername: string;
-  discordId: string;
   lastSeen: Date;
   reason: string | null;
   createdByDiscordId: string | null;
@@ -26,6 +25,27 @@ export interface ExemptionListItem {
 export class PlayerInactivityExemptionQueries extends PlayerInactivityExemptionBaseQueries {
   constructor(db: Pool | PoolClient) {
     super(db);
+  }
+
+  /**
+   * Insert an exemption unless the player already has one. Returns true when
+   * a row was inserted and false when the player was already exempt, so a
+   * concurrent duplicate never surfaces as a primary key violation.
+   */
+  async createIfAbsent(data: {
+    playerMinecraftUuid: string;
+    reason: string | null;
+    createdByDiscordId: string;
+  }): Promise<boolean> {
+    const result = await this.runQuery(
+      "create inactivity exemption",
+      `INSERT INTO player_inactivity_exemption (player_minecraft_uuid, reason, created_by_discord_id)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (player_minecraft_uuid) DO NOTHING`,
+      [data.playerMinecraftUuid, data.reason, data.createdByDiscordId],
+    );
+
+    return (result.rowCount ?? 0) === 1;
   }
 
   /**
@@ -56,14 +76,13 @@ export class PlayerInactivityExemptionQueries extends PlayerInactivityExemptionB
         e.created_by_discord_id,
         e.created_at,
         p.minecraft_username,
-        p.discord_id,
         p.last_seen,
         a.minecraft_username AS created_by_minecraft_username
       FROM player_inactivity_exemption e
       INNER JOIN player p ON p.minecraft_uuid = e.player_minecraft_uuid
       LEFT JOIN player a ON a.discord_id = e.created_by_discord_id
       ${listSearchClause}
-      ORDER BY e.created_at DESC
+      ORDER BY e.created_at DESC, e.player_minecraft_uuid
       LIMIT $1 OFFSET $2`;
 
     const countQuery = `
@@ -79,7 +98,6 @@ export class PlayerInactivityExemptionQueries extends PlayerInactivityExemptionB
         created_by_discord_id: string | null;
         created_at: Date;
         minecraft_username: string;
-        discord_id: string;
         last_seen: Date;
         created_by_minecraft_username: string | null;
       }>("list inactivity exemptions", listQuery, listParams),
@@ -94,7 +112,6 @@ export class PlayerInactivityExemptionQueries extends PlayerInactivityExemptionB
       exemptions: listResult.rows.map((row) => ({
         playerMinecraftUuid: row.player_minecraft_uuid,
         minecraftUsername: row.minecraft_username,
-        discordId: row.discord_id,
         lastSeen: row.last_seen,
         reason: row.reason,
         createdByDiscordId: row.created_by_discord_id,

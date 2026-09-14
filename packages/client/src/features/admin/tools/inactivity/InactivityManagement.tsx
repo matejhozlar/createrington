@@ -47,7 +47,11 @@ import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { keepPreviousData } from "@tanstack/react-query";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
-import { formatFullDate, formatRelativeDate } from "@/features/admin/format";
+import {
+  formatFullDate,
+  formatRelativeDate,
+  toIso,
+} from "@/features/admin/format";
 import {
   STAT_CARDS,
   STATUS_BADGE_CLASSES,
@@ -55,6 +59,7 @@ import {
   STATUS_LABELS,
   daysUntilDeadline,
   deriveWarningStatus,
+  resolveStatText,
   type WarningStatusFilter,
 } from "./constants";
 import { ResolveWarningModal } from "./components/modals/ResolveWarningModal";
@@ -64,11 +69,6 @@ import { GhostsCard } from "./components/GhostsCard";
 import { UnlinkedMembersCard } from "./components/UnlinkedMembersCard";
 
 type Warning = RouterOutput["admin"]["inactivity"]["list"]["warnings"][number];
-
-/** Normalizes a tRPC-serialized timestamp to an ISO string. */
-function toIso(value: string | Date): string {
-  return typeof value === "string" ? value : new Date(value).toISOString();
-}
 
 export function InactivityManagement() {
   const toast = useToastActions();
@@ -114,6 +114,8 @@ export function InactivityManagement() {
 
   const canMutate = capabilitiesQuery.data?.canMutate ?? false;
   const graceDays = capabilitiesQuery.data?.graceDays ?? 14;
+  const retentionDays = capabilitiesQuery.data?.retentionDays ?? 30;
+  const statWindows = { graceDays, retentionDays };
 
   const handleSearchChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -173,8 +175,8 @@ export function InactivityManagement() {
     () => ({
       active: statsQuery.data?.active ?? 0,
       expired: statsQuery.data?.expired ?? 0,
-      resolvedLast30d: statsQuery.data?.resolvedLast30d ?? 0,
-      removedLast30d: statsQuery.data?.removedLast30d ?? 0,
+      resolvedInRetention: statsQuery.data?.resolvedInRetention ?? 0,
+      removedInRetention: statsQuery.data?.removedInRetention ?? 0,
     }),
     [statsQuery.data],
   );
@@ -359,10 +361,12 @@ export function InactivityManagement() {
               <Card key={key}>
                 <CardContent className="flex items-start justify-between">
                   <div>
-                    <CardDescription>{label}</CardDescription>
+                    <CardDescription>
+                      {resolveStatText(label, statWindows)}
+                    </CardDescription>
                     <CardTitle className="text-2xl">{stats[key]}</CardTitle>
                     <p className="mt-2 text-xs text-muted-foreground">
-                      {description}
+                      {resolveStatText(description, statWindows)}
                     </p>
                   </div>
                   <div

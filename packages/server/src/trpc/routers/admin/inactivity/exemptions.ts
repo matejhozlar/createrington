@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
-import { Q } from "@/db";
+import { db, Q } from "@/db";
 import {
   buildPagination,
   paginationInput,
@@ -65,32 +65,39 @@ export const exemptionsRouter = router({
         throw trpcError.notFound("Player not found");
       }
 
-      const existing = await Q.player.inactivity.exemption.find({
-        playerMinecraftUuid: player.minecraftUuid,
-      });
-      if (existing) {
+      const { inserted, resolvedWarnings } = await db.inTransaction(
+        async (tx) => {
+          const inserted = await tx.player.inactivity.exemption.createIfAbsent({
+            playerMinecraftUuid: player.minecraftUuid,
+            reason: input.reason || null,
+            createdByDiscordId: ctx.user.discordId,
+          });
+          if (!inserted) return { inserted, resolvedWarnings: 0 };
+
+          const resolvedWarnings =
+            await tx.player.inactivity.warning.resolveActiveForPlayer(
+              player.minecraftUuid,
+            );
+          return { inserted, resolvedWarnings };
+        },
+      );
+
+      if (!inserted) {
         throw trpcError.conflict(
           `${player.minecraftUsername} is already exempt`,
         );
       }
 
-      await Q.player.inactivity.exemption.create({
-        playerMinecraftUuid: player.minecraftUuid,
-        reason: input.reason || null,
-        createdByDiscordId: ctx.user.discordId,
-      });
-
-      const resolvedWarnings =
-        await Q.player.inactivity.warning.resolveActiveForPlayer(
-          player.minecraftUuid,
-        );
+      const reasonNote = input.reason ? ` (reason: ${input.reason})` : "";
+      const resolvedNote =
+        resolvedWarnings > 0
+          ? `, resolved ${resolvedWarnings} active warning(s)`
+          : "";
 
       await Q.admin.log.action.logAction({
         ...auditActor(ctx),
         actionType: "inactivity_exemption_add",
-        description: `Exempted ${player.minecraftUsername} from inactivity cleanup${
-          input.reason ? `: ${input.reason}` : ""
-        }`,
+        description: `Exempted ${player.minecraftUsername} from inactivity cleanup${reasonNote}${resolvedNote}`,
         targetPlayerUuid: player.minecraftUuid,
         targetPlayerName: player.minecraftUsername,
       });

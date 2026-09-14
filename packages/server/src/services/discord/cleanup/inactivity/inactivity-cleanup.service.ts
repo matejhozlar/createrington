@@ -4,6 +4,12 @@ import { EmbedPresets } from "@/discord/embeds";
 import { getServiceSync, Services } from "@/services";
 import { DiscordMessageService } from "@/services/discord/message/message.service";
 import { removeInactiveWarning } from "./remove-warning";
+import {
+  INACTIVITY_CHECK_INTERVAL_MS,
+  INACTIVITY_GRACE_DAYS,
+  INACTIVITY_INACTIVE_DAYS,
+  INACTIVITY_RETENTION_DAYS,
+} from "./constants";
 
 /**
  * Who triggered a cleanup run. `null` means the scheduled tick or the
@@ -42,10 +48,6 @@ export type InactivityTriggerContext = {
  */
 export class InactivityCleanupService {
   private intervalId?: NodeJS.Timeout;
-  private readonly CHECK_INTERVAL = 7 * 24 * 60 * 60 * 1000; // 7 days
-  private readonly INACTIVE_DAYS = 60;
-  private readonly GRACE_DAYS = 14;
-  private readonly RETENTION_DAYS = 30;
 
   /**
    * Kick off a resolve+remove sweep, then arm the weekly cycle. Startup
@@ -64,10 +66,10 @@ export class InactivityCleanupService {
       this.runCycle().catch((error) => {
         logger.error("Scheduled inactivity cleanup cycle failed:", error);
       });
-    }, this.CHECK_INTERVAL);
+    }, INACTIVITY_CHECK_INTERVAL_MS);
 
     logger.info(
-      `InactivityCleanupService initialized (check every ${this.CHECK_INTERVAL / 86400000}d, inactive threshold: ${this.INACTIVE_DAYS}d, grace period: ${this.GRACE_DAYS}d, retention: ${this.RETENTION_DAYS}d)`,
+      `InactivityCleanupService initialized (check every ${INACTIVITY_CHECK_INTERVAL_MS / 86400000}d, inactive threshold: ${INACTIVITY_INACTIVE_DAYS}d, grace period: ${INACTIVITY_GRACE_DAYS}d, retention: ${INACTIVITY_RETENTION_DAYS}d)`,
     );
   }
 
@@ -132,7 +134,9 @@ export class InactivityCleanupService {
    */
   private async warnInactive(): Promise<void> {
     const inactivePlayers =
-      await Q.player.inactivity.warning.findInactivePlayers(this.INACTIVE_DAYS);
+      await Q.player.inactivity.warning.findInactivePlayers(
+        INACTIVITY_INACTIVE_DAYS,
+      );
 
     if (inactivePlayers.length === 0) {
       logger.debug("No new inactive players to warn");
@@ -142,7 +146,7 @@ export class InactivityCleanupService {
     logger.info(`Found ${inactivePlayers.length} inactive player(s) to warn`);
 
     const deadlineDate = new Date(
-      Date.now() + this.GRACE_DAYS * 24 * 60 * 60 * 1000,
+      Date.now() + INACTIVITY_GRACE_DAYS * 24 * 60 * 60 * 1000,
     );
 
     for (const player of inactivePlayers) {
@@ -192,7 +196,9 @@ export class InactivityCleanupService {
     triggeredBy: InactivityTriggerContext = null,
   ): Promise<void> {
     const expiredWarnings =
-      await Q.player.inactivity.warning.findExpiredWarnings(this.GRACE_DAYS);
+      await Q.player.inactivity.warning.findExpiredWarnings(
+        INACTIVITY_GRACE_DAYS,
+      );
 
     if (expiredWarnings.length === 0) {
       logger.debug("No expired inactivity warnings to process");
@@ -289,12 +295,12 @@ export class InactivityCleanupService {
    */
   private async pruneClosed(): Promise<void> {
     const pruned = await Q.player.inactivity.warning.pruneClosed(
-      this.RETENTION_DAYS,
+      INACTIVITY_RETENTION_DAYS,
     );
 
     if (pruned > 0) {
       logger.info(
-        `Pruned ${pruned} inactivity warning(s) closed more than ${this.RETENTION_DAYS}d ago`,
+        `Pruned ${pruned} inactivity warning(s) closed more than ${INACTIVITY_RETENTION_DAYS}d ago`,
       );
     }
   }
@@ -357,10 +363,10 @@ export class InactivityCleanupService {
         this.runCycle().catch((error) => {
           logger.error("Scheduled inactivity cleanup cycle failed:", error);
         });
-      }, this.CHECK_INTERVAL);
+      }, INACTIVITY_CHECK_INTERVAL_MS);
 
       logger.info(
-        `Inactivity cleanup schedule reset, next run in ${this.CHECK_INTERVAL / 86400000}d`,
+        `Inactivity cleanup schedule reset, next run in ${INACTIVITY_CHECK_INTERVAL_MS / 86400000}d`,
       );
     }
   }

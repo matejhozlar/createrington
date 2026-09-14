@@ -100,6 +100,24 @@ describe("Q.player.inactivity.warning.pruneClosed", () => {
   });
 });
 
+describe("Q.player.inactivity.warning.countByStatus", () => {
+  it("scopes resolved and removed counts to the retention window", async () => {
+    await seedPlayer(ALICE, "alice", "100", 90);
+    await seedWarning(ALICE, { warnedDaysAgo: 100, resolvedDaysAgo: 45 });
+    await seedWarning(ALICE, { warnedDaysAgo: 40, resolvedDaysAgo: 10 });
+    await seedWarning(ALICE, { warnedDaysAgo: 40, removedDaysAgo: 5 });
+    await seedWarning(ALICE, { warnedDaysAgo: 5 });
+    await seedWarning(ALICE, { warnedDaysAgo: 20 });
+
+    expect(await warning.countByStatus(14, 30)).toEqual({
+      active: 1,
+      expired: 1,
+      resolvedInRetention: 1,
+      removedInRetention: 1,
+    });
+  });
+});
+
 describe("Q.player.inactivity.warning.findInactivePlayers", () => {
   it("skips exempted players", async () => {
     await seedPlayer(ALICE, "alice", "100", 90);
@@ -142,6 +160,21 @@ describe("Q.player.inactivity.warning.resolveActiveForPlayer", () => {
     ).not.toBeNull();
     expect((await warning.find({ id: aliceRemoved }))?.resolvedAt).toBeNull();
     expect((await warning.find({ id: bobActive }))?.resolvedAt).toBeNull();
+  });
+});
+
+describe("Q.player.inactivity.exemption.createIfAbsent", () => {
+  it("inserts once and reports an existing exemption without throwing", async () => {
+    await seedPlayer(ALICE, "alice", "100", 5);
+    const data = {
+      playerMinecraftUuid: ALICE,
+      reason: null,
+      createdByDiscordId: "100",
+    };
+
+    expect(await exemption.createIfAbsent(data)).toBe(true);
+    expect(await exemption.createIfAbsent(data)).toBe(false);
+    expect(await exemption.count()).toBe(1);
   });
 });
 

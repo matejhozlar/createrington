@@ -40,8 +40,8 @@ export interface WarningListItem {
 export interface WarningStatusCounts {
   active: number;
   expired: number;
-  resolvedLast30d: number;
-  removedLast30d: number;
+  resolvedInRetention: number;
+  removedInRetention: number;
 }
 
 export class PlayerInactivityWarningQueries extends PlayerInactivityWarningBaseQueries {
@@ -405,9 +405,13 @@ export class PlayerInactivityWarningQueries extends PlayerInactivityWarningBaseQ
 
   /**
    * Returns counts for stats cards: active (in grace), expired (past grace
-   * and not yet cleaned up), and resolved/removed in the last 30 days.
+   * and not yet cleaned up), and resolved/removed within the retention
+   * window, i.e. the rows the prune phase has not deleted yet.
    */
-  async countByStatus(graceDays: number): Promise<WarningStatusCounts> {
+  async countByStatus(
+    graceDays: number,
+    retentionDays: number,
+  ): Promise<WarningStatusCounts> {
     const query = `
       SELECT
         COUNT(*) FILTER (
@@ -422,28 +426,28 @@ export class PlayerInactivityWarningQueries extends PlayerInactivityWarningBaseQ
         )::integer AS expired,
         COUNT(*) FILTER (
           WHERE resolved_at IS NOT NULL
-            AND resolved_at >= NOW() - INTERVAL '30 days'
-        )::integer AS resolved_last30d,
+            AND resolved_at >= NOW() - ($2 || ' days')::interval
+        )::integer AS resolved_in_retention,
         COUNT(*) FILTER (
           WHERE removed_at IS NOT NULL
-            AND removed_at >= NOW() - INTERVAL '30 days'
-        )::integer AS removed_last30d
+            AND removed_at >= NOW() - ($2 || ' days')::interval
+        )::integer AS removed_in_retention
       FROM player_inactivity_warning`;
 
     try {
       const result = await this.db.query<{
         active: number;
         expired: number;
-        resolved_last30d: number;
-        removed_last30d: number;
-      }>(query, [graceDays]);
+        resolved_in_retention: number;
+        removed_in_retention: number;
+      }>(query, [graceDays, retentionDays]);
 
       const row = result.rows[0];
       return {
         active: row?.active ?? 0,
         expired: row?.expired ?? 0,
-        resolvedLast30d: row?.resolved_last30d ?? 0,
-        removedLast30d: row?.removed_last30d ?? 0,
+        resolvedInRetention: row?.resolved_in_retention ?? 0,
+        removedInRetention: row?.removed_in_retention ?? 0,
       };
     } catch (error) {
       logger.error("Error counting warnings by status:", error);
