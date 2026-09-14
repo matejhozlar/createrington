@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-28T21:53:02.439Z",
+  "generatedAt": "2026-09-14T13:28:44.465Z",
   "commands": [
     {
       "name": "cooldown",
@@ -584,6 +584,19 @@
         "duration": 5,
         "type": "user",
         "message": "Please wait before checking stats again!"
+      },
+      "env": "prod"
+    },
+    {
+      "name": "vote",
+      "description": "Get your personal link to vote for the server",
+      "category": "user",
+      "options": [],
+      "defaultMemberPermissions": null,
+      "cooldown": {
+        "duration": 5,
+        "type": "user",
+        "message": "Please wait a moment before requesting another vote link!"
       },
       "env": "prod"
     },

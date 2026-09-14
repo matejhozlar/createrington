@@ -14,6 +14,7 @@ vi.mock("@/config", () => ({
         modpack: "https://example.com/modpack",
         map: "https://example.com/map",
         assets: "https://example.com/assets",
+        vote: "https://example.com/server/createrington/vote",
       },
     },
   },
@@ -41,6 +42,14 @@ describe("ButtonPresets.links", () => {
       expect(data.style).toBe(ButtonStyle.Link);
       expect(data).toHaveProperty("url");
     }
+  });
+
+  it("vote(username) links to the vote page with the username prefilled", () => {
+    const data = json(ButtonPresets.links.vote("Tux_Mango"));
+    expect(data.style).toBe(ButtonStyle.Link);
+    expect(data.url).toBe(
+      "https://example.com/server/createrington/vote?username=Tux_Mango",
+    );
   });
 });
 
