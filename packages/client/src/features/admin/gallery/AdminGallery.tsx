@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Images, Settings2, Sparkles } from "lucide-react";
+import { Settings2, Sparkles } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { LabeledSwitch } from "@/components/labeled-switch";
@@ -84,7 +84,6 @@ export function AdminGallery() {
 
       <div className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-4 px-4 pb-4">
         <AdminPageTitle
-          icon={Images}
           title="Gallery"
           description="Screenshots posted in the Discord submissions channel wait here for review. Approved ones are published on the website with credit, rewarded, and announced in the gallery channel."
           actions={

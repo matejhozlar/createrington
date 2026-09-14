@@ -8,7 +8,7 @@ interface GalleryTileProps {
 
 export function GalleryTile({ item, onOpen }: GalleryTileProps) {
   return (
-    <figure className="group mb-4 break-inside-avoid overflow-hidden rounded-xl border border-border bg-card transition-colors hover:border-primary/40">
+    <figure className="mb-4 break-inside-avoid overflow-hidden rounded-xl border border-border bg-card transition-colors hover:border-primary/40">
       <button
         type="button"
         onClick={onOpen}
@@ -22,7 +22,7 @@ export function GalleryTile({ item, onOpen }: GalleryTileProps) {
           height={item.height ?? undefined}
           loading="lazy"
           decoding="async"
-          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+          className="h-full w-full object-cover"
         />
       </button>
 
