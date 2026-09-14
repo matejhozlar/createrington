@@ -52,8 +52,8 @@ export class PlayerInactivityWarningQueries extends PlayerInactivityWarningBaseQ
   /**
    * Find players inactive for the given number of days who don't already
    * have an active (unresolved, unremoved) warning.
-   * Also excludes players created within the inactivity window and any
-   * registered admins (admins are never swept by inactivity).
+   * Also excludes players created within the inactivity window, registered
+   * admins (admins are never swept by inactivity), and exempted players.
    */
   async findInactivePlayers(inactiveDays: number): Promise<InactivePlayer[]> {
     const query = `
@@ -73,6 +73,10 @@ export class PlayerInactivityWarningQueries extends PlayerInactivityWarningBaseQ
         )
         AND NOT EXISTS (
           SELECT 1 FROM admin a WHERE a.discord_id = p.discord_id
+        )
+        AND NOT EXISTS (
+          SELECT 1 FROM player_inactivity_exemption e
+          WHERE e.player_minecraft_uuid = p.minecraft_uuid
         )
       ORDER BY p.last_seen ASC`;
 
@@ -133,8 +137,8 @@ export class PlayerInactivityWarningQueries extends PlayerInactivityWarningBaseQ
 
   /**
    * Find active warnings whose grace period has expired.
-   * Admins are excluded defensively: even if a pre-existing warning
-   * row predates the admin exclusion in `findInactivePlayers`, it will
+   * Admins and exempted players are excluded defensively: even if a
+   * warning row predates the exclusions in `findInactivePlayers`, it will
    * never be acted on by the removal phase.
    */
   async findExpiredWarnings(graceDays: number): Promise<ActiveWarning[]> {
@@ -154,6 +158,10 @@ export class PlayerInactivityWarningQueries extends PlayerInactivityWarningBaseQ
         AND w.warned_at < NOW() - ($1 || ' days')::interval
         AND NOT EXISTS (
           SELECT 1 FROM admin a WHERE a.discord_id = p.discord_id
+        )
+        AND NOT EXISTS (
+          SELECT 1 FROM player_inactivity_exemption e
+          WHERE e.player_minecraft_uuid = w.player_minecraft_uuid
         )
       ORDER BY w.warned_at ASC`;
 
@@ -201,6 +209,36 @@ export class PlayerInactivityWarningQueries extends PlayerInactivityWarningBaseQ
       `UPDATE player_inactivity_warning SET resolved_at = NOW(), updated_at = NOW() WHERE id = $1`,
       [id],
     );
+  }
+
+  /**
+   * Resolve every active (unresolved, unremoved) warning for a player.
+   * Returns the number of warnings resolved.
+   */
+  async resolveActiveForPlayer(playerMinecraftUuid: string): Promise<number> {
+    const result = await this.db.query(
+      `UPDATE player_inactivity_warning
+       SET resolved_at = NOW(), updated_at = NOW()
+       WHERE player_minecraft_uuid = $1
+         AND resolved_at IS NULL
+         AND removed_at IS NULL`,
+      [playerMinecraftUuid],
+    );
+    return result.rowCount ?? 0;
+  }
+
+  /**
+   * Delete warnings that were resolved or removed more than `retentionDays`
+   * ago. Active warnings are never touched. Returns the number of rows deleted.
+   */
+  async pruneClosed(retentionDays: number): Promise<number> {
+    const result = await this.db.query(
+      `DELETE FROM player_inactivity_warning
+       WHERE resolved_at < NOW() - ($1 || ' days')::interval
+          OR removed_at < NOW() - ($1 || ' days')::interval`,
+      [retentionDays],
+    );
+    return result.rowCount ?? 0;
   }
 
   /**

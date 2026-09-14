@@ -59,6 +59,7 @@ import {
 } from "./constants";
 import { ResolveWarningModal } from "./components/modals/ResolveWarningModal";
 import { RemoveWarningModal } from "./components/modals/RemoveWarningModal";
+import { ExemptionsCard } from "./components/ExemptionsCard";
 import { GhostsCard } from "./components/GhostsCard";
 import { UnlinkedMembersCard } from "./components/UnlinkedMembersCard";
 
@@ -129,12 +130,16 @@ export function InactivityManagement() {
     setPage(0);
   }, []);
 
-  const handleSuccess = useCallback(() => {
-    setResolveTarget(null);
-    setRemoveTarget(null);
+  const refreshWarnings = useCallback(() => {
     refetchList();
     refetchStats();
   }, [refetchList, refetchStats]);
+
+  const handleSuccess = useCallback(() => {
+    setResolveTarget(null);
+    setRemoveTarget(null);
+    refreshWarnings();
+  }, [refreshWarnings]);
 
   const handleTriggerCleanup = useCallback(async () => {
     try {
@@ -497,6 +502,8 @@ export function InactivityManagement() {
             </>
           )}
         </Card>
+
+        <ExemptionsCard onWarningsChanged={refreshWarnings} />
 
         {/* Ghost members (registered but missing from Discord) */}
         <GhostsCard canMutate={canMutate} />

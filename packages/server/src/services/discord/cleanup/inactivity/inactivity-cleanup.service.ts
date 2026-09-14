@@ -31,6 +31,12 @@ export type InactivityTriggerContext = {
  *    returned are kicked from Discord, removed from the whitelist, and their
  *    player record is deleted.
  *
+ * 4. **Retention phase**: Warnings resolved or removed more than 30 days
+ *    ago are deleted so the admin list only shows recent history.
+ *
+ * Players listed in `player_inactivity_exemption` are skipped by the warning
+ * and removal phases entirely.
+ *
  * All state is persisted in the `player_inactivity_warning` table, making
  * the system fully restart/redeploy-safe.
  */
@@ -39,6 +45,7 @@ export class InactivityCleanupService {
   private readonly CHECK_INTERVAL = 7 * 24 * 60 * 60 * 1000; // 7 days
   private readonly INACTIVE_DAYS = 60;
   private readonly GRACE_DAYS = 14;
+  private readonly RETENTION_DAYS = 30;
 
   /**
    * Kick off a resolve+remove sweep, then arm the weekly cycle. Startup
@@ -60,7 +67,7 @@ export class InactivityCleanupService {
     }, this.CHECK_INTERVAL);
 
     logger.info(
-      `InactivityCleanupService initialized (check every ${this.CHECK_INTERVAL / 86400000}d, inactive threshold: ${this.INACTIVE_DAYS}d, grace period: ${this.GRACE_DAYS}d)`,
+      `InactivityCleanupService initialized (check every ${this.CHECK_INTERVAL / 86400000}d, inactive threshold: ${this.INACTIVE_DAYS}d, grace period: ${this.GRACE_DAYS}d, retention: ${this.RETENTION_DAYS}d)`,
     );
   }
 
@@ -74,7 +81,7 @@ export class InactivityCleanupService {
   }
 
   /**
-   * Run the full cleanup cycle: resolve → warn → remove.
+   * Run the full cleanup cycle: resolve → warn → remove → prune.
    * Order matters: resolve first so players who just returned aren't
    * accidentally included in the removal phase.
    */
@@ -85,6 +92,7 @@ export class InactivityCleanupService {
       await this.resolveReturned();
       await this.warnInactive();
       await this.removeExpired(triggeredBy);
+      await this.pruneClosed();
     } catch (error) {
       logger.error("Error during inactivity cleanup cycle:", error);
       throw error;
@@ -276,7 +284,23 @@ export class InactivityCleanupService {
   }
 
   /**
-   * Run only the resolve and remove phases (no new warnings posted).
+   * Delete warnings that were resolved or removed longer ago than the
+   * retention window.
+   */
+  private async pruneClosed(): Promise<void> {
+    const pruned = await Q.player.inactivity.warning.pruneClosed(
+      this.RETENTION_DAYS,
+    );
+
+    if (pruned > 0) {
+      logger.info(
+        `Pruned ${pruned} inactivity warning(s) closed more than ${this.RETENTION_DAYS}d ago`,
+      );
+    }
+  }
+
+  /**
+   * Run the resolve, remove, and prune phases (no new warnings posted).
    * Used on startup and from the admin panel to process overdue players
    * without firing duplicate warning announcements in #announcements.
    */
@@ -286,6 +310,7 @@ export class InactivityCleanupService {
     try {
       await this.resolveReturned();
       await this.removeExpired(triggeredBy);
+      await this.pruneClosed();
     } catch (error) {
       logger.error("Error during resolve/remove cycle:", error);
       throw error;

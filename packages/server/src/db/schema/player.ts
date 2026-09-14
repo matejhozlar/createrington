@@ -501,6 +501,28 @@ export const playerInactivityWarning = pgTable(
   ],
 );
 
+// --- player_inactivity_exemption ---
+
+export const playerInactivityExemption = pgTable(
+  "player_inactivity_exemption",
+  {
+    playerMinecraftUuid: uuid("player_minecraft_uuid")
+      .primaryKey()
+      .references(() => player.minecraftUuid, {
+        onUpdate: "cascade",
+        onDelete: "cascade",
+      }),
+    reason: text("reason"),
+    createdByDiscordId: text("created_by_discord_id").references(
+      () => player.discordId,
+      { onUpdate: "cascade", onDelete: "set null" },
+    ),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+);
+
 // --- reward_claim ---
 
 export const rewardClaim = pgTable(
