@@ -22,10 +22,24 @@ export interface GalleryApprovalAnnouncementInput {
 
 const OPEN_GALLERY_LABEL = "Open gallery";
 
+const CAPTION_ESCAPES = {
+  heading: true,
+  bulletedList: true,
+  numberedList: true,
+  maskedLink: true,
+} as const;
+
+function plainCaption(caption: string): string {
+  return escapeMarkdown(caption, CAPTION_ESCAPES).replace(
+    /^(\s*)(-#|>)/gm,
+    "$1\\$2",
+  );
+}
+
 function details(input: GalleryApprovalAnnouncementInput): string {
   const lines = [`### Screenshot by <@${input.authorDiscordId}>`];
   if (input.caption) {
-    lines.push(escapeMarkdown(input.caption));
+    lines.push(plainCaption(input.caption));
   }
 
   const meta: string[] = [];

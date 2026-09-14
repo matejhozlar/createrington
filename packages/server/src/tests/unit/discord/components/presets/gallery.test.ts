@@ -18,7 +18,6 @@ type Child = ComponentContainer["components"][number];
 type JsonNode = {
   type: number;
   style?: number;
-  custom_id?: string;
   url?: string;
   components?: JsonNode[];
 };
@@ -102,5 +101,31 @@ describe("GalleryComponentPresets.approvalAnnouncement", () => {
       input({ caption: null, rewardAmount: 0 }),
     );
     expect(body(bare)).toBe("### Screenshot by <@123>");
+  });
+
+  it("renders a player's caption as plain text", () => {
+    const caption = [
+      "# Big title",
+      "-# small print",
+      "> quoted",
+      "- item",
+      "1. step",
+      "[free ranks](https://phish.example) **bold**",
+    ].join("\n");
+    const message = GalleryComponentPresets.approvalAnnouncement(
+      input({ caption, rewardAmount: 0 }),
+    );
+
+    expect(body(message)).toBe(
+      [
+        "### Screenshot by <@123>",
+        "\\# Big title",
+        "\\-# small print",
+        "\\> quoted",
+        "\\- item",
+        "1\\. step",
+        "\\[free ranks](https://phish.example) \\*\\*bold\\*\\*",
+      ].join("\n"),
+    );
   });
 });

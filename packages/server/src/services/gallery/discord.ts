@@ -32,16 +32,25 @@ export async function announceApproval(
   const channelId = config.gallery.announcementChannelId;
   if (!channelId) return null;
 
-  const message = buildComponentsMessage(
-    ComponentPresets.gallery.approvalAnnouncement({
-      authorDiscordId: announcement.authorDiscordId,
-      caption: announcement.caption,
-      creditNames: announcement.creditNames,
-      rewardAmount: announcement.rewardAmount,
-      imageUrl: announcement.imageUrl,
-      galleryUrl: galleryPageUrl(),
-    }),
-  );
+  let message: ReturnType<typeof buildComponentsMessage>;
+  try {
+    message = buildComponentsMessage(
+      ComponentPresets.gallery.approvalAnnouncement({
+        authorDiscordId: announcement.authorDiscordId,
+        caption: announcement.caption,
+        creditNames: announcement.creditNames,
+        rewardAmount: announcement.rewardAmount,
+        imageUrl: announcement.imageUrl,
+        galleryUrl: galleryPageUrl(),
+      }),
+    );
+  } catch (error) {
+    logger.error(
+      `Gallery: failed to render the announcement for submission #${announcement.submissionId}:`,
+      error,
+    );
+    return null;
+  }
 
   const result = await Discord.Messages.send({
     channelId,
