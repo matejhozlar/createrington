@@ -5,10 +5,11 @@ import {
 } from "@/app/middleware";
 import { getService, Services } from "@/services";
 import type {
-  MinecraftPlayer,
+  HeartbeatPlayer,
   ModPlayerJoinData,
   ModPlayerLeaveData,
 } from "@/services/playtime";
+import { parsePlayTimeTicks } from "@/services/playtime/credit";
 import { PlaytimeForwarderService } from "@/services/playtime/forwarder.service";
 import { MC_UUID_REGEX } from "@/utils/zod-schemas";
 import { resolveServerId } from "../shared/resolve-server-id";
@@ -61,6 +62,7 @@ export class PresenceController {
     }
 
     const targetServerId = resolveServerId(req, "Presence update");
+    const playTimeTicks = parsePlayTimeTicks(req.body.playTimeTicks);
 
     try {
       const playtimeManager = await getService(
@@ -81,6 +83,7 @@ export class PresenceController {
           uuid,
           username: minecraftUsername,
           timestamp: eventTimestamp,
+          playTimeTicks,
         };
 
         await playtimeService.handlePlayerJoinFromMod(joinData);
@@ -106,6 +109,7 @@ export class PresenceController {
           uuid,
           username: minecraftUsername,
           timestamp: eventTimestamp,
+          playTimeTicks,
           dimension,
           position,
         };
@@ -157,11 +161,15 @@ export class PresenceController {
       throw new BadRequestError("players must be an array");
     }
 
-    const onlinePlayers: MinecraftPlayer[] = [];
+    const onlinePlayers: HeartbeatPlayer[] = [];
     for (const p of players) {
-      if (!p.uuid || !p.username) continue;
+      if (!p.uuid || !p.minecraftUsername) continue;
       if (!MC_UUID_REGEX.test(p.uuid)) continue;
-      onlinePlayers.push({ uuid: p.uuid, username: p.username });
+      onlinePlayers.push({
+        uuid: p.uuid,
+        username: p.minecraftUsername,
+        playTimeTicks: parsePlayTimeTicks(p.playTimeTicks),
+      });
     }
 
     const targetServerId = resolveServerId(req, "Heartbeat");
@@ -181,7 +189,6 @@ export class PresenceController {
 
       playtimeService.reconcileWithHeartbeat(onlinePlayers);
 
-      // Forward heartbeat to production if sync is configured
       if (config.sync.targetUrl && config.sync.secret) {
         const forwarder = new PlaytimeForwarderService(
           config.sync.targetUrl,

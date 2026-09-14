@@ -2,7 +2,7 @@ import type { PlaytimeService } from "./playtime.service";
 import type {
   SessionStartEvent,
   SessionEndEvent,
-  MinecraftPlayer,
+  HeartbeatPlayer,
 } from "./types";
 
 /**
@@ -48,7 +48,7 @@ export class PlaytimeForwarderService {
   }
 
   /** Posts the mod heartbeat player list to production so it can reconcile stale sessions on the test-server entry. */
-  async forwardHeartbeat(players: MinecraftPlayer[]): Promise<void> {
+  async forwardHeartbeat(players: HeartbeatPlayer[]): Promise<void> {
     try {
       const response = await fetch(this.heartbeatEndpoint, {
         method: "POST",
@@ -57,7 +57,11 @@ export class PlaytimeForwarderService {
           "X-Sync-Secret": this.secret,
         },
         body: JSON.stringify({
-          players: players.map((p) => ({ uuid: p.uuid, username: p.username })),
+          players: players.map((p) => ({
+            uuid: p.uuid,
+            minecraftUsername: p.username,
+            playTimeTicks: p.playTimeTicks,
+          })),
           timestamp: new Date().toISOString(),
         }),
       });
@@ -83,22 +87,26 @@ export class PlaytimeForwarderService {
   private async forwardJoin(event: SessionStartEvent): Promise<void> {
     await this.forward({
       uuid: event.uuid,
-      username: event.username,
+      minecraftUsername: event.username,
       state: "joined",
       timestamp: event.sessionStart.toISOString(),
+      playTimeTicks: event.playTimeTicks,
     });
   }
 
   private async forwardLeave(event: SessionEndEvent): Promise<void> {
     await this.forward({
       uuid: event.uuid,
-      username: event.username,
+      minecraftUsername: event.username,
       state: "left",
       timestamp: event.sessionEnd.toISOString(),
+      playTimeTicks: event.playTimeTicks,
     });
   }
 
-  private async forward(payload: Record<string, string>): Promise<void> {
+  private async forward(
+    payload: Record<string, string | number | undefined>,
+  ): Promise<void> {
     try {
       const response = await fetch(this.endpoint, {
         method: "POST",
@@ -116,12 +124,12 @@ export class PlaytimeForwarderService {
         );
       } else {
         logger.debug(
-          `[sync] Forwarded ${payload.state} for ${payload.username}`,
+          `[sync] Forwarded ${payload.state} for ${payload.minecraftUsername}`,
         );
       }
     } catch (error) {
       logger.warn(
-        `[sync] Forward error for ${payload.username}:`,
+        `[sync] Forward error for ${payload.minecraftUsername}:`,
         error instanceof Error ? error.message : error,
       );
     }

@@ -1,5 +1,6 @@
 import type { Pool, PoolClient } from "pg";
 import { PlayerPlaytimeDailyBaseQueries } from "@/generated/db/player_playtime_daily.queries";
+import { splitPeriod } from "../split";
 
 type ServerActivityRow = {
   play_date: Date;
@@ -25,52 +26,37 @@ export class PlayerPlaytimeDailyQueries extends PlayerPlaytimeDailyBaseQueries {
   }
 
   /**
-   * Upserts daily playtime records for a session, splitting across day boundaries
-   *
-   * Iterates day-by-day from sessionStart to sessionEnd, computing per-day seconds
-   * and upserting via ON CONFLICT to increment existing records.
+   * Credits `seconds` of playtime observed over [periodStart, periodEnd],
+   * distributed across the day buckets the window spans in proportion to
+   * the wall-clock time each covers. Upserts via ON CONFLICT so repeated
+   * credits accumulate.
    *
    * @param playerMinecraftUuid - Player's Minecraft UUID
-   * @param serverId - Server ID the session occurred on
-   * @param sessionStart - Session start timestamp
-   * @param sessionEnd - Session end timestamp
+   * @param serverId - Server ID the playtime occurred on
+   * @param periodStart - Start of the observation window
+   * @param periodEnd - End of the observation window
+   * @param seconds - Seconds to credit (may be less than the window's wall-clock length)
    */
-  async aggregateSession(
+  async creditPeriod(
     playerMinecraftUuid: string,
     serverId: number,
-    sessionStart: Date,
-    sessionEnd: Date,
+    periodStart: Date,
+    periodEnd: Date,
+    seconds: number,
   ): Promise<void> {
-    const startDay = new Date(sessionStart);
-    startDay.setHours(0, 0, 0, 0);
-
-    const endDay = new Date(sessionEnd);
-    endDay.setHours(0, 0, 0, 0);
-
-    let currentDay = new Date(startDay);
-
-    while (currentDay <= endDay) {
-      const nextDay = new Date(currentDay);
-      nextDay.setDate(nextDay.getDate() + 1);
-
-      const periodStart =
-        currentDay <= sessionStart ? sessionStart : currentDay;
-      const periodEnd = nextDay <= sessionEnd ? nextDay : sessionEnd;
-      const seconds = Math.floor(
-        (periodEnd.getTime() - periodStart.getTime()) / 1000,
+    for (const { bucket, seconds: share } of splitPeriod(
+      periodStart,
+      periodEnd,
+      seconds,
+      "day",
+    )) {
+      await this.db.query(
+        `INSERT INTO ${this.table} (player_minecraft_uuid, server_id, play_date, seconds_played)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (player_minecraft_uuid, server_id, play_date)
+         DO UPDATE SET seconds_played = ${this.table}.seconds_played + EXCLUDED.seconds_played`,
+        [playerMinecraftUuid, serverId, bucket, share],
       );
-
-      if (seconds > 0) {
-        await this.db.query(
-          `INSERT INTO ${this.table} (player_minecraft_uuid, server_id, play_date, seconds_played)
-           VALUES ($1, $2, $3, $4)
-           ON CONFLICT (player_minecraft_uuid, server_id, play_date)
-           DO UPDATE SET seconds_played = ${this.table}.seconds_played + EXCLUDED.seconds_played`,
-          [playerMinecraftUuid, serverId, currentDay, seconds],
-        );
-      }
-
-      currentDay = nextDay;
     }
   }
 

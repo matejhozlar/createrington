@@ -332,9 +332,6 @@ importers:
       jszip:
         specifier: ^3.10.1
         version: 3.10.1
-      minecraft-server-util:
-        specifier: ^5.4.4
-        version: 5.4.4
       multer:
         specifier: ^2.3.0
         version: 2.3.0
@@ -4492,15 +4489,6 @@ packages:
   mimic-function@5.0.1:
     resolution: {integrity: sha512-VP79XUPxV2CigYP3jWwAUFSku2aKqBH7uTAapFWCBqutsbmDo96KY5o8uh6U+/YSIn5OxJnXp73beVkpqMIGhA==}
     engines: {node: '>=18'}
-
-  minecraft-motd-util@1.1.12:
-    resolution: {integrity: sha512-5TuTRjrRupSTruea0nRC37r0FdhkS1O4wIJKAYfwJRCQd/X4Zyl/dVIs96h9UVW6N8jhIuz9pNkrDsqyN7VBdA==}
-    deprecated: no longer maintained
-
-  minecraft-server-util@5.4.4:
-    resolution: {integrity: sha512-uaE0N9PHPtJudi8BlCvKDD9K30w23ZpeS1I53wEJo9nX0HSmg5qFvwj8gMG0CYCUwWH/g5hjKaGAwXXN/vhMJw==}
-    engines: {node: '>=10.0.0'}
-    deprecated: no longer maintained, please use https://mcstatus.io
 
   minimatch@10.2.5:
     resolution: {integrity: sha512-MULkVLfKGYDFYejP07QOurDLLQpcjk7Fw+7jXS2R2czRQzR56yHRveU5NDJEOviH+hETZKSkIk5c+T23GjFUMg==}
@@ -9934,12 +9922,6 @@ snapshots:
       mime-db: 1.54.0
 
   mimic-function@5.0.1: {}
-
-  minecraft-motd-util@1.1.12: {}
-
-  minecraft-server-util@5.4.4:
-    dependencies:
-      minecraft-motd-util: 1.1.12
 
   minimatch@10.2.5:
     dependencies:

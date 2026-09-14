@@ -107,7 +107,6 @@
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
     "jszip": "^3.10.1",
-    "minecraft-server-util": "^5.4.4",
     "multer": "^2.3.0",
     "openai": "^6.27.0",
     "pg": "^8.16.3",

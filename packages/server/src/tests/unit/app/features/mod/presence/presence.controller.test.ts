@@ -94,6 +94,48 @@ describe("PresenceController.updatePresence", () => {
       expect.objectContaining({ success: true }),
     );
   });
+
+  it("passes playTimeTicks through on join and leave", async () => {
+    const playtimeService = makePlaytimeManager();
+
+    await PresenceController.updatePresence(
+      {
+        body: { ...joinBody, playTimeTicks: 12345 },
+        modAuth: {},
+      } as unknown as Request,
+      makeRes(),
+    );
+    expect(playtimeService.handlePlayerJoinFromMod).toHaveBeenCalledWith(
+      expect.objectContaining({ playTimeTicks: 12345 }),
+    );
+
+    await PresenceController.updatePresence(
+      {
+        body: { ...joinBody, state: "left", playTimeTicks: 12400 },
+        modAuth: {},
+      } as unknown as Request,
+      makeRes(),
+    );
+    expect(playtimeService.handlePlayerLeaveFromMod).toHaveBeenCalledWith(
+      expect.objectContaining({ playTimeTicks: 12400 }),
+    );
+  });
+
+  it("drops a malformed playTimeTicks instead of rejecting the event", async () => {
+    const playtimeService = makePlaytimeManager();
+
+    await PresenceController.updatePresence(
+      {
+        body: { ...joinBody, playTimeTicks: "lots" },
+        modAuth: {},
+      } as unknown as Request,
+      makeRes(),
+    );
+
+    expect(playtimeService.handlePlayerJoinFromMod).toHaveBeenCalledWith(
+      expect.objectContaining({ playTimeTicks: undefined }),
+    );
+  });
 });
 
 describe("PresenceController.heartbeat", () => {
@@ -112,7 +154,7 @@ describe("PresenceController.heartbeat", () => {
   it("accepts a server-level token and reconciles sessions", async () => {
     const playtimeService = makePlaytimeManager();
     const req = {
-      body: { players: [{ uuid: PLAYER_UUID, username: "steve" }] },
+      body: { players: [{ uuid: PLAYER_UUID, minecraftUsername: "steve" }] },
       modAuth: {},
     } as unknown as Request;
     const res = makeRes();
@@ -120,10 +162,31 @@ describe("PresenceController.heartbeat", () => {
     await PresenceController.heartbeat(req, res);
 
     expect(playtimeService.reconcileWithHeartbeat).toHaveBeenCalledWith([
-      { uuid: PLAYER_UUID, username: "steve" },
+      { uuid: PLAYER_UUID, username: "steve", playTimeTicks: undefined },
     ]);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({ success: true }),
     );
+  });
+
+  it("carries playTimeTicks per player and drops malformed entries", async () => {
+    const playtimeService = makePlaytimeManager();
+    const req = {
+      body: {
+        players: [
+          { uuid: PLAYER_UUID, minecraftUsername: "steve", playTimeTicks: 500 },
+          { uuid: OTHER_UUID, minecraftUsername: "alex", playTimeTicks: -3 },
+          { uuid: "not-a-uuid", minecraftUsername: "ghost" },
+        ],
+      },
+      modAuth: {},
+    } as unknown as Request;
+
+    await PresenceController.heartbeat(req, makeRes());
+
+    expect(playtimeService.reconcileWithHeartbeat).toHaveBeenCalledWith([
+      { uuid: PLAYER_UUID, username: "steve", playTimeTicks: 500 },
+      { uuid: OTHER_UUID, username: "alex", playTimeTicks: undefined },
+    ]);
   });
 });

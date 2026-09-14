@@ -21,6 +21,35 @@ export type ServerSessionEntry = {
   minecraftUsername: string;
 };
 
+interface OpenSessionRow {
+  id: number;
+  player_minecraft_uuid: string;
+  server_id: number;
+  session_start: Date;
+  last_seen_at: Date | null;
+  last_play_ticks: number | null;
+  active_seconds: string;
+  minecraft_username: string;
+}
+
+export type OpenSessionEntry = {
+  id: number;
+  playerMinecraftUuid: string;
+  serverId: number;
+  sessionStart: Date;
+  lastSeenAt: Date | null;
+  lastPlayTicks: number | null;
+  activeSeconds: number;
+  minecraftUsername: string;
+};
+
+export interface SessionObservation {
+  lastSeenAt: Date;
+  lastPlayTicks?: number;
+  creditedSeconds: number;
+  sessionEnd?: Date;
+}
+
 /**
  * Custom queries for player_session table
  *
@@ -32,6 +61,70 @@ export type ServerSessionEntry = {
 export class PlayerSessionQueries extends PlayerSessionBaseQueries {
   constructor(db: Pool | PoolClient) {
     super(db);
+  }
+
+  /**
+   * Open sessions on a server joined with the player's current username,
+   * in the shape the in-memory tracker restores from after a restart.
+   *
+   * @param serverId - Server ID to query
+   */
+  async findOpenWithUsername(serverId: number): Promise<OpenSessionEntry[]> {
+    const query = `
+      SELECT s.id, s.player_minecraft_uuid, s.server_id, s.session_start,
+             s.last_seen_at, s.last_play_ticks, s.active_seconds,
+             p.minecraft_username
+      FROM ${this.table} s
+      JOIN player p ON p.minecraft_uuid = s.player_minecraft_uuid
+      WHERE s.server_id = $1 AND s.session_end IS NULL
+      ORDER BY s.session_start`;
+
+    const result = await this.runQuery<OpenSessionRow>(
+      "find open sessions",
+      query,
+      [serverId],
+    );
+
+    return result.rows.map((row) => ({
+      id: row.id,
+      playerMinecraftUuid: row.player_minecraft_uuid,
+      serverId: row.server_id,
+      sessionStart: row.session_start,
+      lastSeenAt: row.last_seen_at,
+      lastPlayTicks: row.last_play_ticks,
+      activeSeconds: Number(row.active_seconds),
+      minecraftUsername: row.minecraft_username,
+    }));
+  }
+
+  /**
+   * Records a presence observation on a session: advances last_seen_at,
+   * stores the newest play_time tick reading when one was reported, adds the
+   * credited seconds, and optionally closes the session.
+   *
+   * @param id - Session row ID
+   * @param observation - What was observed and how much to credit
+   */
+  async recordObservation(
+    id: number,
+    observation: SessionObservation,
+  ): Promise<void> {
+    await this.runQuery(
+      "record session observation",
+      `UPDATE ${this.table}
+       SET last_seen_at = $2,
+           last_play_ticks = COALESCE($3, last_play_ticks),
+           active_seconds = active_seconds + $4,
+           session_end = COALESCE($5, session_end)
+       WHERE id = $1`,
+      [
+        id,
+        observation.lastSeenAt,
+        observation.lastPlayTicks ?? null,
+        observation.creditedSeconds,
+        observation.sessionEnd ?? null,
+      ],
+    );
   }
 
   /**

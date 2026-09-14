@@ -1,5 +1,6 @@
 import type { Pool, PoolClient } from "pg";
 import { PlayerPlaytimeHourlyBaseQueries } from "@/generated/db/player_playtime_hourly.queries";
+import { splitPeriod } from "../split";
 
 type PlayerHourlyPatternRow = {
   hour_of_day: string;
@@ -38,46 +39,37 @@ export class PlayerPlaytimeHourlyQueries extends PlayerPlaytimeHourlyBaseQueries
   }
 
   /**
-   * Upserts hourly playtime records for a session, splitting across hour boundaries
-   *
-   * Iterates hour-by-hour from sessionStart to sessionEnd, computing per-hour seconds
-   * and upserting via ON CONFLICT to increment existing records.
+   * Credits `seconds` of playtime observed over [periodStart, periodEnd],
+   * distributed across the hour buckets the window spans in proportion to
+   * the wall-clock time each covers. Upserts via ON CONFLICT so repeated
+   * credits accumulate.
    *
    * @param playerMinecraftUuid - Player's Minecraft UUID
-   * @param serverId - Server ID the session occurred on
-   * @param sessionStart - Session start timestamp
-   * @param sessionEnd - Session end timestamp
+   * @param serverId - Server ID the playtime occurred on
+   * @param periodStart - Start of the observation window
+   * @param periodEnd - End of the observation window
+   * @param seconds - Seconds to credit (may be less than the window's wall-clock length)
    */
-  async aggregateSession(
+  async creditPeriod(
     playerMinecraftUuid: string,
     serverId: number,
-    sessionStart: Date,
-    sessionEnd: Date,
+    periodStart: Date,
+    periodEnd: Date,
+    seconds: number,
   ): Promise<void> {
-    let currentHour = new Date(sessionStart);
-    currentHour.setMinutes(0, 0, 0);
-
-    while (currentHour < sessionEnd) {
-      const nextHour = new Date(currentHour.getTime() + 60 * 60 * 1000);
-
-      const periodStart =
-        currentHour <= sessionStart ? sessionStart : currentHour;
-      const periodEnd = nextHour <= sessionEnd ? nextHour : sessionEnd;
-      const seconds = Math.floor(
-        (periodEnd.getTime() - periodStart.getTime()) / 1000,
+    for (const { bucket, seconds: share } of splitPeriod(
+      periodStart,
+      periodEnd,
+      seconds,
+      "hour",
+    )) {
+      await this.db.query(
+        `INSERT INTO ${this.table} (player_minecraft_uuid, server_id, play_hour, seconds_played)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (player_minecraft_uuid, server_id, play_hour)
+         DO UPDATE SET seconds_played = ${this.table}.seconds_played + EXCLUDED.seconds_played`,
+        [playerMinecraftUuid, serverId, bucket, share],
       );
-
-      if (seconds > 0) {
-        await this.db.query(
-          `INSERT INTO ${this.table} (player_minecraft_uuid, server_id, play_hour, seconds_played)
-           VALUES ($1, $2, $3, $4)
-           ON CONFLICT (player_minecraft_uuid, server_id, play_hour)
-           DO UPDATE SET seconds_played = ${this.table}.seconds_played + EXCLUDED.seconds_played`,
-          [playerMinecraftUuid, serverId, currentHour, seconds],
-        );
-      }
-
-      currentHour = nextHour;
     }
   }
 

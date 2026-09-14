@@ -23,9 +23,10 @@ const router = Router();
  * Request body:
  * {
  *   uuid: string,
- *   username: string,
+ *   minecraftUsername: string,
  *   state: "joined" | "left",
- *   timestamp?: string (ISO 8601)
+ *   timestamp?: string (ISO 8601),
+ *   playTimeTicks?: number (vanilla play_time stat at the event)
  * }
  */
 router.post(
@@ -40,14 +41,15 @@ router.post(
  * POST /api/internal/presence/heartbeat
  *
  * Receive a forwarded heartbeat from the dev server containing the full
- * online player list. Reconciles test server sessions on production.
+ * online player list. Credits present players, ends stale test server
+ * sessions, and starts missing ones on production.
  *
  * Security:
  * - Requires valid X-Sync-Secret header
  *
  * Request body:
  * {
- *   players: Array<{ uuid: string, username: string }>,
+ *   players: Array<{ uuid: string, minecraftUsername: string, playTimeTicks?: number }>,
  *   timestamp?: string (ISO 8601)
  * }
  */
