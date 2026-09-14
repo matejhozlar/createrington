@@ -37,7 +37,10 @@ const json = (b: ButtonBuilder): ButtonData => b.toJSON() as ButtonData;
 
 describe("ButtonPresets.links", () => {
   it("each link button uses the Link style and a url", () => {
-    for (const factory of [ButtonPresets.links.adminPanel]) {
+    for (const factory of [
+      ButtonPresets.links.adminPanel,
+      ButtonPresets.links.map,
+    ]) {
       const data = json(factory());
       expect(data.style).toBe(ButtonStyle.Link);
       expect(data).toHaveProperty("url");

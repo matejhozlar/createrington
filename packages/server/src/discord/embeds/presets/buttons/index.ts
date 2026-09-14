@@ -22,6 +22,16 @@ export const ButtonPresets = {
     },
 
     /**
+     * Live BlueMap of the server
+     */
+    map(): ButtonBuilder {
+      return new ButtonBuilder()
+        .setLabel("Open the Map")
+        .setStyle(ButtonStyle.Link)
+        .setURL(cfg.map);
+    },
+
+    /**
      * Server-list vote page, prefilled with the player's Minecraft username
      */
     vote(minecraftUsername: string): ButtonBuilder {

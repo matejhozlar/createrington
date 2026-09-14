@@ -18,6 +18,7 @@ export const COMMAND_GROUPS: Record<string, string> = {
   status: "Server",
   list: "Server",
   vote: "Server",
+  map: "Server",
 };
 
 /** Ordered list of group names for display. */
