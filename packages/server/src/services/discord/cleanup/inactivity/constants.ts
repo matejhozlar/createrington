@@ -1,0 +1,7 @@
+export const INACTIVITY_CHECK_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000;
+
+export const INACTIVITY_INACTIVE_DAYS = 60;
+
+export const INACTIVITY_GRACE_DAYS = 14;
+
+export const INACTIVITY_RETENTION_DAYS = 30;

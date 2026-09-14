@@ -37,10 +37,21 @@ export const STATUS_BADGE_CLASSES: Record<DerivedStatus, string> = {
     "border-muted-foreground bg-muted-foreground/10 text-muted-foreground",
 };
 
+export interface StatWindows {
+  graceDays: number;
+  retentionDays: number;
+}
+
+type StatText = string | ((windows: StatWindows) => string);
+
+export function resolveStatText(text: StatText, windows: StatWindows): string {
+  return typeof text === "function" ? text(windows) : text;
+}
+
 export const STAT_CARDS: {
-  key: "active" | "expired" | "resolvedLast30d" | "removedLast30d";
-  label: string;
-  description: string;
+  key: "active" | "expired" | "resolvedInRetention" | "removedInRetention";
+  label: StatText;
+  description: StatText;
   icon: LucideIcon;
   iconBg: string;
   iconColor: string;
@@ -48,7 +59,7 @@ export const STAT_CARDS: {
   {
     key: "active",
     label: "Active Warnings",
-    description: "In 14-day grace period",
+    description: ({ graceDays }) => `In ${graceDays}-day grace period`,
     icon: Clock,
     iconBg: "bg-yellow-500/10",
     iconColor: "text-yellow-500",
@@ -62,16 +73,16 @@ export const STAT_CARDS: {
     iconColor: "text-destructive",
   },
   {
-    key: "resolvedLast30d",
-    label: "Resolved (30d)",
+    key: "resolvedInRetention",
+    label: ({ retentionDays }) => `Resolved (${retentionDays}d)`,
     description: "Players who returned",
     icon: CheckCircle2,
     iconBg: "bg-success/10",
     iconColor: "text-success",
   },
   {
-    key: "removedLast30d",
-    label: "Removed (30d)",
+    key: "removedInRetention",
+    label: ({ retentionDays }) => `Removed (${retentionDays}d)`,
     description: "Kicked after grace",
     icon: UserX,
     iconBg: "bg-muted-foreground/10",
