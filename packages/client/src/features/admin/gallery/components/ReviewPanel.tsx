@@ -23,6 +23,7 @@ import {
   type GalleryCredit,
   type GallerySubmissionDetail,
 } from "../format";
+import { ApproveDialog } from "./ApproveDialog";
 import { CreditsPicker } from "./CreditsPicker";
 import { RejectDialog } from "./RejectDialog";
 import { SubmissionImage } from "./SubmissionImage";
@@ -50,6 +51,7 @@ export function ReviewPanel({
   const [caption, setCaption] = useState(item.caption ?? "");
   const [reward, setReward] = useState(String(item.reward.defaultAmount));
   const [credits, setCredits] = useState<GalleryCredit[]>(item.credits);
+  const [approveOpen, setApproveOpen] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectKey, setRejectKey] = useState(0);
 
@@ -90,14 +92,13 @@ export function ReviewPanel({
   const dimensions = formatDimensions(item.width, item.height);
   const submittedAt = new Date(item.createdAt);
 
-  const approve = () => {
-    approveMutation.mutate({
+  const approve = () =>
+    approveMutation.mutateAsync({
       id: item.id,
       caption: caption.trim() || null,
       rewardAmount: parsedReward,
       creditPlayerUuids: credits.map((credit) => credit.minecraftUuid),
     });
-  };
 
   const openReject = () => {
     setRejectKey((key) => key + 1);
@@ -234,9 +235,8 @@ export function ReviewPanel({
               <Button
                 variant="success"
                 size="lg"
-                loading={approveMutation.isPending}
                 disabled={busy || !rewardValid}
-                onClick={approve}
+                onClick={() => setApproveOpen(true)}
               >
                 <Check className="mr-2 size-4" />
                 Approve and publish
@@ -254,6 +254,15 @@ export function ReviewPanel({
           </div>
         </CardContent>
       </Card>
+
+      <ApproveDialog
+        open={approveOpen}
+        onOpenChange={setApproveOpen}
+        authorName={item.author.minecraftUsername}
+        rewardAmount={parsedReward}
+        capReached={capReached}
+        onConfirm={approve}
+      />
 
       <RejectDialog
         key={rejectKey}

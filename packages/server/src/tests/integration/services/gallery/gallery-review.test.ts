@@ -54,7 +54,6 @@ import pool, { balanceRepo, Q } from "@/db";
 import {
   BadRequestError,
   ConflictError,
-  ForbiddenError,
   NotFoundError,
 } from "@/app/middleware/error-handler";
 import { settings } from "@/services/settings";
@@ -80,7 +79,6 @@ const CHANNEL_ID = `6${RUN}`;
 const ADMIN_DISCORD_ID = `5${RUN}`;
 const AUTHOR = { uuid: randomUUID(), discordId: `4${RUN}` };
 const CREDITED = { uuid: randomUUID(), discordId: `3${RUN}` };
-const STRANGER = { uuid: randomUUID(), discordId: `2${RUN}` };
 
 const storage = objectStorage as unknown as {
   enabled: boolean;
@@ -163,7 +161,7 @@ beforeAll(async () => {
   });
   serverId = server.id;
 
-  for (const [index, player] of [AUTHOR, CREDITED, STRANGER].entries()) {
+  for (const [index, player] of [AUTHOR, CREDITED].entries()) {
     await Q.player.create({
       minecraftUuid: player.uuid,
       minecraftUsername: `gal${index}_${RUN.slice(-8)}`,
@@ -193,7 +191,7 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
-  for (const player of [AUTHOR, CREDITED, STRANGER]) {
+  for (const player of [AUTHOR, CREDITED]) {
     await Q.player.delete({ minecraftUuid: player.uuid });
   }
   await Q.server.delete({ id: serverId });
@@ -449,22 +447,14 @@ describe("GalleryService.reject", () => {
 });
 
 describe("GalleryService.remove", () => {
-  it("lets only the author or an admin pull an approved screenshot", async () => {
+  it("pulls an approved screenshot and deletes everything published", async () => {
     const pending = await submit();
     const { submission } = await service.approve(pending.id, {
       discordId: ADMIN_DISCORD_ID,
     });
 
-    await expect(
-      service.remove(pending.id, {
-        discordId: STRANGER.discordId,
-        isAdmin: false,
-      }),
-    ).rejects.toBeInstanceOf(ForbiddenError);
-
     const removed = await service.remove(pending.id, {
-      discordId: AUTHOR.discordId,
-      isAdmin: false,
+      discordId: ADMIN_DISCORD_ID,
     });
 
     expect(removed).toMatchObject({
@@ -485,19 +475,15 @@ describe("GalleryService.remove", () => {
     expect(await fileExists(service.originalFilePath(pending))).toBe(false);
   });
 
-  it("allows admins and refuses submissions that are not approved", async () => {
+  it("refuses submissions that are not approved", async () => {
     const pending = await submit();
     await expect(
-      service.remove(pending.id, {
-        discordId: ADMIN_DISCORD_ID,
-        isAdmin: true,
-      }),
+      service.remove(pending.id, { discordId: ADMIN_DISCORD_ID }),
     ).rejects.toBeInstanceOf(ConflictError);
 
     await service.approve(pending.id, { discordId: ADMIN_DISCORD_ID });
     const removed = await service.remove(pending.id, {
       discordId: ADMIN_DISCORD_ID,
-      isAdmin: true,
     });
     expect(removed.status).toBe("withdrawn");
   });
