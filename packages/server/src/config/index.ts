@@ -75,6 +75,7 @@ const config = {
       adminPanel: env.ADMIN_PANEL_URL,
       map: env.MAP_URL,
       assets: env.ASSETS_URL,
+      vote: "https://www.createmodservers.com/server/createrington/vote",
     },
   },
 

@@ -17,6 +17,7 @@ export const COMMAND_GROUPS: Record<string, string> = {
   ping: "Server",
   status: "Server",
   list: "Server",
+  vote: "Server",
 };
 
 /** Ordered list of group names for display. */

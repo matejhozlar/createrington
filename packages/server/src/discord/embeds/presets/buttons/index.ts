@@ -20,6 +20,18 @@ export const ButtonPresets = {
         .setStyle(ButtonStyle.Link)
         .setURL(cfg.adminPanel);
     },
+
+    /**
+     * Server-list vote page, prefilled with the player's Minecraft username
+     */
+    vote(minecraftUsername: string): ButtonBuilder {
+      const url = new URL(cfg.vote);
+      url.searchParams.set("username", minecraftUsername);
+      return new ButtonBuilder()
+        .setLabel("Vote for Createrington")
+        .setStyle(ButtonStyle.Link)
+        .setURL(url.toString());
+    },
   },
 
   departedMember: {
