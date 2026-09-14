@@ -4,7 +4,6 @@ import path from "node:path";
 import {
   BadRequestError,
   ConflictError,
-  ForbiddenError,
   NotFoundError,
 } from "@/app/middleware/error-handler";
 import { balanceRepo, db, Q } from "@/db";
@@ -63,11 +62,6 @@ export interface GalleryApproveResult {
   rewardPaid: number;
   capReached: boolean;
   announced: boolean;
-}
-
-export interface GalleryRemover {
-  discordId: string;
-  isAdmin: boolean;
 }
 
 const DOWNLOAD_TIMEOUT_MS = 30_000;
@@ -423,25 +417,17 @@ export class GalleryService {
     return rejected;
   }
 
-  /** Pulls an approved submission from the gallery: only the author or an admin may do it. Published variants, the announcement, and the original are deleted; the reward is kept. */
-  async remove(id: number, actor: GalleryRemover): Promise<GallerySubmission> {
+  /** Pulls an approved submission from the gallery on an admin's behalf. Published variants, the announcement, and the original are deleted; the reward is kept. */
+  async remove(
+    id: number,
+    reviewer: GalleryReviewer,
+  ): Promise<GallerySubmission> {
     const submission = await Q.gallery.submission.find({ id });
     if (!submission) {
       throw new NotFoundError("Gallery submission not found");
     }
     if (submission.status !== "approved") {
       throw new ConflictError("Only approved screenshots can be removed");
-    }
-
-    if (!actor.isAdmin) {
-      const author = await Q.player.find({
-        minecraftUuid: submission.playerMinecraftUuid,
-      });
-      if (author?.discordId !== actor.discordId) {
-        throw new ForbiddenError(
-          "Only the author or an admin can remove this screenshot",
-        );
-      }
     }
 
     const removed = await Q.gallery.submission.updateAndReturn(
@@ -476,7 +462,7 @@ export class GalleryService {
 
     await this.removeOriginal(submission.originalPath);
 
-    logger.info(`Gallery: submission #${id} removed by ${actor.discordId}`);
+    logger.info(`Gallery: submission #${id} removed by ${reviewer.discordId}`);
 
     return removed;
   }

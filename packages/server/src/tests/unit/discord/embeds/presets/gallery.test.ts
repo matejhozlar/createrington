@@ -11,29 +11,3 @@ describe("GalleryEmbedPresets.intakeNotice", () => {
     expect(text(GalleryEmbedPresets.intakeNotice(0))).not.toMatch(/earn/i);
   });
 });
-
-describe("GalleryEmbedPresets.approvalAnnouncement", () => {
-  const base = {
-    authorDiscordId: "123",
-    caption: "Central station",
-    creditNames: [],
-    imageUrl: "https://cdn.test/shot.webp",
-    galleryUrl: "https://createrington.test/gallery",
-  };
-
-  it("omits the reward line when nothing was paid", () => {
-    expect(
-      text(
-        GalleryEmbedPresets.approvalAnnouncement({
-          ...base,
-          rewardAmount: 1250,
-        }),
-      ),
-    ).toContain("Reward: **$1,250**");
-    expect(
-      text(
-        GalleryEmbedPresets.approvalAnnouncement({ ...base, rewardAmount: 0 }),
-      ),
-    ).not.toContain("Reward");
-  });
-});

@@ -325,7 +325,6 @@ export const adminGalleryRouter = router({
       try {
         const row = await gallery().remove(input.id, {
           discordId: ctx.user.discordId,
-          isAdmin: true,
         });
         const item = await serializeOne(row);
 

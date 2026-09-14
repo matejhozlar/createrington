@@ -1,8 +1,6 @@
 import config from "@/config";
+import { buildComponentsMessage, ComponentPresets } from "@/discord/components";
 import { Discord } from "@/discord/constants";
-import { EmbedPresets } from "@/discord/embeds";
-import { ButtonPresets } from "@/discord/embeds/presets/buttons";
-import { ActionRowBuilder, type ButtonBuilder } from "discord.js";
 import { GALLERY_INTAKE_REACTION } from "./intake";
 
 export interface ApprovalAnnouncement {
@@ -34,24 +32,21 @@ export async function announceApproval(
   const channelId = config.gallery.announcementChannelId;
   if (!channelId) return null;
 
-  const galleryUrl = galleryPageUrl();
-  const embed = EmbedPresets.gallery.approvalAnnouncement({
-    authorDiscordId: announcement.authorDiscordId,
-    caption: announcement.caption,
-    creditNames: announcement.creditNames,
-    rewardAmount: announcement.rewardAmount,
-    imageUrl: announcement.imageUrl,
-    galleryUrl,
-  });
-  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    ButtonPresets.gallery.remove(announcement.submissionId),
-    ButtonPresets.gallery.open(galleryUrl),
+  const message = buildComponentsMessage(
+    ComponentPresets.gallery.approvalAnnouncement({
+      authorDiscordId: announcement.authorDiscordId,
+      caption: announcement.caption,
+      creditNames: announcement.creditNames,
+      rewardAmount: announcement.rewardAmount,
+      imageUrl: announcement.imageUrl,
+      galleryUrl: galleryPageUrl(),
+    }),
   );
 
   const result = await Discord.Messages.send({
     channelId,
-    embeds: embed.build(),
-    components: [row],
+    components: message.components,
+    flags: message.flags,
     allowedMentions: { users: [announcement.authorDiscordId] },
   });
 
