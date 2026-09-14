@@ -15,11 +15,13 @@ function rewardSentence(
   rewardAmount: number,
   capReached: boolean,
 ): string {
-  if (capReached) return "The weekly cap is reached, so no reward is paid.";
-  if (rewardAmount > 0) {
-    return `${formatMoney(rewardAmount)} is paid to ${authorName}.`;
+  if (capReached) {
+    return "The weekly cap is reached, so no reward will be paid.";
   }
-  return "No reward is paid.";
+  if (rewardAmount > 0) {
+    return `${formatMoney(rewardAmount)} will be paid to ${authorName}.`;
+  }
+  return "No reward will be paid.";
 }
 
 export function ApproveDialog({
@@ -35,7 +37,7 @@ export function ApproveDialog({
       open={open}
       onOpenChange={onOpenChange}
       title="Approve this screenshot?"
-      description={`The screenshot by ${authorName} is published on the website and announced in the gallery channel. ${rewardSentence(authorName, rewardAmount, capReached)}`}
+      description={`The screenshot by ${authorName} will be published on the website and announced in the gallery channel. ${rewardSentence(authorName, rewardAmount, capReached)}`}
       confirmLabel="Approve and publish"
       variant="success"
       onConfirm={onConfirm}
