@@ -7,6 +7,7 @@ import {
   ActionRowBuilder,
   type ButtonBuilder,
   type ChatInputCommandInteraction,
+  escapeMarkdown,
   MessageFlags,
   SlashCommandBuilder,
 } from "discord.js";
@@ -35,8 +36,8 @@ export async function execute(
   }
 
   const embed = EmbedPresets.info(
-    "🗳️ Vote for Createrington",
-    `Your vote link is prefilled for **${voter.minecraftUsername}**. Thanks for supporting the server!`,
+    "Vote for Createrington",
+    `Your vote link is prefilled for **${escapeMarkdown(voter.minecraftUsername)}**. Thanks for supporting the server!`,
   ).build();
 
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(

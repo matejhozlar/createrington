@@ -45,10 +45,10 @@ describe("ButtonPresets.links", () => {
   });
 
   it("vote(username) links to the vote page with the username prefilled", () => {
-    const data = json(ButtonPresets.links.vote("tux mango"));
+    const data = json(ButtonPresets.links.vote("Tux_Mango"));
     expect(data.style).toBe(ButtonStyle.Link);
     expect(data.url).toBe(
-      "https://example.com/server/createrington/vote?username=tux+mango",
+      "https://example.com/server/createrington/vote?username=Tux_Mango",
     );
   });
 });
