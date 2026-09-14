@@ -72,35 +72,114 @@ export class PlayerPlaytimeSummaryQueries extends PlayerPlaytimeSummaryBaseQueri
   }
 
   /**
-   * Upserts a playtime summary record for a completed session
+   * Adds credited seconds to a player's server total, widening the
+   * first_seen/last_seen window to include the observation period.
+   * Session counts are untouched; see recordSessionEnd.
    *
-   * Increments total seconds/sessions and adjusts first_seen/last_seen
-   * boundaries via LEAST/GREATEST. Uses ON CONFLICT for idempotent upsert.
+   * @param playerMinecraftUuid - Player's Minecraft UUID
+   * @param serverId - Server the playtime occurred on
+   * @param seconds - Seconds to add
+   * @param periodStart - Start of the observation window (feeds first_seen)
+   * @param periodEnd - End of the observation window (feeds last_seen)
+   */
+  async creditSeconds(
+    playerMinecraftUuid: string,
+    serverId: number,
+    seconds: number,
+    periodStart: Date,
+    periodEnd: Date,
+  ): Promise<void> {
+    await this.db.query(
+      `INSERT INTO ${this.table} (player_minecraft_uuid, server_id, total_seconds, total_sessions, first_seen, last_seen)
+       VALUES ($1, $2, $3, 0, $4, $5)
+       ON CONFLICT (player_minecraft_uuid, server_id)
+       DO UPDATE SET
+         total_seconds = ${this.table}.total_seconds + EXCLUDED.total_seconds,
+         first_seen = LEAST(${this.table}.first_seen, EXCLUDED.first_seen),
+         last_seen = GREATEST(${this.table}.last_seen, EXCLUDED.last_seen),
+         updated_at = NOW()`,
+      [playerMinecraftUuid, serverId, seconds, periodStart, periodEnd],
+    );
+  }
+
+  /**
+   * Counts one completed session for the player on the server and widens
+   * first_seen/last_seen to cover it. Seconds are credited separately via
+   * creditSeconds as they are observed.
    *
    * @param playerMinecraftUuid - Player's Minecraft UUID
    * @param serverId - Server the session occurred on
-   * @param secondsPlayed - Duration of the completed session
-   * @param sessionStart - Session start timestamp (used for first_seen)
-   * @param sessionEnd - Session end timestamp (used for last_seen)
+   * @param sessionStart - Session start timestamp (feeds first_seen)
+   * @param sessionEnd - Session end timestamp (feeds last_seen)
    */
-  async aggregateSession(
+  async recordSessionEnd(
     playerMinecraftUuid: string,
     serverId: number,
-    secondsPlayed: number,
     sessionStart: Date,
     sessionEnd: Date,
   ): Promise<void> {
     await this.db.query(
       `INSERT INTO ${this.table} (player_minecraft_uuid, server_id, total_seconds, total_sessions, first_seen, last_seen)
-       VALUES ($1, $2, $3, 1, $4, $5)
+       VALUES ($1, $2, 0, 1, $3, $4)
        ON CONFLICT (player_minecraft_uuid, server_id)
        DO UPDATE SET
-         total_seconds = ${this.table}.total_seconds + EXCLUDED.total_seconds,
          total_sessions = ${this.table}.total_sessions + 1,
          first_seen = LEAST(${this.table}.first_seen, EXCLUDED.first_seen),
          last_seen = GREATEST(${this.table}.last_seen, EXCLUDED.last_seen),
          updated_at = NOW()`,
-      [playerMinecraftUuid, serverId, secondsPlayed, sessionStart, sessionEnd],
+      [playerMinecraftUuid, serverId, sessionStart, sessionEnd],
+    );
+  }
+
+  /**
+   * Overwrites a player's server total with an authoritative value (the
+   * vanilla play_time stat). Only existing rows are touched; returns whether
+   * one was updated.
+   *
+   * @param playerMinecraftUuid - Player's Minecraft UUID
+   * @param serverId - Server the total belongs to
+   * @param totalSeconds - New total
+   */
+  async setTotalSeconds(
+    playerMinecraftUuid: string,
+    serverId: number,
+    totalSeconds: number,
+  ): Promise<boolean> {
+    const result = await this.db.query(
+      `UPDATE ${this.table}
+       SET total_seconds = $3, updated_at = NOW()
+       WHERE player_minecraft_uuid = $1 AND server_id = $2`,
+      [playerMinecraftUuid, serverId, totalSeconds],
+    );
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  /**
+   * Current totals for the given players on a server, keyed by UUID.
+   * Players without a summary row are absent from the result.
+   */
+  async getTotals(
+    serverId: number,
+    playerMinecraftUuids: string[],
+  ): Promise<Map<string, number>> {
+    if (playerMinecraftUuids.length === 0) return new Map();
+
+    const result = await this.runQuery<{
+      player_minecraft_uuid: string;
+      total_seconds: string;
+    }>(
+      "get playtime totals",
+      `SELECT player_minecraft_uuid, total_seconds
+       FROM ${this.table}
+       WHERE server_id = $1 AND player_minecraft_uuid = ANY($2::uuid[])`,
+      [serverId, playerMinecraftUuids],
+    );
+
+    return new Map(
+      result.rows.map((row) => [
+        row.player_minecraft_uuid,
+        Number(row.total_seconds),
+      ]),
     );
   }
 

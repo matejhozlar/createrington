@@ -5,6 +5,7 @@ export const FeatureFlags = {
   workshop: "workshop",
   modpackChangelog: "modpack_changelog",
   gallery: "gallery",
+  playtimeStatsReconcile: "playtime_stats_reconcile",
 } as const;
 
 export type FeatureFlagName = (typeof FeatureFlags)[keyof typeof FeatureFlags];

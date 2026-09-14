@@ -1,37 +1,38 @@
 import EventEmitter from "node:events";
+import type { OpenSessionEntry } from "@/db/queries/player/session";
 import type {
   ActiveSession,
+  HeartbeatPlayer,
   ModPlayerJoinData,
   ModPlayerLeaveData,
   PlaytimeServiceConfig,
-  ServerStatusSnapshot,
   SessionEndEvent,
   SessionMetadata,
+  SessionProgressEvent,
   SessionStartEvent,
-  MinecraftPlayer,
 } from "./types";
 import { ServerState } from "./types";
-import { status } from "minecraft-server-util";
+import { computeCredit } from "./credit";
 import {
   type MessageCacheService,
   MessageSource,
 } from "../discord/message/cache";
 
-// Minecraft's placeholder UUID, emitted by fakeplayers / CommandBlocks and
-// sometimes returned in the server-list-ping sample for non-player entries.
+// Minecraft's placeholder UUID, emitted by fakeplayers / CommandBlocks.
 // Never belongs in session tracking: rejected at every ingress point below.
 const NIL_UUID = "00000000-0000-0000-0000-000000000000";
 
+const DEFAULT_STALE_AFTER_MS = 15 * 60 * 1000;
+const DEFAULT_WATCHDOG_INTERVAL_MS = 60 * 1000;
+
 export interface PlaytimeServiceEvents {
   sessionStart: (event: SessionStartEvent) => void;
+  sessionProgress: (event: SessionProgressEvent) => void;
   sessionEnd: (event: SessionEndEvent) => void;
   sessionAggregated: (event: SessionEndEvent) => void;
-  statusUpdate: (snapshot: ServerStatusSnapshot) => void;
   error: (error: Error) => void;
-  serverShutdown: (serverId: number) => void;
   serverOffline: () => void;
   serverOnline: () => void;
-  syncComplete: () => void;
 }
 
 interface TypedEventEmitter<T> {
@@ -43,11 +44,15 @@ interface TypedEventEmitter<T> {
 }
 
 /**
- * Tracks Minecraft player playtime for a single server. Primary trigger is
- * HTTP join/leave notifications from the Minecraft mod, kept in memory and
- * emitted as sessionStart/sessionEnd events for the repository to persist.
- * Recovery uses a one-shot status poll on startup plus message-cache hooks
- * to detect server shutdown from the Discord relay. Nil-UUID entries
+ * Tracks Minecraft player playtime for a single server. The mod drives it
+ * with HTTP join/leave notifications plus a periodic heartbeat carrying the
+ * online roster and each player's vanilla play_time stat. Playtime is
+ * credited per observation from the tick delta (so time the server froze
+ * the stat for, e.g. while AFK, earns nothing), falling back to wall-clock
+ * when the mod sends no ticks. Sessions live in memory but are restored
+ * from their DB rows on boot via hydrate(), so a backend restart is not a
+ * session boundary. A watchdog closes sessions that stop being confirmed,
+ * ending them at the last instant the player was seen. Nil-UUID entries
  * (fakeplayers, CommandBlocks) are rejected at every ingress.
  */
 export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitter<PlaytimeServiceEvents> &
@@ -56,39 +61,69 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
   private activeSessions: Map<string, ActiveSession> = new Map();
   private isInitialized = false;
   private serverState: ServerState = ServerState.UNKNOWN;
+  private startedAt = new Date();
+  private lastHeartbeatAt?: Date;
+  private watchdog?: NodeJS.Timeout;
 
   constructor(config: PlaytimeServiceConfig) {
     super();
     this.config = {
-      pollIntervalMs: 30000,
-      statusTimeoutMs: 5000,
-      initialDelayMs: 5000,
-      maxSyncRetries: 3,
+      staleAfterMs: DEFAULT_STALE_AFTER_MS,
+      watchdogIntervalMs: DEFAULT_WATCHDOG_INTERVAL_MS,
       ...config,
     };
   }
 
-  /** Waits the configured initial delay, then marks the service ready. Idempotent. */
-  public async initialize(): Promise<void> {
+  /** Restores sessions a previous process left open in the database. Call before initialize(). */
+  public hydrate(sessions: OpenSessionEntry[]): void {
+    for (const row of sessions) {
+      if (row.playerMinecraftUuid === NIL_UUID) continue;
+
+      this.activeSessions.set(row.playerMinecraftUuid, {
+        uuid: row.playerMinecraftUuid,
+        username: row.minecraftUsername,
+        serverId: row.serverId,
+        sessionStart: row.sessionStart,
+        sessionId: row.id,
+        lastSeenAt: row.lastSeenAt ?? row.sessionStart,
+        lastPlayTicks: row.lastPlayTicks ?? undefined,
+        activeSeconds: row.activeSeconds,
+      });
+    }
+
+    if (sessions.length > 0) {
+      logger.info(
+        `Restored ${this.activeSessions.size} open session(s) for server ${this.config.serverId}`,
+      );
+    }
+  }
+
+  /** Starts the stale-session watchdog and marks the service ready. Idempotent. */
+  public initialize(): void {
     if (this.isInitialized) {
       logger.warn("PlaytimeService already initialized");
       return;
     }
 
-    logger.info("Initializing PlaytimeService with HTTP notification mode...");
-
-    await new Promise((resolve) =>
-      setTimeout(resolve, this.config.initialDelayMs),
+    this.startedAt = new Date();
+    this.watchdog = setInterval(
+      () => this.runWatchdog(),
+      this.config.watchdogIntervalMs,
     );
+    this.watchdog.unref();
 
     this.isInitialized = true;
-    logger.info("PlaytimeService initialized");
+    logger.info(
+      `PlaytimeService initialized for server ${this.config.serverId}`,
+    );
   }
 
   /**
    * Sets initial server state by scanning recent relay messages for a "server
-   * closed" system embed; absence is treated as ONLINE. Errors fall back to
-   * ONLINE so a cache lookup failure doesn't mask a live server.
+   * closed" system embed; absence is treated as ONLINE. When the relay says
+   * the server is down, restored sessions are closed at their last-seen
+   * instant right away instead of waiting for the watchdog. Errors fall back
+   * to ONLINE so a cache lookup failure doesn't mask a live server.
    */
   public async detectServerState(
     messageCacheService: MessageCacheService,
@@ -117,6 +152,7 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
           logger.info(
             `Server ${this.config.serverId} detected as OFFLINE (latest system message: "server closed")`,
           );
+          this.closeAllStale();
           this.emit("serverOffline");
           return;
         }
@@ -132,136 +168,15 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
         `Failed to detect initial server state for server ${this.config.serverId}:`,
         error,
       );
-      this.serverState = ServerState.ONLINE; // Safer to assume online
-    }
-  }
-
-  /** @deprecated */
-  private async detectInitialServerState(
-    messageCacheService: MessageCacheService,
-  ): Promise<void> {
-    try {
-      logger.info(
-        `Detecting initial server state for server ${this.config.serverId}...`,
-      );
-
-      const recentMessage = messageCacheService.getMessages(
-        this.config.serverId,
-        { limit: 100 },
-      );
-
-      const latestSystemMessage = recentMessage.find(
-        (msg) =>
-          msg.source === MessageSource.SYSTEM && msg.systemData?.description,
-      );
-
-      if (latestSystemMessage) {
-        const description =
-          latestSystemMessage.systemData!.description!.toLowerCase();
-
-        if (description.includes("server closed")) {
-          this.serverState = ServerState.OFFLINE;
-          logger.info(
-            `Server ${this.config.serverId} detected as OFFLINE (latest system message: "server closed")`,
-          );
-          this.emit("serverOffline");
-          return;
-        }
-      }
-
       this.serverState = ServerState.ONLINE;
-      logger.info(
-        `Server ${this.config.serverId} detected as ONLINE (no recent "server closed" events)`,
-      );
-      this.emit("serverOnline");
-    } catch (error) {
-      logger.error(
-        `Failed to detect initial server state for server ${this.config.serverId}`,
-        error,
-      );
-
-      this.serverState = ServerState.OFFLINE;
     }
   }
 
   /**
-   * Polls the Minecraft server (up to `maxSyncRetries` with a 2s delay) and
-   * reconciles in-memory sessions against the live player list. Used once on
-   * backend restart; if every attempt fails the server is treated as offline.
+   * Opens a session from a mod join payload and emits sessionStart. A
+   * session already tracked for the same UUID means its leave was missed:
+   * it is closed at its last-seen instant before the new one opens.
    */
-  async performRecoverySync(): Promise<void> {
-    logger.info("Starting recovery sync...");
-
-    let retries = 0;
-    let synced = false;
-
-    while (retries < this.config.maxSyncRetries && !synced) {
-      try {
-        const serverStatus = await this.fetchServerStatus();
-        synced = true;
-
-        const onlinePlayers = serverStatus.onlinePlayers;
-        const onlineUuids = new Set(onlinePlayers.map((p) => p.uuid));
-
-        logger.info(
-          `Recovery sync found ${onlinePlayers.length} online player(s)`,
-        );
-
-        const playersToRemove: string[] = [];
-        for (const [uuid, session] of this.activeSessions) {
-          if (!onlineUuids.has(uuid)) {
-            logger.info(
-              `Recovery sync: Ending stale session for ${session.username} (${uuid})`,
-            );
-            playersToRemove.push(uuid);
-            this.handlePlayerLeave(session);
-          }
-        }
-        playersToRemove.forEach((uuid) => this.activeSessions.delete(uuid));
-
-        for (const player of onlinePlayers) {
-          if (!this.activeSessions.has(player.uuid)) {
-            logger.info(
-              `Recovery sync: Starting session for ${player.username} (${player.uuid})`,
-            );
-            this.handlePlayerJoin(player);
-          } else {
-            logger.debug(
-              `Recovery sync: Player ${player.username} (${player.uuid} already has active session)`,
-            );
-          }
-        }
-
-        this.emit("statusUpdate", serverStatus);
-        this.emit("syncComplete");
-
-        logger.info("Recovery sync completed successfully");
-      } catch (error) {
-        retries++;
-        const err = error instanceof Error ? error : new Error(String(error));
-
-        if (retries < this.config.maxSyncRetries) {
-          logger.warn(
-            `Recovery sync failed (attempt ${retries}/${this.config.maxSyncRetries}): ${err.message}. Retrying in 2s...`,
-          );
-          await new Promise((resolve) => setTimeout(resolve, 2000));
-        } else {
-          logger.warn(
-            `Recovery sync failed after ${this.config.maxSyncRetries} attempts. Assuming server is offline`,
-          );
-          this.emit("error", err);
-        }
-      }
-    }
-
-    if (!synced) {
-      logger.info(
-        "Recovery sync skipped - server appears to be offline. Will track sessions when player join.",
-      );
-    }
-  }
-
-  /** Creates an in-memory session from a mod join payload and emits sessionStart. Duplicate joins for the same UUID are dropped. */
   public async handlePlayerJoinFromMod(data: ModPlayerJoinData): Promise<void> {
     if (data.uuid === NIL_UUID) {
       logger.debug(
@@ -270,11 +185,12 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
       return;
     }
 
-    if (this.activeSessions.has(data.uuid)) {
+    const existing = this.activeSessions.get(data.uuid);
+    if (existing) {
       logger.warn(
-        `Player ${data.username} (${data.uuid}) already has an active session. Ignoring duplicate join.`,
+        `Player ${data.username} (${data.uuid}) joined with a session still tracked; closing the stale one at its last-seen instant`,
       );
-      return;
+      this.closeStaleSession(existing);
     }
 
     const session: ActiveSession = {
@@ -282,6 +198,9 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
       username: data.username,
       serverId: this.config.serverId,
       sessionStart: data.timestamp || new Date(),
+      lastSeenAt: new Date(),
+      lastPlayTicks: data.playTimeTicks,
+      activeSeconds: 0,
       metadata: {
         displayName: data.displayName,
         gamemode: data.gamemode,
@@ -294,12 +213,14 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
     };
 
     this.activeSessions.set(data.uuid, session);
+    this.markOnline();
 
     const event: SessionStartEvent = {
       uuid: session.uuid,
       username: session.username,
       serverId: session.serverId,
       sessionStart: session.sessionStart,
+      playTimeTicks: data.playTimeTicks,
       metadata: session.metadata,
     };
 
@@ -309,10 +230,12 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
       `Session started for ${data.username} (${data.uuid}) via mod notification`,
     );
   }
+
   /**
-   * Ends the in-memory session matching the mod leave payload and emits
-   * sessionEnd. If no session is tracked (or its DB id was never set) emits
-   * an orphaned event with sessionId 0 so the repository can clean up.
+   * Ends the tracked session matching the mod leave payload, crediting the
+   * slice since the last observation, and emits sessionEnd. If no session is
+   * tracked (or its DB id was never set) emits an orphaned event with
+   * sessionId 0 so the repository can close and credit the row itself.
    */
   public async handlePlayerLeaveFromMod(
     data: ModPlayerLeaveData,
@@ -325,62 +248,42 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
     }
 
     const session = this.activeSessions.get(data.uuid);
-    const sessionEnd = data.timestamp || new Date();
+    const now = new Date();
+    const sessionEnd = data.timestamp || now;
 
-    // Build metadata from the leave payload (position at disconnect)
     const metadata: SessionMetadata | undefined =
       data.position || data.dimension
         ? { position: data.position, dimension: data.dimension }
         : undefined;
 
-    if (!session) {
+    if (!session || !session.sessionId) {
       logger.warn(
-        `Received leave notification for ${data.username} (${data.uuid}) but no active in-memory session found. ` +
-          `Emitting orphaned sessionEnd to close any DB sessions.`,
+        `Leave for ${data.username} (${data.uuid}) has no persisted session in memory; emitting orphaned sessionEnd so the repository closes the DB row`,
       );
 
-      // Emit a special sessionEnd with sessionId 0 to signal the repository
-      // to close any orphaned DB sessions for this player on this server
       const event: SessionEndEvent = {
         sessionId: 0,
         uuid: data.uuid,
         username: data.username,
         serverId: this.config.serverId,
-        sessionStart: sessionEnd,
+        sessionStart: session?.sessionStart ?? sessionEnd,
         sessionEnd,
-        secondsPlayed: 0,
+        secondsPlayed: session?.activeSeconds ?? 0,
+        playTimeTicks: data.playTimeTicks,
         metadata,
       };
 
-      this.emit("sessionEnd", event);
-      return;
-    }
-
-    const secondsPlayed = Math.floor(
-      (sessionEnd.getTime() - session.sessionStart.getTime()) / 1000,
-    );
-
-    if (!session.sessionId) {
-      logger.warn(
-        `Cannot emit sessionEnd for ${session.username} (${session.uuid}) - no sessionId set. ` +
-          `Repository may not have processed sessionStart yet. Emitting orphaned sessionEnd.`,
-      );
-
-      const event: SessionEndEvent = {
-        sessionId: 0,
-        uuid: session.uuid,
-        username: session.username,
-        serverId: session.serverId,
-        sessionStart: session.sessionStart,
-        sessionEnd,
-        secondsPlayed,
-        metadata,
-      };
-
-      this.emit("sessionEnd", event);
       this.activeSessions.delete(data.uuid);
+      this.emit("sessionEnd", event);
       return;
     }
+
+    const credit = computeCredit({
+      periodStart: session.lastSeenAt,
+      periodEnd: now,
+      lastPlayTicks: session.lastPlayTicks,
+      playTimeTicks: data.playTimeTicks,
+    });
 
     const event: SessionEndEvent = {
       sessionId: session.sessionId,
@@ -389,19 +292,21 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
       serverId: session.serverId,
       sessionStart: session.sessionStart,
       sessionEnd,
-      secondsPlayed,
+      secondsPlayed: session.activeSeconds + credit.seconds,
+      credit,
+      playTimeTicks: data.playTimeTicks,
       metadata,
     };
 
-    this.emit("sessionEnd", event);
     this.activeSessions.delete(data.uuid);
+    this.emit("sessionEnd", event);
 
     logger.info(
-      `Session ended for ${session.username} (${session.uuid}) via mod notification - ${secondsPlayed}s played`,
+      `Session ended for ${session.username} (${session.uuid}) via mod notification - ${event.secondsPlayed}s credited`,
     );
   }
 
-  /** Fallback for crash / network failure: ends every active session on this server and emits serverShutdown + serverOffline. */
+  /** Relay reported the server closed: ends every tracked session now and emits serverOffline. */
   public handleServerShutdown(): void {
     if (this.activeSessions.size === 0) {
       logger.info("Server shutdown detected but no active sessions to end");
@@ -409,11 +314,13 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
       logger.warn(
         `Server ${this.config.serverId} shutdown detected - ending ${this.activeSessions.size} active session(s)`,
       );
-      this.endAllSessions();
+      const now = new Date();
+      for (const session of Array.from(this.activeSessions.values())) {
+        this.endSession(session, now, undefined);
+      }
     }
 
     this.serverState = ServerState.OFFLINE;
-    this.emit("serverShutdown", this.config.serverId);
     this.emit("serverOffline");
   }
 
@@ -427,104 +334,102 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
     this.emit("serverOnline");
   }
 
-  /** Reconciles tracked sessions against the heartbeat player list: ends stale ones, opens missing ones, and forces ONLINE state. */
-  public reconcileWithHeartbeat(onlinePlayers: MinecraftPlayer[]): void {
-    const onlineUuids = new Set(onlinePlayers.map((p) => p.uuid));
+  /**
+   * Reconciles tracked sessions against the heartbeat roster: credits and
+   * advances present players, closes absent ones at their last-seen
+   * instant, opens missing ones, and forces ONLINE state.
+   */
+  public reconcileWithHeartbeat(onlinePlayers: HeartbeatPlayer[]): void {
+    const now = new Date();
+    const present = new Map(onlinePlayers.map((p) => [p.uuid, p]));
 
-    // End stale sessions for players not actually online
-    const staleUuids: string[] = [];
-    for (const [uuid, session] of this.activeSessions) {
-      if (!onlineUuids.has(uuid)) {
+    let ended = 0;
+    let started = 0;
+
+    for (const session of Array.from(this.activeSessions.values())) {
+      const player = present.get(session.uuid);
+      if (!player) {
         logger.warn(
-          `Heartbeat reconciliation: ending stale session for ${session.username} (${uuid})`,
+          `Heartbeat reconciliation: ending stale session for ${session.username} (${session.uuid})`,
         );
-        staleUuids.push(uuid);
-        this.handlePlayerLeave(session);
+        this.closeStaleSession(session);
+        ended++;
+      } else {
+        this.progressSession(session, player, now);
       }
     }
-    for (const uuid of staleUuids) {
-      this.activeSessions.delete(uuid);
-    }
 
-    // Start sessions for players online but not tracked
     for (const player of onlinePlayers) {
+      if (player.uuid === NIL_UUID) continue;
       if (!this.activeSessions.has(player.uuid)) {
         logger.warn(
           `Heartbeat reconciliation: starting missing session for ${player.username} (${player.uuid})`,
         );
-        this.handlePlayerJoin(player);
+        this.startFromHeartbeat(player, now);
+        started++;
       }
     }
 
-    if (
-      staleUuids.length > 0 ||
-      onlinePlayers.some((p) => !this.activeSessions.has(p.uuid))
-    ) {
+    this.lastHeartbeatAt = now;
+    this.markOnline();
+
+    if (ended > 0 || started > 0) {
       logger.info(
-        `Heartbeat reconciliation complete: ended ${staleUuids.length} stale, tracking ${this.activeSessions.size} active`,
+        `Heartbeat reconciliation complete: ended ${ended} stale, started ${started} missing, tracking ${this.activeSessions.size} active`,
       );
     } else {
       logger.debug(
         `Heartbeat reconciliation: all ${this.activeSessions.size} sessions consistent`,
       );
     }
-
-    // Mark server as online if we receive a heartbeat
-    if (this.serverState !== ServerState.ONLINE) {
-      this.serverState = ServerState.ONLINE;
-      this.emit("serverOnline");
-    }
   }
 
-  private async fetchServerStatus(): Promise<ServerStatusSnapshot> {
-    const response = await status(
-      this.config.serverIp,
-      this.config.serverPort,
-      {
-        timeout: this.config.statusTimeoutMs,
-      },
-    );
-
-    // The server-list-ping sample can include entries for fakeplayers /
-    // CommandBlocks / chunkloaders that were placed on the player list. Drop
-    // nil-UUID entries here so recovery sync never feeds them into the
-    // sessionStart/sessionEnd pipeline.
-    const onlinePlayers: MinecraftPlayer[] = (response.players.sample || [])
-      .filter((player) => player.id !== NIL_UUID)
-      .map((player) => ({
-        uuid: player.id,
-        username: player.name,
-      }));
-
-    return {
-      onlinePlayers,
-      playerCount: response.players.online,
-      maxPlayers: response.players.max,
-      timestamp: new Date(),
-    };
-  }
-
-  private handlePlayerJoin(player: MinecraftPlayer): void {
-    if (player.uuid === NIL_UUID) {
+  private progressSession(
+    session: ActiveSession,
+    player: HeartbeatPlayer,
+    now: Date,
+  ): void {
+    if (!session.sessionId) {
       logger.debug(
-        `Ignoring internal join for nil UUID (fakeplayer or placeholder): ${player.username}`,
+        `Heartbeat for ${session.username} (${session.uuid}) has no session row to credit against; confirming presence only`,
       );
+      session.lastSeenAt = now;
       return;
     }
 
-    if (this.serverState !== ServerState.ONLINE) {
-      logger.info(
-        `Server ${this.config.serverId} marked as ONLINE (player join received)`,
-      );
-      this.serverState = ServerState.ONLINE;
-      this.emit("serverOnline");
-    }
+    const credit = computeCredit({
+      periodStart: session.lastSeenAt,
+      periodEnd: now,
+      lastPlayTicks: session.lastPlayTicks,
+      playTimeTicks: player.playTimeTicks,
+    });
 
+    session.lastSeenAt = now;
+    if (credit.playTimeTicks !== undefined) {
+      session.lastPlayTicks = credit.playTimeTicks;
+    }
+    session.activeSeconds += credit.seconds;
+
+    const event: SessionProgressEvent = {
+      sessionId: session.sessionId,
+      uuid: session.uuid,
+      username: session.username,
+      serverId: session.serverId,
+      credit,
+    };
+
+    this.emit("sessionProgress", event);
+  }
+
+  private startFromHeartbeat(player: HeartbeatPlayer, now: Date): void {
     const session: ActiveSession = {
       uuid: player.uuid,
       username: player.username,
       serverId: this.config.serverId,
-      sessionStart: new Date(),
+      sessionStart: now,
+      lastSeenAt: now,
+      lastPlayTicks: player.playTimeTicks,
+      activeSeconds: 0,
     };
 
     this.activeSessions.set(player.uuid, session);
@@ -534,25 +439,31 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
       username: session.username,
       serverId: session.serverId,
       sessionStart: session.sessionStart,
+      playTimeTicks: player.playTimeTicks,
     };
 
     this.emit("sessionStart", event);
-
-    logger.debug(`Session started for ${player.username} (${player.uuid})`);
   }
 
-  private handlePlayerLeave(session: ActiveSession): void {
-    if (session.uuid === NIL_UUID) {
-      logger.debug(
-        `Ignoring internal leave for nil UUID (fakeplayer or placeholder): ${session.username}`,
-      );
-      return;
-    }
+  private closeStaleSession(session: ActiveSession): void {
+    const sessionEnd =
+      session.lastSeenAt < session.sessionStart
+        ? session.sessionStart
+        : session.lastSeenAt;
+    this.endSession(session, sessionEnd, undefined);
+  }
 
-    const now = new Date();
-    const secondsPlayed = Math.floor(
-      (now.getTime() - session.sessionStart.getTime()) / 1000,
-    );
+  private endSession(
+    session: ActiveSession,
+    sessionEnd: Date,
+    playTimeTicks: number | undefined,
+  ): void {
+    const credit = computeCredit({
+      periodStart: session.lastSeenAt,
+      periodEnd: sessionEnd,
+      lastPlayTicks: session.lastPlayTicks,
+      playTimeTicks,
+    });
 
     const event: SessionEndEvent = {
       sessionId: session.sessionId ?? 0,
@@ -560,32 +471,73 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
       username: session.username,
       serverId: session.serverId,
       sessionStart: session.sessionStart,
-      sessionEnd: now,
-      secondsPlayed,
+      sessionEnd,
+      secondsPlayed: session.activeSeconds + credit.seconds,
+      credit,
+      playTimeTicks,
     };
 
+    this.activeSessions.delete(session.uuid);
     this.emit("sessionEnd", event);
 
     logger.debug(
-      `Session ended for ${session.username} (${session.uuid}) - ${secondsPlayed}s played`,
+      `Session ended for ${session.username} (${session.uuid}) - ${event.secondsPlayed}s credited`,
     );
   }
 
-  private endAllSessions(): void {
-    if (this.activeSessions.size === 0) {
+  private closeAllStale(): void {
+    for (const session of Array.from(this.activeSessions.values())) {
+      this.closeStaleSession(session);
+    }
+  }
+
+  private runWatchdog(): void {
+    const now = Date.now();
+    if (now - this.startedAt.getTime() < this.config.staleAfterMs) {
       return;
     }
 
-    logger.info(`Ending ${this.activeSessions.size} active session(s)`);
+    const cutoff = now - this.config.staleAfterMs;
+    let closed = 0;
 
-    for (const session of this.activeSessions.values()) {
-      this.handlePlayerLeave(session);
+    for (const session of Array.from(this.activeSessions.values())) {
+      if (session.lastSeenAt.getTime() < cutoff) {
+        logger.warn(
+          `Watchdog: no presence confirmation for ${session.username} (${session.uuid}) since ${session.lastSeenAt.toISOString()}, closing session`,
+        );
+        this.closeStaleSession(session);
+        closed++;
+      }
     }
 
-    this.activeSessions.clear();
+    if (
+      this.lastHeartbeatAt &&
+      this.lastHeartbeatAt.getTime() < cutoff &&
+      this.serverState === ServerState.ONLINE
+    ) {
+      logger.warn(
+        `Watchdog: no heartbeat from server ${this.config.serverId} since ${this.lastHeartbeatAt.toISOString()}, marking OFFLINE`,
+      );
+      this.serverState = ServerState.OFFLINE;
+      this.emit("serverOffline");
+    }
+
+    if (closed > 0) {
+      logger.info(
+        `Watchdog closed ${closed} stale session(s) on server ${this.config.serverId}`,
+      );
+    }
   }
 
-  /** Attaches the DB-generated session id to the in-memory session so later sessionEnd events can reference it. */
+  private markOnline(): void {
+    if (this.serverState !== ServerState.ONLINE) {
+      logger.info(`Server ${this.config.serverId} marked as ONLINE`);
+      this.serverState = ServerState.ONLINE;
+      this.emit("serverOnline");
+    }
+  }
+
+  /** Attaches the DB-generated session id to the in-memory session so later events can reference it. */
   public setSessionId(uuid: string, sessionId: number): void {
     const session = this.activeSessions.get(uuid);
     if (session) {
@@ -616,7 +568,7 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
     return this.activeSessions.size;
   }
 
-  /** Seconds elapsed in the player's current session, or null if no session is tracked. Accepts a UUID or an ActiveSession. */
+  /** Wall-clock seconds elapsed in the player's current session, or null if no session is tracked. Accepts a UUID or an ActiveSession. */
   public getSessionDuration(identifier: string | ActiveSession): number | null {
     let session: ActiveSession | undefined;
     if (typeof identifier === "string") {
@@ -631,15 +583,17 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
     return Math.floor((Date.now() - session.sessionStart.getTime()) / 1000);
   }
 
-  /** Ends every tracked session and emits serverShutdown so the repository closes orphaned DB rows. */
+  /** Stops the watchdog. Sessions are left open in the database on purpose: the next process restores them. */
   public stop(): void {
     logger.info("Stopping PlaytimeService...");
-    this.endAllSessions();
-    // Emit serverShutdown so repository closes any orphaned DB sessions
-    // not tracked in memory (e.g. from before a backend restart)
-    this.emit("serverShutdown", this.config.serverId);
+    if (this.watchdog) {
+      clearInterval(this.watchdog);
+      this.watchdog = undefined;
+    }
     this.isInitialized = false;
-    logger.info("PlaytimeService stopped");
+    logger.info(
+      `PlaytimeService stopped, leaving ${this.activeSessions.size} session(s) open for the next process`,
+    );
   }
 
   /** Current ServerState (ONLINE, OFFLINE, or UNKNOWN) for this server. */

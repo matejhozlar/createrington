@@ -57,6 +57,13 @@ export default defineApiSpec({
             nullable: true,
             description: 'e.g. "minecraft:overworld"',
           },
+          {
+            name: "playTimeTicks",
+            type: "int",
+            nullable: true,
+            description:
+              "Vanilla minecraft:play_time stat (ticks) at the time of the event. When sent, playtime is credited from tick deltas instead of wall-clock, so time the server froze the stat for (e.g. AFK) earns nothing",
+          },
         ],
       },
       response: {
@@ -90,7 +97,7 @@ export default defineApiSpec({
       path: "/heartbeat",
       name: "Heartbeat",
       description:
-        "Receives the full online player list from a server. Reconciles tracked sessions against reality to clean up stale sessions. Requires a server-level mod token; per-player tokens are rejected.",
+        "Receives the full online player list from a server. Credits each present player's playtime since the previous observation, closes sessions for players no longer listed, and opens sessions for players not yet tracked. Requires a server-level mod token; per-player tokens are rejected.",
       request: {
         name: "HeartbeatRequest",
         fields: [
@@ -107,7 +114,14 @@ export default defineApiSpec({
                     type: "string",
                     description: "Minecraft player UUID",
                   },
-                  { name: "username", type: "string" },
+                  { name: "minecraftUsername", type: "string" },
+                  {
+                    name: "playTimeTicks",
+                    type: "int",
+                    nullable: true,
+                    description:
+                      "Vanilla minecraft:play_time stat (ticks) at the time of the heartbeat; see the presence endpoint",
+                  },
                 ],
               },
             },

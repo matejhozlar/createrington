@@ -1,5 +1,6 @@
 import { BadRequestError, InternalServerError } from "@/app/middleware";
 import { playtimeRepo, Q } from "@/db";
+import { computeCredit, parsePlayTimeTicks } from "@/services/playtime/credit";
 import { MC_UUID_REGEX } from "@/utils/zod-schemas";
 import type { Request, Response } from "express";
 
@@ -58,10 +59,12 @@ export class InternalPresenceController {
     req: Request,
     res: Response,
   ): Promise<void> {
-    const { uuid, username, state, timestamp } = req.body;
+    const { uuid, minecraftUsername: username, state, timestamp } = req.body;
 
     if (!uuid || !username || !state) {
-      throw new BadRequestError("uuid, username, and state are required");
+      throw new BadRequestError(
+        "uuid, minecraftUsername, and state are required",
+      );
     }
 
     if (!["joined", "left"].includes(state)) {
@@ -73,6 +76,7 @@ export class InternalPresenceController {
     }
 
     const eventTimestamp = timestamp ? new Date(timestamp) : new Date();
+    const playTimeTicks = parsePlayTimeTicks(req.body.playTimeTicks);
 
     try {
       const testServerId = await ensureTestServer();
@@ -83,14 +87,13 @@ export class InternalPresenceController {
           username,
           serverId: testServerId,
           sessionStart: eventTimestamp,
+          playTimeTicks,
         });
 
         logger.info(
           `[sync] Session started for ${username} (${uuid}) on test server - ID: ${sessionId}`,
         );
       } else {
-        // Use sessionId: 0 (orphaned mode) to find and close all active
-        // sessions for this player on the test server
         await playtimeRepo.endSession({
           sessionId: 0,
           uuid,
@@ -99,6 +102,7 @@ export class InternalPresenceController {
           sessionStart: eventTimestamp,
           sessionEnd: eventTimestamp,
           secondsPlayed: 0,
+          playTimeTicks,
         });
 
         logger.info(
@@ -110,7 +114,7 @@ export class InternalPresenceController {
         success: true,
         message: "Synced presence processed",
         data: {
-          username,
+          minecraftUsername: username,
           uuid,
           state,
           serverId: testServerId,
@@ -129,8 +133,9 @@ export class InternalPresenceController {
    * Processes a forwarded heartbeat from the dev server.
    *
    * Receives the full online player list from the dev test server and
-   * reconciles sessions on the production test server entry, ending
-   * stale sessions and starting missing ones.
+   * reconciles sessions on the production test server entry: credits
+   * present players, ends stale sessions at their last observation, and
+   * starts missing ones.
    */
   static async handleSyncedHeartbeat(
     req: Request,
@@ -142,60 +147,78 @@ export class InternalPresenceController {
       throw new BadRequestError("players must be an array");
     }
 
-    const onlinePlayers: Array<{ uuid: string; username: string }> = [];
+    const onlinePlayers: Array<{
+      uuid: string;
+      username: string;
+      playTimeTicks?: number;
+    }> = [];
     for (const p of players) {
-      if (!p.uuid || !p.username) continue;
+      if (!p.uuid || !p.minecraftUsername) continue;
       if (!MC_UUID_REGEX.test(p.uuid)) continue;
-      onlinePlayers.push({ uuid: p.uuid, username: p.username });
+      onlinePlayers.push({
+        uuid: p.uuid,
+        username: p.minecraftUsername,
+        playTimeTicks: parsePlayTimeTicks(p.playTimeTicks),
+      });
     }
 
     try {
       const testServerId = await ensureTestServer();
+      const now = new Date();
 
-      // Find all active sessions on the test server
-      const activeSessions = await Q.player.session.findAll({
-        serverId: testServerId,
-        sessionEnd: null,
-      });
+      const openSessions = await playtimeRepo.getOpenSessions(testServerId);
+      const openUuids = new Set(openSessions.map((s) => s.playerMinecraftUuid));
+      const present = new Map(onlinePlayers.map((p) => [p.uuid, p]));
 
-      const activeUuids = new Set(
-        activeSessions.map((s) => s.playerMinecraftUuid),
-      );
-      const onlineUuids = new Set(onlinePlayers.map((p) => p.uuid));
-
-      // End stale sessions (tracked but not in heartbeat)
       let ended = 0;
-      for (const session of activeSessions) {
-        if (!onlineUuids.has(session.playerMinecraftUuid)) {
+      let progressed = 0;
+      for (const session of openSessions) {
+        const player = present.get(session.playerMinecraftUuid);
+        if (!player) {
           await playtimeRepo.endSession({
             sessionId: 0,
             uuid: session.playerMinecraftUuid,
-            username: "",
+            username: session.minecraftUsername,
             serverId: testServerId,
-            sessionStart: new Date(),
-            sessionEnd: new Date(),
-            secondsPlayed: 0,
+            sessionStart: session.sessionStart,
+            sessionEnd: session.lastSeenAt ?? session.sessionStart,
+            secondsPlayed: session.activeSeconds,
           });
           ended++;
+          continue;
         }
+
+        await playtimeRepo.progressSession({
+          sessionId: session.id,
+          uuid: session.playerMinecraftUuid,
+          username: session.minecraftUsername,
+          serverId: testServerId,
+          credit: computeCredit({
+            periodStart: session.lastSeenAt ?? session.sessionStart,
+            periodEnd: now,
+            lastPlayTicks: session.lastPlayTicks,
+            playTimeTicks: player.playTimeTicks,
+          }),
+        });
+        progressed++;
       }
 
-      // Start missing sessions (online but not tracked)
       let started = 0;
       for (const player of onlinePlayers) {
-        if (!activeUuids.has(player.uuid)) {
+        if (!openUuids.has(player.uuid)) {
           await playtimeRepo.startSession({
             uuid: player.uuid,
             username: player.username,
             serverId: testServerId,
-            sessionStart: new Date(),
+            sessionStart: now,
+            playTimeTicks: player.playTimeTicks,
           });
           started++;
         }
       }
 
       logger.info(
-        `[sync] Heartbeat reconciled: ${ended} ended, ${started} started, ${onlinePlayers.length} reported online`,
+        `[sync] Heartbeat reconciled: ${ended} ended, ${progressed} progressed, ${started} started, ${onlinePlayers.length} reported online`,
       );
 
       res.json({
