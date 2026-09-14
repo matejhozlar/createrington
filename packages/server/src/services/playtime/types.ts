@@ -37,7 +37,9 @@ export interface ActiveSession {
   metadata?: SessionMetadata;
   /** Last instant the player was confirmed present (join, heartbeat, or the DB row on restart) */
   lastSeenAt: Date;
-  /** Vanilla play_time stat at the last observation; undefined when the mod never reported it */
+  /** Start of the next credit window: the instant of the last observation that was credited */
+  creditedUntil: Date;
+  /** Vanilla play_time stat at the last credited observation; undefined when the mod never reported it */
   lastPlayTicks?: number;
   /** Seconds already credited to the playtime tables for this session */
   activeSeconds: number;

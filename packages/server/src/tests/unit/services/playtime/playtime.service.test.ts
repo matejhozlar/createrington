@@ -142,11 +142,39 @@ describe("PlaytimeService join / heartbeat / leave", () => {
     service.reconcileWithHeartbeat([
       { uuid: STEVE, username: "steve", playTimeTicks: ticks(120) },
     ]);
-    expect(progress[0].credit).toMatchObject({
-      periodStart: firstHeartbeat,
+    expect(progress[0].credit).toEqual({
+      periodStart: T0,
+      periodEnd: new Date(T0.getTime() + seconds(120)),
+      seconds: 120,
       playTimeTicks: ticks(120),
     });
-    expect(progress[0].credit.seconds).toBeGreaterThanOrEqual(60);
+  });
+
+  it("closes at the session start when the mod reports a leave timestamp before it", async () => {
+    const { service, ends } = makeService();
+    service.initialize();
+
+    await service.handlePlayerJoinFromMod({
+      uuid: STEVE,
+      username: "steve",
+      timestamp: T0,
+      playTimeTicks: 0,
+    });
+    service.setSessionId(STEVE, 1);
+
+    await service.handlePlayerLeaveFromMod({
+      uuid: STEVE,
+      username: "steve",
+      timestamp: new Date(T0.getTime() - seconds(10)),
+      playTimeTicks: ticks(5),
+    });
+
+    expect(ends[0]).toMatchObject({
+      sessionId: 1,
+      sessionEnd: T0,
+      secondsPlayed: 5,
+      credit: { periodStart: T0, periodEnd: T0, seconds: 5 },
+    });
   });
 
   it("closes a session missing from the heartbeat at its last-seen instant with no extra credit", async () => {

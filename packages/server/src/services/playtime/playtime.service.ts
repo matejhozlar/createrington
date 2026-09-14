@@ -79,13 +79,15 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
     for (const row of sessions) {
       if (row.playerMinecraftUuid === NIL_UUID) continue;
 
+      const lastSeenAt = row.lastSeenAt ?? row.sessionStart;
       this.activeSessions.set(row.playerMinecraftUuid, {
         uuid: row.playerMinecraftUuid,
         username: row.minecraftUsername,
         serverId: row.serverId,
         sessionStart: row.sessionStart,
         sessionId: row.id,
-        lastSeenAt: row.lastSeenAt ?? row.sessionStart,
+        lastSeenAt,
+        creditedUntil: lastSeenAt,
         lastPlayTicks: row.lastPlayTicks ?? undefined,
         activeSeconds: row.activeSeconds,
       });
@@ -193,12 +195,14 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
       this.closeStaleSession(existing);
     }
 
+    const sessionStart = data.timestamp || new Date();
     const session: ActiveSession = {
       uuid: data.uuid,
       username: data.username,
       serverId: this.config.serverId,
-      sessionStart: data.timestamp || new Date(),
-      lastSeenAt: new Date(),
+      sessionStart,
+      lastSeenAt: sessionStart,
+      creditedUntil: sessionStart,
       lastPlayTicks: data.playTimeTicks,
       activeSeconds: 0,
       metadata: {
@@ -248,8 +252,11 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
     }
 
     const session = this.activeSessions.get(data.uuid);
-    const now = new Date();
-    const sessionEnd = data.timestamp || now;
+    const reported = data.timestamp || new Date();
+    const sessionEnd =
+      session && reported < session.sessionStart
+        ? session.sessionStart
+        : reported;
 
     const metadata: SessionMetadata | undefined =
       data.position || data.dimension
@@ -278,28 +285,12 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
       return;
     }
 
-    const credit = computeCredit({
-      periodStart: session.lastSeenAt,
-      periodEnd: now,
-      lastPlayTicks: session.lastPlayTicks,
-      playTimeTicks: data.playTimeTicks,
-    });
-
-    const event: SessionEndEvent = {
-      sessionId: session.sessionId,
-      uuid: session.uuid,
-      username: session.username,
-      serverId: session.serverId,
-      sessionStart: session.sessionStart,
+    const event = this.endSession(
+      session,
       sessionEnd,
-      secondsPlayed: session.activeSeconds + credit.seconds,
-      credit,
-      playTimeTicks: data.playTimeTicks,
+      data.playTimeTicks,
       metadata,
-    };
-
-    this.activeSessions.delete(data.uuid);
-    this.emit("sessionEnd", event);
+    );
 
     logger.info(
       `Session ended for ${session.username} (${session.uuid}) via mod notification - ${event.secondsPlayed}s credited`,
@@ -389,22 +380,23 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
     player: HeartbeatPlayer,
     now: Date,
   ): void {
+    session.lastSeenAt = now;
+
     if (!session.sessionId) {
       logger.debug(
         `Heartbeat for ${session.username} (${session.uuid}) has no session row to credit against; confirming presence only`,
       );
-      session.lastSeenAt = now;
       return;
     }
 
     const credit = computeCredit({
-      periodStart: session.lastSeenAt,
+      periodStart: session.creditedUntil,
       periodEnd: now,
       lastPlayTicks: session.lastPlayTicks,
       playTimeTicks: player.playTimeTicks,
     });
 
-    session.lastSeenAt = now;
+    session.creditedUntil = now;
     if (credit.playTimeTicks !== undefined) {
       session.lastPlayTicks = credit.playTimeTicks;
     }
@@ -428,6 +420,7 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
       serverId: this.config.serverId,
       sessionStart: now,
       lastSeenAt: now,
+      creditedUntil: now,
       lastPlayTicks: player.playTimeTicks,
       activeSeconds: 0,
     };
@@ -457,9 +450,10 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
     session: ActiveSession,
     sessionEnd: Date,
     playTimeTicks: number | undefined,
-  ): void {
+    metadata?: SessionMetadata,
+  ): SessionEndEvent {
     const credit = computeCredit({
-      periodStart: session.lastSeenAt,
+      periodStart: session.creditedUntil,
       periodEnd: sessionEnd,
       lastPlayTicks: session.lastPlayTicks,
       playTimeTicks,
@@ -475,6 +469,7 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
       secondsPlayed: session.activeSeconds + credit.seconds,
       credit,
       playTimeTicks,
+      metadata,
     };
 
     this.activeSessions.delete(session.uuid);
@@ -483,6 +478,8 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
     logger.debug(
       `Session ended for ${session.username} (${session.uuid}) - ${event.secondsPlayed}s credited`,
     );
+
+    return event;
   }
 
   private closeAllStale(): void {

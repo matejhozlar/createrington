@@ -390,7 +390,9 @@ export const playerSession = pgTable(
     lastPlayTicks: integer("last_play_ticks"),
     // Seconds credited to playtime so far. Derived from play_time tick deltas
     // when available (so AFK time frozen by the server is excluded), otherwise
-    // from wall-clock. Always <= seconds_played.
+    // from wall-clock. Normally <= seconds_played, but catch-up ticks after a
+    // server stall can push a heartbeat slice up to 30s past its wall-clock
+    // window, so it is not enforced.
     activeSeconds: bigint("active_seconds", { mode: "bigint" })
       .notNull()
       .default(sql`0`),

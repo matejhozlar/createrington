@@ -213,18 +213,19 @@ export class PlaytimeRepository {
           );
         }
       } else {
+        const end = clampSessionEnd(event.sessionStart, event.sessionEnd);
         const credit: PlaytimeCredit = event.credit ?? {
-          periodStart: event.sessionEnd,
-          periodEnd: event.sessionEnd,
+          periodStart: end,
+          periodEnd: end,
           seconds: 0,
           playTimeTicks: event.playTimeTicks,
         };
 
         await Q.player.session.recordObservation(event.sessionId, {
-          lastSeenAt: credit.periodEnd,
+          lastSeenAt: end,
           lastPlayTicks: credit.playTimeTicks,
           creditedSeconds: credit.seconds,
-          sessionEnd: event.sessionEnd,
+          sessionEnd: end,
         });
 
         await this.creditPlaytime(event.uuid, event.serverId, credit);
@@ -232,7 +233,7 @@ export class PlaytimeRepository {
           event.uuid,
           event.serverId,
           event.sessionStart,
-          event.sessionEnd,
+          end,
         );
 
         logger.info(
@@ -275,12 +276,14 @@ export class PlaytimeRepository {
   }
 
   /**
-   * Compare stored totals against the vanilla play_time stat imported from
-   * the game server and overwrite drifted totals with the stat when `apply`
-   * is set. Players with an open session are skipped (their stats file is
-   * stale while online), as are drops below half the stored total, which
-   * indicate a reset stats file rather than a correction. Always logs the
-   * drift it finds so the report is useful in dry-run mode.
+   * Compare stored summary totals against the vanilla play_time stat
+   * imported from the game server and overwrite drifted totals with the stat
+   * when `apply` is set. Only player_playtime_summary is corrected: the
+   * daily/hourly buckets keep their observed values and will not sum to a
+   * corrected total. Players with an open session are skipped (their stats
+   * file is stale while online), as are drops below half the stored total,
+   * which indicate a reset stats file rather than a correction. Always logs
+   * the drift it finds so the report is useful in dry-run mode.
    */
   async reconcileTotalsFromStats(
     serverId: number,
@@ -334,7 +337,7 @@ export class PlaytimeRepository {
       }
 
       logger.info(
-        `Playtime reconcile: ${entry.minecraftUuid} on server ${serverId} drift ${drift > 0 ? "+" : ""}${drift}s (stored ${stored}s, stat ${expected}s)${options.apply ? ", applying" : ""}`,
+        `Playtime reconcile: ${entry.minecraftUuid} on server ${serverId} drift ${drift > 0 ? "+" : ""}${drift}s (stored ${stored}s, stat ${expected}s)${options.apply ? ", applying to summary total (daily/hourly untouched)" : ""}`,
       );
 
       if (options.apply) {
@@ -459,10 +462,17 @@ export class PlaytimeRepository {
       `Waiting for ${this.pending.size} in-flight playtime write(s)...`,
     );
 
-    await Promise.race([
-      Promise.allSettled(Array.from(this.pending)),
-      new Promise((resolve) => setTimeout(resolve, timeoutMs)),
-    ]);
+    let timer: NodeJS.Timeout | undefined;
+    try {
+      await Promise.race([
+        Promise.allSettled(Array.from(this.pending)),
+        new Promise((resolve) => {
+          timer = setTimeout(resolve, timeoutMs);
+        }),
+      ]);
+    } finally {
+      clearTimeout(timer);
+    }
 
     if (this.pending.size > 0) {
       logger.warn(

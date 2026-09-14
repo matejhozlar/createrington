@@ -186,6 +186,32 @@ describe("PlaytimeRepository (integration)", () => {
     expect(player.online).toBe(false);
   });
 
+  it("clamps a session end reported before the session start", async () => {
+    const sessionId = (await playtimeRepo.startSession({
+      uuid: STEVE,
+      username: "steve",
+      serverId,
+      sessionStart: T0,
+      playTimeTicks: ticks(1000),
+    }))!;
+
+    await playtimeRepo.endSession({
+      sessionId,
+      uuid: STEVE,
+      username: "steve",
+      serverId,
+      sessionStart: T0,
+      sessionEnd: at(-30),
+      secondsPlayed: 0,
+      credit: { periodStart: T0, periodEnd: T0, seconds: 0 },
+    });
+
+    const row = await Q.player.session.get({ id: sessionId });
+    expect(row.sessionEnd).toEqual(T0);
+    expect(row.lastSeenAt).toEqual(T0);
+    expect(row.secondsPlayed).toBe(0n);
+  });
+
   it("closes an orphaned session from its own last observation", async () => {
     const sessionId = (await playtimeRepo.startSession({
       uuid: STEVE,
