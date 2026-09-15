@@ -57,7 +57,7 @@ export function pgTypeToTsType(
  * - int8 maps to bigint to safely represent PostgreSQL BIGINT values
  * - numeric types are evaluated for precision to avoid JavaScript overflow
  * - JSON/JSONB default to Record<string, any> for flexibility
- * - Unknown types safely default to 'any' rather than failing
+ * - Unknown types throw so a missing mapping fails generation instead of emitting 'any'
  */
 function getBaseType(
   udtName: string,
@@ -88,12 +88,19 @@ function getBaseType(
     bool: "boolean", // BOOLEAN
     timestamp: "Date", // TIMESTAMP (without timezone)
     timestamptz: "Date", // TIMESTAMP WITH TIMEZONE
-    date: "Date", // DATE
+    date: "string", // DATE (YYYY-MM-DD, see db/utils/pg-types.ts)
+    inet: "string", // INET (address text as sent by Postgres)
     json: "Record<string, any>", // JSON (flexible object type)
     jsonb: "Record<string, any>", // JSONB (binary JSON, same TS type)
   };
 
-  return typeMap[udtName] || "any";
+  const tsType = typeMap[udtName];
+  if (!tsType) {
+    throw new Error(
+      `No TypeScript mapping for PostgreSQL type "${udtName}"; add it to the type map in scripts/db/utils/type-mapping.ts`,
+    );
+  }
+  return tsType;
 }
 
 /**

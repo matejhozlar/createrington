@@ -3,13 +3,13 @@ import { PlayerPlaytimeDailyBaseQueries } from "@/generated/db/player_playtime_d
 import { splitPeriod } from "../split";
 
 type ServerActivityRow = {
-  play_date: Date;
+  play_date: string;
   unique_players: number;
   total_seconds: number;
 };
 
 export type ServerActivity = {
-  playDate: Date;
+  playDate: string;
   uniquePlayers: number;
   totalSeconds: number;
 };

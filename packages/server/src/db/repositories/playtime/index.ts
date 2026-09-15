@@ -1,4 +1,5 @@
 import { Q, waitlistRepo } from "@/db";
+import { calendarDay } from "@/db/utils";
 import type { ServerActivity } from "@/db/queries/player/playtime/daily";
 import type { ServerHeatMap } from "@/db/queries/player/playtime/hourly";
 import type {
@@ -421,7 +422,7 @@ export class PlaytimeRepository {
     try {
       const dailyRecords = await Q.player.playtime.daily.findAll({
         serverId,
-        playDate: { $between: [startDate, endDate] },
+        playDate: { $between: [calendarDay(startDate), calendarDay(endDate)] },
       });
 
       const playerTotals = new Map<string, bigint>();

@@ -20,7 +20,8 @@ describe("pgTypeToTsType", () => {
       ["bool", "boolean"],
       ["timestamp", "Date"],
       ["timestamptz", "Date"],
-      ["date", "Date"],
+      ["date", "string"],
+      ["inet", "string"],
       ["json", "Record<string, any>"],
       ["jsonb", "Record<string, any>"],
     ])("maps non-nullable %s → %s", (udt, expected) => {
@@ -32,11 +33,13 @@ describe("pgTypeToTsType", () => {
       expect(pgTypeToTsType("text", true, null, null)).toBe("string | null");
     });
 
-    it("falls back to 'any' for unknown PG types", () => {
-      expect(pgTypeToTsType("mystery_type", false, null, null)).toBe("any");
-      expect(pgTypeToTsType("mystery_type", true, null, null)).toBe(
-        "any | null",
+    it("throws for unknown PG types instead of emitting 'any'", () => {
+      expect(() => pgTypeToTsType("mystery_type", false, null, null)).toThrow(
+        'No TypeScript mapping for PostgreSQL type "mystery_type"',
       );
+      expect(() =>
+        pgTypeToTsType("PgTimestampString", true, null, null),
+      ).toThrow("PgTimestampString");
     });
   });
 

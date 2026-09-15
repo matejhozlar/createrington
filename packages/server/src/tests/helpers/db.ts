@@ -2,6 +2,7 @@ import pg from "pg";
 import { createQueryInstances } from "@/generated/db/queries";
 import type { QueryInstances } from "@/generated/db/queries";
 import { DatabaseQueries } from "@/generated/db/db";
+import { registerPgTypeParsers } from "@/db/utils/pg-types";
 
 let testPool: pg.Pool | null = null;
 
@@ -11,6 +12,7 @@ let testPool: pg.Pool | null = null;
  */
 export function getTestPool(): pg.Pool {
   if (!testPool) {
+    registerPgTypeParsers();
     testPool = new pg.Pool({
       host: process.env.DB_HOST ?? "localhost",
       port: Number(process.env.DB_PORT ?? 5432),

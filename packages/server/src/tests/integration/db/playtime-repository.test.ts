@@ -175,6 +175,10 @@ describe("PlaytimeRepository (integration)", () => {
       serverId,
     });
     expect(daily.reduce((sum, d) => sum + d.secondsPlayed, 0n)).toBe(65n);
+    expect(daily.length).toBeGreaterThan(0);
+    for (const d of daily) {
+      expect(d.playDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    }
 
     const hourly = await Q.player.playtime.hourly.findAll({
       playerMinecraftUuid: STEVE,
