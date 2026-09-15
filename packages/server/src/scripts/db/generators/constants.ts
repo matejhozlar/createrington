@@ -62,7 +62,6 @@ import { snakeToCamel } from "../utils/naming";
  * ```
  */
 export function generateConstants(tables: TableInfo[]): string {
-  const timestamp = new Date().toISOString();
   const tableConstants = tables.map(generateTableConstant).join("\n");
 
   return `/**
@@ -72,7 +71,6 @@ export function generateConstants(tables: TableInfo[]): string {
  * (for database operations) and camelCase (for application logic).
  * 
  * DO NOT EDIT MANUALLY - regenerate with: pnpm generate
- * Generated: ${timestamp}
  * 
  * @example
  * // Access table names

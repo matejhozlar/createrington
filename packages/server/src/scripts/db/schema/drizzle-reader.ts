@@ -59,9 +59,13 @@ const COLUMN_TYPE_TO_DATA_TYPE: Record<string, string> = {
 // Main export
 // ============================================================================
 
-export function readSchemaFromDrizzle(): DatabaseSchema {
-  const enums = extractEnums();
-  const tables = extractTables();
+export type SchemaModule = Record<string, unknown>;
+
+export function readSchemaFromDrizzle(
+  schemaModule: SchemaModule = schema,
+): DatabaseSchema {
+  const enums = extractEnums(schemaModule);
+  const tables = extractTables(schemaModule);
   return { tables, enums };
 }
 
@@ -69,10 +73,10 @@ export function readSchemaFromDrizzle(): DatabaseSchema {
 // Enum extraction
 // ============================================================================
 
-function extractEnums(): EnumTypeInfo[] {
+function extractEnums(schemaModule: SchemaModule): EnumTypeInfo[] {
   const enums: EnumTypeInfo[] = [];
 
-  for (const value of Object.values(schema)) {
+  for (const value of Object.values(schemaModule)) {
     // pgEnum returns a function with enumName and enumValues properties
     if (
       value &&
@@ -94,10 +98,10 @@ function extractEnums(): EnumTypeInfo[] {
 // Table extraction
 // ============================================================================
 
-function extractTables(): TableInfo[] {
+function extractTables(schemaModule: SchemaModule): TableInfo[] {
   const tables: TableInfo[] = [];
 
-  for (const value of Object.values(schema)) {
+  for (const value of Object.values(schemaModule)) {
     if (!is(value, PgTable)) continue;
 
     const config = getTableConfig(value as any);
