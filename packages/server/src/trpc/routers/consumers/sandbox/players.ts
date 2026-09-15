@@ -8,7 +8,7 @@ export const sandboxPlayersRouter = router({
   list: adminProcedure
     .meta({
       description:
-        "Lists every registered player with their Minecraft UUID and username, oldest registration first, one page at a time (zero-based page, up to 1000 per page, default 1000). Walk the pages until page + 1 reaches totalPages. Consumed by the sandbox sync to op all known players on the test server.",
+        "Lists every registered player with their Minecraft UUID and username, oldest registration first, one page at a time (zero-based page, up to 1000 per page, default 1000). Banned players are included on purpose: they are welcome on the test server. Walk the pages until page + 1 reaches totalPages. Pages are offset-based, so a player deleted while a consumer walks them shifts later players back by one and one can be skipped; registrations made mid-walk land on the last page. Consumed by the sandbox sync to op all known players on the test server.",
     })
     .input(
       z.object({
@@ -17,11 +17,7 @@ export const sandboxPlayersRouter = router({
     )
     .query(async ({ input }) => {
       const [players, total] = await Promise.all([
-        Q.player
-          .orderBy("id", "asc")
-          .select(["minecraftUuid", "minecraftUsername"])
-          .paginate(input.page, input.limit)
-          .all(),
+        Q.player.orderBy("id", "asc").paginate(input.page, input.limit).all(),
         Q.player.count(),
       ]);
 
