@@ -1,6 +1,12 @@
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from "vitest";
 import type { QueryInstances } from "@/generated/db/queries";
-import { NotFoundError } from "@/db/utils/errors";
+import {
+  NotFoundError,
+  ConstraintViolationError,
+  UniqueViolationError,
+  NotNullViolationError,
+  ForeignKeyViolationError,
+} from "@/db/utils/errors";
 import {
   getTestPool,
   getTestQueries,
@@ -49,18 +55,23 @@ describe("BaseQueries (server table)", () => {
       expect(server.createdAt).toBeInstanceOf(Date);
     });
 
-    it("should reject NOT NULL violation", async () => {
-      await expect(
-        Q.server.create({ name: null as any, identifier: "test" }),
-      ).rejects.toThrow();
+    it("should reject NOT NULL violation as NotNullViolationError", async () => {
+      const error = await Q.server
+        .create({ name: null as any, identifier: "test" })
+        .catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(NotNullViolationError);
+      expect(error).toBeInstanceOf(ConstraintViolationError);
+      expect((error as NotNullViolationError).column).toBe("name");
     });
 
-    it("should reject UNIQUE constraint violation", async () => {
+    it("should reject UNIQUE constraint violation as UniqueViolationError", async () => {
       await Q.server.create({ name: "Survival", identifier: "survival" });
 
-      await expect(
-        Q.server.create({ name: "Other", identifier: "survival" }),
-      ).rejects.toThrow();
+      const error = await Q.server
+        .create({ name: "Other", identifier: "survival" })
+        .catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(UniqueViolationError);
+      expect((error as UniqueViolationError).code).toBe("23505");
     });
   });
 
@@ -167,6 +178,20 @@ describe("BaseQueries (server table)", () => {
       ).rejects.toThrow(NotFoundError);
     });
 
+    it("should reject an empty updates object", async () => {
+      const created = await Q.server.createAndReturn({
+        name: "Survival",
+        identifier: "survival",
+      });
+
+      await expect(Q.server.update({ id: created.id }, {})).rejects.toThrow(
+        "requires at least one field",
+      );
+      await expect(
+        Q.server.updateAndReturn({ id: created.id }, {}),
+      ).rejects.toThrow("requires at least one field");
+    });
+
     it("should updateAndReturn the modified entity", async () => {
       const created = await Q.server.createAndReturn({
         name: "Survival",
@@ -203,6 +228,29 @@ describe("BaseQueries (server table)", () => {
       await expect(Q.server.delete({ id: 99999 })).rejects.toThrow(
         NotFoundError,
       );
+    });
+
+    it("should surface a referenced row as ForeignKeyViolationError", async () => {
+      const created = await Q.server.createAndReturn({
+        name: "Survival",
+        identifier: "survival",
+      });
+      await Q.modpack.create({
+        name: "Pack",
+        createdBy: "1",
+        serverId: created.id,
+      });
+
+      const error = await Q.server
+        .delete({ id: created.id })
+        .catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(ForeignKeyViolationError);
+      expect((error as ForeignKeyViolationError).code).toBe("23503");
+
+      const bulk = await Q.server
+        .deleteAll({ id: created.id })
+        .catch((e: unknown) => e);
+      expect(bulk).toBeInstanceOf(ForeignKeyViolationError);
     });
   });
 
@@ -246,6 +294,27 @@ describe("BaseQueries (server table)", () => {
     it("should support limit", async () => {
       const results = await Q.server.findAll(undefined, { limit: 2 });
       expect(results).toHaveLength(2);
+    });
+
+    it("should return no rows for limit: 0", async () => {
+      expect(await Q.server.findAll(undefined, { limit: 0 })).toHaveLength(0);
+      expect(await Q.server.paginate(0, 0).all()).toHaveLength(0);
+    });
+
+    it("should reject negative or non-integer limit and offset", async () => {
+      await expect(Q.server.findAll(undefined, { limit: -1 })).rejects.toThrow(
+        "limit must be a non-negative integer",
+      );
+      await expect(
+        Q.server.findAll(undefined, { limit: Number.NaN }),
+      ).rejects.toThrow("limit must be a non-negative integer");
+      await expect(
+        Q.server.findAll(undefined, { offset: 1.5 }),
+      ).rejects.toThrow("offset must be a non-negative integer");
+    });
+
+    it("should accept offset: 0", async () => {
+      expect(await Q.server.findAll(undefined, { offset: 0 })).toHaveLength(3);
     });
 
     it("should support offset", async () => {
@@ -361,6 +430,20 @@ describe("BaseQueries (server table)", () => {
 
     it("should throw when deleteAll called with empty filters", async () => {
       await expect(Q.server.deleteAll({})).rejects.toThrow();
+    });
+
+    it("should throw when every deleteAll filter value is undefined", async () => {
+      await expect(
+        Q.server.deleteAll({ name: undefined, identifier: undefined }),
+      ).rejects.toThrow("requires at least one usable filter");
+      expect(await Q.server.count()).toBe(3);
+    });
+
+    it("should throw when every updateAll filter value is undefined", async () => {
+      await expect(
+        Q.server.updateAll({ name: "Renamed" }, { name: undefined }),
+      ).rejects.toThrow("no usable conditions");
+      expect(await Q.server.count({ name: "Renamed" })).toBe(0);
     });
 
     it("should updateAll matching a filter", async () => {

@@ -215,6 +215,9 @@ export class PlayerPlaytimeSummaryQueries extends PlayerPlaytimeSummaryBaseQueri
 
     return result.rows.map((row) => ({
       ...this.mapRowToEntity(row),
+      totalSeconds: Number(row.total_seconds),
+      totalSessions: Number(row.total_sessions),
+      avgSessionSeconds: Number(row.avg_session_seconds),
       minecraftUsername: row.minecraft_username,
     }));
   }
@@ -231,11 +234,10 @@ export class PlayerPlaytimeSummaryQueries extends PlayerPlaytimeSummaryBaseQueri
    */
   async getServerStats(serverId: number): Promise<ServerStats> {
     const query = `
-      SELECT 
-        COUNT(*) as total_players,
-        SUM(total_seconds) as total_seconds,
-        SUM(total_sessions) as total_sessions,
-        AVG(avg_session_seconds) as avg_session_seconds
+      SELECT
+        COUNT(*)::int as total_players,
+        COALESCE(SUM(total_seconds), 0)::float8 as total_seconds,
+        COALESCE(AVG(avg_session_seconds), 0)::float8 as avg_session_seconds
       FROM ${this.table}
       WHERE server_id = $1`;
 

@@ -4,8 +4,8 @@ import { splitPeriod } from "../split";
 
 type ServerActivityRow = {
   play_date: Date;
-  unique_players: string;
-  total_seconds: string;
+  unique_players: number;
+  total_seconds: number;
 };
 
 export type ServerActivity = {
@@ -77,10 +77,10 @@ export class PlayerPlaytimeDailyQueries extends PlayerPlaytimeDailyBaseQueries {
     endDate: Date,
   ): Promise<ServerActivity[]> {
     const query = `
-    SELECT 
+    SELECT
       play_date,
-      COUNT(DISTINCT player_minecraft_uuid) as unique_players,
-      SUM(seconds_played) as total_seconds
+      COUNT(DISTINCT player_minecraft_uuid)::int as unique_players,
+      SUM(seconds_played)::float8 as total_seconds
     FROM ${this.table}
     WHERE server_id = $1
       AND play_date >= $2

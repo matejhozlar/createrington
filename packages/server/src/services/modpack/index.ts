@@ -4,7 +4,10 @@ import {
   ConflictError,
   NotFoundError,
 } from "@/app/middleware/error-handler";
-import { ConstraintViolationError } from "@/db/utils/errors";
+import {
+  ForeignKeyViolationError,
+  UniqueViolationError,
+} from "@/db/utils/errors";
 import type {
   CurseforgeProject,
   Modpack,
@@ -403,7 +406,7 @@ export class ModpackService {
     try {
       await Q.modpack.delete({ id: modpack.id });
     } catch (error) {
-      if (error instanceof ConstraintViolationError) {
+      if (error instanceof ForeignKeyViolationError) {
         throw new ConflictError(
           "A workshop was attached to this modpack while it was being deleted",
         );
@@ -597,7 +600,7 @@ export class ModpackService {
         notes: notes ?? null,
       });
     } catch (error) {
-      if (!(error instanceof ConstraintViolationError)) throw error;
+      if (!(error instanceof UniqueViolationError)) throw error;
       const raced = await Q.modpack.publish.get({ modpackId, clientFileId });
       return refresh(raced.id);
     }
@@ -992,7 +995,7 @@ export class ModpackService {
         return release.id;
       });
     } catch (error) {
-      if (error instanceof ConstraintViolationError) return;
+      if (error instanceof UniqueViolationError) return;
       throw error;
     }
 
@@ -1720,7 +1723,7 @@ export class ModpackService {
         created++;
         if (suggestion) shippedModIds.push(suggestion.id);
       } catch (error) {
-        if (!(error instanceof ConstraintViolationError)) throw error;
+        if (!(error instanceof UniqueViolationError)) throw error;
       }
     }
     if (created > 0) {
@@ -1772,7 +1775,7 @@ export class ModpackService {
   }
 
   private mapProjectConflict(error: unknown): unknown {
-    if (error instanceof ConstraintViolationError) {
+    if (error instanceof UniqueViolationError) {
       return new ConflictError(
         "Another modpack is already linked to that CurseForge project",
       );

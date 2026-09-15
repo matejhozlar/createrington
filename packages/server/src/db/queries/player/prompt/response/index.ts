@@ -1,6 +1,6 @@
 import type { Pool, PoolClient } from "pg";
 import { PlayerPromptResponseBaseQueries } from "@/generated/db/player_prompt_response.queries";
-import { ConstraintViolationError, translateDbError } from "@/db/utils/errors";
+import { UniqueViolationError, translateDbError } from "@/db/utils/errors";
 import type { PlayerPromptResponse } from "@createrington/shared/db/player_prompt_response.types";
 
 /**
@@ -131,7 +131,7 @@ export class PlayerPromptResponseQueries extends PlayerPromptResponseBaseQueries
       } catch (error) {
         const translated = translateDbError(error);
         if (
-          !(translated instanceof ConstraintViolationError) ||
+          !(translated instanceof UniqueViolationError) ||
           attempt >= APPEND_ENTRY_ATTEMPTS
         ) {
           logger.error("Failed to append prompt entry:", error);
