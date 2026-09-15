@@ -1,6 +1,6 @@
 import { Q, db } from "@/db";
 import { escapeLike } from "@/db/utils";
-import { ConstraintViolationError } from "@/db/utils/errors";
+import { UniqueViolationError } from "@/db/utils/errors";
 import { getService, Services } from "@/services";
 import { DiscordMessageService } from "@/services/discord/message/message.service";
 import { FeatureFlags, featureFlagService } from "@/services/feature-flag";
@@ -210,7 +210,7 @@ async function createParts(
       return rows;
     });
   } catch (error) {
-    if (!(error instanceof ConstraintViolationError)) throw error;
+    if (!(error instanceof UniqueViolationError)) throw error;
     const label = releaseLabel(release);
     const claimed = await Q.modpack.release.announcement.count({
       releaseId: release.id,
@@ -242,7 +242,7 @@ async function ensureCategory(): Promise<number> {
     });
     return created.id;
   } catch (error) {
-    if (error instanceof ConstraintViolationError) {
+    if (error instanceof UniqueViolationError) {
       const raced = await Q.discord.embed.preset.category.find({
         name: CHANGELOG_PRESET_CATEGORY,
       });

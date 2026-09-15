@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
-import { auditActor, rethrowTrpc, id } from "@/trpc/utils";
+import { auditActor, rethrowTrpc, id, assertPatchNotEmpty } from "@/trpc/utils";
 import { modpackService } from "@/services/modpack";
 import { modpackManifestUploadSchema } from "@createrington/shared/workshop";
 import { httpUrlSchema } from "@createrington/shared/api/embed";
@@ -58,6 +58,7 @@ export const adminModpacksRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      assertPatchNotEmpty(input.patch);
       try {
         const modpack = await modpackService.updateModpack(
           input.modpackId,

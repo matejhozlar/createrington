@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
-import { trpcError } from "@/trpc/utils";
+import { trpcError, assertPatchNotEmpty } from "@/trpc/utils";
 
 export const embedPresetCategoriesRouter = router({
   list: adminProcedure
@@ -78,6 +78,7 @@ export const embedPresetCategoriesRouter = router({
       if (input.name !== undefined) updates.name = input.name;
       if (input.sortOrder !== undefined) updates.sortOrder = input.sortOrder;
 
+      assertPatchNotEmpty(updates);
       await Q.discord.embed.preset.category.update({ id: input.id }, updates);
 
       return { message: "Category updated" };

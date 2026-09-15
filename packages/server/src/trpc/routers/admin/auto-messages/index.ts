@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q, db } from "@/db";
-import { trpcError, auditActor } from "@/trpc/utils";
+import { trpcError, auditActor, assertPatchNotEmpty } from "@/trpc/utils";
 import { getServiceSync, Services } from "@/services";
 import config from "@/config";
 
@@ -163,6 +163,7 @@ export const autoMessagesRouter = router({
         if (!existing) throw trpcError.notFound("Config not found");
 
         const { id, ...updates } = input;
+        assertPatchNotEmpty(updates);
         await Q.discord.auto.message.config.update({ id }, updates);
 
         const service = getServiceSync(Services.AUTO_MESSAGE_SERVICE);

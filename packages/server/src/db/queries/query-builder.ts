@@ -42,11 +42,15 @@ export class QueryBuilder<
       filters?: Partial<NonNullable<TConfig["Filters"]>>,
       options?: QueryBuilderOptions<TConfig>,
     ) => Promise<TConfig["Entity"][]>,
+    private counter: (
+      filters?: Partial<NonNullable<TConfig["Filters"]>>,
+    ) => Promise<number>,
   ) {}
 
   /**
    * Add filter conditions
-   * Can be called multiple times - conditions are merged
+   * Can be called multiple times: conditions on different keys are ANDed,
+   * and a key given twice takes the later value
    *
    * @param filters - Filter conditions to apply
    * @returns This builder for chaining
@@ -195,17 +199,13 @@ export class QueryBuilder<
   }
 
   /**
-   * Execute the query and return count of results
-   * Note: This still fetches all results and counts them
-   * For large datasets, prefer using count() method directly
-   *
-   * @returns Promise resolving to count
+   * Count the rows matching the accumulated filters with a COUNT(*) query
+   * Ignores orderBy, limit, offset, and select
    *
    * @example
    * const count = await Q.player.where({ isActive: true }).count()
    */
   async count(): Promise<number> {
-    const results = await this.executor(this.filters, this.options);
-    return results.length;
+    return this.counter(this.filters);
   }
 }

@@ -3,6 +3,10 @@ import {
   DatabaseError,
   NotFoundError,
   ConstraintViolationError,
+  UniqueViolationError,
+  ForeignKeyViolationError,
+  NotNullViolationError,
+  CheckViolationError,
   QueryError,
   translateDbError,
 } from "@/db/utils/errors";
@@ -99,7 +103,7 @@ describe("ConstraintViolationError", () => {
 });
 
 describe("translateDbError", () => {
-  it("wraps pg unique violations in ConstraintViolationError", () => {
+  it("wraps pg unique violations in UniqueViolationError", () => {
     const pgError = Object.assign(
       new Error(
         'duplicate key value violates unique constraint "workshop_slug"',
@@ -107,18 +111,60 @@ describe("translateDbError", () => {
       { code: "23505", constraint: "workshop_slug" },
     );
     const result = translateDbError(pgError);
+    expect(result).toBeInstanceOf(UniqueViolationError);
     expect(result).toBeInstanceOf(ConstraintViolationError);
-    const wrapped = result as ConstraintViolationError;
+    const wrapped = result as UniqueViolationError;
+    expect(wrapped.name).toBe("UniqueViolationError");
     expect(wrapped.constraint).toBe("workshop_slug");
     expect(wrapped.code).toBe("23505");
     expect(wrapped.cause).toBe(pgError);
   });
 
-  it("returns other pg errors unchanged", () => {
-    const fkError = Object.assign(new Error("fk violation"), {
+  it("wraps pg foreign key violations in ForeignKeyViolationError", () => {
+    const pgError = Object.assign(new Error("fk violation"), {
       code: "23503",
+      constraint: "modpack_server_id_server_id_fk",
     });
-    expect(translateDbError(fkError)).toBe(fkError);
+    const result = translateDbError(pgError);
+    expect(result).toBeInstanceOf(ForeignKeyViolationError);
+    expect(result).toBeInstanceOf(ConstraintViolationError);
+    expect(result).not.toBeInstanceOf(UniqueViolationError);
+    expect((result as ForeignKeyViolationError).constraint).toBe(
+      "modpack_server_id_server_id_fk",
+    );
+  });
+
+  it("wraps pg not-null violations in NotNullViolationError with the column", () => {
+    const pgError = Object.assign(new Error("null value in column"), {
+      code: "23502",
+      column: "name",
+    });
+    const result = translateDbError(pgError);
+    expect(result).toBeInstanceOf(NotNullViolationError);
+    expect((result as NotNullViolationError).column).toBe("name");
+    expect((result as NotNullViolationError).constraint).toBeUndefined();
+  });
+
+  it("wraps pg check violations in CheckViolationError", () => {
+    const pgError = Object.assign(new Error("check violation"), {
+      code: "23514",
+      constraint: "chk_session_end_after_start",
+    });
+    expect(translateDbError(pgError)).toBeInstanceOf(CheckViolationError);
+  });
+
+  it("returns other pg errors unchanged", () => {
+    const syntaxError = Object.assign(new Error("syntax error"), {
+      code: "42601",
+    });
+    expect(translateDbError(syntaxError)).toBe(syntaxError);
+  });
+
+  it("does not resolve codes through the object prototype", () => {
+    for (const code of ["constructor", "toString", "__proto__"]) {
+      const err = Object.assign(new Error("odd code"), { code });
+      expect(translateDbError(err)).toBe(err);
+    }
   });
 
   it("returns non-object errors unchanged", () => {

@@ -1,5 +1,6 @@
 import type { Pool, PoolClient } from "pg";
 import { PlayerMinecraftStatsBaseQueries } from "@/generated/db/player_minecraft_stats.queries";
+import { escapeLike } from "@/db/utils";
 
 export interface StatsUpsertEntry {
   minecraftUuid: string;
@@ -39,9 +40,8 @@ export class PlayerMinecraftStatsQueries extends PlayerMinecraftStatsBaseQueries
       LIMIT $2
     `;
 
-    const escaped = search.replace(/[%_\\]/g, "\\$&");
     const result = await this.db.query<{ key: string }>(query, [
-      `%${escaped}%`,
+      `%${escapeLike(search)}%`,
       limit ?? 50,
     ]);
     return result.rows.map((r) => r.key);

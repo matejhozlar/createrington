@@ -28,6 +28,13 @@ export const trpcError = {
     new TRPCError({ code: "INTERNAL_SERVER_ERROR", message }),
 };
 
+/** Rejects an all-optional patch that carries no fields as BAD_REQUEST. */
+export function assertPatchNotEmpty(patch: Record<string, unknown>): void {
+  if (Object.keys(patch).length === 0) {
+    throw trpcError.badRequest("Nothing to update");
+  }
+}
+
 const APP_ERROR_TO_TRPC_CODE: Record<number, TrpcCode> = {
   400: "BAD_REQUEST",
   401: "UNAUTHORIZED",

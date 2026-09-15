@@ -19,8 +19,10 @@ type Entry = {
 
 const state = vi.hoisted(() => {
   class ConstraintViolationError extends Error {}
+  class UniqueViolationError extends ConstraintViolationError {}
   return {
     ConstraintViolationError,
+    UniqueViolationError,
     entries: [] as Entry[],
     nextId: 1,
     free: 0,
@@ -56,6 +58,7 @@ function fakeEntry(overrides: Partial<Entry>): Entry {
 
 vi.mock("@/db/utils/errors", () => ({
   ConstraintViolationError: state.ConstraintViolationError,
+  UniqueViolationError: state.UniqueViolationError,
 }));
 
 vi.mock("@/db", () => {
@@ -102,7 +105,7 @@ vi.mock("@/db", () => {
     },
     createAndReturn: async (data: Partial<Entry>) => {
       if (state.entries.some((e) => e.discordId === data.discordId)) {
-        throw new state.ConstraintViolationError("duplicate key");
+        throw new state.UniqueViolationError("duplicate key");
       }
       const created = fakeEntry(data);
       state.entries.push(created);
