@@ -22,7 +22,7 @@ export class FixtureParentChildLeafBaseQueries extends BaseQueries<{
   Entity: FixtureParentChildLeaf;
   Identifier: FixtureParentChildLeafIdentifier;
   Filters: FixtureParentChildLeafFilters;
-  Update: Partial<FixtureParentChildLeaf>;
+  Update: Partial<Omit<FixtureParentChildLeaf, "avgSeconds" | "weight">>;
   Create: FixtureParentChildLeafCreate;
 }> {
   /** Database table name */

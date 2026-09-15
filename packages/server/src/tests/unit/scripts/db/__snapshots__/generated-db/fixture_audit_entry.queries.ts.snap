@@ -22,7 +22,7 @@ export class FixtureAuditEntryBaseQueries extends BaseQueries<{
   Entity: FixtureAuditEntry;
   Identifier: FixtureAuditEntryIdentifier;
   Filters: FixtureAuditEntryFilters;
-  Update: Partial<FixtureAuditEntry>;
+  Update: Partial<Omit<FixtureAuditEntry, "id">>;
   Create: FixtureAuditEntryCreate;
 }> {
   /** Database table name */

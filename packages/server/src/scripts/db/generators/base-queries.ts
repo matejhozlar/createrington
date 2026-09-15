@@ -1,4 +1,5 @@
 import type { TableInfo, TableStructure } from "../types";
+import { snakeToCamel } from "../utils/naming";
 import { extractIdentifierGroups } from "./types";
 
 /**
@@ -73,6 +74,15 @@ export function generateBaseQueries(
     (col) => col.columnName === "updated_at",
   );
 
+  // GENERATED ALWAYS columns cannot be assigned, so the update payload omits them
+  const generatedFields = table.columns
+    .filter((col) => col.isGenerated)
+    .map((col) => `"${snakeToCamel(col.columnName)}"`);
+  const updateType =
+    generatedFields.length > 0
+      ? `Partial<Omit<${className}, ${generatedFields.join(" | ")}>>`
+      : `Partial<${className}>`;
+
   return `import type { Pool, PoolClient } from "pg";
 import { BaseQueries } from "@/db/queries/base.queries";
 import type {
@@ -97,7 +107,7 @@ export class ${className}BaseQueries extends BaseQueries<{
   Entity: ${className};
   Identifier: ${className}Identifier;
   Filters: ${className}Filters;
-  Update: Partial<${className}>;
+  Update: ${updateType};
   Create: ${className}Create;
 }> {
   /** Database table name */
