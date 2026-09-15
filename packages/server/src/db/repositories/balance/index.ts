@@ -24,6 +24,8 @@ export interface BalanceMutationOptions {
   tx?: DatabaseQueries;
 }
 
+type LockedOptions = Omit<BalanceMutationOptions, "tx">;
+
 export enum BalanceTransactionType {
   TRANSFER_SEND = "transfer_send",
   TRANSFER_RECEIVE = "transfer_receive",
@@ -77,6 +79,16 @@ export class BalanceRepository {
     }
     const player = await (tx ?? db).player.get(identifier);
     return player.minecraftUuid;
+  }
+
+  private async resolvePlayer(identifier: PlayerIdentifier): Promise<Player> {
+    if (typeof identifier === "string") {
+      return db.player.get({ minecraftUuid: identifier });
+    }
+    if ("minecraftUuid" in identifier && identifier.minecraftUuid) {
+      return db.player.get({ minecraftUuid: identifier.minecraftUuid });
+    }
+    return db.player.get(identifier);
   }
 
   private async logTransaction(
@@ -198,8 +210,12 @@ export class BalanceRepository {
     amount: number,
     reason: string,
     type: BalanceTransactionType,
-    options: BalanceMutationOptions,
+    options: LockedOptions,
   ): Promise<{ before: bigint; after: bigint }> {
+    if (amount <= 0) {
+      throw new Error("Amount must be positive");
+    }
+
     const amountBigInt = BalanceUtils.toStorage(amount);
     const balance = await this.lockBalance(tx, uuid);
 
@@ -237,8 +253,12 @@ export class BalanceRepository {
     amount: number,
     reason: string,
     type: BalanceTransactionType,
-    options: BalanceMutationOptions,
+    options: LockedOptions,
   ): Promise<{ before: bigint; after: bigint }> {
+    if (amount <= 0) {
+      throw new Error("Amount must be positive");
+    }
+
     const amountBigInt = BalanceUtils.toStorage(amount);
     const balance = await this.lockBalance(tx, uuid);
 
@@ -278,8 +298,12 @@ export class BalanceRepository {
     amount: number,
     reason: string,
     type: BalanceTransactionType,
-    metadata?: Record<string, unknown>,
+    options: LockedOptions,
   ): Promise<{ before: bigint; after: bigint }> {
+    if (amount < 0) {
+      throw new Error("Balance cannot be negative");
+    }
+
     const amountBigInt = BalanceUtils.toStorage(amount);
     const balance = await this.lockBalance(tx, uuid);
     const difference = amountBigInt - balance;
@@ -297,7 +321,7 @@ export class BalanceRepository {
         balanceAfter: amountBigInt,
         transactionType: type,
         description: reason,
-        metadata,
+        metadata: options.metadata,
       },
       tx,
     );
@@ -318,22 +342,13 @@ export class BalanceRepository {
     type: BalanceTransactionType,
     options: BalanceMutationOptions = {},
   ): Promise<number> {
-    if (amount <= 0) {
-      throw new Error("Amount must be positive");
-    }
-
-    BalanceUtils.validate(amount);
     const uuid = await this.resolvePlayerUuid(identifier, options.tx);
 
     return await (options.tx ?? db).inTransaction(async (tx) => {
-      const { after } = await this.addLocked(
-        tx,
-        uuid,
-        amount,
-        reason,
-        type,
-        options,
-      );
+      const { after } = await this.addLocked(tx, uuid, amount, reason, type, {
+        metadata: options.metadata,
+        idempotencyKey: options.idempotencyKey,
+      });
       return BalanceUtils.fromStorage(after);
     });
   }
@@ -352,11 +367,6 @@ export class BalanceRepository {
     type: BalanceTransactionType,
     options: BalanceMutationOptions = {},
   ): Promise<number> {
-    if (amount <= 0) {
-      throw new Error("Amount must be positive");
-    }
-
-    BalanceUtils.validate(amount);
     const uuid = await this.resolvePlayerUuid(identifier, options.tx);
 
     return await (options.tx ?? db).inTransaction(async (tx) => {
@@ -366,7 +376,7 @@ export class BalanceRepository {
         amount,
         reason,
         type,
-        options,
+        { metadata: options.metadata, idempotencyKey: options.idempotencyKey },
       );
       return BalanceUtils.fromStorage(after);
     });
@@ -384,22 +394,12 @@ export class BalanceRepository {
     type: BalanceTransactionType,
     options: Omit<BalanceMutationOptions, "idempotencyKey"> = {},
   ): Promise<number> {
-    if (amount < 0) {
-      throw new Error("Balance cannot be negative");
-    }
-
-    BalanceUtils.validate(amount);
     const uuid = await this.resolvePlayerUuid(identifier, options.tx);
 
     return await (options.tx ?? db).inTransaction(async (tx) => {
-      const { after } = await this.setLocked(
-        tx,
-        uuid,
-        amount,
-        reason,
-        type,
-        options.metadata,
-      );
+      const { after } = await this.setLocked(tx, uuid, amount, reason, type, {
+        metadata: options.metadata,
+      });
       return BalanceUtils.fromStorage(after);
     });
   }
@@ -422,7 +422,6 @@ export class BalanceRepository {
       throw new Error("Transfer amount must be positive");
     }
 
-    BalanceUtils.validate(amount);
     const senderUuid = await this.resolvePlayerUuid(from);
     const recipientUuid = await this.resolvePlayerUuid(to);
     const amountBigInt = BalanceUtils.toStorage(amount);
@@ -504,10 +503,9 @@ export class BalanceRepository {
   }
 
   private async logAdminAction(
-    tx: DatabaseQueries,
     input: {
       actionType: "balance_grant" | "balance_deduct" | "balance_set";
-      uuid: string;
+      player: Player;
       adminDiscordId: string;
       adminUsername: string;
       reason: string;
@@ -515,14 +513,14 @@ export class BalanceRepository {
       after: bigint;
       metadata?: Record<string, unknown>;
     },
+    tx: DatabaseQueries,
   ): Promise<void> {
-    const player = await tx.player.get({ minecraftUuid: input.uuid });
     await tx.admin.log.action.logAction({
       adminDiscordId: input.adminDiscordId,
       adminUsername: input.adminUsername,
       actionType: input.actionType,
-      targetPlayerUuid: input.uuid,
-      targetPlayerName: player.minecraftUsername,
+      targetPlayerUuid: input.player.minecraftUuid,
+      targetPlayerName: input.player.minecraftUsername,
       tableName: "player_balance",
       fieldName: "balance",
       oldValue: BalanceUtils.format(input.before),
@@ -544,33 +542,32 @@ export class BalanceRepository {
     adminUsername: string,
     reason: string,
   ): Promise<number> {
-    if (amount <= 0) {
-      throw new Error("Amount must be positive");
-    }
-    BalanceUtils.validate(amount);
+    const player = await this.resolvePlayer(identifier);
 
     return await db.inTransaction(async (tx) => {
-      const uuid = await this.resolvePlayerUuid(identifier, tx);
       const { before, after } = await this.addLocked(
         tx,
-        uuid,
+        player.minecraftUuid,
         amount,
         reason,
         BalanceTransactionType.ADMIN_GRANT,
         { metadata: { adminDiscordId, adminUsername } },
       );
-      await this.logAdminAction(tx, {
-        actionType: "balance_grant",
-        uuid,
-        adminDiscordId,
-        adminUsername,
-        reason,
-        before,
-        after,
-        metadata: {
-          amount: BalanceUtils.format(BalanceUtils.toStorage(amount)),
+      await this.logAdminAction(
+        {
+          actionType: "balance_grant",
+          player,
+          adminDiscordId,
+          adminUsername,
+          reason,
+          before,
+          after,
+          metadata: {
+            amount: BalanceUtils.format(BalanceUtils.toStorage(amount)),
+          },
         },
-      });
+        tx,
+      );
       return BalanceUtils.fromStorage(after);
     });
   }
@@ -587,33 +584,32 @@ export class BalanceRepository {
     adminUsername: string,
     reason: string,
   ): Promise<number> {
-    if (amount <= 0) {
-      throw new Error("Amount must be positive");
-    }
-    BalanceUtils.validate(amount);
+    const player = await this.resolvePlayer(identifier);
 
     return await db.inTransaction(async (tx) => {
-      const uuid = await this.resolvePlayerUuid(identifier, tx);
       const { before, after } = await this.deductLocked(
         tx,
-        uuid,
+        player.minecraftUuid,
         amount,
         reason,
         BalanceTransactionType.ADMIN_DEDUCT,
         { metadata: { adminDiscordId, adminUsername } },
       );
-      await this.logAdminAction(tx, {
-        actionType: "balance_deduct",
-        uuid,
-        adminDiscordId,
-        adminUsername,
-        reason,
-        before,
-        after,
-        metadata: {
-          amount: BalanceUtils.format(BalanceUtils.toStorage(amount)),
+      await this.logAdminAction(
+        {
+          actionType: "balance_deduct",
+          player,
+          adminDiscordId,
+          adminUsername,
+          reason,
+          before,
+          after,
+          metadata: {
+            amount: BalanceUtils.format(BalanceUtils.toStorage(amount)),
+          },
         },
-      });
+        tx,
+      );
       return BalanceUtils.fromStorage(after);
     });
   }
@@ -630,30 +626,29 @@ export class BalanceRepository {
     adminUsername: string,
     reason: string,
   ): Promise<number> {
-    if (amount < 0) {
-      throw new Error("Balance cannot be negative");
-    }
-    BalanceUtils.validate(amount);
+    const player = await this.resolvePlayer(identifier);
 
     return await db.inTransaction(async (tx) => {
-      const uuid = await this.resolvePlayerUuid(identifier, tx);
       const { before, after } = await this.setLocked(
         tx,
-        uuid,
+        player.minecraftUuid,
         amount,
         reason,
         BalanceTransactionType.ADMIN_SET,
-        { adminDiscordId, adminUsername },
+        { metadata: { adminDiscordId, adminUsername } },
       );
-      await this.logAdminAction(tx, {
-        actionType: "balance_set",
-        uuid,
-        adminDiscordId,
-        adminUsername,
-        reason,
-        before,
-        after,
-      });
+      await this.logAdminAction(
+        {
+          actionType: "balance_set",
+          player,
+          adminDiscordId,
+          adminUsername,
+          reason,
+          before,
+          after,
+        },
+        tx,
+      );
       return BalanceUtils.fromStorage(after);
     });
   }
