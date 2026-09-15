@@ -17,41 +17,41 @@ const schema = Object.fromEntries(
 );
 
 const SHARED_FILES = [
-  "shared/base.types.ts",
-  "shared/database.types.ts",
-  "shared/fixture_audit_entry.types.ts",
-  "shared/fixture_parent.types.ts",
-  "shared/fixture_parent_child.types.ts",
-  "shared/fixture_parent_child_leaf.types.ts",
-  "shared/fixture_setting.types.ts",
-  "shared/index.ts",
+  "shared-db/base.types.ts",
+  "shared-db/database.types.ts",
+  "shared-db/fixture_audit_entry.types.ts",
+  "shared-db/fixture_parent.types.ts",
+  "shared-db/fixture_parent_child.types.ts",
+  "shared-db/fixture_parent_child_leaf.types.ts",
+  "shared-db/fixture_setting.types.ts",
+  "shared-db/index.ts",
 ];
 
 const GENERATED_FILES = [
-  "generated/constants.ts",
-  "generated/db.ts",
-  "generated/fixture.queries.ts",
-  "generated/fixture_audit.queries.ts",
-  "generated/fixture_audit_entry.queries.ts",
-  "generated/fixture_parent.queries.ts",
-  "generated/fixture_parent_child.queries.ts",
-  "generated/fixture_parent_child_leaf.queries.ts",
-  "generated/fixture_setting.queries.ts",
-  "generated/index.ts",
-  "generated/queries.ts",
+  "generated-db/constants.ts",
+  "generated-db/db.ts",
+  "generated-db/fixture.queries.ts",
+  "generated-db/fixture_audit.queries.ts",
+  "generated-db/fixture_audit_entry.queries.ts",
+  "generated-db/fixture_parent.queries.ts",
+  "generated-db/fixture_parent_child.queries.ts",
+  "generated-db/fixture_parent_child_leaf.queries.ts",
+  "generated-db/fixture_setting.queries.ts",
+  "generated-db/index.ts",
+  "generated-db/queries.ts",
 ];
 
 const SCAFFOLDED_FILES = [
-  "queries/fixture/audit/entry/index.ts",
-  "queries/fixture/parent/child/index.ts",
-  "queries/fixture/parent/child/leaf/index.ts",
-  "queries/fixture/parent/index.ts",
-  "queries/fixture/setting/index.ts",
+  "db-queries/fixture/audit/entry/index.ts",
+  "db-queries/fixture/parent/child/index.ts",
+  "db-queries/fixture/parent/child/leaf/index.ts",
+  "db-queries/fixture/parent/index.ts",
+  "db-queries/fixture/setting/index.ts",
 ];
 
 const NAMESPACE_COPIES = [
-  "queries/fixture/audit/index.ts",
-  "queries/fixture/index.ts",
+  "db-queries/fixture/audit/index.ts",
+  "db-queries/fixture/index.ts",
 ];
 
 const ALL_FILES = [
@@ -59,7 +59,7 @@ const ALL_FILES = [
   ...GENERATED_FILES,
   ...SCAFFOLDED_FILES,
   ...NAMESPACE_COPIES,
-  "queries/index.ts",
+  "db-queries/index.ts",
 ].sort();
 
 function toPosix(relativePath: string): string {
@@ -91,9 +91,9 @@ describe("db query-system generator", () => {
         schema,
         context: {
           projectRoot: tmpRoot,
-          sharedTypesDir: path.join(tmpRoot, "shared"),
-          generatedDir: path.join(tmpRoot, "generated"),
-          actualQueriesDir: path.join(tmpRoot, "queries"),
+          sharedTypesDir: path.join(tmpRoot, "shared-db"),
+          generatedDir: path.join(tmpRoot, "generated-db"),
+          actualQueriesDir: path.join(tmpRoot, "db-queries"),
         },
       });
     } finally {
@@ -111,7 +111,7 @@ describe("db query-system generator", () => {
 
   it("reports generated files relative to the project root", () => {
     expect(result.files.map(toPosix).sort()).toEqual(
-      [...SHARED_FILES, ...GENERATED_FILES, "queries/index.ts"].sort(),
+      [...SHARED_FILES, ...GENERATED_FILES, "db-queries/index.ts"].sort(),
     );
   });
 

@@ -1,0 +1,278 @@
+/**
+ * Auto-generated database constants
+ * 
+ * Provides type-safe access to table and field names in both snake_case
+ * (for database operations) and camelCase (for application logic).
+ * 
+ * DO NOT EDIT MANUALLY - regenerate with: pnpm generate
+ * 
+ * @example
+ * // Access table names
+ * DatabaseTable.PLAYER.TABLE // "player"
+ * 
+ * @example
+ * // Access field names (snake_case for database queries)
+ * DatabaseTable.PLAYER.FIELDS.MINECRAFT_USERNAME // "minecraft_username"
+ * 
+ * @example
+ * // Access field names (camelCase for TypeScript code)
+ * DatabaseTable.PLAYER.CAMEL_FIELDS.MINECRAFT_USERNAME // "minecraftUsername"
+ * 
+ * @example
+ * // Use in queries with type safety
+ * const tableName = DatabaseTable.PLAYER.TABLE;
+ * const fieldName = DatabaseTable.PLAYER.FIELDS.MINECRAFT_USERNAME;
+ * await db.query(`SELECT ${fieldName} FROM ${tableName}`);
+ */
+export const DatabaseTable = {
+  FIXTURE_AUDIT_ENTRY: {
+    TABLE: "fixture_audit_entry" as const,
+    FIELDS: {
+      ID: "id" as const,
+      ACTOR_ID: "actor_id" as const,
+      ACTION: "action" as const,
+      REFERENCE: "reference" as const,
+      PAYLOAD: "payload" as const,
+      OCCURRED_AT: "occurred_at" as const,
+    },
+    CAMEL_FIELDS: {
+      ID: "id" as const,
+      ACTOR_ID: "actorId" as const,
+      ACTION: "action" as const,
+      REFERENCE: "reference" as const,
+      PAYLOAD: "payload" as const,
+      OCCURRED_AT: "occurredAt" as const,
+    },
+  },
+  FIXTURE_PARENT: {
+    TABLE: "fixture_parent" as const,
+    FIELDS: {
+      ID: "id" as const,
+      SLUG: "slug" as const,
+      EMAIL: "email" as const,
+      STATUS: "status" as const,
+      KIND: "kind" as const,
+      DISPLAY_NAME: "display_name" as const,
+      SCORE: "score" as const,
+      IS_ACTIVE: "is_active" as const,
+      METADATA: "metadata" as const,
+      CREATED_AT: "created_at" as const,
+      UPDATED_AT: "updated_at" as const,
+    },
+    CAMEL_FIELDS: {
+      ID: "id" as const,
+      SLUG: "slug" as const,
+      EMAIL: "email" as const,
+      STATUS: "status" as const,
+      KIND: "kind" as const,
+      DISPLAY_NAME: "displayName" as const,
+      SCORE: "score" as const,
+      IS_ACTIVE: "isActive" as const,
+      METADATA: "metadata" as const,
+      CREATED_AT: "createdAt" as const,
+      UPDATED_AT: "updatedAt" as const,
+    },
+  },
+  FIXTURE_PARENT_CHILD: {
+    TABLE: "fixture_parent_child" as const,
+    FIELDS: {
+      PARENT_ID: "parent_id" as const,
+      CHILD_KEY: "child_key" as const,
+      SOURCE: "source" as const,
+      EXTERNAL_ID: "external_id" as const,
+      AMOUNT: "amount" as const,
+      QUANTITY: "quantity" as const,
+      LEDGER: "ledger" as const,
+      RATIO: "ratio" as const,
+      BIG_AMOUNT: "big_amount" as const,
+      NOTE: "note" as const,
+      CREATED_AT: "created_at" as const,
+    },
+    CAMEL_FIELDS: {
+      PARENT_ID: "parentId" as const,
+      CHILD_KEY: "childKey" as const,
+      SOURCE: "source" as const,
+      EXTERNAL_ID: "externalId" as const,
+      AMOUNT: "amount" as const,
+      QUANTITY: "quantity" as const,
+      LEDGER: "ledger" as const,
+      RATIO: "ratio" as const,
+      BIG_AMOUNT: "bigAmount" as const,
+      NOTE: "note" as const,
+      CREATED_AT: "createdAt" as const,
+    },
+  },
+  FIXTURE_PARENT_CHILD_LEAF: {
+    TABLE: "fixture_parent_child_leaf" as const,
+    FIELDS: {
+      PARENT_ID: "parent_id" as const,
+      CHILD_KEY: "child_key" as const,
+      LEAF_NO: "leaf_no" as const,
+      TOKEN: "token" as const,
+      LABEL: "label" as const,
+      RECORDED_ON: "recorded_on" as const,
+      RECORDED_AT: "recorded_at" as const,
+      SOURCE_IP: "source_ip" as const,
+      TOTAL_SECONDS: "total_seconds" as const,
+      SESSIONS: "sessions" as const,
+      AVG_SECONDS: "avg_seconds" as const,
+      WEIGHT: "weight" as const,
+      ARCHIVED_AT: "archived_at" as const,
+    },
+    CAMEL_FIELDS: {
+      PARENT_ID: "parentId" as const,
+      CHILD_KEY: "childKey" as const,
+      LEAF_NO: "leafNo" as const,
+      TOKEN: "token" as const,
+      LABEL: "label" as const,
+      RECORDED_ON: "recordedOn" as const,
+      RECORDED_AT: "recordedAt" as const,
+      SOURCE_IP: "sourceIp" as const,
+      TOTAL_SECONDS: "totalSeconds" as const,
+      SESSIONS: "sessions" as const,
+      AVG_SECONDS: "avgSeconds" as const,
+      WEIGHT: "weight" as const,
+      ARCHIVED_AT: "archivedAt" as const,
+    },
+  },
+  FIXTURE_SETTING: {
+    TABLE: "fixture_setting" as const,
+    FIELDS: {
+      KEY: "key" as const,
+      VALUE: "value" as const,
+      CODE: "code" as const,
+      RANK: "rank" as const,
+      WEIGHT: "weight" as const,
+      FACTOR: "factor" as const,
+      PAYLOAD: "payload" as const,
+      UPDATED_AT: "updated_at" as const,
+    },
+    CAMEL_FIELDS: {
+      KEY: "key" as const,
+      VALUE: "value" as const,
+      CODE: "code" as const,
+      RANK: "rank" as const,
+      WEIGHT: "weight" as const,
+      FACTOR: "factor" as const,
+      PAYLOAD: "payload" as const,
+      UPDATED_AT: "updatedAt" as const,
+    },
+  },
+} as const;
+
+/**
+ * Type-safe table name type
+ * 
+ * Union type of all valid table names in the database.
+ * Enables compile-time validation and IDE autocomplete.
+ */
+export type TableName = typeof DatabaseTable[keyof typeof DatabaseTable]["TABLE"];
+
+/**
+ * Type-safe snake_case field names for a given table
+ * 
+ * Extracts the union of all valid field names (in snake_case format)
+ * for the specified table. Used for database queries and operations.
+ * 
+ * @typeParam T - The table constant key (e.g., 'USERS', 'POSTS')
+ */
+export type FieldName<T extends keyof typeof DatabaseTable> = typeof DatabaseTable[T]["FIELDS"][keyof typeof DatabaseTable[T]["FIELDS"]];
+
+/**
+ * Type-safe camelCase field names for a given table
+ * 
+ * Extracts the union of all valid field names (in camelCase format)
+ * for the specified table. Used for application-level TypeScript code.
+ * 
+ * @typeParam T - The table constant key (e.g., 'USERS', 'POSTS')
+ */
+export type CamelFieldName<T extends keyof typeof DatabaseTable> = typeof DatabaseTable[T]["CAMEL_FIELDS"][keyof typeof DatabaseTable[T]["CAMEL_FIELDS"]];
+
+/**
+ * Get all table names as an array
+ * 
+ * Returns an array containing all valid table names from the database schema.
+ * Useful for iteration, validation, or dynamic operations across all tables.
+ * 
+ * @returns Array of all table names in the database
+ */
+export function getAllTableNames(): TableName[] {
+  return Object.values(DatabaseTable).map((t) => t.TABLE);
+}
+
+/**
+ * Check if a string is a valid table name
+ * 
+ * Type guard function that validates whether a string corresponds to a known
+ * table name in the database. Narrows the type to TableName when true.
+ * 
+ * @param name - String to validate as a table name
+ * @returns true if the string is a valid table name, false otherwise
+ * 
+ * @example
+ * const userInput = getUserInput();
+ * if (isValidTableName(userInput)) {
+ *   // TypeScript knows userInput is now TableName
+ *   processTable(userInput);
+ * }
+ */
+export function isValidTableName(name: string): name is TableName {
+  return getAllTableNames().includes(name as TableName);
+}
+
+/**
+ * Get the table constant object by table name
+ * 
+ * Looks up and returns the complete constant object for a given table name,
+ * providing access to all field constants. Returns undefined if the table
+ * name is not found.
+ * 
+ * @param tableName - The table name to look up
+ * @returns The table constant object, or undefined if not found
+ * 
+ * @example
+ * const userTable = getTableByName('users');
+ * if (userTable) {
+ *   console.log(userTable.FIELDS.EMAIL_ADDRESS);  // "email_address"
+ *   console.log(userTable.CAMEL_FIELDS.EMAIL_ADDRESS);  // "emailAddress"
+ * }
+ */
+export function getTableByName(tableName: string): typeof DatabaseTable[keyof typeof DatabaseTable] | undefined {
+  return Object.values(DatabaseTable).find((t) => t.TABLE === tableName);
+}
+
+/**
+ * Convert a snake_case field name to camelCase
+ * 
+ * Transforms database-style snake_case identifiers to TypeScript-style
+ * camelCase. Useful when converting between database and application layers.
+ * 
+ * @param snakeCase - The snake_case string to convert
+ * @returns The converted camelCase string
+ * 
+ * @example
+ * snakeToCamel('email_address');    // Returns: "emailAddress"
+ * snakeToCamel('user_profile_id');  // Returns: "userProfileId"
+ * snakeToCamel('id');               // Returns: "id"
+ */
+export function snakeToCamel(snakeCase: string): string {
+  return snakeCase.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+}
+
+/**
+ * Convert a camelCase field name to snake_case
+ * 
+ * Transforms TypeScript-style camelCase identifiers to database-style
+ * snake_case. Useful when constructing database queries from TypeScript code.
+ * 
+ * @param camelCase - The camelCase string to convert
+ * @returns The converted snake_case string
+ * 
+ * @example
+ * camelToSnake('emailAddress');    // Returns: "email_address"
+ * camelToSnake('userProfileId');   // Returns: "user_profile_id"
+ * camelToSnake('id');              // Returns: "id"
+ */
+export function camelToSnake(camelCase: string): string {
+  return camelCase.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
+}
