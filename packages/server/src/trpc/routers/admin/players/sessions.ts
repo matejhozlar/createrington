@@ -36,6 +36,7 @@ export const sessionsRouter = router({
         sessions: sessions.map((s) => ({
           ...s,
           secondsPlayed: s.secondsPlayed?.toString() || null,
+          activeSeconds: s.activeSeconds.toString(),
         })),
         pagination: buildPagination(input.page, input.limit, totalSessions),
       };
