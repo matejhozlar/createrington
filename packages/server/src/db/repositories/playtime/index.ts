@@ -386,8 +386,8 @@ export class PlaytimeRepository {
 
       return await Q.player.playtime.daily.getServerActivity(
         serverId,
-        startDate,
-        endDate,
+        calendarDay(startDate),
+        calendarDay(endDate),
       );
     } catch (error) {
       logger.error("Failed to get server activity:", error);

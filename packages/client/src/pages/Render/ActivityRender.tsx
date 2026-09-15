@@ -50,7 +50,10 @@ function getLevel(seconds: number): number {
 }
 
 function toDateStr(d: Date): string {
-  return d.toISOString().split("T")[0];
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function StatPill({ label, value }: { label: string; value: string }) {
@@ -68,11 +71,11 @@ function StatPill({ label, value }: { label: string; value: string }) {
 
 function buildGrid(days: Record<string, number>) {
   const today = new Date();
-  const todayDay = today.getUTCDay();
+  const todayDay = today.getDay();
   const mondayOffset = todayDay === 0 ? 6 : todayDay - 1;
 
   const start = new Date(today);
-  start.setUTCDate(start.getUTCDate() - mondayOffset - (NUM_WEEKS - 1) * 7);
+  start.setDate(start.getDate() - mondayOffset - (NUM_WEEKS - 1) * 7);
 
   const weeks: { date: string; seconds: number; future: boolean }[][] = [];
   const monthLabels: { label: string; col: number }[] = [];
@@ -91,14 +94,14 @@ function buildGrid(days: Record<string, number>) {
       });
 
       if (row === 0) {
-        const month = cursor.getUTCMonth();
+        const month = cursor.getMonth();
         if (month !== lastMonth) {
           monthLabels.push({ label: MONTH_LABELS[month], col });
           lastMonth = month;
         }
       }
 
-      cursor.setUTCDate(cursor.getUTCDate() + 1);
+      cursor.setDate(cursor.getDate() + 1);
     }
     weeks.push(week);
   }

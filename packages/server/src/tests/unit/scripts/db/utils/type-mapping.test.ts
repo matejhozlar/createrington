@@ -37,9 +37,9 @@ describe("pgTypeToTsType", () => {
       expect(() => pgTypeToTsType("mystery_type", false, null, null)).toThrow(
         'No TypeScript mapping for PostgreSQL type "mystery_type"',
       );
-      expect(() =>
-        pgTypeToTsType("PgTimestampString", true, null, null),
-      ).toThrow("PgTimestampString");
+      expect(() => pgTypeToTsType("interval", true, null, null)).toThrow(
+        '"interval"',
+      );
     });
   });
 

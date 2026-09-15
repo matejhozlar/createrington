@@ -67,14 +67,14 @@ export class PlayerPlaytimeDailyQueries extends PlayerPlaytimeDailyBaseQueries {
    * for each day within the specified date range
    *
    * @param serverId - The ID of the server to query activity for
-   * @param startDate - Start date of the range (inclusive)
-   * @param endDate - End date of the range (inclusive)
+   * @param startDay - First calendar day of the range (YYYY-MM-DD, inclusive)
+   * @param endDay - Last calendar day of the range (YYYY-MM-DD, inclusive)
    * @returns Array of daily activity records, ordered chronologically
    */
   async getServerActivity(
     serverId: number,
-    startDate: Date,
-    endDate: Date,
+    startDay: string,
+    endDay: string,
   ): Promise<ServerActivity[]> {
     const query = `
     SELECT
@@ -90,8 +90,8 @@ export class PlayerPlaytimeDailyQueries extends PlayerPlaytimeDailyBaseQueries {
 
     const result = await this.runQuery("get server daily activity", query, [
       serverId,
-      startDate,
-      endDate,
+      startDay,
+      endDay,
     ]);
 
     return this.mapRowsToEntities<ServerActivityRow, ServerActivity>(

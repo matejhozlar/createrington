@@ -199,8 +199,15 @@ function mapColumn(
     // Access the enum name through the column's enum reference
     udtName = col.enum?.enumName ?? "unknown";
   } else {
-    dataType = COLUMN_TYPE_TO_DATA_TYPE[columnType] || columnType;
-    udtName = COLUMN_TYPE_TO_UDT[columnType] || columnType;
+    const mappedDataType = COLUMN_TYPE_TO_DATA_TYPE[columnType];
+    const mappedUdt = COLUMN_TYPE_TO_UDT[columnType];
+    if (!mappedDataType || !mappedUdt) {
+      throw new Error(
+        `No PostgreSQL type mapping for Drizzle column type "${columnType}" (column "${columnName}"); add it to COLUMN_TYPE_TO_UDT and COLUMN_TYPE_TO_DATA_TYPE in scripts/db/schema/drizzle-reader.ts`,
+      );
+    }
+    dataType = mappedDataType;
+    udtName = mappedUdt;
   }
 
   // Determine isPrimaryKey:
