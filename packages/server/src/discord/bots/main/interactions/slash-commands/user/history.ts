@@ -19,6 +19,7 @@ const typeLabels: Record<string, string> = {
   withdraw: "Withdrawal",
   admin_grant: "Admin Grant",
   admin_deduct: "Admin Deduct",
+  admin_set: "Admin Set",
   purchase: "Purchase",
   sale: "Sale",
   reward: "Reward",
