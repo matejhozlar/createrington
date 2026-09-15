@@ -6,7 +6,7 @@ interface QueryBuilderOptions<TConfig extends { Entity: QueryResultRow }> {
   offset?: number;
   orderBy?: keyof TConfig["Entity"];
   orderDirection?: "asc" | "desc";
-  select?: Array<keyof TConfig["Entity"]>;
+  select?: ReadonlyArray<keyof TConfig["Entity"]>;
 }
 
 /**
@@ -34,7 +34,7 @@ export class QueryBuilder<
     offset?: number;
     orderBy?: keyof TConfig["Entity"];
     orderDirection?: "asc" | "desc";
-    select?: Array<keyof TConfig["Entity"]>;
+    select?: ReadonlyArray<keyof TConfig["Entity"]>;
   } = {};
 
   constructor(
@@ -117,7 +117,7 @@ export class QueryBuilder<
    * Q.player.where({ isActive: true }).select(["id", "minecraftUsername"])
    */
   select<K extends keyof TConfig["Entity"]>(
-    fields: K[],
+    fields: readonly K[],
   ): QueryBuilder<TConfig, Selected<TConfig["Entity"], K>> {
     this.options.select = fields;
     return this as unknown as QueryBuilder<
@@ -146,8 +146,6 @@ export class QueryBuilder<
   /**
    * Execute the query and return all matching results
    *
-   * @returns Promise resolving to array of entities
-   *
    * @example
    * const players = await Q.player
    *   .where({ isActive: true })
@@ -163,8 +161,6 @@ export class QueryBuilder<
   /**
    * Execute the query and return the first result
    * Returns null if no results found
-   *
-   * @returns Promise resolving to first entity or null
    *
    * @example
    * const player = await Q.player
@@ -183,7 +179,6 @@ export class QueryBuilder<
    * Execute the query and return the first result
    * Throws an error if no results found
    *
-   * @returns Promise resolving to first entity
    * @throws Error if no results found
    *
    * @example

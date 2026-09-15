@@ -490,22 +490,22 @@ export abstract class BaseQueries<
    */
   async find<K extends keyof TConfig["Entity"]>(
     identifier: NonNullable<TConfig["Identifier"]> | TConfig["Entity"],
-    options: { select: K[] },
+    options: { select: readonly K[] },
   ): Promise<Selected<TConfig["Entity"], K> | null>;
   async find(
     identifier: NonNullable<TConfig["Identifier"]> | TConfig["Entity"],
-    options?: { select?: Array<keyof TConfig["Entity"]> },
+    options?: { select?: ReadonlyArray<keyof TConfig["Entity"]> },
   ): Promise<TConfig["Entity"] | null>;
   async find(
     identifier: NonNullable<TConfig["Identifier"]> | TConfig["Entity"],
-    options?: { select?: Array<keyof TConfig["Entity"]> },
+    options?: { select?: ReadonlyArray<keyof TConfig["Entity"]> },
   ): Promise<TConfig["Entity"] | null> {
     const extracted = this.extractIdentifier(
       identifier as Record<string, unknown>,
     );
     const { whereClause, values } = this.getColumnMapping(extracted);
 
-    const columns = options?.select
+    const columns = options?.select?.length
       ? options.select
           .map((field) => this.getColumnName(field as string))
           .join(", ")
@@ -549,15 +549,15 @@ export abstract class BaseQueries<
    */
   async get<K extends keyof TConfig["Entity"]>(
     identifier: NonNullable<TConfig["Identifier"]> | TConfig["Entity"],
-    options: { select: K[] },
+    options: { select: readonly K[] },
   ): Promise<Selected<TConfig["Entity"], K>>;
   async get(
     identifier: NonNullable<TConfig["Identifier"]> | TConfig["Entity"],
-    options?: { select?: Array<keyof TConfig["Entity"]> },
+    options?: { select?: ReadonlyArray<keyof TConfig["Entity"]> },
   ): Promise<TConfig["Entity"]>;
   async get(
     identifier: NonNullable<TConfig["Identifier"]> | TConfig["Entity"],
-    options?: { select?: Array<keyof TConfig["Entity"]> },
+    options?: { select?: ReadonlyArray<keyof TConfig["Entity"]> },
   ): Promise<TConfig["Entity"]> {
     const entity = await this.find(identifier, options);
 
@@ -901,7 +901,6 @@ export abstract class BaseQueries<
    * Create a query builder starting with field selection
    *
    * @param fields - Array of field names to select
-   * @returns QueryBuilder instance
    *
    * @example
    * const players = await Q.player
@@ -910,7 +909,7 @@ export abstract class BaseQueries<
    *   .all()
    */
   selectFields<K extends keyof TConfig["Entity"]>(
-    fields: K[],
+    fields: readonly K[],
   ): QueryBuilder<TConfig, Selected<TConfig["Entity"], K>> {
     return new QueryBuilder<TConfig>((f, opts) => this.findAll(f, opts)).select(
       fields,
@@ -969,7 +968,7 @@ export abstract class BaseQueries<
       offset?: number;
       orderBy?: keyof TConfig["Entity"];
       orderDirection?: "asc" | "desc";
-      select: K[];
+      select: readonly K[];
     },
   ): Promise<Selected<TConfig["Entity"], K>[]>;
   async findAll(
@@ -979,7 +978,7 @@ export abstract class BaseQueries<
       offset?: number;
       orderBy?: keyof TConfig["Entity"];
       orderDirection?: "asc" | "desc";
-      select?: Array<keyof TConfig["Entity"]>;
+      select?: ReadonlyArray<keyof TConfig["Entity"]>;
     },
   ): Promise<TConfig["Entity"][]>;
   async findAll(
@@ -989,14 +988,14 @@ export abstract class BaseQueries<
       offset?: number;
       orderBy?: keyof TConfig["Entity"];
       orderDirection?: "asc" | "desc";
-      select?: Array<keyof TConfig["Entity"]>;
+      select?: ReadonlyArray<keyof TConfig["Entity"]>;
     },
   ): Promise<TConfig["Entity"][]> {
     const { whereClause, params } = filters
       ? this.buildFilterClause(filters)
       : { whereClause: "1=1", params: [] as unknown[] };
 
-    const columns = options?.select
+    const columns = options?.select?.length
       ? options.select
           .map((field) => this.getColumnName(field as string))
           .join(", ")
@@ -1049,21 +1048,21 @@ export abstract class BaseQueries<
     offset?: number;
     orderBy?: keyof TConfig["Entity"];
     orderDirection?: "asc" | "desc";
-    select: K[];
+    select: readonly K[];
   }): Promise<Selected<TConfig["Entity"], K>[]>;
   async getAll(options?: {
     limit?: number;
     offset?: number;
     orderBy?: keyof TConfig["Entity"];
     orderDirection?: "asc" | "desc";
-    select?: Array<keyof TConfig["Entity"]>;
+    select?: ReadonlyArray<keyof TConfig["Entity"]>;
   }): Promise<TConfig["Entity"][]>;
   async getAll(options?: {
     limit?: number;
     offset?: number;
     orderBy?: keyof TConfig["Entity"];
     orderDirection?: "asc" | "desc";
-    select?: Array<keyof TConfig["Entity"]>;
+    select?: ReadonlyArray<keyof TConfig["Entity"]>;
   }): Promise<TConfig["Entity"][]> {
     return this.findAll(undefined, options);
   }

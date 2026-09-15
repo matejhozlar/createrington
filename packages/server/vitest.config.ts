@@ -11,6 +11,9 @@ export default defineConfig({
     env: {
       VALIDATION_MODE: "generation",
     },
+    typecheck: {
+      include: ["src/tests/**/*.test-d.ts"],
+    },
     cache: {
       dir: path.resolve(__dirname, "../../node_modules/.vitest"),
     },

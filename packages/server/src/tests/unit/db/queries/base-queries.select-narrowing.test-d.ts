@@ -86,6 +86,30 @@ describe("BaseQueries select projection types", () => {
     ).toEqualTypeOf<Player | null>();
   });
 
+  it("narrows an extracted as const field list", async () => {
+    const FIELDS = ["minecraftUuid", "minecraftUsername"] as const;
+    expectTypeOf(
+      await Q.player.find({ id: 1 }, { select: FIELDS }),
+    ).toEqualTypeOf<Projected | null>();
+    expectTypeOf(
+      await Q.player.get({ id: 1 }, { select: FIELDS }),
+    ).toEqualTypeOf<Projected>();
+    expectTypeOf(
+      await Q.player.findAll({ online: true }, { select: FIELDS }),
+    ).toEqualTypeOf<Projected[]>();
+    expectTypeOf(await Q.player.getAll({ select: FIELDS })).toEqualTypeOf<
+      Projected[]
+    >();
+    expectTypeOf(await Q.player.selectFields(FIELDS).all()).toEqualTypeOf<
+      Projected[]
+    >();
+    expectTypeOf(
+      await Q.player.where({}).select(FIELDS).first(),
+    ).toEqualTypeOf<Projected | null>();
+    // @ts-expect-error discordId was not selected
+    (await Q.player.getAll({ select: FIELDS }))[0]!.discordId;
+  });
+
   it("rejects keys that are not columns", () => {
     // @ts-expect-error notAColumn is not a Player key
     void Q.player.findAll({}, { select: ["notAColumn"] });
