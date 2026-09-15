@@ -9,6 +9,10 @@ export function formatConfigKey(key: string): string {
     .trim();
 }
 
+export function toIso(value: string | Date): string {
+  return typeof value === "string" ? value : new Date(value).toISOString();
+}
+
 export function formatFullDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("en-US", {
     weekday: "short",

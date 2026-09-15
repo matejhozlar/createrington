@@ -15,5 +15,5 @@ export const mainBot = new Client({
     GatewayIntentBits.DirectMessages,
     GatewayIntentBits.GuildInvites,
   ],
-  partials: [Partials.Channel, Partials.GuildMember],
+  partials: [Partials.Channel, Partials.GuildMember, Partials.Message],
 });

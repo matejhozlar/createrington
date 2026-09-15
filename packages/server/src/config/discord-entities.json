@@ -60,15 +60,8 @@
       "transcripts": "1483504808920092709",
       "notifications": "1483504808920092707"
     },
-    "general": {
-      "schematics": "1483504809620541558",
-      "hallOfFame": "1483504809620541556",
-      "commands": "1483504809859481708",
-      "leaderboards": "1483504809620541557",
-      "questions": "1483504809859481709",
-      "botSpam": "1483504809859481710"
-    },
     "createringtonOfficial": {
+      "gallery": "1548348880016515072",
       "screenshotContest": "1486462731287658726",
       "download": "1483504809620541551",
       "support": "1483504809620541550",
@@ -76,7 +69,16 @@
       "announcements": "1483508643533033542",
       "roles": "1483504809335062619",
       "rules": "1483504809335062618",
+      "gallerySubmissions": "1548348901021712425",
       "welcome": "1483504809335062617"
+    },
+    "general": {
+      "schematics": "1483504809620541558",
+      "hallOfFame": "1483504809620541556",
+      "commands": "1483504809859481708",
+      "leaderboards": "1483504809620541557",
+      "questions": "1483504809859481709",
+      "botSpam": "1483504809859481710"
     },
     "serverStats": {
       "bots": "1483504809335062613",
@@ -86,16 +88,8 @@
     "railsNSails": {
       "notifications": "1542624975784120382",
       "changelog": "1541882375150108723",
-      "minecraftChat": "1542624868388835418"
-    },
-    "verification": {
-      "verify18": "1540050227736748122"
-    },
-    "uncategorized": {
-      "feedbackBugs": "1497983392703058102",
-      "chat": "1497983354170114209",
-      "startHere": "1497986745147461689",
-      "minecraftChat": "1497983374273548379"
+      "minecraftChat": "1542624868388835418",
+      "serverPics": "1548342196862976071"
     },
     "dev": {
       "features": "1483504809263894659",
@@ -103,14 +97,9 @@
       "createringtonKubejs": "1483504809335062611",
       "createrington": "1483504809263894668",
       "createringtonCurrency": "1483504809335062610"
-    },
-    "crypto": {
-      "discussion": "1483504809620541554",
-      "news": "1483504809620541553"
     }
   },
   "categories": {
-    "crypto": "1483504809620541552",
     "createringtonOfficial": "1483504809335062616",
     "administration": "1483504808920092705",
     "verification": "1483504808920092703",

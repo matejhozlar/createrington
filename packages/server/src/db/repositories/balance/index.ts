@@ -38,6 +38,7 @@ export enum BalanceTransactionType {
   LOTTERY_ENTRY = "lottery_entry",
   LOTTERY_WIN = "lottery_win",
   LOTTERY_REFUND = "lottery_refund",
+  GALLERY_REWARD = "gallery_reward",
   CRYPTO_BUY = "crypto_buy",
   CRYPTO_SELL = "crypto_sell",
   OTHER = "other",

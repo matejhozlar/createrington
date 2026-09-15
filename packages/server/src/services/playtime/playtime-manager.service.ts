@@ -4,13 +4,18 @@ import { PlaytimeService } from "./playtime.service";
 import type { MessageCacheService } from "../discord/message/cache";
 import { ServerState } from "./types";
 
+const SHUTDOWN_FLUSH_TIMEOUT_MS = 5000;
+
 /**
  * Coordinates one PlaytimeService per configured Minecraft server: spins each
- * up at boot, wires them to the playtime repository, and exposes per-server
- * status. `initialize()` throws if zero services succeed; per-server failures
- * are logged and skipped. Call `setupMessageCacheIntegration()` after
- * `initialize()` to enable crash recovery, orphaned-session cleanup, and live
- * server start/shutdown detection from the Discord relay.
+ * up at boot, restores the sessions the previous process left open, wires
+ * them to the playtime repository, and exposes per-server status.
+ * `initialize()` throws if zero services succeed; per-server failures are
+ * logged and skipped. Shutdown leaves sessions open in the database on
+ * purpose (a backend restart is not a player event) and only waits for
+ * in-flight writes. Call `setupMessageCacheIntegration()` after
+ * `initialize()` to enable server start/shutdown detection from the Discord
+ * relay.
  */
 export class PlaytimeManagerService {
   private playtimeServices: Map<number, PlaytimeService> = new Map();
@@ -35,27 +40,17 @@ export class PlaytimeManagerService {
       const serverId = serverConfig.id;
 
       try {
-        if (!serverConfig.ip || !serverConfig.port) {
-          throw new Error(`Server ${serverId} missing IP or port`);
-        }
-
         logger.info(
           `Initializing PlaytimeService for server ${serverId} (${serverConfig.name})...`,
         );
 
-        const service = new PlaytimeService({
-          serverIp: serverConfig.ip,
-          serverPort: serverConfig.port,
-          serverId,
-          pollIntervalMs: 10000,
-          statusTimeoutMs: 5000,
-          initialDelayMs: 0,
-          maxSyncRetries: 3,
-        });
+        const service = new PlaytimeService({ serverId });
 
         playtimeRepo.connectToService(service, serverId);
 
-        await service.initialize();
+        const openSessions = await playtimeRepo.getOpenSessions(serverId);
+        service.hydrate(openSessions);
+        service.initialize();
 
         this.playtimeServices.set(serverId, service);
 
@@ -79,7 +74,7 @@ export class PlaytimeManagerService {
     );
   }
 
-  /** Stops every PlaytimeService and clears the internal map. Safe to call when nothing is initialized. */
+  /** Stops every PlaytimeService, waits briefly for in-flight writes, and clears the internal map. */
   async shutdown(): Promise<void> {
     if (this.playtimeServices.size === 0) {
       return;
@@ -95,6 +90,7 @@ export class PlaytimeManagerService {
     }
 
     this.playtimeServices.clear();
+    await playtimeRepo.flush(SHUTDOWN_FLUSH_TIMEOUT_MS);
     logger.info("All PlaytimeServices shut down");
   }
 
@@ -135,10 +131,9 @@ export class PlaytimeManagerService {
   }
 
   /**
-   * Detects each server's initial state from the message cache, runs orphaned
-   * DB-session cleanup (recovery sync if ONLINE, end-all if OFFLINE), and
-   * subscribes to ongoing serverClosed / serverStarted events. Fire-and-forget
-   * per server: failures are logged but do not block the others.
+   * Seeds each server's initial state from the message cache and subscribes
+   * to ongoing serverClosed / serverStarted events. Fire-and-forget per
+   * server: failures are logged but do not block the others.
    */
   setupMessageCacheIntegration(messageCacheService: MessageCacheService): void {
     this.messageCacheService = messageCacheService;
@@ -150,59 +145,10 @@ export class PlaytimeManagerService {
     for (const [serverId, service] of this.playtimeServices) {
       service
         .detectServerState(messageCacheService)
-        .then(async () => {
+        .then(() => {
           logger.info(
             `Server ${serverId} state detected: ${service.getServerState()}`,
           );
-
-          if (service.getServerState() === ServerState.ONLINE) {
-            // Server is online: perform recovery sync, then close DB sessions
-            // for players that aren't actually online
-            try {
-              await service.performRecoverySync();
-
-              const onlineUuids = new Set(
-                service.getActiveSessions().map((s) => s.uuid),
-              );
-              const orphanedSessions =
-                await playtimeRepo.getActiveSessions(serverId);
-
-              let closedCount = 0;
-              for (const session of orphanedSessions) {
-                if (!onlineUuids.has(session.playerMinecraftUuid)) {
-                  await playtimeRepo.endSession({
-                    sessionId: session.id,
-                    uuid: session.playerMinecraftUuid,
-                    username: "",
-                    serverId,
-                    sessionStart: session.sessionStart,
-                    sessionEnd: new Date(),
-                    secondsPlayed: 0,
-                  });
-                  closedCount++;
-                }
-              }
-
-              if (closedCount > 0) {
-                logger.warn(
-                  `Startup: Closed ${closedCount} orphaned DB session(s) for server ${serverId}`,
-                );
-              }
-            } catch (error) {
-              logger.error(
-                `Recovery sync failed for server ${serverId}:`,
-                error,
-              );
-            }
-          } else {
-            // Server is offline: close all active DB sessions
-            const count = await playtimeRepo.endAllActiveSessions(serverId);
-            if (count > 0) {
-              logger.warn(
-                `Startup: Server ${serverId} offline, closed ${count} orphaned DB session(s)`,
-              );
-            }
-          }
         })
         .catch((error) => {
           logger.error(`Failed to detect state for server ${serverId}:`, error);

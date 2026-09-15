@@ -31,9 +31,12 @@ import {
   registerBrandFonts,
   roundRectPath,
   drawImageCover,
+  paintEllipseGradient,
   paintWordmark,
-  getPoseFigure,
+  paintPosedFigure,
+  wrapText,
   writeCard,
+  type PosedFigureSpec,
 } from "./og-shared";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -50,20 +53,10 @@ const PORTAL_X = 727;
 const PORTAL_Y = 66;
 const PORTAL_FRAME = 0;
 
-interface FigureSpec {
-  username: string;
-  uuid: string;
-  pose: string;
-  height: number;
-  centerX: number;
-  groundY: number;
-  mirror?: boolean;
-}
-
 // Gathered at the portal: Agent772 (the Parallel Worlds author) presents it,
 // saunhardy anchors the middle, Cailin05 cheers the next rotation on. The
 // point pose is mirrored so the raised arm points at the portal.
-const FIGURES: readonly FigureSpec[] = [
+const FIGURES: readonly PosedFigureSpec[] = [
   {
     username: "Agent772",
     uuid: "3e0db446-147a-4692-87fd-c3facc4341db",
@@ -135,46 +128,6 @@ function mulberry32(seed: number): () => number {
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
-}
-
-function paintEllipseGradient(
-  ctx: SKRSContext2D,
-  cx: number,
-  cy: number,
-  rx: number,
-  ry: number,
-  stops: readonly (readonly [number, string])[],
-): void {
-  ctx.save();
-  ctx.translate(cx, cy);
-  ctx.scale(rx, ry);
-  const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
-  for (const [offset, color] of stops) g.addColorStop(offset, color);
-  ctx.fillStyle = g;
-  ctx.fillRect(-cx / rx, -cy / ry, W / rx, H / ry);
-  ctx.restore();
-}
-
-function wrapText(
-  ctx: SKRSContext2D,
-  text: string,
-  font: string,
-  maxWidth: number,
-): string[] {
-  ctx.font = font;
-  const lines: string[] = [];
-  let line = "";
-  for (const word of text.split(" ")) {
-    const probe = line ? `${line} ${word}` : word;
-    if (ctx.measureText(probe).width > maxWidth && line) {
-      lines.push(line);
-      line = word;
-    } else {
-      line = probe;
-    }
-  }
-  if (line) lines.push(line);
-  return lines;
 }
 
 async function paintBackdrop(ctx: SKRSContext2D): Promise<void> {
@@ -370,58 +323,13 @@ async function paintFigures(ctx: SKRSContext2D): Promise<void> {
   ]);
 
   for (const spec of FIGURES) {
-    const img = await getPoseFigure({
-      uuid: spec.uuid,
-      pose: spec.pose,
-      username: spec.username,
+    await paintPosedFigure(ctx, spec, {
+      glow: blue(0.4),
+      glowBlur: 12,
+      shadowScale: 0.62,
+      shadowRy: 11,
+      shadowAlpha: 0.5,
     });
-    const bbox = computeBBox(img);
-    if (!bbox) throw new Error(`Empty figure render for ${spec.username}`);
-
-    const scale = spec.height / bbox.height;
-    const w = bbox.width * scale;
-    const x = spec.centerX - w / 2;
-    const y = spec.groundY - spec.height;
-
-    paintEllipseGradient(ctx, spec.centerX, spec.groundY - 3, w * 0.62, 11, [
-      [0, "rgba(0,0,0,0.5)"],
-      [1, "rgba(0,0,0,0)"],
-    ]);
-
-    ctx.save();
-    if (spec.mirror) {
-      ctx.translate(spec.centerX * 2, 0);
-      ctx.scale(-1, 1);
-    }
-
-    ctx.save();
-    ctx.shadowColor = blue(0.4);
-    ctx.shadowBlur = 12;
-    ctx.drawImage(
-      img,
-      bbox.minX,
-      bbox.minY,
-      bbox.width,
-      bbox.height,
-      x,
-      y,
-      w,
-      spec.height,
-    );
-    ctx.restore();
-
-    ctx.drawImage(
-      img,
-      bbox.minX,
-      bbox.minY,
-      bbox.width,
-      bbox.height,
-      x,
-      y,
-      w,
-      spec.height,
-    );
-    ctx.restore();
   }
 }
 

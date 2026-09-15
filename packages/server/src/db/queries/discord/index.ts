@@ -3,6 +3,7 @@ import { DiscordAutoQueries } from "@/db/queries/discord/auto";
 import { DiscordCommandQueries } from "@/db/queries/discord/command";
 import { DiscordEmbedQueries } from "@/db/queries/discord/embed";
 import { DiscordGuildQueries } from "@/db/queries/discord/guild";
+import { DiscordStickyQueries } from "@/db/queries/discord/sticky";
 
 /**
  * Namespace queries for discord
@@ -161,5 +162,27 @@ export class DiscordQueries {
       );
     }
     return this._guild;
+  }
+
+  /** Private backing field for lazy-loaded discord_sticky queries */
+  private _sticky?: DiscordStickyQueries;
+
+  /**
+   * Lazy-loaded singleton accessor for discord_sticky
+   *
+   * Returns a DiscordStickyQueries instance that shares this namespace's
+   * database connection. The instance is created once on first access and
+   * cached for all subsequent calls.
+   *
+   * @returns Singleton DiscordStickyQueries instance
+   */
+  get sticky(): DiscordStickyQueries {
+    if (!this._sticky) {
+      this._sticky = this.getOrCreateChild<DiscordStickyQueries>(
+        "sticky",
+        DiscordStickyQueries,
+      );
+    }
+    return this._sticky;
   }
 }

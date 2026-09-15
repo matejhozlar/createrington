@@ -15,17 +15,7 @@ import {
   runIdempotent,
   sendOutcome,
 } from "./currency.idempotency";
-
-const moneyFormatter = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 2,
-});
-
-function formatMoney(amount: number): string {
-  return moneyFormatter.format(amount);
-}
+import { formatMoney } from "@createrington/shared/format";
 
 // Upper bound for any single mod-side money input. Below Number.MAX_SAFE_INTEGER
 // (~9e15) and below BalanceUtils.MAX_BALANCE (~9.2e15) by enough margin that

@@ -4,6 +4,12 @@ import { EmbedPresets } from "@/discord/embeds";
 import { getServiceSync, Services } from "@/services";
 import { DiscordMessageService } from "@/services/discord/message/message.service";
 import { removeInactiveWarning } from "./remove-warning";
+import {
+  INACTIVITY_CHECK_INTERVAL_MS,
+  INACTIVITY_GRACE_DAYS,
+  INACTIVITY_INACTIVE_DAYS,
+  INACTIVITY_RETENTION_DAYS,
+} from "./constants";
 
 /**
  * Who triggered a cleanup run. `null` means the scheduled tick or the
@@ -31,14 +37,17 @@ export type InactivityTriggerContext = {
  *    returned are kicked from Discord, removed from the whitelist, and their
  *    player record is deleted.
  *
+ * 4. **Retention phase**: Warnings resolved or removed more than 30 days
+ *    ago are deleted so the admin list only shows recent history.
+ *
+ * Players listed in `player_inactivity_exemption` are skipped by the warning
+ * and removal phases entirely.
+ *
  * All state is persisted in the `player_inactivity_warning` table, making
  * the system fully restart/redeploy-safe.
  */
 export class InactivityCleanupService {
   private intervalId?: NodeJS.Timeout;
-  private readonly CHECK_INTERVAL = 7 * 24 * 60 * 60 * 1000; // 7 days
-  private readonly INACTIVE_DAYS = 60;
-  private readonly GRACE_DAYS = 14;
 
   /**
    * Kick off a resolve+remove sweep, then arm the weekly cycle. Startup
@@ -57,10 +66,10 @@ export class InactivityCleanupService {
       this.runCycle().catch((error) => {
         logger.error("Scheduled inactivity cleanup cycle failed:", error);
       });
-    }, this.CHECK_INTERVAL);
+    }, INACTIVITY_CHECK_INTERVAL_MS);
 
     logger.info(
-      `InactivityCleanupService initialized (check every ${this.CHECK_INTERVAL / 86400000}d, inactive threshold: ${this.INACTIVE_DAYS}d, grace period: ${this.GRACE_DAYS}d)`,
+      `InactivityCleanupService initialized (check every ${INACTIVITY_CHECK_INTERVAL_MS / 86400000}d, inactive threshold: ${INACTIVITY_INACTIVE_DAYS}d, grace period: ${INACTIVITY_GRACE_DAYS}d, retention: ${INACTIVITY_RETENTION_DAYS}d)`,
     );
   }
 
@@ -74,7 +83,7 @@ export class InactivityCleanupService {
   }
 
   /**
-   * Run the full cleanup cycle: resolve → warn → remove.
+   * Run the full cleanup cycle: resolve → warn → remove → prune.
    * Order matters: resolve first so players who just returned aren't
    * accidentally included in the removal phase.
    */
@@ -85,6 +94,7 @@ export class InactivityCleanupService {
       await this.resolveReturned();
       await this.warnInactive();
       await this.removeExpired(triggeredBy);
+      await this.pruneClosed();
     } catch (error) {
       logger.error("Error during inactivity cleanup cycle:", error);
       throw error;
@@ -124,7 +134,9 @@ export class InactivityCleanupService {
    */
   private async warnInactive(): Promise<void> {
     const inactivePlayers =
-      await Q.player.inactivity.warning.findInactivePlayers(this.INACTIVE_DAYS);
+      await Q.player.inactivity.warning.findInactivePlayers(
+        INACTIVITY_INACTIVE_DAYS,
+      );
 
     if (inactivePlayers.length === 0) {
       logger.debug("No new inactive players to warn");
@@ -134,7 +146,7 @@ export class InactivityCleanupService {
     logger.info(`Found ${inactivePlayers.length} inactive player(s) to warn`);
 
     const deadlineDate = new Date(
-      Date.now() + this.GRACE_DAYS * 24 * 60 * 60 * 1000,
+      Date.now() + INACTIVITY_GRACE_DAYS * 24 * 60 * 60 * 1000,
     );
 
     for (const player of inactivePlayers) {
@@ -184,7 +196,9 @@ export class InactivityCleanupService {
     triggeredBy: InactivityTriggerContext = null,
   ): Promise<void> {
     const expiredWarnings =
-      await Q.player.inactivity.warning.findExpiredWarnings(this.GRACE_DAYS);
+      await Q.player.inactivity.warning.findExpiredWarnings(
+        INACTIVITY_GRACE_DAYS,
+      );
 
     if (expiredWarnings.length === 0) {
       logger.debug("No expired inactivity warnings to process");
@@ -276,7 +290,23 @@ export class InactivityCleanupService {
   }
 
   /**
-   * Run only the resolve and remove phases (no new warnings posted).
+   * Delete warnings that were resolved or removed longer ago than the
+   * retention window.
+   */
+  private async pruneClosed(): Promise<void> {
+    const pruned = await Q.player.inactivity.warning.pruneClosed(
+      INACTIVITY_RETENTION_DAYS,
+    );
+
+    if (pruned > 0) {
+      logger.info(
+        `Pruned ${pruned} inactivity warning(s) closed more than ${INACTIVITY_RETENTION_DAYS}d ago`,
+      );
+    }
+  }
+
+  /**
+   * Run the resolve, remove, and prune phases (no new warnings posted).
    * Used on startup and from the admin panel to process overdue players
    * without firing duplicate warning announcements in #announcements.
    */
@@ -286,6 +316,7 @@ export class InactivityCleanupService {
     try {
       await this.resolveReturned();
       await this.removeExpired(triggeredBy);
+      await this.pruneClosed();
     } catch (error) {
       logger.error("Error during resolve/remove cycle:", error);
       throw error;
@@ -332,10 +363,10 @@ export class InactivityCleanupService {
         this.runCycle().catch((error) => {
           logger.error("Scheduled inactivity cleanup cycle failed:", error);
         });
-      }, this.CHECK_INTERVAL);
+      }, INACTIVITY_CHECK_INTERVAL_MS);
 
       logger.info(
-        `Inactivity cleanup schedule reset, next run in ${this.CHECK_INTERVAL / 86400000}d`,
+        `Inactivity cleanup schedule reset, next run in ${INACTIVITY_CHECK_INTERVAL_MS / 86400000}d`,
       );
     }
   }

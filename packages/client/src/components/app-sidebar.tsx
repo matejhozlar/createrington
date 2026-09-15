@@ -10,6 +10,7 @@ import {
   HammerIcon,
   HeartIcon,
   HomeIcon,
+  ImageIcon,
   InfoIcon,
   MapPinnedIcon,
   MessageCircleIcon,
@@ -67,6 +68,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   );
   const workshopEnabled =
     !!user && (workshopEnabledQuery.data?.enabled ?? false);
+
+  const galleryEnabledQuery = trpc.public.gallery.isEnabled.useQuery();
+  const galleryEnabled = galleryEnabledQuery.data?.enabled ?? false;
 
   const data = {
     ownerNav: [
@@ -154,6 +158,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         url: "/blue-map",
         icon: MapPinnedIcon,
       },
+      ...(galleryEnabled
+        ? [
+            {
+              title: "Gallery",
+              url: "/gallery",
+              icon: ImageIcon,
+            },
+          ]
+        : []),
       {
         title: "Apply",
         url: "/apply-to-join",

@@ -1,6 +1,6 @@
 {
   "name": "@createrington/server",
-  "version": "1.56.0",
+  "version": "1.57.0",
   "description": "",
   "private": true,
   "license": "UNLICENSED",
@@ -44,6 +44,7 @@
     "util:render-og-card": "tsx src/scripts/render/render-og-card.ts",
     "util:render-og-structure-packs": "tsx src/scripts/render/render-og-structure-packs.ts",
     "util:render-og-workshop": "tsx src/scripts/render/render-og-workshop.ts",
+    "util:render-og-gallery": "tsx src/scripts/render/render-og-gallery.ts",
     "util:db-migrate-users": "tsx src/scripts/db/migration/migrate-users.ts",
     "generate:db-query-system": "tsx src/scripts/db/generate-query-system.ts",
     "lint": "eslint .",
@@ -88,6 +89,7 @@
     "vitest": "^4.1.11"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1130.0",
     "@createrington/logger": "^0.2.0",
     "@createrington/shared": "workspace:*",
     "@napi-rs/canvas": "^0.1.100",
@@ -105,7 +107,6 @@
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
     "jszip": "^3.10.1",
-    "minecraft-server-util": "^5.4.4",
     "multer": "^2.3.0",
     "openai": "^6.27.0",
     "pg": "^8.16.3",
@@ -113,6 +114,7 @@
     "rcon-client": "^4.2.5",
     "resend": "^6.12.2",
     "sanitize-html": "^2.17.7",
+    "sharp": "^0.35.4",
     "socket.io": "^4.8.3",
     "ssh2-sftp-client": "^12.0.1",
     "stripe": "^20.4.1",

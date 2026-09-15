@@ -1,4 +1,5 @@
 import type { Pool, PoolClient } from "pg";
+import { PlayerInactivityExemptionQueries } from "@/db/queries/player/inactivity/exemption";
 import { PlayerInactivityWarningQueries } from "@/db/queries/player/inactivity/warning";
 
 /**
@@ -71,6 +72,28 @@ export class PlayerInactivityQueries {
    * @param db - Database pool or client to use for all child queries
    */
   constructor(protected db: Pool | PoolClient) {}
+
+  /** Private backing field for lazy-loaded player_inactivity_exemption queries */
+  private _exemption?: PlayerInactivityExemptionQueries;
+
+  /**
+   * Lazy-loaded singleton accessor for player_inactivity_exemption
+   *
+   * Returns a PlayerInactivityExemptionQueries instance that shares this namespace's
+   * database connection. The instance is created once on first access and
+   * cached for all subsequent calls.
+   *
+   * @returns Singleton PlayerInactivityExemptionQueries instance
+   */
+  get exemption(): PlayerInactivityExemptionQueries {
+    if (!this._exemption) {
+      this._exemption = this.getOrCreateChild<PlayerInactivityExemptionQueries>(
+        "exemption",
+        PlayerInactivityExemptionQueries,
+      );
+    }
+    return this._exemption;
+  }
 
   /** Private backing field for lazy-loaded player_inactivity_warning queries */
   private _warning?: PlayerInactivityWarningQueries;

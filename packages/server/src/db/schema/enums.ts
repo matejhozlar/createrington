@@ -1,4 +1,5 @@
 import { pgEnum } from "drizzle-orm/pg-core";
+import { GALLERY_SUBMISSION_STATUSES } from "@createrington/shared/gallery";
 import { PLAYER_PROMPT_ENTRY_MODES } from "@createrington/shared/player-prompt";
 import {
   MOD_ENVIRONMENTS,
@@ -117,3 +118,8 @@ export const workshopPollGranularityEnum = pgEnum("workshop_poll_granularity", [
   "per_mod",
   "bundle",
 ]);
+
+export const gallerySubmissionStatusEnum = pgEnum(
+  "gallery_submission_status",
+  GALLERY_SUBMISSION_STATUSES,
+);

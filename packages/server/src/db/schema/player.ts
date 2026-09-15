@@ -381,6 +381,21 @@ export const playerSession = pgTable(
     }).generatedAlwaysAs(
       sql`CASE WHEN session_end IS NOT NULL THEN EXTRACT(epoch FROM (session_end - session_start))::bigint ELSE NULL END`,
     ),
+    // Last moment the player was confirmed present (join, heartbeat, leave).
+    // Sessions abandoned by a missed leave event are closed at this instant.
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
+    // Vanilla minecraft:play_time stat (ticks) as reported by the mod at join
+    // and at the most recent observation. NULL when the mod did not send it.
+    startPlayTicks: integer("start_play_ticks"),
+    lastPlayTicks: integer("last_play_ticks"),
+    // Seconds credited to playtime so far. Derived from play_time tick deltas
+    // when available (so AFK time frozen by the server is excluded), otherwise
+    // from wall-clock. Normally <= seconds_played, but catch-up ticks after a
+    // server stall can push a heartbeat slice up to 30s past its wall-clock
+    // window, so it is not enforced.
+    activeSeconds: bigint("active_seconds", { mode: "bigint" })
+      .notNull()
+      .default(sql`0`),
   },
   (table) => [
     check(
@@ -484,6 +499,28 @@ export const playerInactivityWarning = pgTable(
       .on(table.warnedAt)
       .where(sql`resolved_at IS NULL AND removed_at IS NULL`),
   ],
+);
+
+// --- player_inactivity_exemption ---
+
+export const playerInactivityExemption = pgTable(
+  "player_inactivity_exemption",
+  {
+    playerMinecraftUuid: uuid("player_minecraft_uuid")
+      .primaryKey()
+      .references(() => player.minecraftUuid, {
+        onUpdate: "cascade",
+        onDelete: "cascade",
+      }),
+    reason: text("reason"),
+    createdByDiscordId: text("created_by_discord_id").references(
+      () => player.discordId,
+      { onUpdate: "cascade", onDelete: "set null" },
+    ),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
 );
 
 // --- reward_claim ---

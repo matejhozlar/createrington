@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-28T21:53:02.439Z",
+  "generatedAt": "2026-09-14T14:19:03.611Z",
   "commands": [
     {
       "name": "cooldown",
@@ -342,6 +342,19 @@
       "env": "prod"
     },
     {
+      "name": "map",
+      "description": "Get a link to the live server map",
+      "category": "user",
+      "options": [],
+      "defaultMemberPermissions": null,
+      "cooldown": {
+        "duration": 5,
+        "type": "user",
+        "message": "Please wait a moment before requesting the map link again!"
+      },
+      "env": "prod"
+    },
+    {
       "name": "money",
       "description": "Check your current balance",
       "category": "user",
@@ -584,6 +597,19 @@
         "duration": 5,
         "type": "user",
         "message": "Please wait before checking stats again!"
+      },
+      "env": "prod"
+    },
+    {
+      "name": "vote",
+      "description": "Get your personal link to vote for the server",
+      "category": "user",
+      "options": [],
+      "defaultMemberPermissions": null,
+      "cooldown": {
+        "duration": 5,
+        "type": "user",
+        "message": "Please wait a moment before requesting another vote link!"
       },
       "env": "prod"
     },

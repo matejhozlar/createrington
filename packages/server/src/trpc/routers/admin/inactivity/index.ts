@@ -14,10 +14,13 @@ import { EmbedPresets } from "@/discord/embeds";
 import { DiscordMessageService } from "@/services/discord/message/message.service";
 import { removeInactiveWarning } from "@/services/discord/cleanup/inactivity/remove-warning";
 import type { InactivityCleanupService } from "@/services/discord/cleanup/inactivity/inactivity-cleanup.service";
+import {
+  INACTIVITY_GRACE_DAYS,
+  INACTIVITY_RETENTION_DAYS,
+} from "@/services/discord/cleanup/inactivity/constants";
 import { ghostsRouter } from "./ghosts";
 import { unlinkedRouter } from "./unlinked";
-
-const GRACE_DAYS = 14;
+import { exemptionsRouter } from "./exemptions";
 
 const warningStatusSchema = z.enum([
   "all",
@@ -39,6 +42,7 @@ function isManualActionsEnabled(): boolean {
 export const inactivityRouter = router({
   ghosts: ghostsRouter,
   unlinked: unlinkedRouter,
+  exemptions: exemptionsRouter,
   capabilities: adminProcedure
     .meta({
       description:
@@ -46,17 +50,20 @@ export const inactivityRouter = router({
     })
     .query(() => ({
       canMutate: isManualActionsEnabled(),
-      graceDays: GRACE_DAYS,
+      graceDays: INACTIVITY_GRACE_DAYS,
+      retentionDays: INACTIVITY_RETENTION_DAYS,
     })),
 
   stats: adminProcedure
     .meta({
       description:
-        "Counts of active/expired/resolved/removed inactivity warnings",
+        "Counts of active/expired inactivity warnings, plus resolved/removed within the retention window",
     })
     .query(async () => {
-      const counts =
-        await Q.player.inactivity.warning.countByStatus(GRACE_DAYS);
+      const counts = await Q.player.inactivity.warning.countByStatus(
+        INACTIVITY_GRACE_DAYS,
+        INACTIVITY_RETENTION_DAYS,
+      );
       return counts;
     }),
 
@@ -76,7 +83,7 @@ export const inactivityRouter = router({
       const { warnings, total } =
         await Q.player.inactivity.warning.listByStatus({
           status: input.status,
-          graceDays: GRACE_DAYS,
+          graceDays: INACTIVITY_GRACE_DAYS,
           search: input.search?.trim() || undefined,
           limit: input.limit,
           offset: input.page * input.limit,

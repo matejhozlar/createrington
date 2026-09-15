@@ -14,6 +14,7 @@ vi.mock("@/config", () => ({
         modpack: "https://example.com/modpack",
         map: "https://example.com/map",
         assets: "https://example.com/assets",
+        vote: "https://example.com/server/createrington/vote",
       },
     },
   },
@@ -36,11 +37,22 @@ const json = (b: ButtonBuilder): ButtonData => b.toJSON() as ButtonData;
 
 describe("ButtonPresets.links", () => {
   it("each link button uses the Link style and a url", () => {
-    for (const factory of [ButtonPresets.links.adminPanel]) {
+    for (const factory of [
+      ButtonPresets.links.adminPanel,
+      ButtonPresets.links.map,
+    ]) {
       const data = json(factory());
       expect(data.style).toBe(ButtonStyle.Link);
       expect(data).toHaveProperty("url");
     }
+  });
+
+  it("vote(username) links to the vote page with the username prefilled", () => {
+    const data = json(ButtonPresets.links.vote("Tux_Mango"));
+    expect(data.style).toBe(ButtonStyle.Link);
+    expect(data.url).toBe(
+      "https://example.com/server/createrington/vote?username=Tux_Mango",
+    );
   });
 });
 

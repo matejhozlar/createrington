@@ -5,8 +5,9 @@ import { waitlistsRouter } from "./waitlists";
 import { metricsRouter } from "./metrics";
 import { discordCommandsRouter } from "./discord-commands";
 import { publicStructurePacksRouter } from "./structure-packs";
+import { publicGalleryRouter } from "./gallery";
 
-/** Public router: servers, players, waitlists, metrics, and structure pack reads (no auth required). */
+/** Public router: servers, players, waitlists, metrics, structure pack reads, and the screenshot gallery (no auth required). */
 export const publicRouter = router({
   servers: serversRouter,
   players: playersRouter,
@@ -14,4 +15,5 @@ export const publicRouter = router({
   metrics: metricsRouter,
   discordCommands: discordCommandsRouter,
   structurePacks: publicStructurePacksRouter,
+  gallery: publicGalleryRouter,
 });

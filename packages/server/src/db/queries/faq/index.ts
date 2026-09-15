@@ -1,6 +1,5 @@
 import type { Pool, PoolClient } from "pg";
 import { FaqEntryQueries } from "@/db/queries/faq/entry";
-import { FaqWelcomeQueries } from "@/db/queries/faq/welcome";
 
 /**
  * Namespace queries for faq
@@ -93,27 +92,5 @@ export class FaqQueries {
       );
     }
     return this._entry;
-  }
-
-  /** Private backing field for lazy-loaded faq_welcome queries */
-  private _welcome?: FaqWelcomeQueries;
-
-  /**
-   * Lazy-loaded singleton accessor for faq_welcome
-   *
-   * Returns a FaqWelcomeQueries instance that shares this namespace's
-   * database connection. The instance is created once on first access and
-   * cached for all subsequent calls.
-   *
-   * @returns Singleton FaqWelcomeQueries instance
-   */
-  get welcome(): FaqWelcomeQueries {
-    if (!this._welcome) {
-      this._welcome = this.getOrCreateChild<FaqWelcomeQueries>(
-        "welcome",
-        FaqWelcomeQueries,
-      );
-    }
-    return this._welcome;
   }
 }

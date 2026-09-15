@@ -1,0 +1,1 @@
+CREATE INDEX "idx_gallery_submission_status_reviewed" ON "gallery_submission" USING btree ("status","reviewed_at" DESC NULLS FIRST);

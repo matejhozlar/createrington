@@ -1,3 +1,38 @@
+## v1.56.0 (2026-09-15)
+
+### @createrington/server (1.56.0 → 1.57.0)
+- [add] Add screenshot gallery system with full lifecycle: Discord intake harvests image attachments from a submissions channel and saves originals locally, admin review approves (generating webp variants uploaded to object storage, paying an in-game currency reward under a rolling weekly cap, posting a Components V2 announcement) or rejects with a note, and authors can withdraw by deleting their Discord message
+- [add] Add `/vote` slash command that replies with a personalized vote link button for the player's Minecraft username, requiring registration
+- [add] Add `/map` slash command that replies with a link button to the live server map
+- [add] Add admin inactivity exemptions: exempt players from inactivity cleanup with a reason and audit trail, with tRPC routes for listing, adding, and removing exemptions
+- [add] Add `player_inactivity_exemption` table and prune stale inactivity warnings past a configurable retention window on each cleanup run
+- [add] Add `gallery_submission` and `gallery_submission_credit` tables with status/review indexes for the screenshot gallery
+- [add] Add `discord_sticky_message` table and `DiscordStickyMessageService` that keeps bot-owned notice embeds at the bottom of Discord channels with debounced delete-and-repost, replacing the FAQ-specific sticky logic
+- [add] Add `ObjectStorageService` wrapping S3-compatible storage for gallery variant uploads
+- [add] Add gallery social card renderer (`render-og-gallery`) compositing a wall of player screenshots with posed figures
+- [add] Add `playTimeTicks` field to the presence and heartbeat mod endpoints so the Minecraft mod can report the vanilla `play_time` stat for tick-based playtime crediting
+- [refactor] Rewrite playtime crediting to use the vanilla `play_time` stat (ticks) reported by the mod instead of wall-clock, so time the server froze the stat for (e.g. AFK) earns nothing; sessions are restored from DB rows on restart via hydrate() instead of a status-poll recovery sync, and a watchdog closes sessions that stop being confirmed
+- [refactor] Announce gallery approvals using Discord Components V2 (media gallery, text, link button) instead of a legacy embed with a remove button
+- [refactor] Reply to `/vote` with only the link button instead of an embed
+- [refactor] Extract sticky message management from `FaqService` into the reusable `DiscordStickyMessageService`, renaming the backing table from `faq_welcome_message` to `discord_sticky_message`
+- [refactor] Refactor OG card rendering to share posed-figure painting, ellipse gradients, and word-wrap utilities across all social cards
+- [fix] Fix gallery announcements silently aborting the approval transaction when the Discord post failed, and escape user captions to prevent markdown injection in announcement embeds
+- [fix] Fix gallery approval race conditions with row-level locking and idempotent status transitions
+- [fix] Fix `activeSeconds` bigint serialization in the admin player sessions list
+- [fix] Fix fractional money amounts rendering with only one cent digit (e.g. "$3.5" instead of "$3.50") by adding a shared `formatMoney` function that always renders both cent digits for non-whole amounts
+
+### @createrington/client (0.2.70 → 0.2.71)
+- [add] Add public screenshot gallery page with a responsive masonry grid, lightbox viewer with author/caption/credits overlay, and sidebar navigation entry
+- [add] Add admin gallery management page with a review queue, submission grid filtered by status, approval confirmation dialog with reward and credits picker, rejection dialog, and gallery settings
+- [add] Add admin inactivity exemptions card with player search, add/remove modals, and integration into the inactivity management tools page
+- [refactor] Remove hover zoom effect from gallery tiles
+- [refactor] Drop the icon from the admin gallery page title
+- [refactor] Reword gallery approve dialog to use future tense
+
+### @createrington/shared (1.12.1 → 1.13.0)
+- [add] Add gallery submission types, status constants, image content type allowlist, and caption validation utility
+- [add] Add shared `formatMoney` function with consistent whole/fractional formatting, consumed by both server and client
+
 ## v1.55.0 (2026-09-12)
 
 ### @createrington/server (1.55.1 → 1.56.0)

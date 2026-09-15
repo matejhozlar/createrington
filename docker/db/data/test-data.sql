@@ -19,7 +19,7 @@ TRUNCATE TABLE player_strike CASCADE;
 TRUNCATE TABLE discord_embed_preset CASCADE;
 TRUNCATE TABLE discord_guild_member_leave CASCADE;
 TRUNCATE TABLE faq_entry CASCADE;
-TRUNCATE TABLE faq_welcome_message CASCADE;
+TRUNCATE TABLE discord_sticky_message CASCADE;
 TRUNCATE TABLE leaderboard_message CASCADE;
 TRUNCATE TABLE player_balance_transaction CASCADE;
 TRUNCATE TABLE player_minecraft_stats CASCADE;
@@ -47,7 +47,7 @@ ALTER SEQUENCE player_strike_id_seq RESTART WITH 1;
 ALTER SEQUENCE discord_embed_preset_id_seq RESTART WITH 1;
 ALTER SEQUENCE discord_guild_member_leave_id_seq RESTART WITH 1;
 ALTER SEQUENCE faq_entry_id_seq RESTART WITH 1;
-ALTER SEQUENCE faq_welcome_message_id_seq RESTART WITH 1;
+ALTER SEQUENCE discord_sticky_message_id_seq RESTART WITH 1;
 ALTER SEQUENCE leaderboard_message_id_seq RESTART WITH 1;
 ALTER SEQUENCE player_balance_transaction_id_seq RESTART WITH 1;
 ALTER SEQUENCE reward_claim_id_seq RESTART WITH 1;
@@ -671,10 +671,10 @@ INSERT INTO faq_entry (match_mode, pattern, title, response, enabled, priority) 
 ('keywords', 'discord,role,rank', 'Discord Roles', 'Roles are assigned based on your playtime and contributions. Check #roles for more info on available ranks.', false, 3);
 
 -- ============================================================================
--- FAQ WELCOME MESSAGES
+-- DISCORD STICKY MESSAGES
 -- ============================================================================
 
-INSERT INTO faq_welcome_message (channel_id, message_id) VALUES
+INSERT INTO discord_sticky_message (channel_id, message_id) VALUES
 ('900000000000000001', '950000000000000001'),
 ('900000000000000002', '950000000000000002');
 
@@ -946,7 +946,8 @@ INSERT INTO server_ally_qualified_player (server_id, player_uuid, qualified_at, 
 -- ============================================================================
 
 INSERT INTO feature_flag (name, enabled, description) VALUES
-  ('workshop', true, 'Workshop tab');
+  ('workshop', true, 'Workshop tab'),
+  ('gallery', false, 'Screenshot gallery intake from the gallery-submissions channel');
 
 -- Modpacks:
 --   1 = Season 3 (in assembly, not published on CurseForge yet, nothing live)

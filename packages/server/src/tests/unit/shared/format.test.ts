@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   formatCompactDuration,
   formatDate,
+  formatMoney,
   formatPlaytime,
 } from "@createrington/shared/format";
 
@@ -87,5 +88,30 @@ describe("formatCompactDuration", () => {
   it("clamps negative input to 0s", () => {
     expect(formatCompactDuration(-42)).toBe("0s");
     expect(formatCompactDuration(-7200)).toBe("0s");
+  });
+});
+
+describe("formatMoney", () => {
+  it("renders whole amounts without cents", () => {
+    expect(formatMoney(0)).toBe("$0");
+    expect(formatMoney(50)).toBe("$50");
+    expect(formatMoney(1250)).toBe("$1,250");
+  });
+
+  it("renders fractional amounts with both cent digits", () => {
+    expect(formatMoney(3.5)).toBe("$3.50");
+    expect(formatMoney(0.1)).toBe("$0.10");
+    expect(formatMoney(1250.75)).toBe("$1,250.75");
+  });
+
+  it("rounds beyond two decimals", () => {
+    expect(formatMoney(3.505)).toBe("$3.51");
+    expect(formatMoney(0.004)).toBe("$0.00");
+  });
+
+  it("groups thousands and keeps the sign ahead of the symbol", () => {
+    expect(formatMoney(1_000_000)).toBe("$1,000,000");
+    expect(formatMoney(-20)).toBe("-$20");
+    expect(formatMoney(-3.5)).toBe("-$3.50");
   });
 });

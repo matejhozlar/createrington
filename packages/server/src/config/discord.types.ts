@@ -62,16 +62,8 @@ interface ChannelConfig {
     readonly notifications: string;
   };
 
-  readonly general: {
-    readonly schematics: string;
-    readonly hallOfFame: string;
-    readonly commands: string;
-    readonly leaderboards: string;
-    readonly questions: string;
-    readonly botSpam: string;
-  };
-
   readonly createringtonOfficial: {
+    readonly gallery: string;
     readonly screenshotContest: string;
     readonly download: string;
     readonly support: string;
@@ -79,7 +71,17 @@ interface ChannelConfig {
     readonly announcements: string;
     readonly roles: string;
     readonly rules: string;
+    readonly gallerySubmissions: string;
     readonly welcome: string;
+  };
+
+  readonly general: {
+    readonly schematics: string;
+    readonly hallOfFame: string;
+    readonly commands: string;
+    readonly leaderboards: string;
+    readonly questions: string;
+    readonly botSpam: string;
   };
 
   readonly serverStats: {
@@ -92,17 +94,7 @@ interface ChannelConfig {
     readonly notifications: string;
     readonly changelog: string;
     readonly minecraftChat: string;
-  };
-
-  readonly verification: {
-    readonly verify18: string;
-  };
-
-  readonly uncategorized: {
-    readonly feedbackBugs: string;
-    readonly chat: string;
-    readonly startHere: string;
-    readonly minecraftChat: string;
+    readonly serverPics: string;
   };
 
   readonly dev: {
@@ -112,15 +104,9 @@ interface ChannelConfig {
     readonly createrington: string;
     readonly createringtonCurrency: string;
   };
-
-  readonly crypto: {
-    readonly discussion: string;
-    readonly news: string;
-  };
 }
 
 interface CategoriesConfig {
-  readonly crypto: string;
   readonly createringtonOfficial: string;
   readonly administration: string;
   readonly verification: string;

@@ -35,17 +35,3 @@ export const faqEntry = pgTable(
     index("idx_faq_entry_priority").on(table.priority.desc()),
   ],
 );
-
-// --- faq_welcome_message ---
-
-export const faqWelcomeMessage = pgTable("faq_welcome_message", {
-  id: serial("id").primaryKey(),
-  channelId: text("channel_id").notNull().unique(),
-  messageId: text("message_id").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});

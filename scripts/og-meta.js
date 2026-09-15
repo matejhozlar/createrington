@@ -11,6 +11,13 @@ export const OG_ROUTES = {
     imageAlt:
       "The Createrington team gathered at a glowing Parallel Worlds portal.",
   },
+  "/gallery": {
+    title: "The server, through their eyes.",
+    description:
+      "Builds, views and moments captured by the players of Createrington, published to the public gallery with credit.",
+    imageAlt:
+      "A wall of pinned Createrington screenshots with two players looking up at them.",
+  },
   "/workshop": {
     title: "What ships next? You decide.",
     description:

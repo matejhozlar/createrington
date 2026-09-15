@@ -5,13 +5,22 @@ import type {
   LeaderboardEntry,
   ServerStats,
 } from "@/db/queries/player/playtime/summary";
+import type { OpenSessionEntry } from "@/db/queries/player/session";
 import type { PlayerSession } from "@/generated/db";
 import { PlaytimeService } from "@/services/playtime";
 import type {
+  PlaytimeCredit,
   SessionEndEvent,
   SessionMetadata,
+  SessionProgressEvent,
   SessionStartEvent,
 } from "@/services/playtime";
+import { computeCredit, TICKS_PER_SECOND } from "@/services/playtime/credit";
+
+const NIL_UUID = "00000000-0000-0000-0000-000000000000";
+
+const RECONCILE_SUSPICIOUS_DROP_RATIO = 0.5;
+const RECONCILE_SUSPICIOUS_MIN_TOTAL_SECONDS = 3600;
 
 function isUniqueViolation(err: unknown): boolean {
   return (
@@ -22,15 +31,36 @@ function isUniqueViolation(err: unknown): boolean {
   );
 }
 
+function clampSessionEnd(sessionStart: Date, candidate: Date): Date {
+  return candidate < sessionStart ? sessionStart : candidate;
+}
+
+export interface StatsReconcileEntry {
+  minecraftUuid: string;
+  playTimeTicks: number;
+}
+
+export interface StatsReconcileResult {
+  checked: number;
+  applied: number;
+  drifted: number;
+  skippedOpen: number;
+  skippedSuspicious: number;
+}
+
 /**
  * Coordinates session lifecycle and playtime aggregation. Owns the writes
- * that replace the old DB triggers: closing orphaned sessions, aggregating
- * completed sessions into daily / hourly / summary tables, and syncing
- * player online status plus last logout position. Wire up to a per-server
+ * that replace the old DB triggers: persisting session rows, crediting
+ * observed playtime into daily / hourly / summary tables, and syncing
+ * player online status plus last logout position. Playtime is credited
+ * incrementally as heartbeats observe it, so an in-flight session is never
+ * more than one heartbeat behind in the database. Wire up to a per-server
  * PlaytimeService via connectToService() during bootstrap; the service emits
  * the events this class persists.
  */
 export class PlaytimeRepository {
+  private pending = new Set<Promise<unknown>>();
+
   constructor() {}
 
   /**
@@ -79,30 +109,30 @@ export class PlaytimeRepository {
 
       await closeOrphans();
 
+      const row = {
+        playerMinecraftUuid: event.uuid,
+        serverId: event.serverId,
+        sessionStart: event.sessionStart,
+        lastSeenAt: event.sessionStart,
+        startPlayTicks: event.playTimeTicks ?? null,
+        lastPlayTicks: event.playTimeTicks ?? null,
+      };
+
       // The unique partial index on (uuid, server_id) WHERE session_end IS NULL
       // means a concurrent join from the same player can lose the close-then-
       // insert race here. Retry once after closing orphans again.
       let session;
       try {
-        session = await Q.player.session.createAndReturn({
-          playerMinecraftUuid: event.uuid,
-          serverId: event.serverId,
-          sessionStart: event.sessionStart,
-        });
+        session = await Q.player.session.createAndReturn(row);
       } catch (error) {
         if (isUniqueViolation(error)) {
           await closeOrphans();
-          session = await Q.player.session.createAndReturn({
-            playerMinecraftUuid: event.uuid,
-            serverId: event.serverId,
-            sessionStart: event.sessionStart,
-          });
+          session = await Q.player.session.createAndReturn(row);
         } else {
           throw error;
         }
       }
 
-      // Sync player online status
       await Q.player.update(
         { minecraftUuid: event.uuid },
         {
@@ -112,7 +142,6 @@ export class PlaytimeRepository {
         },
       );
 
-      // Mark "Joined Minecraft" onboarding step on first-ever session
       if (player.discordId) {
         try {
           const entry = await Q.waitlist.entry.find({
@@ -137,58 +166,74 @@ export class PlaytimeRepository {
     }
   }
 
+  /** Persist a heartbeat observation: advance the row and credit the slice into the playtime tables. */
+  async progressSession(event: SessionProgressEvent): Promise<void> {
+    try {
+      await Q.player.session.recordObservation(event.sessionId, {
+        lastSeenAt: event.credit.periodEnd,
+        lastPlayTicks: event.credit.playTimeTicks,
+        creditedSeconds: event.credit.seconds,
+      });
+
+      await this.creditPlaytime(event.uuid, event.serverId, event.credit);
+
+      if (event.credit.seconds > 0) {
+        logger.debug(
+          `Session ${event.sessionId} progressed: ${event.username} +${event.credit.seconds}s`,
+        );
+      }
+    } catch (error) {
+      logger.error("Failed to progress session:", error);
+      throw error;
+    }
+  }
+
   /**
-   * Persist a session end: close the row, aggregate playtime into daily /
-   * hourly / summary, then sync the player's online flag and logout
-   * position. event.sessionId === 0 means "close every active session on
-   * this server" (used after a backend restart leaves orphans).
+   * Persist a session end: close the row, credit the final slice, count the
+   * session, then sync the player's online flag and logout position.
+   * event.sessionId === 0 means "close every open session for this player on
+   * this server", crediting each from its own last observation.
    */
   async endSession(event: SessionEndEvent): Promise<void> {
     try {
       if (event.sessionId === 0) {
-        // Orphaned session: find then close all active DB sessions
-        const activeSessions = await Q.player.session.findAll({
+        const openSessions = await Q.player.session.findAll({
           playerMinecraftUuid: event.uuid,
           serverId: event.serverId,
           sessionEnd: null,
         });
 
-        if (activeSessions.length > 0) {
-          await Q.player.session.updateAll(
-            { sessionEnd: event.sessionEnd },
-            {
-              playerMinecraftUuid: event.uuid,
-              serverId: event.serverId,
-              sessionEnd: null,
-            },
-          );
+        for (const session of openSessions) {
+          await this.closeRow(session, event.sessionEnd, event.playTimeTicks);
+        }
 
-          // Aggregate each orphaned session
-          for (const session of activeSessions) {
-            await this.aggregateSessionPlaytime(
-              event.uuid,
-              event.serverId,
-              session.sessionStart,
-              event.sessionEnd,
-            );
-          }
-
+        if (openSessions.length > 0) {
           logger.info(
-            `Closed ${activeSessions.length} orphaned session(s) for ${event.username} (${event.uuid}) on server ${event.serverId}`,
+            `Closed ${openSessions.length} orphaned session(s) for ${event.username} (${event.uuid}) on server ${event.serverId}`,
           );
         }
       } else {
-        await Q.player.session.update(
-          { id: event.sessionId },
-          { sessionEnd: event.sessionEnd },
-        );
+        const end = clampSessionEnd(event.sessionStart, event.sessionEnd);
+        const credit: PlaytimeCredit = event.credit ?? {
+          periodStart: end,
+          periodEnd: end,
+          seconds: 0,
+          playTimeTicks: event.playTimeTicks,
+        };
 
-        // Aggregate playtime stats
-        await this.aggregateSessionPlaytime(
+        await Q.player.session.recordObservation(event.sessionId, {
+          lastSeenAt: end,
+          lastPlayTicks: credit.playTimeTicks,
+          creditedSeconds: credit.seconds,
+          sessionEnd: end,
+        });
+
+        await this.creditPlaytime(event.uuid, event.serverId, credit);
+        await Q.player.playtime.summary.recordSessionEnd(
           event.uuid,
           event.serverId,
           event.sessionStart,
-          event.sessionEnd,
+          end,
         );
 
         logger.info(
@@ -196,7 +241,6 @@ export class PlaytimeRepository {
         );
       }
 
-      // Sync player online status and persist logout position
       await this.syncPlayerOfflineStatus(
         event.uuid,
         event.sessionEnd,
@@ -221,54 +265,92 @@ export class PlaytimeRepository {
     }
   }
 
-  /**
-   * Close every open session (optionally scoped to one server), aggregate
-   * each into playtime tables, and mark affected players offline. Returns
-   * the number of sessions closed.
-   */
-  async endAllActiveSessions(serverId?: number): Promise<number> {
+  /** Open sessions on a server with usernames, for restoring the in-memory tracker after a restart. */
+  async getOpenSessions(serverId: number): Promise<OpenSessionEntry[]> {
     try {
-      const now = new Date();
-
-      // Fetch active sessions before closing so we can aggregate them
-      const activeSessions = await Q.player.session.findAll({
-        ...(serverId && { serverId }),
-        sessionEnd: null,
-      });
-
-      if (activeSessions.length === 0) return 0;
-
-      await Q.player.session.updateAll(
-        { sessionEnd: now },
-        {
-          ...(serverId && { serverId }),
-          sessionEnd: null,
-        },
-      );
-
-      // Aggregate each session and collect affected player UUIDs
-      const affectedUuids = new Set<string>();
-      for (const session of activeSessions) {
-        affectedUuids.add(session.playerMinecraftUuid);
-        await this.aggregateSessionPlaytime(
-          session.playerMinecraftUuid,
-          session.serverId,
-          session.sessionStart,
-          now,
-        );
-      }
-
-      // Sync online status for all affected players
-      for (const uuid of affectedUuids) {
-        await this.syncPlayerOfflineStatus(uuid, now);
-      }
-
-      logger.info(`Ended ${activeSessions.length} active session(s)`);
-      return activeSessions.length;
+      return await Q.player.session.findOpenWithUsername(serverId);
     } catch (error) {
-      logger.error("Failed to end all active sessions:", error);
+      logger.error("Failed to get open sessions:", error);
       throw error;
     }
+  }
+
+  /**
+   * Compare stored summary totals against the vanilla play_time stat
+   * imported from the game server and overwrite drifted totals with the stat
+   * when `apply` is set. Only player_playtime_summary is corrected: the
+   * daily/hourly buckets keep their observed values and will not sum to a
+   * corrected total. Players with an open session are skipped (their stats
+   * file is stale while online), as are drops below half the stored total,
+   * which indicate a reset stats file rather than a correction. Always logs
+   * the drift it finds so the report is useful in dry-run mode.
+   */
+  async reconcileTotalsFromStats(
+    serverId: number,
+    entries: StatsReconcileEntry[],
+    options: { apply: boolean },
+  ): Promise<StatsReconcileResult> {
+    const result: StatsReconcileResult = {
+      checked: 0,
+      applied: 0,
+      drifted: 0,
+      skippedOpen: 0,
+      skippedSuspicious: 0,
+    };
+    if (entries.length === 0) return result;
+
+    const openSessions = await Q.player.session.findAll({
+      serverId,
+      sessionEnd: null,
+    });
+    const openUuids = new Set(openSessions.map((s) => s.playerMinecraftUuid));
+    const totals = await Q.player.playtime.summary.getTotals(
+      serverId,
+      entries.map((e) => e.minecraftUuid),
+    );
+
+    for (const entry of entries) {
+      const stored = totals.get(entry.minecraftUuid);
+      if (stored === undefined) continue;
+      result.checked++;
+
+      if (openUuids.has(entry.minecraftUuid)) {
+        result.skippedOpen++;
+        continue;
+      }
+
+      const expected = Math.floor(entry.playTimeTicks / TICKS_PER_SECOND);
+      const drift = expected - stored;
+      if (drift === 0) continue;
+      result.drifted++;
+
+      const suspicious =
+        stored >= RECONCILE_SUSPICIOUS_MIN_TOTAL_SECONDS &&
+        expected < stored * RECONCILE_SUSPICIOUS_DROP_RATIO;
+
+      if (suspicious) {
+        result.skippedSuspicious++;
+        logger.warn(
+          `Playtime reconcile: ${entry.minecraftUuid} on server ${serverId} stat says ${expected}s but ${stored}s is stored; drop looks like a reset stats file, skipping`,
+        );
+        continue;
+      }
+
+      logger.info(
+        `Playtime reconcile: ${entry.minecraftUuid} on server ${serverId} drift ${drift > 0 ? "+" : ""}${drift}s (stored ${stored}s, stat ${expected}s)${options.apply ? ", applying to summary total (daily/hourly untouched)" : ""}`,
+      );
+
+      if (options.apply) {
+        const updated = await Q.player.playtime.summary.setTotalSeconds(
+          entry.minecraftUuid,
+          serverId,
+          expected,
+        );
+        if (updated) result.applied++;
+      }
+    }
+
+    return result;
   }
 
   /** Aggregate server summary plus the top-10 playtime leaderboard. */
@@ -372,36 +454,94 @@ export class PlaytimeRepository {
     }
   }
 
-  private async aggregateSessionPlaytime(
+  /** Waits for in-flight event writes to settle, up to `timeoutMs`. Call before process exit. */
+  async flush(timeoutMs: number): Promise<void> {
+    if (this.pending.size === 0) return;
+
+    logger.info(
+      `Waiting for ${this.pending.size} in-flight playtime write(s)...`,
+    );
+
+    let timer: NodeJS.Timeout | undefined;
+    try {
+      await Promise.race([
+        Promise.allSettled(Array.from(this.pending)),
+        new Promise((resolve) => {
+          timer = setTimeout(resolve, timeoutMs);
+        }),
+      ]);
+    } finally {
+      clearTimeout(timer);
+    }
+
+    if (this.pending.size > 0) {
+      logger.warn(
+        `${this.pending.size} playtime write(s) still in flight after ${timeoutMs}ms`,
+      );
+    }
+  }
+
+  private async closeRow(
+    session: PlayerSession,
+    sessionEnd: Date,
+    playTimeTicks: number | undefined,
+  ): Promise<void> {
+    const end = clampSessionEnd(session.sessionStart, sessionEnd);
+    const credit = computeCredit({
+      periodStart: session.lastSeenAt ?? session.sessionStart,
+      periodEnd: end,
+      lastPlayTicks: session.lastPlayTicks,
+      playTimeTicks,
+    });
+
+    await Q.player.session.recordObservation(session.id, {
+      lastSeenAt: end,
+      lastPlayTicks: credit.playTimeTicks,
+      creditedSeconds: credit.seconds,
+      sessionEnd: end,
+    });
+
+    await this.creditPlaytime(
+      session.playerMinecraftUuid,
+      session.serverId,
+      credit,
+    );
+    await Q.player.playtime.summary.recordSessionEnd(
+      session.playerMinecraftUuid,
+      session.serverId,
+      session.sessionStart,
+      end,
+    );
+  }
+
+  private async creditPlaytime(
     playerMinecraftUuid: string,
     serverId: number,
-    sessionStart: Date,
-    sessionEnd: Date,
+    credit: PlaytimeCredit,
   ): Promise<void> {
-    const secondsPlayed = Math.floor(
-      (sessionEnd.getTime() - sessionStart.getTime()) / 1000,
-    );
-    if (secondsPlayed <= 0) return;
+    if (credit.seconds <= 0) return;
 
     await Promise.all([
-      Q.player.playtime.daily.aggregateSession(
+      Q.player.playtime.daily.creditPeriod(
         playerMinecraftUuid,
         serverId,
-        sessionStart,
-        sessionEnd,
+        credit.periodStart,
+        credit.periodEnd,
+        credit.seconds,
       ),
-      Q.player.playtime.hourly.aggregateSession(
+      Q.player.playtime.hourly.creditPeriod(
         playerMinecraftUuid,
         serverId,
-        sessionStart,
-        sessionEnd,
+        credit.periodStart,
+        credit.periodEnd,
+        credit.seconds,
       ),
-      Q.player.playtime.summary.aggregateSession(
+      Q.player.playtime.summary.creditSeconds(
         playerMinecraftUuid,
         serverId,
-        secondsPlayed,
-        sessionStart,
-        sessionEnd,
+        credit.seconds,
+        credit.periodStart,
+        credit.periodEnd,
       ),
     ]);
   }
@@ -411,10 +551,7 @@ export class PlaytimeRepository {
     lastSeen: Date,
     metadata?: SessionMetadata,
   ): Promise<void> {
-    // Defensive: upstream service-layer guards should already prevent nil
-    // UUIDs from reaching here, but a leak would otherwise surface as a
-    // NotFoundError when the update misses a non-existent player row.
-    if (playerMinecraftUuid === "00000000-0000-0000-0000-000000000000") {
+    if (playerMinecraftUuid === NIL_UUID) {
       return;
     }
 
@@ -441,51 +578,58 @@ export class PlaytimeRepository {
     }
   }
 
+  private track<T>(promise: Promise<T>): Promise<T> {
+    this.pending.add(promise);
+    return promise.finally(() => this.pending.delete(promise));
+  }
+
   /**
-   * Subscribe to a PlaytimeService instance so its sessionStart, sessionEnd,
-   * and serverShutdown events drive this repository's writes. Call once per
-   * server during bootstrap.
+   * Subscribe to a PlaytimeService instance so its sessionStart,
+   * sessionProgress, and sessionEnd events drive this repository's writes.
+   * Call once per server during bootstrap.
    */
   connectToService(service: PlaytimeService, serverId: number): void {
-    service.on("sessionStart", async (event) => {
-      try {
-        const sessionId = await this.startSession(event);
-
-        if (sessionId !== null) {
-          service.setSessionId(event.uuid, sessionId);
-        }
-      } catch (error) {
-        logger.error(
-          `Failed to handle sessionStart event for server ${serverId}:`,
-          error,
-        );
-      }
+    service.on("sessionStart", (event) => {
+      void this.track(
+        this.startSession(event)
+          .then((sessionId) => {
+            if (sessionId !== null) {
+              service.setSessionId(event.uuid, sessionId);
+            }
+          })
+          .catch((error) => {
+            logger.error(
+              `Failed to handle sessionStart event for server ${serverId}:`,
+              error,
+            );
+          }),
+      );
     });
 
-    service.on("sessionEnd", async (event) => {
-      try {
-        await this.endSession(event);
-        service.emit("sessionAggregated", event);
-      } catch (error) {
-        logger.error(
-          `Failed to handle sessionEnd event for server ${serverId}:`,
-          error,
-        );
-      }
+    service.on("sessionProgress", (event) => {
+      void this.track(
+        this.progressSession(event).catch((error) => {
+          logger.error(
+            `Failed to handle sessionProgress event for server ${serverId}:`,
+            error,
+          );
+        }),
+      );
     });
 
-    service.on("serverShutdown", async (serverId: number) => {
-      try {
-        const count = await this.endAllActiveSessions(serverId);
-        logger.info(
-          `Fallback: Closed ${count} orphaned database sessions for server ${serverId}`,
-        );
-      } catch (error) {
-        logger.error(
-          `Failed to clean up database sessions for server ${serverId}:`,
-          error,
-        );
-      }
+    service.on("sessionEnd", (event) => {
+      void this.track(
+        this.endSession(event)
+          .then(() => {
+            service.emit("sessionAggregated", event);
+          })
+          .catch((error) => {
+            logger.error(
+              `Failed to handle sessionEnd event for server ${serverId}:`,
+              error,
+            );
+          }),
+      );
     });
 
     logger.info(

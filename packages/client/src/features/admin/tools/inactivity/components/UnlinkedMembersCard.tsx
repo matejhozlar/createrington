@@ -22,12 +22,12 @@ import { keepPreviousData } from "@tanstack/react-query";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useToastActions } from "@/hooks/use-toast";
 import { CellText } from "@/components/cell-text";
-import { formatFullDate, formatRelativeDate } from "@/features/admin/format";
+import {
+  formatFullDate,
+  formatRelativeDate,
+  toIso,
+} from "@/features/admin/format";
 import { trpc } from "@/lib/trpc";
-
-function toIso(value: string | Date): string {
-  return typeof value === "string" ? value : new Date(value).toISOString();
-}
 
 export function UnlinkedMembersCard() {
   const toast = useToastActions();

@@ -1,11 +1,22 @@
 import SftpClient from "ssh2-sftp-client";
-import { Q } from "@/db";
+import { playtimeRepo, Q } from "@/db";
 import type { StatsUpsertEntry } from "@/db/queries/player/minecraft/stats";
+import type { StatsReconcileEntry } from "@/db/repositories/playtime";
+import { FeatureFlags, featureFlagService } from "../feature-flag";
 import type { PlaytimeManagerService } from "../playtime/playtime-manager.service";
 import type { StatsImportServerConfig } from "./config";
 
 /** Debounce delay before triggering an import after a player count change */
 const DEBOUNCE_MS = 30_000;
+
+function extractPlayTimeTicks(stats: Record<string, unknown>): number | null {
+  const custom = stats["minecraft:custom"];
+  if (!custom || typeof custom !== "object") return null;
+  const value = (custom as Record<string, unknown>)["minecraft:play_time"];
+  return typeof value === "number" && Number.isInteger(value) && value >= 0
+    ? value
+    : null;
+}
 
 /**
  * Imports per-player Minecraft stats JSON files from each configured game server over
@@ -13,7 +24,9 @@ const DEBOUNCE_MS = 30_000;
  * on startup (fire-and-forget, never blocks bootstrap) plus debounced re-imports on
  * `sessionStart`/`sessionEnd` from each `PlaytimeService` (30s window). A per-server
  * lock prevents overlapping runs; rows for UUIDs not present in the player table are
- * skipped.
+ * skipped. After each import the vanilla play_time stat is compared against the stored
+ * playtime totals; drift is logged, and overwritten with the stat when the
+ * `playtime_stats_reconcile` feature flag is enabled.
  */
 export class StatsImportService {
   private debounceTimers: Map<number, NodeJS.Timeout> = new Map();
@@ -139,6 +152,7 @@ export class StatsImportService {
       const knownUuids = new Set(players.map((p) => p.minecraftUuid));
 
       const statsToUpsert: StatsUpsertEntry[] = [];
+      const playTimeEntries: StatsReconcileEntry[] = [];
       let skipped = 0;
 
       for (const file of jsonFiles) {
@@ -152,12 +166,18 @@ export class StatsImportService {
         try {
           const content = await sftp.get(`${cfg.sftp.statsPath}/${file.name}`);
           const parsed = JSON.parse(content.toString());
+          const stats = parsed.stats ?? parsed;
 
           statsToUpsert.push({
             minecraftUuid: uuid,
-            stats: parsed.stats ?? parsed,
+            stats,
             dataVersion: parsed.DataVersion ?? null,
           });
+
+          const playTimeTicks = extractPlayTimeTicks(stats);
+          if (playTimeTicks !== null) {
+            playTimeEntries.push({ minecraftUuid: uuid, playTimeTicks });
+          }
         } catch (error) {
           logger.warn(
             `Failed to parse stats file ${file.name} for server ${serverId}:`,
@@ -181,6 +201,8 @@ export class StatsImportService {
         `Stats import complete for server ${serverId} (${cfg.serverName}): ` +
           `${statsToUpsert.length} imported, ${skipped} skipped, ${duration}ms`,
       );
+
+      await this.reconcilePlaytime(serverId, playTimeEntries);
     } catch (error) {
       logger.error(
         `Stats import failed for server ${serverId} (${cfg.serverName}):`,
@@ -193,6 +215,32 @@ export class StatsImportService {
       } catch {
         // Ignore disconnect errors
       }
+    }
+  }
+
+  private async reconcilePlaytime(
+    serverId: number,
+    entries: StatsReconcileEntry[],
+  ): Promise<void> {
+    if (entries.length === 0) return;
+
+    try {
+      const apply = await featureFlagService.isEnabled(
+        FeatureFlags.playtimeStatsReconcile,
+      );
+      const result = await playtimeRepo.reconcileTotalsFromStats(
+        serverId,
+        entries,
+        { apply },
+      );
+
+      logger.info(
+        `Playtime reconcile for server ${serverId} (${apply ? "apply" : "report-only"}): ` +
+          `${result.checked} checked, ${result.drifted} drifted, ${result.applied} applied, ` +
+          `${result.skippedOpen} skipped (online), ${result.skippedSuspicious} skipped (suspicious drop)`,
+      );
+    } catch (error) {
+      logger.error(`Playtime reconcile failed for server ${serverId}:`, error);
     }
   }
 }
