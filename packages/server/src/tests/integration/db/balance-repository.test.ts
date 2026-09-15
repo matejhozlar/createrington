@@ -178,6 +178,142 @@ describe("BalanceRepository (integration)", () => {
       expect(grantLogs).toHaveLength(1);
       expect(deductLogs).toHaveLength(1);
     });
+
+    it("records the locked before and after values on the audit entry", async () => {
+      await seedPlayer(ALICE, "alice", "100", 10);
+
+      await R.balanceRepo.adminGrant(ALICE, 15, "999", "adminUser", "grant");
+
+      const [log] = await Q.admin.log.action.findAll({
+        actionType: "balance_grant",
+        targetPlayerUuid: ALICE,
+      });
+      expect(log.oldValue).toBe(BalanceUtils.format(10_000n));
+      expect(log.newValue).toBe(BalanceUtils.format(25_000n));
+      expect(log.targetPlayerName).toBe("alice");
+    });
+
+    it("writes neither a ledger row nor an audit entry when the deduct fails", async () => {
+      await seedPlayer(ALICE, "alice", "100", 10);
+
+      await expect(
+        R.balanceRepo.adminDeduct(ALICE, 50, "999", "adminUser", "too much"),
+      ).rejects.toThrow("Insufficient balance");
+
+      expect(await R.balanceRepo.getRaw(ALICE)).toBe(10_000n);
+      const history = await R.balanceRepo.getHistory(ALICE);
+      expect(history).toHaveLength(1);
+      expect(history[0].transactionType).toBe(
+        BalanceTransactionType.ADMIN_GRANT,
+      );
+      expect(
+        await Q.admin.log.action.findAll({ actionType: "balance_deduct" }),
+      ).toHaveLength(0);
+    });
+
+    it("chains audit old and new values under concurrent grants", async () => {
+      await seedPlayer(ALICE, "alice", "100", 0);
+
+      const results = await Promise.allSettled(
+        Array.from({ length: 6 }, () =>
+          R.balanceRepo.adminGrant(ALICE, 1, "999", "adminUser", "batch"),
+        ),
+      );
+      expect(results.every((r) => r.status === "fulfilled")).toBe(true);
+      expect(await R.balanceRepo.getRaw(ALICE)).toBe(6_000n);
+
+      const logs = await Q.admin.log.action.findAll({
+        actionType: "balance_grant",
+        targetPlayerUuid: ALICE,
+      });
+      expect(logs).toHaveLength(6);
+
+      const ordered = [...logs].sort(
+        (a, b) => Number(a.newValue) - Number(b.newValue),
+      );
+      expect(ordered[0].oldValue).toBe(BalanceUtils.format(0n));
+      for (let i = 1; i < ordered.length; i++) {
+        expect(ordered[i].oldValue).toBe(ordered[i - 1].newValue);
+      }
+      expect(ordered[ordered.length - 1].newValue).toBe(
+        BalanceUtils.format(6_000n),
+      );
+    });
+  });
+
+  describe("adminSet", () => {
+    it("sets the balance, logs an ADMIN_SET delta, and writes an audit entry", async () => {
+      await seedPlayer(ALICE, "alice", "100", 10);
+
+      const result = await R.balanceRepo.adminSet(
+        ALICE,
+        4,
+        "999",
+        "adminUser",
+        "correction",
+      );
+      expect(result).toBe(4);
+      expect(await R.balanceRepo.getRaw(ALICE)).toBe(4_000n);
+
+      const history = await R.balanceRepo.getHistory(ALICE);
+      expect(history[0].transactionType).toBe(BalanceTransactionType.ADMIN_SET);
+      expect(history[0].amount).toBe(-6_000n);
+      expect(history[0].balanceBefore).toBe(10_000n);
+      expect(history[0].balanceAfter).toBe(4_000n);
+      expect(history[0].metadata).toMatchObject({
+        adminDiscordId: "999",
+        adminUsername: "adminUser",
+      });
+
+      const [log] = await Q.admin.log.action.findAll({
+        actionType: "balance_set",
+        targetPlayerUuid: ALICE,
+      });
+      expect(log.oldValue).toBe(BalanceUtils.format(10_000n));
+      expect(log.newValue).toBe(BalanceUtils.format(4_000n));
+      expect(log.reason).toBe("correction");
+    });
+
+    it("rejects a negative target balance", async () => {
+      await seedPlayer(ALICE, "alice", "100", 10);
+
+      await expect(
+        R.balanceRepo.adminSet(ALICE, -1, "999", "adminUser", "bad"),
+      ).rejects.toThrow("Balance cannot be negative");
+      expect(await R.balanceRepo.getRaw(ALICE)).toBe(10_000n);
+    });
+  });
+
+  describe("create", () => {
+    it("writes the seed grant to the ledger with the row", async () => {
+      await Q.player.create({
+        minecraftUuid: BOB,
+        minecraftUsername: "bob",
+        discordId: "200",
+      });
+
+      const created = await R.balanceRepo.create(BOB, 2.5);
+      expect(created.balance).toBe(2_500n);
+
+      const history = await R.balanceRepo.getHistory(BOB);
+      expect(history).toHaveLength(1);
+      expect(history[0].transactionType).toBe(
+        BalanceTransactionType.ADMIN_GRANT,
+      );
+      expect(history[0].balanceBefore).toBe(0n);
+      expect(history[0].balanceAfter).toBe(2_500n);
+    });
+
+    it("writes no ledger row for a zero seed", async () => {
+      await Q.player.create({
+        minecraftUuid: BOB,
+        minecraftUsername: "bob",
+        discordId: "200",
+      });
+
+      await R.balanceRepo.create(BOB, 0);
+      expect(await R.balanceRepo.getHistory(BOB)).toHaveLength(0);
+    });
   });
 
   describe("concurrency", () => {
