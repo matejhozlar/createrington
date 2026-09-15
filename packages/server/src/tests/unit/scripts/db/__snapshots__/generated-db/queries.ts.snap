@@ -1,0 +1,107 @@
+import type { Pool, PoolClient } from "pg";
+import { FixtureQueries } from "@/db/queries/fixture";
+
+/**
+ * Query singleton instances type
+ * 
+ * Defines the structure of the query instances object, providing type-safe
+ * access to all root-level query classes. This interface is used by both
+ * normal and transaction-based query factories.
+ * 
+ * Auto-generated from database schema
+ * DO NOT EDIT MANUALLY - regenerate with: pnpm generate
+ */
+export interface QueryInstances {
+  fixture: FixtureQueries;
+}
+
+/**
+ * Create query singleton instances for normal usage
+ * 
+ * Instantiates all root-level query classes using the provided database pool.
+ * The returned object provides type-safe access to all database operations
+ * through a clean, hierarchical API.
+ * 
+ * Typical usage: Call once at application startup to create the global Q object.
+ * 
+ * @param db - Database pool for executing queries
+ * @returns Object containing all query instances, following QueryInstances interface
+ * 
+ * @example
+ * ```typescript
+ * // In db/index.ts
+ * import { createQueryInstances } from "@/generated/db/queries";
+ * import pool from "@/db/pool";
+ * 
+ * export const Q = createQueryInstances(pool);
+ * 
+ * // In any module
+ * import { Q } from "@/db";
+ * 
+ * await Q.player.get({ id: 1 });
+ * await Q.player.balance.findAll();
+ * await Q.admin.log.actions.create({ ... });
+ * ```
+ */
+export function createQueryInstances(db: Pool): QueryInstances {
+  return {
+    fixture: new FixtureQueries(db),
+  };
+}
+
+/**
+ * Create query instances using a transaction client
+ * 
+ * Instantiates all root-level query classes using the provided transaction
+ * client. All queries created through this function will participate in the
+ * same transaction, enabling atomic multi-table operations.
+ * 
+ * Use this function inside transaction callbacks to ensure all database
+ * operations are part of the same atomic transaction.
+ * 
+ * @param client - Transaction client from pool.connect() or transaction helper
+ * @returns Object containing all query instances using the transaction client
+ * 
+ * @example
+ * ```typescript
+ * import { transaction } from "@/db/utils/transactions";
+ * import { createQueries } from "@/generated/db/queries";
+ * import pool from "@/db";
+ * 
+ * await transaction(pool, async (client) => {
+ *   const Q = createQueries(client);
+ *   
+ *   // All operations in same transaction
+ *   await Q.player.create({ ... });
+ *   await Q.player.balance.create({ ... });
+ *   await Q.admin.log.actions.create({ ... });
+ *   
+ *   // Automatically committed if callback succeeds
+ *   // Automatically rolled back if callback throws
+ * });
+ * ```
+ */
+export function createQueries(client: PoolClient): QueryInstances {
+  return {
+    fixture: new FixtureQueries(client),
+  };
+}
+
+/**
+ * Helper type for extracting individual query instances from Q object
+ * 
+ * Use this pattern to export individual query instances for cleaner imports:
+ * 
+ * In your db/index.ts file:
+ * ```typescript
+ * export const { fixture } = Q;
+ * ```
+ * 
+ * Then import specific queries where needed:
+ * ```typescript
+ * import { fixture } from "@/db";
+ * 
+ * await fixture.findAll();
+ * ```
+ */
+export type IndividualQueryExports = QueryInstances;

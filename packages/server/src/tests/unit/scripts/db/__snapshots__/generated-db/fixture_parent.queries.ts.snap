@@ -1,0 +1,65 @@
+import type { Pool, PoolClient } from "pg";
+import { BaseQueries } from "@/db/queries/base.queries";
+import type {
+  FixtureParent,
+  FixtureParentCreate,
+  FixtureParentRow,
+  FixtureParentIdentifier,
+  FixtureParentFilters,
+} from "@createrington/shared/db/fixture_parent.types";
+
+import type { FixtureParentChildQueries } from "@/db/queries/fixture/parent/child";
+import { FixtureParentChildQueries as FixtureParentChildQueriesImpl } from "@/db/queries/fixture/parent/child";
+
+/**
+ * Auto-generated base queries for fixture_parent table
+ * 
+ * Provides type-safe CRUD operations and child query accessors.
+ * Child query instances are singletons per database pool for optimal performance.
+ * 
+ * DO NOT EDIT MANUALLY - regenerate with: pnpm generate
+ */
+export class FixtureParentBaseQueries extends BaseQueries<{
+  DbEntity: FixtureParentRow;
+  Entity: FixtureParent;
+  Identifier: FixtureParentIdentifier;
+  Filters: FixtureParentFilters;
+  Update: Partial<FixtureParent>;
+  Create: FixtureParentCreate;
+}> {
+  /** Database table name */
+  protected readonly table = "fixture_parent";
+  
+  /**
+   * Field combinations that uniquely identify a row in this table
+   *
+   * Each group is only a valid identifier when ALL of its fields are provided.
+   * Used by extractIdentifier to filter full entities to identifiers only and
+   * to reject partial composite identifiers.
+   */
+  protected readonly IDENTIFIER_GROUPS = [['id'], ['slug'], ['email']];
+  protected readonly AUTO_SET_UPDATED_AT = true;
+
+  constructor(db: Pool | PoolClient) {
+    super(db);
+  }
+
+  // Child query singletons (shared across all instances using this pool)
+
+  /** Private backing field for fixture_parent_child queries singleton */
+  private _child?: FixtureParentChildQueries;
+  
+  /**
+   * Singleton accessor for fixture_parent_child queries
+   * 
+   * Lazy-loads and caches a FixtureParentChildQueries instance that shares
+   * the same database connection. The instance is created once on first
+   * access and reused for all subsequent calls.
+   */
+  get child(): FixtureParentChildQueries {
+    if (!this._child) {
+      this._child = this.getOrCreateChild<FixtureParentChildQueries>('child', FixtureParentChildQueriesImpl);
+    }
+    return this._child;
+  }
+}

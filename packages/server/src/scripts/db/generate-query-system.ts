@@ -24,7 +24,10 @@ import type {
 } from "./types";
 
 // Schema operations
-import { readSchemaFromDrizzle } from "./schema/drizzle-reader";
+import {
+  readSchemaFromDrizzle,
+  type SchemaModule,
+} from "./schema/drizzle-reader";
 
 // Hierarchy
 import { buildTableHierarchy, collectAllStructures } from "./hierarchy/builder";
@@ -108,6 +111,21 @@ function setupContext(): GenerationContext {
     generatedDir,
     actualQueriesDir,
   };
+}
+
+/**
+ * Optional overrides for running the generator against something other than
+ * the real schema and output directories (used by the snapshot fixture)
+ */
+export interface GenerateOptions {
+  /** Drizzle schema module to read instead of `@/db/schema` */
+  schema?: SchemaModule;
+
+  /**
+   * Complete replacement for the monorepo paths. All-or-nothing so a partial
+   * override can never wipe a real output directory.
+   */
+  context?: GenerationContext;
 }
 
 /**
@@ -252,13 +270,16 @@ function generateTableFiles(
  * Wipes output directories (`shared/src/db/` and `server/src/generated/db/`), then
  * introspects the database and regenerates all TypeScript types and query classes.
  *
+ * @param options - Schema module and output directory overrides
  * @returns Generation result with statistics and file lists
  */
-export async function generate(): Promise<GenerationResult> {
+export async function generate(
+  options: GenerateOptions = {},
+): Promise<GenerationResult> {
   console.log("[generate] Reading schema from Drizzle schema...");
 
   // Setup all directory paths for monorepo structure
-  const context = setupContext();
+  const context = options.context ?? setupContext();
 
   // Clean output directories for a fresh generation
   console.log("[generate] Cleaning output directories...");
@@ -266,7 +287,7 @@ export async function generate(): Promise<GenerationResult> {
   await cleanDirectory(context.generatedDir);
 
   // Read schema from Drizzle TypeScript schema
-  const schema = readSchemaFromDrizzle();
+  const schema = readSchemaFromDrizzle(options.schema);
   const { tables, enums } = schema;
 
   console.log(

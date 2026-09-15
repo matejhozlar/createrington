@@ -40,7 +40,6 @@ export function generateEnumTypes(enums: EnumTypeInfo[]): string {
 `;
   }
 
-  const timestamp = new Date().toISOString();
   const enumDefinitions = enums
     .map((enumInfo) => generateSingleEnumType(enumInfo))
     .join("\n\n");
@@ -50,7 +49,6 @@ export function generateEnumTypes(enums: EnumTypeInfo[]): string {
  * 
  * Auto-generated from database schema
  * DO NOT EDIT MANUALLY - regenerate with: pnpm generate
- * Generated: ${timestamp}
  */
 
 ${enumDefinitions}

@@ -1,0 +1,64 @@
+import type { Pool, PoolClient } from "pg";
+import { BaseQueries } from "@/db/queries/base.queries";
+import type {
+  FixtureParentChild,
+  FixtureParentChildCreate,
+  FixtureParentChildRow,
+  FixtureParentChildIdentifier,
+  FixtureParentChildFilters,
+} from "@createrington/shared/db/fixture_parent_child.types";
+
+import type { FixtureParentChildLeafQueries } from "@/db/queries/fixture/parent/child/leaf";
+import { FixtureParentChildLeafQueries as FixtureParentChildLeafQueriesImpl } from "@/db/queries/fixture/parent/child/leaf";
+
+/**
+ * Auto-generated base queries for fixture_parent_child table
+ * 
+ * Provides type-safe CRUD operations and child query accessors.
+ * Child query instances are singletons per database pool for optimal performance.
+ * 
+ * DO NOT EDIT MANUALLY - regenerate with: pnpm generate
+ */
+export class FixtureParentChildBaseQueries extends BaseQueries<{
+  DbEntity: FixtureParentChildRow;
+  Entity: FixtureParentChild;
+  Identifier: FixtureParentChildIdentifier;
+  Filters: FixtureParentChildFilters;
+  Update: Partial<FixtureParentChild>;
+  Create: FixtureParentChildCreate;
+}> {
+  /** Database table name */
+  protected readonly table = "fixture_parent_child";
+  
+  /**
+   * Field combinations that uniquely identify a row in this table
+   *
+   * Each group is only a valid identifier when ALL of its fields are provided.
+   * Used by extractIdentifier to filter full entities to identifiers only and
+   * to reject partial composite identifiers.
+   */
+  protected readonly IDENTIFIER_GROUPS = [['parentId', 'childKey'], ['source', 'externalId']];
+
+  constructor(db: Pool | PoolClient) {
+    super(db);
+  }
+
+  // Child query singletons (shared across all instances using this pool)
+
+  /** Private backing field for fixture_parent_child_leaf queries singleton */
+  private _leaf?: FixtureParentChildLeafQueries;
+  
+  /**
+   * Singleton accessor for fixture_parent_child_leaf queries
+   * 
+   * Lazy-loads and caches a FixtureParentChildLeafQueries instance that shares
+   * the same database connection. The instance is created once on first
+   * access and reused for all subsequent calls.
+   */
+  get leaf(): FixtureParentChildLeafQueries {
+    if (!this._leaf) {
+      this._leaf = this.getOrCreateChild<FixtureParentChildLeafQueries>('leaf', FixtureParentChildLeafQueriesImpl);
+    }
+    return this._leaf;
+  }
+}

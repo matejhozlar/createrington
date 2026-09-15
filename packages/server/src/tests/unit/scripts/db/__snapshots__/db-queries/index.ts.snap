@@ -1,0 +1,15 @@
+/**
+ * Barrel export for all actual query classes
+ * 
+ * Auto-generated from database schema
+ * DO NOT EDIT MANUALLY - regenerate with: pnpm generate
+ * 
+ * @example
+ * import { PlayerQueries, AdminLogActionQueries } from "@/db/queries";
+ */
+
+export { FixtureAuditEntryQueries } from "./fixture/audit/entry";
+export { FixtureParentQueries } from "./fixture/parent";
+export { FixtureParentChildQueries } from "./fixture/parent/child";
+export { FixtureParentChildLeafQueries } from "./fixture/parent/child/leaf";
+export { FixtureSettingQueries } from "./fixture/setting";
