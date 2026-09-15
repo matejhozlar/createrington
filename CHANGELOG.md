@@ -1,3 +1,10 @@
+## v1.57.0 (2026-09-15)
+
+### @createrington/server (1.57.0 → 1.58.0)
+- [add] Add paginated player list endpoint to the sandbox consumer router, returning Minecraft UUIDs and usernames for all registered players (including banned) ordered by registration date, consumed by the sandbox sync to op known players on the test server
+- [fix] Fix select field projections to properly narrow query result types: `find`, `get`, `findAll`, `getAll`, `selectFields`, and the query builder's `select()` now return `Pick<Entity, K>` instead of the full entity when a literal field list is provided, accept readonly/as-const arrays, and fall back to all columns for an empty select
+- [chore] Add vitest typecheck configuration and `test:types` script for compile-time type assertion tests
+
 ## v1.56.0 (2026-09-15)
 
 ### @createrington/server (1.56.0 → 1.57.0)
