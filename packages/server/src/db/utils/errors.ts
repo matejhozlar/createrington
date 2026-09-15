@@ -97,12 +97,12 @@ type ViolationClass = new (
   cause?: unknown,
 ) => ConstraintViolationError;
 
-const VIOLATION_CLASSES: Record<string, ViolationClass> = {
-  "23505": UniqueViolationError,
-  "23503": ForeignKeyViolationError,
-  "23502": NotNullViolationError,
-  "23514": CheckViolationError,
-};
+const VIOLATION_CLASSES = new Map<string, ViolationClass>([
+  ["23505", UniqueViolationError],
+  ["23503", ForeignKeyViolationError],
+  ["23502", NotNullViolationError],
+  ["23514", CheckViolationError],
+]);
 
 /**
  * Wraps pg constraint errors (unique, foreign key, not null, check) in the
@@ -112,8 +112,9 @@ export function translateDbError(error: unknown): unknown {
   if (typeof error !== "object" || error === null || !("code" in error)) {
     return error;
   }
-  const Violation =
-    VIOLATION_CLASSES[String((error as { code: unknown }).code)];
+  const Violation = VIOLATION_CLASSES.get(
+    String((error as { code: unknown }).code),
+  );
   if (!Violation) return error;
   const pgError = error as { message?: string; constraint?: string };
   return new Violation(

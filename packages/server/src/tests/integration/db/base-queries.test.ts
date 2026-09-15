@@ -73,6 +73,16 @@ describe("BaseQueries (server table)", () => {
       expect(error).toBeInstanceOf(UniqueViolationError);
       expect((error as UniqueViolationError).code).toBe("23505");
     });
+
+    it("should reject an empty create payload", async () => {
+      await expect(Q.server.create({} as any)).rejects.toThrow(
+        "requires at least one field",
+      );
+      await expect(Q.server.createAndReturn({} as any)).rejects.toThrow(
+        "requires at least one field",
+      );
+      expect(await Q.server.count()).toBe(0);
+    });
   });
 
   // ==========================================================================
@@ -408,6 +418,20 @@ describe("BaseQueries (server table)", () => {
       expect(result.name).toBe("SMP");
       expect(result.identifier).toBe("survival");
       expect(await Q.server.count()).toBe(1);
+    });
+
+    it("should reject an empty payload and an empty updateFields list", async () => {
+      await expect(Q.server.upsert({} as any, "identifier")).rejects.toThrow(
+        "requires at least one field",
+      );
+      await expect(
+        Q.server.upsert(
+          { name: "Survival", identifier: "survival" },
+          "identifier",
+          [],
+        ),
+      ).rejects.toThrow("requires at least one field in updateFields");
+      expect(await Q.server.count()).toBe(0);
     });
   });
 

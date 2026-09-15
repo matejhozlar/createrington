@@ -160,6 +160,13 @@ describe("translateDbError", () => {
     expect(translateDbError(syntaxError)).toBe(syntaxError);
   });
 
+  it("does not resolve codes through the object prototype", () => {
+    for (const code of ["constructor", "toString", "__proto__"]) {
+      const err = Object.assign(new Error("odd code"), { code });
+      expect(translateDbError(err)).toBe(err);
+    }
+  });
+
   it("returns non-object errors unchanged", () => {
     expect(translateDbError("boom")).toBe("boom");
     expect(translateDbError(null)).toBe(null);

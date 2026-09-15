@@ -7,6 +7,7 @@ import {
   buildPagination,
   trpcError,
   auditActor,
+  assertPatchNotEmpty,
 } from "@/trpc/utils";
 import { container, Services } from "@/services/container";
 import { FaqService } from "@/services/discord/faq";
@@ -173,6 +174,7 @@ export const faqRouter = router({
       validatePattern(effectiveMode, effectivePattern);
 
       const { id, ...updates } = input;
+      assertPatchNotEmpty(updates);
       await Q.faq.entry.update({ id }, updates);
 
       const faqService = container.getSync(Services.FAQ_SERVICE);

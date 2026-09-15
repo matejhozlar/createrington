@@ -281,7 +281,11 @@ export abstract class BaseQueries<
    * @returns Array of objects containing column names and values
    */
   protected getCreateMapping(data: NonNullable<TConfig["Create"]>) {
-    return Object.entries(data).map(([key, value]) => {
+    const entries = Object.entries(data);
+    if (entries.length === 0) {
+      throw new Error(`Insert into ${this.table} requires at least one field`);
+    }
+    return entries.map(([key, value]) => {
       const column = this.getColumnName(key);
       return { column, value: this.serializeWriteValue(column, value) };
     });
@@ -1293,6 +1297,12 @@ export abstract class BaseQueries<
       | Array<keyof NonNullable<TConfig["Create"]>>,
     updateFields?: Array<keyof NonNullable<TConfig["Create"]>>,
   ): Promise<TConfig["Entity"]> {
+    if (updateFields && updateFields.length === 0) {
+      throw new Error(
+        `upsert on ${this.table} requires at least one field in updateFields`,
+      );
+    }
+
     const createMappings = this.getCreateMapping(data);
     const columns = createMappings.map((m) => m.column).join(", ");
     const placeholders = createMappings
@@ -1305,12 +1315,6 @@ export abstract class BaseQueries<
           .map((key) => this.getColumnName(key as string))
           .join(", ")
       : this.getColumnName(conflictTarget as string);
-
-    if (updateFields && updateFields.length === 0) {
-      throw new Error(
-        `upsert on ${this.table} requires at least one field in updateFields`,
-      );
-    }
 
     const fieldsToUpdate = updateFields
       ? updateFields.map((key) => this.getColumnName(key as string))

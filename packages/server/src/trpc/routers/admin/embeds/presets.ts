@@ -2,7 +2,12 @@ import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
 import { escapeLike } from "@/db/utils";
-import { paginationInput, buildPagination, trpcError } from "@/trpc/utils";
+import {
+  paginationInput,
+  buildPagination,
+  trpcError,
+  assertPatchNotEmpty,
+} from "@/trpc/utils";
 import { messagePayloadSchema } from "@createrington/shared/api/embed";
 import { payloadToStorage } from "./helpers";
 import { embedPresetCategoriesRouter } from "./preset-categories";
@@ -140,6 +145,7 @@ export const embedPresetsRouter = router({
         updates.data = payloadToStorage(input.payload).data;
       }
 
+      assertPatchNotEmpty(updates);
       await Q.discord.embed.preset.update({ id: input.id }, updates);
 
       return { message: "Preset updated" };
