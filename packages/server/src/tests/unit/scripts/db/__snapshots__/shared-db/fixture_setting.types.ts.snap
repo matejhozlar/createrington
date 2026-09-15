@@ -12,6 +12,7 @@ import type { CamelCaseKeys } from "../";
  */
 export interface FixtureSettingRow {
   key: string;
+  sequence_no: number;
   value: string;
   code: string | null;
   rank: number;
@@ -39,6 +40,7 @@ export type FixtureSetting = CamelCaseKeys<FixtureSettingRow>;
  */
 export interface FixtureSettingApiData {
   key: string;
+  sequenceNo: number;
   value: string;
   code: string | null;
   rank: number;
@@ -59,6 +61,7 @@ export interface FixtureSettingApiData {
 export interface FixtureSettingCreate {
   key: string;
   value: string;
+  sequenceNo?: number;
   code?: string | null;
   rank?: number;
   weight?: number | null;

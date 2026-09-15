@@ -224,11 +224,8 @@ function mapColumn(
   // - composite unique constraints/indexes tracked in uniqueColumnNames
   const isUnique = col.isUnique || uniqueColumnNames.has(columnName);
 
-  // Drizzle sets hasDefault for serial, identity, and .default() columns.
-  // GENERATED ALWAYS columns (stored expressions, always-identity) reject
-  // explicit values on insert and update, so they are excluded from Create
-  // and Update instead of being treated as defaulted.
-  const hasDefault: boolean = col.hasDefault;
+  // GENERATED ALWAYS columns reject explicit values, so they are excluded from
+  // Create and Update rather than treated as defaulted
   const isGenerated =
     col.generated != null || col.generatedIdentity?.type === "always";
 
@@ -250,7 +247,7 @@ function mapColumn(
     isNullable,
     isPrimaryKey,
     isUnique,
-    hasDefault,
+    hasDefault: col.hasDefault,
     isGenerated,
     numericPrecision,
     numericScale,

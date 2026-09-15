@@ -139,6 +139,7 @@ export const DatabaseTable = {
     TABLE: "fixture_setting" as const,
     FIELDS: {
       KEY: "key" as const,
+      SEQUENCE_NO: "sequence_no" as const,
       VALUE: "value" as const,
       CODE: "code" as const,
       RANK: "rank" as const,
@@ -149,6 +150,7 @@ export const DatabaseTable = {
     },
     CAMEL_FIELDS: {
       KEY: "key" as const,
+      SEQUENCE_NO: "sequenceNo" as const,
       VALUE: "value" as const,
       CODE: "code" as const,
       RANK: "rank" as const,

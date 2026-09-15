@@ -146,6 +146,7 @@ export const fixtureAuditEntry = pgTable(
 
 export const fixtureSetting = pgTable("fixture_setting", {
   key: text("key").primaryKey(),
+  sequenceNo: integer("sequence_no").generatedByDefaultAsIdentity(),
   value: text("value").notNull(),
   code: varchar("code", { length: 16 }),
   rank: smallint("rank").notNull().default(0),

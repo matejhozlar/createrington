@@ -447,11 +447,8 @@ ${allFields.join("\n")}
 }
 
 /**
- * Partitions table columns into required and optional for CREATE operations
- *
- * Analyzes column metadata to determine which fields should be required versus
- * optional when creating new records. Applies intelligent rules based on
- * database constraints and common conventions.
+ * Partitions the insertable columns of a table into required and optional
+ * Create fields
  *
  * @param table - Table metadata with all column information
  * @returns Object with separate arrays of required and optional columns
