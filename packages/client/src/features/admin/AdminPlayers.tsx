@@ -39,18 +39,15 @@ import {
   UserPlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { PlayerApiData } from "@createrington/shared/db";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { keepPreviousData } from "@tanstack/react-query";
-import { trpc } from "@/lib/trpc";
+import { trpc, type RouterOutput } from "@/lib/trpc";
 import { formatMoney } from "@/lib/format";
 import { formatRelativeDate, formatFullDate } from "./format";
 
-interface PlayerWithCounts extends PlayerApiData {
-  activeStrikeCount?: number;
-  activeBanCount?: number;
-}
+type PlayerRow =
+  RouterOutput["admin"]["players"]["players"]["list"]["players"][number];
 
 type SortField = "minecraftUsername" | "lastSeen" | "createdAt";
 
@@ -125,7 +122,7 @@ export function AdminPlayers() {
 
   const stats = statsQuery.data;
   const statsLoading = statsQuery.isLoading;
-  const players = (playersQuery.data?.players ?? []) as PlayerWithCounts[];
+  const players = playersQuery.data?.players ?? [];
   const total = playersQuery.data?.pagination.total ?? 0;
   const totalPages = playersQuery.data?.pagination.totalPages ?? 0;
   const loading = playersQuery.isLoading || playersQuery.isPlaceholderData;
@@ -150,7 +147,7 @@ export function AdminPlayers() {
     [orderBy],
   );
 
-  const getPlayerBadgeInfo = useCallback((player: PlayerWithCounts) => {
+  const getPlayerBadgeInfo = useCallback((player: PlayerRow) => {
     const strikeCount = player.activeStrikeCount ?? 0;
     const banCount = player.activeBanCount ?? 0;
     const totalCount = strikeCount + banCount;
@@ -169,7 +166,7 @@ export function AdminPlayers() {
 
   const navigate = useNavigate();
 
-  const columns: DataTableColumn<PlayerWithCounts>[] = [
+  const columns: DataTableColumn<PlayerRow>[] = [
     {
       key: "player",
       header: "Player",
