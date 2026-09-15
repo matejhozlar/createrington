@@ -62,22 +62,21 @@ export interface FixtureParentChildLeafApiData {
  * Data required to create a new fixture_parent_child_leaf record
  * 
  * Defines which fields are required vs optional when inserting a new row.
- * Fields with defaults, auto-generated values (e.g., id, timestamps), or
- * nullable columns are marked optional.
+ * NOT NULL columns without a database default are required; nullable columns
+ * and columns with a default (serials, timestamps) are optional. Columns the
+ * database generates itself (identity, stored expressions) are omitted.
  */
 export interface FixtureParentChildLeafCreate {
+  parentId: number;
+  childKey: string;
+  leafNo: number;
   recordedOn: string;
-  weight: number;
-  parentId?: number;
-  childKey?: string;
-  leafNo?: number;
   token?: string;
   label?: string | null;
   recordedAt?: Date | null;
   sourceIp?: string | null;
   totalSeconds?: bigint;
   sessions?: number;
-  avgSeconds?: bigint | null;
   archivedAt?: Date | null;
 }
 

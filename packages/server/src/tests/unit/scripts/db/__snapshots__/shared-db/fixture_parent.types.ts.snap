@@ -59,8 +59,9 @@ export interface FixtureParentApiData {
  * Data required to create a new fixture_parent record
  * 
  * Defines which fields are required vs optional when inserting a new row.
- * Fields with defaults, auto-generated values (e.g., id, timestamps), or
- * nullable columns are marked optional.
+ * NOT NULL columns without a database default are required; nullable columns
+ * and columns with a default (serials, timestamps) are optional. Columns the
+ * database generates itself (identity, stored expressions) are omitted.
  */
 export interface FixtureParentCreate {
   slug: string;

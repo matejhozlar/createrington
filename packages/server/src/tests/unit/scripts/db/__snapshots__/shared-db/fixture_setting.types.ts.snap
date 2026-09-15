@@ -12,6 +12,7 @@ import type { CamelCaseKeys } from "../";
  */
 export interface FixtureSettingRow {
   key: string;
+  sequence_no: number;
   value: string;
   code: string | null;
   rank: number;
@@ -39,6 +40,7 @@ export type FixtureSetting = CamelCaseKeys<FixtureSettingRow>;
  */
 export interface FixtureSettingApiData {
   key: string;
+  sequenceNo: number;
   value: string;
   code: string | null;
   rank: number;
@@ -52,12 +54,14 @@ export interface FixtureSettingApiData {
  * Data required to create a new fixture_setting record
  * 
  * Defines which fields are required vs optional when inserting a new row.
- * Fields with defaults, auto-generated values (e.g., id, timestamps), or
- * nullable columns are marked optional.
+ * NOT NULL columns without a database default are required; nullable columns
+ * and columns with a default (serials, timestamps) are optional. Columns the
+ * database generates itself (identity, stored expressions) are omitted.
  */
 export interface FixtureSettingCreate {
+  key: string;
   value: string;
-  key?: string;
+  sequenceNo?: number;
   code?: string | null;
   rank?: number;
   weight?: number | null;
