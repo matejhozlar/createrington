@@ -44,7 +44,7 @@ import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { keepPreviousData } from "@tanstack/react-query";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { formatMoney } from "@/lib/format";
-import { formatRelativeDate, formatFullDate } from "./format";
+import { formatRelativeDate, formatFullDate, toIso } from "./format";
 
 type PlayerRow =
   RouterOutput["admin"]["players"]["players"]["list"]["players"][number];
@@ -264,10 +264,7 @@ export function AdminPlayers() {
       sorted: orderBy === "lastSeen" ? orderDirection : false,
       onSort: () => handleSort("lastSeen"),
       render: (player) => {
-        const iso =
-          typeof player.lastSeen === "string"
-            ? player.lastSeen
-            : new Date(player.lastSeen).toISOString();
+        const iso = toIso(player.lastSeen);
         return (
           <CellText
             value={formatFullDate(iso)}
