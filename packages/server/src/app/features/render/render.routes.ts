@@ -8,6 +8,7 @@ import {
 import { asyncHandler } from "@/app/middleware/async-handler";
 import config from "@/config";
 import { Q, playerRepo } from "@/db";
+import { calendarDay } from "@/db/utils";
 import { BalanceUtils } from "@/db/repositories/balance/utils";
 import { formatPlaytime } from "@createrington/shared/format";
 import { UnauthorizedError } from "@/app/middleware";
@@ -211,17 +212,14 @@ router.get(
     const rows = await Q.player.playtime.daily
       .where({
         playerMinecraftUuid: uuid,
-        playDate: { $gte: startDate },
+        playDate: { $gte: calendarDay(startDate) },
       })
       .all();
 
     const dayMap: Record<string, number> = {};
     for (const row of rows) {
-      const date =
-        row.playDate instanceof Date
-          ? row.playDate.toISOString().split("T")[0]
-          : String(row.playDate);
-      dayMap[date] = (dayMap[date] ?? 0) + Number(row.secondsPlayed);
+      dayMap[row.playDate] =
+        (dayMap[row.playDate] ?? 0) + Number(row.secondsPlayed);
     }
 
     // Use all-time total from playtime summary (not just 365-day window)
@@ -232,10 +230,10 @@ router.get(
     const today = new Date();
     const check = new Date(today);
     // Start from today, then try yesterday if today has no data yet
-    if (!dayMap[check.toISOString().split("T")[0]]) {
+    if (!dayMap[calendarDay(check)]) {
       check.setDate(check.getDate() - 1);
     }
-    while (dayMap[check.toISOString().split("T")[0]]) {
+    while (dayMap[calendarDay(check)]) {
       currentStreak++;
       check.setDate(check.getDate() - 1);
     }

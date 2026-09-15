@@ -28,3 +28,14 @@ export function createNotFoundError(
 export function escapeLike(input: string): string {
   return input.replace(/[%_\\]/g, "\\$&");
 }
+
+/**
+ * Formats a Date as the local YYYY-MM-DD calendar day, the value shape of
+ * date columns on both the read and the filter side
+ */
+export function calendarDay(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
