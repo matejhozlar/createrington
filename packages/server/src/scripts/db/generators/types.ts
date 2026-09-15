@@ -7,7 +7,7 @@ import { pgTypeToTsType, getNumericComment } from "../utils/type-mapping";
  *
  * This module generates comprehensive TypeScript type definitions for each
  * database table, including multiple representations optimized for different
- * use cases (database operations, application logic, API serialization).
+ * use cases (database operations, application logic).
  * It provides complete type safety across the entire data flow.
  */
 
@@ -16,7 +16,7 @@ import { pgTypeToTsType, getNumericComment } from "../utils/type-mapping";
  *
  * Creates a comprehensive set of type definitions that cover all aspects of
  * working with a database table, from raw database representations to
- * application-level entities, API data transfer objects, and query types.
+ * application-level entities and query types.
  *
  * @param table - Complete table metadata including all columns and constraints
  * @returns Complete TypeScript source code containing all type definitions
@@ -25,16 +25,15 @@ import { pgTypeToTsType, getNumericComment } from "../utils/type-mapping";
  * Generated types:
  * 1. Row interface: Snake_case database representation (as stored in PostgreSQL)
  * 2. Entity type: CamelCase application representation (for TypeScript code)
- * 3. ApiData interface: Dates as ISO strings (for JSON serialization/API responses)
- * 4. Create interface: Fields required/optional for INSERT operations
- * 5. Identifier type: Valid identifiers for queries (primary keys, unique columns)
- * 6. Filters type: Type-safe filtering with operator support
+ * 3. Create interface: Fields required/optional for INSERT operations
+ * 4. Identifier type: Valid identifiers for queries (primary keys, unique columns)
+ * 5. Filters type: Type-safe filtering with operator support
  *
  * Type flow through application layers:
  * ```
- * Database (Row) → Application (Entity) → API (ApiData)
- *     ↓                     ↓                    ↓
- * snake_case           camelCase            camelCase + string dates
+ * Database (Row) → Application (Entity)
+ *     ↓                     ↓
+ * snake_case           camelCase
  * ```
  *
  * Design principles:
@@ -90,15 +89,6 @@ ${generateRowInterface(table, className, enums)}
  * rules, and internal processing.
  */
 ${generateEntityType(className)}
-
-/**
- * API representation with dates as ISO strings
- * 
- * Optimized for JSON serialization with Date fields converted to ISO string
- * format. Use this type for API responses, client-side data, and anywhere
- * JSON serialization occurs (Date objects don't serialize well to JSON).
- */
-${generateApiDataType(table, className, enums)}
 
 /**
  * Data required to create a new ${table.tableName} record
@@ -157,89 +147,6 @@ function generateEnumImports(usedEnums: EnumTypeInfo[]): string {
   const enumTypeNames = usedEnums.map((e) => snakeToPascal(e.typeName)).sort(); // Sort for consistent output
 
   return `import type { ${enumTypeNames.join(", ")} } from "./database.types";\n`;
-}
-/**
- * Generates API data interface with dates as ISO string format
- *
- * Creates a type definition optimized for JSON serialization where Date
- * objects are represented as ISO 8601 strings. This prevents serialization
- * issues and provides a consistent API contract.
- *
- * @param table - Table metadata with column information
- * @param className - PascalCase class name for the table
- * @returns TypeScript interface definition for API data
- *
- * @remarks
- * Key transformations:
- * - Date → string (ISO 8601 format assumed)
- * - snake_case → camelCase (for API consistency)
- * - Nullability preserved (T | null for nullable columns)
- * - Numeric precision comments retained
- *
- * Use cases:
- * - API response payloads
- * - Client-side TypeScript/JavaScript
- * - JSON serialization contexts
- * - External system integrations
- *
- * @example
- * ```typescript
- * // For a users table with created_at timestamp:
- * export interface UserApiData {
- *   id: number;
- *   email: string;
- *   createdAt: string;  // Date converted to string
- *   deletedAt: string | null;  // Nullable date
- * }
- *
- * // Usage in API endpoint:
- * app.get('/users/:id', async (req, res) => {
- *   const user = await db.users.findById(req.params.id);
- *   const apiData: UserApiData = {
- *     ...user,
- *     createdAt: user.createdAt.toISOString()
- *   };
- *   res.json(apiData);
- * });
- * ```
- */
-function generateApiDataType(
-  table: TableInfo,
-  className: string,
-  enums: EnumTypeInfo[] = [],
-): string {
-  const fields = table.columns.map((col) => {
-    const camelName = snakeToCamel(col.columnName);
-    let type = pgTypeToTsType(
-      col.udtName,
-      false, // Get base type without null
-      col.numericPrecision,
-      col.numericScale,
-      enums,
-    );
-
-    // Convert Date to string for JSON serialization compatibility
-    if (type === "Date") {
-      type = "string";
-    }
-
-    // Add null union type if column is nullable
-    if (col.isNullable) {
-      type = `${type} | null`;
-    }
-
-    const comment = getNumericComment(
-      col.udtName,
-      col.numericPrecision,
-      col.numericScale,
-    );
-
-    return `  ${camelName}: ${type};${comment}`;
-  });
-
-  return `export interface ${className}ApiData {
-${fields.join("\n")}
-}`;
 }
 
 /**

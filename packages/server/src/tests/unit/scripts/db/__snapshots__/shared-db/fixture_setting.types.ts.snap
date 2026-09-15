@@ -32,25 +32,6 @@ export interface FixtureSettingRow {
 export type FixtureSetting = CamelCaseKeys<FixtureSettingRow>;
 
 /**
- * API representation with dates as ISO strings
- * 
- * Optimized for JSON serialization with Date fields converted to ISO string
- * format. Use this type for API responses, client-side data, and anywhere
- * JSON serialization occurs (Date objects don't serialize well to JSON).
- */
-export interface FixtureSettingApiData {
-  key: string;
-  sequenceNo: number;
-  value: string;
-  code: string | null;
-  rank: number;
-  weight: number | null;
-  factor: number | null;
-  payload: Record<string, any> | null;
-  updatedAt: string;
-}
-
-/**
  * Data required to create a new fixture_setting record
  * 
  * Defines which fields are required vs optional when inserting a new row.

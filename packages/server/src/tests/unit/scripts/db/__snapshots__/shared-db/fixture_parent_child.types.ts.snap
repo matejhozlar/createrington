@@ -35,27 +35,6 @@ export interface FixtureParentChildRow {
 export type FixtureParentChild = CamelCaseKeys<FixtureParentChildRow>;
 
 /**
- * API representation with dates as ISO strings
- * 
- * Optimized for JSON serialization with Date fields converted to ISO string
- * format. Use this type for API responses, client-side data, and anywhere
- * JSON serialization occurs (Date objects don't serialize well to JSON).
- */
-export interface FixtureParentChildApiData {
-  parentId: number;
-  childKey: string;
-  source: FixtureSource;
-  externalId: string;
-  amount: string; // numeric(10, 2)
-  quantity: number; // numeric(8, 0)
-  ledger: string | null; // numeric(20, 0)
-  ratio: number | null;
-  bigAmount: bigint;
-  note: string | null;
-  createdAt: string;
-}
-
-/**
  * Data required to create a new fixture_parent_child record
  * 
  * Defines which fields are required vs optional when inserting a new row.

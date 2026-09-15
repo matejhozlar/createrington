@@ -36,29 +36,6 @@ export interface FixtureParentChildLeafRow {
 export type FixtureParentChildLeaf = CamelCaseKeys<FixtureParentChildLeafRow>;
 
 /**
- * API representation with dates as ISO strings
- * 
- * Optimized for JSON serialization with Date fields converted to ISO string
- * format. Use this type for API responses, client-side data, and anywhere
- * JSON serialization occurs (Date objects don't serialize well to JSON).
- */
-export interface FixtureParentChildLeafApiData {
-  parentId: number;
-  childKey: string;
-  leafNo: number;
-  token: string;
-  label: string | null;
-  recordedOn: string;
-  recordedAt: string | null;
-  sourceIp: string | null;
-  totalSeconds: bigint;
-  sessions: number;
-  avgSeconds: bigint | null;
-  weight: number;
-  archivedAt: string | null;
-}
-
-/**
  * Data required to create a new fixture_parent_child_leaf record
  * 
  * Defines which fields are required vs optional when inserting a new row.

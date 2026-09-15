@@ -29,22 +29,6 @@ export interface FixtureAuditEntryRow {
 export type FixtureAuditEntry = CamelCaseKeys<FixtureAuditEntryRow>;
 
 /**
- * API representation with dates as ISO strings
- * 
- * Optimized for JSON serialization with Date fields converted to ISO string
- * format. Use this type for API responses, client-side data, and anywhere
- * JSON serialization occurs (Date objects don't serialize well to JSON).
- */
-export interface FixtureAuditEntryApiData {
-  id: number;
-  actorId: string;
-  action: string;
-  reference: string | null;
-  payload: Record<string, any>;
-  occurredAt: string;
-}
-
-/**
  * Data required to create a new fixture_audit_entry record
  * 
  * Defines which fields are required vs optional when inserting a new row.
