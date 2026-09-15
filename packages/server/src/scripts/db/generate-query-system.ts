@@ -95,9 +95,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
  * // "/path/to/monorepo/server/src/generated/db"
  * ```
  */
-function setupContext(
-  overrides: Partial<GenerationContext> = {},
-): GenerationContext {
+function setupContext(): GenerationContext {
   const projectRoot = path.resolve(__dirname, "../../..");
   const monorepoRoot = path.resolve(projectRoot, "..");
   const sharedPackageRoot = path.resolve(monorepoRoot, "shared");
@@ -112,7 +110,6 @@ function setupContext(
     sharedTypesDir,
     generatedDir,
     actualQueriesDir,
-    ...overrides,
   };
 }
 
@@ -124,8 +121,11 @@ export interface GenerateOptions {
   /** Drizzle schema module to read instead of `@/db/schema` */
   schema?: SchemaModule;
 
-  /** Output directory overrides; unspecified paths keep the monorepo defaults */
-  context?: Partial<GenerationContext>;
+  /**
+   * Complete replacement for the monorepo paths. All-or-nothing so a partial
+   * override can never wipe a real output directory.
+   */
+  context?: GenerationContext;
 }
 
 /**
@@ -279,7 +279,7 @@ export async function generate(
   console.log("[generate] Reading schema from Drizzle schema...");
 
   // Setup all directory paths for monorepo structure
-  const context = setupContext(options.context);
+  const context = options.context ?? setupContext();
 
   // Clean output directories for a fresh generation
   console.log("[generate] Cleaning output directories...");
