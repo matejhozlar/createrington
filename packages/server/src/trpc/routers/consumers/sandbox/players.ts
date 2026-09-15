@@ -1,9 +1,35 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
+import { buildPagination, paginationInput } from "@/trpc/utils";
 
-/** Sandbox consumer players router: resolves registered player names from Minecraft UUIDs. */
+/** Sandbox consumer players router: lists registered players and resolves their names from Minecraft UUIDs. */
 export const sandboxPlayersRouter = router({
+  list: adminProcedure
+    .meta({
+      description:
+        "Lists every registered player with their Minecraft UUID and username, oldest registration first, one page at a time (zero-based page, up to 1000 per page, default 1000). Banned players are included on purpose: they are welcome on the test server. Walk the pages until page + 1 reaches totalPages. Pages are offset-based, so a player deleted while a consumer walks them shifts later players back by one and one can be skipped; registrations made mid-walk land on the last page. Consumed by the sandbox sync to op all known players on the test server.",
+    })
+    .input(
+      z.object({
+        ...paginationInput({ maxLimit: 1000, defaultLimit: 1000 }),
+      }),
+    )
+    .query(async ({ input }) => {
+      const [players, total] = await Promise.all([
+        Q.player.orderBy("id", "asc").paginate(input.page, input.limit).all(),
+        Q.player.count(),
+      ]);
+
+      return {
+        players: players.map((p) => ({
+          uuid: p.minecraftUuid,
+          username: p.minecraftUsername,
+        })),
+        pagination: buildPagination(input.page, input.limit, total),
+      };
+    }),
+
   resolve: adminProcedure
     .meta({
       description:

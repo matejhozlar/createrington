@@ -6,16 +6,27 @@ interface QueryBuilderOptions<TConfig extends { Entity: QueryResultRow }> {
   offset?: number;
   orderBy?: keyof TConfig["Entity"];
   orderDirection?: "asc" | "desc";
-  select?: Array<keyof TConfig["Entity"]>;
+  select?: ReadonlyArray<keyof TConfig["Entity"]>;
 }
+
+/**
+ * Row shape produced by a select projection: the full entity when the
+ * selected keys cover every column (a widened `Array<keyof Entity>`),
+ * otherwise a Pick of the literal keys
+ */
+export type Selected<TEntity, K extends keyof TEntity> = keyof TEntity extends K
+  ? TEntity
+  : Pick<TEntity, K>;
 
 /**
  * Fluent query builder for composable queries
  * Accumulates filters and options, then executes via the underlying BaseQueries methods
+ * TResult is the row type returned by all()/first(), narrowed by select()
  */
 export class QueryBuilder<
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- generic constraint requires any for structural compatibility
   TConfig extends { Entity: QueryResultRow; Filters?: Record<string, any> },
+  TResult = TConfig["Entity"],
 > {
   private filters: Partial<NonNullable<TConfig["Filters"]>> = {};
   private options: {
@@ -23,7 +34,7 @@ export class QueryBuilder<
     offset?: number;
     orderBy?: keyof TConfig["Entity"];
     orderDirection?: "asc" | "desc";
-    select?: Array<keyof TConfig["Entity"]>;
+    select?: ReadonlyArray<keyof TConfig["Entity"]>;
   } = {};
 
   constructor(
@@ -97,16 +108,22 @@ export class QueryBuilder<
 
   /**
    * Select specific fields (field projection)
+   * Narrows the row type of all()/first()/firstOrFail() to the selected keys
    *
    * @param fields - Array of field names to select
-   * @returns This builder for chaining
+   * @returns This builder for chaining, typed to the projected row
    *
    * @example
    * Q.player.where({ isActive: true }).select(["id", "minecraftUsername"])
    */
-  select(fields: Array<keyof TConfig["Entity"]>): this {
+  select<K extends keyof TConfig["Entity"]>(
+    fields: readonly K[],
+  ): QueryBuilder<TConfig, Selected<TConfig["Entity"], K>> {
     this.options.select = fields;
-    return this;
+    return this as unknown as QueryBuilder<
+      TConfig,
+      Selected<TConfig["Entity"], K>
+    >;
   }
 
   /**
@@ -129,8 +146,6 @@ export class QueryBuilder<
   /**
    * Execute the query and return all matching results
    *
-   * @returns Promise resolving to array of entities
-   *
    * @example
    * const players = await Q.player
    *   .where({ isActive: true })
@@ -138,34 +153,32 @@ export class QueryBuilder<
    *   .limit(10)
    *   .all()
    */
-  async all(): Promise<TConfig["Entity"][]> {
-    return this.executor(this.filters, this.options);
+  async all(): Promise<TResult[]> {
+    const results = await this.executor(this.filters, this.options);
+    return results as TResult[];
   }
 
   /**
    * Execute the query and return the first result
    * Returns null if no results found
    *
-   * @returns Promise resolving to first entity or null
-   *
    * @example
    * const player = await Q.player
    *   .where({ minecraftUsername: "Steve" })
    *   .first()
    */
-  async first(): Promise<TConfig["Entity"] | null> {
+  async first(): Promise<TResult | null> {
     const results = await this.executor(this.filters, {
       ...this.options,
       limit: 1,
     });
-    return results[0] || null;
+    return (results[0] as TResult | undefined) || null;
   }
 
   /**
    * Execute the query and return the first result
    * Throws an error if no results found
    *
-   * @returns Promise resolving to first entity
    * @throws Error if no results found
    *
    * @example
@@ -173,7 +186,7 @@ export class QueryBuilder<
    *   .where({ minecraftUsername: "Steve" })
    *   .firstOrFail()
    */
-  async firstOrFail(): Promise<TConfig["Entity"]> {
+  async firstOrFail(): Promise<TResult> {
     const result = await this.first();
     if (!result) {
       throw new Error("No results found for query");

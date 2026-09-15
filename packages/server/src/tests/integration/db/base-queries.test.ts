@@ -132,6 +132,16 @@ describe("BaseQueries (server table)", () => {
       expect(found!.id).toBe(created.id);
       expect(found!.name).toBe("Survival");
     });
+
+    it("should fall back to all columns for an empty select in find()", async () => {
+      const created = await Q.server.createAndReturn({
+        name: "Survival",
+        identifier: "survival",
+      });
+
+      const found = await Q.server.find({ id: created.id }, { select: [] });
+      expect(found).toEqual(created);
+    });
   });
 
   // ==========================================================================
@@ -257,6 +267,17 @@ describe("BaseQueries (server table)", () => {
       // Only selected fields should be present after mapping
       results.forEach((r) => {
         expect(r).toHaveProperty("name");
+      });
+    });
+
+    it("should fall back to all columns for an empty select in findAll()", async () => {
+      const results = await Q.server.findAll(undefined, { select: [] });
+      expect(results).toHaveLength(3);
+      results.forEach((r) => {
+        expect(r).toHaveProperty("id");
+        expect(r).toHaveProperty("name");
+        expect(r).toHaveProperty("identifier");
+        expect(r).toHaveProperty("createdAt");
       });
     });
 

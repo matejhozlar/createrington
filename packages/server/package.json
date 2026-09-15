@@ -1,6 +1,6 @@
 {
   "name": "@createrington/server",
-  "version": "1.57.0",
+  "version": "1.58.0",
   "description": "",
   "private": true,
   "license": "UNLICENSED",
@@ -53,6 +53,7 @@
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:unit": "vitest run tests/unit",
+    "test:types": "vitest run --typecheck.only",
     "test:integration": "vitest run tests/integration",
     "test:e2e": "vitest run tests/e2e"
   },
