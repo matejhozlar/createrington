@@ -15,6 +15,7 @@ import {
 } from "@/trpc/utils";
 import { discordId } from "@/utils/zod-schemas";
 import type { Player, PlayerFilters } from "@createrington/shared/db";
+import { selectViolationUuids } from "./violation-filter";
 
 /** Admin players CRUD router: stats, list, get, update, and delete players. */
 export const playersRouter = router({
@@ -78,23 +79,11 @@ export const playersRouter = router({
             : Promise.resolve([]),
         ]);
 
-        let uuidsWithViolations: string[];
-
-        if (input.hasViolations === true) {
-          uuidsWithViolations = [
-            ...new Set([...uuidsWithStrikes, ...uuidsWithBans]),
-          ];
-        } else if (input.hasStrikes === true && input.hasBans === true) {
-          uuidsWithViolations = uuidsWithStrikes.filter((uuid) =>
-            uuidsWithBans.includes(uuid),
-          );
-        } else if (input.hasStrikes === true) {
-          uuidsWithViolations = uuidsWithStrikes;
-        } else if (input.hasBans === true) {
-          uuidsWithViolations = uuidsWithBans;
-        } else {
-          uuidsWithViolations = [];
-        }
+        const uuidsWithViolations = selectViolationUuids(
+          input,
+          uuidsWithStrikes,
+          uuidsWithBans,
+        );
 
         if (uuidsWithViolations.length === 0) {
           return {
