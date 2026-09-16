@@ -2,7 +2,10 @@ import { BadRequestError, InternalServerError } from "@/app/middleware";
 import { Q } from "@/db";
 import { getService, Services } from "@/services";
 import type { HeartbeatPlayer, PlaytimeService } from "@/services/playtime";
-import { parsePlayTimeTicks } from "@/services/playtime/credit";
+import {
+  parseEventTimestamp,
+  parsePlayTimeTicks,
+} from "@/services/playtime/credit";
 import { MC_UUID_REGEX } from "@/utils/zod-schemas";
 import type { Request, Response } from "express";
 
@@ -86,7 +89,11 @@ export class InternalPresenceController {
       throw new BadRequestError("Invalid UUID format");
     }
 
-    const eventTimestamp = timestamp ? new Date(timestamp) : new Date();
+    const eventTimestamp = parseEventTimestamp(timestamp);
+    if (!eventTimestamp) {
+      throw new BadRequestError("Invalid timestamp");
+    }
+
     const playTimeTicks = parsePlayTimeTicks(req.body.playTimeTicks);
 
     try {

@@ -21,7 +21,10 @@ vi.mock("@/app/features/mod/shared/resolve-server-id", () => ({
   resolveServerId: () => 1,
 }));
 
-import { ForbiddenError } from "@/app/middleware/error-handler";
+import {
+  BadRequestError,
+  ForbiddenError,
+} from "@/app/middleware/error-handler";
 import { PresenceController } from "@/app/features/mod/presence/presence.controller";
 import type { Request, Response } from "express";
 
@@ -141,6 +144,18 @@ describe("PresenceController.updatePresence", () => {
     expect(playtimeService.handlePlayerJoinFromMod).toHaveBeenCalledWith(
       expect.objectContaining({ playTimeTicks: undefined }),
     );
+  });
+
+  it("rejects an unparseable timestamp before touching the tracker", async () => {
+    const req = {
+      body: { ...joinBody, timestamp: "yesterday-ish" },
+      modAuth: {},
+    } as unknown as Request;
+
+    await expect(
+      PresenceController.updatePresence(req, makeRes()),
+    ).rejects.toBeInstanceOf(BadRequestError);
+    expect(getServiceMock).not.toHaveBeenCalled();
   });
 });
 

@@ -9,7 +9,10 @@ import type {
   ModPlayerJoinData,
   ModPlayerLeaveData,
 } from "@/services/playtime";
-import { parsePlayTimeTicks } from "@/services/playtime/credit";
+import {
+  parseEventTimestamp,
+  parsePlayTimeTicks,
+} from "@/services/playtime/credit";
 import { getPlaytimeForwarder } from "@/services/playtime/forwarder.service";
 import { MC_UUID_REGEX } from "@/utils/zod-schemas";
 import { resolveServerId } from "../shared/resolve-server-id";
@@ -62,6 +65,10 @@ export class PresenceController {
 
     const targetServerId = resolveServerId(req, "Presence update");
     const playTimeTicks = parsePlayTimeTicks(req.body.playTimeTicks);
+    const eventTimestamp = parseEventTimestamp(timestamp);
+    if (!eventTimestamp) {
+      throw new BadRequestError("Invalid timestamp");
+    }
 
     try {
       const playtimeManager = await getService(
@@ -75,8 +82,6 @@ export class PresenceController {
           `Playtime tracking not configured for server ${targetServerId}`,
         );
       }
-      const eventTimestamp = timestamp ? new Date(timestamp) : new Date();
-
       if (state === "joined") {
         const joinData: ModPlayerJoinData = {
           uuid,

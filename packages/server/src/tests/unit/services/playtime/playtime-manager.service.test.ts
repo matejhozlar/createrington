@@ -1,10 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-const { connectMock, getOpenSessionsMock, flushMock } = vi.hoisted(() => ({
-  connectMock: vi.fn(),
-  getOpenSessionsMock: vi.fn(),
-  flushMock: vi.fn(),
-}));
+const { connectMock, getOpenSessionsMock, flushMock, forwarderConnectMock } =
+  vi.hoisted(() => ({
+    connectMock: vi.fn(),
+    getOpenSessionsMock: vi.fn(),
+    flushMock: vi.fn(),
+    forwarderConnectMock: vi.fn(),
+  }));
 
 vi.mock("@/db", () => ({
   playtimeRepo: {
@@ -17,7 +19,7 @@ vi.mock("@/db", () => ({
 vi.mock("@/services/playtime/config", () => ({ MINECRAFT_SERVERS: {} }));
 
 vi.mock("@/services/playtime/forwarder.service", () => ({
-  getPlaytimeForwarder: () => null,
+  getPlaytimeForwarder: () => ({ connectToService: forwarderConnectMock }),
 }));
 
 import { PlaytimeManagerService } from "@/services/playtime/playtime-manager.service";
@@ -30,6 +32,7 @@ let manager: PlaytimeManagerService;
 
 beforeEach(() => {
   connectMock.mockReset();
+  forwarderConnectMock.mockReset();
   getOpenSessionsMock.mockReset().mockResolvedValue([]);
   flushMock.mockReset().mockResolvedValue(undefined);
   manager = new PlaytimeManagerService();
@@ -47,6 +50,12 @@ describe("PlaytimeManagerService.ensureService", () => {
     expect(connectMock).toHaveBeenCalledWith(service, SERVER_ID);
     expect(getOpenSessionsMock).toHaveBeenCalledWith(SERVER_ID);
     expect(manager.getService(SERVER_ID)).toBe(service);
+  });
+
+  it("does not wire an on-demand service to the forwarder", async () => {
+    await manager.ensureService(SERVER_ID);
+
+    expect(forwarderConnectMock).not.toHaveBeenCalled();
   });
 
   it("shares one bring-up between concurrent callers and reuses it afterwards", async () => {
@@ -80,5 +89,43 @@ describe("PlaytimeManagerService.ensureService", () => {
 
     expect(service.isPlayerOnline(PLAYER_UUID)).toBe(true);
     expect(service.getSession(PLAYER_UUID)?.sessionId).toBe(42);
+  });
+
+  it("retries the bring-up after a failed attempt", async () => {
+    getOpenSessionsMock.mockRejectedValueOnce(new Error("db down"));
+
+    await expect(manager.ensureService(SERVER_ID)).rejects.toThrow("db down");
+    expect(connectMock).not.toHaveBeenCalled();
+    expect(manager.getService(SERVER_ID)).toBeUndefined();
+
+    const service = await manager.ensureService(SERVER_ID);
+
+    expect(service).toBeInstanceOf(PlaytimeService);
+    expect(connectMock).toHaveBeenCalledTimes(1);
+    expect(manager.getService(SERVER_ID)).toBe(service);
+  });
+
+  it("does not keep a service whose bring-up finishes after shutdown", async () => {
+    let release!: (rows: never[]) => void;
+    getOpenSessionsMock.mockReturnValue(
+      new Promise<never[]>((resolve) => {
+        release = resolve;
+      }),
+    );
+
+    const pending = manager.ensureService(SERVER_ID);
+    const shutdown = manager.shutdown();
+    release([]);
+
+    await expect(pending).rejects.toThrow(/shut down/);
+    await shutdown;
+    expect(manager.getService(SERVER_ID)).toBeUndefined();
+  });
+
+  it("refuses new bring-ups after shutdown", async () => {
+    await manager.shutdown();
+
+    await expect(manager.ensureService(SERVER_ID)).rejects.toThrow(/shut down/);
+    expect(getOpenSessionsMock).not.toHaveBeenCalled();
   });
 });
