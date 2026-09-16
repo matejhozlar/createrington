@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q, db } from "@/db";
-import { trpcError, auditActor, assertPatchNotEmpty } from "@/trpc/utils";
+import { findOrThrow, auditActor, assertPatchNotEmpty } from "@/trpc/utils";
 import { getServiceSync, Services } from "@/services";
 import config from "@/config";
 
@@ -87,10 +87,10 @@ export const autoMessagesRouter = router({
       .meta({ description: "Get a single auto-message config with messages" })
       .input(z.object({ id: z.number().int().positive() }))
       .query(async ({ input }) => {
-        const config = await Q.discord.auto.message.config.find({
-          id: input.id,
-        });
-        if (!config) throw trpcError.notFound("Config not found");
+        const config = await findOrThrow(
+          Q.discord.auto.message.config.find({ id: input.id }),
+          "Config not found",
+        );
 
         const messages = await Q.discord.auto.message
           .where({ configId: config.id })
@@ -157,10 +157,10 @@ export const autoMessagesRouter = router({
         }),
       )
       .mutation(async ({ input, ctx }) => {
-        const existing = await Q.discord.auto.message.config.find({
-          id: input.id,
-        });
-        if (!existing) throw trpcError.notFound("Config not found");
+        const existing = await findOrThrow(
+          Q.discord.auto.message.config.find({ id: input.id }),
+          "Config not found",
+        );
 
         const { id, ...updates } = input;
         assertPatchNotEmpty(updates);
@@ -182,10 +182,10 @@ export const autoMessagesRouter = router({
       .meta({ description: "Delete an auto-message config" })
       .input(z.object({ id: z.number().int().positive() }))
       .mutation(async ({ input, ctx }) => {
-        const existing = await Q.discord.auto.message.config.find({
-          id: input.id,
-        });
-        if (!existing) throw trpcError.notFound("Config not found");
+        const existing = await findOrThrow(
+          Q.discord.auto.message.config.find({ id: input.id }),
+          "Config not found",
+        );
 
         const service = getServiceSync(Services.AUTO_MESSAGE_SERVICE);
         service.stopConfig(input.id);
@@ -218,10 +218,10 @@ export const autoMessagesRouter = router({
         }),
       )
       .mutation(async ({ input }) => {
-        const config = await Q.discord.auto.message.config.find({
-          id: input.configId,
-        });
-        if (!config) throw trpcError.notFound("Config not found");
+        await findOrThrow(
+          Q.discord.auto.message.config.find({ id: input.configId }),
+          "Config not found",
+        );
 
         return await db.inTransaction(async (tx) => {
           const created = await tx.discord.auto.message.createAndReturn({
@@ -261,8 +261,10 @@ export const autoMessagesRouter = router({
         }),
       )
       .mutation(async ({ input }) => {
-        const existing = await Q.discord.auto.message.find({ id: input.id });
-        if (!existing) throw trpcError.notFound("Message not found");
+        await findOrThrow(
+          Q.discord.auto.message.find({ id: input.id }),
+          "Message not found",
+        );
 
         const { id, followups, ...updates } = input;
 
@@ -296,8 +298,10 @@ export const autoMessagesRouter = router({
       .meta({ description: "Delete a message" })
       .input(z.object({ id: z.number().int().positive() }))
       .mutation(async ({ input }) => {
-        const existing = await Q.discord.auto.message.find({ id: input.id });
-        if (!existing) throw trpcError.notFound("Message not found");
+        await findOrThrow(
+          Q.discord.auto.message.find({ id: input.id }),
+          "Message not found",
+        );
 
         await Q.discord.auto.message.delete({ id: input.id });
 

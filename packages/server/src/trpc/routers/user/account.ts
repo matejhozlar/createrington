@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { router, userProcedure } from "@/trpc/trpc";
-import { trpcError } from "@/trpc/utils";
+import { findOrThrow, trpcError } from "@/trpc/utils";
 import { Q } from "@/db";
 import { BalanceUtils } from "@/db/repositories/balance/utils";
 import { playerDeletionService } from "@/services/player/deletion";
@@ -15,8 +15,10 @@ export const accountRouter = router({
         "Get the authenticated user's account info including linked Minecraft profile and creation date",
     })
     .query(async ({ ctx }) => {
-      const player = await Q.player.find({ discordId: ctx.user.discordId });
-      if (!player) throw trpcError.notFound("Player not found");
+      const player = await findOrThrow(
+        Q.player.find({ discordId: ctx.user.discordId }),
+        "Player not found",
+      );
 
       return {
         discordId: player.discordId,
@@ -192,8 +194,10 @@ export const accountRouter = router({
     .mutation(async ({ ctx }) => {
       const { discordId } = ctx.user;
 
-      const player = await Q.player.find({ discordId });
-      if (!player) throw trpcError.notFound("Player not found");
+      const player = await findOrThrow(
+        Q.player.find({ discordId }),
+        "Player not found",
+      );
 
       await playerDeletionService.delete(
         { discordId },

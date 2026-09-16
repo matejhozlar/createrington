@@ -30,6 +30,14 @@ export function escapeLike(input: string): string {
 }
 
 /**
+ * Case-insensitive "contains" filter for a text column; LIKE wildcards in
+ * the needle are escaped so they match literally
+ */
+export function ilikeContains(needle: string): { $ilike: string } {
+  return { $ilike: `%${escapeLike(needle)}%` };
+}
+
+/**
  * Formats a Date as the local YYYY-MM-DD calendar day, the value shape of
  * date columns on both the read and the filter side
  */

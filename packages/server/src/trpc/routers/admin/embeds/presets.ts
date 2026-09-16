@@ -1,14 +1,16 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
-import { escapeLike } from "@/db/utils";
+import { ilikeContains } from "@/db/utils";
 import {
   paginationInput,
-  buildPagination,
+  paginate,
+  findOrThrow,
   trpcError,
   assertPatchNotEmpty,
 } from "@/trpc/utils";
 import { messagePayloadSchema } from "@createrington/shared/api/embed";
+import type { DiscordEmbedPresetFilters } from "@createrington/shared/db";
 import { payloadToStorage } from "./helpers";
 import { embedPresetCategoriesRouter } from "./preset-categories";
 import { embedPresetLinksRouter } from "./preset-links";
@@ -28,48 +30,33 @@ export const embedPresetsRouter = router({
       }),
     )
     .query(async ({ input }) => {
-      let query = Q.discord.embed.preset.where({});
-      let countQuery = Q.discord.embed.preset.where({});
-
+      const filters: DiscordEmbedPresetFilters = {};
       if (input.search) {
-        query = query.where({
-          name: { $ilike: `%${escapeLike(input.search)}%` },
-        });
-        countQuery = countQuery.where({
-          name: { $ilike: `%${escapeLike(input.search)}%` },
-        });
+        filters.name = ilikeContains(input.search);
+      } else if (input.categoryId === "uncategorized") {
+        filters.categoryId = { $exists: false };
       } else if (input.categoryId !== undefined) {
-        const filter =
-          input.categoryId === "uncategorized"
-            ? { categoryId: { $exists: false } }
-            : { categoryId: input.categoryId };
-        query = query.where(filter);
-        countQuery = countQuery.where(filter);
+        filters.categoryId = input.categoryId;
       }
 
-      const [presets, total] = await Promise.all([
-        query
-          .orderBy("updatedAt", "desc")
-          .paginate(input.page, input.limit)
-          .all(),
-        countQuery.count(),
-      ]);
+      const { rows: presets, pagination } = await paginate(
+        Q.discord.embed.preset,
+        filters,
+        input,
+        { orderBy: "updatedAt", orderDirection: "desc" },
+      );
 
-      return {
-        presets,
-        pagination: buildPagination(input.page, input.limit, total),
-      };
+      return { presets, pagination };
     }),
 
   get: adminProcedure
     .meta({ description: "Get a single embed preset" })
     .input(z.object({ id: z.number().int().positive() }))
     .query(async ({ input }) => {
-      const preset = await Q.discord.embed.preset.find({ id: input.id });
-
-      if (!preset) {
-        throw trpcError.notFound("Preset not found");
-      }
+      const preset = await findOrThrow(
+        Q.discord.embed.preset.find({ id: input.id }),
+        "Preset not found",
+      );
 
       return { preset };
     }),
@@ -120,10 +107,10 @@ export const embedPresetsRouter = router({
       }),
     )
     .mutation(async ({ input }) => {
-      const existing = await Q.discord.embed.preset.find({ id: input.id });
-      if (!existing) {
-        throw trpcError.notFound("Preset not found");
-      }
+      const existing = await findOrThrow(
+        Q.discord.embed.preset.find({ id: input.id }),
+        "Preset not found",
+      );
 
       if (input.name && input.name !== existing.name) {
         const nameConflict = await Q.discord.embed.preset.find({
@@ -155,10 +142,10 @@ export const embedPresetsRouter = router({
     .meta({ description: "Delete an embed preset" })
     .input(z.object({ id: z.number().int().positive() }))
     .mutation(async ({ input }) => {
-      const existing = await Q.discord.embed.preset.find({ id: input.id });
-      if (!existing) {
-        throw trpcError.notFound("Preset not found");
-      }
+      await findOrThrow(
+        Q.discord.embed.preset.find({ id: input.id }),
+        "Preset not found",
+      );
 
       await Q.discord.embed.preset.delete({ id: input.id });
 
@@ -176,12 +163,10 @@ export const embedPresetsRouter = router({
       }),
     )
     .mutation(async ({ input }) => {
-      const preset = await Q.discord.embed.preset.find({
-        id: input.presetId,
-      });
-      if (!preset) {
-        throw trpcError.notFound("Preset not found");
-      }
+      await findOrThrow(
+        Q.discord.embed.preset.find({ id: input.presetId }),
+        "Preset not found",
+      );
 
       await Q.discord.embed.preset.update(
         { id: input.presetId },

@@ -124,3 +124,49 @@ export function buildPagination(page: number, limit: number, total: number) {
     totalPages: Math.ceil(total / limit),
   };
 }
+
+interface PageSource<TEntity, TFilters> {
+  findAll(
+    filters: TFilters | undefined,
+    options: {
+      limit?: number;
+      offset?: number;
+      orderBy?: keyof TEntity;
+      orderDirection?: "asc" | "desc";
+    },
+  ): Promise<TEntity[]>;
+  count(filters?: TFilters): Promise<number>;
+}
+
+/**
+ * Runs the page query and the total count from one filter object, so the
+ * rows and the pagination metadata can never disagree on the predicate.
+ */
+export async function paginate<TEntity, TFilters>(
+  source: PageSource<TEntity, TFilters>,
+  filters: TFilters,
+  input: { page: number; limit: number },
+  order?: { orderBy?: keyof TEntity; orderDirection?: "asc" | "desc" },
+) {
+  const [rows, total] = await Promise.all([
+    source.findAll(filters, {
+      ...order,
+      limit: input.limit,
+      offset: input.page * input.limit,
+    }),
+    source.count(filters),
+  ]);
+  return { rows, pagination: buildPagination(input.page, input.limit, total) };
+}
+
+/** Awaits a nullable single-row lookup and maps a missing row to NOT_FOUND. */
+export async function findOrThrow<T>(
+  lookup: Promise<T | null | undefined>,
+  message: string,
+): Promise<T> {
+  const row = await lookup;
+  if (row === null || row === undefined) {
+    throw trpcError.notFound(message);
+  }
+  return row;
+}

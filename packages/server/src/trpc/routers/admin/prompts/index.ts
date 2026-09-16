@@ -4,6 +4,7 @@ import { Q } from "@/db";
 import {
   paginationInput,
   buildPagination,
+  findOrThrow,
   trpcError,
   auditActor,
 } from "@/trpc/utils";
@@ -102,8 +103,10 @@ export const adminPromptsRouter = router({
     })
     .input(z.object({ id: z.number().int().positive() }))
     .query(async ({ input }) => {
-      const prompt = await Q.player.prompt.find({ id: input.id });
-      if (!prompt) throw trpcError.notFound("Prompt not found");
+      const prompt = await findOrThrow(
+        Q.player.prompt.find({ id: input.id }),
+        "Prompt not found",
+      );
       const responses = await Q.player.prompt.response.findByPromptIdWithPlayer(
         input.id,
       );

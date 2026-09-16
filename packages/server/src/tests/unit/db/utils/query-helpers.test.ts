@@ -3,6 +3,7 @@ import {
   formatCriteria,
   createNotFoundError,
   escapeLike,
+  ilikeContains,
   calendarDay,
 } from "@/db/utils/query-helpers";
 import { NotFoundError } from "@/db/utils/errors";
@@ -75,5 +76,15 @@ describe("escapeLike", () => {
 
   it("returns an empty string unchanged", () => {
     expect(escapeLike("")).toBe("");
+  });
+});
+
+describe("ilikeContains", () => {
+  it("wraps the needle in wildcards", () => {
+    expect(ilikeContains("steve")).toEqual({ $ilike: "%steve%" });
+  });
+
+  it("escapes wildcards inside the needle so they match literally", () => {
+    expect(ilikeContains("100%_x")).toEqual({ $ilike: "%100\\%\\_x%" });
   });
 });

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
-import { buildPagination, paginationInput } from "@/trpc/utils";
+import { paginate, paginationInput } from "@/trpc/utils";
 
 /** Sandbox consumer players router: lists registered players and resolves their names from Minecraft UUIDs. */
 export const sandboxPlayersRouter = router({
@@ -16,17 +16,17 @@ export const sandboxPlayersRouter = router({
       }),
     )
     .query(async ({ input }) => {
-      const [players, total] = await Promise.all([
-        Q.player.orderBy("id", "asc").paginate(input.page, input.limit).all(),
-        Q.player.count(),
-      ]);
+      const { rows, pagination } = await paginate(Q.player, {}, input, {
+        orderBy: "id",
+        orderDirection: "asc",
+      });
 
       return {
-        players: players.map((p) => ({
+        players: rows.map((p) => ({
           uuid: p.minecraftUuid,
           username: p.minecraftUsername,
         })),
-        pagination: buildPagination(input.page, input.limit, total),
+        pagination,
       };
     }),
 

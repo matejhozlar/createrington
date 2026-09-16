@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
-import { trpcError } from "@/trpc/utils";
+import { findOrThrow } from "@/trpc/utils";
 
 export const embedPresetLinksRouter = router({
   list: adminProcedure
@@ -19,12 +19,10 @@ export const embedPresetLinksRouter = router({
     .meta({ description: "Unlink a message from a preset" })
     .input(z.object({ id: z.number().int().positive() }))
     .mutation(async ({ input }) => {
-      const link = await Q.discord.embed.preset.message.find({
-        id: input.id,
-      });
-      if (!link) {
-        throw trpcError.notFound("Link not found");
-      }
+      await findOrThrow(
+        Q.discord.embed.preset.message.find({ id: input.id }),
+        "Link not found",
+      );
 
       await Q.discord.embed.preset.message.delete({ id: input.id });
 

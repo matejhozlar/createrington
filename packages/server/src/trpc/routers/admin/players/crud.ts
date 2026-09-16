@@ -3,11 +3,12 @@ import { router, adminProcedure } from "@/trpc/trpc";
 import { playerService } from "@/services/player";
 import { playerDeletionService } from "@/services/player/deletion";
 import { Q } from "@/db";
-import { escapeLike } from "@/db/utils";
+import { ilikeContains } from "@/db/utils";
 import { BalanceUtils } from "@/db/repositories/balance/utils";
 import {
   parsePlayerId,
   paginationInput,
+  paginate,
   buildPagination,
   trpcError,
 } from "@/trpc/utils";
@@ -50,16 +51,10 @@ export const playersRouter = router({
     .query(async ({ input }) => {
       const filters: PlayerFilters = {};
 
-      if (input.discordId) {
-        filters.discordId = {
-          $ilike: `%${escapeLike(input.discordId)}%`,
-        };
-      }
+      if (input.discordId) filters.discordId = ilikeContains(input.discordId);
       if (input.minecraftUuid) filters.minecraftUuid = input.minecraftUuid;
       if (input.minecraftUsername) {
-        filters.minecraftUsername = {
-          $ilike: `%${escapeLike(input.minecraftUsername)}%`,
-        };
+        filters.minecraftUsername = ilikeContains(input.minecraftUsername);
       }
       if (input.online !== undefined) filters.online = input.online;
 
@@ -110,15 +105,12 @@ export const playersRouter = router({
         filters.minecraftUuid = { $in: uuidsWithViolations };
       }
 
-      const [players, total] = await Promise.all([
-        playerService.core.getAll(filters, {
-          orderBy: input.orderBy,
-          orderDirection: input.orderDirection,
-          limit: input.limit,
-          offset: input.page * input.limit,
-        }),
-        playerService.core.count(filters),
-      ]);
+      const { rows: players, pagination } = await paginate(
+        Q.player,
+        filters,
+        input,
+        { orderBy: input.orderBy, orderDirection: input.orderDirection },
+      );
 
       let enrichedPlayers: (Player & {
         activeStrikeCount?: number;
@@ -148,10 +140,7 @@ export const playersRouter = router({
         }));
       }
 
-      return {
-        players: enrichedPlayers,
-        pagination: buildPagination(input.page, input.limit, total),
-      };
+      return { players: enrichedPlayers, pagination };
     }),
 
   get: adminProcedure

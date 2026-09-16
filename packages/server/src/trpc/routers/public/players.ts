@@ -1,11 +1,12 @@
 import { router, publicProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
-import { escapeLike } from "@/db/utils";
+import { ilikeContains } from "@/db/utils";
 import { z } from "zod";
 import {
   parsePlayerId,
   paginationInput,
-  buildPagination,
+  paginate,
+  findOrThrow,
   trpcError,
 } from "@/trpc/utils";
 import { getMojangUsername } from "@/utils/mojang-profile";
@@ -52,10 +53,10 @@ export const playersRouter = router({
         );
       }
 
-      const player = await Q.player.find(identifier);
-      if (!player) {
-        throw trpcError.notFound(`Player with ID ${input.id} not found`);
-      }
+      const player = await findOrThrow(
+        Q.player.find(identifier),
+        `Player with ID ${input.id} not found`,
+      );
 
       return toPublicPlayer(player);
     }),
@@ -102,26 +103,16 @@ export const playersRouter = router({
       const filters: PlayerFilters = {};
       if (input.minecraftUuid) filters.minecraftUuid = input.minecraftUuid;
       if (input.minecraftUsername) {
-        filters.minecraftUsername = {
-          $ilike: `%${escapeLike(input.minecraftUsername)}%`,
-        };
+        filters.minecraftUsername = ilikeContains(input.minecraftUsername);
       }
       if (input.online !== undefined) filters.online = input.online;
 
-      const [players, total] = await Promise.all([
-        Q.player.findAll(filters, {
-          orderBy: input.orderBy,
-          orderDirection: input.orderDirection,
-          limit: input.limit,
-          offset: input.page * input.limit,
-        }),
-        Q.player.count(filters),
-      ]);
+      const { rows, pagination } = await paginate(Q.player, filters, input, {
+        orderBy: input.orderBy,
+        orderDirection: input.orderDirection,
+      });
 
-      return {
-        players: players.map(toPublicPlayer),
-        pagination: buildPagination(input.page, input.limit, total),
-      };
+      return { players: rows.map(toPublicPlayer), pagination };
     }),
 
   count: publicProcedure

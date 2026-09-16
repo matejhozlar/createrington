@@ -1,16 +1,18 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
-import { escapeLike } from "@/db/utils";
+import { ilikeContains } from "@/db/utils";
 import {
   paginationInput,
-  buildPagination,
+  paginate,
+  findOrThrow,
   trpcError,
   auditActor,
   assertPatchNotEmpty,
 } from "@/trpc/utils";
 import { container, Services } from "@/services/container";
 import { FaqService } from "@/services/discord/faq";
+import type { FaqEntryFilters } from "@createrington/shared/db";
 
 const matchModeSchema = z.enum(["keywords", "regex"]).default("keywords");
 
@@ -65,51 +67,28 @@ export const faqRouter = router({
       }),
     )
     .query(async ({ input }) => {
-      let query = Q.faq.entry.where({});
+      const filters: FaqEntryFilters = {};
+      if (input.enabled !== undefined) filters.enabled = input.enabled;
+      if (input.search) filters.title = ilikeContains(input.search);
 
-      if (input.enabled !== undefined) {
-        query = query.where({ enabled: input.enabled });
-      }
+      const { rows: entries, pagination } = await paginate(
+        Q.faq.entry,
+        filters,
+        input,
+        { orderBy: input.orderBy, orderDirection: input.orderDirection },
+      );
 
-      if (input.search) {
-        query = query.where({
-          title: { $ilike: `%${escapeLike(input.search)}%` },
-        });
-      }
-
-      let countQuery = Q.faq.entry.where({});
-      if (input.enabled !== undefined) {
-        countQuery = countQuery.where({ enabled: input.enabled });
-      }
-      if (input.search) {
-        countQuery = countQuery.where({
-          title: { $ilike: `%${escapeLike(input.search)}%` },
-        });
-      }
-
-      const [entries, total] = await Promise.all([
-        query
-          .orderBy(input.orderBy, input.orderDirection)
-          .paginate(input.page, input.limit)
-          .all(),
-        countQuery.count(),
-      ]);
-
-      return {
-        entries,
-        pagination: buildPagination(input.page, input.limit, total),
-      };
+      return { entries, pagination };
     }),
 
   get: adminProcedure
     .meta({ description: "Get a single FAQ entry by ID" })
     .input(z.object({ id: z.number().int().positive() }))
     .query(async ({ input }) => {
-      const entry = await Q.faq.entry.find({ id: input.id });
-
-      if (!entry) {
-        throw trpcError.notFound("FAQ entry not found");
-      }
+      const entry = await findOrThrow(
+        Q.faq.entry.find({ id: input.id }),
+        "FAQ entry not found",
+      );
 
       return { entry };
     }),
@@ -164,10 +143,10 @@ export const faqRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      const existing = await Q.faq.entry.find({ id: input.id });
-      if (!existing) {
-        throw trpcError.notFound("FAQ entry not found");
-      }
+      const existing = await findOrThrow(
+        Q.faq.entry.find({ id: input.id }),
+        "FAQ entry not found",
+      );
 
       const effectiveMode = input.matchMode ?? existing.matchMode;
       const effectivePattern = input.pattern ?? existing.pattern;
@@ -193,10 +172,10 @@ export const faqRouter = router({
     .meta({ description: "Delete a FAQ entry" })
     .input(z.object({ id: z.number().int().positive() }))
     .mutation(async ({ input, ctx }) => {
-      const existing = await Q.faq.entry.find({ id: input.id });
-      if (!existing) {
-        throw trpcError.notFound("FAQ entry not found");
-      }
+      const existing = await findOrThrow(
+        Q.faq.entry.find({ id: input.id }),
+        "FAQ entry not found",
+      );
 
       await Q.faq.entry.delete({ id: input.id });
 

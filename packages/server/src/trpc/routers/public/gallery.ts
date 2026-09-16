@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { router, publicProcedure, middleware } from "@/trpc/trpc";
 import { Q } from "@/db";
-import { buildPagination, paginationInput, trpcError } from "@/trpc/utils";
+import { paginate, paginationInput, trpcError } from "@/trpc/utils";
 import { createRateLimit } from "@/trpc/middleware/rate-limit";
 import { featureFlagService, FeatureFlags } from "@/services/feature-flag";
 import { galleryImageUrls } from "@/services/gallery/urls";
@@ -95,18 +95,13 @@ export const publicGalleryRouter = router({
     })
     .input(z.object(paginationInput({ defaultLimit: 24, maxLimit: 48 })))
     .query(async ({ input }) => {
-      const [rows, total] = await Promise.all([
-        Q.gallery.submission
-          .where(publishedFilters)
-          .orderBy("reviewedAt", "desc")
-          .paginate(input.page, input.limit)
-          .all(),
-        Q.gallery.submission.count(publishedFilters),
-      ]);
+      const { rows, pagination } = await paginate(
+        Q.gallery.submission,
+        publishedFilters,
+        input,
+        { orderBy: "reviewedAt", orderDirection: "desc" },
+      );
 
-      return {
-        items: await serialize(rows),
-        pagination: buildPagination(input.page, input.limit, total),
-      };
+      return { items: await serialize(rows), pagination };
     }),
 });
