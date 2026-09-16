@@ -293,12 +293,21 @@ export abstract class BaseQueries<
     });
   }
 
+  private isWritableField(key: string): boolean {
+    return !this.GENERATED_FIELDS?.includes(key);
+  }
+
   private writableEntries(data: object): [string, unknown][] {
-    const generated = this.GENERATED_FIELDS;
     const entries = Object.entries(data);
-    return generated && generated.length > 0
-      ? entries.filter(([key]) => !generated.includes(key))
-      : entries;
+    const dropped = entries
+      .map(([key]) => key)
+      .filter((key) => !this.isWritableField(key));
+    if (dropped.length > 0) {
+      logger.debug(
+        `Dropped generated column(s) ${dropped.join(", ")} from a ${this.table} write payload`,
+      );
+    }
+    return entries.filter(([key]) => this.isWritableField(key));
   }
 
   private serializeWriteValue(column: string, value: unknown): unknown {
@@ -1307,7 +1316,10 @@ export abstract class BaseQueries<
       | Array<keyof NonNullable<TConfig["Create"]>>,
     updateFields?: Array<keyof NonNullable<TConfig["Create"]>>,
   ): Promise<TConfig["Entity"]> {
-    if (updateFields && updateFields.length === 0) {
+    const writableUpdateFields = updateFields?.filter((key) =>
+      this.isWritableField(key as string),
+    );
+    if (writableUpdateFields && writableUpdateFields.length === 0) {
       throw new Error(
         `upsert on ${this.table} requires at least one field in updateFields`,
       );
@@ -1326,8 +1338,8 @@ export abstract class BaseQueries<
           .join(", ")
       : this.getColumnName(conflictTarget as string);
 
-    const fieldsToUpdate = updateFields
-      ? updateFields.map((key) => this.getColumnName(key as string))
+    const fieldsToUpdate = writableUpdateFields
+      ? writableUpdateFields.map((key) => this.getColumnName(key as string))
       : createMappings.map((m) => m.column);
 
     const updateClause = fieldsToUpdate

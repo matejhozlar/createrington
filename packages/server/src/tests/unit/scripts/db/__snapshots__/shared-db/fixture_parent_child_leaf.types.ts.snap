@@ -25,6 +25,7 @@ export interface FixtureParentChildLeafRow {
   avg_seconds: bigint | null;
   weight: number;
   archived_at: Date | null;
+  updated_at: Date;
 }
 
 /**
@@ -56,6 +57,7 @@ export interface FixtureParentChildLeafCreate {
   totalSeconds?: bigint;
   sessions?: number;
   archivedAt?: Date | null;
+  updatedAt?: Date;
 }
 
 /**

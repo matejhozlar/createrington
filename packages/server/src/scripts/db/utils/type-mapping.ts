@@ -106,7 +106,7 @@ function getBaseType(
 /**
  * Determines the appropriate TypeScript type for PostgreSQL NUMERIC columns
  *
- * Analyzes precision and scale to decide between 'number', 'bigint', or 'string'
+ * Analyzes precision and scale to decide between 'number' or 'string'
  * to prevent data loss from JavaScript's numeric limitations:
  * - No declared precision (arbitrary precision) → string
  * - Numbers with decimals → string (to preserve exact decimal values)
@@ -148,7 +148,7 @@ function getNumericType(
 
   // If precision is very large, use string to avoid overflow
   // (JavaScript's safe integer range is -(2^53-1) to (2^53-1), ~15-16 digits)
-  if (precision !== null && precision > 15) {
+  if (precision > 15) {
     return "string";
   }
 

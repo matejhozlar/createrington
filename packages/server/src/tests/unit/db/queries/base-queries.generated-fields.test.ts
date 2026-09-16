@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import type { Pool } from "pg";
 import { BaseQueries } from "@/db/queries/base.queries";
 
@@ -30,9 +30,13 @@ class PlainQueries extends BaseQueries<TestConfig> {
   }
 }
 
-const db = {} as Pool;
-const summary = new SummaryQueries(db);
-const plain = new PlainQueries(db);
+function fakeDb() {
+  const query = vi.fn().mockResolvedValue({ rows: [{}], rowCount: 1 });
+  return { db: { query } as unknown as Pool, query };
+}
+
+const summary = new SummaryQueries({} as Pool);
+const plain = new PlainQueries({} as Pool);
 
 describe("GENERATED_FIELDS", () => {
   it("drops generated fields from update payloads", () => {
@@ -54,6 +58,39 @@ describe("GENERATED_FIELDS", () => {
     expect(() => summary.updateMapping({ avgSessionSeconds: 5n })).toThrow(
       /requires at least one field/,
     );
+  });
+
+  it("rejects a create that only sets generated fields", () => {
+    expect(() => summary.createMapping({ avgSessionSeconds: 5n })).toThrow(
+      /requires at least one field/,
+    );
+  });
+
+  it("keeps generated fields out of the upsert update clause", async () => {
+    const { db, query } = fakeDb();
+
+    await new SummaryQueries(db).upsert(
+      { playerMinecraftUuid: "uuid-1", totalSeconds: 10n },
+      "playerMinecraftUuid",
+      ["totalSeconds", "avgSessionSeconds"],
+    );
+
+    const sql = query.mock.calls[0][0] as string;
+    expect(sql).toMatch(
+      /DO UPDATE SET total_seconds = EXCLUDED\.total_seconds\s+RETURNING \*/,
+    );
+  });
+
+  it("rejects upsert update fields that are all generated", async () => {
+    const { db } = fakeDb();
+
+    await expect(
+      new SummaryQueries(db).upsert(
+        { playerMinecraftUuid: "uuid-1" },
+        "playerMinecraftUuid",
+        ["avgSessionSeconds"],
+      ),
+    ).rejects.toThrow(/requires at least one field in updateFields/);
   });
 
   it("leaves payloads untouched when the table declares no generated fields", () => {

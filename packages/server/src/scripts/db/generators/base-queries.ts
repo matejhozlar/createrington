@@ -125,7 +125,7 @@ export class ${className}BaseQueries extends BaseQueries<{
    * Used by extractIdentifier to filter full entities to identifiers only and
    * to reject partial composite identifiers.
    */
-  protected readonly IDENTIFIER_GROUPS = ${identifierGroupsLiteral};${generatedFieldsLiteral}${hasUpdatedAt ? `\n  protected readonly AUTO_SET_UPDATED_AT = true;` : ""}
+  protected readonly IDENTIFIER_GROUPS = ${identifierGroupsLiteral};${hasUpdatedAt ? `\n  protected readonly AUTO_SET_UPDATED_AT = true;` : ""}${generatedFieldsLiteral}
 
   constructor(db: Pool | PoolClient) {
     super(db);
