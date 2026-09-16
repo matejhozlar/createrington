@@ -5,6 +5,7 @@ import { ilikeContains } from "@/db/utils";
 import {
   paginationInput,
   paginateQuery,
+  sortDirection,
   findOrThrow,
   trpcError,
   auditActor,
@@ -63,7 +64,7 @@ export const faqRouter = router({
         search: z.string().optional(),
         ...paginationInput(),
         orderBy: z.enum(["priority", "title", "createdAt"]).default("priority"),
-        orderDirection: z.enum(["asc", "desc"]).default("desc"),
+        orderDirection: sortDirection().default("desc"),
       }),
     )
     .query(async ({ input }) => {

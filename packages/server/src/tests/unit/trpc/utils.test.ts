@@ -3,7 +3,18 @@ import { TRPCError } from "@trpc/server";
 
 vi.mock("@/db", () => ({}));
 
-import { findOrThrow, paginateQuery } from "@/trpc/utils";
+import { findOrThrow, paginateQuery, sortDirection } from "@/trpc/utils";
+
+describe("sortDirection", () => {
+  it("accepts asc and desc", () => {
+    expect(sortDirection().parse("asc")).toBe("asc");
+    expect(sortDirection().parse("desc")).toBe("desc");
+  });
+
+  it("carries no default of its own", () => {
+    expect(sortDirection().safeParse(undefined).success).toBe(false);
+  });
+});
 
 describe("findOrThrow", () => {
   it("returns the row when the lookup resolves to one", async () => {

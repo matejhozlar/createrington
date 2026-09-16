@@ -2,7 +2,7 @@ import { z } from "zod";
 import { adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
 import { mcUuid } from "@/utils/zod-schemas";
-import { paginationInput, buildPagination } from "@/trpc/utils";
+import { paginationInput, buildPagination, sortDirection } from "@/trpc/utils";
 
 export const chunkProcedures = {
   chunkKpis: adminProcedure
@@ -81,7 +81,7 @@ export const chunkProcedures = {
         sortBy: z
           .enum(["dimension", "x", "z", "forceloadable", "active"])
           .optional(),
-        sortDir: z.enum(["asc", "desc"]).optional(),
+        sortDir: sortDirection().optional(),
         ...paginationInput({ defaultLimit: 50 }),
       }),
     )
@@ -132,7 +132,7 @@ export const chunkProcedures = {
             "lastSyncedAt",
           ])
           .optional(),
-        sortDir: z.enum(["asc", "desc"]).optional(),
+        sortDir: sortDirection().optional(),
         ...paginationInput({ defaultLimit: 50 }),
       }),
     )

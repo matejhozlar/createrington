@@ -9,6 +9,7 @@ import {
   parsePlayerId,
   paginationInput,
   paginateQuery,
+  sortDirection,
   buildPagination,
   trpcError,
 } from "@/trpc/utils";
@@ -43,7 +44,7 @@ export const playersRouter = router({
         orderBy: z
           .enum(["createdAt", "minecraftUsername", "updatedAt", "lastSeen"])
           .default("createdAt"),
-        orderDirection: z.enum(["asc", "desc"]).default("desc"),
+        orderDirection: sortDirection().default("desc"),
         includeStrikeCounts: z.boolean().default(false),
         includeBanCounts: z.boolean().default(false),
       }),

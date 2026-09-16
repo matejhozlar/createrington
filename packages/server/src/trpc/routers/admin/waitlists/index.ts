@@ -3,7 +3,12 @@ import { router, adminProcedure } from "@/trpc/trpc";
 import { Q, waitlistRepo } from "@/db";
 import { waitlistService } from "@/services/waitlist/waitlist.service";
 import { ilikeContains } from "@/db/utils";
-import { paginationInput, paginateQuery, rethrowTrpc } from "@/trpc/utils";
+import {
+  paginationInput,
+  paginateQuery,
+  sortDirection,
+  rethrowTrpc,
+} from "@/trpc/utils";
 import type { WaitlistEntryFilters } from "@createrington/shared/db";
 
 /** Admin waitlists router: stats, list, detail, promote, and delete waitlist entries. */
@@ -32,7 +37,7 @@ export const waitlistsRouter = router({
         orderBy: z
           .enum(["createdAt", "queuedAt", "promotedAt", "discordUsername"])
           .default("queuedAt"),
-        orderDirection: z.enum(["asc", "desc"]).default("desc"),
+        orderDirection: sortDirection().default("desc"),
       }),
     )
     .query(async ({ input }) => {
