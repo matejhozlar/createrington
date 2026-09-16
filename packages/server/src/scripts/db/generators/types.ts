@@ -68,6 +68,7 @@ export function generateTypes(
   const enumImports = generateEnumImports(usedEnums);
 
   return `import type { CamelCaseKeys } from "../";
+import type { FilterValue } from "./base.types";
 ${enumImports}
 /**
  * Database representation of ${table.tableName} table
@@ -605,9 +606,7 @@ function generateIdentifierType(
  * ```
  */
 function generateFiltersType(table: TableInfo, className: string): string {
-  return `import type { FilterValue } from "./base.types";
-
-export type ${className}Filters = {
+  return `export type ${className}Filters = {
   [K in keyof ${className}]?: FilterValue<${className}[K]>;
 };`;
 }

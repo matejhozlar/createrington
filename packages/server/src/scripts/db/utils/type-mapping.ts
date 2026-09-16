@@ -108,6 +108,7 @@ function getBaseType(
  *
  * Analyzes precision and scale to decide between 'number', 'bigint', or 'string'
  * to prevent data loss from JavaScript's numeric limitations:
+ * - No declared precision (arbitrary precision) → string
  * - Numbers with decimals → string (to preserve exact decimal values)
  * - Very large integers (>15 digits) → string (to avoid overflow)
  * - Safe integers → number (for performance and convenience)
@@ -127,13 +128,18 @@ function getBaseType(
  * getNumericType(10, 2);   // Returns: 'string' (has decimals)
  * getNumericType(18, 0);   // Returns: 'string' (precision > 15)
  * getNumericType(10, 0);   // Returns: 'number' (safe integer)
- * getNumericType(null, null); // Returns: 'number' (default)
+ * getNumericType(null, null); // Returns: 'string' (unconstrained numeric)
  * ```
  */
 function getNumericType(
   precision: number | null,
   scale: number | null,
 ): string {
+  // An unconstrained numeric is arbitrary precision, so nothing fits a double
+  if (precision === null) {
+    return "string";
+  }
+
   // If has decimal places, use string to avoid precision loss
   // (JavaScript numbers cannot exactly represent many decimal values)
   if (scale !== null && scale > 0) {

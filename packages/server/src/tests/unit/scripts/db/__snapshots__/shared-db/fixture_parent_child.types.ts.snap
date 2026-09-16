@@ -1,4 +1,5 @@
 import type { CamelCaseKeys } from "../";
+import type { FilterValue } from "./base.types";
 import type { FixtureSource } from "./database.types";
 
 /**
@@ -19,7 +20,7 @@ export interface FixtureParentChildRow {
   amount: string; // numeric(10, 2)
   quantity: number; // numeric(8, 0)
   ledger: string | null; // numeric(20, 0)
-  ratio: number | null;
+  ratio: string | null;
   big_amount: bigint;
   note: string | null;
   created_at: Date;
@@ -50,7 +51,7 @@ export interface FixtureParentChildCreate {
   amount: string;
   quantity?: number;
   ledger?: string | null;
-  ratio?: number | null;
+  ratio?: string | null;
   bigAmount?: bigint;
   note?: string | null;
   createdAt?: Date;
@@ -72,8 +73,6 @@ export type FixtureParentChildIdentifier = { parentId: number; childKey: string 
  * pattern matching, and null checks. Each field accepts FilterValue<T>
  * which includes direct values and operator objects.
  */
-import type { FilterValue } from "./base.types";
-
 export type FixtureParentChildFilters = {
   [K in keyof FixtureParentChild]?: FilterValue<FixtureParentChild[K]>;
 };

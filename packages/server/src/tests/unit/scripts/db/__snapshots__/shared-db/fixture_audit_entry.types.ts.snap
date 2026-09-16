@@ -1,4 +1,5 @@
 import type { CamelCaseKeys } from "../";
+import type { FilterValue } from "./base.types";
 
 /**
  * Database representation of fixture_audit_entry table
@@ -60,8 +61,6 @@ export type FixtureAuditEntryIdentifier = { id: number } | { actorId: string; ac
  * pattern matching, and null checks. Each field accepts FilterValue<T>
  * which includes direct values and operator objects.
  */
-import type { FilterValue } from "./base.types";
-
 export type FixtureAuditEntryFilters = {
   [K in keyof FixtureAuditEntry]?: FilterValue<FixtureAuditEntry[K]>;
 };

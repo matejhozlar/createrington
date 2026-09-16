@@ -1,7 +1,7 @@
 import "@/logger.global";
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 /**
  * Database type generation orchestrator
  *
@@ -486,7 +486,10 @@ export default generate;
  * #    - src/db/queries/player/balance/index.ts
  * ```
  */
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
   generate()
     .then((result) => {
       console.log(`[generate] Generated ${result.files.length} files`);

@@ -116,7 +116,7 @@ async function main() {
       console.log("[generate] Formatting generated files...");
       execSync(`npx prettier --write "src/db/queries"`, {
         cwd: serverRoot,
-        stdio: "ignore",
+        stdio: ["ignore", "ignore", "inherit"],
       });
     } catch {
       console.warn("[generate] Prettier formatting failed (non-fatal)");

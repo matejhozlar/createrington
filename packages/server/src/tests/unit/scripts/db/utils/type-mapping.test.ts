@@ -59,8 +59,12 @@ describe("pgTypeToTsType", () => {
       expect(pgTypeToTsType("numeric", false, 15, 0)).toBe("number");
     });
 
-    it("defaults to 'number' when precision and scale are null", () => {
-      expect(pgTypeToTsType("numeric", false, null, null)).toBe("number");
+    it("uses 'string' when no precision is declared (arbitrary precision)", () => {
+      expect(pgTypeToTsType("numeric", false, null, null)).toBe("string");
+    });
+
+    it("treats a null scale as 0 when precision is declared", () => {
+      expect(pgTypeToTsType("numeric", false, 10, null)).toBe("number");
     });
 
     it("composes nullability with numeric precision rules", () => {

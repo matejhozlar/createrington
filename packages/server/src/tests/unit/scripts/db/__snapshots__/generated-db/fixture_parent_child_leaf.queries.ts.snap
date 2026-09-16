@@ -37,6 +37,9 @@ export class FixtureParentChildLeafBaseQueries extends BaseQueries<{
    */
   protected readonly IDENTIFIER_GROUPS = [['parentId', 'childKey', 'leafNo'], ['token']];
 
+  /** Columns the database computes itself; stripped from create and update payloads */
+  protected readonly GENERATED_FIELDS = ['avgSeconds', 'weight'];
+
   constructor(db: Pool | PoolClient) {
     super(db);
   }
