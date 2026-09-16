@@ -1,9 +1,9 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
-import { waitlistRepo } from "@/db";
+import { Q, waitlistRepo } from "@/db";
 import { waitlistService } from "@/services/waitlist/waitlist.service";
-import { escapeLike } from "@/db/utils";
-import { paginationInput, buildPagination, rethrowTrpc } from "@/trpc/utils";
+import { ilikeContains } from "@/db/utils";
+import { paginationInput, paginateQuery, rethrowTrpc } from "@/trpc/utils";
 import type { WaitlistEntryFilters } from "@createrington/shared/db";
 
 /** Admin waitlists router: stats, list, detail, promote, and delete waitlist entries. */
@@ -40,26 +40,18 @@ export const waitlistsRouter = router({
 
       if (input.status) filters.status = input.status;
       if (input.discordUsername) {
-        filters.discordUsername = {
-          $ilike: `%${escapeLike(input.discordUsername)}%`,
-        };
+        filters.discordUsername = ilikeContains(input.discordUsername);
       }
       if (input.discordId) filters.discordId = input.discordId;
 
-      const [entries, total] = await Promise.all([
-        waitlistRepo.getAll(filters, {
-          orderBy: input.orderBy,
-          orderDirection: input.orderDirection,
-          limit: input.limit,
-          offset: input.page * input.limit,
-        }),
-        waitlistRepo.count(filters),
-      ]);
+      const { rows: entries, pagination } = await paginateQuery(
+        Q.waitlist.entry,
+        filters,
+        input,
+        { orderBy: input.orderBy, orderDirection: input.orderDirection },
+      );
 
-      return {
-        entries,
-        pagination: buildPagination(input.page, input.limit, total),
-      };
+      return { entries, pagination };
     }),
 
   get: adminProcedure

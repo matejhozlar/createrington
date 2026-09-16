@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
-import { parsePlayerId, trpcError } from "@/trpc/utils";
+import { parsePlayerId, findOrThrow } from "@/trpc/utils";
 
 /** Admin minecraft stats router: fetch per-server JSONB stats for a player, and search stats across all players. */
 export const minecraftStatsRouter = router({
@@ -18,10 +18,10 @@ export const minecraftStatsRouter = router({
     .query(async ({ input }) => {
       const identifier = parsePlayerId(input.id);
 
-      const player = await Q.player.find(identifier);
-      if (!player) {
-        throw trpcError.notFound("Player not found");
-      }
+      const player = await findOrThrow(
+        Q.player.find(identifier),
+        "Player not found",
+      );
 
       const stats = await Q.player.minecraft.stats.findAll(
         { minecraftUuid: player.minecraftUuid },

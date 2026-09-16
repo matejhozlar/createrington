@@ -4,10 +4,7 @@ import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
 import { ButtonPresets } from "@/discord/embeds/presets/buttons";
 import { ActionRowBuilder, type ButtonBuilder } from "discord.js";
-import type {
-  WaitlistEntry,
-  WaitlistEntryFilters,
-} from "@createrington/shared/db";
+import type { WaitlistEntry } from "@createrington/shared/db";
 import { settings } from "@/services/settings";
 import { DatabaseTable } from "@/generated/db";
 import { AdminEdit } from "@/types";
@@ -84,24 +81,6 @@ export class WaitlistRepository {
   /** Fetch a single waitlist entry by ID for the admin panel detail view. */
   async getDetailed(entryId: number): Promise<WaitlistEntry> {
     return await Q.waitlist.entry.get({ id: entryId });
-  }
-
-  /** Filtered, paginated waitlist list for the admin list view. */
-  async getAll(
-    filters?: WaitlistEntryFilters,
-    options?: {
-      orderBy?: keyof WaitlistEntry;
-      orderDirection?: "asc" | "desc";
-      limit?: number;
-      offset?: number;
-    },
-  ): Promise<WaitlistEntry[]> {
-    return await Q.waitlist.entry.findAll(filters, options);
-  }
-
-  /** Count of waitlist entries matching the given filters. */
-  async count(filters?: WaitlistEntryFilters): Promise<number> {
-    return await Q.waitlist.entry.count(filters);
   }
 
   /** Hard-delete a waitlist entry and write the matching admin_log_action in one transaction. */

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
-import { trpcError, assertPatchNotEmpty } from "@/trpc/utils";
+import { findOrThrow, trpcError, assertPatchNotEmpty } from "@/trpc/utils";
 
 export const embedPresetCategoriesRouter = router({
   list: adminProcedure
@@ -58,12 +58,10 @@ export const embedPresetCategoriesRouter = router({
       }),
     )
     .mutation(async ({ input }) => {
-      const existing = await Q.discord.embed.preset.category.find({
-        id: input.id,
-      });
-      if (!existing) {
-        throw trpcError.notFound("Category not found");
-      }
+      const existing = await findOrThrow(
+        Q.discord.embed.preset.category.find({ id: input.id }),
+        "Category not found",
+      );
 
       if (input.name && input.name !== existing.name) {
         const nameConflict = await Q.discord.embed.preset.category.find({
@@ -90,12 +88,10 @@ export const embedPresetCategoriesRouter = router({
     })
     .input(z.object({ id: z.number().int().positive() }))
     .mutation(async ({ input }) => {
-      const existing = await Q.discord.embed.preset.category.find({
-        id: input.id,
-      });
-      if (!existing) {
-        throw trpcError.notFound("Category not found");
-      }
+      await findOrThrow(
+        Q.discord.embed.preset.category.find({ id: input.id }),
+        "Category not found",
+      );
 
       await Q.discord.embed.preset.category.delete({ id: input.id });
 
