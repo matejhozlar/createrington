@@ -113,6 +113,9 @@ export const fixtureParentChildLeaf = pgTable(
       .notNull()
       .generatedAlwaysAs(sql`sessions * 10`),
     archivedAt: timestamp("archived_at", { withTimezone: true }),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
   (table) => [
     primaryKey({ columns: [table.parentId, table.childKey, table.leafNo] }),

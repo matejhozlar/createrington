@@ -36,6 +36,10 @@ export class FixtureParentChildLeafBaseQueries extends BaseQueries<{
    * to reject partial composite identifiers.
    */
   protected readonly IDENTIFIER_GROUPS = [['parentId', 'childKey', 'leafNo'], ['token']];
+  protected readonly AUTO_SET_UPDATED_AT = true;
+
+  /** Columns the database computes itself; stripped from create and update payloads */
+  protected readonly GENERATED_FIELDS = ['avgSeconds', 'weight'];
 
   constructor(db: Pool | PoolClient) {
     super(db);

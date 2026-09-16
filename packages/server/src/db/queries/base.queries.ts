@@ -16,6 +16,7 @@ import { QueryBuilder, type Selected } from "./query-builder";
  * - Singleton child registry (WeakMap per pool) for hierarchical Q.player.balance style access
  * - Transaction support via useClient()
  * - Auto-sets updated_at when AUTO_SET_UPDATED_AT is enabled (per-table, code-generated)
+ * - Drops GENERATED_FIELDS from create and update payloads (per-table, code-generated)
  *
  * NOTE: Subclasses are auto-generated -- extend via the custom query files in db/queries/
  */
@@ -34,6 +35,7 @@ export abstract class BaseQueries<
   protected abstract readonly table: string;
   protected readonly COLUMN_MAP?: Record<string, string>;
   protected readonly IDENTIFIER_GROUPS?: ReadonlyArray<readonly string[]>;
+  protected readonly GENERATED_FIELDS?: readonly string[];
   protected readonly AUTO_SET_UPDATED_AT: boolean = false;
 
   /**
@@ -264,7 +266,7 @@ export abstract class BaseQueries<
    * @returns Array of objects containing column names and values
    */
   protected getUpdateMapping(updates: Partial<NonNullable<TConfig["Update"]>>) {
-    const entries = Object.entries(updates);
+    const entries = this.writableEntries(updates);
     if (entries.length === 0) {
       throw new Error(`Update of ${this.table} requires at least one field`);
     }
@@ -281,7 +283,7 @@ export abstract class BaseQueries<
    * @returns Array of objects containing column names and values
    */
   protected getCreateMapping(data: NonNullable<TConfig["Create"]>) {
-    const entries = Object.entries(data);
+    const entries = this.writableEntries(data);
     if (entries.length === 0) {
       throw new Error(`Insert into ${this.table} requires at least one field`);
     }
@@ -289,6 +291,23 @@ export abstract class BaseQueries<
       const column = this.getColumnName(key);
       return { column, value: this.serializeWriteValue(column, value) };
     });
+  }
+
+  private isWritableField(key: string): boolean {
+    return !this.GENERATED_FIELDS?.includes(key);
+  }
+
+  private writableEntries(data: object): [string, unknown][] {
+    const entries = Object.entries(data);
+    const dropped = entries
+      .map(([key]) => key)
+      .filter((key) => !this.isWritableField(key));
+    if (dropped.length > 0) {
+      logger.debug(
+        `Dropped generated column(s) ${dropped.join(", ")} from a ${this.table} write payload`,
+      );
+    }
+    return entries.filter(([key]) => this.isWritableField(key));
   }
 
   private serializeWriteValue(column: string, value: unknown): unknown {
@@ -1297,7 +1316,10 @@ export abstract class BaseQueries<
       | Array<keyof NonNullable<TConfig["Create"]>>,
     updateFields?: Array<keyof NonNullable<TConfig["Create"]>>,
   ): Promise<TConfig["Entity"]> {
-    if (updateFields && updateFields.length === 0) {
+    const writableUpdateFields = updateFields?.filter((key) =>
+      this.isWritableField(key as string),
+    );
+    if (writableUpdateFields && writableUpdateFields.length === 0) {
       throw new Error(
         `upsert on ${this.table} requires at least one field in updateFields`,
       );
@@ -1316,8 +1338,8 @@ export abstract class BaseQueries<
           .join(", ")
       : this.getColumnName(conflictTarget as string);
 
-    const fieldsToUpdate = updateFields
-      ? updateFields.map((key) => this.getColumnName(key as string))
+    const fieldsToUpdate = writableUpdateFields
+      ? writableUpdateFields.map((key) => this.getColumnName(key as string))
       : createMappings.map((m) => m.column);
 
     const updateClause = fieldsToUpdate

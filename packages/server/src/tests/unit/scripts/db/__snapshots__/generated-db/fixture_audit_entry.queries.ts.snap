@@ -37,6 +37,9 @@ export class FixtureAuditEntryBaseQueries extends BaseQueries<{
    */
   protected readonly IDENTIFIER_GROUPS = [['id'], ['actorId', 'action'], ['reference']];
 
+  /** Columns the database computes itself; stripped from create and update payloads */
+  protected readonly GENERATED_FIELDS = ['id'];
+
   constructor(db: Pool | PoolClient) {
     super(db);
   }

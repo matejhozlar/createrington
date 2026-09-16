@@ -118,6 +118,7 @@ export const DatabaseTable = {
       AVG_SECONDS: "avg_seconds" as const,
       WEIGHT: "weight" as const,
       ARCHIVED_AT: "archived_at" as const,
+      UPDATED_AT: "updated_at" as const,
     },
     CAMEL_FIELDS: {
       PARENT_ID: "parentId" as const,
@@ -133,6 +134,7 @@ export const DatabaseTable = {
       AVG_SECONDS: "avgSeconds" as const,
       WEIGHT: "weight" as const,
       ARCHIVED_AT: "archivedAt" as const,
+      UPDATED_AT: "updatedAt" as const,
     },
   },
   FIXTURE_SETTING: {
