@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { selectViolationUuids } from "@/trpc/routers/admin/players/violation-filter";
+import { z } from "zod";
+import {
+  selectViolationUuids,
+  violationFilterInput,
+} from "@/trpc/routers/admin/players/violation-filter";
 
 const STRIKES = ["a", "b", "c"];
 const BANS = ["b", "c", "d"];
@@ -18,12 +22,16 @@ describe("selectViolationUuids", () => {
   });
 
   it("returns only the requested list for a single flag", () => {
-    expect(selectViolationUuids({ hasStrikes: true }, STRIKES, BANS)).toEqual(
-      STRIKES,
-    );
-    expect(selectViolationUuids({ hasBans: true }, STRIKES, BANS)).toEqual(
-      BANS,
-    );
+    expect(selectViolationUuids({ hasStrikes: true }, STRIKES, BANS)).toEqual([
+      "a",
+      "b",
+      "c",
+    ]);
+    expect(selectViolationUuids({ hasBans: true }, STRIKES, BANS)).toEqual([
+      "b",
+      "c",
+      "d",
+    ]);
   });
 
   it("returns nothing when no flag is true", () => {
@@ -50,5 +58,25 @@ describe("selectViolationUuids", () => {
         BANS,
       ),
     ).toEqual([]);
+  });
+});
+
+describe("violationFilterInput", () => {
+  const schema = z.object(violationFilterInput);
+
+  it("lowercases the exact minecraftUuid so both filter paths agree", () => {
+    const parsed = schema.parse({
+      minecraftUuid: "A0EEBC99-9C0B-4EF8-BB6D-6BB9BD380A11",
+    });
+
+    expect(parsed.minecraftUuid).toBe("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11");
+  });
+
+  it("rejects a minecraftUuid that is not a UUID", () => {
+    expect(schema.safeParse({ minecraftUuid: "steve" }).success).toBe(false);
+  });
+
+  it("leaves every field optional", () => {
+    expect(schema.parse({})).toEqual({});
   });
 });

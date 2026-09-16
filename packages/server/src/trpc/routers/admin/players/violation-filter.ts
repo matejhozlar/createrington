@@ -1,9 +1,16 @@
-type ViolationFilterInput = {
-  hasStrikes?: boolean;
-  hasBans?: boolean;
-  hasViolations?: boolean;
-  minecraftUuid?: string;
-};
+import { z } from "zod";
+import { mcUuid } from "@/utils/zod-schemas";
+
+const violationFilterSchema = z.object({
+  minecraftUuid: mcUuid.toLowerCase().optional(),
+  hasStrikes: z.boolean().optional(),
+  hasBans: z.boolean().optional(),
+  hasViolations: z.boolean().optional(),
+});
+
+export const violationFilterInput = violationFilterSchema.shape;
+
+type ViolationFilterInput = z.infer<typeof violationFilterSchema>;
 
 export function selectViolationUuids(
   input: ViolationFilterInput,

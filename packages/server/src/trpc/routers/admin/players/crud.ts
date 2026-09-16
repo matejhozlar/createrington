@@ -15,7 +15,7 @@ import {
 } from "@/trpc/utils";
 import { discordId } from "@/utils/zod-schemas";
 import type { Player, PlayerFilters } from "@createrington/shared/db";
-import { selectViolationUuids } from "./violation-filter";
+import { selectViolationUuids, violationFilterInput } from "./violation-filter";
 
 /** Admin players CRUD router: stats, list, get, update, and delete players. */
 export const playersRouter = router({
@@ -35,12 +35,9 @@ export const playersRouter = router({
     .input(
       z.object({
         discordId: z.string().max(32).optional(),
-        minecraftUuid: z.string().max(36).optional(),
         minecraftUsername: z.string().max(32).optional(),
         online: z.boolean().optional(),
-        hasStrikes: z.boolean().optional(),
-        hasBans: z.boolean().optional(),
-        hasViolations: z.boolean().optional(),
+        ...violationFilterInput,
         ...paginationInput(),
         orderBy: z
           .enum(["createdAt", "minecraftUsername", "updatedAt", "lastSeen"])
