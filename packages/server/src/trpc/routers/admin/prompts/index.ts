@@ -5,7 +5,6 @@ import {
   paginationInput,
   buildPagination,
   findOrThrow,
-  trpcError,
   auditActor,
 } from "@/trpc/utils";
 import { getServiceSync, Services } from "@/services";
@@ -188,8 +187,10 @@ export const adminPromptsRouter = router({
     .mutation(async ({ input, ctx }) => {
       const service = getServiceSync(Services.PLAYER_PROMPT_SERVICE);
       const totals = await Q.player.prompt.response.countByPrompt(input.id);
-      const prompt = await service.deletePrompt(input.id);
-      if (!prompt) throw trpcError.notFound("Prompt not found");
+      const prompt = await findOrThrow(
+        service.deletePrompt(input.id),
+        "Prompt not found",
+      );
 
       await Q.admin.log.action.logAction({
         ...auditActor(ctx),

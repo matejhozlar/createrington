@@ -6,7 +6,7 @@ import { Q } from "@/db";
 import {
   auditActor,
   findOrThrow,
-  paginate,
+  paginateQuery,
   paginationInput,
   rethrowTrpc,
 } from "@/trpc/utils";
@@ -175,7 +175,7 @@ export const adminGalleryRouter = router({
       const direction = input.status === "pending" ? "asc" : "desc";
 
       const [{ rows, pagination }, ...countValues] = await Promise.all([
-        paginate(Q.gallery.submission, filters, input, {
+        paginateQuery(Q.gallery.submission, filters, input, {
           orderBy: "createdAt",
           orderDirection: direction,
         }),

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { router, publicProcedure, middleware } from "@/trpc/trpc";
 import { Q } from "@/db";
-import { paginate, paginationInput, trpcError } from "@/trpc/utils";
+import { paginateQuery, paginationInput, trpcError } from "@/trpc/utils";
 import { createRateLimit } from "@/trpc/middleware/rate-limit";
 import { featureFlagService, FeatureFlags } from "@/services/feature-flag";
 import { galleryImageUrls } from "@/services/gallery/urls";
@@ -95,7 +95,7 @@ export const publicGalleryRouter = router({
     })
     .input(z.object(paginationInput({ defaultLimit: 24, maxLimit: 48 })))
     .query(async ({ input }) => {
-      const { rows, pagination } = await paginate(
+      const { rows, pagination } = await paginateQuery(
         Q.gallery.submission,
         publishedFilters,
         input,

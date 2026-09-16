@@ -142,7 +142,7 @@ interface PageSource<TEntity, TFilters> {
  * Runs the page query and the total count from one filter object, so the
  * rows and the pagination metadata can never disagree on the predicate.
  */
-export async function paginate<TEntity, TFilters>(
+export async function paginateQuery<TEntity, TFilters>(
   source: PageSource<TEntity, TFilters>,
   filters: TFilters,
   input: { page: number; limit: number },

@@ -3,7 +3,7 @@ import { router, adminProcedure } from "@/trpc/trpc";
 import { Q, waitlistRepo } from "@/db";
 import { waitlistService } from "@/services/waitlist/waitlist.service";
 import { ilikeContains } from "@/db/utils";
-import { paginationInput, paginate, rethrowTrpc } from "@/trpc/utils";
+import { paginationInput, paginateQuery, rethrowTrpc } from "@/trpc/utils";
 import type { WaitlistEntryFilters } from "@createrington/shared/db";
 
 /** Admin waitlists router: stats, list, detail, promote, and delete waitlist entries. */
@@ -44,7 +44,7 @@ export const waitlistsRouter = router({
       }
       if (input.discordId) filters.discordId = input.discordId;
 
-      const { rows: entries, pagination } = await paginate(
+      const { rows: entries, pagination } = await paginateQuery(
         Q.waitlist.entry,
         filters,
         input,

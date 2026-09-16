@@ -2,11 +2,11 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import type { DatabaseQueries } from "@/generated/db/db";
 import { getTestPool, getTestDb, cleanupTestPool } from "@/tests/helpers/db";
 import { ilikeContains } from "@/db/utils";
-import { paginate } from "@/trpc/utils";
+import { paginateQuery } from "@/trpc/utils";
 
 class Rollback extends Error {}
 
-describe("paginate (faq_entry, rolled back)", () => {
+describe("paginateQuery (faq_entry, rolled back)", () => {
   let db: DatabaseQueries;
 
   beforeAll(async () => {
@@ -25,7 +25,7 @@ describe("paginate (faq_entry, rolled back)", () => {
     ) => Promise<T>,
   ): Promise<T> {
     const marker = `paginate-spec-${Date.now()}`;
-    let result: T | undefined;
+    let outcome = undefined as { value: T } | undefined;
 
     await db
       .inTransaction(async (tx) => {
@@ -48,22 +48,24 @@ describe("paginate (faq_entry, rolled back)", () => {
           priority: 99,
         });
 
-        result = await run(tx, {
-          title: ilikeContains(marker),
-          enabled: true,
-        });
+        outcome = {
+          value: await run(tx, { title: ilikeContains(marker), enabled: true }),
+        };
         throw new Rollback();
       })
       .catch((error: unknown) => {
         if (!(error instanceof Rollback)) throw error;
       });
 
-    return result as T;
+    if (!outcome) {
+      throw new Error("the seeded transaction never reached run()");
+    }
+    return outcome.value;
   }
 
   it("pages the rows and counts the total from the same predicate", async () => {
     const page = await withSeededEntries((tx, filters) =>
-      paginate(
+      paginateQuery(
         tx.faq.entry,
         filters,
         { page: 0, limit: 3 },
@@ -82,7 +84,7 @@ describe("paginate (faq_entry, rolled back)", () => {
 
   it("offsets later pages by page * limit", async () => {
     const page = await withSeededEntries((tx, filters) =>
-      paginate(
+      paginateQuery(
         tx.faq.entry,
         filters,
         { page: 1, limit: 3 },

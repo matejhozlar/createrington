@@ -4,7 +4,7 @@ import { Q } from "@/db";
 import { ilikeContains } from "@/db/utils";
 import {
   paginationInput,
-  paginate,
+  paginateQuery,
   findOrThrow,
   trpcError,
   assertPatchNotEmpty,
@@ -39,7 +39,7 @@ export const embedPresetsRouter = router({
         filters.categoryId = input.categoryId;
       }
 
-      const { rows: presets, pagination } = await paginate(
+      const { rows: presets, pagination } = await paginateQuery(
         Q.discord.embed.preset,
         filters,
         input,

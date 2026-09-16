@@ -4,7 +4,7 @@ import { Q } from "@/db";
 import { ilikeContains } from "@/db/utils";
 import {
   paginationInput,
-  paginate,
+  paginateQuery,
   findOrThrow,
   trpcError,
   auditActor,
@@ -71,7 +71,7 @@ export const faqRouter = router({
       if (input.enabled !== undefined) filters.enabled = input.enabled;
       if (input.search) filters.title = ilikeContains(input.search);
 
-      const { rows: entries, pagination } = await paginate(
+      const { rows: entries, pagination } = await paginateQuery(
         Q.faq.entry,
         filters,
         input,

@@ -8,7 +8,7 @@ import { BalanceUtils } from "@/db/repositories/balance/utils";
 import {
   parsePlayerId,
   paginationInput,
-  paginate,
+  paginateQuery,
   buildPagination,
   trpcError,
 } from "@/trpc/utils";
@@ -105,7 +105,7 @@ export const playersRouter = router({
         filters.minecraftUuid = { $in: uuidsWithViolations };
       }
 
-      const { rows: players, pagination } = await paginate(
+      const { rows: players, pagination } = await paginateQuery(
         Q.player,
         filters,
         input,

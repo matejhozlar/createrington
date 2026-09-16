@@ -5,7 +5,7 @@ import { z } from "zod";
 import {
   parsePlayerId,
   paginationInput,
-  paginate,
+  paginateQuery,
   findOrThrow,
   trpcError,
 } from "@/trpc/utils";
@@ -107,10 +107,15 @@ export const playersRouter = router({
       }
       if (input.online !== undefined) filters.online = input.online;
 
-      const { rows, pagination } = await paginate(Q.player, filters, input, {
-        orderBy: input.orderBy,
-        orderDirection: input.orderDirection,
-      });
+      const { rows, pagination } = await paginateQuery(
+        Q.player,
+        filters,
+        input,
+        {
+          orderBy: input.orderBy,
+          orderDirection: input.orderDirection,
+        },
+      );
 
       return { players: rows.map(toPublicPlayer), pagination };
     }),

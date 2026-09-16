@@ -3,7 +3,7 @@ import { router, adminProcedure } from "@/trpc/trpc";
 import {
   parsePlayerId,
   paginationInput,
-  paginate,
+  paginateQuery,
   buildPagination,
 } from "@/trpc/utils";
 import { Q } from "@/db";
@@ -25,7 +25,7 @@ export const transactionsRouter = router({
       if (!player)
         return { items: [], pagination: buildPagination(0, input.limit, 0) };
 
-      const { rows, pagination } = await paginate(
+      const { rows, pagination } = await paginateQuery(
         Q.player.balance.transaction,
         { playerMinecraftUuid: player.minecraftUuid },
         input,

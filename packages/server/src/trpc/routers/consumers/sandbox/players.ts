@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
-import { paginate, paginationInput } from "@/trpc/utils";
+import { paginateQuery, paginationInput } from "@/trpc/utils";
 
 /** Sandbox consumer players router: lists registered players and resolves their names from Minecraft UUIDs. */
 export const sandboxPlayersRouter = router({
@@ -16,7 +16,7 @@ export const sandboxPlayersRouter = router({
       }),
     )
     .query(async ({ input }) => {
-      const { rows, pagination } = await paginate(Q.player, {}, input, {
+      const { rows, pagination } = await paginateQuery(Q.player, {}, input, {
         orderBy: "id",
         orderDirection: "asc",
       });
