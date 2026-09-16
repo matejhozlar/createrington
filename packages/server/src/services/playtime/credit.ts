@@ -46,3 +46,9 @@ export function parsePlayTimeTicks(value: unknown): number | undefined {
     ? value
     : undefined;
 }
+
+export function parseEventTimestamp(value: unknown): Date | null {
+  if (!value) return new Date();
+  const parsed = new Date(value as string | number | Date);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}

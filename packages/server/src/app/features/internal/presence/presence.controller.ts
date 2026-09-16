@@ -1,6 +1,11 @@
 import { BadRequestError, InternalServerError } from "@/app/middleware";
-import { playtimeRepo, Q } from "@/db";
-import { computeCredit, parsePlayTimeTicks } from "@/services/playtime/credit";
+import { Q } from "@/db";
+import { getService, Services } from "@/services";
+import type { HeartbeatPlayer, PlaytimeService } from "@/services/playtime";
+import {
+  parseEventTimestamp,
+  parsePlayTimeTicks,
+} from "@/services/playtime/credit";
 import { MC_UUID_REGEX } from "@/utils/zod-schemas";
 import type { Request, Response } from "express";
 
@@ -38,19 +43,28 @@ async function ensureTestServer(): Promise<number> {
   return created.id;
 }
 
+async function testServerPlaytime(): Promise<{
+  serverId: number;
+  service: PlaytimeService;
+}> {
+  const serverId = await ensureTestServer();
+  const playtimeManager = await getService(Services.PLAYTIME_MANAGER_SERVICE);
+  const service = await playtimeManager.ensureService(serverId);
+  return { serverId, service };
+}
+
 /**
  * Internal Presence Controller
  *
- * Handles forwarded player join/leave events from the dev environment.
- * Sessions are recorded under the test server entry so they appear
- * separately from production playtime while still contributing to totals.
+ * Handles forwarded player join/leave events and heartbeats from the dev
+ * environment. They are fed to the test server's PlaytimeService, the same
+ * tracker the mod endpoints use, so sessions are recorded under the test
+ * server entry and appear separately from production playtime while still
+ * contributing to totals.
  */
 export class InternalPresenceController {
   /**
    * Processes a forwarded presence event from the dev server.
-   *
-   * Validates the payload, ensures the test server entry exists,
-   * and delegates to the PlaytimeRepository for session management.
    *
    * @param req - Express request with forwarded presence data
    * @param res - Express response
@@ -75,33 +89,32 @@ export class InternalPresenceController {
       throw new BadRequestError("Invalid UUID format");
     }
 
-    const eventTimestamp = timestamp ? new Date(timestamp) : new Date();
+    const eventTimestamp = parseEventTimestamp(timestamp);
+    if (!eventTimestamp) {
+      throw new BadRequestError("Invalid timestamp");
+    }
+
     const playTimeTicks = parsePlayTimeTicks(req.body.playTimeTicks);
 
     try {
-      const testServerId = await ensureTestServer();
+      const { serverId, service } = await testServerPlaytime();
 
       if (state === "joined") {
-        const sessionId = await playtimeRepo.startSession({
+        await service.handlePlayerJoinFromMod({
           uuid,
           username,
-          serverId: testServerId,
-          sessionStart: eventTimestamp,
+          timestamp: eventTimestamp,
           playTimeTicks,
         });
 
         logger.info(
-          `[sync] Session started for ${username} (${uuid}) on test server - ID: ${sessionId}`,
+          `[sync] Session started for ${username} (${uuid}) on test server`,
         );
       } else {
-        await playtimeRepo.endSession({
-          sessionId: 0,
+        await service.handlePlayerLeaveFromMod({
           uuid,
           username,
-          serverId: testServerId,
-          sessionStart: eventTimestamp,
-          sessionEnd: eventTimestamp,
-          secondsPlayed: 0,
+          timestamp: eventTimestamp,
           playTimeTicks,
         });
 
@@ -117,7 +130,7 @@ export class InternalPresenceController {
           minecraftUsername: username,
           uuid,
           state,
-          serverId: testServerId,
+          serverId,
           receivedAt: new Date().toISOString(),
         },
       });
@@ -130,12 +143,8 @@ export class InternalPresenceController {
   }
 
   /**
-   * Processes a forwarded heartbeat from the dev server.
-   *
-   * Receives the full online player list from the dev test server and
-   * reconciles sessions on the production test server entry: credits
-   * present players, ends stale sessions at their last observation, and
-   * starts missing ones.
+   * Processes a forwarded heartbeat from the dev server: reconciles the test
+   * server's tracked sessions against the reported online roster.
    */
   static async handleSyncedHeartbeat(
     req: Request,
@@ -147,11 +156,7 @@ export class InternalPresenceController {
       throw new BadRequestError("players must be an array");
     }
 
-    const onlinePlayers: Array<{
-      uuid: string;
-      username: string;
-      playTimeTicks?: number;
-    }> = [];
+    const onlinePlayers: HeartbeatPlayer[] = [];
     for (const p of players) {
       if (!p.uuid || !p.minecraftUsername) continue;
       if (!MC_UUID_REGEX.test(p.uuid)) continue;
@@ -163,62 +168,11 @@ export class InternalPresenceController {
     }
 
     try {
-      const testServerId = await ensureTestServer();
-      const now = new Date();
-
-      const openSessions = await playtimeRepo.getOpenSessions(testServerId);
-      const openUuids = new Set(openSessions.map((s) => s.playerMinecraftUuid));
-      const present = new Map(onlinePlayers.map((p) => [p.uuid, p]));
-
-      let ended = 0;
-      let progressed = 0;
-      for (const session of openSessions) {
-        const player = present.get(session.playerMinecraftUuid);
-        if (!player) {
-          await playtimeRepo.endSession({
-            sessionId: 0,
-            uuid: session.playerMinecraftUuid,
-            username: session.minecraftUsername,
-            serverId: testServerId,
-            sessionStart: session.sessionStart,
-            sessionEnd: session.lastSeenAt ?? session.sessionStart,
-            secondsPlayed: session.activeSeconds,
-          });
-          ended++;
-          continue;
-        }
-
-        await playtimeRepo.progressSession({
-          sessionId: session.id,
-          uuid: session.playerMinecraftUuid,
-          username: session.minecraftUsername,
-          serverId: testServerId,
-          credit: computeCredit({
-            periodStart: session.lastSeenAt ?? session.sessionStart,
-            periodEnd: now,
-            lastPlayTicks: session.lastPlayTicks,
-            playTimeTicks: player.playTimeTicks,
-          }),
-        });
-        progressed++;
-      }
-
-      let started = 0;
-      for (const player of onlinePlayers) {
-        if (!openUuids.has(player.uuid)) {
-          await playtimeRepo.startSession({
-            uuid: player.uuid,
-            username: player.username,
-            serverId: testServerId,
-            sessionStart: now,
-            playTimeTicks: player.playTimeTicks,
-          });
-          started++;
-        }
-      }
+      const { service } = await testServerPlaytime();
+      const { ended, started } = service.reconcileWithHeartbeat(onlinePlayers);
 
       logger.info(
-        `[sync] Heartbeat reconciled: ${ended} ended, ${progressed} progressed, ${started} started, ${onlinePlayers.length} reported online`,
+        `[sync] Heartbeat reconciled: ${ended} ended, ${started} started, ${onlinePlayers.length} reported online`,
       );
 
       res.json({

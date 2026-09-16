@@ -1,3 +1,4 @@
+import config from "@/config";
 import type { PlaytimeService } from "./playtime.service";
 import type {
   SessionStartEvent,
@@ -134,4 +135,23 @@ export class PlaytimeForwarderService {
       );
     }
   }
+}
+
+let forwarder: PlaytimeForwarderService | null | undefined;
+
+/** The process-wide forwarder when PLAYTIME_SYNC_TARGET_URL and PLAYTIME_SYNC_SECRET are set, otherwise null. */
+export function getPlaytimeForwarder(): PlaytimeForwarderService | null {
+  if (forwarder === undefined) {
+    forwarder =
+      config.sync.targetUrl && config.sync.secret
+        ? new PlaytimeForwarderService(
+            config.sync.targetUrl,
+            config.sync.secret,
+          )
+        : null;
+    if (forwarder) {
+      logger.info(`Playtime forwarder active → ${config.sync.targetUrl}`);
+    }
+  }
+  return forwarder;
 }

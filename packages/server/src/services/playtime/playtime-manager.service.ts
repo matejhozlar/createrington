@@ -1,25 +1,37 @@
 import { playtimeRepo } from "@/db";
 import { MINECRAFT_SERVERS } from "./config";
+import { getPlaytimeForwarder } from "./forwarder.service";
 import { PlaytimeService } from "./playtime.service";
 import type { MessageCacheService } from "../discord/message/cache";
 import { ServerState } from "./types";
 
 const SHUTDOWN_FLUSH_TIMEOUT_MS = 5000;
 
+interface BringUpOptions {
+  forward: boolean;
+}
+
 /**
- * Coordinates one PlaytimeService per configured Minecraft server: spins each
- * up at boot, restores the sessions the previous process left open, wires
- * them to the playtime repository, and exposes per-server status.
- * `initialize()` throws if zero services succeed; per-server failures are
- * logged and skipped. Shutdown leaves sessions open in the database on
- * purpose (a backend restart is not a player event) and only waits for
- * in-flight writes. Call `setupMessageCacheIntegration()` after
+ * Coordinates one PlaytimeService per Minecraft server: spins up each entry
+ * of MINECRAFT_SERVERS at boot, restores the sessions the previous process
+ * left open, wires them to the playtime repository and, when sync is
+ * configured, to the playtime forwarder, and exposes per-server status.
+ * Servers outside the static config, such as the synced test server, get
+ * the same bring-up on first use through `ensureService()`, minus the
+ * forwarder, because they only ever receive events. One bring-up per server
+ * id is guaranteed, whichever path asks first. `initialize()` throws if zero
+ * services succeed; per-server failures are logged and skipped. Shutdown
+ * leaves sessions open in the database on purpose (a backend restart is not
+ * a player event), waits for in-flight bring-ups and writes, and refuses new
+ * bring-ups afterwards. Call `setupMessageCacheIntegration()` after
  * `initialize()` to enable server start/shutdown detection from the Discord
  * relay.
  */
 export class PlaytimeManagerService {
   private playtimeServices: Map<number, PlaytimeService> = new Map();
+  private pendingServices: Map<number, Promise<PlaytimeService>> = new Map();
   private messageCacheService?: MessageCacheService;
+  private stopped = false;
 
   /** Brings up a PlaytimeService for each entry in MINECRAFT_SERVERS in parallel. Throws if none succeed. */
   async initialize(): Promise<void> {
@@ -44,17 +56,7 @@ export class PlaytimeManagerService {
           `Initializing PlaytimeService for server ${serverId} (${serverConfig.name})...`,
         );
 
-        const service = new PlaytimeService({ serverId });
-
-        playtimeRepo.connectToService(service, serverId);
-
-        const openSessions = await playtimeRepo.getOpenSessions(serverId);
-        service.hydrate(openSessions);
-        service.initialize();
-
-        this.playtimeServices.set(serverId, service);
-
-        logger.info(`PlaytimeService initialized for server ${serverId}`);
+        await this.bringUp(serverId, { forward: true });
       } catch (error) {
         logger.error(
           `Failed to initialize PlaytimeService for server ${serverId}:`,
@@ -74,8 +76,74 @@ export class PlaytimeManagerService {
     );
   }
 
-  /** Stops every PlaytimeService, waits briefly for in-flight writes, and clears the internal map. */
+  /**
+   * Returns the PlaytimeService for `serverId`, creating, hydrating and
+   * starting it on first use. Services created this way only receive events
+   * (the synced test server), so they are not wired to the forwarder.
+   */
+  ensureService(serverId: number): Promise<PlaytimeService> {
+    return this.bringUp(serverId, { forward: false });
+  }
+
+  private bringUp(
+    serverId: number,
+    options: BringUpOptions,
+  ): Promise<PlaytimeService> {
+    if (this.stopped) {
+      return Promise.reject(new Error("PlaytimeManagerService is shut down"));
+    }
+
+    const existing = this.playtimeServices.get(serverId);
+    if (existing) return Promise.resolve(existing);
+
+    let pending = this.pendingServices.get(serverId);
+    if (!pending) {
+      pending = this.createService(serverId, options)
+        .then((service) => {
+          if (this.stopped) {
+            service.stop();
+            throw new Error(
+              `PlaytimeManagerService shut down while bringing up server ${serverId}`,
+            );
+          }
+          this.playtimeServices.set(serverId, service);
+          return service;
+        })
+        .finally(() => {
+          this.pendingServices.delete(serverId);
+        });
+      this.pendingServices.set(serverId, pending);
+    }
+
+    return pending;
+  }
+
+  private async createService(
+    serverId: number,
+    options: BringUpOptions,
+  ): Promise<PlaytimeService> {
+    const openSessions = await playtimeRepo.getOpenSessions(serverId);
+
+    const service = new PlaytimeService({ serverId });
+    service.hydrate(openSessions);
+
+    playtimeRepo.connectToService(service, serverId);
+    if (options.forward) {
+      getPlaytimeForwarder()?.connectToService(service, serverId);
+    }
+
+    service.initialize();
+
+    return service;
+  }
+
+  /** Stops every PlaytimeService, waits for in-flight bring-ups and writes, and refuses new bring-ups afterwards. */
   async shutdown(): Promise<void> {
+    this.stopped = true;
+
+    await Promise.allSettled([...this.pendingServices.values()]);
+    this.pendingServices.clear();
+
     if (this.playtimeServices.size === 0) {
       return;
     }

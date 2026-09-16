@@ -4,19 +4,27 @@ vi.mock("@/app/middleware", () =>
   vi.importActual("@/app/middleware/error-handler"),
 );
 
-const { getServiceMock } = vi.hoisted(() => ({ getServiceMock: vi.fn() }));
+const { getServiceMock, forwardHeartbeatMock } = vi.hoisted(() => ({
+  getServiceMock: vi.fn(),
+  forwardHeartbeatMock: vi.fn(),
+}));
 vi.mock("@/services", () => ({
   getService: getServiceMock,
   Services: { PLAYTIME_MANAGER_SERVICE: "PLAYTIME_MANAGER_SERVICE" },
 }));
 
-vi.mock("@/config", () => ({ default: { sync: {} } }));
+vi.mock("@/services/playtime/forwarder.service", () => ({
+  getPlaytimeForwarder: () => ({ forwardHeartbeat: forwardHeartbeatMock }),
+}));
 
 vi.mock("@/app/features/mod/shared/resolve-server-id", () => ({
   resolveServerId: () => 1,
 }));
 
-import { ForbiddenError } from "@/app/middleware/error-handler";
+import {
+  BadRequestError,
+  ForbiddenError,
+} from "@/app/middleware/error-handler";
 import { PresenceController } from "@/app/features/mod/presence/presence.controller";
 import type { Request, Response } from "express";
 
@@ -43,6 +51,7 @@ function makePlaytimeManager() {
 
 beforeEach(() => {
   getServiceMock.mockReset();
+  forwardHeartbeatMock.mockReset();
 });
 
 describe("PresenceController.updatePresence", () => {
@@ -136,6 +145,18 @@ describe("PresenceController.updatePresence", () => {
       expect.objectContaining({ playTimeTicks: undefined }),
     );
   });
+
+  it("rejects an unparseable timestamp before touching the tracker", async () => {
+    const req = {
+      body: { ...joinBody, timestamp: "yesterday-ish" },
+      modAuth: {},
+    } as unknown as Request;
+
+    await expect(
+      PresenceController.updatePresence(req, makeRes()),
+    ).rejects.toBeInstanceOf(BadRequestError);
+    expect(getServiceMock).not.toHaveBeenCalled();
+  });
 });
 
 describe("PresenceController.heartbeat", () => {
@@ -162,6 +183,9 @@ describe("PresenceController.heartbeat", () => {
     await PresenceController.heartbeat(req, res);
 
     expect(playtimeService.reconcileWithHeartbeat).toHaveBeenCalledWith([
+      { uuid: PLAYER_UUID, username: "steve", playTimeTicks: undefined },
+    ]);
+    expect(forwardHeartbeatMock).toHaveBeenCalledWith([
       { uuid: PLAYER_UUID, username: "steve", playTimeTicks: undefined },
     ]);
     expect(res.json).toHaveBeenCalledWith(
