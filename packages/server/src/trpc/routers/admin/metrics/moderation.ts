@@ -10,8 +10,8 @@ export const moderationMetricsRouter = router({
     .input(dateRangeInput)
     .query(async ({ input }) => {
       return await metricsService.moderation.getBansByPeriod(
-        new Date(input.start),
-        new Date(input.end),
+        input.start,
+        input.end,
         input.granularity,
       );
     }),
@@ -24,8 +24,8 @@ export const moderationMetricsRouter = router({
     .input(dateRangeInput)
     .query(async ({ input }) => {
       return await metricsService.moderation.getStrikesByPeriod(
-        new Date(input.start),
-        new Date(input.end),
+        input.start,
+        input.end,
         input.granularity,
       );
     }),
@@ -50,8 +50,8 @@ export const moderationMetricsRouter = router({
     .input(dateRangeInput)
     .query(async ({ input }) => {
       return await metricsService.moderation.getTicketVolume(
-        new Date(input.start),
-        new Date(input.end),
+        input.start,
+        input.end,
         input.granularity,
       );
     }),

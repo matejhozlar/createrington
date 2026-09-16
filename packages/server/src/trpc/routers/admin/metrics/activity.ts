@@ -1,7 +1,10 @@
 import { router, adminProcedure } from "@/trpc/trpc";
 import { metricsService } from "@/services/metrics";
-import { z } from "zod";
-import { dateRangeWithMonthInput } from "./schemas";
+import {
+  dateRange,
+  dateRangeWithMonthInput,
+  optionalDateRange,
+} from "./schemas";
 
 /** Admin activity metrics: active players, peak concurrent, sessions, retention */
 export const activityMetricsRouter = router({
@@ -12,8 +15,8 @@ export const activityMetricsRouter = router({
     .input(dateRangeWithMonthInput)
     .query(async ({ input }) => {
       return await metricsService.activity.getActivePlayers(
-        new Date(input.start),
-        new Date(input.end),
+        input.start,
+        input.end,
         input.granularity,
       );
     }),
@@ -22,36 +25,31 @@ export const activityMetricsRouter = router({
     .meta({
       description: "Get peak concurrent player count within a time range.",
     })
-    .input(z.object({ start: z.iso.datetime(), end: z.iso.datetime() }))
+    .input(dateRange)
     .query(async ({ input }) => {
       return await metricsService.activity.getPeakConcurrent(
-        new Date(input.start),
-        new Date(input.end),
+        input.start,
+        input.end,
       );
     }),
 
   getAverageSessionLength: adminProcedure
     .meta({ description: "Get average session length in seconds" })
-    .input(
-      z.object({
-        start: z.iso.datetime().optional(),
-        end: z.iso.datetime().optional(),
-      }),
-    )
+    .input(optionalDateRange)
     .query(async ({ input }) => {
       return await metricsService.activity.getAverageSessionLength(
-        input.start ? new Date(input.start) : undefined,
-        input.end ? new Date(input.end) : undefined,
+        input.start,
+        input.end,
       );
     }),
 
   getNewVsReturning: adminProcedure
     .meta({ description: "Get new vs returning players per day" })
-    .input(z.object({ start: z.iso.datetime(), end: z.iso.datetime() }))
+    .input(dateRange)
     .query(async ({ input }) => {
       return await metricsService.activity.getNewVsReturning(
-        new Date(input.start),
-        new Date(input.end),
+        input.start,
+        input.end,
       );
     }),
 });

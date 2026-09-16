@@ -15,8 +15,8 @@ export const growthMetricsRouter = router({
     .input(dateRangeInput)
     .query(async ({ input }) => {
       return await metricsService.growth.getRegistrations(
-        new Date(input.start),
-        new Date(input.end),
+        input.start,
+        input.end,
         input.granularity,
       );
     }),
@@ -34,8 +34,8 @@ export const growthMetricsRouter = router({
     .input(dateRangeInput)
     .query(async ({ input }) => {
       return await metricsService.growth.getDiscordGrowth(
-        new Date(input.start),
-        new Date(input.end),
+        input.start,
+        input.end,
         input.granularity,
       );
     }),
