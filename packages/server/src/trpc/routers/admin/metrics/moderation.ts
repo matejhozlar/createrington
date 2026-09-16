@@ -1,13 +1,13 @@
 import { router, adminProcedure } from "@/trpc/trpc";
 import { metricsService } from "@/services/metrics";
 import { z } from "zod";
-import { dateRangeInput } from "./schemas";
+import { dateRangeWithGranularity } from "./schemas";
 
 /** Admin moderation metrics: bans, strikes, tickets, moderator leaderboard */
 export const moderationMetricsRouter = router({
   getBansByPeriod: adminProcedure
     .meta({ description: "Get ban counts grouped by time period" })
-    .input(dateRangeInput)
+    .input(dateRangeWithGranularity)
     .query(async ({ input }) => {
       return await metricsService.moderation.getBansByPeriod(
         input.start,
@@ -21,7 +21,7 @@ export const moderationMetricsRouter = router({
       description:
         "Get strike counts grouped by time period with classification breakdown",
     })
-    .input(dateRangeInput)
+    .input(dateRangeWithGranularity)
     .query(async ({ input }) => {
       return await metricsService.moderation.getStrikesByPeriod(
         input.start,
@@ -47,7 +47,7 @@ export const moderationMetricsRouter = router({
 
   getTicketVolume: adminProcedure
     .meta({ description: "Get ticket volume grouped by time period" })
-    .input(dateRangeInput)
+    .input(dateRangeWithGranularity)
     .query(async ({ input }) => {
       return await metricsService.moderation.getTicketVolume(
         input.start,

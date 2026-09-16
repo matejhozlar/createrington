@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
   dateRange,
-  dateRangeInput,
+  dateRangeWithGranularity,
+  dateRangeWithMonthGranularity,
   optionalDateRange,
 } from "@/trpc/routers/admin/metrics/schemas";
 
@@ -19,10 +20,19 @@ describe("metrics date range schemas", () => {
   });
 
   it("keeps the granularity default next to the parsed bounds", () => {
-    const parsed = dateRangeInput.parse({ start: START, end: END });
+    const parsed = dateRangeWithGranularity.parse({ start: START, end: END });
 
     expect(parsed.granularity).toBe("day");
     expect(parsed.start).toBeInstanceOf(Date);
+  });
+
+  it("accepts month granularity only on the month variant", () => {
+    const input = { start: START, end: END, granularity: "month" };
+
+    expect(dateRangeWithMonthGranularity.parse(input).granularity).toBe(
+      "month",
+    );
+    expect(dateRangeWithGranularity.safeParse(input).success).toBe(false);
   });
 
   it("leaves absent optional bounds undefined and parses present ones", () => {
@@ -34,5 +44,12 @@ describe("metrics date range schemas", () => {
 
   it("rejects a bound that is not an ISO datetime", () => {
     expect(() => dateRange.parse({ start: "yesterday", end: END })).toThrow();
+  });
+
+  it("rejects a calendar-invalid bound before it can become an Invalid Date", () => {
+    expect(
+      dateRange.safeParse({ start: "2026-02-31T00:00:00.000Z", end: END })
+        .success,
+    ).toBe(false);
   });
 });

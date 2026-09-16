@@ -1,6 +1,6 @@
 import { router, adminProcedure } from "@/trpc/trpc";
 import { metricsService } from "@/services/metrics";
-import { dateRangeInput } from "./schemas";
+import { dateRangeWithGranularity } from "./schemas";
 
 /** Admin growth metrics: registrations, waitlist funnel, Discord member trends */
 export const growthMetricsRouter = router({
@@ -12,7 +12,7 @@ export const growthMetricsRouter = router({
 
   getRegistrations: adminProcedure
     .meta({ description: "Get player registrations grouped by time period" })
-    .input(dateRangeInput)
+    .input(dateRangeWithGranularity)
     .query(async ({ input }) => {
       return await metricsService.growth.getRegistrations(
         input.start,
@@ -31,7 +31,7 @@ export const growthMetricsRouter = router({
     .meta({
       description: "Get Discord server growth (joins and leaves) by period.",
     })
-    .input(dateRangeInput)
+    .input(dateRangeWithGranularity)
     .query(async ({ input }) => {
       return await metricsService.growth.getDiscordGrowth(
         input.start,

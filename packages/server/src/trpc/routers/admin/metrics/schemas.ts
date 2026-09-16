@@ -11,12 +11,12 @@ export const optionalDateRange = z.object({
   end: isoDate.optional(),
 });
 
-/** Date range input with day/week granularity */
-export const dateRangeInput = dateRange.extend({
+/** Date range with day/week granularity */
+export const dateRangeWithGranularity = dateRange.extend({
   granularity: z.enum(["day", "week"]).default("day"),
 });
 
-/** Date range input with day/week/month granularity */
-export const dateRangeWithMonthInput = dateRange.extend({
+/** Date range with day/week/month granularity */
+export const dateRangeWithMonthGranularity = dateRange.extend({
   granularity: z.enum(["day", "week", "month"]).default("day"),
 });

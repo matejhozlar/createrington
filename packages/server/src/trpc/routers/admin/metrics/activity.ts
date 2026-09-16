@@ -2,7 +2,7 @@ import { router, adminProcedure } from "@/trpc/trpc";
 import { metricsService } from "@/services/metrics";
 import {
   dateRange,
-  dateRangeWithMonthInput,
+  dateRangeWithMonthGranularity,
   optionalDateRange,
 } from "./schemas";
 
@@ -12,7 +12,7 @@ export const activityMetricsRouter = router({
     .meta({
       description: "Get unique active player counts grouped by time period.",
     })
-    .input(dateRangeWithMonthInput)
+    .input(dateRangeWithMonthGranularity)
     .query(async ({ input }) => {
       return await metricsService.activity.getActivePlayers(
         input.start,
