@@ -42,7 +42,6 @@ import { AutoMessageService } from "./discord/auto-message";
 import { lotteryService } from "./lottery";
 import { maintenanceService } from "./maintenance";
 import { MaintenanceScheduler } from "./maintenance/scheduler";
-import { PlaytimeForwarderService } from "./playtime/forwarder.service";
 import { DonationService } from "./donation/donation.service";
 import { structurePackService } from "./structure-pack";
 import { StructurePackRotationService } from "./structure-pack/rotation";
@@ -507,24 +506,6 @@ export function registerServices(): void {
         playtimeService,
       ] of playtimeManager.getAllServices()) {
         roleService.setupRealtimeRoleChecking(serverId, playtimeService);
-      }
-
-      // Wire playtime forwarder on the dev site so test-server sessions
-      // are also recorded in the production database
-      if (config.sync.targetUrl && config.sync.secret) {
-        const forwarder = new PlaytimeForwarderService(
-          config.sync.targetUrl,
-          config.sync.secret,
-        );
-
-        for (const [
-          serverId,
-          playtimeService,
-        ] of playtimeManager.getAllServices()) {
-          forwarder.connectToService(playtimeService, serverId);
-        }
-
-        logger.info(`Playtime forwarder active → ${config.sync.targetUrl}`);
       }
     }
   });

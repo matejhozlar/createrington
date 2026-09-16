@@ -4,13 +4,18 @@ vi.mock("@/app/middleware", () =>
   vi.importActual("@/app/middleware/error-handler"),
 );
 
-const { getServiceMock } = vi.hoisted(() => ({ getServiceMock: vi.fn() }));
+const { getServiceMock, forwardHeartbeatMock } = vi.hoisted(() => ({
+  getServiceMock: vi.fn(),
+  forwardHeartbeatMock: vi.fn(),
+}));
 vi.mock("@/services", () => ({
   getService: getServiceMock,
   Services: { PLAYTIME_MANAGER_SERVICE: "PLAYTIME_MANAGER_SERVICE" },
 }));
 
-vi.mock("@/config", () => ({ default: { sync: {} } }));
+vi.mock("@/services/playtime/forwarder.service", () => ({
+  getPlaytimeForwarder: () => ({ forwardHeartbeat: forwardHeartbeatMock }),
+}));
 
 vi.mock("@/app/features/mod/shared/resolve-server-id", () => ({
   resolveServerId: () => 1,
@@ -43,6 +48,7 @@ function makePlaytimeManager() {
 
 beforeEach(() => {
   getServiceMock.mockReset();
+  forwardHeartbeatMock.mockReset();
 });
 
 describe("PresenceController.updatePresence", () => {
@@ -162,6 +168,9 @@ describe("PresenceController.heartbeat", () => {
     await PresenceController.heartbeat(req, res);
 
     expect(playtimeService.reconcileWithHeartbeat).toHaveBeenCalledWith([
+      { uuid: PLAYER_UUID, username: "steve", playTimeTicks: undefined },
+    ]);
+    expect(forwardHeartbeatMock).toHaveBeenCalledWith([
       { uuid: PLAYER_UUID, username: "steve", playTimeTicks: undefined },
     ]);
     expect(res.json).toHaveBeenCalledWith(

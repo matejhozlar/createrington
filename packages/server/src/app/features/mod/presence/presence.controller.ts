@@ -10,10 +10,9 @@ import type {
   ModPlayerLeaveData,
 } from "@/services/playtime";
 import { parsePlayTimeTicks } from "@/services/playtime/credit";
-import { PlaytimeForwarderService } from "@/services/playtime/forwarder.service";
+import { getPlaytimeForwarder } from "@/services/playtime/forwarder.service";
 import { MC_UUID_REGEX } from "@/utils/zod-schemas";
 import { resolveServerId } from "../shared/resolve-server-id";
-import config from "@/config";
 import type { Request, Response } from "express";
 
 /**
@@ -189,13 +188,7 @@ export class PresenceController {
 
       playtimeService.reconcileWithHeartbeat(onlinePlayers);
 
-      if (config.sync.targetUrl && config.sync.secret) {
-        const forwarder = new PlaytimeForwarderService(
-          config.sync.targetUrl,
-          config.sync.secret,
-        );
-        void forwarder.forwardHeartbeat(onlinePlayers);
-      }
+      void getPlaytimeForwarder()?.forwardHeartbeat(onlinePlayers);
 
       logger.info(
         `Heartbeat received for server ${targetServerId}: ${onlinePlayers.length} player(s) online`,
