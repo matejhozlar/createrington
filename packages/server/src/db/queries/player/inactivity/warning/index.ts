@@ -1,5 +1,6 @@
 import type { Pool, PoolClient } from "pg";
 import { PlayerInactivityWarningBaseQueries } from "@/generated/db/player_inactivity_warning.queries";
+import { escapeLike } from "@/db/utils";
 
 interface InactivePlayer {
   minecraftUuid: string;
@@ -328,9 +329,10 @@ export class PlayerInactivityWarningQueries extends PlayerInactivityWarningBaseQ
     let listSearchClause = "";
     let countSearchClause = "";
     if (params.search) {
-      listParams.push(params.search);
+      const escaped = escapeLike(params.search);
+      listParams.push(escaped);
       listSearchClause = `AND p.minecraft_username ILIKE '%' || $${listParams.length} || '%'`;
-      countParams.push(params.search);
+      countParams.push(escaped);
       countSearchClause = `AND p.minecraft_username ILIKE '%' || $${countParams.length} || '%'`;
     }
 

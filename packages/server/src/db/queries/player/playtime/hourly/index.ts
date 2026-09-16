@@ -3,8 +3,8 @@ import { PlayerPlaytimeHourlyBaseQueries } from "@/generated/db/player_playtime_
 import { splitPeriod } from "../split";
 
 type PlayerHourlyPatternRow = {
-  hour_of_day: string;
-  total_seconds: string;
+  hour_of_day: number;
+  total_seconds: number;
 };
 
 export type PlayerHourlyPattern = {
@@ -14,9 +14,9 @@ export type PlayerHourlyPattern = {
 
 type ServerHeatMapRow = {
   day: Date;
-  hour: string;
-  unique_players: string;
-  total_seconds: string;
+  hour: number;
+  unique_players: number;
+  total_seconds: number;
 };
 
 export type ServerHeatMap = {
@@ -89,9 +89,9 @@ export class PlayerPlaytimeHourlyQueries extends PlayerPlaytimeHourlyBaseQueries
     serverId: number,
   ): Promise<PlayerHourlyPattern[]> {
     const query = `
-      SELECT 
-        EXTRACT(HOUR FROM play_hour) as hour_of_day,
-        SUM(seconds_played) as total_seconds
+      SELECT
+        EXTRACT(HOUR FROM play_hour)::int as hour_of_day,
+        SUM(seconds_played)::float8 as total_seconds
       FROM ${this.table}
       WHERE player_minecraft_uuid = $1
         AND server_id = $2
@@ -128,11 +128,11 @@ export class PlayerPlaytimeHourlyQueries extends PlayerPlaytimeHourlyBaseQueries
     }
 
     const query = `
-      SELECT 
+      SELECT
         DATE_TRUNC('day', play_hour) as day,
-        EXTRACT(HOUR FROM play_hour) as hour,
-        COUNT(DISTINCT player_minecraft_uuid) as unique_players,
-        SUM(seconds_played) as total_seconds
+        EXTRACT(HOUR FROM play_hour)::int as hour,
+        COUNT(DISTINCT player_minecraft_uuid)::int as unique_players,
+        SUM(seconds_played)::float8 as total_seconds
       FROM ${this.table}
       WHERE server_id = $1
         AND play_hour >= NOW() - INTERVAL '1 day' * $2

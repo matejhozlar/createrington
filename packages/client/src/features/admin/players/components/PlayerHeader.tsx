@@ -3,12 +3,15 @@ import { Badge } from "@/components/ui/badge";
 import { CellText } from "@/components/cell-text";
 import { Edit, Trash2, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { PlayerApiData } from "@createrington/shared/db";
+import type { RouterOutput } from "@/lib/trpc";
 import { mcBodyFront } from "@/lib/external-urls";
 import { formatDimension, tpCommand } from "@/lib/minecraft";
 
+type PlayerDetail =
+  RouterOutput["admin"]["players"]["players"]["get"]["player"];
+
 interface PlayerHeaderProps {
-  player: PlayerApiData;
+  player: PlayerDetail;
   isOnline: boolean;
   currentServerName: string | null;
   onEdit: () => void;

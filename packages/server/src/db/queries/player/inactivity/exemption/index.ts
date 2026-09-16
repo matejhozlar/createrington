@@ -1,5 +1,6 @@
 import type { Pool, PoolClient } from "pg";
 import { PlayerInactivityExemptionBaseQueries } from "@/generated/db/player_inactivity_exemption.queries";
+import { escapeLike } from "@/db/utils";
 
 /**
  * Exemption row joined with the exempted player and the creating admin's
@@ -63,9 +64,10 @@ export class PlayerInactivityExemptionQueries extends PlayerInactivityExemptionB
     let countSearchClause = "";
 
     if (params.search) {
-      listParams.push(params.search);
+      const escaped = escapeLike(params.search);
+      listParams.push(escaped);
       listSearchClause = `WHERE p.minecraft_username ILIKE '%' || $${listParams.length} || '%'`;
-      countParams.push(params.search);
+      countParams.push(escaped);
       countSearchClause = `WHERE p.minecraft_username ILIKE '%' || $${countParams.length} || '%'`;
     }
 

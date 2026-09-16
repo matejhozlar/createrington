@@ -1,3 +1,27 @@
+## v1.57.1 (2026-09-16)
+
+### @createrington/server (1.58.0 → 1.58.1)
+- [fix] Fix balance audit writes running outside the balance mutation transaction, closing a race window where before/after values could reflect stale reads; admin grant, deduct, and set now lock the balance, write the ledger, and record the audit row atomically, and `ADMIN_SET` is logged as its own transaction type instead of `ADMIN_GRANT`
+- [fix] Fix `date` columns returning timezone-offset `Date` objects from the pg driver, causing off-by-one day bugs in playtime, activity charts, and render grids; date columns now return raw `YYYY-MM-DD` strings and a `calendarDay()` helper formats `Date` inputs consistently
+- [fix] Fix `$eq: null` generating `column = NULL` (always false in SQL) instead of the correct `IS NULL`
+- [fix] Fix `updateAll` and `deleteAll` silently executing against the full table when all filter values are `undefined`; both now throw when the filter has no usable conditions
+- [fix] Fix `QueryBuilder.count()` fetching all rows and counting in JS; it now issues a real `COUNT(*)` query via an injected counter function
+- [fix] Fix unknown filter operators being silently ignored; they now throw at query time
+- [fix] Fix generator marking identity and generated-always columns as required in the `Create` type; they are now omitted, and a `GENERATED_FIELDS` constant strips them from create/update payloads at runtime
+- [fix] Fix admin players `minecraftUuid` filter not lowercasing input, causing case-sensitive mismatches; validation and lowercasing now happen at the schema boundary, and the exact UUID is preserved when a violation flag narrows the result set
+- [fix] Fix ILIKE search patterns in admin logs, inactivity exemptions/warnings, and Minecraft stats not escaping special characters in the needle
+- [fix] Fix constraint errors all surfacing as the base `ConstraintViolationError`; they are now dispatched to typed subclasses (`UniqueViolationError`, `ForeignKeyViolationError`, `NotNullViolationError`, `CheckViolationError`) and all catchers narrowed accordingly
+- [refactor] Extract shared tRPC helpers (`paginateQuery`, `findOrThrow`, `assertPatchNotEmpty`, `sortDirection`, `ilikeContains`) and apply them across ~25 admin, public, consumer, and owner routers, replacing duplicated pagination, not-found, and sort-direction boilerplate
+- [refactor] Parse ISO date strings into `Date` objects at the metrics schema boundary (`dateRange`, `dateRangeWithGranularity`, `dateRangeWithMonthGranularity`), removing scattered `new Date()` calls from procedure handlers
+- [refactor] Rewrite the internal presence controller to delegate to `PlaytimeService` via `manager.ensureService(serverId)` instead of duplicating session management with raw repository calls; the manager now lazily brings up per-server services with deduplication and shutdown-race protection
+- [refactor] Drop the generated `ApiData` types from the DB generator; consumers use entity types directly or infer from tRPC output types
+- [chore] Add snapshot tests for the DB query-system generator covering all output files (query classes, types, constants, shared DB types) with a self-contained fixture schema
+- [chore] Add unit and integration tests for tRPC helpers, violation filter, metrics schemas, balance repository atomicity, base query safety guards, playtime manager concurrency, and the internal presence controller
+
+### @createrington/client (0.2.71 → 0.2.72)
+- [fix] Fix activity charts and render grids displaying days shifted by one in non-UTC timezones by parsing `YYYY-MM-DD` strings with local date constructors instead of UTC
+- [refactor] Replace hand-maintained `PlayerApiData` types with tRPC output type inference in the admin players list and detail views
+
 ## v1.57.0 (2026-09-15)
 
 ### @createrington/server (1.57.0 → 1.58.0)

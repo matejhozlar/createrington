@@ -7,7 +7,7 @@ import { WaitlistComponentPresets } from "@/discord/components/presets/waitlist"
 import { mainBot } from "@/discord/bots/main/client";
 import { createVerificationChannel } from "@/discord/bots/main/registration/verification-channel";
 import { BadRequestError } from "@/app/middleware/error-handler";
-import { ConstraintViolationError } from "@/db/utils/errors";
+import { UniqueViolationError } from "@/db/utils/errors";
 import type { WaitlistEntry } from "@createrington/shared/db";
 import {
   DiscordAPIError,
@@ -178,7 +178,7 @@ export class WaitlistService {
         await this.notifyAdmins(entry);
         return Q.waitlist.entry.get({ id: entry.id });
       } catch (error) {
-        if (!(error instanceof ConstraintViolationError)) throw error;
+        if (!(error instanceof UniqueViolationError)) throw error;
         existing = await Q.waitlist.entry.get({ discordId: params.discordId });
       }
     }
@@ -354,7 +354,7 @@ export class WaitlistService {
             });
             return { entry, reserved: true, created: true };
           } catch (error) {
-            if (!(error instanceof ConstraintViolationError)) throw error;
+            if (!(error instanceof UniqueViolationError)) throw error;
             existing = await Q.waitlist.entry.get({ discordId });
             const settled = await settle(existing);
             if (settled) return settled;

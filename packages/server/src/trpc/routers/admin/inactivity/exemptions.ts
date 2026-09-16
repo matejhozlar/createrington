@@ -3,6 +3,7 @@ import { router, adminProcedure } from "@/trpc/trpc";
 import { db, Q } from "@/db";
 import {
   buildPagination,
+  findOrThrow,
   paginationInput,
   trpcError,
   auditActor,
@@ -60,10 +61,10 @@ export const exemptionsRouter = router({
         );
       }
 
-      const player = await Q.player.find(identifier);
-      if (!player) {
-        throw trpcError.notFound("Player not found");
-      }
+      const player = await findOrThrow(
+        Q.player.find(identifier),
+        "Player not found",
+      );
 
       const { inserted, resolvedWarnings } = await db.inTransaction(
         async (tx) => {
@@ -116,12 +117,12 @@ export const exemptionsRouter = router({
     })
     .input(z.object({ minecraftUuid: mcUuid }))
     .mutation(async ({ input, ctx }) => {
-      const existing = await Q.player.inactivity.exemption.find({
-        playerMinecraftUuid: input.minecraftUuid,
-      });
-      if (!existing) {
-        throw trpcError.notFound("Exemption not found");
-      }
+      await findOrThrow(
+        Q.player.inactivity.exemption.find({
+          playerMinecraftUuid: input.minecraftUuid,
+        }),
+        "Exemption not found",
+      );
 
       const player = await Q.player.find({
         minecraftUuid: input.minecraftUuid,

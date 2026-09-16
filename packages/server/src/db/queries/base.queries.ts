@@ -14,8 +14,9 @@ import { QueryBuilder, type Selected } from "./query-builder";
  * - Supports filter operators ($eq, $ne, $gt, $lt, $in, $between, etc.) for composable WHERE clauses
  * - Fluent query builder via .where().orderBy().limit().all() chain
  * - Singleton child registry (WeakMap per pool) for hierarchical Q.player.balance style access
- * - Transaction support via useClient() and inTransaction()
+ * - Transaction support via useClient()
  * - Auto-sets updated_at when AUTO_SET_UPDATED_AT is enabled (per-table, code-generated)
+ * - Drops GENERATED_FIELDS from create and update payloads (per-table, code-generated)
  *
  * NOTE: Subclasses are auto-generated -- extend via the custom query files in db/queries/
  */
@@ -34,6 +35,7 @@ export abstract class BaseQueries<
   protected abstract readonly table: string;
   protected readonly COLUMN_MAP?: Record<string, string>;
   protected readonly IDENTIFIER_GROUPS?: ReadonlyArray<readonly string[]>;
+  protected readonly GENERATED_FIELDS?: readonly string[];
   protected readonly AUTO_SET_UPDATED_AT: boolean = false;
 
   /**
@@ -264,7 +266,11 @@ export abstract class BaseQueries<
    * @returns Array of objects containing column names and values
    */
   protected getUpdateMapping(updates: Partial<NonNullable<TConfig["Update"]>>) {
-    return Object.entries(updates).map(([key, value]) => {
+    const entries = this.writableEntries(updates);
+    if (entries.length === 0) {
+      throw new Error(`Update of ${this.table} requires at least one field`);
+    }
+    return entries.map(([key, value]) => {
       const column = this.getColumnName(key);
       return { column, value: this.serializeWriteValue(column, value) };
     });
@@ -277,10 +283,31 @@ export abstract class BaseQueries<
    * @returns Array of objects containing column names and values
    */
   protected getCreateMapping(data: NonNullable<TConfig["Create"]>) {
-    return Object.entries(data).map(([key, value]) => {
+    const entries = this.writableEntries(data);
+    if (entries.length === 0) {
+      throw new Error(`Insert into ${this.table} requires at least one field`);
+    }
+    return entries.map(([key, value]) => {
       const column = this.getColumnName(key);
       return { column, value: this.serializeWriteValue(column, value) };
     });
+  }
+
+  private isWritableField(key: string): boolean {
+    return !this.GENERATED_FIELDS?.includes(key);
+  }
+
+  private writableEntries(data: object): [string, unknown][] {
+    const entries = Object.entries(data);
+    const dropped = entries
+      .map(([key]) => key)
+      .filter((key) => !this.isWritableField(key));
+    if (dropped.length > 0) {
+      logger.debug(
+        `Dropped generated column(s) ${dropped.join(", ")} from a ${this.table} write payload`,
+      );
+    }
+    return entries.filter(([key]) => this.isWritableField(key));
   }
 
   private serializeWriteValue(column: string, value: unknown): unknown {
@@ -304,6 +331,7 @@ export abstract class BaseQueries<
   ): {
     whereClause: string;
     params: unknown[];
+    hasConditions: boolean;
   } {
     const conditions: string[] = [];
     const params: unknown[] = [];
@@ -338,6 +366,7 @@ export abstract class BaseQueries<
     return {
       whereClause: conditions.length > 0 ? conditions.join(" AND ") : "1=1",
       params,
+      hasConditions: conditions.length > 0,
     };
   }
 
@@ -393,8 +422,12 @@ export abstract class BaseQueries<
           break;
 
         case "$eq":
-          conditions.push(`${column} = $${paramIndex}`);
-          params.push(val);
+          if (val === null) {
+            conditions.push(`${column} IS NULL`);
+          } else {
+            conditions.push(`${column} = $${paramIndex}`);
+            params.push(val);
+          }
           break;
 
         case "$ne":
@@ -461,7 +494,9 @@ export abstract class BaseQueries<
           break;
 
         default:
-          logger.warn(`Unknown operator: ${op}`);
+          throw new Error(
+            `Unknown filter operator "${op}" on ${this.table}.${column}`,
+          );
       }
     }
   }
@@ -746,7 +781,7 @@ export abstract class BaseQueries<
       }
     } catch (error) {
       logger.error(`Failed to delete ${this.table}:`, error);
-      throw error;
+      throw translateDbError(error);
     }
   }
 
@@ -840,8 +875,13 @@ export abstract class BaseQueries<
   where(
     filters: Partial<NonNullable<TConfig["Filters"]>>,
   ): QueryBuilder<TConfig> {
-    return new QueryBuilder<TConfig>((f, opts) => this.findAll(f, opts)).where(
-      filters,
+    return this.builder().where(filters);
+  }
+
+  private builder(): QueryBuilder<TConfig> {
+    return new QueryBuilder<TConfig>(
+      (f, opts) => this.findAll(f, opts),
+      (f) => this.count(f),
     );
   }
 
@@ -862,9 +902,7 @@ export abstract class BaseQueries<
     field: keyof TConfig["Entity"],
     direction: "asc" | "desc" = "asc",
   ): QueryBuilder<TConfig> {
-    return new QueryBuilder<TConfig>((f, opts) =>
-      this.findAll(f, opts),
-    ).orderBy(field, direction);
+    return this.builder().orderBy(field, direction);
   }
 
   /**
@@ -877,9 +915,7 @@ export abstract class BaseQueries<
    * const players = await Q.player.limit(10).all()
    */
   limit(count: number): QueryBuilder<TConfig> {
-    return new QueryBuilder<TConfig>((f, opts) => this.findAll(f, opts)).limit(
-      count,
-    );
+    return this.builder().limit(count);
   }
 
   /**
@@ -892,9 +928,7 @@ export abstract class BaseQueries<
    * const players = await Q.player.offset(20).limit(10).all()
    */
   offset(count: number): QueryBuilder<TConfig> {
-    return new QueryBuilder<TConfig>((f, opts) => this.findAll(f, opts)).offset(
-      count,
-    );
+    return this.builder().offset(count);
   }
 
   /**
@@ -911,9 +945,7 @@ export abstract class BaseQueries<
   selectFields<K extends keyof TConfig["Entity"]>(
     fields: readonly K[],
   ): QueryBuilder<TConfig, Selected<TConfig["Entity"], K>> {
-    return new QueryBuilder<TConfig>((f, opts) => this.findAll(f, opts)).select(
-      fields,
-    );
+    return this.builder().select(fields);
   }
 
   /**
@@ -930,9 +962,7 @@ export abstract class BaseQueries<
    *   .all()
    */
   paginate(page: number, pageSize: number): QueryBuilder<TConfig> {
-    return new QueryBuilder<TConfig>((f, opts) =>
-      this.findAll(f, opts),
-    ).paginate(page, pageSize);
+    return this.builder().paginate(page, pageSize);
   }
 
   /**
@@ -1009,12 +1039,14 @@ export abstract class BaseQueries<
       query += ` ORDER BY ${orderColumn} ${dir}`;
     }
 
-    if (options?.limit) {
+    if (options?.limit !== undefined) {
+      this.assertPageBound("limit", options.limit);
       query += ` LIMIT $${params.length + 1}`;
       params.push(options.limit);
     }
 
-    if (options?.offset) {
+    if (options?.offset !== undefined) {
+      this.assertPageBound("offset", options.offset);
       query += ` OFFSET $${params.length + 1}`;
       params.push(options.offset);
     }
@@ -1025,6 +1057,14 @@ export abstract class BaseQueries<
     } catch (error) {
       logger.error(`Failed to find all ${this.table}:`, error);
       throw error;
+    }
+  }
+
+  private assertPageBound(name: "limit" | "offset", value: number): void {
+    if (!Number.isInteger(value) || value < 0) {
+      throw new Error(
+        `${name} must be a non-negative integer, got ${String(value)}`,
+      );
     }
   }
 
@@ -1069,7 +1109,8 @@ export abstract class BaseQueries<
 
   /**
    * Updates all entities matching the filter criteria
-   * If no filters provided, updates ALL records in the table
+   * Omit filters to update every row; a filter object whose values are all
+   * undefined is rejected so a missing value cannot widen the update to the table
    *
    * @param updates - Object containing fields to update
    * @param filters - Optional filter criteria to match specific entries
@@ -1079,9 +1120,15 @@ export abstract class BaseQueries<
     updates: Partial<NonNullable<TConfig["Update"]>>,
     filters?: Partial<NonNullable<TConfig["Filters"]>>,
   ): Promise<number> {
-    const { whereClause, params } = filters
+    const { whereClause, params, hasConditions } = filters
       ? this.buildFilterClause(filters)
-      : { whereClause: "1=1", params: [] as unknown[] };
+      : { whereClause: "1=1", params: [] as unknown[], hasConditions: true };
+
+    if (!hasConditions) {
+      throw new Error(
+        `updateAll on ${this.table} received filters with no usable conditions; omit the filters argument to update every row`,
+      );
+    }
 
     const updateMappings = this.getUpdateMapping(updates);
 
@@ -1113,7 +1160,8 @@ export abstract class BaseQueries<
 
   /**
    * Deletes all entities matching the filter criteria
-   * Filters are required to prevent accidental table-wide deletion
+   * At least one usable condition is required, so a filter whose values are
+   * all undefined is rejected instead of deleting the whole table
    *
    * @param filters - Filter criteria to match specific entities (required)
    * @returns Promise resolving to the number of rows affected
@@ -1121,13 +1169,16 @@ export abstract class BaseQueries<
   async deleteAll(
     filters: Partial<NonNullable<TConfig["Filters"]>>,
   ): Promise<number> {
-    if (!filters || Object.keys(filters).length === 0) {
+    const { whereClause, params, hasConditions } = filters
+      ? this.buildFilterClause(filters)
+      : { whereClause: "1=1", params: [] as unknown[], hasConditions: false };
+
+    if (!hasConditions) {
       throw new Error(
-        `deleteAll requires at least one filter. Use drop() to delete all records from ${this.table}`,
+        `deleteAll requires at least one usable filter. Use drop() to delete all records from ${this.table}`,
       );
     }
 
-    const { whereClause, params } = this.buildFilterClause(filters);
     const query = `DELETE FROM ${this.table} WHERE ${whereClause}`;
 
     try {
@@ -1136,7 +1187,7 @@ export abstract class BaseQueries<
       return result.rowCount || 0;
     } catch (error) {
       logger.error(`Failed to delete from ${this.table}:`, error);
-      throw error;
+      throw translateDbError(error);
     }
   }
 
@@ -1265,6 +1316,15 @@ export abstract class BaseQueries<
       | Array<keyof NonNullable<TConfig["Create"]>>,
     updateFields?: Array<keyof NonNullable<TConfig["Create"]>>,
   ): Promise<TConfig["Entity"]> {
+    const writableUpdateFields = updateFields?.filter((key) =>
+      this.isWritableField(key as string),
+    );
+    if (writableUpdateFields && writableUpdateFields.length === 0) {
+      throw new Error(
+        `upsert on ${this.table} requires at least one field in updateFields`,
+      );
+    }
+
     const createMappings = this.getCreateMapping(data);
     const columns = createMappings.map((m) => m.column).join(", ");
     const placeholders = createMappings
@@ -1278,8 +1338,8 @@ export abstract class BaseQueries<
           .join(", ")
       : this.getColumnName(conflictTarget as string);
 
-    const fieldsToUpdate = updateFields
-      ? updateFields.map((key) => this.getColumnName(key as string))
+    const fieldsToUpdate = writableUpdateFields
+      ? writableUpdateFields.map((key) => this.getColumnName(key as string))
       : createMappings.map((m) => m.column);
 
     const updateClause = fieldsToUpdate
@@ -1395,35 +1455,5 @@ export abstract class BaseQueries<
    */
   isInTransaction(): boolean {
     return "processID" in this.db;
-  }
-
-  /**
-   * Execute a callback within a transaction using this query class
-   * Convenience wrapper around the transaction helper
-   *
-   * @param callback - Function to execute with transaction-enabled queries
-   * @returns Result from callback
-   */
-  async inTransaction<T>(callback: (queries: this) => Promise<T>): Promise<T> {
-    const client = await (this.db as Pool).connect();
-
-    try {
-      await client.query("BEGIN");
-      logger.debug("Transaction started");
-
-      const txQueries = this.useClient(client);
-      const result = await callback(txQueries);
-
-      await client.query("COMMIT");
-      logger.debug("Transaction committed");
-
-      return result;
-    } catch (error) {
-      await client.query("ROLLBACK");
-      logger.error("Transaction rolled back:", error);
-      throw error;
-    } finally {
-      client.release();
-    }
   }
 }

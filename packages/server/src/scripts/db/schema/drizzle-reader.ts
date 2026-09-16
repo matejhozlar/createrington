@@ -25,6 +25,7 @@ const COLUMN_TYPE_TO_UDT: Record<string, string> = {
   PgJsonb: "jsonb",
   PgJson: "json",
   PgDate: "date",
+  PgDateString: "date",
   PgVarchar: "varchar",
   PgReal: "float4",
   PgDoublePrecision: "float8",
@@ -46,6 +47,7 @@ const COLUMN_TYPE_TO_DATA_TYPE: Record<string, string> = {
   PgJsonb: "jsonb",
   PgJson: "json",
   PgDate: "date",
+  PgDateString: "date",
   PgVarchar: "character varying",
   PgReal: "real",
   PgDoublePrecision: "double precision",
@@ -57,9 +59,13 @@ const COLUMN_TYPE_TO_DATA_TYPE: Record<string, string> = {
 // Main export
 // ============================================================================
 
-export function readSchemaFromDrizzle(): DatabaseSchema {
-  const enums = extractEnums();
-  const tables = extractTables();
+export type SchemaModule = Record<string, unknown>;
+
+export function readSchemaFromDrizzle(
+  schemaModule: SchemaModule = schema,
+): DatabaseSchema {
+  const enums = extractEnums(schemaModule);
+  const tables = extractTables(schemaModule);
   return { tables, enums };
 }
 
@@ -67,10 +73,10 @@ export function readSchemaFromDrizzle(): DatabaseSchema {
 // Enum extraction
 // ============================================================================
 
-function extractEnums(): EnumTypeInfo[] {
+function extractEnums(schemaModule: SchemaModule): EnumTypeInfo[] {
   const enums: EnumTypeInfo[] = [];
 
-  for (const value of Object.values(schema)) {
+  for (const value of Object.values(schemaModule)) {
     // pgEnum returns a function with enumName and enumValues properties
     if (
       value &&
@@ -92,10 +98,10 @@ function extractEnums(): EnumTypeInfo[] {
 // Table extraction
 // ============================================================================
 
-function extractTables(): TableInfo[] {
+function extractTables(schemaModule: SchemaModule): TableInfo[] {
   const tables: TableInfo[] = [];
 
-  for (const value of Object.values(schema)) {
+  for (const value of Object.values(schemaModule)) {
     if (!is(value, PgTable)) continue;
 
     const config = getTableConfig(value as any);
@@ -197,8 +203,15 @@ function mapColumn(
     // Access the enum name through the column's enum reference
     udtName = col.enum?.enumName ?? "unknown";
   } else {
-    dataType = COLUMN_TYPE_TO_DATA_TYPE[columnType] || columnType;
-    udtName = COLUMN_TYPE_TO_UDT[columnType] || columnType;
+    const mappedDataType = COLUMN_TYPE_TO_DATA_TYPE[columnType];
+    const mappedUdt = COLUMN_TYPE_TO_UDT[columnType];
+    if (!mappedDataType || !mappedUdt) {
+      throw new Error(
+        `No PostgreSQL type mapping for Drizzle column type "${columnType}" (column "${columnName}"); add it to COLUMN_TYPE_TO_UDT and COLUMN_TYPE_TO_DATA_TYPE in scripts/db/schema/drizzle-reader.ts`,
+      );
+    }
+    dataType = mappedDataType;
+    udtName = mappedUdt;
   }
 
   // Determine isPrimaryKey:
@@ -211,13 +224,10 @@ function mapColumn(
   // - composite unique constraints/indexes tracked in uniqueColumnNames
   const isUnique = col.isUnique || uniqueColumnNames.has(columnName);
 
-  // Determine hasDefault:
-  // - Drizzle sets hasDefault for serial, identity, defaults, and generated columns
-  // - SQL parser treats generated stored columns (GENERATED ALWAYS AS ... STORED)
-  //   as hasDefault: false; we match that behavior
-  const isGeneratedStored =
-    col.generated != null && col.generated.type === "stored";
-  const hasDefault = isGeneratedStored ? false : col.hasDefault;
+  // GENERATED ALWAYS columns reject explicit values, so they are excluded from
+  // Create and Update rather than treated as defaulted
+  const isGenerated =
+    col.generated != null || col.generatedIdentity?.type === "always";
 
   // Determine isNullable
   const isNullable = !col.notNull;
@@ -237,7 +247,8 @@ function mapColumn(
     isNullable,
     isPrimaryKey,
     isUnique,
-    hasDefault,
+    hasDefault: col.hasDefault,
+    isGenerated,
     numericPrecision,
     numericScale,
   };

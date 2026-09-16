@@ -8,7 +8,7 @@ import {
 } from "@/app/middleware/error-handler";
 import { balanceRepo, db, Q } from "@/db";
 import { BalanceTransactionType } from "@/db/repositories/balance";
-import { ConstraintViolationError, translateDbError } from "@/db/utils/errors";
+import { UniqueViolationError, translateDbError } from "@/db/utils/errors";
 import { EmbedPresets } from "@/discord/embeds";
 import type {
   DiscordStickyMessageService,
@@ -563,7 +563,7 @@ export class GalleryService {
       const translated = translateDbError(error);
       // A unique violation means a concurrent delivery of the same message
       // already owns this file, so deleting it would strand that row.
-      if (!(translated instanceof ConstraintViolationError)) {
+      if (!(translated instanceof UniqueViolationError)) {
         await this.removeOriginal(originalPath);
       }
       throw translated;

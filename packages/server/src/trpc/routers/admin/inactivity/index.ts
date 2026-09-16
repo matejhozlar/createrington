@@ -3,6 +3,7 @@ import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
 import {
   buildPagination,
+  findOrThrow,
   paginationInput,
   trpcError,
   auditActor,
@@ -102,13 +103,10 @@ export const inactivityRouter = router({
     })
     .input(z.object({ id: z.number().int().positive() }))
     .mutation(async ({ input, ctx }) => {
-      const warning = await Q.player.inactivity.warning.findByIdWithPlayer(
-        input.id,
+      const warning = await findOrThrow(
+        Q.player.inactivity.warning.findByIdWithPlayer(input.id),
+        "Warning not found",
       );
-
-      if (!warning) {
-        throw trpcError.notFound("Warning not found");
-      }
 
       if (warning.resolvedAt) {
         throw trpcError.conflict("Warning is already resolved");
@@ -144,13 +142,10 @@ export const inactivityRouter = router({
         );
       }
 
-      const warning = await Q.player.inactivity.warning.findByIdWithPlayer(
-        input.id,
+      const warning = await findOrThrow(
+        Q.player.inactivity.warning.findByIdWithPlayer(input.id),
+        "Warning not found",
       );
-
-      if (!warning) {
-        throw trpcError.notFound("Warning not found");
-      }
 
       if (warning.resolvedAt) {
         throw trpcError.conflict("Warning is already resolved");

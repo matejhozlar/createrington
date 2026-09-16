@@ -19,13 +19,18 @@ interface ActivityChartProps {
   data: ActivityDataPoint[];
 }
 
+function formatDay(day: string): string {
+  const [year, month, date] = day.split("-").map(Number);
+  return new Date(year, month - 1, date).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+}
+
 export function ActivityChart({ data }: ActivityChartProps) {
   const formatted = data.map((d) => ({
     ...d,
-    date: new Date(d.date).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-    }),
+    date: formatDay(d.date),
     totalHours: Math.round(d.totalHours * 10) / 10,
   }));
 

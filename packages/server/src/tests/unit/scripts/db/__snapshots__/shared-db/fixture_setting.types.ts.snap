@@ -1,0 +1,73 @@
+import type { CamelCaseKeys } from "../";
+import type { FilterValue } from "./base.types";
+
+/**
+ * Database representation of fixture_setting table
+ * 
+ * Raw database row with snake_case field names matching the PostgreSQL schema.
+ * Use this type when working directly with database query results before
+ * transformation to application entities.
+ * 
+ * Auto-generated from database schema
+ * DO NOT EDIT MANUALLY - regenerate with: pnpm generate
+ */
+export interface FixtureSettingRow {
+  key: string;
+  sequence_no: number;
+  value: string;
+  code: string | null;
+  rank: number;
+  weight: number | null;
+  factor: number | null;
+  payload: Record<string, any> | null;
+  updated_at: Date;
+}
+
+/**
+ * Application representation with camelCase field names
+ * 
+ * Transformed version of FixtureSettingRow with camelCase property names for
+ * idiomatic TypeScript code. Use this type in application logic, business
+ * rules, and internal processing.
+ */
+export type FixtureSetting = CamelCaseKeys<FixtureSettingRow>;
+
+/**
+ * Data required to create a new fixture_setting record
+ * 
+ * Defines which fields are required vs optional when inserting a new row.
+ * NOT NULL columns without a database default are required; nullable columns
+ * and columns with a default (serials, timestamps) are optional. Columns the
+ * database generates itself (identity, stored expressions) are omitted.
+ */
+export interface FixtureSettingCreate {
+  key: string;
+  value: string;
+  sequenceNo?: number;
+  code?: string | null;
+  rank?: number;
+  weight?: number | null;
+  factor?: number | null;
+  payload?: Record<string, any> | null;
+  updatedAt?: Date;
+}
+
+/**
+ * Valid identifiers for querying fixture_setting
+ * 
+ * Union type of all valid ways to uniquely identify a row in this table.
+ * Includes primary key combinations and individual unique column identifiers.
+ * Use this type when fetching, updating, or deleting specific records.
+ */
+export type FixtureSettingIdentifier = { key: string };
+
+/**
+ * Type-safe filters for querying fixture_setting
+ * 
+ * Allows filtering on any field with support for comparison operators,
+ * pattern matching, and null checks. Each field accepts FilterValue<T>
+ * which includes direct values and operator objects.
+ */
+export type FixtureSettingFilters = {
+  [K in keyof FixtureSetting]?: FilterValue<FixtureSetting[K]>;
+};

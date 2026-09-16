@@ -1,0 +1,34 @@
+/**
+ * Database enum types
+ * 
+ * Auto-generated from database schema
+ * DO NOT EDIT MANUALLY - regenerate with: pnpm generate
+ */
+
+/**
+ * fixture_kind enum type
+ * 
+ * Possible values: alpha, beta, gamma
+ */
+export type FixtureKind =
+  | "alpha"
+  | "beta"
+  | "gamma";
+
+/**
+ * fixture_source enum type
+ * 
+ * Possible values: import, manual
+ */
+export type FixtureSource =
+  | "import"
+  | "manual";
+
+/**
+ * fixture_status enum type
+ * 
+ * Possible values: active, archived
+ */
+export type FixtureStatus =
+  | "active"
+  | "archived";

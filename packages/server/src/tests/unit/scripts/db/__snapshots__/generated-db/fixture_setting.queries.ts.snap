@@ -1,0 +1,47 @@
+import type { Pool, PoolClient } from "pg";
+import { BaseQueries } from "@/db/queries/base.queries";
+import type {
+  FixtureSetting,
+  FixtureSettingCreate,
+  FixtureSettingRow,
+  FixtureSettingIdentifier,
+  FixtureSettingFilters,
+} from "@createrington/shared/db/fixture_setting.types";
+
+
+/**
+ * Auto-generated base queries for fixture_setting table
+ * 
+ * Provides type-safe CRUD operations and child query accessors.
+ * Child query instances are singletons per database pool for optimal performance.
+ * 
+ * DO NOT EDIT MANUALLY - regenerate with: pnpm generate
+ */
+export class FixtureSettingBaseQueries extends BaseQueries<{
+  DbEntity: FixtureSettingRow;
+  Entity: FixtureSetting;
+  Identifier: FixtureSettingIdentifier;
+  Filters: FixtureSettingFilters;
+  Update: Partial<FixtureSetting>;
+  Create: FixtureSettingCreate;
+}> {
+  /** Database table name */
+  protected readonly table = "fixture_setting";
+  
+  /**
+   * Field combinations that uniquely identify a row in this table
+   *
+   * Each group is only a valid identifier when ALL of its fields are provided.
+   * Used by extractIdentifier to filter full entities to identifiers only and
+   * to reject partial composite identifiers.
+   */
+  protected readonly IDENTIFIER_GROUPS = [['key']];
+  protected readonly AUTO_SET_UPDATED_AT = true;
+
+  constructor(db: Pool | PoolClient) {
+    super(db);
+  }
+
+  // Child query singletons (shared across all instances using this pool)
+
+}

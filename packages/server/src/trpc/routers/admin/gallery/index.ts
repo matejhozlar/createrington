@@ -5,10 +5,10 @@ import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
 import {
   auditActor,
-  buildPagination,
+  findOrThrow,
+  paginateQuery,
   paginationInput,
   rethrowTrpc,
-  trpcError,
 } from "@/trpc/utils";
 import { container, Services } from "@/services/container";
 import { galleryImageUrls } from "@/services/gallery/urls";
@@ -109,14 +109,6 @@ async function serializeOne(row: GallerySubmission) {
   return item;
 }
 
-async function findOrThrow(id: number): Promise<GallerySubmission> {
-  const row = await Q.gallery.submission.find({ id });
-  if (!row) {
-    throw trpcError.notFound("Gallery submission not found");
-  }
-  return row;
-}
-
 const settingsRouter = router({
   get: adminProcedure
     .meta({ description: "Current gallery reward amount and weekly cap" })
@@ -182,13 +174,11 @@ export const adminGalleryRouter = router({
       const filters = input.status ? { status: input.status } : {};
       const direction = input.status === "pending" ? "asc" : "desc";
 
-      const [rows, total, ...countValues] = await Promise.all([
-        Q.gallery.submission
-          .where(filters)
-          .orderBy("createdAt", direction)
-          .paginate(input.page, input.limit)
-          .all(),
-        Q.gallery.submission.count(filters),
+      const [{ rows, pagination }, ...countValues] = await Promise.all([
+        paginateQuery(Q.gallery.submission, filters, input, {
+          orderBy: "createdAt",
+          orderDirection: direction,
+        }),
         ...GALLERY_SUBMISSION_STATUSES.map((status) =>
           Q.gallery.submission.count({ status }),
         ),
@@ -201,11 +191,7 @@ export const adminGalleryRouter = router({
         ]),
       ) as Record<(typeof GALLERY_SUBMISSION_STATUSES)[number], number>;
 
-      return {
-        items: await serialize(rows),
-        pagination: buildPagination(input.page, input.limit, total),
-        counts,
-      };
+      return { items: await serialize(rows), pagination, counts };
     }),
 
   get: adminProcedure
@@ -215,7 +201,10 @@ export const adminGalleryRouter = router({
     })
     .input(idInput)
     .query(async ({ input }) => {
-      const row = await findOrThrow(input.id);
+      const row = await findOrThrow(
+        Q.gallery.submission.find({ id: input.id }),
+        "Gallery submission not found",
+      );
       const [item, defaultAmount, weeklyCap, weeklyUsed] = await Promise.all([
         serializeOne(row),
         settings.getGalleryRewardAmount(),

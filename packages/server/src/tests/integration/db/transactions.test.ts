@@ -29,42 +29,6 @@ describe("Transactions (server table)", () => {
   });
 
   // ==========================================================================
-  // BaseQueries.inTransaction()
-  // ==========================================================================
-
-  describe("BaseQueries.inTransaction()", () => {
-    it("should commit on success", async () => {
-      await Q.server.inTransaction(async (txQ) => {
-        await txQ.create({ name: "TxServer", identifier: "tx-server" });
-      });
-
-      // Data should be visible after commit
-      const found = await Q.server.find({ identifier: "tx-server" });
-      expect(found).not.toBeNull();
-      expect(found!.name).toBe("TxServer");
-    });
-
-    it("should rollback on error", async () => {
-      await expect(
-        Q.server.inTransaction(async (txQ) => {
-          await txQ.create({ name: "Rollback", identifier: "rollback" });
-          throw new Error("Intentional failure");
-        }),
-      ).rejects.toThrow("Intentional failure");
-
-      // Data should NOT be visible after rollback
-      const found = await Q.server.find({ identifier: "rollback" });
-      expect(found).toBeNull();
-    });
-
-    it("should provide a transactional query instance", async () => {
-      await Q.server.inTransaction(async (txQ) => {
-        expect(txQ.isInTransaction()).toBe(true);
-      });
-    });
-  });
-
-  // ==========================================================================
   // DatabaseQueries.inTransaction()
   // ==========================================================================
 

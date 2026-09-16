@@ -1,4 +1,5 @@
 import type { TableInfo, TableStructure } from "../types";
+import { snakeToCamel } from "../utils/naming";
 import { extractIdentifierGroups } from "./types";
 
 /**
@@ -73,6 +74,20 @@ export function generateBaseQueries(
     (col) => col.columnName === "updated_at",
   );
 
+  // GENERATED ALWAYS columns cannot be assigned: the Update type omits them
+  // and the base class strips them from create and update payloads
+  const generatedFields = table.columns
+    .filter((col) => col.isGenerated)
+    .map((col) => snakeToCamel(col.columnName));
+  const updateType =
+    generatedFields.length > 0
+      ? `Partial<Omit<${className}, ${generatedFields.map((f) => `"${f}"`).join(" | ")}>>`
+      : `Partial<${className}>`;
+  const generatedFieldsLiteral =
+    generatedFields.length > 0
+      ? `\n\n  /** Columns the database computes itself; stripped from create and update payloads */\n  protected readonly GENERATED_FIELDS = [${generatedFields.map((f) => `'${f}'`).join(", ")}];`
+      : "";
+
   return `import type { Pool, PoolClient } from "pg";
 import { BaseQueries } from "@/db/queries/base.queries";
 import type {
@@ -97,7 +112,7 @@ export class ${className}BaseQueries extends BaseQueries<{
   Entity: ${className};
   Identifier: ${className}Identifier;
   Filters: ${className}Filters;
-  Update: Partial<${className}>;
+  Update: ${updateType};
   Create: ${className}Create;
 }> {
   /** Database table name */
@@ -110,7 +125,7 @@ export class ${className}BaseQueries extends BaseQueries<{
    * Used by extractIdentifier to filter full entities to identifiers only and
    * to reject partial composite identifiers.
    */
-  protected readonly IDENTIFIER_GROUPS = ${identifierGroupsLiteral};${hasUpdatedAt ? `\n  protected readonly AUTO_SET_UPDATED_AT = true;` : ""}
+  protected readonly IDENTIFIER_GROUPS = ${identifierGroupsLiteral};${hasUpdatedAt ? `\n  protected readonly AUTO_SET_UPDATED_AT = true;` : ""}${generatedFieldsLiteral}
 
   constructor(db: Pool | PoolClient) {
     super(db);

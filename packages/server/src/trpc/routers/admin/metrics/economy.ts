@@ -1,7 +1,7 @@
 import { router, adminProcedure } from "@/trpc/trpc";
 import { metricsService } from "@/services/metrics";
 import { z } from "zod";
-import { dateRangeInput } from "./schemas";
+import { dateRangeWithGranularity } from "./schemas";
 
 /** Admin economy metrics: overview, distribution, transactions, top balances */
 export const economyMetricsRouter = router({
@@ -22,11 +22,11 @@ export const economyMetricsRouter = router({
 
   getTransactionVolume: adminProcedure
     .meta({ description: "Get transaction volume grouped by time period" })
-    .input(dateRangeInput)
+    .input(dateRangeWithGranularity)
     .query(async ({ input }) => {
       return await metricsService.economy.getTransactionVolume(
-        new Date(input.start),
-        new Date(input.end),
+        input.start,
+        input.end,
         input.granularity,
       );
     }),

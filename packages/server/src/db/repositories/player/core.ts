@@ -4,7 +4,6 @@ import type {
   Player,
   PlayerBalance,
   PlayerBalanceTransaction,
-  PlayerFilters,
   PlayerPlaytimeSummary,
   WaitlistEntry,
 } from "@createrington/shared/db";
@@ -15,7 +14,7 @@ import { BasePlayerRepository, type PlayerIdentifier } from "./base";
 
 /**
  * Core player CRUD plus the aggregate read paths used by the admin panel
- * (detailed lookup, list/count, balance summary, server-wide stats).
+ * (detailed lookup, balance summary, server-wide stats).
  * adminUpdate writes an admin_log_action audit row inside the same
  * transaction. Player deletion is owned by PlayerDeletionService.
  */
@@ -109,24 +108,6 @@ export class PlayerRepository extends BasePlayerRepository {
       formattedBalance: BalanceUtils.format(balance.balance),
       recentTransactions: transactions,
     };
-  }
-
-  /** Filtered, paginated player list for the admin list view. */
-  async getAll(
-    filters?: PlayerFilters,
-    options?: {
-      orderBy?: keyof Player;
-      orderDirection?: "asc" | "desc";
-      limit?: number;
-      offset?: number;
-    },
-  ): Promise<Player[]> {
-    return await Q.player.findAll(filters, options);
-  }
-
-  /** Count of players matching the given filters. */
-  async count(filters?: PlayerFilters): Promise<number> {
-    return await Q.player.count(filters);
   }
 
   /**

@@ -11,6 +11,9 @@ type TrpcCode = ConstructorParameters<typeof TRPCError>[0]["code"];
 /** Positive int4-bounded ID input, shared by routers that take row IDs. */
 export const id = () => z.number().int().positive().max(2147483647);
 
+/** Sort direction input. */
+export const sortDirection = () => z.enum(["asc", "desc"]);
+
 /** Shorthand factories for common TRPCError codes. */
 export const trpcError = {
   badRequest: (message: string) =>
@@ -27,6 +30,13 @@ export const trpcError = {
   internal: (message: string) =>
     new TRPCError({ code: "INTERNAL_SERVER_ERROR", message }),
 };
+
+/** Rejects an all-optional patch that carries no fields as BAD_REQUEST. */
+export function assertPatchNotEmpty(patch: Record<string, unknown>): void {
+  if (Object.keys(patch).length === 0) {
+    throw trpcError.badRequest("Nothing to update");
+  }
+}
 
 const APP_ERROR_TO_TRPC_CODE: Record<number, TrpcCode> = {
   400: "BAD_REQUEST",
@@ -116,4 +126,50 @@ export function buildPagination(page: number, limit: number, total: number) {
     total,
     totalPages: Math.ceil(total / limit),
   };
+}
+
+interface PageSource<TEntity, TFilters> {
+  findAll(
+    filters: TFilters | undefined,
+    options: {
+      limit?: number;
+      offset?: number;
+      orderBy?: keyof TEntity;
+      orderDirection?: "asc" | "desc";
+    },
+  ): Promise<TEntity[]>;
+  count(filters?: TFilters): Promise<number>;
+}
+
+/**
+ * Runs the page query and the total count from one filter object, so the
+ * rows and the pagination metadata can never disagree on the predicate.
+ */
+export async function paginateQuery<TEntity, TFilters>(
+  source: PageSource<TEntity, TFilters>,
+  filters: TFilters,
+  input: { page: number; limit: number },
+  order?: { orderBy?: keyof TEntity; orderDirection?: "asc" | "desc" },
+) {
+  const [rows, total] = await Promise.all([
+    source.findAll(filters, {
+      ...order,
+      limit: input.limit,
+      offset: input.page * input.limit,
+    }),
+    source.count(filters),
+  ]);
+  return { rows, pagination: buildPagination(input.page, input.limit, total) };
+}
+
+/** Awaits a nullable single-row lookup and maps a missing row to NOT_FOUND. */
+export async function findOrThrow<T>(
+  lookup: Promise<T | null | undefined>,
+  message: string,
+): Promise<T> {
+  const row = await lookup;
+  if (row === null || row === undefined) {
+    throw trpcError.notFound(message);
+  }
+  return row;
 }

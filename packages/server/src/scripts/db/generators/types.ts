@@ -7,7 +7,7 @@ import { pgTypeToTsType, getNumericComment } from "../utils/type-mapping";
  *
  * This module generates comprehensive TypeScript type definitions for each
  * database table, including multiple representations optimized for different
- * use cases (database operations, application logic, API serialization).
+ * use cases (database operations, application logic).
  * It provides complete type safety across the entire data flow.
  */
 
@@ -16,7 +16,7 @@ import { pgTypeToTsType, getNumericComment } from "../utils/type-mapping";
  *
  * Creates a comprehensive set of type definitions that cover all aspects of
  * working with a database table, from raw database representations to
- * application-level entities, API data transfer objects, and query types.
+ * application-level entities and query types.
  *
  * @param table - Complete table metadata including all columns and constraints
  * @returns Complete TypeScript source code containing all type definitions
@@ -25,16 +25,15 @@ import { pgTypeToTsType, getNumericComment } from "../utils/type-mapping";
  * Generated types:
  * 1. Row interface: Snake_case database representation (as stored in PostgreSQL)
  * 2. Entity type: CamelCase application representation (for TypeScript code)
- * 3. ApiData interface: Dates as ISO strings (for JSON serialization/API responses)
- * 4. Create interface: Fields required/optional for INSERT operations
- * 5. Identifier type: Valid identifiers for queries (primary keys, unique columns)
- * 6. Filters type: Type-safe filtering with operator support
+ * 3. Create interface: Fields required/optional for INSERT operations
+ * 4. Identifier type: Valid identifiers for queries (primary keys, unique columns)
+ * 5. Filters type: Type-safe filtering with operator support
  *
  * Type flow through application layers:
  * ```
- * Database (Row) → Application (Entity) → API (ApiData)
- *     ↓                     ↓                    ↓
- * snake_case           camelCase            camelCase + string dates
+ * Database (Row) → Application (Entity)
+ *     ↓                     ↓
+ * snake_case           camelCase
  * ```
  *
  * Design principles:
@@ -42,7 +41,7 @@ import { pgTypeToTsType, getNumericComment } from "../utils/type-mapping";
  * - Type safety: Compile-time validation of field names and types
  * - Nullability: Explicitly typed (T | null) for nullable columns
  * - Precision handling: Numeric types mapped to prevent JavaScript precision loss
- * - Automatic timestamps: created_at/updated_at treated specially
+ * - Generated columns: GENERATED ALWAYS columns are readable but never writable
  *
  * @example
  * ```typescript
@@ -69,6 +68,7 @@ export function generateTypes(
   const enumImports = generateEnumImports(usedEnums);
 
   return `import type { CamelCaseKeys } from "../";
+import type { FilterValue } from "./base.types";
 ${enumImports}
 /**
  * Database representation of ${table.tableName} table
@@ -92,20 +92,12 @@ ${generateRowInterface(table, className, enums)}
 ${generateEntityType(className)}
 
 /**
- * API representation with dates as ISO strings
- * 
- * Optimized for JSON serialization with Date fields converted to ISO string
- * format. Use this type for API responses, client-side data, and anywhere
- * JSON serialization occurs (Date objects don't serialize well to JSON).
- */
-${generateApiDataType(table, className, enums)}
-
-/**
  * Data required to create a new ${table.tableName} record
  * 
  * Defines which fields are required vs optional when inserting a new row.
- * Fields with defaults, auto-generated values (e.g., id, timestamps), or
- * nullable columns are marked optional.
+ * NOT NULL columns without a database default are required; nullable columns
+ * and columns with a default (serials, timestamps) are optional. Columns the
+ * database generates itself (identity, stored expressions) are omitted.
  */
 ${generateCreateInterface(table, className, enums)}
 
@@ -156,89 +148,6 @@ function generateEnumImports(usedEnums: EnumTypeInfo[]): string {
   const enumTypeNames = usedEnums.map((e) => snakeToPascal(e.typeName)).sort(); // Sort for consistent output
 
   return `import type { ${enumTypeNames.join(", ")} } from "./database.types";\n`;
-}
-/**
- * Generates API data interface with dates as ISO string format
- *
- * Creates a type definition optimized for JSON serialization where Date
- * objects are represented as ISO 8601 strings. This prevents serialization
- * issues and provides a consistent API contract.
- *
- * @param table - Table metadata with column information
- * @param className - PascalCase class name for the table
- * @returns TypeScript interface definition for API data
- *
- * @remarks
- * Key transformations:
- * - Date → string (ISO 8601 format assumed)
- * - snake_case → camelCase (for API consistency)
- * - Nullability preserved (T | null for nullable columns)
- * - Numeric precision comments retained
- *
- * Use cases:
- * - API response payloads
- * - Client-side TypeScript/JavaScript
- * - JSON serialization contexts
- * - External system integrations
- *
- * @example
- * ```typescript
- * // For a users table with created_at timestamp:
- * export interface UserApiData {
- *   id: number;
- *   email: string;
- *   createdAt: string;  // Date converted to string
- *   deletedAt: string | null;  // Nullable date
- * }
- *
- * // Usage in API endpoint:
- * app.get('/users/:id', async (req, res) => {
- *   const user = await db.users.findById(req.params.id);
- *   const apiData: UserApiData = {
- *     ...user,
- *     createdAt: user.createdAt.toISOString()
- *   };
- *   res.json(apiData);
- * });
- * ```
- */
-function generateApiDataType(
-  table: TableInfo,
-  className: string,
-  enums: EnumTypeInfo[] = [],
-): string {
-  const fields = table.columns.map((col) => {
-    const camelName = snakeToCamel(col.columnName);
-    let type = pgTypeToTsType(
-      col.udtName,
-      false, // Get base type without null
-      col.numericPrecision,
-      col.numericScale,
-      enums,
-    );
-
-    // Convert Date to string for JSON serialization compatibility
-    if (type === "Date") {
-      type = "string";
-    }
-
-    // Add null union type if column is nullable
-    if (col.isNullable) {
-      type = `${type} | null`;
-    }
-
-    const comment = getNumericComment(
-      col.udtName,
-      col.numericPrecision,
-      col.numericScale,
-    );
-
-    return `  ${camelName}: ${type};${comment}`;
-  });
-
-  return `export interface ${className}ApiData {
-${fields.join("\n")}
-}`;
 }
 
 /**
@@ -374,14 +283,10 @@ function generateEntityType(className: string): string {
  *
  * @remarks
  * Field optionality rules:
- * - Required: NOT NULL columns without defaults
- * - Optional: Nullable columns, columns with defaults, primary keys, timestamps
- *
- * Special handling:
- * - Primary keys: Optional (usually auto-generated)
- * - created_at/updated_at: Optional (database defaults)
- * - Columns with DEFAULT: Optional (database provides value)
- * - Nullable columns: Optional (can be omitted)
+ * - Required: NOT NULL columns without defaults (including primary keys
+ *   the caller must supply, such as text keys and composite PK members)
+ * - Optional: Nullable columns and columns with defaults
+ * - Omitted: GENERATED ALWAYS columns (identity, stored expressions)
  *
  * Benefits:
  * - Compile-time validation of required fields
@@ -398,7 +303,7 @@ function generateEntityType(className: string): string {
  *   username: string;
  *
  *   // Optional fields
- *   id?: number;              // Primary key (auto-generated)
+ *   id?: number;              // Serial primary key (has a default)
  *   displayName?: string | null;  // Nullable
  *   role?: string;            // Has default value
  *   createdAt?: Date;         // Timestamp with default
@@ -450,36 +355,26 @@ ${allFields.join("\n")}
 }
 
 /**
- * Partitions table columns into required and optional for CREATE operations
- *
- * Analyzes column metadata to determine which fields should be required versus
- * optional when creating new records. Applies intelligent rules based on
- * database constraints and common conventions.
+ * Partitions the insertable columns of a table into required and optional
+ * Create fields
  *
  * @param table - Table metadata with all column information
  * @returns Object with separate arrays of required and optional columns
  *
  * @remarks
- * Required field criteria (all must be true):
- * - NOT NULL constraint
- * - NOT a primary key (usually auto-generated)
- * - NO DEFAULT value defined
- * - NOT a standard timestamp (created_at, updated_at)
- *
- * Optional field criteria (any must be true):
- * - Nullable (can be NULL)
- * - Primary key (auto-generated by database)
- * - Has DEFAULT value
- * - Standard timestamp field (auto-populated)
+ * A column is required iff it is NOT NULL and has no default. Everything
+ * else the caller may omit. GENERATED ALWAYS columns are excluded entirely
+ * because the database rejects explicit values for them.
  *
  * @example
  * ```typescript
  * const table = {
  *   columns: [
- *     { columnName: 'id', isPrimaryKey: true, hasDefault: true },        // optional
+ *     { columnName: 'id', hasDefault: true },                            // optional
  *     { columnName: 'email', isNullable: false, hasDefault: false },     // required
  *     { columnName: 'name', isNullable: true },                          // optional
  *     { columnName: 'created_at', hasDefault: true },                    // optional
+ *     { columnName: 'total', isGenerated: true },                        // omitted
  *   ]
  * };
  * const { required, optional } = partitionCreateFields(table);
@@ -488,21 +383,13 @@ ${allFields.join("\n")}
  * ```
  */
 function partitionCreateFields(table: TableInfo) {
-  const required = table.columns.filter(
-    (col) =>
-      !col.isNullable &&
-      !col.isPrimaryKey &&
-      !col.hasDefault &&
-      !["created_at", "updated_at"].includes(col.columnName),
+  const insertable = table.columns.filter((col) => !col.isGenerated);
+
+  const required = insertable.filter(
+    (col) => !col.isNullable && !col.hasDefault,
   );
 
-  const optional = table.columns.filter(
-    (col) =>
-      col.isNullable ||
-      col.isPrimaryKey ||
-      col.hasDefault ||
-      ["created_at", "updated_at"].includes(col.columnName),
-  );
+  const optional = insertable.filter((col) => col.isNullable || col.hasDefault);
 
   return { required, optional };
 }
@@ -719,9 +606,7 @@ function generateIdentifierType(
  * ```
  */
 function generateFiltersType(table: TableInfo, className: string): string {
-  return `import type { FilterValue } from "./base.types";
-
-export type ${className}Filters = {
+  return `export type ${className}Filters = {
   [K in keyof ${className}]?: FilterValue<${className}[K]>;
 };`;
 }

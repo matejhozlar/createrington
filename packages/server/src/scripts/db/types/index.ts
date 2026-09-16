@@ -35,6 +35,12 @@ export interface ColumnInfo {
   /** Whether the column has a default value defined */
   hasDefault: boolean;
 
+  /**
+   * Whether the database computes the value itself (GENERATED ALWAYS AS ... STORED
+   * or GENERATED ALWAYS AS IDENTITY) and rejects explicit inserts and updates
+   */
+  isGenerated: boolean;
+
   /** Precision for numeric types (total number of digits), null for non-numeric types */
   numericPrecision: number | null;
 

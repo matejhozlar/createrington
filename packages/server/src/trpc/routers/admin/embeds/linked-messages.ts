@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
-import { trpcError, auditActor } from "@/trpc/utils";
+import { findOrThrow, trpcError, auditActor } from "@/trpc/utils";
 import {
   embedBotSchema,
   messagePayloadSchema,
@@ -81,12 +81,10 @@ export const embedLinkedMessageProcedures = {
         .and(messagePayloadSchema),
     )
     .mutation(async ({ input }) => {
-      const link = await Q.discord.embed.preset.message.find({
-        id: input.linkId,
-      });
-      if (!link) {
-        throw trpcError.notFound("Link not found");
-      }
+      const link = await findOrThrow(
+        Q.discord.embed.preset.message.find({ id: input.linkId }),
+        "Link not found",
+      );
 
       const built = buildMessage(input, link.presetId);
       if (!built.ok) {

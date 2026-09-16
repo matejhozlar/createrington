@@ -1,0 +1,81 @@
+import type { CamelCaseKeys } from "../";
+import type { FilterValue } from "./base.types";
+
+/**
+ * Database representation of fixture_parent_child_leaf table
+ * 
+ * Raw database row with snake_case field names matching the PostgreSQL schema.
+ * Use this type when working directly with database query results before
+ * transformation to application entities.
+ * 
+ * Auto-generated from database schema
+ * DO NOT EDIT MANUALLY - regenerate with: pnpm generate
+ */
+export interface FixtureParentChildLeafRow {
+  parent_id: number;
+  child_key: string;
+  leaf_no: number;
+  token: string;
+  label: string | null;
+  recorded_on: string;
+  recorded_at: Date | null;
+  source_ip: string | null;
+  total_seconds: bigint;
+  sessions: number;
+  avg_seconds: bigint | null;
+  weight: number;
+  archived_at: Date | null;
+  updated_at: Date;
+}
+
+/**
+ * Application representation with camelCase field names
+ * 
+ * Transformed version of FixtureParentChildLeafRow with camelCase property names for
+ * idiomatic TypeScript code. Use this type in application logic, business
+ * rules, and internal processing.
+ */
+export type FixtureParentChildLeaf = CamelCaseKeys<FixtureParentChildLeafRow>;
+
+/**
+ * Data required to create a new fixture_parent_child_leaf record
+ * 
+ * Defines which fields are required vs optional when inserting a new row.
+ * NOT NULL columns without a database default are required; nullable columns
+ * and columns with a default (serials, timestamps) are optional. Columns the
+ * database generates itself (identity, stored expressions) are omitted.
+ */
+export interface FixtureParentChildLeafCreate {
+  parentId: number;
+  childKey: string;
+  leafNo: number;
+  recordedOn: string;
+  token?: string;
+  label?: string | null;
+  recordedAt?: Date | null;
+  sourceIp?: string | null;
+  totalSeconds?: bigint;
+  sessions?: number;
+  archivedAt?: Date | null;
+  updatedAt?: Date;
+}
+
+/**
+ * Valid identifiers for querying fixture_parent_child_leaf
+ * 
+ * Union type of all valid ways to uniquely identify a row in this table.
+ * Includes primary key combinations and individual unique column identifiers.
+ * Use this type when fetching, updating, or deleting specific records.
+ */
+export type FixtureParentChildLeafIdentifier = { parentId: number; childKey: string; leafNo: number } | { token: string };
+
+/**
+ * Type-safe filters for querying fixture_parent_child_leaf
+ * 
+ * Allows filtering on any field with support for comparison operators,
+ * pattern matching, and null checks. Each field accepts FilterValue<T>
+ * which includes direct values and operator objects.
+ */
+export type FixtureParentChildLeafFilters = {
+  [K in keyof FixtureParentChildLeaf]?: FilterValue<FixtureParentChildLeaf[K]>;
+};

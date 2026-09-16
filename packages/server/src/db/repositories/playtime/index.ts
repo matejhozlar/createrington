@@ -1,4 +1,5 @@
 import { Q, waitlistRepo } from "@/db";
+import { calendarDay } from "@/db/utils";
 import type { ServerActivity } from "@/db/queries/player/playtime/daily";
 import type { ServerHeatMap } from "@/db/queries/player/playtime/hourly";
 import type {
@@ -385,8 +386,8 @@ export class PlaytimeRepository {
 
       return await Q.player.playtime.daily.getServerActivity(
         serverId,
-        startDate,
-        endDate,
+        calendarDay(startDate),
+        calendarDay(endDate),
       );
     } catch (error) {
       logger.error("Failed to get server activity:", error);
@@ -421,7 +422,7 @@ export class PlaytimeRepository {
     try {
       const dailyRecords = await Q.player.playtime.daily.findAll({
         serverId,
-        playDate: { $between: [startDate, endDate] },
+        playDate: { $between: [calendarDay(startDate), calendarDay(endDate)] },
       });
 
       const playerTotals = new Map<string, bigint>();

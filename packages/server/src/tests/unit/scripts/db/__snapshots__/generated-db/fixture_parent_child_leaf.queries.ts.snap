@@ -1,0 +1,50 @@
+import type { Pool, PoolClient } from "pg";
+import { BaseQueries } from "@/db/queries/base.queries";
+import type {
+  FixtureParentChildLeaf,
+  FixtureParentChildLeafCreate,
+  FixtureParentChildLeafRow,
+  FixtureParentChildLeafIdentifier,
+  FixtureParentChildLeafFilters,
+} from "@createrington/shared/db/fixture_parent_child_leaf.types";
+
+
+/**
+ * Auto-generated base queries for fixture_parent_child_leaf table
+ * 
+ * Provides type-safe CRUD operations and child query accessors.
+ * Child query instances are singletons per database pool for optimal performance.
+ * 
+ * DO NOT EDIT MANUALLY - regenerate with: pnpm generate
+ */
+export class FixtureParentChildLeafBaseQueries extends BaseQueries<{
+  DbEntity: FixtureParentChildLeafRow;
+  Entity: FixtureParentChildLeaf;
+  Identifier: FixtureParentChildLeafIdentifier;
+  Filters: FixtureParentChildLeafFilters;
+  Update: Partial<Omit<FixtureParentChildLeaf, "avgSeconds" | "weight">>;
+  Create: FixtureParentChildLeafCreate;
+}> {
+  /** Database table name */
+  protected readonly table = "fixture_parent_child_leaf";
+  
+  /**
+   * Field combinations that uniquely identify a row in this table
+   *
+   * Each group is only a valid identifier when ALL of its fields are provided.
+   * Used by extractIdentifier to filter full entities to identifiers only and
+   * to reject partial composite identifiers.
+   */
+  protected readonly IDENTIFIER_GROUPS = [['parentId', 'childKey', 'leafNo'], ['token']];
+  protected readonly AUTO_SET_UPDATED_AT = true;
+
+  /** Columns the database computes itself; stripped from create and update payloads */
+  protected readonly GENERATED_FIELDS = ['avgSeconds', 'weight'];
+
+  constructor(db: Pool | PoolClient) {
+    super(db);
+  }
+
+  // Child query singletons (shared across all instances using this pool)
+
+}

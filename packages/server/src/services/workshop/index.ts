@@ -4,7 +4,7 @@ import {
   ConflictError,
   NotFoundError,
 } from "@/app/middleware/error-handler";
-import { ConstraintViolationError, DatabaseError } from "@/db/utils/errors";
+import { UniqueViolationError, DatabaseError } from "@/db/utils/errors";
 import type { WorkshopModEventListItem } from "@/db/queries/workshop/mod/event";
 import type {
   CurseforgeProject,
@@ -617,7 +617,7 @@ export class WorkshopService {
         });
       } catch (error) {
         const duplicateUpvote =
-          error instanceof ConstraintViolationError &&
+          error instanceof UniqueViolationError &&
           error.constraint === "idx_workshop_mod_upvote_unique";
         if (!duplicateUpvote) throw error;
       }
@@ -743,7 +743,7 @@ export class WorkshopService {
         "Provide either an existing modpack or a name for a new one",
       );
     } catch (error) {
-      if (error instanceof ConstraintViolationError) {
+      if (error instanceof UniqueViolationError) {
         throw new ConflictError(
           `A workshop with slug "${slug}" already exists`,
         );
@@ -826,10 +826,7 @@ export class WorkshopService {
     try {
       return await Q.workshop.updateAndReturn({ id: workshopId }, patch);
     } catch (error) {
-      if (
-        error instanceof ConstraintViolationError &&
-        patch.slug !== undefined
-      ) {
+      if (error instanceof UniqueViolationError && patch.slug !== undefined) {
         throw new ConflictError(
           `A workshop with slug "${patch.slug}" already exists`,
         );
@@ -1763,7 +1760,7 @@ export class WorkshopService {
   }
 
   private mapConstraintError(error: unknown): never {
-    if (error instanceof ConstraintViolationError) {
+    if (error instanceof UniqueViolationError) {
       throw new ConflictError(
         "Already suggested or ruled out in this workshop, refresh and try again",
       );

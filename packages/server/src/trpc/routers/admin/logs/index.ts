@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
-import { paginationInput, buildPagination } from "@/trpc/utils";
+import { paginationInput, buildPagination, sortDirection } from "@/trpc/utils";
 
 /** Admin audit logs router: filterable, paginated admin action history. */
 export const logsRouter = router({
@@ -25,7 +25,7 @@ export const logsRouter = router({
         orderBy: z
           .enum(["performedAt", "actionType", "adminUsername"])
           .default("performedAt"),
-        orderDirection: z.enum(["asc", "desc"]).default("desc"),
+        orderDirection: sortDirection().default("desc"),
       }),
     )
     .query(async ({ input }) => {

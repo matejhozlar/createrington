@@ -3,8 +3,25 @@ import {
   formatCriteria,
   createNotFoundError,
   escapeLike,
+  ilikeContains,
+  calendarDay,
 } from "@/db/utils/query-helpers";
 import { NotFoundError } from "@/db/utils/errors";
+
+describe("calendarDay", () => {
+  it("formats the local calendar day as YYYY-MM-DD", () => {
+    expect(calendarDay(new Date(2026, 6, 18, 0, 0, 0))).toBe("2026-07-18");
+    expect(calendarDay(new Date(2026, 0, 5, 23, 59, 59))).toBe("2026-01-05");
+  });
+
+  it("uses local time rather than UTC", () => {
+    const localMidnight = new Date(2026, 6, 18, 0, 0, 0);
+    expect(calendarDay(localMidnight)).toBe("2026-07-18");
+    expect(calendarDay(new Date(localMidnight.getTime() - 1))).toBe(
+      "2026-07-17",
+    );
+  });
+});
 
 describe("formatCriteria", () => {
   it("formats a single key-value pair", () => {
@@ -59,5 +76,15 @@ describe("escapeLike", () => {
 
   it("returns an empty string unchanged", () => {
     expect(escapeLike("")).toBe("");
+  });
+});
+
+describe("ilikeContains", () => {
+  it("wraps the needle in wildcards", () => {
+    expect(ilikeContains("steve")).toEqual({ $ilike: "%steve%" });
+  });
+
+  it("escapes wildcards inside the needle so they match literally", () => {
+    expect(ilikeContains("100%_x")).toEqual({ $ilike: "%100\\%\\_x%" });
   });
 });

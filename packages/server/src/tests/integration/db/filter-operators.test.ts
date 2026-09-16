@@ -151,6 +151,20 @@ describe("Filter operators (server table)", () => {
     expect(results).toHaveLength(0);
   });
 
+  it("$eq: null should produce IS NULL instead of a never-matching = NULL", async () => {
+    const results = await Q.server.findAll({ name: { $eq: null } as any });
+    expect(results).toHaveLength(0);
+
+    const nonNull = await Q.server.findAll({ name: { $ne: null } as any });
+    expect(nonNull).toHaveLength(4);
+  });
+
+  it("should reject an unknown operator instead of ignoring it", async () => {
+    await expect(
+      Q.server.findAll({ id: { $gte: 1, lte: 0 } as any }),
+    ).rejects.toThrow('Unknown filter operator "lte"');
+  });
+
   // ==========================================================================
   // RANGE
   // ==========================================================================

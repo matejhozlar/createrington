@@ -2,7 +2,7 @@ import { z } from "zod";
 import { router, ownerProcedure } from "@/trpc/trpc";
 import { trpcError, auditActor } from "@/trpc/utils";
 import { Q } from "@/db";
-import { escapeLike } from "@/db/utils";
+import { ilikeContains } from "@/db/utils";
 import { getService, Services } from "@/services";
 import { sessionService } from "@/services/auth/session/session.service";
 import { adminStatusService } from "@/services/auth/admin-status/admin-status.service";
@@ -58,11 +58,10 @@ export const ownerAdminsRouter = router({
       const query = input.query.trim();
       if (!query) return { players: [] };
 
-      const likeQuery = `%${escapeLike(query)}%`;
       const results = DISCORD_ID_REGEX.test(query)
         ? await Q.player.findAll({ discordId: query })
         : await Q.player
-            .where({ minecraftUsername: { $ilike: likeQuery } })
+            .where({ minecraftUsername: ilikeContains(query) })
             .orderBy("minecraftUsername", "asc")
             .limit(20)
             .all();

@@ -1,0 +1,49 @@
+import type { Pool, PoolClient } from "pg";
+import { BaseQueries } from "@/db/queries/base.queries";
+import type {
+  FixtureAuditEntry,
+  FixtureAuditEntryCreate,
+  FixtureAuditEntryRow,
+  FixtureAuditEntryIdentifier,
+  FixtureAuditEntryFilters,
+} from "@createrington/shared/db/fixture_audit_entry.types";
+
+
+/**
+ * Auto-generated base queries for fixture_audit_entry table
+ * 
+ * Provides type-safe CRUD operations and child query accessors.
+ * Child query instances are singletons per database pool for optimal performance.
+ * 
+ * DO NOT EDIT MANUALLY - regenerate with: pnpm generate
+ */
+export class FixtureAuditEntryBaseQueries extends BaseQueries<{
+  DbEntity: FixtureAuditEntryRow;
+  Entity: FixtureAuditEntry;
+  Identifier: FixtureAuditEntryIdentifier;
+  Filters: FixtureAuditEntryFilters;
+  Update: Partial<Omit<FixtureAuditEntry, "id">>;
+  Create: FixtureAuditEntryCreate;
+}> {
+  /** Database table name */
+  protected readonly table = "fixture_audit_entry";
+  
+  /**
+   * Field combinations that uniquely identify a row in this table
+   *
+   * Each group is only a valid identifier when ALL of its fields are provided.
+   * Used by extractIdentifier to filter full entities to identifiers only and
+   * to reject partial composite identifiers.
+   */
+  protected readonly IDENTIFIER_GROUPS = [['id'], ['actorId', 'action'], ['reference']];
+
+  /** Columns the database computes itself; stripped from create and update payloads */
+  protected readonly GENERATED_FIELDS = ['id'];
+
+  constructor(db: Pool | PoolClient) {
+    super(db);
+  }
+
+  // Child query singletons (shared across all instances using this pool)
+
+}

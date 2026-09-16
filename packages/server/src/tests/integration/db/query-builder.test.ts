@@ -47,6 +47,15 @@ describe("QueryBuilder (server table)", () => {
     expect(results).toHaveLength(1);
   });
 
+  it("should let a repeated where() key take the later value", async () => {
+    const results = await Q.server
+      .where({ name: "Alpha" })
+      .where({ name: "Beta" })
+      .all();
+    expect(results).toHaveLength(1);
+    expect(results[0].name).toBe("Beta");
+  });
+
   it("should return empty array when where() matches nothing", async () => {
     const results = await Q.server.where({ name: "Nonexistent" }).all();
     expect(results).toHaveLength(0);
@@ -107,6 +116,25 @@ describe("QueryBuilder (server table)", () => {
       .all();
     expect(results).toHaveLength(1);
     expect(results[0]).toHaveProperty("name", "Alpha");
+  });
+
+  // ==========================================================================
+  // COUNT
+  // ==========================================================================
+
+  it("should count matching rows with filters", async () => {
+    expect(await Q.server.where({ name: "Alpha" }).count()).toBe(1);
+    expect(await Q.server.where({}).count()).toBe(3);
+  });
+
+  it("should count all matching rows regardless of paginate, limit, or select", async () => {
+    const shared = Q.server.where({});
+    const page = await shared.paginate(0, 2).all();
+    expect(page).toHaveLength(2);
+    expect(await shared.count()).toBe(3);
+
+    expect(await Q.server.limit(1).count()).toBe(3);
+    expect(await Q.server.selectFields(["id"]).count()).toBe(3);
   });
 
   // ==========================================================================

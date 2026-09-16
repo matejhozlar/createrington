@@ -328,9 +328,13 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
   /**
    * Reconciles tracked sessions against the heartbeat roster: credits and
    * advances present players, closes absent ones at their last-seen
-   * instant, opens missing ones, and forces ONLINE state.
+   * instant, opens missing ones, and forces ONLINE state. Returns how many
+   * sessions it ended and started.
    */
-  public reconcileWithHeartbeat(onlinePlayers: HeartbeatPlayer[]): void {
+  public reconcileWithHeartbeat(onlinePlayers: HeartbeatPlayer[]): {
+    ended: number;
+    started: number;
+  } {
     const now = new Date();
     const present = new Map(onlinePlayers.map((p) => [p.uuid, p]));
 
@@ -373,6 +377,8 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
         `Heartbeat reconciliation: all ${this.activeSessions.size} sessions consistent`,
       );
     }
+
+    return { ended, started };
   }
 
   private progressSession(

@@ -1,5 +1,6 @@
 import type { Pool, PoolClient } from "pg";
 import { AdminLogActionBaseQueries } from "@/generated/db/admin_log_action.queries";
+import { escapeLike } from "@/db/utils";
 import type { AdminLogAction } from "@createrington/shared/db/admin_log_action.types";
 
 /**
@@ -31,7 +32,7 @@ export class AdminLogActionQueries extends AdminLogActionBaseQueries {
     let paramIndex = 1;
 
     if (opts.search) {
-      const like = `%${opts.search}%`;
+      const like = `%${escapeLike(opts.search)}%`;
       conditions.push(
         `(description ILIKE $${paramIndex} OR target_player_name ILIKE $${paramIndex + 1})`,
       );

@@ -2,6 +2,7 @@ import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
 import {
+  assertPatchNotEmpty,
   auditActor,
   buildPagination,
   id,
@@ -106,6 +107,7 @@ export const adminWorkshopsRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      assertPatchNotEmpty(input.patch);
       try {
         const workshop = await workshopService.updateWorkshop(
           input.workshopId,

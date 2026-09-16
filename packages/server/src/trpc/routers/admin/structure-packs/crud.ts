@@ -2,7 +2,7 @@ import { z } from "zod";
 import { adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
 import { structurePackService } from "@/services/structure-pack";
-import { auditActor } from "@/trpc/utils";
+import { auditActor, assertPatchNotEmpty } from "@/trpc/utils";
 import { modFileName } from "./helpers";
 
 export const structurePackCrudProcedures = {
@@ -51,6 +51,7 @@ export const structurePackCrudProcedures = {
     )
     .mutation(async ({ input, ctx }) => {
       const { id, ...data } = input;
+      assertPatchNotEmpty(data);
       const pack = await structurePackService.updatePack(id, data);
       await Q.admin.log.action.logAction({
         ...auditActor(ctx),

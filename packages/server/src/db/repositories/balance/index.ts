@@ -24,6 +24,8 @@ export interface BalanceMutationOptions {
   tx?: DatabaseQueries;
 }
 
+type LockedOptions = Omit<BalanceMutationOptions, "tx">;
+
 export enum BalanceTransactionType {
   TRANSFER_SEND = "transfer_send",
   TRANSFER_RECEIVE = "transfer_receive",
@@ -31,6 +33,7 @@ export enum BalanceTransactionType {
   WITHDRAW = "withdraw",
   ADMIN_GRANT = "admin_grant",
   ADMIN_DEDUCT = "admin_deduct",
+  ADMIN_SET = "admin_set",
   PURCHASE = "purchase",
   SALE = "sale",
   REWARD = "reward",
@@ -78,6 +81,16 @@ export class BalanceRepository {
     return player.minecraftUuid;
   }
 
+  private async resolvePlayer(identifier: PlayerIdentifier): Promise<Player> {
+    if (typeof identifier === "string") {
+      return db.player.get({ minecraftUuid: identifier });
+    }
+    if ("minecraftUuid" in identifier && identifier.minecraftUuid) {
+      return db.player.get({ minecraftUuid: identifier.minecraftUuid });
+    }
+    return db.player.get(identifier);
+  }
+
   private async logTransaction(
     data: {
       playerMinecraftUuid: string;
@@ -90,10 +103,9 @@ export class BalanceRepository {
       metadata?: Record<string, unknown>;
       idempotencyKey?: string;
     },
-    txOverride?: DatabaseQueries,
+    tx: DatabaseQueries,
   ): Promise<void> {
-    const dbInstance = txOverride ?? db;
-    await dbInstance.player.balance.transaction.create({
+    await tx.player.balance.transaction.create({
       playerMinecraftUuid: data.playerMinecraftUuid,
       amount: data.amount,
       balanceBefore: data.balanceBefore,
@@ -155,7 +167,8 @@ export class BalanceRepository {
 
   /**
    * Create the initial balance row for a new player. If initialBalance > 0,
-   * also writes an ADMIN_GRANT transaction entry for the seed amount.
+   * also writes an ADMIN_GRANT transaction entry for the seed amount in the
+   * same transaction as the row.
    */
   async create(
     playerMinecraftUuid: string,
@@ -163,27 +176,157 @@ export class BalanceRepository {
   ): Promise<PlayerBalance> {
     const balanceBigInt = BalanceUtils.toStorage(initialBalance);
 
-    const created = await db.player.balance.createAndReturn({
-      minecraftUuid: playerMinecraftUuid,
-      balance: balanceBigInt,
-    });
-
-    if (initialBalance > 0) {
-      await this.logTransaction({
-        playerMinecraftUuid,
-        amount: balanceBigInt,
-        balanceBefore: 0n,
-        balanceAfter: balanceBigInt,
-        transactionType: BalanceTransactionType.ADMIN_GRANT,
-        description: "Initial balance",
+    return await db.inTransaction(async (tx) => {
+      const created = await tx.player.balance.createAndReturn({
+        minecraftUuid: playerMinecraftUuid,
+        balance: balanceBigInt,
       });
+
+      if (initialBalance > 0) {
+        await this.logTransaction(
+          {
+            playerMinecraftUuid,
+            amount: balanceBigInt,
+            balanceBefore: 0n,
+            balanceAfter: balanceBigInt,
+            transactionType: BalanceTransactionType.ADMIN_GRANT,
+            description: "Initial balance",
+          },
+          tx,
+        );
+      }
+
+      logger.info(
+        `Created balance for ${playerMinecraftUuid} with $${BalanceUtils.format(balanceBigInt)}`,
+      );
+
+      return created;
+    });
+  }
+
+  private async addLocked(
+    tx: DatabaseQueries,
+    uuid: string,
+    amount: number,
+    reason: string,
+    type: BalanceTransactionType,
+    options: LockedOptions,
+  ): Promise<{ before: bigint; after: bigint }> {
+    if (amount <= 0) {
+      throw new Error("Amount must be positive");
     }
 
-    logger.info(
-      `Created balance for ${playerMinecraftUuid} with $${BalanceUtils.format(balanceBigInt)}`,
+    const amountBigInt = BalanceUtils.toStorage(amount);
+    const balance = await this.lockBalance(tx, uuid);
+
+    if (BalanceUtils.wouldOverflow(balance, amount)) {
+      throw new Error(`Cannot add ${amount}: would exceed maximum balance`);
+    }
+
+    const newBalance = BalanceUtils.add(balance, amountBigInt);
+
+    await tx.player.balance.update(
+      { minecraftUuid: uuid },
+      { balance: newBalance },
     );
 
-    return created;
+    await this.logTransaction(
+      {
+        playerMinecraftUuid: uuid,
+        amount: amountBigInt,
+        balanceBefore: balance,
+        balanceAfter: newBalance,
+        transactionType: type,
+        description: reason,
+        metadata: options.metadata,
+        idempotencyKey: options.idempotencyKey,
+      },
+      tx,
+    );
+
+    return { before: balance, after: newBalance };
+  }
+
+  private async deductLocked(
+    tx: DatabaseQueries,
+    uuid: string,
+    amount: number,
+    reason: string,
+    type: BalanceTransactionType,
+    options: LockedOptions,
+  ): Promise<{ before: bigint; after: bigint }> {
+    if (amount <= 0) {
+      throw new Error("Amount must be positive");
+    }
+
+    const amountBigInt = BalanceUtils.toStorage(amount);
+    const balance = await this.lockBalance(tx, uuid);
+
+    if (balance < amountBigInt) {
+      throw new Error(
+        `Insufficient balance: has ${BalanceUtils.format(balance)}, needs ${BalanceUtils.format(amountBigInt)}`,
+      );
+    }
+
+    const newBalance = BalanceUtils.subtract(balance, amountBigInt);
+
+    await tx.player.balance.update(
+      { minecraftUuid: uuid },
+      { balance: newBalance },
+    );
+
+    await this.logTransaction(
+      {
+        playerMinecraftUuid: uuid,
+        amount: -amountBigInt,
+        balanceBefore: balance,
+        balanceAfter: newBalance,
+        transactionType: type,
+        description: reason,
+        metadata: options.metadata,
+        idempotencyKey: options.idempotencyKey,
+      },
+      tx,
+    );
+
+    return { before: balance, after: newBalance };
+  }
+
+  private async setLocked(
+    tx: DatabaseQueries,
+    uuid: string,
+    amount: number,
+    reason: string,
+    type: BalanceTransactionType,
+    options: LockedOptions,
+  ): Promise<{ before: bigint; after: bigint }> {
+    if (amount < 0) {
+      throw new Error("Balance cannot be negative");
+    }
+
+    const amountBigInt = BalanceUtils.toStorage(amount);
+    const balance = await this.lockBalance(tx, uuid);
+    const difference = amountBigInt - balance;
+
+    await tx.player.balance.update(
+      { minecraftUuid: uuid },
+      { balance: amountBigInt },
+    );
+
+    await this.logTransaction(
+      {
+        playerMinecraftUuid: uuid,
+        amount: difference,
+        balanceBefore: balance,
+        balanceAfter: amountBigInt,
+        transactionType: type,
+        description: reason,
+        metadata: options.metadata,
+      },
+      tx,
+    );
+
+    return { before: balance, after: amountBigInt };
   }
 
   /**
@@ -199,43 +342,14 @@ export class BalanceRepository {
     type: BalanceTransactionType,
     options: BalanceMutationOptions = {},
   ): Promise<number> {
-    if (amount <= 0) {
-      throw new Error("Amount must be positive");
-    }
-
-    BalanceUtils.validate(amount);
     const uuid = await this.resolvePlayerUuid(identifier, options.tx);
-    const amountBigInt = BalanceUtils.toStorage(amount);
 
     return await (options.tx ?? db).inTransaction(async (tx) => {
-      const balance = await this.lockBalance(tx, uuid);
-
-      if (BalanceUtils.wouldOverflow(balance, amount)) {
-        throw new Error(`Cannot add ${amount}: would exceed maximum balance`);
-      }
-
-      const newBalance = BalanceUtils.add(balance, amountBigInt);
-
-      await tx.player.balance.update(
-        { minecraftUuid: uuid },
-        { balance: newBalance },
-      );
-
-      await this.logTransaction(
-        {
-          playerMinecraftUuid: uuid,
-          amount: amountBigInt,
-          balanceBefore: balance,
-          balanceAfter: newBalance,
-          transactionType: type,
-          description: reason,
-          metadata: options.metadata,
-          idempotencyKey: options.idempotencyKey,
-        },
-        tx,
-      );
-
-      return BalanceUtils.fromStorage(newBalance);
+      const { after } = await this.addLocked(tx, uuid, amount, reason, type, {
+        metadata: options.metadata,
+        idempotencyKey: options.idempotencyKey,
+      });
+      return BalanceUtils.fromStorage(after);
     });
   }
 
@@ -253,90 +367,40 @@ export class BalanceRepository {
     type: BalanceTransactionType,
     options: BalanceMutationOptions = {},
   ): Promise<number> {
-    if (amount <= 0) {
-      throw new Error("Amount must be positive");
-    }
-
-    BalanceUtils.validate(amount);
     const uuid = await this.resolvePlayerUuid(identifier, options.tx);
-    const amountBigInt = BalanceUtils.toStorage(amount);
 
     return await (options.tx ?? db).inTransaction(async (tx) => {
-      const balance = await this.lockBalance(tx, uuid);
-
-      if (balance < amountBigInt) {
-        throw new Error(
-          `Insufficient balance: has ${BalanceUtils.format(balance)}, needs ${BalanceUtils.format(amountBigInt)}`,
-        );
-      }
-
-      const newBalance = BalanceUtils.subtract(balance, amountBigInt);
-
-      await tx.player.balance.update(
-        { minecraftUuid: uuid },
-        { balance: newBalance },
-      );
-
-      await this.logTransaction(
-        {
-          playerMinecraftUuid: uuid,
-          amount: -amountBigInt,
-          balanceBefore: balance,
-          balanceAfter: newBalance,
-          transactionType: type,
-          description: reason,
-          metadata: options.metadata,
-          idempotencyKey: options.idempotencyKey,
-        },
+      const { after } = await this.deductLocked(
         tx,
+        uuid,
+        amount,
+        reason,
+        type,
+        { metadata: options.metadata, idempotencyKey: options.idempotencyKey },
       );
-
-      return BalanceUtils.fromStorage(newBalance);
+      return BalanceUtils.fromStorage(after);
     });
   }
 
   /**
    * Set a player's balance to an absolute amount. The transaction log records
    * the signed delta from the previous balance, not the new absolute value.
+   * Pass options.tx to join an existing outer transaction.
    */
   async set(
     identifier: PlayerIdentifier,
     amount: number,
     reason: string,
     type: BalanceTransactionType,
-    metadata?: Record<string, unknown>,
+    options: Omit<BalanceMutationOptions, "idempotencyKey"> = {},
   ): Promise<number> {
-    if (amount < 0) {
-      throw new Error("Balance cannot be negative");
-    }
+    const uuid = await this.resolvePlayerUuid(identifier, options.tx);
 
-    BalanceUtils.validate(amount);
-    const uuid = await this.resolvePlayerUuid(identifier);
-    const amountBigInt = BalanceUtils.toStorage(amount);
-
-    return await db.inTransaction(async (tx) => {
-      const balance = await this.lockBalance(tx, uuid);
-      const difference = amountBigInt - balance;
-
-      await tx.player.balance.update(
-        { minecraftUuid: uuid },
-        { balance: amountBigInt },
-      );
-
-      await this.logTransaction(
-        {
-          playerMinecraftUuid: uuid,
-          amount: difference,
-          balanceBefore: balance,
-          balanceAfter: amountBigInt,
-          transactionType: type,
-          description: reason,
-          metadata,
-        },
-        tx,
-      );
-
-      return BalanceUtils.fromStorage(amountBigInt);
+    return await (options.tx ?? db).inTransaction(async (tx) => {
+      const { after } = await this.setLocked(tx, uuid, amount, reason, type, {
+        metadata: options.metadata,
+      });
+      return BalanceUtils.fromStorage(after);
     });
   }
 
@@ -358,7 +422,6 @@ export class BalanceRepository {
       throw new Error("Transfer amount must be positive");
     }
 
-    BalanceUtils.validate(amount);
     const senderUuid = await this.resolvePlayerUuid(from);
     const recipientUuid = await this.resolvePlayerUuid(to);
     const amountBigInt = BalanceUtils.toStorage(amount);
@@ -439,7 +502,39 @@ export class BalanceRepository {
     });
   }
 
-  /** Admin grant variant of add() that also writes to admin_log_action. */
+  private async logAdminAction(
+    input: {
+      actionType: "balance_grant" | "balance_deduct" | "balance_set";
+      player: Player;
+      adminDiscordId: string;
+      adminUsername: string;
+      reason: string;
+      before: bigint;
+      after: bigint;
+      metadata?: Record<string, unknown>;
+    },
+    tx: DatabaseQueries,
+  ): Promise<void> {
+    await tx.admin.log.action.logAction({
+      adminDiscordId: input.adminDiscordId,
+      adminUsername: input.adminUsername,
+      actionType: input.actionType,
+      targetPlayerUuid: input.player.minecraftUuid,
+      targetPlayerName: input.player.minecraftUsername,
+      tableName: "player_balance",
+      fieldName: "balance",
+      oldValue: BalanceUtils.format(input.before),
+      newValue: BalanceUtils.format(input.after),
+      reason: input.reason,
+      metadata: input.metadata,
+    });
+  }
+
+  /**
+   * Admin grant variant of add(). The balance change, its ledger row, and the
+   * admin_log_action entry commit in one transaction, with the audit's old
+   * value taken from the locked read rather than a separate query.
+   */
   async adminGrant(
     identifier: PlayerIdentifier,
     amount: number,
@@ -447,38 +542,41 @@ export class BalanceRepository {
     adminUsername: string,
     reason: string,
   ): Promise<number> {
-    const uuid = await this.resolvePlayerUuid(identifier);
-    const player = await db.player.get({ minecraftUuid: uuid });
-    const oldBalance = await this.getRaw(uuid);
+    const player = await this.resolvePlayer(identifier);
 
-    const newBalance = await this.add(
-      uuid,
-      amount,
-      reason,
-      BalanceTransactionType.ADMIN_GRANT,
-      { metadata: { adminDiscordId, adminUsername } },
-    );
-
-    await db.admin.log.action.logAction({
-      adminDiscordId,
-      adminUsername,
-      actionType: "balance_grant",
-      targetPlayerUuid: uuid,
-      targetPlayerName: player.minecraftUsername,
-      tableName: "player_balance",
-      fieldName: "balance",
-      oldValue: BalanceUtils.format(oldBalance),
-      newValue: BalanceUtils.format(BalanceUtils.toStorage(newBalance)),
-      reason,
-      metadata: {
-        amount: BalanceUtils.format(BalanceUtils.toStorage(amount)),
-      },
+    return await db.inTransaction(async (tx) => {
+      const { before, after } = await this.addLocked(
+        tx,
+        player.minecraftUuid,
+        amount,
+        reason,
+        BalanceTransactionType.ADMIN_GRANT,
+        { metadata: { adminDiscordId, adminUsername } },
+      );
+      await this.logAdminAction(
+        {
+          actionType: "balance_grant",
+          player,
+          adminDiscordId,
+          adminUsername,
+          reason,
+          before,
+          after,
+          metadata: {
+            amount: BalanceUtils.format(BalanceUtils.toStorage(amount)),
+          },
+        },
+        tx,
+      );
+      return BalanceUtils.fromStorage(after);
     });
-
-    return newBalance;
   }
 
-  /** Admin deduction variant of deduct() that also writes to admin_log_action. */
+  /**
+   * Admin deduction variant of deduct(). The balance change, its ledger row,
+   * and the admin_log_action entry commit in one transaction, with the
+   * audit's old value taken from the locked read.
+   */
   async adminDeduct(
     identifier: PlayerIdentifier,
     amount: number,
@@ -486,38 +584,41 @@ export class BalanceRepository {
     adminUsername: string,
     reason: string,
   ): Promise<number> {
-    const uuid = await this.resolvePlayerUuid(identifier);
-    const player = await db.player.get({ minecraftUuid: uuid });
-    const oldBalance = await this.getRaw(uuid);
+    const player = await this.resolvePlayer(identifier);
 
-    const newBalance = await this.deduct(
-      uuid,
-      amount,
-      reason,
-      BalanceTransactionType.ADMIN_DEDUCT,
-      { metadata: { adminDiscordId, adminUsername } },
-    );
-
-    await db.admin.log.action.logAction({
-      adminDiscordId,
-      adminUsername,
-      actionType: "balance_deduct",
-      targetPlayerUuid: uuid,
-      targetPlayerName: player.minecraftUsername,
-      tableName: "player_balance",
-      fieldName: "balance",
-      oldValue: BalanceUtils.format(oldBalance),
-      newValue: BalanceUtils.format(BalanceUtils.toStorage(newBalance)),
-      reason,
-      metadata: {
-        amount: BalanceUtils.format(BalanceUtils.toStorage(amount)),
-      },
+    return await db.inTransaction(async (tx) => {
+      const { before, after } = await this.deductLocked(
+        tx,
+        player.minecraftUuid,
+        amount,
+        reason,
+        BalanceTransactionType.ADMIN_DEDUCT,
+        { metadata: { adminDiscordId, adminUsername } },
+      );
+      await this.logAdminAction(
+        {
+          actionType: "balance_deduct",
+          player,
+          adminDiscordId,
+          adminUsername,
+          reason,
+          before,
+          after,
+          metadata: {
+            amount: BalanceUtils.format(BalanceUtils.toStorage(amount)),
+          },
+        },
+        tx,
+      );
+      return BalanceUtils.fromStorage(after);
     });
-
-    return newBalance;
   }
 
-  /** Admin set variant of set() that also writes to admin_log_action. */
+  /**
+   * Admin set variant of set(). Records an ADMIN_SET ledger row whose amount
+   * is the signed delta, and commits it with the admin_log_action entry in one
+   * transaction.
+   */
   async adminSet(
     identifier: PlayerIdentifier,
     amount: number,
@@ -525,35 +626,31 @@ export class BalanceRepository {
     adminUsername: string,
     reason: string,
   ): Promise<number> {
-    const uuid = await this.resolvePlayerUuid(identifier);
-    const player = await db.player.get({ minecraftUuid: uuid });
-    const oldBalance = await this.getRaw(uuid);
+    const player = await this.resolvePlayer(identifier);
 
-    const newBalance = await this.set(
-      uuid,
-      amount,
-      reason,
-      BalanceTransactionType.ADMIN_GRANT,
-      {
-        adminDiscordId,
-        adminUsername,
-      },
-    );
-
-    await db.admin.log.action.logAction({
-      adminDiscordId,
-      adminUsername,
-      actionType: "balance_set",
-      targetPlayerUuid: uuid,
-      targetPlayerName: player.minecraftUsername,
-      tableName: "player_balance",
-      fieldName: "balance",
-      oldValue: BalanceUtils.format(oldBalance),
-      newValue: BalanceUtils.format(BalanceUtils.toStorage(newBalance)),
-      reason,
+    return await db.inTransaction(async (tx) => {
+      const { before, after } = await this.setLocked(
+        tx,
+        player.minecraftUuid,
+        amount,
+        reason,
+        BalanceTransactionType.ADMIN_SET,
+        { metadata: { adminDiscordId, adminUsername } },
+      );
+      await this.logAdminAction(
+        {
+          actionType: "balance_set",
+          player,
+          adminDiscordId,
+          adminUsername,
+          reason,
+          before,
+          after,
+        },
+        tx,
+      );
+      return BalanceUtils.fromStorage(after);
     });
-
-    return newBalance;
   }
 
   /** Raw transaction history for a player, ordered most recent first. */

@@ -3,16 +3,19 @@ import { router, adminProcedure } from "@/trpc/trpc";
 import { playerService } from "@/services/player";
 import { playerDeletionService } from "@/services/player/deletion";
 import { Q } from "@/db";
-import { escapeLike } from "@/db/utils";
+import { ilikeContains } from "@/db/utils";
 import { BalanceUtils } from "@/db/repositories/balance/utils";
 import {
   parsePlayerId,
   paginationInput,
+  paginateQuery,
+  sortDirection,
   buildPagination,
   trpcError,
 } from "@/trpc/utils";
 import { discordId } from "@/utils/zod-schemas";
 import type { Player, PlayerFilters } from "@createrington/shared/db";
+import { selectViolationUuids, violationFilterInput } from "./violation-filter";
 
 /** Admin players CRUD router: stats, list, get, update, and delete players. */
 export const playersRouter = router({
@@ -32,17 +35,14 @@ export const playersRouter = router({
     .input(
       z.object({
         discordId: z.string().max(32).optional(),
-        minecraftUuid: z.string().max(36).optional(),
         minecraftUsername: z.string().max(32).optional(),
         online: z.boolean().optional(),
-        hasStrikes: z.boolean().optional(),
-        hasBans: z.boolean().optional(),
-        hasViolations: z.boolean().optional(),
+        ...violationFilterInput,
         ...paginationInput(),
         orderBy: z
           .enum(["createdAt", "minecraftUsername", "updatedAt", "lastSeen"])
           .default("createdAt"),
-        orderDirection: z.enum(["asc", "desc"]).default("desc"),
+        orderDirection: sortDirection().default("desc"),
         includeStrikeCounts: z.boolean().default(false),
         includeBanCounts: z.boolean().default(false),
       }),
@@ -50,16 +50,10 @@ export const playersRouter = router({
     .query(async ({ input }) => {
       const filters: PlayerFilters = {};
 
-      if (input.discordId) {
-        filters.discordId = {
-          $ilike: `%${escapeLike(input.discordId)}%`,
-        };
-      }
+      if (input.discordId) filters.discordId = ilikeContains(input.discordId);
       if (input.minecraftUuid) filters.minecraftUuid = input.minecraftUuid;
       if (input.minecraftUsername) {
-        filters.minecraftUsername = {
-          $ilike: `%${escapeLike(input.minecraftUsername)}%`,
-        };
+        filters.minecraftUsername = ilikeContains(input.minecraftUsername);
       }
       if (input.online !== undefined) filters.online = input.online;
 
@@ -82,23 +76,11 @@ export const playersRouter = router({
             : Promise.resolve([]),
         ]);
 
-        let uuidsWithViolations: string[];
-
-        if (input.hasViolations === true) {
-          uuidsWithViolations = [
-            ...new Set([...uuidsWithStrikes, ...uuidsWithBans]),
-          ];
-        } else if (input.hasStrikes === true && input.hasBans === true) {
-          uuidsWithViolations = uuidsWithStrikes.filter((uuid) =>
-            uuidsWithBans.includes(uuid),
-          );
-        } else if (input.hasStrikes === true) {
-          uuidsWithViolations = uuidsWithStrikes;
-        } else if (input.hasBans === true) {
-          uuidsWithViolations = uuidsWithBans;
-        } else {
-          uuidsWithViolations = [];
-        }
+        const uuidsWithViolations = selectViolationUuids(
+          input,
+          uuidsWithStrikes,
+          uuidsWithBans,
+        );
 
         if (uuidsWithViolations.length === 0) {
           return {
@@ -110,15 +92,12 @@ export const playersRouter = router({
         filters.minecraftUuid = { $in: uuidsWithViolations };
       }
 
-      const [players, total] = await Promise.all([
-        playerService.core.getAll(filters, {
-          orderBy: input.orderBy,
-          orderDirection: input.orderDirection,
-          limit: input.limit,
-          offset: input.page * input.limit,
-        }),
-        playerService.core.count(filters),
-      ]);
+      const { rows: players, pagination } = await paginateQuery(
+        Q.player,
+        filters,
+        input,
+        { orderBy: input.orderBy, orderDirection: input.orderDirection },
+      );
 
       let enrichedPlayers: (Player & {
         activeStrikeCount?: number;
@@ -148,10 +127,7 @@ export const playersRouter = router({
         }));
       }
 
-      return {
-        players: enrichedPlayers,
-        pagination: buildPagination(input.page, input.limit, total),
-      };
+      return { players: enrichedPlayers, pagination };
     }),
 
   get: adminProcedure
