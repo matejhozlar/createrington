@@ -11,7 +11,6 @@ import { PlaytimeCondition } from "./conditions/playtime-condition";
 import config from "@/config";
 import { RoleManager } from "@/discord/utils/roles/role-manager";
 import { roleNotificationService } from "./role-notification.service";
-import { getAllRoleRules } from "./config";
 import { Q } from "@/db";
 import { ServerAgeCondition } from "./conditions/server-age-condition";
 
@@ -157,14 +156,6 @@ export class RoleAssignmentService {
         };
       }
 
-      let previousRole: AnyRoleRule | undefined;
-      const currentRoleIds = allRoleIds.filter((roleId) =>
-        RoleManager.has(member, roleId),
-      );
-      if (currentRoleIds.length > 0) {
-        previousRole = rules.find((r) => r.roleId === currentRoleIds[0]);
-      }
-
       // Assign the new role BEFORE removing old ones so that if the assign
       // fails, the player keeps their current role instead of ending up with
       // no role at all.
@@ -208,9 +199,9 @@ export class RoleAssignmentService {
           discordId: member.id,
           username: member.user.username,
           role: targetRole,
+          roleColor: RoleManager.colorOf(member, targetRole.roleId),
           currentValue: eligibility.currentValue,
           requiredValue: eligibility.requiredValue,
-          previousRole,
           timestamp: new Date(),
         };
 
@@ -311,12 +302,8 @@ export class RoleAssignmentService {
       };
     }
 
-    let previousRole: AnyRoleRule | undefined;
-
     const removedRoles: string[] = [];
     if (rule.removesRoles && rule.removesRoles.length > 0) {
-      const allRules = getAllRoleRules();
-
       for (const roleToRemove of rule.removesRoles) {
         if (RoleManager.has(member, roleToRemove)) {
           const removeResult = await RoleManager.remove(
@@ -327,10 +314,6 @@ export class RoleAssignmentService {
 
           if (removeResult) {
             removedRoles.push(roleToRemove);
-
-            if (!previousRole) {
-              previousRole = allRules.find((r) => r.roleId === roleToRemove);
-            }
           }
         }
       }
@@ -340,9 +323,9 @@ export class RoleAssignmentService {
       discordId: member.id,
       username: member.user.username,
       role: rule,
+      roleColor: RoleManager.colorOf(member, rule.roleId),
       currentValue: eligibility.currentValue,
       requiredValue: eligibility.requiredValue,
-      previousRole,
       timestamp: new Date(),
     };
 

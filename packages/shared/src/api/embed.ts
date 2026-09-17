@@ -14,6 +14,16 @@ const httpUrl = z
 
 export const httpUrlSchema = httpUrl;
 
+// Components V2 media can reference a file attached to the same message.
+const attachmentRef = z
+  .string()
+  .max(2048)
+  .regex(/^attachment:\/\/[\w.-]+\.(png|jpe?g|gif|webp)$/i, {
+    message: "Attachment reference must be attachment://<filename>",
+  });
+
+const mediaUrl = z.union([httpUrl, attachmentRef]);
+
 export const embedFieldSchema = z.object({
   name: z.string().min(1).max(256),
   value: z.string().min(1).max(1024),
@@ -86,7 +96,7 @@ export const componentSeparatorSchema = z.object({
 });
 
 const componentMediaItemSchema = z.object({
-  url: httpUrl,
+  url: mediaUrl,
   description: z.string().max(1024).optional(),
   spoiler: z.boolean().default(false),
 });
@@ -98,7 +108,7 @@ export const componentMediaGallerySchema = z.object({
 
 export const componentThumbnailSchema = z.object({
   type: z.literal("thumbnail"),
-  url: httpUrl,
+  url: mediaUrl,
   description: z.string().max(1024).optional(),
   spoiler: z.boolean().default(false),
 });

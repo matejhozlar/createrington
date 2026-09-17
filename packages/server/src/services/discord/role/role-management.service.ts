@@ -350,6 +350,7 @@ export class RoleManagementService {
               discordId: top.discordId,
               username: top.minecraftUsername,
               role: rule,
+              roleColor: RoleManager.colorOf(topMember, rule.roleId),
               currentValue: top.value,
               requiredValue: 0,
               timestamp: new Date(),

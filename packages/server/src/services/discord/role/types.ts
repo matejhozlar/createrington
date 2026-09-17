@@ -1,3 +1,4 @@
+import type { KnownPose } from "createrington-skin-api";
 import type { DiscordRoleId } from "@/discord/constants";
 
 /**
@@ -149,12 +150,8 @@ export interface RoleNotificationConfig {
   enabled: boolean;
   /** Channel ID to send notifications to */
   channelId?: string;
-  /** Custom message template (optional) */
-  customMessage?: string;
-  /** Whether this is a "milestone" role (gets special treatment) */
-  isMilestone?: boolean;
-  /** Custom emoji for this role (optional) */
-  emoji?: string;
+  /** Skin-api pose rendered alongside the announcement */
+  pose: KnownPose;
 }
 
 /**
@@ -167,12 +164,12 @@ export interface RoleAssignmentNotification {
   username: string;
   /** The role that was assigned */
   role: AnyRoleRule;
+  /** The Discord role's own color, 0 when the role has none */
+  roleColor: number;
   /** Current value that qualified them (e.g. playtime in seconds) */
   currentValue: number;
   /** Required value for the role */
   requiredValue: number;
-  /** Previous role that was removed (if any) */
-  previousRole?: AnyRoleRule;
   /** Timestamp of the assignment */
   timestamp: Date;
 }
