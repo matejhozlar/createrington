@@ -1,8 +1,8 @@
-import { useEffect, useRef } from "react";
 import { Filter, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { useSearchShortcut } from "@/features/admin/hooks/use-search-shortcut";
 
 /**
  * Standard admin filters card: a search input with optional extra controls
@@ -23,25 +23,7 @@ export function FilterBar({
   activeCount: number;
   children?: React.ReactNode;
 }) {
-  const searchWrapRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const input = () => searchWrapRef.current?.querySelector("input") ?? null;
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
-        event.preventDefault();
-        input()?.focus();
-        return;
-      }
-      if (event.key === "Escape" && event.target === input()) {
-        input()?.blur();
-      }
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+  const searchRef = useSearchShortcut();
 
   return (
     <Card className="gap-2">
@@ -57,9 +39,10 @@ export function FilterBar({
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-2">
-        <div ref={searchWrapRef} className="relative">
+        <div className="relative">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
+            ref={searchRef}
             type="text"
             placeholder={placeholder}
             value={search}
