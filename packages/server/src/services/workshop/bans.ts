@@ -9,6 +9,7 @@ import type { BanType, WorkshopBan } from "@createrington/shared/db";
 import type { WorkshopBanWithScope } from "@/db/queries/workshop/ban";
 import { DatabaseTable } from "@/generated/db";
 import { AdminEdit } from "@/types/enums";
+import type { WorkshopAuditActor } from "@/services/workshop/audit";
 
 export interface IssueWorkshopBanInput {
   discordId: string;
@@ -17,10 +18,7 @@ export interface IssueWorkshopBanInput {
   durationDays?: number;
 }
 
-export interface WorkshopBanActor {
-  adminDiscordId: string;
-  adminUsername: string;
-}
+export type WorkshopBanActor = Omit<WorkshopAuditActor, "source">;
 
 /**
  * Human-readable reason a suggestion was refused, safe to show the banned user.
