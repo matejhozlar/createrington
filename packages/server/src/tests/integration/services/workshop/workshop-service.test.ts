@@ -708,7 +708,7 @@ describe("WorkshopService.suggestMod", () => {
 });
 
 describe("workshop suggestion bans", () => {
-  const ADMIN_ACTOR = { discordId: ADMIN, username: "admin" };
+  const ADMIN_ACTOR = { adminDiscordId: ADMIN, adminUsername: "admin" };
 
   // Scoped bans cascade with their workshop, global ones have nothing to
   // cascade from and would leak into later tests.

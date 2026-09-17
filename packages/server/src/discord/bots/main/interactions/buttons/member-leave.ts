@@ -120,13 +120,16 @@ async function handleDeleteNow(
       return;
     }
 
+    const admin = await Q.player.find({ discordId: interaction.user.id });
+    const adminUsername = admin?.minecraftUsername ?? null;
+
     await playerDeletionService.delete(
       { minecraftUuid: departed.minecraftUuid },
       {
         actor: {
           type: "admin",
           discordId: interaction.user.id,
-          username: interaction.user.username,
+          username: adminUsername ?? "Unknown",
         },
         reason: "Departed member deleted via admin button",
       },
@@ -139,7 +142,10 @@ async function handleDeleteNow(
 
     const deletedEmbed = EmbedPresets.departed.deleted({
       minecraftUsername: departed.minecraftUsername,
-      deletedBy: interaction.user.tag,
+      deletedBy: {
+        discordId: interaction.user.id,
+        username: adminUsername,
+      },
       deletedAt: new Date(),
     });
 
