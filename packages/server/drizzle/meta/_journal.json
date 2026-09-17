@@ -505,6 +505,13 @@
       "when": 1789425082538,
       "tag": "0071_quick_albert_cleary",
       "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1789665757584,
+      "tag": "0072_careful_lady_ursula",
+      "breakpoints": true
     }
   ]
 }
