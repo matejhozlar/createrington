@@ -2,6 +2,10 @@ import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import {
+  PENDING_EMBED_KEY,
+  PENDING_COMPONENTS_KEY,
+} from "@/features/admin-chat/actions";
 import { findAttachmentRef } from "@createrington/shared/api/embed";
 import type {
   EmbedData,
@@ -175,6 +179,17 @@ function clearDraft(): void {
   }
 }
 
+function hasPendingAssistantInsert(): boolean {
+  try {
+    return (
+      sessionStorage.getItem(PENDING_EMBED_KEY) !== null ||
+      sessionStorage.getItem(PENDING_COMPONENTS_KEY) !== null
+    );
+  } catch {
+    return false;
+  }
+}
+
 function normalizeLoadedEmbed(loaded: Partial<EmbedData>): EmbedDataInternal {
   const raw = loaded as Record<string, unknown>;
 
@@ -289,10 +304,10 @@ export function useEmbedBuilder() {
 
   const draftToastedRef = useRef(false);
   useEffect(() => {
-    if (pendingDraft && !draftToastedRef.current) {
-      draftToastedRef.current = true;
-      toast.info("Draft restored from your last session");
-    }
+    if (!pendingDraft || draftToastedRef.current) return;
+    draftToastedRef.current = true;
+    if (hasPendingAssistantInsert()) return;
+    toast.info("Draft restored from your last session");
   }, [pendingDraft, toast]);
 
   // Auto-save draft to localStorage (debounced).

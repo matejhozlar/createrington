@@ -108,11 +108,6 @@ function clearPending(key: string): void {
   }
 }
 
-/**
- * Validate an assistant-supplied Components V2 payload and load it into the
- * builder in components mode. Returns false if the payload is invalid so the
- * caller can surface an error instead of silently applying garbage.
- */
 function applyInsertedComponents(
   raw: unknown,
   importComponents: (nodes: ComponentNode[]) => void,

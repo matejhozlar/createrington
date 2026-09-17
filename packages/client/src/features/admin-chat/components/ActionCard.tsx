@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { Check, RotateCcw, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useToastActions } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import {
   PENDING_EMBED_KEY,
@@ -103,6 +104,7 @@ export function ActionCard({
   storageKey,
   navigate,
 }: ActionCardProps): React.JSX.Element {
+  const toast = useToastActions();
   const persistKey = `admin-chat-action:${storageKey}`;
   const [state, setState] = useState<"pending" | "applied" | "dismissed">(
     () => {
@@ -130,7 +132,11 @@ export function ActionCard({
 
   const onApply = (): void => {
     if (action.type === "highlight") {
-      if (applyHighlight(action)) setPersistent("applied");
+      if (applyHighlight(action)) {
+        setPersistent("applied");
+      } else {
+        toast.error("Couldn't find that element on this page");
+      }
       return;
     }
     if (action.type === "navigate") {
