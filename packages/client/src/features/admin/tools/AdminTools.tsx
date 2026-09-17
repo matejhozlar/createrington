@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -39,11 +39,9 @@ import { MODIFIER_KEY_LABEL } from "@/lib/platform";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { useSearchShortcut } from "@/features/admin/hooks/use-search-shortcut";
-import { KeyboardHints } from "./components/KeyboardHints";
 import { PinnedTools } from "./components/PinnedTools";
 import { ToolCard } from "./components/ToolCard";
 import { MAX_PINNED_TOOLS, usePinnedTools } from "./hooks/use-pinned-tools";
-import { useToolGridHotkeys } from "./hooks/use-tool-grid-hotkeys";
 
 type Tool = {
   title: string;
@@ -178,16 +176,12 @@ const CATEGORIES = [
   })),
 ];
 
-type Cursor = { index: number; keyboard: boolean };
-
 export function AdminTools() {
   const navigate = useNavigate();
   const toast = useToastActions();
   const searchRef = useSearchShortcut();
-  const gridRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState(ALL_CATEGORY);
-  const [cursor, setCursor] = useState<Cursor | null>(null);
   const [pinned, togglePin] = usePinnedTools(TOOL_HREFS);
 
   const refetchMutation = trpc.admin.refetchDiscordEntities.useMutation({
@@ -205,8 +199,6 @@ export function AdminTools() {
       (category === ALL_CATEGORY || tool.section === category) &&
       `${tool.title} ${tool.description}`.toLowerCase().includes(needle),
   );
-  const active = cursor?.index ?? null;
-  const announced = cursor?.keyboard ? filtered[cursor.index] : undefined;
   const pinnedTools = pinned.flatMap(
     (href) => TOOLS.find((tool) => tool.href === href) ?? [],
   );
@@ -216,20 +208,6 @@ export function AdminTools() {
       toast.info(`You can pin up to ${MAX_PINNED_TOOLS} tools`);
     }
   };
-
-  useToolGridHotkeys({
-    gridRef,
-    searchRef,
-    count: filtered.length,
-    active,
-    onMove: (index) => setCursor({ index, keyboard: true }),
-    onOpen: (index) => navigate(filtered[index].href),
-    onTogglePin: (index) => handleTogglePin(filtered[index].href),
-    onClear: () => {
-      setQuery("");
-      setCursor(null);
-    },
-  });
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -280,14 +258,7 @@ export function AdminTools() {
               placeholder="Search tools"
               aria-label="Search tools"
               value={query}
-              onChange={(event) => {
-                setQuery(event.target.value);
-                setCursor(
-                  event.target.value.trim()
-                    ? { index: 0, keyboard: true }
-                    : null,
-                );
-              }}
+              onChange={(event) => setQuery(event.target.value)}
               className="h-10 bg-card/70 pl-9 focus-visible:border-primary/60 sm:pr-20 dark:bg-card/70"
             />
             <span className="pointer-events-none absolute right-2.5 top-1/2 hidden -translate-y-1/2 gap-1 sm:flex">
@@ -301,14 +272,7 @@ export function AdminTools() {
           <PinnedTools tools={pinnedTools} onOpen={(href) => navigate(href)} />
         )}
 
-        <Tabs
-          value={category}
-          onValueChange={(value) => {
-            setCategory(value);
-            setCursor(null);
-          }}
-          className="gap-6"
-        >
+        <Tabs value={category} onValueChange={setCategory} className="gap-6">
           <div className="overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <TabsList>
               {CATEGORIES.map(({ value, count }) => (
@@ -328,32 +292,16 @@ export function AdminTools() {
 
           <TabsContent value={category} tabIndex={-1}>
             {filtered.length > 0 ? (
-              <div
-                ref={gridRef}
-                className="grid auto-rows-fr grid-cols-1 gap-3.5 sm:grid-cols-2 xl:grid-cols-3"
-              >
-                {filtered.map((tool, index) => (
+              <div className="grid auto-rows-fr grid-cols-1 gap-3.5 sm:grid-cols-2 xl:grid-cols-3">
+                {filtered.map((tool) => (
                   <ToolCard
                     key={tool.href}
                     title={tool.title}
                     description={tool.description}
                     section={tool.section}
                     icon={tool.icon}
-                    active={index === active}
                     pinned={pinned.includes(tool.href)}
                     onOpen={() => navigate(tool.href)}
-                    onActivate={() =>
-                      setCursor((current) =>
-                        current?.index === index && !current.keyboard
-                          ? current
-                          : { index, keyboard: false },
-                      )
-                    }
-                    onDeactivate={() =>
-                      setCursor((current) =>
-                        current?.index === index ? null : current,
-                      )
-                    }
                     onTogglePin={() => handleTogglePin(tool.href)}
                   />
                 ))}
@@ -366,12 +314,6 @@ export function AdminTools() {
           </TabsContent>
         </Tabs>
       </div>
-
-      <p aria-live="polite" className="sr-only">
-        {announced ? `${announced.title}, ${announced.section}` : ""}
-      </p>
-
-      <KeyboardHints />
     </div>
   );
 }
