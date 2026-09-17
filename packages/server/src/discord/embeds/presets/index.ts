@@ -8,7 +8,6 @@ import { GhostEmbedPresets } from "./ghost";
 import { InactivityEmbedPresets } from "./inactivity";
 import { ProgressEmbedPresets } from "./progress";
 import { RegistrationEmbedPresets } from "./registration";
-import { RoleAssignmentEmbedPresets } from "./role-assignment";
 import { TicketEmbedPresets } from "./ticket";
 import { WaitlistEmbedPresets } from "./waitlist";
 
@@ -21,7 +20,6 @@ export const EmbedPresets = {
   registration: RegistrationEmbedPresets,
   progress: ProgressEmbedPresets,
   ticket: TicketEmbedPresets,
-  roleAssignment: RoleAssignmentEmbedPresets,
   departed: DepartedEmbedPresets,
   faq: FaqEmbedPresets,
   gallery: GalleryEmbedPresets,

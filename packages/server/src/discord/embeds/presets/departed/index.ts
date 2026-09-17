@@ -39,16 +39,18 @@ export const DepartedEmbedPresets = {
    */
   deleted(info: {
     minecraftUsername: string;
-    deletedBy: string;
+    deletedBy: { discordId: string; username: string | null };
     deletedAt: Date;
   }) {
+    const deletedByLine = `<@${info.deletedBy.discordId}>${info.deletedBy.username ? ` (\`${info.deletedBy.username}\`)` : ""}`;
+
     return createEmbed()
       .title("✅ Member Deleted")
       .description(
         `**${info.minecraftUsername}** has been removed from the system.`,
       )
       .color(EmbedColors.Success)
-      .field("Deleted By", info.deletedBy, true)
+      .field("Deleted By", deletedByLine, true)
       .field("Deleted At", discordTimestamp(info.deletedAt, "F"), true)
       .footer("This member's data has been permanently removed")
       .timestamp();

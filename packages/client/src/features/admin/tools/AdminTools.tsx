@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate } from "react-router";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -9,7 +10,10 @@ import {
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
+import { FilterBar } from "@/features/admin/components/FilterBar";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Tooltip,
   TooltipContent,
@@ -19,7 +23,6 @@ import {
   BarChart3,
   Blocks,
   Images,
-  ChevronRight,
   Clock,
   Megaphone,
   MessageCircleQuestion,
@@ -33,6 +36,9 @@ import {
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
+import { PinnedTools } from "./components/PinnedTools";
+import { ToolCard } from "./components/ToolCard";
+import { MAX_PINNED_TOOLS, usePinnedTools } from "./hooks/use-pinned-tools";
 
 type Tool = {
   title: string;
@@ -151,9 +157,28 @@ const TOOL_SECTIONS: ToolSection[] = [
   },
 ];
 
+const ALL_CATEGORY = "All";
+
+const TOOLS = TOOL_SECTIONS.flatMap((section) =>
+  section.tools.map((tool) => ({ ...tool, section: section.title })),
+);
+
+const TOOL_HREFS = TOOLS.map((tool) => tool.href);
+
+const CATEGORIES = [
+  { value: ALL_CATEGORY, count: TOOLS.length },
+  ...TOOL_SECTIONS.map((section) => ({
+    value: section.title,
+    count: section.tools.length,
+  })),
+];
+
 export function AdminTools() {
   const navigate = useNavigate();
   const toast = useToastActions();
+  const [query, setQuery] = useState("");
+  const [category, setCategory] = useState(ALL_CATEGORY);
+  const [pinned, togglePin] = usePinnedTools(TOOL_HREFS);
 
   const refetchMutation = trpc.admin.refetchDiscordEntities.useMutation({
     onSuccess: (data) => {
@@ -163,6 +188,22 @@ export function AdminTools() {
     },
     onError: (err) => toast.error(err.message),
   });
+
+  const needle = query.trim().toLowerCase();
+  const filtered = TOOLS.filter(
+    (tool) =>
+      (category === ALL_CATEGORY || tool.section === category) &&
+      `${tool.title} ${tool.description}`.toLowerCase().includes(needle),
+  );
+  const pinnedTools = pinned.flatMap(
+    (href) => TOOLS.find((tool) => tool.href === href) ?? [],
+  );
+
+  const handleTogglePin = (href: string) => {
+    if (!togglePin(href)) {
+      toast.info(`You can pin up to ${MAX_PINNED_TOOLS} tools`);
+    }
+  };
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -198,46 +239,67 @@ export function AdminTools() {
         </Tooltip>
       </header>
 
-      <div className="mx-auto w-full max-w-[1000px] flex flex-1 flex-col gap-8 px-4 pb-4">
-        <AdminPageTitle title="Tools" />
+      <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
+        <AdminPageTitle
+          title="Tools"
+          description="Operational utilities for Discord, the game servers, and the community."
+        />
 
-        {TOOL_SECTIONS.map((section) => (
-          <section key={section.title} className="flex flex-col gap-3">
-            <div className="flex items-center gap-3">
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                {section.title}
-              </h2>
-              <div className="h-px flex-1 bg-border" />
-            </div>
+        {pinnedTools.length > 0 && (
+          <PinnedTools tools={pinnedTools} onOpen={(href) => navigate(href)} />
+        )}
 
-            <ul className="flex flex-col rounded-lg border border-border bg-card">
-              {section.tools.map((tool, index) => (
-                <li key={tool.href}>
-                  <button
-                    type="button"
-                    onClick={() => navigate(tool.href)}
-                    className={`group flex w-full cursor-pointer items-center gap-4 px-4 py-3 text-left transition-colors hover:bg-accent ${
-                      index !== section.tools.length - 1
-                        ? "border-b border-border"
-                        : ""
-                    }`}
+        <Tabs value={category} onValueChange={setCategory} className="gap-4">
+          <div className="overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <TabsList>
+              {CATEGORIES.map(({ value, count }) => (
+                <TabsTrigger
+                  key={value}
+                  value={value}
+                  className="cursor-pointer text-foreground/80"
+                >
+                  {value}
+                  <Badge
+                    variant="outline"
+                    className="border-transparent bg-foreground/10"
                   >
-                    <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-                      <tool.icon className="size-4" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="font-medium">{tool.title}</div>
-                      <div className="truncate text-sm text-muted-foreground">
-                        {tool.description}
-                      </div>
-                    </div>
-                    <ChevronRight className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
-                  </button>
-                </li>
+                    {count}
+                  </Badge>
+                </TabsTrigger>
               ))}
-            </ul>
-          </section>
-        ))}
+            </TabsList>
+          </div>
+
+          <FilterBar
+            search={query}
+            onSearchChange={setQuery}
+            placeholder="Search tools..."
+            activeCount={query.trim() ? 1 : 0}
+          />
+
+          <TabsContent value={category} tabIndex={-1}>
+            {filtered.length > 0 ? (
+              <div className="grid auto-rows-fr grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {filtered.map((tool) => (
+                  <ToolCard
+                    key={tool.href}
+                    title={tool.title}
+                    description={tool.description}
+                    section={tool.section}
+                    icon={tool.icon}
+                    pinned={pinned.includes(tool.href)}
+                    onOpen={() => navigate(tool.href)}
+                    onTogglePin={() => handleTogglePin(tool.href)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No tools match “{query}”.
+              </p>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

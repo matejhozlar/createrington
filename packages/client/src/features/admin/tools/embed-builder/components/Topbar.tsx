@@ -31,9 +31,7 @@ interface TopbarProps {
 export function Topbar({ builder }: TopbarProps) {
   const {
     kind,
-    setKind,
     components,
-    setComponents,
     presetName,
     setPresetName,
     activePreset,
@@ -41,8 +39,9 @@ export function Topbar({ builder }: TopbarProps) {
     hasContent,
     isPending,
     handleSave,
+    handleImportEmbed,
+    handleImportComponents,
     externalData,
-    setEmbedData,
   } = builder;
   const toast = useToastActions();
   const [sendOpen, setSendOpen] = useState(false);
@@ -79,16 +78,14 @@ export function Topbar({ builder }: TopbarProps) {
     // would accept almost anything). Matching either format switches the mode.
     const componentsResult = componentsDataSchema.safeParse(raw);
     if (componentsResult.success) {
-      setKind("components");
-      setComponents(componentsResult.data.components);
+      handleImportComponents(componentsResult.data.components);
       toast.success("Components imported from clipboard");
       return;
     }
 
     const embedResult = embedDataSchema.safeParse(raw);
     if (embedResult.success) {
-      setKind("embed");
-      setEmbedData(embedResult.data);
+      handleImportEmbed(embedResult.data);
       toast.success("Embed imported from clipboard");
       return;
     }

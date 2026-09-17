@@ -1,3 +1,32 @@
+## v1.58.0 (2026-09-17)
+
+### @createrington/server (1.58.1 → 1.59.0)
+- [add] Rebuild hall of fame rank-up announcements as Discord Components V2, replacing the legacy embed with a container layout that shows the player's skin rendered in a role-specific pose as a thumbnail, the role's own Discord color as the container accent stripe, and metric-aware headlines for competitive (top playtime/balance) vs. standard rank-ups
+- [add] Add `squarePoseThumbnail` utility that crops a skin-api pose render to its bounding box and centers it on a square canvas so Discord's thumbnail crop preserves the full figure
+- [add] Add `RoleManager.colorOf()` to read a Discord role's own color from the guild cache
+- [fix] Fix prompt responses outliving the player who wrote them by changing the `player_prompt_response.minecraftUuid` FK from `onDelete: "set null"` to `onDelete: "cascade"`, so responses are cleaned up on admin delete, permanent ban, and inactivity removal
+- [fix] Fix audit entries on departed-member deletion recording the admin's Discord username instead of their Minecraft username; the handler now resolves the admin's player record for the correct in-game name
+- [fix] Fix the departed-member deletion embed showing a plain Discord tag in the "Deleted By" field; it now renders a Discord mention with the admin's Minecraft username for consistency with other audit surfaces
+- [fix] Fix workshop ban and unban audit entries recording the admin's Discord username instead of their Minecraft username by switching to the shared `auditActor(ctx)` helper
+- [fix] Fix `getNotificationConfig` incorrectly spreading the entire `SERVER_AGE_NOTIFICATION_CONFIGS` object as the last merge layer, which could override per-role config for non-server-age roles
+- [refactor] Replace role notification config fields (`emoji`, `isMilestone`, `customMessage`) with a single `pose` field per role, driven by the skin-api pose catalogue; the old randomized congratulatory messages and milestone/non-milestone distinction are removed in favour of the structured Components V2 layout
+- [refactor] Remove `previousRole` tracking from role assignment notifications since the new announcement format does not reference the prior role
+- [remove] Remove legacy `RoleAssignmentEmbedPresets` (the embed-based rank-up announcement builder), fully replaced by `HallOfFameComponentPresets`
+
+### @createrington/shared (1.13.0 → 1.14.0)
+- [add] Add `attachment://` URL support in Components V2 media and thumbnail schemas, allowing server-side presets to reference files attached to the same Discord message; client-side payloads are rejected by a refinement so only presets that supply the file can use them
+- [add] Add `findAttachmentRef()` utility that walks a component tree and returns the first `attachment://` URL, used by the embed builder and shared validation to detect references the client cannot fulfil
+
+### @createrington/client (0.2.72 → 0.2.73)
+- [add] Rebuild the admin tools page as a searchable card grid with category tabs, a search filter, and localStorage-backed pin-to-top (up to four pinned tools shown in a quick-access bar)
+- [add] Show the publish timestamp on gallery tiles as a relative date alongside the author label
+- [fix] Fix the embed builder keeping the active preset attached after importing content from the assistant or clipboard; imports now detach the preset so the imported content is treated as a fresh unsaved draft
+- [fix] Fix applied assistant action cards being a dead end by adding a re-apply button and surfacing a toast when a highlight target is not found on the page
+- [fix] Suppress the "draft restored" toast when an assistant embed/components insert is pending, so the user sees only the insert confirmation
+- [fix] Fix the embed builder accepting `attachment://` URLs that it cannot send; the component validation now rejects them with a clear error before the save attempt
+- [refactor] Extract the Ctrl+K / Cmd+K search focus shortcut into a shared `useSearchShortcut` hook and use platform-aware modifier key labels
+- [refactor] Extract inline `<kbd>` styling into a shared `Kbd` UI component used across the admin tools filter bar and the 404 page
+
 ## v1.57.1 (2026-09-16)
 
 ### @createrington/server (1.58.0 → 1.58.1)

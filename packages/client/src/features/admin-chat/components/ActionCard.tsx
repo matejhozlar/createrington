@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
-import { Check, Sparkles } from "lucide-react";
+import { Check, RotateCcw, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useToastActions } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import {
   PENDING_EMBED_KEY,
@@ -103,6 +104,7 @@ export function ActionCard({
   storageKey,
   navigate,
 }: ActionCardProps): React.JSX.Element {
+  const toast = useToastActions();
   const persistKey = `admin-chat-action:${storageKey}`;
   const [state, setState] = useState<"pending" | "applied" | "dismissed">(
     () => {
@@ -130,8 +132,11 @@ export function ActionCard({
 
   const onApply = (): void => {
     if (action.type === "highlight") {
-      const ok = applyHighlight(action);
-      setPersistent(ok ? "applied" : "dismissed");
+      if (applyHighlight(action)) {
+        setPersistent("applied");
+      } else {
+        toast.error("Couldn't find that element on this page");
+      }
       return;
     }
     if (action.type === "navigate") {
@@ -181,7 +186,7 @@ export function ActionCard({
         <ComponentsActionPreview components={action.components} />
       )}
       <div className="flex items-center gap-1.5">
-        {state === "pending" ? (
+        {state === "pending" && (
           <>
             <Button size="xs" onClick={onApply} type="button">
               <Check size={12} />
@@ -196,9 +201,21 @@ export function ActionCard({
               Dismiss
             </Button>
           </>
-        ) : (
+        )}
+        {state === "applied" && (
+          <>
+            <span className="text-[0.6875rem] italic text-muted-foreground">
+              Applied
+            </span>
+            <Button size="xs" variant="ghost" onClick={onApply} type="button">
+              <RotateCcw size={12} />
+              Re-apply
+            </Button>
+          </>
+        )}
+        {state === "dismissed" && (
           <span className="text-[0.6875rem] italic text-muted-foreground">
-            {state === "applied" ? "Applied" : "Dismissed"}
+            Dismissed
           </span>
         )}
       </div>

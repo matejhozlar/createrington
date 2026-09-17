@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
-import { rethrowTrpc, id } from "@/trpc/utils";
+import { rethrowTrpc, id, auditActor } from "@/trpc/utils";
 import { issueBan, liftBan, listBansForUser } from "@/services/workshop/bans";
 import { discordId } from "@/utils/zod-schemas";
 
@@ -36,10 +36,7 @@ export const adminWorkshopBansRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       try {
-        return await issueBan(input, {
-          discordId: ctx.user.discordId,
-          username: ctx.user.username,
-        });
+        return await issueBan(input, auditActor(ctx));
       } catch (error) {
         rethrowTrpc(error);
       }
@@ -55,10 +52,7 @@ export const adminWorkshopBansRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       try {
-        return await liftBan(input.banId, input.reason, {
-          discordId: ctx.user.discordId,
-          username: ctx.user.username,
-        });
+        return await liftBan(input.banId, input.reason, auditActor(ctx));
       } catch (error) {
         rethrowTrpc(error);
       }

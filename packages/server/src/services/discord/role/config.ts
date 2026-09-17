@@ -1,3 +1,4 @@
+import { Poses } from "createrington-skin-api";
 import { Discord } from "@/discord/constants";
 import type {
   AnyRoleRule,
@@ -201,7 +202,7 @@ export function getTopBalanceRoleRules(): TopBalanceRoleRule[] {
  *
  * @returns Array of all configured role rules
  */
-export function getAllRoleRules(): (PlaytimeRoleRule | ServerAgeRoleRule)[] {
+function getAllRoleRules(): (PlaytimeRoleRule | ServerAgeRoleRule)[] {
   return [
     ...PLAYTIME_ROLE_HIERARCHY.filter((rule) => rule.enabled !== false),
     ...SERVER_AGE_ROLE_HIERARCHY.filter((rule) => rule.enabled !== false),
@@ -245,7 +246,7 @@ export function getTopPlaytimeRoleRules(): TopPlaytimeRoleRule[] {
 export const DEFAULT_NOTIFICATION_CONFIG: RoleNotificationConfig = {
   enabled: true,
   channelId: Discord.Channels.general.HALL_OF_FAME,
-  isMilestone: false,
+  pose: Poses.victory,
 };
 
 /**
@@ -257,31 +258,19 @@ export const SERVER_AGE_NOTIFICATION_CONFIGS: Record<
   Partial<RoleNotificationConfig>
 > = {
   [Discord.Roles.NEWCOMER]: {
-    enabled: true,
-    emoji: "👋",
-    isMilestone: false,
+    pose: Poses.wave,
   },
   [Discord.Roles.ADVENTURER]: {
-    enabled: true,
-    emoji: "🗺️",
-    isMilestone: false,
+    pose: Poses.sprint,
   },
   [Discord.Roles.REGULAR]: {
-    enabled: true,
-    emoji: "🛡️",
-    isMilestone: true,
+    pose: Poses.relaxed,
   },
   [Discord.Roles.VETERAN]: {
-    enabled: true,
-    emoji: "🏆",
-    isMilestone: true,
+    pose: Poses.ponder,
   },
   [Discord.Roles.LEGEND]: {
-    enabled: true,
-    emoji: "👑",
-    isMilestone: true,
-    customMessage:
-      "has become a legend of the server after a full year of membership!",
+    pose: Poses.idol,
   },
 };
 
@@ -294,65 +283,39 @@ export const ROLE_NOTIFICATION_CONFIGS: Record<
   Partial<RoleNotificationConfig>
 > = {
   [Discord.Roles.SHAFT_SCRAPER]: {
-    enabled: true,
-    emoji: "⛏️",
-    isMilestone: false,
+    pose: Poses.idle,
   },
   [Discord.Roles.COG_CARRIER]: {
-    enabled: true,
-    emoji: "⚙️",
-    isMilestone: false,
+    pose: Poses.delivery,
   },
   [Discord.Roles.KINETIC_OPERATOR]: {
-    enabled: true,
-    emoji: "🔧",
-    isMilestone: false,
+    pose: Poses.engineer,
   },
   [Discord.Roles.MECHANICAL_ASSEMBLER]: {
-    enabled: true,
-    emoji: "🔩",
-    isMilestone: false,
+    pose: Poses.point,
   },
   [Discord.Roles.BRASS_TECHNICIAN]: {
-    enabled: true,
-    emoji: "🛠️",
-    isMilestone: true,
+    pose: Poses.confidence,
   },
   [Discord.Roles.STEAM_ENGINEER]: {
-    enabled: true,
-    emoji: "🚂",
-    isMilestone: true,
+    pose: Poses.cheer,
   },
   [Discord.Roles.FACTORY_OVERSEER]: {
-    enabled: true,
-    emoji: "🏭",
-    isMilestone: true,
+    pose: Poses.crossed,
   },
   [Discord.Roles.MASTER_AUTOMATON]: {
-    enabled: true,
-    emoji: "🤖",
-    isMilestone: true,
+    pose: Poses.idol,
   },
   [Discord.Roles.CLOCKWORK_ARCHITECT]: {
-    enabled: true,
-    emoji: "👑",
-    isMilestone: true,
-    customMessage:
-      "has reached the pinnacle of automation mastery and earned the legendary title of",
+    pose: Poses.victory,
   },
 
   [Discord.Roles.THE_SLEEPLESS]: {
-    enabled: true,
-    emoji: "👑",
-    isMilestone: true,
-    customMessage: "has claimed the top spot and earned the legendary title of",
+    pose: Poses.zombie,
   },
 
   [Discord.Roles.CAPITALIST]: {
-    enabled: true,
-    emoji: "💰",
-    isMilestone: true,
-    customMessage: "has amassed the greatest fortune and earned the title of",
+    pose: Poses.snagged,
   },
 
   ...SERVER_AGE_NOTIFICATION_CONFIGS,
@@ -365,10 +328,8 @@ export const ROLE_NOTIFICATION_CONFIGS: Record<
  * @returns Merged notification configuration
  */
 export function getNotificationConfig(roleId: string): RoleNotificationConfig {
-  const customConfig = ROLE_NOTIFICATION_CONFIGS[roleId] || {};
   return {
     ...DEFAULT_NOTIFICATION_CONFIG,
-    ...customConfig,
-    ...SERVER_AGE_NOTIFICATION_CONFIGS,
+    ...(ROLE_NOTIFICATION_CONFIGS[roleId] ?? {}),
   };
 }

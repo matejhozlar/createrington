@@ -2,6 +2,11 @@ import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import {
+  PENDING_EMBED_KEY,
+  PENDING_COMPONENTS_KEY,
+} from "@/features/admin-chat/actions";
+import { findAttachmentRef } from "@createrington/shared/api/embed";
 import type {
   EmbedData,
   EmbedBot,
@@ -87,6 +92,11 @@ function checkComponentButton(button: ComponentButton): string | null {
  * tRPC validation error. Mirrors the classic path's incomplete-field check.
  */
 function findComponentIssue(nodes: ComponentNode[]): string | null {
+  const attachment = findAttachmentRef(nodes);
+  if (attachment) {
+    return `${attachment} points at a message attachment, which the builder cannot send.`;
+  }
+
   for (const node of nodes) {
     switch (node.type) {
       case "text":
@@ -169,7 +179,18 @@ function clearDraft(): void {
   }
 }
 
-function normalizeLoadedEmbed(loaded: EmbedData): EmbedDataInternal {
+function hasPendingAssistantInsert(): boolean {
+  try {
+    return (
+      sessionStorage.getItem(PENDING_EMBED_KEY) !== null ||
+      sessionStorage.getItem(PENDING_COMPONENTS_KEY) !== null
+    );
+  } catch {
+    return false;
+  }
+}
+
+function normalizeLoadedEmbed(loaded: Partial<EmbedData>): EmbedDataInternal {
   const raw = loaded as Record<string, unknown>;
 
   const footer =
@@ -283,10 +304,10 @@ export function useEmbedBuilder() {
 
   const draftToastedRef = useRef(false);
   useEffect(() => {
-    if (pendingDraft && !draftToastedRef.current) {
-      draftToastedRef.current = true;
-      toast.info("Draft restored from your last session");
-    }
+    if (!pendingDraft || draftToastedRef.current) return;
+    draftToastedRef.current = true;
+    if (hasPendingAssistantInsert()) return;
+    toast.info("Draft restored from your last session");
   }, [pendingDraft, toast]);
 
   // Auto-save draft to localStorage (debounced).
@@ -615,6 +636,33 @@ export function useEmbedBuilder() {
     [toast],
   );
 
+  const detachPreset = useCallback(() => {
+    setActivePreset(null);
+    setPresetName("");
+    setSelectedCategoryId(null);
+    setLastSavedSnapshot("");
+  }, []);
+
+  const handleImportEmbed = useCallback(
+    (embed: Partial<EmbedData>) => {
+      setKind("embed");
+      setComponents([]);
+      setData(normalizeLoadedEmbed(embed));
+      detachPreset();
+    },
+    [detachPreset],
+  );
+
+  const handleImportComponents = useCallback(
+    (nodes: ComponentNode[]) => {
+      setKind("components");
+      setData({ ...DEFAULT_EMBED });
+      setComponents(nodes);
+      detachPreset();
+    },
+    [detachPreset],
+  );
+
   const handleNewEmbed = useCallback(() => {
     setKind("embed");
     setData({ ...DEFAULT_EMBED });
@@ -901,6 +949,8 @@ export function useEmbedBuilder() {
     handleSave,
     handleLoadPreset,
     handleNewEmbed,
+    handleImportEmbed,
+    handleImportComponents,
     handleUpdateAll,
     handleUpdateLink,
     handleUnlink,

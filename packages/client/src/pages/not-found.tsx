@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Kbd } from "@/components/ui/kbd";
 import { useAuth } from "@/contexts/auth";
 import { DEFAULT_PLAYER } from "@/lib/skin-runner/player-hint";
 import { cn } from "@/lib/utils";
@@ -42,9 +43,6 @@ const ACTIONS: Action[] = [
 
 const CARD_CLASS =
   "border-border bg-card/60 backdrop-blur supports-[backdrop-filter]:bg-card/50";
-
-const KBD_CLASS =
-  "rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-foreground";
 
 const KEY_CONTROLS = [
   { keys: ["↑", "W", "Space"], action: "Jump" },
@@ -86,9 +84,9 @@ export function NotFound() {
                 <li key={action} className="flex items-center gap-1.5">
                   <span className="flex items-center gap-0.5">
                     {keys.map((key) => (
-                      <kbd key={key} className={KBD_CLASS}>
+                      <Kbd key={key} className="text-foreground">
                         {key}
-                      </kbd>
+                      </Kbd>
                     ))}
                   </span>
                   <span>{action}</span>
@@ -102,7 +100,7 @@ export function NotFound() {
               </li>
               {TOUCH_CONTROLS.map(({ gesture, action }) => (
                 <li key={action} className="flex items-center gap-1.5">
-                  <kbd className={KBD_CLASS}>{gesture}</kbd>
+                  <Kbd className="text-foreground">{gesture}</Kbd>
                   <span>{action}</span>
                 </li>
               ))}
