@@ -15,12 +15,13 @@ const httpUrl = z
 export const httpUrlSchema = httpUrl;
 
 // Components V2 media can reference a file attached to the same message.
-const attachmentRef = z
-  .string()
-  .max(2048)
-  .regex(/^attachment:\/\/[\w.-]+\.(png|jpe?g|gif|webp)$/i, {
-    message: "Attachment reference must be attachment://<filename>",
-  });
+// Discord only resolves the lowercase scheme, and the filename is matched
+// against that message's attachment list, so it carries no path segments.
+const ATTACHMENT_REF = /^attachment:\/\/[\w-]+\.(?:png|jpe?g|gif|webp)$/;
+
+const attachmentRef = z.string().max(2048).regex(ATTACHMENT_REF, {
+  message: "Attachment reference must be attachment://<filename>",
+});
 
 const mediaUrl = z.union([httpUrl, attachmentRef]);
 
@@ -174,6 +175,37 @@ export type ComponentContainer = z.infer<typeof componentContainerSchema>;
 export type ComponentNode = z.infer<typeof componentNodeSchema>;
 export type ComponentsData = z.infer<typeof componentsDataSchema>;
 
+/**
+ * Finds the first media or thumbnail URL in a tree that points at a message
+ * attachment. Only a server-side preset can pair such a tree with the file
+ * itself, so callers that cannot attach anything use this to reject one.
+ */
+export function findAttachmentRef(components: ComponentNode[]): string | null {
+  const fromUrl = (url: string) => (ATTACHMENT_REF.test(url) ? url : null);
+
+  const fromChild = (
+    child: ComponentContainer["components"][number],
+  ): string | null => {
+    if (child.type === "media_gallery") {
+      return child.items.map((item) => fromUrl(item.url)).find(Boolean) ?? null;
+    }
+    if (child.type === "section" && child.accessory.type === "thumbnail") {
+      return fromUrl(child.accessory.url);
+    }
+    return null;
+  };
+
+  for (const node of components) {
+    const found =
+      node.type === "container"
+        ? (node.components.map(fromChild).find(Boolean) ?? null)
+        : fromChild(node);
+    if (found) return found;
+  }
+
+  return null;
+}
+
 export const presetKindSchema = z.enum(["embed", "components"]);
 export type PresetKind = z.infer<typeof presetKindSchema>;
 
@@ -181,6 +213,15 @@ export type PresetKind = z.infer<typeof presetKindSchema>;
 // message is either a classic embed or a Components V2 layout, never both.
 export const messagePayloadSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("embed"), embed: embedDataSchema }),
-  z.object({ kind: z.literal("components"), components: componentsDataSchema }),
+  z.object({
+    kind: z.literal("components"),
+    components: componentsDataSchema.refine(
+      (data) => findAttachmentRef(data.components) === null,
+      {
+        message:
+          "Attachment references can only be sent by server-side presets, which supply the file",
+      },
+    ),
+  }),
 ]);
 export type MessagePayload = z.infer<typeof messagePayloadSchema>;

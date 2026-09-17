@@ -202,7 +202,7 @@ export function getTopBalanceRoleRules(): TopBalanceRoleRule[] {
  *
  * @returns Array of all configured role rules
  */
-export function getAllRoleRules(): (PlaytimeRoleRule | ServerAgeRoleRule)[] {
+function getAllRoleRules(): (PlaytimeRoleRule | ServerAgeRoleRule)[] {
   return [
     ...PLAYTIME_ROLE_HIERARCHY.filter((rule) => rule.enabled !== false),
     ...SERVER_AGE_ROLE_HIERARCHY.filter((rule) => rule.enabled !== false),

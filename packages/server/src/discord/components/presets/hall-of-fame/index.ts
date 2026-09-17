@@ -1,6 +1,7 @@
 import { container, section, text, thumbnail } from "../../component-builder";
 import { formatMoney, formatPlaytime } from "@createrington/shared/format";
 import { formatDaysCount } from "@/utils/format";
+import { Discord } from "@/discord/constants";
 import type {
   ComponentContainer,
   ComponentsData,
@@ -22,7 +23,7 @@ export interface RankUpAnnouncementInput {
 }
 
 function headline(input: RankUpAnnouncementInput): string {
-  const player = `<@${input.discordId}>`;
+  const player = Discord.Users.mention(input.discordId);
 
   if (input.competitive) {
     switch (input.metric.kind) {

@@ -5,10 +5,9 @@ const SIZE = 768;
 const INSET = 24;
 
 export async function squarePoseThumbnail(png: Uint8Array): Promise<Buffer> {
-  const source = Buffer.from(png);
-  const image = await loadImage(source);
+  const image = await loadImage(Buffer.from(png));
   const bbox = computeBBox(image);
-  if (!bbox) return source;
+  if (!bbox) throw new Error("Pose render is fully transparent");
 
   const canvas = createCanvas(SIZE, SIZE);
   const ctx = canvas.getContext("2d");

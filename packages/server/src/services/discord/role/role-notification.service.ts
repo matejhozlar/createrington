@@ -18,18 +18,18 @@ interface PoseFigure {
   files?: AttachmentBuilder[];
 }
 
-function metricOf(
-  notification: RoleAssignmentNotification,
-  value: number,
-): RankUpMetric {
+function metricOf(notification: RoleAssignmentNotification): RankUpMetric {
+  const value = notification.currentValue;
+
   switch (notification.role.conditionType) {
+    case RoleConditionType.PLAYTIME:
+    case RoleConditionType.TOP_PLAYTIME:
+      return { kind: "playtime", seconds: value };
     case RoleConditionType.BALANCE:
     case RoleConditionType.TOP_BALANCE:
       return { kind: "balance", amount: value };
     case RoleConditionType.SERVER_AGE:
       return { kind: "membership", days: value };
-    default:
-      return { kind: "playtime", seconds: value };
   }
 }
 
@@ -44,12 +44,12 @@ function isCompetitive(notification: RoleAssignmentNotification): boolean {
  * Sends Hall of Fame announcements when players earn new roles. Each role has
  * its own enabled/channel/pose config; a missing or disabled config silently
  * skips the send. The container is striped with the Discord role's own color,
- * or left stripeless when the role has none. The player's skin is rendered in the role's pose, squared off
- * so Discord's thumbnail crop keeps the whole figure, and attached to the
- * message; it falls back to the player's mc-heads head when the skin-api is
- * unreachable and to no figure at all for members without a registered
- * Minecraft account. Send failures are logged and swallowed (notifications are
- * fire-and-forget, never block role assignment).
+ * or left stripeless when the role has none. The player's skin is rendered in
+ * the role's pose and squared off so Discord's thumbnail crop keeps the whole
+ * figure, then attached to the message; it falls back to the player's mc-heads
+ * head when the render fails and to no figure at all for members without a
+ * registered Minecraft account. Send failures are logged and swallowed
+ * (notifications are fire-and-forget, never block role assignment).
  */
 export class RoleNotificationService {
   /** Sends the rank-up announcement for a single role assignment, no-op if the role's notification config is disabled or missing a channel. */
@@ -84,7 +84,7 @@ export class RoleNotificationService {
           discordId: notification.discordId,
           playerName: player?.minecraftUsername ?? notification.username,
           roleLabel: notification.role.label,
-          metric: metricOf(notification, notification.currentValue),
+          metric: metricOf(notification),
           ...(figure.poseUrl && { poseUrl: figure.poseUrl }),
           ...(notification.roleColor > 0 && {
             accentColor: notification.roleColor,
