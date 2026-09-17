@@ -1,3 +1,4 @@
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -10,6 +11,8 @@ import {
 } from "@/components/ui/breadcrumb";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Tooltip,
   TooltipContent,
@@ -19,13 +22,13 @@ import {
   BarChart3,
   Blocks,
   Images,
-  ChevronRight,
   Clock,
   Megaphone,
   MessageCircleQuestion,
   MessageSquare,
   Paintbrush,
   RefreshCw,
+  Search,
   Terminal,
   Timer,
   Users,
@@ -33,6 +36,13 @@ import {
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
+import { useSearchShortcut } from "@/features/admin/hooks/use-search-shortcut";
+import { Kbd } from "./components/Kbd";
+import { KeyboardHints } from "./components/KeyboardHints";
+import { PinnedTools } from "./components/PinnedTools";
+import { ToolCard } from "./components/ToolCard";
+import { MAX_PINNED_TOOLS, usePinnedTools } from "./hooks/use-pinned-tools";
+import { useToolGridHotkeys } from "./hooks/use-tool-grid-hotkeys";
 
 type Tool = {
   title: string;
@@ -151,9 +161,33 @@ const TOOL_SECTIONS: ToolSection[] = [
   },
 ];
 
+const ALL_CATEGORY = "All";
+
+const TOOLS = TOOL_SECTIONS.flatMap((section) =>
+  section.tools.map((tool) => ({ ...tool, section: section.title })),
+);
+
+const TOOL_HREFS = TOOLS.map((tool) => tool.href);
+
+const CATEGORIES = [
+  { value: ALL_CATEGORY, count: TOOLS.length },
+  ...TOOL_SECTIONS.map((section) => ({
+    value: section.title,
+    count: section.tools.length,
+  })),
+];
+
+const MODIFIER_KEY = /Mac|iPhone|iPad/.test(navigator.userAgent) ? "⌘" : "Ctrl";
+
 export function AdminTools() {
   const navigate = useNavigate();
   const toast = useToastActions();
+  const searchRef = useSearchShortcut();
+  const gridRef = useRef<HTMLDivElement>(null);
+  const [query, setQuery] = useState("");
+  const [category, setCategory] = useState(ALL_CATEGORY);
+  const [active, setActive] = useState<number | null>(null);
+  const [pinned, togglePin] = usePinnedTools(TOOL_HREFS);
 
   const refetchMutation = trpc.admin.refetchDiscordEntities.useMutation({
     onSuccess: (data) => {
@@ -162,6 +196,37 @@ export function AdminTools() {
       );
     },
     onError: (err) => toast.error(err.message),
+  });
+
+  const needle = query.trim().toLowerCase();
+  const filtered = TOOLS.filter(
+    (tool) =>
+      (category === ALL_CATEGORY || tool.section === category) &&
+      `${tool.title} ${tool.description}`.toLowerCase().includes(needle),
+  );
+  const pinnedTools = pinned.flatMap(
+    (href) => TOOLS.find((tool) => tool.href === href) ?? [],
+  );
+
+  const handleTogglePin = (href: string) => {
+    if (!togglePin(href)) {
+      toast.info(`You can pin up to ${MAX_PINNED_TOOLS} tools`);
+    }
+  };
+
+  useToolGridHotkeys({
+    gridRef,
+    searchRef,
+    count: filtered.length,
+    active,
+    onMove: setActive,
+    onOpen: (index) => navigate(filtered[index].href),
+    onTogglePin: (index) => handleTogglePin(filtered[index].href),
+    onClear: () => {
+      if (!query) return;
+      setQuery("");
+      setActive(null);
+    },
   });
 
   return (
@@ -198,47 +263,99 @@ export function AdminTools() {
         </Tooltip>
       </header>
 
-      <div className="mx-auto w-full max-w-[1000px] flex flex-1 flex-col gap-8 px-4 pb-4">
-        <AdminPageTitle title="Tools" />
+      <div className="mx-auto flex w-full max-w-[1200px] flex-1 flex-col gap-6 px-6 pb-6">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <AdminPageTitle
+            title="Tools"
+            description="Operational utilities for Discord, the game servers, and the community."
+          />
 
-        {TOOL_SECTIONS.map((section) => (
-          <section key={section.title} className="flex flex-col gap-3">
-            <div className="flex items-center gap-3">
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                {section.title}
-              </h2>
-              <div className="h-px flex-1 bg-border" />
-            </div>
+          <div className="group relative w-full sm:w-[330px]">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary" />
+            <Input
+              ref={searchRef}
+              type="text"
+              placeholder="Search tools"
+              aria-label="Search tools"
+              value={query}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                setActive(event.target.value.trim() ? 0 : null);
+              }}
+              className="h-10 rounded-[10px] bg-card/70 pl-9.5 focus-visible:border-primary/60 sm:pr-20 dark:bg-card/70"
+            />
+            <span className="pointer-events-none absolute right-2.5 top-1/2 hidden -translate-y-1/2 gap-[3px] sm:flex">
+              <Kbd className="py-0.5">{MODIFIER_KEY}</Kbd>
+              <Kbd className="py-0.5">K</Kbd>
+            </span>
+          </div>
+        </div>
 
-            <ul className="flex flex-col rounded-lg border border-border bg-card">
-              {section.tools.map((tool, index) => (
-                <li key={tool.href}>
-                  <button
-                    type="button"
-                    onClick={() => navigate(tool.href)}
-                    className={`group flex w-full cursor-pointer items-center gap-4 px-4 py-3 text-left transition-colors hover:bg-accent ${
-                      index !== section.tools.length - 1
-                        ? "border-b border-border"
-                        : ""
-                    }`}
-                  >
-                    <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-                      <tool.icon className="size-4" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="font-medium">{tool.title}</div>
-                      <div className="truncate text-sm text-muted-foreground">
-                        {tool.description}
-                      </div>
-                    </div>
-                    <ChevronRight className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
-                  </button>
-                </li>
+        {pinnedTools.length > 0 && (
+          <PinnedTools tools={pinnedTools} onOpen={(href) => navigate(href)} />
+        )}
+
+        <Tabs
+          value={category}
+          onValueChange={(value) => {
+            setCategory(value);
+            setActive(null);
+          }}
+          className="gap-6"
+        >
+          <div className="overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <TabsList>
+              {CATEGORIES.map(({ value, count }) => (
+                <TabsTrigger
+                  key={value}
+                  value={value}
+                  className="cursor-pointer"
+                >
+                  {value}
+                  <span className="ml-1.5 tabular-nums text-muted-foreground">
+                    {count}
+                  </span>
+                </TabsTrigger>
               ))}
-            </ul>
-          </section>
-        ))}
+            </TabsList>
+          </div>
+
+          <TabsContent value={category} tabIndex={-1}>
+            {filtered.length > 0 ? (
+              <div
+                ref={gridRef}
+                className="grid auto-rows-fr grid-cols-1 gap-3.5 sm:grid-cols-2 xl:grid-cols-3"
+              >
+                {filtered.map((tool, index) => (
+                  <ToolCard
+                    key={tool.href}
+                    title={tool.title}
+                    description={tool.description}
+                    section={tool.section}
+                    icon={tool.icon}
+                    active={index === active}
+                    pinned={pinned.includes(tool.href)}
+                    onOpen={() => navigate(tool.href)}
+                    onActivate={() => setActive(index)}
+                    onDeactivate={() =>
+                      setActive((current) =>
+                        current === index ? null : current,
+                      )
+                    }
+                    onTogglePin={() => handleTogglePin(tool.href)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No tools match “{query}”.
+              </p>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
+
+      <KeyboardHints />
     </div>
   );
 }
