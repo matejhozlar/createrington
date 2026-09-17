@@ -92,20 +92,6 @@ function normalizePartialEmbed(raw: unknown): Partial<EmbedData> {
   return out;
 }
 
-function applyPartialEmbed(
-  setEmbedData: (updater: (prev: EmbedData) => EmbedData) => void,
-  partial: unknown,
-): void {
-  const normalized = normalizePartialEmbed(partial);
-  setEmbedData((prev) => ({
-    ...prev,
-    ...normalized,
-    fields: normalized.fields ?? prev.fields,
-    buttons: prev.buttons,
-    actionButtons: prev.actionButtons,
-  }));
-}
-
 function readPending(key: string): string | null {
   try {
     return sessionStorage.getItem(key);
@@ -122,20 +108,13 @@ function clearPending(key: string): void {
   }
 }
 
-/**
- * Validate an assistant-supplied Components V2 payload and load it into the
- * builder in components mode. Returns false if the payload is invalid so the
- * caller can surface an error instead of silently applying garbage.
- */
 function applyInsertedComponents(
   raw: unknown,
-  setKind: (kind: PresetKind) => void,
-  setComponents: (nodes: ComponentNode[]) => void,
+  importComponents: (nodes: ComponentNode[]) => void,
 ): boolean {
   const result = componentsDataSchema.safeParse({ components: raw });
   if (!result.success) return false;
-  setKind("components");
-  setComponents(result.data.components);
+  importComponents(result.data.components);
   return true;
 }
 
@@ -175,18 +154,14 @@ export function EmbedBuilder() {
     setFocused(target);
   };
 
-  const setEmbedData = builder.setEmbedData;
-  const setKind = builder.setKind;
-  const setComponents = builder.setComponents;
+  const handleImportEmbed = builder.handleImportEmbed;
+  const handleImportComponents = builder.handleImportComponents;
   useEffect(() => {
-    // Classic embed insertions force embed mode so they aren't applied to a
-    // hidden state while the builder is in components mode.
     const pendingEmbed = readPending(PENDING_EMBED_KEY);
     if (pendingEmbed) {
       try {
-        const parsed = JSON.parse(pendingEmbed) as Partial<EmbedData>;
-        setKind("embed");
-        applyPartialEmbed(setEmbedData, parsed);
+        const parsed = JSON.parse(pendingEmbed) as unknown;
+        handleImportEmbed(normalizePartialEmbed(parsed));
         toast.success("Embed inserted from Createrington Assistant");
       } catch {
         toast.error("Assistant sent an invalid embed payload");
@@ -199,7 +174,7 @@ export function EmbedBuilder() {
     if (pendingComponents) {
       try {
         const parsed = JSON.parse(pendingComponents);
-        if (applyInsertedComponents(parsed, setKind, setComponents)) {
+        if (applyInsertedComponents(parsed, handleImportComponents)) {
           toast.success("Components inserted from Createrington Assistant");
         } else {
           toast.error("Assistant sent an invalid components payload");
@@ -214,14 +189,13 @@ export function EmbedBuilder() {
     const embedHandler = (e: Event): void => {
       const detail = (e as CustomEvent<Partial<EmbedData>>).detail;
       if (!detail) return;
-      setKind("embed");
-      applyPartialEmbed(setEmbedData, detail);
+      handleImportEmbed(normalizePartialEmbed(detail));
       toast.success("Embed inserted from Createrington Assistant");
     };
     const componentsHandler = (e: Event): void => {
       const detail = (e as CustomEvent<ComponentNode[]>).detail;
       if (!detail) return;
-      if (applyInsertedComponents(detail, setKind, setComponents)) {
+      if (applyInsertedComponents(detail, handleImportComponents)) {
         toast.success("Components inserted from Createrington Assistant");
       } else {
         toast.error("Assistant sent an invalid components payload");
@@ -233,7 +207,7 @@ export function EmbedBuilder() {
       window.removeEventListener(INSERT_EMBED_EVENT, embedHandler);
       window.removeEventListener(INSERT_COMPONENTS_EVENT, componentsHandler);
     };
-  }, [setEmbedData, setKind, setComponents, toast]);
+  }, [handleImportEmbed, handleImportComponents, toast]);
 
   const externalData = builder.externalData;
 
