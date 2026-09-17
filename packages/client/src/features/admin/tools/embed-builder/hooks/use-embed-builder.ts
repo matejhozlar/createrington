@@ -175,7 +175,7 @@ function clearDraft(): void {
   }
 }
 
-function normalizeLoadedEmbed(loaded: EmbedData): EmbedDataInternal {
+function normalizeLoadedEmbed(loaded: Partial<EmbedData>): EmbedDataInternal {
   const raw = loaded as Record<string, unknown>;
 
   const footer =
@@ -621,6 +621,33 @@ export function useEmbedBuilder() {
     [toast],
   );
 
+  const detachPreset = useCallback(() => {
+    setActivePreset(null);
+    setPresetName("");
+    setSelectedCategoryId(null);
+    setLastSavedSnapshot("");
+  }, []);
+
+  const handleImportEmbed = useCallback(
+    (embed: Partial<EmbedData>) => {
+      setKind("embed");
+      setComponents([]);
+      setData(normalizeLoadedEmbed(embed));
+      detachPreset();
+    },
+    [detachPreset],
+  );
+
+  const handleImportComponents = useCallback(
+    (nodes: ComponentNode[]) => {
+      setKind("components");
+      setData({ ...DEFAULT_EMBED });
+      setComponents(nodes);
+      detachPreset();
+    },
+    [detachPreset],
+  );
+
   const handleNewEmbed = useCallback(() => {
     setKind("embed");
     setData({ ...DEFAULT_EMBED });
@@ -907,6 +934,8 @@ export function useEmbedBuilder() {
     handleSave,
     handleLoadPreset,
     handleNewEmbed,
+    handleImportEmbed,
+    handleImportComponents,
     handleUpdateAll,
     handleUpdateLink,
     handleUnlink,
