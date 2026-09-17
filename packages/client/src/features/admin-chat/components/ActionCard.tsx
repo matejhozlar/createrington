@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { Check, Sparkles } from "lucide-react";
+import { Check, RotateCcw, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -130,8 +130,7 @@ export function ActionCard({
 
   const onApply = (): void => {
     if (action.type === "highlight") {
-      const ok = applyHighlight(action);
-      setPersistent(ok ? "applied" : "dismissed");
+      if (applyHighlight(action)) setPersistent("applied");
       return;
     }
     if (action.type === "navigate") {
@@ -181,7 +180,7 @@ export function ActionCard({
         <ComponentsActionPreview components={action.components} />
       )}
       <div className="flex items-center gap-1.5">
-        {state === "pending" ? (
+        {state === "pending" && (
           <>
             <Button size="xs" onClick={onApply} type="button">
               <Check size={12} />
@@ -196,9 +195,21 @@ export function ActionCard({
               Dismiss
             </Button>
           </>
-        ) : (
+        )}
+        {state === "applied" && (
+          <>
+            <span className="text-[0.6875rem] italic text-muted-foreground">
+              Applied
+            </span>
+            <Button size="xs" variant="ghost" onClick={onApply} type="button">
+              <RotateCcw size={12} />
+              Re-apply
+            </Button>
+          </>
+        )}
+        {state === "dismissed" && (
           <span className="text-[0.6875rem] italic text-muted-foreground">
-            {state === "applied" ? "Applied" : "Dismissed"}
+            Dismissed
           </span>
         )}
       </div>
