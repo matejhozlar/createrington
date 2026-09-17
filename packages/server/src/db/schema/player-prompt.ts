@@ -71,6 +71,12 @@ export const playerPrompt = pgTable(
 // at submission time via Q.player.find so admins can see the linked Minecraft
 // account when it exists; null means the responder hasn't linked their Discord
 // to a Minecraft account yet.
+//
+// The minecraftUuid FK cascades on delete: a response is the responder's own
+// content and dies with them on every removal path (admin delete, permanent
+// ban, ghost/inactivity cleanup), rather than outliving them as orphaned text.
+// Responses from a Discord user with no linked player have no uuid to cascade
+// from and are unaffected.
 
 export const playerPromptResponse = pgTable(
   "player_prompt_response",
@@ -86,7 +92,7 @@ export const playerPromptResponse = pgTable(
     entryNumber: integer("entry_number").notNull().default(1),
     minecraftUuid: uuid("minecraft_uuid").references(
       () => player.minecraftUuid,
-      { onUpdate: "cascade", onDelete: "set null" },
+      { onUpdate: "cascade", onDelete: "cascade" },
     ),
     responseText: text("response_text").notNull(),
     submittedAt: timestamp("submitted_at", { withTimezone: true })
