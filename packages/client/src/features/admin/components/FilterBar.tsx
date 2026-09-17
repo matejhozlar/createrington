@@ -2,7 +2,9 @@ import { Filter, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Kbd } from "@/components/ui/kbd";
 import { useSearchShortcut } from "@/features/admin/hooks/use-search-shortcut";
+import { MODIFIER_KEY_LABEL } from "@/lib/platform";
 
 /**
  * Standard admin filters card: a search input with optional extra controls
@@ -49,9 +51,9 @@ export function FilterBar({
             onChange={(event) => onSearchChange(event.target.value)}
             className="pl-9 sm:pr-16"
           />
-          <kbd className="pointer-events-none absolute right-2.5 top-1/2 hidden -translate-y-1/2 rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground sm:block">
-            Ctrl K
-          </kbd>
+          <Kbd className="pointer-events-none absolute right-2.5 top-1/2 hidden -translate-y-1/2 sm:block">
+            {MODIFIER_KEY_LABEL} K
+          </Kbd>
         </div>
         {children && <div className="flex flex-wrap gap-2">{children}</div>}
       </CardContent>

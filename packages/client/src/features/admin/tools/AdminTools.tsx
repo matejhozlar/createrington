@@ -12,6 +12,7 @@ import {
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Kbd } from "@/components/ui/kbd";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Tooltip,
@@ -34,10 +35,10 @@ import {
   Users,
   Hammer as WorkshopIcon,
 } from "lucide-react";
+import { MODIFIER_KEY_LABEL } from "@/lib/platform";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { useSearchShortcut } from "@/features/admin/hooks/use-search-shortcut";
-import { Kbd } from "./components/Kbd";
 import { KeyboardHints } from "./components/KeyboardHints";
 import { PinnedTools } from "./components/PinnedTools";
 import { ToolCard } from "./components/ToolCard";
@@ -177,7 +178,7 @@ const CATEGORIES = [
   })),
 ];
 
-const MODIFIER_KEY = /Mac|iPhone|iPad/.test(navigator.userAgent) ? "⌘" : "Ctrl";
+type Cursor = { index: number; keyboard: boolean };
 
 export function AdminTools() {
   const navigate = useNavigate();
@@ -186,7 +187,7 @@ export function AdminTools() {
   const gridRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState(ALL_CATEGORY);
-  const [active, setActive] = useState<number | null>(null);
+  const [cursor, setCursor] = useState<Cursor | null>(null);
   const [pinned, togglePin] = usePinnedTools(TOOL_HREFS);
 
   const refetchMutation = trpc.admin.refetchDiscordEntities.useMutation({
@@ -204,6 +205,8 @@ export function AdminTools() {
       (category === ALL_CATEGORY || tool.section === category) &&
       `${tool.title} ${tool.description}`.toLowerCase().includes(needle),
   );
+  const active = cursor?.index ?? null;
+  const announced = cursor?.keyboard ? filtered[cursor.index] : undefined;
   const pinnedTools = pinned.flatMap(
     (href) => TOOLS.find((tool) => tool.href === href) ?? [],
   );
@@ -219,13 +222,12 @@ export function AdminTools() {
     searchRef,
     count: filtered.length,
     active,
-    onMove: setActive,
+    onMove: (index) => setCursor({ index, keyboard: true }),
     onOpen: (index) => navigate(filtered[index].href),
     onTogglePin: (index) => handleTogglePin(filtered[index].href),
     onClear: () => {
-      if (!query) return;
       setQuery("");
-      setActive(null);
+      setCursor(null);
     },
   });
 
@@ -280,13 +282,17 @@ export function AdminTools() {
               value={query}
               onChange={(event) => {
                 setQuery(event.target.value);
-                setActive(event.target.value.trim() ? 0 : null);
+                setCursor(
+                  event.target.value.trim()
+                    ? { index: 0, keyboard: true }
+                    : null,
+                );
               }}
-              className="h-10 rounded-[10px] bg-card/70 pl-9.5 focus-visible:border-primary/60 sm:pr-20 dark:bg-card/70"
+              className="h-10 bg-card/70 pl-9 focus-visible:border-primary/60 sm:pr-20 dark:bg-card/70"
             />
-            <span className="pointer-events-none absolute right-2.5 top-1/2 hidden -translate-y-1/2 gap-[3px] sm:flex">
-              <Kbd className="py-0.5">{MODIFIER_KEY}</Kbd>
-              <Kbd className="py-0.5">K</Kbd>
+            <span className="pointer-events-none absolute right-2.5 top-1/2 hidden -translate-y-1/2 gap-1 sm:flex">
+              <Kbd>{MODIFIER_KEY_LABEL}</Kbd>
+              <Kbd>K</Kbd>
             </span>
           </div>
         </div>
@@ -299,7 +305,7 @@ export function AdminTools() {
           value={category}
           onValueChange={(value) => {
             setCategory(value);
-            setActive(null);
+            setCursor(null);
           }}
           className="gap-6"
         >
@@ -336,10 +342,16 @@ export function AdminTools() {
                     active={index === active}
                     pinned={pinned.includes(tool.href)}
                     onOpen={() => navigate(tool.href)}
-                    onActivate={() => setActive(index)}
+                    onActivate={() =>
+                      setCursor((current) =>
+                        current?.index === index && !current.keyboard
+                          ? current
+                          : { index, keyboard: false },
+                      )
+                    }
                     onDeactivate={() =>
-                      setActive((current) =>
-                        current === index ? null : current,
+                      setCursor((current) =>
+                        current?.index === index ? null : current,
                       )
                     }
                     onTogglePin={() => handleTogglePin(tool.href)}
@@ -354,6 +366,10 @@ export function AdminTools() {
           </TabsContent>
         </Tabs>
       </div>
+
+      <p aria-live="polite" className="sr-only">
+        {announced ? `${announced.title}, ${announced.section}` : ""}
+      </p>
 
       <KeyboardHints />
     </div>

@@ -21,9 +21,8 @@ function readPins(validHrefs: string[]): string[] {
 function writePins(pins: string[]) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(pins));
-    return true;
   } catch {
-    return false;
+    return;
   }
 }
 

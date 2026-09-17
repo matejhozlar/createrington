@@ -2,12 +2,16 @@ import { useEffect, useRef, type RefObject } from "react";
 
 const TEXT_ENTRY_SELECTOR = "input, textarea, select, [contenteditable=true]";
 const ACTIVATABLE_SELECTOR = "button, a, [role=tab]";
+const PAGE_REGION_SELECTOR = "[data-slot=sidebar-inset], [data-slot=sidebar]";
 const OVERLAY_SELECTOR =
   '[role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"]';
 
 function columnCount(grid: HTMLElement | null) {
   if (!grid) return 1;
-  return getComputedStyle(grid).gridTemplateColumns.split(" ").length;
+  const tracks = getComputedStyle(grid)
+    .gridTemplateColumns.split(" ")
+    .filter((track) => track.endsWith("px"));
+  return tracks.length || 1;
 }
 
 export function useToolGridHotkeys(input: {
@@ -26,14 +30,34 @@ export function useToolGridHotkeys(input: {
   });
 
   useEffect(() => {
+    let keyboardInput = false;
+    let keyboardFocus =
+      document.activeElement?.matches(":focus-visible") ?? false;
+
+    const onKeyDownCapture = () => {
+      keyboardInput = true;
+    };
+    const onPointerDown = () => {
+      keyboardInput = false;
+    };
+    const onFocusIn = () => {
+      keyboardFocus = keyboardInput;
+    };
+
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.altKey || event.ctrlKey || event.metaKey) return;
+      if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) {
+        return;
+      }
       if (document.querySelector(OVERLAY_SELECTOR)) return;
 
       const { gridRef, searchRef, count, active } = latest.current;
       const target = event.target instanceof Element ? event.target : null;
-      const inSearch = target !== null && target === searchRef.current;
-      if (!inSearch && target?.closest(TEXT_ENTRY_SELECTOR)) return;
+      const focused =
+        target !== null && !target.contains(document.body) ? target : null;
+      if (focused !== null && !focused.closest(PAGE_REGION_SELECTOR)) return;
+
+      const inSearch = focused !== null && focused === searchRef.current;
+      if (!inSearch && focused?.closest(TEXT_ENTRY_SELECTOR)) return;
 
       if (event.key === "Escape") {
         latest.current.onClear();
@@ -41,6 +65,10 @@ export function useToolGridHotkeys(input: {
       }
 
       if (event.defaultPrevented) return;
+
+      const inGrid =
+        focused !== null && (gridRef.current?.contains(focused) ?? false);
+      if (focused !== null && keyboardFocus && !inSearch && !inGrid) return;
 
       if (count === 0) return;
 
@@ -59,16 +87,14 @@ export function useToolGridHotkeys(input: {
         latest.current.onMove(next);
         const card = gridRef.current?.children[next];
         card?.scrollIntoView({ block: "nearest" });
-        if (gridRef.current?.contains(document.activeElement)) {
-          card?.querySelector("button")?.focus();
-        }
+        if (inGrid) card?.querySelector("button")?.focus();
         return;
       }
 
       if (active === null) return;
 
       if (event.key === "Enter") {
-        if (!inSearch && target?.closest(ACTIVATABLE_SELECTOR)) return;
+        if (!inSearch && focused?.closest(ACTIVATABLE_SELECTOR)) return;
         event.preventDefault();
         latest.current.onOpen(active);
         return;
@@ -79,7 +105,15 @@ export function useToolGridHotkeys(input: {
       }
     };
 
+    window.addEventListener("keydown", onKeyDownCapture, true);
+    window.addEventListener("pointerdown", onPointerDown, true);
+    window.addEventListener("focusin", onFocusIn, true);
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDownCapture, true);
+      window.removeEventListener("pointerdown", onPointerDown, true);
+      window.removeEventListener("focusin", onFocusIn, true);
+      window.removeEventListener("keydown", onKeyDown);
+    };
   }, []);
 }
