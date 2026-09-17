@@ -1,4 +1,6 @@
 import { Pin, type LucideIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export function PinnedTools({
   tools,
@@ -8,27 +10,26 @@ export function PinnedTools({
   onOpen: (href: string) => void;
 }) {
   return (
-    <section
-      aria-label="Pinned tools"
-      className="flex flex-col gap-2 rounded-xl border border-border bg-[color-mix(in_oklab,var(--primary)_5%,var(--card))] px-4 py-3.5"
-    >
-      <div className="flex items-center gap-1.5 text-[11.5px] font-bold uppercase tracking-[0.08em] text-primary">
-        <Pin className="size-3" />
-        Pinned
-      </div>
-      <div className="flex flex-wrap gap-2">
+    <Card className="gap-2">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Pin className="size-4 text-muted-foreground" />
+          Pinned
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-wrap gap-2">
         {tools.map(({ title, href, icon: Icon }) => (
-          <button
+          <Button
             key={href}
-            type="button"
+            variant="outline"
+            size="sm"
             onClick={() => onOpen(href)}
-            className="flex h-9 cursor-pointer items-center gap-2 rounded-md border border-primary/30 bg-card px-3 text-[13.5px] font-medium outline-none transition-colors hover:border-primary/60 focus-visible:ring-[3px] focus-visible:ring-ring/50"
           >
-            <Icon className="size-4 text-primary" />
+            <Icon className="text-primary" />
             {title}
-          </button>
+          </Button>
         ))}
-      </div>
-    </section>
+      </CardContent>
+    </Card>
   );
 }
