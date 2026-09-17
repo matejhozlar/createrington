@@ -1,4 +1,5 @@
 import { PlayerLabel } from "@/components/player-label";
+import { formatRelativeDate } from "@/lib/format";
 import { aspectRatio, altText, creditName, type GalleryItem } from "../format";
 
 interface GalleryTileProps {
@@ -30,12 +31,17 @@ export function GalleryTile({ item, onOpen }: GalleryTileProps) {
         {item.caption ? (
           <p className="line-clamp-2 text-sm text-foreground">{item.caption}</p>
         ) : null}
-        <div className="flex w-fit items-center text-sm text-muted-foreground">
+        <div className="flex min-w-0 items-center gap-x-3 text-sm text-muted-foreground">
           <PlayerLabel
             uuid={item.author.minecraftUuid}
             name={creditName(item.author)}
             size={20}
           />
+          {item.publishedAt ? (
+            <span className="ml-auto shrink-0">
+              {formatRelativeDate(item.publishedAt)}
+            </span>
+          ) : null}
         </div>
       </figcaption>
     </figure>
