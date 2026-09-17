@@ -18,8 +18,8 @@ export interface IssueWorkshopBanInput {
 }
 
 export interface WorkshopBanActor {
-  discordId: string;
-  username: string;
+  adminDiscordId: string;
+  adminUsername: string;
 }
 
 /**
@@ -103,14 +103,14 @@ export async function issueBan(
       workshopId: input.workshopId,
       banType,
       reason: input.reason,
-      bannedByDiscordId: actor.discordId,
-      bannedByUsername: actor.username,
+      bannedByDiscordId: actor.adminDiscordId,
+      bannedByUsername: actor.adminUsername,
       expiresAt,
     });
 
     await tx.admin.log.action.create({
-      adminDiscordId: actor.discordId,
-      adminUsername: actor.username,
+      adminDiscordId: actor.adminDiscordId,
+      adminUsername: actor.adminUsername,
       actionType: AdminEdit.BAN_WORKSHOP_SUGGEST,
       targetPlayerUuid: player?.minecraftUuid ?? null,
       targetPlayerName: player?.minecraftUsername ?? null,
@@ -127,7 +127,7 @@ export async function issueBan(
     });
 
     logger.info(
-      `Workshop suggestion ban #${ban.id} issued to ${input.discordId} by ${actor.username} (scope: ${input.workshopId ?? "global"}, ${expiresAt ? expiresAt.toISOString() : "permanent"})`,
+      `Workshop suggestion ban #${ban.id} issued to ${input.discordId} by ${actor.adminUsername} (scope: ${input.workshopId ?? "global"}, ${expiresAt ? expiresAt.toISOString() : "permanent"})`,
     );
 
     return ban;
@@ -153,16 +153,16 @@ export async function liftBan(
       { id: banId },
       {
         unbanned: true,
-        unbannedByDiscordId: actor.discordId,
-        unbannedByUsername: actor.username,
+        unbannedByDiscordId: actor.adminDiscordId,
+        unbannedByUsername: actor.adminUsername,
         unbannedAt: new Date(),
         unbanReason: reason,
       },
     );
 
     await tx.admin.log.action.create({
-      adminDiscordId: actor.discordId,
-      adminUsername: actor.username,
+      adminDiscordId: actor.adminDiscordId,
+      adminUsername: actor.adminUsername,
       actionType: AdminEdit.UNBAN_WORKSHOP_SUGGEST,
       targetPlayerUuid: player?.minecraftUuid ?? null,
       targetPlayerName: player?.minecraftUsername ?? null,
@@ -175,7 +175,7 @@ export async function liftBan(
     });
 
     logger.info(
-      `Workshop suggestion ban #${banId} lifted by ${actor.username}`,
+      `Workshop suggestion ban #${banId} lifted by ${actor.adminUsername}`,
     );
 
     return lifted;
