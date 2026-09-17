@@ -166,6 +166,17 @@ export class RoleManager {
   }
 
   /**
+   * Reads a role's own color from the member's guild
+   *
+   * @param member - The guild member whose guild holds the role
+   * @param roleId - The ID of the role to read
+   * @returns The role color, or 0 when the role is uncolored or missing
+   */
+  static colorOf(member: GuildMember, roleId: string): number {
+    return member.guild.roles.cache.get(roleId)?.color ?? 0;
+  }
+
+  /**
    * Checks if a member has any of the specified roles
    *
    * @param member - The guild member to check

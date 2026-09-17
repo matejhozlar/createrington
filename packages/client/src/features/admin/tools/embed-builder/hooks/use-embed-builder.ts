@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { findAttachmentRef } from "@createrington/shared/api/embed";
 import type {
   EmbedData,
   EmbedBot,
@@ -87,6 +88,11 @@ function checkComponentButton(button: ComponentButton): string | null {
  * tRPC validation error. Mirrors the classic path's incomplete-field check.
  */
 function findComponentIssue(nodes: ComponentNode[]): string | null {
+  const attachment = findAttachmentRef(nodes);
+  if (attachment) {
+    return `${attachment} points at a message attachment, which the builder cannot send.`;
+  }
+
   for (const node of nodes) {
     switch (node.type) {
       case "text":
