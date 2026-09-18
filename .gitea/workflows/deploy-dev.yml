@@ -112,9 +112,15 @@ jobs:
           git diff --cached --quiet || git commit -m "publish createrington-api ${VERSION}"
           git push
 
+      - name: Resolve app version
+        run: |
+          VERSION="$(node -p 'require("./package.json").version')"
+          SHA="$(git rev-parse --short HEAD)"
+          echo "APP_VERSION=$VERSION-dev.$SHA" >> "$GITHUB_ENV"
+
       - name: Build
         run: |
-          VITE_APP_VERSION="$(node -p 'require("./package.json").version')-dev.$(git rev-parse --short HEAD)" \
+          VITE_APP_VERSION="$APP_VERSION" \
           VITE_API_URL=https://dev.createrington.com \
           VITE_BLUEMAP_URL=https://map-test.createrington.com \
           pnpm build
@@ -176,6 +182,7 @@ jobs:
       - name: Sync runtime .env from Infisical
         run: |
           pnpm exec infisical export --projectId="$INFISICAL_PROJECT_ID" --env=staging --format=dotenv > /opt/createrington-dev/.env
+          echo "APP_VERSION=$APP_VERSION" >> /opt/createrington-dev/.env
           chmod 600 /opt/createrington-dev/.env
 
       - name: Fix permissions and trigger restart
