@@ -2,8 +2,7 @@ import { Q } from "@/db";
 import { EmbedPresets } from "@/discord/embeds";
 import { replyError } from "@/discord/utils/interaction-reply";
 import { CooldownType } from "@/discord/utils/cooldown";
-import { getService, Services } from "@/services";
-import config from "@/config";
+import { renderScreenshot } from "@/discord/utils/render-screenshot";
 import {
   AttachmentBuilder,
   AutocompleteInteraction,
@@ -105,31 +104,7 @@ export async function execute(
       return;
     }
 
-    // Try Puppeteer screenshot
-    let screenshotBuffer: Buffer | null = null;
-    try {
-      const puppeteer = await getService(Services.PUPPETEER_SERVICE);
-      const renderUrl = new URL("/render/top", config.puppeteer.baseUrl);
-      renderUrl.searchParams.set("category", category);
-      renderUrl.searchParams.set("item", item);
-
-      const result = await puppeteer.screenshot({
-        url: renderUrl.toString(),
-        extraHeaders: { "x-render-secret": config.puppeteer.secret },
-        waitForSelector: "#top-container",
-        elementSelector: "#top-container",
-        timeout: 15_000,
-        viewportWidth: 900,
-        viewportHeight: 500,
-      });
-
-      screenshotBuffer = result.buffer;
-    } catch (error) {
-      logger.warn(
-        "Puppeteer screenshot failed for /top, falling back to text embed:",
-        error,
-      );
-    }
+    const screenshotBuffer = await renderScreenshot("top", { category, item });
 
     // Format display title
     const itemName = item
