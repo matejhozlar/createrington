@@ -32,12 +32,14 @@ export const TicketEmbedPresets = {
   /**
    * Creates a Ticket welcome embed
    */
-  welcome(userId: string, minecraftUsername: string) {
+  welcome(userId: string, minecraftUsername: string | null) {
+    const identity = minecraftUsername
+      ? `(Minecraft: **${minecraftUsername}**)`
+      : "(Not registered)";
+
     const embed = createEmbed()
       .description(
-        `👋 Welcome ${Discord.Users.mention(
-          userId,
-        )} (Minecraft: **${minecraftUsername}**)
+        `👋 Welcome ${Discord.Users.mention(userId)} ${identity}
             \nPlease describe your issue in detail and include any screenshots or videos.
             \n Support will be with you shortly ${Discord.Roles.mention(
               Discord.Roles.ADMIN,
