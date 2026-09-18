@@ -1,6 +1,6 @@
 import type { Express, Request, Response } from "express";
 import { Status } from "discord.js";
-import { container, Services, getServiceSync } from "@/services";
+import { container, Services, ServiceState, getServiceSync } from "@/services";
 import pool from "@/db";
 
 type ComponentStatus = "up" | "down" | "degraded";
@@ -121,11 +121,11 @@ function checkPlaytime(): PlaytimeComponent {
 
 export function rollupStatus(
   components: HealthResponse["components"],
-  containerStates: Record<string, string>,
+  containerStates: Record<string, ServiceState>,
 ): HealthResponse["status"] {
   const states = Object.values(containerStates);
-  const anyFailed = states.some((s) => s === "failed");
-  const anyInitializing = states.some((s) => s === "initializing");
+  const anyFailed = states.some((s) => s === ServiceState.FAILED);
+  const anyInitializing = states.some((s) => s === ServiceState.INITIALIZING);
 
   const criticalDown = CRITICAL_COMPONENTS.some(
     (key) => components[key].status === "down",

@@ -10,7 +10,6 @@ import { setupMainBotHandlers } from "@/discord/bots/main/setup";
 import { webBot } from "@/discord/bots/web/client";
 import { setupWebBotHandlers } from "@/discord/bots/web/setup";
 import { createDiscordMessageService } from "./discord/message";
-import type { DiscordMessageService } from "./discord/message/message.service";
 import { Discord } from "@/discord/constants";
 import {
   MESSAGE_CACHE_CONFIG,
@@ -477,20 +476,8 @@ export function registerServices(): void {
 
   container.register(
     Services.STRUCTURE_PACK_ROTATION,
-    async (c) => {
-      let webMessageService: DiscordMessageService | null = null;
-      try {
-        webMessageService = await c.get(Services.WEB_MESSAGE_SERVICE);
-      } catch (error) {
-        logger.warn(
-          `Structure pack rotation running without Discord announcements: ${error}`,
-        );
-      }
-
-      const service = new StructurePackRotationService(
-        structurePackService,
-        webMessageService,
-      );
+    async () => {
+      const service = new StructurePackRotationService(structurePackService);
 
       try {
         await service.initialize();
