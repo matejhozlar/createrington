@@ -33,7 +33,7 @@ import type { GalleryService } from "./gallery";
 /**
  * Service lifecycle states
  */
-enum ServiceState {
+export enum ServiceState {
   UNINITIALIZED = "uninitialized",
   INITIALIZING = "initializing",
   READY = "ready",
