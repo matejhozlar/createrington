@@ -8,19 +8,13 @@ import {
   timestamp,
   index,
 } from "drizzle-orm/pg-core";
-import { player } from "./player";
 import { donationTypeEnum } from "./enums";
 
 export const donation = pgTable(
   "donation",
   {
     id: serial("id").primaryKey(),
-    playerDiscordId: text("player_discord_id")
-      .notNull()
-      .references(() => player.discordId, {
-        onUpdate: "cascade",
-        onDelete: "cascade",
-      }),
+    playerDiscordId: text("player_discord_id").notNull(),
     type: donationTypeEnum("type").notNull(),
     amountCents: integer("amount_cents").notNull(),
     currency: varchar("currency", { length: 3 }).notNull().default("eur"),
