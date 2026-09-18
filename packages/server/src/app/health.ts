@@ -119,12 +119,13 @@ function checkPlaytime(): PlaytimeComponent {
   }
 }
 
-function rollupStatus(
+export function rollupStatus(
   components: HealthResponse["components"],
+  containerStates: Record<string, string>,
 ): HealthResponse["status"] {
-  const containerStates = container.getAllStates();
-  const anyFailed = Object.values(containerStates).some((s) => s === "failed");
-  const allReady = Object.values(containerStates).every((s) => s === "ready");
+  const states = Object.values(containerStates);
+  const anyFailed = states.some((s) => s === "failed");
+  const anyInitializing = states.some((s) => s === "initializing");
 
   const criticalDown = CRITICAL_COMPONENTS.some(
     (key) => components[key].status === "down",
@@ -134,7 +135,7 @@ function rollupStatus(
   const anyDegraded = Object.values(components).some(
     (c) => c.status === "degraded" || c.status === "down",
   );
-  if (anyDegraded || !allReady) return "degraded";
+  if (anyDegraded || anyInitializing) return "degraded";
 
   return "healthy";
 }
@@ -153,7 +154,7 @@ async function buildHealthSnapshot(): Promise<HealthResponse> {
   } satisfies HealthResponse["components"];
 
   return {
-    status: rollupStatus(components),
+    status: rollupStatus(components, container.getAllStates()),
     timestamp: new Date().toISOString(),
     version: VERSION,
     ...(COMMIT ? { commit: COMMIT } : {}),
