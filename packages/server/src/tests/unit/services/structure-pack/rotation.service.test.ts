@@ -147,7 +147,7 @@ function makeService() {
       return { ...pack, mods: [] };
     },
   } as unknown as StructurePackService;
-  return new StructurePackRotationService(packService, null);
+  return new StructurePackRotationService(packService);
 }
 
 describe("StructurePackRotationService", () => {

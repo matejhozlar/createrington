@@ -1,5 +1,10 @@
 import { container } from "./container";
-import { Services, type ServiceKey, type ServiceTypeMap } from "./container";
+import {
+  Services,
+  ServiceState,
+  type ServiceKey,
+  type ServiceTypeMap,
+} from "./container";
 
 /**
  * Type-safe service accessors
@@ -13,7 +18,7 @@ import { Services, type ServiceKey, type ServiceTypeMap } from "./container";
  * ```
  */
 
-export { Services, container };
+export { Services, ServiceState, container };
 export type { ServiceTypeMap };
 
 /**

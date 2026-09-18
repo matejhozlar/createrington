@@ -1,6 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { Status } from "discord.js";
-import { container, Services, getServiceSync } from "@/services";
+import { container, Services, ServiceState, getServiceSync } from "@/services";
+import config from "@/config";
 import pool from "@/db";
 
 type ComponentStatus = "up" | "down" | "degraded";
@@ -37,7 +38,6 @@ interface HealthResponse {
   status: "healthy" | "degraded" | "down";
   timestamp: string;
   version: string;
-  commit?: string;
   uptimeSeconds: number;
   components: {
     database: DatabaseComponent;
@@ -47,10 +47,6 @@ interface HealthResponse {
     playtime: PlaytimeComponent;
   };
 }
-
-const VERSION =
-  process.env.APP_VERSION ?? process.env.npm_package_version ?? "unknown";
-const COMMIT = process.env.GIT_COMMIT;
 
 const CRITICAL_COMPONENTS = ["database", "mainBot"] as const;
 
@@ -119,12 +115,13 @@ function checkPlaytime(): PlaytimeComponent {
   }
 }
 
-function rollupStatus(
+export function rollupStatus(
   components: HealthResponse["components"],
+  containerStates: Record<string, ServiceState>,
 ): HealthResponse["status"] {
-  const containerStates = container.getAllStates();
-  const anyFailed = Object.values(containerStates).some((s) => s === "failed");
-  const allReady = Object.values(containerStates).every((s) => s === "ready");
+  const states = Object.values(containerStates);
+  const anyFailed = states.some((s) => s === ServiceState.FAILED);
+  const anyInitializing = states.some((s) => s === ServiceState.INITIALIZING);
 
   const criticalDown = CRITICAL_COMPONENTS.some(
     (key) => components[key].status === "down",
@@ -134,7 +131,7 @@ function rollupStatus(
   const anyDegraded = Object.values(components).some(
     (c) => c.status === "degraded" || c.status === "down",
   );
-  if (anyDegraded || !allReady) return "degraded";
+  if (anyDegraded || anyInitializing) return "degraded";
 
   return "healthy";
 }
@@ -153,10 +150,9 @@ async function buildHealthSnapshot(): Promise<HealthResponse> {
   } satisfies HealthResponse["components"];
 
   return {
-    status: rollupStatus(components),
+    status: rollupStatus(components, container.getAllStates()),
     timestamp: new Date().toISOString(),
-    version: VERSION,
-    ...(COMMIT ? { commit: COMMIT } : {}),
+    version: config.app.version,
     uptimeSeconds: process.uptime(),
     components,
   };

@@ -17,7 +17,6 @@ import type {
   StructurePackRotation,
   StructurePackBoost,
 } from "@createrington/shared/db";
-import type { DiscordMessageService } from "@/services/discord/message/message.service";
 import { MODS_DIR } from "./constants";
 import { periodIntervalMs } from "./timezone";
 import {
@@ -51,10 +50,7 @@ export class StructurePackRotationService {
   private nextRotationTimer: ReturnType<typeof setTimeout> | null = null;
   private rotationInProgress = false;
 
-  constructor(
-    private packService: StructurePackService,
-    private messageService: DiscordMessageService | null,
-  ) {}
+  constructor(private packService: StructurePackService) {}
 
   /**
    * Initializes the rotation scheduler

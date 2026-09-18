@@ -512,6 +512,13 @@
       "when": 1789665757584,
       "tag": "0072_careful_lady_ursula",
       "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1789743428101,
+      "tag": "0073_volatile_skin",
+      "breakpoints": true
     }
   ]
 }

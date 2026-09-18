@@ -10,7 +10,6 @@ import { setupMainBotHandlers } from "@/discord/bots/main/setup";
 import { webBot } from "@/discord/bots/web/client";
 import { setupWebBotHandlers } from "@/discord/bots/web/setup";
 import { createDiscordMessageService } from "./discord/message";
-import type { DiscordMessageService } from "./discord/message/message.service";
 import { Discord } from "@/discord/constants";
 import {
   MESSAGE_CACHE_CONFIG,
@@ -475,6 +474,23 @@ export function registerServices(): void {
     },
   );
 
+  container.register(
+    Services.STRUCTURE_PACK_ROTATION,
+    async () => {
+      const service = new StructurePackRotationService(structurePackService);
+
+      try {
+        await service.initialize();
+        logger.info("Structure pack rotation service initialized");
+      } catch (error) {
+        logger.warn(`Structure pack rotation scheduling failed: ${error}`);
+      }
+
+      return service;
+    },
+    { dependencies: [Services.DATABASE] },
+  );
+
   container.on("serviceReady", async (serviceName) => {
     if (serviceName === Services.DATABASE) {
       lotteryService
@@ -551,25 +567,6 @@ export async function initializeServices(): Promise<void> {
   maintenanceService
     .initialize([config.servers.rails.id])
     .catch((err) => logger.warn(`Maintenance service init failed: ${err}`));
-
-  try {
-    let webMessageService: DiscordMessageService | null = null;
-    try {
-      webMessageService = await container.get(Services.WEB_MESSAGE_SERVICE);
-    } catch {
-      // OK: Discord may not be configured
-    }
-    const rotationService = new StructurePackRotationService(
-      structurePackService,
-      webMessageService,
-    );
-    // Register before init so tRPC routes work even if scheduling fails
-    container.register(Services.STRUCTURE_PACK_ROTATION, () => rotationService);
-    await rotationService.initialize();
-    logger.info("Structure pack rotation service initialized");
-  } catch (error) {
-    logger.warn(`Structure pack rotation service init failed: ${error}`);
-  }
 }
 
 /**
