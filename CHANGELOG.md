@@ -1,3 +1,11 @@
+## v1.58.2 (2026-09-18)
+
+### @createrington/server (1.59.1 → 1.59.2)
+- [fix] Fix health endpoint always reporting "degraded" because the rollup treated conditionally-registered services (which stay uninitialized) as not ready; only initializing and failed services now affect the status
+- [fix] Fix health endpoint reporting "unknown" as the deployed version by reading `APP_VERSION` from the validated config instead of a bare `process.env` lookup that was never populated; deploy workflows now inject `APP_VERSION` into both the build and runtime environments
+- [fix] Fix donation records being cascade-deleted when a player is removed by dropping the foreign key constraint on `donation.player_discord_id`, so donation history survives player deletion
+- [refactor] Move structure pack rotation service from post-init manual wiring into the service container with a proper database dependency, and remove the unused `DiscordMessageService` constructor parameter
+
 ## v1.58.1 (2026-09-18)
 
 ### @createrington/server (1.59.0 → 1.59.1)
