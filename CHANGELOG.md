@@ -1,3 +1,8 @@
+## v1.58.1 (2026-09-18)
+
+### @createrington/server (1.59.0 → 1.59.1)
+- [fix] Fix ticket welcome embed crashing for unregistered Discord users by making the player lookup nullable; the embed now shows "(Not registered)" instead of the Minecraft username when the ticket creator has no linked account
+
 ## v1.58.0 (2026-09-17)
 
 ### @createrington/server (1.58.1 → 1.59.0)
