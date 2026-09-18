@@ -112,9 +112,13 @@ jobs:
           git diff --cached --quiet || git commit -m "publish createrington-api ${VERSION}"
           git push
 
+      - name: Resolve app version
+        run: |
+          echo "APP_VERSION=$(node -p 'require("./package.json").version')-dev.$(git rev-parse --short HEAD)" >> "$GITHUB_ENV"
+
       - name: Build
         run: |
-          VITE_APP_VERSION="$(node -p 'require("./package.json").version')-dev.$(git rev-parse --short HEAD)" \
+          VITE_APP_VERSION="$APP_VERSION" \
           VITE_API_URL=https://dev.createrington.com \
           VITE_BLUEMAP_URL=https://map-test.createrington.com \
           pnpm build
@@ -172,6 +176,12 @@ jobs:
             export PGPASSWORD="$DB_PASSWORD"
             bash docker/db/sync-readonly-grants.sh
           '
+
+      - name: Publish deployed version to Infisical
+        continue-on-error: true
+        run: |
+          pnpm exec infisical secrets set "APP_VERSION=$APP_VERSION" \
+            --projectId="$INFISICAL_PROJECT_ID" --env=staging --silent
 
       - name: Sync runtime .env from Infisical
         run: |

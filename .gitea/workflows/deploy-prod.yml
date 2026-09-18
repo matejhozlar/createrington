@@ -123,6 +123,13 @@ jobs:
             bash docker/db/sync-readonly-grants.sh
           '
 
+      - name: Publish deployed version to Infisical
+        continue-on-error: true
+        run: |
+          pnpm exec infisical secrets set \
+            "APP_VERSION=$(node -p 'require("./package.json").version')" \
+            --projectId="$INFISICAL_PROJECT_ID" --env=prod --silent
+
       - name: Sync runtime .env from Infisical
         run: |
           pnpm exec infisical export --projectId="$INFISICAL_PROJECT_ID" --env=prod --format=dotenv > /opt/createrington/.env

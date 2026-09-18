@@ -1,6 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { Status } from "discord.js";
 import { container, Services, ServiceState, getServiceSync } from "@/services";
+import config from "@/config";
 import pool from "@/db";
 
 type ComponentStatus = "up" | "down" | "degraded";
@@ -37,7 +38,6 @@ interface HealthResponse {
   status: "healthy" | "degraded" | "down";
   timestamp: string;
   version: string;
-  commit?: string;
   uptimeSeconds: number;
   components: {
     database: DatabaseComponent;
@@ -47,10 +47,6 @@ interface HealthResponse {
     playtime: PlaytimeComponent;
   };
 }
-
-const VERSION =
-  process.env.APP_VERSION ?? process.env.npm_package_version ?? "unknown";
-const COMMIT = process.env.GIT_COMMIT;
 
 const CRITICAL_COMPONENTS = ["database", "mainBot"] as const;
 
@@ -156,8 +152,7 @@ async function buildHealthSnapshot(): Promise<HealthResponse> {
   return {
     status: rollupStatus(components, container.getAllStates()),
     timestamp: new Date().toISOString(),
-    version: VERSION,
-    ...(COMMIT ? { commit: COMMIT } : {}),
+    version: config.app.version,
     uptimeSeconds: process.uptime(),
     components,
   };
