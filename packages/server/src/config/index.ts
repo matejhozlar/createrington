@@ -80,7 +80,7 @@ const config = {
   },
 
   app: {
-    version: env.APP_VERSION ?? "unknown",
+    version: env.APP_VERSION || "unknown",
     port: env.PORT,
     devClientOrigin: env.DEV_CLIENT_ORIGIN,
     auth: {

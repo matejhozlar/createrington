@@ -80,8 +80,13 @@ jobs:
             pnpm deploy-commands
           '
 
+      - name: Resolve app version
+        run: |
+          VERSION="$(node -p 'require("./package.json").version')"
+          echo "APP_VERSION=$VERSION" >> "$GITHUB_ENV"
+
       - name: Build
-        run: VITE_API_URL=https://createrington.com VITE_BLUEMAP_URL=https://createrington.com/bluemap pnpm build
+        run: VITE_APP_VERSION="$APP_VERSION" VITE_API_URL=https://createrington.com VITE_BLUEMAP_URL=https://createrington.com/bluemap pnpm build
 
       - name: Deploy frontend
         run: |
@@ -123,16 +128,10 @@ jobs:
             bash docker/db/sync-readonly-grants.sh
           '
 
-      - name: Publish deployed version to Infisical
-        continue-on-error: true
-        run: |
-          pnpm exec infisical secrets set \
-            "APP_VERSION=$(node -p 'require("./package.json").version')" \
-            --projectId="$INFISICAL_PROJECT_ID" --env=prod --silent
-
       - name: Sync runtime .env from Infisical
         run: |
           pnpm exec infisical export --projectId="$INFISICAL_PROJECT_ID" --env=prod --format=dotenv > /opt/createrington/.env
+          echo "APP_VERSION=$APP_VERSION" >> /opt/createrington/.env
           chmod 600 /opt/createrington/.env
 
       - name: Fix permissions and trigger restart

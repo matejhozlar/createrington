@@ -114,7 +114,9 @@ jobs:
 
       - name: Resolve app version
         run: |
-          echo "APP_VERSION=$(node -p 'require("./package.json").version')-dev.$(git rev-parse --short HEAD)" >> "$GITHUB_ENV"
+          VERSION="$(node -p 'require("./package.json").version')"
+          SHA="$(git rev-parse --short HEAD)"
+          echo "APP_VERSION=$VERSION-dev.$SHA" >> "$GITHUB_ENV"
 
       - name: Build
         run: |
@@ -177,15 +179,10 @@ jobs:
             bash docker/db/sync-readonly-grants.sh
           '
 
-      - name: Publish deployed version to Infisical
-        continue-on-error: true
-        run: |
-          pnpm exec infisical secrets set "APP_VERSION=$APP_VERSION" \
-            --projectId="$INFISICAL_PROJECT_ID" --env=staging --silent
-
       - name: Sync runtime .env from Infisical
         run: |
           pnpm exec infisical export --projectId="$INFISICAL_PROJECT_ID" --env=staging --format=dotenv > /opt/createrington-dev/.env
+          echo "APP_VERSION=$APP_VERSION" >> /opt/createrington-dev/.env
           chmod 600 /opt/createrington-dev/.env
 
       - name: Fix permissions and trigger restart

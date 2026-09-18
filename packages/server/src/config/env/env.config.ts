@@ -72,7 +72,7 @@ const envSchema = z
     NODE_ENV: z
       .enum(["development", "production", "test"])
       .default("development"),
-    APP_VERSION: z.string().min(1).optional(),
+    APP_VERSION: z.string().optional(),
 
     // Database: required in every environment
     DB_USER: z.string().min(1, "Database user is required"),
