@@ -144,11 +144,15 @@ export class TicketService {
     ticket: Ticket,
     creatorId: string,
   ): Promise<void> {
-    const minecraftUsername = await Q.player.select.minecraftUsername({
-      discordId: creatorId,
-    });
+    const player = await Q.player.find(
+      { discordId: creatorId },
+      { select: ["minecraftUsername"] },
+    );
 
-    const embed = EmbedPresets.ticket.welcome(creatorId, minecraftUsername);
+    const embed = EmbedPresets.ticket.welcome(
+      creatorId,
+      player?.minecraftUsername ?? null,
+    );
 
     await Discord.Messages.send({
       channelId: channel.id,
