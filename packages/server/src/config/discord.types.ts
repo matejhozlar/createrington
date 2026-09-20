@@ -3,6 +3,7 @@ interface MemberRolesConfig {
   readonly bot: string;
   readonly admin: string;
   readonly developer: string;
+  readonly theUnrivaled: string;
   readonly theSleepless: string;
   readonly capitalist: string;
   readonly clockworkArchitect: string;

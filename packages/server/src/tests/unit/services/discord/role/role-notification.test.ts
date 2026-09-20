@@ -154,6 +154,27 @@ describe("RoleNotificationService.sendNotification", () => {
     ]);
   });
 
+  it("maps a top stat records role to the record count and the competitive wording", async () => {
+    await roleNotificationService.sendNotification(
+      notification({
+        role: {
+          roleId: Discord.Roles.THE_UNRIVALED,
+          label: "The Unrivaled",
+          checkInterval: RoleCheckInterval.DAILY,
+          conditionType: RoleConditionType.TOP_STAT_RECORDS,
+          gameRankId: "the_unrivaled",
+        },
+        currentValue: 312,
+        requiredValue: 0,
+      }),
+    );
+
+    expect(lastMessage().texts.slice(1)).toEqual([
+      "<@211712133550473217> now places first in more stats than anyone else.",
+      "-# 312 first-place stats",
+    ]);
+  });
+
   it("leaves the container stripeless when the role has no color", async () => {
     await roleNotificationService.sendNotification(
       notification({ roleColor: 0 }),

@@ -28,6 +28,7 @@ export const commandRegistry: Record<string, CommandEnv> = {
   profile: "prod",
   activity: "prod",
   top: "prod",
+  records: "prod",
   suggest: "prod",
   vote: "prod",
   map: "prod",
@@ -48,4 +49,5 @@ export const commandRegistry: Record<string, CommandEnv> = {
   "donate-panel": "prod",
   "command-docs-panel": "prod",
   "force-inactivity-cleanup": "prod",
+  "force-top-roles": "prod",
 };

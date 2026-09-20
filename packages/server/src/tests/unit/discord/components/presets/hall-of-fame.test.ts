@@ -95,6 +95,30 @@ describe("HallOfFameComponentPresets.rankUp", () => {
     );
   });
 
+  it("announces a stat records role with the first-place count as subtext", () => {
+    const data = HallOfFameComponentPresets.rankUp(
+      input({
+        roleLabel: "The Unrivaled",
+        metric: { kind: "records", count: 1284 },
+        competitive: true,
+      }),
+    );
+
+    expect(texts(data)).toEqual([
+      "### The Unrivaled",
+      "<@123> now places first in more stats than anyone else.",
+      "-# 1,284 first-place stats",
+    ]);
+  });
+
+  it("keeps a single stat record singular", () => {
+    const data = HallOfFameComponentPresets.rankUp(
+      input({ metric: { kind: "records", count: 1 }, competitive: true }),
+    );
+
+    expect(texts(data)[2]).toBe("-# 1 first-place stat");
+  });
+
   it("reads the same for a membership role, with the day count as subtext", () => {
     const data = HallOfFameComponentPresets.rankUp(
       input({
