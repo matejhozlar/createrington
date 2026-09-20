@@ -3,7 +3,7 @@ import { formatDate } from "@createrington/shared/format";
 import { LoadingScreen } from "@/components/loading-spinner";
 import { formatMoney } from "@/lib/format";
 import { mcHeadsBody } from "@/lib/external-urls";
-import { RenderNotFound } from "./components/RenderNotFound";
+import { RenderUnavailable } from "./components/RenderUnavailable";
 import { useRenderData } from "./hooks/use-render-data";
 import { randomPose, skinApiUrl } from "./skin-utils";
 
@@ -61,7 +61,7 @@ export function ProfileRender() {
     img.src = skinApiUrl(data.uuid, pose);
   }, [data, pose]);
 
-  if (unavailable) return <RenderNotFound />;
+  if (unavailable) return <RenderUnavailable reason={unavailable} />;
   if (!data || !skinSrc) return <LoadingScreen />;
 
   return (

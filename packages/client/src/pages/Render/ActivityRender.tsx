@@ -1,7 +1,7 @@
 import { formatPlaytime } from "@createrington/shared/format";
 import { LoadingScreen } from "@/components/loading-spinner";
 import { mcHeadsAvatar } from "@/lib/external-urls";
-import { RenderNotFound } from "./components/RenderNotFound";
+import { RenderUnavailable } from "./components/RenderUnavailable";
 import { useRenderData } from "./hooks/use-render-data";
 
 interface ActivityData {
@@ -115,11 +115,10 @@ export function ActivityRender() {
     "player",
   ]);
 
-  const avatarSrc = data ? mcHeadsAvatar(data.uuid) : null;
+  if (unavailable) return <RenderUnavailable reason={unavailable} />;
+  if (!data) return <LoadingScreen />;
 
-  if (unavailable) return <RenderNotFound />;
-  if (!data || !avatarSrc) return <LoadingScreen />;
-
+  const avatarSrc = mcHeadsAvatar(data.uuid);
   const { weeks, monthLabels } = buildGrid(data.days);
   const dayLabels = ["Mon", "", "Wed", "", "Fri", "", "Sun"];
   const cellSpacing = (900 - 64 - 36) / NUM_WEEKS;

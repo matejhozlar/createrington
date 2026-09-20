@@ -1,6 +1,6 @@
 import { LoadingScreen } from "@/components/loading-spinner";
 import { PodiumCard, type PodiumPlayer } from "./components/PodiumCard";
-import { RenderNotFound } from "./components/RenderNotFound";
+import { RenderUnavailable } from "./components/RenderUnavailable";
 import { usePodiumSkins } from "./hooks/use-podium-skins";
 import { useRenderData } from "./hooks/use-render-data";
 
@@ -23,7 +23,7 @@ export function RecordsRender() {
   const { data, unavailable } = useRenderData<RecordsData>("records");
   const skins = usePodiumSkins(data?.players ?? null);
 
-  if (unavailable) return <RenderNotFound />;
+  if (unavailable) return <RenderUnavailable reason={unavailable} />;
   if (!data || !skins) return <LoadingScreen />;
 
   return (

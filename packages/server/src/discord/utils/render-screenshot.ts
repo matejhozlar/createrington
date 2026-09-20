@@ -12,6 +12,7 @@ type RenderParams = {
 type RenderPage = keyof RenderParams;
 
 const RENDER_TIMEOUT_MS = 15_000;
+const RENDER_UNAVAILABLE_SELECTOR = "#render-unavailable";
 const RENDER_VIEWPORT_WIDTH = 900;
 const RENDER_VIEWPORT_HEIGHT = 500;
 
@@ -32,6 +33,7 @@ export async function renderScreenshot<P extends RenderPage>(
       url: renderUrl.toString(),
       extraHeaders: { "x-render-secret": config.puppeteer.secret },
       waitForSelector: containerSelector,
+      abortSelector: RENDER_UNAVAILABLE_SELECTOR,
       elementSelector: containerSelector,
       timeout: RENDER_TIMEOUT_MS,
       viewportWidth: RENDER_VIEWPORT_WIDTH,

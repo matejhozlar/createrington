@@ -3,32 +3,59 @@ import { useSearchParams } from "react-router";
 
 type RenderPage = "activity" | "compare" | "profile" | "records" | "top";
 
+export type RenderUnavailableReason = "rejected" | "failed";
+
+type RenderResult<T> =
+  | { request: string; data: T; unavailable: null }
+  | { request: string; data: null; unavailable: RenderUnavailableReason };
+
+const GATE_REJECTION_STATUSES = [401, 403];
+
 export function useRenderData<T>(
   page: RenderPage,
   paramKeys: readonly string[] = [],
-) {
+): { data: T | null; unavailable: RenderUnavailableReason | null } {
   const [searchParams] = useSearchParams();
-  const [data, setData] = useState<T | null>(null);
-  const [failed, setFailed] = useState(false);
+  const [result, setResult] = useState<RenderResult<T> | null>(null);
 
   const entries = paramKeys.map((key) => [key, searchParams.get(key) ?? ""]);
   const hasMissingParams = entries.some(([, value]) => !value);
   const query = new URLSearchParams(entries).toString();
+  const request = query
+    ? `/api/render/${page}?${query}`
+    : `/api/render/${page}`;
 
   useEffect(() => {
     if (hasMissingParams) return;
+    let active = true;
 
-    const url = new URL(`/api/render/${page}`, window.location.origin);
-    url.search = query;
-
-    fetch(url.toString())
-      .then((res) => {
+    fetch(request)
+      .then(async (res): Promise<RenderResult<T>> => {
+        if (GATE_REJECTION_STATUSES.includes(res.status)) {
+          return { request, data: null, unavailable: "rejected" };
+        }
         if (!res.ok) throw new Error("Bad response");
-        return res.json() as Promise<T>;
+        return { request, data: (await res.json()) as T, unavailable: null };
       })
-      .then(setData)
-      .catch(() => setFailed(true));
-  }, [hasMissingParams, page, query]);
+      .catch((): RenderResult<T> => ({
+        request,
+        data: null,
+        unavailable: "failed",
+      }))
+      .then((next) => {
+        if (active) setResult(next);
+      });
 
-  return { data, unavailable: hasMissingParams || failed };
+    return () => {
+      active = false;
+    };
+  }, [hasMissingParams, request]);
+
+  if (hasMissingParams) return { data: null, unavailable: "rejected" };
+
+  const current = result?.request === request ? result : null;
+  return {
+    data: current?.data ?? null,
+    unavailable: current?.unavailable ?? null,
+  };
 }

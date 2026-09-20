@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { formatDate } from "@createrington/shared/format";
 import { LoadingScreen } from "@/components/loading-spinner";
 import { formatMoney } from "@/lib/format";
-import { RenderNotFound } from "./components/RenderNotFound";
+import { RenderUnavailable } from "./components/RenderUnavailable";
 import { useRenderData } from "./hooks/use-render-data";
 import { loadSkin, randomPose } from "./skin-utils";
 
@@ -78,7 +78,7 @@ export function CompareRender() {
     loadSkin(data.player2.uuid, poseRight).then(setSkinRight);
   }, [data, poseLeft, poseRight]);
 
-  if (unavailable) return <RenderNotFound />;
+  if (unavailable) return <RenderUnavailable reason={unavailable} />;
   if (!data || !skinLeft || !skinRight) return <LoadingScreen />;
 
   const left = data.player1;
