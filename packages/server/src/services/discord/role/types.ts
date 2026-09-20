@@ -22,6 +22,7 @@ export enum RoleConditionType {
   SERVER_AGE = "server_age",
   TOP_PLAYTIME = "top_playtime",
   TOP_BALANCE = "top_balance",
+  TOP_STAT_RECORDS = "top_stat_records",
   CUSTOM = "custom",
 }
 
@@ -96,7 +97,19 @@ export interface TopBalanceRoleRule extends RoleAssignmentRule {
   gameRankId: string;
 }
 
-export type TopRoleRule = TopPlaytimeRoleRule | TopBalanceRoleRule;
+/**
+ * Top stat records role assignment rule (competitive, rank-based)
+ *
+ * Assigned to the single player who places #1 across the most contested
+ * Minecraft stats. Only one player holds this role at a time.
+ */
+export interface TopStatRecordsRoleRule extends RoleAssignmentRule {
+  conditionType: RoleConditionType.TOP_STAT_RECORDS;
+  gameRankId: string;
+}
+
+export type TopRoleRule =
+  TopPlaytimeRoleRule | TopBalanceRoleRule | TopStatRecordsRoleRule;
 
 /**
  * Union type of all possible rule types
@@ -106,7 +119,8 @@ export type AnyRoleRule =
   | BalanceRoleRule
   | ServerAgeRoleRule
   | TopPlaytimeRoleRule
-  | TopBalanceRoleRule;
+  | TopBalanceRoleRule
+  | TopStatRecordsRoleRule;
 
 /**
  * Result of checking a player's eligibility for a role

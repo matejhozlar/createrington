@@ -5,6 +5,7 @@ type RenderParams = {
   activity: { player: string };
   compare: { player1: string; player2: string };
   profile: { player: string };
+  records: Record<string, never>;
   top: { category: string; item: string };
 };
 

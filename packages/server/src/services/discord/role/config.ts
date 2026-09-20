@@ -7,6 +7,8 @@ import type {
   ServerAgeRoleRule,
   TopPlaytimeRoleRule,
   TopBalanceRoleRule,
+  TopRoleRule,
+  TopStatRecordsRoleRule,
 } from "./types";
 import { RoleConditionType, RoleCheckInterval } from "./types";
 
@@ -189,12 +191,33 @@ export const TOP_BALANCE_ROLES: TopBalanceRoleRule[] = [
 ];
 
 /**
- * Gets top balance role rules (competitive, rank-based)
+ * Top stat records role configuration (competitive, rank-based)
  *
- * @returns Array of top balance role rules
+ * Only one player holds this role at a time: the player who places #1 across
+ * the most contested Minecraft stats. Checked daily.
  */
-export function getTopBalanceRoleRules(): TopBalanceRoleRule[] {
-  return TOP_BALANCE_ROLES.filter((rule) => rule.enabled !== false);
+export const TOP_RECORD_ROLES: TopStatRecordsRoleRule[] = [
+  {
+    roleId: Discord.Roles.THE_UNRIVALED,
+    gameRankId: "the_unrivaled",
+    checkInterval: RoleCheckInterval.DAILY,
+    label: "The Unrivaled",
+    conditionType: RoleConditionType.TOP_STAT_RECORDS,
+    enabled: true,
+  },
+];
+
+/**
+ * Gets every competitive top-1 role rule (playtime, balance, stat records)
+ *
+ * @returns Array of enabled top role rules
+ */
+export function getTopRoleRules(): TopRoleRule[] {
+  return [
+    ...TOP_PLAYTIME_ROLES,
+    ...TOP_BALANCE_ROLES,
+    ...TOP_RECORD_ROLES,
+  ].filter((rule) => rule.enabled !== false);
 }
 
 /**
@@ -229,15 +252,6 @@ export function getDailyRoleRules(): AnyRoleRule[] {
   return getAllRoleRules().filter(
     (rule) => rule.checkInterval === RoleCheckInterval.DAILY,
   );
-}
-
-/**
- * Gets top playtime role rules (competitive, rank-based)
- *
- * @returns Array of top playtime role rules
- */
-export function getTopPlaytimeRoleRules(): TopPlaytimeRoleRule[] {
-  return TOP_PLAYTIME_ROLES.filter((rule) => rule.enabled !== false);
 }
 
 /**
@@ -316,6 +330,10 @@ export const ROLE_NOTIFICATION_CONFIGS: Record<
 
   [Discord.Roles.CAPITALIST]: {
     pose: Poses.snagged,
+  },
+
+  [Discord.Roles.THE_UNRIVALED]: {
+    pose: Poses.callout,
   },
 
   ...SERVER_AGE_NOTIFICATION_CONFIGS,

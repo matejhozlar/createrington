@@ -14,6 +14,40 @@ export interface StatCompareResult {
   values: number[];
 }
 
+export interface RecordLeaderboardEntry {
+  minecraftUuid: string;
+  minecraftUsername: string;
+  discordId: string;
+  records: number;
+}
+
+export interface RecordLeaderboard {
+  rows: RecordLeaderboardEntry[];
+  contestedKeys: number;
+}
+
+const RECORD_CATEGORIES = [
+  "minecraft:mined",
+  "minecraft:killed",
+  "minecraft:crafted",
+  "minecraft:used",
+  "minecraft:broken",
+  "minecraft:custom",
+];
+
+const RECORD_CUSTOM_BLOCKLIST = [
+  "minecraft:play_time",
+  "minecraft:total_world_time",
+  "minecraft:time_since_death",
+  "minecraft:time_since_rest",
+  "minecraft:leave_game",
+  "minecraft:deaths",
+  "minecraft:damage_taken",
+  "minecraft:drop",
+];
+
+const RECORD_MIN_HOLDERS = 2;
+
 /**
  * Custom queries for player_minecraft_stats table
  *
@@ -117,6 +151,75 @@ export class PlayerMinecraftStatsQueries extends PlayerMinecraftStatsBaseQueries
       minecraftUsername: row.minecraftUsername as string,
       values: categories.map((_, i) => Number(row[`cat_${i}`])),
     }));
+  }
+
+  /**
+   * Ranks players by how many stats they lead. Values are summed across
+   * servers, a stat counts only once RECORD_MIN_HOLDERS players have a nonzero
+   * value for it, and a tie at a stat awards every tied player. Omit the limit
+   * to get every player holding at least one record.
+   */
+  async getRecordLeaderboard(limit?: number): Promise<RecordLeaderboard> {
+    const query = `
+      WITH pairs AS (
+        SELECT
+          s.minecraft_uuid,
+          cat.key AS category,
+          item.key AS item,
+          SUM(item.value::bigint) AS value
+        FROM ${this.table} s,
+          jsonb_each(s.stats) AS cat(key, value),
+          jsonb_each_text(cat.value) AS item(key, value)
+        WHERE cat.key = ANY($1)
+          AND NOT (cat.key = 'minecraft:custom' AND item.key = ANY($2))
+        GROUP BY s.minecraft_uuid, cat.key, item.key
+        HAVING SUM(item.value::bigint) > 0
+      ),
+      ranked AS (
+        SELECT
+          minecraft_uuid,
+          category,
+          item,
+          rank() OVER (PARTITION BY category, item ORDER BY value DESC) AS position,
+          count(*) OVER (PARTITION BY category, item) AS holders
+        FROM pairs
+      )
+      SELECT
+        p.minecraft_uuid AS "minecraftUuid",
+        p.minecraft_username AS "minecraftUsername",
+        p.discord_id AS "discordId",
+        count(*)::int AS records,
+        (
+          SELECT count(DISTINCT (category, item))
+          FROM ranked
+          WHERE holders >= $3
+        )::int AS "contestedKeys"
+      FROM ranked r
+      JOIN player p ON p.minecraft_uuid = r.minecraft_uuid
+      WHERE r.position = 1 AND r.holders >= $3
+      GROUP BY p.minecraft_uuid, p.minecraft_username, p.discord_id
+      ORDER BY records DESC, p.minecraft_username ASC
+      LIMIT $4
+    `;
+
+    const result = await this.runQuery<
+      RecordLeaderboardEntry & { contestedKeys: number }
+    >("get record leaderboard", query, [
+      RECORD_CATEGORIES,
+      RECORD_CUSTOM_BLOCKLIST,
+      RECORD_MIN_HOLDERS,
+      limit ?? null,
+    ]);
+
+    return {
+      rows: result.rows.map((row) => ({
+        minecraftUuid: row.minecraftUuid,
+        minecraftUsername: row.minecraftUsername,
+        discordId: row.discordId,
+        records: row.records,
+      })),
+      contestedKeys: result.rows[0]?.contestedKeys ?? 0,
+    };
   }
 
   /**

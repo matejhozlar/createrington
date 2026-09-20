@@ -374,6 +374,24 @@ router.get(
   }),
 );
 
+router.get(
+  "/records",
+  asyncHandler(requirePuppeteerSecret),
+  asyncHandler(async (_req: Request, res: Response) => {
+    const { rows, contestedKeys } =
+      await Q.player.minecraft.stats.getRecordLeaderboard(3);
+
+    res.json({
+      contestedKeys,
+      players: rows.map((row) => ({
+        username: row.minecraftUsername,
+        uuid: row.minecraftUuid,
+        value: row.records,
+      })),
+    });
+  }),
+);
+
 /**
  * GET /api/render/skin?uuid=...&pose=...
  *

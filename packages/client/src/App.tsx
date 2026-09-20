@@ -52,6 +52,10 @@ const TopRender = lazyNamed(
   () => import("./pages/Render/TopRender"),
   "TopRender",
 );
+const RecordsRender = lazyNamed(
+  () => import("./pages/Render/RecordsRender"),
+  "RecordsRender",
+);
 
 // SSO consent screen (standalone, no app shell)
 const Authorize = lazyNamed(
@@ -370,6 +374,7 @@ function AppContent() {
         <Route path="/render/profile" element={<ProfileRender />} />
         <Route path="/render/activity" element={<ActivityRender />} />
         <Route path="/render/top" element={<TopRender />} />
+        <Route path="/render/records" element={<RecordsRender />} />
 
         <Route element={<AppLayout />}>
           <Route path="/" element={<Home />} />

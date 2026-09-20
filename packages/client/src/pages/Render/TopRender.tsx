@@ -1,99 +1,30 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router";
-import { loadSkin, randomPose } from "./skin-utils";
-
-interface PlayerEntry {
-  username: string;
-  uuid: string;
-  value: number;
-}
+import {
+  PodiumCard,
+  PodiumStatus,
+  type PodiumPlayer,
+} from "./components/PodiumCard";
+import { usePodiumSkins } from "./hooks/use-podium-skins";
 
 interface TopData {
   category: string;
   item: string;
   displayTitle: string;
-  players: PlayerEntry[];
+  players: PodiumPlayer[];
 }
 
-const MEDAL_STYLES = [
-  {
-    label: "1st",
-    border: "border-amber-400/60",
-    glow: "bg-amber-400",
-    text: "text-amber-400",
-    height: "h-[240px]",
-    rank: "#1",
-  },
-  {
-    label: "2nd",
-    border: "border-zinc-400/50",
-    glow: "bg-zinc-400",
-    text: "text-zinc-400",
-    height: "h-[200px]",
-    rank: "#2",
-  },
-  {
-    label: "3rd",
-    border: "border-amber-600/50",
-    glow: "bg-amber-600",
-    text: "text-amber-600",
-    height: "h-[200px]",
-    rank: "#3",
-  },
-];
+const BANNER = { src: "/assets/render/player-top.webp", alt: "Top Players" };
 
-// Display order: #2, #1, #3 (podium layout)
-const PODIUM_ORDER = [1, 0, 2];
-
-function PodiumEntry({
-  player,
-  skinSrc,
-  rank,
-}: {
-  player: PlayerEntry;
-  skinSrc: string;
-  rank: number;
-}) {
-  const style = MEDAL_STYLES[rank];
-
-  return (
-    <div className="flex flex-col items-center w-[220px]">
-      {/* Rank */}
-      <span
-        className={`text-[18px] font-extrabold tracking-wider ${style.text}`}
-      >
-        {style.rank}
-      </span>
-      {/* Skin with glow */}
-      <div className="relative flex items-end justify-center mt-1">
-        <div
-          className={`absolute bottom-0 w-20 h-20 rounded-full blur-[40px] opacity-30 ${style.glow}`}
-        />
-        <img
-          src={skinSrc}
-          alt={player.username}
-          className={`relative ${style.height} drop-shadow-[0_4px_20px_rgba(0,0,0,0.6)]`}
-        />
-      </div>
-      {/* Username + Value */}
-      <span
-        className={`text-[15px] font-bold tracking-wide mt-2 ${style.text}`}
-      >
-        {player.username}
-      </span>
-      <span className="text-[13px] font-semibold text-muted-foreground tabular-nums">
-        {player.value.toLocaleString()}
-      </span>
-    </div>
-  );
+function formatValue(value: number): string {
+  return value.toLocaleString();
 }
 
 export function TopRender() {
   const [params] = useSearchParams();
   const [data, setData] = useState<TopData | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const [skins, setSkins] = useState<string[] | null>(null);
-  const [poses] = useState(() => [randomPose(), randomPose(), randomPose()]);
+  const skins = usePodiumSkins(data?.players ?? null);
 
   const category = params.get("category");
   const item = params.get("item");
@@ -115,96 +46,21 @@ export function TopRender() {
       .catch(() => setFetchError("Failed to load leaderboard data"));
   }, [hasMissingParams, category, item]);
 
-  useEffect(() => {
-    if (!data) return;
-    const promises =
-      data.players.length > 0
-        ? data.players.map((p, i) => loadSkin(p.uuid, poses[i]))
-        : [Promise.resolve("")];
-    Promise.all(promises).then((results) =>
-      setSkins(data.players.length > 0 ? results : []),
-    );
-  }, [data, poses]);
-
   const error = hasMissingParams ? "Missing parameters" : fetchError;
 
-  if (error) {
-    return (
-      <div className="w-[900px] h-[500px] bg-background flex items-center justify-center">
-        <span className="text-base tracking-wide text-destructive">
-          {error}
-        </span>
-      </div>
-    );
-  }
-
-  if (!data || !skins) {
-    return (
-      <div className="w-[900px] h-[500px] bg-background flex items-center justify-center">
-        <span className="text-base tracking-wide text-muted-foreground">
-          Loading...
-        </span>
-      </div>
-    );
-  }
+  if (error) return <PodiumStatus message={error} tone="error" />;
+  if (!data || !skins)
+    return <PodiumStatus message="Loading..." tone="muted" />;
 
   return (
-    <div
-      id="top-container"
-      className="relative w-[900px] h-[500px] overflow-hidden bg-background text-foreground flex flex-col"
-    >
-      {/* Background grid */}
-      <div className="absolute inset-0 pointer-events-none render-bg-grid" />
-      {/* Background glows */}
-      <div className="absolute left-1/2 -translate-x-1/2 -top-10 w-[400px] h-[400px] rounded-full blur-[120px] opacity-15 pointer-events-none bg-amber-400" />
-      <div className="absolute -left-16 bottom-0 w-[280px] h-[280px] rounded-full blur-[120px] opacity-10 pointer-events-none bg-chart-3" />
-      <div className="absolute -right-16 bottom-0 w-[280px] h-[280px] rounded-full blur-[120px] opacity-10 pointer-events-none bg-chart-5" />
-
-      {/* Header */}
-      <div className="flex items-center gap-4 px-8 pt-5 z-10">
-        <div className="flex-1 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
-        <img
-          src="/assets/render/player-top.webp"
-          alt="Top Players"
-          className="h-[44px] [image-rendering:pixelated]"
-        />
-        <div className="flex-1 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
-      </div>
-      <div className="text-center pt-2 z-10">
-        <h2 className="text-2xl font-bold tracking-wide text-foreground">
-          {data.displayTitle}
-        </h2>
-      </div>
-
-      {/* Podium */}
-      <div className="flex-1 flex items-center justify-center px-8 z-10">
-        {data.players.length === 0 ? (
-          <span className="text-lg text-muted-foreground pb-20">
-            No players found for this stat
-          </span>
-        ) : (
-          PODIUM_ORDER.map((rank) => {
-            const player = data.players[rank];
-            const skinSrc = skins[rank];
-            if (!player || !skinSrc) return null;
-            return (
-              <PodiumEntry
-                key={rank}
-                player={player}
-                skinSrc={skinSrc}
-                rank={rank}
-              />
-            );
-          })
-        )}
-      </div>
-
-      {/* Footer */}
-      <div className="pb-3.5 text-center z-10">
-        <span className="text-[11px] font-semibold tracking-[0.3em] uppercase text-foreground/15">
-          createrington.com
-        </span>
-      </div>
-    </div>
+    <PodiumCard
+      containerId="top-container"
+      banner={BANNER}
+      title={data.displayTitle}
+      players={data.players}
+      skins={skins}
+      emptyText="No players found for this stat"
+      formatValue={formatValue}
+    />
   );
 }
