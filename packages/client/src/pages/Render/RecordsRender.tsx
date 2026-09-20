@@ -11,8 +11,11 @@ interface RecordsData {
   players: PodiumPlayer[];
 }
 
-const BANNER = { src: "/assets/render/player-top.webp", alt: "Top Players" };
-const TITLE = "Record Holders";
+const BANNER = {
+  src: "/assets/render/player-records.webp",
+  alt: "Player Records",
+};
+const TITLE = "Most #1 Placements";
 
 function formatValue(value: number): string {
   return `${value.toLocaleString()} ${value === 1 ? "record" : "records"}`;
@@ -42,7 +45,7 @@ export function RecordsRender() {
       containerId="records-container"
       banner={BANNER}
       title={TITLE}
-      subtitle={`Most #1 placements across ${data.contestedKeys.toLocaleString()} contested stats`}
+      subtitle={`Across ${data.contestedKeys.toLocaleString()} contested stats`}
       players={data.players}
       skins={skins}
       emptyText="No contested stats yet"
