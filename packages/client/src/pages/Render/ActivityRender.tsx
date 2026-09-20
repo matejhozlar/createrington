@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router";
 import { formatPlaytime } from "@createrington/shared/format";
+import { LoadingScreen } from "@/components/loading-spinner";
 import { mcHeadsAvatar } from "@/lib/external-urls";
+import { RenderUnavailable } from "./components/RenderUnavailable";
+import { useRenderData } from "./hooks/use-render-data";
 
 interface ActivityData {
   username: string;
@@ -110,52 +111,14 @@ function buildGrid(days: Record<string, number>) {
 }
 
 export function ActivityRender() {
-  const [params] = useSearchParams();
-  const [data, setData] = useState<ActivityData | null>(null);
-  const [fetchError, setFetchError] = useState<string | null>(null);
+  const { data, unavailable } = useRenderData<ActivityData>("activity", [
+    "player",
+  ]);
 
-  const player = params.get("player");
-  const hasMissingParams = !player;
+  if (unavailable) return <RenderUnavailable reason={unavailable} />;
+  if (!data) return <LoadingScreen />;
 
-  useEffect(() => {
-    if (hasMissingParams) return;
-
-    const url = new URL("/api/render/activity", window.location.origin);
-    url.searchParams.set("player", player);
-
-    fetch(url.toString())
-      .then((res) => {
-        if (!res.ok) throw new Error("Bad response");
-        return res.json() as Promise<ActivityData>;
-      })
-      .then(setData)
-      .catch(() => setFetchError("Failed to load activity data"));
-  }, [hasMissingParams, player]);
-
-  const avatarSrc = data ? mcHeadsAvatar(data.uuid) : null;
-
-  const error = hasMissingParams ? "Missing parameters" : fetchError;
-
-  if (error) {
-    return (
-      <div className="w-[900px] h-[500px] bg-background flex items-center justify-center">
-        <span className="text-base tracking-wide text-destructive">
-          {error}
-        </span>
-      </div>
-    );
-  }
-
-  if (!data || !avatarSrc) {
-    return (
-      <div className="w-[900px] h-[500px] bg-background flex items-center justify-center">
-        <span className="text-base tracking-wide text-muted-foreground">
-          Loading...
-        </span>
-      </div>
-    );
-  }
-
+  const avatarSrc = mcHeadsAvatar(data.uuid);
   const { weeks, monthLabels } = buildGrid(data.days);
   const dayLabels = ["Mon", "", "Wed", "", "Fri", "", "Sun"];
   const cellSpacing = (900 - 64 - 36) / NUM_WEEKS;

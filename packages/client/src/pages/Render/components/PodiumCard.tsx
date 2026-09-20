@@ -80,24 +80,6 @@ function PodiumEntry({
   );
 }
 
-export function PodiumStatus({
-  message,
-  tone,
-}: {
-  message: string;
-  tone: "muted" | "error";
-}) {
-  return (
-    <div className="w-[900px] h-[500px] bg-background flex items-center justify-center">
-      <span
-        className={`text-base tracking-wide ${tone === "error" ? "text-destructive" : "text-muted-foreground"}`}
-      >
-        {message}
-      </span>
-    </div>
-  );
-}
-
 export function PodiumCard({
   containerId,
   banner,
