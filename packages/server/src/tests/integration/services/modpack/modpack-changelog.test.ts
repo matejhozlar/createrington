@@ -27,7 +27,7 @@ vi.mock("@/services/discord/message/message.service", () => ({
   DiscordMessageService: { getInstance: () => ({ send: sendMock }) },
 }));
 
-import { Q } from "@/db";
+import { Q, db } from "@/db";
 import { modpackService } from "@/services/modpack";
 import {
   announceReleaseChangelog,
@@ -378,6 +378,7 @@ describe("announceReleaseChangelog", () => {
     const [first] = sentMessages();
     expect(first.types[0]).toBe(ComponentType.TextDisplay);
     expect(first.texts[0]).toContain("## Vitest Pack 2.1.0");
+    expect(first.allowedMentions).toEqual({ roles: [Discord.Roles.UPDATE] });
 
     sendMock.mockClear();
     await announce(modpack, release, false);
@@ -399,10 +400,48 @@ describe("announceReleaseChangelog", () => {
     expect(messages).toHaveLength(rows.length - 1);
     for (const message of messages) {
       expect(message.lead).toEqual([]);
+      expect(message.allowedMentions).toBeUndefined();
       expect(message.types[0]).toBe(ComponentType.MediaGallery);
       expect(message.texts.join("\n")).not.toContain("## Vitest Pack");
       expect(message.texts.join("\n")).not.toContain("(continued)");
     }
+  });
+
+  it("posts the first part again silently when saving its message id failed", async () => {
+    const modpack = await seedPack();
+    const [project] = await seedProjects(1);
+    await seedRelease(modpack, "2.5.0", []);
+    const release = await seedRelease(modpack, "2.6.0", [
+      fileRow(project, "1.0.0"),
+    ]);
+    sendMock.mockImplementationOnce(async () => ({
+      success: false,
+      messageId: undefined,
+      error: "boom",
+    }));
+    await announce(modpack, release, true);
+
+    sendMock.mockClear();
+    const record = vi
+      .spyOn(db, "inTransaction")
+      .mockRejectedValueOnce(new Error("write failed"));
+    try {
+      await announce(modpack, release, false);
+      await announce(modpack, release, false);
+    } finally {
+      record.mockRestore();
+    }
+
+    const [pinged, silent] = sentMessages();
+    expect(sendMock).toHaveBeenCalledTimes(2);
+    expect(pinged.allowedMentions).toEqual({ roles: [Discord.Roles.UPDATE] });
+    expect(silent.allowedMentions).toBeUndefined();
+    expect(silent.lead).toEqual(pinged.lead);
+
+    const [row] = await Q.modpack.release.announcement.findAll({
+      releaseId: release.id,
+    });
+    expect(row.messageId).not.toBeNull();
   });
 
   it("sends an admin-edited preset instead of the generated part", async () => {

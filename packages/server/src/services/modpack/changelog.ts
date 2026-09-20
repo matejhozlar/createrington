@@ -48,7 +48,10 @@ const LOADER_NAMES: Record<string, string> = {
   quilt: "Quilt",
 };
 
+const MENTION_ROLE_ID = Discord.Roles.UPDATE;
+
 const inFlight = new Set<number>();
+const pingedButUnrecorded = new Set<number>();
 
 export interface AnnounceReleaseOptions {
   modpack: Modpack;
@@ -66,8 +69,9 @@ export interface AnnounceReleaseOptions {
  * preset is what a resumed part sends. Parts are rows keyed by release and
  * part number, which is what makes a release announce once: a part without a
  * message id is the only thing ever (re)sent. The first part leads with a
- * spoilered mention of the Update role, the only mention a changelog send is
- * allowed to ping. No-op while the
+ * spoilered mention of the Update role and is the only send allowed to ping
+ * it; a first part posted again because saving its message id failed goes
+ * out silent for as long as this process lives. No-op while the
  * modpack_changelog feature flag is off, for the first recorded release of a
  * modpack (nothing to diff against), and for a release that had no parts
  * created by the time either applied.
@@ -113,7 +117,7 @@ async function run({
 
   const parts = ModpackChangelogComponentPresets.release(
     await toChangelogInput(modpack, diff),
-    { mentionRoleId: Discord.Roles.UPDATE },
+    { mentionRoleId: MENTION_ROLE_ID },
   );
   if (existing.length > 0 && parts.length !== existing[0].partCount) {
     logger.warn(
@@ -142,11 +146,12 @@ async function run({
       logger.warn(`${partLabel} could not be built, stopping:`, error);
       break;
     }
+    const pings = row.part === 1 && !pingedButUnrecorded.has(row.id);
     const result = await messages.send({
       channelId: row.channelId,
       components: built.components,
       flags: built.flags,
-      allowedMentions: { roles: [Discord.Roles.UPDATE] },
+      allowedMentions: pings ? { roles: [MENTION_ROLE_ID] } : undefined,
     });
     const messageId = result.messageId;
     if (!result.success || !messageId) {
@@ -170,12 +175,14 @@ async function run({
         }
       });
     } catch (error) {
-      logger.warn(
-        `${partLabel} was posted as message ${messageId} but recording it failed, the next reconcile posts it again:`,
+      if (pings) pingedButUnrecorded.add(row.id);
+      logger.error(
+        `${partLabel} was posted as message ${messageId} but recording it failed, the next reconcile posts it again${pings ? " without the ping" : ""} and message ${messageId} has to be deleted by hand:`,
         error,
       );
       break;
     }
+    pingedButUnrecorded.delete(row.id);
     sent++;
   }
   logger.info(
