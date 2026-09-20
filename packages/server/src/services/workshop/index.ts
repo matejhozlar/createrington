@@ -1171,32 +1171,30 @@ export class WorkshopService {
     workshop: Workshop,
   ): Promise<WorkshopSummary> {
     const workshopId = workshop.id;
-    const [packModCount, pendingModCount, participantIds, mods, packSample] =
-      await Promise.all([
-        Q.modpack.mod.count({
-          modpackId: workshop.modpackId,
-          droppedFromManifestAt: null,
-        }),
-        Q.workshop.mod.count({ workshopId, status: "pending" }),
-        Q.workshop.participantDiscordIds(workshopId),
-        Q.workshop.mod.findAll(
-          { workshopId, status: { $in: USER_VISIBLE_MOD_STATUSES } },
-          {
-            orderBy: "createdAt",
-            orderDirection: "desc",
-            select: ["id", "curseforgeProjectId"],
-          },
-        ),
-        Q.modpack.mod.findAll(
-          { modpackId: workshop.modpackId, droppedFromManifestAt: null },
-          {
-            orderBy: "createdAt",
-            orderDirection: "desc",
-            limit: PACK_SAMPLE_SIZE,
-            select: ["id", "curseforgeProjectId"],
-          },
-        ),
-      ]);
+    const [packModCount, participantIds, mods, packSample] = await Promise.all([
+      Q.modpack.mod.count({
+        modpackId: workshop.modpackId,
+        droppedFromManifestAt: null,
+      }),
+      Q.workshop.participantDiscordIds(workshopId),
+      Q.workshop.mod.findAll(
+        { workshopId, status: { $in: USER_VISIBLE_MOD_STATUSES } },
+        {
+          orderBy: "createdAt",
+          orderDirection: "desc",
+          select: ["id", "curseforgeProjectId", "status"],
+        },
+      ),
+      Q.modpack.mod.findAll(
+        { modpackId: workshop.modpackId, droppedFromManifestAt: null },
+        {
+          orderBy: "createdAt",
+          orderDirection: "desc",
+          limit: PACK_SAMPLE_SIZE,
+          select: ["id", "curseforgeProjectId"],
+        },
+      ),
+    ]);
 
     const participants =
       participantIds.length > 0
@@ -1207,11 +1205,14 @@ export class WorkshopService {
       minecraftUsername: player.minecraftUsername,
     }));
 
+    const pendingMods = mods.filter((mod) => mod.status === "pending");
     const upvoteCounts =
-      mods.length > 0
-        ? await Q.workshop.mod.upvote.countGroupedByMod(mods.map((m) => m.id))
+      pendingMods.length > 0
+        ? await Q.workshop.mod.upvote.countGroupedByMod(
+            pendingMods.map((m) => m.id),
+          )
         : {};
-    const top = [...mods]
+    const top = [...pendingMods]
       .sort((a, b) => (upvoteCounts[b.id] ?? 0) - (upvoteCounts[a.id] ?? 0))
       .slice(0, 3);
     const projectIds = [
@@ -1249,7 +1250,7 @@ export class WorkshopService {
 
     return {
       packModCount,
-      pendingModCount,
+      pendingModCount: pendingMods.length,
       suggestionCount: mods.length,
       participantCount: participantIds.length,
       participantSample,

@@ -124,6 +124,15 @@ function mockNextIngestAs(classId: number): void {
   );
 }
 
+async function upvoteMod(
+  workshopModId: number,
+  discordIds: string[],
+): Promise<void> {
+  for (const discordId of discordIds) {
+    await Q.workshop.mod.upvote.create({ workshopModId, discordId });
+  }
+}
+
 describe("WorkshopService.reviewMod", () => {
   it("throws BadRequestError when rejecting without a reason", async () => {
     const workshop = await seedWorkshop(ctx);
@@ -2223,6 +2232,32 @@ describe("WorkshopService.getWorkshopMods", () => {
     expect(item.dependencies).toMatchObject([
       { curseforgeProjectId: depProjectId, name: "Lib", coverage: "missing" },
     ]);
+  });
+});
+
+describe("WorkshopService.listVisibleWorkshops", () => {
+  it("ranks only pending suggestions in the summary", async () => {
+    const workshop = await seedWorkshop(ctx, { status: "open" });
+    const shipped = await seedMod(ctx, workshop, { status: "in_pack" });
+    const approved = await seedMod(ctx, workshop, { status: "approved" });
+    const pending = await seedMod(ctx, workshop, { status: "pending" });
+    await seedMod(ctx, workshop, {
+      status: "rejected",
+      rejectReason: "on_hold",
+    });
+    await upvoteMod(shipped.id, [USER_A, USER_B, ADMIN]);
+    await upvoteMod(approved.id, [USER_A, USER_B]);
+    await upvoteMod(pending.id, [USER_A]);
+
+    const listed = (await workshopService.listVisibleWorkshops()).find(
+      (row) => row.id === workshop.id,
+    );
+
+    expect(listed?.summary?.topMods).toMatchObject([
+      { workshopModId: pending.id, upvoteCount: 1 },
+    ]);
+    expect(listed?.summary?.pendingModCount).toBe(1);
+    expect(listed?.summary?.suggestionCount).toBe(3);
   });
 });
 
