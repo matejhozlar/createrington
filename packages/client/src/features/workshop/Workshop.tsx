@@ -216,7 +216,9 @@ function ActiveWorkshopCard({ workshop }: { workshop: WorkshopListItem }) {
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">
-            No suggestions yet. Be the first to submit one!
+            {suggestionCount > 0
+              ? "Every suggestion has been reviewed. Submit a new one!"
+              : "No suggestions yet. Be the first to submit one!"}
           </p>
         )}
         <Link
