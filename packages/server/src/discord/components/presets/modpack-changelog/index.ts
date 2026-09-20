@@ -1,4 +1,4 @@
-import { escapeMarkdown } from "discord.js";
+import { escapeMarkdown, roleMention, spoiler } from "discord.js";
 import {
   actionRow,
   container,
@@ -20,6 +20,7 @@ import {
   COMPONENTS_V2_MAX_COMPONENTS,
   COMPONENTS_V2_MAX_TEXT,
   type ComponentContainer,
+  type ComponentTextDisplay,
   type ComponentsData,
 } from "@createrington/shared/api/embed";
 
@@ -53,6 +54,10 @@ export interface ChangelogInput {
   removed: ChangelogEntry[];
   unchanged: number;
   notes: string | null;
+}
+
+export interface ChangelogReleaseOptions {
+  mentionRoleId?: string | null;
 }
 
 export type ChangelogGroup = "added" | "updated" | "removed";
@@ -168,14 +173,23 @@ function opening(input: ChangelogInput, first: boolean): Child[] {
     : [mediaGallery([{ url: CHANGELOG_SPACER_IMAGE_URL }])];
 }
 
-function fits(open: Child[], children: Child[]): boolean {
+function mentionNodes(roleId: string | null): ComponentTextDisplay[] {
+  return roleId ? [text(spoiler(roleMention(roleId)))] : [];
+}
+
+interface Frame {
+  lead: ComponentTextDisplay[];
+  open: Child[];
+}
+
+function fits({ lead, open }: Frame, children: Child[]): boolean {
   const probe = container([
     ...open,
     ...children,
     separator(),
     actionRow([linkButton(DOWNLOAD_LABEL, "https://www.curseforge.com")]),
   ]);
-  const { count, text: length } = measureComponentsV2([probe]);
+  const { count, text: length } = measureComponentsV2([...lead, probe]);
   return (
     count <= COMPONENTS_V2_MAX_COMPONENTS && length <= COMPONENTS_V2_MAX_TEXT
   );
@@ -205,8 +219,11 @@ function noteNodes(notes: string): Child[] {
   return chunks.map((chunk) => text(chunk));
 }
 
-function pack(input: ChangelogInput): Child[][] {
-  const openings = { first: opening(input, true), rest: opening(input, false) };
+function pack(input: ChangelogInput, lead: ComponentTextDisplay[]): Child[][] {
+  const frames: Record<"first" | "rest", Frame> = {
+    first: { lead, open: opening(input, true) },
+    rest: { lead: [], open: opening(input, false) },
+  };
   const parts: Child[][] = [];
   let current: Child[] = [];
 
@@ -214,8 +231,8 @@ function pack(input: ChangelogInput): Child[][] {
     let opened = false;
     for (const node of nodes) {
       const pending: Child[] = opened ? [node] : [heading, node];
-      const open = parts.length === 0 ? openings.first : openings.rest;
-      if (fits(open, [...current, ...pending])) {
+      const frame = parts.length === 0 ? frames.first : frames.rest;
+      if (fits(frame, [...current, ...pending])) {
         current.push(...pending);
         opened = true;
         continue;
@@ -252,13 +269,20 @@ export const ModpackChangelogComponentPresets = {
    * text ceilings. Only the first opens with the release header; the others
    * open with a transparent full-width image, without which Discord would
    * shrink them to their content instead of matching the first one's width.
+   * With `mentionRoleId`, the first message leads with a spoilered role
+   * mention above the container; it only pings when the send allows that role.
    */
-  release(input: ChangelogInput): ComponentsData[] {
-    const chunks = pack(input);
+  release(
+    input: ChangelogInput,
+    options: ChangelogReleaseOptions = {},
+  ): ComponentsData[] {
+    const lead = mentionNodes(options.mentionRoleId ?? null);
+    const chunks = pack(input, lead);
     return chunks.map((children, index) => {
       const last = index === chunks.length - 1;
       return {
         components: [
+          ...(index === 0 ? lead : []),
           container(
             [
               ...opening(input, index === 0),

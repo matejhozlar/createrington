@@ -33,6 +33,7 @@ interface MemberRolesConfig {
   readonly cogsAndSteam: string;
   readonly supporter: string;
   readonly verified: string;
+  readonly update: string;
   readonly cogsAndSteamnotifications: string;
   readonly railsnsailsnotifications: string;
   readonly cryptonotifications: string;
