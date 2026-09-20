@@ -65,7 +65,9 @@ export interface AnnounceReleaseOptions {
  * after, so admins can edit and re-push it from the builder; an edited
  * preset is what a resumed part sends. Parts are rows keyed by release and
  * part number, which is what makes a release announce once: a part without a
- * message id is the only thing ever (re)sent. No-op while the
+ * message id is the only thing ever (re)sent. The first part leads with a
+ * spoilered mention of the Update role, the only mention a changelog send is
+ * allowed to ping. No-op while the
  * modpack_changelog feature flag is off, for the first recorded release of a
  * modpack (nothing to diff against), and for a release that had no parts
  * created by the time either applied.
@@ -111,6 +113,7 @@ async function run({
 
   const parts = ModpackChangelogComponentPresets.release(
     await toChangelogInput(modpack, diff),
+    { mentionRoleId: Discord.Roles.UPDATE },
   );
   if (existing.length > 0 && parts.length !== existing[0].partCount) {
     logger.warn(
@@ -143,6 +146,7 @@ async function run({
       channelId: row.channelId,
       components: built.components,
       flags: built.flags,
+      allowedMentions: { roles: [Discord.Roles.UPDATE] },
     });
     const messageId = result.messageId;
     if (!result.success || !messageId) {

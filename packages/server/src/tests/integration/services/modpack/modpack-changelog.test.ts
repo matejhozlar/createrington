@@ -56,26 +56,35 @@ const createdPresetIds: number[] = [];
 interface SentMessage {
   channelId: string;
   components: Array<{ toJSON(): unknown }>;
+  allowedMentions?: unknown;
 }
 
 function sentMessages(): Array<{
   channelId: string;
+  lead: string[];
   texts: string[];
   types: number[];
+  allowedMentions: unknown;
 }> {
   return sendMock.mock.calls.map(([options]) => {
-    const { channelId, components } = options as SentMessage;
-    const [root] = components.map((c) => c.toJSON()) as Array<{
+    const { channelId, components, allowedMentions } = options as SentMessage;
+    const nodes = components.map((c) => c.toJSON()) as Array<{
       type: number;
+      content?: string;
       components: Array<{
         type: number;
         content?: string;
         components?: Array<{ content: string }>;
       }>;
     }>;
-    if (root.type !== ComponentType.Container) {
+    const rootIndex = nodes.findIndex(
+      (node) => node.type === ComponentType.Container,
+    );
+    if (rootIndex === -1) {
       throw new Error("expected a container");
     }
+    const root = nodes[rootIndex];
+    const lead = nodes.slice(0, rootIndex).map((node) => node.content ?? "");
     const texts = root.components.flatMap((child) => {
       if (child.type === ComponentType.TextDisplay)
         return [child.content ?? ""];
@@ -86,8 +95,10 @@ function sentMessages(): Array<{
     });
     return {
       channelId,
+      lead,
       texts,
       types: root.components.map((child) => child.type),
+      allowedMentions,
     };
   });
 }
@@ -247,6 +258,10 @@ describe("announceReleaseChangelog", () => {
     expect(sendMock).toHaveBeenCalledTimes(1);
     const [message] = sentMessages();
     expect(message.channelId).toBe(CHANNEL_ID);
+    expect(message.lead).toEqual([`||<@&${Discord.Roles.UPDATE}>||`]);
+    expect(message.allowedMentions).toEqual({
+      roles: [Discord.Roles.UPDATE],
+    });
     expect(message.texts[0]).toContain("## Vitest Pack 1.1.0");
     expect(message.texts[0]).toContain("NeoForge 21.1.172");
     expect(message.texts[0]).toContain("Changes since 1.0.0");
@@ -383,6 +398,7 @@ describe("announceReleaseChangelog", () => {
     const messages = sentMessages();
     expect(messages).toHaveLength(rows.length - 1);
     for (const message of messages) {
+      expect(message.lead).toEqual([]);
       expect(message.types[0]).toBe(ComponentType.MediaGallery);
       expect(message.texts.join("\n")).not.toContain("## Vitest Pack");
       expect(message.texts.join("\n")).not.toContain("(continued)");
