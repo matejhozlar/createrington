@@ -177,11 +177,12 @@ function mentionNodes(roleId: string | null): ComponentTextDisplay[] {
   return roleId ? [text(spoiler(roleMention(roleId)))] : [];
 }
 
-function fits(
-  lead: ComponentTextDisplay[],
-  open: Child[],
-  children: Child[],
-): boolean {
+interface Frame {
+  lead: ComponentTextDisplay[];
+  open: Child[];
+}
+
+function fits({ lead, open }: Frame, children: Child[]): boolean {
   const probe = container([
     ...open,
     ...children,
@@ -219,7 +220,10 @@ function noteNodes(notes: string): Child[] {
 }
 
 function pack(input: ChangelogInput, lead: ComponentTextDisplay[]): Child[][] {
-  const openings = { first: opening(input, true), rest: opening(input, false) };
+  const frames: Record<"first" | "rest", Frame> = {
+    first: { lead, open: opening(input, true) },
+    rest: { lead: [], open: opening(input, false) },
+  };
   const parts: Child[][] = [];
   let current: Child[] = [];
 
@@ -227,9 +231,8 @@ function pack(input: ChangelogInput, lead: ComponentTextDisplay[]): Child[][] {
     let opened = false;
     for (const node of nodes) {
       const pending: Child[] = opened ? [node] : [heading, node];
-      const first = parts.length === 0;
-      const open = first ? openings.first : openings.rest;
-      if (fits(first ? lead : [], open, [...current, ...pending])) {
+      const frame = parts.length === 0 ? frames.first : frames.rest;
+      if (fits(frame, [...current, ...pending])) {
         current.push(...pending);
         opened = true;
         continue;
