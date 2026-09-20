@@ -49,5 +49,5 @@ export const commandRegistry: Record<string, CommandEnv> = {
   "donate-panel": "prod",
   "command-docs-panel": "prod",
   "force-inactivity-cleanup": "prod",
-  "force-top-roles": "prod",
+  "force-update": "prod",
 };

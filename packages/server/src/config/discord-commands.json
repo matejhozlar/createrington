@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-20T15:49:03.972Z",
+  "generatedAt": "2026-09-20T16:11:11.401Z",
   "commands": [
     {
       "name": "cooldown",
@@ -694,29 +694,36 @@
       "env": "prod"
     },
     {
-      "name": "force-top-roles",
-      "description": "Recalculate the top-1 roles now: all of them, or just one",
+      "name": "force-update",
+      "description": "Force an automatic update to run now",
       "category": "owner",
       "options": [
         {
-          "type": 3,
-          "choices": [
+          "type": 1,
+          "name": "roles",
+          "description": "Recalculate the top-1 roles now: all of them, or just one",
+          "options": [
             {
-              "name": "The Sleepless",
-              "value": "the_sleepless"
-            },
-            {
-              "name": "Capitalist",
-              "value": "capitalist"
-            },
-            {
-              "name": "The Unrivaled",
-              "value": "the_unrivaled"
+              "type": 3,
+              "choices": [
+                {
+                  "name": "The Sleepless",
+                  "value": "the_sleepless"
+                },
+                {
+                  "name": "Capitalist",
+                  "value": "capitalist"
+                },
+                {
+                  "name": "The Unrivaled",
+                  "value": "the_unrivaled"
+                }
+              ],
+              "name": "role",
+              "description": "Role to recalculate (leave empty for all)",
+              "required": false
             }
-          ],
-          "name": "role",
-          "description": "Role to recalculate (leave empty for all)",
-          "required": false
+          ]
         }
       ],
       "defaultMemberPermissions": "8",
