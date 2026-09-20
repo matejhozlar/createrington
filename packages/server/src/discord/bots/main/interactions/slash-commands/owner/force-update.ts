@@ -40,9 +40,10 @@ export const permissions = {
 
 function outcome(result: TopRoleResult): string {
   if (result.failed) {
+    const reason = result.failureReason ? ` (${result.failureReason})` : "";
     return result.holder
-      ? `could not be given to **${result.holder}**`
-      : "could not be recalculated";
+      ? `could not be given to **${result.holder}**${reason}`
+      : `could not be recalculated${reason}`;
   }
   if (!result.holder) return "no eligible player";
   if (result.assigned) return `now held by **${result.holder}**`;
@@ -96,6 +97,13 @@ export async function execute(
       case "roles":
         await handleRoles(interaction);
         break;
+      default:
+        logger.warn(`/force-update got an unhandled subcommand: ${subcommand}`);
+        await replyError(
+          interaction,
+          "Unknown Subcommand",
+          `\`${subcommand}\` is not something /force-update can run.`,
+        );
     }
   } catch (error) {
     logger.error(`/force-update ${subcommand} failed:`, error);

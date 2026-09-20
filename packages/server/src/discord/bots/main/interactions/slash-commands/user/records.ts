@@ -29,18 +29,6 @@ export async function execute(
   await interaction.deferReply();
 
   try {
-    const { rows, contestedKeys } =
-      await Q.player.minecraft.stats.getRecordLeaderboard(3);
-
-    if (rows.length === 0) {
-      await replyError(
-        interaction,
-        "No Data",
-        "No stat is contested by two or more players yet.",
-      );
-      return;
-    }
-
     const screenshotBuffer = await renderScreenshot("records", {});
 
     if (screenshotBuffer) {
@@ -56,6 +44,18 @@ export async function execute(
         embeds: [embed.build()],
         files: [attachment],
       });
+      return;
+    }
+
+    const { rows, contestedKeys } =
+      await Q.player.minecraft.stats.getRecordLeaderboard(3);
+
+    if (rows.length === 0) {
+      await replyError(
+        interaction,
+        "No Data",
+        "No stat is contested by two or more players yet.",
+      );
       return;
     }
 
