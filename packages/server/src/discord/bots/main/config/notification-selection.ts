@@ -30,6 +30,14 @@ export const NOTIFICATION_CONFIGS: NotificationConfig[] = [
     emoji: "🚂",
     enabled: true,
   },
+  {
+    id: "modpack-updates",
+    label: "Modpack Updates",
+    description: "Get pinged when a new modpack changelog is posted",
+    roleId: Discord.Roles.UPDATE,
+    emoji: "📦",
+    enabled: true,
+  },
 ];
 
 /**
