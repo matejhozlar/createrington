@@ -1,4 +1,4 @@
-import type { Client } from "discord.js";
+import type { Client, Collection, Guild, GuildMember } from "discord.js";
 import { RoleAssignmentService } from "./role-assignment.service";
 import type { PlaytimeService } from "@/services/playtime";
 import { Q } from "@/db";
@@ -24,12 +24,30 @@ interface TopHolder {
   assignReason: string;
 }
 
+type RoleHolders = Collection<string, GuildMember>;
+
 export interface TopRoleResult {
   rule: TopRoleRule;
   holder: string | null;
   assigned: boolean;
   removed: boolean;
   failed: boolean;
+  failureReason?: string;
+}
+
+function unresolvedTopRole(
+  rule: TopRoleRule,
+  failed: boolean,
+  failureReason?: string,
+): TopRoleResult {
+  return {
+    rule,
+    holder: null,
+    assigned: false,
+    removed: false,
+    failed,
+    ...(failureReason && { failureReason }),
+  };
 }
 
 /**
@@ -42,8 +60,10 @@ export interface TopRoleResult {
  * most stat records) by stripping the role from former leaders and granting it
  * to the current #1, mirrored into FTB Ranks on the game server through
  * `GameRankSyncService` (see `reconcileTopRole`). The same reconcile can be
- * forced outside the schedule through `recalculateTopRoles`. All scheduling
- * stops on `shutdown`.
+ * forced outside the schedule through `recalculateTopRoles`. Every reconcile
+ * loads the full guild member list first: the gateway does not send it for a
+ * guild this size, and both the current-holder check and the former-holder
+ * sweep read it. All scheduling stops on `shutdown`.
  */
 export class RoleManagementService {
   private roleAssignmentService: RoleAssignmentService;
@@ -208,42 +228,45 @@ export class RoleManagementService {
     }
   }
 
-  private async processTopRole(rule: TopRoleRule): Promise<TopRoleResult> {
+  private async loadGuildWithMembers(): Promise<Guild> {
+    const guild = await this.client.guilds.fetch(config.discord.guild.id);
+    await guild.members.fetch();
+    return guild;
+  }
+
+  private async processTopRole(
+    rule: TopRoleRule,
+    guild: Guild,
+  ): Promise<TopRoleResult> {
     try {
-      const top = await this.findTopHolder(rule);
+      const holders = guild.members.cache.filter((m) =>
+        RoleManager.has(m, rule.roleId),
+      );
+      const top = await this.findTopHolder(rule, holders);
 
       if (!top) {
         logger.warn(`No players found for top role "${rule.label}"`);
-        return {
-          rule,
-          holder: null,
-          assigned: false,
-          removed: false,
-          failed: false,
-        };
+        return unresolvedTopRole(rule, false);
       }
 
-      return await this.reconcileTopRole(rule, top);
+      return await this.reconcileTopRole(rule, top, guild, holders);
     } catch (error) {
       logger.error(`Failed to process top role "${rule.label}":`, error);
-      return {
-        rule,
-        holder: null,
-        assigned: false,
-        removed: false,
-        failed: true,
-      };
+      return unresolvedTopRole(rule, true);
     }
   }
 
-  private findTopHolder(rule: TopRoleRule): Promise<TopHolder | null> {
+  private findTopHolder(
+    rule: TopRoleRule,
+    holders: RoleHolders,
+  ): Promise<TopHolder | null> {
     switch (rule.conditionType) {
       case RoleConditionType.TOP_PLAYTIME:
         return this.findTopPlaytimeHolder();
       case RoleConditionType.TOP_BALANCE:
         return this.findTopBalanceHolder();
       case RoleConditionType.TOP_STAT_RECORDS:
-        return this.findTopRecordsHolder(rule);
+        return this.findTopRecordsHolder(holders);
     }
   }
 
@@ -306,17 +329,15 @@ export class RoleManagementService {
   }
 
   private async findTopRecordsHolder(
-    rule: TopRoleRule,
+    holders: RoleHolders,
   ): Promise<TopHolder | null> {
     const { rows } = await Q.player.minecraft.stats.getRecordLeaderboard();
 
     if (rows.length === 0) return null;
 
     const tiedForFirst = rows.filter((row) => row.records === rows[0].records);
-    const incumbents = await this.roleHolderIds(rule);
     const topPlayer =
-      tiedForFirst.find((row) => incumbents.has(row.discordId)) ??
-      tiedForFirst[0];
+      tiedForFirst.find((row) => holders.has(row.discordId)) ?? tiedForFirst[0];
 
     return {
       discordId: topPlayer.discordId,
@@ -327,27 +348,14 @@ export class RoleManagementService {
     };
   }
 
-  private async roleHolderIds(rule: TopRoleRule): Promise<Set<string>> {
-    const guild = await this.client.guilds.fetch(config.discord.guild.id);
-
-    return new Set(
-      guild.members.cache
-        .filter((m) => RoleManager.has(m, rule.roleId))
-        .map((m) => m.id),
-    );
-  }
-
   private async reconcileTopRole(
     rule: TopRoleRule,
     top: TopHolder,
+    guild: Guild,
+    holders: RoleHolders,
   ): Promise<TopRoleResult> {
-    const guild = await this.client.guilds.fetch(config.discord.guild.id);
-
-    const membersWithRole = guild.members.cache.filter((m) =>
-      RoleManager.has(m, rule.roleId),
-    );
-    const formerHolders = membersWithRole.filter((m) => m.id !== top.discordId);
-    const topPlayerHasRole = membersWithRole.has(top.discordId);
+    const formerHolders = holders.filter((m) => m.id !== top.discordId);
+    const topPlayerHasRole = holders.has(top.discordId);
 
     if (topPlayerHasRole && formerHolders.size === 0) {
       logger.debug(
@@ -373,9 +381,16 @@ export class RoleManagementService {
     }
 
     let assigned = false;
-    if (!topPlayerHasRole) {
+    let failureReason: string | undefined;
+    const topMember = guild.members.cache.get(top.discordId);
+
+    if (!topPlayerHasRole && !topMember) {
+      failureReason = "not in the Discord server";
+      logger.warn(
+        `Cannot assign top role "${rule.label}" to ${top.minecraftUsername}: not a member of the guild`,
+      );
+    } else if (!topPlayerHasRole && topMember) {
       try {
-        const topMember = await guild.members.fetch(top.discordId);
         const result = await RoleManager.assign(
           topMember,
           rule.roleId,
@@ -430,6 +445,7 @@ export class RoleManagementService {
       assigned,
       removed,
       failed: !holdsRole,
+      ...(failureReason && { failureReason }),
     };
   }
 
@@ -441,9 +457,28 @@ export class RoleManagementService {
       (rule) => !roleIds || roleIds.includes(rule.roleId),
     );
 
+    if (rules.length === 0) return [];
+
+    let guild: Guild;
+    try {
+      guild = await this.loadGuildWithMembers();
+    } catch (error) {
+      logger.error(
+        "Failed to load the guild member list for the top role recalculation:",
+        error,
+      );
+      return rules.map((rule) =>
+        unresolvedTopRole(
+          rule,
+          true,
+          "the Discord member list could not be loaded",
+        ),
+      );
+    }
+
     const results: TopRoleResult[] = [];
     for (const rule of rules) {
-      results.push(await this.processTopRole(rule));
+      results.push(await this.processTopRole(rule, guild));
     }
 
     return results;

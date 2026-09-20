@@ -73,7 +73,9 @@ import { RoleManagementService } from "@/services/discord/role/role-management.s
 const ALICE = "900000000000000101";
 const BOB = "900000000000000102";
 
-const members = new Collection<string, FakeMember>();
+const guildMembers = new Collection<string, FakeMember>();
+const cache = new Collection<string, FakeMember>();
+const memberList = { fails: false };
 const gameRankSync = {
   revoke: vi.fn(async () => new Set<string>()),
   grant: vi.fn(async () => undefined),
@@ -81,7 +83,7 @@ const gameRankSync = {
 
 function member(id: string, roleIds: string[] = []): FakeMember {
   const entry = { id, user: { tag: `${id}#0` }, roleIds: new Set(roleIds) };
-  members.set(id, entry);
+  guildMembers.set(id, entry);
   return entry;
 }
 
@@ -99,8 +101,12 @@ function createService(): RoleManagementService {
     guilds: {
       fetch: async () => ({
         members: {
-          cache: members,
-          fetch: async (id: string) => members.get(id),
+          cache,
+          fetch: async () => {
+            if (memberList.fails) throw new Error("gateway timeout");
+            for (const [id, entry] of guildMembers) cache.set(id, entry);
+            return cache;
+          },
         },
       }),
     },
@@ -114,7 +120,9 @@ function createService(): RoleManagementService {
 }
 
 beforeEach(() => {
-  members.clear();
+  guildMembers.clear();
+  cache.clear();
+  memberList.fails = false;
   vi.clearAllMocks();
   notifications.send.mockResolvedValue(undefined);
   db.playtime.mockResolvedValue([]);
@@ -203,6 +211,57 @@ describe("RoleManagementService.recalculateTopRoles", () => {
     ]);
     expect(results.every((result) => result.holder === null)).toBe(true);
     expect(results.some((result) => result.failed)).toBe(false);
+  });
+
+  it("does not re-announce an unchanged leader the member cache had not seen yet", async () => {
+    const alice = member(ALICE, [Discord.Roles.THE_UNRIVALED]);
+    db.records.mockResolvedValue({
+      rows: [row(ALICE, "alice", 12)],
+      contestedKeys: 30,
+    });
+
+    const [result] = await createService().recalculateTopRoles([
+      Discord.Roles.THE_UNRIVALED,
+    ]);
+
+    expect(result).toMatchObject({
+      holder: "alice",
+      assigned: false,
+      removed: false,
+      failed: false,
+    });
+    expect(alice.roleIds.has(Discord.Roles.THE_UNRIVALED)).toBe(true);
+    expect(notifications.send).not.toHaveBeenCalled();
+  });
+
+  it("says why when the leader is not in the Discord server", async () => {
+    member(BOB, [Discord.Roles.THE_UNRIVALED]);
+    db.records.mockResolvedValue({
+      rows: [row(ALICE, "alice", 41), row(BOB, "bob", 40)],
+      contestedKeys: 120,
+    });
+
+    const [result] = await createService().recalculateTopRoles([
+      Discord.Roles.THE_UNRIVALED,
+    ]);
+
+    expect(result).toMatchObject({
+      holder: "alice",
+      assigned: false,
+      failed: true,
+      failureReason: "not in the Discord server",
+    });
+    expect(gameRankSync.grant).not.toHaveBeenCalled();
+  });
+
+  it("fails every role when the member list cannot be loaded", async () => {
+    memberList.fails = true;
+
+    const results = await createService().recalculateTopRoles();
+
+    expect(results).toHaveLength(3);
+    expect(results.every((result) => result.failed)).toBe(true);
+    expect(db.records).not.toHaveBeenCalled();
   });
 
   it("reports a role whose leaderboard could not be read as failed", async () => {
