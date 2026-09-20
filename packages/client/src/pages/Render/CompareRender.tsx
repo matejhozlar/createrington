@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router";
 import { formatDate } from "@createrington/shared/format";
+import { LoadingScreen } from "@/components/loading-spinner";
 import { formatMoney } from "@/lib/format";
+import { RenderNotFound } from "./components/RenderNotFound";
+import { useRenderData } from "./hooks/use-render-data";
 import { loadSkin, randomPose } from "./skin-utils";
 
 interface PlayerData {
@@ -61,33 +63,14 @@ function StatRow({
 }
 
 export function CompareRender() {
-  const [params] = useSearchParams();
-  const [data, setData] = useState<CompareData | null>(null);
-  const [fetchError, setFetchError] = useState<string | null>(null);
+  const { data, unavailable } = useRenderData<CompareData>("compare", [
+    "player1",
+    "player2",
+  ]);
   const [skinLeft, setSkinLeft] = useState<string | null>(null);
   const [skinRight, setSkinRight] = useState<string | null>(null);
   const [poseLeft] = useState(randomPose);
   const [poseRight] = useState(randomPose);
-
-  const p1 = params.get("player1");
-  const p2 = params.get("player2");
-  const hasMissingParams = !p1 || !p2;
-
-  useEffect(() => {
-    if (hasMissingParams) return;
-
-    const url = new URL("/api/render/compare", window.location.origin);
-    url.searchParams.set("player1", p1);
-    url.searchParams.set("player2", p2);
-
-    fetch(url.toString())
-      .then((res) => {
-        if (!res.ok) throw new Error("Bad response");
-        return res.json() as Promise<CompareData>;
-      })
-      .then(setData)
-      .catch(() => setFetchError("Failed to load comparison data"));
-  }, [hasMissingParams, p1, p2]);
 
   useEffect(() => {
     if (!data) return;
@@ -95,27 +78,8 @@ export function CompareRender() {
     loadSkin(data.player2.uuid, poseRight).then(setSkinRight);
   }, [data, poseLeft, poseRight]);
 
-  const error = hasMissingParams ? "Missing parameters" : fetchError;
-
-  if (error) {
-    return (
-      <div className="w-[900px] h-[500px] bg-background flex items-center justify-center">
-        <span className="text-base tracking-wide text-destructive">
-          {error}
-        </span>
-      </div>
-    );
-  }
-
-  if (!data || !skinLeft || !skinRight) {
-    return (
-      <div className="w-[900px] h-[500px] bg-background flex items-center justify-center">
-        <span className="text-base tracking-wide text-muted-foreground">
-          Loading...
-        </span>
-      </div>
-    );
-  }
+  if (unavailable) return <RenderNotFound />;
+  if (!data || !skinLeft || !skinRight) return <LoadingScreen />;
 
   const left = data.player1;
   const right = data.player2;

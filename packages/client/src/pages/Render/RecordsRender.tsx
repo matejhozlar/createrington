@@ -1,10 +1,8 @@
-import { useEffect, useState } from "react";
-import {
-  PodiumCard,
-  PodiumStatus,
-  type PodiumPlayer,
-} from "./components/PodiumCard";
+import { LoadingScreen } from "@/components/loading-spinner";
+import { PodiumCard, type PodiumPlayer } from "./components/PodiumCard";
+import { RenderNotFound } from "./components/RenderNotFound";
 import { usePodiumSkins } from "./hooks/use-podium-skins";
+import { useRenderData } from "./hooks/use-render-data";
 
 interface RecordsData {
   contestedKeys: number;
@@ -22,23 +20,11 @@ function formatValue(value: number): string {
 }
 
 export function RecordsRender() {
-  const [data, setData] = useState<RecordsData | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { data, unavailable } = useRenderData<RecordsData>("records");
   const skins = usePodiumSkins(data?.players ?? null);
 
-  useEffect(() => {
-    fetch(new URL("/api/render/records", window.location.origin).toString())
-      .then((res) => {
-        if (!res.ok) throw new Error("Bad response");
-        return res.json() as Promise<RecordsData>;
-      })
-      .then(setData)
-      .catch(() => setError("Failed to load record data"));
-  }, []);
-
-  if (error) return <PodiumStatus message={error} tone="error" />;
-  if (!data || !skins)
-    return <PodiumStatus message="Loading..." tone="muted" />;
+  if (unavailable) return <RenderNotFound />;
+  if (!data || !skins) return <LoadingScreen />;
 
   return (
     <PodiumCard

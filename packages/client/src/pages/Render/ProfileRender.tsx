@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router";
 import { formatDate } from "@createrington/shared/format";
+import { LoadingScreen } from "@/components/loading-spinner";
 import { formatMoney } from "@/lib/format";
 import { mcHeadsBody } from "@/lib/external-urls";
+import { RenderNotFound } from "./components/RenderNotFound";
+import { useRenderData } from "./hooks/use-render-data";
 import { randomPose, skinApiUrl } from "./skin-utils";
 
 interface ProfileData {
@@ -44,29 +46,11 @@ function StatPill({
 }
 
 export function ProfileRender() {
-  const [params] = useSearchParams();
-  const [data, setData] = useState<ProfileData | null>(null);
-  const [fetchError, setFetchError] = useState<string | null>(null);
+  const { data, unavailable } = useRenderData<ProfileData>("profile", [
+    "player",
+  ]);
   const [skinSrc, setSkinSrc] = useState<string | null>(null);
   const [pose] = useState(randomPose);
-
-  const player = params.get("player");
-  const hasMissingParams = !player;
-
-  useEffect(() => {
-    if (hasMissingParams) return;
-
-    const url = new URL("/api/render/profile", window.location.origin);
-    url.searchParams.set("player", player);
-
-    fetch(url.toString())
-      .then((res) => {
-        if (!res.ok) throw new Error("Bad response");
-        return res.json() as Promise<ProfileData>;
-      })
-      .then(setData)
-      .catch(() => setFetchError("Failed to load profile data"));
-  }, [hasMissingParams, player]);
 
   useEffect(() => {
     if (!data) return;
@@ -77,27 +61,8 @@ export function ProfileRender() {
     img.src = skinApiUrl(data.uuid, pose);
   }, [data, pose]);
 
-  const error = hasMissingParams ? "Missing parameters" : fetchError;
-
-  if (error) {
-    return (
-      <div className="w-[900px] h-[500px] bg-background flex items-center justify-center">
-        <span className="text-base tracking-wide text-destructive">
-          {error}
-        </span>
-      </div>
-    );
-  }
-
-  if (!data || !skinSrc) {
-    return (
-      <div className="w-[900px] h-[500px] bg-background flex items-center justify-center">
-        <span className="text-base tracking-wide text-muted-foreground">
-          Loading...
-        </span>
-      </div>
-    );
-  }
+  if (unavailable) return <RenderNotFound />;
+  if (!data || !skinSrc) return <LoadingScreen />;
 
   return (
     <div

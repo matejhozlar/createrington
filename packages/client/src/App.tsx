@@ -1,11 +1,5 @@
 import { lazy, Suspense, useEffect, type ReactNode } from "react";
-import {
-  BrowserRouter,
-  Routes,
-  Route,
-  Outlet,
-  useLocation,
-} from "react-router";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { trpc, trpcClient, queryClient } from "./lib/trpc";
 import { lazyNamed } from "./lib/lazy";
@@ -19,15 +13,9 @@ import { Home } from "./pages/Home/Home";
 import { NotFound } from "./pages/not-found";
 import { ErrorBoundary } from "./components/error-boundary";
 import { ToastProvider } from "./components/ui/toast";
-import { AppSidebar } from "./components/app-sidebar";
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "./components/ui/sidebar";
-import { Logo } from "./components/logo";
-import { Footer } from "./components/footer";
-import { Loading, LoadingScreen } from "./components/loading-spinner";
+import { AppLayout } from "./components/app-layout";
+import { SidebarProvider } from "./components/ui/sidebar";
+import { LoadingScreen } from "./components/loading-spinner";
 import { AdminPlayerProvider } from "./contexts/admin";
 
 // Lazy-loaded routes are code-split. Vite creates a chunk per lazy() call, so
@@ -284,50 +272,6 @@ function ScrollToTop() {
   }, [pathname]);
 
   return null;
-}
-
-/** Shared shell rendered for all standard routes: sidebar, inset content area, and conditional footer. */
-function AppLayout() {
-  const { loading } = useAuth();
-  const location = useLocation();
-
-  if (loading) {
-    return <LoadingScreen text="Logging in..." />;
-  }
-
-  // Footer is hidden on full-screen routes that manage their own layout
-  const hideFooter =
-    location.pathname.startsWith("/admin") ||
-    location.pathname.startsWith("/owner") ||
-    location.pathname.startsWith("/chat") ||
-    location.pathname.startsWith("/blue-map");
-
-  return (
-    <>
-      <AppSidebar />
-      <SidebarInset>
-        <div className="sticky top-0 z-30 flex h-14 md:hidden items-center gap-2 p-2 bg-background border-b">
-          <SidebarTrigger />
-          <Logo />
-        </div>
-        <div className="flex flex-1 flex-col gap-4">
-          {/* Inner Suspense so lazy-loading a layout-child route only swaps
-              the content area, the sidebar and mobile top bar stay
-              mounted instead of flashing a full-screen loader. */}
-          <Suspense
-            fallback={
-              <div className="flex flex-1 items-center justify-center p-10">
-                <Loading mode="inline" size="large" />
-              </div>
-            }
-          >
-            <Outlet />
-          </Suspense>
-        </div>
-        {!hideFooter && <Footer />}
-      </SidebarInset>
-    </>
-  );
 }
 
 // Admin chat renders globally but only for admins. Gating here (instead of
