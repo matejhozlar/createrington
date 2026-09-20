@@ -2240,24 +2240,27 @@ describe("WorkshopService.listVisibleWorkshops", () => {
     const workshop = await seedWorkshop(ctx, { status: "open" });
     const shipped = await seedMod(ctx, workshop, { status: "in_pack" });
     const approved = await seedMod(ctx, workshop, { status: "approved" });
-    const pending = await seedMod(ctx, workshop, { status: "pending" });
+    const leadingPending = await seedMod(ctx, workshop, { status: "pending" });
+    const trailingPending = await seedMod(ctx, workshop, { status: "pending" });
     await seedMod(ctx, workshop, {
       status: "rejected",
       rejectReason: "on_hold",
     });
     await upvoteMod(shipped.id, [USER_A, USER_B, ADMIN]);
     await upvoteMod(approved.id, [USER_A, USER_B]);
-    await upvoteMod(pending.id, [USER_A]);
+    await upvoteMod(leadingPending.id, [USER_A, USER_B]);
+    await upvoteMod(trailingPending.id, [USER_A]);
 
     const listed = (await workshopService.listVisibleWorkshops()).find(
       (row) => row.id === workshop.id,
     );
 
     expect(listed?.summary?.topMods).toMatchObject([
-      { workshopModId: pending.id, upvoteCount: 1 },
+      { workshopModId: leadingPending.id, upvoteCount: 2 },
+      { workshopModId: trailingPending.id, upvoteCount: 1 },
     ]);
-    expect(listed?.summary?.pendingModCount).toBe(1);
-    expect(listed?.summary?.suggestionCount).toBe(3);
+    expect(listed?.summary?.pendingModCount).toBe(2);
+    expect(listed?.summary?.suggestionCount).toBe(4);
   });
 });
 

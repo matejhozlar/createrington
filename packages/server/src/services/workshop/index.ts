@@ -1206,12 +1206,9 @@ export class WorkshopService {
     }));
 
     const pendingMods = mods.filter((mod) => mod.status === "pending");
-    const upvoteCounts =
-      pendingMods.length > 0
-        ? await Q.workshop.mod.upvote.countGroupedByMod(
-            pendingMods.map((m) => m.id),
-          )
-        : {};
+    const upvoteCounts = await Q.workshop.mod.upvote.countGroupedByMod(
+      pendingMods.map((m) => m.id),
+    );
     const top = [...pendingMods]
       .sort((a, b) => (upvoteCounts[b.id] ?? 0) - (upvoteCounts[a.id] ?? 0))
       .slice(0, 3);
