@@ -182,6 +182,34 @@ describe("ModpackChangelogComponentPresets.release", () => {
     }
   });
 
+  it("leads only the first message with a spoilered role mention above the container", () => {
+    const messages = ModpackChangelogComponentPresets.release(
+      input({ added: entries(40) }),
+      { mentionRoleId: "123456789012345678" },
+    );
+
+    expect(messages.length).toBeGreaterThan(1);
+    expect(messages[0].components).toHaveLength(2);
+    expect(messages[0].components[0]).toEqual({
+      type: "text",
+      content: "||<@&123456789012345678>||",
+    });
+    expect(messages[0].components[1].type).toBe("container");
+    for (const message of messages.slice(1)) {
+      expect(message.components).toHaveLength(1);
+      expect(children(message)[0]).toEqual(SPACER);
+    }
+    for (const message of messages) {
+      expect(validateComponentsV2(message)).toBeNull();
+    }
+    expect(
+      messages.flatMap((m) => {
+        const root = m.components.find((node) => node.type === "container");
+        return root?.type === "container" ? sections(root.components) : [];
+      }),
+    ).toHaveLength(40);
+  });
+
   it("stays within the text ceiling when entries carry long names and versions", () => {
     const long = entries(30).map((e, i) => ({
       ...e,

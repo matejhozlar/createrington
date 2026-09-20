@@ -1,3 +1,26 @@
+## v1.59.0 (2026-09-20)
+
+### @createrington/server (1.59.2 → 1.60.0)
+- [add] Add "The Unrivaled" competitive top role, awarded to the player who holds #1 across the most contested Minecraft stats; ties preserve the incumbent, and the role reconciles daily alongside the existing playtime and balance roles
+- [add] Add `/records` Discord command that renders a podium-style screenshot of the top record holders, with a text embed fallback when Puppeteer is unavailable
+- [add] Add `/force-update roles` owner command to force-recalculate any or all competitive top-1 roles on demand, reporting per-role outcomes (assigned, unchanged, failed) in an ephemeral embed
+- [add] Add modpack update notifications: new changelogs now lead with a spoilered mention of the Update role (pings only once, even if the first part has to be re-sent), and a "Modpack Updates" toggle appears in the notification selection panel
+- [add] Add `getRecordLeaderboard` query that ranks players by how many stats they lead, summing values across servers, filtering blocked categories and custom stats, and requiring at least two holders per stat before it counts
+- [refactor] Unify top role reconciliation into a single `processTopRole` method with per-type holder resolution, replacing the separate playtime and balance handlers; the new `recalculateTopRoles` public method accepts an optional role filter and loads the full guild member list once before processing
+- [refactor] Extract `renderScreenshot` helper that replaces duplicated Puppeteer boilerplate in `/activity`, `/compare`, `/profile`, and `/top` slash commands with a typed, single-call utility that also supports an abort selector for fast failure
+- [refactor] Type render screenshot params per page so each slash command's query string is validated at compile time
+- [fix] Fix workshop summary ranking all visible mods (including shipped and approved) instead of only pending ones when computing leading suggestions and the pending count
+- [fix] Fix Puppeteer screenshots waiting out the full timeout when a render page cannot produce content; the service now accepts an `abortSelector` and rejects immediately when the page renders it
+
+### @createrington/client (0.2.73 → 0.2.74)
+- [add] Add `/render/records` page showing a podium card for the stat record leaderboard, reusing the new shared `PodiumCard` component
+- [refactor] Extract `PodiumCard` component from `TopRender` into a shared render component used by both the top and records pages
+- [refactor] Extract `useRenderData` hook and `RenderUnavailable` component, replacing duplicated fetch, error, and missing-parameter logic across all five render pages with a single typed hook
+- [refactor] Extract `usePodiumSkins` hook for loading player skin images in podium render pages
+- [refactor] Move `AppLayout` from inline in `App.tsx` to its own `app-layout.tsx` file, accepting optional children so render pages can wrap the 404 in the app shell without an `Outlet`
+- [fix] Fix render pages opened directly in a browser (without the Puppeteer secret) hanging on a loading screen instead of showing the generic 404; they now render a hidden abort marker and fall through to the app shell's not-found page
+- [fix] Fix workshop card showing "No suggestions yet" when all suggestions have been reviewed; it now shows "Every suggestion has been reviewed" when the suggestion count is positive but no pending mods remain
+
 ## v1.58.2 (2026-09-18)
 
 ### @createrington/server (1.59.1 → 1.59.2)

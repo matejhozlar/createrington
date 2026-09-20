@@ -8,6 +8,12 @@ export interface ScreenshotOptions {
   extraHeaders?: Record<string, string>;
   /** CSS selector to wait for before capturing (optional, defaults to full page) */
   waitForSelector?: string;
+  /**
+   * CSS selector the page renders when it cannot produce its content. If it appears
+   * before `waitForSelector`, the screenshot rejects at once instead of waiting out
+   * the timeout. Ignored without `waitForSelector`.
+   */
+  abortSelector?: string;
   /** CSS selector of the element to screenshot (optional, defaults to full page) */
   elementSelector?: string;
   /**
@@ -86,6 +92,7 @@ export class PuppeteerService {
       url,
       extraHeaders,
       waitForSelector,
+      abortSelector,
       elementSelector,
       waitForAssets = true,
       settleDelay = 0,
@@ -113,7 +120,20 @@ export class PuppeteerService {
       });
 
       if (waitForSelector) {
-        await page.waitForSelector(waitForSelector, { timeout });
+        const awaited = abortSelector
+          ? `${waitForSelector}, ${abortSelector}`
+          : waitForSelector;
+        const matched = await page.waitForSelector(awaited, { timeout });
+        const aborted =
+          abortSelector !== undefined &&
+          (await matched?.evaluate(
+            (element, selector) => element.matches(selector),
+            abortSelector,
+          ));
+
+        if (aborted) {
+          throw new Error(`Page rendered its abort selector: ${abortSelector}`);
+        }
       }
 
       if (waitForAssets) {

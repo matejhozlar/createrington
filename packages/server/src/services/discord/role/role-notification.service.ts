@@ -30,13 +30,16 @@ function metricOf(notification: RoleAssignmentNotification): RankUpMetric {
       return { kind: "balance", amount: value };
     case RoleConditionType.SERVER_AGE:
       return { kind: "membership", days: value };
+    case RoleConditionType.TOP_STAT_RECORDS:
+      return { kind: "records", count: value };
   }
 }
 
 function isCompetitive(notification: RoleAssignmentNotification): boolean {
   return (
     notification.role.conditionType === RoleConditionType.TOP_PLAYTIME ||
-    notification.role.conditionType === RoleConditionType.TOP_BALANCE
+    notification.role.conditionType === RoleConditionType.TOP_BALANCE ||
+    notification.role.conditionType === RoleConditionType.TOP_STAT_RECORDS
   );
 }
 

@@ -4,24 +4,23 @@ import { RenderUnavailable } from "./components/RenderUnavailable";
 import { usePodiumSkins } from "./hooks/use-podium-skins";
 import { useRenderData } from "./hooks/use-render-data";
 
-interface TopData {
-  category: string;
-  item: string;
-  displayTitle: string;
+interface RecordsData {
+  contestedKeys: number;
   players: PodiumPlayer[];
 }
 
-const BANNER = { src: "/assets/render/player-top.webp", alt: "Top Players" };
+const BANNER = {
+  src: "/assets/render/player-records.webp",
+  alt: "Player Records",
+};
+const TITLE = "Most #1 Placements";
 
 function formatValue(value: number): string {
-  return value.toLocaleString();
+  return `${value.toLocaleString()} ${value === 1 ? "record" : "records"}`;
 }
 
-export function TopRender() {
-  const { data, unavailable } = useRenderData<TopData>("top", [
-    "category",
-    "item",
-  ]);
+export function RecordsRender() {
+  const { data, unavailable } = useRenderData<RecordsData>("records");
   const skins = usePodiumSkins(data?.players ?? null);
 
   if (unavailable) return <RenderUnavailable reason={unavailable} />;
@@ -29,12 +28,13 @@ export function TopRender() {
 
   return (
     <PodiumCard
-      containerId="top-container"
+      containerId="records-container"
       banner={BANNER}
-      title={data.displayTitle}
+      title={TITLE}
+      subtitle={`Across ${data.contestedKeys.toLocaleString()} contested stats`}
       players={data.players}
       skins={skins}
-      emptyText="No players found for this stat"
+      emptyText="No contested stats yet"
       formatValue={formatValue}
     />
   );

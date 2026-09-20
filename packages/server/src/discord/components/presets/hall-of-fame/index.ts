@@ -10,7 +10,8 @@ import type {
 export type RankUpMetric =
   | { kind: "playtime"; seconds: number }
   | { kind: "balance"; amount: number }
-  | { kind: "membership"; days: number };
+  | { kind: "membership"; days: number }
+  | { kind: "records"; count: number };
 
 export interface RankUpAnnouncementInput {
   discordId: string;
@@ -33,6 +34,8 @@ function headline(input: RankUpAnnouncementInput): string {
         return `${player} now holds the largest fortune on the server.`;
       case "membership":
         return `${player} has been here longer than anyone else.`;
+      case "records":
+        return `${player} now places first in more stats than anyone else.`;
     }
   }
 
@@ -47,6 +50,8 @@ function stat(metric: RankUpMetric): string {
       return `${formatMoney(metric.amount)} balance`;
     case "membership":
       return `${formatDaysCount(metric.days)} in the server`;
+    case "records":
+      return `${metric.count.toLocaleString("en-US")} first-place ${metric.count === 1 ? "stat" : "stats"}`;
   }
 }
 

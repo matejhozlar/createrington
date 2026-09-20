@@ -3,6 +3,7 @@ interface MemberRolesConfig {
   readonly bot: string;
   readonly admin: string;
   readonly developer: string;
+  readonly theUnrivaled: string;
   readonly theSleepless: string;
   readonly capitalist: string;
   readonly clockworkArchitect: string;
@@ -32,6 +33,7 @@ interface MemberRolesConfig {
   readonly cogsAndSteam: string;
   readonly supporter: string;
   readonly verified: string;
+  readonly update: string;
   readonly cogsAndSteamnotifications: string;
   readonly railsnsailsnotifications: string;
   readonly cryptonotifications: string;

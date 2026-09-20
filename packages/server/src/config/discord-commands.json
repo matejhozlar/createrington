@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-14T14:19:03.611Z",
+  "generatedAt": "2026-09-20T16:11:11.401Z",
   "commands": [
     {
       "name": "cooldown",
@@ -455,6 +455,19 @@
       "env": "prod"
     },
     {
+      "name": "records",
+      "description": "Show who places #1 across the most Minecraft stats",
+      "category": "user",
+      "options": [],
+      "defaultMemberPermissions": null,
+      "cooldown": {
+        "duration": 10,
+        "type": "user",
+        "message": "Please wait before checking the records again!"
+      },
+      "env": "prod"
+    },
+    {
       "name": "seen",
       "description": "Check when a player was last online",
       "category": "user",
@@ -674,6 +687,45 @@
       "description": "Force-run the inactivity cleanup cycle now and reset its 7-day schedule",
       "category": "owner",
       "options": [],
+      "defaultMemberPermissions": "8",
+      "permissions": {
+        "requireOwner": true
+      },
+      "env": "prod"
+    },
+    {
+      "name": "force-update",
+      "description": "Force an automatic update to run now",
+      "category": "owner",
+      "options": [
+        {
+          "type": 1,
+          "name": "roles",
+          "description": "Recalculate the top-1 roles now: all of them, or just one",
+          "options": [
+            {
+              "type": 3,
+              "choices": [
+                {
+                  "name": "The Sleepless",
+                  "value": "the_sleepless"
+                },
+                {
+                  "name": "Capitalist",
+                  "value": "capitalist"
+                },
+                {
+                  "name": "The Unrivaled",
+                  "value": "the_unrivaled"
+                }
+              ],
+              "name": "role",
+              "description": "Role to recalculate (leave empty for all)",
+              "required": false
+            }
+          ]
+        }
+      ],
       "defaultMemberPermissions": "8",
       "permissions": {
         "requireOwner": true

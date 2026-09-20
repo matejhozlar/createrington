@@ -5,8 +5,7 @@ import { replyError } from "@/discord/utils/interaction-reply";
 import { CooldownType } from "@/discord/utils/cooldown";
 import { formatPlaytime } from "@createrington/shared/format";
 import { discordTimestamp } from "@/utils/format";
-import { getService, Services } from "@/services";
-import config from "@/config";
+import { renderScreenshot } from "@/discord/utils/render-screenshot";
 import {
   AttachmentBuilder,
   ChatInputCommandInteraction,
@@ -80,31 +79,10 @@ export async function execute(
     const name1 = details1.player.minecraftUsername;
     const name2 = details2.player.minecraftUsername;
 
-    // Try to generate a visual comparison via Puppeteer
-    let screenshotBuffer: Buffer | null = null;
-    try {
-      const puppeteer = await getService(Services.PUPPETEER_SERVICE);
-      const renderUrl = new URL("/render/compare", config.puppeteer.baseUrl);
-      renderUrl.searchParams.set("player1", user1.id);
-      renderUrl.searchParams.set("player2", user2.id);
-
-      const result = await puppeteer.screenshot({
-        url: renderUrl.toString(),
-        extraHeaders: { "x-render-secret": config.puppeteer.secret },
-        waitForSelector: "#compare-container",
-        elementSelector: "#compare-container",
-        timeout: 15_000,
-        viewportWidth: 900,
-        viewportHeight: 500,
-      });
-
-      screenshotBuffer = result.buffer;
-    } catch (error) {
-      logger.warn(
-        "Puppeteer screenshot failed for /compare, falling back to text embed:",
-        error,
-      );
-    }
+    const screenshotBuffer = await renderScreenshot("compare", {
+      player1: user1.id,
+      player2: user2.id,
+    });
 
     if (screenshotBuffer) {
       const attachment = new AttachmentBuilder(screenshotBuffer, {
