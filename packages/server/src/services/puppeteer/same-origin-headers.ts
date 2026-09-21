@@ -6,13 +6,16 @@ export async function setSameOriginHeaders(
   headers: Record<string, string>,
 ): Promise<void> {
   const { origin } = new URL(url);
+  const lowercased = Object.fromEntries(
+    Object.entries(headers).map(([name, value]) => [name.toLowerCase(), value]),
+  );
 
-  await page.setRequestInterception(true);
   page.on("request", (request) => {
     const overrides =
       URL.parse(request.url())?.origin === origin
-        ? { headers: { ...request.headers(), ...headers } }
+        ? { headers: { ...request.headers(), ...lowercased } }
         : {};
     request.continue(overrides).catch(() => {});
   });
+  await page.setRequestInterception(true);
 }
