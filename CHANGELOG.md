@@ -1,3 +1,10 @@
+## v1.59.1 (2026-09-21)
+
+### @createrington/server (1.60.0 → 1.60.1)
+- [fix] Fix `/top` autocomplete suggesting items from all stat categories instead of only the one the user selected; the `searchItems` query now accepts an optional category filter and ranks exact/prefix matches above substring hits
+- [fix] Fix malformed stat values (non-numeric entries, non-object categories like `DataVersion`) crashing the item search query; they are now silently skipped and only items with a positive numeric value are returned
+- [security] Scope Puppeteer's extra HTTP headers (including the render secret) to same-origin requests only, preventing them from leaking to third-party hosts on cross-origin subresource fetches or redirect hops
+
 ## v1.59.0 (2026-09-20)
 
 ### @createrington/server (1.59.2 → 1.60.0)
