@@ -60,24 +60,54 @@ export class PlayerMinecraftStatsQueries extends PlayerMinecraftStatsBaseQueries
   }
 
   /**
-   * Search for item keys matching a query string across all categories.
-   * Returns distinct item names (e.g. "minecraft:diamond", "northstar:targeting_computer").
+   * Search item keys (e.g. "minecraft:diamond", "northstar:targeting_computer")
+   * that at least one player has a nonzero value for, within one category or
+   * across all of them. Exact and prefix matches on the item name rank first,
+   * then items held by the most players. Spaces in the search match underscores.
+   * Non-numeric values and non-object categories are skipped, not errors.
    */
-  async searchItems(search: string, limit?: number): Promise<string[]> {
+  async searchItems(
+    search: string,
+    options?: { category?: string; limit?: number },
+  ): Promise<string[]> {
+    const term = search.trim().toLowerCase().replace(/\s+/g, "_");
+    const pattern = escapeLike(term);
+
     const query = `
-      SELECT DISTINCT key
-      FROM ${this.table},
-        jsonb_each(stats) AS entries(cat, items),
-        jsonb_object_keys(items) AS key
-      WHERE key ILIKE $1
-      ORDER BY key
-      LIMIT $2
+      SELECT item.key
+      FROM ${this.table} s,
+        jsonb_each(s.stats) AS cat(key, value),
+        jsonb_each(cat.value) AS item(key, value)
+      WHERE ($1::text IS NULL OR cat.key = $1)
+        AND jsonb_typeof(cat.value) = 'object'
+        AND item.key ILIKE $2
+        AND CASE
+          WHEN jsonb_typeof(item.value) = 'number' THEN item.value::numeric > 0
+          ELSE false
+        END
+      GROUP BY item.key
+      ORDER BY
+        ($3::text <> '' AND (
+          lower(item.key) = $3 OR lower(split_part(item.key, ':', 2)) = $3
+        )) DESC,
+        (lower(item.key) LIKE $4 OR lower(split_part(item.key, ':', 2)) LIKE $4) DESC,
+        count(DISTINCT s.minecraft_uuid) DESC,
+        SUM(item.value::numeric) DESC,
+        item.key
+      LIMIT $5
     `;
 
-    const result = await this.db.query<{ key: string }>(query, [
-      `%${escapeLike(search)}%`,
-      limit ?? 50,
-    ]);
+    const result = await this.runQuery<{ key: string }>(
+      "search minecraft stat items",
+      query,
+      [
+        options?.category ?? null,
+        `%${pattern}%`,
+        term,
+        `${pattern}%`,
+        options?.limit ?? 50,
+      ],
+    );
     return result.rows.map((r) => r.key);
   }
 
