@@ -22,6 +22,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import puppeteer from "puppeteer-core";
 import { KNOWN_POSES } from "createrington-skin-api";
 import config from "@/config";
+import { setSameOriginHeaders } from "@/services/puppeteer";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, "..", "..", "..", "..", "..");
@@ -92,10 +93,12 @@ async function main() {
       const page = await browser.newPage();
       try {
         await page.setViewport({ width: 900, height: 500 });
-        await page.setExtraHTTPHeaders({ "x-render-secret": secret });
 
         const url = new URL("/render/profile", baseUrl);
         url.searchParams.set("player", playerId);
+        await setSameOriginHeaders(page, url.toString(), {
+          "x-render-secret": secret,
+        });
         await page.goto(url.toString(), {
           waitUntil: "domcontentloaded",
           timeout: 30_000,

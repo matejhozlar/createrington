@@ -1,10 +1,14 @@
 import puppeteer, { type Browser, type Page } from "puppeteer-core";
 import config from "@/config";
+import { setSameOriginHeaders } from "./same-origin-headers";
 
 export interface ScreenshotOptions {
   /** URL to navigate to */
   url: string;
-  /** Extra HTTP headers attached to every request the page makes (including subresource fetches) */
+  /**
+   * Extra HTTP headers attached only to requests for the origin of `url`. Cross-origin
+   * subresources and redirect hops that leave the origin are sent without them.
+   */
   extraHeaders?: Record<string, string>;
   /** CSS selector to wait for before capturing (optional, defaults to full page) */
   waitForSelector?: string;
@@ -111,7 +115,7 @@ export class PuppeteerService {
       await page.setViewport({ width: viewportWidth, height: viewportHeight });
 
       if (extraHeaders) {
-        await page.setExtraHTTPHeaders(extraHeaders);
+        await setSameOriginHeaders(page, url, extraHeaders);
       }
 
       await page.goto(url, {
