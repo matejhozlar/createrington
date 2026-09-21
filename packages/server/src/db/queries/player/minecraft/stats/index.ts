@@ -64,6 +64,7 @@ export class PlayerMinecraftStatsQueries extends PlayerMinecraftStatsBaseQueries
    * that at least one player has a nonzero value for, within one category or
    * across all of them. Exact and prefix matches on the item name rank first,
    * then items held by the most players. Spaces in the search match underscores.
+   * Non-numeric values and non-object categories are skipped, not errors.
    */
   async searchItems(
     search: string,
@@ -76,16 +77,22 @@ export class PlayerMinecraftStatsQueries extends PlayerMinecraftStatsBaseQueries
       SELECT item.key
       FROM ${this.table} s,
         jsonb_each(s.stats) AS cat(key, value),
-        jsonb_each_text(cat.value) AS item(key, value)
+        jsonb_each(cat.value) AS item(key, value)
       WHERE ($1::text IS NULL OR cat.key = $1)
+        AND jsonb_typeof(cat.value) = 'object'
         AND item.key ILIKE $2
-        AND item.value::bigint > 0
+        AND CASE
+          WHEN jsonb_typeof(item.value) = 'number' THEN item.value::numeric > 0
+          ELSE false
+        END
       GROUP BY item.key
       ORDER BY
-        (item.key = $3 OR split_part(item.key, ':', 2) = $3) DESC,
-        (item.key LIKE $4 OR split_part(item.key, ':', 2) LIKE $4) DESC,
+        ($3::text <> '' AND (
+          lower(item.key) = $3 OR lower(split_part(item.key, ':', 2)) = $3
+        )) DESC,
+        (lower(item.key) LIKE $4 OR lower(split_part(item.key, ':', 2)) LIKE $4) DESC,
         count(DISTINCT s.minecraft_uuid) DESC,
-        SUM(item.value::bigint) DESC,
+        SUM(item.value::numeric) DESC,
         item.key
       LIMIT $5
     `;

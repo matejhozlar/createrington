@@ -22,7 +22,7 @@ async function removePlayers(): Promise<void> {
 }
 
 async function seedStats(
-  entries: Record<string, Record<string, Record<string, number>>>,
+  entries: Record<string, Record<string, unknown>>,
 ): Promise<void> {
   await stats.batchUpsert(
     serverId,
@@ -128,6 +128,50 @@ describe("PlayerMinecraftStatsQueries.searchItems (integration)", () => {
       "searchtest:stone_bricks",
       "searchtest:deepslate_stone_block",
       "searchtest:mossy_stone",
+    ]);
+  });
+
+  it("lists the most held items first for an empty search", async () => {
+    await seedStats({
+      [ALICE]: {
+        "minecraft:broken": {
+          searchtest_unnamespaced: 50,
+          "searchtest:rare": 9,
+        },
+      },
+      [BOB]: { "minecraft:broken": { "searchtest:common": 1 } },
+      [CARA]: { "minecraft:broken": { "searchtest:common": 1 } },
+    });
+
+    const results = await stats.searchItems("", {
+      category: "minecraft:broken",
+    });
+
+    expect(results.filter((key) => key.startsWith("searchtest"))).toEqual([
+      "searchtest:common",
+      "searchtest_unnamespaced",
+      "searchtest:rare",
+    ]);
+  });
+
+  it("skips malformed values instead of failing the whole search", async () => {
+    await seedStats({
+      [ALICE]: {
+        DataVersion: 3955,
+        "minecraft:mined": {
+          "searchtest:valid": 3,
+          "searchtest:fractional": 1.5,
+          "searchtest:huge": 1e30,
+          "searchtest:text": "12",
+          "searchtest:nested": { count: 4 },
+        },
+      },
+    });
+
+    expect(await stats.searchItems("searchtest:")).toEqual([
+      "searchtest:huge",
+      "searchtest:valid",
+      "searchtest:fractional",
     ]);
   });
 
