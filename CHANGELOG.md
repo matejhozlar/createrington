@@ -1,3 +1,10 @@
+## v1.60.0 (2026-09-21)
+
+### @createrington/server (1.60.1 → 1.61.0)
+- [add] Add a "Cel" render style option to the `/skin` slash command, letting players render their skin in a cel-shaded art style alongside the default renderer
+- [add] Add `renderStyledSkin` helper that calls the skin-api render endpoint directly with a `style` parameter (not yet in the SDK), mapping every failure to `SkinApiError` so callers handle one error type regardless of which render path ran
+- [fix] Fix styled skin render failures surfacing raw fetch errors instead of typed `SkinApiError` instances by mapping HTTP status codes, JSON error bodies, timeouts, and network failures the same way the SDK client does
+
 ## v1.59.1 (2026-09-21)
 
 ### @createrington/server (1.60.0 → 1.60.1)
