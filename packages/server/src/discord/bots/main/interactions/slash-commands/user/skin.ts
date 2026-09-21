@@ -51,7 +51,9 @@ export const data = new SlashCommandBuilder()
   .addStringOption((opt) =>
     opt
       .setName("style")
-      .setDescription("Render style for the pose")
+      .setDescription(
+        "Render style (renders the idle pose when no pose is picked)",
+      )
       .setRequired(false)
       .addChoices(...STYLE_CHOICES),
   );

@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const sdkRender = vi.hoisted(() => vi.fn(async () => new Uint8Array([1])));
-const renderStyledSkin = vi.hoisted(() => vi.fn(async () => Buffer.from([2])));
-const embedTitles = vi.hoisted(() => [] as string[]);
+const renderStyledSkin = vi.hoisted(() =>
+  vi.fn(async () => new Uint8Array([2])),
+);
 
 vi.mock("@/db", () => ({
   Q: {
@@ -15,57 +16,77 @@ vi.mock("@/db", () => ({
   },
 }));
 
-vi.mock("@/discord/embeds", () => ({
-  EmbedPresets: {
-    info: (title: string) => {
-      embedTitles.push(title);
-      const builder = { image: () => builder, build: () => ({ title }) };
-      return builder;
-    },
-  },
-}));
+vi.mock("@/discord/embeds", () => {
+  const preset = (kind: string) => (title: string, description?: string) => {
+    const builder = {
+      image: () => builder,
+      build: () => ({ kind, title, description }),
+    };
+    return builder;
+  };
+  return { EmbedPresets: { info: preset("info"), error: preset("error") } };
+});
 
-vi.mock("@/discord/utils/interaction-reply", () => ({ replyError: vi.fn() }));
 vi.mock("@/discord/utils/cooldown", () => ({ CooldownType: { USER: "user" } }));
 
-vi.mock("@/services/skin-api", () => ({
-  getSkinApiClient: () => ({ render: sdkRender }),
-  renderStyledSkin,
-  MAX_QUALITY_RENDER: { width: 1366, height: 2048 },
-  SKIN_RENDER_STYLES: ["default", "cel"],
-}));
+vi.mock("@/services/skin-api", async () => {
+  const quality = await vi.importActual<
+    typeof import("@/services/skin-api/quality")
+  >("@/services/skin-api/quality");
+  return {
+    getSkinApiClient: () => ({ render: sdkRender }),
+    renderStyledSkin,
+    MAX_QUALITY_RENDER: quality.MAX_QUALITY_RENDER,
+    SKIN_RENDER_STYLES: ["default", "cel"],
+  };
+});
 
 import {
   data,
   execute,
 } from "@/discord/bots/main/interactions/slash-commands/user/skin";
+import { MAX_QUALITY_RENDER } from "@/services/skin-api/quality";
+import { SkinApiError } from "createrington-skin-api";
 import type { ChatInputCommandInteraction } from "discord.js";
 
+interface SentEmbed {
+  kind: string;
+  title: string;
+  description?: string;
+}
+
 function interactionWith(options: { pose?: string; style?: string }) {
-  const reply = vi.fn(async () => {});
-  const editReply = vi.fn(async () => {});
+  const sent: SentEmbed[] = [];
+  const record = async (message: { embeds: SentEmbed[] }) => {
+    sent.push(...message.embeds);
+  };
   const fake = {
     options: {
       getUser: () => null,
       getString: (name: "pose" | "style") => options[name] ?? null,
     },
     user: { id: "123", displayName: "steve" },
-    reply,
-    deferReply: vi.fn(async () => {}),
-    editReply,
+    deferred: false,
+    replied: false,
+    reply: vi.fn(record),
+    editReply: vi.fn(record),
+    followUp: vi.fn(record),
+    deferReply: vi.fn(async () => {
+      fake.deferred = true;
+    }),
   };
   return {
     fake: fake as unknown as ChatInputCommandInteraction,
-    reply,
-    editReply,
+    raw: fake,
+    sent,
   };
 }
 
 describe("/skin style option", () => {
   beforeEach(() => {
     sdkRender.mockClear();
-    renderStyledSkin.mockClear();
-    embedTitles.length = 0;
+    renderStyledSkin.mockReset();
+    renderStyledSkin.mockResolvedValue(new Uint8Array([2]));
   });
 
   it("offers default and cel as the style choices", () => {
@@ -81,22 +102,21 @@ describe("/skin style option", () => {
   });
 
   it("keeps rendering through the SDK when no style is chosen", async () => {
-    const { fake, editReply } = interactionWith({ pose: "wave" });
+    const { fake, sent } = interactionWith({ pose: "wave" });
 
     await execute(fake);
 
     expect(sdkRender).toHaveBeenCalledWith({
       pose: "wave",
       source: { uuid: "uuid-1" },
-      options: { width: 1366, height: 2048 },
+      options: MAX_QUALITY_RENDER,
     });
     expect(renderStyledSkin).not.toHaveBeenCalled();
-    expect(embedTitles).toEqual(["Steve — Wave"]);
-    expect(editReply).toHaveBeenCalledOnce();
+    expect(sent).toEqual([expect.objectContaining({ title: "Steve — Wave" })]);
   });
 
   it("renders the cel style through the styled helper", async () => {
-    const { fake } = interactionWith({ pose: "wave", style: "cel" });
+    const { fake, sent } = interactionWith({ pose: "wave", style: "cel" });
 
     await execute(fake);
 
@@ -106,7 +126,9 @@ describe("/skin style option", () => {
       style: "cel",
     });
     expect(sdkRender).not.toHaveBeenCalled();
-    expect(embedTitles).toEqual(["Steve — Wave (Cel)"]);
+    expect(sent).toEqual([
+      expect.objectContaining({ title: "Steve — Wave (Cel)" }),
+    ]);
   });
 
   it("falls back to the idle pose when only a style is chosen", async () => {
@@ -122,21 +144,41 @@ describe("/skin style option", () => {
   });
 
   it("shows the plain skin without rendering when neither is chosen", async () => {
-    const { fake, reply } = interactionWith({});
+    const { fake, raw } = interactionWith({});
 
     await execute(fake);
 
     expect(sdkRender).not.toHaveBeenCalled();
     expect(renderStyledSkin).not.toHaveBeenCalled();
-    expect(reply).toHaveBeenCalledOnce();
+    expect(raw.deferReply).not.toHaveBeenCalled();
+    expect(raw.reply).toHaveBeenCalledOnce();
   });
 
   it("treats an explicit default style exactly like no style", async () => {
-    const { fake, reply } = interactionWith({ style: "default" });
+    const { fake, raw } = interactionWith({ style: "default" });
 
     await execute(fake);
 
     expect(renderStyledSkin).not.toHaveBeenCalled();
-    expect(reply).toHaveBeenCalledOnce();
+    expect(raw.reply).toHaveBeenCalledOnce();
+  });
+
+  it("resolves the deferred reply with an error embed when the styled render fails", async () => {
+    renderStyledSkin.mockRejectedValue(
+      new SkinApiError("Render styles require a premium account", {
+        code: "forbidden",
+        status: 403,
+      }),
+    );
+    const { fake, raw, sent } = interactionWith({ pose: "wave", style: "cel" });
+
+    await execute(fake);
+
+    expect(raw.deferReply).toHaveBeenCalledOnce();
+    expect(raw.editReply).toHaveBeenCalledOnce();
+    expect(sent).toEqual([
+      expect.objectContaining({ kind: "error", title: "Render Error" }),
+    ]);
+    expect(sent[0]?.description).not.toContain("premium");
   });
 });
