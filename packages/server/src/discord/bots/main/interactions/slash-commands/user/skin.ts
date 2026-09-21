@@ -2,7 +2,13 @@ import { Q } from "@/db";
 import { EmbedPresets } from "@/discord/embeds";
 import { replyError } from "@/discord/utils/interaction-reply";
 import { CooldownType } from "@/discord/utils/cooldown";
-import { getSkinApiClient, MAX_QUALITY_RENDER } from "@/services/skin-api";
+import {
+  getSkinApiClient,
+  MAX_QUALITY_RENDER,
+  renderStyledSkin,
+  SKIN_RENDER_STYLES,
+  type SkinRenderStyle,
+} from "@/services/skin-api";
 import { KNOWN_POSES, type KnownPose } from "createrington-skin-api";
 import {
   AttachmentBuilder,
@@ -12,6 +18,18 @@ import {
 } from "discord.js";
 
 const KNOWN_POSE_SET = new Set<string>(KNOWN_POSES);
+const RENDER_STYLE_SET = new Set<string>(SKIN_RENDER_STYLES);
+const STYLED_FALLBACK_POSE: KnownPose = "idle";
+
+const STYLE_LABELS: Record<SkinRenderStyle, string> = {
+  default: "Default",
+  cel: "Cel",
+};
+
+const STYLE_CHOICES = SKIN_RENDER_STYLES.map((value) => ({
+  name: STYLE_LABELS[value],
+  value,
+}));
 
 function titleCasePose(pose: string): string {
   return pose.replace(/\b\w/g, (c) => c.toUpperCase());
@@ -29,6 +47,13 @@ export const data = new SlashCommandBuilder()
       .setDescription("Render the skin in a specific pose")
       .setRequired(false)
       .setAutocomplete(true),
+  )
+  .addStringOption((opt) =>
+    opt
+      .setName("style")
+      .setDescription("Render style for the pose")
+      .setRequired(false)
+      .addChoices(...STYLE_CHOICES),
   );
 
 export const cooldown = {
@@ -72,7 +97,14 @@ export async function execute(
     );
     return;
   }
-  const pose = poseInput as KnownPose | undefined;
+  const styleInput = interaction.options.getString("style", false);
+  const style: SkinRenderStyle =
+    styleInput && RENDER_STYLE_SET.has(styleInput)
+      ? (styleInput as SkinRenderStyle)
+      : "default";
+  const pose =
+    (poseInput as KnownPose | undefined) ??
+    (style === "default" ? undefined : STYLED_FALLBACK_POSE);
 
   let player: Awaited<ReturnType<typeof Q.player.get>>;
   try {
@@ -98,27 +130,38 @@ export async function execute(
   await interaction.deferReply();
 
   try {
-    const skinApi = getSkinApiClient();
-    const png = await skinApi.render({
-      pose,
-      source: { uuid: player.minecraftUuid },
-      options: MAX_QUALITY_RENDER,
-    });
+    const png =
+      style === "default"
+        ? await getSkinApiClient().render({
+            pose,
+            source: { uuid: player.minecraftUuid },
+            options: MAX_QUALITY_RENDER,
+          })
+        : await renderStyledSkin({
+            uuid: player.minecraftUuid,
+            pose,
+            style,
+          });
 
-    const fileName = `${player.minecraftUsername}_${pose}.png`;
+    const styleSuffix = style === "default" ? "" : `_${style}`;
+    const fileName = `${player.minecraftUsername}_${pose}${styleSuffix}.png`;
     const attachment = new AttachmentBuilder(Buffer.from(png), {
       name: fileName,
     });
 
+    const styleLabel = style === "default" ? "" : ` (${STYLE_LABELS[style]})`;
     const embed = EmbedPresets.info(
-      `${player.minecraftUsername} — ${titleCasePose(pose)}`,
+      `${player.minecraftUsername} — ${titleCasePose(pose)}${styleLabel}`,
     )
       .image(`attachment://${fileName}`)
       .build();
 
     await interaction.editReply({ embeds: [embed], files: [attachment] });
   } catch (error) {
-    logger.warn(`Skin-api render failed for pose "${pose}":`, error);
+    logger.warn(
+      `Skin-api render failed for pose "${pose}" (style "${style}"):`,
+      error,
+    );
     await replyError(
       interaction,
       "Render Error",
