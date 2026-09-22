@@ -1,9 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const sdkRender = vi.hoisted(() => vi.fn(async () => new Uint8Array([1])));
-const renderStyledSkin = vi.hoisted(() =>
-  vi.fn(async () => new Uint8Array([2])),
-);
 
 vi.mock("@/db", () => ({
   Q: {
@@ -35,9 +32,7 @@ vi.mock("@/services/skin-api", async () => {
   >("@/services/skin-api/quality");
   return {
     getSkinApiClient: () => ({ render: sdkRender }),
-    renderStyledSkin,
     MAX_QUALITY_RENDER: quality.MAX_QUALITY_RENDER,
-    SKIN_RENDER_STYLES: ["default", "cel"],
   };
 });
 
@@ -84,9 +79,8 @@ function interactionWith(options: { pose?: string; style?: string }) {
 
 describe("/skin style option", () => {
   beforeEach(() => {
-    sdkRender.mockClear();
-    renderStyledSkin.mockReset();
-    renderStyledSkin.mockResolvedValue(new Uint8Array([2]));
+    sdkRender.mockReset();
+    sdkRender.mockResolvedValue(new Uint8Array([1]));
   });
 
   it("offers default and cel as the style choices", () => {
@@ -101,7 +95,7 @@ describe("/skin style option", () => {
     });
   });
 
-  it("keeps rendering through the SDK when no style is chosen", async () => {
+  it("renders the default style when no style is chosen", async () => {
     const { fake, sent } = interactionWith({ pose: "wave" });
 
     await execute(fake);
@@ -109,23 +103,21 @@ describe("/skin style option", () => {
     expect(sdkRender).toHaveBeenCalledWith({
       pose: "wave",
       source: { uuid: "uuid-1" },
-      options: MAX_QUALITY_RENDER,
+      options: { ...MAX_QUALITY_RENDER, style: "default" },
     });
-    expect(renderStyledSkin).not.toHaveBeenCalled();
     expect(sent).toEqual([expect.objectContaining({ title: "Steve — Wave" })]);
   });
 
-  it("renders the cel style through the styled helper", async () => {
+  it("renders the cel style at full quality", async () => {
     const { fake, sent } = interactionWith({ pose: "wave", style: "cel" });
 
     await execute(fake);
 
-    expect(renderStyledSkin).toHaveBeenCalledWith({
-      uuid: "uuid-1",
+    expect(sdkRender).toHaveBeenCalledWith({
       pose: "wave",
-      style: "cel",
+      source: { uuid: "uuid-1" },
+      options: { ...MAX_QUALITY_RENDER, style: "cel" },
     });
-    expect(sdkRender).not.toHaveBeenCalled();
     expect(sent).toEqual([
       expect.objectContaining({ title: "Steve — Wave (Cel)" }),
     ]);
@@ -136,11 +128,12 @@ describe("/skin style option", () => {
 
     await execute(fake);
 
-    expect(renderStyledSkin).toHaveBeenCalledWith({
-      uuid: "uuid-1",
-      pose: "idle",
-      style: "cel",
-    });
+    expect(sdkRender).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pose: "idle",
+        options: expect.objectContaining({ style: "cel" }),
+      }),
+    );
   });
 
   it("shows the plain skin without rendering when neither is chosen", async () => {
@@ -149,7 +142,6 @@ describe("/skin style option", () => {
     await execute(fake);
 
     expect(sdkRender).not.toHaveBeenCalled();
-    expect(renderStyledSkin).not.toHaveBeenCalled();
     expect(raw.deferReply).not.toHaveBeenCalled();
     expect(raw.reply).toHaveBeenCalledOnce();
   });
@@ -159,15 +151,15 @@ describe("/skin style option", () => {
 
     await execute(fake);
 
-    expect(renderStyledSkin).not.toHaveBeenCalled();
+    expect(sdkRender).not.toHaveBeenCalled();
     expect(raw.reply).toHaveBeenCalledOnce();
   });
 
   it("resolves the deferred reply with an error embed when the styled render fails", async () => {
-    renderStyledSkin.mockRejectedValue(
-      new SkinApiError("Render styles require a premium account", {
-        code: "forbidden",
-        status: 403,
+    sdkRender.mockRejectedValue(
+      new SkinApiError("Render failed upstream", {
+        code: "render_failed",
+        status: 500,
       }),
     );
     const { fake, raw, sent } = interactionWith({ pose: "wave", style: "cel" });
@@ -179,6 +171,6 @@ describe("/skin style option", () => {
     expect(sent).toEqual([
       expect.objectContaining({ kind: "error", title: "Render Error" }),
     ]);
-    expect(sent[0]?.description).not.toContain("premium");
+    expect(sent[0]?.description).not.toContain("upstream");
   });
 });

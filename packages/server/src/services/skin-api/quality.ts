@@ -40,12 +40,3 @@ export const MAX_QUALITY_RENDER = {
   width: 1366,
   height: 2048,
 } as const satisfies RenderOptions;
-
-/**
- * Same framing for a styled render, which the API caps at 1024px per side
- * (a 400 above that). The width follows the same rule: 1024 * 2/3, rounded up.
- */
-export const MAX_QUALITY_STYLED_RENDER = {
-  width: 683,
-  height: 1024,
-} as const satisfies RenderOptions;
