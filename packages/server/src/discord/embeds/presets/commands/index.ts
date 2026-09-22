@@ -3,13 +3,14 @@ import { createEmbed, DiscordEmbedBuilder } from "../../embed-builder";
 import { EmbedColors } from "../../colors";
 import { type ActiveSession, PlaytimeService } from "@/services/playtime";
 import { formatPlaytime } from "@createrington/shared/format";
+import { appEmoji } from "@/discord/emojis";
 
 /** Embed presets for bot slash-command responses (cooldown stats, online player list) */
 export const CommandEmbedPresets = {
   /** Displays active cooldown counts grouped by command */
   cooldownStats(stats: CooldownStats): DiscordEmbedBuilder {
     const embed = createEmbed()
-      .title("📊 Cooldown Statistics")
+      .title(`${appEmoji("info")} Cooldown Statistics`)
       .color(EmbedColors.Info)
       .field("Total Active Cooldowns", stats.totalCooldowns.toString(), true)
       .field("Commands with Cooldowns", stats.totalCommands.toString(), true);

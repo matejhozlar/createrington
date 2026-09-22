@@ -2,12 +2,15 @@ import { createEmbed } from "../embed-builder";
 import { EmbedColors } from "../colors";
 import { Discord } from "@/discord/constants";
 import type { ColorResolvable } from "discord.js";
+import { appEmoji } from "@/discord/emojis";
 
 /** Reusable embed presets for common response patterns (success, error, info, loading) */
 export const CommonEmbedPresets = {
   /** Creates a green success embed */
   success(title: string, description?: string) {
-    const embed = createEmbed().title(`✅ ${title}`).color(EmbedColors.Success);
+    const embed = createEmbed()
+      .title(`${appEmoji("check")} ${title}`)
+      .color(EmbedColors.Success);
 
     if (description) {
       embed.description(description);
@@ -18,7 +21,9 @@ export const CommonEmbedPresets = {
 
   /** Creates a red error embed */
   error(title: string, description?: string) {
-    const embed = createEmbed().title(`❌ ${title}`).color(EmbedColors.Error);
+    const embed = createEmbed()
+      .title(`${appEmoji("cross")} ${title}`)
+      .color(EmbedColors.Error);
 
     if (description) {
       embed.description(description);
@@ -29,7 +34,9 @@ export const CommonEmbedPresets = {
 
   /** Creates a red error embed with an admin contact prompt appended */
   errorWithAdmin(title: string, description?: string) {
-    const embed = createEmbed().title(`❌ ${title}`).color(EmbedColors.Error);
+    const embed = createEmbed()
+      .title(`${appEmoji("cross")} ${title}`)
+      .color(EmbedColors.Error);
 
     const fullDescription = description
       ? `${description}\n\n If this issue persists, please contact ${Discord.Roles.mention(
@@ -46,7 +53,9 @@ export const CommonEmbedPresets = {
 
   /** Creates a blue info embed */
   info(title: string, description?: string) {
-    const embed = createEmbed().title(`ℹ️ ${title}`).color(EmbedColors.Info);
+    const embed = createEmbed()
+      .title(`${appEmoji("info")} ${title}`)
+      .color(EmbedColors.Info);
 
     if (description) {
       embed.description(description);
@@ -81,7 +90,7 @@ export const CommonEmbedPresets = {
   /** Creates a loading/processing embed */
   loading(message: string = "Processing...") {
     return createEmbed()
-      .title("⏳ Please wait")
+      .title(`${appEmoji("hourglass")} Please wait`)
       .description(message)
       .color(EmbedColors.Info);
   },

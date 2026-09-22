@@ -1,3 +1,4 @@
+import { appEmoji } from "@/discord/emojis";
 import config from "@/config";
 import {
   ActionRowBuilder,
@@ -83,7 +84,7 @@ export const RegistrationComponentPresets = {
         params.errorMessage ? ComponentColors.Error : ComponentColors.Success,
       )
       .addTextDisplayComponents(
-        text("## 🎉 Welcome to Createrington!"),
+        text(`## ${appEmoji("party")} Welcome to Createrington!`),
         text(
           `Hey ${params.memberMention}, we're so glad you're here.\n\n` +
             `You're one step away from joining the server. Click **Register** below and drop in your Minecraft username, and we'll handle the whitelist and setup for you.\n\n` +
@@ -93,8 +94,8 @@ export const RegistrationComponentPresets = {
 
     if (params.errorMessage) {
       const heading = params.failedStep
-        ? `❌ **Last attempt failed at "${params.failedStep}"**`
-        : "❌ **Last attempt failed**";
+        ? `${appEmoji("cross")} **Last attempt failed at "${params.failedStep}"**`
+        : `${appEmoji("cross")} **Last attempt failed**`;
       container
         .addSeparatorComponents(divider())
         .addTextDisplayComponents(text(`${heading}\n${params.errorMessage}`));
@@ -123,8 +124,8 @@ export const RegistrationComponentPresets = {
     const stepsText = steps
       .map((s, i) => {
         let icon = "·";
-        if (s.completed) icon = "✓";
-        else if (i === currentStepIndex) icon = "⏳";
+        if (s.completed) icon = appEmoji("check");
+        else if (i === currentStepIndex) icon = appEmoji("hourglass");
         return `${icon} ${s.name}`;
       })
       .join("\n");
@@ -134,7 +135,7 @@ export const RegistrationComponentPresets = {
         percent === 100 ? ComponentColors.Success : ComponentColors.Info,
       )
       .addTextDisplayComponents(
-        text("## 🔄 Registering your Minecraft account..."),
+        text(`## ${appEmoji("refresh")} Registering your Minecraft account...`),
         text(`**Username** \`${username}\``),
       )
       .addSeparatorComponents(divider())
@@ -168,12 +169,12 @@ export const RegistrationComponentPresets = {
       .setCustomId(REGISTER_CLOSE_BUTTON_ID)
       .setLabel("Close")
       .setStyle(ButtonStyle.Danger)
-      .setEmoji("🗑️");
+      .setEmoji(appEmoji("trash"));
 
     const container = new ContainerBuilder()
       .setAccentColor(ComponentColors.Success)
       .addTextDisplayComponents(
-        text("## ✅ Registration Complete!"),
+        text(`## ${appEmoji("check")} Registration Complete!`),
         text(`Welcome to Createrington, **${username}**!`),
       )
       .addSeparatorComponents(divider())
@@ -187,7 +188,7 @@ export const RegistrationComponentPresets = {
         ),
         text(`**Useful channels**\n${channels}`),
         text(
-          `**📖 Guides**\n` +
+          `**${appEmoji("book")} Guides**\n` +
             `Our [Guides](${config.meta.links.website}/guides) cover everything from installing and updating the modpack to adding custom mods.`,
         ),
         text(
@@ -211,7 +212,7 @@ export const RegistrationComponentPresets = {
     const container = new ContainerBuilder()
       .setAccentColor(ComponentColors.Error)
       .addTextDisplayComponents(
-        text("## 🗑️ Channel Deletion"),
+        text(`## ${appEmoji("trash")} Channel Deletion`),
         text("This channel will be deleted in a few seconds..."),
       );
 

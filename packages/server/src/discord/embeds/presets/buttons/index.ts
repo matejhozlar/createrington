@@ -51,7 +51,7 @@ export const ButtonPresets = {
     deleteNow(departedId: number): ButtonBuilder {
       return new ButtonBuilder()
         .setCustomId(`departed:delete-now:${departedId}`)
-        .setLabel("Yeet from Database 🚀")
+        .setLabel("Yeet from Database")
         .setStyle(ButtonStyle.Danger);
     },
   },

@@ -1,6 +1,8 @@
+import { appEmoji } from "@/discord/emojis";
 import { EmbedColors } from "../../colors";
 import { createEmbed } from "../../embed-builder";
 import { discordTimestamp } from "@/utils/format";
+import { Discord } from "@/discord/constants";
 
 export interface DepartedMemberInfo {
   discordId: string;
@@ -20,7 +22,7 @@ export const DepartedEmbedPresets = {
     );
 
     return createEmbed()
-      .title("👋 Registered Member Departed")
+      .title(`${appEmoji("wave")} Registered Member Departed`)
       .description(
         `A registered player has left the Discord server. Their account will be automatically deleted in 30 days unless you take action.`,
       )
@@ -42,10 +44,10 @@ export const DepartedEmbedPresets = {
     deletedBy: { discordId: string; username: string | null };
     deletedAt: Date;
   }) {
-    const deletedByLine = `<@${info.deletedBy.discordId}>${info.deletedBy.username ? ` (\`${info.deletedBy.username}\`)` : ""}`;
+    const deletedByLine = `${Discord.Users.mention(info.deletedBy.discordId)}${info.deletedBy.username ? ` (\`${info.deletedBy.username}\`)` : ""}`;
 
     return createEmbed()
-      .title("✅ Member Deleted")
+      .title(`${appEmoji("check")} Member Deleted`)
       .description(
         `**${info.minecraftUsername}** has been removed from the system.`,
       )

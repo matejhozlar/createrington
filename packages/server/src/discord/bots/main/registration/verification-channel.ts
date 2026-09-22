@@ -1,3 +1,4 @@
+import { appEmoji } from "@/discord/emojis";
 import type {
   ButtonInteraction,
   Channel,
@@ -73,7 +74,7 @@ export async function createVerificationChannel(
     try {
       await Discord.Messages.send({
         channelId: Discord.Channels.administration.NOTIFICATIONS,
-        content: `⚠️ The verification category holds ${occupied} channels and Discord caps categories at 50. Close stale channels or new members will stop getting one.`,
+        content: `${appEmoji("warning")} The verification category holds ${occupied} channels and Discord caps categories at 50. Close stale channels or new members will stop getting one.`,
       });
     } catch (error) {
       logger.error("Failed to send verification-category alert:", error);

@@ -5,6 +5,7 @@ import { ButtonPresets } from "../buttons";
 import type { Player, WaitlistEntry } from "@/generated/db";
 import type { WaitlistStatus } from "@createrington/shared/db";
 import { discordTimestamp } from "@/utils/format";
+import { Discord } from "@/discord/constants";
 
 export const WaitlistEmbedPresets = {
   /**
@@ -20,14 +21,17 @@ export const WaitlistEmbedPresets = {
     const embed = createEmbed()
       .title(
         data.status === "promoted"
-          ? "📥 New Registration Started"
-          : "📥 New Waitlist Signup",
+          ? "New Registration Started"
+          : "New Waitlist Signup",
       )
       .color(
         data.status === "promoted" ? EmbedColors.Success : EmbedColors.Info,
       )
-      .field("🆔 Entry ID", data.id.toString())
-      .field("💬 Discord", `<@${data.discordId}> (\`${data.discordUsername}\`)`)
+      .field("Entry ID", data.id.toString())
+      .field(
+        "Discord",
+        `${Discord.Users.mention(data.discordId)} (\`${data.discordUsername}\`)`,
+      )
       .build();
 
     const linkRow = new ActionRowBuilder<ButtonBuilder>().addComponents(

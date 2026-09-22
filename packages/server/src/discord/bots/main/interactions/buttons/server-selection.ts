@@ -1,3 +1,4 @@
+import { appEmoji } from "@/discord/emojis";
 import {
   type ButtonInteraction,
   type GuildMember,
@@ -49,7 +50,7 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
 
   if (!parsed) {
     await interaction.reply({
-      content: "❌ Invalid button format",
+      content: `${appEmoji("cross")} Invalid button format`,
       flags: MessageFlags.Ephemeral,
     });
     return;
@@ -61,7 +62,7 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
 
   if (!serverConfig) {
     await interaction.reply({
-      content: "❌ Server configuration not found",
+      content: `${appEmoji("cross")} Server configuration not found`,
       flags: MessageFlags.Ephemeral,
     });
     return;
@@ -69,7 +70,7 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
 
   if (!serverConfig.enabled) {
     await interaction.reply({
-      content: `❌ **${serverConfig.label}** is not currently available`,
+      content: `${appEmoji("cross")} **${serverConfig.label}** is not currently available`,
       flags: MessageFlags.Ephemeral,
     });
     return;
@@ -83,7 +84,7 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
     Array.isArray(member.roles)
   ) {
     await interaction.reply({
-      content: "❌ Could not verify your roles. Please try again.",
+      content: `${appEmoji("cross")} Could not verify your roles. Please try again.`,
       flags: MessageFlags.Ephemeral,
     });
     return;

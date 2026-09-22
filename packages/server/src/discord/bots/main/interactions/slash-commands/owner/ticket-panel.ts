@@ -1,3 +1,4 @@
+import { appEmoji } from "@/discord/emojis";
 import {
   SlashCommandBuilder,
   type ChatInputCommandInteraction,
@@ -68,7 +69,7 @@ export async function execute(
         .setStyle(ButtonStyle.Primary);
 
       try {
-        button.setEmoji(config.emoji);
+        button.setEmoji(appEmoji(config.emoji));
       } catch {
         logger.warn(
           `Invalid emoji for ticket type ${config.type}: ${config.emoji}`,

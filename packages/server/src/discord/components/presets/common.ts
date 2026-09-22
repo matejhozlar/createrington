@@ -1,3 +1,4 @@
+import { appEmoji } from "@/discord/emojis";
 import { container, text } from "../component-builder";
 import { ComponentColors } from "../colors";
 import { Discord } from "@/discord/constants";
@@ -26,7 +27,7 @@ export const CommonComponentPresets = {
     options: AccentOptions = {},
   ): ComponentsData {
     const children: ComponentContainer["components"] = [
-      text(`✅ **${title}**`),
+      text(`${appEmoji("check")} **${title}**`),
     ];
     if (description) children.push(text(description));
     return {
@@ -43,7 +44,7 @@ export const CommonComponentPresets = {
     options: AccentOptions = {},
   ): ComponentsData {
     const children: ComponentContainer["components"] = [
-      text(`❌ **${title}**`),
+      text(`${appEmoji("cross")} **${title}**`),
     ];
     if (description) children.push(text(description));
     return {
@@ -63,7 +64,7 @@ export const CommonComponentPresets = {
       Discord.Roles.ADMIN,
     )}`;
     const children: ComponentContainer["components"] = [
-      text(`❌ **${title}**`),
+      text(`${appEmoji("cross")} **${title}**`),
     ];
     if (description) children.push(text(description));
     children.push(text(contact));
@@ -81,7 +82,7 @@ export const CommonComponentPresets = {
     options: AccentOptions = {},
   ): ComponentsData {
     const children: ComponentContainer["components"] = [
-      text(`ℹ️ **${title}**`),
+      text(`${appEmoji("info")} **${title}**`),
     ];
     if (description) children.push(text(description));
     return {
@@ -121,7 +122,7 @@ export const CommonComponentPresets = {
     return {
       components: [
         container(
-          [text("⏳ **Please wait**"), text(message)],
+          [text(`${appEmoji("hourglass")} **Please wait**`), text(message)],
           stripe(ComponentColors.Loading, options.accent),
         ),
       ],

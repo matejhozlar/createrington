@@ -1,3 +1,4 @@
+import { appEmoji } from "@/discord/emojis";
 import type {
   ButtonInteraction,
   ChatInputCommandInteraction,
@@ -279,7 +280,7 @@ async function handleChatCommands(
           : interaction.reply;
 
       await replyMethod.call(interaction, {
-        content: "❌ Command failed",
+        content: `${appEmoji("cross")} Command failed`,
         flags: MessageFlags.Ephemeral,
       });
     } catch (replyError) {
@@ -350,7 +351,7 @@ async function handleButtonInteractions(
       );
 
       await interaction.reply({
-        content: "❌ Error checking permissions",
+        content: `${appEmoji("cross")} Error checking permissions`,
         flags: MessageFlags.Ephemeral,
       });
       return;
@@ -372,7 +373,7 @@ async function handleButtonInteractions(
           : interaction.reply;
 
       await replyMethod.call(interaction, {
-        content: "❌ Something went wrong",
+        content: `${appEmoji("cross")} Something went wrong`,
         flags: MessageFlags.Ephemeral,
       });
     } catch (replyError) {
@@ -464,7 +465,7 @@ async function handleModalSubmit(
           : interaction.reply;
 
       await replyMethod.call(interaction, {
-        content: "❌ Something went wrong",
+        content: `${appEmoji("cross")} Something went wrong`,
         flags: MessageFlags.Ephemeral,
       });
     } catch (replyError) {

@@ -1,6 +1,7 @@
 import type { ColorResolvable } from "discord.js";
 import { createEmbed, DiscordEmbedBuilder } from "../../embed-builder";
 import { EmbedColors } from "../../colors";
+import { appEmoji } from "@/discord/emojis";
 
 export interface ProgressStep {
   name: string;
@@ -78,11 +79,11 @@ export const ProgressEmbedPresets = {
       .map((s, i) => {
         let icon = "·";
         if (s.error) {
-          icon = "❌";
+          icon = appEmoji("cross");
         } else if (s.completed) {
-          icon = "✓";
+          icon = appEmoji("check");
         } else if (i === currentStepIndex) {
-          icon = "⏳";
+          icon = appEmoji("hourglass");
         }
         return `${icon} ${s.name}`;
       })
@@ -133,7 +134,7 @@ export const ProgressEmbedPresets = {
     failedStep?: string,
   ): DiscordEmbedBuilder {
     const embed = createEmbed()
-      .title(`❌ ${title}`)
+      .title(`${appEmoji("cross")} ${title}`)
       .description(error)
       .color(EmbedColors.Error);
 
