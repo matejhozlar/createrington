@@ -5,12 +5,16 @@ import { buildComponentsMessage, ComponentPresets } from "@/discord/components";
 import type { RankUpMetric } from "@/discord/components/presets/hall-of-fame";
 import { Discord } from "@/discord/constants";
 import { squarePoseThumbnail } from "@/discord/utils/pose-thumbnail";
-import { getSkinApiClient } from "@/services/skin-api";
+import { getSkinApiClient, POSE_RENDER_STYLE } from "@/services/skin-api";
 import { getNotificationConfig } from "./config";
 import { RoleConditionType, type RoleAssignmentNotification } from "./types";
 
 const POSE_FILE_NAME = "rank-up.png";
-const POSE_RENDER = { width: 512, height: 768 } as const;
+const POSE_RENDER = {
+  width: 512,
+  height: 768,
+  style: POSE_RENDER_STYLE,
+} as const;
 const MC_HEADS_AVATAR_URL = "https://mc-heads.net/avatar";
 
 interface PoseFigure {

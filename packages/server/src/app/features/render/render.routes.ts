@@ -13,7 +13,11 @@ import { BalanceUtils } from "@/db/repositories/balance/utils";
 import { formatPlaytime } from "@createrington/shared/format";
 import { UnauthorizedError } from "@/app/middleware";
 import { requireLoopback } from "@/app/middleware/server-ip.middleware";
-import { getSkinApiClient, MAX_QUALITY_RENDER } from "@/services/skin-api";
+import {
+  getSkinApiClient,
+  MAX_QUALITY_RENDER,
+  POSE_RENDER_STYLE,
+} from "@/services/skin-api";
 import { timingSafeEqualStrings } from "@/utils/timing-safe-equal";
 import { MC_UUID_REGEX } from "@/utils/zod-schemas";
 
@@ -429,7 +433,7 @@ router.get(
       png = await getSkinApiClient().render({
         pose: requestedPose,
         source: { uuid },
-        options: MAX_QUALITY_RENDER,
+        options: { ...MAX_QUALITY_RENDER, style: POSE_RENDER_STYLE },
       });
     } catch (error) {
       // Keep the <img> tag rendering something useful instead of triggering
