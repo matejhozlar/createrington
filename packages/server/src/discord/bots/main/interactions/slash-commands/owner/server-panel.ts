@@ -1,3 +1,4 @@
+import { appEmoji } from "@/discord/emojis";
 import { createEmbed, EmbedColors, EmbedPresets } from "@/discord/embeds";
 import { isSendableChannel } from "@/discord/utils/channel-guard";
 import { replyError } from "@/discord/utils/interaction-reply";
@@ -76,7 +77,7 @@ export async function execute(
     }
 
     const embed = createEmbed()
-      .title("🎮 Server Selection")
+      .title(`${appEmoji("gamepad")} Server Selection`)
       .description(
         "Welcome to Createrington! Click the buttons below to get access to server-specific channels.\n\n" +
           "**How it works:**\n" +
@@ -88,14 +89,18 @@ export async function execute(
       .color(EmbedColors.Info);
 
     enabledServers.forEach((server) => {
-      embed.field(`${server.emoji} ${server.label}`, server.description, false);
+      embed.field(
+        `${appEmoji(server.emoji)} ${server.label}`,
+        server.description,
+        false,
+      );
     });
 
     const buttons = enabledServers.map((server) =>
       new ButtonBuilder()
         .setCustomId(`server-select:${server.id}`)
         .setLabel(server.label)
-        .setEmoji(server.emoji)
+        .setEmoji(appEmoji(server.emoji))
         .setStyle(ButtonStyle.Primary),
     );
 

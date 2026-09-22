@@ -1,3 +1,4 @@
+import type { AppEmojiKey } from "@/discord/emojis";
 import { Discord } from "@/discord/constants";
 
 /**
@@ -13,7 +14,7 @@ export interface NotificationConfig {
   /** Discord role ID to assign */
   roleId: string;
   /** Emoji to display on button */
-  emoji: string;
+  emoji: AppEmojiKey;
   /** Whether this notification is currently active */
   enabled: boolean;
 }
@@ -27,7 +28,7 @@ export const NOTIFICATION_CONFIGS: NotificationConfig[] = [
     label: "Rails 'n Sails",
     description: "Get pinged for train crashes and other server events",
     roleId: Discord.Roles.RAILSNSAILSNOTIFICATIONS,
-    emoji: "🚂",
+    emoji: "train",
     enabled: true,
   },
   {
@@ -35,7 +36,7 @@ export const NOTIFICATION_CONFIGS: NotificationConfig[] = [
     label: "Modpack Updates",
     description: "Get pinged when a new modpack changelog is posted",
     roleId: Discord.Roles.UPDATE,
-    emoji: "📦",
+    emoji: "package",
     enabled: true,
   },
 ];

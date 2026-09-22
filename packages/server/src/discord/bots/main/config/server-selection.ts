@@ -1,3 +1,4 @@
+import type { AppEmojiKey } from "@/discord/emojis";
 import { Discord } from "@/discord/constants";
 
 /**
@@ -13,7 +14,7 @@ export interface ServerConfig {
   /** Discord role ID to assign */
   roleId: string;
   /** Emoji to display on button */
-  emoji: string;
+  emoji: AppEmojiKey;
   /** Whether this server is currently active */
   enabled: boolean;
 }
@@ -27,7 +28,7 @@ export const SERVER_CONFIGS: ServerConfig[] = [
     label: "Tester",
     description: "Get access to the public testing forum",
     roleId: Discord.Roles.TESTER,
-    emoji: "🧪",
+    emoji: "flask",
     enabled: true,
   },
 ];

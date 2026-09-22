@@ -47,7 +47,7 @@ function joinButton(): ButtonBuilder {
     .setCustomId(WAITLIST_JOIN_BUTTON_ID)
     .setLabel("Join Waitlist")
     .setStyle(ButtonStyle.Primary)
-    .setEmoji("📝");
+    .setEmoji(appEmoji("pencil"));
 }
 
 function websiteButton(): ButtonBuilder {

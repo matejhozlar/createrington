@@ -31,6 +31,15 @@ export const APP_EMOJIS = {
   refresh: { icon: "lucide:refresh-cw", fallback: "🔄" },
   party: { icon: "lucide:party-popper", fallback: "🎉" },
   ticket: { icon: "lucide:ticket", fallback: "🎫" },
+  money: { icon: "lucide:banknote", fallback: "💰" },
+  gamepad: { icon: "lucide:gamepad-2", fallback: "🎮" },
+  bell: { icon: "lucide:bell", fallback: "🔔" },
+  heart: { icon: "lucide:heart", fallback: "❤️" },
+  pencil: { icon: "lucide:pencil-line", fallback: "📝" },
+  flask: { icon: "lucide:flask-conical", fallback: "🧪" },
+  train: { icon: "lucide:train-front", fallback: "🚂" },
+  package: { icon: "lucide:package", fallback: "📦" },
+  pickaxe: { icon: "lucide:pickaxe", fallback: "⛏️" },
 } as const satisfies Record<string, AppEmojiSpec>;
 
 export type AppEmojiKey = keyof typeof APP_EMOJIS;

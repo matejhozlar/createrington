@@ -1,3 +1,4 @@
+import { appEmoji } from "@/discord/emojis";
 import config from "@/config";
 import { Discord } from "@/discord/constants";
 import { createEmbed, EmbedColors, EmbedPresets } from "@/discord/embeds";
@@ -46,7 +47,7 @@ export async function execute(
     const donateUrl = `${config.meta.links.website}/donate`;
 
     const embed = createEmbed()
-      .title("❤️ Support Createrington")
+      .title(`${appEmoji("heart")} Support Createrington`)
       .description(
         "If you enjoy playing on Createrington, you can help keep the server running by donating.\n\n" +
           "**Donating is completely optional** and does not give you any advantages over other players. " +
@@ -61,7 +62,7 @@ export async function execute(
         .setLabel("Donate")
         .setStyle(ButtonStyle.Link)
         .setURL(donateUrl)
-        .setEmoji("❤️"),
+        .setEmoji(appEmoji("heart")),
     );
 
     const messageId = interaction.options.getString("message_id");

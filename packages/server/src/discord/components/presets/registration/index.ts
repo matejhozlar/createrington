@@ -88,7 +88,7 @@ export const RegistrationComponentPresets = {
         text(
           `Hey ${params.memberMention}, we're so glad you're here.\n\n` +
             `You're one step away from joining the server. Click **Register** below and drop in your Minecraft username, and we'll handle the whitelist and setup for you.\n\n` +
-            `See you in-game soon. ⛏️`,
+            `See you in-game soon. ${appEmoji("pickaxe")}`,
         ),
       );
 
