@@ -184,10 +184,6 @@ const AutoMessages = lazyNamed(
   () => import("./features/admin/tools/auto-messages/AutoMessages"),
   "AutoMessages",
 );
-const Announcements = lazyNamed(
-  () => import("./features/admin/tools/announcements/Announcements"),
-  "Announcements",
-);
 const AdminDashboard = lazyNamed(
   () => import("./features/admin/AdminDashboard"),
   "AdminDashboard",
@@ -457,10 +453,6 @@ function AppContent() {
                       <Route
                         path="tools/auto-messages"
                         element={<AutoMessages />}
-                      />
-                      <Route
-                        path="tools/announcements"
-                        element={<Announcements />}
                       />
                       <Route
                         path="tools/command-docs"
