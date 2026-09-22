@@ -24,7 +24,6 @@ import {
   Blocks,
   Images,
   Clock,
-  Megaphone,
   MessageCircleQuestion,
   MessageSquare,
   Paintbrush,
@@ -68,12 +67,6 @@ const TOOL_SECTIONS: ToolSection[] = [
         description: "Scheduled rotating messages sent to Discord channels.",
         icon: Timer,
         href: "/admin/tools/auto-messages",
-      },
-      {
-        title: "Announcements",
-        description: "Post maintenance notices to Discord.",
-        icon: Megaphone,
-        href: "/admin/tools/announcements",
       },
       {
         title: "FAQ Auto-Responder",

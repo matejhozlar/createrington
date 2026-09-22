@@ -3,7 +3,6 @@ import { Q } from "@/db";
 import { auditActor } from "@/trpc/utils";
 import { adminAiRouter } from "./ai";
 import { autoMessagesRouter } from "./auto-messages";
-import { announcementsRouter } from "./announcements";
 import { changelogRouter } from "./changelog";
 import { dashboardRouter } from "./dashboard";
 import { discordCommandsRouter } from "./discord-commands";
@@ -44,7 +43,6 @@ export const adminRouter = router({
     }),
   ai: adminAiRouter,
   autoMessages: autoMessagesRouter,
-  announcements: announcementsRouter,
   changelog: changelogRouter,
   dashboard: dashboardRouter,
   discordCommands: discordCommandsRouter,
