@@ -2,14 +2,12 @@ import { Q } from "@/db";
 import { EmbedPresets } from "@/discord/embeds";
 import { replyError } from "@/discord/utils/interaction-reply";
 import { CooldownType } from "@/discord/utils/cooldown";
+import { getSkinApiClient, MAX_QUALITY_RENDER } from "@/services/skin-api";
 import {
-  getSkinApiClient,
-  MAX_QUALITY_RENDER,
-  renderStyledSkin,
-  SKIN_RENDER_STYLES,
-  type SkinRenderStyle,
-} from "@/services/skin-api";
-import { KNOWN_POSES, type KnownPose } from "createrington-skin-api";
+  KNOWN_POSES,
+  type KnownPose,
+  type RenderStyle,
+} from "createrington-skin-api";
 import {
   AttachmentBuilder,
   AutocompleteInteraction,
@@ -17,16 +15,21 @@ import {
   SlashCommandBuilder,
 } from "discord.js";
 
+const RENDER_STYLES = [
+  "default",
+  "cel",
+] as const satisfies readonly RenderStyle[];
+
 const KNOWN_POSE_SET = new Set<string>(KNOWN_POSES);
-const RENDER_STYLE_SET = new Set<string>(SKIN_RENDER_STYLES);
+const RENDER_STYLE_SET = new Set<string>(RENDER_STYLES);
 const STYLED_FALLBACK_POSE: KnownPose = "idle";
 
-const STYLE_LABELS: Record<SkinRenderStyle, string> = {
+const STYLE_LABELS: Record<RenderStyle, string> = {
   default: "Default",
   cel: "Cel",
 };
 
-const STYLE_CHOICES = SKIN_RENDER_STYLES.map((value) => ({
+const STYLE_CHOICES = RENDER_STYLES.map((value) => ({
   name: STYLE_LABELS[value],
   value,
 }));
@@ -100,9 +103,9 @@ export async function execute(
     return;
   }
   const styleInput = interaction.options.getString("style", false);
-  const style: SkinRenderStyle =
+  const style: RenderStyle =
     styleInput && RENDER_STYLE_SET.has(styleInput)
-      ? (styleInput as SkinRenderStyle)
+      ? (styleInput as RenderStyle)
       : "default";
   const pose =
     (poseInput as KnownPose | undefined) ??
@@ -132,18 +135,11 @@ export async function execute(
   await interaction.deferReply();
 
   try {
-    const png =
-      style === "default"
-        ? await getSkinApiClient().render({
-            pose,
-            source: { uuid: player.minecraftUuid },
-            options: MAX_QUALITY_RENDER,
-          })
-        : await renderStyledSkin({
-            uuid: player.minecraftUuid,
-            pose,
-            style,
-          });
+    const png = await getSkinApiClient().render({
+      pose,
+      source: { uuid: player.minecraftUuid },
+      options: { ...MAX_QUALITY_RENDER, style },
+    });
 
     const styleSuffix = style === "default" ? "" : `_${style}`;
     const fileName = `${player.minecraftUsername}_${pose}${styleSuffix}.png`;
