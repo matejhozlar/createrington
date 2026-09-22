@@ -4,9 +4,9 @@ import { Button } from "@/components/ui/button";
 import { SKIN_API_URL } from "@/lib/external-urls";
 
 const FIGURES = [
-  { src: "/assets/skin-api/point-cel.png", className: "z-10 h-24" },
-  { src: "/assets/skin-api/victory-cel.png", className: "z-20 -mx-4 h-32" },
-  { src: "/assets/skin-api/cheer-cel.png", className: "z-10 h-28" },
+  { src: "/assets/skin-api/point-cel.png", className: "z-10 h-28" },
+  { src: "/assets/skin-api/victory-cel.png", className: "z-20 -mx-5 h-36" },
+  { src: "/assets/skin-api/cheer-cel.png", className: "z-10 h-32" },
 ] as const;
 
 export function SkinApiPromo() {
@@ -38,9 +38,9 @@ export function SkinApiPromo() {
           </h2>
 
           <p className="max-w-2xl text-sm text-muted-foreground md:text-base">
-            Our own skin renderer, open to other projects. Any Minecraft skin as
-            a posed PNG by UUID, username, URL, or upload, with{" "}
-            {KNOWN_POSES.length} poses and SDKs for four languages.
+            Our own skin renderer: any Minecraft skin as a posed PNG by UUID,
+            username, URL, or upload, with {KNOWN_POSES.length} poses and SDKs
+            for four languages.
           </p>
         </div>
 
