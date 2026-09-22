@@ -35,10 +35,10 @@ export const Footer = () => {
   const galleryQuery = trpc.public.gallery.isEnabled.useQuery();
 
   return (
-    <footer className="w-full border-t bg-background px-5 md:px-8 py-12">
+    <footer className="@container w-full border-t bg-background px-5 md:px-8 py-12">
       <div className="max-w-7xl mx-auto">
-        <div className="grid grid-cols-2 md:grid-cols-6 lg:grid-cols-8 gap-8">
-          <div className="flex flex-col sm:justify-center col-span-2 lg:col-span-4 gap-2">
+        <div className="grid grid-cols-2 gap-8 @xl:grid-cols-4 @4xl:grid-cols-[1fr_repeat(4,auto)]">
+          <div className="flex flex-col col-span-2 gap-2 @xl:col-span-4 @4xl:col-span-1 @4xl:justify-center">
             <NavLink to="/" className="flex items-center gap-3">
               <img
                 src="/assets/logo/logo.png"
