@@ -4,16 +4,22 @@ const player = vi.hoisted(() => ({
   row: null as { minecraftUuid: string; minecraftUsername: string } | null,
 }));
 const skinApi = vi.hoisted(() => ({
-  render: vi.fn<() => Promise<Uint8Array>>(),
+  render: vi.fn<(params: unknown) => Promise<Uint8Array>>(),
 }));
 
 vi.mock("@/db", () => ({
   Q: { player: { find: async () => player.row } },
 }));
 
-vi.mock("@/services/skin-api", () => ({
-  getSkinApiClient: () => ({ render: skinApi.render }),
-}));
+vi.mock("@/services/skin-api", async () => {
+  const quality = await vi.importActual<
+    typeof import("@/services/skin-api/quality")
+  >("@/services/skin-api/quality");
+  return {
+    getSkinApiClient: () => ({ render: skinApi.render }),
+    POSE_RENDER_STYLE: quality.POSE_RENDER_STYLE,
+  };
+});
 
 vi.mock("@/discord/utils/pose-thumbnail", () => ({
   squarePoseThumbnail: async (png: Uint8Array) => Buffer.from(png),
@@ -181,6 +187,17 @@ describe("RoleNotificationService.sendNotification", () => {
     );
 
     expect(lastMessage().accentColor).toBeUndefined();
+  });
+
+  it("renders the rank-up figure in the cel style", async () => {
+    await roleNotificationService.sendNotification(notification());
+
+    expect(skinApi.render).toHaveBeenCalledWith(
+      expect.objectContaining({
+        source: { uuid: "uuid-1" },
+        options: expect.objectContaining({ style: "cel" }),
+      }),
+    );
   });
 
   it("falls back to the square mc-heads head when the render fails", async () => {

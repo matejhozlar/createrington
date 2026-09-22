@@ -1,4 +1,4 @@
-import type { RenderOptions } from "createrington-skin-api";
+import type { RenderOptions, RenderStyle } from "createrington-skin-api";
 
 /**
  * Framing canvas that yields the highest-resolution render the API can
@@ -41,11 +41,4 @@ export const MAX_QUALITY_RENDER = {
   height: 2048,
 } as const satisfies RenderOptions;
 
-/**
- * Same framing for a styled render, which the API caps at 1024px per side
- * (a 400 above that). The width follows the same rule: 1024 * 2/3, rounded up.
- */
-export const MAX_QUALITY_STYLED_RENDER = {
-  width: 683,
-  height: 1024,
-} as const satisfies RenderOptions;
+export const POSE_RENDER_STYLE = "cel" satisfies RenderStyle;

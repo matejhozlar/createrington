@@ -1,6 +1,6 @@
 {
   "name": "createrington",
-  "version": "1.60.0",
+  "version": "1.61.0",
   "private": true,
   "license": "UNLICENSED",
   "type": "module",
@@ -42,6 +42,8 @@
     "generate-mod-api": "pnpm --filter @createrington/server util:generate-mod-api",
     "scrape-discord": "pnpm --filter @createrington/server util:scrape-discord",
     "sync-nicknames": "pnpm --filter @createrington/server util:sync-nicknames",
+    "sync-emojis": "pnpm --filter @createrington/server util:sync-emojis",
+    "render-emojis": "pnpm --filter @createrington/server util:render-emojis",
     "mint-session": "pnpm --filter @createrington/server util:mint-session",
     "db:generate": "pnpm --filter @createrington/server db:generate",
     "db:migrate": "pnpm --filter @createrington/server db:migrate",

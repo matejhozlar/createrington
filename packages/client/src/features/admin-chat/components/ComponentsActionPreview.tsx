@@ -4,6 +4,7 @@ import type {
   ComponentSection,
 } from "@createrington/shared/api/embed";
 import { numberToHex } from "@/lib/utils";
+import { DiscordEmoji } from "@/components/discord-emoji";
 
 interface ComponentsActionPreviewProps {
   components: ComponentNode[];
@@ -114,7 +115,7 @@ function ButtonChip({
 }): React.JSX.Element {
   return (
     <span className="inline-flex shrink-0 items-center gap-1 rounded bg-background px-1.5 py-0.5 text-[0.6875rem] text-foreground">
-      {button.emoji && <span>{button.emoji}</span>}
+      {button.emoji && <DiscordEmoji value={button.emoji} />}
       {button.label || "Button"}
     </span>
   );

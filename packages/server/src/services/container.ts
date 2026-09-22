@@ -29,6 +29,7 @@ import type { PlayerPromptService } from "./player-prompt";
 import type { WorkshopProjectRefreshService } from "./workshop/refresh.service";
 import type { DiscordStickyMessageService } from "./discord/sticky-message";
 import type { GalleryService } from "./gallery";
+import type { AppEmojiService } from "./discord/emojis";
 
 /**
  * Service lifecycle states
@@ -427,6 +428,7 @@ export const Services = {
   WORKSHOP_PROJECT_REFRESH: "workshop.projectRefreshService",
   STICKY_MESSAGE_SERVICE: "discord.stickyMessageService",
   GALLERY_SERVICE: "gallery.service",
+  APP_EMOJI_SERVICE: "discord.appEmojiService",
 } as const;
 
 export type ServiceKey = (typeof Services)[keyof typeof Services];
@@ -467,4 +469,5 @@ export interface ServiceTypeMap {
   [Services.WORKSHOP_PROJECT_REFRESH]: WorkshopProjectRefreshService;
   [Services.STICKY_MESSAGE_SERVICE]: DiscordStickyMessageService;
   [Services.GALLERY_SERVICE]: GalleryService;
+  [Services.APP_EMOJI_SERVICE]: AppEmojiService;
 }

@@ -3,6 +3,7 @@ import { ExternalLink } from "lucide-react";
 import type { EmbedData } from "@createrington/shared/api/embed";
 import { useMentionResolver } from "@/features/admin/hooks/use-mention-resolver";
 import { cn } from "@/lib/utils";
+import { DiscordEmoji } from "@/components/discord-emoji";
 import { DiscordMarkdown } from "./DiscordMarkdown";
 import type { FocusTarget } from "../focus";
 
@@ -320,7 +321,7 @@ export function EmbedPreview({
                     className="inline-flex items-center gap-2 rounded px-4 py-2 text-sm font-medium text-white"
                     style={{ backgroundColor: "#4E5058" }}
                   >
-                    {b.emoji && <span>{b.emoji}</span>}
+                    {b.emoji && <DiscordEmoji value={b.emoji} />}
                     <span>{b.label || "Button"}</span>
                     <ExternalLink className="size-3.5 opacity-60" />
                   </span>
@@ -338,7 +339,7 @@ export function EmbedPreview({
                     className="inline-flex items-center gap-2 rounded px-4 py-2 text-sm font-medium text-white"
                     style={{ backgroundColor: "#5865F2" }}
                   >
-                    {b.emoji && <span>{b.emoji}</span>}
+                    {b.emoji && <DiscordEmoji value={b.emoji} />}
                     <span>{b.label || "Action"}</span>
                   </span>
                 </Hover>

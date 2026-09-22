@@ -528,7 +528,8 @@ function ButtonFields({
         value={button.emoji ?? ""}
         onChange={(v) => onChange({ ...button, emoji: v || undefined })}
         max={64}
-        hint="Unicode emoji, or a custom emoji as <:name:id>"
+        emojis
+        hint="Unicode emoji, or type : to pick a bot emoji"
       />
     </>
   );
