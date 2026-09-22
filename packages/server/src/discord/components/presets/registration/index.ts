@@ -124,8 +124,8 @@ export const RegistrationComponentPresets = {
     const stepsText = steps
       .map((s, i) => {
         let icon = "·";
-        if (s.completed) icon = appEmoji("check");
-        else if (i === currentStepIndex) icon = appEmoji("hourglass");
+        if (s.completed) icon = "✓";
+        else if (i === currentStepIndex) icon = "⏳";
         return `${icon} ${s.name}`;
       })
       .join("\n");

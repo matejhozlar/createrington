@@ -84,7 +84,7 @@ export const WaitlistEmbedPresets = {
 
     if (discordUser) {
       embed
-        .field("Discord User", `<@${discordUser.id}>`, true)
+        .field("Discord User", Discord.Users.mention(discordUser.id), true)
         .field("Discord ID", `\`${discordUser.id}\``, true)
         .thumbnail(discordUser.displayAvatarURL({ size: 128 }));
     } else {
@@ -106,7 +106,7 @@ export const WaitlistEmbedPresets = {
 
     if (entry.promotedAt) {
       details.push(
-        `Promoted: ${discordTimestamp(entry.promotedAt, "R")}${entry.promotedBy ? ` by <@${entry.promotedBy}>` : " (auto)"}`,
+        `Promoted: ${discordTimestamp(entry.promotedAt, "R")}${entry.promotedBy ? ` by ${Discord.Users.mention(entry.promotedBy)}` : " (auto)"}`,
       );
     }
 

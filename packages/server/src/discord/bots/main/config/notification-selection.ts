@@ -13,7 +13,7 @@ export interface NotificationConfig {
   description: string;
   /** Discord role ID to assign */
   roleId: string;
-  /** Emoji to display on button */
+  /** Application emoji key shown on the button and in the panel field */
   emoji: AppEmojiKey;
   /** Whether this notification is currently active */
   enabled: boolean;

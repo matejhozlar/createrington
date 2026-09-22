@@ -156,6 +156,7 @@ vi.mock("@/discord/constants", () => ({
   Discord: {
     Channels: { administration: { NOTIFICATIONS: "notifications" } },
     Messages: { send: state.adminSend },
+    Users: { mention: (discordId: string) => `<@${discordId}>` },
   },
 }));
 vi.mock("@/discord/embeds", () => ({

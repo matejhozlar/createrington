@@ -10,7 +10,7 @@ export const CommandEmbedPresets = {
   /** Displays active cooldown counts grouped by command */
   cooldownStats(stats: CooldownStats): DiscordEmbedBuilder {
     const embed = createEmbed()
-      .title(`${appEmoji("info")} Cooldown Statistics`)
+      .title(`${appEmoji("chart")} Cooldown Statistics`)
       .color(EmbedColors.Info)
       .field("Total Active Cooldowns", stats.totalCooldowns.toString(), true)
       .field("Commands with Cooldowns", stats.totalCommands.toString(), true);

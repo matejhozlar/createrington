@@ -79,11 +79,11 @@ export const ProgressEmbedPresets = {
       .map((s, i) => {
         let icon = "·";
         if (s.error) {
-          icon = appEmoji("cross");
+          icon = "❌";
         } else if (s.completed) {
-          icon = appEmoji("check");
+          icon = "✓";
         } else if (i === currentStepIndex) {
-          icon = appEmoji("hourglass");
+          icon = "⏳";
         }
         return `${icon} ${s.name}`;
       })

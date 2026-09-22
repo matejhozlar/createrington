@@ -68,13 +68,7 @@ export async function execute(
         .setLabel(config.label)
         .setStyle(ButtonStyle.Primary);
 
-      try {
-        button.setEmoji(appEmoji(config.emoji));
-      } catch {
-        logger.warn(
-          `Invalid emoji for ticket type ${config.type}: ${config.emoji}`,
-        );
-      }
+      button.setEmoji(appEmoji(config.emoji));
 
       return button;
     });

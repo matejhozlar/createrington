@@ -13,7 +13,7 @@ export interface ServerConfig {
   description: string;
   /** Discord role ID to assign */
   roleId: string;
-  /** Emoji to display on button */
+  /** Application emoji key shown on the button and in the panel field */
   emoji: AppEmojiKey;
   /** Whether this server is currently active */
   enabled: boolean;

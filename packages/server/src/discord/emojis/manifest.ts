@@ -40,6 +40,7 @@ export const APP_EMOJIS = {
   train: { icon: "lucide:train-front", fallback: "🚂" },
   package: { icon: "lucide:package", fallback: "📦" },
   pickaxe: { icon: "lucide:pickaxe", fallback: "⛏️" },
+  chart: { icon: "lucide:chart-column", fallback: "📊" },
 } as const satisfies Record<string, AppEmojiSpec>;
 
 export type AppEmojiKey = keyof typeof APP_EMOJIS;
