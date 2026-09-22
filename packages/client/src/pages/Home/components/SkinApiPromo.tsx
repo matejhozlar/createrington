@@ -11,9 +11,9 @@ const FIGURES = [
 
 export function SkinApiPromo() {
   return (
-    <section className="py-10 px-5 md:px-8 bg-background">
-      <div className="max-w-7xl mx-auto flex flex-col items-center gap-6 text-center md:flex-row md:gap-8 md:text-left lg:gap-10">
-        <div className="flex shrink-0 items-end justify-center">
+    <section className="@container py-10 px-5 md:px-8 bg-background">
+      <div className="max-w-7xl mx-auto grid justify-items-center gap-6 text-center @xl:grid-cols-[auto_1fr] @xl:items-center @xl:justify-items-start @xl:gap-x-8 @xl:gap-y-4 @xl:text-left @5xl:grid-cols-[auto_1fr_auto] @5xl:gap-x-10">
+        <div className="flex items-end justify-center @xl:row-span-2 @5xl:row-span-1">
           {FIGURES.map(({ src, className }) => (
             <img
               key={src}
@@ -25,26 +25,26 @@ export function SkinApiPromo() {
           ))}
         </div>
 
-        <div className="flex min-w-0 flex-1 flex-col items-center gap-2 md:items-start">
+        <div className="flex min-w-0 flex-col items-center gap-2 @xl:items-start">
           <img
             src="/assets/skin-api/skin-api-woodmark.png"
             alt="Skin API"
-            className="h-6 w-auto md:h-7"
+            className="h-6 w-auto @xl:h-7"
           />
 
-          <h2 className="text-xl font-semibold text-foreground md:text-2xl">
+          <h2 className="text-xl font-semibold text-foreground @xl:text-2xl">
             Any skin. Any pose.{" "}
             <span className="text-primary">One request.</span>
           </h2>
 
-          <p className="max-w-2xl text-sm text-muted-foreground md:text-base">
+          <p className="max-w-2xl text-sm text-muted-foreground @xl:text-base">
             Our own skin renderer: any Minecraft skin as a posed PNG by UUID,
             username, URL, or upload, with {KNOWN_POSES.length} poses and SDKs
             for four languages.
           </p>
         </div>
 
-        <div className="flex shrink-0 flex-wrap justify-center gap-3">
+        <div className="flex flex-wrap justify-center gap-3 @xl:col-start-2 @xl:justify-start @5xl:col-start-3 @5xl:row-start-1">
           <Button asChild>
             <a
               href={`${SKIN_API_URL}/request-invite`}
