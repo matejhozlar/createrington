@@ -1,3 +1,8 @@
+## v1.61.2 (2026-09-22)
+
+### @createrington/client (0.2.76 → 0.2.77)
+- [fix] Fix footer link columns collapsing to content width on wide layouts by switching the grid template from auto-sized to evenly distributed fractional columns
+
 ## v1.61.1 (2026-09-22)
 
 ### @createrington/client (0.2.75 → 0.2.76)
