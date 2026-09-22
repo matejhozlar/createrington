@@ -1,3 +1,13 @@
+## v1.61.1 (2026-09-22)
+
+### @createrington/client (0.2.75 → 0.2.76)
+- [add] Add Skin API promotional strip on the home page with posed character figures, a woodmark logo, and CTA buttons linking to the API key request form and documentation
+- [add] Add a "Developers" section to the site footer with an external link to the Skin API
+- [remove] Remove the Announcements admin tool (maintenance announcement form, Discord embed sending, and its admin route)
+
+### @createrington/server (1.62.0 → 1.62.1)
+- [remove] Remove the announcements admin tRPC router and its `sendMaintenance` mutation endpoint
+
 ## v1.61.0 (2026-09-22)
 
 ### @createrington/server (1.61.0 → 1.62.0)
