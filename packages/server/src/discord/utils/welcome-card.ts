@@ -11,7 +11,11 @@ import {
 import { AttachmentBuilder } from "discord.js";
 import { randomPose } from "createrington-skin-api";
 import config from "@/config";
-import { getSkinApiClient, MAX_QUALITY_RENDER } from "@/services/skin-api";
+import {
+  getSkinApiClient,
+  MAX_QUALITY_RENDER,
+  POSE_RENDER_STYLE,
+} from "@/services/skin-api";
 import { computeBBox, fitFontSize } from "@/utils/canvas";
 
 const W = 1600;
@@ -99,7 +103,7 @@ async function fetchFigure(minecraftUuid: string): Promise<Image | null> {
     const png = await getSkinApiClient().render({
       pose,
       source: { uuid: minecraftUuid },
-      options: MAX_QUALITY_RENDER,
+      options: { ...MAX_QUALITY_RENDER, style: POSE_RENDER_STYLE },
     });
     return await loadImage(Buffer.from(png));
   } catch (error) {

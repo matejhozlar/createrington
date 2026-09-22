@@ -1,4 +1,4 @@
-import type { RenderOptions } from "createrington-skin-api";
+import type { RenderOptions, RenderStyle } from "createrington-skin-api";
 
 /**
  * Framing canvas that yields the highest-resolution render the API can
@@ -40,3 +40,5 @@ export const MAX_QUALITY_RENDER = {
   width: 1366,
   height: 2048,
 } as const satisfies RenderOptions;
+
+export const POSE_RENDER_STYLE = "cel" satisfies RenderStyle;

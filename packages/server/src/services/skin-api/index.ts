@@ -1,7 +1,7 @@
 import { SkinApi } from "createrington-skin-api";
 import config from "@/config";
 
-export { MAX_QUALITY_RENDER } from "./quality";
+export { MAX_QUALITY_RENDER, POSE_RENDER_STYLE } from "./quality";
 
 let client: SkinApi | null = null;
 
