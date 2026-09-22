@@ -6,6 +6,7 @@ import type {
 } from "@createrington/shared/api/embed";
 import { useMentionResolver } from "@/features/admin/hooks/use-mention-resolver";
 import { numberToHex } from "@/lib/utils";
+import { DiscordEmoji } from "@/components/discord-emoji";
 import { DiscordMarkdown } from "../components/DiscordMarkdown";
 
 type MentionResolver = ReturnType<typeof useMentionResolver>;
@@ -203,7 +204,7 @@ function ButtonPreview({ button }: { button: ComponentButton }) {
       className="inline-flex shrink-0 items-center gap-2 rounded px-4 py-2 text-sm font-medium text-white"
       style={{ backgroundColor: "#4E5058" }}
     >
-      {button.emoji && <span>{button.emoji}</span>}
+      {button.emoji && <DiscordEmoji value={button.emoji} />}
       <span>{button.label || "Button"}</span>
       <ExternalLink className="size-3.5 opacity-60" />
     </span>

@@ -11,7 +11,16 @@ import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { formatConfigKey as formatName } from "@/features/admin/format";
 
-type TriggerChar = "@" | "#";
+type TriggerChar = "@" | "#" | ":";
+
+const ALL_TRIGGERS: TriggerChar[] = ["@", "#", ":"];
+const EMOJI_TRIGGERS: TriggerChar[] = [":"];
+
+const HEADER_LABELS: Record<TriggerChar, string> = {
+  "#": "Channels",
+  "@": "Mentions",
+  ":": "Emojis",
+};
 
 interface ActiveTrigger {
   trigger: TriggerChar;
@@ -28,18 +37,24 @@ interface Suggestion {
   key: string;
   label: string;
   insert: string;
-  kind: "channel" | "role" | "special";
+  kind: "channel" | "role" | "special" | "emoji";
+  imageUrl?: string;
 }
 
 const MAX_RESULTS = 8;
 
+function isTrigger(ch: string, triggers: TriggerChar[]): ch is TriggerChar {
+  return (triggers as string[]).includes(ch);
+}
+
 function getActiveTrigger(
   value: string,
   cursorPos: number,
+  triggers: TriggerChar[],
 ): ActiveTrigger | null {
   for (let i = cursorPos - 1; i >= 0; i--) {
     const ch = value[i];
-    if (ch === "@" || ch === "#") {
+    if (isTrigger(ch, triggers)) {
       const prev = i === 0 ? "" : value[i - 1];
       if (i !== 0 && !/\s/.test(prev)) return null;
       const query = value.slice(i + 1, cursorPos);
@@ -55,13 +70,17 @@ interface MentionAutocompleteProps {
   inputRef: RefObject<HTMLInputElement | HTMLTextAreaElement | null>;
   value: string;
   onChange: (next: string) => void;
+  emojiOnly?: boolean;
 }
 
 export function MentionAutocomplete({
   inputRef,
   value,
   onChange,
+  emojiOnly = false,
 }: MentionAutocompleteProps) {
+  const triggers = emojiOnly ? EMOJI_TRIGGERS : ALL_TRIGGERS;
+  const spaceAfter = !emojiOnly;
   const [cursor, setCursor] = useState<CursorState | null>(null);
   const [dismissed, setDismissed] = useState<{
     value: string;
@@ -72,19 +91,22 @@ export function MentionAutocomplete({
 
   const active = useMemo<ActiveTrigger | null>(() => {
     if (!cursor || !cursor.collapsed) return null;
-    const t = getActiveTrigger(value, cursor.pos);
+    const t = getActiveTrigger(value, cursor.pos, triggers);
     if (!t) return null;
     if (dismissed && dismissed.value === value && dismissed.start === t.start) {
       return null;
     }
     return t;
-  }, [value, cursor, dismissed]);
+  }, [value, cursor, dismissed, triggers]);
 
   const channelsQuery = trpc.admin.embeds.channels.useQuery(undefined, {
     enabled: active?.trigger === "#",
   });
   const rolesQuery = trpc.admin.embeds.roles.useQuery(undefined, {
     enabled: active?.trigger === "@",
+  });
+  const emojisQuery = trpc.admin.embeds.emojis.useQuery(undefined, {
+    enabled: active?.trigger === ":",
   });
 
   const suggestions = useMemo<Suggestion[]>(() => {
@@ -106,6 +128,21 @@ export function MentionAutocomplete({
           });
           if (out.length >= MAX_RESULTS) return out;
         }
+      }
+      return out;
+    }
+
+    if (active.trigger === ":") {
+      for (const emoji of emojisQuery.data ?? []) {
+        if (!match(emoji.name)) continue;
+        out.push({
+          key: `emoji:${emoji.id}`,
+          label: `:${emoji.name}:`,
+          insert: `<${emoji.animated ? "a" : ""}:${emoji.name}:${emoji.id}>`,
+          kind: "emoji",
+          imageUrl: emoji.url,
+        });
+        if (out.length >= MAX_RESULTS) return out;
       }
       return out;
     }
@@ -140,7 +177,7 @@ export function MentionAutocomplete({
       if (out.length >= MAX_RESULTS) return out;
     }
     return out;
-  }, [active, channelsQuery.data, rolesQuery.data]);
+  }, [active, channelsQuery.data, rolesQuery.data, emojisQuery.data]);
 
   const triggerKey = `${active?.trigger ?? ""}:${active?.query ?? ""}`;
   const [prevTriggerKey, setPrevTriggerKey] = useState(triggerKey);
@@ -191,7 +228,7 @@ export function MentionAutocomplete({
       const cursorPos = el.selectionStart ?? value.length;
       const before = value.slice(0, active.start);
       const after = value.slice(cursorPos);
-      const insertion = `${s.insert} `;
+      const insertion = spaceAfter ? `${s.insert} ` : s.insert;
       const newPos = before.length + insertion.length;
       onChange(`${before}${insertion}${after}`);
       setCursor({ pos: newPos, collapsed: true });
@@ -203,7 +240,7 @@ export function MentionAutocomplete({
         target.focus();
       });
     },
-    [active, value, onChange, inputRef],
+    [active, value, onChange, inputRef, spaceAfter],
   );
 
   const stateRef = useRef({ suggestions, highlight, apply, active, value });
@@ -253,16 +290,14 @@ export function MentionAutocomplete({
 
   if (!active || suggestions.length === 0) return null;
 
-  const headerLabel = active.trigger === "#" ? "Channels" : "Mentions";
-
   return (
     <div
       ref={listRef}
       role="listbox"
-      className="absolute inset-x-0 top-full z-50 mt-1 max-h-64 overflow-y-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
+      className="absolute inset-x-0 top-full z-50 mt-1 max-h-64 min-w-56 overflow-y-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
     >
       <div className="px-2 py-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-        {headerLabel}
+        {HEADER_LABELS[active.trigger]}
         {active.query && (
           <span className="ml-1 normal-case text-muted-foreground/70">
             matching “{active.query}”
@@ -298,6 +333,14 @@ export function MentionAutocomplete({
             )}
             {s.kind === "special" && (
               <AtSign className="size-3.5 text-amber-400" />
+            )}
+            {s.kind === "emoji" && (
+              <img
+                src={s.imageUrl}
+                alt=""
+                draggable={false}
+                className="size-4 shrink-0"
+              />
             )}
             <span className="truncate">{s.label}</span>
           </button>
