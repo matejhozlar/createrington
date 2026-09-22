@@ -26,6 +26,7 @@ import { WorkshopProjectRefreshService } from "./workshop/refresh.service";
 import { MemberCleanupService } from "./discord/cleanup/member/member-cleanup.service";
 import { SERVER_STATS_CONFIG, ServerStatsService } from "./discord/stats";
 import { buildMainBotStatuses, RotatingStatusService } from "./discord/status";
+import { AppEmojiService } from "./discord/emojis";
 import { PlaytimeManagerService } from "./playtime/playtime-manager.service";
 import { RoleManagementService } from "./discord/role/role-management.service";
 import { WebSocketService } from "./websocket";
@@ -332,6 +333,17 @@ export function registerServices(): void {
     {
       dependencies: [Services.DISCORD_MAIN_BOT, Services.DATABASE],
     },
+  );
+
+  container.register(
+    Services.APP_EMOJI_SERVICE,
+    async (c) => {
+      const mainBot = await c.get(Services.DISCORD_MAIN_BOT);
+      const service = new AppEmojiService(mainBot);
+      await service.initialize();
+      return service;
+    },
+    { dependencies: [Services.DISCORD_MAIN_BOT] },
   );
 
   container.register(

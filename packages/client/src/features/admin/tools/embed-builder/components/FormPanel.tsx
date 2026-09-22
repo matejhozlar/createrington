@@ -47,6 +47,7 @@ import {
   type InsertableInputHandle,
 } from "./form-primitives";
 import { InsertMenu } from "@/features/admin/components/InsertMenu";
+import { MentionAutocomplete } from "./MentionAutocomplete";
 import type { FocusTarget } from "../focus";
 
 const TAB_DEFS = [
@@ -879,6 +880,7 @@ function ButtonRow({
   onMigrate: (target: "link" | "action") => void;
 }) {
   const labelRef = useRef<HTMLInputElement | null>(null);
+  const emojiRef = useRef<HTMLInputElement | null>(null);
   const {
     attributes,
     listeners,
@@ -891,6 +893,12 @@ function ButtonRow({
   useEffect(() => {
     if (focused) labelRef.current?.focus();
   }, [focused]);
+
+  const emoji = item.btn.emoji ?? "";
+  const setEmoji = (next: string) =>
+    item.kind === "link"
+      ? onChangeLink({ emoji: next || undefined })
+      : onChangeAction({ emoji: next || undefined });
 
   return (
     <div
@@ -926,18 +934,23 @@ function ButtonRow({
             ]}
             onChange={(v) => onMigrate(v as "link" | "action")}
           />
-          <Input
-            value={item.btn.emoji ?? ""}
-            placeholder="🔗"
-            maxLength={64}
-            title="A unicode emoji, or a custom emoji as <:name:id>"
-            onChange={(e) =>
-              item.kind === "link"
-                ? onChangeLink({ emoji: e.target.value || undefined })
-                : onChangeAction({ emoji: e.target.value || undefined })
-            }
-            className="h-8 w-16 text-center text-[13px]"
-          />
+          <div className="relative">
+            <Input
+              ref={emojiRef}
+              value={emoji}
+              placeholder="🔗"
+              maxLength={64}
+              title="A unicode emoji, or type : to pick a bot emoji"
+              onChange={(e) => setEmoji(e.target.value)}
+              className="h-8 w-16 text-center text-[13px]"
+            />
+            <MentionAutocomplete
+              inputRef={emojiRef}
+              value={emoji}
+              onChange={setEmoji}
+              emojiOnly
+            />
+          </div>
           <Input
             ref={labelRef}
             value={item.btn.label}

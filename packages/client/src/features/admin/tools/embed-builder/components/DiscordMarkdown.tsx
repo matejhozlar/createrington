@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { customEmojiUrl } from "../emoji";
 
 /**
  * Parses Discord-flavored markdown into React elements.
@@ -14,6 +15,7 @@ import type { ReactNode } from "react";
  *   *italic* / _italic_  - italic
  *   ~~strikethrough~~    - strikethrough
  *   ||spoiler||          - spoiler (revealed text)
+ *   <:name:id>           - custom emoji (image from the Discord CDN)
  *   # / ## / ### heading - heading (Discord supports up to h3 in embeds)
  *   - item / * item     - unordered list
  *   1. item              - ordered list
@@ -37,6 +39,7 @@ type InlineToken =
   | { type: "link"; text: string; url: string }
   | { type: "channel_mention"; id: string }
   | { type: "role_mention"; id: string }
+  | { type: "custom_emoji"; name: string; id: string; animated: boolean }
   | { type: "timestamp"; unix: number; format: string };
 
 const INLINE_RULES: Array<{
@@ -51,6 +54,15 @@ const INLINE_RULES: Array<{
       type: "timestamp",
       unix: Number(m[1]),
       format: m[2] ?? "f",
+    }),
+  },
+  {
+    pattern: /^<(a?):([a-zA-Z0-9_]{2,32}):(\d+)>/,
+    parse: (m) => ({
+      type: "custom_emoji",
+      name: m[2],
+      id: m[3],
+      animated: m[1] === "a",
     }),
   },
   // Discord mentions: <#channelId>, <@&roleId>
@@ -281,6 +293,17 @@ function renderInline(text: string, resolver?: MentionResolver): ReactNode[] {
           </span>
         );
       }
+      case "custom_emoji":
+        return (
+          <img
+            key={i}
+            src={customEmojiUrl(token.id, token.animated)}
+            alt={`:${token.name}:`}
+            title={`:${token.name}:`}
+            draggable={false}
+            className="inline-block size-[1.375em] align-bottom"
+          />
+        );
       case "role_mention": {
         const name = resolver?.roles.get(token.id);
         return (

@@ -226,6 +226,7 @@ interface TextFieldProps {
   rows?: number;
   hint?: ReactNode;
   mentions?: boolean;
+  emojis?: boolean;
   ai?: boolean;
   inputRef?: RefObject<InsertableInputHandle | null>;
   autoFocus?: boolean;
@@ -241,6 +242,7 @@ export function TextField({
   rows = 3,
   hint,
   mentions = false,
+  emojis = false,
   ai = false,
   inputRef,
   autoFocus,
@@ -301,8 +303,13 @@ export function TextField({
             className="h-9 text-[13px]"
           />
         )}
-        {mentions && (
-          <MentionAutocomplete inputRef={elRef} value={v} onChange={onChange} />
+        {(mentions || emojis) && (
+          <MentionAutocomplete
+            inputRef={elRef}
+            value={v}
+            onChange={onChange}
+            emojiOnly={!mentions}
+          />
         )}
       </div>
     </Field>
