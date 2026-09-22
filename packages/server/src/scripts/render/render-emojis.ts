@@ -28,7 +28,10 @@ function loadIconSet(set: string): IconSet {
   let data: IconSet;
   try {
     data = require(`@iconify-json/${set}/icons.json`) as IconSet;
-  } catch {
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "MODULE_NOT_FOUND") {
+      throw error;
+    }
     throw new Error(
       `Icon set "${set}" is not installed. Run: pnpm add -D --filter @createrington/server @iconify-json/${set}`,
     );
@@ -48,11 +51,21 @@ function buildSvg(key: AppEmojiKey): string {
   const rendered = iconToSVG(data, { height: EMOJI_SIZE });
   const color = spec.color ?? APP_EMOJI_DEFAULTS.color;
   const strokeWidth = spec.strokeWidth ?? APP_EMOJI_DEFAULTS.strokeWidth;
+  let strokeReplacements = 0;
   const body = rendered.body
     .replaceAll("currentColor", color)
-    .replace(/stroke-width="[\d.]+"/g, `stroke-width="${strokeWidth}"`);
+    .replace(/stroke-width="[\d.]+"/g, () => {
+      strokeReplacements++;
+      return `stroke-width="${strokeWidth}"`;
+    });
+  if (spec.strokeWidth !== undefined && strokeReplacements === 0) {
+    throw new Error(
+      `Emoji "${key}" sets strokeWidth but "${spec.icon}" has no stroke to apply it to`,
+    );
+  }
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${EMOJI_SIZE}" height="${EMOJI_SIZE}" viewBox="${rendered.attributes.viewBox}">${body}</svg>`;
+  const { width, height, viewBox } = rendered.attributes;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="${viewBox}">${body}</svg>`;
 }
 
 async function renderEmojis(): Promise<void> {

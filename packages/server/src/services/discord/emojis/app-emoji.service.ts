@@ -26,6 +26,7 @@ export interface AppEmojiSyncResult {
   replaced: AppEmojiKey[];
   failed: AppEmojiKey[];
   pruned: string[];
+  pruneFailed: string[];
 }
 
 /**
@@ -38,6 +39,7 @@ export interface AppEmojiSyncResult {
  */
 export class AppEmojiService {
   private readonly emojis = new Map<AppEmojiKey, ApplicationEmoji>();
+  private readonly warnedMissing = new Set<AppEmojiKey>();
 
   constructor(private readonly client: Client) {}
 
@@ -68,8 +70,10 @@ export class AppEmojiService {
       replaced: [],
       failed: [],
       pruned: [],
+      pruneFailed: [],
     };
     this.emojis.clear();
+    this.warnedMissing.clear();
 
     for (const key of APP_EMOJI_KEYS) {
       const current = byName.get(key);
@@ -97,8 +101,13 @@ export class AppEmojiService {
     if (options.prune) {
       for (const [name, emoji] of byName) {
         if (isAppEmojiKey(name)) continue;
-        await application.emojis.delete(emoji);
-        result.pruned.push(name);
+        try {
+          await application.emojis.delete(emoji);
+          result.pruned.push(name);
+        } catch (error) {
+          result.pruneFailed.push(name);
+          logger.error(`Failed to delete application emoji "${name}":`, error);
+        }
       }
     }
 
@@ -109,7 +118,10 @@ export class AppEmojiService {
   token(key: AppEmojiKey): string {
     const emoji = this.emojis.get(key);
     if (!emoji) {
-      logger.warn(`Application emoji "${key}" is not available`);
+      if (!this.warnedMissing.has(key)) {
+        this.warnedMissing.add(key);
+        logger.warn(`Application emoji "${key}" is not available`);
+      }
       return "";
     }
     return emoji.toString();

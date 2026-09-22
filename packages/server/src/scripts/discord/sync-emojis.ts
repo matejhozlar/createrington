@@ -35,9 +35,16 @@ async function syncEmojis(): Promise<void> {
     report("Replaced", result.replaced);
     report("Pruned", result.pruned);
     report("Failed", result.failed);
+    report("Prune failed", result.pruneFailed);
     console.log(`\nApplication emojis available: ${service.list().length}`);
+    if (result.replaced.length > 0) {
+      console.log(
+        "\nReplaced emojis have new IDs. Restart the server so its token map picks them up, and re-insert them in presets that still hold the old tokens.",
+      );
+    }
 
-    exitCode = result.failed.length > 0 ? 1 : 0;
+    exitCode =
+      result.failed.length > 0 || result.pruneFailed.length > 0 ? 1 : 0;
   } catch (error) {
     console.error("\nFailed to sync application emojis:");
     console.error(error);

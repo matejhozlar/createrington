@@ -6,7 +6,7 @@ import type {
 } from "@createrington/shared/api/embed";
 import { useMentionResolver } from "@/features/admin/hooks/use-mention-resolver";
 import { numberToHex } from "@/lib/utils";
-import { DiscordEmoji } from "../components/DiscordEmoji";
+import { DiscordEmoji } from "@/components/discord-emoji";
 import { DiscordMarkdown } from "../components/DiscordMarkdown";
 
 type MentionResolver = ReturnType<typeof useMentionResolver>;

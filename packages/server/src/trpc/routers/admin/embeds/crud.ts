@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
-import { getServiceSync, Services } from "@/services";
+import { getServiceSync, isServiceReady, Services } from "@/services";
 import { trpcError, auditActor } from "@/trpc/utils";
 import config from "@/config";
 import {
@@ -63,7 +63,11 @@ export const embedCrudProcedures = {
 
   emojis: adminProcedure
     .meta({ description: "Get the main bot's application emojis" })
-    .query(() => getServiceSync(Services.APP_EMOJI_SERVICE).list()),
+    .query(() =>
+      isServiceReady(Services.APP_EMOJI_SERVICE)
+        ? getServiceSync(Services.APP_EMOJI_SERVICE).list()
+        : [],
+    ),
 
   colors: adminProcedure
     .meta({ description: "Get all available embed colors" })

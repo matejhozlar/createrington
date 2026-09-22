@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { CUSTOM_EMOJI_PATTERN, customEmojiUrl } from "../emoji";
+import { CUSTOM_EMOJI_PATTERN, customEmojiUrl } from "@/lib/discord-emoji";
 
 interface DiscordEmojiProps {
   value: string;

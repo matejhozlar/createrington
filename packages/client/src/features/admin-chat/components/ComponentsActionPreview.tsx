@@ -4,7 +4,7 @@ import type {
   ComponentSection,
 } from "@createrington/shared/api/embed";
 import { numberToHex } from "@/lib/utils";
-import { DiscordEmoji } from "@/features/admin/tools/embed-builder/components/DiscordEmoji";
+import { DiscordEmoji } from "@/components/discord-emoji";
 
 interface ComponentsActionPreviewProps {
   components: ComponentNode[];

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { customEmojiUrl } from "../emoji";
+import { CUSTOM_EMOJI_SOURCE, customEmojiUrl } from "@/lib/discord-emoji";
 
 /**
  * Parses Discord-flavored markdown into React elements.
@@ -57,7 +57,7 @@ const INLINE_RULES: Array<{
     }),
   },
   {
-    pattern: /^<(a?):([a-zA-Z0-9_]{2,32}):(\d+)>/,
+    pattern: new RegExp(`^${CUSTOM_EMOJI_SOURCE}`),
     parse: (m) => ({
       type: "custom_emoji",
       name: m[2],

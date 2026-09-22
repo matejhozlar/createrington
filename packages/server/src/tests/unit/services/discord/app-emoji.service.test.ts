@@ -90,6 +90,22 @@ describe("AppEmojiService.sync", () => {
     expect(emojis.delete).toHaveBeenCalledWith(stray);
   });
 
+  it("records a prune delete that fails and keeps deleting the rest", async () => {
+    const first = fakeEmoji("old_thing", "9");
+    const second = fakeEmoji("older_thing", "8");
+    const { client, emojis } = fakeClient([first, second]);
+    emojis.delete.mockImplementationOnce(async () => {
+      throw new Error("403");
+    });
+    const service = new AppEmojiService(client);
+
+    const result = await service.sync({ prune: true });
+
+    expect(result.pruneFailed).toEqual(["old_thing"]);
+    expect(result.pruned).toEqual(["older_thing"]);
+    expect(result.created).toEqual(APP_EMOJI_KEYS);
+  });
+
   it("records an upload that fails and leaves that emoji out of tokens and listings", async () => {
     readFile.mockImplementation(async (file: string) => {
       if (String(file).endsWith("check.png")) {

@@ -3,7 +3,7 @@ import { ExternalLink } from "lucide-react";
 import type { EmbedData } from "@createrington/shared/api/embed";
 import { useMentionResolver } from "@/features/admin/hooks/use-mention-resolver";
 import { cn } from "@/lib/utils";
-import { DiscordEmoji } from "./DiscordEmoji";
+import { DiscordEmoji } from "@/components/discord-emoji";
 import { DiscordMarkdown } from "./DiscordMarkdown";
 import type { FocusTarget } from "../focus";
 
