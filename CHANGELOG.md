@@ -1,3 +1,18 @@
+## v1.61.0 (2026-09-22)
+
+### @createrington/server (1.61.0 → 1.62.0)
+- [add] Add application emoji system with a Lucide-based manifest, an `AppEmojiService` that syncs icons as Discord application emojis on startup, and a tRPC endpoint (`admin.embeds.emojis`) exposing them to the embed builder
+- [add] Add `render-emojis` script that rasterizes manifest entries from Iconify SVGs to PNG, and `sync-emojis` script that uploads them to the Discord application
+- [refactor] Render all pose figures (welcome cards, role notifications, profile renders) in the cel style via the skin-api `style` parameter
+- [chore] Bump `createrington-skin-api` to 2.14.0 and drop the hand-rolled `renderStyledSkin` helper, since the SDK now supports the `style` parameter natively
+- [refactor] Widen Content Security Policy `img-src` to include `cdn.discordapp.com` for rendering Discord emoji images in the client
+
+### @createrington/client (0.2.74 → 0.2.75)
+- [add] Add custom Discord emoji rendering throughout the embed builder: button previews, embed previews, and the markdown parser now display `<:name:id>` tokens as images from the Discord CDN
+- [add] Add emoji autocomplete to the embed builder's mention picker, triggered by `:` in text fields and emoji inputs, with a dedicated `emojiOnly` mode for button emoji fields
+- [add] Add a warning in the send modal when the payload contains bot-only application emojis but the web bot is selected, since Discord would reject them on buttons
+- [chore] Bump `createrington-skin-api` to 2.14.0
+
 ## v1.60.0 (2026-09-21)
 
 ### @createrington/server (1.60.1 → 1.61.0)
