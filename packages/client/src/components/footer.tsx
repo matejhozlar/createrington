@@ -1,5 +1,5 @@
 import { NavLink } from "react-router";
-import { Mail } from "lucide-react";
+import { ExternalLink, Mail } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { DiscordIcon } from "@/components/icons/discord";
 import { CurseForgeIcon } from "@/components/icons/curseforge";
@@ -7,6 +7,7 @@ import {
   CONTACT_EMAIL,
   CURSEFORGE_MODPACK_URL,
   DISCORD_INVITE_URL,
+  SKIN_API_URL,
 } from "@/lib/external-urls";
 
 const SOCIAL_LINKS = [
@@ -36,7 +37,7 @@ export const Footer = () => {
   return (
     <footer className="w-full border-t bg-background px-5 md:px-8 py-12">
       <div className="max-w-7xl mx-auto">
-        <div className="grid grid-cols-2 sm:grid-cols-5 lg:grid-cols-7 gap-8">
+        <div className="grid grid-cols-2 md:grid-cols-6 lg:grid-cols-8 gap-8">
           <div className="flex flex-col sm:justify-center col-span-2 lg:col-span-4 gap-2">
             <NavLink to="/" className="flex items-center gap-3">
               <img
@@ -171,6 +172,22 @@ export const Footer = () => {
               >
                 Terms of Service
               </NavLink>
+            </nav>
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <h3 className="font-semibold text-foreground">Developers</h3>
+
+            <nav className="flex flex-col gap-2">
+              <a
+                href={SKIN_API_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Skin API
+                <ExternalLink className="size-3" />
+              </a>
             </nav>
           </div>
         </div>

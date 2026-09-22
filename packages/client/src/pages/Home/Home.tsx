@@ -35,6 +35,7 @@ import { useServerData } from "@/contexts/server-data";
 import { CURSEFORGE_MODPACK_URL } from "@/lib/external-urls";
 import { trpc } from "@/lib/trpc";
 import { Loading } from "@/components/loading-spinner";
+import { SkinApiPromo } from "./components/SkinApiPromo";
 
 export function Home() {
   const { user } = useAuth();
@@ -580,6 +581,8 @@ export function Home() {
           </div>
         </div>
       </section>
+
+      <SkinApiPromo />
 
       {/* Call to Action Section */}
       <section className="bg-muted py-16 px-5 md:px-8">
