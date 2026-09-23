@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 
 export interface AppEmojiSpec {
   icon: `${string}:${string}`;
+  fallback: string;
   color?: string;
   strokeWidth?: number;
 }
@@ -15,21 +16,31 @@ export const APP_EMOJI_DEFAULTS = {
 export const APP_EMOJI_NAME_PATTERN = /^[a-zA-Z0-9_]{2,32}$/;
 
 export const APP_EMOJIS = {
-  check: { icon: "lucide:check", color: "#57F287" },
-  cross: { icon: "lucide:x", color: "#ED4245" },
-  info: { icon: "lucide:info" },
-  warning: { icon: "lucide:triangle-alert" },
-  hourglass: { icon: "lucide:hourglass" },
-  clock: { icon: "lucide:clock" },
-  lock: { icon: "lucide:lock" },
-  unlock: { icon: "lucide:lock-open" },
-  transcript: { icon: "lucide:file-text" },
-  trash: { icon: "lucide:trash-2" },
-  book: { icon: "lucide:book-open" },
-  wave: { icon: "lucide:hand" },
-  refresh: { icon: "lucide:refresh-cw" },
-  party: { icon: "lucide:party-popper" },
-  ticket: { icon: "lucide:ticket" },
+  check: { icon: "lucide:check", fallback: "✅", color: "#57F287" },
+  cross: { icon: "lucide:x", fallback: "❌", color: "#ED4245" },
+  info: { icon: "lucide:info", fallback: "ℹ️" },
+  warning: { icon: "lucide:triangle-alert", fallback: "⚠️" },
+  hourglass: { icon: "lucide:hourglass", fallback: "⏳" },
+  clock: { icon: "lucide:clock", fallback: "🕒" },
+  lock: { icon: "lucide:lock", fallback: "🔒" },
+  unlock: { icon: "lucide:lock-open", fallback: "🔓" },
+  transcript: { icon: "lucide:file-text", fallback: "📄" },
+  trash: { icon: "lucide:trash-2", fallback: "🗑️" },
+  book: { icon: "lucide:book-open", fallback: "📖" },
+  wave: { icon: "lucide:hand", fallback: "👋" },
+  refresh: { icon: "lucide:refresh-cw", fallback: "🔄" },
+  party: { icon: "lucide:party-popper", fallback: "🎉" },
+  ticket: { icon: "lucide:ticket", fallback: "🎫" },
+  money: { icon: "lucide:banknote", fallback: "💰" },
+  gamepad: { icon: "lucide:gamepad-2", fallback: "🎮" },
+  bell: { icon: "lucide:bell", fallback: "🔔" },
+  heart: { icon: "lucide:heart", fallback: "❤️" },
+  pencil: { icon: "lucide:pencil-line", fallback: "📝" },
+  flask: { icon: "lucide:flask-conical", fallback: "🧪" },
+  train: { icon: "lucide:train-front", fallback: "🚂" },
+  package: { icon: "lucide:package", fallback: "📦" },
+  pickaxe: { icon: "lucide:pickaxe", fallback: "⛏️" },
+  chart: { icon: "lucide:chart-column", fallback: "📊" },
 } as const satisfies Record<string, AppEmojiSpec>;
 
 export type AppEmojiKey = keyof typeof APP_EMOJIS;

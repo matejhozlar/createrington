@@ -2,6 +2,7 @@ import config from "@/config";
 import { EmbedColors } from "../../colors";
 import { createEmbed } from "../../embed-builder";
 import { Discord } from "@/discord/constants";
+import { appEmoji } from "@/discord/emojis";
 import { discordTimestamp } from "@/utils/format";
 
 export const TicketEmbedPresets = {
@@ -10,7 +11,7 @@ export const TicketEmbedPresets = {
    */
   panel() {
     const embed = createEmbed()
-      .title("🎟️ Support Ticket")
+      .title(`${appEmoji("ticket")} Support Ticket`)
       .description(
         "To create a ticket, click the **Create Ticket** button below.",
       )
@@ -39,7 +40,7 @@ export const TicketEmbedPresets = {
 
     const embed = createEmbed()
       .description(
-        `👋 Welcome ${Discord.Users.mention(userId)} ${identity}
+        `${appEmoji("wave")} Welcome ${Discord.Users.mention(userId)} ${identity}
             \nPlease describe your issue in detail and include any screenshots or videos.
             \n Support will be with you shortly ${Discord.Roles.mention(
               Discord.Roles.ADMIN,
@@ -59,7 +60,7 @@ export const TicketEmbedPresets = {
    */
   close(closedBy: string) {
     const embed = createEmbed()
-      .title("🔒 Ticket Closed")
+      .title(`${appEmoji("lock")} Ticket Closed`)
       .description(
         `This ticket has been closed by ${Discord.Users.mention(
           closedBy,
@@ -77,7 +78,7 @@ export const TicketEmbedPresets = {
    */
   reopen(reopenedBy: string, creatorDiscordId: string) {
     return createEmbed()
-      .title("🔓 Ticket Reopened")
+      .title(`${appEmoji("unlock")} Ticket Reopened`)
       .description(
         `This ticket has been reopened by ${Discord.Users.mention(reopenedBy)}.\n\n` +
           `${Discord.Users.mention(creatorDiscordId)} can now send messages again.`,
@@ -100,7 +101,9 @@ export const TicketEmbedPresets = {
     closedAt: Date | null;
   }) {
     return createEmbed()
-      .title(`📄 Ticket #${data.ticketNumber} Transcript`)
+      .title(
+        `${appEmoji("transcript")} Ticket #${data.ticketNumber} Transcript`,
+      )
       .description(
         `**Ticket Type:** ${data.type}\n` +
           `**Creator:** ${Discord.Users.mention(data.creatorDiscordId)}\n` +
