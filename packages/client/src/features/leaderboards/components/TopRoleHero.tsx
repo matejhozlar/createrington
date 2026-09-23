@@ -4,6 +4,7 @@ import { trpc, type RouterOutput } from "@/lib/trpc";
 import { mcHeadsBody } from "@/lib/external-urls";
 import { cn } from "@/lib/utils";
 import { useScrollProgress } from "../hooks/use-scroll-progress";
+import { usePreloadedImages } from "../hooks/use-preloaded-images";
 import { formatMetric, HERO_ORDER, topRoleStyle } from "../top-roles";
 
 type TopRole = RouterOutput["public"]["leaderboards"]["hero"][number];
@@ -50,13 +51,15 @@ function slotStyle(index: number, color: string): CSSProperties {
   } as CSSProperties;
 }
 
+function figureSrc(holder: NonNullable<TopRole["holder"]>): string {
+  return holder.imageUrl ?? mcHeadsBody(holder.minecraftUuid);
+}
+
 function HeroFigure({ role, index }: { role: TopRole; index: number }) {
   const slot = SLOTS[index];
   const style = topRoleStyle(role.roleKey);
   const holder = role.holder;
-  const src = holder
-    ? (holder.imageUrl ?? mcHeadsBody(holder.minecraftUuid))
-    : null;
+  const src = holder ? figureSrc(holder) : null;
 
   return (
     <div
@@ -149,41 +152,16 @@ function HeroCaption({ role, index }: { role: TopRole; index: number }) {
   );
 }
 
-function HeroSkeleton({ index }: { index: number }) {
-  const slot = SLOTS[index];
-
-  return (
-    <>
-      <div className={cn("row-start-1 flex justify-center", slot.column)}>
-        <div
-          className={cn(
-            "aspect-[2/3] animate-pulse rounded-2xl bg-muted/40",
-            slot.figure,
-          )}
-        />
-      </div>
-      <div
-        className={cn(
-          "row-start-2 flex flex-col items-center pt-6",
-          slot.column,
-        )}
-      >
-        <div className="h-5 w-24 animate-pulse rounded-full bg-muted/40" />
-        <div className="mt-3 h-6 w-32 animate-pulse rounded bg-muted/40" />
-      </div>
-    </>
-  );
-}
-
 export function TopRoleHero() {
   const ref = useScrollProgress<HTMLElement>();
-  const heroQuery = trpc.public.leaderboards.hero.useQuery(undefined, {
+  const [roles] = trpc.public.leaderboards.hero.useSuspenseQuery(undefined, {
     staleTime: 5 * 60 * 1000,
   });
-
-  const roles = heroQuery.data ?? [];
   const ordered = HERO_ORDER.map((key) =>
     roles.find((role) => role.roleKey === key),
+  );
+  usePreloadedImages(
+    ordered.flatMap((role) => (role?.holder ? [figureSrc(role.holder)] : [])),
   );
 
   return (
@@ -235,19 +213,16 @@ export function TopRoleHero() {
             aria-hidden
             className="col-span-3 col-start-1 row-start-1 h-px w-full self-end bg-linear-to-r from-transparent via-white/15 to-transparent"
           />
-          {ordered.map((role, index) => {
-            const key = HERO_ORDER[index];
-            if (heroQuery.isLoading)
-              return <HeroSkeleton key={key} index={index} />;
-            if (!role) return null;
-            return <HeroFigure key={key} role={role} index={index} />;
-          })}
-          {ordered.map((role, index) => {
-            if (heroQuery.isLoading || !role) return null;
-            return (
+          {ordered.map((role, index) =>
+            role ? (
+              <HeroFigure key={HERO_ORDER[index]} role={role} index={index} />
+            ) : null,
+          )}
+          {ordered.map((role, index) =>
+            role ? (
               <HeroCaption key={HERO_ORDER[index]} role={role} index={index} />
-            );
-          })}
+            ) : null,
+          )}
         </div>
       </div>
     </section>
