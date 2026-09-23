@@ -1,7 +1,17 @@
+import { useEffect } from "react";
 import { TopRoleHero } from "./components/TopRoleHero";
 import { LeaderboardTable } from "./components/LeaderboardTable";
 
 export function Leaderboards() {
+  useEffect(() => {
+    const root = document.documentElement;
+    const previous = root.style.overflowAnchor;
+    root.style.overflowAnchor = "none";
+    return () => {
+      root.style.overflowAnchor = previous;
+    };
+  }, []);
+
   return (
     <div className="relative overflow-x-clip">
       <TopRoleHero />
