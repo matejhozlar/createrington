@@ -8,7 +8,7 @@ import { type RewardConfig, RewardType } from "./types";
 export const REWARD_CONFIGS: Record<RewardType, RewardConfig> = {
   [RewardType.DAILY]: {
     type: RewardType.DAILY,
-    amount: 50,
+    amount: 20,
     label: "Daily Reward",
     description: "Claim your daily reward once per day",
     resetHour: 0,

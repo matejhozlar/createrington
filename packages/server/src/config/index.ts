@@ -376,9 +376,6 @@ const config = {
   },
 
   economy: {
-    reward: {
-      daily: 50,
-    },
     lottery: {
       durationMs: 2 * 60 * 1000,
       startCooldownMs: 60 * 60 * 1000,
