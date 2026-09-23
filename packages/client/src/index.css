@@ -715,3 +715,108 @@
     transform: none;
   }
 }
+
+/* ============================================================================
+   Leaderboards hero
+   ============================================================================ */
+
+@keyframes lb-hero-enter {
+  from {
+    opacity: 0;
+    transform: translateY(48px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.lb-hero-enter {
+  animation: lb-hero-enter 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--enter-delay, 0s);
+}
+
+@keyframes lb-hero-caption {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.lb-hero-caption {
+  animation: lb-hero-caption 0.7s ease-out both;
+  animation-delay: calc(var(--enter-delay, 0s) + 0.35s);
+}
+
+@keyframes lb-hero-breathe {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: translateX(-50%) scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: translateX(-50%) scale(1.12);
+  }
+}
+.lb-hero-glow {
+  animation: lb-hero-breathe 5s ease-in-out infinite;
+  animation-delay: var(--enter-delay, 0s);
+}
+
+@keyframes lb-hero-ember {
+  0% {
+    transform: translate3d(0, 0, 0) scale(var(--s));
+    opacity: 0;
+  }
+  15% {
+    opacity: var(--o);
+  }
+  85% {
+    opacity: var(--o);
+  }
+  100% {
+    transform: translate3d(var(--dx), -75vh, 0) scale(var(--s));
+    opacity: 0;
+  }
+}
+.lb-hero-ember {
+  position: absolute;
+  bottom: 10%;
+  width: 4px;
+  height: 4px;
+  border-radius: 9999px;
+  background: var(--c);
+  box-shadow: 0 0 8px var(--c);
+  animation: lb-hero-ember var(--d) linear infinite;
+  animation-delay: var(--delay);
+}
+
+@keyframes lb-hero-hint {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.45;
+  }
+  50% {
+    transform: translateY(5px);
+    opacity: 1;
+  }
+}
+.lb-hero-hint {
+  animation: lb-hero-hint 1.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lb-hero-enter,
+  .lb-hero-caption,
+  .lb-hero-glow,
+  .lb-hero-hint {
+    animation: none;
+  }
+  .lb-hero-ember {
+    display: none;
+  }
+}

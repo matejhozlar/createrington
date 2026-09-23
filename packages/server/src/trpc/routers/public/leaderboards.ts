@@ -1,19 +1,21 @@
+import { z } from "zod";
 import { router, publicProcedure } from "@/trpc/trpc";
-import { Q } from "@/db";
+import { buildPagination, paginationInput } from "@/trpc/utils";
 import { createRateLimit } from "@/trpc/middleware/rate-limit";
 import { topRoleHolderService } from "@/services/discord/role/top-role-holder.service";
-import { rankNetWorth } from "@/services/discord/leaderboard/networth";
-
-const BOARD_SIZE = 10;
+import {
+  LEADERBOARD_BOARDS,
+  leaderboardBoardService,
+} from "@/services/leaderboard";
 
 const leaderboardsReadLimit = createRateLimit({
   name: "public.leaderboards.read",
-  limit: 60,
+  limit: 120,
   windowMs: 60 * 1000,
   key: (ctx) => ctx.ip || "anon",
 });
 
-/** Public leaderboards router: the top-role hero and the per-metric boards. */
+/** Public leaderboards router: the top-role hero and the full ranked boards. */
 export const leaderboardsRouter = router({
   hero: publicProcedure
     .use(leaderboardsReadLimit)
@@ -23,43 +25,33 @@ export const leaderboardsRouter = router({
     })
     .query(() => topRoleHolderService.list()),
 
-  boards: publicProcedure
+  list: publicProcedure
     .use(leaderboardsReadLimit)
     .meta({
       description:
-        "Returns the top players by total playtime, in-game balance and #1 stat placements, ten per board. Feeds the boards below the leaderboards hero",
+        "Returns one page of a fully ranked board (records, playtime or balance) over every player, optionally narrowed by a case-insensitive username search. Ranks are global, so a searched row keeps its real position",
     })
-    .query(async () => {
-      const [playtime, balances, players, records] = await Promise.all([
-        Q.player.playtime.summary.getGlobalLeaderboard(BOARD_SIZE),
-        Q.player.balance.getAllBalances(),
-        Q.player.getAll(),
-        Q.player.minecraft.stats.getRecordLeaderboard(BOARD_SIZE),
-      ]);
-
-      const nameByUuid = new Map(
-        players.map((p) => [p.minecraftUuid, p.minecraftUsername]),
-      );
+    .input(
+      z.object({
+        board: z.enum(LEADERBOARD_BOARDS),
+        search: z.string().trim().max(32).optional(),
+        ...paginationInput({ defaultLimit: 25, maxLimit: 100 }),
+      }),
+    )
+    .query(async ({ input }) => {
+      const snapshot = await leaderboardBoardService.getBoard(input.board);
+      const needle = input.search?.toLowerCase();
+      const matches = needle
+        ? snapshot.rows.filter((row) =>
+            row.minecraftUsername.toLowerCase().includes(needle),
+          )
+        : snapshot.rows;
+      const offset = input.page * input.limit;
 
       return {
-        playtime: playtime.map((entry) => ({
-          minecraftUuid: entry.playerMinecraftUuid,
-          minecraftUsername: entry.minecraftUsername,
-          value: entry.totalSeconds,
-        })),
-        balance: rankNetWorth(balances, nameByUuid, BOARD_SIZE).map(
-          (entry) => ({
-            minecraftUuid: entry.playerUuid,
-            minecraftUsername: entry.playerName,
-            value: Number(entry.value),
-          }),
-        ),
-        records: records.rows.map((entry) => ({
-          minecraftUuid: entry.minecraftUuid,
-          minecraftUsername: entry.minecraftUsername,
-          value: entry.records,
-        })),
-        contestedKeys: records.contestedKeys,
+        rows: matches.slice(offset, offset + input.limit),
+        pagination: buildPagination(input.page, input.limit, matches.length),
+        contestedKeys: snapshot.contestedKeys,
       };
     }),
 });
