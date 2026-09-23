@@ -212,10 +212,7 @@ export function TopRoleHero() {
             opacity: "calc(1 - var(--scroll-a))",
           }}
         >
-          <p className="text-xs font-bold uppercase tracking-[0.35em] text-primary md:text-sm">
-            Hall of Fame
-          </p>
-          <h1 className="mt-2 text-4xl font-bold tracking-tight text-foreground md:text-6xl">
+          <h1 className="text-4xl font-bold tracking-tight text-foreground md:text-6xl">
             Leaderboards
           </h1>
           <p className="mx-auto mt-3 max-w-xl text-sm text-muted-foreground md:text-lg">
