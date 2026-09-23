@@ -18,9 +18,6 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
-  Users,
-  TrendingUp,
-  Clock,
   ExternalLink,
   Cog,
   Palette,
@@ -33,9 +30,8 @@ import {
 } from "lucide-react";
 import { useServerData } from "@/contexts/server-data";
 import { CURSEFORGE_MODPACK_URL } from "@/lib/external-urls";
-import { trpc } from "@/lib/trpc";
-import { Loading } from "@/components/loading-spinner";
 import { SkinApiPromo } from "./components/SkinApiPromo";
+import { CommunityPresence } from "./components/CommunityPresence";
 
 export function Home() {
   const { user } = useAuth();
@@ -48,12 +44,6 @@ export function Home() {
   const serverId = 1;
   const { servers } = useServerData();
   const server = servers.find((s) => s.serverId === serverId);
-
-  const { data: playerCount, isLoading: isLoadingPlayers } =
-    trpc.public.players.count.useQuery({});
-
-  const { data: playtimeData, isLoading: isLoadingPlaytime } =
-    trpc.public.metrics.playtime.getTotalHours.useQuery({});
 
   const heroImages = [
     "/assets/hero/gondola-station.webp",
@@ -91,31 +81,6 @@ export function Home() {
         "No kitchen-sink chaos. Our 200+ mods were chosen for balance and performance.",
       backgroundImage: "/assets/features/modpack.webp",
       icon: "/assets/features/chipped-workbench.webp",
-    },
-  ];
-
-  const serverMetrics = [
-    {
-      icon: Users,
-      value: server?.playerCount ?? 0,
-      title: "Players Online",
-      description: "Active players right now",
-    },
-    {
-      icon: TrendingUp,
-      value: isLoadingPlayers ? "..." : (playerCount?.count ?? "N/A"),
-      title: "Total Players",
-      description: "Registered community members",
-    },
-    {
-      icon: Clock,
-      value: isLoadingPlaytime ? (
-        <Loading />
-      ) : (
-        (playtimeData?.totalHours ?? "N/A")
-      ),
-      title: "Hours Played",
-      description: "Total playtime across all seasons",
     },
   ];
 
@@ -410,8 +375,8 @@ export function Home() {
 
       {/* Server Metrics Section */}
       <section id="learn-more" className="py-16 px-5 md:px-8 bg-zinc-950">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col gap-3 items-center mb-12">
+        <div className="max-w-7xl mx-auto flex flex-col gap-8">
+          <div className="flex flex-col gap-3 items-center text-center">
             <h2 className="text-4xl md:text-5xl font-semibold text-foreground">
               Join a Thriving Community
             </h2>
@@ -421,34 +386,7 @@ export function Home() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {serverMetrics.map((metric, index) => {
-              const IconComponent = metric.icon;
-              return (
-                <Card key={index} className="bg-background">
-                  <CardHeader className="text-center space-y-4">
-                    <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                      <IconComponent className="w-8 h-8 text-primary" />
-                    </div>
-
-                    <div>
-                      <div className="text-5xl font-bold text-foreground mb-2">
-                        {metric.value}
-                      </div>
-
-                      <CardTitle className="text-xl text-foreground">
-                        {metric.title}
-                      </CardTitle>
-
-                      <CardDescription className="text-base mt-2">
-                        {metric.description}
-                      </CardDescription>
-                    </div>
-                  </CardHeader>
-                </Card>
-              );
-            })}
-          </div>
+          <CommunityPresence serverId={serverId} />
         </div>
       </section>
 

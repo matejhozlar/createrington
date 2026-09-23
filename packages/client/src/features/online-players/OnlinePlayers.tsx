@@ -6,6 +6,8 @@ import { useServerData } from "@/contexts/server-data";
 import { useAuth } from "@/contexts/auth";
 import { cn } from "@/lib/utils";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
+import { SessionTimer } from "@/components/session-timer";
+import { getSessionSeconds } from "@/lib/session";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,32 +22,6 @@ import {
   WifiOff,
 } from "lucide-react";
 import type { PlayerData } from "@createrington/shared/socket";
-
-function getSessionSeconds(player: PlayerData): number {
-  const start =
-    player.sessionStart instanceof Date
-      ? player.sessionStart.getTime()
-      : new Date(player.sessionStart).getTime();
-  return Math.max(0, (Date.now() - start) / 1000);
-}
-
-/** Live-ticking session timer for a single player */
-function SessionTimer({ player }: { player: PlayerData }) {
-  const [seconds, setSeconds] = useState(() => getSessionSeconds(player));
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setSeconds(getSessionSeconds(player));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [player]);
-
-  return (
-    <span className="tabular-nums text-muted-foreground text-sm font-mono">
-      {formatCompactDuration(seconds)}
-    </span>
-  );
-}
 
 /** Stat card used in the overview strip */
 function StatBlock({

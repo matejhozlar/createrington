@@ -95,7 +95,7 @@ export const playersRouter = router({
 
         ...paginationInput(),
         orderBy: z
-          .enum(["createdAt", "minecraftUsername", "updatedAt"])
+          .enum(["createdAt", "minecraftUsername", "updatedAt", "lastSeen"])
           .default("createdAt"),
         orderDirection: sortDirection().default("desc"),
       }),
