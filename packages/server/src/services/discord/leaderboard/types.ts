@@ -2,6 +2,7 @@
 export enum LeaderboardType {
   PLAYTIME = "playtime",
   NET_WORTH = "net_worth",
+  RECORDS = "records",
 }
 
 /** A single entry in a leaderboard display */
@@ -30,6 +31,8 @@ export interface LeaderboardConfig {
   channelId: string;
   /** Minecraft server ID to fetch data from (optional for non-server leaderboards) */
   serverId?: number;
+  /** Number of ranked entries rendered in the message */
+  limit: number;
   /** Fetches leaderboard entries from the database */
   fetchData: (serverId: number, limit: number) => Promise<LeaderboardEntry[]>;
   /** Formats a raw numeric value for display */

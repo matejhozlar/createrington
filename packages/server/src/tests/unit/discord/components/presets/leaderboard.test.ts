@@ -26,6 +26,7 @@ function configFor(type: LeaderboardType): LeaderboardConfig {
     emoji: "",
     titleImageUrl: `https://assets.createrington.com/titles/${type}.png`,
     channelId: "channel-1",
+    limit: 8,
     fetchData: async () => [],
     formatValue: (v: number) => String(v),
   };
@@ -85,8 +86,21 @@ describe("LeaderboardComponentPresets.display", () => {
     const separators = children.filter(
       (c) => c.type === ComponentType.Separator,
     );
-    // One after the banner plus one after each entry section.
-    expect(separators.length).toBeGreaterThanOrEqual(8);
+    expect(separators).toHaveLength(1 + 8);
+  });
+
+  it("keeps a full board of eight entries within Discord's 40-component cap", () => {
+    const { children } = render(LeaderboardType.RECORDS, 8);
+    const total = children.reduce((sum, child) => {
+      if (child.type === ComponentType.MediaGallery) {
+        return sum + 1 + (child.items?.length ?? 0);
+      }
+      if (child.type === ComponentType.Section) {
+        return sum + 1 + (child.components?.length ?? 0) + 1;
+      }
+      return sum + 1;
+    }, 1);
+    expect(total).toBeLessThanOrEqual(40);
   });
 
   it("renders names and values as headings with a subtitle line", () => {

@@ -12,6 +12,7 @@ import {
 import { ComponentColors } from "../../colors";
 import type { TopLevelComponent } from "../../component-builder";
 import { discordTimestamp } from "@/utils/format";
+import { appEmoji } from "@/discord/emojis";
 
 /** Custom ID of the button that puts the member in the waitlist queue */
 export const WAITLIST_JOIN_BUTTON_ID = "waitlist:join";
@@ -111,7 +112,7 @@ export const WaitlistComponentPresets = {
             .setCustomId(WAITLIST_REFRESH_BUTTON_ID)
             .setLabel("Refresh Position")
             .setStyle(ButtonStyle.Secondary)
-            .setEmoji("🔄"),
+            .setEmoji(appEmoji("refresh")),
           new ButtonBuilder()
             .setCustomId(WAITLIST_LEAVE_BUTTON_ID)
             .setLabel("Leave Waitlist")
