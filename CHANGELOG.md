@@ -1,3 +1,8 @@
+## v1.62.1 (2026-09-23)
+
+### @createrington/server (1.63.0 → 1.63.1)
+- [fix] Fix ticket and waitlist buttons using application emojis that require the bot's emoji service to be ready, replacing them with standard Unicode emojis so the buttons render reliably regardless of service state
+
 ## v1.62.0 (2026-09-23)
 
 ### @createrington/server (1.62.1 → 1.63.0)
