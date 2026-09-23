@@ -339,7 +339,7 @@ router.get(
       return;
     }
 
-    const results = await Q.player.minecraft.stats.compareItem(
+    const results = await Q.player.minecraft.stat.total.compareItem(
       item,
       [category],
       { limit: 3 },
@@ -383,7 +383,7 @@ router.get(
   asyncHandler(requirePuppeteerSecret),
   asyncHandler(async (_req: Request, res: Response) => {
     const { rows, contestedKeys } =
-      await Q.player.minecraft.stats.getRecordLeaderboard(3);
+      await Q.player.minecraft.stat.total.getRecordLeaderboard(3);
 
     res.json({
       contestedKeys,

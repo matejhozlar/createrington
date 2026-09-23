@@ -81,7 +81,7 @@ export class LeaderboardBoardService {
 
   private async computeRecords(): Promise<BoardSnapshot> {
     const { rows, contestedKeys } =
-      await Q.player.minecraft.stats.getRecordLeaderboard();
+      await Q.player.minecraft.stat.total.getRecordLeaderboard();
 
     return {
       contestedKeys,

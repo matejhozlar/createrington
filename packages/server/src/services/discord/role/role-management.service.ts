@@ -339,7 +339,7 @@ export class RoleManagementService {
   private async findTopRecordsHolder(
     holders: RoleHolders,
   ): Promise<TopHolder | null> {
-    const { rows } = await Q.player.minecraft.stats.getRecordLeaderboard();
+    const { rows } = await Q.player.minecraft.stat.total.getRecordLeaderboard();
 
     if (rows.length === 0) return null;
 

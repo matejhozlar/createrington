@@ -23,6 +23,8 @@ TRUNCATE TABLE discord_sticky_message CASCADE;
 TRUNCATE TABLE leaderboard_message CASCADE;
 TRUNCATE TABLE player_balance_transaction CASCADE;
 TRUNCATE TABLE player_minecraft_stats CASCADE;
+TRUNCATE TABLE player_minecraft_stat_total CASCADE;
+TRUNCATE TABLE player_minecraft_stat_key CASCADE;
 TRUNCATE TABLE reward_claim CASCADE;
 TRUNCATE TABLE server_forceload_chunk CASCADE;
 TRUNCATE TABLE server_forceload_member CASCADE;
@@ -725,6 +727,26 @@ INSERT INTO player_minecraft_stats (minecraft_uuid, server_id, stats, data_versi
 ('550e8400-e29b-41d4-a716-446655440007', 1,
  '{"minecraft:mined":{"minecraft:diamond_ore":56,"minecraft:stone":5432},"minecraft:killed":{"minecraft:zombie":2341,"minecraft:skeleton":1876,"minecraft:creeper":923,"minecraft:player":47},"minecraft:custom":{"minecraft:play_time":4320000,"minecraft:walk_one_cm":2345678,"minecraft:jump":67890}}',
  3837);
+
+-- Stat totals are normally rebuilt by the stats import; derive them from the
+-- seeded stats rows so rankings and stat search have data after a reset.
+INSERT INTO player_minecraft_stat_key (category, item)
+SELECT DISTINCT cat.key, item.key
+FROM player_minecraft_stats s
+CROSS JOIN LATERAL jsonb_each(CASE WHEN jsonb_typeof(s.stats) = 'object' THEN s.stats ELSE '{}'::jsonb END) AS cat(key, value)
+CROSS JOIN LATERAL jsonb_each(CASE WHEN jsonb_typeof(cat.value) = 'object' THEN cat.value ELSE '{}'::jsonb END) AS item(key, value)
+WHERE jsonb_typeof(item.value) = 'number'
+ON CONFLICT (category, item) DO NOTHING;
+
+INSERT INTO player_minecraft_stat_total (stat_key_id, minecraft_uuid, value)
+SELECT k.id, s.minecraft_uuid, LEAST(SUM(item.value::numeric), 9223372036854775807)::bigint
+FROM player_minecraft_stats s
+CROSS JOIN LATERAL jsonb_each(CASE WHEN jsonb_typeof(s.stats) = 'object' THEN s.stats ELSE '{}'::jsonb END) AS cat(key, value)
+CROSS JOIN LATERAL jsonb_each(CASE WHEN jsonb_typeof(cat.value) = 'object' THEN cat.value ELSE '{}'::jsonb END) AS item(key, value)
+JOIN player_minecraft_stat_key k ON k.category = cat.key AND k.item = item.key
+WHERE jsonb_typeof(item.value) = 'number'
+GROUP BY k.id, s.minecraft_uuid
+HAVING LEAST(SUM(item.value::numeric), 9223372036854775807)::bigint > 0;
 
 -- ============================================================================
 -- REWARD CLAIMS

@@ -60,7 +60,7 @@ export async function autocomplete(
   const category = CATEGORY_CHOICES.find(
     (choice) => choice.value === interaction.options.getString("category"),
   )?.value;
-  const results = await Q.player.minecraft.stats.searchItems(
+  const results = await Q.player.minecraft.stat.key.searchItems(
     interaction.options.getFocused(),
     { category, limit: 25 },
   );
@@ -91,7 +91,7 @@ export async function execute(
 
   try {
     // Verify the stat actually has data
-    const results = await Q.player.minecraft.stats.compareItem(
+    const results = await Q.player.minecraft.stat.total.compareItem(
       item,
       [category],
       { limit: 3 },

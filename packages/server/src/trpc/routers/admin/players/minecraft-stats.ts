@@ -44,7 +44,7 @@ export const minecraftStatsRouter = router({
     .meta({ description: "Autocomplete search for item keys" })
     .input(z.object({ query: z.string().min(1) }))
     .query(async ({ input }) => {
-      return Q.player.minecraft.stats.searchItems(input.query);
+      return Q.player.minecraft.stat.key.searchItems(input.query);
     }),
 
   /** Compare a single item across multiple categories for all players. */
@@ -61,7 +61,7 @@ export const minecraftStatsRouter = router({
       }),
     )
     .query(async ({ input }) => {
-      return Q.player.minecraft.stats.compareItem(
+      return Q.player.minecraft.stat.total.compareItem(
         input.item,
         input.categories,
         { limit: input.limit },

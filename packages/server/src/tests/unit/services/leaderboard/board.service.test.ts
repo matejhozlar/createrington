@@ -13,7 +13,7 @@ vi.mock("@/db", () => ({
       getAll: db.players,
       balance: { getAllBalances: db.balances },
       playtime: { summary: { getGlobalLeaderboard: db.playtime } },
-      minecraft: { stats: { getRecordLeaderboard: db.records } },
+      minecraft: { stat: { total: { getRecordLeaderboard: db.records } } },
     },
   },
 }));

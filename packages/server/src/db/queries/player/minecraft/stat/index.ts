@@ -1,23 +1,23 @@
 import type { Pool, PoolClient } from "pg";
-import { PlayerMinecraftStatQueries } from "@/db/queries/player/minecraft/stat";
-import { PlayerMinecraftStatsQueries } from "@/db/queries/player/minecraft/stats";
+import { PlayerMinecraftStatKeyQueries } from "@/db/queries/player/minecraft/stat/key";
+import { PlayerMinecraftStatTotalQueries } from "@/db/queries/player/minecraft/stat/total";
 
 /**
- * Namespace queries for player_minecraft
+ * Namespace queries for player_minecraft_stat
  *
  * This is a pure organizational namespace that groups related query classes.
  * It does not correspond to an actual database table but provides hierarchical
- * access to child tables that share the 'player_minecraft_' prefix.
+ * access to child tables that share the 'player_minecraft_stat_' prefix.
  *
  * Uses singleton pattern with lazy loading for optimal performance:
  * - Child instances created once per database connection
  * - Cached in WeakMap for automatic garbage collection
- * - Shared across all PlayerMinecraftQueries instances using same connection
+ * - Shared across all PlayerMinecraftStatQueries instances using same connection
  *
  * Auto-generated from database schema
  * DO NOT EDIT MANUALLY - regenerate with: pnpm generate
  */
-export class PlayerMinecraftQueries {
+export class PlayerMinecraftStatQueries {
   /**
    * Static singleton registry for child query instances
    *
@@ -25,7 +25,7 @@ export class PlayerMinecraftQueries {
    * - Allows garbage collection when connection is closed
    * - Prevents memory leaks in long-running applications
    * - Each connection has its own cache map
-   * - Keys are fully qualified (e.g., "player_minecraft.actions")
+   * - Keys are fully qualified (e.g., "player_minecraft_stat.actions")
    */
   private static queryInstances = new WeakMap<
     Pool | PoolClient,
@@ -44,7 +44,7 @@ export class PlayerMinecraftQueries {
    * @returns Cached or newly created child query instance
    *
    * @remarks
-   * - Cache key is prefixed with namespace (e.g., "player_minecraft.actions")
+   * - Cache key is prefixed with namespace (e.g., "player_minecraft_stat.actions")
    * - Ensures child shares the same database connection as parent
    * - Type-safe through generic parameter T
    */
@@ -53,12 +53,12 @@ export class PlayerMinecraftQueries {
     QueryClass: new (db: Pool | PoolClient) => T,
   ): T {
     // Initialize cache for this connection if not exists
-    if (!PlayerMinecraftQueries.queryInstances.has(this.db)) {
-      PlayerMinecraftQueries.queryInstances.set(this.db, new Map());
+    if (!PlayerMinecraftStatQueries.queryInstances.has(this.db)) {
+      PlayerMinecraftStatQueries.queryInstances.set(this.db, new Map());
     }
 
-    const cache = PlayerMinecraftQueries.queryInstances.get(this.db)!;
-    const fullKey = `player_minecraft.${key}`;
+    const cache = PlayerMinecraftStatQueries.queryInstances.get(this.db)!;
+    const fullKey = `player_minecraft_stat.${key}`;
 
     // Create and cache child instance if not exists
     if (!cache.has(fullKey)) {
@@ -73,47 +73,47 @@ export class PlayerMinecraftQueries {
    */
   constructor(protected db: Pool | PoolClient) {}
 
-  /** Private backing field for lazy-loaded player_minecraft_stat queries */
-  private _stat?: PlayerMinecraftStatQueries;
+  /** Private backing field for lazy-loaded player_minecraft_stat_key queries */
+  private _key?: PlayerMinecraftStatKeyQueries;
 
   /**
-   * Lazy-loaded singleton accessor for player_minecraft_stat
+   * Lazy-loaded singleton accessor for player_minecraft_stat_key
    *
-   * Returns a PlayerMinecraftStatQueries instance that shares this namespace's
+   * Returns a PlayerMinecraftStatKeyQueries instance that shares this namespace's
    * database connection. The instance is created once on first access and
    * cached for all subsequent calls.
    *
-   * @returns Singleton PlayerMinecraftStatQueries instance
+   * @returns Singleton PlayerMinecraftStatKeyQueries instance
    */
-  get stat(): PlayerMinecraftStatQueries {
-    if (!this._stat) {
-      this._stat = this.getOrCreateChild<PlayerMinecraftStatQueries>(
-        "stat",
-        PlayerMinecraftStatQueries,
+  get key(): PlayerMinecraftStatKeyQueries {
+    if (!this._key) {
+      this._key = this.getOrCreateChild<PlayerMinecraftStatKeyQueries>(
+        "key",
+        PlayerMinecraftStatKeyQueries,
       );
     }
-    return this._stat;
+    return this._key;
   }
 
-  /** Private backing field for lazy-loaded player_minecraft_stats queries */
-  private _stats?: PlayerMinecraftStatsQueries;
+  /** Private backing field for lazy-loaded player_minecraft_stat_total queries */
+  private _total?: PlayerMinecraftStatTotalQueries;
 
   /**
-   * Lazy-loaded singleton accessor for player_minecraft_stats
+   * Lazy-loaded singleton accessor for player_minecraft_stat_total
    *
-   * Returns a PlayerMinecraftStatsQueries instance that shares this namespace's
+   * Returns a PlayerMinecraftStatTotalQueries instance that shares this namespace's
    * database connection. The instance is created once on first access and
    * cached for all subsequent calls.
    *
-   * @returns Singleton PlayerMinecraftStatsQueries instance
+   * @returns Singleton PlayerMinecraftStatTotalQueries instance
    */
-  get stats(): PlayerMinecraftStatsQueries {
-    if (!this._stats) {
-      this._stats = this.getOrCreateChild<PlayerMinecraftStatsQueries>(
-        "stats",
-        PlayerMinecraftStatsQueries,
+  get total(): PlayerMinecraftStatTotalQueries {
+    if (!this._total) {
+      this._total = this.getOrCreateChild<PlayerMinecraftStatTotalQueries>(
+        "total",
+        PlayerMinecraftStatTotalQueries,
       );
     }
-    return this._stats;
+    return this._total;
   }
 }

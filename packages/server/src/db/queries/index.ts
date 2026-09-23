@@ -44,6 +44,8 @@ export { PlayerBalanceTransactionQueries } from "./player/balance/transaction";
 export { PlayerBanQueries } from "./player/ban";
 export { PlayerInactivityExemptionQueries } from "./player/inactivity/exemption";
 export { PlayerInactivityWarningQueries } from "./player/inactivity/warning";
+export { PlayerMinecraftStatKeyQueries } from "./player/minecraft/stat/key";
+export { PlayerMinecraftStatTotalQueries } from "./player/minecraft/stat/total";
 export { PlayerMinecraftStatsQueries } from "./player/minecraft/stats";
 export { PlayerPlaytimeDailyQueries } from "./player/playtime/daily";
 export { PlayerPlaytimeHourlyQueries } from "./player/playtime/hourly";
