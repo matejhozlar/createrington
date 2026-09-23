@@ -1,4 +1,3 @@
-import { appEmoji } from "@/discord/emojis";
 import { RegistrationComponentPresets } from "@/discord/components/presets/registration";
 import { CLOSE_GRACE_MS } from "@/discord/bots/main/registration-cleanup";
 import { Discord } from "@/discord/constants";
@@ -60,7 +59,7 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
 
       if (!channel || !isSendableChannel(channel) || channel.isDMBased()) {
         await interaction.reply({
-          content: `${appEmoji("cross")} Channel not found or invalid`,
+          content: "❌ Channel not found or invalid",
           flags: MessageFlags.Ephemeral,
         });
         return;
@@ -74,7 +73,7 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
           `User ${interaction.user.tag} clicked registration close outside the verification category (channel: ${channelName})`,
         );
         await interaction.reply({
-          content: `${appEmoji("cross")} This button only works in a registration channel`,
+          content: "❌ This button only works in a registration channel",
           flags: MessageFlags.Ephemeral,
         });
         return;

@@ -1,4 +1,3 @@
-import { appEmoji } from "@/discord/emojis";
 import { createEmbed, EmbedColors, EmbedPresets } from "@/discord/embeds";
 import { isSendableChannel } from "@/discord/utils/channel-guard";
 import { replyError } from "@/discord/utils/interaction-reply";
@@ -74,7 +73,7 @@ export async function execute(
     }
 
     const embed = createEmbed()
-      .title(`${appEmoji("bell")} Notification Preferences`)
+      .title("🔔 Notification Preferences")
       .description(
         "Choose which notifications you'd like to receive. Click the buttons below to toggle notifications on or off.\n\n" +
           "**How it works:**\n" +
@@ -86,7 +85,7 @@ export async function execute(
 
     enabledNotifications.forEach((notification) => {
       embed.field(
-        `${appEmoji(notification.emoji)} ${notification.label}`,
+        `${notification.emoji} ${notification.label}`,
         notification.description,
         false,
       );
@@ -96,7 +95,7 @@ export async function execute(
       new ButtonBuilder()
         .setCustomId(`notification-select:${notification.id}`)
         .setLabel(notification.label)
-        .setEmoji(appEmoji(notification.emoji))
+        .setEmoji(notification.emoji)
         .setStyle(ButtonStyle.Primary),
     );
 

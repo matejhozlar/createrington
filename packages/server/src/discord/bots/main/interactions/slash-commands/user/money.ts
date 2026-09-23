@@ -1,4 +1,3 @@
-import { appEmoji } from "@/discord/emojis";
 import { Q } from "@/db";
 import { BalanceUtils } from "@/db/repositories/balance/utils";
 import { EmbedPresets } from "@/discord/embeds";
@@ -54,7 +53,7 @@ export async function execute(
     const balance = await Q.player.balance.get(player);
 
     const embed = EmbedPresets.plain({
-      title: `${appEmoji("money")} Your Balance`,
+      title: "💰 Your Balance",
       description: `$${BalanceUtils.formatWithCommas(balance.balance)}`,
     });
 

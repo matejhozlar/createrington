@@ -1,4 +1,3 @@
-import { appEmoji } from "@/discord/emojis";
 import { Q } from "@/db";
 import { minecraftRcon } from "@/utils/rcon";
 import { discordTimestamp } from "@/utils/format";
@@ -136,15 +135,13 @@ export class PlayerBanService {
     wasDeleted: boolean,
   ): Promise<void> {
     const embed = EmbedPresets.plain({
-      title: `${appEmoji("check")} Player Auto-Unbanned (Expired)`,
+      title: "✅ Player Auto-Unbanned (Expired)",
       description: [
         `**Player**: ${minecraftUsername}`,
         `**Original ban reason**: ${ban.reason}`,
         `**Banned at**: ${discordTimestamp(ban.bannedAt, "F")}`,
         `**Ban duration**: ${this.calculateDuration(ban.bannedAt, ban.expiresAt!)}`,
-        wasDeleted
-          ? `\n${appEmoji("warning")} *Player data was previously deleted*`
-          : "",
+        wasDeleted ? `\n⚠️ *Player data was previously deleted*` : "",
       ]
         .filter(Boolean)
         .join("\n"),

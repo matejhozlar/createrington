@@ -1,4 +1,3 @@
-import { appEmoji } from "@/discord/emojis";
 import { EmbedColors } from "../../colors";
 import { createEmbed } from "../../embed-builder";
 import { discordTimestamp } from "@/utils/format";
@@ -36,20 +35,20 @@ export const AnnouncementEmbedPresets = {
     );
 
     return createEmbed()
-      .title(cfg.title)
+      .title(`🔧 ${cfg.title}`)
       .description(cfg.description)
       .color(EmbedColors.Warning)
       .fields([
         {
-          name: "Starts",
+          name: "🕒 Starts",
           value: `${discordTimestamp(data.startsAt, "f")} (${discordTimestamp(data.startsAt, "R")})`,
         },
         {
-          name: "Estimated Duration",
+          name: "⏳ Estimated Duration",
           value: `${data.estimatedMinutes} minutes`,
         },
         {
-          name: "Expected End",
+          name: "🔚 Expected End",
           value: `${discordTimestamp(endTime, "f")} (${discordTimestamp(endTime, "R")})`,
         },
       ])
@@ -60,7 +59,7 @@ export const AnnouncementEmbedPresets = {
   /** Creates an embed announcing that maintenance has ended and the server is back online */
   maintenanceEnded() {
     return createEmbed()
-      .title(`${appEmoji("check")} Maintenance Complete`)
+      .title("✅ Maintenance Complete")
       .description(
         "Server maintenance has been completed and the server is back online.",
       )

@@ -1,4 +1,3 @@
-import { appEmoji } from "@/discord/emojis";
 import { EmbedColors } from "../../colors";
 import { createEmbed } from "../../embed-builder";
 
@@ -12,7 +11,7 @@ export const RegistrationEmbedPresets = {
     step: string,
   ) {
     const embed = createEmbed()
-      .title(`${appEmoji("warning")} Registration Error`)
+      .title("⚠️ Registration Error")
       .description(
         `Registration failed for **${discordTag}** (\`${discordId}\`)`,
       )

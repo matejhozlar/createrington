@@ -5,7 +5,6 @@ import { ButtonPresets } from "../buttons";
 import type { Player, WaitlistEntry } from "@/generated/db";
 import type { WaitlistStatus } from "@createrington/shared/db";
 import { discordTimestamp } from "@/utils/format";
-import { Discord } from "@/discord/constants";
 
 export const WaitlistEmbedPresets = {
   /**
@@ -21,17 +20,14 @@ export const WaitlistEmbedPresets = {
     const embed = createEmbed()
       .title(
         data.status === "promoted"
-          ? "New Registration Started"
-          : "New Waitlist Signup",
+          ? "📥 New Registration Started"
+          : "📥 New Waitlist Signup",
       )
       .color(
         data.status === "promoted" ? EmbedColors.Success : EmbedColors.Info,
       )
-      .field("Entry ID", data.id.toString())
-      .field(
-        "Discord",
-        `${Discord.Users.mention(data.discordId)} (\`${data.discordUsername}\`)`,
-      )
+      .field("🆔 Entry ID", data.id.toString())
+      .field("💬 Discord", `<@${data.discordId}> (\`${data.discordUsername}\`)`)
       .build();
 
     const linkRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -84,7 +80,7 @@ export const WaitlistEmbedPresets = {
 
     if (discordUser) {
       embed
-        .field("Discord User", Discord.Users.mention(discordUser.id), true)
+        .field("Discord User", `<@${discordUser.id}>`, true)
         .field("Discord ID", `\`${discordUser.id}\``, true)
         .thumbnail(discordUser.displayAvatarURL({ size: 128 }));
     } else {
@@ -106,7 +102,7 @@ export const WaitlistEmbedPresets = {
 
     if (entry.promotedAt) {
       details.push(
-        `Promoted: ${discordTimestamp(entry.promotedAt, "R")}${entry.promotedBy ? ` by ${Discord.Users.mention(entry.promotedBy)}` : " (auto)"}`,
+        `Promoted: ${discordTimestamp(entry.promotedAt, "R")}${entry.promotedBy ? ` by <@${entry.promotedBy}>` : " (auto)"}`,
       );
     }
 

@@ -1,4 +1,3 @@
-import { appEmoji } from "@/discord/emojis";
 import {
   ButtonBuilder,
   ButtonStyle,
@@ -63,7 +62,7 @@ function footerSection(
       new ButtonBuilder()
         .setCustomId(`leaderboard:refresh:${type}`)
         .setLabel("Refresh")
-        .setEmoji(appEmoji("refresh"))
+        .setEmoji("🔄")
         .setStyle(ButtonStyle.Secondary),
     );
 }

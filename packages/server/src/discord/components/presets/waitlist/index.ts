@@ -1,4 +1,3 @@
-import { appEmoji } from "@/discord/emojis";
 import config from "@/config";
 import {
   ActionRowBuilder,
@@ -47,7 +46,7 @@ function joinButton(): ButtonBuilder {
     .setCustomId(WAITLIST_JOIN_BUTTON_ID)
     .setLabel("Join Waitlist")
     .setStyle(ButtonStyle.Primary)
-    .setEmoji(appEmoji("pencil"));
+    .setEmoji("📝");
 }
 
 function websiteButton(): ButtonBuilder {
@@ -70,7 +69,7 @@ export const WaitlistComponentPresets = {
     const container = new ContainerBuilder()
       .setAccentColor(ComponentColors.Warning)
       .addTextDisplayComponents(
-        text(`## ${appEmoji("party")} Welcome to Createrington!`),
+        text("## 🎉 Welcome to Createrington!"),
         text(
           `Hey ${params.memberMention}, we're glad you're here.\n\n` +
             `The server is currently at capacity, but you can join the waitlist and we'll ping you **right here in this channel** as soon as a spot opens up.`,
@@ -99,7 +98,7 @@ export const WaitlistComponentPresets = {
     const container = new ContainerBuilder()
       .setAccentColor(ComponentColors.Warning)
       .addTextDisplayComponents(
-        text(`## ${appEmoji("hourglass")} You're on the waitlist!`),
+        text("## ⏳ You're on the waitlist!"),
         text(
           `Hey ${params.memberMention}, you're **#${params.position} of ${params.total}** in line (joined ${discordTimestamp(params.queuedAt, "R")}).\n\n` +
             `We'll ping you right here as soon as a spot opens up. In the meantime, feel free to look around the Discord, check out the [website](${site}) or read up on the [rules](${site}/rules).`,
@@ -112,7 +111,7 @@ export const WaitlistComponentPresets = {
             .setCustomId(WAITLIST_REFRESH_BUTTON_ID)
             .setLabel("Refresh Position")
             .setStyle(ButtonStyle.Secondary)
-            .setEmoji(appEmoji("refresh")),
+            .setEmoji("🔄"),
           new ButtonBuilder()
             .setCustomId(WAITLIST_LEAVE_BUTTON_ID)
             .setLabel("Leave Waitlist")
@@ -128,7 +127,7 @@ export const WaitlistComponentPresets = {
     const container = new ContainerBuilder()
       .setAccentColor(ComponentColors.Neutral)
       .addTextDisplayComponents(
-        text(`## ${appEmoji("wave")} You've left the waitlist`),
+        text("## 👋 You've left the waitlist"),
         text(
           `No hard feelings, ${params.memberMention}. Changed your mind? You can rejoin any time; you'll go to the back of the queue.`,
         ),

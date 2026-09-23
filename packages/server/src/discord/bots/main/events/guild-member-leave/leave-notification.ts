@@ -1,4 +1,3 @@
-import { appEmoji } from "@/discord/emojis";
 import { Q } from "@/db";
 import { waitlistService } from "@/services/waitlist/waitlist.service";
 import type { EventModule } from "@/discord/bots/common/loaders/event-loader";
@@ -106,7 +105,7 @@ export async function execute(
       channelId: Discord.Channels.administration.NOTIFICATIONS,
       embeds: embed.build(),
       components: [actionRow],
-      content: `${Discord.Roles.mention(Discord.Roles.ADMIN)} ${appEmoji("wave")} Member left`,
+      content: `${Discord.Roles.mention(Discord.Roles.ADMIN)} 👋 Member left`,
     });
 
     if (message) {

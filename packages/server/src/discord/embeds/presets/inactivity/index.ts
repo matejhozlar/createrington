@@ -1,7 +1,6 @@
 import { EmbedColors } from "../../colors";
 import { createEmbed } from "../../embed-builder";
 import { discordTimestamp } from "@/utils/format";
-import { Discord } from "@/discord/constants";
 
 export interface InactivePlayerInfo {
   discordId: string;
@@ -16,7 +15,7 @@ export const InactivityEmbedPresets = {
    */
   warning(data: { players: InactivePlayerInfo[]; deadlineDate: Date }) {
     const playerLines = data.players.map((p) => {
-      return `- ${Discord.Users.mention(p.discordId)} (\`${p.minecraftUsername}\`) - last seen ${discordTimestamp(p.lastSeen, "R")}`;
+      return `- <@${p.discordId}> (\`${p.minecraftUsername}\`) - last seen ${discordTimestamp(p.lastSeen, "R")}`;
     });
 
     const description = [
@@ -51,7 +50,7 @@ export const InactivityEmbedPresets = {
     removedAt: Date;
   }) {
     const triggeredByLine = data.triggeredBy
-      ? `${Discord.Users.mention(data.triggeredBy.discordId)}${data.triggeredBy.username ? ` (\`${data.triggeredBy.username}\`)` : ""}`
+      ? `<@${data.triggeredBy.discordId}>${data.triggeredBy.username ? ` (\`${data.triggeredBy.username}\`)` : ""}`
       : "Automated";
 
     const playerLines = data.players

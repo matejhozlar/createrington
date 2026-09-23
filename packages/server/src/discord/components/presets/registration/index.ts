@@ -1,4 +1,3 @@
-import { appEmoji } from "@/discord/emojis";
 import config from "@/config";
 import {
   ActionRowBuilder,
@@ -84,18 +83,18 @@ export const RegistrationComponentPresets = {
         params.errorMessage ? ComponentColors.Error : ComponentColors.Success,
       )
       .addTextDisplayComponents(
-        text(`## ${appEmoji("party")} Welcome to Createrington!`),
+        text("## 🎉 Welcome to Createrington!"),
         text(
           `Hey ${params.memberMention}, we're so glad you're here.\n\n` +
             `You're one step away from joining the server. Click **Register** below and drop in your Minecraft username, and we'll handle the whitelist and setup for you.\n\n` +
-            `See you in-game soon. ${appEmoji("pickaxe")}`,
+            `See you in-game soon. ⛏️`,
         ),
       );
 
     if (params.errorMessage) {
       const heading = params.failedStep
-        ? `${appEmoji("cross")} **Last attempt failed at "${params.failedStep}"**`
-        : `${appEmoji("cross")} **Last attempt failed**`;
+        ? `❌ **Last attempt failed at "${params.failedStep}"**`
+        : "❌ **Last attempt failed**";
       container
         .addSeparatorComponents(divider())
         .addTextDisplayComponents(text(`${heading}\n${params.errorMessage}`));
@@ -135,7 +134,7 @@ export const RegistrationComponentPresets = {
         percent === 100 ? ComponentColors.Success : ComponentColors.Info,
       )
       .addTextDisplayComponents(
-        text(`## ${appEmoji("refresh")} Registering your Minecraft account...`),
+        text("## 🔄 Registering your Minecraft account..."),
         text(`**Username** \`${username}\``),
       )
       .addSeparatorComponents(divider())
@@ -169,12 +168,12 @@ export const RegistrationComponentPresets = {
       .setCustomId(REGISTER_CLOSE_BUTTON_ID)
       .setLabel("Close")
       .setStyle(ButtonStyle.Danger)
-      .setEmoji(appEmoji("trash"));
+      .setEmoji("🗑️");
 
     const container = new ContainerBuilder()
       .setAccentColor(ComponentColors.Success)
       .addTextDisplayComponents(
-        text(`## ${appEmoji("check")} Registration Complete!`),
+        text("## ✅ Registration Complete!"),
         text(`Welcome to Createrington, **${username}**!`),
       )
       .addSeparatorComponents(divider())
@@ -188,7 +187,7 @@ export const RegistrationComponentPresets = {
         ),
         text(`**Useful channels**\n${channels}`),
         text(
-          `**${appEmoji("book")} Guides**\n` +
+          `**📖 Guides**\n` +
             `Our [Guides](${config.meta.links.website}/guides) cover everything from installing and updating the modpack to adding custom mods.`,
         ),
         text(
@@ -212,7 +211,7 @@ export const RegistrationComponentPresets = {
     const container = new ContainerBuilder()
       .setAccentColor(ComponentColors.Error)
       .addTextDisplayComponents(
-        text(`## ${appEmoji("trash")} Channel Deletion`),
+        text("## 🗑️ Channel Deletion"),
         text("This channel will be deleted in a few seconds..."),
       );
 

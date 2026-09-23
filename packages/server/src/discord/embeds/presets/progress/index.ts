@@ -1,7 +1,6 @@
 import type { ColorResolvable } from "discord.js";
 import { createEmbed, DiscordEmbedBuilder } from "../../embed-builder";
 import { EmbedColors } from "../../colors";
-import { appEmoji } from "@/discord/emojis";
 
 export interface ProgressStep {
   name: string;
@@ -134,7 +133,7 @@ export const ProgressEmbedPresets = {
     failedStep?: string,
   ): DiscordEmbedBuilder {
     const embed = createEmbed()
-      .title(`${appEmoji("cross")} ${title}`)
+      .title(`❌ ${title}`)
       .description(error)
       .color(EmbedColors.Error);
 

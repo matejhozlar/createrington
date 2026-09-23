@@ -1,4 +1,3 @@
-import { appEmoji } from "@/discord/emojis";
 import config from "@/config";
 import { Q, waitlistRepo } from "@/db";
 import { Discord } from "@/discord/constants";
@@ -493,7 +492,7 @@ export class WaitlistService {
     try {
       await Discord.Messages.send({
         channelId: Discord.Channels.administration.NOTIFICATIONS,
-        content: `${appEmoji("warning")} Waitlist entry #${entry.id} (${Discord.Users.mention(entry.discordId)}) was promoted but could not be pinged in their verification channel. They hold a reserved slot for 7 days; reach out to them or delete the entry from the admin panel to free it.`,
+        content: `⚠️ Waitlist entry #${entry.id} (<@${entry.discordId}>) was promoted but could not be pinged in their verification channel. They hold a reserved slot for 7 days; reach out to them or delete the entry from the admin panel to free it.`,
       });
     } catch (error) {
       logger.error(
@@ -571,7 +570,7 @@ export class WaitlistService {
     }
 
     await channel.send({
-      content: `${appEmoji("party")} ${Discord.Users.mention(entry.discordId)} A spot opened up for you! Click **Register** above to claim it.`,
+      content: `🎉 <@${entry.discordId}> A spot opened up for you! Click **Register** above to claim it.`,
     });
 
     return true;
@@ -740,7 +739,7 @@ export class WaitlistService {
         }
 
         await channel.send({
-          content: `${appEmoji("hourglass")} ${Discord.Users.mention(entry.discordId)} Your registration window expired, so the spot went to the next person in line. You're back in the queue and we'll ping you again when a spot opens.`,
+          content: `⌛ <@${entry.discordId}> Your registration window expired, so the spot went to the next person in line. You're back in the queue and we'll ping you again when a spot opens.`,
         });
       } catch (error) {
         logger.warn(

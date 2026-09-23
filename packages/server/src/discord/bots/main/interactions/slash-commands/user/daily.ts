@@ -1,4 +1,3 @@
-import { appEmoji } from "@/discord/emojis";
 import { EmbedPresets } from "@/discord/embeds";
 import { replyError } from "@/discord/utils/interaction-reply";
 import { CooldownType } from "@/discord/utils/cooldown";
@@ -88,7 +87,7 @@ export async function execute(
     }
 
     const embed = EmbedPresets.success(
-      `${appEmoji("money")} Daily Reward Claimed!`,
+      "💰 Daily Reward Claimed!",
       `You received **$${result.amount}**`,
     )
       .field("New Balance", `$${result.newBalance}`, true)
