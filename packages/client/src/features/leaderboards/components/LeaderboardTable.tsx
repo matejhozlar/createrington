@@ -7,16 +7,112 @@ import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { Input } from "@/components/ui/input";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import { Paginator } from "@/components/paginator";
-import { formatMetric, topRoleStyle, type TopRoleMetric } from "../top-roles";
+import {
+  figureSrc,
+  formatMetric,
+  topRoleStyle,
+  type TopRoleMetric,
+} from "../top-roles";
 
 type Board = "records" | "playtime" | "balance";
 type BoardRow = RouterOutput["public"]["leaderboards"]["list"]["rows"][number];
+type TopRole = RouterOutput["public"]["leaderboards"]["hero"][number];
+type BoardEntry = (typeof BOARDS)[number];
 
 const BOARDS: { board: Board; roleKey: string; metric: TopRoleMetric }[] = [
-  { board: "records", roleKey: "the_unrivaled", metric: "records" },
   { board: "playtime", roleKey: "the_sleepless", metric: "playtime" },
+  { board: "records", roleKey: "the_unrivaled", metric: "records" },
   { board: "balance", roleKey: "capitalist", metric: "balance" },
 ];
+
+function reveal(start: number): CSSProperties {
+  const progress = `clamp(0, (var(--land, 1) - ${start}) / ${(1 - start).toFixed(2)}, 1)`;
+  return {
+    opacity: progress,
+    transform: `translate3d(0, calc((1 - ${progress}) * 10px), 0)`,
+  };
+}
+
+const REVEAL = {
+  shadow: { opacity: "calc((var(--land, 1) - 0.6) * 2.5)" },
+  title: reveal(0.55),
+  name: reveal(0.7),
+  value: reveal(0.82),
+} satisfies Record<string, CSSProperties>;
+
+function ChampionCard({
+  entry,
+  role,
+  selected,
+  onSelect,
+}: {
+  entry: BoardEntry;
+  role: TopRole | undefined;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const style = topRoleStyle(entry.roleKey);
+  const Icon = style.icon;
+  const holder = role?.holder;
+
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={selected}
+      onClick={onSelect}
+      data-dock-card
+      style={{ "--tab": style.color } as CSSProperties}
+      className={cn(
+        "flex min-w-0 flex-col items-center rounded-xl border bg-card px-2 pt-5 pb-3 text-center transition-colors sm:px-4",
+        selected
+          ? "border-(--tab)/50 bg-(--tab)/10"
+          : "hover:border-primary/40",
+      )}
+    >
+      <div className="relative flex h-24 items-end sm:h-32 md:h-40">
+        {holder ? (
+          <>
+            <div
+              aria-hidden
+              className="absolute bottom-0.5 left-1/2 h-2 w-16 -translate-x-1/2 rounded-[100%] bg-black/70 blur-sm sm:w-20"
+              style={REVEAL.shadow}
+            />
+            <div className="relative" data-dock-to={entry.roleKey}>
+              <img
+                src={figureSrc(holder)}
+                alt={holder.minecraftUsername}
+                draggable={false}
+                className="relative h-24 w-auto select-none drop-shadow-[0_10px_20px_rgba(0,0,0,0.6)] sm:h-32 md:h-40"
+              />
+            </div>
+          </>
+        ) : (
+          <Icon className="size-10 text-(--tab)/40" aria-hidden />
+        )}
+      </div>
+      <span
+        className="mt-3 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.15em] text-(--tab) md:text-xs"
+        style={REVEAL.title}
+      >
+        <Icon className="size-3 md:size-3.5" aria-hidden />
+        {style.boardTitle}
+      </span>
+      <span
+        className="mt-1 w-full truncate text-sm font-bold text-foreground md:text-base"
+        style={REVEAL.name}
+      >
+        {holder?.minecraftUsername ?? "Nobody yet"}
+      </span>
+      <span
+        className="text-xs font-semibold tabular-nums text-(--tab) md:text-sm"
+        style={REVEAL.value}
+      >
+        {holder ? formatMetric(entry.metric, holder.value) : "Unclaimed"}
+      </span>
+    </button>
+  );
+}
 
 const PAGE_SIZE = 25;
 
@@ -99,6 +195,9 @@ function RowsSkeleton() {
 export function LeaderboardTable() {
   const { user } = useAuth();
   const [board, setBoard] = useState<Board>("records");
+  const [roles] = trpc.public.leaderboards.hero.useSuspenseQuery(undefined, {
+    staleTime: 5 * 60 * 1000,
+  });
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
   const debouncedSearch = useDebouncedValue(search.trim(), 250);
@@ -135,48 +234,29 @@ export function LeaderboardTable() {
       className="mx-auto max-w-5xl px-5 py-12 md:px-8 md:py-16"
       style={{ "--role": style.color } as CSSProperties}
     >
-      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">
-            Every player, ranked
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground md:text-base">
-            {active.board === "records" && contestedKeys > 0
-              ? `Who holds the most #1 placements across ${contestedKeys.toLocaleString("en-US")} contested stats.`
-              : style.boardDescription}
-          </p>
-        </div>
+      <h2 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">
+        Every player, ranked
+      </h2>
+      <p className="mt-1 text-sm text-muted-foreground md:text-base">
+        {active.board === "records" && contestedKeys > 0
+          ? `Who holds the most #1 placements across ${contestedKeys.toLocaleString("en-US")} contested stats.`
+          : style.boardDescription}
+      </p>
 
-        <div
-          role="tablist"
-          aria-label="Leaderboard"
-          className="inline-flex shrink-0 rounded-lg border bg-card p-1"
-        >
-          {BOARDS.map((entry) => {
-            const entryStyle = topRoleStyle(entry.roleKey);
-            const EntryIcon = entryStyle.icon;
-            const selected = entry.board === board;
-            return (
-              <button
-                key={entry.board}
-                type="button"
-                role="tab"
-                aria-selected={selected}
-                onClick={() => selectBoard(entry.board)}
-                style={{ "--tab": entryStyle.color } as CSSProperties}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                  selected
-                    ? "bg-(--tab)/15 text-(--tab)"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                <EntryIcon className="size-4" aria-hidden />
-                {entryStyle.boardTitle}
-              </button>
-            );
-          })}
-        </div>
+      <div
+        role="tablist"
+        aria-label="Leaderboard"
+        className="mt-6 grid grid-cols-3 gap-2 sm:gap-4"
+      >
+        {BOARDS.map((entry) => (
+          <ChampionCard
+            key={entry.board}
+            entry={entry}
+            role={roles.find((role) => role.roleKey === entry.roleKey)}
+            selected={entry.board === board}
+            onSelect={() => selectBoard(entry.board)}
+          />
+        ))}
       </div>
 
       <div className="mt-6 rounded-xl border bg-card p-3 md:p-4">

@@ -1,5 +1,6 @@
 import { Coins, Crown, MoonStar, type LucideIcon } from "lucide-react";
 import { formatMoney } from "@createrington/shared/format";
+import { mcHeadsBody } from "@/lib/external-urls";
 
 export type TopRoleMetric = "playtime" | "balance" | "records";
 
@@ -58,4 +59,11 @@ export function formatMetric(metric: TopRoleMetric, value: number): string {
     case "records":
       return `${value.toLocaleString("en-US")} ${value === 1 ? "record" : "records"}`;
   }
+}
+
+export function figureSrc(holder: {
+  imageUrl: string | null;
+  minecraftUuid: string;
+}): string {
+  return holder.imageUrl ?? mcHeadsBody(holder.minecraftUuid);
 }

@@ -1,11 +1,15 @@
 import type { CSSProperties } from "react";
 import { formatDate } from "@createrington/shared/format";
 import { trpc, type RouterOutput } from "@/lib/trpc";
-import { mcHeadsBody } from "@/lib/external-urls";
 import { cn } from "@/lib/utils";
 import { useScrollProgress } from "../hooks/use-scroll-progress";
 import { usePreloadedImages } from "../hooks/use-preloaded-images";
-import { formatMetric, HERO_ORDER, topRoleStyle } from "../top-roles";
+import {
+  figureSrc,
+  formatMetric,
+  HERO_ORDER,
+  topRoleStyle,
+} from "../top-roles";
 
 type TopRole = RouterOutput["public"]["leaderboards"]["hero"][number];
 
@@ -16,43 +20,38 @@ const SLOTS = [
     figure: "h-[24vh] sm:h-[30vh] md:h-[38vh] lg:h-[42vh]",
     column: "col-start-1",
     enterDelay: "0.18s",
-    transform:
-      "translate3d(calc(var(--scroll-a) * -28px), calc(var(--scroll-b) * -160px), 0) scale(calc(1 - var(--scroll-a) * 0.04))",
-    opacity: "calc(1 - var(--scroll-b) * 1.5)",
+    captionTransform: "translate3d(calc(var(--scroll-a) * -24px), 0, 0)",
     name: "text-base sm:text-lg md:text-2xl",
   },
   {
     figure: "h-[31vh] sm:h-[38vh] md:h-[46vh] lg:h-[52vh]",
     column: "col-start-2",
     enterDelay: "0s",
-    transform:
-      "translate3d(0, calc(var(--scroll-b) * -80px), 0) scale(calc(1 + var(--scroll-a) * 0.06))",
-    opacity: "calc(1 - var(--scroll-b) * 1.2)",
+    captionTransform: "translate3d(0, calc(var(--scroll-a) * 16px), 0)",
     name: "text-lg sm:text-xl md:text-3xl",
   },
   {
     figure: "h-[24vh] sm:h-[30vh] md:h-[38vh] lg:h-[42vh]",
     column: "col-start-3",
     enterDelay: "0.3s",
-    transform:
-      "translate3d(calc(var(--scroll-a) * 28px), calc(var(--scroll-b) * -160px), 0) scale(calc(1 - var(--scroll-a) * 0.04))",
-    opacity: "calc(1 - var(--scroll-b) * 1.5)",
+    captionTransform: "translate3d(calc(var(--scroll-a) * 24px), 0, 0)",
     name: "text-base sm:text-lg md:text-2xl",
   },
 ] as const;
 
 function slotStyle(index: number, color: string): CSSProperties {
-  const slot = SLOTS[index];
   return {
     "--role": color,
-    "--enter-delay": slot.enterDelay,
-    transform: slot.transform,
-    opacity: slot.opacity,
+    "--enter-delay": SLOTS[index].enterDelay,
   } as CSSProperties;
 }
 
-function figureSrc(holder: NonNullable<TopRole["holder"]>): string {
-  return holder.imageUrl ?? mcHeadsBody(holder.minecraftUuid);
+function captionStyle(index: number, color: string): CSSProperties {
+  return {
+    ...slotStyle(index, color),
+    transform: SLOTS[index].captionTransform,
+    opacity: "calc(1 - var(--scroll-a) * 1.6)",
+  };
 }
 
 function HeroFigure({ role, index }: { role: TopRole; index: number }) {
@@ -64,19 +63,19 @@ function HeroFigure({ role, index }: { role: TopRole; index: number }) {
   return (
     <div
       className={cn(
-        "row-start-1 flex justify-center will-change-transform",
+        "row-start-1 flex justify-center",
         slot.column,
         index === 1 ? "z-20" : "z-10",
       )}
       style={slotStyle(index, style.color)}
     >
       <div className="lb-hero-enter relative flex items-end justify-center">
-        <div
-          aria-hidden
-          className="absolute bottom-0.5 left-1/2 h-3 w-3/4 -translate-x-1/2 rounded-[100%] bg-black/70 blur-md"
-        />
         {src && holder ? (
-          <div className="relative">
+          <div className="relative" data-dock-from={role.roleKey}>
+            <div
+              aria-hidden
+              className="absolute bottom-0.5 left-1/2 h-3 w-3/4 -translate-x-1/2 rounded-[100%] bg-black/70 blur-md"
+            />
             <img
               src={src}
               alt={`${holder.minecraftUsername}, ${role.label}`}
@@ -119,35 +118,37 @@ function HeroCaption({ role, index }: { role: TopRole; index: number }) {
   return (
     <figcaption
       className={cn(
-        "lb-hero-caption relative z-30 row-start-2 flex min-w-0 flex-col items-center pt-4 text-center will-change-transform md:pt-6",
+        "relative z-30 row-start-2 min-w-0 pt-4 will-change-transform md:pt-6",
         slot.column,
       )}
-      style={slotStyle(index, style.color)}
+      style={captionStyle(index, style.color)}
     >
-      <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.15em] text-(--role) sm:hidden">
-        <Icon className="size-3" aria-hidden />
-        {role.label}
-      </span>
-      <span className="hidden items-center gap-1.5 whitespace-nowrap rounded-full border border-(--role)/40 bg-(--role)/10 px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-(--role) shadow-[0_0_24px_-6px_var(--role)] sm:inline-flex md:text-xs">
-        <Icon className="size-3.5" aria-hidden />
-        {role.label}
-      </span>
-      <span
-        className={cn(
-          "mt-1 w-full truncate px-1 font-bold text-foreground drop-shadow-md sm:mt-2",
-          slot.name,
-        )}
-      >
-        {holder ? holder.minecraftUsername : "Nobody yet"}
-      </span>
-      <span className="text-xs font-semibold tabular-nums text-(--role) sm:text-sm md:text-base">
-        {holder ? formatMetric(role.metric, holder.value) : style.tagline}
-      </span>
-      {holder && (
-        <span className="mt-0.5 hidden text-xs text-muted-foreground sm:block md:text-sm">
-          since {formatDate(holder.heldSince)}
+      <div className="lb-hero-caption flex flex-col items-center text-center">
+        <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.15em] text-(--role) sm:hidden">
+          <Icon className="size-3" aria-hidden />
+          {role.label}
         </span>
-      )}
+        <span className="hidden items-center gap-1.5 whitespace-nowrap rounded-full border border-(--role)/40 bg-(--role)/10 px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-(--role) shadow-[0_0_24px_-6px_var(--role)] sm:inline-flex md:text-xs">
+          <Icon className="size-3.5" aria-hidden />
+          {role.label}
+        </span>
+        <span
+          className={cn(
+            "mt-1 w-full truncate px-1 font-bold text-foreground drop-shadow-md sm:mt-2",
+            slot.name,
+          )}
+        >
+          {holder ? holder.minecraftUsername : "Nobody yet"}
+        </span>
+        <span className="text-xs font-semibold tabular-nums text-(--role) sm:text-sm md:text-base">
+          {holder ? formatMetric(role.metric, holder.value) : style.tagline}
+        </span>
+        {holder && (
+          <span className="mt-0.5 hidden text-xs text-muted-foreground sm:block md:text-sm">
+            since {formatDate(holder.heldSince)}
+          </span>
+        )}
+      </div>
     </figcaption>
   );
 }
@@ -167,7 +168,11 @@ export function TopRoleHero() {
   return (
     <section
       ref={ref}
-      className="sticky top-14 z-0 h-[calc(100svh-3.5rem)] overflow-hidden bg-background md:top-0 md:h-svh"
+      className="sticky top-14 z-0 h-[calc(100svh-3.5rem)] origin-[50%_30%] overflow-hidden bg-background will-change-transform md:top-0 md:h-svh"
+      style={{
+        transform: "scale(calc(1 - var(--scroll-p) * 0.08))",
+        borderRadius: "calc(var(--scroll-p) * 32px)",
+      }}
     >
       <img
         src={HERO_BACKDROP}
@@ -175,7 +180,8 @@ export function TopRoleHero() {
         aria-hidden
         draggable={false}
         decoding="async"
-        className="absolute -inset-10 h-[calc(100%+5rem)] w-[calc(100%+5rem)] max-w-none object-cover blur-[6px] brightness-[0.32] saturate-[0.7]"
+        className="absolute -inset-10 h-[calc(100%+5rem)] w-[calc(100%+5rem)] max-w-none object-cover blur-[6px] brightness-[0.32] saturate-[0.7] will-change-transform"
+        style={{ transform: "scale(calc(1 + var(--scroll-p) * 0.25))" }}
       />
       <div
         aria-hidden
