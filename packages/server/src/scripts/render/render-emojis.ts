@@ -11,7 +11,7 @@ import {
   appEmojiAssetDir,
   type AppEmojiKey,
   type AppEmojiSpec,
-} from "@/discord/emojis";
+} from "@/discord/emojis/manifest";
 
 const require = createRequire(import.meta.url);
 

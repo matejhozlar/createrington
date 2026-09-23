@@ -177,7 +177,13 @@ export function registerServices(): void {
       await service.initialize();
       return service;
     },
-    { dependencies: [Services.DISCORD_MAIN_BOT, Services.DATABASE] },
+    {
+      dependencies: [
+        Services.DISCORD_MAIN_BOT,
+        Services.DATABASE,
+        Services.APP_EMOJI_SERVICE,
+      ],
+    },
   );
 
   container.register(

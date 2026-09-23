@@ -10,13 +10,13 @@ import {
   SeparatorSpacingSize,
   TextDisplayBuilder,
 } from "discord.js";
+import { assetUrl } from "@/config";
 import { ComponentColors } from "../../colors";
 import { discordTimestamp, formatSeconds, pluralize } from "@/utils/format";
 import type { TopLevelComponent } from "../../component-builder";
 import type { PlayerPrompt } from "@createrington/shared/db/player_prompt.types";
 
-const BANNER_URL =
-  "https://assets.createrington.com/logo/createrington-woodmark.png";
+const BANNER_URL = assetUrl("logo/createrington-woodmark.png");
 
 export interface PlayerPromptTotals {
   entryCount: number;

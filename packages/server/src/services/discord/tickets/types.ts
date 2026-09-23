@@ -2,6 +2,8 @@
  * Ticket System Type Definitions
  */
 
+import type { AppEmojiKey } from "@/discord/emojis";
+
 /** Available ticket categories */
 export enum TicketType {
   GENERAL = "general",
@@ -28,7 +30,7 @@ export enum TicketUserAction {
 export interface TicketTypeConfig {
   type: TicketType;
   label: string;
-  emoji: string;
+  emoji: AppEmojiKey;
   /** Prefix used when naming the Discord channel (e.g., "general-0001") */
   channelPrefix: string;
   description: string;

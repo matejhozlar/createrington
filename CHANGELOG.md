@@ -1,3 +1,12 @@
+## v1.62.0 (2026-09-23)
+
+### @createrington/server (1.62.1 → 1.63.0)
+- [add] Add records leaderboard showing players ranked by how many #1 Minecraft stats they hold, displaying record count, share percentage, and contested stat count per entry
+- [add] Add `appEmoji()` convenience function that returns the Discord custom emoji token when the service is ready or the manifest's unicode fallback otherwise, and apply it across ticket buttons, waitlist refresh, and leaderboard refresh in place of hardcoded unicode
+- [add] Add 10 new application emoji entries (money, gamepad, bell, heart, pencil, flask, train, package, pickaxe, chart) with rendered PNG assets and unicode fallbacks
+- [refactor] Centralize bucket asset URLs behind a versioned `assetUrl()` helper that appends a cache-busting `?v=N` parameter, fixing stale Discord CDN caching of leaderboard title banners and replacing hardcoded URLs in welcome backgrounds, changelog spacer, and player prompt banner
+- [refactor] Extract leaderboard entry limit into a shared `LEADERBOARD_ENTRY_LIMIT` constant and add a `limit` field to `LeaderboardConfig` so each board declares its own cap
+
 ## v1.61.2 (2026-09-22)
 
 ### @createrington/client (0.2.76 → 0.2.77)

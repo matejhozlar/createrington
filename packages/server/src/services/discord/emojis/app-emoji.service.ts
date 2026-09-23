@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import type { ApplicationEmoji, Client, ClientApplication } from "discord.js";
 import {
   APP_EMOJI_KEYS,
+  APP_EMOJIS,
   appEmojiAssetPath,
   isAppEmojiKey,
   type AppEmojiKey,
@@ -114,7 +115,7 @@ export class AppEmojiService {
     return result;
   }
 
-  /** The `<:name:id>` token for a manifest key, or an empty string when that emoji is not uploaded. */
+  /** The `<:name:id>` token for a manifest key, or the manifest's unicode fallback when that emoji is not uploaded. */
   token(key: AppEmojiKey): string {
     const emoji = this.emojis.get(key);
     if (!emoji) {
@@ -122,7 +123,7 @@ export class AppEmojiService {
         this.warnedMissing.add(key);
         logger.warn(`Application emoji "${key}" is not available`);
       }
-      return "";
+      return APP_EMOJIS[key].fallback;
     }
     return emoji.toString();
   }

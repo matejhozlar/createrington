@@ -1,12 +1,18 @@
-import config from "@/config";
-import { type LeaderboardConfig, LeaderboardType } from "./types";
+import config, { assetUrl } from "@/config";
+import {
+  LEADERBOARD_ENTRY_LIMIT,
+  type LeaderboardConfig,
+  LeaderboardType,
+} from "./types";
 import { Q } from "@/db";
 import { formatPlaytime } from "@createrington/shared/format";
-import { formatBalance, discordTimestamp } from "@/utils/format";
+import { formatBalance, discordTimestamp, pluralize } from "@/utils/format";
 import { Discord } from "@/discord/constants";
 import { rankNetWorth } from "./networth";
 
-const TITLE_IMAGE_BASE = "https://assets.createrington.com/titles";
+function formatRecords(records: number): string {
+  return `${records.toLocaleString("en-US")} ${pluralize(records, "record")}`;
+}
 
 /**
  * Configuration registry for all leaderboard types
@@ -25,9 +31,10 @@ export const LEADERBOARD_CONFIGS: Record<LeaderboardType, LeaderboardConfig> = {
     title: "Top Players by Playtime",
     description: "Players with the most time on the server",
     emoji: "",
-    titleImageUrl: `${TITLE_IMAGE_BASE}/playtime.png`,
+    titleImageUrl: assetUrl("titles/playtime.png"),
     channelId: Discord.Channels.general.LEADERBOARDS,
     serverId: config.servers.rails.id,
+    limit: LEADERBOARD_ENTRY_LIMIT,
     /**
      * Fetches playtime leaderboard data from the database
      *
@@ -65,8 +72,9 @@ export const LEADERBOARD_CONFIGS: Record<LeaderboardType, LeaderboardConfig> = {
     title: "Top Players by Net Worth",
     description: "Players with the highest in-game balance",
     emoji: "💰",
-    titleImageUrl: `${TITLE_IMAGE_BASE}/net-worth.png`,
+    titleImageUrl: assetUrl("titles/net-worth.png"),
     channelId: Discord.Channels.general.LEADERBOARDS,
+    limit: LEADERBOARD_ENTRY_LIMIT,
     fetchData: async (_serverId: number, limit: number) => {
       const [balances, players] = await Promise.all([
         Q.player.balance.getAllBalances(),
@@ -83,6 +91,38 @@ export const LEADERBOARD_CONFIGS: Record<LeaderboardType, LeaderboardConfig> = {
       return rankNetWorth(balances, nameMap, limit);
     },
     formatValue: (value: number) => formatBalance(value),
+  },
+  [LeaderboardType.RECORDS]: {
+    type: LeaderboardType.RECORDS,
+    title: "Record Holders",
+    description: "Players who place #1 across the most Minecraft stats",
+    emoji: "",
+    titleImageUrl: assetUrl("titles/records.png"),
+    channelId: Discord.Channels.general.LEADERBOARDS,
+    limit: LEADERBOARD_ENTRY_LIMIT,
+    fetchData: async (_serverId: number, limit: number) => {
+      const { rows, contestedKeys } =
+        await Q.player.minecraft.stats.getRecordLeaderboard(limit);
+
+      const contested = contestedKeys.toLocaleString("en-US");
+
+      return rows.map((row, index) => {
+        const share =
+          contestedKeys > 0
+            ? Math.round((row.records / contestedKeys) * 100)
+            : 0;
+
+        return {
+          rank: index + 1,
+          playerName: row.minecraftUsername,
+          playerUuid: row.minecraftUuid,
+          value: row.records.toString(),
+          formattedValue: formatRecords(row.records),
+          subtitle: `${share}% of ${contested} contested ${pluralize(contestedKeys, "stat")}`,
+        };
+      });
+    },
+    formatValue: formatRecords,
   },
 };
 

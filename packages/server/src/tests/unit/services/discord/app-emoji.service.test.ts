@@ -119,7 +119,7 @@ describe("AppEmojiService.sync", () => {
     const result = await service.sync();
 
     expect(result.failed).toEqual(["check"]);
-    expect(service.token("check")).toBe("");
+    expect(service.token("check")).toBe("✅");
     expect(service.list().map((emoji) => emoji.key)).toEqual(
       APP_EMOJI_KEYS.filter((key) => key !== "check"),
     );
