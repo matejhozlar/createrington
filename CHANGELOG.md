@@ -1,3 +1,8 @@
+## v1.62.2 (2026-09-23)
+
+### @createrington/server (1.63.1 → 1.63.2)
+- [chore] Lower daily reward amount from $50 to $20 and remove the unused `economy.reward.daily` config entry
+
 ## v1.62.1 (2026-09-23)
 
 ### @createrington/server (1.63.0 → 1.63.1)
