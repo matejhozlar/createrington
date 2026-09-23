@@ -1,11 +1,15 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { ComponentType, MessageFlags } from "discord.js";
+
+vi.mock("@/db", () => ({ Q: {} }));
+
 import { LeaderboardComponentPresets } from "@/discord/components/presets/leaderboard";
 import {
   type LeaderboardConfig,
   type LeaderboardEntry,
   LeaderboardType,
 } from "@/services/discord/leaderboard/types";
+import { LEADERBOARD_CONFIGS } from "@/services/discord/leaderboard/config";
 
 const at = new Date("2030-01-01T00:00:00Z");
 
@@ -44,8 +48,12 @@ function entries(n: number): LeaderboardEntry[] {
 }
 
 function render(type: LeaderboardType, count: number) {
+  return renderConfig(configFor(type), count);
+}
+
+function renderConfig(config: LeaderboardConfig, count: number) {
   const result = LeaderboardComponentPresets.display(
-    configFor(type),
+    config,
     entries(count),
     at,
   );
@@ -89,19 +97,23 @@ describe("LeaderboardComponentPresets.display", () => {
     expect(separators).toHaveLength(1 + 8);
   });
 
-  it("keeps a full board of eight entries within Discord's 40-component cap", () => {
-    const { children } = render(LeaderboardType.RECORDS, 8);
-    const total = children.reduce((sum, child) => {
-      if (child.type === ComponentType.MediaGallery) {
-        return sum + 1 + (child.items?.length ?? 0);
-      }
-      if (child.type === ComponentType.Section) {
-        return sum + 1 + (child.components?.length ?? 0) + 1;
-      }
-      return sum + 1;
-    }, 1);
-    expect(total).toBeLessThanOrEqual(40);
-  });
+  it.each(Object.values(LEADERBOARD_CONFIGS))(
+    "renders $type at its configured limit within Discord's 40-component cap",
+    (config) => {
+      const { children, entrySections } = renderConfig(config, config.limit);
+      expect(entrySections).toHaveLength(config.limit);
+      const total = children.reduce((sum, child) => {
+        if (child.type === ComponentType.MediaGallery) {
+          return sum + 1 + (child.items?.length ?? 0);
+        }
+        if (child.type === ComponentType.Section) {
+          return sum + 1 + (child.components?.length ?? 0) + 1;
+        }
+        return sum + 1;
+      }, 1);
+      expect(total).toBeLessThanOrEqual(40);
+    },
+  );
 
   it("renders names and values as headings with a subtitle line", () => {
     const { entrySections } = render(LeaderboardType.PLAYTIME, 1);

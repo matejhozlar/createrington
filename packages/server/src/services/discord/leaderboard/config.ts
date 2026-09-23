@@ -1,5 +1,9 @@
 import config, { assetUrl } from "@/config";
-import { type LeaderboardConfig, LeaderboardType } from "./types";
+import {
+  LEADERBOARD_ENTRY_LIMIT,
+  type LeaderboardConfig,
+  LeaderboardType,
+} from "./types";
 import { Q } from "@/db";
 import { formatPlaytime } from "@createrington/shared/format";
 import { formatBalance, discordTimestamp, pluralize } from "@/utils/format";
@@ -30,7 +34,7 @@ export const LEADERBOARD_CONFIGS: Record<LeaderboardType, LeaderboardConfig> = {
     titleImageUrl: assetUrl("titles/playtime.png"),
     channelId: Discord.Channels.general.LEADERBOARDS,
     serverId: config.servers.rails.id,
-    limit: 8,
+    limit: LEADERBOARD_ENTRY_LIMIT,
     /**
      * Fetches playtime leaderboard data from the database
      *
@@ -70,7 +74,7 @@ export const LEADERBOARD_CONFIGS: Record<LeaderboardType, LeaderboardConfig> = {
     emoji: "💰",
     titleImageUrl: assetUrl("titles/net-worth.png"),
     channelId: Discord.Channels.general.LEADERBOARDS,
-    limit: 8,
+    limit: LEADERBOARD_ENTRY_LIMIT,
     fetchData: async (_serverId: number, limit: number) => {
       const [balances, players] = await Promise.all([
         Q.player.balance.getAllBalances(),
@@ -95,7 +99,7 @@ export const LEADERBOARD_CONFIGS: Record<LeaderboardType, LeaderboardConfig> = {
     emoji: "",
     titleImageUrl: assetUrl("titles/records.png"),
     channelId: Discord.Channels.general.LEADERBOARDS,
-    limit: 8,
+    limit: LEADERBOARD_ENTRY_LIMIT,
     fetchData: async (_serverId: number, limit: number) => {
       const { rows, contestedKeys } =
         await Q.player.minecraft.stats.getRecordLeaderboard(limit);
@@ -114,7 +118,7 @@ export const LEADERBOARD_CONFIGS: Record<LeaderboardType, LeaderboardConfig> = {
           playerUuid: row.minecraftUuid,
           value: row.records.toString(),
           formattedValue: formatRecords(row.records),
-          subtitle: `${share}% of ${contested} contested stats`,
+          subtitle: `${share}% of ${contested} contested ${pluralize(contestedKeys, "stat")}`,
         };
       });
     },

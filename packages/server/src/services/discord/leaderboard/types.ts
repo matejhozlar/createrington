@@ -5,6 +5,13 @@ export enum LeaderboardType {
   RECORDS = "records",
 }
 
+/**
+ * Ranked entries per board. Components V2 caps a message at 40 components and
+ * this layout (banner, one head section plus separator per entry, footer)
+ * spends 39 of them at 8 entries; 9 would need 43.
+ */
+export const LEADERBOARD_ENTRY_LIMIT = 8;
+
 /** A single entry in a leaderboard display */
 export interface LeaderboardEntry {
   rank: number;
