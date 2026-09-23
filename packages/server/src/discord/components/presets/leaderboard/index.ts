@@ -11,6 +11,7 @@ import {
   TextDisplayBuilder,
   ThumbnailBuilder,
 } from "discord.js";
+import { appEmoji } from "@/discord/emojis";
 import type {
   LeaderboardConfig,
   LeaderboardEntry,
@@ -62,7 +63,7 @@ function footerSection(
       new ButtonBuilder()
         .setCustomId(`leaderboard:refresh:${type}`)
         .setLabel("Refresh")
-        .setEmoji("🔄")
+        .setEmoji(appEmoji("refresh"))
         .setStyle(ButtonStyle.Secondary),
     );
 }

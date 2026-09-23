@@ -2,7 +2,15 @@
 export enum LeaderboardType {
   PLAYTIME = "playtime",
   NET_WORTH = "net_worth",
+  RECORDS = "records",
 }
+
+/**
+ * Ranked entries per board. Components V2 caps a message at 40 components and
+ * this layout (banner, one head section plus separator per entry, footer)
+ * spends 39 of them at 8 entries; 9 would need 43.
+ */
+export const LEADERBOARD_ENTRY_LIMIT = 8;
 
 /** A single entry in a leaderboard display */
 export interface LeaderboardEntry {
@@ -30,6 +38,8 @@ export interface LeaderboardConfig {
   channelId: string;
   /** Minecraft server ID to fetch data from (optional for non-server leaderboards) */
   serverId?: number;
+  /** Number of ranked entries rendered in the message */
+  limit: number;
   /** Fetches leaderboard entries from the database */
   fetchData: (serverId: number, limit: number) => Promise<LeaderboardEntry[]>;
   /** Formats a raw numeric value for display */

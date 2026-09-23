@@ -5,10 +5,6 @@ import { Discord } from "@/discord/constants";
 import { type Client } from "discord.js";
 import { LeaderboardComponentPresets } from "@/discord/components/presets/leaderboard";
 
-// Components V2 caps a message at 40 total components; the V2 layout (banner,
-// per-player head sections, separators, footer) fits 8 ranked entries.
-const LEADERBOARD_LIMIT = 8;
-
 const MESSAGE_NOT_FOUND_PATTERNS = [
   "Unknown Message",
   "Unknown Channel",
@@ -71,10 +67,7 @@ export class LeaderboardService {
   ): Promise<{ messageId: string; channelId: string }> {
     const config = getLeaderboardConfig(type);
 
-    const entries = await config.fetchData(
-      config.serverId ?? 0,
-      LEADERBOARD_LIMIT,
-    );
+    const entries = await config.fetchData(config.serverId ?? 0, config.limit);
 
     const { components, flags } = LeaderboardComponentPresets.display(
       config,
@@ -163,7 +156,7 @@ export class LeaderboardService {
 
       const entries = await config.fetchData(
         config.serverId ?? 0,
-        LEADERBOARD_LIMIT,
+        config.limit,
       );
 
       const existing = await Q.leaderboard.message.find({
@@ -171,7 +164,7 @@ export class LeaderboardService {
       });
 
       if (!existing) {
-        logger.warn(
+        logger.info(
           `No leaderboard message found for type: ${type}, skipping refresh`,
         );
         return {
