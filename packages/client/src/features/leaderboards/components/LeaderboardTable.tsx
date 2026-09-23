@@ -105,7 +105,6 @@ export function LeaderboardTable() {
 
   const active = BOARDS.find((b) => b.board === board) ?? BOARDS[0];
   const style = topRoleStyle(active.roleKey);
-  const Icon = style.icon;
 
   const listQuery = trpc.public.leaderboards.list.useQuery(
     {
@@ -182,9 +181,6 @@ export function LeaderboardTable() {
 
       <div className="mt-6 rounded-xl border bg-card p-3 md:p-4">
         <div className="mb-3 flex items-center gap-3">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-(--role)/15 text-(--role)">
-            <Icon className="size-5" aria-hidden />
-          </span>
           <div className="relative flex-1">
             <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
