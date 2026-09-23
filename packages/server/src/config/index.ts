@@ -58,6 +58,13 @@ function deriveCookieName(base: string): string {
 // since no consumer that needs the path runs in those modes.
 const storagePath = env.STORAGE_PATH ? path.resolve(env.STORAGE_PATH) : "";
 
+const ASSETS_BASE_URL = "https://assets.createrington.com";
+const ASSETS_VERSION = 2;
+
+export function assetUrl(assetPath: string): string {
+  return `${ASSETS_BASE_URL}/${assetPath.replace(/^[/]+/, "")}?v=${ASSETS_VERSION}`;
+}
+
 const config = {
   envMode,
 
@@ -211,13 +218,13 @@ const config = {
           channelId: discordEntities.channels.createringtonOfficial?.welcome,
           enabled: true,
           backgroundImageUrls: [
-            "https://assets.createrington.com/welcome/dark-warehouse.webp",
-            "https://assets.createrington.com/welcome/gondola-station.webp",
-            "https://assets.createrington.com/welcome/high-speed-train.webp",
-            "https://assets.createrington.com/welcome/metro.webp",
-            "https://assets.createrington.com/welcome/mountains-train-station.webp",
-            "https://assets.createrington.com/welcome/royal-albert-hall.webp",
-            "https://assets.createrington.com/welcome/space-station.webp",
+            assetUrl("welcome/dark-warehouse.webp"),
+            assetUrl("welcome/gondola-station.webp"),
+            assetUrl("welcome/high-speed-train.webp"),
+            assetUrl("welcome/metro.webp"),
+            assetUrl("welcome/mountains-train-station.webp"),
+            assetUrl("welcome/royal-albert-hall.webp"),
+            assetUrl("welcome/space-station.webp"),
           ],
         },
         autoRole: {
