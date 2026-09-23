@@ -1,4 +1,3 @@
-import { appEmoji } from "@/discord/emojis";
 import {
   ActionRowBuilder,
   ButtonBuilder,
@@ -306,7 +305,7 @@ async function handleClose(
   );
 
   await interaction.channel.send({
-    content: `${appEmoji("warning")} Are you sure you want to close this ticket?`,
+    content: "⚠️ Are you sure you want to close this ticket?",
     components: [confirmRow],
   });
 }

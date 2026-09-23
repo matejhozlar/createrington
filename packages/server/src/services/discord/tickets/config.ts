@@ -35,7 +35,7 @@ export const TICKET_TYPE_CONFIGS: Record<TicketType, TicketTypeConfig> = {
   [TicketType.GENERAL]: {
     type: TicketType.GENERAL,
     label: "General Support",
-    emoji: "ticket",
+    emoji: "🎫",
     channelPrefix: "general",
     description: "Get help with general questions and issues",
     allowedRoleIds: [TicketSystemIds.ADMIN_ROLE, TicketSystemIds.OWNER_ROLE],
@@ -44,7 +44,7 @@ export const TICKET_TYPE_CONFIGS: Record<TicketType, TicketTypeConfig> = {
   [TicketType.REPORT]: {
     type: TicketType.REPORT,
     label: "Report Staff Member",
-    emoji: "warning",
+    emoji: "⚠️",
     channelPrefix: "report",
     description: "Report a staff member's behavior or actions",
     allowedRoleIds: [TicketSystemIds.OWNER_ROLE],

@@ -17,7 +17,6 @@ import { Discord } from "@/discord/constants";
 import { Q } from "@/db";
 import config from "@/config";
 import { EmbedPresets } from "@/discord/embeds";
-import { appEmoji } from "@/discord/emojis";
 import path from "node:path";
 import fs from "node:fs/promises";
 import { isSendableChannel } from "@/discord/utils/channel-guard";
@@ -171,7 +170,7 @@ export class TicketService {
           .setCustomId(`ticket:close:${ticketId}`)
           .setStyle(ButtonStyle.Danger)
           .setLabel("Close")
-          .setEmoji(appEmoji("lock")),
+          .setEmoji("🔒"),
       ),
     ];
   }
@@ -271,12 +270,12 @@ export class TicketService {
           .setCustomId(`ticket:reopen:${ticketId}`)
           .setLabel("Reopen Ticket")
           .setStyle(ButtonStyle.Success)
-          .setEmoji(appEmoji("unlock")),
+          .setEmoji("🔓"),
         new ButtonBuilder()
           .setCustomId(`ticket:transcript:${ticketId}`)
           .setLabel("Transcript")
           .setStyle(ButtonStyle.Primary)
-          .setEmoji(appEmoji("transcript")),
+          .setEmoji("📄"),
         new ButtonBuilder()
           .setCustomId(`ticket:delete:${ticketId}`)
           .setLabel("Delete Ticket")
