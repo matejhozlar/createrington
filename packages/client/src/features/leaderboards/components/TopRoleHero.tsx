@@ -1,5 +1,4 @@
 import type { CSSProperties } from "react";
-import { ChevronDown } from "lucide-react";
 import { formatDate } from "@createrington/shared/format";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { mcHeadsBody } from "@/lib/external-urls";
@@ -39,27 +38,6 @@ const SLOTS = [
   },
 ] as const;
 
-const EMBER_COUNT = 18;
-
-function seeded(index: number, salt: number): number {
-  const x = Math.sin(index * 127.1 + salt * 311.7) * 43758.5453;
-  return x - Math.floor(x);
-}
-
-const EMBERS = Array.from({ length: EMBER_COUNT }, (_, index) => {
-  const left = 4 + seeded(index, 1) * 92;
-  const slot = left < 34 ? 0 : left < 66 ? 1 : 2;
-  return {
-    left: `${left.toFixed(1)}%`,
-    color: topRoleStyle(HERO_ORDER[slot]).color,
-    duration: `${(9 + seeded(index, 2) * 9).toFixed(1)}s`,
-    delay: `${(-seeded(index, 3) * 18).toFixed(1)}s`,
-    drift: `${((seeded(index, 4) - 0.5) * 80).toFixed(0)}px`,
-    scale: (0.5 + seeded(index, 5) * 0.9).toFixed(2),
-    opacity: (0.25 + seeded(index, 6) * 0.45).toFixed(2),
-  };
-});
-
 function slotStyle(index: number, color: string): CSSProperties {
   const slot = SLOTS[index];
   return {
@@ -88,10 +66,6 @@ function HeroFigure({ role, index }: { role: TopRole; index: number }) {
       style={slotStyle(index, style.color)}
     >
       <div className="lb-hero-enter relative flex items-end justify-center">
-        <div
-          aria-hidden
-          className="lb-hero-glow absolute bottom-0 left-1/2 h-24 w-40 -translate-x-1/2 rounded-[100%] bg-(--role) blur-3xl md:h-32 md:w-64"
-        />
         <div
           aria-hidden
           className="absolute bottom-0.5 left-1/2 h-3 w-3/4 -translate-x-1/2 rounded-[100%] bg-black/70 blur-md"
@@ -209,7 +183,6 @@ export function TopRoleHero() {
   const ordered = HERO_ORDER.map((key) =>
     roles.find((role) => role.roleKey === key),
   );
-  const glow = HERO_ORDER.map((key) => topRoleStyle(key).color);
 
   return (
     <section
@@ -221,33 +194,6 @@ export function TopRoleHero() {
         aria-hidden
         className="absolute inset-0 bg-[radial-gradient(ellipse_70%_55%_at_50%_-5%,rgba(255,255,255,0.07),transparent_70%)]"
       />
-      <div
-        aria-hidden
-        className="absolute inset-x-0 bottom-0 h-1/2 blur-[120px]"
-        style={{
-          opacity: "calc(0.35 + var(--scroll-a) * 0.25)",
-          background: `radial-gradient(40% 60% at 18% 100%, ${glow[0]} 0%, transparent 70%), radial-gradient(45% 70% at 50% 100%, ${glow[1]} 0%, transparent 70%), radial-gradient(40% 60% at 82% 100%, ${glow[2]} 0%, transparent 70%)`,
-        }}
-      />
-      <div aria-hidden className="absolute inset-0 overflow-hidden">
-        {EMBERS.map((ember, index) => (
-          <span
-            key={index}
-            className="lb-hero-ember"
-            style={
-              {
-                left: ember.left,
-                "--c": ember.color,
-                "--d": ember.duration,
-                "--delay": ember.delay,
-                "--dx": ember.drift,
-                "--s": ember.scale,
-                "--o": ember.opacity,
-              } as CSSProperties
-            }
-          />
-        ))}
-      </div>
       <div
         aria-hidden
         className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_40%,var(--background)_110%)]"
@@ -297,17 +243,6 @@ export function TopRoleHero() {
             );
           })}
         </div>
-      </div>
-
-      <div
-        aria-hidden
-        className="absolute inset-x-0 bottom-3 hidden justify-center md:flex"
-        style={{ opacity: "calc(1 - var(--scroll-a) * 2)" }}
-      >
-        <span className="lb-hero-hint inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">
-          Scroll
-          <ChevronDown className="size-3.5" />
-        </span>
       </div>
     </section>
   );
