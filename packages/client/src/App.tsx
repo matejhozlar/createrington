@@ -96,6 +96,12 @@ const Advertisement = lazyNamed(
   () => import("./pages/Advertisement"),
   "Advertisement",
 );
+const AnnouncementTable = import.meta.env.DEV
+  ? lazyNamed(
+      () => import("./features/dev/announcement-table/AnnouncementTable"),
+      "AnnouncementTable",
+    )
+  : null;
 
 // Protected user pages
 const Profile = lazyNamed(() => import("./pages/Profile/Profile"), "Profile");
@@ -305,6 +311,12 @@ function AppContent() {
       <Routes>
         {/* Standalone full-screen route (no sidebar/footer), temporary */}
         <Route path="/ad" element={<Advertisement />} />
+        {AnnouncementTable && (
+          <Route
+            path="/dev/announcement-table"
+            element={<AnnouncementTable />}
+          />
+        )}
 
         {/* SSO consent screen (standalone, no sidebar/footer) */}
         <Route path="/authorize" element={<Authorize />} />
