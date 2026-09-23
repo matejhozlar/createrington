@@ -8,6 +8,8 @@ import { formatMetric, HERO_ORDER, topRoleStyle } from "../top-roles";
 
 type TopRole = RouterOutput["public"]["leaderboards"]["hero"][number];
 
+const HERO_BACKDROP = "/assets/hero/dark-warehouse.webp";
+
 const SLOTS = [
   {
     figure: "h-[24vh] sm:h-[30vh] md:h-[38vh] lg:h-[42vh]",
@@ -189,14 +191,21 @@ export function TopRoleHero() {
       ref={ref}
       className="sticky top-14 z-0 h-[calc(100svh-3.5rem)] overflow-hidden bg-background md:top-0 md:h-svh"
     >
-      <div aria-hidden className="absolute inset-0 render-bg-grid" />
-      <div
+      <img
+        src={HERO_BACKDROP}
+        alt=""
         aria-hidden
-        className="absolute inset-0 bg-[radial-gradient(ellipse_70%_55%_at_50%_-5%,rgba(255,255,255,0.07),transparent_70%)]"
+        draggable={false}
+        decoding="async"
+        className="absolute -inset-10 h-[calc(100%+5rem)] w-[calc(100%+5rem)] max-w-none object-cover blur-[6px] brightness-[0.32] saturate-[0.7]"
       />
       <div
         aria-hidden
-        className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_40%,var(--background)_110%)]"
+        className="absolute inset-0 bg-linear-to-t from-background from-[8%] to-transparent to-[55%]"
+      />
+      <div
+        aria-hidden
+        className="absolute inset-0 bg-linear-to-b from-background to-transparent to-[35%]"
       />
       <div
         aria-hidden
