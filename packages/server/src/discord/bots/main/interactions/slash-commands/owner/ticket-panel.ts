@@ -1,4 +1,3 @@
-import { appEmoji } from "@/discord/emojis";
 import {
   SlashCommandBuilder,
   type ChatInputCommandInteraction,
@@ -68,7 +67,7 @@ export async function execute(
         .setLabel(config.label)
         .setStyle(ButtonStyle.Primary);
 
-      button.setEmoji(appEmoji(config.emoji));
+      button.setEmoji(config.emoji);
 
       return button;
     });
