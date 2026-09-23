@@ -21,6 +21,7 @@ const db = vi.hoisted(() => ({
 }));
 const netWorth = vi.hoisted(() => ({ rank: vi.fn() }));
 const notifications = vi.hoisted(() => ({ send: vi.fn() }));
+const holders = vi.hoisted(() => ({ record: vi.fn(), clear: vi.fn() }));
 
 vi.mock("@/db", () => ({
   Q: {
@@ -48,6 +49,10 @@ vi.mock("@/services/discord/role/role-assignment.service", () => ({
 
 vi.mock("@/services/discord/role/game-rank-sync.service", () => ({
   GameRankSyncService: class {},
+}));
+
+vi.mock("@/services/discord/role/top-role-holder.service", () => ({
+  topRoleHolderService: holders,
 }));
 
 vi.mock("@/discord/utils/roles/role-manager", () => ({

@@ -84,6 +84,7 @@ export interface ServerAgeRoleRule extends RoleAssignmentRule {
 export interface TopPlaytimeRoleRule extends RoleAssignmentRule {
   conditionType: RoleConditionType.TOP_PLAYTIME;
   gameRankId: string;
+  heroPose: KnownPose;
 }
 
 /**
@@ -95,6 +96,7 @@ export interface TopPlaytimeRoleRule extends RoleAssignmentRule {
 export interface TopBalanceRoleRule extends RoleAssignmentRule {
   conditionType: RoleConditionType.TOP_BALANCE;
   gameRankId: string;
+  heroPose: KnownPose;
 }
 
 /**
@@ -106,6 +108,7 @@ export interface TopBalanceRoleRule extends RoleAssignmentRule {
 export interface TopStatRecordsRoleRule extends RoleAssignmentRule {
   conditionType: RoleConditionType.TOP_STAT_RECORDS;
   gameRankId: string;
+  heroPose: KnownPose;
 }
 
 export type TopRoleRule =

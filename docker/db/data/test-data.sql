@@ -1144,3 +1144,10 @@ WHERE pps.server_id = 1
 ORDER BY pps.total_seconds DESC
 LIMIT 10;
 
+
+-- Competitive top-role holders shown in the leaderboards hero (no pre-rendered figures locally)
+INSERT INTO discord_top_role (role_key, discord_id, minecraft_uuid, value, held_since) VALUES
+  ('the_unrivaled', '818819241666281503', '091b900c-4174-478c-900c-a0fe5a31a329', 41, NOW() - INTERVAL '11 days'),
+  ('the_sleepless', '860820264128086026', '80e97d7b-d98d-4261-b297-311758b62a1a', 1384200, NOW() - INTERVAL '63 days'),
+  ('capitalist', '236124332160581632', '13fe4708-65fc-4ea0-9fb3-55b598b41e5e', 1287450.5, NOW() - INTERVAL '4 days')
+ON CONFLICT (role_key) DO NOTHING;
