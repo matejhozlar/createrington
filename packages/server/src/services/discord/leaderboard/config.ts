@@ -1,12 +1,10 @@
-import config from "@/config";
+import config, { assetUrl } from "@/config";
 import { type LeaderboardConfig, LeaderboardType } from "./types";
 import { Q } from "@/db";
 import { formatPlaytime } from "@createrington/shared/format";
 import { formatBalance, discordTimestamp } from "@/utils/format";
 import { Discord } from "@/discord/constants";
 import { rankNetWorth } from "./networth";
-
-const TITLE_IMAGE_BASE = "https://assets.createrington.com/titles";
 
 /**
  * Configuration registry for all leaderboard types
@@ -25,7 +23,7 @@ export const LEADERBOARD_CONFIGS: Record<LeaderboardType, LeaderboardConfig> = {
     title: "Top Players by Playtime",
     description: "Players with the most time on the server",
     emoji: "",
-    titleImageUrl: `${TITLE_IMAGE_BASE}/playtime.png?v=2`,
+    titleImageUrl: assetUrl("titles/playtime.png"),
     channelId: Discord.Channels.general.LEADERBOARDS,
     serverId: config.servers.rails.id,
     /**
@@ -65,7 +63,7 @@ export const LEADERBOARD_CONFIGS: Record<LeaderboardType, LeaderboardConfig> = {
     title: "Top Players by Net Worth",
     description: "Players with the highest in-game balance",
     emoji: "💰",
-    titleImageUrl: `${TITLE_IMAGE_BASE}/net-worth.png?v=2`,
+    titleImageUrl: assetUrl("titles/net-worth.png"),
     channelId: Discord.Channels.general.LEADERBOARDS,
     fetchData: async (_serverId: number, limit: number) => {
       const [balances, players] = await Promise.all([

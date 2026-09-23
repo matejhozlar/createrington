@@ -1,4 +1,5 @@
 import { escapeMarkdown, roleMention, spoiler } from "discord.js";
+import { assetUrl } from "@/config";
 import {
   actionRow,
   container,
@@ -80,8 +81,7 @@ const NOTES_CHUNK_MAX = COMPONENTS_V2_MAX_TEXT - 1000;
 const DOWNLOAD_LABEL = "Download on CurseForge";
 const NO_CHANGES = "No mod changes in this release.";
 
-export const CHANGELOG_SPACER_IMAGE_URL =
-  "https://assets.createrington.com/changelog-spacer.png";
+export const CHANGELOG_SPACER_IMAGE_URL = assetUrl("changelog-spacer.png");
 
 function clip(value: string, max: number): string {
   return value.length > max ? `${value.slice(0, max - 1)}…` : value;
