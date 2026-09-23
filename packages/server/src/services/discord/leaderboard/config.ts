@@ -25,7 +25,7 @@ export const LEADERBOARD_CONFIGS: Record<LeaderboardType, LeaderboardConfig> = {
     title: "Top Players by Playtime",
     description: "Players with the most time on the server",
     emoji: "",
-    titleImageUrl: `${TITLE_IMAGE_BASE}/playtime.png`,
+    titleImageUrl: `${TITLE_IMAGE_BASE}/playtime.png?v=2`,
     channelId: Discord.Channels.general.LEADERBOARDS,
     serverId: config.servers.rails.id,
     /**
@@ -65,7 +65,7 @@ export const LEADERBOARD_CONFIGS: Record<LeaderboardType, LeaderboardConfig> = {
     title: "Top Players by Net Worth",
     description: "Players with the highest in-game balance",
     emoji: "💰",
-    titleImageUrl: `${TITLE_IMAGE_BASE}/net-worth.png`,
+    titleImageUrl: `${TITLE_IMAGE_BASE}/net-worth.png?v=2`,
     channelId: Discord.Channels.general.LEADERBOARDS,
     fetchData: async (_serverId: number, limit: number) => {
       const [balances, players] = await Promise.all([
