@@ -1,12 +1,19 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-export interface AppEmojiSpec {
+export interface IconEmojiSpec {
   icon: `${string}:${string}`;
   fallback: string;
   color?: string;
   strokeWidth?: number;
 }
+
+export interface ImageEmojiSpec {
+  image: true;
+  fallback: string;
+}
+
+export type AppEmojiSpec = IconEmojiSpec | ImageEmojiSpec;
 
 export const APP_EMOJI_DEFAULTS = {
   color: "#dbdee1",
@@ -41,6 +48,9 @@ export const APP_EMOJIS = {
   package: { icon: "lucide:package", fallback: "📦" },
   pickaxe: { icon: "lucide:pickaxe", fallback: "⛏️" },
   chart: { icon: "lucide:chart-column", fallback: "📊" },
+  the_unrivaled: { image: true, fallback: "🏆" },
+  the_sleepless: { image: true, fallback: "🌙" },
+  capitalist: { image: true, fallback: "💰" },
 } as const satisfies Record<string, AppEmojiSpec>;
 
 export type AppEmojiKey = keyof typeof APP_EMOJIS;
