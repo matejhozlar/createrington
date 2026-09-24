@@ -67,7 +67,9 @@ export function HeldRecords({
             <li key={`${record.category}|${record.item}`}>
               <button
                 type="button"
-                onClick={() => onPick(record)}
+                onClick={() =>
+                  onPick({ category: record.category, item: record.item })
+                }
                 className="flex w-full items-center gap-3 rounded-md border bg-background/40 px-3 py-2 text-left transition-colors hover:border-primary/40"
               >
                 <span className="min-w-0 flex-1">

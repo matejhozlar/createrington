@@ -290,14 +290,26 @@ export function LeaderboardTable() {
     staleTime: 5 * 60 * 1000,
   });
   const [now] = useState(Date.now);
-  const [expanded, setExpanded] = useState<string | null>(null);
   const [search, setSearch] = useState(params.search);
-  const [page, setPage] = useState(0);
   const debouncedSearch = useDebouncedValue(search.trim(), 250);
 
   const active = BOARDS.find((b) => b.board === board) ?? BOARDS[0];
   const style = topRoleStyle(active.roleKey);
   const activeStat = params.stat;
+  const view = activeStat
+    ? `${board}:${activeStat.category}:${activeStat.item}`
+    : board;
+  const [paging, setPaging] = useState({
+    view,
+    page: 0,
+    expanded: null as string | null,
+  });
+  const current =
+    paging.view === view ? paging : { view, page: 0, expanded: null };
+  const { page, expanded } = current;
+  const setPage = (next: number) => setPaging({ ...current, page: next });
+  const setExpanded = (next: (value: string | null) => string | null) =>
+    setPaging({ ...current, expanded: next(current.expanded) });
   const statKey = {
     category: activeStat?.category ?? "",
     item: activeStat?.item ?? "",
@@ -325,20 +337,10 @@ export function LeaderboardTable() {
       enabled: !!activeStat,
     },
   );
-  const boardTopQuery = trpc.public.leaderboards.list.useQuery(
-    { board, page: 0, limit: 1 },
-    { staleTime: 60 * 1000, enabled: !activeStat },
-  );
-  const statTopQuery = trpc.public.leaderboards.stat.useQuery(
-    { ...statKey, page: 0, limit: 1 },
-    { staleTime: 60 * 1000, enabled: !!activeStat },
-  );
-
   const listQuery = activeStat ? statQuery : boardQuery;
-  const topQuery = activeStat ? statTopQuery : boardTopQuery;
   const rows = listQuery.data?.rows ?? [];
   const pagination = listQuery.data?.pagination;
-  const topValue = topQuery.data?.rows[0]?.value ?? 0;
+  const topValue = listQuery.data?.topValue ?? 0;
   const contestedKeys = boardQuery.data?.contestedKeys ?? 0;
   const canExpand = board === "records" && !activeStat;
   const focus = listQuery.data?.focus ?? null;
@@ -358,20 +360,10 @@ export function LeaderboardTable() {
       ? formatStatValue(activeStat.category, activeStat.item, value)
       : formatMetric(active.metric, value);
 
-  const selectBoard = (next: Board) => {
-    params.update({ board: next });
-    setPage(0);
-    setExpanded(null);
-  };
-  const selectStat = (next: Stat | null) => {
-    params.update({ stat: next });
-    setPage(0);
-    setExpanded(null);
-  };
+  const selectBoard = (next: Board) => params.update({ board: next });
+  const selectStat = (next: Stat | null) => params.update({ stat: next });
   const toggleRow = (minecraftUuid: string) =>
-    setExpanded((current) =>
-      current === minecraftUuid ? null : minecraftUuid,
-    );
+    setExpanded((open) => (open === minecraftUuid ? null : minecraftUuid));
 
   return (
     <section
