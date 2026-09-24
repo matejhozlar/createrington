@@ -15,7 +15,7 @@ function ChampionFlight() {
   useChampionDock(HERO_ORDER, DOCK_DELAYS);
 
   return (
-    <div aria-hidden className="pointer-events-none fixed inset-0 z-30">
+    <div aria-hidden className="pointer-events-none fixed inset-0 z-20">
       {HERO_ORDER.map((key) => {
         const holder = roles.find((role) => role.roleKey === key)?.holder;
         return holder ? (
