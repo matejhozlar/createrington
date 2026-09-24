@@ -9,14 +9,6 @@ export interface HeatmapGrid {
   monthLabels: { label: string; col: number }[];
 }
 
-export const HEATMAP_LEVEL_COLORS = [
-  "bg-muted/50",
-  "bg-green-500/20",
-  "bg-green-500/40",
-  "bg-green-500/60",
-  "bg-green-500/80",
-];
-
 export const HEATMAP_LEVEL_LABELS = ["None", "<1h", "1-2h", "2-4h", "4h+"];
 
 export const HEATMAP_DAY_LABELS = ["Mon", "", "Wed", "", "Fri", "", "Sun"];

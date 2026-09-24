@@ -87,10 +87,10 @@ export function PlayerActivity({ minecraftUuid }: { minecraftUuid: string }) {
   }
 
   const { weeks, monthLabels } = buildHeatmapGrid(activity.days, NUM_WEEKS);
-  const visibleMonths = monthLabels.filter(
-    (month, index) =>
-      (monthLabels[index + 1]?.col ?? NUM_WEEKS) - month.col >= MIN_MONTH_GAP,
-  );
+  const visibleMonths = monthLabels.filter((month, index) => {
+    const next = monthLabels[index + 1];
+    return !next || next.col - month.col >= MIN_MONTH_GAP;
+  });
   const yearSeconds = weeks.flat().reduce((sum, day) => sum + day.seconds, 0);
   const stats = [
     { label: "Total", value: formatPlaytime(activity.totalSeconds) },
@@ -134,14 +134,20 @@ export function PlayerActivity({ minecraftUuid }: { minecraftUuid: string }) {
             <div
               className="relative"
               style={{ width: NUM_WEEKS * CELL_PITCH - 3 }}
-              onPointerLeave={() => setHovered(null)}
+              onPointerLeave={(event) =>
+                event.pointerType === "mouse" && setHovered(null)
+              }
             >
               <div className="relative h-5">
                 {visibleMonths.map((month) => (
                   <span
                     key={`${month.label}-${month.col}`}
                     className="absolute text-[10px] font-medium text-muted-foreground"
-                    style={{ left: month.col * CELL_PITCH }}
+                    style={
+                      NUM_WEEKS - month.col < MIN_MONTH_GAP
+                        ? { right: 0 }
+                        : { left: month.col * CELL_PITCH }
+                    }
                   >
                     {month.label}
                   </span>

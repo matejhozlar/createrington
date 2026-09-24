@@ -5,7 +5,6 @@ import { RenderUnavailable } from "./components/RenderUnavailable";
 import {
   buildHeatmapGrid,
   HEATMAP_DAY_LABELS,
-  HEATMAP_LEVEL_COLORS,
   HEATMAP_LEVEL_LABELS,
   heatmapLevel,
 } from "@/lib/activityHeatmap";
@@ -23,6 +22,14 @@ interface ActivityData {
 }
 
 const NUM_WEEKS = 26;
+
+const LEVEL_COLORS = [
+  "bg-muted/50",
+  "bg-green-500/20",
+  "bg-green-500/40",
+  "bg-green-500/60",
+  "bg-green-500/80",
+];
 
 function StatPill({ label, value }: { label: string; value: string }) {
   return (
@@ -139,7 +146,7 @@ export function ActivityRender() {
                   className={`flex-1 aspect-square rounded-sm ${
                     day.future
                       ? "opacity-0"
-                      : HEATMAP_LEVEL_COLORS[heatmapLevel(day.seconds)]
+                      : LEVEL_COLORS[heatmapLevel(day.seconds)]
                   }`}
                   title={`${day.date}: ${formatPlaytime(day.seconds)}`}
                 />
@@ -152,7 +159,7 @@ export function ActivityRender() {
       {/* Footer: legend + branding */}
       <div className="flex items-center justify-between px-8 pb-4 z-10">
         <div className="flex items-center gap-2.5">
-          {HEATMAP_LEVEL_COLORS.map((color, i) => (
+          {LEVEL_COLORS.map((color, i) => (
             <div key={i} className="flex items-center gap-1">
               <div className={`size-4 rounded-sm ${color}`} />
               <span className="text-[11px] text-muted-foreground font-medium">
