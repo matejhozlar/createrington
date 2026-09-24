@@ -1,6 +1,7 @@
 import { Coins, Crown, MoonStar, type LucideIcon } from "lucide-react";
 import { formatCompactMoney, formatMoney } from "@createrington/shared/format";
 import { mcHeadsBody } from "@/lib/external-urls";
+import type { Board } from "./hooks/use-board-params";
 
 export type TopRoleMetric = "playtime" | "balance" | "records";
 
@@ -45,6 +46,18 @@ export const FALLBACK_TOP_ROLE_STYLE: TopRoleStyle = {
 };
 
 export const HERO_ORDER = ["the_sleepless", "the_unrivaled", "capitalist"];
+
+export const BOARD_SECTION_ID = "boards";
+
+const BOARD_BY_ROLE: Record<string, Board> = {
+  the_unrivaled: "records",
+  the_sleepless: "playtime",
+  capitalist: "balance",
+};
+
+export function boardForRole(roleKey: string): Board | null {
+  return BOARD_BY_ROLE[roleKey] ?? null;
+}
 
 export function topRoleStyle(roleKey: string): TopRoleStyle {
   return TOP_ROLE_STYLES[roleKey] ?? FALLBACK_TOP_ROLE_STYLE;

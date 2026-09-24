@@ -1,5 +1,29 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+interface FakeImage {
+  width: number;
+  height: number;
+  data: Uint8ClampedArray;
+}
+
+function fakeImage(
+  width: number,
+  height: number,
+  box: { x: number; y: number; width: number; height: number },
+): FakeImage {
+  const data = new Uint8ClampedArray(width * height * 4);
+  for (let y = box.y; y < box.y + box.height; y++) {
+    for (let x = box.x; x < box.x + box.width; x++) {
+      data[(y * width + x) * 4 + 3] = 255;
+    }
+  }
+  return { width, height, data };
+}
+
+const PLAIN = fakeImage(10, 16, { x: 2, y: 4, width: 6, height: 10 });
+const OUTLINED = fakeImage(14, 20, { x: 2, y: 6, width: 10, height: 14 });
+const MISALIGNED = fakeImage(14, 20, { x: 0, y: 0, width: 13, height: 20 });
+
 const db = vi.hoisted(() => ({
   find: vi.fn(),
   upsert: vi.fn(),
@@ -15,9 +39,14 @@ const storage = vi.hoisted(() => ({
 }));
 const skinApi = vi.hoisted(() => ({ render: vi.fn() }));
 const canvas = vi.hoisted(() => ({
-  image: { width: 762, height: 1143 },
+  plain: null as unknown as FakeImage,
+  outlined: null as unknown as FakeImage,
   toBuffer: vi.fn(() => Buffer.from("webp")),
-  created: [] as Array<{ width: number; height: number }>,
+  created: [] as Array<{
+    width: number;
+    height: number;
+    draws: Array<{ image: FakeImage; args: number[] }>;
+  }>,
 }));
 
 vi.mock("@/db", () => ({
@@ -45,11 +74,21 @@ vi.mock("@/services/skin-api", () => ({
 }));
 
 vi.mock("@napi-rs/canvas", () => ({
-  loadImage: async () => canvas.image,
+  loadImage: async (buffer: Buffer) =>
+    buffer[0] === 2 ? canvas.outlined : canvas.plain,
   createCanvas: (width: number, height: number) => {
-    canvas.created.push({ width, height });
+    const entry = {
+      width,
+      height,
+      draws: [] as Array<{ image: FakeImage; args: number[] }>,
+    };
+    canvas.created.push(entry);
     return {
-      getContext: () => ({ drawImage: vi.fn() }),
+      getContext: () => ({
+        drawImage: (image: FakeImage, ...args: number[]) =>
+          entry.draws.push({ image, args }),
+        getImageData: () => entry.draws[0].image,
+      }),
       toBuffer: canvas.toBuffer,
     };
   },
@@ -102,6 +141,8 @@ const BOB = {
 };
 
 const HELD_SINCE = new Date("2026-09-01T00:00:00Z");
+const ALICE_IMAGE = "top-roles/the_unrivaled/alice-1.webp";
+const ALICE_OUTLINE = "top-roles/the_unrivaled/alice-1-outline.webp";
 
 function existingRow(overrides: Partial<Record<string, unknown>> = {}) {
   return {
@@ -110,18 +151,27 @@ function existingRow(overrides: Partial<Record<string, unknown>> = {}) {
     minecraftUuid: ALICE.minecraftUuid,
     value: "40.000",
     heldSince: HELD_SINCE,
-    imageKey: "top-roles/the_unrivaled/alice-1.webp",
+    imageKey: ALICE_IMAGE,
+    outlineImageKey: ALICE_OUTLINE,
     updatedAt: HELD_SINCE,
     ...overrides,
   };
 }
 
+function storedKeys(): string[] {
+  return storage.put.mock.calls.map(([object]) => object.key);
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   storage.enabled = true;
-  canvas.image = { width: 762, height: 1143 };
+  canvas.plain = PLAIN;
+  canvas.outlined = OUTLINED;
   canvas.created.length = 0;
-  skinApi.render.mockResolvedValue(new Uint8Array([1, 2, 3]));
+  skinApi.render.mockImplementation(
+    async ({ options }: { options: { outline?: boolean } }) =>
+      new Uint8Array([options.outline ? 2 : 1]),
+  );
   db.upsert.mockResolvedValue(undefined);
   db.delete.mockResolvedValue(undefined);
   storage.put.mockResolvedValue(undefined);
@@ -129,7 +179,7 @@ beforeEach(() => {
 });
 
 describe("TopRoleHolderService.record", () => {
-  it("renders the hero figure and starts a new tenure for a first holder", async () => {
+  it("renders the plain and outlined figures and starts a new tenure for a first holder", async () => {
     db.find.mockResolvedValue(null);
     const before = Date.now();
 
@@ -140,14 +190,22 @@ describe("TopRoleHolderService.record", () => {
       source: { uuid: ALICE.minecraftUuid },
       options: { width: 1366, height: 2048, style: "cel" },
     });
-    expect(storage.put).toHaveBeenCalledTimes(1);
-    const stored = storage.put.mock.calls[0][0];
-    expect(stored.key).toMatch(
+    expect(skinApi.render).toHaveBeenCalledWith({
+      pose: "ninja",
+      source: { uuid: ALICE.minecraftUuid },
+      options: { width: 1366, height: 2048, style: "cel", outline: true },
+    });
+    const outlineImageKey = storedKeys().find((key) =>
+      key.endsWith("-outline.webp"),
+    );
+    const imageKey = storedKeys().find((key) => key !== outlineImageKey) ?? "";
+    expect(imageKey).toMatch(
       new RegExp(
         `^top-roles/the_unrivaled/${ALICE.minecraftUuid}-\\d+\\.webp$`,
       ),
     );
-    expect(stored.contentType).toBe("image/webp");
+    expect(outlineImageKey).toBe(imageKey.replace(/\.webp$/, "-outline.webp"));
+    expect(storage.put.mock.calls[0][0].contentType).toBe("image/webp");
 
     const [row, conflict] = db.upsert.mock.calls[0];
     expect(conflict).toBe("roleKey");
@@ -156,13 +214,32 @@ describe("TopRoleHolderService.record", () => {
       discordId: ALICE.discordId,
       minecraftUuid: ALICE.minecraftUuid,
       value: "41.000",
-      imageKey: stored.key,
+      imageKey,
+      outlineImageKey,
     });
     expect(row.heldSince.getTime()).toBeGreaterThanOrEqual(before);
     expect(storage.delete).not.toHaveBeenCalled();
   });
 
-  it("keeps the tenure start and the existing figure for a returning holder", async () => {
+  it("frames the plain figure on the outlined canvas so the two line up", async () => {
+    db.find.mockResolvedValue(null);
+
+    await new TopRoleHolderService().record(RECORDS_RULE, ALICE);
+
+    const outputs = canvas.created.filter(
+      (entry) => entry.draws[0]?.args.length === 4,
+    );
+    const plainOutput = outputs.find((entry) => entry.draws[0].image === PLAIN);
+    const outlineOutput = outputs.find(
+      (entry) => entry.draws[0].image === OUTLINED,
+    );
+    expect(plainOutput).toMatchObject({ width: 14, height: 20 });
+    expect(plainOutput?.draws[0].args).toEqual([2, 4, 10, 16]);
+    expect(outlineOutput).toMatchObject({ width: 14, height: 20 });
+    expect(outlineOutput?.draws[0].args).toEqual([0, 0, 14, 20]);
+  });
+
+  it("keeps the tenure start and the existing figures for a returning holder", async () => {
     db.find.mockResolvedValue(existingRow());
 
     await new TopRoleHolderService().record(RECORDS_RULE, ALICE);
@@ -170,25 +247,80 @@ describe("TopRoleHolderService.record", () => {
     expect(skinApi.render).not.toHaveBeenCalled();
     expect(db.upsert.mock.calls[0][0]).toMatchObject({
       heldSince: HELD_SINCE,
-      imageKey: "top-roles/the_unrivaled/alice-1.webp",
+      imageKey: ALICE_IMAGE,
+      outlineImageKey: ALICE_OUTLINE,
       value: "41.000",
     });
     expect(storage.delete).not.toHaveBeenCalled();
   });
 
   it("re-renders for the same holder when the previous render failed", async () => {
-    db.find.mockResolvedValue(existingRow({ imageKey: null }));
+    db.find.mockResolvedValue(
+      existingRow({ imageKey: null, outlineImageKey: null }),
+    );
 
     await new TopRoleHolderService().record(RECORDS_RULE, ALICE);
 
-    expect(skinApi.render).toHaveBeenCalledTimes(1);
+    expect(skinApi.render).toHaveBeenCalledTimes(2);
     expect(db.upsert.mock.calls[0][0]).toMatchObject({
       heldSince: HELD_SINCE,
       imageKey: expect.stringMatching(/^top-roles\/the_unrivaled\//),
     });
   });
 
-  it("swaps the holder, resets the tenure and removes the old figure", async () => {
+  it("re-renders a returning holder that has no outlined figure yet and drops the old image", async () => {
+    db.find.mockResolvedValue(existingRow({ outlineImageKey: null }));
+
+    await new TopRoleHolderService().record(RECORDS_RULE, ALICE);
+
+    const row = db.upsert.mock.calls[0][0];
+    expect(row.heldSince).toEqual(HELD_SINCE);
+    expect(row.outlineImageKey).toMatch(/-outline\.webp$/);
+    expect(storage.delete).toHaveBeenCalledWith([ALICE_IMAGE]);
+  });
+
+  it("keeps the existing image when re-rendering a holder without an outline fails", async () => {
+    db.find.mockResolvedValue(existingRow({ outlineImageKey: null }));
+    skinApi.render.mockRejectedValue(new Error("skin-api down"));
+
+    await new TopRoleHolderService().record(RECORDS_RULE, ALICE);
+
+    expect(db.upsert.mock.calls[0][0]).toMatchObject({
+      imageKey: ALICE_IMAGE,
+      outlineImageKey: null,
+    });
+    expect(storage.delete).not.toHaveBeenCalled();
+  });
+
+  it("stores only the plain figure when the outlined render fails", async () => {
+    db.find.mockResolvedValue(null);
+    skinApi.render.mockImplementation(
+      async ({ options }: { options: { outline?: boolean } }) => {
+        if (options.outline) throw new Error("outline down");
+        return new Uint8Array([1]);
+      },
+    );
+
+    await new TopRoleHolderService().record(RECORDS_RULE, ALICE);
+
+    expect(storedKeys()).toHaveLength(1);
+    expect(db.upsert.mock.calls[0][0]).toMatchObject({
+      imageKey: storedKeys()[0],
+      outlineImageKey: null,
+    });
+  });
+
+  it("stores only the plain figure when the outline does not line up", async () => {
+    db.find.mockResolvedValue(null);
+    canvas.outlined = MISALIGNED;
+
+    await new TopRoleHolderService().record(RECORDS_RULE, ALICE);
+
+    expect(storedKeys()).toHaveLength(1);
+    expect(db.upsert.mock.calls[0][0].outlineImageKey).toBeNull();
+  });
+
+  it("swaps the holder, resets the tenure and removes both old figures", async () => {
     db.find.mockResolvedValue(existingRow());
 
     await new TopRoleHolderService().record(RECORDS_RULE, BOB);
@@ -199,9 +331,7 @@ describe("TopRoleHolderService.record", () => {
     expect(row.imageKey).toMatch(
       new RegExp(`^top-roles/the_unrivaled/${BOB.minecraftUuid}-`),
     );
-    expect(storage.delete).toHaveBeenCalledWith([
-      "top-roles/the_unrivaled/alice-1.webp",
-    ]);
+    expect(storage.delete).toHaveBeenCalledWith([ALICE_IMAGE, ALICE_OUTLINE]);
   });
 
   it("stores the holder without a figure when the render fails", async () => {
@@ -211,7 +341,10 @@ describe("TopRoleHolderService.record", () => {
     await new TopRoleHolderService().record(RECORDS_RULE, ALICE);
 
     expect(storage.put).not.toHaveBeenCalled();
-    expect(db.upsert.mock.calls[0][0]).toMatchObject({ imageKey: null });
+    expect(db.upsert.mock.calls[0][0]).toMatchObject({
+      imageKey: null,
+      outlineImageKey: null,
+    });
   });
 
   it("skips rendering entirely when object storage is not configured", async () => {
@@ -226,28 +359,32 @@ describe("TopRoleHolderService.record", () => {
 
   it("downscales tall renders to the hero height but never upscales small crops", async () => {
     db.find.mockResolvedValue(null);
+    skinApi.render.mockImplementation(
+      async ({ options }: { options: { outline?: boolean } }) => {
+        if (options.outline) throw new Error("outline down");
+        return new Uint8Array([1]);
+      },
+    );
     const service = new TopRoleHolderService();
 
-    canvas.image = { width: 1365, height: 2048 };
+    canvas.plain = { width: 1365, height: 2048, data: new Uint8ClampedArray() };
     await service.record(RECORDS_RULE, ALICE);
-    expect(canvas.created[0]).toEqual({ width: 800, height: 1200 });
+    expect(canvas.created[0]).toMatchObject({ width: 800, height: 1200 });
 
-    canvas.image = { width: 581, height: 872 };
+    canvas.plain = { width: 581, height: 872, data: new Uint8ClampedArray() };
     await service.record(RECORDS_RULE, BOB);
-    expect(canvas.created[1]).toEqual({ width: 581, height: 872 });
+    expect(canvas.created[1]).toMatchObject({ width: 581, height: 872 });
   });
 });
 
 describe("TopRoleHolderService.clear", () => {
-  it("deletes the row and the stored figure", async () => {
+  it("deletes the row and both stored figures", async () => {
     db.find.mockResolvedValue(existingRow());
 
     await new TopRoleHolderService().clear(RECORDS_RULE);
 
     expect(db.delete).toHaveBeenCalledWith({ roleKey: "the_unrivaled" });
-    expect(storage.delete).toHaveBeenCalledWith([
-      "top-roles/the_unrivaled/alice-1.webp",
-    ]);
+    expect(storage.delete).toHaveBeenCalledWith([ALICE_IMAGE, ALICE_OUTLINE]);
   });
 
   it("is a no-op when nobody holds the role", async () => {
@@ -281,7 +418,8 @@ describe("TopRoleHolderService.list", () => {
         minecraftUsername: "Alice_Now",
         value: 40,
         heldSince: HELD_SINCE,
-        imageUrl: "https://assets.test/top-roles/the_unrivaled/alice-1.webp",
+        imageUrl: `https://assets.test/${ALICE_IMAGE}`,
+        outlineImageUrl: `https://assets.test/${ALICE_OUTLINE}`,
       },
     });
     expect(roles[1]).toMatchObject({
@@ -291,7 +429,7 @@ describe("TopRoleHolderService.list", () => {
     });
   });
 
-  it("reports a holder without a figure as an empty image url", async () => {
+  it("reports a holder without a figure as empty image urls", async () => {
     db.getAll.mockResolvedValue([existingRow({ imageKey: null })]);
     db.players.mockResolvedValue([
       { minecraftUuid: ALICE.minecraftUuid, minecraftUsername: "alice" },
@@ -300,5 +438,6 @@ describe("TopRoleHolderService.list", () => {
     const [records] = await new TopRoleHolderService().list();
 
     expect(records.holder?.imageUrl).toBeNull();
+    expect(records.holder?.outlineImageUrl).toBeNull();
   });
 });

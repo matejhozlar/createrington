@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import { Paginator } from "@/components/paginator";
 import {
+  BOARD_SECTION_ID,
   figureSrc,
   formatGap,
   formatMetric,
@@ -374,7 +375,8 @@ export function LeaderboardTable() {
 
   return (
     <section
-      className="mx-auto max-w-5xl px-5 py-12 md:px-8 md:py-16"
+      id={BOARD_SECTION_ID}
+      className="mx-auto max-w-5xl scroll-mt-14 px-5 py-12 md:scroll-mt-0 md:px-8 md:py-16"
       style={{ "--role": style.color } as CSSProperties}
     >
       <h2 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">

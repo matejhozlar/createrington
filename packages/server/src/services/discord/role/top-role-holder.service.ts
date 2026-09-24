@@ -1,4 +1,4 @@
-import { createCanvas, loadImage } from "@napi-rs/canvas";
+import { createCanvas, loadImage, type Image } from "@napi-rs/canvas";
 import { Q } from "@/db";
 import { objectStorage } from "@/services/storage";
 import {
@@ -7,6 +7,7 @@ import {
   POSE_RENDER_STYLE,
 } from "@/services/skin-api";
 import { getTopRoleRules } from "./config";
+import { outlineOffset, type RgbaImage } from "./figure-outline";
 import { RoleConditionType } from "./types";
 import type { TopRoleRule } from "./types";
 
@@ -30,6 +31,12 @@ export interface TopRoleHolderView {
   value: number;
   heldSince: Date;
   imageUrl: string | null;
+  outlineImageUrl: string | null;
+}
+
+interface FigureKeys {
+  imageKey: string;
+  outlineImageKey: string | null;
 }
 
 export interface TopRoleView {
@@ -53,7 +60,10 @@ const METRIC_BY_CONDITION: Record<TopRoleRule["conditionType"], TopRoleMetric> =
  * figure of each holder in object storage. `record` is called by the daily
  * role reconcile once the Discord role is confirmed on the leader: a new
  * holder resets `heldSince` and gets a fresh render in the role's hero pose,
- * a returning holder only refreshes the metric. Renders are skipped when
+ * a returning holder only refreshes the metric. Each render comes as a pair,
+ * the plain figure and the skin API outline variant framed on one shared
+ * canvas so the site can swap them in place; the outline is optional and a
+ * holder missing it is re-rendered on the next pass. Renders are skipped when
  * object storage is not configured, and a failed render leaves the image
  * empty so the next daily pass retries it; consumers fall back to a plain
  * skin render in that case.
@@ -65,10 +75,18 @@ export class TopRoleHolderService {
     const existing = await Q.discord.top.role.find({ roleKey });
     const sameHolder = existing?.discordId === holder.discordId;
 
-    let imageKey = sameHolder ? (existing?.imageKey ?? null) : null;
-    if (!imageKey && objectStorage.enabled) {
-      imageKey = await this.renderFigure(rule, holder.minecraftUuid);
+    const current: FigureKeys | null =
+      sameHolder && existing?.imageKey
+        ? {
+            imageKey: existing.imageKey,
+            outlineImageKey: existing.outlineImageKey,
+          }
+        : null;
+    let figure = current?.outlineImageKey ? current : null;
+    if (!figure && objectStorage.enabled) {
+      figure = await this.renderFigures(rule, holder.minecraftUuid);
     }
+    figure ??= current;
 
     await Q.discord.top.role.upsert(
       {
@@ -77,15 +95,19 @@ export class TopRoleHolderService {
         minecraftUuid: holder.minecraftUuid,
         value: holder.value.toFixed(3),
         heldSince: sameHolder && existing ? existing.heldSince : new Date(),
-        imageKey,
+        imageKey: figure?.imageKey ?? null,
+        outlineImageKey: figure?.outlineImageKey ?? null,
         updatedAt: new Date(),
       },
       "roleKey",
     );
 
-    if (existing?.imageKey && existing.imageKey !== imageKey) {
-      await this.deleteImage(existing.imageKey);
-    }
+    const kept = [figure?.imageKey, figure?.outlineImageKey];
+    await this.deleteImages(
+      [existing?.imageKey, existing?.outlineImageKey].filter(
+        (key): key is string => !!key && !kept.includes(key),
+      ),
+    );
   }
 
   /** Forgets the holder of a top role after the Discord role was stripped and nobody could take it over. */
@@ -96,7 +118,11 @@ export class TopRoleHolderService {
     if (!existing) return;
 
     await Q.discord.top.role.delete({ roleKey: existing.roleKey });
-    if (existing.imageKey) await this.deleteImage(existing.imageKey);
+    await this.deleteImages(
+      [existing.imageKey, existing.outlineImageKey].filter(
+        (key): key is string => !!key,
+      ),
+    );
   }
 
   /** Every configured top role in display order with its current holder, or `null` while unclaimed. */
@@ -133,30 +159,74 @@ export class TopRoleHolderService {
                 imageUrl: row.imageKey
                   ? objectStorage.publicUrl(row.imageKey)
                   : null,
+                outlineImageUrl:
+                  row.imageKey && row.outlineImageKey
+                    ? objectStorage.publicUrl(row.outlineImageKey)
+                    : null,
               }
             : null,
       };
     });
   }
 
-  private async renderFigure(
+  private async renderFigures(
     rule: TopRoleRule,
     minecraftUuid: string,
-  ): Promise<string | null> {
-    try {
-      const png = await getSkinApiClient().render({
+  ): Promise<FigureKeys | null> {
+    const render = (outline: boolean) =>
+      getSkinApiClient().render({
         pose: rule.heroPose,
         source: { uuid: minecraftUuid },
-        options: { ...MAX_QUALITY_RENDER, style: POSE_RENDER_STYLE },
+        options: {
+          ...MAX_QUALITY_RENDER,
+          style: POSE_RENDER_STYLE,
+          ...(outline ? { outline: true } : {}),
+        },
       });
-      const body = await this.toHeroFigure(png);
-      const key = `${FIGURE_KEY_PREFIX}/${rule.gameRankId}/${minecraftUuid}-${Date.now()}.webp`;
 
-      await objectStorage.put({ key, body, contentType: "image/webp" });
+    try {
+      const [plainPng, outlinePng] = await Promise.all([
+        render(false),
+        render(true).catch((error) => {
+          logger.warn(
+            `Failed to render the outlined hero figure for top role "${rule.label}" (${minecraftUuid}):`,
+            error,
+          );
+          return null;
+        }),
+      ]);
+      const plain = await loadImage(Buffer.from(plainPng));
+      const outlined = outlinePng
+        ? await loadImage(Buffer.from(outlinePng))
+        : null;
+      const offset = outlined
+        ? outlineOffset(this.pixels(plain), this.pixels(outlined))
+        : null;
+      if (outlined && !offset) {
+        logger.warn(
+          `Outlined hero figure for top role "${rule.label}" (${minecraftUuid}) did not line up with the plain render, storing the plain figure only`,
+        );
+      }
+
+      const stem = `${FIGURE_KEY_PREFIX}/${rule.gameRankId}/${minecraftUuid}-${Date.now()}`;
+      const imageKey = `${stem}.webp`;
+      if (!outlined || !offset) {
+        await this.store(imageKey, this.toHeroFigure(plain, plain));
+        logger.info(
+          `Rendered hero figure for top role "${rule.label}" (${minecraftUuid}) at ${imageKey}`,
+        );
+        return { imageKey, outlineImageKey: null };
+      }
+
+      const outlineImageKey = `${stem}-outline.webp`;
+      await Promise.all([
+        this.store(imageKey, this.toHeroFigure(plain, outlined, offset)),
+        this.store(outlineImageKey, this.toHeroFigure(outlined, outlined)),
+      ]);
       logger.info(
-        `Rendered hero figure for top role "${rule.label}" (${minecraftUuid}) at ${key}`,
+        `Rendered hero figures for top role "${rule.label}" (${minecraftUuid}) at ${imageKey} and ${outlineImageKey}`,
       );
-      return key;
+      return { imageKey, outlineImageKey };
     } catch (error) {
       logger.warn(
         `Failed to render hero figure for top role "${rule.label}" (${minecraftUuid}):`,
@@ -166,28 +236,56 @@ export class TopRoleHolderService {
     }
   }
 
-  private async toHeroFigure(png: Uint8Array): Promise<Buffer> {
-    const image = await loadImage(Buffer.from(png));
-    const scale = Math.min(1, FIGURE_MAX_HEIGHT / image.height);
-    const width = Math.round(image.width * scale);
-    const height = Math.round(image.height * scale);
-    const canvas = createCanvas(width, height);
+  private pixels(image: Image): RgbaImage {
+    const canvas = createCanvas(image.width, image.height);
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(image, 0, 0);
+    return ctx.getImageData(0, 0, image.width, image.height);
+  }
+
+  private async store(key: string, body: Promise<Buffer>): Promise<void> {
+    await objectStorage.put({
+      key,
+      body: await body,
+      contentType: "image/webp",
+    });
+  }
+
+  private async toHeroFigure(
+    image: Image,
+    frame: { width: number; height: number },
+    offset = { x: 0, y: 0 },
+  ): Promise<Buffer> {
+    const scale = Math.min(1, FIGURE_MAX_HEIGHT / frame.height);
+    const canvas = createCanvas(
+      Math.round(frame.width * scale),
+      Math.round(frame.height * scale),
+    );
     const ctx = canvas.getContext("2d");
 
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = "high";
-    ctx.drawImage(image, 0, 0, width, height);
+    ctx.drawImage(
+      image,
+      offset.x * scale,
+      offset.y * scale,
+      image.width * scale,
+      image.height * scale,
+    );
 
     return canvas.toBuffer("image/webp", FIGURE_WEBP_QUALITY);
   }
 
-  private async deleteImage(key: string): Promise<void> {
-    if (!objectStorage.enabled) return;
+  private async deleteImages(keys: string[]): Promise<void> {
+    if (!objectStorage.enabled || keys.length === 0) return;
 
     try {
-      await objectStorage.delete([key]);
+      await objectStorage.delete(keys);
     } catch (error) {
-      logger.warn(`Failed to delete stale hero figure ${key}:`, error);
+      logger.warn(
+        `Failed to delete stale hero figures ${keys.join(", ")}:`,
+        error,
+      );
     }
   }
 }

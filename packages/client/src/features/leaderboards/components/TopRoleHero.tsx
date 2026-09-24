@@ -3,9 +3,12 @@ import { useCountdown } from "@/hooks/use-countdown";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { useScrollProgress } from "../hooks/use-scroll-progress";
+import { useBoardParams } from "../hooks/use-board-params";
 import { usePreloadedImages } from "../hooks/use-preloaded-images";
 import {
   figureSrc,
+  BOARD_SECTION_ID,
+  boardForRole,
   formatMetric,
   heldFor,
   HERO_ORDER,
@@ -70,6 +73,16 @@ function HeroFigure({ role, index }: { role: TopRole; index: number }) {
   const style = topRoleStyle(role.roleKey);
   const holder = role.holder;
   const src = holder ? figureSrc(holder) : null;
+  const params = useBoardParams();
+  const board = boardForRole(role.roleKey);
+
+  const openBoard = () => {
+    if (!board) return;
+    params.update({ board });
+    document
+      .getElementById(BOARD_SECTION_ID)
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   return (
     <div
@@ -82,7 +95,13 @@ function HeroFigure({ role, index }: { role: TopRole; index: number }) {
     >
       <div className="lb-hero-enter relative flex items-end justify-center">
         {src && holder ? (
-          <div className="relative" data-dock-from={role.roleKey}>
+          <button
+            type="button"
+            onClick={openBoard}
+            aria-label={`Show the ${style.boardTitle.toLowerCase()} leaderboard, led by ${holder.minecraftUsername}`}
+            className="group relative block cursor-pointer rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-(--role)/60"
+            data-dock-from={role.roleKey}
+          >
             <div
               aria-hidden
               className="absolute bottom-0.5 left-1/2 h-3 w-3/4 -translate-x-1/2 rounded-[100%] bg-black/70 blur-md"
@@ -96,18 +115,26 @@ function HeroFigure({ role, index }: { role: TopRole; index: number }) {
               className="pointer-events-none absolute inset-x-0 top-full h-[38%] w-full -scale-y-100 object-cover object-bottom blur-[1px] [mask-image:linear-gradient(to_top,rgba(0,0,0,0.9),transparent)]"
               style={GROUNDING.reflection}
             />
-            <img
-              src={src}
-              alt={`${holder.minecraftUsername}, ${role.label}`}
-              data-dock-body
-              draggable={false}
-              decoding="async"
-              className={cn(
-                "relative w-auto max-w-none select-none",
-                slot.figure,
+            <span className="relative block" data-dock-body>
+              <img
+                src={src}
+                alt={`${holder.minecraftUsername}, ${role.label}`}
+                draggable={false}
+                decoding="async"
+                className={cn("w-auto max-w-none select-none", slot.figure)}
+              />
+              {holder.outlineImageUrl && (
+                <img
+                  src={holder.outlineImageUrl}
+                  alt=""
+                  aria-hidden
+                  draggable={false}
+                  decoding="async"
+                  className="absolute inset-0 size-full max-w-none opacity-0 transition-opacity duration-200 select-none group-hover:opacity-100 group-focus-visible:opacity-100"
+                />
               )}
-            />
-          </div>
+            </span>
+          </button>
         ) : (
           <div
             className={cn(
