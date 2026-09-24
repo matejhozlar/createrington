@@ -4,10 +4,12 @@ import { buildPagination, findOrThrow, paginationInput } from "@/trpc/utils";
 import { createRateLimit } from "@/trpc/middleware/rate-limit";
 import { topRoleHolderService } from "@/services/discord/role/top-role-holder.service";
 import { Q, playtimeRepo } from "@/db";
-import { mcUuid } from "@/utils/zod-schemas";
+import { escapeLike } from "@/db/utils";
+import { mcUsername, mcUuid } from "@/utils/zod-schemas";
 import {
   LEADERBOARD_BOARDS,
   leaderboardBoardService,
+  leaderboardCompareService,
   type BoardRow,
   type BoardSnapshot,
 } from "@/services/leaderboard";
@@ -29,6 +31,33 @@ const statInput = {
   category: z.string().min(1).max(128),
   item: z.string().min(1).max(128),
 };
+
+const differentPlayers = {
+  message: "Pick two different players",
+};
+
+const usernamePair = z
+  .object({ first: mcUsername, second: mcUsername })
+  .refine(
+    (pair) => pair.first.toLowerCase() !== pair.second.toLowerCase(),
+    differentPlayers,
+  );
+
+const uuidPair = z
+  .object({ first: mcUuid, second: mcUuid })
+  .refine(
+    (pair) => pair.first.toLowerCase() !== pair.second.toLowerCase(),
+    differentPlayers,
+  );
+
+function playerByUsername(minecraftUsername: string) {
+  return findOrThrow(
+    Q.player
+      .where({ minecraftUsername: { $ilike: escapeLike(minecraftUsername) } })
+      .first(),
+    `Player ${minecraftUsername} not found`,
+  );
+}
 
 function neighbour(row: BoardRow | undefined) {
   return row ? { rank: row.rank, value: row.value } : null;
@@ -73,7 +102,7 @@ function boardPage(
   };
 }
 
-/** Public leaderboards router: the top-role hero, the full ranked boards, per-stat rankings and per-player activity. */
+/** Public leaderboards router: the top-role hero, the full ranked boards, per-stat rankings, per-player activity and head-to-head comparisons. */
 export const leaderboardsRouter = router({
   hero: publicProcedure
     .use(leaderboardsReadLimit)
@@ -143,4 +172,64 @@ export const leaderboardsRouter = router({
         ),
       ),
     ),
+
+  compare: publicProcedure
+    .use(leaderboardsReadLimit)
+    .meta({
+      description:
+        "Puts two players, looked up by Minecraft username (case-insensitive), side by side: for each, their rank and value on the records, playtime and balance boards, total sessions, current daily streak and join date. Feeds the leaderboards compare page",
+    })
+    .input(usernamePair)
+    .query(async ({ input }) => {
+      const [first, second] = await Promise.all([
+        playerByUsername(input.first),
+        playerByUsername(input.second),
+      ]);
+      return leaderboardCompareService.compare(first, second);
+    }),
+
+  contender: publicProcedure
+    .use(leaderboardsReadLimit)
+    .meta({
+      description:
+        "Looks up one player by Minecraft username (case-insensitive) with their rank on the records, playtime and balance boards. Feeds the compare page while its second player is still being picked",
+    })
+    .input(z.object({ username: mcUsername }))
+    .query(async ({ input }) =>
+      leaderboardCompareService.contender(
+        await playerByUsername(input.username),
+      ),
+    ),
+
+  headToHead: publicProcedure
+    .use(leaderboardsReadLimit)
+    .meta({
+      description:
+        "Returns one page of every Minecraft stat either of two players holds, with both totals (summed across servers). Optionally narrowed by an item, mod or category search, sorted by the relative gap between them or by their combined total",
+    })
+    .input(
+      uuidPair.and(
+        z.object({
+          search: z.string().trim().max(48).optional(),
+          sort: z.enum(["gap", "total"]).default("gap"),
+          ...paginationInput({ defaultLimit: 10, maxLimit: 50 }),
+        }),
+      ),
+    )
+    .query(async ({ input }) => {
+      const { rows, total } = await Q.player.minecraft.stat.total.getHeadToHead(
+        input.first,
+        input.second,
+        {
+          search: input.search || undefined,
+          sort: input.sort,
+          limit: input.limit,
+          offset: input.page * input.limit,
+        },
+      );
+      return {
+        rows,
+        pagination: buildPagination(input.page, input.limit, total),
+      };
+    }),
 });

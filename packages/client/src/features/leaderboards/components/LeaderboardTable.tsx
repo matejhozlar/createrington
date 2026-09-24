@@ -461,6 +461,7 @@ export function LeaderboardTable() {
               >
                 <RowDetails
                   minecraftUuid={row.minecraftUuid}
+                  minecraftUsername={row.minecraftUsername}
                   showRecords={board === "records" && !activeStat}
                   tab={detailTab}
                   onTabChange={setDetailTab}

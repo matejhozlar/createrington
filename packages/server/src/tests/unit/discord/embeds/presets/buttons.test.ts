@@ -74,6 +74,16 @@ describe("ButtonPresets.links", () => {
   });
 });
 
+describe("ButtonPresets.links.compare", () => {
+  it("opens the website comparison of both players by username", () => {
+    const data = json(ButtonPresets.links.compare("Agent772", "saun_hardy"));
+    expect(data.style).toBe(ButtonStyle.Link);
+    expect(data.url).toBe(
+      "https://example.com/website/leaderboards/compare?a=Agent772&b=saun_hardy",
+    );
+  });
+});
+
 describe("ButtonPresets.departedMember", () => {
   it("deleteNow(id) builds a Danger button namespaced to the departed id", () => {
     const data = json(ButtonPresets.departedMember.deleteNow(7));

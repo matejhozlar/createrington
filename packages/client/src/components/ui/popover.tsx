@@ -3,10 +3,60 @@ import { Popover as PopoverPrimitive } from "radix-ui";
 
 import { cn } from "@/lib/utils";
 
+const SCROLL_GESTURES = ["wheel", "touchmove"] as const;
+
 function Popover({
+  open: openProp,
+  defaultOpen = false,
+  onOpenChange,
   ...props
 }: React.ComponentProps<typeof PopoverPrimitive.Root>) {
-  return <PopoverPrimitive.Root data-slot="popover" {...props} />;
+  const [uncontrolledOpen, setUncontrolledOpen] = React.useState(defaultOpen);
+  const open = openProp ?? uncontrolledOpen;
+
+  const setOpen = React.useCallback(
+    (next: boolean) => {
+      if (openProp === undefined) setUncontrolledOpen(next);
+      onOpenChange?.(next);
+    },
+    [openProp, onOpenChange],
+  );
+
+  React.useEffect(() => {
+    if (!open) return;
+    const closeOnScroll = (event: Event) => {
+      const target = event.target;
+      if (
+        target instanceof Element &&
+        target.closest('[data-slot="popover-content"]')
+      ) {
+        return;
+      }
+      setOpen(false);
+    };
+    for (const gesture of SCROLL_GESTURES) {
+      document.addEventListener(gesture, closeOnScroll, {
+        capture: true,
+        passive: true,
+      });
+    }
+    return () => {
+      for (const gesture of SCROLL_GESTURES) {
+        document.removeEventListener(gesture, closeOnScroll, {
+          capture: true,
+        });
+      }
+    };
+  }, [open, setOpen]);
+
+  return (
+    <PopoverPrimitive.Root
+      data-slot="popover"
+      open={open}
+      onOpenChange={setOpen}
+      {...props}
+    />
+  );
 }
 
 function PopoverTrigger({

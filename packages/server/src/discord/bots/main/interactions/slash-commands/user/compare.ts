@@ -1,13 +1,16 @@
 import { playerRepo } from "@/db";
 import { BalanceUtils } from "@/db/repositories/balance/utils";
 import { EmbedPresets } from "@/discord/embeds";
+import { ButtonPresets } from "@/discord/embeds/presets/buttons";
 import { replyError } from "@/discord/utils/interaction-reply";
 import { CooldownType } from "@/discord/utils/cooldown";
 import { formatPlaytime } from "@createrington/shared/format";
 import { discordTimestamp } from "@/utils/format";
 import { renderScreenshot } from "@/discord/utils/render-screenshot";
 import {
+  ActionRowBuilder,
   AttachmentBuilder,
+  ButtonBuilder,
   ChatInputCommandInteraction,
   SlashCommandBuilder,
 } from "discord.js";
@@ -78,6 +81,9 @@ export async function execute(
 
     const name1 = details1.player.minecraftUsername;
     const name2 = details2.player.minecraftUsername;
+    const links = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      ButtonPresets.links.compare(name1, name2),
+    );
 
     const screenshotBuffer = await renderScreenshot("compare", {
       player1: user1.id,
@@ -96,6 +102,7 @@ export async function execute(
       await interaction.editReply({
         embeds: [embed.build()],
         files: [attachment],
+        components: [links],
       });
     } else {
       // Text fallback if Puppeteer is unavailable
@@ -130,7 +137,10 @@ export async function execute(
           true,
         );
 
-      await interaction.editReply({ embeds: [embed.build()] });
+      await interaction.editReply({
+        embeds: [embed.build()],
+        components: [links],
+      });
     }
   } catch {
     await replyError(
