@@ -26,7 +26,7 @@ import {
 } from "../top-roles";
 import { useBoardParams, type Board } from "../hooks/use-board-params";
 import { StatPicker, type Stat } from "./StatPicker";
-import { HeldRecords } from "./HeldRecords";
+import { RowDetails, type DetailTab } from "./RowDetails";
 
 type BoardPage = RouterOutput["public"]["leaderboards"]["list"];
 type BoardRow = BoardPage["rows"][number];
@@ -292,6 +292,7 @@ export function LeaderboardTable() {
     staleTime: 5 * 60 * 1000,
   });
   const [now] = useState(Date.now);
+  const [detailTab, setDetailTab] = useState<DetailTab>("records");
   const [search, setSearch] = useState(params.search);
   const debouncedSearch = useDebouncedValue(search.trim(), 250);
 
@@ -344,7 +345,6 @@ export function LeaderboardTable() {
   const pagination = listQuery.data?.pagination;
   const topValue = listQuery.data?.topValue ?? 0;
   const contestedKeys = boardQuery.data?.contestedKeys ?? 0;
-  const canExpand = board === "records" && !activeStat;
   const focus = listQuery.data?.focus ?? null;
   const focusNote = focus
     ? gapNote(focus, (value) =>
@@ -457,12 +457,13 @@ export function LeaderboardTable() {
                     : null
                 }
                 expanded={expanded === row.minecraftUuid}
-                onToggle={
-                  canExpand ? () => toggleRow(row.minecraftUuid) : undefined
-                }
+                onToggle={() => toggleRow(row.minecraftUuid)}
               >
-                <HeldRecords
+                <RowDetails
                   minecraftUuid={row.minecraftUuid}
+                  showRecords={board === "records" && !activeStat}
+                  tab={detailTab}
+                  onTabChange={setDetailTab}
                   onPick={selectStat}
                 />
               </BoardRowItem>

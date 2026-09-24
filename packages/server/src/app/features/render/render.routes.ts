@@ -7,8 +7,7 @@ import {
 } from "createrington-skin-api";
 import { asyncHandler } from "@/app/middleware/async-handler";
 import config from "@/config";
-import { Q, playerRepo } from "@/db";
-import { calendarDay } from "@/db/utils";
+import { Q, playerRepo, playtimeRepo } from "@/db";
 import { BalanceUtils } from "@/db/repositories/balance/utils";
 import { formatPlaytime } from "@createrington/shared/format";
 import {
@@ -212,93 +211,14 @@ router.get(
       return;
     }
 
-    const details = await playerRepo.getDetailed({ discordId: player });
-    const uuid = details.player.minecraftUuid;
-
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - 365);
-
-    const rows = await Q.player.playtime.daily
-      .where({
-        playerMinecraftUuid: uuid,
-        playDate: { $gte: calendarDay(startDate) },
-      })
-      .all();
-
-    const dayMap: Record<string, number> = {};
-    for (const row of rows) {
-      dayMap[row.playDate] =
-        (dayMap[row.playDate] ?? 0) + Number(row.secondsPlayed);
-    }
-
-    // Use all-time total from playtime summary (not just 365-day window)
-    const totalSeconds = details.playtime.totalSeconds;
-
-    // Current streak: consecutive days ending today or yesterday
-    let currentStreak = 0;
-    const today = new Date();
-    const check = new Date(today);
-    // Start from today, then try yesterday if today has no data yet
-    if (!dayMap[calendarDay(check)]) {
-      check.setDate(check.getDate() - 1);
-    }
-    while (dayMap[calendarDay(check)]) {
-      currentStreak++;
-      check.setDate(check.getDate() - 1);
-    }
-
-    const dayTotals = [0, 0, 0, 0, 0, 0, 0]; // Sun-Sat
-    const dayCounts = [0, 0, 0, 0, 0, 0, 0];
-    for (const [dateStr, seconds] of Object.entries(dayMap)) {
-      const dow = new Date(dateStr).getUTCDay();
-      dayTotals[dow] += seconds;
-      dayCounts[dow]++;
-    }
-    const dayNames = [
-      "Sunday",
-      "Monday",
-      "Tuesday",
-      "Wednesday",
-      "Thursday",
-      "Friday",
-      "Saturday",
-    ];
-    let bestDay = 0;
-    let bestAvg = 0;
-    for (let i = 0; i < 7; i++) {
-      const avg = dayCounts[i] > 0 ? dayTotals[i] / dayCounts[i] : 0;
-      if (avg > bestAvg) {
-        bestAvg = avg;
-        bestDay = i;
-      }
-    }
-
-    let currentSessionSeconds: number | null = null;
-    if (details.player.online) {
-      const activeSession = await Q.player.session
-        .where({
-          playerMinecraftUuid: uuid,
-          sessionEnd: { $exists: false },
-        })
-        .orderBy("sessionStart", "desc")
-        .first();
-
-      if (activeSession) {
-        currentSessionSeconds = Math.floor(
-          (Date.now() - activeSession.sessionStart.getTime()) / 1000,
-        );
-      }
-    }
+    const target = await Q.player.get({ discordId: player });
+    const activity = await playtimeRepo.getPlayerActivity(target);
 
     res.json({
-      username: details.player.minecraftUsername,
-      uuid,
-      online: details.player.online,
-      currentSessionSeconds,
-      totalSeconds,
-      currentStreak,
-      mostActiveDay: totalSeconds > 0 ? dayNames[bestDay] : "N/A",
-      days: dayMap,
+      ...activity,
+      username: target.minecraftUsername,
+      uuid: target.minecraftUuid,
+      mostActiveDay: activity.mostActiveDay ?? "N/A",
     });
   }),
 );

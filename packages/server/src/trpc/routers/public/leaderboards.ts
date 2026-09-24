@@ -1,9 +1,9 @@
 import { z } from "zod";
 import { router, publicProcedure } from "@/trpc/trpc";
-import { buildPagination, paginationInput } from "@/trpc/utils";
+import { buildPagination, findOrThrow, paginationInput } from "@/trpc/utils";
 import { createRateLimit } from "@/trpc/middleware/rate-limit";
 import { topRoleHolderService } from "@/services/discord/role/top-role-holder.service";
-import { Q } from "@/db";
+import { Q, playtimeRepo } from "@/db";
 import {
   LEADERBOARD_BOARDS,
   leaderboardBoardService,
@@ -72,7 +72,7 @@ function boardPage(
   };
 }
 
-/** Public leaderboards router: the top-role hero, the full ranked boards and per-stat rankings. */
+/** Public leaderboards router: the top-role hero, the full ranked boards, per-stat rankings and per-player activity. */
 export const leaderboardsRouter = router({
   hero: publicProcedure
     .use(leaderboardsReadLimit)
@@ -125,5 +125,21 @@ export const leaderboardsRouter = router({
     .input(z.object({ minecraftUuid: z.string().uuid() }))
     .query(({ input }) =>
       Q.player.minecraft.stat.total.getRecordsHeld(input.minecraftUuid),
+    ),
+
+  activity: publicProcedure
+    .use(leaderboardsReadLimit)
+    .meta({
+      description:
+        "Returns a player's daily playtime over the trailing year (seconds per calendar day, summed across servers) with their all-time total, current daily streak, most active weekday and live session length when online. Feeds the expandable activity heatmap on leaderboard rows",
+    })
+    .input(z.object({ minecraftUuid: z.string().uuid() }))
+    .query(async ({ input }) =>
+      playtimeRepo.getPlayerActivity(
+        await findOrThrow(
+          Q.player.find({ minecraftUuid: input.minecraftUuid }),
+          "Player not found",
+        ),
+      ),
     ),
 });
