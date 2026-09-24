@@ -87,7 +87,11 @@ function nodesFor(
 }
 
 function targetFor(flight: Flight, target: DOMRect): number {
-  const landing = target.top + window.scrollY - window.innerHeight * LAND_AT;
+  const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+  const landing = Math.min(
+    target.top + window.scrollY - window.innerHeight * LAND_AT,
+    maxScroll,
+  );
   const overall = clamp(window.scrollY / Math.max(1, landing), 0, 1);
   return clamp((overall - flight.delay) / (1 - STAGGER), 0, 1);
 }

@@ -47,13 +47,11 @@ const FIGURE_HEIGHT =
 const SLOTS = [
   {
     column: "col-start-1",
-    glow: "-left-24 md:left-[4%]",
     enter: { "--from-x": "-72px", "--enter-delay": "0.1s" } as CSSProperties,
     align: "start",
   },
   {
     column: "col-start-3",
-    glow: "-right-24 md:right-[4%]",
     enter: { "--from-x": "72px", "--enter-delay": "0.22s" } as CSSProperties,
     align: "end",
   },
@@ -161,6 +159,7 @@ export function CompareHero({
   initialOpen,
   loading,
   actionsEnabled,
+  rerollCooling,
   onPick,
   onAction,
 }: {
@@ -170,6 +169,7 @@ export function CompareHero({
   initialOpen: Side | null;
   loading: [boolean, boolean];
   actionsEnabled: boolean;
+  rerollCooling: boolean;
   onPick: (side: Side, minecraftUsername: string) => void;
   onAction: (action: HeroAction, at: number) => void;
 }) {
@@ -198,18 +198,6 @@ export function CompareHero({
         aria-hidden
         className="absolute inset-0 bg-linear-to-b from-background to-transparent to-[35%]"
       />
-      {SLOTS.map((slot, index) => (
-        <div
-          key={`glow-${index}`}
-          aria-hidden
-          className={cn(
-            "absolute top-[30%] size-72 rounded-full blur-[90px] transition-opacity duration-700 md:size-[28rem] md:blur-[120px]",
-            slot.glow,
-            score?.leader === index ? "opacity-30" : "opacity-15",
-          )}
-          style={{ background: SIDE_COLORS[index] }}
-        />
-      ))}
 
       <div className="@container relative mx-auto flex h-full max-w-7xl flex-col px-5 md:px-8">
         <header className="flex flex-col items-center pt-6 text-center md:pt-12">
@@ -229,7 +217,10 @@ export function CompareHero({
                 key={key}
                 variant="outline"
                 onClick={(event) => onAction(key, event.timeStamp)}
-                disabled={key !== "copy" && !actionsEnabled}
+                disabled={
+                  (key !== "copy" && !actionsEnabled) ||
+                  (key === "reroll" && rerollCooling)
+                }
                 aria-label={label}
                 className="size-11 md:size-auto"
               >
@@ -240,7 +231,7 @@ export function CompareHero({
           </div>
         </header>
 
-        <div className="relative grid flex-1 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] grid-rows-[1fr_auto] items-end gap-x-2 pb-[8vh] sm:pb-[6vh] md:gap-x-8">
+        <div className="relative grid flex-1 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] grid-rows-[auto_auto] content-center items-end gap-x-2 pb-[4vh] md:gap-x-8">
           <div
             aria-hidden
             className="col-[1/-1] row-start-1 h-px w-full self-end bg-linear-to-r from-transparent via-white/15 to-transparent"
@@ -280,11 +271,22 @@ export function CompareHero({
               <div
                 key={`figure-${side}`}
                 className={cn(
-                  "row-start-1 flex min-w-0 justify-center",
+                  "relative row-start-1 flex min-w-0 justify-center",
                   slot.column,
                 )}
                 style={sideStyle}
               >
+                <div
+                  aria-hidden
+                  className={cn(
+                    "pointer-events-none absolute top-1/2 left-1/2 size-56 -translate-1/2 rounded-full bg-(--side) blur-[70px] transition-opacity duration-700 md:size-80 md:blur-[100px]",
+                    !player
+                      ? "opacity-0"
+                      : score?.leader === side
+                        ? "opacity-35"
+                        : "opacity-20",
+                  )}
+                />
                 {player ? (
                   <StageFigure
                     key={`${player.minecraftUuid}-${poses[side]}`}
@@ -320,7 +322,7 @@ export function CompareHero({
               <div
                 key={`caption-${side}`}
                 className={cn(
-                  "row-start-2 flex min-w-0 flex-col items-center gap-1.5 pt-4 md:gap-2 md:pt-6",
+                  "row-start-2 flex min-w-0 flex-col items-center gap-1.5 self-start pt-4 md:gap-2 md:pt-6",
                   slot.column,
                 )}
                 style={sideStyle}

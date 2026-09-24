@@ -19,6 +19,7 @@ import {
   type StageSide,
 } from "./components/CompareHero";
 import { TugRow } from "./components/TugRow";
+import { MatchupBar } from "./components/MatchupBar";
 import { EveryStat } from "./components/EveryStat";
 
 const REROLL_COOLDOWN_MS = 3000;
@@ -95,11 +96,20 @@ export function Compare() {
   const [day] = useState(() => new Date().toISOString().slice(0, 10));
   const [roll, setRoll] = useState(0);
   const lastRoll = useRef(-Infinity);
+  const cooldownTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [rerollCooling, setRerollCooling] = useState(false);
   const [first, second] = sides;
   const samePlayer =
     !!first && !!second && first.toLowerCase() === second.toLowerCase();
   const both = !!first && !!second && !samePlayer;
   const solo = both ? null : (first ?? second);
+
+  useEffect(
+    () => () => {
+      if (cooldownTimer.current) clearTimeout(cooldownTimer.current);
+    },
+    [],
+  );
 
   useEffect(() => {
     const root = document.documentElement;
@@ -159,6 +169,11 @@ export function Compare() {
       if (at - lastRoll.current < REROLL_COOLDOWN_MS) return;
       lastRoll.current = at;
       setRoll((value) => value + 1);
+      setRerollCooling(true);
+      cooldownTimer.current = setTimeout(
+        () => setRerollCooling(false),
+        REROLL_COOLDOWN_MS,
+      );
     }
     if (action === "swap") swap();
     if (action === "copy") {
@@ -181,14 +196,21 @@ export function Compare() {
         initialOpen={first && !second ? 1 : !first && second ? 0 : null}
         loading={loading}
         actionsEnabled={both}
+        rerollCooling={rerollCooling}
         onPick={pick}
         onAction={run}
       />
-      <div className="relative z-10 min-h-[50svh] rounded-t-3xl border-t border-white/10 bg-background shadow-[0_-40px_120px_rgba(0,0,0,0.7)]">
+      <div className="relative z-10 rounded-t-3xl border-t border-white/10 bg-background shadow-[0_-40px_120px_rgba(0,0,0,0.7)]">
         <div
           aria-hidden
-          className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-(--left)/50 via-white/10 to-(--right)/50"
+          className="absolute inset-x-0 top-0 z-30 h-px bg-linear-to-r from-(--left)/50 via-white/10 to-(--right)/50"
         />
+        {both && stageSides[0] && stageSides[1] && (
+          <MatchupBar
+            players={[stageSides[0], stageSides[1]]}
+            counts={score?.counts ?? null}
+          />
+        )}
         <div className="mx-auto max-w-5xl space-y-10 px-5 py-12 md:px-8 md:py-16">
           {failed && (
             <p className="rounded-xl border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
