@@ -10,7 +10,7 @@ import {
   APP_EMOJIS,
   appEmojiAssetDir,
   type AppEmojiKey,
-  type AppEmojiSpec,
+  type IconEmojiSpec,
 } from "@/discord/emojis/manifest";
 
 const require = createRequire(import.meta.url);
@@ -40,8 +40,7 @@ function loadIconSet(set: string): IconSet {
   return data;
 }
 
-function buildSvg(key: AppEmojiKey): string {
-  const spec: AppEmojiSpec = APP_EMOJIS[key];
+function buildSvg(key: AppEmojiKey, spec: IconEmojiSpec): string {
   const [set, name] = spec.icon.split(":");
   const data = getIconData(loadIconSet(set), name);
   if (!data) {
@@ -82,13 +81,27 @@ async function renderEmojis(): Promise<void> {
       );
     }
 
-    const png = await sharp(Buffer.from(buildSvg(key)))
+    const spec = APP_EMOJIS[key];
+    const file = `${key}.png`;
+    if ("image" in spec) {
+      try {
+        await fs.access(path.join(outDir, file));
+      } catch {
+        throw new Error(
+          `Emoji "${key}" is an image emoji but ${file} is missing from ${outDir}`,
+        );
+      }
+      rendered.add(file);
+      console.log(`   = ${key} (committed image)`);
+      continue;
+    }
+
+    const png = await sharp(Buffer.from(buildSvg(key, spec)))
       .png()
       .toBuffer();
-    const file = `${key}.png`;
     await fs.writeFile(path.join(outDir, file), png);
     rendered.add(file);
-    console.log(`   ✓ ${key} (${APP_EMOJIS[key].icon}, ${png.length} bytes)`);
+    console.log(`   ✓ ${key} (${spec.icon}, ${png.length} bytes)`);
   }
 
   for (const file of await fs.readdir(outDir)) {

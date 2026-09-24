@@ -1,5 +1,6 @@
 import type { KnownPose } from "createrington-skin-api";
 import type { DiscordRoleId } from "@/discord/constants";
+import type { AppEmojiKey } from "@/discord/emojis";
 
 /**
  * Defines when role eligibility should be checked
@@ -169,6 +170,8 @@ export interface RoleNotificationConfig {
   channelId?: string;
   /** Skin-api pose rendered alongside the announcement */
   pose: KnownPose;
+  /** Application emoji shown before the role name in the announcement heading */
+  emoji?: AppEmojiKey;
 }
 
 /**

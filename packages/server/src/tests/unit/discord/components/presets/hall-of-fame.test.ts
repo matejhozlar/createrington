@@ -63,6 +63,19 @@ describe("HallOfFameComponentPresets.rankUp", () => {
     ]);
   });
 
+  it("puts the role emoji before the role name in the heading", () => {
+    const data = HallOfFameComponentPresets.rankUp(
+      input({
+        roleLabel: "The Unrivaled",
+        roleEmoji: "<:the_unrivaled:1>",
+        metric: { kind: "records", count: 1284 },
+        competitive: true,
+      }),
+    );
+
+    expect(texts(data)[0]).toBe("### <:the_unrivaled:1> The Unrivaled");
+  });
+
   it("opens with the full-width spacer so every announcement is the same width", () => {
     for (const poseUrl of [POSE_URL, undefined]) {
       const [first] = only(
