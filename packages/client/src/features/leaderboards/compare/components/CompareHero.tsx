@@ -11,6 +11,7 @@ import {
 import type { KnownPose } from "createrington-skin-api";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { PopoverAnchor } from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/spinner";
 import { HERO_BACKDROP } from "../../top-roles";
 import {
@@ -307,14 +308,18 @@ export function CompareHero({
                     <button
                       type="button"
                       className={cn(
-                        "mb-4 flex aspect-[2/3] cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-(--side)/35 bg-(--side)/5 text-(--side)/70 transition-colors outline-none hover:border-(--side)/60 hover:text-(--side) focus-visible:ring-[3px] focus-visible:ring-ring/50",
+                        "mb-4 flex aspect-[2/3] cursor-pointer items-center justify-center rounded-2xl border-2 border-dashed border-(--side)/35 bg-(--side)/5 text-(--side)/70 transition-colors outline-none hover:border-(--side)/60 hover:text-(--side) focus-visible:ring-[3px] focus-visible:ring-ring/50",
                         FIGURE_HEIGHT,
                       )}
                     >
-                      <UserPlus className="size-8 md:size-10" aria-hidden />
-                      <span className="text-xs font-semibold md:text-sm">
-                        Pick a player
-                      </span>
+                      <PopoverAnchor asChild>
+                        <span className="flex flex-col items-center gap-2">
+                          <UserPlus className="size-8 md:size-10" aria-hidden />
+                          <span className="text-xs font-semibold md:text-sm">
+                            Pick a player
+                          </span>
+                        </span>
+                      </PopoverAnchor>
                     </button>,
                   )
                 )}
