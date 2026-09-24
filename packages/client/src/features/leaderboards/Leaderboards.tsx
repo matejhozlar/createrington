@@ -24,7 +24,7 @@ function ChampionFlight() {
             alt=""
             draggable={false}
             data-dock-fly={key}
-            className="invisible absolute top-0 left-0 origin-top-left object-contain drop-shadow-[0_18px_40px_rgba(0,0,0,0.65)] will-change-transform"
+            className="invisible absolute top-0 left-0 origin-top-left object-contain will-change-transform"
           />
         ) : null;
       })}

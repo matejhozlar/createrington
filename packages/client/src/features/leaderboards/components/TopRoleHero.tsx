@@ -86,22 +86,19 @@ function HeroFigure({ role, index }: { role: TopRole; index: number }) {
             />
             <img
               src={src}
-              alt={`${holder.minecraftUsername}, ${role.label}`}
-              data-dock-body
-              draggable={false}
-              decoding="async"
-              className={cn(
-                "relative w-auto select-none drop-shadow-[0_18px_40px_rgba(0,0,0,0.65)]",
-                slot.figure,
-              )}
-            />
-            <img
-              src={src}
               alt=""
               aria-hidden
               draggable={false}
               className="pointer-events-none absolute inset-x-0 top-full h-[38%] w-full -scale-y-100 object-cover object-bottom blur-[1px] [mask-image:linear-gradient(to_top,rgba(0,0,0,0.9),transparent)]"
               style={GROUNDING.reflection}
+            />
+            <img
+              src={src}
+              alt={`${holder.minecraftUsername}, ${role.label}`}
+              data-dock-body
+              draggable={false}
+              decoding="async"
+              className={cn("relative w-auto select-none", slot.figure)}
             />
           </div>
         ) : (

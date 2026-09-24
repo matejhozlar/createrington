@@ -99,7 +99,7 @@ function render(flight: Flight, dt: number): boolean {
     `scale(${1 + height * LIFT})`,
     `translate(${-cx}px, ${-cy}px)`,
   ].join(" ");
-  fly.style.filter = `drop-shadow(0 ${18 + height * 60}px ${40 + height * 40}px rgba(0, 0, 0, ${0.65 - height * 0.25}))`;
+  fly.style.filter = `drop-shadow(0 ${height * 60}px ${height * 50}px rgba(0, 0, 0, ${height * 0.55}))`;
 
   return flight.t !== flight.target || Math.abs(flight.lean) > 0.05;
 }

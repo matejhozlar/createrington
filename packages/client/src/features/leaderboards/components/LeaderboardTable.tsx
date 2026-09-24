@@ -83,7 +83,7 @@ function ChampionCard({
                 src={figureSrc(holder)}
                 alt={holder.minecraftUsername}
                 draggable={false}
-                className="relative h-24 w-auto select-none drop-shadow-[0_10px_20px_rgba(0,0,0,0.6)] sm:h-32 md:h-40"
+                className="relative h-24 w-auto select-none sm:h-32 md:h-40"
               />
             </div>
           </>
