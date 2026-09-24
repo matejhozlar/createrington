@@ -166,6 +166,7 @@ export const TOP_PLAYTIME_ROLES: TopPlaytimeRoleRule[] = [
   {
     roleId: Discord.Roles.THE_SLEEPLESS,
     gameRankId: "the_sleepless",
+    heroPose: Poses.zombie,
     checkInterval: RoleCheckInterval.DAILY,
     label: "The Sleepless",
     conditionType: RoleConditionType.TOP_PLAYTIME,
@@ -183,6 +184,7 @@ export const TOP_BALANCE_ROLES: TopBalanceRoleRule[] = [
   {
     roleId: Discord.Roles.CAPITALIST,
     gameRankId: "capitalist",
+    heroPose: Poses.snagged,
     checkInterval: RoleCheckInterval.DAILY,
     label: "Capitalist",
     conditionType: RoleConditionType.TOP_BALANCE,
@@ -200,6 +202,7 @@ export const TOP_RECORD_ROLES: TopStatRecordsRoleRule[] = [
   {
     roleId: Discord.Roles.THE_UNRIVALED,
     gameRankId: "the_unrivaled",
+    heroPose: Poses.ninja,
     checkInterval: RoleCheckInterval.DAILY,
     label: "The Unrivaled",
     conditionType: RoleConditionType.TOP_STAT_RECORDS,

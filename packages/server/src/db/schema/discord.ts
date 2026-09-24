@@ -7,6 +7,7 @@ import {
   varchar,
   timestamp,
   jsonb,
+  numeric,
   uuid,
   index,
   uniqueIndex,
@@ -227,6 +228,29 @@ export const discordStickyMessage = pgTable("discord_sticky_message", {
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+// --- discord_top_role ---
+// Current holder of each competitive top-1 role (The Unrivaled, The Sleepless,
+// Capitalist), written by the daily role reconcile. `role_key` is the stable
+// FTB Ranks id shared across guilds; `value` is the metric that earned the role
+// at the last reconcile (playtime seconds, balance in dollars, record count);
+// `image_key` points at the pre-rendered hero figure in object storage and
+// `outline_image_key` at the same figure with the skin API outline, framed on
+// the same canvas so the two can be swapped in place (null when that render
+// failed or did not line up).
+
+export const discordTopRole = pgTable("discord_top_role", {
+  roleKey: text("role_key").primaryKey(),
+  discordId: text("discord_id").notNull(),
+  minecraftUuid: uuid("minecraft_uuid").notNull(),
+  value: numeric("value", { precision: 20, scale: 3 }).notNull(),
+  heldSince: timestamp("held_since", { withTimezone: true }).notNull(),
+  imageKey: text("image_key"),
+  outlineImageKey: text("outline_image_key"),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

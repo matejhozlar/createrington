@@ -41,6 +41,7 @@ const SERVER_ID = 1;
 const RULE: TopPlaytimeRoleRule = {
   roleId: "role-1",
   gameRankId: "the_sleepless",
+  heroPose: "zombie",
   label: "The Sleepless",
   checkInterval: RoleCheckInterval.DAILY,
   conditionType: RoleConditionType.TOP_PLAYTIME,

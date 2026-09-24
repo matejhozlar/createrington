@@ -15,9 +15,14 @@ import { RoleManager } from "@/discord/utils/roles/role-manager";
 import { roleNotificationService } from "./role-notification.service";
 import config from "@/config";
 import { GameRankSyncService } from "./game-rank-sync.service";
+import {
+  topRoleHolderService,
+  type TopRoleHolderService,
+} from "./top-role-holder.service";
 
 interface TopHolder {
   discordId: string;
+  minecraftUuid: string;
   minecraftUsername: string;
   value: number;
   removeReason: string;
@@ -74,6 +79,7 @@ export class RoleManagementService {
     private readonly client: Client,
     private readonly checkTimeHour: number = 0,
     private readonly gameRankSync: GameRankSyncService = new GameRankSyncService(),
+    private readonly topRoleHolders: TopRoleHolderService = topRoleHolderService,
   ) {
     this.roleAssignmentService = new RoleAssignmentService(client);
   }
@@ -279,6 +285,7 @@ export class RoleManagementService {
 
     return {
       discordId: topPlayer.discordId,
+      minecraftUuid: topPlayer.playerMinecraftUuid,
       minecraftUsername: topPlayer.minecraftUsername,
       value: topPlayer.totalSeconds,
       removeReason: "No longer the #1 player by playtime",
@@ -321,6 +328,7 @@ export class RoleManagementService {
 
     return {
       discordId: topPlayer.discordId,
+      minecraftUuid: topPlayer.minecraftUuid,
       minecraftUsername: topPlayer.minecraftUsername,
       value: parseFloat(topEntry.value),
       removeReason: "No longer the #1 player by in-game balance",
@@ -331,7 +339,7 @@ export class RoleManagementService {
   private async findTopRecordsHolder(
     holders: RoleHolders,
   ): Promise<TopHolder | null> {
-    const { rows } = await Q.player.minecraft.stats.getRecordLeaderboard();
+    const { rows } = await Q.player.minecraft.stat.total.getRecordLeaderboard();
 
     if (rows.length === 0) return null;
 
@@ -341,6 +349,7 @@ export class RoleManagementService {
 
     return {
       discordId: topPlayer.discordId,
+      minecraftUuid: topPlayer.minecraftUuid,
       minecraftUsername: topPlayer.minecraftUsername,
       value: topPlayer.records,
       removeReason: "No longer the player holding the most #1 stat placements",
@@ -439,6 +448,8 @@ export class RoleManagementService {
       );
     }
 
+    await this.snapshotHolder(rule, top, holdsRole, removed);
+
     return {
       rule,
       holder: top.minecraftUsername,
@@ -447,6 +458,26 @@ export class RoleManagementService {
       failed: !holdsRole,
       ...(failureReason && { failureReason }),
     };
+  }
+
+  private async snapshotHolder(
+    rule: TopRoleRule,
+    top: TopHolder,
+    holdsRole: boolean,
+    removed: boolean,
+  ): Promise<void> {
+    try {
+      if (holdsRole) {
+        await this.topRoleHolders.record(rule, top);
+      } else if (removed) {
+        await this.topRoleHolders.clear(rule);
+      }
+    } catch (error) {
+      logger.error(
+        `Failed to store the holder of top role "${rule.label}":`,
+        error,
+      );
+    }
   }
 
   /** Reconciles the competitive top-1 roles right now, all of them or only the given role ids, and reports per role who leads and what changed. Never throws: a role that could not be processed comes back with `failed` set. */

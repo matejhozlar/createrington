@@ -48,7 +48,7 @@ export async function execute(
     }
 
     const { rows, contestedKeys } =
-      await Q.player.minecraft.stats.getRecordLeaderboard(3);
+      await Q.player.minecraft.stat.total.getRecordLeaderboard(3);
 
     if (rows.length === 0) {
       await replyError(

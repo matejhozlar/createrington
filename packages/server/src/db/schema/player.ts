@@ -251,6 +251,57 @@ export const playerMinecraftStats = pgTable(
   ],
 );
 
+// --- player_minecraft_stat_key ---
+// Every distinct numeric stat seen in player_minecraft_stats, e.g. category
+// "minecraft:mined" + item "minecraft:diamond_ore". Rows are only ever added
+// (by the stats import), so ids stay stable for player_minecraft_stat_total.
+
+export const playerMinecraftStatKey = pgTable(
+  "player_minecraft_stat_key",
+  {
+    id: serial("id").primaryKey(),
+    category: text("category").notNull(),
+    item: text("item").notNull(),
+  },
+  (table) => [
+    uniqueIndex("uq_player_minecraft_stat_key").on(table.category, table.item),
+  ],
+);
+
+// --- player_minecraft_stat_total ---
+// Projection of player_minecraft_stats: one row per player and stat holding the
+// value summed across every server, positive totals only. Rebuilt per player
+// inside the stats import transaction whenever that player's stats change, so
+// rankings and stat search are index reads instead of JSONB expansion.
+
+export const playerMinecraftStatTotal = pgTable(
+  "player_minecraft_stat_total",
+  {
+    statKeyId: integer("stat_key_id")
+      .notNull()
+      .references(() => playerMinecraftStatKey.id, {
+        onUpdate: "cascade",
+        onDelete: "cascade",
+      }),
+    minecraftUuid: uuid("minecraft_uuid")
+      .notNull()
+      .references(() => player.minecraftUuid, {
+        onUpdate: "cascade",
+        onDelete: "cascade",
+      }),
+    value: bigint("value", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.statKeyId, table.minecraftUuid] }),
+    index("idx_player_minecraft_stat_total_ranking").on(
+      table.statKeyId,
+      table.value.desc(),
+    ),
+    index("idx_player_minecraft_stat_total_player").on(table.minecraftUuid),
+    check("chk_player_minecraft_stat_total_positive", sql`value > 0`),
+  ],
+);
+
 // --- player_playtime_daily ---
 
 export const playerPlaytimeDaily = pgTable(

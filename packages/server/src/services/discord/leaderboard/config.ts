@@ -102,7 +102,7 @@ export const LEADERBOARD_CONFIGS: Record<LeaderboardType, LeaderboardConfig> = {
     limit: LEADERBOARD_ENTRY_LIMIT,
     fetchData: async (_serverId: number, limit: number) => {
       const { rows, contestedKeys } =
-        await Q.player.minecraft.stats.getRecordLeaderboard(limit);
+        await Q.player.minecraft.stat.total.getRecordLeaderboard(limit);
 
       const contested = contestedKeys.toLocaleString("en-US");
 

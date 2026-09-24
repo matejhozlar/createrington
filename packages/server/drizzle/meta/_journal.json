@@ -519,6 +519,27 @@
       "when": 1789743428101,
       "tag": "0073_volatile_skin",
       "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "7",
+      "when": 1790200219558,
+      "tag": "0074_sleepy_the_hood",
+      "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1790207179865,
+      "tag": "0075_real_yellowjacket",
+      "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "7",
+      "when": 1790211928401,
+      "tag": "0076_lame_la_nuit",
+      "breakpoints": true
     }
   ]
 }

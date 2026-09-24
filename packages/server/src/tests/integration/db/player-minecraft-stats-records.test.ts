@@ -47,7 +47,7 @@ async function seedStats(
 }
 
 async function recordsOf(): Promise<Record<string, number>> {
-  const { rows } = await stats.getRecordLeaderboard();
+  const { rows } = await Q.player.minecraft.stat.total.getRecordLeaderboard();
   return Object.fromEntries(
     rows
       .filter((row) => UUIDS.includes(row.minecraftUuid))
@@ -79,7 +79,7 @@ afterAll(async () => {
 
 describe("PlayerMinecraftStatsQueries.getRecordLeaderboard (integration)", () => {
   it("counts a stat only once two players have a nonzero value for it", async () => {
-    const before = await stats.getRecordLeaderboard();
+    const before = await Q.player.minecraft.stat.total.getRecordLeaderboard();
 
     await seedStats(serverA, {
       [ALICE]: {
@@ -97,7 +97,7 @@ describe("PlayerMinecraftStatsQueries.getRecordLeaderboard (integration)", () =>
       },
     });
 
-    const after = await stats.getRecordLeaderboard();
+    const after = await Q.player.minecraft.stat.total.getRecordLeaderboard();
 
     expect(await recordsOf()).toEqual({ records_alice: 1 });
     expect(after.contestedKeys - before.contestedKeys).toBe(1);
@@ -126,7 +126,7 @@ describe("PlayerMinecraftStatsQueries.getRecordLeaderboard (integration)", () =>
   });
 
   it("ignores excluded categories and blocklisted custom stats", async () => {
-    const before = await stats.getRecordLeaderboard();
+    const before = await Q.player.minecraft.stat.total.getRecordLeaderboard();
 
     await seedStats(serverA, {
       [ALICE]: {
@@ -151,7 +151,7 @@ describe("PlayerMinecraftStatsQueries.getRecordLeaderboard (integration)", () =>
       },
     });
 
-    const after = await stats.getRecordLeaderboard();
+    const after = await Q.player.minecraft.stat.total.getRecordLeaderboard();
 
     expect(await recordsOf()).toEqual({ records_bob: 1 });
     expect(after.contestedKeys - before.contestedKeys).toBe(1);
@@ -175,7 +175,7 @@ describe("PlayerMinecraftStatsQueries.getRecordLeaderboard (integration)", () =>
       },
     });
 
-    const { rows } = await stats.getRecordLeaderboard();
+    const { rows } = await Q.player.minecraft.stat.total.getRecordLeaderboard();
     const ours = rows.filter((row) => UUIDS.includes(row.minecraftUuid));
 
     expect(ours.map((row) => [row.minecraftUsername, row.records])).toEqual([
@@ -184,7 +184,7 @@ describe("PlayerMinecraftStatsQueries.getRecordLeaderboard (integration)", () =>
     ]);
     expect(ours[0].discordId).toBe(DISCORD_IDS[0]);
 
-    const limited = await stats.getRecordLeaderboard(1);
+    const limited = await Q.player.minecraft.stat.total.getRecordLeaderboard(1);
     expect(limited.rows).toHaveLength(1);
   });
 });

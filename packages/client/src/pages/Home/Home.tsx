@@ -35,7 +35,7 @@ import { useServerData } from "@/contexts/server-data";
 import { CURSEFORGE_MODPACK_URL } from "@/lib/external-urls";
 import { trpc } from "@/lib/trpc";
 import { Loading } from "@/components/loading-spinner";
-import { SkinApiPromo } from "./components/SkinApiPromo";
+import { SkinApiPromo } from "@/components/skin-api-promo";
 
 export function Home() {
   const { user } = useAuth();

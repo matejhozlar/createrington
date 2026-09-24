@@ -1,4 +1,5 @@
 import type { Pool, PoolClient } from "pg";
+import { PlayerMinecraftStatQueries } from "@/db/queries/player/minecraft/stat";
 import { PlayerMinecraftStatsQueries } from "@/db/queries/player/minecraft/stats";
 
 /**
@@ -71,6 +72,28 @@ export class PlayerMinecraftQueries {
    * @param db - Database pool or client to use for all child queries
    */
   constructor(protected db: Pool | PoolClient) {}
+
+  /** Private backing field for lazy-loaded player_minecraft_stat queries */
+  private _stat?: PlayerMinecraftStatQueries;
+
+  /**
+   * Lazy-loaded singleton accessor for player_minecraft_stat
+   *
+   * Returns a PlayerMinecraftStatQueries instance that shares this namespace's
+   * database connection. The instance is created once on first access and
+   * cached for all subsequent calls.
+   *
+   * @returns Singleton PlayerMinecraftStatQueries instance
+   */
+  get stat(): PlayerMinecraftStatQueries {
+    if (!this._stat) {
+      this._stat = this.getOrCreateChild<PlayerMinecraftStatQueries>(
+        "stat",
+        PlayerMinecraftStatQueries,
+      );
+    }
+    return this._stat;
+  }
 
   /** Private backing field for lazy-loaded player_minecraft_stats queries */
   private _stats?: PlayerMinecraftStatsQueries;

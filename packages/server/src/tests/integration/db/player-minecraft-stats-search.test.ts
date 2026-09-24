@@ -73,14 +73,13 @@ describe("PlayerMinecraftStatsQueries.searchItems (integration)", () => {
     });
 
     expect(
-      await stats.searchItems("searchtest:", {
+      await Q.player.minecraft.stat.key.searchItems("searchtest:", {
         category: "minecraft:killed",
       }),
     ).toEqual(["searchtest:zombie"]);
-    expect(await stats.searchItems("searchtest:")).toEqual([
-      "searchtest:ore",
-      "searchtest:zombie",
-    ]);
+    expect(
+      await Q.player.minecraft.stat.key.searchItems("searchtest:"),
+    ).toEqual(["searchtest:ore", "searchtest:zombie"]);
   });
 
   it("skips items whose only values are zero", async () => {
@@ -92,7 +91,9 @@ describe("PlayerMinecraftStatsQueries.searchItems (integration)", () => {
     });
 
     expect(
-      await stats.searchItems("searchtest:", { category: "minecraft:used" }),
+      await Q.player.minecraft.stat.key.searchItems("searchtest:", {
+        category: "minecraft:used",
+      }),
     ).toEqual(["searchtest:counted"]);
   });
 
@@ -119,7 +120,7 @@ describe("PlayerMinecraftStatsQueries.searchItems (integration)", () => {
       },
     });
 
-    const results = await stats.searchItems("stone", {
+    const results = await Q.player.minecraft.stat.key.searchItems("stone", {
       category: "minecraft:mined",
     });
 
@@ -143,7 +144,7 @@ describe("PlayerMinecraftStatsQueries.searchItems (integration)", () => {
       [CARA]: { "minecraft:broken": { "searchtest:common": 1 } },
     });
 
-    const results = await stats.searchItems("", {
+    const results = await Q.player.minecraft.stat.key.searchItems("", {
       category: "minecraft:broken",
     });
 
@@ -168,11 +169,9 @@ describe("PlayerMinecraftStatsQueries.searchItems (integration)", () => {
       },
     });
 
-    expect(await stats.searchItems("searchtest:")).toEqual([
-      "searchtest:huge",
-      "searchtest:valid",
-      "searchtest:fractional",
-    ]);
+    expect(
+      await Q.player.minecraft.stat.key.searchItems("searchtest:"),
+    ).toEqual(["searchtest:huge", "searchtest:valid", "searchtest:fractional"]);
   });
 
   it("matches spaces in the search against underscores", async () => {
@@ -181,7 +180,7 @@ describe("PlayerMinecraftStatsQueries.searchItems (integration)", () => {
     });
 
     expect(
-      await stats.searchItems("Iron Ingot", {
+      await Q.player.minecraft.stat.key.searchItems("Iron Ingot", {
         category: "minecraft:crafted",
       }),
     ).toContain("searchtest:iron_ingot");

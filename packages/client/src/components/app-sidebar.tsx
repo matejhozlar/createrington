@@ -16,6 +16,7 @@ import {
   MessageCircleIcon,
   ServerIcon,
   ShieldIcon,
+  TrophyIcon,
   UserCogIcon,
   UserPlusIcon,
   UsersIcon,
@@ -157,6 +158,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         title: "Map",
         url: "/blue-map",
         icon: MapPinnedIcon,
+      },
+      {
+        title: "Leaderboards",
+        url: "/leaderboards",
+        icon: TrophyIcon,
       },
       ...(galleryEnabled
         ? [
