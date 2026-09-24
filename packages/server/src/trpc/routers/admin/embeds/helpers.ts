@@ -8,6 +8,7 @@ import {
   MessageFlags,
 } from "discord.js";
 import {
+  type EmbedBot,
   type EmbedData,
   type MessagePayload,
   type PresetKind,
@@ -30,10 +31,12 @@ export const embedSendLimit = createRateLimit({
   key: (ctx) => ctx.user!.discordId,
 });
 
-export function getMessageService(bot: "main" | "web" = "main") {
-  const serviceKey =
-    bot === "main" ? Services.DISCORD_MAIN_BOT : Services.DISCORD_WEB_BOT;
-  const client = getServiceSync(serviceKey);
+const BOT_SERVICES = {
+  main: Services.DISCORD_MAIN_BOT,
+} as const satisfies Record<EmbedBot, string>;
+
+export function getMessageService(bot: EmbedBot = "main") {
+  const client = getServiceSync(BOT_SERVICES[bot]);
   return DiscordMessageService.getInstance(client);
 }
 

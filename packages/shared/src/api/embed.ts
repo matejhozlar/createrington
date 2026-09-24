@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const embedBotSchema = z.enum(["main", "web"]);
+export const embedBotSchema = z.enum(["main"]);
 export type EmbedBot = z.infer<typeof embedBotSchema>;
 
 // http(s) only: `z.string().url()` would otherwise accept `javascript:`, `data:`, `file:` schemes.

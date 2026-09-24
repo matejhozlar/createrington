@@ -102,8 +102,6 @@ const envSchema = z
     DISCORD_MAIN_BOT_CLIENT_SECRET: z
       .string()
       .min(32, "Main bot client secret must be at least 32 characters"),
-    DISCORD_WEB_BOT_TOKEN: discordToken("Web bot token"),
-    DISCORD_WEB_BOT_ID: discordId("Web bot ID"),
     DISCORD_OAUTH_REDIRECT_URI: z
       .string()
       .url("OAuth redirect URI must be a valid URL"),

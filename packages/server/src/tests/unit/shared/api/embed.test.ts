@@ -10,11 +10,10 @@ import {
 describe("embedBotSchema", () => {
   it("accepts the documented bot identifiers", () => {
     expect(embedBotSchema.parse("main")).toBe("main");
-    expect(embedBotSchema.parse("web")).toBe("web");
   });
 
   it("rejects unknown bot identifiers", () => {
-    expect(() => embedBotSchema.parse("other")).toThrow();
+    expect(() => embedBotSchema.parse("web")).toThrow();
   });
 });
 
