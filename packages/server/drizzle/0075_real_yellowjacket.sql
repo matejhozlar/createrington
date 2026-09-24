@@ -25,11 +25,11 @@ CROSS JOIN LATERAL jsonb_each(CASE WHEN jsonb_typeof(cat.value) = 'object' THEN 
 WHERE jsonb_typeof(item.value) = 'number'
 ON CONFLICT ("category", "item") DO NOTHING;--> statement-breakpoint
 INSERT INTO "player_minecraft_stat_total" ("stat_key_id", "minecraft_uuid", "value")
-SELECT k.id, s.minecraft_uuid, LEAST(SUM(item.value::numeric), 9223372036854775807)::bigint
+SELECT k.id, s.minecraft_uuid, GREATEST(LEAST(SUM(item.value::numeric), 9223372036854775807), 0)::bigint
 FROM "player_minecraft_stats" s
 CROSS JOIN LATERAL jsonb_each(CASE WHEN jsonb_typeof(s.stats) = 'object' THEN s.stats ELSE '{}'::jsonb END) AS cat(key, value)
 CROSS JOIN LATERAL jsonb_each(CASE WHEN jsonb_typeof(cat.value) = 'object' THEN cat.value ELSE '{}'::jsonb END) AS item(key, value)
 JOIN "player_minecraft_stat_key" k ON k.category = cat.key AND k.item = item.key
 WHERE jsonb_typeof(item.value) = 'number'
 GROUP BY k.id, s.minecraft_uuid
-HAVING LEAST(SUM(item.value::numeric), 9223372036854775807)::bigint > 0;
+HAVING GREATEST(LEAST(SUM(item.value::numeric), 9223372036854775807), 0)::bigint > 0;

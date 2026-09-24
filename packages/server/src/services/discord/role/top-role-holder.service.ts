@@ -25,7 +25,6 @@ export interface TopRoleHolderInput {
 }
 
 export interface TopRoleHolderView {
-  discordId: string;
   minecraftUuid: string;
   minecraftUsername: string;
   value: number;
@@ -62,8 +61,10 @@ const METRIC_BY_CONDITION: Record<TopRoleRule["conditionType"], TopRoleMetric> =
  * holder resets `heldSince` and gets a fresh render in the role's hero pose,
  * a returning holder only refreshes the metric. Each render comes as a pair,
  * the plain figure and the skin API outline variant framed on one shared
- * canvas so the site can swap them in place; the outline is optional and a
- * holder missing it is re-rendered on the next pass. Renders are skipped when
+ * canvas so the site can swap them in place. The outline is optional: when it
+ * fails to render or line up the holder keeps the plain figure alone until
+ * the title changes hands, since a pose that does not align stays that way and
+ * retrying would re-render daily. Renders are skipped when
  * object storage is not configured, and a failed render leaves the image
  * empty so the next daily pass retries it; consumers fall back to a plain
  * skin render in that case.
@@ -82,11 +83,10 @@ export class TopRoleHolderService {
             outlineImageKey: existing.outlineImageKey,
           }
         : null;
-    let figure = current?.outlineImageKey ? current : null;
+    let figure = current;
     if (!figure && objectStorage.enabled) {
       figure = await this.renderFigures(rule, holder.minecraftUuid);
     }
-    figure ??= current;
 
     await Q.discord.top.role.upsert(
       {
@@ -151,7 +151,6 @@ export class TopRoleHolderService {
         holder:
           row && username
             ? {
-                discordId: row.discordId,
                 minecraftUuid: row.minecraftUuid,
                 minecraftUsername: username,
                 value: Number(row.value),

@@ -90,12 +90,6 @@ export class LeaderboardBoardService {
     return promise;
   }
 
-  /** Drops every cached board so the next read recomputes. */
-  invalidate(): void {
-    this.cache.clear();
-    this.statCache.clear();
-  }
-
   private compute(board: LeaderboardBoard): Promise<BoardSnapshot> {
     switch (board) {
       case "records":

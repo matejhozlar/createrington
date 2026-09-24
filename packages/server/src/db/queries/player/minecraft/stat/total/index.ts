@@ -117,13 +117,13 @@ export class PlayerMinecraftStatTotalQueries extends PlayerMinecraftStatTotalBas
     await this.runQuery(
       "rebuild minecraft stat totals",
       `INSERT INTO ${this.table} (stat_key_id, minecraft_uuid, value)
-       SELECT k.id, s.minecraft_uuid, LEAST(SUM(item.value::numeric), 9223372036854775807)::bigint
+       SELECT k.id, s.minecraft_uuid, GREATEST(LEAST(SUM(item.value::numeric), 9223372036854775807), 0)::bigint
        ${STAT_PAIRS_FROM}
        JOIN player_minecraft_stat_key k
          ON k.category = cat.key AND k.item = item.key
        ${STAT_PAIRS_WHERE}
        GROUP BY k.id, s.minecraft_uuid
-       HAVING LEAST(SUM(item.value::numeric), 9223372036854775807)::bigint > 0`,
+       HAVING GREATEST(LEAST(SUM(item.value::numeric), 9223372036854775807), 0)::bigint > 0`,
       [minecraftUuids],
     );
   }

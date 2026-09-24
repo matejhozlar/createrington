@@ -268,24 +268,14 @@ describe("TopRoleHolderService.record", () => {
     });
   });
 
-  it("re-renders a returning holder that has no outlined figure yet and drops the old image", async () => {
+  it("does not re-render a returning holder whose figure has no outline", async () => {
     db.find.mockResolvedValue(existingRow({ outlineImageKey: null }));
 
     await new TopRoleHolderService().record(RECORDS_RULE, ALICE);
 
-    const row = db.upsert.mock.calls[0][0];
-    expect(row.heldSince).toEqual(HELD_SINCE);
-    expect(row.outlineImageKey).toMatch(/-outline\.webp$/);
-    expect(storage.delete).toHaveBeenCalledWith([ALICE_IMAGE]);
-  });
-
-  it("keeps the existing image when re-rendering a holder without an outline fails", async () => {
-    db.find.mockResolvedValue(existingRow({ outlineImageKey: null }));
-    skinApi.render.mockRejectedValue(new Error("skin-api down"));
-
-    await new TopRoleHolderService().record(RECORDS_RULE, ALICE);
-
+    expect(skinApi.render).not.toHaveBeenCalled();
     expect(db.upsert.mock.calls[0][0]).toMatchObject({
+      heldSince: HELD_SINCE,
       imageKey: ALICE_IMAGE,
       outlineImageKey: null,
     });
@@ -439,5 +429,23 @@ describe("TopRoleHolderService.list", () => {
 
     expect(records.holder?.imageUrl).toBeNull();
     expect(records.holder?.outlineImageUrl).toBeNull();
+  });
+
+  it("keeps holder Discord IDs out of the public view", async () => {
+    db.getAll.mockResolvedValue([existingRow()]);
+    db.players.mockResolvedValue([
+      { minecraftUuid: ALICE.minecraftUuid, minecraftUsername: "alice" },
+    ]);
+
+    const [records] = await new TopRoleHolderService().list();
+
+    expect(Object.keys(records.holder ?? {}).sort()).toEqual([
+      "heldSince",
+      "imageUrl",
+      "minecraftUsername",
+      "minecraftUuid",
+      "outlineImageUrl",
+      "value",
+    ]);
   });
 });

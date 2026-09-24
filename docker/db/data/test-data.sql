@@ -25,6 +25,7 @@ TRUNCATE TABLE player_balance_transaction CASCADE;
 TRUNCATE TABLE player_minecraft_stats CASCADE;
 TRUNCATE TABLE player_minecraft_stat_total CASCADE;
 TRUNCATE TABLE player_minecraft_stat_key CASCADE;
+TRUNCATE TABLE discord_top_role CASCADE;
 TRUNCATE TABLE reward_claim CASCADE;
 TRUNCATE TABLE server_forceload_chunk CASCADE;
 TRUNCATE TABLE server_forceload_member CASCADE;
@@ -739,14 +740,14 @@ WHERE jsonb_typeof(item.value) = 'number'
 ON CONFLICT (category, item) DO NOTHING;
 
 INSERT INTO player_minecraft_stat_total (stat_key_id, minecraft_uuid, value)
-SELECT k.id, s.minecraft_uuid, LEAST(SUM(item.value::numeric), 9223372036854775807)::bigint
+SELECT k.id, s.minecraft_uuid, GREATEST(LEAST(SUM(item.value::numeric), 9223372036854775807), 0)::bigint
 FROM player_minecraft_stats s
 CROSS JOIN LATERAL jsonb_each(CASE WHEN jsonb_typeof(s.stats) = 'object' THEN s.stats ELSE '{}'::jsonb END) AS cat(key, value)
 CROSS JOIN LATERAL jsonb_each(CASE WHEN jsonb_typeof(cat.value) = 'object' THEN cat.value ELSE '{}'::jsonb END) AS item(key, value)
 JOIN player_minecraft_stat_key k ON k.category = cat.key AND k.item = item.key
 WHERE jsonb_typeof(item.value) = 'number'
 GROUP BY k.id, s.minecraft_uuid
-HAVING LEAST(SUM(item.value::numeric), 9223372036854775807)::bigint > 0;
+HAVING GREATEST(LEAST(SUM(item.value::numeric), 9223372036854775807), 0)::bigint > 0;
 
 -- ============================================================================
 -- REWARD CLAIMS
@@ -1171,5 +1172,4 @@ LIMIT 10;
 INSERT INTO discord_top_role (role_key, discord_id, minecraft_uuid, value, held_since) VALUES
   ('the_unrivaled', '818819241666281503', '091b900c-4174-478c-900c-a0fe5a31a329', 41, NOW() - INTERVAL '11 days'),
   ('the_sleepless', '860820264128086026', '80e97d7b-d98d-4261-b297-311758b62a1a', 1384200, NOW() - INTERVAL '63 days'),
-  ('capitalist', '236124332160581632', '13fe4708-65fc-4ea0-9fb3-55b598b41e5e', 1287450.5, NOW() - INTERVAL '4 days')
-ON CONFLICT (role_key) DO NOTHING;
+  ('capitalist', '236124332160581632', '13fe4708-65fc-4ea0-9fb3-55b598b41e5e', 1287450.5, NOW() - INTERVAL '4 days');

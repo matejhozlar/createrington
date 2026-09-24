@@ -43,7 +43,10 @@ function focusOf(rows: BoardRow[], minecraftUuid: string | undefined) {
   for (let i = index - 1; i >= 0 && !ahead; i--) {
     if (rows[i].value > row.value) ahead = rows[i];
   }
-  const behind = rows.slice(index + 1).find((other) => other.value < row.value);
+  let behind: BoardRow | undefined;
+  for (let i = index + 1; i < rows.length && !behind; i++) {
+    if (rows[i].value < row.value) behind = rows[i];
+  }
 
   return { row, ahead: neighbour(ahead), behind: neighbour(behind) };
 }
@@ -64,6 +67,7 @@ function boardPage(
     rows: matches.slice(offset, offset + input.limit),
     pagination: buildPagination(input.page, input.limit, matches.length),
     contestedKeys: snapshot.contestedKeys,
+    topValue: snapshot.rows[0]?.value ?? 0,
     focus: focusOf(snapshot.rows, input.focus),
   };
 }
