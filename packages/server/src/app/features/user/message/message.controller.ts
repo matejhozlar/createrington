@@ -38,9 +38,9 @@ function resolveChannelForServer(serverId: number): string | null {
  * - Validates image attachments (MIME type and size)
  * - Resolves the target Discord channel for the requested Minecraft server
  * - Prefixes text content with the sender's Minecraft username
- * - Delegates delivery to WEB_MESSAGE_SERVICE
+ * - Delegates delivery to MESSAGE_SERVICE
  *
- * NOTE: The web bot's own messageCreate listener picks up the sent message and
+ * NOTE: The main bot's messageCreate listener picks up the sent message and
  * inserts it into MessageCacheService, there is no need to update the cache
  * manually here. The WebSocket broadcast is a side-effect of that pipeline.
  */
@@ -50,7 +50,7 @@ export class MessageController {
    *
    * Validates the uploaded image if present, resolves the channel for the
    * given `serverId`, prepends the sender's display name to the text content,
-   * and forwards the payload to WEB_MESSAGE_SERVICE.
+   * and forwards the payload to MESSAGE_SERVICE.
    *
    * @param req - Express request with multipart body (serverId, content, image)
    * @param res - Express response; returns 201 with messageId, serverId, channelId
@@ -109,7 +109,7 @@ export class MessageController {
       throw new BadRequestError("Message too long");
     }
 
-    const messageService = await getService(Services.WEB_MESSAGE_SERVICE);
+    const messageService = await getService(Services.MESSAGE_SERVICE);
 
     const result = await messageService.send({
       channelId,

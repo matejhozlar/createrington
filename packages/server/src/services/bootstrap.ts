@@ -1,5 +1,3 @@
-import { ActivityType } from "discord.js";
-
 import { container, Services } from "./container";
 import { createApp } from "@/app";
 import http from "node:http";
@@ -7,8 +5,6 @@ import pool from "@/db";
 import { mainBot } from "@/discord/bots/main/client";
 import config from "@/config";
 import { setupMainBotHandlers } from "@/discord/bots/main/setup";
-import { webBot } from "@/discord/bots/web/client";
-import { setupWebBotHandlers } from "@/discord/bots/web/setup";
 import { createDiscordMessageService } from "./discord/message";
 import { Discord } from "@/discord/constants";
 import {
@@ -106,35 +102,6 @@ export function registerServices(): void {
     return mainBot;
   });
 
-  container.register(Services.DISCORD_WEB_BOT, async () => {
-    logger.info("Logging in web Discord bot...");
-
-    await webBot.login(config.discord.bots.web.token);
-    await new Promise<void>((resolve) => {
-      webBot.once("clientReady", () => {
-        logger.info(`Web bot logged in: ${webBot.user?.tag}`);
-        resolve();
-      });
-    });
-
-    await setupWebBotHandlers(webBot);
-
-    if (!config.envMode.isDev) {
-      webBot.user?.setPresence({
-        activities: [
-          {
-            type: ActivityType.Custom,
-            name: "custom",
-            state: "createrington.com",
-          },
-        ],
-        status: "online",
-      });
-    }
-
-    return webBot;
-  });
-
   container.register(
     Services.MESSAGE_SERVICE,
     async (c) => {
@@ -149,24 +116,14 @@ export function registerServices(): void {
   );
 
   container.register(
-    Services.WEB_MESSAGE_SERVICE,
-    async (c) => {
-      const webBot = await c.get(Services.DISCORD_WEB_BOT);
-      const service = createDiscordMessageService(webBot);
-      return service;
-    },
-    { dependencies: [Services.DISCORD_WEB_BOT] },
-  );
-
-  container.register(
     Services.MESSAGE_CACHE,
     async (c) => {
-      const webBot = await c.get(Services.DISCORD_WEB_BOT);
-      const service = new MessageCacheService(webBot, MESSAGE_CACHE_CONFIG);
+      const mainBot = await c.get(Services.DISCORD_MAIN_BOT);
+      const service = new MessageCacheService(mainBot, MESSAGE_CACHE_CONFIG);
       await service.initialize();
       return service;
     },
-    { dependencies: [Services.DISCORD_WEB_BOT] },
+    { dependencies: [Services.DISCORD_MAIN_BOT] },
   );
 
   container.register(
@@ -355,12 +312,12 @@ export function registerServices(): void {
   container.register(
     Services.AUTO_MESSAGE_SERVICE,
     async (c) => {
-      const messageService = await c.get(Services.WEB_MESSAGE_SERVICE);
+      const messageService = await c.get(Services.MESSAGE_SERVICE);
       const service = new AutoMessageService(messageService);
       await service.initialize();
       return service;
     },
-    { dependencies: [Services.DATABASE, Services.WEB_MESSAGE_SERVICE] },
+    { dependencies: [Services.DATABASE, Services.MESSAGE_SERVICE] },
   );
 
   container.register(
@@ -407,7 +364,7 @@ export function registerServices(): void {
       await service.initialize();
       return service;
     },
-    { dependencies: [Services.DISCORD_WEB_BOT, Services.MESSAGE_CACHE] },
+    { dependencies: [Services.DISCORD_MAIN_BOT, Services.MESSAGE_CACHE] },
   );
 
   if (!config.envMode.isDev) {
@@ -570,10 +527,10 @@ export async function initializeServices(): Promise<void> {
   logger.info(`✓ Service initialization complete: ${ready}/${total} ready`);
 
   try {
-    const webMessageService = await container.get(Services.WEB_MESSAGE_SERVICE);
+    const messageService = await container.get(Services.MESSAGE_SERVICE);
     const scheduler = new MaintenanceScheduler(
       maintenanceService,
-      webMessageService,
+      messageService,
     );
     maintenanceService.setScheduler(scheduler);
     await scheduler.initialize();

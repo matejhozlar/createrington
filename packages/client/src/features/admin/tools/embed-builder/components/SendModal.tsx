@@ -46,10 +46,10 @@ export function SendModal({ open, onOpenChange, builder }: SendModalProps) {
   const hasLinks = (linksQuery.data?.links.length ?? 0) > 0;
 
   const emojisQuery = trpc.admin.embeds.emojis.useQuery(undefined, {
-    enabled: open && bot === "web",
+    enabled: open && bot !== "main",
   });
   const appEmojiCount = useMemo(() => {
-    if (bot !== "web" || !emojisQuery.data) return 0;
+    if (bot === "main" || !emojisQuery.data) return 0;
     const ids = new Set(emojisQuery.data.map((emoji) => emoji.id));
     const payload = JSON.stringify(
       kind === "components" ? components : externalData,
@@ -79,7 +79,7 @@ export function SendModal({ open, onOpenChange, builder }: SendModalProps) {
         <DialogHeader>
           <DialogTitle>Send {noun}</DialogTitle>
           <DialogDescription>
-            Choose a channel and bot to send the {noun} to Discord.
+            Choose where to send the {noun} on Discord.
           </DialogDescription>
         </DialogHeader>
 

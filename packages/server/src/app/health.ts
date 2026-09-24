@@ -42,7 +42,6 @@ interface HealthResponse {
   components: {
     database: DatabaseComponent;
     mainBot: DiscordBotComponent;
-    webBot: DiscordBotComponent;
     websocket: WebsocketComponent;
     playtime: PlaytimeComponent;
   };
@@ -62,8 +61,7 @@ async function checkDatabase(): Promise<DatabaseComponent> {
 }
 
 function checkDiscordBot(
-  serviceKey:
-    typeof Services.DISCORD_MAIN_BOT | typeof Services.DISCORD_WEB_BOT,
+  serviceKey: typeof Services.DISCORD_MAIN_BOT,
 ): DiscordBotComponent {
   try {
     const bot = getServiceSync(serviceKey);
@@ -144,7 +142,6 @@ async function buildHealthSnapshot(): Promise<HealthResponse> {
   const components = {
     database,
     mainBot: checkDiscordBot(Services.DISCORD_MAIN_BOT),
-    webBot: checkDiscordBot(Services.DISCORD_WEB_BOT),
     websocket,
     playtime: checkPlaytime(),
   } satisfies HealthResponse["components"];
