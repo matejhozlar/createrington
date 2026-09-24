@@ -11,6 +11,11 @@ import { Q, playerRepo } from "@/db";
 import { calendarDay } from "@/db/utils";
 import { BalanceUtils } from "@/db/repositories/balance/utils";
 import { formatPlaytime } from "@createrington/shared/format";
+import {
+  STAT_CATEGORY_LABELS,
+  formatStatCategory,
+  formatStatItem,
+} from "@createrington/shared/minecraft-stats";
 import { UnauthorizedError } from "@/app/middleware";
 import { requireLoopback } from "@/app/middleware/server-ip.middleware";
 import {
@@ -322,19 +327,7 @@ router.get(
       return;
     }
 
-    const validCategories = [
-      "minecraft:mined",
-      "minecraft:killed",
-      "minecraft:killed_by",
-      "minecraft:crafted",
-      "minecraft:used",
-      "minecraft:broken",
-      "minecraft:picked_up",
-      "minecraft:dropped",
-      "minecraft:custom",
-    ];
-
-    if (!validCategories.includes(category)) {
+    if (!Object.hasOwn(STAT_CATEGORY_LABELS, category)) {
       res.status(400).json({ error: "Invalid stat category" });
       return;
     }
@@ -345,25 +338,11 @@ router.get(
       { limit: 3 },
     );
 
-    // Format display title: "minecraft:zombie" + "minecraft:killed" → "Zombie Killed"
-    const itemName = item
-      .replace(/^minecraft:/, "")
-      .replace(/_/g, " ")
-      .replace(/\b\w/g, (c) => c.toUpperCase());
-
-    const categoryVerbs: Record<string, string> = {
-      "minecraft:mined": "Mined",
-      "minecraft:killed": "Killed",
-      "minecraft:killed_by": "Deaths By",
-      "minecraft:crafted": "Crafted",
-      "minecraft:used": "Used",
-      "minecraft:broken": "Broken",
-      "minecraft:picked_up": "Picked Up",
-      "minecraft:dropped": "Dropped",
-      "minecraft:custom": "",
-    };
-    const verb = categoryVerbs[category] ?? category.replace(/^minecraft:/, "");
-    const displayTitle = verb ? `${itemName} ${verb}` : itemName;
+    const itemName = formatStatItem(category, item);
+    const displayTitle =
+      category === "minecraft:custom"
+        ? itemName
+        : `${formatStatCategory(category)} ${itemName}`;
 
     res.json({
       category,
