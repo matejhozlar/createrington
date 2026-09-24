@@ -7,6 +7,7 @@ import { Q } from "@/db";
 import {
   LEADERBOARD_BOARDS,
   leaderboardBoardService,
+  type BoardRow,
   type BoardSnapshot,
 } from "@/services/leaderboard";
 
@@ -19,6 +20,7 @@ const leaderboardsReadLimit = createRateLimit({
 
 const boardPageInput = {
   search: z.string().trim().max(32).optional(),
+  focus: z.string().uuid().optional(),
   ...paginationInput({ defaultLimit: 25, maxLimit: 100 }),
 };
 
@@ -27,9 +29,28 @@ const statInput = {
   item: z.string().min(1).max(128),
 };
 
+function neighbour(row: BoardRow | undefined) {
+  return row ? { rank: row.rank, value: row.value } : null;
+}
+
+function focusOf(rows: BoardRow[], minecraftUuid: string | undefined) {
+  if (!minecraftUuid) return null;
+  const index = rows.findIndex((row) => row.minecraftUuid === minecraftUuid);
+  if (index === -1) return null;
+
+  const row = rows[index];
+  let ahead: BoardRow | undefined;
+  for (let i = index - 1; i >= 0 && !ahead; i--) {
+    if (rows[i].value > row.value) ahead = rows[i];
+  }
+  const behind = rows.slice(index + 1).find((other) => other.value < row.value);
+
+  return { row, ahead: neighbour(ahead), behind: neighbour(behind) };
+}
+
 function boardPage(
   snapshot: BoardSnapshot,
-  input: { search?: string; page: number; limit: number },
+  input: { search?: string; focus?: string; page: number; limit: number },
 ) {
   const needle = input.search?.toLowerCase();
   const matches = needle
@@ -43,6 +64,7 @@ function boardPage(
     rows: matches.slice(offset, offset + input.limit),
     pagination: buildPagination(input.page, input.limit, matches.length),
     contestedKeys: snapshot.contestedKeys,
+    focus: focusOf(snapshot.rows, input.focus),
   };
 }
 
@@ -60,7 +82,7 @@ export const leaderboardsRouter = router({
     .use(leaderboardsReadLimit)
     .meta({
       description:
-        "Returns one page of a fully ranked board (records, playtime or balance) over every player, optionally narrowed by a case-insensitive username search. Ranks are global, so a searched row keeps its real position",
+        "Returns one page of a fully ranked board (records, playtime or balance) over every player, optionally narrowed by a case-insensitive username search. Ranks are global, so a searched row keeps its real position. Pass focus (a Minecraft UUID) to also get that player's row and the nearest better and worse values wherever they sit",
     })
     .input(z.object({ board: z.enum(LEADERBOARD_BOARDS), ...boardPageInput }))
     .query(async ({ input }) =>

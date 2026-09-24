@@ -15,15 +15,18 @@ import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import { Paginator } from "@/components/paginator";
 import {
   figureSrc,
+  formatGap,
   formatMetric,
   topRoleStyle,
   type TopRoleMetric,
 } from "../top-roles";
+import { useBoardParams, type Board } from "../hooks/use-board-params";
 import { StatPicker, type Stat } from "./StatPicker";
 import { HeldRecords } from "./HeldRecords";
 
-type Board = "records" | "playtime" | "balance";
-type BoardRow = RouterOutput["public"]["leaderboards"]["list"]["rows"][number];
+type BoardPage = RouterOutput["public"]["leaderboards"]["list"];
+type BoardRow = BoardPage["rows"][number];
+type BoardFocus = NonNullable<BoardPage["focus"]>;
 type TopRole = RouterOutput["public"]["leaderboards"]["hero"][number];
 type BoardEntry = (typeof BOARDS)[number];
 
@@ -135,6 +138,7 @@ function BoardRowItem({
   formatValue,
   share,
   isYou,
+  note,
   expanded,
   onToggle,
   children,
@@ -143,6 +147,7 @@ function BoardRowItem({
   formatValue: (value: number) => string;
   share: number;
   isYou: boolean;
+  note?: string | null;
   expanded?: boolean;
   onToggle?: () => void;
   children?: ReactNode;
@@ -168,14 +173,19 @@ function BoardRowItem({
         size={28}
         className="relative"
       />
-      <span className="relative flex min-w-0 flex-1 items-center gap-2">
-        <span className="truncate text-sm font-medium text-foreground">
-          {row.minecraftUsername}
-        </span>
-        {isYou && (
-          <span className="shrink-0 rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary">
-            You
+      <span className="relative flex min-w-0 flex-1 flex-col">
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="truncate text-sm font-medium text-foreground">
+            {row.minecraftUsername}
           </span>
+          {isYou && (
+            <span className="shrink-0 rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary">
+              You
+            </span>
+          )}
+        </span>
+        {note && (
+          <span className="truncate text-xs text-muted-foreground">{note}</span>
         )}
       </span>
       <span className="relative shrink-0 text-sm font-semibold tabular-nums text-foreground/90">
@@ -234,6 +244,19 @@ function RowsSkeleton() {
   );
 }
 
+function gapNote(
+  focus: BoardFocus,
+  formatDifference: (value: number) => string,
+): string | null {
+  if (focus.ahead) {
+    return `${formatDifference(focus.ahead.value - focus.row.value)} behind #${focus.ahead.rank}`;
+  }
+  if (focus.behind) {
+    return `Leads #${focus.behind.rank} by ${formatDifference(focus.row.value - focus.behind.value)}`;
+  }
+  return null;
+}
+
 function statDescription(stat: Stat): string {
   const mod = statModName(stat.item);
   const item = formatStatItem(stat.category, stat.item).toLowerCase();
@@ -243,25 +266,26 @@ function statDescription(stat: Stat): string {
 
 export function LeaderboardTable() {
   const { user } = useAuth();
-  const [board, setBoard] = useState<Board>("records");
+  const params = useBoardParams();
+  const { board } = params;
   const [roles] = trpc.public.leaderboards.hero.useSuspenseQuery(undefined, {
     staleTime: 5 * 60 * 1000,
   });
-  const [stat, setStat] = useState<Stat | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(params.search);
   const [page, setPage] = useState(0);
   const debouncedSearch = useDebouncedValue(search.trim(), 250);
 
   const active = BOARDS.find((b) => b.board === board) ?? BOARDS[0];
   const style = topRoleStyle(active.roleKey);
-  const activeStat = board === "records" ? stat : null;
+  const activeStat = params.stat;
   const statKey = {
     category: activeStat?.category ?? "",
     item: activeStat?.item ?? "",
   };
   const pageInput = {
     search: debouncedSearch || undefined,
+    focus: user?.minecraftUuid ?? undefined,
     page,
     limit: PAGE_SIZE,
   };
@@ -298,6 +322,17 @@ export function LeaderboardTable() {
   const topValue = topQuery.data?.rows[0]?.value ?? 0;
   const contestedKeys = boardQuery.data?.contestedKeys ?? 0;
   const canExpand = board === "records" && !activeStat;
+  const focus = listQuery.data?.focus ?? null;
+  const focusNote = focus
+    ? gapNote(focus, (value) =>
+        activeStat
+          ? formatStatValue(activeStat.category, activeStat.item, value)
+          : formatGap(active.metric, value),
+      )
+    : null;
+  const pinFocus =
+    !!focus &&
+    !rows.some((row) => row.minecraftUuid === focus.row.minecraftUuid);
 
   const formatValue = (value: number) =>
     activeStat
@@ -305,12 +340,12 @@ export function LeaderboardTable() {
       : formatMetric(active.metric, value);
 
   const selectBoard = (next: Board) => {
-    setBoard(next);
+    params.update({ board: next });
     setPage(0);
     setExpanded(null);
   };
   const selectStat = (next: Stat | null) => {
-    setStat(next);
+    params.update({ stat: next });
     setPage(0);
     setExpanded(null);
   };
@@ -362,6 +397,7 @@ export function LeaderboardTable() {
               value={search}
               onChange={(event) => {
                 setSearch(event.target.value);
+                params.update({ search: event.target.value.trim() });
                 setPage(0);
               }}
               placeholder="Search players"
@@ -393,6 +429,11 @@ export function LeaderboardTable() {
                 formatValue={formatValue}
                 share={topValue > 0 ? row.value / topValue : 0}
                 isYou={user?.minecraftUuid === row.minecraftUuid}
+                note={
+                  focus?.row.minecraftUuid === row.minecraftUuid
+                    ? focusNote
+                    : null
+                }
                 expanded={expanded === row.minecraftUuid}
                 onToggle={
                   canExpand ? () => toggleRow(row.minecraftUuid) : undefined
@@ -404,6 +445,18 @@ export function LeaderboardTable() {
                 />
               </BoardRowItem>
             ))}
+          </ol>
+        )}
+
+        {pinFocus && focus && (
+          <ol className="sticky bottom-3 z-10 mt-2 rounded-lg bg-card shadow-[0_-12px_32px_rgba(0,0,0,0.55)]">
+            <BoardRowItem
+              row={focus.row}
+              formatValue={formatValue}
+              share={topValue > 0 ? focus.row.value / topValue : 0}
+              isYou
+              note={focusNote}
+            />
           </ol>
         )}
 

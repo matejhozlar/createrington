@@ -61,6 +61,13 @@ export function formatMetric(metric: TopRoleMetric, value: number): string {
   }
 }
 
+export function formatGap(metric: TopRoleMetric, value: number): string {
+  if (metric === "playtime" && value < 3600) {
+    return `${Math.max(1, Math.round(value / 60))} min`;
+  }
+  return formatMetric(metric, value);
+}
+
 export function figureSrc(holder: {
   imageUrl: string | null;
   minecraftUuid: string;

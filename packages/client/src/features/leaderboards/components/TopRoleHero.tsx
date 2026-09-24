@@ -1,5 +1,5 @@
-import type { CSSProperties } from "react";
-import { formatDate } from "@createrington/shared/format";
+import { useState, type CSSProperties } from "react";
+import { useCountdown } from "@/hooks/use-countdown";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { useScrollProgress } from "../hooks/use-scroll-progress";
@@ -116,7 +116,35 @@ function HeroFigure({ role, index }: { role: TopRole; index: number }) {
   );
 }
 
-function HeroCaption({ role, index }: { role: TopRole; index: number }) {
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function heldFor(heldSince: string, now: number): string {
+  const days = Math.floor((now - new Date(heldSince).getTime()) / DAY_MS);
+  if (days < 1) return "held since today";
+  return `held for ${days.toLocaleString("en-US")} ${days === 1 ? "day" : "days"}`;
+}
+
+function nextMidnightUtc(): string {
+  const next = new Date();
+  next.setUTCHours(24, 0, 0, 0);
+  return next.toISOString();
+}
+
+function CrowningCountdown() {
+  const [target] = useState(nextMidnightUtc);
+  const countdown = useCountdown(target);
+  return <>{countdown === "Ended" ? "now" : `in ${countdown}`}</>;
+}
+
+function HeroCaption({
+  role,
+  index,
+  now,
+}: {
+  role: TopRole;
+  index: number;
+  now: number;
+}) {
   const slot = SLOTS[index];
   const style = topRoleStyle(role.roleKey);
   const Icon = style.icon;
@@ -152,7 +180,7 @@ function HeroCaption({ role, index }: { role: TopRole; index: number }) {
         </span>
         {holder && (
           <span className="mt-0.5 hidden text-xs text-muted-foreground sm:block md:text-sm">
-            since {formatDate(holder.heldSince)}
+            {heldFor(holder.heldSince, now)}
           </span>
         )}
       </div>
@@ -162,6 +190,7 @@ function HeroCaption({ role, index }: { role: TopRole; index: number }) {
 
 export function TopRoleHero() {
   const ref = useScrollProgress<HTMLElement>();
+  const [now] = useState(Date.now);
   const [roles] = trpc.public.leaderboards.hero.useSuspenseQuery(undefined, {
     staleTime: 5 * 60 * 1000,
   });
@@ -212,8 +241,8 @@ export function TopRoleHero() {
             Leaderboards
           </h1>
           <p className="mx-auto mt-3 max-w-xl text-sm text-muted-foreground md:text-lg">
-            Three titles, one holder each. Every night at midnight UTC the
-            crowns change hands.
+            Three titles, one holder each. The crowns are awarded again at
+            midnight UTC, <CrowningCountdown />.
           </p>
         </header>
 
@@ -229,7 +258,12 @@ export function TopRoleHero() {
           )}
           {ordered.map((role, index) =>
             role ? (
-              <HeroCaption key={HERO_ORDER[index]} role={role} index={index} />
+              <HeroCaption
+                key={HERO_ORDER[index]}
+                role={role}
+                index={index}
+                now={now}
+              />
             ) : null,
           )}
         </div>
