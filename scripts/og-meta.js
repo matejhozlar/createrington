@@ -3,7 +3,17 @@
 // images in packages/client/public/assets/og/ (filename = route). A route
 // without an entry still gets its image and URL tags swapped; title,
 // description, and image alt fall back to the global ones in index.html.
+// An `image` path swaps in a card the server paints live instead of a PNG
+// under assets/og/.
 export const OG_ROUTES = {
+  "/leaderboards": {
+    image: "/api/og/leaderboards.png",
+    title: "Three titles. One holder each.",
+    description:
+      "Most hours played, most #1 stats, deepest pockets. See who holds each Createrington crown right now, and how close you are to taking one.",
+    imageAlt:
+      "The current holders of the three Createrington leaderboard titles, posed side by side.",
+  },
   "/structure-packs": {
     title: "Shape the next world.",
     description:
