@@ -114,8 +114,9 @@ async function paintBackdrop(ctx: SKRSContext2D): Promise<void> {
   ]);
 }
 
-function paintSlotGlows(ctx: SKRSContext2D, slots: CardSlot[]): void {
+function paintSlotGlows(ctx: SKRSContext2D, slots: (CardSlot | null)[]): void {
   slots.forEach((slot, index) => {
+    if (!slot) return;
     const rgb = ROLE_RGB[slot.roleKey] ?? FALLBACK_RGB;
     const { centerX, height } = SLOTS[index];
     paintEllipseGradient(
@@ -140,8 +141,9 @@ function paintSlotGlows(ctx: SKRSContext2D, slots: CardSlot[]): void {
   ctx.fillRect(590, GROUND_Y + 6, 592, 1);
 }
 
-function paintFigures(ctx: SKRSContext2D, slots: CardSlot[]): void {
+function paintFigures(ctx: SKRSContext2D, slots: (CardSlot | null)[]): void {
   slots.forEach((slot, index) => {
+    if (!slot) return;
     const figure = slot.holder?.figure;
     if (!figure) return;
     const rgb = ROLE_RGB[slot.roleKey] ?? FALLBACK_RGB;
@@ -192,8 +194,9 @@ function paintPill(
   ctx.textBaseline = "alphabetic";
 }
 
-function paintCaptions(ctx: SKRSContext2D, slots: CardSlot[]): void {
+function paintCaptions(ctx: SKRSContext2D, slots: (CardSlot | null)[]): void {
   slots.forEach((slot, index) => {
+    if (!slot) return;
     const rgb = ROLE_RGB[slot.roleKey] ?? FALLBACK_RGB;
     const { centerX, nameSizes, nameWidth } = SLOTS[index];
     const pillY = GROUND_Y + 24;
@@ -264,7 +267,7 @@ async function paintCopy(ctx: SKRSContext2D): Promise<void> {
 
 export async function paintLeaderboardsCard(
   ctx: SKRSContext2D,
-  slots: CardSlot[],
+  slots: (CardSlot | null)[],
 ): Promise<void> {
   await paintBackdrop(ctx);
   paintSlotGlows(ctx, slots);
