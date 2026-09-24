@@ -37,7 +37,7 @@ function resolveChannelForServer(serverId: number): string | null {
  * Handles sending messages from the web client to a monitored Discord channel:
  * - Validates image attachments (MIME type and size)
  * - Resolves the target Discord channel for the requested Minecraft server
- * - Prefixes text content with the sender's Minecraft username
+ * - Prefixes every message, image-only ones included, with the sender's Minecraft username
  * - Delegates delivery to MESSAGE_SERVICE
  *
  * NOTE: The main bot's messageCreate listener picks up the sent message and
@@ -49,7 +49,7 @@ export class MessageController {
    * Sends a message to the Discord channel linked to a Minecraft server.
    *
    * Validates the uploaded image if present, resolves the channel for the
-   * given `serverId`, prepends the sender's display name to the text content,
+   * given `serverId`, prepends the sender's display name to the message content,
    * and forwards the payload to MESSAGE_SERVICE.
    *
    * @param req - Express request with multipart body (serverId, content, image)
@@ -95,17 +95,13 @@ export class MessageController {
       attachment = new AttachmentBuilder(file.buffer, { name: safeName });
     }
 
-    let messageContent = content?.trim();
+    const displayName = req.user?.minecraftUsername ?? "Web User";
+    const text = content?.trim();
+    const messageContent = text
+      ? `**<${displayName}>**: ${text}`
+      : `**<${displayName}>**:`;
 
-    if (req.user) {
-      const displayName = req.user.minecraftUsername ?? "Web User";
-
-      if (messageContent) {
-        messageContent = `**<${displayName}>**: ${messageContent}`;
-      }
-    }
-
-    if (messageContent && messageContent.length > 2000) {
+    if (messageContent.length > 2000) {
       throw new BadRequestError("Message too long");
     }
 
@@ -113,7 +109,7 @@ export class MessageController {
 
     const result = await messageService.send({
       channelId,
-      content: messageContent || undefined,
+      content: messageContent,
       files: attachment ? [attachment] : undefined,
     });
 
