@@ -74,6 +74,7 @@ import type { Client } from "discord.js";
 import { Discord } from "@/discord/constants";
 import type { GameRankSyncService } from "@/services/discord/role/game-rank-sync.service";
 import { RoleManagementService } from "@/services/discord/role/role-management.service";
+import { resetGuildMemberFetchCache } from "@/discord/utils/guild-members";
 
 const ALICE = "900000000000000101";
 const BOB = "900000000000000102";
@@ -125,6 +126,7 @@ function createService(): RoleManagementService {
 }
 
 beforeEach(() => {
+  resetGuildMemberFetchCache();
   guildMembers.clear();
   cache.clear();
   memberList.fails = false;
