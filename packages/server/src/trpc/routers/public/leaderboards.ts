@@ -4,6 +4,7 @@ import { buildPagination, findOrThrow, paginationInput } from "@/trpc/utils";
 import { createRateLimit } from "@/trpc/middleware/rate-limit";
 import { topRoleHolderService } from "@/services/discord/role/top-role-holder.service";
 import { Q, playtimeRepo } from "@/db";
+import { mcUuid } from "@/utils/zod-schemas";
 import {
   LEADERBOARD_BOARDS,
   leaderboardBoardService,
@@ -20,7 +21,7 @@ const leaderboardsReadLimit = createRateLimit({
 
 const boardPageInput = {
   search: z.string().trim().max(32).optional(),
-  focus: z.string().uuid().optional(),
+  focus: mcUuid.optional(),
   ...paginationInput({ defaultLimit: 25, maxLimit: 100 }),
 };
 
@@ -122,7 +123,7 @@ export const leaderboardsRouter = router({
       description:
         "Lists the contested stats a player holds the record (#1) in, with their total, how many players hold the stat and the best total of anyone else",
     })
-    .input(z.object({ minecraftUuid: z.string().uuid() }))
+    .input(z.object({ minecraftUuid: mcUuid }))
     .query(({ input }) =>
       Q.player.minecraft.stat.total.getRecordsHeld(input.minecraftUuid),
     ),
@@ -133,7 +134,7 @@ export const leaderboardsRouter = router({
       description:
         "Returns a player's daily playtime over the trailing year (seconds per calendar day, summed across servers) with their all-time total, current daily streak, most active weekday and live session length when online. Feeds the expandable activity heatmap on leaderboard rows",
     })
-    .input(z.object({ minecraftUuid: z.string().uuid() }))
+    .input(z.object({ minecraftUuid: mcUuid }))
     .query(async ({ input }) =>
       playtimeRepo.getPlayerActivity(
         await findOrThrow(
