@@ -1,5 +1,5 @@
 import { createCanvas, loadImage, type Image } from "@napi-rs/canvas";
-import { Q } from "@/db";
+import { db, Q } from "@/db";
 import { objectStorage } from "@/services/storage";
 import {
   getSkinApiClient,
@@ -59,7 +59,10 @@ const METRIC_BY_CONDITION: Record<TopRoleRule["conditionType"], TopRoleMetric> =
  * figure of each holder in object storage. `record` is called by the daily
  * role reconcile once the Discord role is confirmed on the leader: a new
  * holder resets `heldSince` and gets a fresh render in the role's hero pose,
- * a returning holder only refreshes the metric. Each render comes as a pair,
+ * a returning holder only refreshes the metric. Every change of hands is also
+ * kept as a reign in `discord_top_role_reign` (closed on a new holder or on
+ * `clear`), written in the same transaction as the holder row, so the title
+ * history survives after the current row is overwritten. Each render comes as a pair,
  * the plain figure and the skin API outline variant framed on one shared
  * canvas so the site can swap them in place. The outline is optional: when it
  * fails to render or line up the holder keeps the plain figure alone until
@@ -88,19 +91,46 @@ export class TopRoleHolderService {
       figure = await this.renderFigures(rule, holder.minecraftUuid);
     }
 
-    await Q.discord.top.role.upsert(
-      {
+    const now = new Date();
+    const value = holder.value.toFixed(3);
+    await db.inTransaction(async (tx) => {
+      await tx.discord.top.role.upsert(
+        {
+          roleKey,
+          discordId: holder.discordId,
+          minecraftUuid: holder.minecraftUuid,
+          value,
+          heldSince: sameHolder && existing ? existing.heldSince : now,
+          imageKey: figure?.imageKey ?? null,
+          outlineImageKey: figure?.outlineImageKey ?? null,
+          updatedAt: now,
+        },
+        "roleKey",
+      );
+
+      const reign = await tx.discord.top.role.reign.findOpen(roleKey);
+      if (reign?.discordId === holder.discordId) {
+        await tx.discord.top.role.reign.update(
+          { id: reign.id },
+          { minecraftUuid: holder.minecraftUuid, lastValue: value },
+        );
+        return;
+      }
+      if (reign) {
+        await tx.discord.top.role.reign.update(
+          { id: reign.id },
+          { endedAt: now },
+        );
+      }
+      await tx.discord.top.role.reign.create({
         roleKey,
         discordId: holder.discordId,
         minecraftUuid: holder.minecraftUuid,
-        value: holder.value.toFixed(3),
-        heldSince: sameHolder && existing ? existing.heldSince : new Date(),
-        imageKey: figure?.imageKey ?? null,
-        outlineImageKey: figure?.outlineImageKey ?? null,
-        updatedAt: new Date(),
-      },
-      "roleKey",
-    );
+        startedAt: now,
+        startValue: value,
+        lastValue: value,
+      });
+    });
 
     const kept = [figure?.imageKey, figure?.outlineImageKey];
     await this.deleteImages(
@@ -117,7 +147,13 @@ export class TopRoleHolderService {
     });
     if (!existing) return;
 
-    await Q.discord.top.role.delete({ roleKey: existing.roleKey });
+    await db.inTransaction(async (tx) => {
+      await tx.discord.top.role.delete({ roleKey: existing.roleKey });
+      await tx.discord.top.role.reign.updateAll(
+        { endedAt: new Date() },
+        { roleKey: existing.roleKey, endedAt: null },
+      );
+    });
     await this.deleteImages(
       [existing.imageKey, existing.outlineImageKey].filter(
         (key): key is string => !!key,

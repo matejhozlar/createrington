@@ -26,6 +26,7 @@ TRUNCATE TABLE player_minecraft_stats CASCADE;
 TRUNCATE TABLE player_minecraft_stat_total CASCADE;
 TRUNCATE TABLE player_minecraft_stat_key CASCADE;
 TRUNCATE TABLE discord_top_role CASCADE;
+TRUNCATE TABLE discord_top_role_reign CASCADE;
 TRUNCATE TABLE reward_claim CASCADE;
 TRUNCATE TABLE server_forceload_chunk CASCADE;
 TRUNCATE TABLE server_forceload_member CASCADE;
@@ -1173,3 +1174,11 @@ INSERT INTO discord_top_role (role_key, discord_id, minecraft_uuid, value, held_
   ('the_unrivaled', '818819241666281503', '091b900c-4174-478c-900c-a0fe5a31a329', 41, NOW() - INTERVAL '11 days'),
   ('the_sleepless', '860820264128086026', '80e97d7b-d98d-4261-b297-311758b62a1a', 1384200, NOW() - INTERVAL '63 days'),
   ('capitalist', '236124332160581632', '13fe4708-65fc-4ea0-9fb3-55b598b41e5e', 1287450.5, NOW() - INTERVAL '4 days');
+
+-- Title history: the open reigns match the holders above, plus two past reigns
+INSERT INTO discord_top_role_reign (role_key, discord_id, minecraft_uuid, started_at, ended_at, start_value, last_value) VALUES
+  ('the_unrivaled', '547450242090532874', '3e0db446-147a-4692-87fd-c3facc4341db', NOW() - INTERVAL '40 days', NOW() - INTERVAL '11 days', 30, 39),
+  ('the_unrivaled', '818819241666281503', '091b900c-4174-478c-900c-a0fe5a31a329', NOW() - INTERVAL '11 days', NULL, 40, 41),
+  ('the_sleepless', '860820264128086026', '80e97d7b-d98d-4261-b297-311758b62a1a', NOW() - INTERVAL '63 days', NULL, 1100000, 1384200),
+  ('capitalist', '547450242090532874', '3e0db446-147a-4692-87fd-c3facc4341db', NOW() - INTERVAL '20 days', NOW() - INTERVAL '4 days', 900000, 1250000),
+  ('capitalist', '236124332160581632', '13fe4708-65fc-4ea0-9fb3-55b598b41e5e', NOW() - INTERVAL '4 days', NULL, 1260000, 1287450.5);
