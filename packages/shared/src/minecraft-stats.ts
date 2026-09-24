@@ -67,6 +67,36 @@ export function formatStatItem(category: string, item: string): string {
   return titleCase(path);
 }
 
+function shortenKey(key: string): string {
+  const { namespace, path } = splitKey(key);
+  return namespace === "minecraft" ? path : key;
+}
+
+function expandKey(key: string): string {
+  return key.includes(":") ? key : `minecraft:${key}`;
+}
+
+/** Compact URL form of a stat, dropping the vanilla namespace: "mined/diamond_ore", "mined/create:zinc_ore". */
+export function encodeStatParam(stat: {
+  category: string;
+  item: string;
+}): string {
+  return `${shortenKey(stat.category)}/${shortenKey(stat.item)}`;
+}
+
+/** Inverse of encodeStatParam; null for a missing or malformed value. */
+export function decodeStatParam(
+  value: string | null | undefined,
+): { category: string; item: string } | null {
+  if (!value) return null;
+  const slash = value.indexOf("/");
+  if (slash <= 0 || slash === value.length - 1) return null;
+  return {
+    category: expandKey(value.slice(0, slash)),
+    item: expandKey(value.slice(slash + 1)),
+  };
+}
+
 /** Formats a raw stat value in its unit: 342, 12.4 km, 38 h, 210 hearts. */
 export function formatStatValue(
   category: string,
