@@ -1,11 +1,13 @@
 import { describe, it, expect } from "vitest";
 import { ComponentType, MessageFlags, SeparatorSpacingSize } from "discord.js";
 import { componentsDataSchema } from "@createrington/shared/api/embed";
+import { assetUrl } from "@/config";
 import {
   actionRow,
   buildComponentsMessage,
   buildComponentsV2,
   container,
+  fullWidthSpacer,
   linkButton,
   mediaGallery,
   section,
@@ -150,6 +152,18 @@ describe("node constructors", () => {
     };
 
     expect(() => componentsDataSchema.parse(tree)).not.toThrow();
+  });
+
+  it("builds the full-width spacer from the transparent CDN image", () => {
+    expect(fullWidthSpacer()).toEqual({
+      type: "media_gallery",
+      items: [
+        {
+          url: assetUrl("changelog-spacer.png"),
+          spoiler: false,
+        },
+      ],
+    });
   });
 
   it("set separator defaults to a small divider", () => {
