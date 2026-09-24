@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from "vitest";
 import { Q, playtimeRepo } from "@/db";
+import { calendarDay } from "@/db/utils";
 
 const STEVE = "aaaaaaaa-0000-4000-8000-000000000001";
 const ALEX = "aaaaaaaa-0000-4000-8000-000000000002";
@@ -368,6 +369,102 @@ describe("PlaytimeRepository (integration)", () => {
         serverId,
       });
       expect(steve.totalSeconds).toBe(7200n);
+    });
+  });
+
+  describe("getPlayerActivity", () => {
+    const daysAgo = (days: number) => {
+      const date = new Date();
+      date.setDate(date.getDate() - days);
+      return calendarDay(date);
+    };
+
+    async function seedDay(days: number, seconds: number): Promise<void> {
+      await Q.player.playtime.daily.create({
+        playerMinecraftUuid: STEVE,
+        serverId,
+        playDate: daysAgo(days),
+        secondsPlayed: BigInt(seconds),
+      });
+    }
+
+    it("maps the trailing year of dailies with the streak, busiest weekday and all-time total", async () => {
+      await seedDay(0, 3600);
+      await seedDay(1, 7200);
+      await seedDay(2, 1800);
+      await seedDay(5, 100);
+      await seedDay(400, 9999);
+      await Q.player.playtime.summary.create({
+        playerMinecraftUuid: STEVE,
+        serverId,
+        totalSeconds: 50_000n,
+      });
+
+      const activity = await playtimeRepo.getPlayerActivity({
+        minecraftUuid: STEVE,
+        online: false,
+      });
+
+      expect(activity).toEqual({
+        online: false,
+        currentSessionSeconds: null,
+        totalSeconds: 50_000,
+        currentStreak: 3,
+        mostActiveDay: new Date(daysAgo(1)).toLocaleDateString("en-US", {
+          weekday: "long",
+          timeZone: "UTC",
+        }),
+        days: {
+          [daysAgo(0)]: 3600,
+          [daysAgo(1)]: 7200,
+          [daysAgo(2)]: 1800,
+          [daysAgo(5)]: 100,
+        },
+      });
+    });
+
+    it("keeps a streak alive through today until the player logs in", async () => {
+      await seedDay(1, 600);
+      await seedDay(2, 600);
+
+      const activity = await playtimeRepo.getPlayerActivity({
+        minecraftUuid: STEVE,
+        online: false,
+      });
+
+      expect(activity.currentStreak).toBe(2);
+    });
+
+    it("reports no busiest weekday for a player with no recent playtime", async () => {
+      const activity = await playtimeRepo.getPlayerActivity({
+        minecraftUuid: ALEX,
+        online: false,
+      });
+
+      expect(activity).toMatchObject({
+        totalSeconds: 0,
+        currentStreak: 0,
+        mostActiveDay: null,
+        days: {},
+      });
+    });
+
+    it("measures the live session of an online player", async () => {
+      await playtimeRepo.startSession({
+        uuid: STEVE,
+        username: "steve",
+        serverId,
+        sessionStart: new Date(Date.now() - 90_000),
+        playTimeTicks: ticks(0),
+      });
+
+      const activity = await playtimeRepo.getPlayerActivity({
+        minecraftUuid: STEVE,
+        online: true,
+      });
+
+      expect(activity.currentSessionSeconds).toBeGreaterThanOrEqual(90);
+      expect(activity.currentSessionSeconds).toBeLessThan(120);
     });
   });
 });
