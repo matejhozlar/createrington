@@ -18,21 +18,24 @@ const HERO_BACKDROP = "/assets/hero/dark-warehouse.webp";
 
 const SLOTS = [
   {
-    figure: "h-[24vh] sm:h-[30vh] md:h-[38vh] lg:h-[42vh]",
+    figure:
+      "h-[min(36vh,74cqw)] @xl:h-[min(30vh,50cqw)] @3xl:h-[min(38vh,50cqw)] @5xl:h-[min(42vh,50cqw)]",
     column: "col-start-1",
     enterDelay: "0.18s",
     captionTransform: "translate3d(calc(var(--scroll-a) * -24px), 0, 0)",
     name: "text-base sm:text-lg md:text-2xl",
   },
   {
-    figure: "h-[31vh] sm:h-[38vh] md:h-[46vh] lg:h-[52vh]",
+    figure:
+      "h-[min(46vh,92cqw)] @xl:h-[min(38vh,58cqw)] @3xl:h-[min(46vh,58cqw)] @5xl:h-[min(52vh,58cqw)]",
     column: "col-start-2",
     enterDelay: "0s",
     captionTransform: "translate3d(0, calc(var(--scroll-a) * 16px), 0)",
     name: "text-lg sm:text-xl md:text-3xl",
   },
   {
-    figure: "h-[24vh] sm:h-[30vh] md:h-[38vh] lg:h-[42vh]",
+    figure:
+      "h-[min(36vh,74cqw)] @xl:h-[min(30vh,50cqw)] @3xl:h-[min(38vh,50cqw)] @5xl:h-[min(42vh,50cqw)]",
     column: "col-start-3",
     enterDelay: "0.3s",
     captionTransform: "translate3d(calc(var(--scroll-a) * 24px), 0, 0)",
@@ -99,7 +102,10 @@ function HeroFigure({ role, index }: { role: TopRole; index: number }) {
               data-dock-body
               draggable={false}
               decoding="async"
-              className={cn("relative w-auto select-none", slot.figure)}
+              className={cn(
+                "relative w-auto max-w-none select-none",
+                slot.figure,
+              )}
             />
           </div>
         ) : (
@@ -239,7 +245,7 @@ export function TopRoleHero() {
           </p>
         </header>
 
-        <div className="grid flex-1 grid-cols-[1fr_1.15fr_1fr] content-end items-end gap-x-1 pb-[9vh] sm:gap-x-4 sm:pb-[7vh] md:gap-x-10 lg:gap-x-16">
+        <div className="@container grid flex-1 grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)_minmax(0,1fr)] content-end items-end gap-x-1 pb-[9vh] sm:gap-x-4 sm:pb-[7vh] md:gap-x-10 lg:gap-x-16">
           <div
             aria-hidden
             className="col-span-3 col-start-1 row-start-1 h-px w-full self-end bg-linear-to-r from-transparent via-white/15 to-transparent"
