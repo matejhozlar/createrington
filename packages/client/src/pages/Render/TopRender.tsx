@@ -1,3 +1,4 @@
+import { formatStatValue } from "@createrington/shared/minecraft-stats";
 import { LoadingScreen } from "@/components/loading-spinner";
 import { PodiumCard, type PodiumPlayer } from "./components/PodiumCard";
 import { RenderUnavailable } from "./components/RenderUnavailable";
@@ -12,10 +13,6 @@ interface TopData {
 }
 
 const BANNER = { src: "/assets/render/player-top.webp", alt: "Top Players" };
-
-function formatValue(value: number): string {
-  return value.toLocaleString();
-}
 
 export function TopRender() {
   const { data, unavailable } = useRenderData<TopData>("top", [
@@ -35,7 +32,7 @@ export function TopRender() {
       players={data.players}
       skins={skins}
       emptyText="No players found for this stat"
-      formatValue={formatValue}
+      formatValue={(value) => formatStatValue(data.category, data.item, value)}
     />
   );
 }

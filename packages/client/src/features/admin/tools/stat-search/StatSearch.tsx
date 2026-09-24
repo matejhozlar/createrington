@@ -22,29 +22,26 @@ import { trpc } from "@/lib/trpc";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import { useNavigate } from "react-router";
+import {
+  formatStatCategory,
+  formatStatItem,
+  formatStatValue,
+} from "@createrington/shared/minecraft-stats";
 
-const CATEGORY_OPTIONS = [
-  { key: "minecraft:picked_up", label: "Picked Up" },
-  { key: "minecraft:crafted", label: "Crafted" },
-  { key: "minecraft:mined", label: "Mined" },
-  { key: "minecraft:used", label: "Used" },
-  { key: "minecraft:dropped", label: "Dropped" },
-  { key: "minecraft:broken", label: "Broken" },
-  { key: "minecraft:killed", label: "Killed" },
-  { key: "minecraft:killed_by", label: "Killed By" },
-  { key: "minecraft:custom", label: "General" },
+const CATEGORY_KEYS = [
+  "minecraft:picked_up",
+  "minecraft:crafted",
+  "minecraft:mined",
+  "minecraft:used",
+  "minecraft:dropped",
+  "minecraft:broken",
+  "minecraft:killed",
+  "minecraft:killed_by",
+  "minecraft:custom",
 ] as const;
 
 /** Minimum total count before a zero-in-one-category row is highlighted */
 const SUSPICIOUS_THRESHOLD = 10;
-
-function formatStatName(key: string): string {
-  return key
-    .replace(/^minecraft:/, "")
-    .replace(/^[^:]+:/, "")
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
-}
 
 export function StatSearch() {
   const navigate = useNavigate();
@@ -105,9 +102,10 @@ export function StatSearch() {
   };
 
   const results = compareQuery.data ?? [];
-  const categoryLabels = categories.map(
-    (c) => CATEGORY_OPTIONS.find((o) => o.key === c)?.label ?? c,
-  );
+  const categoryLabels = categories.map(formatStatCategory);
+  const nameCategory = selectedCategories.has("minecraft:custom")
+    ? "minecraft:custom"
+    : categories[0];
 
   type StatResult = (typeof results)[number];
 
@@ -162,7 +160,7 @@ export function StatSearch() {
                 "font-bold text-yellow-500",
             )}
           >
-            {value.toLocaleString()}
+            {formatStatValue(categories[i], selectedItem, value)}
           </span>
         );
       },
@@ -246,7 +244,7 @@ export function StatSearch() {
                           )}
                         >
                           <span className="font-medium">
-                            {formatStatName(item)}
+                            {formatStatItem(nameCategory, item)}
                           </span>
                           <span className="ml-2 text-xs text-muted-foreground">
                             {item}
@@ -272,13 +270,13 @@ export function StatSearch() {
                 Categories to compare
               </label>
               <div className="flex flex-wrap gap-2">
-                {CATEGORY_OPTIONS.map((opt) => {
-                  const active = selectedCategories.has(opt.key);
+                {CATEGORY_KEYS.map((key) => {
+                  const active = selectedCategories.has(key);
                   return (
                     <button
-                      key={opt.key}
+                      key={key}
                       type="button"
-                      onClick={() => toggleCategory(opt.key)}
+                      onClick={() => toggleCategory(key)}
                       className={cn(
                         "cursor-pointer rounded-md border px-3 py-1.5 text-sm transition-colors",
                         active
@@ -286,7 +284,7 @@ export function StatSearch() {
                           : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground",
                       )}
                     >
-                      {opt.label}
+                      {formatStatCategory(key)}
                     </button>
                   );
                 })}
