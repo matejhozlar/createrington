@@ -5,6 +5,7 @@ const db = vi.hoisted(() => ({
   playtime: vi.fn(),
   balances: vi.fn(),
   players: vi.fn(),
+  statRanking: vi.fn(),
 }));
 
 vi.mock("@/db", () => ({
@@ -13,7 +14,14 @@ vi.mock("@/db", () => ({
       getAll: db.players,
       balance: { getAllBalances: db.balances },
       playtime: { summary: { getGlobalLeaderboard: db.playtime } },
-      minecraft: { stat: { total: { getRecordLeaderboard: db.records } } },
+      minecraft: {
+        stat: {
+          total: {
+            getRecordLeaderboard: db.records,
+            getStatRanking: db.statRanking,
+          },
+        },
+      },
     },
   },
 }));
@@ -129,5 +137,32 @@ describe("LeaderboardBoardService", () => {
 
     expect(rows).toHaveLength(1);
     expect(db.playtime).toHaveBeenCalledTimes(2);
+  });
+
+  it("ranks a single stat and caches it per stat", async () => {
+    db.statRanking.mockResolvedValue([
+      { minecraftUuid: "u-a", minecraftUsername: "alice", value: 40 },
+      { minecraftUuid: "u-b", minecraftUsername: "bob", value: 40 },
+      { minecraftUuid: "u-c", minecraftUsername: "carol", value: 7 },
+    ]);
+    const service = new LeaderboardBoardService();
+
+    const { rows } = await service.getStatBoard(
+      "minecraft:mined",
+      "minecraft:diamond_ore",
+    );
+    await service.getStatBoard("minecraft:mined", "minecraft:diamond_ore");
+    await service.getStatBoard("minecraft:used", "minecraft:diamond_ore");
+
+    expect(rows.map((row) => [row.rank, row.minecraftUsername])).toEqual([
+      [1, "alice"],
+      [1, "bob"],
+      [3, "carol"],
+    ]);
+    expect(db.statRanking).toHaveBeenCalledTimes(2);
+    expect(db.statRanking).toHaveBeenCalledWith(
+      "minecraft:used",
+      "minecraft:diamond_ore",
+    );
   });
 });

@@ -17,6 +17,7 @@ export interface BoardSnapshot {
 }
 
 const SNAPSHOT_TTL_MS = 60 * 1000;
+const MAX_CACHED_STATS = 200;
 
 interface CachedSnapshot {
   promise: Promise<BoardSnapshot>;
@@ -42,10 +43,13 @@ function withRanks(entries: Array<Omit<BoardRow, "rank">>): BoardRow[] {
  * every stats row, so it is not cheap) and memoised for a minute, with
  * concurrent callers sharing the in-flight computation. Ranks use competition
  * numbering (tied values share a rank, the next rank is skipped), so a
- * searched or paginated slice keeps the player's real position.
+ * searched or paginated slice keeps the player's real position. Single-stat
+ * boards (any category + item) are cached the same way, keeping at most the
+ * MAX_CACHED_STATS most recently computed ones.
  */
 export class LeaderboardBoardService {
   private cache = new Map<LeaderboardBoard, CachedSnapshot>();
+  private statCache = new Map<string, CachedSnapshot>();
 
   /** The complete ranked board, served from the minute-long cache when fresh. */
   getBoard(board: LeaderboardBoard): Promise<BoardSnapshot> {
@@ -63,9 +67,33 @@ export class LeaderboardBoardService {
     return promise;
   }
 
+  /** The complete ranked board for one stat, e.g. minecraft:mined + minecraft:diamond_ore. */
+  getStatBoard(category: string, item: string): Promise<BoardSnapshot> {
+    const key = JSON.stringify([category, item]);
+    const cached = this.statCache.get(key);
+    if (cached && cached.expiresAt > Date.now()) return cached.promise;
+
+    const promise = this.computeStat(category, item).catch((error) => {
+      this.statCache.delete(key);
+      throw error;
+    });
+    this.statCache.delete(key);
+    this.statCache.set(key, {
+      promise,
+      expiresAt: Date.now() + SNAPSHOT_TTL_MS,
+    });
+    while (this.statCache.size > MAX_CACHED_STATS) {
+      const oldest = this.statCache.keys().next().value;
+      if (oldest === undefined) break;
+      this.statCache.delete(oldest);
+    }
+    return promise;
+  }
+
   /** Drops every cached board so the next read recomputes. */
   invalidate(): void {
     this.cache.clear();
+    this.statCache.clear();
   }
 
   private compute(board: LeaderboardBoard): Promise<BoardSnapshot> {
@@ -93,6 +121,17 @@ export class LeaderboardBoardService {
         })),
       ),
     };
+  }
+
+  private async computeStat(
+    category: string,
+    item: string,
+  ): Promise<BoardSnapshot> {
+    const rows = await Q.player.minecraft.stat.total.getStatRanking(
+      category,
+      item,
+    );
+    return { contestedKeys: 0, rows: withRanks(rows) };
   }
 
   private async computePlaytime(): Promise<BoardSnapshot> {

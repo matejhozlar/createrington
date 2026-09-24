@@ -156,4 +156,102 @@ describe("PlayerMinecraftStatTotalQueries projection (integration)", () => {
       },
     ]);
   });
+
+  it("ranks every holder of one stat, highest first", async () => {
+    await upsert(serverA, {
+      [ALICE]: { "minecraft:mined": { "totaltest:quartz": 3 } },
+      [BOB]: { "minecraft:mined": { "totaltest:quartz": 11 } },
+    });
+
+    const rows = await totals.getStatRanking(
+      "minecraft:mined",
+      "totaltest:quartz",
+    );
+
+    expect(rows.map((row) => [row.minecraftUuid, row.value])).toEqual([
+      [BOB, 11],
+      [ALICE, 3],
+    ]);
+  });
+
+  it("lists the contested records a player holds with the runner-up", async () => {
+    await upsert(serverA, {
+      [ALICE]: {
+        "minecraft:mined": { "totaltest:lead": 9, "totaltest:solo": 5 },
+        "minecraft:dropped": { "totaltest:lead": 50 },
+      },
+      [BOB]: {
+        "minecraft:mined": { "totaltest:lead": 4 },
+        "minecraft:dropped": { "totaltest:lead": 1 },
+      },
+    });
+
+    const held = await totals.getRecordsHeld(ALICE);
+    const mine = held.filter((record) => record.item.startsWith("totaltest:"));
+
+    expect(mine).toEqual([
+      {
+        category: "minecraft:mined",
+        item: "totaltest:lead",
+        value: 9,
+        holders: 2,
+        runnerUp: 4,
+      },
+    ]);
+    expect(
+      (await totals.getRecordsHeld(BOB)).filter((record) =>
+        record.item.startsWith("totaltest:"),
+      ),
+    ).toEqual([]);
+  });
+
+  it("searches stats per category with holder counts", async () => {
+    await upsert(serverA, {
+      [ALICE]: {
+        "minecraft:mined": { "totaltest:search_rock": 2 },
+        "minecraft:used": { "totaltest:search_rock": 1 },
+      },
+      [BOB]: { "minecraft:mined": { "totaltest:search_rock": 6 } },
+    });
+
+    expect(
+      await Q.player.minecraft.stat.key.searchStats("search rock"),
+    ).toEqual([
+      {
+        category: "minecraft:mined",
+        item: "totaltest:search_rock",
+        holders: 2,
+      },
+      { category: "minecraft:used", item: "totaltest:search_rock", holders: 1 },
+    ]);
+  });
+
+  it("matches the item name, and a mod namespace only for modded items", async () => {
+    await upsert(serverA, {
+      [ALICE]: {
+        "minecraft:mined": {
+          "minecraft:totaltest_quarry": 2,
+          "totaltestmod:gizmo": 1,
+        },
+      },
+    });
+
+    const byVanillaNamespace = await Q.player.minecraft.stat.key.searchStats(
+      "minecraft",
+      100,
+    );
+    const byName = await Q.player.minecraft.stat.key.searchStats("totaltest_q");
+    const byModNamespace =
+      await Q.player.minecraft.stat.key.searchStats("totaltestmod");
+
+    expect(byVanillaNamespace.map((stat) => stat.item)).not.toContain(
+      "minecraft:totaltest_quarry",
+    );
+    expect(byName.map((stat) => stat.item)).toEqual([
+      "minecraft:totaltest_quarry",
+    ]);
+    expect(byModNamespace.map((stat) => stat.item)).toEqual([
+      "totaltestmod:gizmo",
+    ]);
+  });
 });

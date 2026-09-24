@@ -19,6 +19,20 @@ export interface RecordLeaderboard {
   contestedKeys: number;
 }
 
+export interface StatRankingEntry {
+  minecraftUuid: string;
+  minecraftUsername: string;
+  value: number;
+}
+
+export interface HeldRecord {
+  category: string;
+  item: string;
+  value: number;
+  holders: number;
+  runnerUp: number;
+}
+
 const RECORD_CATEGORIES = [
   "minecraft:mined",
   "minecraft:killed",
@@ -212,5 +226,78 @@ export class PlayerMinecraftStatTotalQueries extends PlayerMinecraftStatTotalBas
       })),
       contestedKeys: result.rows[0]?.contestedKeys ?? 0,
     };
+  }
+
+  /** Every player holding the stat, highest total first (ties by username). */
+  async getStatRanking(
+    category: string,
+    item: string,
+  ): Promise<StatRankingEntry[]> {
+    const query = `
+      SELECT
+        p.minecraft_uuid AS "minecraftUuid",
+        p.minecraft_username AS "minecraftUsername",
+        t.value::float8 AS value
+      FROM ${this.table} t
+      JOIN player_minecraft_stat_key k ON k.id = t.stat_key_id
+      JOIN player p ON p.minecraft_uuid = t.minecraft_uuid
+      WHERE k.category = $1 AND k.item = $2
+      ORDER BY t.value DESC, p.minecraft_username ASC
+    `;
+
+    const result = await this.runQuery<StatRankingEntry>(
+      "get minecraft stat ranking",
+      query,
+      [category, item],
+    );
+    return result.rows;
+  }
+
+  /**
+   * The contested stats a player holds the record (#1, ties included) in,
+   * under the same rules as getRecordLeaderboard, with the best total of any
+   * other player so callers can show the lead. Most contested stats first.
+   */
+  async getRecordsHeld(minecraftUuid: string): Promise<HeldRecord[]> {
+    const query = `
+      WITH mine AS (
+        SELECT
+          t.stat_key_id,
+          k.category,
+          k.item,
+          t.value,
+          (SELECT count(*) FROM ${this.table} h WHERE h.stat_key_id = t.stat_key_id) AS holders,
+          (
+            SELECT max(o.value) FROM ${this.table} o
+            WHERE o.stat_key_id = t.stat_key_id AND o.minecraft_uuid <> t.minecraft_uuid
+          ) AS runner_up
+        FROM ${this.table} t
+        JOIN player_minecraft_stat_key k ON k.id = t.stat_key_id
+        WHERE t.minecraft_uuid = $1
+          AND k.category = ANY($2)
+          AND NOT (k.category = 'minecraft:custom' AND k.item = ANY($3))
+      )
+      SELECT
+        category,
+        item,
+        value::float8 AS value,
+        holders::int AS holders,
+        runner_up::float8 AS "runnerUp"
+      FROM mine
+      WHERE holders >= $4 AND value >= runner_up
+      ORDER BY holders DESC, value DESC, category, item
+    `;
+
+    const result = await this.runQuery<HeldRecord>(
+      "get minecraft stat records held",
+      query,
+      [
+        minecraftUuid,
+        RECORD_CATEGORIES,
+        RECORD_CUSTOM_BLOCKLIST,
+        RECORD_MIN_HOLDERS,
+      ],
+    );
+    return result.rows;
   }
 }

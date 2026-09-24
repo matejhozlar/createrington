@@ -1,5 +1,11 @@
-import { useState, type CSSProperties } from "react";
-import { Search } from "lucide-react";
+import { useState, type CSSProperties, type ReactNode } from "react";
+import { ChevronDown, Search } from "lucide-react";
+import {
+  formatStatCategory,
+  formatStatItem,
+  formatStatValue,
+  statModName,
+} from "@createrington/shared/minecraft-stats";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/auth";
@@ -13,6 +19,8 @@ import {
   topRoleStyle,
   type TopRoleMetric,
 } from "../top-roles";
+import { StatPicker, type Stat } from "./StatPicker";
+import { HeldRecords } from "./HeldRecords";
 
 type Board = "records" | "playtime" | "balance";
 type BoardRow = RouterOutput["public"]["leaderboards"]["list"]["rows"][number];
@@ -124,23 +132,23 @@ const RANK_STYLES: Record<number, string> = {
 
 function BoardRowItem({
   row,
-  metric,
+  formatValue,
   share,
   isYou,
+  expanded,
+  onToggle,
+  children,
 }: {
   row: BoardRow;
-  metric: TopRoleMetric;
+  formatValue: (value: number) => string;
   share: number;
   isYou: boolean;
+  expanded?: boolean;
+  onToggle?: () => void;
+  children?: ReactNode;
 }) {
-  return (
-    <li
-      className={cn(
-        "relative flex items-center gap-3 overflow-hidden rounded-lg px-3 py-2 transition-colors hover:bg-white/[0.03]",
-        row.rank === 1 && "bg-(--role)/10",
-        isYou && "ring-1 ring-primary/40 bg-primary/5",
-      )}
-    >
+  const content = (
+    <>
       <div
         aria-hidden
         className="absolute inset-y-0 left-0 bg-(--role)/[0.07]"
@@ -171,8 +179,42 @@ function BoardRowItem({
         )}
       </span>
       <span className="relative shrink-0 text-sm font-semibold tabular-nums text-foreground/90">
-        {formatMetric(metric, row.value)}
+        {formatValue(row.value)}
       </span>
+      {onToggle && (
+        <ChevronDown
+          aria-hidden
+          className={cn(
+            "relative size-4 shrink-0 text-muted-foreground transition-transform",
+            expanded && "rotate-180",
+          )}
+        />
+      )}
+    </>
+  );
+  const rowClass = cn(
+    "relative flex w-full items-center gap-3 overflow-hidden rounded-lg px-3 py-2 text-left transition-colors hover:bg-white/[0.03]",
+    row.rank === 1 && "bg-(--role)/10",
+    isYou && "ring-1 ring-primary/40 bg-primary/5",
+  );
+
+  return (
+    <li>
+      {onToggle ? (
+        <button
+          type="button"
+          aria-expanded={expanded}
+          onClick={onToggle}
+          className={rowClass}
+        >
+          {content}
+        </button>
+      ) : (
+        <div className={rowClass}>{content}</div>
+      )}
+      {expanded && children && (
+        <div className="px-3 pt-2 pb-3 sm:pl-14">{children}</div>
+      )}
     </li>
   );
 }
@@ -192,42 +234,90 @@ function RowsSkeleton() {
   );
 }
 
+function statDescription(stat: Stat): string {
+  const mod = statModName(stat.item);
+  const item = formatStatItem(stat.category, stat.item).toLowerCase();
+  const category = formatStatCategory(stat.category).toLowerCase();
+  return `Every player ranked on ${item} (${category}${mod ? `, ${mod}` : ""}), totals across every season.`;
+}
+
 export function LeaderboardTable() {
   const { user } = useAuth();
   const [board, setBoard] = useState<Board>("records");
   const [roles] = trpc.public.leaderboards.hero.useSuspenseQuery(undefined, {
     staleTime: 5 * 60 * 1000,
   });
+  const [stat, setStat] = useState<Stat | null>(null);
+  const [expanded, setExpanded] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
   const debouncedSearch = useDebouncedValue(search.trim(), 250);
 
   const active = BOARDS.find((b) => b.board === board) ?? BOARDS[0];
   const style = topRoleStyle(active.roleKey);
+  const activeStat = board === "records" ? stat : null;
+  const statKey = {
+    category: activeStat?.category ?? "",
+    item: activeStat?.item ?? "",
+  };
+  const pageInput = {
+    search: debouncedSearch || undefined,
+    page,
+    limit: PAGE_SIZE,
+  };
 
-  const listQuery = trpc.public.leaderboards.list.useQuery(
+  const boardQuery = trpc.public.leaderboards.list.useQuery(
+    { board, ...pageInput },
     {
-      board,
-      search: debouncedSearch || undefined,
-      page,
-      limit: PAGE_SIZE,
+      staleTime: 60 * 1000,
+      placeholderData: (previous) => previous,
+      enabled: !activeStat,
     },
-    { staleTime: 60 * 1000, placeholderData: (previous) => previous },
   );
-  const topQuery = trpc.public.leaderboards.list.useQuery(
+  const statQuery = trpc.public.leaderboards.stat.useQuery(
+    { ...statKey, ...pageInput },
+    {
+      staleTime: 60 * 1000,
+      placeholderData: (previous) => previous,
+      enabled: !!activeStat,
+    },
+  );
+  const boardTopQuery = trpc.public.leaderboards.list.useQuery(
     { board, page: 0, limit: 1 },
-    { staleTime: 60 * 1000 },
+    { staleTime: 60 * 1000, enabled: !activeStat },
+  );
+  const statTopQuery = trpc.public.leaderboards.stat.useQuery(
+    { ...statKey, page: 0, limit: 1 },
+    { staleTime: 60 * 1000, enabled: !!activeStat },
   );
 
+  const listQuery = activeStat ? statQuery : boardQuery;
+  const topQuery = activeStat ? statTopQuery : boardTopQuery;
   const rows = listQuery.data?.rows ?? [];
   const pagination = listQuery.data?.pagination;
   const topValue = topQuery.data?.rows[0]?.value ?? 0;
-  const contestedKeys = listQuery.data?.contestedKeys ?? 0;
+  const contestedKeys = boardQuery.data?.contestedKeys ?? 0;
+  const canExpand = board === "records" && !activeStat;
+
+  const formatValue = (value: number) =>
+    activeStat
+      ? formatStatValue(activeStat.category, activeStat.item, value)
+      : formatMetric(active.metric, value);
 
   const selectBoard = (next: Board) => {
     setBoard(next);
     setPage(0);
+    setExpanded(null);
   };
+  const selectStat = (next: Stat | null) => {
+    setStat(next);
+    setPage(0);
+    setExpanded(null);
+  };
+  const toggleRow = (minecraftUuid: string) =>
+    setExpanded((current) =>
+      current === minecraftUuid ? null : minecraftUuid,
+    );
 
   return (
     <section
@@ -238,9 +328,11 @@ export function LeaderboardTable() {
         Every player, ranked
       </h2>
       <p className="mt-1 text-sm text-muted-foreground md:text-base">
-        {active.board === "records" && contestedKeys > 0
-          ? `Who holds the most #1 placements across ${contestedKeys.toLocaleString("en-US")} contested stats.`
-          : style.boardDescription}
+        {activeStat
+          ? statDescription(activeStat)
+          : active.board === "records" && contestedKeys > 0
+            ? `Who holds the most #1 placements across ${contestedKeys.toLocaleString("en-US")} contested stats. Open a player to see which.`
+            : style.boardDescription}
       </p>
 
       <div
@@ -260,7 +352,10 @@ export function LeaderboardTable() {
       </div>
 
       <div className="mt-6 rounded-xl border bg-card p-3 md:p-4">
-        <div className="mb-3 flex items-center gap-3">
+        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+          {board === "records" && (
+            <StatPicker value={activeStat} onChange={selectStat} />
+          )}
           <div className="relative flex-1">
             <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -295,10 +390,19 @@ export function LeaderboardTable() {
               <BoardRowItem
                 key={row.minecraftUuid}
                 row={row}
-                metric={active.metric}
+                formatValue={formatValue}
                 share={topValue > 0 ? row.value / topValue : 0}
                 isYou={user?.minecraftUuid === row.minecraftUuid}
-              />
+                expanded={expanded === row.minecraftUuid}
+                onToggle={
+                  canExpand ? () => toggleRow(row.minecraftUuid) : undefined
+                }
+              >
+                <HeldRecords
+                  minecraftUuid={row.minecraftUuid}
+                  onPick={selectStat}
+                />
+              </BoardRowItem>
             ))}
           </ol>
         )}
