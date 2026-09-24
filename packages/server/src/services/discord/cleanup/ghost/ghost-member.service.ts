@@ -1,4 +1,5 @@
 import { Q } from "@/db";
+import { loadAllGuildMembers } from "@/discord/utils/guild-members";
 import { ConflictError, NotFoundError } from "@/app/middleware/error-handler";
 import { getServiceSync, Services } from "@/services";
 import {
@@ -81,7 +82,7 @@ export class GhostMemberService {
   private async doRefresh(): Promise<void> {
     const guild = this.getGuild();
 
-    await guild.members.fetch();
+    await loadAllGuildMembers(guild);
     const guildMemberIds = new Set(guild.members.cache.keys());
 
     const [players, admins] = await Promise.all([
