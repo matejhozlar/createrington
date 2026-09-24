@@ -22,24 +22,29 @@ const HERO_BACKDROP = "/assets/hero/dark-warehouse.webp";
 const SLOTS = [
   {
     figure:
-      "h-[min(36vh,74cqw)] @xl:h-[min(30vh,50cqw)] @3xl:h-[min(38vh,50cqw)] @5xl:h-[min(42vh,50cqw)]",
-    column: "col-start-1",
+      "h-[min(21vh,44cqw)] @xl:h-[min(30vh,50cqw)] @3xl:h-[min(38vh,50cqw)] @5xl:h-[min(42vh,50cqw)]",
+    figureCell: "col-start-1 row-start-3 @xl:row-start-1",
+    captionCell: "col-start-1 row-start-4 @xl:row-start-2",
     enterDelay: "0.18s",
     captionTransform: "translate3d(calc(var(--scroll-a) * -24px), 0, 0)",
     name: "text-base sm:text-lg md:text-2xl",
   },
   {
     figure:
-      "h-[min(46vh,92cqw)] @xl:h-[min(38vh,58cqw)] @3xl:h-[min(46vh,58cqw)] @5xl:h-[min(52vh,58cqw)]",
-    column: "col-start-2",
+      "h-[min(29vh,64cqw)] @xl:h-[min(38vh,58cqw)] @3xl:h-[min(46vh,58cqw)] @5xl:h-[min(52vh,58cqw)]",
+    figureCell:
+      "col-span-2 col-start-1 row-start-1 @xl:col-span-1 @xl:col-start-2",
+    captionCell:
+      "col-span-2 col-start-1 row-start-2 mb-5 @xl:col-span-1 @xl:col-start-2 @xl:mb-0",
     enterDelay: "0s",
     captionTransform: "translate3d(0, calc(var(--scroll-a) * 16px), 0)",
     name: "text-lg sm:text-xl md:text-3xl",
   },
   {
     figure:
-      "h-[min(36vh,74cqw)] @xl:h-[min(30vh,50cqw)] @3xl:h-[min(38vh,50cqw)] @5xl:h-[min(42vh,50cqw)]",
-    column: "col-start-3",
+      "h-[min(21vh,44cqw)] @xl:h-[min(30vh,50cqw)] @3xl:h-[min(38vh,50cqw)] @5xl:h-[min(42vh,50cqw)]",
+    figureCell: "col-start-2 row-start-3 @xl:col-start-3 @xl:row-start-1",
+    captionCell: "col-start-2 row-start-4 @xl:col-start-3 @xl:row-start-2",
     enterDelay: "0.3s",
     captionTransform: "translate3d(calc(var(--scroll-a) * 24px), 0, 0)",
     name: "text-base sm:text-lg md:text-2xl",
@@ -87,8 +92,8 @@ function HeroFigure({ role, index }: { role: TopRole; index: number }) {
   return (
     <div
       className={cn(
-        "row-start-1 flex justify-center",
-        slot.column,
+        "flex justify-center",
+        slot.figureCell,
         index === 1 ? "z-20" : "z-10",
       )}
       style={slotStyle(index, style.color)}
@@ -179,8 +184,8 @@ function HeroCaption({
   return (
     <figcaption
       className={cn(
-        "relative z-30 row-start-2 min-w-0 pt-4 will-change-transform md:pt-6",
-        slot.column,
+        "relative z-30 min-w-0 pt-4 will-change-transform md:pt-6",
+        slot.captionCell,
       )}
       style={captionStyle(index, style.color)}
     >
@@ -255,7 +260,7 @@ export function TopRoleHero() {
         style={{ opacity: "calc(var(--scroll-b) * 0.9)" }}
       />
 
-      <div className="relative mx-auto flex h-full max-w-7xl flex-col px-5 md:px-8">
+      <div className="@container relative mx-auto flex h-full max-w-7xl flex-col px-5 md:px-8">
         <header
           className="pt-8 text-center md:pt-14"
           style={{
@@ -272,10 +277,14 @@ export function TopRoleHero() {
           </p>
         </header>
 
-        <div className="@container grid flex-1 grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)_minmax(0,1fr)] content-end items-end gap-x-1 pb-[9vh] sm:gap-x-4 sm:pb-[7vh] md:gap-x-10 lg:gap-x-16">
+        <div className="grid flex-1 grid-cols-2 @xl:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)_minmax(0,1fr)] content-end items-end gap-x-1 pb-[9vh] sm:gap-x-4 sm:pb-[7vh] md:gap-x-10 lg:gap-x-16">
           <div
             aria-hidden
-            className="col-span-3 col-start-1 row-start-1 h-px w-full self-end bg-linear-to-r from-transparent via-white/15 to-transparent"
+            className="col-[1/-1] row-start-1 h-px w-full self-end bg-linear-to-r from-transparent via-white/15 to-transparent"
+          />
+          <div
+            aria-hidden
+            className="col-[1/-1] row-start-3 h-px w-full self-end bg-linear-to-r from-transparent via-white/15 to-transparent @xl:hidden"
           />
           {ordered.map((role, index) =>
             role ? (
