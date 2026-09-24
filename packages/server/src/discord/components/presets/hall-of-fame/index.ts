@@ -23,6 +23,7 @@ export interface RankUpAnnouncementInput {
   discordId: string;
   playerName: string;
   roleLabel: string;
+  roleEmoji?: string;
   metric: RankUpMetric;
   poseUrl?: string;
   accentColor?: number;
@@ -64,15 +65,16 @@ function stat(metric: RankUpMetric): string {
 /** Components V2 renderings for the Hall of Fame channel. */
 export const HallOfFameComponentPresets = {
   /**
-   * The rank-up announcement: the new role as the heading, the rank-up line,
-   * the running total as subtext, the player's skin posed beside it, and the
-   * role's own color as the container stripe. A transparent full-width spacer
+   * The rank-up announcement: the new role as the heading (led by the role's
+   * emoji when it has one), the rank-up line, the running total as subtext,
+   * the player's skin posed beside it, and the role's own color as the
+   * container stripe. A transparent full-width spacer
    * opens the container so every announcement renders at the same width
    * regardless of the length of the player's name.
    */
   rankUp(input: RankUpAnnouncementInput): ComponentsData {
     const lines = [
-      `### ${input.roleLabel}`,
+      `### ${input.roleEmoji ? `${input.roleEmoji} ` : ""}${input.roleLabel}`,
       headline(input),
       `-# ${stat(input.metric)}`,
     ];

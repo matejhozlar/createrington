@@ -25,6 +25,11 @@ vi.mock("@/discord/utils/pose-thumbnail", () => ({
   squarePoseThumbnail: async (png: Uint8Array) => Buffer.from(png),
 }));
 
+vi.mock("@/discord/emojis", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/discord/emojis")>()),
+  appEmoji: (key: string) => `<:${key}:1>`,
+}));
+
 import type { SendMessageOptions } from "@/services/discord/message/types";
 import { Discord } from "@/discord/constants";
 import { roleNotificationService } from "@/services/discord/role/role-notification.service";
@@ -181,6 +186,23 @@ describe("RoleNotificationService.sendNotification", () => {
       "<@211712133550473217> now places first in more stats than anyone else.",
       "-# 312 first-place stats",
     ]);
+  });
+
+  it("leads a top role's heading with its application emoji", async () => {
+    await roleNotificationService.sendNotification(
+      notification({
+        role: {
+          roleId: Discord.Roles.THE_SLEEPLESS,
+          label: "The Sleepless",
+          checkInterval: RoleCheckInterval.DAILY,
+          conditionType: RoleConditionType.TOP_PLAYTIME,
+          gameRankId: "the_sleepless",
+          heroPose: "zombie",
+        },
+      }),
+    );
+
+    expect(lastMessage().texts[0]).toBe("### <:the_sleepless:1> The Sleepless");
   });
 
   it("leaves the container stripeless when the role has no color", async () => {
