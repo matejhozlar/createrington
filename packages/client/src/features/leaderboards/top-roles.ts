@@ -1,5 +1,5 @@
 import { Coins, Crown, MoonStar, type LucideIcon } from "lucide-react";
-import { formatMoney } from "@createrington/shared/format";
+import { formatCompactMoney, formatMoney } from "@createrington/shared/format";
 import { mcHeadsBody } from "@/lib/external-urls";
 
 export type TopRoleMetric = "playtime" | "balance" | "records";
@@ -59,6 +59,23 @@ export function formatMetric(metric: TopRoleMetric, value: number): string {
     case "records":
       return `${value.toLocaleString("en-US")} ${value === 1 ? "record" : "records"}`;
   }
+}
+
+export function formatMetricCompact(
+  metric: TopRoleMetric,
+  value: number,
+): string {
+  return metric === "balance"
+    ? formatCompactMoney(value)
+    : formatMetric(metric, value);
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+export function heldFor(heldSince: string, now: number): string {
+  const days = Math.floor((now - new Date(heldSince).getTime()) / DAY_MS);
+  if (days < 1) return "held since today";
+  return `held for ${days.toLocaleString("en-US")} ${days === 1 ? "day" : "days"}`;
 }
 
 export function formatGap(metric: TopRoleMetric, value: number): string {

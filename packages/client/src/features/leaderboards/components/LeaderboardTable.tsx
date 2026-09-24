@@ -17,6 +17,8 @@ import {
   figureSrc,
   formatGap,
   formatMetric,
+  formatMetricCompact,
+  heldFor,
   topRoleStyle,
   type TopRoleMetric,
 } from "../top-roles";
@@ -55,11 +57,13 @@ function ChampionCard({
   entry,
   role,
   selected,
+  now,
   onSelect,
 }: {
   entry: BoardEntry;
   role: TopRole | undefined;
   selected: boolean;
+  now: number;
   onSelect: () => void;
 }) {
   const style = topRoleStyle(entry.roleKey);
@@ -75,18 +79,18 @@ function ChampionCard({
       data-dock-card
       style={{ "--tab": style.color } as CSSProperties}
       className={cn(
-        "flex min-w-0 flex-col items-center rounded-xl border bg-card px-2 pt-5 pb-3 text-center transition-colors sm:px-4",
+        "relative mt-12 flex min-w-0 flex-col items-center rounded-xl border bg-linear-to-br from-card to-card px-2 pb-3 text-center transition-colors @3xl:mt-14 @3xl:h-32 @3xl:flex-row @3xl:items-end @3xl:gap-4 @3xl:px-5 @3xl:text-left",
         selected
-          ? "border-(--tab)/50 bg-(--tab)/10"
+          ? "border-(--tab)/50 to-(--tab)/15"
           : "hover:border-primary/40",
       )}
     >
-      <div className="relative flex h-24 items-end sm:h-32 md:h-40">
+      <div className="relative -mt-12 flex shrink-0 items-end @3xl:mt-0">
         {holder ? (
           <>
             <div
               aria-hidden
-              className="absolute bottom-0.5 left-1/2 h-2 w-16 -translate-x-1/2 rounded-[100%] bg-black/70 blur-sm sm:w-20"
+              className="absolute bottom-0.5 left-1/2 h-2 w-16 -translate-x-1/2 rounded-[100%] bg-black/70 blur-sm @3xl:w-20"
               style={REVEAL.shadow}
             />
             <div className="relative" data-dock-to={entry.roleKey}>
@@ -94,7 +98,7 @@ function ChampionCard({
                 src={figureSrc(holder)}
                 alt={holder.minecraftUsername}
                 draggable={false}
-                className="relative h-24 w-auto select-none sm:h-32 md:h-40"
+                className="relative h-24 w-auto select-none @xl:h-28 @3xl:h-44"
               />
             </div>
           </>
@@ -102,24 +106,37 @@ function ChampionCard({
           <Icon className="size-10 text-(--tab)/40" aria-hidden />
         )}
       </div>
-      <span
-        className="mt-3 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.15em] text-(--tab) md:text-xs"
-        style={REVEAL.title}
-      >
-        <Icon className="size-3 md:size-3.5" aria-hidden />
-        {style.boardTitle}
-      </span>
-      <span
-        className="mt-1 w-full truncate text-sm font-bold text-foreground md:text-base"
-        style={REVEAL.name}
-      >
-        {holder?.minecraftUsername ?? "Nobody yet"}
-      </span>
-      <span
-        className="text-xs font-semibold tabular-nums text-(--tab) md:text-sm"
-        style={REVEAL.value}
-      >
-        {holder ? formatMetric(entry.metric, holder.value) : "Unclaimed"}
+      <span className="mt-2 flex w-full min-w-0 flex-col items-center @3xl:mt-0 @3xl:flex-1 @3xl:items-start @3xl:self-center @3xl:pt-2">
+        <span
+          className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.15em] text-(--tab) @3xl:text-xs"
+          style={REVEAL.title}
+        >
+          <Icon className="size-3 @3xl:size-3.5" aria-hidden />
+          {style.boardTitle}
+        </span>
+        <span
+          className="mt-1 w-full truncate text-sm font-bold text-foreground @3xl:text-lg"
+          style={REVEAL.name}
+        >
+          {holder?.minecraftUsername ?? "Nobody yet"}
+        </span>
+        <span
+          className="w-full truncate text-sm font-bold tabular-nums text-(--tab) @xl:text-base @3xl:text-xl"
+          title={holder ? formatMetric(entry.metric, holder.value) : undefined}
+          style={REVEAL.value}
+        >
+          {holder
+            ? formatMetricCompact(entry.metric, holder.value)
+            : "Unclaimed"}
+        </span>
+        {holder && (
+          <span
+            className="hidden w-full truncate text-xs text-muted-foreground @3xl:block"
+            style={REVEAL.value}
+          >
+            {heldFor(holder.heldSince, now)}
+          </span>
+        )}
       </span>
     </button>
   );
@@ -271,6 +288,7 @@ export function LeaderboardTable() {
   const [roles] = trpc.public.leaderboards.hero.useSuspenseQuery(undefined, {
     staleTime: 5 * 60 * 1000,
   });
+  const [now] = useState(Date.now);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [search, setSearch] = useState(params.search);
   const [page, setPage] = useState(0);
@@ -373,7 +391,7 @@ export function LeaderboardTable() {
       <div
         role="tablist"
         aria-label="Leaderboard"
-        className="mt-6 grid grid-cols-3 gap-2 sm:gap-4"
+        className="@container mt-6 grid grid-cols-3 gap-2 @xl:gap-4"
       >
         {BOARDS.map((entry) => (
           <ChampionCard
@@ -381,6 +399,7 @@ export function LeaderboardTable() {
             entry={entry}
             role={roles.find((role) => role.roleKey === entry.roleKey)}
             selected={entry.board === board}
+            now={now}
             onSelect={() => selectBoard(entry.board)}
           />
         ))}

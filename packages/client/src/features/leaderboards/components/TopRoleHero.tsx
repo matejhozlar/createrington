@@ -7,6 +7,7 @@ import { usePreloadedImages } from "../hooks/use-preloaded-images";
 import {
   figureSrc,
   formatMetric,
+  heldFor,
   HERO_ORDER,
   topRoleStyle,
 } from "../top-roles";
@@ -114,14 +115,6 @@ function HeroFigure({ role, index }: { role: TopRole; index: number }) {
       </div>
     </div>
   );
-}
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-function heldFor(heldSince: string, now: number): string {
-  const days = Math.floor((now - new Date(heldSince).getTime()) / DAY_MS);
-  if (days < 1) return "held since today";
-  return `held for ${days.toLocaleString("en-US")} ${days === 1 ? "day" : "days"}`;
 }
 
 function nextMidnightUtc(): string {
