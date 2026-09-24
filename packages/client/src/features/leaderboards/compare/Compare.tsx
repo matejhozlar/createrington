@@ -112,36 +112,47 @@ export function Compare() {
 
   const compareQuery = trpc.public.leaderboards.compare.useQuery(
     { first: first ?? "", second: second ?? "" },
-    { enabled: both, staleTime: 60 * 1000, retry: false },
+    {
+      enabled: both,
+      staleTime: 60 * 1000,
+      retry: false,
+      placeholderData: (previous) => previous,
+    },
   );
   const soloQuery = trpc.public.leaderboards.contender.useQuery(
     { username: solo ?? "" },
-    { enabled: !!solo, staleTime: 60 * 1000, retry: false },
+    {
+      enabled: !!solo,
+      staleTime: 60 * 1000,
+      retry: false,
+      placeholderData: (previous) => previous,
+    },
   );
 
-  const players = compareQuery.data;
+  const players = compareQuery.isPlaceholderData
+    ? undefined
+    : compareQuery.data;
+  const known: StageSide[] = [
+    ...(compareQuery.data ?? []),
+    ...(soloQuery.data ? [soloQuery.data] : []),
+  ];
   const stageSides = sides.map((username, index) => {
     if (!username || (samePlayer && index === 1)) return null;
-    const compared = players?.[index];
-    if (compared) return compared;
-    const found = soloQuery.data;
-    if (
-      found &&
-      found.minecraftUsername.toLowerCase() === username.toLowerCase()
-    ) {
-      return found;
-    }
-    return null;
+    const name = username.toLowerCase();
+    return (
+      known.find((side) => side.minecraftUsername.toLowerCase() === name) ??
+      null
+    );
   }) as [StageSide | null, StageSide | null];
-  const seed = `${sides
-    .map((side) => side?.toLowerCase() ?? "")
-    .sort()
-    .join("|")}:${day}:${roll}`;
+  const seed = `${day}:${roll}`;
   const poses = stageSides.map((side, index) =>
     stagePose(side?.minecraftUuid ?? String(index), seed),
   ) as [KnownPose, KnownPose];
   const score = players ? scoreOf(players, now) : null;
   const failed = compareQuery.isError || soloQuery.isError;
+  const loading = sides.map(
+    (username, index) => !!username && !stageSides[index] && !failed,
+  ) as [boolean, boolean];
 
   const run = (action: HeroAction, at: number) => {
     if (action === "reroll") {
@@ -164,11 +175,11 @@ export function Compare() {
       }
     >
       <CompareHero
-        key={`${first}|${second}`}
         sides={stageSides}
         poses={poses}
         score={score}
         initialOpen={first && !second ? 1 : !first && second ? 0 : null}
+        loading={loading}
         actionsEnabled={both}
         onPick={pick}
         onAction={run}

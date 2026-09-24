@@ -69,8 +69,8 @@ function StageFigure({ src, alt }: { src: string; alt: string }) {
       )}
       <span
         className={cn(
-          "relative block h-full transition-opacity duration-500",
-          loaded ? "opacity-100" : "opacity-0",
+          "relative block h-full",
+          loaded ? "lb-duel-enter" : "opacity-0",
         )}
       >
         <span
@@ -159,6 +159,7 @@ export function CompareHero({
   poses,
   score,
   initialOpen,
+  loading,
   actionsEnabled,
   onPick,
   onAction,
@@ -167,6 +168,7 @@ export function CompareHero({
   poses: [KnownPose, KnownPose];
   score: StageScore | null;
   initialOpen: Side | null;
+  loading: [boolean, boolean];
   actionsEnabled: boolean;
   onPick: (side: Side, minecraftUsername: string) => void;
   onAction: (action: HeroAction, at: number) => void;
@@ -284,15 +286,20 @@ export function CompareHero({
                 style={sideStyle}
               >
                 {player ? (
-                  <div
+                  <StageFigure
                     key={`${player.minecraftUuid}-${poses[side]}`}
-                    className="lb-duel-enter"
+                    src={poseSrc(player.minecraftUuid, poses[side])}
+                    alt={player.minecraftUsername}
+                  />
+                ) : loading[side] ? (
+                  <span
+                    className={cn(
+                      "relative flex items-center justify-center",
+                      FIGURE_HEIGHT,
+                    )}
                   >
-                    <StageFigure
-                      src={poseSrc(player.minecraftUuid, poses[side])}
-                      alt={player.minecraftUsername}
-                    />
-                  </div>
+                    <Spinner className="size-7 text-(--side) md:size-9" />
+                  </span>
                 ) : (
                   picker(
                     <button
@@ -336,6 +343,14 @@ export function CompareHero({
                       </button>,
                     )}
                     {player.ranks && <RankChips ranks={player.ranks} />}
+                  </div>
+                ) : loading[side] ? (
+                  <div
+                    aria-hidden
+                    className="flex flex-col items-center gap-1.5 md:gap-2"
+                  >
+                    <span className="my-1.5 h-8 w-28 animate-pulse rounded-lg bg-white/8 md:h-9 md:w-44" />
+                    <span className="h-5 w-32 animate-pulse rounded-full bg-white/5 md:w-48" />
                   </div>
                 ) : (
                   <span className="text-sm text-muted-foreground">
