@@ -7,7 +7,7 @@ import {
   mediaGallery,
   section,
   separator,
-  spacer,
+  fullWidthSpacer,
   text,
   thumbnail,
 } from "../../component-builder";
@@ -166,7 +166,7 @@ function footer(release: ChangelogRelease): Child[] {
 }
 
 function opening(input: ChangelogInput, first: boolean): Child[] {
-  return first ? [...headerNodes(input), separator()] : [spacer()];
+  return first ? [...headerNodes(input), separator()] : [fullWidthSpacer()];
 }
 
 function mentionNodes(roleId: string | null): ComponentTextDisplay[] {

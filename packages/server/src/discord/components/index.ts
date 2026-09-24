@@ -5,6 +5,7 @@ export {
   buildComponentsMessage,
   buildComponentsV2,
   container,
+  fullWidthSpacer,
   linkButton,
   measureComponentsV2,
   mediaGallery,

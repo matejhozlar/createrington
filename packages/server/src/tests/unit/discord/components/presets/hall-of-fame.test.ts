@@ -5,9 +5,9 @@ import {
 } from "@/discord/components/presets/hall-of-fame";
 import {
   buildComponentsMessage,
+  fullWidthSpacer,
   validateComponentsV2,
 } from "@/discord/components";
-import { SPACER_IMAGE_URL } from "@/discord/components/component-builder";
 import type {
   ComponentContainer,
   ComponentsData,
@@ -38,7 +38,7 @@ function only(data: ComponentsData): ComponentContainer {
 }
 
 function body(data: ComponentsData): ComponentContainer["components"] {
-  return only(data).components.slice(1);
+  return only(data).components.filter((c) => c.type !== "media_gallery");
 }
 
 function texts(data: ComponentsData): string[] {
@@ -69,10 +69,7 @@ describe("HallOfFameComponentPresets.rankUp", () => {
         HallOfFameComponentPresets.rankUp(input({ poseUrl })),
       ).components;
 
-      expect(first).toEqual({
-        type: "media_gallery",
-        items: [{ url: SPACER_IMAGE_URL, spoiler: false }],
-      });
+      expect(first).toEqual(fullWidthSpacer());
     }
   });
 

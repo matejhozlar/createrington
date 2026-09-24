@@ -4,8 +4,7 @@ import {
   type ChangelogEntry,
   type ChangelogInput,
 } from "@/discord/components/presets/modpack-changelog";
-import { validateComponentsV2 } from "@/discord/components";
-import { SPACER_IMAGE_URL } from "@/discord/components/component-builder";
+import { fullWidthSpacer, validateComponentsV2 } from "@/discord/components";
 import type {
   ComponentContainer,
   ComponentsData,
@@ -79,10 +78,7 @@ function headings(nodes: Child[]): string[] {
   return texts(nodes).filter((content) => content.startsWith("### "));
 }
 
-const SPACER = {
-  type: "media_gallery",
-  items: [{ url: SPACER_IMAGE_URL, spoiler: false }],
-};
+const SPACER = fullWidthSpacer();
 
 function hasDownloadRow(nodes: Child[]): boolean {
   return nodes.some(

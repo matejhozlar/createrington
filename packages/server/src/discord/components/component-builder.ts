@@ -268,10 +268,10 @@ export function mediaGallery(
   };
 }
 
-export const SPACER_IMAGE_URL = assetUrl("changelog-spacer.png");
+const FULL_WIDTH_SPACER_URL = assetUrl("changelog-spacer.png");
 
-export function spacer(): ComponentMediaGallery {
-  return mediaGallery([{ url: SPACER_IMAGE_URL }]);
+export function fullWidthSpacer(): ComponentMediaGallery {
+  return mediaGallery([{ url: FULL_WIDTH_SPACER_URL }]);
 }
 
 export function actionRow(buttons: ComponentButton[]): ComponentActionRow {
