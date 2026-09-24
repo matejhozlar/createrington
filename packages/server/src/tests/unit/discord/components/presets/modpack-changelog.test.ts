@@ -1,11 +1,11 @@
 import { describe, it, expect } from "vitest";
 import {
-  CHANGELOG_SPACER_IMAGE_URL,
   ModpackChangelogComponentPresets,
   type ChangelogEntry,
   type ChangelogInput,
 } from "@/discord/components/presets/modpack-changelog";
 import { validateComponentsV2 } from "@/discord/components";
+import { SPACER_IMAGE_URL } from "@/discord/components/component-builder";
 import type {
   ComponentContainer,
   ComponentsData,
@@ -81,7 +81,7 @@ function headings(nodes: Child[]): string[] {
 
 const SPACER = {
   type: "media_gallery",
-  items: [{ url: CHANGELOG_SPACER_IMAGE_URL, spoiler: false }],
+  items: [{ url: SPACER_IMAGE_URL, spoiler: false }],
 };
 
 function hasDownloadRow(nodes: Child[]): boolean {

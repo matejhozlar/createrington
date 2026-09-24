@@ -1,4 +1,10 @@
-import { container, section, text, thumbnail } from "../../component-builder";
+import {
+  container,
+  section,
+  spacer,
+  text,
+  thumbnail,
+} from "../../component-builder";
 import { formatMoney, formatPlaytime } from "@createrington/shared/format";
 import { formatDaysCount } from "@/utils/format";
 import { Discord } from "@/discord/constants";
@@ -57,7 +63,7 @@ function stat(metric: RankUpMetric): string {
 
 /** Components V2 renderings for the Hall of Fame channel. */
 export const HallOfFameComponentPresets = {
-  /** The rank-up announcement: the new role as the heading, the rank-up line, the running total as subtext, the player's skin posed beside it, and the role's own color as the container stripe. */
+  /** The rank-up announcement: the new role as the heading, the rank-up line, the running total as subtext, the player's skin posed beside it, and the role's own color as the container stripe. A transparent spacer opens the container so every announcement renders full width regardless of the name length. */
   rankUp(input: RankUpAnnouncementInput): ComponentsData {
     const lines = [
       `### ${input.roleLabel}`,
@@ -65,16 +71,19 @@ export const HallOfFameComponentPresets = {
       `-# ${stat(input.metric)}`,
     ];
 
-    const children: ComponentContainer["components"] = input.poseUrl
-      ? [
-          section(
-            lines,
-            thumbnail(input.poseUrl, {
-              description: `${input.playerName}'s skin`,
-            }),
-          ),
-        ]
-      : lines.map(text);
+    const children: ComponentContainer["components"] = [
+      spacer(),
+      ...(input.poseUrl
+        ? [
+            section(
+              lines,
+              thumbnail(input.poseUrl, {
+                description: `${input.playerName}'s skin`,
+              }),
+            ),
+          ]
+        : lines.map(text)),
+    ];
 
     return {
       components: [

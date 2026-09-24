@@ -7,6 +7,7 @@ import {
   buildComponentsMessage,
   validateComponentsV2,
 } from "@/discord/components";
+import { SPACER_IMAGE_URL } from "@/discord/components/component-builder";
 import type {
   ComponentContainer,
   ComponentsData,
@@ -36,12 +37,14 @@ function only(data: ComponentsData): ComponentContainer {
   return node;
 }
 
+function body(data: ComponentsData): ComponentContainer["components"] {
+  return only(data).components.slice(1);
+}
+
 function texts(data: ComponentsData): string[] {
-  const [child] = only(data).components;
+  const [child] = body(data);
   if (child.type === "section") return child.components.map((t) => t.content);
-  return only(data).components.flatMap((c) =>
-    c.type === "text" ? [c.content] : [],
-  );
+  return body(data).flatMap((c) => (c.type === "text" ? [c.content] : []));
 }
 
 describe("HallOfFameComponentPresets.rankUp", () => {
@@ -60,8 +63,21 @@ describe("HallOfFameComponentPresets.rankUp", () => {
     ]);
   });
 
+  it("opens with the full-width spacer so every announcement is the same width", () => {
+    for (const poseUrl of [POSE_URL, undefined]) {
+      const [first] = only(
+        HallOfFameComponentPresets.rankUp(input({ poseUrl })),
+      ).components;
+
+      expect(first).toEqual({
+        type: "media_gallery",
+        items: [{ url: SPACER_IMAGE_URL, spoiler: false }],
+      });
+    }
+  });
+
   it("puts the pose render beside the text", () => {
-    const [child] = only(HallOfFameComponentPresets.rankUp(input())).components;
+    const [child] = body(HallOfFameComponentPresets.rankUp(input()));
 
     expect(child.type).toBe("section");
     if (child.type !== "section") return;
@@ -158,7 +174,7 @@ describe("HallOfFameComponentPresets.rankUp", () => {
     );
 
     expect(validateComponentsV2(data)).toBeNull();
-    expect(only(data).components.every((c) => c.type === "text")).toBe(true);
+    expect(body(data).every((c) => c.type === "text")).toBe(true);
     expect(texts(data)).toHaveLength(3);
   });
 });

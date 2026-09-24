@@ -27,6 +27,7 @@ import {
   type ComponentThumbnail,
   type ComponentsData,
 } from "@createrington/shared/api/embed";
+import { assetUrl } from "@/config";
 
 export type TopLevelComponent =
   | ContainerBuilder
@@ -265,6 +266,12 @@ export function mediaGallery(
       spoiler: item.spoiler ?? false,
     })),
   };
+}
+
+export const SPACER_IMAGE_URL = assetUrl("changelog-spacer.png");
+
+export function spacer(): ComponentMediaGallery {
+  return mediaGallery([{ url: SPACER_IMAGE_URL }]);
 }
 
 export function actionRow(buttons: ComponentButton[]): ComponentActionRow {
