@@ -1,3 +1,9 @@
+## v1.64.0 (2026-09-24)
+
+### @createrington/server (1.64.0 → 1.65.0)
+- [add] Add image-based application emojis for the three competitive top roles (The Unrivaled, The Sleepless, Capitalist), extending the emoji manifest to support committed PNG assets alongside the existing Lucide icon renders
+- [add] Lead hall of fame rank-up announcement headings with the role's application emoji when one is configured, falling back to the plain role name for roles without an emoji
+
 ## v1.63.0 (2026-09-24)
 
 ### @createrington/server (1.63.2 → 1.64.0)
