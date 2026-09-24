@@ -46,6 +46,21 @@ export const ButtonPresets = {
     },
 
     /**
+     * Website head-to-head comparison of two players, by Minecraft username
+     */
+    compare(firstUsername: string, secondUsername: string): ButtonBuilder {
+      const url = new URL(
+        `${cfg.website.replace(/\/+$/, "")}/leaderboards/compare`,
+      );
+      url.searchParams.set("a", firstUsername);
+      url.searchParams.set("b", secondUsername);
+      return new ButtonBuilder()
+        .setLabel("View full comparison")
+        .setStyle(ButtonStyle.Link)
+        .setURL(url.toString());
+    },
+
+    /**
      * Server-list vote page, prefilled with the player's Minecraft username
      */
     vote(minecraftUsername: string): ButtonBuilder {

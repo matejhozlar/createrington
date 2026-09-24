@@ -41,6 +41,14 @@ export const modpacksLimiter = rateLimit({
   handler: rateLimitHandler,
 });
 
+export const skinPoseLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 120,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  handler: rateLimitHandler,
+});
+
 /** Auth-specific rate limiter: 20 requests per 15-minute window per IP */
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,

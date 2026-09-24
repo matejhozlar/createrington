@@ -188,3 +188,104 @@ describe("PlayerMinecraftStatsQueries.getRecordLeaderboard (integration)", () =>
     expect(limited.rows).toHaveLength(1);
   });
 });
+
+describe("PlayerMinecraftStatTotalQueries.getHeadToHead (integration)", () => {
+  const headToHead = (
+    options: Partial<
+      Parameters<typeof Q.player.minecraft.stat.total.getHeadToHead>[2]
+    > = {},
+  ) =>
+    Q.player.minecraft.stat.total.getHeadToHead(ALICE, BOB, {
+      search: "h2htest",
+      sort: "gap",
+      limit: 50,
+      offset: 0,
+      ...options,
+    });
+
+  beforeEach(async () => {
+    await seedStats(serverA, {
+      [ALICE]: {
+        "minecraft:mined": { "h2htest:shared": 30, "h2htest:alice_only": 5 },
+        "minecraft:killed": { "h2htest:zombie": 100 },
+        "minecraft:custom": { "minecraft:play_time": 999 },
+      },
+      [BOB]: {
+        "minecraft:mined": { "h2htest:shared": 10, "h2htest:bob_only": 400 },
+        "minecraft:killed": { "h2htest:zombie": 90 },
+      },
+      [CARA]: {
+        "minecraft:mined": { "h2htest:cara_only": 1 },
+      },
+    });
+    await seedStats(serverB, {
+      [ALICE]: { "minecraft:mined": { "h2htest:shared": 20 } },
+    });
+  });
+
+  it("returns both totals, summed across servers, on every stat either player holds", async () => {
+    const { rows, total } = await headToHead({ sort: "total" });
+
+    expect(total).toBe(4);
+    expect(rows).toEqual([
+      {
+        category: "minecraft:mined",
+        item: "h2htest:bob_only",
+        first: 0,
+        second: 400,
+      },
+      {
+        category: "minecraft:killed",
+        item: "h2htest:zombie",
+        first: 100,
+        second: 90,
+      },
+      {
+        category: "minecraft:mined",
+        item: "h2htest:shared",
+        first: 50,
+        second: 10,
+      },
+      {
+        category: "minecraft:mined",
+        item: "h2htest:alice_only",
+        first: 5,
+        second: 0,
+      },
+    ]);
+  });
+
+  it("orders by the relative gap between the two players", async () => {
+    const { rows } = await headToHead({ sort: "gap" });
+
+    expect(rows.map((row) => row.item)).toEqual([
+      "h2htest:bob_only",
+      "h2htest:alice_only",
+      "h2htest:shared",
+      "h2htest:zombie",
+    ]);
+  });
+
+  it("narrows by item name and by category, and pages with the full total", async () => {
+    const byItem = await headToHead({ search: "zomb" });
+    expect(byItem.rows.map((row) => row.item)).toEqual(["h2htest:zombie"]);
+
+    const byCategory = await headToHead({ search: "killed" });
+    expect(byCategory.rows.map((row) => row.item)).toContain("h2htest:zombie");
+    expect(
+      byCategory.rows.every((row) => row.category === "minecraft:killed"),
+    ).toBe(true);
+
+    const page = await headToHead({ sort: "total", limit: 2, offset: 2 });
+    expect(page.total).toBe(4);
+    expect(page.rows.map((row) => row.item)).toEqual([
+      "h2htest:shared",
+      "h2htest:alice_only",
+    ]);
+  });
+
+  it("hides playtime counters", async () => {
+    const { rows } = await headToHead({ search: "play_time" });
+    expect(rows).toEqual([]);
+  });
+});

@@ -1,5 +1,6 @@
 import type { Pool, PoolClient } from "pg";
 import { PlayerMinecraftStatTotalBaseQueries } from "@/generated/db/player_minecraft_stat_total.queries";
+import { escapeLike } from "@/db/utils";
 
 export interface StatCompareResult {
   minecraftUuid: string;
@@ -55,6 +56,22 @@ const RECORD_CUSTOM_BLOCKLIST = [
 
 const RECORD_MIN_HOLDERS = 2;
 
+const HEAD_TO_HEAD_HIDDEN = [
+  "minecraft:play_time",
+  "minecraft:total_world_time",
+  "minecraft:time_since_death",
+  "minecraft:time_since_rest",
+];
+
+export type HeadToHeadSort = "gap" | "total";
+
+export interface HeadToHeadStat {
+  category: string;
+  item: string;
+  first: number;
+  second: number;
+}
+
 const STAT_PAIRS_FROM = `
   FROM player_minecraft_stats s
   CROSS JOIN LATERAL jsonb_each(
@@ -76,6 +93,7 @@ const STAT_PAIRS_WHERE = `
  *
  * - Rebuild a player's totals from their stats rows (run by the stats import)
  * - Rank every player on one stat, and count stat records (#1 placements)
+ * - Put two players side by side on every stat either of them holds
  */
 export class PlayerMinecraftStatTotalQueries extends PlayerMinecraftStatTotalBaseQueries {
   constructor(db: Pool | PoolClient) {
@@ -299,5 +317,77 @@ export class PlayerMinecraftStatTotalQueries extends PlayerMinecraftStatTotalBas
       ],
     );
     return result.rows;
+  }
+
+  /**
+   * Both players' totals on every stat either of them holds, optionally
+   * narrowed by an item, mod or category search. "gap" orders by the relative
+   * difference between the two, "total" by their combined value.
+   */
+  async getHeadToHead(
+    first: string,
+    second: string,
+    options: {
+      search?: string;
+      sort: HeadToHeadSort;
+      limit: number;
+      offset: number;
+    },
+  ): Promise<{ rows: HeadToHeadStat[]; total: number }> {
+    const term = options.search?.trim().toLowerCase().replace(/\s+/g, "_");
+    const pattern = term ? `%${escapeLike(term)}%` : null;
+
+    const query = `
+      WITH pair AS (
+        SELECT
+          t.stat_key_id,
+          COALESCE(max(t.value) FILTER (WHERE t.minecraft_uuid = $1::uuid), 0)::float8 AS first,
+          COALESCE(max(t.value) FILTER (WHERE t.minecraft_uuid = $2::uuid), 0)::float8 AS second
+        FROM ${this.table} t
+        WHERE t.minecraft_uuid IN ($1::uuid, $2::uuid)
+        GROUP BY t.stat_key_id
+      )
+      SELECT
+        k.category,
+        k.item,
+        p.first,
+        p.second,
+        count(*) OVER ()::int AS total
+      FROM pair p
+      JOIN player_minecraft_stat_key k ON k.id = p.stat_key_id
+      WHERE NOT (k.category = 'minecraft:custom' AND k.item = ANY($3))
+        AND (
+          $4::text IS NULL
+          OR split_part(k.item, ':', 2) ILIKE $4
+          OR split_part(k.item, ':', 1) ILIKE $4
+          OR split_part(k.category, ':', 2) ILIKE $4
+        )
+      ORDER BY
+        CASE WHEN $5 = 'gap'
+          THEN abs(p.first - p.second) / GREATEST(p.first, p.second)
+        END DESC NULLS LAST,
+        p.first + p.second DESC,
+        k.category,
+        k.item
+      LIMIT $6 OFFSET $7
+    `;
+
+    const result = await this.runQuery<HeadToHeadStat & { total: number }>(
+      "get minecraft stat head to head",
+      query,
+      [
+        first,
+        second,
+        HEAD_TO_HEAD_HIDDEN,
+        pattern,
+        options.sort,
+        options.limit,
+        options.offset,
+      ],
+    );
+    return {
+      rows: result.rows.map(({ total: _total, ...row }) => row),
+      total: result.rows[0]?.total ?? 0,
+    };
   }
 }
