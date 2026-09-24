@@ -12,6 +12,7 @@ import type { TopRoleRule } from "./types";
 import type { DiscordRoleId } from "@/discord/constants";
 import { rankNetWorth } from "@/services/discord/leaderboard/networth";
 import { RoleManager } from "@/discord/utils/roles/role-manager";
+import { loadAllGuildMembers } from "@/discord/utils/guild-members";
 import { roleNotificationService } from "./role-notification.service";
 import config from "@/config";
 import { GameRankSyncService } from "./game-rank-sync.service";
@@ -236,8 +237,7 @@ export class RoleManagementService {
 
   private async loadGuildWithMembers(): Promise<Guild> {
     const guild = await this.client.guilds.fetch(config.discord.guild.id);
-    await guild.members.fetch();
-    return guild;
+    return loadAllGuildMembers(guild);
   }
 
   private async processTopRole(
