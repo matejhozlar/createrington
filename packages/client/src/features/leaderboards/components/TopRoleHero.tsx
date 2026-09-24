@@ -2,7 +2,6 @@ import { useState, type CSSProperties } from "react";
 import { useCountdown } from "@/hooks/use-countdown";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
-import { useScrollProgress } from "../hooks/use-scroll-progress";
 import { useBoardParams } from "../hooks/use-board-params";
 import { usePreloadedImages } from "../hooks/use-preloaded-images";
 import {
@@ -26,7 +25,6 @@ const SLOTS = [
     figureCell: "col-start-1 row-start-3 @xl:row-start-1",
     captionCell: "col-start-1 row-start-4 @xl:row-start-2",
     enterDelay: "0.18s",
-    captionTransform: "translate3d(calc(var(--scroll-a) * -24px), 0, 0)",
     name: "text-base sm:text-lg md:text-2xl",
   },
   {
@@ -37,7 +35,6 @@ const SLOTS = [
     captionCell:
       "col-span-2 col-start-1 row-start-2 mb-5 @xl:col-span-1 @xl:col-start-2 @xl:mb-0",
     enterDelay: "0s",
-    captionTransform: "translate3d(0, calc(var(--scroll-a) * 16px), 0)",
     name: "text-lg sm:text-xl md:text-3xl",
   },
   {
@@ -46,7 +43,6 @@ const SLOTS = [
     figureCell: "col-start-2 row-start-3 @xl:col-start-3 @xl:row-start-1",
     captionCell: "col-start-2 row-start-4 @xl:col-start-3 @xl:row-start-2",
     enterDelay: "0.3s",
-    captionTransform: "translate3d(calc(var(--scroll-a) * 24px), 0, 0)",
     name: "text-base sm:text-lg md:text-2xl",
   },
 ] as const;
@@ -63,14 +59,6 @@ function slotStyle(index: number, color: string): CSSProperties {
     "--role": color,
     "--enter-delay": SLOTS[index].enterDelay,
   } as CSSProperties;
-}
-
-function captionStyle(index: number, color: string): CSSProperties {
-  return {
-    ...slotStyle(index, color),
-    transform: SLOTS[index].captionTransform,
-    opacity: "calc(1 - var(--scroll-a) * 1.6)",
-  };
 }
 
 function HeroFigure({ role, index }: { role: TopRole; index: number }) {
@@ -183,11 +171,8 @@ function HeroCaption({
 
   return (
     <figcaption
-      className={cn(
-        "relative z-30 min-w-0 pt-4 will-change-transform md:pt-6",
-        slot.captionCell,
-      )}
-      style={captionStyle(index, style.color)}
+      className={cn("relative z-30 min-w-0 pt-4 md:pt-6", slot.captionCell)}
+      style={slotStyle(index, style.color)}
     >
       <div className="lb-hero-caption flex flex-col items-center text-center">
         <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.15em] text-(--role) sm:hidden">
@@ -220,7 +205,6 @@ function HeroCaption({
 }
 
 export function TopRoleHero() {
-  const ref = useScrollProgress<HTMLElement>();
   const [now] = useState(Date.now);
   const [roles] = trpc.public.leaderboards.hero.useSuspenseQuery(undefined, {
     staleTime: 5 * 60 * 1000,
@@ -233,18 +217,14 @@ export function TopRoleHero() {
   );
 
   return (
-    <section
-      ref={ref}
-      className="sticky top-14 z-0 h-[calc(100svh-3.5rem)] overflow-hidden bg-background md:top-0 md:h-svh"
-    >
+    <section className="sticky top-14 z-0 h-[calc(100svh-3.5rem)] overflow-hidden bg-background md:top-0 md:h-svh">
       <img
         src={HERO_BACKDROP}
         alt=""
         aria-hidden
         draggable={false}
         decoding="async"
-        className="absolute -inset-10 h-[calc(100%+5rem)] w-[calc(100%+5rem)] max-w-none object-cover blur-[6px] brightness-[0.32] saturate-[0.7] will-change-transform"
-        style={{ transform: "scale(calc(1 + var(--scroll-p) * 0.25))" }}
+        className="absolute -inset-10 h-[calc(100%+5rem)] w-[calc(100%+5rem)] max-w-none object-cover blur-[6px] brightness-[0.32] saturate-[0.7]"
       />
       <div
         aria-hidden
@@ -254,20 +234,9 @@ export function TopRoleHero() {
         aria-hidden
         className="absolute inset-0 bg-linear-to-b from-background to-transparent to-[35%]"
       />
-      <div
-        aria-hidden
-        className="absolute inset-0 bg-background"
-        style={{ opacity: "calc(var(--scroll-b) * 0.9)" }}
-      />
 
       <div className="@container relative mx-auto flex h-full max-w-7xl flex-col px-5 md:px-8">
-        <header
-          className="pt-8 text-center md:pt-14"
-          style={{
-            transform: "translate3d(0, calc(var(--scroll-a) * -48px), 0)",
-            opacity: "calc(1 - var(--scroll-a))",
-          }}
-        >
+        <header className="pt-8 text-center md:pt-14">
           <h1 className="text-4xl font-bold tracking-tight text-foreground md:text-6xl">
             Leaderboards
           </h1>
