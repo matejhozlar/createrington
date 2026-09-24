@@ -1,4 +1,5 @@
 import config from "@/config";
+import { encodeStatParam } from "@createrington/shared/minecraft-stats";
 import { ButtonBuilder, ButtonStyle } from "discord.js";
 
 const cfg = config.meta.links;
@@ -29,6 +30,19 @@ export const ButtonPresets = {
         .setLabel("Open the Map")
         .setStyle(ButtonStyle.Link)
         .setURL(cfg.map);
+    },
+
+    /**
+     * Website leaderboards scrolled to the ranked boards, optionally opened on one stat
+     */
+    leaderboard(stat?: { category: string; item: string }): ButtonBuilder {
+      const url = new URL(`${cfg.website.replace(/\/+$/, "")}/leaderboards`);
+      if (stat) url.searchParams.set("stat", encodeStatParam(stat));
+      url.hash = "boards";
+      return new ButtonBuilder()
+        .setLabel("View full leaderboard")
+        .setStyle(ButtonStyle.Link)
+        .setURL(url.toString());
     },
 
     /**

@@ -1,4 +1,5 @@
-import { useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { useLocation } from "react-router";
 import { ChevronDown, Search } from "lucide-react";
 import {
   formatStatCategory,
@@ -284,6 +285,7 @@ function statDescription(stat: Stat): string {
 
 export function LeaderboardTable() {
   const { user } = useAuth();
+  const { hash } = useLocation();
   const params = useBoardParams();
   const { board } = params;
   const [roles] = trpc.public.leaderboards.hero.useSuspenseQuery(undefined, {
@@ -359,6 +361,13 @@ export function LeaderboardTable() {
     activeStat
       ? formatStatValue(activeStat.category, activeStat.item, value)
       : formatMetric(active.metric, value);
+
+  useEffect(() => {
+    if (hash !== `#${BOARD_SECTION_ID}`) return;
+    document
+      .getElementById(BOARD_SECTION_ID)
+      ?.scrollIntoView({ block: "start" });
+  }, [hash]);
 
   const selectBoard = (next: Board) => params.update({ board: next });
   const selectStat = (next: Stat | null) => params.update({ stat: next });

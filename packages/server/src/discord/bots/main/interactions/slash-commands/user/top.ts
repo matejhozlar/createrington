@@ -1,5 +1,6 @@
 import { Q } from "@/db";
 import { EmbedPresets } from "@/discord/embeds";
+import { ButtonPresets } from "@/discord/embeds/presets/buttons";
 import { replyError } from "@/discord/utils/interaction-reply";
 import { CooldownType } from "@/discord/utils/cooldown";
 import { renderScreenshot } from "@/discord/utils/render-screenshot";
@@ -9,8 +10,10 @@ import {
   formatStatValue,
 } from "@createrington/shared/minecraft-stats";
 import {
+  ActionRowBuilder,
   AttachmentBuilder,
   AutocompleteInteraction,
+  ButtonBuilder,
   ChatInputCommandInteraction,
   SlashCommandBuilder,
 } from "discord.js";
@@ -114,6 +117,9 @@ export async function execute(
     const screenshotBuffer = await renderScreenshot("top", { category, item });
 
     const itemName = formatStatItem(category, item);
+    const links = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      ButtonPresets.links.leaderboard({ category, item }),
+    );
 
     if (screenshotBuffer) {
       const safeName = item.replace(/[^a-zA-Z0-9]/g, "_");
@@ -128,6 +134,7 @@ export async function execute(
       await interaction.editReply({
         embeds: [embed.build()],
         files: [attachment],
+        components: [links],
       });
     } else {
       // Text fallback
@@ -145,7 +152,10 @@ export async function execute(
         false,
       );
 
-      await interaction.editReply({ embeds: [embed.build()] });
+      await interaction.editReply({
+        embeds: [embed.build()],
+        components: [links],
+      });
     }
   } catch {
     await replyError(
