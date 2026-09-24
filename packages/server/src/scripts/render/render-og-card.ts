@@ -28,14 +28,12 @@ import {
   FOREGROUND,
   MUTED,
   TEXT_X,
-  ASSETS,
   registerBrandFonts,
   roundRectPath,
   drawImageCover,
   paintWordmark,
-  getPoseFigure,
-  writeCard,
-} from "./og-shared";
+} from "@/utils/og-card";
+import { ASSETS, getPoseFigure, writeCard } from "./og-shared";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(here, "..", "..", "..", "..", "..");
