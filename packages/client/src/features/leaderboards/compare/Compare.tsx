@@ -6,6 +6,7 @@ import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { useToastActions } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import { SkinApiPromo } from "@/components/skin-api-promo";
 import {
   HEADLINE_METRICS,
   SIDE_COLORS,
@@ -128,124 +129,130 @@ export function Compare() {
   };
 
   return (
-    <div
-      className="mx-auto w-full max-w-6xl space-y-6 px-4 py-6 md:space-y-7 md:px-8 md:py-10"
-      style={
-        { "--left": SIDE_COLORS[0], "--right": SIDE_COLORS[1] } as CSSProperties
-      }
-    >
-      <header className="flex items-end justify-between gap-4">
-        <div className="space-y-1.5">
-          <Link
-            to="/leaderboards"
-            className="inline-flex h-7 items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <ArrowLeft className="size-3.5" aria-hidden />
-            Back to leaderboards
-          </Link>
-          <h1 className="text-2xl font-bold tracking-tight md:text-[34px]">
-            Head to head
-          </h1>
-        </div>
-        <div className="hidden gap-2 md:flex">
+    <>
+      <div
+        className="mx-auto w-full max-w-6xl space-y-6 px-4 py-6 md:space-y-7 md:px-8 md:py-10"
+        style={
+          {
+            "--left": SIDE_COLORS[0],
+            "--right": SIDE_COLORS[1],
+          } as CSSProperties
+        }
+      >
+        <header className="flex items-end justify-between gap-4">
+          <div className="space-y-1.5">
+            <Link
+              to="/leaderboards"
+              className="inline-flex h-7 items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <ArrowLeft className="size-3.5" aria-hidden />
+              Back to leaderboards
+            </Link>
+            <h1 className="text-2xl font-bold tracking-tight md:text-[34px]">
+              Head to head
+            </h1>
+          </div>
+          <div className="hidden gap-2 md:flex">
+            {ACTIONS.map(({ key, label, icon: Icon }) => (
+              <Button
+                key={key}
+                variant="outline"
+                onClick={(event) => run(key, event.timeStamp)}
+                disabled={key !== "copy" && !both}
+              >
+                <Icon aria-hidden />
+                {label}
+              </Button>
+            ))}
+          </div>
+        </header>
+
+        <CompareStage
+          key={`${first}|${second}`}
+          sides={stageSides}
+          poses={poses}
+          score={score}
+          initialOpen={first && !second ? 1 : !first && second ? 0 : null}
+          onPick={pick}
+        />
+
+        <div className="flex items-center gap-2 md:hidden">
+          {score ? <ScorePill score={score} /> : <div className="flex-1" />}
           {ACTIONS.map(({ key, label, icon: Icon }) => (
             <Button
               key={key}
               variant="outline"
+              size="icon"
+              className="size-11"
               onClick={(event) => run(key, event.timeStamp)}
               disabled={key !== "copy" && !both}
+              aria-label={label}
             >
               <Icon aria-hidden />
-              {label}
             </Button>
           ))}
         </div>
-      </header>
 
-      <CompareStage
-        key={`${first}|${second}`}
-        sides={stageSides}
-        poses={poses}
-        score={score}
-        initialOpen={first && !second ? 1 : !first && second ? 0 : null}
-        onPick={pick}
-      />
+        {failed && (
+          <p className="rounded-xl border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
+            Couldn't find that player. Pick someone else above.
+          </p>
+        )}
+        {samePlayer && (
+          <p className="rounded-xl border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
+            That's the same player twice. Pick a challenger above.
+          </p>
+        )}
 
-      <div className="flex items-center gap-2 md:hidden">
-        {score ? <ScorePill score={score} /> : <div className="flex-1" />}
-        {ACTIONS.map(({ key, label, icon: Icon }) => (
-          <Button
-            key={key}
-            variant="outline"
-            size="icon"
-            className="size-11"
-            onClick={(event) => run(key, event.timeStamp)}
-            disabled={key !== "copy" && !both}
-            aria-label={label}
-          >
-            <Icon aria-hidden />
-          </Button>
-        ))}
+        {both && !failed && (
+          <>
+            <section className="space-y-3">
+              <div className="flex items-baseline justify-between gap-4">
+                <h2 className="text-lg font-bold md:text-[22px]">
+                  Headline stats
+                </h2>
+                <span className="hidden text-sm text-muted-foreground md:block">
+                  Bars split by share of the combined total
+                </span>
+              </div>
+              <div
+                className={cn(
+                  "rounded-xl border bg-card px-4 py-1 md:px-5",
+                  !players && "animate-pulse",
+                )}
+              >
+                {players
+                  ? HEADLINE_METRICS.map((metric) => (
+                      <TugRow
+                        key={metric.label}
+                        size="lg"
+                        label={metric.label}
+                        left={{
+                          value: metric.value(players[0], now),
+                          text: metric.display(players[0], now),
+                        }}
+                        right={{
+                          value: metric.value(players[1], now),
+                          text: metric.display(players[1], now),
+                        }}
+                      />
+                    ))
+                  : HEADLINE_METRICS.map((metric) => (
+                      <div key={metric.label} className="h-16" />
+                    ))}
+              </div>
+            </section>
+
+            {players && (
+              <EveryStat
+                first={players[0].minecraftUuid}
+                second={players[1].minecraftUuid}
+              />
+            )}
+          </>
+        )}
       </div>
-
-      {failed && (
-        <p className="rounded-xl border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
-          Couldn't find that player. Pick someone else above.
-        </p>
-      )}
-      {samePlayer && (
-        <p className="rounded-xl border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
-          That's the same player twice. Pick a challenger above.
-        </p>
-      )}
-
-      {both && !failed && (
-        <>
-          <section className="space-y-3">
-            <div className="flex items-baseline justify-between gap-4">
-              <h2 className="text-lg font-bold md:text-[22px]">
-                Headline stats
-              </h2>
-              <span className="hidden text-sm text-muted-foreground md:block">
-                Bars split by share of the combined total
-              </span>
-            </div>
-            <div
-              className={cn(
-                "rounded-xl border bg-card px-4 py-1 md:px-5",
-                !players && "animate-pulse",
-              )}
-            >
-              {players
-                ? HEADLINE_METRICS.map((metric) => (
-                    <TugRow
-                      key={metric.label}
-                      size="lg"
-                      label={metric.label}
-                      left={{
-                        value: metric.value(players[0], now),
-                        text: metric.display(players[0], now),
-                      }}
-                      right={{
-                        value: metric.value(players[1], now),
-                        text: metric.display(players[1], now),
-                      }}
-                    />
-                  ))
-                : HEADLINE_METRICS.map((metric) => (
-                    <div key={metric.label} className="h-16" />
-                  ))}
-            </div>
-          </section>
-
-          {players && (
-            <EveryStat
-              first={players[0].minecraftUuid}
-              second={players[1].minecraftUuid}
-            />
-          )}
-        </>
-      )}
-    </div>
+      <SkinApiPromo />
+    </>
   );
 }
