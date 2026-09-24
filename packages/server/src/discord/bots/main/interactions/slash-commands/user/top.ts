@@ -4,6 +4,11 @@ import { replyError } from "@/discord/utils/interaction-reply";
 import { CooldownType } from "@/discord/utils/cooldown";
 import { renderScreenshot } from "@/discord/utils/render-screenshot";
 import {
+  formatStatCategory,
+  formatStatItem,
+  formatStatValue,
+} from "@createrington/shared/minecraft-stats";
+import {
   AttachmentBuilder,
   AutocompleteInteraction,
   ChatInputCommandInteraction,
@@ -108,11 +113,7 @@ export async function execute(
 
     const screenshotBuffer = await renderScreenshot("top", { category, item });
 
-    // Format display title
-    const itemName = item
-      .replace(/^minecraft:/, "")
-      .replace(/_/g, " ")
-      .replace(/\b\w/g, (c) => c.toUpperCase());
+    const itemName = formatStatItem(category, item);
 
     if (screenshotBuffer) {
       const safeName = item.replace(/[^a-zA-Z0-9]/g, "_");
@@ -134,12 +135,12 @@ export async function execute(
       const leaderboard = results
         .map(
           (r, i) =>
-            `${medals[i]} **${r.minecraftUsername}** - ${r.values[0].toLocaleString()}`,
+            `${medals[i]} **${r.minecraftUsername}** - ${formatStatValue(category, item, r.values[0])}`,
         )
         .join("\n");
 
       const embed = EmbedPresets.info(`Top ${itemName}`).field(
-        category.replace(/^minecraft:/, ""),
+        formatStatCategory(category),
         leaderboard,
         false,
       );

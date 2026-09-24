@@ -103,6 +103,9 @@ export function StatSearch() {
 
   const results = compareQuery.data ?? [];
   const categoryLabels = categories.map(formatStatCategory);
+  const nameCategory = selectedCategories.has("minecraft:custom")
+    ? "minecraft:custom"
+    : categories[0];
 
   type StatResult = (typeof results)[number];
 
@@ -241,7 +244,7 @@ export function StatSearch() {
                           )}
                         >
                           <span className="font-medium">
-                            {formatStatItem(categories[0], item)}
+                            {formatStatItem(nameCategory, item)}
                           </span>
                           <span className="ml-2 text-xs text-muted-foreground">
                             {item}

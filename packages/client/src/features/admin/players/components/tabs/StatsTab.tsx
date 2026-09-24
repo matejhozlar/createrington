@@ -365,7 +365,7 @@ export function StatsTab({ playerId, getServerName }: StatsTabProps) {
                         </div>
                         {category !== MIXED_UNIT_CATEGORY && (
                           <span className="text-sm text-muted-foreground">
-                            {totalValue.toLocaleString()} total
+                            {totalValue.toLocaleString("en-US")} total
                           </span>
                         )}
                       </button>
