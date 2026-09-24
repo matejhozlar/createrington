@@ -39,6 +39,13 @@ const SLOTS = [
   },
 ] as const;
 
+const GROUNDING = {
+  shadow: { opacity: "clamp(0, 1 - var(--flight, 0) * 4, 1)" },
+  reflection: {
+    opacity: "calc(0.2 * clamp(0, 1 - var(--flight, 0) * 4, 1))",
+  },
+} satisfies Record<string, CSSProperties>;
+
 function slotStyle(index: number, color: string): CSSProperties {
   return {
     "--role": color,
@@ -75,10 +82,12 @@ function HeroFigure({ role, index }: { role: TopRole; index: number }) {
             <div
               aria-hidden
               className="absolute bottom-0.5 left-1/2 h-3 w-3/4 -translate-x-1/2 rounded-[100%] bg-black/70 blur-md"
+              style={GROUNDING.shadow}
             />
             <img
               src={src}
               alt={`${holder.minecraftUsername}, ${role.label}`}
+              data-dock-body
               draggable={false}
               decoding="async"
               className={cn(
@@ -91,7 +100,8 @@ function HeroFigure({ role, index }: { role: TopRole; index: number }) {
               alt=""
               aria-hidden
               draggable={false}
-              className="pointer-events-none absolute inset-x-0 top-full h-[38%] w-full -scale-y-100 object-cover object-bottom opacity-20 blur-[1px] [mask-image:linear-gradient(to_top,rgba(0,0,0,0.9),transparent)]"
+              className="pointer-events-none absolute inset-x-0 top-full h-[38%] w-full -scale-y-100 object-cover object-bottom blur-[1px] [mask-image:linear-gradient(to_top,rgba(0,0,0,0.9),transparent)]"
+              style={GROUNDING.reflection}
             />
           </div>
         ) : (
@@ -168,11 +178,7 @@ export function TopRoleHero() {
   return (
     <section
       ref={ref}
-      className="sticky top-14 z-0 h-[calc(100svh-3.5rem)] origin-[50%_30%] overflow-hidden bg-background will-change-transform md:top-0 md:h-svh"
-      style={{
-        transform: "scale(calc(1 - var(--scroll-p) * 0.08))",
-        borderRadius: "calc(var(--scroll-p) * 32px)",
-      }}
+      className="sticky top-14 z-0 h-[calc(100svh-3.5rem)] overflow-hidden bg-background md:top-0 md:h-svh"
     >
       <img
         src={HERO_BACKDROP}

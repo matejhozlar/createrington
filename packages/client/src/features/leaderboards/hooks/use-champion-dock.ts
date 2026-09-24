@@ -57,7 +57,9 @@ function render(flight: Flight, dt: number): boolean {
   const { t } = flight;
   const card = to.closest<HTMLElement>("[data-dock-card]");
   card?.style.setProperty("--land", t.toFixed(4));
-  from.style.opacity = t > 0 ? "0" : "";
+  from.style.setProperty("--flight", t.toFixed(4));
+  const body = from.querySelector<HTMLElement>("[data-dock-body]");
+  if (body) body.style.opacity = t > 0 ? "0" : "";
   to.style.opacity = t >= 1 ? "" : "0";
 
   if (t <= 0 || t >= 1) {
@@ -148,7 +150,11 @@ export function useChampionDock(keys: string[], delays: number[]): void {
       for (const { key } of flights) {
         const from = query("data-dock-from", key);
         const to = query("data-dock-to", key);
-        if (from) from.style.opacity = "";
+        if (from) {
+          from.style.removeProperty("--flight");
+          const body = from.querySelector<HTMLElement>("[data-dock-body]");
+          if (body) body.style.opacity = "";
+        }
         if (to) {
           to.style.opacity = "";
           to.closest<HTMLElement>("[data-dock-card]")?.style.removeProperty(
