@@ -10,6 +10,7 @@ import "@/logger.global";
 import { Q } from "@/db";
 import { Client, GatewayIntentBits } from "discord.js";
 import { env } from "@/config/env/env.config";
+import { loadAllGuildMembers } from "@/discord/utils/guild-members";
 import { DiscordApiQueue } from "./api-queue";
 
 async function syncNicknames(): Promise<void> {
@@ -38,7 +39,7 @@ async function syncNicknames(): Promise<void> {
 
     // Pre-fetch all guild members so we can check membership
     console.log("Fetching guild members...");
-    await guild.members.fetch();
+    await loadAllGuildMembers(guild);
     console.log(`✓ Fetched ${guild.members.cache.size} members\n`);
 
     const queue = new DiscordApiQueue({ delayMs: 1200 });

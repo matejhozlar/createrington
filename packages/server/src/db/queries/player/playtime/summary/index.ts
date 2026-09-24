@@ -414,11 +414,11 @@ export class PlayerPlaytimeSummaryQueries extends PlayerPlaytimeSummaryBaseQueri
    * Sums total_seconds across all servers per player, joins with the player
    * table for discord_id and minecraft_username.
    *
-   * @param limit - Maximum number of entries to return (default: 1)
+   * @param limit - Maximum number of entries to return; omit for every player
    * @returns Array of global leaderboard entries sorted by total playtime descending
    */
   async getGlobalLeaderboard(
-    limit: number = 1,
+    limit?: number,
   ): Promise<GlobalLeaderboardEntry[]> {
     const query = `
       SELECT
@@ -433,7 +433,7 @@ export class PlayerPlaytimeSummaryQueries extends PlayerPlaytimeSummaryBaseQueri
       LIMIT $1`;
 
     const result = await this.runQuery("get global leaderboard", query, [
-      limit,
+      limit ?? null,
     ]);
 
     return result.rows.map((row) => ({

@@ -1,3 +1,43 @@
+## v1.63.0 (2026-09-24)
+
+### @createrington/server (1.63.2 → 1.64.0)
+- [add] Add public leaderboards page backend with ranked boards for records, playtime, and balance, per-stat rankings for any Minecraft stat, player activity heatmap data, and a head-to-head compare endpoint that puts two players side by side across every stat they hold
+- [add] Add `player_minecraft_stat_key` and `player_minecraft_stat_total` tables that project per-player stat totals (summed across servers) into indexed rows, replacing JSONB expansion at query time for rankings and stat search
+- [add] Add `discord_top_role` and `discord_top_role_reign` tables recording who holds each competitive top-1 role and the full history of every reign, written by the daily role reconcile in a single transaction
+- [add] Add `TopRoleHolderService` that persists confirmed top-role holders with pre-rendered hero figures (plain and outlined variants) in object storage, retrying failed renders on the next daily pass
+- [add] Add `LeaderboardBoardService` serving minute-cached full ranked snapshots with competition numbering, and `LeaderboardCompareService` building headline side-by-side stats from those snapshots without recomputing boards
+- [add] Add live OG card for the leaderboards page painted from the current top-role holders with their stored hero figures, role-colored glows, and metric captions, cached against the holder signature and retried when degraded
+- [add] Add `/og/leaderboards.png` route serving the painted card as a cacheable PNG with a fallback redirect on render failure
+- [add] Add `getPlayerActivity` to the playtime repository consolidating the daily heatmap, streak, most-active-day, and live session logic previously duplicated in the render route
+- [add] Add `fullWidthSpacer` component builder helper and use it in hall of fame announcements so every rank-up renders at consistent full width regardless of name length
+- [add] Add leaderboard and compare link button presets to the Discord button builder, used by `/top` and `/compare` slash commands to deep-link into the website
+- [add] Add `searchStats` query on the stat key table for public stat autocomplete, returning only stats at least one player holds with holder counts
+- [refactor] Merge the web Discord bot into the main bot, removing the separate `DISCORD_WEB_BOT` client, its setup, bootstrap registration, and the `WEB_MESSAGE_SERVICE`; web chat messages now route through the main bot's message service
+- [refactor] Move OG card canvas helpers (brand tokens, font registration, figure painting, ellipse gradients, word wrap, supersampled render pipeline) from the script-only `og-shared.ts` into a runtime utility at `@/utils/og-card` so both build-time scripts and the live card service share the same primitives
+- [refactor] Replace duplicated activity heatmap logic in the render route with the new `playtimeRepo.getPlayerActivity` and use shared stat formatting from `@createrington/shared/minecraft-stats` for render route stat displays
+- [fix] Share and rate-limit-guard the full guild member fetch across all callers with a 30-second cooldown window per guild, retrying once on gateway rate limit errors instead of each service fetching independently
+- [fix] Show the sender's Minecraft username on image-only web chat messages instead of sending them anonymously
+- [fix] Retry degraded leaderboards OG cards (where a holder's stored figure could not be loaded) after five minutes instead of caching them until the holders change, and pin each slot to its title so a missing role does not shift figures into the wrong position
+
+### @createrington/client (0.2.77 → 0.2.78)
+- [add] Add the leaderboards page with a top-role hero showing the three competitive title holders as posed skin figures that dock into their board cards on scroll, with entrance animations, blurred warehouse backdrop, and a responsive pyramid layout on narrow screens
+- [add] Add ranked leaderboard tables for records, playtime, and balance with paginated search, shareable board links via URL params, a "your rank" focus indicator with crowning countdown, and per-stat ranking for any Minecraft stat via an autocomplete stat picker
+- [add] Add expandable activity heatmaps on leaderboard rows showing a player's daily playtime over the trailing year with tap-to-inspect day cells, current streak, most active weekday, and live session indicator
+- [add] Add held-records panel on leaderboard rows listing every #1 stat a player holds with their total, holder count, and nearest competitor
+- [add] Add a head-to-head compare page at `/leaderboards/compare` with a full-height hero showing two posed skin figures, a sticky matchup bar with board ranks, and a paginated every-stat tug-of-war table sortable by gap or combined total
+- [add] Add a player picker command palette (cmdk) for the compare page with username autocomplete and board rank previews
+- [add] Add Skin API promotional strip below both the leaderboards and compare pages
+- [add] Add Leaderboards entry to the sidebar navigation
+- [add] Add dev-only announcement table image tool at `/dev/announcement-table` for visualizing Discord announcement layouts
+- [add] Add `cmdk` dependency for the command palette component
+- [fix] Reset the leaderboards table page counter whenever the active board changes so switching boards does not land on a stale page offset
+- [fix] Keep the hero champion flight layer attached during scrollbar drags and under the mobile header, preventing figures from detaching or overlapping the nav
+
+### @createrington/shared (1.14.0 → 1.15.0)
+- [add] Add `minecraft-stats.ts` module with shared stat formatting utilities: category labels, unit detection (count, distance, time, damage), human-readable item and value formatting, stat URL param encoding/decoding, and mod-name extraction
+- [add] Add `formatCompactMoney` for tight-space currency display that uses compact notation above $10,000 while preserving full precision for smaller amounts
+- [refactor] Narrow the embed bot schema from `["main", "web"]` to `["main"]` now that the web bot has been merged into the main bot
+
 ## v1.62.2 (2026-09-23)
 
 ### @createrington/server (1.63.1 → 1.63.2)

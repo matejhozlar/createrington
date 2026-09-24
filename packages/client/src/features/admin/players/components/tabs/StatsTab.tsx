@@ -22,6 +22,12 @@ import {
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import {
+  formatStatCategory,
+  formatStatItem,
+  formatStatValue,
+  statModName,
+} from "@createrington/shared/minecraft-stats";
 
 interface StatsTabProps {
   playerId: string;
@@ -34,32 +40,7 @@ interface FlatStat {
   value: number;
 }
 
-const CATEGORY_LABELS: Record<string, string> = {
-  "minecraft:mined": "Blocks Mined",
-  "minecraft:broken": "Items Broken",
-  "minecraft:crafted": "Items Crafted",
-  "minecraft:used": "Items Used",
-  "minecraft:picked_up": "Items Picked Up",
-  "minecraft:dropped": "Items Dropped",
-  "minecraft:killed": "Mobs Killed",
-  "minecraft:killed_by": "Killed By",
-  "minecraft:custom": "General",
-};
-
-function formatStatName(key: string): string {
-  return key
-    .replace(/^minecraft:/, "")
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
-function formatCategoryName(category: string): string {
-  return CATEGORY_LABELS[category] ?? formatStatName(category);
-}
-
-function formatValue(value: number): string {
-  return value.toLocaleString();
-}
+const MIXED_UNIT_CATEGORY = "minecraft:custom";
 
 const STAT_COLUMNS: DataTableColumn<FlatStat>[] = [
   {
@@ -67,7 +48,17 @@ const STAT_COLUMNS: DataTableColumn<FlatStat>[] = [
     header: "Stat",
     minWidth: 200,
     cellClassName: "text-sm",
-    render: (stat) => formatStatName(stat.key),
+    render: (stat) => {
+      const mod = statModName(stat.key);
+      return (
+        <>
+          {formatStatItem(stat.category, stat.key)}
+          {mod && (
+            <span className="ml-2 text-xs text-muted-foreground">{mod}</span>
+          )}
+        </>
+      );
+    },
   },
   {
     key: "value",
@@ -76,7 +67,7 @@ const STAT_COLUMNS: DataTableColumn<FlatStat>[] = [
     align: "right",
     render: (stat) => (
       <span className="font-semibold tabular-nums">
-        {formatValue(stat.value)}
+        {formatStatValue(stat.category, stat.key, stat.value)}
       </span>
     ),
   },
@@ -141,7 +132,7 @@ export function StatsTab({ playerId, getServerName }: StatsTabProps) {
     if (!activeStats) return { flatStats: [], categories: [] };
 
     const cats = Object.keys(activeStats).sort((a, b) =>
-      formatCategoryName(a).localeCompare(formatCategoryName(b)),
+      formatStatCategory(a).localeCompare(formatStatCategory(b)),
     );
 
     const flat: FlatStat[] = [];
@@ -168,8 +159,9 @@ export function StatsTab({ playerId, getServerName }: StatsTabProps) {
       const q = debouncedSearch.toLowerCase();
       result = result.filter(
         (s) =>
-          formatStatName(s.key).toLowerCase().includes(q) ||
-          formatCategoryName(s.category).toLowerCase().includes(q),
+          formatStatItem(s.category, s.key).toLowerCase().includes(q) ||
+          formatStatCategory(s.category).toLowerCase().includes(q) ||
+          statModName(s.key)?.toLowerCase().includes(q),
       );
     }
 
@@ -303,7 +295,7 @@ export function StatsTab({ playerId, getServerName }: StatsTabProps) {
                 <SelectItem value="all">All Categories</SelectItem>
                 {categories.map((cat) => (
                   <SelectItem key={cat} value={cat}>
-                    {formatCategoryName(cat)}
+                    {formatStatCategory(cat)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -341,7 +333,7 @@ export function StatsTab({ playerId, getServerName }: StatsTabProps) {
             <div className="flex flex-col gap-2">
               {Object.entries(groupedStats)
                 .sort(([a], [b]) =>
-                  formatCategoryName(a).localeCompare(formatCategoryName(b)),
+                  formatStatCategory(a).localeCompare(formatStatCategory(b)),
                 )
                 .map(([category, stats]) => {
                   const isExpanded = expandedCategories.has(category);
@@ -365,15 +357,17 @@ export function StatsTab({ playerId, getServerName }: StatsTabProps) {
                             <ChevronRight className="size-4 text-muted-foreground" />
                           )}
                           <span className="font-medium">
-                            {formatCategoryName(category)}
+                            {formatStatCategory(category)}
                           </span>
                           <Badge variant="secondary" className="text-xs">
                             {stats.length}
                           </Badge>
                         </div>
-                        <span className="text-sm text-muted-foreground">
-                          {formatValue(totalValue)} total
-                        </span>
+                        {category !== MIXED_UNIT_CATEGORY && (
+                          <span className="text-sm text-muted-foreground">
+                            {totalValue.toLocaleString("en-US")} total
+                          </span>
+                        )}
                       </button>
 
                       {/* Category stats table */}

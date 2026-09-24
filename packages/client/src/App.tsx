@@ -62,6 +62,14 @@ const TermsOfService = lazyNamed(
   "TermsOfService",
 );
 const Team = lazyNamed(() => import("./features/team/Team"), "Team");
+const Leaderboards = lazyNamed(
+  () => import("./features/leaderboards/Leaderboards"),
+  "Leaderboards",
+);
+const LeaderboardsCompare = lazyNamed(
+  () => import("./features/leaderboards/compare/Compare"),
+  "Compare",
+);
 const Gallery = lazyNamed(
   () => import("./features/gallery/Gallery"),
   "Gallery",
@@ -96,6 +104,12 @@ const Advertisement = lazyNamed(
   () => import("./pages/Advertisement"),
   "Advertisement",
 );
+const AnnouncementTable = import.meta.env.DEV
+  ? lazyNamed(
+      () => import("./features/dev/announcement-table/AnnouncementTable"),
+      "AnnouncementTable",
+    )
+  : null;
 
 // Protected user pages
 const Profile = lazyNamed(() => import("./pages/Profile/Profile"), "Profile");
@@ -305,6 +319,12 @@ function AppContent() {
       <Routes>
         {/* Standalone full-screen route (no sidebar/footer), temporary */}
         <Route path="/ad" element={<Advertisement />} />
+        {AnnouncementTable && (
+          <Route
+            path="/dev/announcement-table"
+            element={<AnnouncementTable />}
+          />
+        )}
 
         {/* SSO consent screen (standalone, no sidebar/footer) */}
         <Route path="/authorize" element={<Authorize />} />
@@ -322,6 +342,11 @@ function AppContent() {
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/terms" element={<TermsOfService />} />
           <Route path="/team" element={<Team />} />
+          <Route path="/leaderboards" element={<Leaderboards />} />
+          <Route
+            path="/leaderboards/compare"
+            element={<LeaderboardsCompare />}
+          />
           <Route path="/gallery" element={<Gallery />} />
           <Route path="/guides" element={<GuideList />} />
           <Route path="/guides/:slug" element={<GuideDetail />} />

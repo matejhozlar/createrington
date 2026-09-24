@@ -7,7 +7,7 @@ import type {
   ServerStats,
 } from "@/db/queries/player/playtime/summary";
 import type { OpenSessionEntry } from "@/db/queries/player/session";
-import type { PlayerSession } from "@/generated/db";
+import type { Player, PlayerSession } from "@/generated/db";
 import { PlaytimeService } from "@/services/playtime";
 import type {
   PlaytimeCredit,
@@ -34,6 +34,58 @@ function isUniqueViolation(err: unknown): boolean {
 
 function clampSessionEnd(sessionStart: Date, candidate: Date): Date {
   return candidate < sessionStart ? sessionStart : candidate;
+}
+
+const ACTIVITY_WINDOW_DAYS = 365;
+
+const WEEKDAY_NAMES = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
+
+function currentStreak(days: Record<string, number>): number {
+  const check = new Date();
+  if (!days[calendarDay(check)]) check.setDate(check.getDate() - 1);
+  let streak = 0;
+  while (days[calendarDay(check)]) {
+    streak++;
+    check.setDate(check.getDate() - 1);
+  }
+  return streak;
+}
+
+function mostActiveWeekday(days: Record<string, number>): string | null {
+  const totals = [0, 0, 0, 0, 0, 0, 0];
+  const counts = [0, 0, 0, 0, 0, 0, 0];
+  for (const [date, seconds] of Object.entries(days)) {
+    const weekday = new Date(date).getUTCDay();
+    totals[weekday] += seconds;
+    counts[weekday]++;
+  }
+  let best: number | null = null;
+  let bestAverage = 0;
+  for (let weekday = 0; weekday < 7; weekday++) {
+    const average = counts[weekday] > 0 ? totals[weekday] / counts[weekday] : 0;
+    if (average > bestAverage) {
+      bestAverage = average;
+      best = weekday;
+    }
+  }
+  return best === null ? null : WEEKDAY_NAMES[best];
+}
+
+export interface PlayerActivity {
+  online: boolean;
+  currentSessionSeconds: number | null;
+  totalSeconds: number;
+  currentStreak: number;
+  mostActiveDay: string | null;
+  days: Record<string, number>;
 }
 
 export interface StatsReconcileEntry {
@@ -453,6 +505,57 @@ export class PlaytimeRepository {
       logger.error("Failed to get top players by date range:", error);
       throw error;
     }
+  }
+
+  /**
+   * A player's daily playtime over the trailing year (summed across servers)
+   * plus the headline figures shown next to the heatmap.
+   */
+  async getPlayerActivity(
+    player: Pick<Player, "minecraftUuid" | "online">,
+  ): Promise<PlayerActivity> {
+    const { minecraftUuid } = player;
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - ACTIVITY_WINDOW_DAYS);
+
+    const [rows, summaries, activeSession] = await Promise.all([
+      Q.player.playtime.daily
+        .where({
+          playerMinecraftUuid: minecraftUuid,
+          playDate: { $gte: calendarDay(startDate) },
+        })
+        .all(),
+      Q.player.playtime.summary.findAll({ playerMinecraftUuid: minecraftUuid }),
+      player.online
+        ? Q.player.session
+            .where({
+              playerMinecraftUuid: minecraftUuid,
+              sessionEnd: { $exists: false },
+            })
+            .orderBy("sessionStart", "desc")
+            .first()
+        : null,
+    ]);
+
+    const days: Record<string, number> = {};
+    for (const row of rows) {
+      days[row.playDate] =
+        (days[row.playDate] ?? 0) + Number(row.secondsPlayed);
+    }
+
+    return {
+      online: player.online,
+      currentSessionSeconds: activeSession
+        ? Math.floor((Date.now() - activeSession.sessionStart.getTime()) / 1000)
+        : null,
+      totalSeconds: summaries.reduce(
+        (sum, summary) => sum + Number(summary.totalSeconds),
+        0,
+      ),
+      currentStreak: currentStreak(days),
+      mostActiveDay: mostActiveWeekday(days),
+      days,
+    };
   }
 
   /** Waits for in-flight event writes to settle, up to `timeoutMs`. Call before process exit. */

@@ -1,11 +1,19 @@
 import { Q } from "@/db";
 import { EmbedPresets } from "@/discord/embeds";
+import { ButtonPresets } from "@/discord/embeds/presets/buttons";
 import { replyError } from "@/discord/utils/interaction-reply";
 import { CooldownType } from "@/discord/utils/cooldown";
 import { renderScreenshot } from "@/discord/utils/render-screenshot";
 import {
+  formatStatCategory,
+  formatStatItem,
+  formatStatValue,
+} from "@createrington/shared/minecraft-stats";
+import {
+  ActionRowBuilder,
   AttachmentBuilder,
   AutocompleteInteraction,
+  ButtonBuilder,
   ChatInputCommandInteraction,
   SlashCommandBuilder,
 } from "discord.js";
@@ -60,7 +68,7 @@ export async function autocomplete(
   const category = CATEGORY_CHOICES.find(
     (choice) => choice.value === interaction.options.getString("category"),
   )?.value;
-  const results = await Q.player.minecraft.stats.searchItems(
+  const results = await Q.player.minecraft.stat.key.searchItems(
     interaction.options.getFocused(),
     { category, limit: 25 },
   );
@@ -91,7 +99,7 @@ export async function execute(
 
   try {
     // Verify the stat actually has data
-    const results = await Q.player.minecraft.stats.compareItem(
+    const results = await Q.player.minecraft.stat.total.compareItem(
       item,
       [category],
       { limit: 3 },
@@ -108,11 +116,10 @@ export async function execute(
 
     const screenshotBuffer = await renderScreenshot("top", { category, item });
 
-    // Format display title
-    const itemName = item
-      .replace(/^minecraft:/, "")
-      .replace(/_/g, " ")
-      .replace(/\b\w/g, (c) => c.toUpperCase());
+    const itemName = formatStatItem(category, item);
+    const links = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      ButtonPresets.links.leaderboard({ category, item }),
+    );
 
     if (screenshotBuffer) {
       const safeName = item.replace(/[^a-zA-Z0-9]/g, "_");
@@ -127,6 +134,7 @@ export async function execute(
       await interaction.editReply({
         embeds: [embed.build()],
         files: [attachment],
+        components: [links],
       });
     } else {
       // Text fallback
@@ -134,17 +142,20 @@ export async function execute(
       const leaderboard = results
         .map(
           (r, i) =>
-            `${medals[i]} **${r.minecraftUsername}** - ${r.values[0].toLocaleString()}`,
+            `${medals[i]} **${r.minecraftUsername}** - ${formatStatValue(category, item, r.values[0])}`,
         )
         .join("\n");
 
       const embed = EmbedPresets.info(`Top ${itemName}`).field(
-        category.replace(/^minecraft:/, ""),
+        formatStatCategory(category),
         leaderboard,
         false,
       );
 
-      await interaction.editReply({ embeds: [embed.build()] });
+      await interaction.editReply({
+        embeds: [embed.build()],
+        components: [links],
+      });
     }
   } catch {
     await replyError(

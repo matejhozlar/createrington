@@ -11,7 +11,6 @@ function components(overrides: Partial<Components> = {}): Components {
   return {
     database: { status: "up" },
     mainBot: { status: "up" },
-    webBot: { status: "up" },
     websocket: { status: "up" },
     playtime: { status: "up" },
     ...overrides,
@@ -48,7 +47,7 @@ describe("rollupStatus", () => {
 
   it("degrades when a non-critical component is down", () => {
     expect(
-      rollupStatus(components({ webBot: { status: "down" } }), {
+      rollupStatus(components({ websocket: { status: "down" } }), {
         a: ServiceState.READY,
       }),
     ).toBe("degraded");

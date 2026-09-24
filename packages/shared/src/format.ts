@@ -80,3 +80,21 @@ export function formatMoney(amount: number): string {
     ? wholeMoneyFormatter.format(amount)
     : fractionalMoneyFormatter.format(amount);
 }
+
+const compactMoneyFormatter = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  notation: "compact",
+  maximumFractionDigits: 2,
+});
+
+/**
+ * Formats a currency amount for tight spaces: "$950", "$12.5K", "$1.29M".
+ * Below $10,000 it matches formatMoney exactly, so small balances keep their
+ * precision; larger ones round to at most two decimals of the unit.
+ */
+export function formatCompactMoney(amount: number): string {
+  return Math.abs(amount) < 10_000
+    ? formatMoney(amount)
+    : compactMoneyFormatter.format(amount);
+}

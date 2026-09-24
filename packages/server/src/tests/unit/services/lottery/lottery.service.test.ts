@@ -100,7 +100,7 @@ vi.mock("@/db/repositories/balance/utils", () => ({
 
 vi.mock("@/services", () => ({
   getService: async () => ({ send: async () => {} }),
-  Services: { WEB_MESSAGE_SERVICE: "WEB_MESSAGE_SERVICE" },
+  Services: { MESSAGE_SERVICE: "MESSAGE_SERVICE" },
 }));
 
 vi.mock("@/discord/constants", () => ({

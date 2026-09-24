@@ -22,9 +22,9 @@ pnpm test              # Vitest, watch mode
 | `src/scripts/`   | One-off utilities and code generators                            |
 | `drizzle/`       | Migration SQL                                                    |
 
-Two Discord bot users run side by side: a main bot for slash commands, events,
-and leaderboards, and a web bot for OAuth and background work. Real-time updates
-go out over Socket.io. `AppRouter` is exported via the `./trpc` package export so
+A single Discord bot handles slash commands, events, leaderboards, OAuth, and
+website chat; `src/discord/bots/` keeps one folder per bot so more can be added.
+Real-time updates go out over Socket.io. `AppRouter` is exported via the `./trpc` package export so
 the client gets end-to-end types with no generated client.
 
 See the [root README](../../README.md) and

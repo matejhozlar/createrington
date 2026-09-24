@@ -19,14 +19,16 @@ import {
   FOREGROUND,
   MUTED,
   TEXT_X,
-  ASSETS,
   registerBrandFonts,
   roundRectPath,
   drawImageCover,
   paintEllipseGradient,
   paintWordmark,
-  paintPosedFigure,
   wrapText,
+} from "@/utils/og-card";
+import {
+  ASSETS,
+  paintPosedFigure,
   writeCard,
   type PosedFigureSpec,
 } from "./og-shared";

@@ -1,4 +1,5 @@
 import { Q } from "@/db";
+import { loadAllGuildMembers } from "@/discord/utils/guild-members";
 import { getServiceSync, Services } from "@/services";
 import { Discord } from "@/discord/constants";
 
@@ -72,7 +73,7 @@ export class UnlinkedMemberService {
   private async doRefresh(): Promise<void> {
     const guild = this.getGuild();
 
-    await guild.members.fetch();
+    await loadAllGuildMembers(guild);
 
     const players = await Q.player.findAll({});
     const playerDiscordIds = new Set(players.map((p) => p.discordId));

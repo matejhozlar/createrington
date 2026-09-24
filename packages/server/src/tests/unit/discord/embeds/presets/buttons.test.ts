@@ -54,6 +54,34 @@ describe("ButtonPresets.links", () => {
       "https://example.com/server/createrington/vote?username=Tux_Mango",
     );
   });
+
+  it("leaderboard() opens the website leaderboards at the ranked boards", () => {
+    const data = json(ButtonPresets.links.leaderboard());
+    expect(data.style).toBe(ButtonStyle.Link);
+    expect(data.url).toBe("https://example.com/website/leaderboards#boards");
+  });
+
+  it("leaderboard(stat) opens that stat's board with vanilla namespaces shortened", () => {
+    const data = json(
+      ButtonPresets.links.leaderboard({
+        category: "minecraft:mined",
+        item: "create:zinc_ore",
+      }),
+    );
+    expect(data.url).toBe(
+      "https://example.com/website/leaderboards?stat=mined%2Fcreate%3Azinc_ore#boards",
+    );
+  });
+});
+
+describe("ButtonPresets.links.compare", () => {
+  it("opens the website comparison of both players by username", () => {
+    const data = json(ButtonPresets.links.compare("Agent772", "saun_hardy"));
+    expect(data.style).toBe(ButtonStyle.Link);
+    expect(data.url).toBe(
+      "https://example.com/website/leaderboards/compare?a=Agent772&b=saun_hardy",
+    );
+  });
 });
 
 describe("ButtonPresets.departedMember", () => {

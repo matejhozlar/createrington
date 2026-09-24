@@ -360,9 +360,9 @@ export class LotteryService {
   }
 
   private announceToDiscord(message: string): void {
-    getService(Services.WEB_MESSAGE_SERVICE)
-      .then((webMessages) =>
-        webMessages.send({
+    getService(Services.MESSAGE_SERVICE)
+      .then((messageService) =>
+        messageService.send({
           channelId: Discord.Channels.railsNSails.MINECRAFT_CHAT,
           content: message,
         }),

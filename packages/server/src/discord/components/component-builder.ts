@@ -27,6 +27,7 @@ import {
   type ComponentThumbnail,
   type ComponentsData,
 } from "@createrington/shared/api/embed";
+import { assetUrl } from "@/config";
 
 export type TopLevelComponent =
   | ContainerBuilder
@@ -265,6 +266,12 @@ export function mediaGallery(
       spoiler: item.spoiler ?? false,
     })),
   };
+}
+
+const FULL_WIDTH_SPACER_URL = assetUrl("changelog-spacer.png");
+
+export function fullWidthSpacer(): ComponentMediaGallery {
+  return mediaGallery([{ url: FULL_WIDTH_SPACER_URL }]);
 }
 
 export function actionRow(buttons: ComponentButton[]): ComponentActionRow {

@@ -21,6 +21,7 @@ const db = vi.hoisted(() => ({
 }));
 const netWorth = vi.hoisted(() => ({ rank: vi.fn() }));
 const notifications = vi.hoisted(() => ({ send: vi.fn() }));
+const holders = vi.hoisted(() => ({ record: vi.fn(), clear: vi.fn() }));
 
 vi.mock("@/db", () => ({
   Q: {
@@ -29,7 +30,7 @@ vi.mock("@/db", () => ({
       getAll: async () => [],
       balance: { getAllBalances: async () => [] },
       playtime: { summary: { getGlobalLeaderboard: db.playtime } },
-      minecraft: { stats: { getRecordLeaderboard: db.records } },
+      minecraft: { stat: { total: { getRecordLeaderboard: db.records } } },
     },
   },
 }));
@@ -48,6 +49,10 @@ vi.mock("@/services/discord/role/role-assignment.service", () => ({
 
 vi.mock("@/services/discord/role/game-rank-sync.service", () => ({
   GameRankSyncService: class {},
+}));
+
+vi.mock("@/services/discord/role/top-role-holder.service", () => ({
+  topRoleHolderService: holders,
 }));
 
 vi.mock("@/discord/utils/roles/role-manager", () => ({
@@ -69,6 +74,7 @@ import type { Client } from "discord.js";
 import { Discord } from "@/discord/constants";
 import type { GameRankSyncService } from "@/services/discord/role/game-rank-sync.service";
 import { RoleManagementService } from "@/services/discord/role/role-management.service";
+import { resetGuildMemberFetchCache } from "@/discord/utils/guild-members";
 
 const ALICE = "900000000000000101";
 const BOB = "900000000000000102";
@@ -120,6 +126,7 @@ function createService(): RoleManagementService {
 }
 
 beforeEach(() => {
+  resetGuildMemberFetchCache();
   guildMembers.clear();
   cache.clear();
   memberList.fails = false;

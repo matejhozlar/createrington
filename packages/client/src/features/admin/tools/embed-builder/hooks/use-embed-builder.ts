@@ -6,7 +6,10 @@ import {
   PENDING_EMBED_KEY,
   PENDING_COMPONENTS_KEY,
 } from "@/features/admin-chat/actions";
-import { findAttachmentRef } from "@createrington/shared/api/embed";
+import {
+  embedBotSchema,
+  findAttachmentRef,
+} from "@createrington/shared/api/embed";
 import type {
   EmbedData,
   EmbedBot,
@@ -244,7 +247,9 @@ export function useEmbedBuilder() {
   const [components, setComponents] = useState<ComponentNode[]>(
     () => pendingDraft?.components ?? [],
   );
-  const [bot, setBot] = useState<EmbedBot>(() => pendingDraft?.bot ?? "main");
+  const [bot, setBot] = useState<EmbedBot>(
+    () => embedBotSchema.safeParse(pendingDraft?.bot).data ?? "main",
+  );
   const [channelId, setChannelId] = useState(
     () => pendingDraft?.channelId ?? "",
   );

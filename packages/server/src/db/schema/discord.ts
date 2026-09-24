@@ -7,6 +7,7 @@ import {
   varchar,
   timestamp,
   jsonb,
+  numeric,
   uuid,
   index,
   uniqueIndex,
@@ -231,3 +232,58 @@ export const discordStickyMessage = pgTable("discord_sticky_message", {
     .notNull()
     .defaultNow(),
 });
+
+// --- discord_top_role ---
+// Current holder of each competitive top-1 role (The Unrivaled, The Sleepless,
+// Capitalist), written by the daily role reconcile. `role_key` is the stable
+// FTB Ranks id shared across guilds; `value` is the metric that earned the role
+// at the last reconcile (playtime seconds, balance in dollars, record count);
+// `image_key` points at the pre-rendered hero figure in object storage and
+// `outline_image_key` at the same figure with the skin API outline, framed on
+// the same canvas so the two can be swapped in place (null when that render
+// failed or did not line up).
+
+export const discordTopRole = pgTable("discord_top_role", {
+  roleKey: text("role_key").primaryKey(),
+  discordId: text("discord_id").notNull(),
+  minecraftUuid: uuid("minecraft_uuid").notNull(),
+  value: numeric("value", { precision: 20, scale: 3 }).notNull(),
+  heldSince: timestamp("held_since", { withTimezone: true }).notNull(),
+  imageKey: text("image_key"),
+  outlineImageKey: text("outline_image_key"),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+// --- discord_top_role_reign ---
+// Every reign over a competitive top-1 role, kept after the title changes
+// hands (`discord_top_role` only holds the current holder). One row per
+// uninterrupted hold; `ended_at` is null for the current reign, and at most one
+// reign per role is open. `start_value` is the metric when the reign began,
+// `last_value` the metric at the last reconcile while it was held (the final
+// value once closed). No foreign keys, so history outlives removed players.
+
+export const discordTopRoleReign = pgTable(
+  "discord_top_role_reign",
+  {
+    id: serial("id").primaryKey(),
+    roleKey: text("role_key").notNull(),
+    discordId: text("discord_id").notNull(),
+    minecraftUuid: uuid("minecraft_uuid").notNull(),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
+    endedAt: timestamp("ended_at", { withTimezone: true }),
+    startValue: numeric("start_value", { precision: 20, scale: 3 }).notNull(),
+    lastValue: numeric("last_value", { precision: 20, scale: 3 }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("idx_discord_top_role_reign_open")
+      .on(table.roleKey)
+      .where(sql`ended_at IS NULL`),
+    index("idx_discord_top_role_reign_role_started").on(
+      table.roleKey,
+      table.startedAt.desc(),
+    ),
+    index("idx_discord_top_role_reign_player").on(table.minecraftUuid),
+  ],
+);

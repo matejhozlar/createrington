@@ -4,6 +4,7 @@ import { DiscordCommandQueries } from "@/db/queries/discord/command";
 import { DiscordEmbedQueries } from "@/db/queries/discord/embed";
 import { DiscordGuildQueries } from "@/db/queries/discord/guild";
 import { DiscordStickyQueries } from "@/db/queries/discord/sticky";
+import { DiscordTopQueries } from "@/db/queries/discord/top";
 
 /**
  * Namespace queries for discord
@@ -184,5 +185,27 @@ export class DiscordQueries {
       );
     }
     return this._sticky;
+  }
+
+  /** Private backing field for lazy-loaded discord_top queries */
+  private _top?: DiscordTopQueries;
+
+  /**
+   * Lazy-loaded singleton accessor for discord_top
+   *
+   * Returns a DiscordTopQueries instance that shares this namespace's
+   * database connection. The instance is created once on first access and
+   * cached for all subsequent calls.
+   *
+   * @returns Singleton DiscordTopQueries instance
+   */
+  get top(): DiscordTopQueries {
+    if (!this._top) {
+      this._top = this.getOrCreateChild<DiscordTopQueries>(
+        "top",
+        DiscordTopQueries,
+      );
+    }
+    return this._top;
   }
 }

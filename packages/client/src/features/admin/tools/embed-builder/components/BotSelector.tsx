@@ -10,7 +10,6 @@ import type { EmbedBot } from "@createrington/shared/api/embed";
 
 const BOTS: { value: EmbedBot; label: string }[] = [
   { value: "main", label: "Createrington" },
-  { value: "web", label: "Createrington Web" },
 ];
 
 interface BotSelectorProps {
@@ -19,6 +18,8 @@ interface BotSelectorProps {
 }
 
 export function BotSelector({ value, onChange }: BotSelectorProps) {
+  if (BOTS.length < 2) return null;
+
   return (
     <div className="space-y-2">
       <Label>Bot</Label>

@@ -23,6 +23,8 @@ export { DiscordEmbedPresetMessageQueries } from "./discord/embed/preset/message
 export { DiscordGuildMemberJoinQueries } from "./discord/guild/member/join";
 export { DiscordGuildMemberLeaveQueries } from "./discord/guild/member/leave";
 export { DiscordStickyMessageQueries } from "./discord/sticky/message";
+export { DiscordTopRoleQueries } from "./discord/top/role";
+export { DiscordTopRoleReignQueries } from "./discord/top/role/reign";
 export { DonationQueries } from "./donation";
 export { FaqEntryQueries } from "./faq/entry";
 export { FeatureFlagQueries } from "./feature/flag";
@@ -43,6 +45,8 @@ export { PlayerBalanceTransactionQueries } from "./player/balance/transaction";
 export { PlayerBanQueries } from "./player/ban";
 export { PlayerInactivityExemptionQueries } from "./player/inactivity/exemption";
 export { PlayerInactivityWarningQueries } from "./player/inactivity/warning";
+export { PlayerMinecraftStatKeyQueries } from "./player/minecraft/stat/key";
+export { PlayerMinecraftStatTotalQueries } from "./player/minecraft/stat/total";
 export { PlayerMinecraftStatsQueries } from "./player/minecraft/stats";
 export { PlayerPlaytimeDailyQueries } from "./player/playtime/daily";
 export { PlayerPlaytimeHourlyQueries } from "./player/playtime/hourly";

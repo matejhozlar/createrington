@@ -2,6 +2,12 @@ import { formatPlaytime } from "@createrington/shared/format";
 import { LoadingScreen } from "@/components/loading-spinner";
 import { mcHeadsAvatar } from "@/lib/external-urls";
 import { RenderUnavailable } from "./components/RenderUnavailable";
+import {
+  buildHeatmapGrid,
+  HEATMAP_DAY_LABELS,
+  HEATMAP_LEVEL_LABELS,
+  heatmapLevel,
+} from "@/lib/activityHeatmap";
 import { useRenderData } from "./hooks/use-render-data";
 
 interface ActivityData {
@@ -15,6 +21,8 @@ interface ActivityData {
   days: Record<string, number>;
 }
 
+const NUM_WEEKS = 26;
+
 const LEVEL_COLORS = [
   "bg-muted/50",
   "bg-green-500/20",
@@ -22,40 +30,6 @@ const LEVEL_COLORS = [
   "bg-green-500/60",
   "bg-green-500/80",
 ];
-
-const LEVEL_LABELS = ["None", "<1h", "1-2h", "2-4h", "4h+"];
-
-const MONTH_LABELS = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-];
-
-const NUM_WEEKS = 26;
-
-function getLevel(seconds: number): number {
-  if (seconds <= 0) return 0;
-  if (seconds < 3600) return 1;
-  if (seconds < 7200) return 2;
-  if (seconds < 14400) return 3;
-  return 4;
-}
-
-function toDateStr(d: Date): string {
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
 
 function StatPill({ label, value }: { label: string; value: string }) {
   return (
@@ -70,46 +44,6 @@ function StatPill({ label, value }: { label: string; value: string }) {
   );
 }
 
-function buildGrid(days: Record<string, number>) {
-  const today = new Date();
-  const todayDay = today.getDay();
-  const mondayOffset = todayDay === 0 ? 6 : todayDay - 1;
-
-  const start = new Date(today);
-  start.setDate(start.getDate() - mondayOffset - (NUM_WEEKS - 1) * 7);
-
-  const weeks: { date: string; seconds: number; future: boolean }[][] = [];
-  const monthLabels: { label: string; col: number }[] = [];
-  let lastMonth = -1;
-
-  const cursor = new Date(start);
-  for (let col = 0; col < NUM_WEEKS; col++) {
-    const week: { date: string; seconds: number; future: boolean }[] = [];
-    for (let row = 0; row < 7; row++) {
-      const dateStr = toDateStr(cursor);
-      const isFuture = cursor > today;
-      week.push({
-        date: dateStr,
-        seconds: isFuture ? 0 : (days[dateStr] ?? 0),
-        future: isFuture,
-      });
-
-      if (row === 0) {
-        const month = cursor.getMonth();
-        if (month !== lastMonth) {
-          monthLabels.push({ label: MONTH_LABELS[month], col });
-          lastMonth = month;
-        }
-      }
-
-      cursor.setDate(cursor.getDate() + 1);
-    }
-    weeks.push(week);
-  }
-
-  return { weeks, monthLabels };
-}
-
 export function ActivityRender() {
   const { data, unavailable } = useRenderData<ActivityData>("activity", [
     "player",
@@ -119,8 +53,7 @@ export function ActivityRender() {
   if (!data) return <LoadingScreen />;
 
   const avatarSrc = mcHeadsAvatar(data.uuid);
-  const { weeks, monthLabels } = buildGrid(data.days);
-  const dayLabels = ["Mon", "", "Wed", "", "Fri", "", "Sun"];
+  const { weeks, monthLabels } = buildHeatmapGrid(data.days, NUM_WEEKS);
   const cellSpacing = (900 - 64 - 36) / NUM_WEEKS;
 
   return (
@@ -200,7 +133,7 @@ export function ActivityRender() {
         </div>
 
         {/* Grid rows */}
-        {dayLabels.map((label, row) => (
+        {HEATMAP_DAY_LABELS.map((label, row) => (
           <div key={row} className="flex items-center gap-[3px] mb-[3px]">
             <div className="w-[33px] text-right text-[11px] text-muted-foreground pr-2 shrink-0">
               {label}
@@ -213,7 +146,7 @@ export function ActivityRender() {
                   className={`flex-1 aspect-square rounded-sm ${
                     day.future
                       ? "opacity-0"
-                      : LEVEL_COLORS[getLevel(day.seconds)]
+                      : LEVEL_COLORS[heatmapLevel(day.seconds)]
                   }`}
                   title={`${day.date}: ${formatPlaytime(day.seconds)}`}
                 />
@@ -230,7 +163,7 @@ export function ActivityRender() {
             <div key={i} className="flex items-center gap-1">
               <div className={`size-4 rounded-sm ${color}`} />
               <span className="text-[11px] text-muted-foreground font-medium">
-                {LEVEL_LABELS[i]}
+                {HEATMAP_LEVEL_LABELS[i]}
               </span>
             </div>
           ))}

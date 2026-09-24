@@ -1,0 +1,1 @@
+ALTER TABLE "discord_top_role" ADD COLUMN "outline_image_key" text;

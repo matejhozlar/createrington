@@ -1,10 +1,13 @@
 import { Q } from "@/db";
 import { EmbedPresets } from "@/discord/embeds";
+import { ButtonPresets } from "@/discord/embeds/presets/buttons";
 import { replyError } from "@/discord/utils/interaction-reply";
 import { CooldownType } from "@/discord/utils/cooldown";
 import { renderScreenshot } from "@/discord/utils/render-screenshot";
 import {
+  ActionRowBuilder,
   AttachmentBuilder,
+  ButtonBuilder,
   ChatInputCommandInteraction,
   SlashCommandBuilder,
 } from "discord.js";
@@ -27,6 +30,9 @@ export async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
   await interaction.deferReply();
+  const links = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    ButtonPresets.links.leaderboard(),
+  );
 
   try {
     const screenshotBuffer = await renderScreenshot("records", {});
@@ -43,12 +49,13 @@ export async function execute(
       await interaction.editReply({
         embeds: [embed.build()],
         files: [attachment],
+        components: [links],
       });
       return;
     }
 
     const { rows, contestedKeys } =
-      await Q.player.minecraft.stats.getRecordLeaderboard(3);
+      await Q.player.minecraft.stat.total.getRecordLeaderboard(3);
 
     if (rows.length === 0) {
       await replyError(
@@ -72,7 +79,10 @@ export async function execute(
       false,
     );
 
-    await interaction.editReply({ embeds: [embed.build()] });
+    await interaction.editReply({
+      embeds: [embed.build()],
+      components: [links],
+    });
   } catch (error) {
     logger.error("/records failed:", error);
 
