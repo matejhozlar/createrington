@@ -49,6 +49,8 @@ export const HERO_ORDER = ["the_sleepless", "the_unrivaled", "capitalist"];
 
 export const BOARD_SECTION_ID = "boards";
 
+export const HERO_BACKDROP = "/assets/hero/dark-warehouse.webp";
+
 const BOARD_BY_ROLE: Record<string, Board> = {
   the_unrivaled: "records",
   the_sleepless: "playtime",

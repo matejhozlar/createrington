@@ -10,13 +10,12 @@ import {
   boardForRole,
   formatMetric,
   heldFor,
+  HERO_BACKDROP,
   HERO_ORDER,
   topRoleStyle,
 } from "../top-roles";
 
 type TopRole = RouterOutput["public"]["leaderboards"]["hero"][number];
-
-const HERO_BACKDROP = "/assets/hero/dark-warehouse.webp";
 
 const SLOTS = [
   {

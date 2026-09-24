@@ -1,11 +1,8 @@
-import { useRef, useState, type CSSProperties } from "react";
-import { Link } from "react-router";
-import { ArrowLeft, ArrowLeftRight, Dices, Link2 } from "lucide-react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import type { KnownPose } from "createrington-skin-api";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { useToastActions } from "@/hooks/use-toast";
-import { Button } from "@/components/ui/button";
 import { SkinApiPromo } from "@/components/skin-api-promo";
 import {
   HEADLINE_METRICS,
@@ -14,21 +11,15 @@ import {
   type ComparedPlayer,
 } from "./headToHead";
 import { useCompareParams, type Side } from "./hooks/use-compare-params";
+import { useInView } from "./hooks/use-in-view";
 import {
-  CompareStage,
+  CompareHero,
+  type HeroAction,
   type StageScore,
   type StageSide,
-} from "./components/CompareStage";
+} from "./components/CompareHero";
 import { TugRow } from "./components/TugRow";
 import { EveryStat } from "./components/EveryStat";
-
-const ACTIONS = [
-  { key: "reroll", label: "Reroll poses", icon: Dices },
-  { key: "swap", label: "Swap sides", icon: ArrowLeftRight },
-  { key: "copy", label: "Copy link", icon: Link2 },
-] as const;
-
-type ActionKey = (typeof ACTIONS)[number]["key"];
 
 const REROLL_COOLDOWN_MS = 3000;
 
@@ -36,36 +27,64 @@ function scoreOf(
   players: [ComparedPlayer, ComparedPlayer],
   now: number,
 ): StageScore {
-  let first = 0;
-  let second = 0;
+  const counts: [number, number] = [0, 0];
   for (const metric of HEADLINE_METRICS) {
     const a = metric.value(players[0], now);
     const b = metric.value(players[1], now);
-    if (a > b) first++;
-    if (b > a) second++;
+    if (a > b) counts[0]++;
+    if (b > a) counts[1]++;
   }
-  if (first === second)
-    return { text: `Dead even, ${first}–${second}`, side: null };
-  const side: Side = first > second ? 0 : 1;
-  return {
-    text: `${players[side].minecraftUsername} leads ${Math.max(first, second)}–${Math.min(first, second)}`,
-    side,
-  };
+  const leader: Side | null =
+    counts[0] === counts[1] ? null : counts[0] > counts[1] ? 0 : 1;
+  return { counts, leader };
 }
 
-function ScorePill({ score }: { score: StageScore }) {
+function HeadlineStats({
+  players,
+  now,
+}: {
+  players: [ComparedPlayer, ComparedPlayer] | undefined;
+  now: number;
+}) {
+  const [ref, inView] = useInView<HTMLDivElement>();
+
   return (
-    <div
-      className="flex h-11 min-w-0 flex-1 items-center justify-center gap-2 rounded-full border border-(--side)/40 bg-(--side)/10 px-4 text-sm font-semibold"
-      style={
-        {
-          "--side": score.side === null ? "#a1a1aa" : SIDE_COLORS[score.side],
-        } as CSSProperties
-      }
-    >
-      <span className="size-2 shrink-0 rounded-full bg-(--side)" />
-      <span className="truncate">{score.text}</span>
-    </div>
+    <section className="space-y-3">
+      <div className="flex items-baseline justify-between gap-4">
+        <h2 className="text-lg font-bold md:text-[22px]">Headline stats</h2>
+        <span className="hidden text-sm text-muted-foreground md:block">
+          Bars split by share of the combined total
+        </span>
+      </div>
+      <div
+        ref={ref}
+        className={cn(
+          "rounded-xl border bg-card px-4 py-1 md:px-5",
+          !players && "animate-pulse",
+        )}
+      >
+        {HEADLINE_METRICS.map((metric) =>
+          players ? (
+            <TugRow
+              key={metric.label}
+              size="lg"
+              settled={inView}
+              label={metric.label}
+              left={{
+                value: metric.value(players[0], now),
+                text: metric.display(players[0], now),
+              }}
+              right={{
+                value: metric.value(players[1], now),
+                text: metric.display(players[1], now),
+              }}
+            />
+          ) : (
+            <div key={metric.label} className="h-16" />
+          ),
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -81,6 +100,15 @@ export function Compare() {
     !!first && !!second && first.toLowerCase() === second.toLowerCase();
   const both = !!first && !!second && !samePlayer;
   const solo = both ? null : (first ?? second);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const previous = root.style.overflowAnchor;
+    root.style.overflowAnchor = "none";
+    return () => {
+      root.style.overflowAnchor = previous;
+    };
+  }, []);
 
   const compareQuery = trpc.public.leaderboards.compare.useQuery(
     { first: first ?? "", second: second ?? "" },
@@ -115,144 +143,71 @@ export function Compare() {
   const score = players ? scoreOf(players, now) : null;
   const failed = compareQuery.isError || soloQuery.isError;
 
-  const run = (key: ActionKey, at: number) => {
-    if (key === "reroll") {
+  const run = (action: HeroAction, at: number) => {
+    if (action === "reroll") {
       if (at - lastRoll.current < REROLL_COOLDOWN_MS) return;
       lastRoll.current = at;
       setRoll((value) => value + 1);
     }
-    if (key === "swap") swap();
-    if (key === "copy") {
+    if (action === "swap") swap();
+    if (action === "copy") {
       void navigator.clipboard.writeText(window.location.href);
       toast.success("Copied to clipboard");
     }
   };
 
   return (
-    <>
-      <div
-        className="mx-auto w-full max-w-6xl space-y-6 px-4 py-6 md:space-y-7 md:px-8 md:py-10"
-        style={
-          {
-            "--left": SIDE_COLORS[0],
-            "--right": SIDE_COLORS[1],
-          } as CSSProperties
-        }
-      >
-        <header className="flex items-end justify-between gap-4">
-          <div className="space-y-1.5">
-            <Link
-              to="/leaderboards"
-              className="inline-flex h-7 items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
-            >
-              <ArrowLeft className="size-3.5" aria-hidden />
-              Back to leaderboards
-            </Link>
-            <h1 className="text-2xl font-bold tracking-tight md:text-[34px]">
-              Head to head
-            </h1>
-          </div>
-          <div className="hidden gap-2 md:flex">
-            {ACTIONS.map(({ key, label, icon: Icon }) => (
-              <Button
-                key={key}
-                variant="outline"
-                onClick={(event) => run(key, event.timeStamp)}
-                disabled={key !== "copy" && !both}
-              >
-                <Icon aria-hidden />
-                {label}
-              </Button>
-            ))}
-          </div>
-        </header>
-
-        <CompareStage
-          key={`${first}|${second}`}
-          sides={stageSides}
-          poses={poses}
-          score={score}
-          initialOpen={first && !second ? 1 : !first && second ? 0 : null}
-          onPick={pick}
+    <div
+      className="relative overflow-x-clip"
+      style={
+        { "--left": SIDE_COLORS[0], "--right": SIDE_COLORS[1] } as CSSProperties
+      }
+    >
+      <CompareHero
+        key={`${first}|${second}`}
+        sides={stageSides}
+        poses={poses}
+        score={score}
+        initialOpen={first && !second ? 1 : !first && second ? 0 : null}
+        actionsEnabled={both}
+        onPick={pick}
+        onAction={run}
+      />
+      <div className="relative z-10 min-h-[50svh] rounded-t-3xl border-t border-white/10 bg-background shadow-[0_-40px_120px_rgba(0,0,0,0.7)]">
+        <div
+          aria-hidden
+          className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-(--left)/50 via-white/10 to-(--right)/50"
         />
-
-        <div className="flex items-center gap-2 md:hidden">
-          {score ? <ScorePill score={score} /> : <div className="flex-1" />}
-          {ACTIONS.map(({ key, label, icon: Icon }) => (
-            <Button
-              key={key}
-              variant="outline"
-              size="icon"
-              className="size-11"
-              onClick={(event) => run(key, event.timeStamp)}
-              disabled={key !== "copy" && !both}
-              aria-label={label}
-            >
-              <Icon aria-hidden />
-            </Button>
-          ))}
+        <div className="mx-auto max-w-5xl space-y-10 px-5 py-12 md:px-8 md:py-16">
+          {failed && (
+            <p className="rounded-xl border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
+              Couldn't find that player. Pick someone else above.
+            </p>
+          )}
+          {samePlayer && (
+            <p className="rounded-xl border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
+              That's the same player twice. Pick a challenger above.
+            </p>
+          )}
+          {!both && !failed && !samePlayer && (
+            <p className="rounded-xl border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
+              Pick two players above to see how they stack up.
+            </p>
+          )}
+          {both && !failed && (
+            <>
+              <HeadlineStats players={players} now={now} />
+              {players && (
+                <EveryStat
+                  first={players[0].minecraftUuid}
+                  second={players[1].minecraftUuid}
+                />
+              )}
+            </>
+          )}
         </div>
-
-        {failed && (
-          <p className="rounded-xl border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
-            Couldn't find that player. Pick someone else above.
-          </p>
-        )}
-        {samePlayer && (
-          <p className="rounded-xl border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
-            That's the same player twice. Pick a challenger above.
-          </p>
-        )}
-
-        {both && !failed && (
-          <>
-            <section className="space-y-3">
-              <div className="flex items-baseline justify-between gap-4">
-                <h2 className="text-lg font-bold md:text-[22px]">
-                  Headline stats
-                </h2>
-                <span className="hidden text-sm text-muted-foreground md:block">
-                  Bars split by share of the combined total
-                </span>
-              </div>
-              <div
-                className={cn(
-                  "rounded-xl border bg-card px-4 py-1 md:px-5",
-                  !players && "animate-pulse",
-                )}
-              >
-                {players
-                  ? HEADLINE_METRICS.map((metric) => (
-                      <TugRow
-                        key={metric.label}
-                        size="lg"
-                        label={metric.label}
-                        left={{
-                          value: metric.value(players[0], now),
-                          text: metric.display(players[0], now),
-                        }}
-                        right={{
-                          value: metric.value(players[1], now),
-                          text: metric.display(players[1], now),
-                        }}
-                      />
-                    ))
-                  : HEADLINE_METRICS.map((metric) => (
-                      <div key={metric.label} className="h-16" />
-                    ))}
-              </div>
-            </section>
-
-            {players && (
-              <EveryStat
-                first={players[0].minecraftUuid}
-                second={players[1].minecraftUuid}
-              />
-            )}
-          </>
-        )}
+        <SkinApiPromo />
       </div>
-      <SkinApiPromo />
-    </>
+    </div>
   );
 }

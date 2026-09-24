@@ -27,15 +27,17 @@ export function TugRow({
   left,
   right,
   size,
+  settled = true,
 }: {
   label: ReactNode;
   left: TugSide;
   right: TugSide;
   size: keyof typeof SIZES;
+  settled?: boolean;
 }) {
   const styles = SIZES[size];
   const total = left.value + right.value;
-  const leftShare = total > 0 ? (left.value / total) * 100 : 50;
+  const leftShare = settled && total > 0 ? (left.value / total) * 100 : 50;
   const leftWins = left.value > right.value;
   const rightWins = right.value > left.value;
 
@@ -78,14 +80,14 @@ export function TugRow({
       >
         <div
           className={cn(
-            "rounded-l-full rounded-r-[2px] bg-(--left) transition-[width] duration-500",
+            "rounded-l-full rounded-r-[2px] bg-(--left) transition-[width] duration-700 ease-out",
             !leftWins && "opacity-35",
           )}
           style={{ width: `${leftShare}%` }}
         />
         <div
           className={cn(
-            "rounded-l-[2px] rounded-r-full bg-(--right) transition-[width] duration-500",
+            "rounded-l-[2px] rounded-r-full bg-(--right) transition-[width] duration-700 ease-out",
             !rightWins && "opacity-35",
           )}
           style={{ width: `${100 - leftShare}%` }}
