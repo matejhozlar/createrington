@@ -89,6 +89,18 @@ function HeadlineStats({
   );
 }
 
+function useContender(username: string | null, enabled: boolean) {
+  return trpc.public.leaderboards.contender.useQuery(
+    { username: username ?? "" },
+    {
+      enabled: !!username && enabled,
+      staleTime: 60 * 1000,
+      retry: false,
+      placeholderData: (previous) => previous,
+    },
+  );
+}
+
 export function Compare() {
   const toast = useToastActions();
   const { sides, pick, swap } = useCompareParams();
@@ -102,7 +114,6 @@ export function Compare() {
   const samePlayer =
     !!first && !!second && first.toLowerCase() === second.toLowerCase();
   const both = !!first && !!second && !samePlayer;
-  const solo = both ? null : (first ?? second);
 
   useEffect(
     () => () => {
@@ -129,22 +140,18 @@ export function Compare() {
       placeholderData: (previous) => previous,
     },
   );
-  const soloQuery = trpc.public.leaderboards.contender.useQuery(
-    { username: solo ?? "" },
-    {
-      enabled: !!solo,
-      staleTime: 60 * 1000,
-      retry: false,
-      placeholderData: (previous) => previous,
-    },
-  );
+  const onStageAlone = !both || compareQuery.isError;
+  const contenders = [
+    useContender(first, onStageAlone),
+    useContender(samePlayer ? null : second, onStageAlone),
+  ];
 
   const players = compareQuery.isPlaceholderData
     ? undefined
     : compareQuery.data;
   const known: StageSide[] = [
     ...(compareQuery.data ?? []),
-    ...(soloQuery.data ? [soloQuery.data] : []),
+    ...contenders.flatMap((query) => (query.data ? [query.data] : [])),
   ];
   const stageSides = sides.map((username, index) => {
     if (!username || (samePlayer && index === 1)) return null;
@@ -159,9 +166,13 @@ export function Compare() {
     stagePose(side?.minecraftUuid ?? String(index), seed),
   ) as [KnownPose, KnownPose];
   const score = players ? scoreOf(players, now) : null;
-  const failed = compareQuery.isError || soloQuery.isError;
+  const missing = sides.filter(
+    (username, index) => !!username && contenders[index].isError,
+  );
+  const failed = compareQuery.isError || missing.length > 0;
   const loading = sides.map(
-    (username, index) => !!username && !stageSides[index] && !failed,
+    (username, index) =>
+      !!username && !stageSides[index] && !contenders[index].isError,
   ) as [boolean, boolean];
 
   const run = (action: HeroAction, at: number) => {
@@ -177,8 +188,10 @@ export function Compare() {
     }
     if (action === "swap") swap();
     if (action === "copy") {
-      void navigator.clipboard.writeText(window.location.href);
-      toast.success("Copied to clipboard");
+      navigator.clipboard.writeText(window.location.href).then(
+        () => toast.success("Copied to clipboard"),
+        () => toast.error("Failed to copy to clipboard"),
+      );
     }
   };
 
@@ -214,7 +227,9 @@ export function Compare() {
         <div className="mx-auto max-w-5xl space-y-10 px-5 py-12 md:px-8 md:py-16">
           {failed && (
             <p className="rounded-xl border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
-              Couldn't find that player. Pick someone else above.
+              {missing.length > 0
+                ? `Couldn't find ${missing.join(" or ")}. Pick someone else above.`
+                : "Couldn't load this matchup. Try again in a moment."}
             </p>
           )}
           {samePlayer && (
