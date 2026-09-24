@@ -13,6 +13,7 @@ import presenceRoutes from "./mod/presence/presence.routes";
 import messageRoutes from "./user/message/message.routes";
 import galleryRoutes from "./gallery/gallery.routes";
 import renderRoutes from "./render/render.routes";
+import ogRoutes from "./og/og.routes";
 import chunksRoutes from "./mod/chunks/chunks.routes";
 import trainRoutes from "./mod/trains/trains.routes";
 import internalPresenceRoutes from "./internal/presence/presence.routes";
@@ -36,6 +37,7 @@ export function registerRoutes(app: Express): void {
   app.use(`${API_PREFIX}/messages`, messageRoutes);
   app.use(`${API_PREFIX}/gallery`, galleryRoutes);
   app.use(`${API_PREFIX}/render`, renderRoutes);
+  app.use(`${API_PREFIX}/og`, ogRoutes);
   app.use(`${API_PREFIX}/trains`, trainRoutes);
 
   // Internal cross-environment routes (only active when sync secret is set)

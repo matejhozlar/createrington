@@ -58,7 +58,8 @@ function setMeta(html, attr, key, value) {
 
 // Every <route>.png under assets/og/ (except the global og-card.png fallback)
 // becomes og-html/<route>.html: the built index.html with its social meta
-// swapped. Nginx serves these via
+// swapped. OG_ROUTES entries with an `image` path get one too, pointing at a
+// card the server paints live. Nginx serves these via
 // `try_files $uri $uri/ /og-html$uri.html /index.html`.
 function generateOgHtml() {
   const publicDir = path.join(DIST, "public");
@@ -79,11 +80,7 @@ function generateOgHtml() {
     .map((entry) => entry.split(path.sep).join("/"))
     .filter((entry) => entry.endsWith(".png") && entry !== "og-card.png");
 
-  const routes = new Set();
-  for (const card of cards) {
-    const route = `/${card.slice(0, -".png".length)}`;
-    routes.add(route);
-
+  const variants = cards.map((card) => {
     const png = fs.readFileSync(path.join(ogDir, card));
     const width = png.readUInt32BE(16);
     const height = png.readUInt32BE(20);
@@ -92,10 +89,28 @@ function generateOgHtml() {
         `og-html: ${card} is ${width}x${height}, og:image:width/height advertise ${CARD_W}x${CARD_H}`,
       );
     }
+    return {
+      route: `/${card.slice(0, -".png".length)}`,
+      image: `/assets/og/${card}`,
+    };
+  });
+  for (const [route, meta] of Object.entries(OG_ROUTES)) {
+    if (!meta.image) continue;
+    if (variants.some((variant) => variant.route === route)) {
+      throw new Error(
+        `og-html: ${route} has both a card image and a live image path`,
+      );
+    }
+    variants.push({ route, image: meta.image });
+  }
+
+  const routes = new Set();
+  for (const { route, image } of variants) {
+    routes.add(route);
 
     const meta = OG_ROUTES[route];
 
-    let html = base.replaceAll(FALLBACK_IMAGE, `${SITE_URL}/assets/og/${card}`);
+    let html = base.replaceAll(FALLBACK_IMAGE, `${SITE_URL}${image}`);
     html = setMeta(html, "property", "og:url", `${SITE_URL}${route}`);
     html = swapTag(
       html,
