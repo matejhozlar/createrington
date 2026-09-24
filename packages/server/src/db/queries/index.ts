@@ -24,6 +24,7 @@ export { DiscordGuildMemberJoinQueries } from "./discord/guild/member/join";
 export { DiscordGuildMemberLeaveQueries } from "./discord/guild/member/leave";
 export { DiscordStickyMessageQueries } from "./discord/sticky/message";
 export { DiscordTopRoleQueries } from "./discord/top/role";
+export { DiscordTopRoleReignQueries } from "./discord/top/role/reign";
 export { DonationQueries } from "./donation";
 export { FaqEntryQueries } from "./faq/entry";
 export { FeatureFlagQueries } from "./feature/flag";

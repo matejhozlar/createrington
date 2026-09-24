@@ -30,6 +30,10 @@ const db = vi.hoisted(() => ({
   delete: vi.fn(),
   getAll: vi.fn(),
   players: vi.fn(),
+  reignFindOpen: vi.fn(),
+  reignUpdate: vi.fn(),
+  reignCreate: vi.fn(),
+  reignUpdateAll: vi.fn(),
 }));
 const storage = vi.hoisted(() => ({
   enabled: true,
@@ -50,6 +54,25 @@ const canvas = vi.hoisted(() => ({
 }));
 
 vi.mock("@/db", () => ({
+  db: {
+    inTransaction: async (run: (tx: unknown) => Promise<unknown>) =>
+      run({
+        discord: {
+          top: {
+            role: {
+              upsert: db.upsert,
+              delete: db.delete,
+              reign: {
+                findOpen: db.reignFindOpen,
+                update: db.reignUpdate,
+                create: db.reignCreate,
+                updateAll: db.reignUpdateAll,
+              },
+            },
+          },
+        },
+      }),
+  },
   Q: {
     discord: {
       top: {
@@ -158,6 +181,20 @@ function existingRow(overrides: Partial<Record<string, unknown>> = {}) {
   };
 }
 
+function openReign(overrides: Partial<Record<string, unknown>> = {}) {
+  return {
+    id: 7,
+    roleKey: "the_unrivaled",
+    discordId: ALICE.discordId,
+    minecraftUuid: ALICE.minecraftUuid,
+    startedAt: HELD_SINCE,
+    endedAt: null,
+    startValue: "30.000",
+    lastValue: "40.000",
+    ...overrides,
+  };
+}
+
 function storedKeys(): string[] {
   return storage.put.mock.calls.map(([object]) => object.key);
 }
@@ -174,6 +211,7 @@ beforeEach(() => {
   );
   db.upsert.mockResolvedValue(undefined);
   db.delete.mockResolvedValue(undefined);
+  db.reignFindOpen.mockResolvedValue(null);
   storage.put.mockResolvedValue(undefined);
   storage.delete.mockResolvedValue(undefined);
 });
@@ -367,6 +405,59 @@ describe("TopRoleHolderService.record", () => {
   });
 });
 
+describe("TopRoleHolderService.record reigns", () => {
+  it("opens a reign for a first holder, starting when the tenure starts", async () => {
+    db.find.mockResolvedValue(null);
+
+    await new TopRoleHolderService().record(RECORDS_RULE, ALICE);
+
+    const heldSince = db.upsert.mock.calls[0][0].heldSince;
+    expect(db.reignFindOpen).toHaveBeenCalledWith("the_unrivaled");
+    expect(db.reignUpdate).not.toHaveBeenCalled();
+    expect(db.reignCreate).toHaveBeenCalledWith({
+      roleKey: "the_unrivaled",
+      discordId: ALICE.discordId,
+      minecraftUuid: ALICE.minecraftUuid,
+      startedAt: heldSince,
+      startValue: "41.000",
+      lastValue: "41.000",
+    });
+  });
+
+  it("only refreshes the latest value while the same holder keeps the title", async () => {
+    db.find.mockResolvedValue(existingRow());
+    db.reignFindOpen.mockResolvedValue(openReign());
+
+    await new TopRoleHolderService().record(RECORDS_RULE, ALICE);
+
+    expect(db.reignUpdate).toHaveBeenCalledWith(
+      { id: 7 },
+      { minecraftUuid: ALICE.minecraftUuid, lastValue: "41.000" },
+    );
+    expect(db.reignCreate).not.toHaveBeenCalled();
+  });
+
+  it("closes the previous reign and opens a new one when the title changes hands", async () => {
+    db.find.mockResolvedValue(existingRow());
+    db.reignFindOpen.mockResolvedValue(openReign());
+
+    await new TopRoleHolderService().record(RECORDS_RULE, BOB);
+
+    const heldSince = db.upsert.mock.calls[0][0].heldSince;
+    expect(db.reignUpdate).toHaveBeenCalledWith(
+      { id: 7 },
+      { endedAt: heldSince },
+    );
+    expect(db.reignCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        discordId: BOB.discordId,
+        startedAt: heldSince,
+        startValue: "12.000",
+      }),
+    );
+  });
+});
+
 describe("TopRoleHolderService.clear", () => {
   it("deletes the row and both stored figures", async () => {
     db.find.mockResolvedValue(existingRow());
@@ -374,6 +465,10 @@ describe("TopRoleHolderService.clear", () => {
     await new TopRoleHolderService().clear(RECORDS_RULE);
 
     expect(db.delete).toHaveBeenCalledWith({ roleKey: "the_unrivaled" });
+    expect(db.reignUpdateAll).toHaveBeenCalledWith(
+      { endedAt: expect.any(Date) },
+      { roleKey: "the_unrivaled", endedAt: null },
+    );
     expect(storage.delete).toHaveBeenCalledWith([ALICE_IMAGE, ALICE_OUTLINE]);
   });
 
@@ -383,6 +478,7 @@ describe("TopRoleHolderService.clear", () => {
     await new TopRoleHolderService().clear(RECORDS_RULE);
 
     expect(db.delete).not.toHaveBeenCalled();
+    expect(db.reignUpdateAll).not.toHaveBeenCalled();
     expect(storage.delete).not.toHaveBeenCalled();
   });
 });
