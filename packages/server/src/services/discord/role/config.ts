@@ -329,14 +329,17 @@ export const ROLE_NOTIFICATION_CONFIGS: Record<
 
   [Discord.Roles.THE_SLEEPLESS]: {
     pose: Poses.zombie,
+    emoji: "the_sleepless",
   },
 
   [Discord.Roles.CAPITALIST]: {
     pose: Poses.snagged,
+    emoji: "capitalist",
   },
 
   [Discord.Roles.THE_UNRIVALED]: {
     pose: Poses.callout,
+    emoji: "the_unrivaled",
   },
 
   ...SERVER_AGE_NOTIFICATION_CONFIGS,

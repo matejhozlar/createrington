@@ -4,6 +4,7 @@ import { Q } from "@/db";
 import { buildComponentsMessage, ComponentPresets } from "@/discord/components";
 import type { RankUpMetric } from "@/discord/components/presets/hall-of-fame";
 import { Discord } from "@/discord/constants";
+import { appEmoji } from "@/discord/emojis";
 import { squarePoseThumbnail } from "@/discord/utils/pose-thumbnail";
 import { getSkinApiClient, POSE_RENDER_STYLE } from "@/services/skin-api";
 import { getNotificationConfig } from "./config";
@@ -51,7 +52,8 @@ function isCompetitive(notification: RoleAssignmentNotification): boolean {
  * Sends Hall of Fame announcements when players earn new roles. Each role has
  * its own enabled/channel/pose config; a missing or disabled config silently
  * skips the send. The container is striped with the Discord role's own color,
- * or left stripeless when the role has none. The player's skin is rendered in
+ * or left stripeless when the role has none, and a config `emoji` leads the
+ * heading with that application emoji. The player's skin is rendered in
  * the role's pose and squared off so Discord's thumbnail crop keeps the whole
  * figure, then attached to the message; it falls back to the player's mc-heads
  * head when the render fails and to no figure at all for members without a
@@ -91,6 +93,7 @@ export class RoleNotificationService {
           discordId: notification.discordId,
           playerName: player?.minecraftUsername ?? notification.username,
           roleLabel: notification.role.label,
+          ...(config.emoji && { roleEmoji: appEmoji(config.emoji) }),
           metric: metricOf(notification),
           ...(figure.poseUrl && { poseUrl: figure.poseUrl }),
           ...(notification.roleColor > 0 && {
