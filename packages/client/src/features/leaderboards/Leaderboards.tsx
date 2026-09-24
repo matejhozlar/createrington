@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { trpc } from "@/lib/trpc";
+import { SkinApiPromo } from "@/components/skin-api-promo";
 import { TopRoleHero } from "./components/TopRoleHero";
 import { LeaderboardTable } from "./components/LeaderboardTable";
 import { useChampionDock } from "./hooks/use-champion-dock";
@@ -51,6 +52,7 @@ export function Leaderboards() {
           className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-primary/40 to-transparent"
         />
         <LeaderboardTable />
+        <SkinApiPromo />
       </div>
       <ChampionFlight />
     </div>
