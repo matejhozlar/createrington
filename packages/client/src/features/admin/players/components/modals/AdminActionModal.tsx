@@ -88,6 +88,7 @@ export function AdminActionModal({
         </DialogHeader>
         {asForm ? (
           <form
+            className="grid gap-4"
             onSubmit={(e) => {
               e.preventDefault();
               if (!disabled && !loading) onConfirm();

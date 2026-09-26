@@ -2,7 +2,14 @@ import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { playerService } from "@/services/player";
 import { balanceRepo } from "@/db";
-import { parsePlayerId, trpcError } from "@/trpc/utils";
+import { parsePlayerId, rethrowTrpc, trpcError } from "@/trpc/utils";
+
+const BALANCE_ADJUST_MODES = ["add", "remove", "set"] as const;
+const MAX_ADJUSTMENT = 1_000_000_000;
+const MAX_REASON_LENGTH = 500;
+
+const hasAtMostCents = (value: number) =>
+  Math.abs(value * 100 - Math.round(value * 100)) < 1e-6;
 
 /** Admin balance router: view balance info, adjust individual or bulk balances. */
 export const balanceRouter = router({
@@ -42,46 +49,60 @@ export const balanceRouter = router({
   adjust: adminProcedure
     .meta({
       description:
-        "Adjust a player's balance. Positive amount adds, negative subtracts",
+        "Add to, remove from, or set a player's balance. Amounts are in dollars with up to 2 decimals.",
     })
     .input(
       z.object({
         id: z.string().min(1),
-        amount: z.number().int().min(-1_000_000_000).max(1_000_000_000),
-        reason: z.string().min(1, "Reason is required"),
+        mode: z.enum(BALANCE_ADJUST_MODES),
+        amount: z
+          .number()
+          .min(0)
+          .max(MAX_ADJUSTMENT)
+          .refine(hasAtMostCents, "Amount can have at most 2 decimal places"),
+        reason: z
+          .string()
+          .trim()
+          .min(1, "Reason is required")
+          .max(MAX_REASON_LENGTH),
       }),
     )
     .mutation(async ({ input, ctx }) => {
       const identifier = parsePlayerId(input.id);
+      const { discordId, minecraftUsername } = ctx.user;
 
-      if (input.amount === 0) {
-        throw trpcError.badRequest("Amount cannot be zero");
+      if (input.mode !== "set" && input.amount === 0) {
+        throw trpcError.badRequest("Amount must be greater than zero");
       }
 
-      let newBalance: number;
-
-      if (input.amount > 0) {
-        newBalance = await balanceRepo.adminGrant(
+      try {
+        const args = [
           identifier,
           input.amount,
-          ctx.user.discordId,
-          ctx.user.minecraftUsername,
+          discordId,
+          minecraftUsername,
           input.reason,
-        );
-      } else {
-        newBalance = await balanceRepo.adminDeduct(
-          identifier,
-          Math.abs(input.amount),
-          ctx.user.discordId,
-          ctx.user.minecraftUsername,
-          input.reason,
-        );
-      }
+        ] as const;
 
-      return {
-        newBalance,
-        adjustment: input.amount,
-      };
+        const balance =
+          input.mode === "add"
+            ? await balanceRepo.adminGrant(...args)
+            : input.mode === "remove"
+              ? await balanceRepo.adminDeduct(...args)
+              : await balanceRepo.adminSet(...args);
+
+        return { balance };
+      } catch (err) {
+        if (
+          err instanceof Error &&
+          err.message.startsWith("Insufficient balance")
+        ) {
+          throw trpcError.badRequest(
+            "The player doesn't have enough balance to remove that much",
+          );
+        }
+        rethrowTrpc(err);
+      }
     }),
 
   bulkAdjust: adminProcedure
