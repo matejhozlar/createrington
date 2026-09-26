@@ -5,7 +5,6 @@ export const COMMAND_GROUPS: Record<string, string> = {
   money: "Economy",
   daily: "Economy",
   pay: "Economy",
-  lottery: "Economy",
   history: "Economy",
   playtime: "Player Info",
   compare: "Player Info",

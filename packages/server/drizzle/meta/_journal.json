@@ -547,6 +547,13 @@
       "when": 1790258007758,
       "tag": "0077_curvy_the_initiative",
       "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1790433871029,
+      "tag": "0078_curly_starjammers",
+      "breakpoints": true
     }
   ]
 }
