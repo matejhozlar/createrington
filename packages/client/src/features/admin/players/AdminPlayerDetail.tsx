@@ -46,6 +46,7 @@ export function AdminPlayerDetail() {
   const [activeTab, setActiveTab] = useState<TabType>("overview");
 
   const [showBalanceModal, setShowBalanceModal] = useState(false);
+  const [balanceModalKey, setBalanceModalKey] = useState(0);
   const [showStrikeModal, setShowStrikeModal] = useState(false);
   const [showBanModal, setShowBanModal] = useState(false);
   const [showUnbanModal, setShowUnbanModal] = useState(false);
@@ -142,7 +143,10 @@ export function AdminPlayerDetail() {
         <PlayerStatsCards
           player={player}
           playerUuid={player.player.minecraftUuid}
-          onAdjustBalance={() => setShowBalanceModal(true)}
+          onAdjustBalance={() => {
+            setBalanceModalKey((key) => key + 1);
+            setShowBalanceModal(true);
+          }}
         />
 
         <PlayerTabs activeTab={activeTab} onTabChange={setActiveTab} />
@@ -200,9 +204,11 @@ export function AdminPlayerDetail() {
       />
 
       <BalanceAdjustModal
+        key={balanceModalKey}
         open={showBalanceModal}
         onClose={() => setShowBalanceModal(false)}
         playerId={id!}
+        playerName={player.player.minecraftUsername}
         currentBalance={player.balance ? parseFloat(player.balance.balance) : 0}
         onSuccess={refetchPlayer}
       />

@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Coins, Clock, AlertTriangle, Ticket, Handshake } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatMoney } from "@/lib/format";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 
 type PlayerDetailed = RouterOutput["admin"]["players"]["players"]["get"];
@@ -81,9 +82,7 @@ export function PlayerStatsCards({
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm text-muted-foreground">Balance</p>
-            <p className="text-2xl font-semibold">
-              ${balance.toLocaleString()}
-            </p>
+            <p className="text-2xl font-semibold">{formatMoney(balance)}</p>
           </div>
           <div className="flex size-12 items-center justify-center rounded-full bg-chart-3/10">
             <Coins className="size-6 text-chart-3" />

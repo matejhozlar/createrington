@@ -2,6 +2,7 @@ import { useState } from "react";
 import { keepPreviousData } from "@tanstack/react-query";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
+import { formatMoney } from "@/lib/format";
 import { Paginator } from "@/components/paginator";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -65,8 +66,7 @@ export function TransactionsTab({ playerId }: TransactionsTabProps) {
       width: 130,
       align: "right",
       render: (tx) => {
-        const amount = Number(tx.amount);
-        const isPositive = amount >= 0;
+        const isPositive = tx.amount >= 0;
         return (
           <span
             className={cn(
@@ -74,8 +74,8 @@ export function TransactionsTab({ playerId }: TransactionsTabProps) {
               isPositive ? "text-emerald-400" : "text-destructive",
             )}
           >
-            {isPositive ? "+" : ""}
-            {amount.toLocaleString()}
+            {isPositive ? "+" : "-"}
+            {formatMoney(Math.abs(tx.amount))}
           </span>
         );
       },
@@ -86,7 +86,7 @@ export function TransactionsTab({ playerId }: TransactionsTabProps) {
       width: 130,
       align: "right",
       cellClassName: "font-mono text-sm text-muted-foreground tabular-nums",
-      render: (tx) => Number(tx.balanceBefore).toLocaleString(),
+      render: (tx) => formatMoney(tx.balanceBefore),
     },
     {
       key: "after",
@@ -94,7 +94,7 @@ export function TransactionsTab({ playerId }: TransactionsTabProps) {
       width: 130,
       align: "right",
       cellClassName: "font-mono text-sm text-muted-foreground tabular-nums",
-      render: (tx) => Number(tx.balanceAfter).toLocaleString(),
+      render: (tx) => formatMoney(tx.balanceAfter),
     },
     {
       key: "description",
@@ -143,9 +143,7 @@ export function TransactionsTab({ playerId }: TransactionsTabProps) {
             loadingRows={loadingRows}
             rowKey={(tx) => tx.id}
             rowClassName={(tx) =>
-              Number(tx.amount) >= 0
-                ? "bg-emerald-500/[0.02]"
-                : "bg-destructive/[0.02]"
+              tx.amount >= 0 ? "bg-emerald-500/[0.02]" : "bg-destructive/[0.02]"
             }
           />
 

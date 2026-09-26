@@ -1,3 +1,15 @@
+## v1.64.1 (2026-09-26)
+
+### @createrington/server (1.65.0 → 1.65.1)
+- [refactor] Rework admin balance adjust endpoint to support three explicit modes (add, remove, set) instead of inferring direction from a signed integer, with decimal dollar amounts (up to 2 decimal places), a max-length reason field, and proper insufficient-balance error handling
+- [fix] Fix transaction amounts returned as strings from the admin transactions list by converting through `BalanceUtils.fromStorage` so the client receives numbers directly
+
+### @createrington/client (0.2.78 → 0.2.79)
+- [refactor] Redesign the admin balance adjustment modal with add/remove/set tab switcher, dollar-prefixed decimal input with client-side validation, a live balance preview panel showing current/change/new values, and descriptive success toasts with player name and formatted amount
+- [fix] Fix currency formatting in the admin player stats card and transactions tab by replacing raw `toLocaleString` calls with the shared `formatMoney` formatter for consistent dollar-sign and decimal display
+- [fix] Fix balance adjustment modal retaining stale input when reopened by remounting the component via a key increment on each open
+- [fix] Add pointer cursor to the leaderboard stat picker button and command palette items so interactive elements visually indicate clickability
+
 ## v1.64.0 (2026-09-24)
 
 ### @createrington/server (1.64.0 → 1.65.0)
