@@ -589,6 +589,7 @@ INSERT INTO public.ticket (
 (1005, 'general'::public.ticket_type, '123456789012345687', 'ticket-chan-1005', 'deleted'::public.ticket_status,
  NOW() - INTERVAL '30 days', NOW() - INTERVAL '29 days 23 hours', '99318080374607872', NOW() - INTERVAL '7 days',
  '{"subject":"Accidental ticket","priority":"low","tags":["cleanup"],"reason_deleted":"User opened by mistake"}'::jsonb);
+SELECT setval('ticket_number_seq', 1005, true);
 
 -- ---------------------------------------------------------------------------
 -- Ticket actions (audit log)

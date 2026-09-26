@@ -1,5 +1,6 @@
 import {
   pgTable,
+  pgSequence,
   serial,
   integer,
   text,
@@ -11,11 +12,13 @@ import { ticketStatusEnum, ticketTypeEnum } from "./enums";
 
 // --- ticket ---
 
+export const ticketNumberSeq = pgSequence("ticket_number_seq");
+
 export const ticket = pgTable(
   "ticket",
   {
     id: serial("id").primaryKey(),
-    ticketNumber: integer("ticket_number").notNull(),
+    ticketNumber: integer("ticket_number").notNull().unique(),
     type: ticketTypeEnum("type").notNull(),
     creatorDiscordId: text("creator_discord_id").notNull(),
     channelId: text("channel_id").notNull().unique(),
