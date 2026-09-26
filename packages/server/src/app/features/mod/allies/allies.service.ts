@@ -53,37 +53,34 @@ export async function replaceAllyState(
       ownerName: fakePlayerParty.ownerName,
     });
 
-    for (const m of fakePlayerParty.members) {
-      await tx.server.ally.fake.party.member.create({
+    await tx.server.ally.fake.party.member.createMany(
+      fakePlayerParty.members.map((m) => ({
         fakePartyId: fakePartyRow.id,
         playerUuid: m.uuid,
-      });
-    }
+      })),
+    );
 
-    for (const a of allies) {
-      await tx.server.ally.party.create({
+    await tx.server.ally.party.createMany(
+      allies.map((a) => ({
         serverId,
         partyId: a.partyId,
         alliedAt: new Date(a.alliedAt),
-      });
-    }
+      })),
+    );
 
-    for (const q of qualified) {
-      await tx.server.ally.qualified.player.create({
+    await tx.server.ally.qualified.player.createMany([
+      ...qualified.map((q) => ({
         serverId,
         playerUuid: q.uuid,
         qualifiedAt: new Date(q.qualifiedAt),
         isPending: false,
-      });
-    }
-
-    for (const p of pending) {
-      await tx.server.ally.qualified.player.create({
+      })),
+      ...pending.map((p) => ({
         serverId,
         playerUuid: p.uuid,
         qualifiedAt: new Date(p.qualifiedAt),
         isPending: true,
-      });
-    }
+      })),
+    ]);
   });
 }

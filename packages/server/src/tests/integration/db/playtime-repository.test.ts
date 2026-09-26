@@ -534,4 +534,50 @@ describe("PlaytimeRepository (integration)", () => {
       expect(activity.currentSessionSeconds).toBeLessThan(120);
     });
   });
+
+  describe("getTopPlayersByDateRange", () => {
+    async function seedDaily(
+      uuid: string,
+      playDate: string,
+      seconds: number,
+    ): Promise<void> {
+      await Q.player.playtime.daily.create({
+        playerMinecraftUuid: uuid,
+        serverId,
+        playDate,
+        secondsPlayed: BigInt(seconds),
+      });
+    }
+
+    it("sums each player over the range and ranks the totals", async () => {
+      await seedDaily(STEVE, "2026-09-10", 1000);
+      await seedDaily(STEVE, "2026-09-11", 1000);
+      await seedDaily(ALEX, "2026-09-11", 3600);
+      await seedDaily(ALEX, "2026-09-20", 99999);
+
+      const top = await playtimeRepo.getTopPlayersByDateRange(
+        serverId,
+        new Date(2026, 8, 10),
+        new Date(2026, 8, 11),
+      );
+
+      expect(top).toEqual([
+        { minecraftUsername: "alex", totalSeconds: 3600, totalHours: 1 },
+        {
+          minecraftUsername: "steve",
+          totalSeconds: 2000,
+          totalHours: 2000 / 3600,
+        },
+      ]);
+
+      const [winner, ...rest] = await playtimeRepo.getTopPlayersByDateRange(
+        serverId,
+        new Date(2026, 8, 10),
+        new Date(2026, 8, 11),
+        1,
+      );
+      expect(winner.minecraftUsername).toBe("alex");
+      expect(rest).toEqual([]);
+    });
+  });
 });

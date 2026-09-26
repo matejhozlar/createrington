@@ -274,8 +274,6 @@ export class WebSocketService {
       if (callback) {
         callback(confirmation);
       }
-
-      socket.emit(SocketEvent.SUBSCRIBED, confirmation);
     } catch (error) {
       logger.error(
         `Failed to subscribe client ${socket.id} to ${request.type}:`,
@@ -328,8 +326,6 @@ export class WebSocketService {
       if (callback) {
         callback(confirmation);
       }
-
-      socket.emit(SocketEvent.UNSUBSCRIBED, confirmation);
     } catch (error) {
       logger.error(
         `Failed to unsubscribe client ${socket.id} from ${request.type}:`,
@@ -384,8 +380,6 @@ export class WebSocketService {
       if (callback) {
         callback(data);
       }
-
-      socket.emit(SocketEvent.INITIAL_DATA, data);
     } catch (error) {
       logger.error(
         `Failed to send initial data to client ${socket.id}:`,

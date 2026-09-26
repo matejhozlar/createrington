@@ -23,7 +23,6 @@ import {
   REJECT_REASON_LABELS,
   formatDate,
   liveTitle,
-  retryUnlessForbidden,
 } from "../../format";
 
 type HistoryItem =
@@ -75,10 +74,7 @@ export function SuggestionHistory() {
   const [shownCount, setShownCount] = useState(PAGE_SIZE);
   const [view, changeView] = useViewMode("workshop-suggest-history-view");
 
-  const historyQuery = trpc.user.workshops.mySuggestionHistory.useQuery(
-    undefined,
-    { retry: retryUnlessForbidden },
-  );
+  const historyQuery = trpc.user.workshops.mySuggestionHistory.useQuery();
 
   const history = historyQuery.data ?? [];
   let visible =

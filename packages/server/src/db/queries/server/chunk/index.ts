@@ -382,6 +382,7 @@ export class ServerChunkQueries extends ServerChunkBaseQueries {
       activeChunks: number;
       lastSyncedAt: Date;
       allyStatus: "allied" | "pending" | null;
+      total: number;
     }>(
       `SELECT
         r.effective_uuid AS "playerUuid",
@@ -394,7 +395,8 @@ export class ServerChunkQueries extends ServerChunkBaseQueries {
           WHEN qp.is_pending = false THEN 'allied'
           WHEN qp.is_pending = true  THEN 'pending'
           ELSE NULL
-        END AS "allyStatus"
+        END AS "allyStatus",
+        COUNT(*) OVER ()::int AS total
       FROM (
         SELECT
           CASE WHEN sc.player_uuid = $2 THEN sc.original_player_uuid ELSE sc.player_uuid END AS effective_uuid,
@@ -417,52 +419,10 @@ export class ServerChunkQueries extends ServerChunkBaseQueries {
       LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
       params,
     );
-    return result.rows;
-  }
-
-  async countSoloPlayers(
-    serverId: number,
-    filters: SoloPlayerFilters,
-  ): Promise<number> {
-    const params: unknown[] = [serverId, EXPIRED_CLAIM_UUID];
-    let dimensionClause = "";
-    if (filters.dimension) {
-      params.push(filters.dimension);
-      dimensionClause = `AND sc.dimension = $${params.length}`;
-    }
-    const searchClause = filters.search
-      ? (() => {
-          params.push(`%${escapeLike(filters.search!)}%`);
-          const idx = params.length;
-          return `AND (p.minecraft_username ILIKE $${idx} OR r.effective_uuid::text ILIKE $${idx})`;
-        })()
-      : "";
-
-    const havingClause = filters.activeOnly
-      ? "HAVING bool_or(r.active) = true"
-      : "";
-
-    const result = await this.db.query<{ count: number }>(
-      `SELECT COUNT(*)::int AS count FROM (
-         SELECT r.effective_uuid
-         FROM (
-           SELECT
-             CASE WHEN sc.player_uuid = $2 THEN sc.original_player_uuid ELSE sc.player_uuid END AS effective_uuid,
-             sc.active
-           FROM server_chunk sc
-           WHERE sc.server_id = $1
-             AND sc.party_id IS NULL
-             AND NOT (sc.player_uuid = $2 AND sc.original_player_uuid = $2)
-             ${dimensionClause}
-         ) r
-         LEFT JOIN player p ON p.minecraft_uuid = r.effective_uuid
-         WHERE TRUE ${searchClause}
-         GROUP BY r.effective_uuid
-         ${havingClause}
-       ) sub`,
-      params,
-    );
-    return result.rows[0]?.count ?? 0;
+    return {
+      rows: result.rows.map(({ total: _total, ...row }) => row),
+      total: result.rows[0]?.total ?? 0,
+    };
   }
 
   async getPartyDetailsByPartyId(serverId: number, partyId: string) {

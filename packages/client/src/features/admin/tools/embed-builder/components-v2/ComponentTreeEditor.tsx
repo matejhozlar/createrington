@@ -38,6 +38,7 @@ import type {
   ComponentTextDisplay,
 } from "@createrington/shared/api/embed";
 import type { UseEmbedBuilder } from "../hooks/use-embed-builder";
+import { useItemKeys } from "../hooks/use-item-keys";
 import { ColorPicker, TextField } from "../components/form-primitives";
 import {
   moveItem,
@@ -80,13 +81,18 @@ const CHILD_OPTIONS: AddOption<ContainerChild>[] = [
 
 export function ComponentTreeEditor({ builder }: { builder: UseEmbedBuilder }) {
   const { components, setComponents } = builder;
+  const itemKeys = useItemKeys(components.length);
 
   const update = (i: number, node: ComponentNode) =>
     setComponents((prev) => prev.map((n, idx) => (idx === i ? node : n)));
-  const remove = (i: number) =>
+  const remove = (i: number) => {
+    itemKeys.remove(i);
     setComponents((prev) => prev.filter((_, idx) => idx !== i));
-  const move = (i: number, dir: -1 | 1) =>
+  };
+  const move = (i: number, dir: -1 | 1) => {
+    itemKeys.move(i, dir);
     setComponents((prev) => moveItem(prev, i, dir));
+  };
   const add = (node: ComponentNode) => setComponents((prev) => [...prev, node]);
 
   return (
@@ -106,7 +112,7 @@ export function ComponentTreeEditor({ builder }: { builder: UseEmbedBuilder }) {
         )}
         {components.map((node, i) => (
           <NodeCard
-            key={i}
+            key={itemKeys.keys[i]}
             node={node}
             index={i}
             total={components.length}
@@ -262,13 +268,17 @@ function MediaGalleryBody({
   onChange: (node: ComponentMediaGallery) => void;
 }) {
   const items = node.items;
+  const itemKeys = useItemKeys(items.length);
   const setItems = (next: ComponentMediaGallery["items"]) =>
     onChange({ ...node, items: next });
 
   return (
     <div className="space-y-2">
       {items.map((item, i) => (
-        <div key={i} className="space-y-2 rounded-md border border-border p-2">
+        <div
+          key={itemKeys.keys[i]}
+          className="space-y-2 rounded-md border border-border p-2"
+        >
           <div className="flex items-center justify-between">
             <span className="text-[11px] text-muted-foreground">
               Image {i + 1}
@@ -278,7 +288,10 @@ function MediaGalleryBody({
               label="Remove image"
               destructive
               disabled={items.length <= 1}
-              onClick={() => setItems(items.filter((_, idx) => idx !== i))}
+              onClick={() => {
+                itemKeys.remove(i);
+                setItems(items.filter((_, idx) => idx !== i));
+              }}
             />
           </div>
           <TextField
@@ -340,6 +353,7 @@ function SectionBody({
   onChange: (node: ComponentSection) => void;
 }) {
   const texts = node.components;
+  const textKeys = useItemKeys(texts.length);
   const setTexts = (next: ComponentSection["components"]) =>
     onChange({ ...node, components: next });
 
@@ -347,7 +361,10 @@ function SectionBody({
     <div className="space-y-3">
       <div className="space-y-2">
         {texts.map((text, i) => (
-          <div key={i} className="rounded-md border border-border p-2">
+          <div
+            key={textKeys.keys[i]}
+            className="rounded-md border border-border p-2"
+          >
             <div className="mb-1.5 flex items-center justify-between">
               <span className="text-[11px] text-muted-foreground">
                 Text {i + 1}
@@ -357,7 +374,10 @@ function SectionBody({
                 label="Remove text"
                 destructive
                 disabled={texts.length <= 1}
-                onClick={() => setTexts(texts.filter((_, idx) => idx !== i))}
+                onClick={() => {
+                  textKeys.remove(i);
+                  setTexts(texts.filter((_, idx) => idx !== i));
+                }}
               />
             </div>
             <TextField
@@ -461,13 +481,17 @@ function ActionRowBody({
   onChange: (node: ComponentActionRow) => void;
 }) {
   const buttons = node.components;
+  const buttonKeys = useItemKeys(buttons.length);
   const setButtons = (next: ComponentActionRow["components"]) =>
     onChange({ ...node, components: next });
 
   return (
     <div className="space-y-2">
       {buttons.map((button, i) => (
-        <div key={i} className="space-y-2 rounded-md border border-border p-2">
+        <div
+          key={buttonKeys.keys[i]}
+          className="space-y-2 rounded-md border border-border p-2"
+        >
           <div className="flex items-center justify-between">
             <span className="text-[11px] text-muted-foreground">
               Button {i + 1}
@@ -477,7 +501,10 @@ function ActionRowBody({
               label="Remove button"
               destructive
               disabled={buttons.length <= 1}
-              onClick={() => setButtons(buttons.filter((_, idx) => idx !== i))}
+              onClick={() => {
+                buttonKeys.remove(i);
+                setButtons(buttons.filter((_, idx) => idx !== i));
+              }}
             />
           </div>
           <ButtonFields
@@ -543,6 +570,7 @@ function ContainerBody({
   onChange: (node: ComponentContainer) => void;
 }) {
   const children = node.components as ComponentNode[];
+  const childKeys = useItemKeys(children.length);
   const setChildren = (next: ComponentNode[]) =>
     onChange({ ...node, components: next as ComponentContainer["components"] });
 
@@ -563,15 +591,21 @@ function ContainerBody({
       <div className="space-y-2 border-l border-border pl-3">
         {children.map((child, i) => (
           <NodeCard
-            key={i}
+            key={childKeys.keys[i]}
             node={child}
             index={i}
             total={children.length}
             onChange={(n) =>
               setChildren(children.map((c, idx) => (idx === i ? n : c)))
             }
-            onRemove={() => setChildren(children.filter((_, idx) => idx !== i))}
-            onMove={(d) => setChildren(moveItem(children, i, d))}
+            onRemove={() => {
+              childKeys.remove(i);
+              setChildren(children.filter((_, idx) => idx !== i));
+            }}
+            onMove={(d) => {
+              childKeys.move(i, d);
+              setChildren(moveItem(children, i, d));
+            }}
           />
         ))}
         <AddMenu

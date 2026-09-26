@@ -1,7 +1,12 @@
-import { createTRPCReact, httpBatchLink } from "@trpc/react-query";
+import {
+  TRPCClientError,
+  createTRPCReact,
+  httpBatchLink,
+} from "@trpc/react-query";
 import { QueryClient } from "@tanstack/react-query";
 import type { AppRouter } from "@createrington/server/trpc";
 import type { inferRouterOutputs } from "@trpc/server";
+import { HTTPError } from "ky";
 import {
   getAccessToken,
   refreshAccessToken,
@@ -11,11 +16,24 @@ export type RouterOutput = inferRouterOutputs<AppRouter>;
 
 export const trpc = createTRPCReact<AppRouter>();
 
+const MAX_QUERY_RETRIES = 3;
+
+function isClientError(error: unknown): boolean {
+  const status =
+    error instanceof TRPCClientError
+      ? (error.data as { httpStatus?: number } | undefined)?.httpStatus
+      : error instanceof HTTPError
+        ? error.response.status
+        : undefined;
+  return status !== undefined && status >= 400 && status < 500;
+}
+
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 5 * 60 * 1000, // 5 minutes
-      retry: 3,
+      retry: (failureCount, error) =>
+        !isClientError(error) && failureCount < MAX_QUERY_RETRIES,
       refetchOnWindowFocus: false,
     },
   },

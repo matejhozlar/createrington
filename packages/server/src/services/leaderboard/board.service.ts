@@ -1,5 +1,5 @@
 import { Q } from "@/db";
-import { rankNetWorth } from "@/services/discord/leaderboard/networth";
+import { toNetWorthEntries } from "@/services/discord/leaderboard/networth";
 
 export const LEADERBOARD_BOARDS = ["records", "playtime", "balance"] as const;
 export type LeaderboardBoard = (typeof LEADERBOARD_BOARDS)[number];
@@ -146,18 +146,12 @@ export class LeaderboardBoardService {
   }
 
   private async computeBalance(): Promise<BoardSnapshot> {
-    const [balances, players] = await Promise.all([
-      Q.player.balance.getAllBalances(),
-      Q.player.getAll(),
-    ]);
-    const nameByUuid = new Map(
-      players.map((p) => [p.minecraftUuid, p.minecraftUsername]),
-    );
+    const ranking = await Q.player.balance.getNetWorthRanking();
 
     return {
       contestedKeys: 0,
       rows: withRanks(
-        rankNetWorth(balances, nameByUuid, balances.length).map((entry) => ({
+        toNetWorthEntries(ranking).map((entry) => ({
           minecraftUuid: entry.playerUuid,
           minecraftUsername: entry.playerName,
           value: Number(entry.value),

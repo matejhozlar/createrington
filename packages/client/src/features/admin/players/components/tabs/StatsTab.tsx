@@ -165,7 +165,7 @@ export function StatsTab({ playerId, getServerName }: StatsTabProps) {
       );
     }
 
-    return result.sort((a, b) => b.value - a.value);
+    return [...result].sort((a, b) => b.value - a.value);
   }, [flatStats, selectedCategory, debouncedSearch]);
 
   const groupedStats = useMemo(() => {

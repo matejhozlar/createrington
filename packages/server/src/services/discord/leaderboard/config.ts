@@ -8,7 +8,7 @@ import { Q } from "@/db";
 import { formatPlaytime } from "@createrington/shared/format";
 import { formatBalance, discordTimestamp, pluralize } from "@/utils/format";
 import { Discord } from "@/discord/constants";
-import { rankNetWorth } from "./networth";
+import { toNetWorthEntries } from "./networth";
 
 function formatRecords(records: number): string {
   return `${records.toLocaleString("en-US")} ${pluralize(records, "record")}`;
@@ -75,21 +75,8 @@ export const LEADERBOARD_CONFIGS: Record<LeaderboardType, LeaderboardConfig> = {
     titleImageUrl: assetUrl("titles/net-worth.png"),
     channelId: Discord.Channels.general.LEADERBOARDS,
     limit: LEADERBOARD_ENTRY_LIMIT,
-    fetchData: async (_serverId: number, limit: number) => {
-      const [balances, players] = await Promise.all([
-        Q.player.balance.getAllBalances(),
-        Q.player.getAll(),
-      ]);
-
-      const nameMap = new Map(
-        players.map((p) => [
-          p.minecraftUuid,
-          p.minecraftUsername ?? p.minecraftUuid,
-        ]),
-      );
-
-      return rankNetWorth(balances, nameMap, limit);
-    },
+    fetchData: async (_serverId: number, limit: number) =>
+      toNetWorthEntries(await Q.player.balance.getNetWorthRanking(limit)),
     formatValue: (value: number) => formatBalance(value),
   },
   [LeaderboardType.RECORDS]: {
