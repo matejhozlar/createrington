@@ -12,4 +12,29 @@ export class DonationQueries extends DonationBaseQueries {
   constructor(db: Pool | PoolClient) {
     super(db);
   }
+
+  async getCompletedStats(): Promise<{
+    totalRaisedCents: number;
+    donorCount: number;
+    donationCount: number;
+  }> {
+    const result = await this.runQuery<{
+      total_raised_cents: string;
+      donor_count: number;
+      donation_count: number;
+    }>(
+      "aggregate donation stats",
+      `SELECT COALESCE(SUM(amount_cents), 0) AS total_raised_cents,
+        COUNT(DISTINCT player_discord_id)::integer AS donor_count,
+        COUNT(*)::integer AS donation_count
+      FROM donation
+      WHERE status = 'completed'`,
+    );
+    const row = result.rows[0];
+    return {
+      totalRaisedCents: Number(row.total_raised_cents),
+      donorCount: row.donor_count,
+      donationCount: row.donation_count,
+    };
+  }
 }

@@ -144,22 +144,16 @@ export function OwnerDonations() {
       limit,
       discordId: debouncedDiscordId || undefined,
       status: statusFilter !== "all" ? statusFilter : undefined,
+      type: typeFilter !== "all" ? typeFilter : undefined,
     },
     { placeholderData: keepPreviousData },
   );
 
-  const filteredDonations =
-    typeFilter === "all"
-      ? (listQuery.data?.donations ?? [])
-      : (listQuery.data?.donations ?? []).filter((d) => d.type === typeFilter);
-
   const stats = statsQuery.data;
-  const donations = filteredDonations;
+  const donations = listQuery.data?.donations ?? [];
   const pagination = listQuery.data?.pagination;
   const total = pagination?.total ?? 0;
-  const totalPages = pagination
-    ? Math.ceil(pagination.total / pagination.limit)
-    : 0;
+  const totalPages = pagination?.totalPages ?? 0;
   const loading = listQuery.isLoading || listQuery.isPlaceholderData;
   const loadingRows = loadingRowCount(page, limit, total);
   const error = listQuery.error?.message ?? null;

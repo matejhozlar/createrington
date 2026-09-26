@@ -25,53 +25,31 @@ export class DonationRepository {
     return Q.donation.find({ stripeSessionId });
   }
 
-  /** Paginated list of all donations, newest first. */
-  async listAll(opts?: {
-    limit?: number;
-    offset?: number;
-  }): Promise<Donation[]> {
-    return Q.donation.findAll(
-      {},
-      {
-        orderBy: "createdAt",
-        orderDirection: "desc",
-        limit: opts?.limit ?? 50,
-        offset: opts?.offset ?? 0,
-      },
-    );
-  }
-
-  /** Total donation row count. */
-  async count(): Promise<number> {
-    const all = await Q.donation.findAll({});
-    return all.length;
-  }
-
   /** Most recent completed monthly donation with a Stripe subscription ID, or null. */
   async findActiveSubscription(discordId: string): Promise<Donation | null> {
-    const donations = await Q.donation.findAll(
+    const [donation] = await Q.donation.findAll(
       {
         playerDiscordId: discordId,
         type: "monthly",
         status: "completed",
+        stripeSubscriptionId: { $exists: true },
       },
-      { orderBy: "createdAt", orderDirection: "desc" },
+      { orderBy: "createdAt", orderDirection: "desc", limit: 1 },
     );
 
-    return donations.find((d) => d.stripeSubscriptionId != null) ?? null;
+    return donation ?? null;
   }
 
   /** All completed monthly donations with a Stripe subscription ID. */
   async findAllSubscriptions(): Promise<Donation[]> {
-    const donations = await Q.donation.findAll(
+    return Q.donation.findAll(
       {
         type: "monthly",
         status: "completed",
+        stripeSubscriptionId: { $exists: true },
       },
       { orderBy: "createdAt", orderDirection: "desc" },
     );
-
-    return donations.filter((d) => d.stripeSubscriptionId != null);
   }
 
   /** Fundraising totals across completed donations (cents, unique donors, count). */
@@ -80,18 +58,6 @@ export class DonationRepository {
     donorCount: number;
     donationCount: number;
   }> {
-    const completed = await Q.donation.findAll({ status: "completed" });
-
-    const uniqueDonors = new Set(completed.map((d) => d.playerDiscordId));
-    const totalRaisedCents = completed.reduce(
-      (sum, d) => sum + d.amountCents,
-      0,
-    );
-
-    return {
-      totalRaisedCents,
-      donorCount: uniqueDonors.size,
-      donationCount: completed.length,
-    };
+    return Q.donation.getCompletedStats();
   }
 }
