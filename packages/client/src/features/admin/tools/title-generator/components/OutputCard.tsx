@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/select";
 import { hasFixedLayout } from "../engine/output";
 import { MAX_RENDER_SIZE } from "../engine/render";
+import { OUTPUT_MODES } from "../engine/settings";
 import type {
   MinecraftMode,
   OutputMode,
@@ -18,13 +19,13 @@ import type {
 } from "../engine/types";
 import { ColourField, Section, SliderField, ToggleField } from "./fields";
 
-const LAYOUTS: { value: OutputMode; label: string }[] = [
-  { value: "normal", label: "Normal" },
-  { value: "square", label: "Square" },
-  { value: "custom", label: "Custom" },
-  { value: "minecraft", label: "Minecraft" },
-  { value: "createrington", label: "Createrington" },
-];
+const LAYOUT_LABELS: Record<OutputMode, string> = {
+  normal: "Normal",
+  square: "Square",
+  custom: "Custom",
+  minecraft: "Minecraft",
+  createrington: "Createrington",
+};
 
 const MINECRAFT_MODES: { value: MinecraftMode; label: string }[] = [
   { value: "1.20", label: "1.20+ title texture" },
@@ -101,9 +102,9 @@ export function OutputCard({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {LAYOUTS.map((layout) => (
-                <SelectItem key={layout.value} value={layout.value}>
-                  {layout.label}
+              {OUTPUT_MODES.map((mode) => (
+                <SelectItem key={mode} value={mode}>
+                  {LAYOUT_LABELS[mode]}
                 </SelectItem>
               ))}
             </SelectContent>
