@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { memo, useState } from "react";
 import type { CachedMessage } from "@createrington/shared/socket";
 import { cn } from "@/lib/utils";
 import { ChatMarkdown } from "./chat-markdown";
 import { ImageFullscreen, MessageImageGrid } from "./message-images";
 import { formatTime, transformWaypoints } from "./utils";
 
-export function MessageRow({
+export const MessageRow = memo(function MessageRow({
   message,
   isFirst,
   tick,
@@ -222,4 +222,4 @@ export function MessageRow({
       )}
     </>
   );
-}
+});

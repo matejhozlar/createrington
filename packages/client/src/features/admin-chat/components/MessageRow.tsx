@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { memo, useState } from "react";
 import { Check, Copy } from "lucide-react";
 import { useAuth } from "@/contexts/auth";
 import { mcHeadsAvatar } from "@/lib/external-urls";
@@ -31,7 +31,7 @@ function formatTime(iso: string): string {
   }
 }
 
-export function MessageRow({
+export const MessageRow = memo(function MessageRow({
   message,
   navigate,
   showAvatar,
@@ -189,4 +189,4 @@ export function MessageRow({
       )}
     </div>
   );
-}
+});
