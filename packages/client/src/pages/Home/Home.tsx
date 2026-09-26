@@ -38,7 +38,7 @@ import { Loading } from "@/components/loading-spinner";
 import { SkinApiPromo } from "@/components/skin-api-promo";
 
 export function Home() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
 
   const [autoplayPlugin] = useState(() =>
     Autoplay({ delay: 5000, stopOnInteraction: false }),
@@ -328,7 +328,17 @@ export function Home() {
 
                 {/* CTA */}
                 <div className="flex flex-wrap gap-x-4 gap-y-2">
-                  {!user ? (
+                  {authLoading ? (
+                    <Button
+                      size="lg"
+                      className="text-lg invisible"
+                      aria-hidden
+                      tabIndex={-1}
+                    >
+                      Apply Now
+                      <ArrowRight />
+                    </Button>
+                  ) : !user ? (
                     <Button size="lg" className="text-lg" asChild>
                       <NavLink to="/apply-to-join">
                         Apply Now
