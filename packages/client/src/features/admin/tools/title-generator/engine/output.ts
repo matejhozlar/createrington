@@ -1,5 +1,39 @@
 import { autoCrop, createFrame, type Frame } from "./canvas";
-import type { OutputSettings } from "./types";
+import type { OutputMode, OutputSettings } from "./types";
+
+const TILE_SIZE = 512;
+const TILE_RADIUS = 60;
+const TILE_INSET = 52;
+const TILE_COLOUR = "#0f0f13";
+
+export function hasFixedLayout(mode: OutputMode) {
+  return mode === "minecraft" || mode === "createrington";
+}
+
+function createringtonFrame(image: HTMLCanvasElement): Frame {
+  const frame = createFrame(TILE_SIZE, TILE_SIZE);
+  frame.ctx.fillStyle = TILE_COLOUR;
+  frame.ctx.beginPath();
+  frame.ctx.roundRect(0, 0, TILE_SIZE, TILE_SIZE, TILE_RADIUS);
+  frame.ctx.fill();
+  const inner = TILE_SIZE - TILE_INSET * 2;
+  const ratio = Math.min(inner / image.width, inner / image.height);
+  const w = Math.round(image.width * ratio);
+  const h = Math.round(image.height * ratio);
+  if (ratio > 1) {
+    frame.ctx.imageSmoothingEnabled = false;
+  } else {
+    frame.ctx.imageSmoothingQuality = "high";
+  }
+  frame.ctx.drawImage(
+    image,
+    Math.floor((TILE_SIZE - w) / 2),
+    Math.floor((TILE_SIZE - h) / 2),
+    w,
+    h,
+  );
+  return frame;
+}
 
 function minecraftFrame(
   image: HTMLCanvasElement,
@@ -105,6 +139,9 @@ async function layoutFrame(
   if (settings.mode === "minecraft") {
     return minecraftFrame(image, settings.minecraftMode);
   }
+  if (settings.mode === "createrington") {
+    return createringtonFrame(image);
+  }
   const frame = createFrame(image.width, image.height);
   frame.ctx.drawImage(image, 0, 0);
   return frame;
@@ -115,13 +152,13 @@ export async function composeOutput(
   settings: OutputSettings,
 ): Promise<HTMLCanvasElement> {
   const layout = await layoutFrame(image, settings);
-  const isMinecraft = settings.mode === "minecraft";
-  const padding = isMinecraft ? 0 : settings.padding;
+  const fixedLayout = hasFixedLayout(settings.mode);
+  const padding = fixedLayout ? 0 : settings.padding;
   const out = createFrame(
     layout.canvas.width + padding * 2,
     layout.canvas.height + padding * 2,
   );
-  if (!isMinecraft && settings.backgroundColourEnabled) {
+  if (!fixedLayout && settings.backgroundColourEnabled) {
     if (settings.backgroundColour2Enabled) {
       const gradient = out.ctx.createLinearGradient(0, 0, 0, out.canvas.height);
       gradient.addColorStop(0, settings.backgroundColour);

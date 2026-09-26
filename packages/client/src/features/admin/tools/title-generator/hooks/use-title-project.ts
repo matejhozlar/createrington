@@ -4,6 +4,7 @@ import {
   createLayer,
   DEFAULT_OUTPUT,
   DEFAULT_RENDER,
+  OUTPUT_MODES,
   WORDMARK_LAYERS,
 } from "../engine/settings";
 import type {
@@ -45,6 +46,9 @@ function loadProject(): Project {
     }
     const layers = stored.layers.map((layer) => createLayer(layer));
     const output = { ...DEFAULT_OUTPUT, ...stored.output };
+    if (!OUTPUT_MODES.includes(output.mode)) {
+      output.mode = DEFAULT_OUTPUT.mode;
+    }
     if (!MINECRAFT_MODES.includes(output.minecraftMode)) {
       output.minecraftMode = DEFAULT_OUTPUT.minecraftMode;
     }

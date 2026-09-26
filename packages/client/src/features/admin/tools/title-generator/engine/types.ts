@@ -183,7 +183,8 @@ export type TextureArgs = {
   edgeBrightness: number;
 };
 
-export type OutputMode = "normal" | "square" | "custom" | "minecraft";
+export type OutputMode =
+  "normal" | "square" | "custom" | "minecraft" | "createrington";
 
 export type MinecraftMode = "1.20" | "mojang";
 

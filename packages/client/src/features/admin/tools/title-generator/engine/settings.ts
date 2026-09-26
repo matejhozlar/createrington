@@ -8,6 +8,7 @@ import type { Catalog } from "./assets";
 import type { GeometryOptions } from "./geometry";
 import type {
   FontTextures,
+  OutputMode,
   OutputSettings,
   RenderSettings,
   TextureArgs,
@@ -87,6 +88,14 @@ export const DEFAULT_RENDER: RenderSettings = {
   antialias: true,
   cameraDistance: DEFAULT_CAMERA_DISTANCE,
 };
+
+export const OUTPUT_MODES: OutputMode[] = [
+  "normal",
+  "square",
+  "custom",
+  "minecraft",
+  "createrington",
+];
 
 export const DEFAULT_OUTPUT: OutputSettings = {
   mode: "normal",
