@@ -138,7 +138,11 @@ export const workshopModEvent = pgTable(
   },
   (table) => [
     index("idx_workshop_mod_event_mod").on(table.workshopModId),
-    index("idx_workshop_mod_event_workshop").on(table.workshopId),
+    index("idx_workshop_mod_event_workshop_created").on(
+      table.workshopId,
+      table.createdAt.desc().nullsFirst(),
+      table.id.desc().nullsFirst(),
+    ),
   ],
 );
 
