@@ -180,6 +180,43 @@ export async function fontSwitchPatch(
   };
 }
 
+export async function repairLayer(
+  layer: TitleLayer,
+  catalog: Catalog,
+): Promise<Partial<TitleLayer> | null> {
+  if (!catalog.fonts[layer.font]) {
+    const fallback = catalog.fonts[layer.baseFont]
+      ? layer.baseFont
+      : DEFAULT_FONT;
+    return fontSwitchPatch(fallback, catalog);
+  }
+  const textures = await loadFontTextures(layer.font);
+  const patch: Partial<TitleLayer> = {};
+  const texture = textures.textures.find((entry) => entry.id === layer.texture);
+  if (!texture) {
+    patch.texture = defaultTextureId(textures);
+    patch.variant = null;
+  } else if (layer.variant && !texture.variants?.[layer.variant]) {
+    patch.variant = null;
+  }
+  if (!textures.overlays.some((entry) => entry.id === layer.overlay)) {
+    patch.overlay = textures.overlays[0]?.id ?? "none";
+  }
+  const tileable = catalog.tileables.find(
+    (entry) => entry.id === layer.tileable,
+  );
+  if (!tileable) {
+    patch.tileable = catalog.tileables[0]?.id ?? layer.tileable;
+    patch.tileableVariant = null;
+  } else if (
+    layer.tileableVariant &&
+    !tileable.variants?.[layer.tileableVariant]
+  ) {
+    patch.tileableVariant = null;
+  }
+  return Object.keys(patch).length ? patch : null;
+}
+
 function effectiveSource(layer: TitleLayer): TextureSource {
   if (layer.textureSource === "file" && !layer.customTexture) {
     return layer.lastTextureSource;

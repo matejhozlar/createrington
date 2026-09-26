@@ -37,7 +37,7 @@ const FACE_DIRECTIONS: FaceDirection[] = [
   "down",
 ];
 
-const SPACER = "​";
+const SPACER = "\u200b";
 
 type WordArgs = GeometryOptions & {
   font: TitleFont;

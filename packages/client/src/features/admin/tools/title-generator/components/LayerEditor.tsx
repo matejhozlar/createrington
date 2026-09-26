@@ -77,8 +77,12 @@ export function LayerEditor({
   const copyPreset = async () => {
     const json = presetJson();
     if (!json) return;
-    await navigator.clipboard.writeText(json);
-    toast.success("Preset copied to clipboard");
+    try {
+      await navigator.clipboard.writeText(json);
+      toast.success("Preset copied to clipboard");
+    } catch {
+      toast.error("Clipboard access was blocked by the browser");
+    }
   };
 
   const downloadPreset = () => {

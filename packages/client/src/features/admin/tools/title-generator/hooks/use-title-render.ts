@@ -26,7 +26,9 @@ export function useTitleRender(
   const [rendering, setRendering] = useState(false);
   const [composed, setComposed] = useState<{
     source: HTMLCanvasElement;
-    canvas: HTMLCanvasElement;
+    settings: OutputSettings;
+    canvas: HTMLCanvasElement | null;
+    error: string | null;
   } | null>(null);
 
   useEffect(() => {
@@ -58,18 +60,37 @@ export function useTitleRender(
     const source = state.image;
     if (!source) return;
     let cancelled = false;
-    composeOutput(source, output).then((canvas) => {
-      if (!cancelled) setComposed({ source, canvas });
-    });
+    composeOutput(source, output)
+      .then((canvas) => {
+        if (!cancelled) {
+          setComposed({ source, settings: output, canvas, error: null });
+        }
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          setComposed({
+            source,
+            settings: output,
+            canvas: null,
+            error: error instanceof Error ? error.message : "Export failed",
+          });
+        }
+      });
     return () => {
       cancelled = true;
     };
   }, [state.image, output]);
 
+  const current =
+    !!state.image &&
+    composed?.source === state.image &&
+    composed.settings === output;
+
   return {
     image: state.image,
     output: state.image ? (composed?.canvas ?? null) : null,
-    error: state.error,
+    current,
+    error: state.error ?? (current ? composed.error : null),
     rendering,
   };
 }

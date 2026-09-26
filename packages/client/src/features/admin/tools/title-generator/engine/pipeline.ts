@@ -9,9 +9,25 @@ const TEXTURE_CACHE_LIMIT = 24;
 
 const textureCache = new Map<string, Promise<HTMLCanvasElement>>();
 
+const uploadIds = new Map<string, number>();
+
+function uploadKey(dataUrl: string | null) {
+  if (!dataUrl) return null;
+  let id = uploadIds.get(dataUrl);
+  if (id === undefined) {
+    id = uploadIds.size;
+    uploadIds.set(dataUrl, id);
+  }
+  return `upload-${id}`;
+}
+
 function cachedTexture(layer: TitleLayer, catalog: Catalog) {
   const args = resolveTextureArgs(layer);
-  const key = JSON.stringify(args);
+  const key = JSON.stringify({
+    ...args,
+    customTexture: uploadKey(args.customTexture),
+    customOverlay: uploadKey(args.customOverlay),
+  });
   let pending = textureCache.get(key);
   if (pending) {
     textureCache.delete(key);

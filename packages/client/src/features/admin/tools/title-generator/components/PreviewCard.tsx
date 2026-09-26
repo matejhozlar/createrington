@@ -31,12 +31,14 @@ function formatBytes(bytes: number) {
 
 export function PreviewCard({
   output,
+  current,
   rendering,
   error,
   loading,
   fileName,
 }: {
   output: HTMLCanvasElement | null;
+  current: boolean;
   rendering: boolean;
   error: string | null;
   loading: boolean;
@@ -64,7 +66,8 @@ export function PreviewCard({
     };
   }, [output]);
 
-  const currentBlob = blob && blob.source === output ? blob.blob : null;
+  const currentBlob =
+    current && blob && blob.source === output ? blob.blob : null;
 
   const copy = async () => {
     if (!currentBlob) return;

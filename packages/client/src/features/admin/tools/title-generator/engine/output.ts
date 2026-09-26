@@ -11,10 +11,10 @@ function minecraftFrame(
   if (image.width > 1024 || image.height > 1024) {
     if (aspect > 1) {
       w = 1024;
-      h = Math.floor(1024 / aspect);
+      h = Math.max(1, Math.floor(1024 / aspect));
     } else {
       h = 1024;
-      w = Math.floor(1024 * aspect);
+      w = Math.max(1, Math.floor(1024 * aspect));
     }
   }
   const scaled = createFrame(w, h);

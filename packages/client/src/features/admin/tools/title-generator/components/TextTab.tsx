@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { Input } from "@/components/ui/input";
+import { useToastActions } from "@/hooks/use-toast";
 import { assetUrl, thumbnailPath } from "../engine/assets";
 import { normalizeTitleText } from "../engine/geometry";
 import { fontSwitchPatch } from "../engine/settings";
@@ -14,9 +15,10 @@ const TEXT_TYPES: { value: TextType; label: string }[] = [
   { value: "small", label: "Small" },
 ];
 
-const IGNORED_CHARACTERS = new Set([" ", "┫", "┣", "​"]);
+const IGNORED_CHARACTERS = new Set([" ", "┫", "┣", "\u200b"]);
 
 export function TextTab({ layer, catalog, onChange }: LayerTabProps) {
+  const toast = useToastActions();
   const characters = useFontCharacters(layer.font);
   const baseFont = catalog.fonts[layer.baseFont];
 
@@ -32,7 +34,11 @@ export function TextTab({ layer, catalog, onChange }: LayerTabProps) {
   }, [characters.data, layer.text]);
 
   const selectFont = async (fontId: string) => {
-    onChange(await fontSwitchPatch(fontId, catalog));
+    try {
+      onChange(await fontSwitchPatch(fontId, catalog));
+    } catch {
+      toast.error("Unable to load that font's textures");
+    }
   };
 
   const fontOptions = catalog.baseFonts.map((id) => ({

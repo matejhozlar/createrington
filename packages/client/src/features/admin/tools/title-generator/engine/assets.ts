@@ -9,10 +9,11 @@ import type {
 } from "./types";
 
 const REPO = "ewanhowell5195/MinecraftTitleGenerator";
+const REVISION = "ebc3f4187f5be57e4c25ea3cd9b0b350eceb996a";
 
 export const ASSET_ROOTS = [
-  `https://raw.githubusercontent.com/${REPO}/main`,
-  `https://cdn.jsdelivr.net/gh/${REPO}@main`,
+  `https://raw.githubusercontent.com/${REPO}/${REVISION}`,
+  `https://cdn.jsdelivr.net/gh/${REPO}@${REVISION}`,
 ];
 
 export const DEFAULT_FONT = "minecraft-ten";

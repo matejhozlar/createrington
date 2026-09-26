@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,6 +9,8 @@ import { LayerList } from "./components/LayerList";
 import { OutputCard } from "./components/OutputCard";
 import { PreviewCard } from "./components/PreviewCard";
 import { RenderCard } from "./components/RenderCard";
+import type { Catalog } from "./engine/assets";
+import { repairLayer } from "./engine/settings";
 import { useTitleCatalog } from "./hooks/use-title-assets";
 import { useTitleProject } from "./hooks/use-title-project";
 import { useTitleRender } from "./hooks/use-title-render";
@@ -28,6 +31,22 @@ function fileNameFor(texts: string[]) {
 export function TitleGenerator() {
   const catalog = useTitleCatalog();
   const project = useTitleProject();
+  const { layers, updateLayer } = project;
+  const repairedRef = useRef<Catalog | null>(null);
+
+  useEffect(() => {
+    const data = catalog.data;
+    if (!data || repairedRef.current === data) return;
+    repairedRef.current = data;
+    for (const layer of layers) {
+      repairLayer(layer, data)
+        .then((patch) => {
+          if (patch) updateLayer(layer.id, patch);
+        })
+        .catch(() => undefined);
+    }
+  }, [catalog.data, layers, updateLayer]);
+
   const result = useTitleRender(
     project.layers,
     project.render,
@@ -81,6 +100,7 @@ export function TitleGenerator() {
           <>
             <PreviewCard
               output={result.output}
+              current={result.current}
               rendering={result.rendering}
               error={result.error}
               loading={catalog.isLoading}
@@ -100,6 +120,7 @@ export function TitleGenerator() {
                   onMove={project.moveLayer}
                 />
                 <RenderCard
+                  key={project.revision}
                   render={project.render}
                   onChange={project.setRender}
                 />
@@ -109,7 +130,7 @@ export function TitleGenerator() {
                 />
               </div>
 
-              {catalog.data ? (
+              {catalog.data?.fonts[project.selectedLayer.font] ? (
                 <LayerEditor
                   layer={project.selectedLayer}
                   catalog={catalog.data}

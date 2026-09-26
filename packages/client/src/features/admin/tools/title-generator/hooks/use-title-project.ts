@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useToastActions } from "@/hooks/use-toast";
 import {
   createLayer,
   DEFAULT_OUTPUT,
@@ -64,18 +65,28 @@ export type LayerUpdate =
   Partial<TitleLayer> | ((layer: TitleLayer) => TitleLayer);
 
 export function useTitleProject() {
+  const toast = useToastActions();
   const [project, setProject] = useState(loadProject);
+  const [revision, setRevision] = useState(0);
+  const warnedRef = useRef(false);
 
   useEffect(() => {
+    const layers = project.layers.map((layer) => ({
+      ...layer,
+      customTexture: null,
+      customOverlay: null,
+    }));
     try {
       localStorage.setItem(
         STORAGE_KEY,
-        JSON.stringify({ ...project, version: STORAGE_VERSION }),
+        JSON.stringify({ ...project, layers, version: STORAGE_VERSION }),
       );
     } catch {
-      return;
+      if (warnedRef.current) return;
+      warnedRef.current = true;
+      toast.warning("Changes to this title can't be saved in this browser");
     }
-  }, [project]);
+  }, [project, toast]);
 
   const updateLayer = useCallback((id: string, update: LayerUpdate) => {
     setProject((current) => ({
@@ -160,10 +171,14 @@ export function useTitleProject() {
     }));
   }, []);
 
-  const resetProject = useCallback(() => setProject(wordmarkProject()), []);
+  const resetProject = useCallback(() => {
+    setProject(wordmarkProject());
+    setRevision((current) => current + 1);
+  }, []);
 
   return {
     ...project,
+    revision,
     selectedLayer:
       project.layers.find((layer) => layer.id === project.selectedId) ??
       project.layers[0],
