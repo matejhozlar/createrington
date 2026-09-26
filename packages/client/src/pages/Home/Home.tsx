@@ -43,6 +43,7 @@ export function Home() {
   const [autoplayPlugin] = useState(() =>
     Autoplay({ delay: 5000, stopOnInteraction: false }),
   );
+  const [firstHeroLoaded, setFirstHeroLoaded] = useState(false);
 
   // TODO: When converting to multiple servers, update this to use the selected server
   const serverId = 1;
@@ -268,12 +269,18 @@ export function Home() {
           <CarouselContent className="h-full ml-0">
             {heroImages.map((image, index) => (
               <CarouselItem key={index} className="h-full pl-0 basis-full">
-                <div
-                  className="w-full h-full bg-cover bg-center bg-no-repeat"
-                  style={{
-                    backgroundImage: `url('${image}')`,
-                  }}
-                />
+                {(index === 0 || firstHeroLoaded) && (
+                  <img
+                    src={image}
+                    alt=""
+                    fetchPriority={index === 0 ? "high" : "low"}
+                    decoding="async"
+                    onLoad={
+                      index === 0 ? () => setFirstHeroLoaded(true) : undefined
+                    }
+                    className="w-full h-full object-cover object-center"
+                  />
+                )}
               </CarouselItem>
             ))}
           </CarouselContent>
