@@ -11,7 +11,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
   const { loading } = useAuth();
   const location = useLocation();
 
-  if (loading) {
+  if (loading && new URLSearchParams(location.search).has("code")) {
     return <LoadingScreen text="Logging in..." />;
   }
 
