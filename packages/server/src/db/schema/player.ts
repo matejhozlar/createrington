@@ -103,7 +103,10 @@ export const playerBalanceTransaction = pgTable(
       .defaultNow(),
   },
   (table) => [
-    index("idx_balance_transaction_player").on(table.playerMinecraftUuid),
+    index("idx_balance_transaction_player").on(
+      table.playerMinecraftUuid,
+      table.id.desc().nullsFirst(),
+    ),
     index("idx_balance_transaction_type").on(table.transactionType),
     index("idx_balance_transaction_created").on(table.createdAt.desc()),
     index("idx_balance_transaction_related")
@@ -312,6 +315,10 @@ export const playerPlaytimeDaily = pgTable(
       columns: [table.playerMinecraftUuid, table.serverId, table.playDate],
     }),
     index("idx_player_playtime_daily_date").on(table.playDate),
+    index("idx_player_playtime_daily_server_date").on(
+      table.serverId,
+      table.playDate,
+    ),
   ],
 );
 
@@ -342,6 +349,10 @@ export const playerPlaytimeHourly = pgTable(
       columns: [table.playerMinecraftUuid, table.serverId, table.playHour],
     }),
     index("idx_player_playtime_hourly_date").on(table.playHour),
+    index("idx_player_playtime_hourly_server_date").on(
+      table.serverId,
+      table.playHour,
+    ),
     index("idx_player_playtime_hourly_player_date").on(
       table.playerMinecraftUuid,
       table.playHour,
@@ -436,7 +447,10 @@ export const playerSession = pgTable(
       "chk_session_end_after_start",
       sql`${table.sessionEnd} IS NULL OR ${table.sessionEnd} >= ${table.sessionStart}`,
     ),
-    index("idx_player_session_server").on(table.serverId),
+    index("idx_player_session_server").on(
+      table.serverId,
+      table.sessionStart.desc().nullsFirst(),
+    ),
     index("idx_player_session_start").on(table.sessionStart),
     uniqueIndex("idx_player_session_active")
       .on(table.playerMinecraftUuid, table.serverId)

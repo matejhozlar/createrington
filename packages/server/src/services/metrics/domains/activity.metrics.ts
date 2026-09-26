@@ -5,9 +5,7 @@ import { Q } from "@/db";
  *
  * Surfaces player engagement data for the admin dashboard:
  * - Unique active players over time
- * - Peak concurrent player count
  * - Average session duration
- * - New vs returning player breakdown
  */
 export class ActivityMetrics {
   /**
@@ -31,17 +29,6 @@ export class ActivityMetrics {
   }
 
   /**
-   * Get peak concurrent player count within a time range
-   *
-   * @param start - Start of the date range
-   * @param end - End of the date range
-   * @returns Peak count and the timestamp it occurred at
-   */
-  async getPeakConcurrent(start: Date, end: Date) {
-    return await Q.player.session.getPeakConcurrent(start, end);
-  }
-
-  /**
    * Get average session length in seconds
    *
    * @param start - Optional start of date range (inclusive)
@@ -50,16 +37,5 @@ export class ActivityMetrics {
    */
   async getAverageSessionLength(start?: Date, end?: Date) {
     return await Q.player.session.getAverageSessionLength(start, end);
-  }
-
-  /**
-   * Get new vs returning player breakdown per day
-   *
-   * @param start - Start of the date range (inclusive)
-   * @param end - End of the date range (exclusive)
-   * @returns Array of dates with new and returning player counts
-   */
-  async getNewVsReturning(start: Date, end: Date) {
-    return await Q.player.session.getNewVsReturning(start, end);
   }
 }

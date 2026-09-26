@@ -32,7 +32,6 @@ export const donation = pgTable(
   },
   (table) => [
     index("idx_donation_player").on(table.playerDiscordId),
-    index("idx_donation_stripe_session").on(table.stripeSessionId),
     index("idx_donation_created_at").on(table.createdAt.desc()),
   ],
 );

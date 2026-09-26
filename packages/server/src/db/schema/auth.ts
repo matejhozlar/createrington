@@ -41,9 +41,6 @@ export const authSession = pgTable(
   },
   (table) => [
     index("idx_auth_session_discord_id").on(table.discordId),
-    index("idx_auth_session_token_hash")
-      .on(table.tokenHash)
-      .where(sql`revoked_at IS NULL`),
     index("idx_auth_session_expires_at")
       .on(table.expiresAt)
       .where(sql`revoked_at IS NULL`),

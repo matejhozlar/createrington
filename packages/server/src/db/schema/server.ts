@@ -270,7 +270,10 @@ export const serverChunk = pgTable(
       table.x,
       table.z,
     ),
-    index("idx_server_chunk_player").on(table.playerUuid),
+    index("idx_server_chunk_player").on(
+      table.playerUuid,
+      table.originalPlayerUuid,
+    ),
     index("idx_server_chunk_party").on(table.partyId),
   ],
 );
