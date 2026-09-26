@@ -15,7 +15,6 @@ import type {
 import type {
   WebSocketConfig,
   ConnectionState,
-  WebSocketStats,
   WebSocketContextType,
 } from "./types";
 import { WebSocketContext } from "./context";
@@ -27,97 +26,135 @@ interface WebSocketProviderProps {
   config?: WebSocketConfig;
 }
 
-/**
- * WebSocket Provider
- *
- * Manages WebSocket connection and provides real-time data to the app
- *
- * Features:
- * - Automatic reconnection with exponential backoff
- * - Connection state management
- * - Event subscription system
- * - Graceful error handling
- * - Cleanup on unmount
- */
+function createSocket(config: WebSocketConfig): Socket {
+  return io(config.url || window.location.origin, {
+    path: config.path || "/socket.io",
+    transports: config.transports || ["websocket", "polling"],
+    autoConnect: false,
+    reconnection: true,
+    reconnectionAttempts: Infinity,
+    reconnectionDelay: config.reconnectionDelay ?? 1000,
+    reconnectionDelayMax: config.reconnectionDelayMax ?? 30000,
+    timeout: config.timeout || 10000,
+    auth: (cb) => {
+      const token = getAccessToken();
+      cb(token ? { token } : {});
+    },
+  });
+}
+
 export function WebSocketProvider({
   children,
   config = {},
 }: WebSocketProviderProps) {
   const { user, loading: authLoading } = useAuth();
+  const autoConnect = config.autoConnect !== false;
 
-  // Socket instance (in state for context value)
-  const [socket, setSocket] = useState<Socket | null>(null);
-
-  // Connection state
-  const [connectionState, setConnectionState] =
-    useState<ConnectionState>("disconnected");
+  const [socket] = useState(() => createSocket(config));
+  const [connectionState, setConnectionState] = useState<ConnectionState>(
+    autoConnect ? "connecting" : "disconnected",
+  );
   const [error, setError] = useState<Error | null>(null);
-  const [stats, setStats] = useState<WebSocketStats>({
-    connectedAt: null,
-    reconnectAttempts: 0,
-    latency: null,
-  });
 
-  // Event listeners registry
-  const eventListenersRef = useRef<Map<string, Set<(data: unknown) => void>>>(
-    new Map(),
-  );
+  useEffect(() => {
+    let rejectedRetry: ReturnType<typeof setTimeout> | undefined;
 
-  // Reconnection state
-  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
-  const reconnectAttemptsRef = useRef(0);
-  const maxReconnectAttempts = config.maxReconnectAttempts ?? 5;
-  const reconnectDelay = config.reconnectDelay ?? 1000;
+    const handleConnect = () => {
+      setConnectionState("connected");
+      setError(null);
+    };
+    const handleDisconnect = (reason: Socket.DisconnectReason) => {
+      if (import.meta.env.DEV) console.log("WebSocket disconnected:", reason);
+      setConnectionState(socket.active ? "reconnecting" : "disconnected");
+    };
+    const handleConnectError = (err: Error) => {
+      if (import.meta.env.DEV)
+        console.error("WebSocket connection error:", err);
+      setError(err);
+      if (socket.active) {
+        setConnectionState("reconnecting");
+        return;
+      }
+      setConnectionState("error");
+      clearTimeout(rejectedRetry);
+      rejectedRetry = setTimeout(
+        () => socket.connect(),
+        socket.io.reconnectionDelayMax(),
+      );
+    };
+    const handleReconnectAttempt = () => setConnectionState("reconnecting");
 
-  // Connect function ref (to break circular dependency)
-  const connectRef = useRef<(() => void) | null>(null);
-  const disconnectRef = useRef<(() => void) | null>(null);
+    socket.on("connect", handleConnect);
+    socket.on("disconnect", handleDisconnect);
+    socket.on("connect_error", handleConnectError);
+    socket.io.on("reconnect_attempt", handleReconnectAttempt);
 
-  // Event management: defined early to avoid hoisting issues.
-  const emitToListeners = useCallback((event: string, data: unknown) => {
-    const listeners = eventListenersRef.current.get(event);
-    if (listeners) {
-      listeners.forEach((callback) => {
-        try {
-          callback(data);
-        } catch (error) {
-          if (import.meta.env.DEV)
-            console.error(`Error in event listener for ${event}:`, error);
-        }
-      });
+    return () => {
+      clearTimeout(rejectedRetry);
+      socket.off("connect", handleConnect);
+      socket.off("disconnect", handleDisconnect);
+      socket.off("connect_error", handleConnectError);
+      socket.io.off("reconnect_attempt", handleReconnectAttempt);
+    };
+  }, [socket]);
+
+  useEffect(() => {
+    if (!autoConnect || authLoading) return;
+
+    socket.connect();
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [socket, autoConnect, authLoading]);
+
+  const lastIdentityRef = useRef<string | null | undefined>(undefined);
+  useEffect(() => {
+    if (authLoading) return;
+
+    const identity = user?.discordId ?? null;
+    if (lastIdentityRef.current === undefined) {
+      lastIdentityRef.current = identity;
+      return;
     }
-  }, []);
+    if (lastIdentityRef.current === identity) return;
+    lastIdentityRef.current = identity;
+
+    if (!autoConnect) return;
+    socket.disconnect().connect();
+  }, [socket, authLoading, user?.discordId, autoConnect]);
+
+  useEffect(() => {
+    const retryNow = () => {
+      if (document.visibilityState !== "visible") return;
+      if (!socket.active || socket.connected) return;
+      socket.disconnect().connect();
+    };
+
+    window.addEventListener("online", retryNow);
+    document.addEventListener("visibilitychange", retryNow);
+
+    return () => {
+      window.removeEventListener("online", retryNow);
+      document.removeEventListener("visibilitychange", retryNow);
+    };
+  }, [socket]);
+
+  const connect = useCallback(() => {
+    if (socket.connected) return;
+    setConnectionState("connecting");
+    socket.connect();
+  }, [socket]);
+
+  const disconnect = useCallback(() => {
+    socket.disconnect();
+  }, [socket]);
 
   const on = useCallback(
     (event: string, callback: (data: unknown) => void) => {
-      if (!eventListenersRef.current.has(event)) {
-        eventListenersRef.current.set(event, new Set());
-      }
-
-      eventListenersRef.current
-        .get(event)!
-        .add(callback as (data: unknown) => void);
-
-      // If socket exists, also register with socket.io
-      if (socket) {
-        socket.on(event, callback);
-      }
-
-      // Return unsubscribe function
+      socket.on(event, callback);
       return () => {
-        const listeners = eventListenersRef.current.get(event);
-        if (listeners) {
-          listeners.delete(callback as (data: unknown) => void);
-          if (listeners.size === 0) {
-            eventListenersRef.current.delete(event);
-          }
-        }
-
-        if (socket) {
-          socket.off(event, callback);
-        }
+        socket.off(event, callback);
       };
     },
     [socket],
@@ -125,24 +162,14 @@ export function WebSocketProvider({
 
   const off = useCallback(
     (event: string, callback: (data: unknown) => void) => {
-      const listeners = eventListenersRef.current.get(event);
-      if (listeners) {
-        listeners.delete(callback as (data: unknown) => void);
-        if (listeners.size === 0) {
-          eventListenersRef.current.delete(event);
-        }
-      }
-
-      if (socket) {
-        socket.off(event, callback);
-      }
+      socket.off(event, callback);
     },
     [socket],
   );
 
   const emit = useCallback(
     (event: string, data?: unknown, callback?: (response: unknown) => void) => {
-      if (!socket?.connected) {
+      if (!socket.connected) {
         if (import.meta.env.DEV)
           console.warn("Cannot emit: WebSocket not connected");
         return false;
@@ -159,184 +186,13 @@ export function WebSocketProvider({
     [socket],
   );
 
-  // Handle reconnection with exponential backoff.
-  const handleReconnect = useCallback(() => {
-    if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
-      if (import.meta.env.DEV)
-        console.error("Max reconnection attempts reached");
-      setConnectionState("error");
-      setError(new Error("Failed to reconnect after multiple attempts"));
-      return;
-    }
-
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-    }
-
-    const delay = reconnectDelay * Math.pow(2, reconnectAttemptsRef.current);
-    reconnectAttemptsRef.current++;
-
-    if (import.meta.env.DEV) {
-      console.log(
-        `Reconnecting in ${delay}ms (attempt ${reconnectAttemptsRef.current}/${maxReconnectAttempts})`,
-      );
-    }
-
-    setConnectionState("reconnecting");
-    setStats((prev) => ({
-      ...prev,
-      reconnectAttempts: reconnectAttemptsRef.current,
-    }));
-
-    reconnectTimeoutRef.current = setTimeout(() => {
-      // Use ref to call connect
-      connectRef.current?.();
-    }, delay);
-  }, [maxReconnectAttempts, reconnectDelay]);
-
-  const connect = useCallback(() => {
-    if (socket?.connected) {
-      if (import.meta.env.DEV) console.warn("WebSocket already connected");
-      return;
-    }
-
-    const serverUrl = config.url || window.location.origin;
-    const path = config.path || "/socket.io";
-
-    if (import.meta.env.DEV)
-      console.log("Connecting to WebSocket server:", serverUrl);
-    setConnectionState("connecting");
-    setError(null);
-
-    // Create socket instance
-    const newSocket = io(serverUrl, {
-      path,
-      transports: config.transports || ["websocket", "polling"],
-      reconnection: false, // We handle reconnection manually
-      timeout: config.timeout || 10000,
-      auth: (cb) => {
-        const token = getAccessToken();
-        cb(token ? { token } : {});
-      },
-    });
-
-    setSocket(newSocket);
-
-    // Replay existing listeners onto the new socket so that
-    // subscriptions registered before the reconnect are not lost
-    for (const [event, callbacks] of eventListenersRef.current) {
-      for (const cb of callbacks) {
-        newSocket.on(event, cb);
-      }
-    }
-
-    // Connection successful
-    newSocket.on("connect", () => {
-      if (import.meta.env.DEV)
-        console.log("WebSocket connected:", newSocket.id);
-      setConnectionState("connected");
-      setError(null);
-      reconnectAttemptsRef.current = 0;
-      setStats((prev) => ({
-        ...prev,
-        connectedAt: new Date(),
-        reconnectAttempts: 0,
-      }));
-
-      // Emit custom event
-      emitToListeners("connect", { socketId: newSocket.id });
-    });
-
-    // Connection error
-    newSocket.on("connect_error", (err) => {
-      if (import.meta.env.DEV)
-        console.error("WebSocket connection error:", err);
-      setError(err);
-      setConnectionState("error");
-      handleReconnect();
-    });
-
-    // Disconnection
-    newSocket.on("disconnect", (reason) => {
-      if (import.meta.env.DEV) console.log("WebSocket disconnected:", reason);
-      setConnectionState("disconnected");
-      setStats((prev) => ({
-        ...prev,
-        connectedAt: null,
-      }));
-
-      // Emit custom event
-      emitToListeners("disconnect", { reason });
-
-      // Only reconnect if not a manual disconnect
-      if (reason !== "io client disconnect") {
-        handleReconnect();
-      }
-    });
-
-    // Generic error
-    newSocket.on("error", (err) => {
-      if (import.meta.env.DEV) console.error("WebSocket error:", err);
-      setError(err);
-      emitToListeners("error", err);
-    });
-
-    // Pong response for latency measurement
-    newSocket.on("pong", (latency: number) => {
-      setStats((prev) => ({
-        ...prev,
-        latency,
-      }));
-    });
-
-    return newSocket;
-  }, [config, emitToListeners, handleReconnect, socket?.connected]);
-
-  const disconnect = useCallback(() => {
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-      reconnectTimeoutRef.current = null;
-    }
-
-    if (socket) {
-      socket.disconnect();
-      setSocket(null);
-    }
-
-    setConnectionState("disconnected");
-    setStats({
-      connectedAt: null,
-      reconnectAttempts: 0,
-      latency: null,
-    });
-  }, [socket]);
-
-  // Update connect ref when connect changes
-  useEffect(() => {
-    connectRef.current = connect;
-    disconnectRef.current = disconnect;
-  }, [connect, disconnect]);
-
-  const ping = useCallback(() => {
-    if (socket?.connected) {
-      const start = Date.now();
-      socket.emit("ping", () => {
-        const latency = Date.now() - start;
-        setStats((prev) => ({
-          ...prev,
-          latency,
-        }));
-      });
-    }
-  }, [socket]);
-
   const subscribe = useCallback(
     (
       type: SubscriptionType,
       serverId?: number,
     ): Promise<{ success: boolean; error?: string }> => {
       return new Promise((resolve) => {
-        if (!socket?.connected) {
+        if (!socket.connected) {
           resolve({ success: false, error: "Not connected" });
           return;
         }
@@ -371,7 +227,7 @@ export function WebSocketProvider({
       serverId?: number,
     ): Promise<{ success: boolean; error?: string }> => {
       return new Promise((resolve) => {
-        if (!socket?.connected) {
+        if (!socket.connected) {
           resolve({ success: false, error: "Not connected" });
           return;
         }
@@ -406,7 +262,7 @@ export function WebSocketProvider({
       options?: { includeMessages?: boolean; messageLimit?: number },
     ): Promise<InitialDataPayload | ServerInitialDataPayload | null> => {
       return new Promise((resolve) => {
-        if (!socket?.connected) {
+        if (!socket.connected) {
           if (import.meta.env.DEV)
             console.warn("Cannot request initial data: Not connected");
           resolve(null);
@@ -434,66 +290,17 @@ export function WebSocketProvider({
     [socket],
   );
 
-  useEffect(() => {
-    if (config.autoConnect !== false && !authLoading) {
-      connectRef.current?.();
-    }
-
-    return () => {
-      disconnectRef.current?.();
-    };
-  }, [config.autoConnect, authLoading]);
-
-  const lastIdentityRef = useRef<string | null | undefined>(undefined);
-  useEffect(() => {
-    if (authLoading) return;
-
-    const identity = user?.discordId ?? null;
-    if (lastIdentityRef.current === undefined) {
-      lastIdentityRef.current = identity;
-      return;
-    }
-    if (lastIdentityRef.current === identity) return;
-    lastIdentityRef.current = identity;
-
-    if (config.autoConnect === false) return;
-    disconnectRef.current?.();
-    connectRef.current?.();
-  }, [authLoading, user?.discordId, config.autoConnect]);
-
-  // Health check interval
-  useEffect(() => {
-    if (!config.healthCheckInterval || connectionState !== "connected") {
-      return;
-    }
-
-    const interval = setInterval(() => {
-      ping();
-    }, config.healthCheckInterval);
-
-    return () => clearInterval(interval);
-  }, [config.healthCheckInterval, connectionState, ping]);
-
   const value: WebSocketContextType = useMemo(
     () => ({
-      // Connection state
       socket,
       connectionState,
       error,
-      stats,
       isConnected: connectionState === "connected",
-
-      // Connection methods
       connect,
       disconnect,
-      ping,
-
-      // Event methods
       on,
       off,
       emit,
-
-      // Subscription methods
       subscribe,
       unsubscribe,
       requestInitialData,
@@ -502,10 +309,8 @@ export function WebSocketProvider({
       socket,
       connectionState,
       error,
-      stats,
       connect,
       disconnect,
-      ping,
       on,
       off,
       emit,

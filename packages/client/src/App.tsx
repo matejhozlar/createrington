@@ -553,14 +553,7 @@ function App() {
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <WebSocketProvider
-            config={{
-              autoConnect: true,
-              maxReconnectAttempts: 5,
-              reconnectDelay: 1000,
-              healthCheckInterval: 30000,
-            }}
-          >
+          <WebSocketProvider>
             <ServerDataProvider autoSubscribe>
               <PlayerDataProvider autoSubscribe>
                 <ToastProvider>

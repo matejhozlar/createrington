@@ -8,15 +8,6 @@ import type {
 export type ConnectionState =
   "disconnected" | "connecting" | "connected" | "reconnecting" | "error";
 
-export interface WebSocketStats {
-  /** When connection was established */
-  connectedAt: Date | null;
-  /** Number of reconnection attempts */
-  reconnectAttempts: number;
-  /** Current latency in ms */
-  latency: number | null;
-}
-
 export interface WebSocketConfig {
   /** WebSocket server URL (defaults to window.location.origin) */
   url?: string;
@@ -28,26 +19,22 @@ export interface WebSocketConfig {
   timeout?: number;
   /** Auto-connect on mount (defaults to true) */
   autoConnect?: boolean;
-  /** Max reconnection attempts (defaults to 5) */
-  maxReconnectAttempts?: number;
   /** Initial reconnect delay in ms (defaults to 1000) */
-  reconnectDelay?: number;
-  /** Health check interval in ms (optional) */
-  healthCheckInterval?: number;
+  reconnectionDelay?: number;
+  /** Upper bound on the reconnect delay in ms (defaults to 30000) */
+  reconnectionDelayMax?: number;
 }
 
 export interface WebSocketContextType {
   // Connection state
-  socket: Socket | null;
+  socket: Socket;
   connectionState: ConnectionState;
   error: Error | null;
-  stats: WebSocketStats;
   isConnected: boolean;
 
   // Connection methods
   connect: () => void;
   disconnect: () => void;
-  ping: () => void;
 
   // Event methods (using unknown for type safety)
   on: (event: string, callback: (data: unknown) => void) => () => void;
