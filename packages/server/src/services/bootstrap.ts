@@ -35,6 +35,7 @@ import { GalleryService } from "./gallery";
 import { PuppeteerService } from "./puppeteer";
 import { AiService } from "./ai";
 import { AutoMessageService } from "./discord/auto-message";
+import { lotteryService } from "./lottery";
 import { maintenanceService } from "./maintenance";
 import { MaintenanceScheduler } from "./maintenance/scheduler";
 import { DonationService } from "./donation/donation.service";
@@ -466,6 +467,14 @@ export function registerServices(): void {
   );
 
   container.on("serviceReady", async (serviceName) => {
+    if (serviceName === Services.DATABASE) {
+      lotteryService
+        .initialize()
+        .catch((err) =>
+          logger.error("LotteryService initialization failed:", err),
+        );
+    }
+
     // Wire message cache into playtime manager for server shutdown detection
     if (serviceName === Services.MESSAGE_CACHE) {
       const playtimeManager = await container.get(

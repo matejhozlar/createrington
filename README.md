@@ -55,8 +55,8 @@ The **workshop** lets players suggest and upvote mods for the next modpack
 season, with CurseForge metadata pulled in automatically and a per-player voting
 budget. **Structure packs** rotate through a weighted pool that players can see
 and influence. **Parties and chunk claims** sync land ownership between the game
-and the portal. **Donations** run through Stripe. Support tickets round out the
-player-facing surface.
+and the portal. **Donations** run through Stripe. A lottery and support tickets
+round out the player-facing surface.
 
 ### Admin dashboard
 

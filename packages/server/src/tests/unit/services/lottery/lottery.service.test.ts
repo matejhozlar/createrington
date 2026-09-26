@@ -1,0 +1,357 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+
+const state = vi.hoisted(() => ({
+  failTransaction: false,
+  holdTransaction: null as Promise<void> | null,
+  deducted: [] as Array<{ uuid: string; amount: number }>,
+  credited: [] as Array<{ uuid: string; amount: number }>,
+  rows: [] as string[],
+  ledger: [] as Array<{ transactionType: string; createdAt: string }>,
+}));
+
+vi.mock("@/config", () => ({
+  default: {
+    envMode: { isDev: false },
+    economy: {
+      lottery: {
+        durationMs: 2 * 60 * 1000,
+        minAmount: 10,
+        startCooldownMs: 60 * 60 * 1000,
+      },
+    },
+  },
+}));
+
+vi.mock("@/db", () => ({
+  db: {
+    inTransaction: async (fn: (tx: unknown) => Promise<void>) => {
+      if (state.holdTransaction) await state.holdTransaction;
+      const deductedBefore = state.deducted.length;
+      const rowsBefore = state.rows.length;
+      try {
+        await fn({
+          lottery: {
+            participant: {
+              create: async (row: { minecraftUuid: string }) => {
+                state.rows.push(row.minecraftUuid);
+              },
+            },
+          },
+        });
+        if (state.failTransaction) throw new Error("db down");
+      } catch (error) {
+        state.deducted.length = deductedBefore;
+        state.rows.length = rowsBefore;
+        throw error;
+      }
+    },
+    lottery: {
+      participant: {
+        findAll: async () => [],
+        drop: async () => {
+          state.rows = [];
+        },
+      },
+    },
+  },
+  Q: {
+    player: {
+      balance: {
+        transaction: {
+          findAll: async (
+            filter: { transactionType: string },
+            options: { limit: number },
+          ) =>
+            state.ledger
+              .filter((e) => e.transactionType === filter.transactionType)
+              .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+              .slice(0, options.limit),
+        },
+      },
+    },
+  },
+  R: {
+    balanceRepo: {
+      deduct: async (uuid: string, amount: number) => {
+        state.deducted.push({ uuid, amount });
+      },
+      add: async (uuid: string, amount: number) => {
+        state.credited.push({ uuid, amount });
+      },
+    },
+  },
+}));
+
+vi.mock("@/db/repositories/balance", () => ({
+  BalanceTransactionType: {
+    LOTTERY_ENTRY: "lottery_entry",
+    LOTTERY_WIN: "lottery_win",
+    LOTTERY_REFUND: "lottery_refund",
+  },
+}));
+
+vi.mock("@/db/repositories/balance/utils", () => ({
+  BalanceUtils: {
+    toStorage: (amount: number) => Math.round(amount * 100),
+    fromStorage: (stored: number) => stored / 100,
+    formatTrimmed: (stored: number) => String(stored / 100),
+  },
+}));
+
+vi.mock("@/services", () => ({
+  getService: async () => ({ send: async () => {} }),
+  Services: { MESSAGE_SERVICE: "MESSAGE_SERVICE" },
+}));
+
+vi.mock("@/discord/constants", () => ({
+  Discord: { Channels: { railsNSails: { MINECRAFT_CHAT: "chat" } } },
+}));
+
+vi.mock("@/app/middleware", () =>
+  vi.importActual("@/app/middleware/error-handler"),
+);
+
+import { LotteryService } from "@/services/lottery/lottery.service";
+import { LotteryCooldownError } from "@/services/lottery/errors";
+import { ConflictError } from "@/app/middleware/error-handler";
+
+const T0 = new Date("2026-09-03T12:00:00.000Z");
+const SECOND = 1000;
+const MINUTE = 60 * SECOND;
+
+function at(offsetMs: number): string {
+  return new Date(T0.getTime() + offsetMs).toISOString();
+}
+
+describe("LotteryService", () => {
+  let service: LotteryService;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(T0);
+    state.failTransaction = false;
+    state.holdTransaction = null;
+    state.deducted = [];
+    state.credited = [];
+    state.rows = [];
+    state.ledger = [];
+    service = new LotteryService();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("refuses a second round within the hour even after the first resolved", async () => {
+    await service.start("host", "Host", 50);
+    await vi.advanceTimersByTimeAsync(2 * MINUTE);
+    expect(service.isActive()).toBe(false);
+    expect(state.credited).toEqual([{ uuid: "host", amount: 50 }]);
+
+    const failure = service.start("other", "Other", 50);
+    await expect(failure).rejects.toBeInstanceOf(LotteryCooldownError);
+    await expect(failure).rejects.toMatchObject({
+      statusCode: 409,
+      code: "LOTTERY_COOLDOWN",
+      message: "Next lottery can start in 58 minutes",
+      nextStartAt: new Date(T0.getTime() + 60 * MINUTE),
+      details: { nextStartAt: "2026-09-03T13:00:00.000Z" },
+    });
+    expect(state.deducted).toEqual([{ uuid: "host", amount: 50 }]);
+  });
+
+  it("still refuses one second before the hour is up, then allows the next second", async () => {
+    await service.start("host", "Host", 50);
+    await vi.advanceTimersByTimeAsync(60 * MINUTE - SECOND);
+
+    await expect(service.start("other", "Other", 20)).rejects.toMatchObject({
+      message: "Next lottery can start in 1 second",
+    });
+
+    await vi.advanceTimersByTimeAsync(SECOND);
+
+    await expect(service.start("other", "Other", 20)).resolves.toMatchObject({
+      success: true,
+      entryAmount: 20,
+    });
+    expect(service.isActive()).toBe(true);
+  });
+
+  it("reports an active round as in progress rather than on cooldown", async () => {
+    await service.start("host", "Host", 50);
+
+    await expect(service.start("other", "Other", 50)).rejects.toThrow(
+      "A lottery is already in progress",
+    );
+  });
+
+  it("does not arm the cooldown when the start fails", async () => {
+    state.failTransaction = true;
+    await expect(service.start("host", "Host", 50)).rejects.toThrow("db down");
+    expect(service.isActive()).toBe(false);
+
+    state.failTransaction = false;
+    await expect(service.start("host", "Host", 50)).resolves.toMatchObject({
+      success: true,
+    });
+  });
+
+  it("leaves joining untouched by the cooldown", async () => {
+    await service.start("host", "Host", 50);
+
+    await expect(service.join("other", "Other", 30)).resolves.toMatchObject({
+      totalPot: 80,
+      participantCount: 2,
+    });
+  });
+
+  describe("start pending window", () => {
+    it("rejects a join while the host's start transaction is in flight", async () => {
+      let release!: () => void;
+      state.holdTransaction = new Promise((resolve) => (release = resolve));
+
+      const start = service.start("host", "Host", 50);
+      const join = service.join("other", "Other", 30);
+      await expect(join).rejects.toBeInstanceOf(ConflictError);
+      await expect(join).rejects.toMatchObject({
+        statusCode: 409,
+        message: "The lottery is still starting, try again in a moment",
+      });
+      expect(state.deducted).toEqual([]);
+
+      release();
+      await expect(start).resolves.toMatchObject({ success: true });
+      await expect(service.join("other", "Other", 30)).resolves.toMatchObject({
+        totalPot: 80,
+        participantCount: 2,
+      });
+    });
+
+    it("does not fire the resolution timer while the start transaction is in flight", async () => {
+      let release!: () => void;
+      state.holdTransaction = new Promise((resolve) => (release = resolve));
+
+      const start = service.start("host", "Host", 50);
+      await vi.advanceTimersByTimeAsync(2 * MINUTE);
+      expect(state.credited).toEqual([]);
+      expect(service.isActive()).toBe(true);
+
+      release();
+      await expect(start).resolves.toMatchObject({ success: true });
+      await vi.advanceTimersByTimeAsync(2 * MINUTE);
+      expect(state.credited).toEqual([{ uuid: "host", amount: 50 }]);
+      expect(service.isActive()).toBe(false);
+    });
+
+    it("leaves the rejected joiner untouched when the start then fails", async () => {
+      let release!: () => void;
+      state.holdTransaction = new Promise((resolve) => (release = resolve));
+      state.failTransaction = true;
+
+      const start = service.start("host", "Host", 50);
+      await expect(service.join("other", "Other", 30)).rejects.toMatchObject({
+        statusCode: 409,
+        message: "The lottery is still starting, try again in a moment",
+      });
+
+      release();
+      await expect(start).rejects.toThrow("db down");
+      expect(service.isActive()).toBe(false);
+      expect(state.deducted).toEqual([]);
+      expect(state.credited).toEqual([]);
+      await expect(service.join("other", "Other", 30)).rejects.toThrow(
+        "No lottery is currently active",
+      );
+    });
+  });
+
+  describe("resolve with joins in flight", () => {
+    it("excludes a join whose transaction fails while the round resolves", async () => {
+      await service.start("host", "Host", 50);
+
+      let release!: () => void;
+      state.holdTransaction = new Promise((resolve) => (release = resolve));
+      state.failTransaction = true;
+      const join = service.join("other", "Other", 30);
+
+      await vi.advanceTimersByTimeAsync(2 * MINUTE);
+      expect(state.credited).toEqual([]);
+      expect(service.isActive()).toBe(true);
+
+      release();
+      await expect(join).rejects.toThrow("db down");
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(state.credited).toEqual([{ uuid: "host", amount: 50 }]);
+      expect(state.rows).toEqual([]);
+      expect(service.isActive()).toBe(false);
+    });
+
+    it("counts a join that commits while the round resolves and leaves no orphan row", async () => {
+      await service.start("host", "Host", 50);
+
+      let release!: () => void;
+      state.holdTransaction = new Promise((resolve) => (release = resolve));
+      const join = service.join("other", "Other", 30);
+
+      await vi.advanceTimersByTimeAsync(2 * MINUTE);
+      expect(state.credited).toEqual([]);
+
+      await expect(service.join("late", "Late", 10)).rejects.toThrow(
+        "The lottery has just ended",
+      );
+
+      release();
+      await expect(join).resolves.toMatchObject({
+        totalPot: 80,
+        participantCount: 2,
+      });
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(state.credited).toHaveLength(1);
+      expect(state.credited[0].amount).toBe(80);
+      expect(state.deducted).toEqual([
+        { uuid: "host", amount: 50 },
+        { uuid: "other", amount: 30 },
+      ]);
+      expect(state.rows).toEqual([]);
+      expect(service.isActive()).toBe(false);
+    });
+  });
+
+  describe("initialize", () => {
+    it("restores the cooldown from the newest lottery entry in the ledger", async () => {
+      state.ledger = [
+        { transactionType: "lottery_entry", createdAt: at(-50 * MINUTE) },
+        { transactionType: "lottery_entry", createdAt: at(-10 * MINUTE) },
+        { transactionType: "lottery_win", createdAt: at(-5 * MINUTE) },
+      ];
+
+      await service.initialize();
+
+      await expect(service.start("host", "Host", 50)).rejects.toMatchObject({
+        nextStartAt: new Date(T0.getTime() + 50 * MINUTE),
+      });
+    });
+
+    it("ignores ledger entries older than the cooldown", async () => {
+      state.ledger = [
+        { transactionType: "lottery_entry", createdAt: at(-61 * MINUTE) },
+      ];
+
+      await service.initialize();
+
+      await expect(service.start("host", "Host", 50)).resolves.toMatchObject({
+        success: true,
+      });
+    });
+
+    it("starts open with an empty ledger", async () => {
+      await service.initialize();
+
+      await expect(service.start("host", "Host", 50)).resolves.toMatchObject({
+        success: true,
+      });
+    });
+  });
+});

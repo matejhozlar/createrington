@@ -77,6 +77,9 @@ const sections = [
           Exploiting bugs or glitches for economic gain is a violation of these
           terms
         </li>
+        <li>
+          Lottery participation is voluntary and uses in-game currency only
+        </li>
       </ul>
     ),
   },

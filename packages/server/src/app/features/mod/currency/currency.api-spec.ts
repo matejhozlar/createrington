@@ -4,7 +4,7 @@ export default defineApiSpec({
   name: "Currency",
   prefix: "/api/currency",
   description:
-    "In-game economy operations: balance, payments, deposits, withdrawals, daily rewards and leaderboard",
+    "In-game economy operations: balance, payments, deposits, withdrawals, daily rewards, leaderboard, lottery",
   auth: "Server IP + Mod JWT",
   mod: true,
   enveloped: true,
@@ -239,6 +239,49 @@ export default defineApiSpec({
           },
           { name: "page", type: "int" },
           { name: "hasMore", type: "boolean" },
+        ],
+      },
+    },
+    {
+      method: "POST",
+      path: "/lottery/start",
+      name: "LotteryStart",
+      description:
+        "Starts a new lottery round with the given buy-in amount. Only one round runs at a time, and a new round can start at most once every 60 minutes server-wide, counted from the previous start regardless of how that round ended. While the cooldown is running the request is rejected with 409, code LOTTERY_COOLDOWN, and error.details.nextStartAt carries the ISO 8601 time the next round may begin. The same limit applies to lotteries started from Discord.",
+      request: {
+        name: "LotteryStartRequest",
+        fields: [
+          { name: "amount", type: "double", description: "Buy-in amount" },
+        ],
+      },
+      response: {
+        name: "LotteryStartResponse",
+        fields: [
+          { name: "entryAmount", type: "double" },
+          {
+            name: "endsAt",
+            type: "string",
+            description: "ISO 8601 timestamp when the lottery resolves",
+          },
+        ],
+      },
+    },
+    {
+      method: "POST",
+      path: "/lottery/join",
+      name: "LotteryJoin",
+      description:
+        "Joins an active lottery round with the given bet amount. For a brief moment after a round is started, while the host's entry is still committing, the request is rejected with 409 and can safely be retried right away. Once the round has begun resolving, the request is rejected with 400, meaning the round is over and the request should not be retried.",
+      request: {
+        name: "LotteryJoinRequest",
+        fields: [{ name: "amount", type: "double", description: "Bet amount" }],
+      },
+      response: {
+        name: "LotteryJoinResponse",
+        fields: [
+          { name: "entryAmount", type: "double" },
+          { name: "totalPot", type: "double" },
+          { name: "participantCount", type: "int" },
         ],
       },
     },

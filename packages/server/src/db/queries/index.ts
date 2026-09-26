@@ -31,6 +31,7 @@ export { FeatureFlagQueries } from "./feature/flag";
 export { GallerySubmissionQueries } from "./gallery/submission";
 export { GallerySubmissionCreditQueries } from "./gallery/submission/credit";
 export { LeaderboardMessageQueries } from "./leaderboard/message";
+export { LotteryParticipantQueries } from "./lottery/participant";
 export { ModpackQueries } from "./modpack";
 export { ModpackModQueries } from "./modpack/mod";
 export { ModpackPublishQueries } from "./modpack/publish";
