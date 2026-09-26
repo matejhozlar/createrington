@@ -112,6 +112,24 @@ function RankChips({ ranks }: { ranks: ComparedPlayer["ranks"] }) {
   );
 }
 
+const WIDEST_RANKS: ComparedPlayer["ranks"] = {
+  playtime: 9999,
+  balance: 9999,
+  records: 9999,
+};
+
+function CaptionSizer() {
+  return (
+    <div
+      aria-hidden
+      className="invisible flex min-w-0 flex-col items-center gap-1.5 md:gap-2"
+    >
+      <span className="h-11" />
+      <RankChips ranks={WIDEST_RANKS} />
+    </div>
+  );
+}
+
 function Tally({ value, className }: { value: number; className: string }) {
   return (
     <span
@@ -155,7 +173,7 @@ function ScoreBoard({
       </div>
       <span
         aria-hidden
-        className="mt-1 max-w-32 truncate text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground md:max-w-none md:text-xs"
+        className="mt-1 w-24 truncate text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground md:w-44 md:text-xs"
       >
         {leader === null ? "Dead even" : `${names[leader]} leads`}
       </span>
@@ -322,7 +340,7 @@ export function CompareHero({
                     <button
                       type="button"
                       className={cn(
-                        "mb-4 flex aspect-[2/3] cursor-pointer items-center justify-center rounded-2xl border-2 border-dashed border-(--side)/35 bg-(--side)/5 text-(--side)/70 transition-colors outline-none hover:border-(--side)/60 hover:text-(--side) focus-visible:ring-[3px] focus-visible:ring-ring/50",
+                        "flex aspect-[2/3] -translate-y-4 cursor-pointer items-center justify-center rounded-2xl border-2 border-dashed border-(--side)/35 bg-(--side)/5 text-(--side)/70 transition-colors outline-none hover:border-(--side)/60 hover:text-(--side) focus-visible:ring-[3px] focus-visible:ring-ring/50",
                         FIGURE_HEIGHT,
                       )}
                     >
@@ -341,11 +359,12 @@ export function CompareHero({
               <div
                 key={`caption-${side}`}
                 className={cn(
-                  "row-start-2 flex min-w-0 flex-col items-center gap-1.5 self-start pt-4 md:gap-2 md:pt-6",
+                  "row-start-2 grid min-w-0 justify-items-center self-start pt-4 *:col-start-1 *:row-start-1 *:max-w-full md:pt-6",
                   slot.column,
                 )}
                 style={sideStyle}
               >
+                <CaptionSizer />
                 {player ? (
                   <div className="lb-hero-caption flex min-w-0 flex-col items-center gap-1.5 md:gap-2">
                     {picker(
@@ -370,7 +389,7 @@ export function CompareHero({
                     aria-hidden
                     className="flex flex-col items-center gap-1.5 md:gap-2"
                   >
-                    <span className="my-1.5 h-8 w-28 animate-pulse rounded-lg bg-white/8 md:h-9 md:w-44" />
+                    <span className="my-1.5 h-8 w-28 animate-pulse rounded-lg bg-white/8 md:w-44" />
                     <span className="h-5 w-32 animate-pulse rounded-full bg-white/5 md:w-48" />
                   </div>
                 ) : (
