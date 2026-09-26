@@ -256,7 +256,7 @@ function generateEndpointsFile(specs: ApiModuleSpec[]): string {
 }
 
 function endpointConstantName(moduleName: string, ep: EndpointSpec): string {
-  // e.g. Currency + "/history" → CURRENCY_HISTORY
+  // e.g. Currency + "/lottery/start" → CURRENCY_LOTTERY_START
   const pathPart = ep.path.replace(/^\//, "").replace(/\//g, "_").toUpperCase();
 
   const prefix = moduleName.toUpperCase();

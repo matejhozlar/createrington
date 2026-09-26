@@ -5,6 +5,7 @@ import {
 } from "@/app/middleware";
 import { R } from "@/db";
 import { BalanceTransactionType } from "@/db/repositories/balance";
+import { lotteryService } from "@/services/lottery";
 import { rewardService } from "@/services/reward/reward.service";
 import { formatDuration } from "@/utils/format";
 import type { Request, Response } from "express";
@@ -327,6 +328,63 @@ export class CurrencyController {
         })),
         page,
         hasMore: transactions.length === perPage,
+      },
+    });
+  }
+
+  /**
+   * POST /api/currency/lottery/start
+   * Body: { amount: number }
+   *
+   * Starts a new lottery round with the given buy-in amount.
+   */
+  static async startLottery(req: Request, res: Response): Promise<void> {
+    const { uuid, name } = getAuthedPlayer(req);
+    const { amount: rawAmount } = req.body;
+
+    if (rawAmount == null) {
+      throw new BadRequestError("amount is required");
+    }
+
+    const amount = parsePositiveMoney(rawAmount, "amount");
+
+    const result = await lotteryService.start(uuid, name, amount);
+
+    respondSuccess(res, {
+      message: `Lottery started by ${name} with entry ${amount}`,
+      playerMessage: result.message,
+      data: {
+        entryAmount: result.entryAmount,
+        endsAt: result.endsAt,
+      },
+    });
+  }
+
+  /**
+   * POST /api/currency/lottery/join
+   * Body: { amount: number }
+   *
+   * Joins an active lottery round with the given buy-in amount.
+   */
+  static async joinLottery(req: Request, res: Response): Promise<void> {
+    const { uuid, name } = getAuthedPlayer(req);
+    const { amount: rawAmount } = req.body;
+
+    if (rawAmount == null) {
+      throw new BadRequestError("amount is required");
+    }
+
+    const amount = parsePositiveMoney(rawAmount, "amount");
+
+    const result = await lotteryService.join(uuid, name, amount);
+
+    respondSuccess(res, {
+      message: `${name} joined lottery with entry ${amount}`,
+      playerMessage: result.message,
+      data: {
+        entryAmount: result.entryAmount,
+        totalPot: result.totalPot,
+        participantCount: result.participantCount,
       },
     });
   }
