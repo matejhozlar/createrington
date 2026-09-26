@@ -117,7 +117,7 @@ export function StatPicker({
             role="combobox"
             aria-expanded={open}
             className={cn(
-              "group flex h-9 min-w-0 items-center gap-2 rounded-md border border-input bg-transparent px-3 text-sm whitespace-nowrap shadow-xs transition-[color,box-shadow] outline-none hover:bg-input/50 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30",
+              "group flex h-9 min-w-0 cursor-pointer items-center gap-2 rounded-md border border-input bg-transparent px-3 text-sm whitespace-nowrap shadow-xs transition-[color,box-shadow] outline-none hover:bg-input/50 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30",
               value && "border-(--role)/50 text-(--role)",
             )}
           >
