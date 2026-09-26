@@ -62,16 +62,16 @@ export async function replaceForceloadState(
     );
 
     const playerIdByUuid = new Map(
-      playerRows.map((row) => [row.playerUuid, row.id]),
+      playerRows.map((row) => [row.playerUuid.toLowerCase(), row.id]),
     );
     const partyIdByUuid = new Map(
-      partyRows.map((row) => [row.partyId, row.id]),
+      partyRows.map((row) => [row.partyId.toLowerCase(), row.id]),
     );
 
     await tx.server.forceload.member.createMany(
       parties.flatMap((party) =>
         party.members.map((m) => ({
-          partyId: partyIdByUuid.get(party.partyId)!,
+          partyId: partyIdByUuid.get(party.partyId.toLowerCase())!,
           playerUuid: m.uuid,
         })),
       ),
@@ -80,7 +80,7 @@ export async function replaceForceloadState(
     await tx.server.forceload.chunk.createMany([
       ...players.flatMap((p) =>
         p.chunks.map((c) => ({
-          playerId: playerIdByUuid.get(p.uuid)!,
+          playerId: playerIdByUuid.get(p.uuid.toLowerCase())!,
           dimension: c.dimension,
           x: c.x,
           z: c.z,
@@ -89,7 +89,7 @@ export async function replaceForceloadState(
       ),
       ...parties.flatMap((party) =>
         party.chunks.map((c) => ({
-          partyId: partyIdByUuid.get(party.partyId)!,
+          partyId: partyIdByUuid.get(party.partyId.toLowerCase())!,
           dimension: c.dimension,
           x: c.x,
           z: c.z,
