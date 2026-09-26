@@ -6,6 +6,7 @@ import {
   WORDMARK_LAYERS,
 } from "../engine/settings";
 import type {
+  MinecraftMode,
   OutputSettings,
   RenderSettings,
   TextType,
@@ -14,6 +15,7 @@ import type {
 
 const STORAGE_KEY = "title-generator-project";
 const STORAGE_VERSION = 1;
+const MINECRAFT_MODES: MinecraftMode[] = ["1.20", "mojang"];
 
 type Project = {
   layers: TitleLayer[];
@@ -41,13 +43,17 @@ function loadProject(): Project {
       return wordmarkProject();
     }
     const layers = stored.layers.map((layer) => createLayer(layer));
+    const output = { ...DEFAULT_OUTPUT, ...stored.output };
+    if (!MINECRAFT_MODES.includes(output.minecraftMode)) {
+      output.minecraftMode = DEFAULT_OUTPUT.minecraftMode;
+    }
     return {
       layers,
       selectedId: layers.some((layer) => layer.id === stored.selectedId)
         ? stored.selectedId!
         : layers[0].id,
       render: { ...DEFAULT_RENDER, ...stored.render },
-      output: { ...DEFAULT_OUTPUT, ...stored.output },
+      output,
     };
   } catch {
     return wordmarkProject();

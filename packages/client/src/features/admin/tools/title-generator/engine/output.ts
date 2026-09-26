@@ -1,13 +1,10 @@
-import { autoCrop, createFrame, loadImage, type Frame } from "./canvas";
+import { autoCrop, createFrame, type Frame } from "./canvas";
 import type { OutputSettings } from "./types";
 
-const LEGACY_TITLE_TEMPLATE =
-  "/assets/title-generator/minecraft-title-1.19.png";
-
-async function minecraftFrame(
+function minecraftFrame(
   image: HTMLCanvasElement,
   mode: OutputSettings["minecraftMode"],
-): Promise<Frame> {
+): Frame {
   const aspect = image.width / image.height;
   let w = image.width;
   let h = image.height;
@@ -41,46 +38,6 @@ async function minecraftFrame(
       (176 - newHeight) / 2,
       newWidth,
       newHeight,
-    );
-    return frame;
-  }
-
-  if (mode === "1.19") {
-    const base = await loadImage(LEGACY_TITLE_TEMPLATE);
-    let pre = capped;
-    if (cw / ch < 137 / 22) {
-      pre = createFrame(Math.floor((ch / 22) * 137), ch);
-      pre.ctx.drawImage(
-        capped.canvas,
-        Math.floor((pre.canvas.width - cw) / 2),
-        0,
-      );
-    } else if (cw / ch > 137 / 22) {
-      pre = createFrame(cw, Math.floor((cw / 137) * 22));
-      pre.ctx.drawImage(
-        capped.canvas,
-        0,
-        Math.floor((pre.canvas.height - ch) / 2),
-      );
-    }
-    const pw = pre.canvas.width;
-    const ph = pre.canvas.height;
-    const side = Math.floor((pw / 137) * 128);
-    const frame = createFrame(side, side);
-    frame.ctx.imageSmoothingEnabled = false;
-    frame.ctx.drawImage(base, 0, 0, side, side);
-    const split = Math.floor((pw / 274) * 155);
-    frame.ctx.drawImage(pre.canvas, 0, 0, split, ph, 0, 0, split, ph);
-    frame.ctx.drawImage(
-      pre.canvas,
-      split,
-      0,
-      pw - split,
-      ph,
-      0,
-      Math.floor((ph / 44) * 45),
-      pw - split,
-      ph,
     );
     return frame;
   }

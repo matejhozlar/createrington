@@ -32,7 +32,6 @@ const LAYOUTS: { value: OutputMode; label: string }[] = [
 
 const MINECRAFT_MODES: { value: MinecraftMode; label: string }[] = [
   { value: "1.20", label: "1.20+ title texture" },
-  { value: "1.19", label: "1.19- title texture" },
   { value: "mojang", label: "Mojang Studios texture" },
 ];
 

@@ -185,7 +185,7 @@ export type TextureArgs = {
 
 export type OutputMode = "normal" | "square" | "custom" | "minecraft";
 
-export type MinecraftMode = "1.20" | "1.19" | "mojang";
+export type MinecraftMode = "1.20" | "mojang";
 
 export type OutputSettings = {
   mode: OutputMode;
