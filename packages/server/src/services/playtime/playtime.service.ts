@@ -553,11 +553,7 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
     }
   }
 
-  /**
-   * Rolls back a progress slice whose write failed so the next heartbeat
-   * credits its window again. Returns false (no-op) once the session has
-   * ended or advanced past that slice.
-   */
+  /** Hands a failed progress slice back so the next heartbeat re-credits it; false once the session ended or moved past it. */
   public revertProgress(event: SessionProgressEvent): boolean {
     const session = this.activeSessions.get(event.uuid);
     if (

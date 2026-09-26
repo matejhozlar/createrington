@@ -106,6 +106,7 @@ describe("PlaytimeRepository (integration)", () => {
       uuid: STEVE,
       username: "steve",
       serverId,
+      previousPlayTicks: ticks(1000),
       credit: {
         periodStart: T0,
         periodEnd: at(60),
@@ -132,6 +133,7 @@ describe("PlaytimeRepository (integration)", () => {
       uuid: STEVE,
       username: "steve",
       serverId,
+      previousPlayTicks: ticks(1045),
       credit: {
         periodStart: at(60),
         periodEnd: at(120),
@@ -233,6 +235,7 @@ describe("PlaytimeRepository (integration)", () => {
         uuid: UNREGISTERED,
         username: "steve",
         serverId,
+        previousPlayTicks: ticks(1000),
         credit: {
           periodStart: T0,
           periodEnd: at(60),
@@ -293,6 +296,7 @@ describe("PlaytimeRepository (integration)", () => {
       uuid: STEVE,
       username: "steve",
       serverId,
+      previousPlayTicks: ticks(1000),
       credit: {
         periodStart: T0,
         periodEnd: at(600),
