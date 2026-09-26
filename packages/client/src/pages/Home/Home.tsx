@@ -44,6 +44,7 @@ export function Home() {
     Autoplay({ delay: 5000, stopOnInteraction: false }),
   );
   const [firstHeroLoaded, setFirstHeroLoaded] = useState(false);
+  const revealRemainingHeroes = () => setFirstHeroLoaded(true);
 
   // TODO: When converting to multiple servers, update this to use the selected server
   const serverId = 1;
@@ -275,9 +276,8 @@ export function Home() {
                     alt=""
                     fetchPriority={index === 0 ? "high" : "low"}
                     decoding="async"
-                    onLoad={
-                      index === 0 ? () => setFirstHeroLoaded(true) : undefined
-                    }
+                    onLoad={index === 0 ? revealRemainingHeroes : undefined}
+                    onError={index === 0 ? revealRemainingHeroes : undefined}
                     className="w-full h-full object-cover object-center"
                   />
                 )}
