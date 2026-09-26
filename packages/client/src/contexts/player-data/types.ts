@@ -21,7 +21,6 @@ export interface PlayerDataContextType {
 
   // Methods
   getPlayer: (uuid: string) => PlayerData | undefined;
-  getPlayerByUsername: (username: string) => PlayerData | undefined;
   getAllPlayers: () => PlayerData[];
   getServerPlayers: (serverId: number) => PlayerData[];
   isPlayerOnline: (uuid: string) => boolean;

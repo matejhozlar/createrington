@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { MessageSource as MessageSourceType } from "@createrington/shared/socket";
 import { MessageSource } from "@createrington/shared/socket";
 import { cn } from "@/lib/utils";
@@ -8,7 +9,7 @@ import { SOURCE_CONFIG } from "./constants";
 import type { MessageGroup } from "./types";
 import { formatTime } from "./utils";
 
-export function MessageGroupComponent({
+export const MessageGroupComponent = memo(function MessageGroupComponent({
   group,
   prevSource,
   tick,
@@ -110,4 +111,4 @@ export function MessageGroupComponent({
       </div>
     </>
   );
-}
+});

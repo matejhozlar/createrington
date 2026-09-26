@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { memo, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ArrowDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -36,7 +36,7 @@ function pinToBottom(
  * has scrolled up to read history, new messages don't yank them down;
  * instead a "jump to latest" pill appears.
  */
-export function MessageList({
+export const MessageList = memo(function MessageList({
   messages,
   awaitingReply,
   navigate,
@@ -173,4 +173,4 @@ export function MessageList({
       )}
     </div>
   );
-}
+});
