@@ -122,21 +122,31 @@ function Tally({ value, className }: { value: number; className: string }) {
   );
 }
 
+const IDLE_SCORE: StageScore = { counts: [0, 0], leader: null };
+
 function ScoreBoard({
   score,
   names,
 }: {
-  score: StageScore;
+  score: StageScore | null;
   names: [string, string];
 }) {
-  const [first, second] = score.counts;
+  const {
+    counts: [first, second],
+    leader,
+  } = score ?? IDLE_SCORE;
   const summary =
-    score.leader === null
+    leader === null
       ? `Dead even, ${first} to ${second}`
-      : `${names[score.leader]} leads ${Math.max(first, second)} to ${Math.min(first, second)}`;
+      : `${names[leader]} leads ${Math.max(first, second)} to ${Math.min(first, second)}`;
 
   return (
-    <div className="lb-hero-caption flex flex-col items-center [--enter-delay:0.5s]">
+    <div
+      className={cn(
+        "lb-hero-caption flex flex-col items-center [--enter-delay:0.5s]",
+        !score && "invisible",
+      )}
+    >
       <span className="sr-only">{summary}</span>
       <div className="flex items-baseline gap-2 text-4xl font-extrabold md:gap-3 md:text-7xl">
         <Tally value={first} className="text-(--left)" />
@@ -147,7 +157,7 @@ function ScoreBoard({
         aria-hidden
         className="mt-1 max-w-32 truncate text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground md:max-w-none md:text-xs"
       >
-        {score.leader === null ? "Dead even" : `${names[score.leader]} leads`}
+        {leader === null ? "Dead even" : `${names[leader]} leads`}
       </span>
     </div>
   );
@@ -245,7 +255,11 @@ export function CompareHero({
             >
               VS
             </span>
-            {score && <ScoreBoard score={score} names={names} />}
+            <ScoreBoard
+              key={score ? "live" : "idle"}
+              score={score}
+              names={names}
+            />
           </div>
 
           {SLOTS.map((slot, index) => {
