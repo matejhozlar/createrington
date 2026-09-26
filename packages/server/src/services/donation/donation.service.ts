@@ -138,38 +138,36 @@ export class DonationService {
     return true;
   }
 
-  /** Live subscription stats (active, cancelling, MRR cents); each row is verified against Stripe. */
+  /** Live subscription stats (active, cancelling, MRR cents), matched against one paged Stripe subscription listing. */
   async getSubscriptionStats(): Promise<{
     activeCount: number;
     cancellingCount: number;
     mrrCents: number;
   }> {
     const subscriptions = await donationRepo.findAllSubscriptions();
+    const amountBySubscription = new Map(
+      subscriptions.map((d) => [d.stripeSubscriptionId!, d.amountCents]),
+    );
 
     let activeCount = 0;
     let cancellingCount = 0;
     let mrrCents = 0;
 
-    await Promise.all(
-      subscriptions.map(async (donation) => {
-        try {
-          const sub = await this.stripe.subscriptions.retrieve(
-            donation.stripeSubscriptionId!,
-          );
+    if (amountBySubscription.size === 0) {
+      return { activeCount, cancellingCount, mrrCents };
+    }
 
-          if (sub.status === "canceled") return;
+    for await (const sub of this.stripe.subscriptions.list({ limit: 100 })) {
+      const amountCents = amountBySubscription.get(sub.id);
+      if (amountCents === undefined || sub.status === "canceled") continue;
 
-          if (sub.cancel_at_period_end) {
-            cancellingCount++;
-          } else {
-            activeCount++;
-            mrrCents += donation.amountCents;
-          }
-        } catch {
-          // Subscription no longer exists in Stripe
-        }
-      }),
-    );
+      if (sub.cancel_at_period_end) {
+        cancellingCount++;
+      } else {
+        activeCount++;
+        mrrCents += amountCents;
+      }
+    }
 
     return { activeCount, cancellingCount, mrrCents };
   }

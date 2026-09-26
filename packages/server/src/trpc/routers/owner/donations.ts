@@ -1,9 +1,9 @@
 import { z } from "zod";
 import { router, ownerProcedure } from "@/trpc/trpc";
-import { donationRepo } from "@/db";
+import { Q, donationRepo } from "@/db";
 import { getService, Services } from "@/services";
 import config from "@/config";
-import { paginationInput } from "@/trpc/utils";
+import { paginateQuery, paginationInput } from "@/trpc/utils";
 
 /** Owner donations router: paginated list and aggregate stats. */
 export const ownerDonationsRouter = router({
@@ -32,38 +32,32 @@ export const ownerDonationsRouter = router({
   list: ownerProcedure
     .meta({
       description:
-        "List all donations with optional status filter, pagination, and newest-first ordering",
+        "List all donations with optional status, type, and Discord ID filters, pagination, and newest-first ordering",
     })
     .input(
       z.object({
         status: z
           .enum(["pending", "completed", "refunded", "cancelled"])
           .optional(),
+        type: z.enum(["one_time", "monthly"]).optional(),
         discordId: z.string().optional(),
         ...paginationInput(),
       }),
     )
     .query(async ({ input }) => {
-      const limit = input.limit;
-      const offset = input.page * input.limit;
-
-      const [all, total] = await Promise.all([
-        donationRepo.listAll({ limit: limit + 1, offset }),
-        donationRepo.count(),
-      ]);
-
-      const filtered = input.status
-        ? all.filter((d) => d.status === input.status)
-        : all;
-      const byDiscord = input.discordId
-        ? filtered.filter((d) => d.playerDiscordId === input.discordId)
-        : filtered;
-
-      const hasNextPage = byDiscord.length > limit;
-      const items = hasNextPage ? byDiscord.slice(0, limit) : byDiscord;
+      const { rows, pagination } = await paginateQuery(
+        Q.donation,
+        {
+          status: input.status,
+          type: input.type,
+          playerDiscordId: input.discordId,
+        },
+        input,
+        { orderBy: "createdAt", orderDirection: "desc" },
+      );
 
       return {
-        donations: items.map((d) => ({
+        donations: rows.map((d) => ({
           id: d.id,
           playerDiscordId: d.playerDiscordId,
           type: d.type,
@@ -77,12 +71,7 @@ export const ownerDonationsRouter = router({
           createdAt: d.createdAt.toISOString(),
           completedAt: d.completedAt?.toISOString() ?? null,
         })),
-        pagination: {
-          page: input.page,
-          limit,
-          hasNextPage,
-          total,
-        },
+        pagination,
       };
     }),
 });
