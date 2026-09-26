@@ -17,11 +17,22 @@ function hash(text: string): number {
     value ^= text.charCodeAt(index);
     value = Math.imul(value, 16777619);
   }
+  value ^= value >>> 16;
+  value = Math.imul(value, 0x85ebca6b);
+  value ^= value >>> 13;
+  value = Math.imul(value, 0xc2b2ae35);
+  value ^= value >>> 16;
   return value >>> 0;
 }
 
-export function stagePose(minecraftUuid: string, seed: string): KnownPose {
-  return STAGE_POSES[hash(`${minecraftUuid}:${seed}`) % STAGE_POSES.length];
+export function stagePoses(
+  keys: [string, string],
+  seed: string,
+): [KnownPose, KnownPose] {
+  const first = STAGE_POSES[hash(`${keys[0]}:${seed}`) % STAGE_POSES.length];
+  const rest = STAGE_POSES.filter((pose) => pose !== first);
+  const second = rest[hash(`${keys[1]}:${seed}`) % rest.length];
+  return [first, second];
 }
 
 export function poseSrc(minecraftUuid: string, pose: KnownPose): string {

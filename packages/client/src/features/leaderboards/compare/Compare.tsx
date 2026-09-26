@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import type { KnownPose } from "createrington-skin-api";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { useToastActions } from "@/hooks/use-toast";
@@ -7,7 +6,7 @@ import { SkinApiPromo } from "@/components/skin-api-promo";
 import {
   HEADLINE_METRICS,
   SIDE_COLORS,
-  stagePose,
+  stagePoses,
   type ComparedPlayer,
 } from "./headToHead";
 import { useCompareParams, type Side } from "./hooks/use-compare-params";
@@ -162,9 +161,10 @@ export function Compare() {
     );
   }) as [StageSide | null, StageSide | null];
   const seed = `${day}:${roll}`;
-  const poses = stageSides.map((side, index) =>
-    stagePose(side?.minecraftUuid ?? String(index), seed),
-  ) as [KnownPose, KnownPose];
+  const poses = stagePoses(
+    [stageSides[0]?.minecraftUuid ?? "0", stageSides[1]?.minecraftUuid ?? "1"],
+    seed,
+  );
   const score = players ? scoreOf(players, now) : null;
   const missing = sides.filter(
     (username, index) => !!username && contenders[index].isError,
