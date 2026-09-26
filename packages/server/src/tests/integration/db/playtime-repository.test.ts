@@ -4,6 +4,7 @@ import { calendarDay } from "@/db/utils";
 
 const STEVE = "aaaaaaaa-0000-4000-8000-000000000001";
 const ALEX = "aaaaaaaa-0000-4000-8000-000000000002";
+const UNREGISTERED = "aaaaaaaa-0000-4000-8000-000000000099";
 const STEVE_DISCORD = "777000000000000001";
 const ALEX_DISCORD = "777000000000000002";
 const SERVER_IDENTIFIER = "playtime-repo-test";
@@ -105,6 +106,7 @@ describe("PlaytimeRepository (integration)", () => {
       uuid: STEVE,
       username: "steve",
       serverId,
+      previousPlayTicks: ticks(1000),
       credit: {
         periodStart: T0,
         periodEnd: at(60),
@@ -131,6 +133,7 @@ describe("PlaytimeRepository (integration)", () => {
       uuid: STEVE,
       username: "steve",
       serverId,
+      previousPlayTicks: ticks(1045),
       credit: {
         periodStart: at(60),
         periodEnd: at(120),
@@ -217,6 +220,69 @@ describe("PlaytimeRepository (integration)", () => {
     expect(row.secondsPlayed).toBe(0n);
   });
 
+  it("rolls back the observation when a heartbeat credit fails", async () => {
+    const sessionId = (await playtimeRepo.startSession({
+      uuid: STEVE,
+      username: "steve",
+      serverId,
+      sessionStart: T0,
+      playTimeTicks: ticks(1000),
+    }))!;
+
+    await expect(
+      playtimeRepo.progressSession({
+        sessionId,
+        uuid: UNREGISTERED,
+        username: "steve",
+        serverId,
+        previousPlayTicks: ticks(1000),
+        credit: {
+          periodStart: T0,
+          periodEnd: at(60),
+          seconds: 60,
+          playTimeTicks: ticks(1060),
+        },
+      }),
+    ).rejects.toThrow();
+
+    const row = await Q.player.session.get({ id: sessionId });
+    expect(row.lastSeenAt).toEqual(T0);
+    expect(row.lastPlayTicks).toBe(ticks(1000));
+    expect(row.activeSeconds).toBe(0n);
+  });
+
+  it("keeps the session open when the final credit fails", async () => {
+    const sessionId = (await playtimeRepo.startSession({
+      uuid: STEVE,
+      username: "steve",
+      serverId,
+      sessionStart: T0,
+      playTimeTicks: ticks(1000),
+    }))!;
+
+    await expect(
+      playtimeRepo.endSession({
+        sessionId,
+        uuid: UNREGISTERED,
+        username: "steve",
+        serverId,
+        sessionStart: T0,
+        sessionEnd: at(60),
+        secondsPlayed: 60,
+        credit: {
+          periodStart: T0,
+          periodEnd: at(60),
+          seconds: 60,
+          playTimeTicks: ticks(1060),
+        },
+      }),
+    ).rejects.toThrow();
+
+    const row = await Q.player.session.get({ id: sessionId });
+    expect(row.sessionEnd).toBeNull();
+    expect(row.activeSeconds).toBe(0n);
+  });
+
   it("closes an orphaned session from its own last observation", async () => {
     const sessionId = (await playtimeRepo.startSession({
       uuid: STEVE,
@@ -230,6 +296,7 @@ describe("PlaytimeRepository (integration)", () => {
       uuid: STEVE,
       username: "steve",
       serverId,
+      previousPlayTicks: ticks(1000),
       credit: {
         periodStart: T0,
         periodEnd: at(600),

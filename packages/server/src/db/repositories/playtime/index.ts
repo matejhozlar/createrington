@@ -1,5 +1,6 @@
-import { Q, waitlistRepo } from "@/db";
+import { db, Q, waitlistRepo } from "@/db";
 import { calendarDay } from "@/db/utils";
+import type { DatabaseQueries } from "@/generated/db";
 import type { ServerActivity } from "@/db/queries/player/playtime/daily";
 import type { ServerHeatMap } from "@/db/queries/player/playtime/hourly";
 import type {
@@ -107,9 +108,12 @@ export interface StatsReconcileResult {
  * observed playtime into daily / hourly / summary tables, and syncing
  * player online status plus last logout position. Playtime is credited
  * incrementally as heartbeats observe it, so an in-flight session is never
- * more than one heartbeat behind in the database. Wire up to a per-server
- * PlaytimeService via connectToService() during bootstrap; the service emits
- * the events this class persists.
+ * more than one heartbeat behind in the database. Each observation commits
+ * together with its credits in one per-session transaction; a failed
+ * heartbeat slice is handed back to the service so the next heartbeat
+ * credits it again. Wire up to a per-server PlaytimeService via
+ * connectToService() during bootstrap; the service emits the events this
+ * class persists.
  */
 export class PlaytimeRepository {
   private pending = new Set<Promise<unknown>>();
@@ -219,16 +223,18 @@ export class PlaytimeRepository {
     }
   }
 
-  /** Persist a heartbeat observation: advance the row and credit the slice into the playtime tables. */
+  /** Persist a heartbeat observation: advance the row and credit the slice into the playtime tables, atomically. */
   async progressSession(event: SessionProgressEvent): Promise<void> {
     try {
-      await Q.player.session.recordObservation(event.sessionId, {
-        lastSeenAt: event.credit.periodEnd,
-        lastPlayTicks: event.credit.playTimeTicks,
-        creditedSeconds: event.credit.seconds,
-      });
+      await db.inTransaction(async (tx) => {
+        await tx.player.session.recordObservation(event.sessionId, {
+          lastSeenAt: event.credit.periodEnd,
+          lastPlayTicks: event.credit.playTimeTicks,
+          creditedSeconds: event.credit.seconds,
+        });
 
-      await this.creditPlaytime(event.uuid, event.serverId, event.credit);
+        await this.creditPlaytime(tx, event.uuid, event.serverId, event.credit);
+      });
 
       if (event.credit.seconds > 0) {
         logger.debug(
@@ -274,20 +280,22 @@ export class PlaytimeRepository {
           playTimeTicks: event.playTimeTicks,
         };
 
-        await Q.player.session.recordObservation(event.sessionId, {
-          lastSeenAt: end,
-          lastPlayTicks: credit.playTimeTicks,
-          creditedSeconds: credit.seconds,
-          sessionEnd: end,
-        });
+        await db.inTransaction(async (tx) => {
+          await tx.player.session.recordObservation(event.sessionId, {
+            lastSeenAt: end,
+            lastPlayTicks: credit.playTimeTicks,
+            creditedSeconds: credit.seconds,
+            sessionEnd: end,
+          });
 
-        await this.creditPlaytime(event.uuid, event.serverId, credit);
-        await Q.player.playtime.summary.recordSessionEnd(
-          event.uuid,
-          event.serverId,
-          event.sessionStart,
-          end,
-        );
+          await this.creditPlaytime(tx, event.uuid, event.serverId, credit);
+          await tx.player.playtime.summary.recordSessionEnd(
+            event.uuid,
+            event.serverId,
+            event.sessionStart,
+            end,
+          );
+        });
 
         logger.info(
           `Session ended: ${event.username} (${event.uuid}) - ${event.secondsPlayed}s`,
@@ -598,56 +606,58 @@ export class PlaytimeRepository {
       playTimeTicks,
     });
 
-    await Q.player.session.recordObservation(session.id, {
-      lastSeenAt: end,
-      lastPlayTicks: credit.playTimeTicks,
-      creditedSeconds: credit.seconds,
-      sessionEnd: end,
-    });
+    await db.inTransaction(async (tx) => {
+      await tx.player.session.recordObservation(session.id, {
+        lastSeenAt: end,
+        lastPlayTicks: credit.playTimeTicks,
+        creditedSeconds: credit.seconds,
+        sessionEnd: end,
+      });
 
-    await this.creditPlaytime(
-      session.playerMinecraftUuid,
-      session.serverId,
-      credit,
-    );
-    await Q.player.playtime.summary.recordSessionEnd(
-      session.playerMinecraftUuid,
-      session.serverId,
-      session.sessionStart,
-      end,
-    );
+      await this.creditPlaytime(
+        tx,
+        session.playerMinecraftUuid,
+        session.serverId,
+        credit,
+      );
+      await tx.player.playtime.summary.recordSessionEnd(
+        session.playerMinecraftUuid,
+        session.serverId,
+        session.sessionStart,
+        end,
+      );
+    });
   }
 
   private async creditPlaytime(
+    tx: DatabaseQueries,
     playerMinecraftUuid: string,
     serverId: number,
     credit: PlaytimeCredit,
   ): Promise<void> {
     if (credit.seconds <= 0) return;
 
-    await Promise.all([
-      Q.player.playtime.daily.creditPeriod(
-        playerMinecraftUuid,
-        serverId,
-        credit.periodStart,
-        credit.periodEnd,
-        credit.seconds,
-      ),
-      Q.player.playtime.hourly.creditPeriod(
-        playerMinecraftUuid,
-        serverId,
-        credit.periodStart,
-        credit.periodEnd,
-        credit.seconds,
-      ),
-      Q.player.playtime.summary.creditSeconds(
-        playerMinecraftUuid,
-        serverId,
-        credit.seconds,
-        credit.periodStart,
-        credit.periodEnd,
-      ),
-    ]);
+    await tx.player.playtime.daily.creditPeriod(
+      playerMinecraftUuid,
+      serverId,
+      credit.periodStart,
+      credit.periodEnd,
+      credit.seconds,
+    );
+    await tx.player.playtime.hourly.creditPeriod(
+      playerMinecraftUuid,
+      serverId,
+      credit.periodStart,
+      credit.periodEnd,
+      credit.seconds,
+    );
+    await tx.player.playtime.summary.creditSeconds(
+      playerMinecraftUuid,
+      serverId,
+      credit.seconds,
+      credit.periodStart,
+      credit.periodEnd,
+    );
   }
 
   private async syncPlayerOfflineStatus(
@@ -717,6 +727,11 @@ export class PlaytimeRepository {
             `Failed to handle sessionProgress event for server ${serverId}:`,
             error,
           );
+          if (!service.revertProgress(event)) {
+            logger.warn(
+              `Dropped ${event.credit.seconds}s of playtime for ${event.username} (${event.uuid}): the session moved on before the failed slice could be retried`,
+            );
+          }
         }),
       );
     });

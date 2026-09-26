@@ -71,6 +71,8 @@ export interface SessionProgressEvent {
   username: string;
   serverId: number;
   credit: PlaytimeCredit;
+  /** Tick baseline the credit was measured from, restored if the write fails */
+  previousPlayTicks: number | undefined;
 }
 
 /** Event emitted when a player's session ends: carries duration and DB reference */
