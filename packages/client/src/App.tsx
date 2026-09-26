@@ -1,4 +1,4 @@
-import { Suspense, useEffect, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, type ReactNode } from "react";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { trpc, trpcClient, queryClient } from "./lib/trpc";
@@ -7,7 +7,6 @@ import { AuthProvider, useAuth } from "./contexts/auth";
 import { WebSocketProvider } from "./contexts/websocket";
 import { ServerDataProvider } from "./contexts/server-data";
 import { PlayerDataProvider } from "./contexts/player-data";
-import { AdminChatProvider } from "./contexts/admin-chat";
 import { ProtectedRoute } from "./components/protected-route";
 import { OwnerRoute } from "./components/owner-route";
 import { Home } from "./pages/Home/Home";
@@ -272,6 +271,11 @@ const OwnerAdmins = lazyNamed(
 
 // Admin chat widget: gated on isAdmin below so non-admins never download it.
 const AdminChat = lazyNamed(() => import("./features/admin-chat"), "AdminChat");
+const AdminChatProvider = lazy(() =>
+  import("./contexts/admin-chat/AdminChatProvider").then((m) => ({
+    default: m.AdminChatProvider,
+  })),
+);
 
 /** Scrolls the window to the top whenever the route pathname changes. */
 function ScrollToTop() {
@@ -300,11 +304,15 @@ function AdminChatGate() {
 }
 
 function AdminChatBoundary({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+  if (!user?.isAdmin) return <>{children}</>;
   return (
-    <AdminChatProvider>
-      {children}
-      <AdminChatGate />
-    </AdminChatProvider>
+    <Suspense fallback={children}>
+      <AdminChatProvider>
+        {children}
+        <AdminChatGate />
+      </AdminChatProvider>
+    </Suspense>
   );
 }
 

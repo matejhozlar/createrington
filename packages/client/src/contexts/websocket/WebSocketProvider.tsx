@@ -47,7 +47,7 @@ export function WebSocketProvider({
   children,
   config = {},
 }: WebSocketProviderProps) {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const autoConnect = config.autoConnect !== false;
 
   const [socket] = useState(() => createSocket(config));
@@ -105,7 +105,7 @@ export function WebSocketProvider({
   }, [socket, cancelRejectedRetry]);
 
   useEffect(() => {
-    if (!autoConnect) return;
+    if (!autoConnect || authLoading) return;
 
     socket.connect();
 
@@ -113,10 +113,12 @@ export function WebSocketProvider({
       cancelRejectedRetry();
       socket.disconnect();
     };
-  }, [socket, autoConnect, cancelRejectedRetry]);
+  }, [socket, autoConnect, authLoading, cancelRejectedRetry]);
 
   const lastIdentityRef = useRef<string | null | undefined>(undefined);
   useEffect(() => {
+    if (authLoading) return;
+
     const identity = user?.discordId ?? null;
     if (lastIdentityRef.current === undefined) {
       lastIdentityRef.current = identity;
@@ -128,7 +130,7 @@ export function WebSocketProvider({
     if (!autoConnect) return;
     cancelRejectedRetry();
     socket.disconnect().connect();
-  }, [socket, user?.discordId, autoConnect, cancelRejectedRetry]);
+  }, [socket, authLoading, user?.discordId, autoConnect, cancelRejectedRetry]);
 
   useEffect(() => {
     const retryNow = () => {

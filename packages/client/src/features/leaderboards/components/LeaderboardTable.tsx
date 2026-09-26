@@ -284,7 +284,7 @@ function statDescription(stat: Stat): string {
 }
 
 export function LeaderboardTable() {
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
   const { hash } = useLocation();
   const params = useBoardParams();
   const { board } = params;
@@ -329,7 +329,7 @@ export function LeaderboardTable() {
     {
       staleTime: 60 * 1000,
       placeholderData: (previous) => previous,
-      enabled: !authLoading && !activeStat,
+      enabled: !activeStat,
     },
   );
   const statQuery = trpc.public.leaderboards.stat.useQuery(
@@ -337,7 +337,7 @@ export function LeaderboardTable() {
     {
       staleTime: 60 * 1000,
       placeholderData: (previous) => previous,
-      enabled: !authLoading && !!activeStat,
+      enabled: !!activeStat,
     },
   );
   const listQuery = activeStat ? statQuery : boardQuery;
@@ -429,7 +429,7 @@ export function LeaderboardTable() {
           </div>
         </div>
 
-        {authLoading || listQuery.isLoading ? (
+        {listQuery.isLoading ? (
           <RowsSkeleton />
         ) : rows.length === 0 ? (
           <p className="px-3 py-10 text-center text-sm text-muted-foreground">

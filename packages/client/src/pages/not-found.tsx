@@ -57,7 +57,7 @@ const TOUCH_CONTROLS = [
 export function NotFound() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
 
   const player = user?.minecraftUuid
     ? { uuid: user.minecraftUuid, username: user.minecraftUsername }
@@ -68,15 +68,11 @@ export function NotFound() {
       <div className="w-full max-w-3xl space-y-4">
         <Card className={cn(CARD_CLASS, "gap-0 overflow-hidden py-0")}>
           <div className="relative h-52 sm:h-64 md:h-72">
-            {authLoading ? (
-              <div className="size-full bg-sidebar-accent/40" />
-            ) : (
-              <Suspense
-                fallback={<div className="size-full bg-sidebar-accent/40" />}
-              >
-                <SkinRunner uuid={player.uuid} username={player.username} />
-              </Suspense>
-            )}
+            <Suspense
+              fallback={<div className="size-full bg-sidebar-accent/40" />}
+            >
+              <SkinRunner uuid={player.uuid} username={player.username} />
+            </Suspense>
           </div>
           <div className="border-t border-border px-4 py-2.5 text-xs text-muted-foreground">
             <ul className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5 pointer-coarse:hidden">
