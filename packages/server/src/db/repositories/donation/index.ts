@@ -27,16 +27,17 @@ export class DonationRepository {
 
   /** Most recent completed monthly donation with a Stripe subscription ID, or null. */
   async findActiveSubscription(discordId: string): Promise<Donation | null> {
-    const donations = await Q.donation.findAll(
+    const [donation] = await Q.donation.findAll(
       {
         playerDiscordId: discordId,
         type: "monthly",
         status: "completed",
+        stripeSubscriptionId: { $exists: true },
       },
-      { orderBy: "createdAt", orderDirection: "desc" },
+      { orderBy: "createdAt", orderDirection: "desc", limit: 1 },
     );
 
-    return donations.find((d) => d.stripeSubscriptionId != null) ?? null;
+    return donation ?? null;
   }
 
   /** All completed monthly donations with a Stripe subscription ID. */
