@@ -170,8 +170,8 @@ async function checkPermission(
  * 1. Retrieves the command handler
  * 2. Checks permissions (admin, custom checks)
  * 3. Checks if the command is on cooldown (unless user can bypass)
- * 4. Executes the command if not on cooldown
- * 5. Sets cooldown after successful execution
+ * 4. Starts the cooldown before executing, so a slow command cannot be re-run while it is still running
+ * 5. Executes the command
  * 6. Handles errors with ephemeral error messages
  *
  * @param interaction - The chat input command interaction
@@ -202,25 +202,22 @@ async function handleChatCommands(
   }
 
   if (command.cooldown && !canBypassCooldown(interaction, command)) {
+    const cooldownContext = {
+      userId: interaction.user.id,
+      channelId: interaction.channelId,
+      guildId: interaction.guildId,
+    };
     const cooldownRemaining = cooldownManager.check(
       interaction.commandName,
       command.cooldown,
-      {
-        userId: interaction.user.id,
-        channelId: interaction.channelId,
-        guildId: interaction.guildId,
-      },
+      cooldownContext,
     );
 
     if (cooldownRemaining !== null) {
       const expiresAt = cooldownManager.getExpiry(
         interaction.commandName,
         command.cooldown.type,
-        {
-          userId: interaction.user.id,
-          channelId: interaction.channelId,
-          guildId: interaction.guildId,
-        },
+        cooldownContext,
       );
 
       const unixExpiresAt = expiresAt ? Math.floor(expiresAt / 1000) : null;
@@ -255,19 +252,17 @@ async function handleChatCommands(
       );
       return;
     }
+
+    cooldownManager.set(
+      interaction.commandName,
+      command.cooldown,
+      cooldownContext,
+    );
   }
 
   let success = true;
   try {
     await command.execute(interaction);
-
-    if (command.cooldown && !canBypassCooldown(interaction, command)) {
-      cooldownManager.set(interaction.commandName, command.cooldown, {
-        userId: interaction.user.id,
-        channelId: interaction.channelId,
-        guildId: interaction.guildId,
-      });
-    }
   } catch (error) {
     success = false;
     logger.error(`Error executing command ${interaction.commandName}:`, error);
