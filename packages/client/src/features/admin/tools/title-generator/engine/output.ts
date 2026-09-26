@@ -20,7 +20,11 @@ function createringtonFrame(image: HTMLCanvasElement): Frame {
   const ratio = Math.min(inner / image.width, inner / image.height);
   const w = Math.round(image.width * ratio);
   const h = Math.round(image.height * ratio);
-  frame.ctx.imageSmoothingQuality = "high";
+  if (ratio > 1) {
+    frame.ctx.imageSmoothingEnabled = false;
+  } else {
+    frame.ctx.imageSmoothingQuality = "high";
+  }
   frame.ctx.drawImage(
     image,
     Math.floor((TILE_SIZE - w) / 2),
