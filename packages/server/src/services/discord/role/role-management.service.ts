@@ -124,10 +124,7 @@ export class RoleManagementService {
         }
 
         const rules = getRealtimeRoleRules();
-        await this.roleAssignmentService.processRoleHierarchy(
-          player.discordId,
-          rules,
-        );
+        await this.roleAssignmentService.processRoleHierarchy(player, rules);
       } catch (error) {
         logger.error(
           `Failed to process realtime role check for ${event.username}:`,
@@ -204,19 +201,14 @@ export class RoleManagementService {
       let totalAssignments = 0;
       let totalRemovals = 0;
 
-      if (playtimeRules.length > 0) {
-        const playtimeResults =
-          await this.roleAssignmentService.processAllPlayers(playtimeRules);
-        for (const [, result] of playtimeResults) {
-          if (result.success && result.assigned) totalAssignments++;
-          if (result.removedRoles) totalRemovals += result.removedRoles.length;
-        }
-      }
+      const hierarchies = [playtimeRules, serverAgeRules].filter(
+        (hierarchy) => hierarchy.length > 0,
+      );
 
-      if (serverAgeRules.length > 0) {
-        const serverAgeResults =
-          await this.roleAssignmentService.processAllPlayers(serverAgeRules);
-        for (const [, result] of serverAgeResults) {
+      if (hierarchies.length > 0) {
+        const results =
+          await this.roleAssignmentService.processAllPlayers(hierarchies);
+        for (const result of results) {
           if (result.success && result.assigned) totalAssignments++;
           if (result.removedRoles) totalRemovals += result.removedRoles.length;
         }
@@ -517,8 +509,11 @@ export class RoleManagementService {
 
   /** Runs the realtime rule set against a single player on demand (e.g. admin command), bypassing the playtime-event trigger. */
   async checkPlayer(discordId: string): Promise<void> {
+    const player = await Q.player.find({ discordId });
+    if (!player) return;
+
     const rules = getRealtimeRoleRules();
-    await this.roleAssignmentService.processRoleHierarchy(discordId, rules);
+    await this.roleAssignmentService.processRoleHierarchy(player, rules);
   }
 
   /** Runs the full daily sweep immediately, independent of the scheduler. Useful for admin commands and tests. */
