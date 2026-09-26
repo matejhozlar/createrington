@@ -1,5 +1,6 @@
 import puppeteer, { type Browser, type Page } from "puppeteer-core";
 import config from "@/config";
+import { Semaphore } from "@/utils/semaphore";
 import { setSameOriginHeaders } from "./same-origin-headers";
 
 export interface ScreenshotOptions {
@@ -58,6 +59,8 @@ const LAUNCH_ARGS = [
   "--no-first-run",
 ];
 
+const MAX_CONCURRENT_PAGES = 5;
+
 /**
  * Headless browser for server-side rendering tasks: screenshots of full URLs or
  * specific DOM elements and arbitrary page scripting via `withPage()`. Uses
@@ -69,6 +72,7 @@ const LAUNCH_ARGS = [
 export class PuppeteerService {
   private browser: Browser | null = null;
   private launching: Promise<Browser> | null = null;
+  private readonly pages = new Semaphore(MAX_CONCURRENT_PAGES);
 
   /** No-op aside from logging; the browser launches lazily on the first `screenshot()` or `withPage()` call. */
   async initialize(): Promise<void> {
@@ -90,8 +94,29 @@ export class PuppeteerService {
   /**
    * Renders a URL (or one element on it) to an image buffer. Waits for fonts and images
    * to settle by default, capped at 10s so a stuck asset cannot stall the request.
+   * Queues behind other pages once `MAX_CONCURRENT_PAGES` are open.
    */
   async screenshot(options: ScreenshotOptions): Promise<ScreenshotResult> {
+    return this.pages.run(() => this.capture(options));
+  }
+
+  /** Runs `fn` against a fresh page; the page is closed whether the callback resolves or throws. Shares the page cap with `screenshot()`. */
+  async withPage<T>(
+    fn: (page: Page, browser: Browser) => Promise<T>,
+  ): Promise<T> {
+    return this.pages.run(async () => {
+      const browser = await this.getBrowser();
+      const page = await browser.newPage();
+
+      try {
+        return await fn(page, browser);
+      } finally {
+        await page.close().catch(() => {});
+      }
+    });
+  }
+
+  private async capture(options: ScreenshotOptions): Promise<ScreenshotResult> {
     const {
       url,
       extraHeaders,
@@ -193,20 +218,6 @@ export class PuppeteerService {
       if (page) {
         await page.close().catch(() => {});
       }
-    }
-  }
-
-  /** Runs `fn` against a fresh page; the page is closed whether the callback resolves or throws. */
-  async withPage<T>(
-    fn: (page: Page, browser: Browser) => Promise<T>,
-  ): Promise<T> {
-    const browser = await this.getBrowser();
-    const page = await browser.newPage();
-
-    try {
-      return await fn(page, browser);
-    } finally {
-      await page.close().catch(() => {});
     }
   }
 
