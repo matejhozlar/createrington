@@ -132,8 +132,14 @@ export const SkinViewer = forwardRef<SkinViewerHandle, SkinViewerProps>(
       container.appendChild(viewer.canvas);
       viewerRef.current = viewer;
 
+      const observer = new IntersectionObserver(([entry]) => {
+        if (entry) viewer.renderPaused = !entry.isIntersecting;
+      });
+      observer.observe(container);
+
       return () => {
         disposed = true;
+        observer.disconnect();
         if (flashlightTimerRef.current !== null) {
           clearTimeout(flashlightTimerRef.current);
           flashlightTimerRef.current = null;
