@@ -148,6 +148,9 @@ export function Compare() {
   const players = compareQuery.isPlaceholderData
     ? undefined
     : compareQuery.data;
+  const outgoing = compareQuery.isPlaceholderData
+    ? compareQuery.data
+    : undefined;
   const known: StageSide[] = [
     ...(compareQuery.data ?? []),
     ...contenders.flatMap((query) => (query.data ? [query.data] : [])),
@@ -157,6 +160,7 @@ export function Compare() {
     const name = username.toLowerCase();
     return (
       known.find((side) => side.minecraftUsername.toLowerCase() === name) ??
+      outgoing?.[index] ??
       null
     );
   }) as [StageSide | null, StageSide | null];
