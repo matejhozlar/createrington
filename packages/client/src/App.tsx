@@ -240,6 +240,10 @@ const StatSearch = lazyNamed(
   () => import("./features/admin/tools/stat-search/StatSearch"),
   "StatSearch",
 );
+const TitleGenerator = lazyNamed(
+  () => import("./features/admin/tools/title-generator/TitleGenerator"),
+  "TitleGenerator",
+);
 const AdminParties = lazyNamed(
   () => import("./features/admin/tools/parties/AdminParties"),
   "AdminParties",
@@ -486,6 +490,10 @@ function AppContent() {
                       <Route
                         path="tools/stat-search"
                         element={<StatSearch />}
+                      />
+                      <Route
+                        path="tools/title-generator"
+                        element={<TitleGenerator />}
                       />
                       <Route path="tools/parties" element={<AdminParties />} />
                       <Route path="tools/prompts" element={<AdminPrompts />} />
