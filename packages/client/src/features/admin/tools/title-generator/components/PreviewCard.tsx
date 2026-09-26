@@ -100,7 +100,7 @@ export function PreviewCard({
           {output && (
             <span className="text-sm tabular-nums text-muted-foreground">
               {output.width} x {output.height}
-              {currentBlob && ` · ${formatBytes(currentBlob.size)}`}
+              {blob && ` · ${formatBytes(blob.blob.size)}`}
             </span>
           )}
           <Button

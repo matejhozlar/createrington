@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { MAX_ANTIALIAS_RESOLUTION, MAX_RENDER_SIZE } from "../engine/render";
-import { WORDMARK_CAMERA_DISTANCE } from "../engine/settings";
+import { DEFAULT_CAMERA_DISTANCE } from "../engine/settings";
 import type { RenderSettings } from "../engine/types";
 import { ChoiceField, Section, SliderField, ToggleField } from "./fields";
 
@@ -107,15 +107,14 @@ export function RenderCard({
 
         <Section
           title="Camera"
-          description="100% is Blockbench's Position camera angle. The Createrington wordmark was rendered zoomed out to 146.9%."
           action={
-            render.cameraDistance !== WORDMARK_CAMERA_DISTANCE && (
+            render.cameraDistance !== DEFAULT_CAMERA_DISTANCE && (
               <Button
                 variant="ghost"
                 size="icon-sm"
                 aria-label="Reset camera distance"
                 onClick={() =>
-                  onChange({ cameraDistance: WORDMARK_CAMERA_DISTANCE })
+                  onChange({ cameraDistance: DEFAULT_CAMERA_DISTANCE })
                 }
               >
                 <RotateCcw className="size-4" />
@@ -125,12 +124,20 @@ export function RenderCard({
         >
           <SliderField
             label="Distance"
-            value={Math.round(render.cameraDistance * 1000) / 10}
-            min={50}
-            max={300}
-            step={0.1}
+            value={Math.round(
+              (render.cameraDistance / DEFAULT_CAMERA_DISTANCE) * 100,
+            )}
+            min={35}
+            max={200}
             suffix="%"
-            onChange={(value) => onChange({ cameraDistance: value / 100 })}
+            onChange={(value) =>
+              onChange({
+                cameraDistance:
+                  value === 100
+                    ? DEFAULT_CAMERA_DISTANCE
+                    : (DEFAULT_CAMERA_DISTANCE * value) / 100,
+              })
+            }
           />
         </Section>
       </CardContent>

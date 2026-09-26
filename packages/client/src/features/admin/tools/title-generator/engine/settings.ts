@@ -80,12 +80,12 @@ const LAYER_DEFAULTS: Omit<TitleLayer, "id" | "text"> = {
   disableCharacterShifting: false,
 };
 
-export const WORDMARK_CAMERA_DISTANCE = 1.469;
+export const DEFAULT_CAMERA_DISTANCE = 1.469;
 
 export const DEFAULT_RENDER: RenderSettings = {
   resolution: 1024,
   antialias: true,
-  cameraDistance: WORDMARK_CAMERA_DISTANCE,
+  cameraDistance: DEFAULT_CAMERA_DISTANCE,
 };
 
 export const DEFAULT_OUTPUT: OutputSettings = {

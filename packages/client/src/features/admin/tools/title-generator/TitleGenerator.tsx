@@ -48,7 +48,7 @@ export function TitleGenerator() {
       <div className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-4 px-4 pb-4">
         <AdminPageTitle
           title="Title Generator"
-          description="Build Minecraft-style 3D titles like the Createrington wordmark. It uses the same fonts, textures and render pipeline as the Minecraft Title Generator Blockbench plugin, so the output matches a Blockbench render."
+          description="Build Minecraft-style 3D titles like the Createrington wordmark."
           actions={
             <Button variant="outline" onClick={project.resetProject}>
               <RotateCcw className="size-4" />

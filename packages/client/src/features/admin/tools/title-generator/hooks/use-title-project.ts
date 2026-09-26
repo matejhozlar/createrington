@@ -8,6 +8,7 @@ import {
 import type {
   OutputSettings,
   RenderSettings,
+  TextType,
   TitleLayer,
 } from "../engine/types";
 
@@ -87,9 +88,13 @@ export function useTitleProject() {
     setProject((current) => ({ ...current, selectedId: id }));
   }, []);
 
-  const addLayer = useCallback(() => {
+  const addLayer = useCallback((type: TextType) => {
     setProject((current) => {
-      const layer = createLayer({ text: "Text" });
+      const rows = current.layers
+        .filter((layer) => layer.type === type)
+        .map((layer) => layer.row);
+      const row = rows.length ? Math.min(10, Math.max(...rows) + 1) : 0;
+      const layer = createLayer({ text: "Text", type, row });
       return {
         ...current,
         layers: [...current.layers, layer],

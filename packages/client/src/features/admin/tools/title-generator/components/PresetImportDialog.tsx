@@ -52,9 +52,8 @@ export function PresetImportDialog({
         <DialogHeader>
           <DialogTitle>Import Preset</DialogTitle>
           <DialogDescription>
-            Paste a preset shared from the Blockbench Minecraft Title Generator,
-            or load its .json file. It replaces the selected layer's settings
-            and keeps its text.
+            Paste a preset or load its .json file. It replaces the selected
+            layer's settings and keeps its text.
           </DialogDescription>
         </DialogHeader>
         <input

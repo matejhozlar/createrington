@@ -1,6 +1,7 @@
 import {
   ArrowDown,
   ArrowUp,
+  ChevronDown,
   CopyPlus,
   Layers,
   Plus,
@@ -9,6 +10,12 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import type { Catalog } from "../engine/assets";
 import type { TextType, TitleLayer } from "../engine/types";
@@ -18,6 +25,15 @@ const TYPE_LABELS: Record<TextType, string> = {
   bottom: "Bottom",
   small: "Small",
 };
+
+const ADD_OPTIONS: { type: TextType; description: string }[] = [
+  { type: "top", description: "The main title" },
+  {
+    type: "bottom",
+    description: "Lies flat underneath, like the edition text",
+  },
+  { type: "small", description: "A subtitle below the title" },
+];
 
 export function LayerList({
   layers,
@@ -33,7 +49,7 @@ export function LayerList({
   selectedId: string;
   catalog: Catalog | undefined;
   onSelect: (id: string) => void;
-  onAdd: () => void;
+  onAdd: (type: TextType) => void;
   onDuplicate: (id: string) => void;
   onRemove: (id: string) => void;
   onMove: (id: string, direction: -1 | 1) => void;
@@ -45,10 +61,29 @@ export function LayerList({
           <Layers className="size-4 text-muted-foreground" />
           Texts
         </CardTitle>
-        <Button variant="outline" size="sm" onClick={onAdd}>
-          <Plus className="size-4" />
-          Add text
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm">
+              <Plus className="size-4" />
+              Add text
+              <ChevronDown className="size-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {ADD_OPTIONS.map(({ type, description }) => (
+              <DropdownMenuItem
+                key={type}
+                onSelect={() => onAdd(type)}
+                className="flex flex-col items-start gap-0.5"
+              >
+                <span className="font-medium">{TYPE_LABELS[type]}</span>
+                <span className="text-xs text-muted-foreground">
+                  {description}
+                </span>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </CardHeader>
       <CardContent className="flex flex-col gap-2">
         {layers.map((layer, index) => (

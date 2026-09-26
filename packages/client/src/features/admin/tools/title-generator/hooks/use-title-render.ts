@@ -68,8 +68,7 @@ export function useTitleRender(
 
   return {
     image: state.image,
-    output:
-      state.image && composed?.source === state.image ? composed.canvas : null,
+    output: state.image ? (composed?.canvas ?? null) : null,
     error: state.error,
     rendering,
   };
