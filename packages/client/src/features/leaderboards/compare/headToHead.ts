@@ -29,10 +29,13 @@ export function stagePoses(
   keys: [string, string],
   seed: string,
 ): [KnownPose, KnownPose] {
-  const first = STAGE_POSES[hash(`${keys[0]}:${seed}`) % STAGE_POSES.length];
+  const pick = (key: string, poses: readonly KnownPose[]) =>
+    poses[hash(`${key}:${seed}`) % poses.length];
+  const first = pick(keys[0], STAGE_POSES);
+  const second = pick(keys[1], STAGE_POSES);
+  if (second !== first) return [first, second];
   const rest = STAGE_POSES.filter((pose) => pose !== first);
-  const second = rest[hash(`${keys[1]}:${seed}`) % rest.length];
-  return [first, second];
+  return [first, pick(keys[1], rest)];
 }
 
 export function poseSrc(minecraftUuid: string, pose: KnownPose): string {
