@@ -27,8 +27,7 @@ vi.mock("@/db", () => ({
   Q: {
     player: {
       find: db.playerFind,
-      getAll: async () => [],
-      balance: { getAllBalances: async () => [] },
+      balance: { getNetWorthRanking: async () => [] },
       playtime: { summary: { getGlobalLeaderboard: db.playtime } },
       minecraft: { stat: { total: { getRecordLeaderboard: db.records } } },
     },
@@ -36,7 +35,7 @@ vi.mock("@/db", () => ({
 }));
 
 vi.mock("@/services/discord/leaderboard/networth", () => ({
-  rankNetWorth: netWorth.rank,
+  toNetWorthEntries: netWorth.rank,
 }));
 
 vi.mock("@/services/discord/role/role-notification.service", () => ({

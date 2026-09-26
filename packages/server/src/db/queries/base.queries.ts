@@ -6,6 +6,8 @@ import { isJsonColumn } from "../utils/jsonb-columns";
 import type { FilterValue } from "@createrington/shared/db/base.types";
 import { QueryBuilder, type Selected } from "./query-builder";
 
+const MAX_QUERY_PARAMS = 65_535;
+
 /**
  * Base class for database query operations
  *
@@ -1298,6 +1300,70 @@ export abstract class BaseQueries<
       logger.error(`Failed to create ${this.table}:`, error);
       throw translateDbError(error);
     }
+  }
+
+  /**
+   * Inserts every row using as few statements as the Postgres parameter limit allows.
+   * Columns a row omits take their default. Large batches span several statements,
+   * so call inside a transaction when the batch must be all-or-nothing.
+   */
+  async createMany(rows: NonNullable<TConfig["Create"]>[]): Promise<void> {
+    await this.insertBatch(rows, false);
+  }
+
+  /**
+   * Same as createMany, returning the created entities with generated fields.
+   */
+  async createManyAndReturn(
+    rows: NonNullable<TConfig["Create"]>[],
+  ): Promise<TConfig["Entity"][]> {
+    return this.insertBatch(rows, true);
+  }
+
+  private async insertBatch(
+    rows: NonNullable<TConfig["Create"]>[],
+    returning: boolean,
+  ): Promise<TConfig["Entity"][]> {
+    if (rows.length === 0) return [];
+
+    const mapped = rows.map(
+      (row) =>
+        new Map(this.getCreateMapping(row).map((m) => [m.column, m.value])),
+    );
+    const columns = [...new Set(mapped.flatMap((row) => [...row.keys()]))];
+    const rowsPerStatement = Math.max(
+      1,
+      Math.floor(MAX_QUERY_PARAMS / columns.length),
+    );
+    const created: TConfig["Entity"][] = [];
+
+    try {
+      for (let start = 0; start < mapped.length; start += rowsPerStatement) {
+        const values: unknown[] = [];
+        const tuples = mapped
+          .slice(start, start + rowsPerStatement)
+          .map((row) => {
+            const cells = columns.map((column) => {
+              if (!row.has(column)) return "DEFAULT";
+              values.push(row.get(column));
+              return `$${values.length}`;
+            });
+            return `(${cells.join(", ")})`;
+          });
+
+        const query = `INSERT INTO ${this.table} (${columns.join(", ")}) VALUES ${tuples.join(", ")}${returning ? " RETURNING *" : ""}`;
+        const result = await this.db.query<TConfig["DbEntity"]>(query, values);
+
+        if (returning) {
+          created.push(...result.rows.map((row) => this.mapRowToEntity(row)));
+        }
+      }
+    } catch (error) {
+      logger.error(`Failed to create ${this.table} rows:`, error);
+      throw translateDbError(error);
+    }
+
+    return created;
   }
 
   /**

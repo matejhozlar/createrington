@@ -93,59 +93,46 @@ export const accountRouter = router({
       const mcFilter = { playerMinecraftUuid: minecraftUuid };
       const mcFilterAlt = { minecraftUuid };
 
-      const [
-        playerData,
-        sessions,
-        balance,
-        balanceTransactions,
-        gameSessions,
-        playtimeDaily,
-        playtimeHourly,
-        playtimeSummary,
-        minecraftStats,
-        bans,
-        strikes,
-        rewardClaims,
-        tickets,
-      ] = await Promise.all([
-        Q.player.find({ discordId }),
-        Q.auth.session.getActiveSessions(discordId),
-        Q.player.balance.find(mcFilterAlt).catch(() => null),
-        Q.player.balance.transaction.findAll(mcFilter, {
-          orderBy: "createdAt",
-          orderDirection: "desc",
-        }),
-        Q.player.session.findAll(mcFilter, {
-          orderBy: "sessionStart",
-          orderDirection: "desc",
-        }),
-        Q.player.playtime.daily.findAll(mcFilter, {
-          orderBy: "playDate",
-          orderDirection: "desc",
-        }),
-        Q.player.playtime.hourly.findAll(mcFilter, {
-          orderBy: "playHour",
-          orderDirection: "desc",
-        }),
-        Q.player.playtime.summary.findAll(mcFilter),
-        Q.player.minecraft.stats.findAll(mcFilterAlt),
-        Q.player.ban.findAll(mcFilter, {
-          orderBy: "bannedAt",
-          orderDirection: "desc",
-        }),
-        Q.player.strike.findAll(mcFilter, {
-          orderBy: "issuedAt",
-          orderDirection: "desc",
-        }),
-        Q.reward.claim.findAll(mcFilter, {
-          orderBy: "claimedAt",
-          orderDirection: "desc",
-        }),
-        Q.ticket.findAll(
-          { creatorDiscordId: discordId },
-          { orderBy: "createdAt", orderDirection: "desc" },
-        ),
-      ]);
+      const playerData = await Q.player.find({ discordId });
+      const sessions = await Q.auth.session.getActiveSessions(discordId);
+      const balance = await Q.player.balance
+        .find(mcFilterAlt)
+        .catch(() => null);
+      const balanceTransactions = await Q.player.balance.transaction.findAll(
+        mcFilter,
+        { orderBy: "createdAt", orderDirection: "desc" },
+      );
+      const gameSessions = await Q.player.session.findAll(mcFilter, {
+        orderBy: "sessionStart",
+        orderDirection: "desc",
+      });
+      const playtimeDaily = await Q.player.playtime.daily.findAll(mcFilter, {
+        orderBy: "playDate",
+        orderDirection: "desc",
+      });
+      const playtimeHourly = await Q.player.playtime.hourly.findAll(mcFilter, {
+        orderBy: "playHour",
+        orderDirection: "desc",
+      });
+      const playtimeSummary = await Q.player.playtime.summary.findAll(mcFilter);
+      const minecraftStats =
+        await Q.player.minecraft.stats.findAll(mcFilterAlt);
+      const bans = await Q.player.ban.findAll(mcFilter, {
+        orderBy: "bannedAt",
+        orderDirection: "desc",
+      });
+      const strikes = await Q.player.strike.findAll(mcFilter, {
+        orderBy: "issuedAt",
+        orderDirection: "desc",
+      });
+      const rewardClaims = await Q.reward.claim.findAll(mcFilter, {
+        orderBy: "claimedAt",
+        orderDirection: "desc",
+      });
+      const tickets = await Q.ticket.findAll(
+        { creatorDiscordId: discordId },
+        { orderBy: "createdAt", orderDirection: "desc" },
+      );
 
       const data = {
         exportedAt: new Date().toISOString(),

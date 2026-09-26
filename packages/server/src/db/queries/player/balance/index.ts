@@ -161,22 +161,33 @@ export class PlayerBalanceQueries extends PlayerBalanceBaseQueries {
   }
 
   /**
-   * Gets every player's non-zero balance keyed by Minecraft UUID.
-   *
-   * @returns Balance records as user-facing decimals
+   * Ranks players with a positive balance, highest first, joined with their usernames.
+   * Omitting the limit returns every ranked player.
    */
-  async getAllBalances(): Promise<
-    Array<{ minecraftUuid: string; balance: number }>
+  async getNetWorthRanking(limit?: number): Promise<
+    Array<{
+      minecraftUuid: string;
+      minecraftUsername: string;
+      balance: number;
+    }>
   > {
-    const query = `SELECT minecraft_uuid, balance FROM ${this.table} WHERE balance > 0`;
+    const query = `
+      SELECT pb.minecraft_uuid, p.minecraft_username, pb.balance
+      FROM ${this.table} pb
+      JOIN player p ON p.minecraft_uuid = pb.minecraft_uuid
+      WHERE pb.balance > 0
+      ORDER BY pb.balance DESC, pb.minecraft_uuid
+      LIMIT $1`;
 
     const result = await this.runQuery<{
       minecraft_uuid: string;
+      minecraft_username: string;
       balance: bigint;
-    }>("get all balances", query);
+    }>("get net worth ranking", query, [limit ?? null]);
 
     return result.rows.map((row) => ({
       minecraftUuid: row.minecraft_uuid,
+      minecraftUsername: row.minecraft_username,
       balance: BalanceUtils.fromStorage(row.balance),
     }));
   }

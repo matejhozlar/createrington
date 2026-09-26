@@ -75,6 +75,23 @@ describe("Q.player.balance (hierarchical singleton)", () => {
     ]);
   });
 
+  it("ranks positive balances highest first and honours the limit", async () => {
+    await seedPlayer(ALICE, "alice", "100");
+    await seedPlayer(BOB, "bob", "200");
+    await seedPlayer(CAROL, "carol", "300");
+    await Q.player.balance.create({ minecraftUuid: ALICE, balance: 3_000n });
+    await Q.player.balance.create({ minecraftUuid: BOB, balance: 9_500n });
+    await Q.player.balance.create({ minecraftUuid: CAROL, balance: 0n });
+
+    expect(await Q.player.balance.getNetWorthRanking()).toEqual([
+      { minecraftUuid: BOB, minecraftUsername: "bob", balance: 9.5 },
+      { minecraftUuid: ALICE, minecraftUsername: "alice", balance: 3 },
+    ]);
+    expect(await Q.player.balance.getNetWorthRanking(1)).toEqual([
+      { minecraftUuid: BOB, minecraftUsername: "bob", balance: 9.5 },
+    ]);
+  });
+
   it("aggregates total balance in circulation", async () => {
     await seedPlayer(ALICE, "alice", "100");
     await seedPlayer(BOB, "bob", "200");

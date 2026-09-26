@@ -85,6 +85,53 @@ describe("BaseQueries (server table)", () => {
     });
   });
 
+  describe("createMany / createManyAndReturn", () => {
+    it("should insert every row and fill omitted columns with their default", async () => {
+      const createdAt = new Date("2026-01-01T00:00:00Z");
+
+      const rows = await Q.server.createManyAndReturn([
+        { name: "Survival", identifier: "survival", createdAt },
+        { name: "Creative", identifier: "creative" },
+      ]);
+
+      expect(rows.map((row) => row.identifier)).toEqual([
+        "survival",
+        "creative",
+      ]);
+      expect(rows[0].createdAt).toEqual(createdAt);
+      expect(rows[1].createdAt).toBeInstanceOf(Date);
+      expect(rows[1].createdAt).not.toEqual(createdAt);
+    });
+
+    it("should do nothing for an empty batch", async () => {
+      await Q.server.createMany([]);
+      expect(await Q.server.createManyAndReturn([])).toEqual([]);
+      expect(await Q.server.count()).toBe(0);
+    });
+
+    it("should split batches that exceed the parameter limit", async () => {
+      const rows = Array.from({ length: 32_768 }, (_, i) => ({
+        name: `Server ${i}`,
+        identifier: `server-${i}`,
+      }));
+
+      await Q.server.createMany(rows);
+
+      expect(await Q.server.count()).toBe(rows.length);
+    });
+
+    it("should reject a duplicate as UniqueViolationError", async () => {
+      const error = await Q.server
+        .createMany([
+          { name: "Survival", identifier: "survival" },
+          { name: "Survival", identifier: "other" },
+        ])
+        .catch((e) => e);
+
+      expect(error).toBeInstanceOf(UniqueViolationError);
+    });
+  });
+
   // ==========================================================================
   // FIND / GET / EXISTS
   // ==========================================================================

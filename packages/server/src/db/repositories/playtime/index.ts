@@ -468,11 +468,7 @@ export class PlaytimeRepository {
     }
   }
 
-  /**
-   * Top players by total seconds in [startDate, endDate]. Aggregates from
-   * the dailies in memory and joins back to player names, so cost scales
-   * with the row count over the range, not with the player table.
-   */
+  /** Top players by total seconds in [startDate, endDate], summed and ranked in SQL. */
   async getTopPlayersByDateRange(
     serverId: number,
     startDate: Date,
@@ -480,35 +476,17 @@ export class PlaytimeRepository {
     limit: number = 10,
   ) {
     try {
-      const dailyRecords = await Q.player.playtime.daily.findAll({
+      const rows = await Q.player.playtime.daily.getTopPlayers(
         serverId,
-        playDate: { $between: [calendarDay(startDate), calendarDay(endDate)] },
-      });
-
-      const playerTotals = new Map<string, bigint>();
-
-      for (const record of dailyRecords) {
-        const current = playerTotals.get(record.playerMinecraftUuid) || 0n;
-        playerTotals.set(
-          record.playerMinecraftUuid,
-          current + record.secondsPlayed,
-        );
-      }
-
-      const sorted = Array.from(playerTotals.entries())
-        .sort((a, b) => Number(b[1] - a[1]))
-        .slice(0, limit);
-
-      return await Promise.all(
-        sorted.map(async ([uuid, seconds]) => {
-          const player = await Q.player.get({ minecraftUuid: uuid });
-          return {
-            minecraftUsername: player.minecraftUsername,
-            totalSeconds: Number(seconds),
-            totalHours: Number(seconds) / 3600,
-          };
-        }),
+        calendarDay(startDate),
+        calendarDay(endDate),
+        limit,
       );
+
+      return rows.map((row) => ({
+        ...row,
+        totalHours: row.totalSeconds / 3600,
+      }));
     } catch (error) {
       logger.error("Failed to get top players by date range:", error);
       throw error;
