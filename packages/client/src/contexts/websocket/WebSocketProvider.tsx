@@ -55,10 +55,16 @@ export function WebSocketProvider({
     autoConnect ? "connecting" : "disconnected",
   );
   const [error, setError] = useState<Error | null>(null);
+  const rejectedRetryRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
+
+  const cancelRejectedRetry = useCallback(() => {
+    clearTimeout(rejectedRetryRef.current);
+    rejectedRetryRef.current = undefined;
+  }, []);
 
   useEffect(() => {
-    let rejectedRetry: ReturnType<typeof setTimeout> | undefined;
-
     const handleConnect = () => {
       setConnectionState("connected");
       setError(null);
@@ -76,8 +82,8 @@ export function WebSocketProvider({
         return;
       }
       setConnectionState("error");
-      clearTimeout(rejectedRetry);
-      rejectedRetry = setTimeout(
+      cancelRejectedRetry();
+      rejectedRetryRef.current = setTimeout(
         () => socket.connect(),
         socket.io.reconnectionDelayMax(),
       );
@@ -90,13 +96,13 @@ export function WebSocketProvider({
     socket.io.on("reconnect_attempt", handleReconnectAttempt);
 
     return () => {
-      clearTimeout(rejectedRetry);
+      cancelRejectedRetry();
       socket.off("connect", handleConnect);
       socket.off("disconnect", handleDisconnect);
       socket.off("connect_error", handleConnectError);
       socket.io.off("reconnect_attempt", handleReconnectAttempt);
     };
-  }, [socket]);
+  }, [socket, cancelRejectedRetry]);
 
   useEffect(() => {
     if (!autoConnect || authLoading) return;
@@ -104,9 +110,10 @@ export function WebSocketProvider({
     socket.connect();
 
     return () => {
+      cancelRejectedRetry();
       socket.disconnect();
     };
-  }, [socket, autoConnect, authLoading]);
+  }, [socket, autoConnect, authLoading, cancelRejectedRetry]);
 
   const lastIdentityRef = useRef<string | null | undefined>(undefined);
   useEffect(() => {
@@ -121,8 +128,9 @@ export function WebSocketProvider({
     lastIdentityRef.current = identity;
 
     if (!autoConnect) return;
+    cancelRejectedRetry();
     socket.disconnect().connect();
-  }, [socket, authLoading, user?.discordId, autoConnect]);
+  }, [socket, authLoading, user?.discordId, autoConnect, cancelRejectedRetry]);
 
   useEffect(() => {
     const retryNow = () => {
@@ -142,13 +150,15 @@ export function WebSocketProvider({
 
   const connect = useCallback(() => {
     if (socket.connected) return;
+    cancelRejectedRetry();
     setConnectionState("connecting");
     socket.connect();
-  }, [socket]);
+  }, [socket, cancelRejectedRetry]);
 
   const disconnect = useCallback(() => {
+    cancelRejectedRetry();
     socket.disconnect();
-  }, [socket]);
+  }, [socket, cancelRejectedRetry]);
 
   const on = useCallback(
     (event: string, callback: (data: unknown) => void) => {
