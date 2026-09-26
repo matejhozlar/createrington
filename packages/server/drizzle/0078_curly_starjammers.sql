@@ -1,0 +1,1 @@
+DROP TABLE IF EXISTS "lottery_participant" CASCADE;
