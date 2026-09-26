@@ -9,25 +9,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { hasFixedLayout } from "../engine/output";
 import { MAX_RENDER_SIZE } from "../engine/render";
 import type {
   MinecraftMode,
   OutputMode,
   OutputSettings,
 } from "../engine/types";
-import {
-  ChoiceField,
-  ColourField,
-  Section,
-  SliderField,
-  ToggleField,
-} from "./fields";
+import { ColourField, Section, SliderField, ToggleField } from "./fields";
 
 const LAYOUTS: { value: OutputMode; label: string }[] = [
   { value: "normal", label: "Normal" },
   { value: "square", label: "Square" },
   { value: "custom", label: "Custom" },
   { value: "minecraft", label: "Minecraft" },
+  { value: "createrington", label: "Createrington" },
 ];
 
 const MINECRAFT_MODES: { value: MinecraftMode; label: string }[] = [
@@ -40,6 +36,8 @@ const LAYOUT_DESCRIPTIONS: Record<OutputMode, string> = {
   square: "Centred on a square canvas.",
   custom: "Fitted inside a canvas of your chosen size.",
   minecraft: "Laid out as a resource pack title texture.",
+  createrington:
+    "A 512 × 512 tile on the site's dark background, for mod logos and avatars.",
 };
 
 function SizeInput({
@@ -95,11 +93,21 @@ export function OutputCard({
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
         <Section title="Layout" description={LAYOUT_DESCRIPTIONS[output.mode]}>
-          <ChoiceField
+          <Select
             value={output.mode}
-            options={LAYOUTS}
-            onChange={(mode) => onChange({ mode })}
-          />
+            onValueChange={(value) => onChange({ mode: value as OutputMode })}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {LAYOUTS.map((layout) => (
+                <SelectItem key={layout.value} value={layout.value}>
+                  {layout.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           {output.mode === "custom" && (
             <div className="flex flex-wrap gap-4">
               <SizeInput
@@ -140,7 +148,7 @@ export function OutputCard({
           )}
         </Section>
 
-        {!isMinecraft && (
+        {!hasFixedLayout(output.mode) && (
           <Section title="Background">
             <ToggleField
               label="Background colour"
