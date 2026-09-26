@@ -7,6 +7,7 @@ import {
   buildPagination,
 } from "@/trpc/utils";
 import { Q } from "@/db";
+import { BalanceUtils } from "@/db/repositories/balance/utils";
 
 /** Admin transactions router: paginated balance transaction history for a player. */
 export const transactionsRouter = router({
@@ -34,9 +35,9 @@ export const transactionsRouter = router({
 
       const items = rows.map((tx) => ({
         id: tx.id,
-        amount: tx.amount.toString(),
-        balanceBefore: tx.balanceBefore.toString(),
-        balanceAfter: tx.balanceAfter.toString(),
+        amount: BalanceUtils.fromStorage(tx.amount),
+        balanceBefore: BalanceUtils.fromStorage(tx.balanceBefore),
+        balanceAfter: BalanceUtils.fromStorage(tx.balanceAfter),
         transactionType: tx.transactionType,
         description: tx.description,
         createdAt: tx.createdAt.toISOString(),
