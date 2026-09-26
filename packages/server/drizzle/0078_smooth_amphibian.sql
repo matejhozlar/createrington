@@ -1,0 +1,1 @@
+DROP TABLE "lottery_participant" CASCADE;
