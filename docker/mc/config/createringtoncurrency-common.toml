@@ -27,13 +27,6 @@
 	#Drop chance of 1$ bills from wither blazes, eg. '50.0' = 50% chance
 	blazeDrop = 3.5
 
-#Lottery command settings
-[lottery]
-	#Cooldown duration for /lottery in minutes, don't use this if you are not using integrated discord bots
-	# Default: 15
-	# Range: 0 ~ 1440
-	lotteryCooldownMinutes = 15
-
 #Integrations with other mods
 [integrations]
 	#Enable reporting Create train crashes to the API (requires Create mod)

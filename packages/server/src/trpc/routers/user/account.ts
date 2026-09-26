@@ -106,7 +106,6 @@ export const accountRouter = router({
         bans,
         strikes,
         rewardClaims,
-        lotteryEntries,
         tickets,
       ] = await Promise.all([
         Q.player.find({ discordId }),
@@ -142,7 +141,6 @@ export const accountRouter = router({
           orderBy: "claimedAt",
           orderDirection: "desc",
         }),
-        Q.lottery.participant.findAll(mcFilterAlt),
         Q.ticket.findAll(
           { creatorDiscordId: discordId },
           { orderBy: "createdAt", orderDirection: "desc" },
@@ -167,7 +165,6 @@ export const accountRouter = router({
           strikes,
         },
         rewardClaims,
-        lotteryEntries,
         tickets,
       };
 
