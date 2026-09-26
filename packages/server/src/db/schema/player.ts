@@ -49,23 +49,6 @@ export const player = pgTable(
   (table) => [index("idx_player_last_seen").on(table.lastSeen)],
 );
 
-// --- lottery_participant ---
-
-export const lotteryParticipant = pgTable("lottery_participant", {
-  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
-  minecraftUuid: uuid("minecraft_uuid")
-    .notNull()
-    .references(() => player.minecraftUuid, {
-      onUpdate: "cascade",
-      onDelete: "cascade",
-    }),
-  minecraftUsername: text("minecraft_username").notNull(),
-  amount: bigint("amount", { mode: "bigint" }).notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});
-
 // --- player_balance ---
 
 export const playerBalance = pgTable(

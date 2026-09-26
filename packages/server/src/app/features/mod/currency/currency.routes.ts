@@ -97,20 +97,4 @@ router.post(
   ),
 );
 
-router.post(
-  "/lottery/start",
-  ...customRoute(
-    [verifyServerIP, verifyModJWT, requireKnownPlayer],
-    CurrencyController.startLottery,
-  ),
-);
-
-router.post(
-  "/lottery/join",
-  ...customRoute(
-    [verifyServerIP, verifyModJWT, requireKnownPlayer],
-    CurrencyController.joinLottery,
-  ),
-);
-
 export default router;

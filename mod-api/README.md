@@ -52,8 +52,6 @@ client.post(Endpoints.CURRENCY_PAY, gson.toJson(req), PayResponse.class, playerU
 | `CURRENCY_TOP` | `/api/currency/top` |
 | `CURRENCY_DAILY` | `/api/currency/daily` |
 | `CURRENCY_HISTORY` | `/api/currency/history` |
-| `CURRENCY_LOTTERY_START` | `/api/currency/lottery/start` |
-| `CURRENCY_LOTTERY_JOIN` | `/api/currency/lottery/join` |
 | `PRESENCE` | `/api/presence` |
 | `PRESENCE_HEARTBEAT` | `/api/presence/heartbeat` |
 | `TRAINS_CRASH` | `/api/trains/crash` |
@@ -75,10 +73,6 @@ client.post(Endpoints.CURRENCY_PAY, gson.toJson(req), PayResponse.class, playerU
 | `DailyResponse` | `String message` |
 | `HistoryResponse` | `List<Transaction> transactions`, `int page`, `boolean hasMore` |
 | `Transaction` | `int id`, `String amount`, `String balanceBefore`, `String balanceAfter`, `String transactionType`, `@Nullable String description`, `String createdAt` |
-| `LotteryStartRequest` | `double amount` |
-| `LotteryStartResponse` | `boolean success`, `String message`, `double entryAmount`, `String endsAt` |
-| `LotteryJoinRequest` | `double amount` |
-| `LotteryJoinResponse` | `boolean success`, `String message`, `double entryAmount`, `double totalPot`, `int participantCount` |
 
 **Presence** - `com.saunhardy.createrington.api.presence.*`
 
