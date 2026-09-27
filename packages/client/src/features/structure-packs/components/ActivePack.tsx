@@ -76,9 +76,9 @@ export function ActivePack({ onOpenPortal }: ActivePackProps) {
   const modCount = activePack.mods.length;
   const rotatedInLabel = activePack.lastActivatedAt
     ? formatRotatedIn(now - new Date(activePack.lastActivatedAt).getTime())
-    : "—";
+    : "–";
   const rotatesOutLabel =
-    countdown ?? (rotationInfo?.enabled === false ? "Paused" : "—");
+    countdown ?? (rotationInfo?.enabled === false ? "Paused" : "–");
   const dimensionLabel = `dim ${String(activePack.id).padStart(3, "0")}`;
 
   return (
@@ -158,7 +158,7 @@ export function ActivePack({ onOpenPortal }: ActivePackProps) {
                   </a>
                 </Button>
                 <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                  Rotation locked — vote to influence the next
+                  Rotation locked, vote to influence the next
                 </span>
               </div>
             </div>

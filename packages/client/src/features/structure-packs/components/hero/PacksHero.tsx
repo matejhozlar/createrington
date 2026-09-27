@@ -261,15 +261,15 @@ function HeroCopy({
         style={{ textWrap: "pretty" }}
       >
         Mining dimensions rotate on a schedule. Spend in-game currency to boost
-        the themed dimension you want next — weighted voting decides what
-        appears through the portal.
+        the themed dimension you want next. Weighted voting decides what appears
+        through the portal.
       </p>
 
       <div className="grid w-full grid-cols-2 gap-3 sm:grid-cols-3">
         <Stat
           icon={Clock}
           label="Next rotation"
-          value={countdown ?? "—"}
+          value={countdown ?? "–"}
           mono
         />
         <Stat
