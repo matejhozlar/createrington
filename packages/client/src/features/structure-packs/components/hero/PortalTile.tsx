@@ -3,6 +3,7 @@ import portalSprite from "@/assets/parallel-worlds/pw-portal.png";
 
 const TOTAL_FRAMES = 32;
 const FRAME_DURATION_MS = 85;
+const SPRITE_FRAME_SIZE = 16;
 const SPRITE_SRC = portalSprite;
 
 let cachedSprite: HTMLImageElement | null = null;
@@ -50,7 +51,6 @@ export function PortalTile({ width, height, tileSize = 96 }: PortalTileProps) {
   );
 
   useEffect(() => {
-    if (cachedSprite) return;
     let cancelled = false;
     loadSprite()
       .then((img) => {
@@ -87,56 +87,41 @@ export function PortalTile({ width, height, tileSize = 96 }: PortalTileProps) {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    canvas.width = Math.ceil(width * dpr);
-    canvas.height = Math.ceil(height * dpr);
+    const cols = Math.ceil(width / tileSize);
+    const rows = Math.ceil(height / tileSize);
+    canvas.width = cols * SPRITE_FRAME_SIZE;
+    canvas.height = rows * SPRITE_FRAME_SIZE;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.scale(dpr, dpr);
     ctx.imageSmoothingEnabled = false;
 
-    const cols = Math.ceil(width / tileSize) + 1;
-    const rows = Math.ceil(height / tileSize) + 1;
-
-    const drawFrame = (cur: number, next: number, lerp: number) => {
+    const drawTiles = (frame: number) => {
       const img = imgRef.current;
       if (!img) return;
-      ctx.clearRect(0, 0, width, height);
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          ctx.drawImage(
+            img,
+            0,
+            frame * SPRITE_FRAME_SIZE,
+            SPRITE_FRAME_SIZE,
+            SPRITE_FRAME_SIZE,
+            c * SPRITE_FRAME_SIZE,
+            r * SPRITE_FRAME_SIZE,
+            SPRITE_FRAME_SIZE,
+            SPRITE_FRAME_SIZE,
+          );
+        }
+      }
+    };
+
+    const drawFrame = (cur: number, next: number, lerp: number) => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       ctx.globalAlpha = 1;
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-          ctx.drawImage(
-            img,
-            0,
-            cur * 16,
-            16,
-            16,
-            c * tileSize,
-            r * tileSize,
-            tileSize,
-            tileSize,
-          );
-        }
-      }
-
+      drawTiles(cur);
       ctx.globalAlpha = lerp;
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-          ctx.drawImage(
-            img,
-            0,
-            next * 16,
-            16,
-            16,
-            c * tileSize,
-            r * tileSize,
-            tileSize,
-            tileSize,
-          );
-        }
-      }
+      drawTiles(next);
       ctx.globalAlpha = 1;
     };
 
@@ -163,8 +148,8 @@ export function PortalTile({ width, height, tileSize = 96 }: PortalTileProps) {
     <canvas
       ref={canvasRef}
       style={{
-        width,
-        height,
+        width: Math.ceil(width / tileSize) * tileSize,
+        height: Math.ceil(height / tileSize) * tileSize,
         display: "block",
         imageRendering: "pixelated",
         background:
