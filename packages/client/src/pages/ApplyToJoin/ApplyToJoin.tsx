@@ -21,6 +21,50 @@ const WAITLIST_STEPS = [
   "We'll ping you right there when a spot opens. Register and play!",
 ];
 
+const FIGURES = [
+  {
+    name: "Agent772",
+    src: "/assets/apply/agent772-wave.webp",
+    className:
+      "bottom-full left-[3%] z-0 h-40 translate-y-[38%] -rotate-3 md:h-56",
+  },
+  {
+    name: "diablothe2nd",
+    src: "/assets/apply/diablothe2nd-gaze.webp",
+    className:
+      "bottom-full left-[24%] z-0 hidden h-36 translate-y-[52%] rotate-2 @2xl:block md:h-52",
+  },
+  {
+    name: "Saidai_V",
+    src: "/assets/apply/saidai-v-ponder.webp",
+    className:
+      "bottom-full left-[45%] z-0 h-36 translate-y-[45%] -rotate-2 md:h-52",
+  },
+  {
+    name: "Tetsuoken",
+    src: "/assets/apply/tetsuoken-cute.webp",
+    className:
+      "bottom-full left-[63%] z-0 hidden h-36 translate-y-[55%] rotate-3 @2xl:block md:h-52",
+  },
+  {
+    name: "saunhardy",
+    src: "/assets/apply/saunhardy-relaxed.webp",
+    className: "right-[2%] bottom-full z-20 h-32 translate-y-[11.5%] md:h-44",
+  },
+  {
+    name: "Cailin05",
+    src: "/assets/apply/cailin05-callout.webp",
+    className:
+      "top-[18%] right-full z-0 hidden h-60 origin-bottom translate-x-[58%] -rotate-[16deg] @6xl:block",
+  },
+  {
+    name: "The_BigShot",
+    src: "/assets/apply/the-bigshot-point.webp",
+    className:
+      "bottom-0 left-full z-20 hidden h-64 -translate-x-[22%] translate-y-[6%] @6xl:block",
+  },
+] as const;
+
 const POLICY_LINKS = [
   { label: "Rules", to: "/rules" },
   { label: "Terms of Service", to: "/terms" },
@@ -42,58 +86,38 @@ export function ApplyToJoin() {
   }
 
   return (
-    <div className="flex flex-1 flex-col pb-20">
+    <div className="flex flex-1 flex-col overflow-x-clip pb-20">
       <PageHeader
         title="Apply to Join"
         imageSrc="/assets/hero/space-ship-station.webp"
         description="Join our community and become a part of Createrington!"
       />
 
-      <div className="pb-12 lg:py-16 px-5 md:px-8">
-        <Card className="mx-auto w-full max-w-7xl py-3 sm:py-6 xl:py-10">
-          <CardContent className="px-3 sm:px-6 xl:px-10">
-            <div className="grid gap-8 md:gap-16 lg:grid-cols-[1fr_1.2fr]">
-              <div className="rounded-xl h-fit border border-border/60 bg-background p-6">
-                <div className="mb-6">
-                  <h2 className="text-xl font-semibold">
-                    {isWaitlistMode ? "Join the Waitlist" : "Join the Server"}
-                  </h2>
-                </div>
-
-                <Button asChild variant="discord" className="w-full">
-                  <a
-                    href={DISCORD_INVITE_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <ExternalLink className="mr-2 size-4" />
-                    Join Our Discord
-                  </a>
-                </Button>
-
-                <p className="mt-4 text-xs text-muted-foreground">
-                  By registering you agree to our{" "}
-                  {POLICY_LINKS.map((link, index) => (
-                    <span key={link.to}>
-                      <NavLink
-                        to={link.to}
-                        target="_blank"
-                        className="text-primary hover:underline"
-                      >
-                        {link.label}
-                      </NavLink>
-                      {index < POLICY_LINKS.length - 2
-                        ? ", "
-                        : index === POLICY_LINKS.length - 2
-                          ? " and "
-                          : "."}
-                    </span>
-                  ))}
-                </p>
-              </div>
-
-              <div className="flex flex-col gap-6">
-                <div>
+      <div className="@container px-5 pt-28 pb-12 md:px-8 md:pt-40">
+        <div className="relative mx-auto w-full max-w-5xl">
+          {FIGURES.map(({ name, src, className }) => (
+            <span
+              key={name}
+              className={cn(
+                "group pointer-events-none absolute aspect-[2/3]",
+                className,
+              )}
+            >
+              <img
+                src={src}
+                alt={name}
+                width={600}
+                height={900}
+                draggable={false}
+                decoding="async"
+                className="pointer-events-auto h-full w-auto max-w-none select-none drop-shadow-[0_10px_14px_rgba(0,0,0,0.55)] transition-transform duration-300 ease-out group-hover:-translate-y-[8%]"
+              />
+            </span>
+          ))}
+          <Card className="relative z-10 w-full py-3 shadow-[0_-18px_40px_-12px_rgba(0,0,0,0.7)] sm:py-6 xl:py-10">
+            <CardContent className="px-3 sm:px-6 xl:px-10">
+              <div className="grid gap-8 md:gap-12 lg:grid-cols-[1.1fr_1fr]">
+                <div className="flex flex-col">
                   <h2 className="text-3xl md:text-4xl font-semibold text-foreground">
                     Current Status
                   </h2>
@@ -117,6 +141,39 @@ export function ApplyToJoin() {
                       ? "Thank you for showing interest in our server! We're currently at our capacity, but you can join the waitlist through our Discord to reserve a spot."
                       : "Thank you for showing interest in our server! We have open spots available. Join the Discord to get started."}
                   </p>
+
+                  <div className="mt-8 lg:mt-auto lg:pt-8">
+                    <Button asChild variant="discord" className="w-full">
+                      <a
+                        href={DISCORD_INVITE_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <ExternalLink className="mr-2 size-4" />
+                        Join Our Discord
+                      </a>
+                    </Button>
+
+                    <p className="mt-4 text-xs text-muted-foreground">
+                      By registering you agree to our{" "}
+                      {POLICY_LINKS.map((link, index) => (
+                        <span key={link.to}>
+                          <NavLink
+                            to={link.to}
+                            target="_blank"
+                            className="text-primary hover:underline"
+                          >
+                            {link.label}
+                          </NavLink>
+                          {index < POLICY_LINKS.length - 2
+                            ? ", "
+                            : index === POLICY_LINKS.length - 2
+                              ? " and "
+                              : "."}
+                        </span>
+                      ))}
+                    </p>
+                  </div>
                 </div>
 
                 <div className="rounded-2xl border border-border/60 bg-muted/30 p-6">
@@ -137,9 +194,9 @@ export function ApplyToJoin() {
                   </ol>
                 </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
