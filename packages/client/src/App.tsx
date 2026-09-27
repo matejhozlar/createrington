@@ -143,10 +143,6 @@ const ServerDetail = lazyNamed(
   () => import("./pages/ServerDetail/ServerDetail"),
   "ServerDetail",
 );
-const ServerStatus = lazyNamed(
-  () => import("./pages/ServerStatus/ServerStatus"),
-  "ServerStatus",
-);
 const ServerChat = lazyNamed(() => import("./components/chat"), "ServerChat");
 const ChatRedirect = lazyNamed(
   () => import("./components/chat"),
@@ -426,7 +422,6 @@ function AppContent() {
               </ProtectedRoute>
             }
           />
-          <Route path="/servers/status" element={<ServerStatus />} />
 
           {/* Full-screen Routes (no footer) */}
           <Route path="/chat" element={<ChatRedirect />} />
