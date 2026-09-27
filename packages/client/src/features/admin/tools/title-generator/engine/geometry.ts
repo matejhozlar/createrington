@@ -20,6 +20,7 @@ export type TitleMesh = {
 
 export type GeometryOptions = {
   type: TextType;
+  flat: boolean;
   row: number;
   rowSpacing: number;
   characterSpacing: number;
@@ -38,6 +39,9 @@ const FACE_DIRECTIONS: FaceDirection[] = [
 ];
 
 const SPACER = "\u200b";
+
+const FLAT_BOTTOM_GAP = 4;
+const FLAT_SMALL_GAP = 3;
 
 type WordArgs = GeometryOptions & {
   font: TitleFont;
@@ -101,13 +105,14 @@ function makeCharacter(char: string, offset: number, args: WordArgs) {
       point[2] -= minZ;
     }
     if (args.type === "bottom") {
+      const stretch = args.flat ? 1 : 2;
       const drop =
-        args.row * (height * 2 + 4) +
+        args.row * (height * stretch + 4) +
         args.rowSpacing * args.row +
-        height * 2 +
-        18;
+        height * stretch +
+        (args.flat ? FLAT_BOTTOM_GAP : 18);
       for (const point of [cube.from, cube.to]) {
-        point[1] = point[1] * 2 - drop;
+        point[1] = point[1] * stretch - drop;
         point[0] *= 0.75;
         point[1] *= 0.75;
         point[2] = point[2] * 0.75 - 8;
@@ -243,6 +248,36 @@ export function buildTitleMesh(
 
   return {
     cubes: args.cubes,
-    rotationX: args.type === "bottom" ? -90 : 0,
+    rotationX: args.type === "bottom" && !args.flat ? -90 : 0,
   };
+}
+
+function verticalExtent(mesh: TitleMesh) {
+  let min = Infinity;
+  let max = -Infinity;
+  for (const cube of mesh.cubes) {
+    min = Math.min(min, cube.from[1], cube.to[1]);
+    max = Math.max(max, cube.from[1], cube.to[1]);
+  }
+  return { min, max };
+}
+
+export function clearSmallRows(layers: { type: TextType; mesh: TitleMesh }[]) {
+  const small = layers.filter((layer) => layer.type === "small");
+  const bottom = layers.filter((layer) => layer.type === "bottom");
+  if (!small.length || !bottom.length) return;
+  const smallBottom = Math.min(
+    ...small.map((layer) => verticalExtent(layer.mesh).min),
+  );
+  const bottomTop = Math.max(
+    ...bottom.map((layer) => verticalExtent(layer.mesh).max),
+  );
+  const overlap = bottomTop - (smallBottom - FLAT_SMALL_GAP);
+  if (overlap <= 0) return;
+  for (const { mesh } of bottom) {
+    for (const cube of mesh.cubes) {
+      cube.from[1] -= overlap;
+      cube.to[1] -= overlap;
+    }
+  }
 }

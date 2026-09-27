@@ -5,9 +5,24 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { MAX_ANTIALIAS_RESOLUTION, MAX_RENDER_SIZE } from "../engine/render";
-import { DEFAULT_CAMERA_DISTANCE } from "../engine/settings";
-import type { RenderSettings } from "../engine/types";
+import { DEFAULT_CAMERA_DISTANCE, RENDER_VIEWS } from "../engine/settings";
+import type { RenderSettings, RenderView } from "../engine/types";
 import { ChoiceField, Section, SliderField, ToggleField } from "./fields";
+
+const VIEW_LABELS: Record<RenderView, string> = {
+  tilted: "Tilted",
+  flat: "Flat",
+};
+
+const VIEW_DESCRIPTIONS: Record<RenderView, string> = {
+  tilted: "The classic Minecraft look, seen from below at an angle.",
+  flat: "Straight on, with every row upright and no perspective.",
+};
+
+const VIEW_OPTIONS = RENDER_VIEWS.map((value) => ({
+  value,
+  label: VIEW_LABELS[value],
+}));
 
 const PRESET_RESOLUTIONS = [480, 720, 1024, 2048, 4096] as const;
 
@@ -53,6 +68,14 @@ export function RenderCard({
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
+        <Section title="View" description={VIEW_DESCRIPTIONS[render.view]}>
+          <ChoiceField
+            value={render.view}
+            options={VIEW_OPTIONS}
+            onChange={(view) => onChange({ view })}
+          />
+        </Section>
+
         <Section
           title="Resolution"
           description="The width or height of the render, whichever is larger."
@@ -105,41 +128,43 @@ export function RenderCard({
           />
         </Section>
 
-        <Section
-          title="Camera"
-          action={
-            render.cameraDistance !== DEFAULT_CAMERA_DISTANCE && (
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label="Reset camera distance"
-                onClick={() =>
-                  onChange({ cameraDistance: DEFAULT_CAMERA_DISTANCE })
-                }
-              >
-                <RotateCcw className="size-4" />
-              </Button>
-            )
-          }
-        >
-          <SliderField
-            label="Distance"
-            value={Math.round(
-              (render.cameraDistance / DEFAULT_CAMERA_DISTANCE) * 100,
-            )}
-            min={35}
-            max={200}
-            suffix="%"
-            onChange={(value) =>
-              onChange({
-                cameraDistance:
-                  value === 100
-                    ? DEFAULT_CAMERA_DISTANCE
-                    : (DEFAULT_CAMERA_DISTANCE * value) / 100,
-              })
+        {render.view === "tilted" && (
+          <Section
+            title="Camera"
+            action={
+              render.cameraDistance !== DEFAULT_CAMERA_DISTANCE && (
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Reset camera distance"
+                  onClick={() =>
+                    onChange({ cameraDistance: DEFAULT_CAMERA_DISTANCE })
+                  }
+                >
+                  <RotateCcw className="size-4" />
+                </Button>
+              )
             }
-          />
-        </Section>
+          >
+            <SliderField
+              label="Distance"
+              value={Math.round(
+                (render.cameraDistance / DEFAULT_CAMERA_DISTANCE) * 100,
+              )}
+              min={35}
+              max={200}
+              suffix="%"
+              onChange={(value) =>
+                onChange({
+                  cameraDistance:
+                    value === 100
+                      ? DEFAULT_CAMERA_DISTANCE
+                      : (DEFAULT_CAMERA_DISTANCE * value) / 100,
+                })
+              }
+            />
+          </Section>
+        )}
       </CardContent>
     </Card>
   );

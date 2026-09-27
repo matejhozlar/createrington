@@ -11,6 +11,7 @@ import type {
   OutputMode,
   OutputSettings,
   RenderSettings,
+  RenderView,
   TextureArgs,
   TextureSource,
   TitleLayer,
@@ -87,7 +88,10 @@ export const DEFAULT_RENDER: RenderSettings = {
   resolution: 1024,
   antialias: true,
   cameraDistance: DEFAULT_CAMERA_DISTANCE,
+  view: "tilted",
 };
+
+export const RENDER_VIEWS: RenderView[] = ["tilted", "flat"];
 
 export const OUTPUT_MODES: OutputMode[] = [
   "normal",
@@ -288,9 +292,13 @@ export function resolveTextureArgs(layer: TitleLayer): TextureArgs {
   };
 }
 
-export function geometryOptions(layer: TitleLayer): GeometryOptions {
+export function geometryOptions(
+  layer: TitleLayer,
+  view: RenderView,
+): GeometryOptions {
   return {
     type: layer.type,
+    flat: view === "flat",
     row: layer.row,
     rowSpacing: layer.rowSpacing,
     characterSpacing: layer.characterSpacing,

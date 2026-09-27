@@ -5,6 +5,7 @@ import {
   Matrix4,
   Mesh,
   NearestFilter,
+  OrthographicCamera,
   PerspectiveCamera,
   Scene,
   ShaderMaterial,
@@ -14,7 +15,7 @@ import {
 } from "three";
 import { autoCrop, createFrame, frameFrom, type Frame } from "./canvas";
 import type { TitleCube, TitleMesh } from "./geometry";
-import type { FaceDirection, RenderSettings, Vec3 } from "./types";
+import type { FaceDirection, RenderSettings, RenderView, Vec3 } from "./types";
 
 export type PreparedLayer = {
   mesh: TitleMesh;
@@ -30,6 +31,8 @@ const CAMERA_FOV = 45;
 const CAMERA_NEAR = 1;
 const CAMERA_FAR = 30000;
 const BOUNDS_ASPECT = 16 / 9;
+const FLAT_CAMERA_POSITION = new Vector3(0, 0, -1000);
+const FLAT_FRUSTUM_HEIGHT = 4000;
 
 const FACE_ORDER: FaceDirection[] = [
   "east",
@@ -102,21 +105,43 @@ function buildGeometry(mesh: TitleMesh) {
   return geometry;
 }
 
-function createCamera(aspect: number, position: Vector3) {
-  const camera = new PerspectiveCamera(
-    CAMERA_FOV,
-    aspect,
-    CAMERA_NEAR,
-    CAMERA_FAR,
-  );
+function cameraPosition(view: RenderView, cameraDistance: number) {
+  return view === "flat"
+    ? FLAT_CAMERA_POSITION.clone()
+    : CAMERA_PRESET.clone().multiplyScalar(cameraDistance);
+}
+
+function createCamera(view: RenderView, position: Vector3) {
+  const halfHeight = FLAT_FRUSTUM_HEIGHT / 2;
+  const halfWidth = halfHeight * BOUNDS_ASPECT;
+  const camera =
+    view === "flat"
+      ? new OrthographicCamera(
+          -halfWidth,
+          halfWidth,
+          halfHeight,
+          -halfHeight,
+          CAMERA_NEAR,
+          CAMERA_FAR,
+        )
+      : new PerspectiveCamera(
+          CAMERA_FOV,
+          BOUNDS_ASPECT,
+          CAMERA_NEAR,
+          CAMERA_FAR,
+        );
   camera.position.copy(position);
   camera.lookAt(CAMERA_TARGET);
   camera.updateMatrixWorld();
   return camera;
 }
 
-function projectBounds(layers: PreparedLayer[], position: Vector3) {
-  const camera = createCamera(BOUNDS_ASPECT, position);
+function projectBounds(
+  layers: PreparedLayer[],
+  view: RenderView,
+  position: Vector3,
+) {
+  const camera = createCamera(view, position);
   const direction = CAMERA_TARGET.clone().sub(position).normalize();
   let minX = Infinity;
   let maxX = -Infinity;
@@ -325,10 +350,10 @@ function cleanEdges(frame: Frame) {
 
 export function renderTitle(
   layers: PreparedLayer[],
-  { resolution, antialias, cameraDistance }: RenderSettings,
+  { resolution, antialias, cameraDistance, view }: RenderSettings,
 ): HTMLCanvasElement | null {
-  const position = CAMERA_PRESET.clone().multiplyScalar(cameraDistance);
-  const bounds = projectBounds(layers, position);
+  const position = cameraPosition(view, cameraDistance);
+  const bounds = projectBounds(layers, view, position);
   if (!bounds) return null;
   const { minX, maxX, minY, maxY } = bounds;
 
@@ -342,7 +367,7 @@ export function renderTitle(
   const renderer = getRenderer();
   renderer.setSize(Math.floor(outWidth), Math.floor(outHeight), false);
 
-  const camera = createCamera(BOUNDS_ASPECT, position);
+  const camera = createCamera(view, position);
   const fullWidth = outWidth / (maxX - minX);
   const fullHeight = outHeight / (maxY - minY);
   camera.setViewOffset(

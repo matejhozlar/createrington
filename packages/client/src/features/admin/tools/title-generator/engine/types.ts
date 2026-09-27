@@ -200,8 +200,11 @@ export type OutputSettings = {
   padding: number;
 };
 
+export type RenderView = "tilted" | "flat";
+
 export type RenderSettings = {
   resolution: number;
   antialias: boolean;
   cameraDistance: number;
+  view: RenderView;
 };

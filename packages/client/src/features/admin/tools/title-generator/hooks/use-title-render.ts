@@ -37,7 +37,7 @@ export function useTitleRender(
     const handle = window.setTimeout(async () => {
       setRendering(true);
       try {
-        const prepared = await prepareLayers(layers, catalog);
+        const prepared = await prepareLayers(layers, catalog, render.view);
         if (cancelled) return;
         setState({ image: renderTitle(prepared, render), error: null });
       } catch (error) {

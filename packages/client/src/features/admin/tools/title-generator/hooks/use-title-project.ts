@@ -5,6 +5,7 @@ import {
   DEFAULT_OUTPUT,
   DEFAULT_RENDER,
   OUTPUT_MODES,
+  RENDER_VIEWS,
   WORDMARK_LAYERS,
 } from "../engine/settings";
 import type {
@@ -52,12 +53,16 @@ function loadProject(): Project {
     if (!MINECRAFT_MODES.includes(output.minecraftMode)) {
       output.minecraftMode = DEFAULT_OUTPUT.minecraftMode;
     }
+    const render = { ...DEFAULT_RENDER, ...stored.render };
+    if (!RENDER_VIEWS.includes(render.view)) {
+      render.view = DEFAULT_RENDER.view;
+    }
     return {
       layers,
       selectedId: layers.some((layer) => layer.id === stored.selectedId)
         ? stored.selectedId!
         : layers[0].id,
-      render: { ...DEFAULT_RENDER, ...stored.render },
+      render,
       output,
     };
   } catch {
