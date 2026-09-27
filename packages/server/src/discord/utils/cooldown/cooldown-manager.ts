@@ -203,16 +203,17 @@ export class CooldownManager {
       this.cooldowns.set(commandName, new Map());
     }
 
-    const now = Date.now();
-    const timestamps = this.cooldowns.get(commandName)!;
-    const expiresAt = now + cfg.duration * 1000;
-
-    timestamps.set(key, {
-      expiresAt,
+    const entry: CooldownEntry = {
+      expiresAt: Date.now() + cfg.duration * 1000,
       userId: interaction.userId,
-    });
+    };
+
+    this.cooldowns.get(commandName)!.set(key, entry);
 
     setTimeout(() => {
+      const timestamps = this.cooldowns.get(commandName);
+      if (timestamps?.get(key) !== entry) return;
+
       timestamps.delete(key);
 
       if (timestamps.size === 0) {

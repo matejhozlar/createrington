@@ -5,7 +5,7 @@ import type {
   TicketActionCreate,
   TicketCreate,
 } from "@/generated/db";
-import { Q } from "@/db";
+import { db, Q } from "@/db";
 
 interface TicketCloseData {
   closedByDiscordId: string;
@@ -19,37 +19,39 @@ interface TicketCloseData {
  * status change with a logAction() write so the audit trail stays complete.
  */
 export class TicketRepository {
-  /** Allocate and return the next monotonic ticket number. */
-  async getNext(): Promise<number> {
-    return await Q.ticket.getNext();
+  /** Consume the ticket number sequence and return the allocated number. */
+  async allocateNumber(): Promise<number> {
+    return await Q.ticket.allocateNumber();
   }
 
-  /** Create an OPEN ticket and log the CREATED action. */
+  /** Create an OPEN ticket and log the CREATED action in one transaction. */
   async create(data: TicketCreate): Promise<Ticket> {
-    const ticketNumber = await this.getNext();
-
-    const ticket = await Q.ticket.createAndReturn({
-      ticketNumber,
-      type: data.type,
-      creatorDiscordId: data.creatorDiscordId,
-      channelId: data.channelId,
-      status: TicketStatus.OPEN,
-      metadata: data.metadata || {},
-    });
-
-    await this.logAction({
-      ticketId: ticket.id,
-      actionType: TicketUserAction.CREATED,
-      performedByDiscordId: data.creatorDiscordId,
-      metadata: {
-        ticketNumber,
+    const ticket = await db.inTransaction(async (tx) => {
+      const created = await tx.ticket.createAndReturn({
+        ticketNumber: data.ticketNumber,
         type: data.type,
+        creatorDiscordId: data.creatorDiscordId,
         channelId: data.channelId,
-      },
+        status: TicketStatus.OPEN,
+        metadata: data.metadata || {},
+      });
+
+      await tx.ticket.action.create({
+        ticketId: created.id,
+        actionType: TicketUserAction.CREATED,
+        performedByDiscordId: data.creatorDiscordId,
+        metadata: {
+          ticketNumber: created.ticketNumber,
+          type: data.type,
+          channelId: data.channelId,
+        },
+      });
+
+      return created;
     });
 
     logger.info(
-      `Created ticket #${ticketNumber} (ID: ${ticket.id}) for user ${data.creatorDiscordId}`,
+      `Created ticket #${ticket.ticketNumber} (ID: ${ticket.id}) for user ${data.creatorDiscordId}`,
     );
 
     return ticket;

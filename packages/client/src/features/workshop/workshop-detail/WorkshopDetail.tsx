@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useMemo, useRef } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { ArrowLeft, Search } from "lucide-react";
 import { trpc } from "@/lib/trpc";
@@ -162,6 +162,83 @@ export function WorkshopDetail() {
     },
   });
 
+  const allMods = workshopQuery.data?.mods;
+  const upvotedModIds = myUpvotesQuery.data?.modIds;
+  const rejectedMods = rejectedQuery.data;
+  const packRows = packQuery.data?.mods;
+
+  const race = useMemo(() => {
+    const mods = allMods ?? [];
+    const ranked = mods.filter((mod) => mod.status === "pending").sort(byRace);
+    return {
+      ranked,
+      rankById: new Map(ranked.map((mod, index) => [mod.id, index + 1])),
+      maxRaceCount: Math.max(1, ...ranked.map((mod) => mod.upvoteCount)),
+      categories: [
+        ...new Set(
+          mods.flatMap((mod) => projectCategories(mod.project.categories)),
+        ),
+      ].sort(),
+    };
+  }, [allMods]);
+
+  const upvotedIds = useMemo(
+    () => new Set(upvotedModIds ?? []),
+    [upvotedModIds],
+  );
+
+  const visible = useMemo(() => {
+    let result: RaceMod[] = searching
+      ? [...(allMods ?? []), ...(rejectedMods ?? [])].sort(byRace)
+      : race.ranked;
+    if (sortMode === "new") {
+      result = [...result].sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime() ||
+          b.id - a.id,
+      );
+    }
+    if (sortMode === "votes") {
+      result = result.filter((mod) => upvotedIds.has(mod.id));
+    }
+    if (category !== "all") {
+      result = result.filter((mod) =>
+        projectCategories(mod.project.categories).includes(category),
+      );
+    }
+    if (searching) {
+      result = result.filter((mod) =>
+        `${mod.project.name} ${mod.project.primaryAuthor ?? ""} ${mod.submitterName ?? ""}`
+          .toLowerCase()
+          .includes(query),
+      );
+    }
+    return result;
+  }, [
+    allMods,
+    rejectedMods,
+    race.ranked,
+    searching,
+    sortMode,
+    upvotedIds,
+    category,
+    query,
+  ]);
+
+  // Suggestion-origin members already surface via their approved suggestion row
+  const packMatches = useMemo(() => {
+    if (!searching || sortMode === "votes") return [];
+    return (packRows ?? []).filter(
+      (row) =>
+        row.origin !== "suggestion" &&
+        `${row.project.name} ${row.project.primaryAuthor ?? ""}`
+          .toLowerCase()
+          .includes(query) &&
+        (category === "all" ||
+          projectCategories(row.project.categories).includes(category)),
+    );
+  }, [packRows, searching, sortMode, category, query]);
+
   if (workshopQuery.error?.data?.code === "NOT_FOUND") {
     return <NotFound />;
   }
@@ -191,62 +268,8 @@ export function WorkshopDetail() {
 
   const { workshop, mods } = workshopQuery.data;
   const isOpen = workshop.status === "open";
-  const upvotedIds = new Set(myUpvotesQuery.data?.modIds ?? []);
-
-  const packMods = packQuery.data?.mods ?? [];
-  const pending = mods.filter((mod) => mod.status === "pending");
-  const ranked = [...pending].sort(byRace);
-  const rankById = new Map(ranked.map((mod, index) => [mod.id, index + 1]));
-  const maxRaceCount = Math.max(1, ...ranked.map((mod) => mod.upvoteCount));
-
-  const categories = [
-    ...new Set(
-      mods.flatMap((mod) => projectCategories(mod.project.categories)),
-    ),
-  ].sort();
-
-  let visible: RaceMod[] = searching
-    ? [...mods, ...(rejectedQuery.data ?? [])].sort(byRace)
-    : ranked;
-  if (sortMode === "new") {
-    visible = [...visible].sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime() ||
-        b.id - a.id,
-    );
-  }
-  if (sortMode === "votes") {
-    visible = visible.filter((mod) => upvotedIds.has(mod.id));
-  }
-  if (category !== "all") {
-    visible = visible.filter((mod) =>
-      projectCategories(mod.project.categories).includes(category),
-    );
-  }
-  if (searching) {
-    visible = visible.filter((mod) =>
-      `${mod.project.name} ${mod.project.primaryAuthor ?? ""} ${mod.submitterName ?? ""}`
-        .toLowerCase()
-        .includes(query),
-    );
-  }
-
-  // Suggestion-origin members already surface via their approved suggestion row
-  let packMatches =
-    searching && sortMode !== "votes"
-      ? packMods.filter(
-          (row) =>
-            row.origin !== "suggestion" &&
-            `${row.project.name} ${row.project.primaryAuthor ?? ""}`
-              .toLowerCase()
-              .includes(query),
-        )
-      : [];
-  if (category !== "all") {
-    packMatches = packMatches.filter((row) =>
-      projectCategories(row.project.categories).includes(category),
-    );
-  }
+  const { rankById, maxRaceCount, categories } = race;
+  const packMods = packRows ?? [];
 
   const filtering = searching || sortMode === "votes" || category !== "all";
   const remaining = visible.length - shownCount;

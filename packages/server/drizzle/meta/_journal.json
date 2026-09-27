@@ -547,6 +547,27 @@
       "when": 1790258007758,
       "tag": "0077_curvy_the_initiative",
       "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1790433871029,
+      "tag": "0078_curly_starjammers",
+      "breakpoints": true
+    },
+    {
+      "idx": 79,
+      "version": "7",
+      "when": 1790451888886,
+      "tag": "0079_same_silverclaw",
+      "breakpoints": true
+    },
+    {
+      "idx": 80,
+      "version": "7",
+      "when": 1790465926855,
+      "tag": "0080_tricky_santa_claus",
+      "breakpoints": true
     }
   ]
 }

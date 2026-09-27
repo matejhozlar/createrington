@@ -240,6 +240,10 @@ const StatSearch = lazyNamed(
   () => import("./features/admin/tools/stat-search/StatSearch"),
   "StatSearch",
 );
+const TitleGenerator = lazyNamed(
+  () => import("./features/admin/tools/title-generator/TitleGenerator"),
+  "TitleGenerator",
+);
 const AdminParties = lazyNamed(
   () => import("./features/admin/tools/parties/AdminParties"),
   "AdminParties",
@@ -487,6 +491,10 @@ function AppContent() {
                         path="tools/stat-search"
                         element={<StatSearch />}
                       />
+                      <Route
+                        path="tools/title-generator"
+                        element={<TitleGenerator />}
+                      />
                       <Route path="tools/parties" element={<AdminParties />} />
                       <Route path="tools/prompts" element={<AdminPrompts />} />
                       <Route
@@ -545,14 +553,7 @@ function App() {
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <WebSocketProvider
-            config={{
-              autoConnect: true,
-              maxReconnectAttempts: 5,
-              reconnectDelay: 1000,
-              healthCheckInterval: 30000,
-            }}
-          >
+          <WebSocketProvider>
             <ServerDataProvider autoSubscribe>
               <PlayerDataProvider autoSubscribe>
                 <ToastProvider>

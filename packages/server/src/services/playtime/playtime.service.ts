@@ -395,10 +395,11 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
       return;
     }
 
+    const previousPlayTicks = session.lastPlayTicks;
     const credit = computeCredit({
       periodStart: session.creditedUntil,
       periodEnd: now,
-      lastPlayTicks: session.lastPlayTicks,
+      lastPlayTicks: previousPlayTicks,
       playTimeTicks: player.playTimeTicks,
     });
 
@@ -414,6 +415,7 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
       username: session.username,
       serverId: session.serverId,
       credit,
+      previousPlayTicks,
     };
 
     this.emit("sessionProgress", event);
@@ -549,6 +551,23 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
     } else {
       logger.warn(`Cannot set sessionId for ${uuid} - session not found`);
     }
+  }
+
+  /** Hands a failed progress slice back so the next heartbeat re-credits it; false once the session ended or moved past it. */
+  public revertProgress(event: SessionProgressEvent): boolean {
+    const session = this.activeSessions.get(event.uuid);
+    if (
+      !session ||
+      session.sessionId !== event.sessionId ||
+      session.creditedUntil.getTime() !== event.credit.periodEnd.getTime()
+    ) {
+      return false;
+    }
+
+    session.creditedUntil = event.credit.periodStart;
+    session.lastPlayTicks = event.previousPlayTicks;
+    session.activeSeconds -= event.credit.seconds;
+    return true;
   }
 
   /** Returns a snapshot of every currently tracked in-memory session. */

@@ -202,5 +202,40 @@ describe("CooldownManager", () => {
       expect(manager.getStats().totalCooldowns).toBe(0);
       expect(manager.getStats().totalCommands).toBe(0);
     });
+
+    it("keeps a newer cooldown when an earlier timer for the same key fires", () => {
+      const cfg = { duration: 10, type: CooldownType.USER };
+      manager.set("ping", cfg, ctxA);
+      vi.advanceTimersByTime(4000);
+      manager.set("ping", cfg, ctxA);
+
+      vi.advanceTimersByTime(6000);
+
+      expect(manager.check("ping", cfg, ctxA)).toBe(4);
+    });
+
+    it("keeps other users' cooldowns when a timer from before resetCommand fires", () => {
+      const cfg = { duration: 10, type: CooldownType.USER };
+      manager.set("ping", cfg, ctxA);
+      manager.resetCommand("ping");
+      vi.advanceTimersByTime(4000);
+      manager.set("ping", cfg, ctxB);
+
+      vi.advanceTimersByTime(6000);
+
+      expect(manager.check("ping", cfg, ctxB)).toBe(4);
+    });
+
+    it("keeps other users' cooldowns when a timer from before resetUser fires", () => {
+      const cfg = { duration: 10, type: CooldownType.USER };
+      manager.set("ping", cfg, ctxA);
+      manager.resetUser("user-A");
+      vi.advanceTimersByTime(4000);
+      manager.set("ping", cfg, ctxB);
+
+      vi.advanceTimersByTime(6000);
+
+      expect(manager.check("ping", cfg, ctxB)).toBe(4);
+    });
   });
 });

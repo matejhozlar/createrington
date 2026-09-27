@@ -137,24 +137,20 @@ export const chunkProcedures = {
       }),
     )
     .query(async ({ input }) => {
-      const offset = input.page * input.limit;
-      const filters = {
-        search: input.search?.trim() || null,
-        dimension: input.dimension ?? null,
-        activeOnly: input.activeOnly ?? false,
-        sortBy: input.sortBy,
-        sortDir: input.sortDir,
-      };
-      const [items, total] = await Promise.all([
-        Q.server.chunk.getSoloPlayerAggregates(input.serverId, {
-          ...filters,
+      const { rows, total } = await Q.server.chunk.getSoloPlayerAggregates(
+        input.serverId,
+        {
+          search: input.search?.trim() || null,
+          dimension: input.dimension ?? null,
+          activeOnly: input.activeOnly ?? false,
+          sortBy: input.sortBy,
+          sortDir: input.sortDir,
           limit: input.limit,
-          offset,
-        }),
-        Q.server.chunk.countSoloPlayers(input.serverId, filters),
-      ]);
+          offset: input.page * input.limit,
+        },
+      );
       return {
-        items,
+        items: rows,
         pagination: buildPagination(input.page, input.limit, total),
       };
     }),

@@ -3,6 +3,7 @@ import { Discord } from "@/discord/constants";
 import type { DiscordMessageService } from "@/services/discord/message/message.service";
 import type { ServerMaintenanceSchedule } from "@createrington/shared/db/server_maintenance_schedule.types";
 import type { MaintenanceService } from "./maintenance.service";
+import { formatEta } from "./presets";
 
 const WARNING_INTERVALS_MINUTES = [60, 30, 15, 10, 5, 1] as const;
 const MISSED_ACTIVATION_GRACE_MS = 5 * 60 * 1000;
@@ -265,9 +266,14 @@ export class MaintenanceScheduler {
         ? `${Math.floor(minutesBefore / 60)} hour${minutesBefore >= 120 ? "s" : ""}`
         : `${minutesBefore} minute${minutesBefore !== 1 ? "s" : ""}`;
 
+    const duration =
+      schedule.estimatedMinutes !== null
+        ? ` Estimated duration: ${formatEta(schedule.estimatedMinutes)}.`
+        : "";
+
     const result = await this.messageService.send({
       channelId: Discord.Channels.railsNSails.MINECRAFT_CHAT,
-      content: `Server maintenance in ${label}. Players will be kicked when maintenance begins.`,
+      content: `Server maintenance in ${label}.${duration} Players will be kicked when maintenance begins.`,
     });
 
     if (result.success) {

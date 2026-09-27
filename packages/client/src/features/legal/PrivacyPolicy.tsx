@@ -32,9 +32,8 @@ const sections = [
             advancements, etc.)
           </li>
           <li>
-            <strong>Economy data:</strong> in-game currency balances, every
-            balance transaction (amount, type, reason, before/after balances),
-            and lottery participation
+            <strong>Economy data:</strong> in-game currency balances and every
+            balance transaction (amount, type, reason, before/after balances)
           </li>
           <li>
             <strong>Reward data:</strong> daily reward claims

@@ -6,7 +6,7 @@ import { TicketBaseQueries } from "@/generated/db/ticket.queries";
  *
  * - Overview statistics (open/closed counts, avg resolution time)
  * - Volume analytics grouped by time period
- * - Ticket number management (getNext/getCurrent)
+ * - Ticket number management (allocateNumber/getCurrent)
  */
 export class TicketQueries extends TicketBaseQueries {
   constructor(db: Pool | PoolClient) {
@@ -106,18 +106,18 @@ export class TicketQueries extends TicketBaseQueries {
   }
 
   /**
-   * Gets the next ticket number by reading MAX(ticket_number) + 1
+   * Allocates a ticket number by consuming ticket_number_seq
    *
-   * @returns Promise resolving to the next ticket number
+   * @returns Promise resolving to the allocated ticket number
    */
-  async getNext(): Promise<number> {
-    const query = `SELECT COALESCE(MAX(ticket_number), 0) + 1 AS ticket_number FROM ${this.table}`;
+  async allocateNumber(): Promise<number> {
+    const query = `SELECT nextval('ticket_number_seq')::int AS ticket_number`;
 
-    const result = await this.runQuery<{ ticket_number: string }>(
-      "get next ticket number",
+    const result = await this.runQuery<{ ticket_number: number }>(
+      "allocate ticket number",
       query,
     );
-    return parseInt(result.rows[0].ticket_number, 10);
+    return result.rows[0].ticket_number;
   }
 
   /**

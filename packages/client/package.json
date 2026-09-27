@@ -2,7 +2,7 @@
   "name": "@createrington/client",
   "proxy": "http://localhost:5001",
   "private": true,
-  "version": "0.2.79",
+  "version": "0.2.80",
   "license": "UNLICENSED",
   "type": "module",
   "scripts": {
@@ -54,7 +54,8 @@
     "socket.io-client": "^4.8.3",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0",
-    "tailwindcss": "^4.1.18"
+    "tailwindcss": "^4.1.18",
+    "three": "^0.156.1"
   },
   "devDependencies": {
     "@createrington/server": "workspace:*",
@@ -63,6 +64,7 @@
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",
+    "@types/three": "^0.156.0",
     "@vitejs/plugin-react": "^5.1.1",
     "cross-env": "^10.1.0",
     "eslint": "^9.39.1",

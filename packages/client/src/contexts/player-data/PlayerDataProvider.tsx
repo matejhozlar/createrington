@@ -239,17 +239,6 @@ export function PlayerDataProvider({
     [players],
   );
 
-  /** Case-insensitive lookup by username. */
-  const getPlayerByUsername = useCallback(
-    (username: string): PlayerData | undefined => {
-      const lowerUsername = username.toLowerCase();
-      return Array.from(players.values()).find(
-        (p) => p.username.toLowerCase() === lowerUsername,
-      );
-    },
-    [players],
-  );
-
   const getAllPlayers = useCallback((): PlayerData[] => {
     return Array.from(players.values());
   }, [players]);
@@ -364,7 +353,6 @@ export function PlayerDataProvider({
 
     // Methods
     getPlayer,
-    getPlayerByUsername,
     getAllPlayers,
     getServerPlayers,
     isPlayerOnline,

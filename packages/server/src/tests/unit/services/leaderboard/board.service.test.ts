@@ -3,16 +3,14 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const db = vi.hoisted(() => ({
   records: vi.fn(),
   playtime: vi.fn(),
-  balances: vi.fn(),
-  players: vi.fn(),
+  netWorth: vi.fn(),
   statRanking: vi.fn(),
 }));
 
 vi.mock("@/db", () => ({
   Q: {
     player: {
-      getAll: db.players,
-      balance: { getAllBalances: db.balances },
+      balance: { getNetWorthRanking: db.netWorth },
       playtime: { summary: { getGlobalLeaderboard: db.playtime } },
       minecraft: {
         stat: {
@@ -62,18 +60,15 @@ describe("LeaderboardBoardService", () => {
   });
 
   it("ranks every balance holder, not just the top of the board", async () => {
-    db.balances.mockResolvedValue([
-      { minecraftUuid: "u-poor", balance: 5 },
-      { minecraftUuid: "u-rich", balance: 500.5 },
-      { minecraftUuid: "u-mid", balance: 50 },
-    ]);
-    db.players.mockResolvedValue([
-      { minecraftUuid: "u-rich", minecraftUsername: "rich" },
-      { minecraftUuid: "u-mid", minecraftUsername: "mid" },
-      { minecraftUuid: "u-poor", minecraftUsername: "poor" },
+    db.netWorth.mockResolvedValue([
+      { minecraftUuid: "u-rich", minecraftUsername: "rich", balance: 500.5 },
+      { minecraftUuid: "u-mid", minecraftUsername: "mid", balance: 50 },
+      { minecraftUuid: "u-poor", minecraftUsername: "poor", balance: 5 },
     ]);
 
     const { rows } = await new LeaderboardBoardService().getBoard("balance");
+
+    expect(db.netWorth).toHaveBeenCalledWith();
 
     expect(rows).toEqual([
       {

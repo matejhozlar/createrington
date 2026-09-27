@@ -7,7 +7,7 @@ import {
   useState,
 } from "react";
 import { Navigate, useParams } from "react-router";
-import { ChevronDown, Paperclip, Send, Users } from "lucide-react";
+import { ChevronDown, Users } from "lucide-react";
 import type {
   CachedMessage,
   SubscriptionType,
@@ -16,18 +16,18 @@ import { MessageSource } from "@createrington/shared/socket";
 import { useWebSocket } from "@/contexts/websocket";
 import { useServerData } from "@/contexts/server-data";
 import { usePlayerData } from "@/contexts/player-data";
-import { useAuth } from "@/contexts/auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { messagesApi } from "@/services/api/user/messages";
 import { Loading } from "../loading-spinner";
+import { ChatComposer } from "./chat-composer";
 import { ChatFallback } from "./chat-fallback";
-import { ImagePreview } from "./image-preview";
 import { MessageGroupComponent } from "./message-group";
 import { PlayerListPanel } from "./player-list-panel";
-import { useAutoResize, useRelativeTick } from "./hooks";
+import { useRelativeTick } from "./hooks";
 import { groupHasHighlight, groupMessages } from "./utils";
+
+const MAX_MESSAGES = 200;
 
 export function ServerChat() {
   const { serverSlug } = useParams<{ serverSlug: string }>();
@@ -58,17 +58,22 @@ export function ServerChat() {
   }, [server, servers, serverSlug]);
 
   const serverId = server?.serverId ?? null;
-  const { user } = useAuth();
-  const { getPlayerByUsername } = usePlayerData();
+  const { getServerPlayers } = usePlayerData();
   const isMobile = useIsMobile();
+
+  const onlineUsernames = useMemo(
+    () =>
+      new Set(
+        serverId === null
+          ? []
+          : getServerPlayers(serverId).map((p) => p.username.toLowerCase()),
+      ),
+    [getServerPlayers, serverId],
+  );
 
   const [messages, setMessages] = useState<CachedMessage[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [draft, setDraft] = useState("");
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [sending, setSending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [highlightedMessages, setHighlightedMessages] = useState<Set<string>>(
@@ -79,19 +84,14 @@ export function ServerChat() {
   const [playerListOpen, setPlayerListOpen] = useState(false);
 
   const isAtBottomRef = useRef(true);
-  const lastMessageCountRef = useRef(0);
+  const lastMessageIdRef = useRef<string | null>(null);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   // Single tick instance for the whole chat: re-renders timestamps every 60s
   // without each MessageRow running its own independent interval
   const tick = useRelativeTick();
-
-  // Auto-expand the textarea as the user types multiline content
-  useAutoResize(textareaRef, draft);
 
   const handleScroll = useCallback(() => {
     const container = messagesContainerRef.current;
@@ -104,16 +104,14 @@ export function ServerChat() {
     if (atBottom) setUnreadCount(0);
   }, []);
 
-  const canSend = !!user && serverId !== null && !sending;
-
-  // Sort messages chronologically, then group, and return total count
-  const { groups: messageGroups, totalCount } = useMemo(() => {
+  // Sort messages chronologically, then group
+  const { groups: messageGroups, sorted } = useMemo(() => {
     const sorted = [...messages].sort((a, b) => {
       return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
     });
     return {
       groups: groupMessages(sorted),
-      totalCount: sorted.length,
+      sorted,
     };
   }, [messages]);
 
@@ -124,6 +122,10 @@ export function ServerChat() {
   const handleScrollToBottom = useCallback(() => {
     scrollToBottom();
     setUnreadCount(0);
+  }, [scrollToBottom]);
+
+  const handleImageLoad = useCallback(() => {
+    if (isAtBottomRef.current) scrollToBottom();
   }, [scrollToBottom]);
 
   const handleHighlightEnd = useCallback((messageIds: string[]) => {
@@ -145,69 +147,13 @@ export function ServerChat() {
 
       return idx >= 0
         ? prev.map((m, i) => (i === idx ? msg : m))
-        : [...prev, msg];
+        : [...prev, msg].slice(-MAX_MESSAGES);
     });
   }, []);
 
   const removeMessage = useCallback((messageId: string) => {
     setMessages((prev) => prev.filter((m) => m.messageId !== messageId));
   }, []);
-
-  const handleFileSelect = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      e.target.value = "";
-      if (!file) return;
-      if (!file.type.startsWith("image/")) {
-        setError("Only image files are allowed");
-        return;
-      }
-      if (file.size > 10 * 1024 * 1024) {
-        setError("Image must be 10 MB or smaller");
-        return;
-      }
-      setError(null);
-      setImageFile(file);
-    },
-    [],
-  );
-
-  const sendMessage = useCallback(async () => {
-    if (!serverId || (!draft.trim() && !imageFile)) return;
-
-    setSending(true);
-    setError(null);
-
-    try {
-      await messagesApi.send(
-        {
-          serverId: serverId,
-          content: draft.trim() || undefined,
-        },
-        imageFile || undefined,
-      );
-
-      setDraft("");
-      setImageFile(null);
-      textareaRef.current?.focus();
-    } catch (error) {
-      setError(
-        error instanceof Error ? error.message : "Failed to send message",
-      );
-    } finally {
-      setSending(false);
-    }
-  }, [serverId, draft, imageFile]);
-
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if (e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault();
-        if (canSend && (draft.trim() || imageFile)) sendMessage();
-      }
-    },
-    [canSend, draft, imageFile, sendMessage],
-  );
 
   useEffect(() => {
     if (!isConnected || serverId === null) return;
@@ -274,21 +220,21 @@ export function ServerChat() {
 
   // Track new messages and update unread count
   useEffect(() => {
-    const currentCount = totalCount;
-    const previousCount = lastMessageCountRef.current;
+    const previousId = lastMessageIdRef.current;
+    const latestId = sorted[sorted.length - 1]?.messageId ?? null;
+    lastMessageIdRef.current = latestId;
 
-    if (previousCount > 0 && currentCount > previousCount) {
-      const newMessageCount = currentCount - previousCount;
+    if (!previousId || latestId === previousId) return;
+    const previousIdx = sorted.findIndex((m) => m.messageId === previousId);
+    if (previousIdx < 0) return;
 
-      if (!isAtBottomRef.current) {
-        setUnreadCount((prev) => prev + newMessageCount);
-      } else {
-        scrollToBottom();
-      }
+    const newMessageCount = sorted.length - 1 - previousIdx;
+    if (!isAtBottomRef.current) {
+      setUnreadCount((prev) => prev + newMessageCount);
+    } else {
+      scrollToBottom();
     }
-
-    lastMessageCountRef.current = currentCount;
-  }, [totalCount, scrollToBottom]);
+  }, [sorted, scrollToBottom]);
 
   if (legacyServer) {
     return <Navigate to={`/chat/${legacyServer.serverSlug}`} replace />;
@@ -402,11 +348,10 @@ export function ServerChat() {
                   groupHasHighlight(g, highlightedMessages),
                 );
                 return messageGroups.map((group, idx) => {
-                  let isOnline: boolean | undefined;
-                  if (group.source === MessageSource.MINECRAFT && serverId) {
-                    const player = getPlayerByUsername(group.displayName);
-                    isOnline = player?.serverId === serverId ? true : false;
-                  }
+                  const isOnline =
+                    group.source === MessageSource.MINECRAFT && serverId
+                      ? onlineUsernames.has(group.displayName.toLowerCase())
+                      : undefined;
 
                   const isHighlighted = groupHighlights[idx];
                   const prevGroup =
@@ -418,9 +363,7 @@ export function ServerChat() {
                       group={group}
                       prevSource={prevGroup?.source}
                       tick={tick}
-                      onImageLoad={() => {
-                        if (isAtBottomRef.current) scrollToBottom();
-                      }}
+                      onImageLoad={handleImageLoad}
                       isOnline={isOnline}
                       hasHighlight={isHighlighted}
                       onHighlightEnd={handleHighlightEnd}
@@ -459,65 +402,7 @@ export function ServerChat() {
         )}
       </div>
 
-      {/* Input Area */}
-      <div className="border-t border-border bg-sidebar p-4">
-        {imageFile && (
-          <div className="mb-3">
-            <ImagePreview
-              file={imageFile}
-              onRemove={() => setImageFile(null)}
-            />
-          </div>
-        )}
-
-        {error && (
-          <div className="mb-3 rounded-lg bg-destructive/10 px-4 py-2 text-sm text-destructive">
-            {error}
-          </div>
-        )}
-
-        <div className="flex items-center gap-3">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handleFileSelect}
-          />
-
-          <Button
-            variant="secondary"
-            size="icon-lg"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={!canSend}
-          >
-            <Paperclip className="size-5" />
-          </Button>
-
-          <textarea
-            ref={textareaRef}
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={handleKeyDown}
-            disabled={!canSend}
-            placeholder={user ? "Type a message..." : "Log in to send messages"}
-            rows={1}
-            className="flex-1 resize-none rounded-lg border border-border bg-sidebar-accent px-4 py-2.5 text-sm text-foreground placeholder-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-40 leading-[1.5] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border hover:[&::-webkit-scrollbar-thumb]:bg-muted-foreground/50"
-          />
-
-          <Button
-            size="icon-lg"
-            onClick={sendMessage}
-            disabled={!canSend || (!draft.trim() && !imageFile)}
-          >
-            {sending ? (
-              <div className="size-5 animate-spin rounded-full border-2 border-white/20 border-t-white"></div>
-            ) : (
-              <Send className="size-5" />
-            )}
-          </Button>
-        </div>
-      </div>
+      <ChatComposer serverId={serverId} />
     </div>
   );
 }

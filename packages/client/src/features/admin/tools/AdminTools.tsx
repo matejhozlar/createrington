@@ -30,6 +30,7 @@ import {
   RefreshCw,
   Terminal,
   Timer,
+  Type,
   Users,
   Hammer as WorkshopIcon,
 } from "lucide-react";
@@ -116,6 +117,13 @@ const TOOL_SECTIONS: ToolSection[] = [
           "Review screenshots posted in Discord and publish them to the website gallery.",
         icon: Images,
         href: "/admin/tools/gallery",
+      },
+      {
+        title: "Title Generator",
+        description:
+          "Render Minecraft-style 3D titles like the Createrington wordmark.",
+        icon: Type,
+        href: "/admin/tools/title-generator",
       },
     ],
   },

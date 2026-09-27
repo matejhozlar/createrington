@@ -65,7 +65,7 @@ export class TicketService {
   async createTicket(
     options: CreateTicketOptions,
   ): Promise<CreateTicketResult> {
-    const ticketNumber = await this.repository.getNext();
+    const ticketNumber = await this.repository.allocateNumber();
     const config = getTicketTypeConfig(options.type);
 
     const channel = await this.createTicketChannel(

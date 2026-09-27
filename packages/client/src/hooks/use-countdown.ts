@@ -13,19 +13,31 @@ function formatCountdown(ms: number): string {
   return `${seconds}s`;
 }
 
+function msUntilDisplayChange(ms: number): number {
+  const unit = ms >= 3_600_000 ? 60_000 : 1000;
+  return (ms % unit) + 1;
+}
+
 /**
- * Returns a formatted countdown string that ticks every second.
+ * Returns a formatted countdown string that re-renders only when the displayed value changes.
  * Returns null if no target date is provided, or "Ended" when elapsed.
  */
 export function useCountdown(targetDate: string | null): string | null {
   const [now, setNow] = useState(Date.now);
+  const target = targetDate ? new Date(targetDate).getTime() : null;
 
   useEffect(() => {
-    if (!targetDate) return;
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, [targetDate]);
+    if (target === null) return;
+    const remaining = target - now;
+    if (!(remaining > 0)) return;
+    const nextChangeAt = now + msUntilDisplayChange(remaining);
+    const id = setTimeout(
+      () => setNow(Date.now()),
+      Math.max(0, nextChangeAt - Date.now()),
+    );
+    return () => clearTimeout(id);
+  }, [target, now]);
 
-  if (!targetDate) return null;
-  return formatCountdown(new Date(targetDate).getTime() - now);
+  if (target === null) return null;
+  return formatCountdown(target - now);
 }

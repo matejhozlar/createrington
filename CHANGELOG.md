@@ -1,3 +1,42 @@
+## v1.65.0 (2026-09-27)
+
+### @createrington/server (1.65.1 → 1.66.0)
+- [add] Add maintenance duration and end-of-maintenance notices to Minecraft chat, showing estimated duration in warning messages and a "back online" message when maintenance ends
+- [add] Add `createMany` and `createManyAndReturn` batch insert methods to the base query class, automatically splitting large batches across multiple statements at the Postgres parameter limit
+- [add] Add a one-minute render cache for the records leaderboard screenshot to avoid redundant Puppeteer captures on concurrent `/records` commands
+- [fix] Fix ticket number allocation using MAX+1 which could produce duplicates under concurrent creation; ticket numbers are now drawn from a database sequence, and ticket creation (row + audit action) is wrapped in a single transaction
+- [fix] Fix playtime credits running outside a transaction so a failed heartbeat could advance the session row without writing the daily/hourly/summary tables; observation and credit writes are now atomic per session, and a failed slice is handed back to the service for retry on the next heartbeat
+- [fix] Fix command cooldowns not reserving before execution, allowing double-fires when the handler itself takes time; cooldowns now start before execute and stale timer cleanups ignore replaced entries
+- [fix] Fix unbounded concurrent Puppeteer pages by introducing a semaphore capping open pages at five, preventing memory exhaustion from burst screenshot requests
+- [fix] Fix owner donations list applying status filters after pagination instead of in the query, causing pages to return fewer rows than requested
+- [fix] Fix forceload parent matching by lowercasing the player UUID before comparison
+- [fix] Log failed maintenance-ended Discord sends instead of silently swallowing the error
+- [refactor] Evaluate role conditions from a single preloaded context per player instead of separate async reads per condition, collapsing the class hierarchy into plain functions and batch-loading all players with their playtime summaries for the daily sweep
+- [refactor] Replace in-memory net worth ranking (load all balances + all players, sort in JS) with a single SQL query that joins, filters, and ranks in the database
+- [refactor] Replace in-memory donation stats aggregation with a single SQL aggregate query, and switch subscription stats from per-subscription Stripe API calls to a single paged listing
+- [refactor] Move the active-subscription lookup filter into the database query instead of post-filtering rows without a Stripe subscription ID in application code
+- [refactor] Merge the solo-player chunk count query into the data query via a window function, eliminating a duplicate predicate build
+- [refactor] Replace sequential per-row inserts in ally and forceload sync with batched `createMany`/`createManyAndReturn` calls
+- [refactor] Move top-player-by-playtime ranking from in-memory aggregation with N+1 player lookups into a single SQL query on the daily playtime table
+- [remove] Remove the lottery system: service, Discord slash command, mod API endpoints (`/lottery/start`, `/lottery/join`), `lottery_participant` table, query classes, config, and all tests
+- [chore] Tidy database indexes: add composite indexes on playtime daily/hourly (server + date), session (server + start desc), balance transaction (player + id desc), chunk (player + original player), and workshop mod event (workshop + created desc); drop redundant single-column indexes on leaderboard type, auth session token hash, and donation stripe session
+- [chore] Drop unused session metrics queries (peak concurrent, new vs returning) and their admin tRPC endpoints
+
+### @createrington/client (0.2.79 → 0.2.80)
+- [add] Add Minecraft title generator admin tool for composing and exporting title images with layer-based text and texture editing, a Createrington layout mode, real-time canvas preview, and multiple output formats
+- [fix] Fix WebSocket reconnection by switching from manual exponential backoff to native socket.io reconnection with unlimited retries, tab/network-aware immediate reconnect on visibility change, and a rejection retry for auth failures
+- [fix] Fix the compare hero layout shifting while player data loads by pinning the container dimensions and holding the outgoing player until the new pair is ready
+- [fix] Fix the compare "vs" badge drifting while the head-to-head score loads by anchoring its position independently of the score container
+- [fix] Fix compare reroll landing both players on the same pose by only reselecting the side-b pose on a collision
+- [fix] Fix the global loading screen not appearing during the silent token refresh, causing a flash of unauthenticated content
+- [fix] Fix the home hero carousel loading all slide images upfront by loading the first slide eagerly and deferring the rest, with a fallback that reveals remaining slides when the first one fails
+- [refactor] Render public pages without blocking on the silent auth refresh so unauthenticated visitors see content immediately
+- [refactor] Extract the chat composer into its own component and memoize message row and group components to stop the entire chat re-rendering on each keystroke
+- [refactor] Pre-build ChatMarkdown component maps per variant at module level instead of recreating them on every render
+
+### @createrington/shared (1.15.0 → 1.15.1)
+- [remove] Remove unused socket events (`INITIAL_DATA`, `SUBSCRIBED`, `UNSUBSCRIBED`) superseded by the native socket.io reconnection rewrite
+
 ## v1.64.1 (2026-09-26)
 
 ### @createrington/server (1.65.0 → 1.65.1)

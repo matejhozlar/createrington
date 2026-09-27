@@ -150,6 +150,44 @@ describe("PlaytimeService join / heartbeat / leave", () => {
     });
   });
 
+  it("re-credits a reverted slice on the next heartbeat", async () => {
+    const { service, progress, ends } = makeService();
+    service.initialize();
+
+    await service.handlePlayerJoinFromMod({
+      uuid: STEVE,
+      username: "steve",
+      playTimeTicks: ticks(1000),
+    });
+    service.setSessionId(STEVE, 42);
+
+    vi.setSystemTime(new Date(T0.getTime() + seconds(60)));
+    service.reconcileWithHeartbeat([
+      { uuid: STEVE, username: "steve", playTimeTicks: ticks(1060) },
+    ]);
+    expect(service.revertProgress(progress[0])).toBe(true);
+
+    vi.setSystemTime(new Date(T0.getTime() + seconds(120)));
+    service.reconcileWithHeartbeat([
+      { uuid: STEVE, username: "steve", playTimeTicks: ticks(1120) },
+    ]);
+    expect(progress[1].credit).toEqual({
+      periodStart: T0,
+      periodEnd: new Date(T0.getTime() + seconds(120)),
+      seconds: 120,
+      playTimeTicks: ticks(1120),
+    });
+    expect(service.revertProgress(progress[0])).toBe(false);
+
+    await service.handlePlayerLeaveFromMod({
+      uuid: STEVE,
+      username: "steve",
+      playTimeTicks: ticks(1120),
+    });
+    expect(ends[0].secondsPlayed).toBe(120);
+    expect(service.revertProgress(progress[1])).toBe(false);
+  });
+
   it("closes at the session start when the mod reports a leave timestamp before it", async () => {
     const { service, ends } = makeService();
     service.initialize();

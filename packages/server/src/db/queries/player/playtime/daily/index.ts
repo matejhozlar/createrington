@@ -14,11 +14,22 @@ export type ServerActivity = {
   totalSeconds: number;
 };
 
+type TopPlayerRow = {
+  minecraft_username: string;
+  total_seconds: number;
+};
+
+export type TopPlayerInRange = {
+  minecraftUsername: string;
+  totalSeconds: number;
+};
+
 /**
  * Custom queries for player_playtime_daily table
  *
  * - Session aggregation: splits sessions across day boundaries via upsert
  * - Server activity analytics: daily unique players and total playtime
+ * - Top players by summed playtime over a day range
  */
 export class PlayerPlaytimeDailyQueries extends PlayerPlaytimeDailyBaseQueries {
   constructor(db: Pool | PoolClient) {
@@ -97,5 +108,35 @@ export class PlayerPlaytimeDailyQueries extends PlayerPlaytimeDailyBaseQueries {
     return this.mapRowsToEntities<ServerActivityRow, ServerActivity>(
       result.rows,
     );
+  }
+
+  /** Top players on a server by summed playtime over [startDay, endDay], highest first. */
+  async getTopPlayers(
+    serverId: number,
+    startDay: string,
+    endDay: string,
+    limit: number,
+  ): Promise<TopPlayerInRange[]> {
+    const query = `
+    SELECT
+      p.minecraft_username,
+      SUM(d.seconds_played)::float8 AS total_seconds
+    FROM ${this.table} d
+    JOIN player p ON p.minecraft_uuid = d.player_minecraft_uuid
+    WHERE d.server_id = $1
+      AND d.play_date >= $2
+      AND d.play_date <= $3
+    GROUP BY d.player_minecraft_uuid, p.minecraft_username
+    ORDER BY total_seconds DESC, d.player_minecraft_uuid
+    LIMIT $4`;
+
+    const result = await this.runQuery("get top players in range", query, [
+      serverId,
+      startDay,
+      endDay,
+      limit,
+    ]);
+
+    return this.mapRowsToEntities<TopPlayerRow, TopPlayerInRange>(result.rows);
   }
 }

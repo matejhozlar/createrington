@@ -15,12 +15,7 @@ import {
   WorkshopEmptyState,
 } from "./components/WorkshopEmptyState";
 import { WorkshopHero } from "./components/WorkshopHero";
-import {
-  WORKSHOP_STATUS_STYLES,
-  formatDate,
-  loaderName,
-  retryUnlessForbidden,
-} from "./format";
+import { WORKSHOP_STATUS_STYLES, formatDate, loaderName } from "./format";
 
 const STAT_LABEL_CLASS =
   "text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground";
@@ -28,9 +23,7 @@ const STAT_LABEL_CLASS =
 type WorkshopListItem = RouterOutput["user"]["workshops"]["list"][number];
 
 export function Workshop() {
-  const workshopsQuery = trpc.user.workshops.list.useQuery(undefined, {
-    retry: retryUnlessForbidden,
-  });
+  const workshopsQuery = trpc.user.workshops.list.useQuery();
   const workshops = workshopsQuery.data ?? [];
   const openWorkshops = workshops.filter(
     (workshop) => workshop.status === "open",
