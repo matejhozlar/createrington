@@ -1,9 +1,9 @@
 import { loadCharacters, type Catalog } from "./assets";
-import { buildTitleMesh, normalizeTitleText } from "./geometry";
+import { buildTitleMesh, clearSmallRows, normalizeTitleText } from "./geometry";
 import type { PreparedLayer } from "./render";
 import { geometryOptions, resolveTextureArgs } from "./settings";
 import { makeTexture } from "./texture";
-import type { TitleLayer } from "./types";
+import type { RenderView, TitleLayer } from "./types";
 
 const TEXTURE_CACHE_LIMIT = 24;
 
@@ -51,9 +51,10 @@ export function getLayerTexture(layer: TitleLayer, catalog: Catalog) {
 export async function prepareLayers(
   layers: TitleLayer[],
   catalog: Catalog,
+  view: RenderView,
 ): Promise<PreparedLayer[]> {
   const prepared = await Promise.all(
-    layers.map(async (layer): Promise<PreparedLayer | null> => {
+    layers.map(async (layer) => {
       const font = catalog.fonts[layer.font];
       const text = normalizeTitleText(layer.text);
       if (!font || !text) return null;
@@ -65,10 +66,12 @@ export async function prepareLayers(
         text,
         font,
         characters,
-        geometryOptions(layer),
+        geometryOptions(layer, view),
       );
-      return mesh.cubes.length ? { mesh, texture } : null;
+      return mesh.cubes.length ? { type: layer.type, mesh, texture } : null;
     }),
   );
-  return prepared.filter((layer): layer is PreparedLayer => layer !== null);
+  const built = prepared.filter((layer) => layer !== null);
+  if (view === "flat") clearSmallRows(built);
+  return built.map(({ mesh, texture }): PreparedLayer => ({ mesh, texture }));
 }
