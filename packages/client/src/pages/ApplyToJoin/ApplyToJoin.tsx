@@ -26,42 +26,42 @@ const FIGURES = [
     name: "Agent772",
     src: "/assets/apply/agent772-wave.webp",
     className:
-      "bottom-full left-[3%] z-0 h-40 translate-y-[38%] -rotate-3 md:h-56",
+      "bottom-full left-[3%] z-0 h-40 translate-y-[38%] -rotate-3 @4xl:h-56",
   },
   {
     name: "diablothe2nd",
     src: "/assets/apply/diablothe2nd-gaze.webp",
     className:
-      "bottom-full left-[24%] z-0 hidden h-36 translate-y-[52%] rotate-2 @2xl:block md:h-52",
+      "bottom-full left-[24%] z-0 hidden h-36 translate-y-[52%] rotate-2 @2xl:block @4xl:h-52",
   },
   {
     name: "Saidai_V",
     src: "/assets/apply/saidai-v-ponder.webp",
     className:
-      "bottom-full left-[45%] z-0 h-36 translate-y-[45%] -rotate-2 md:h-52",
+      "bottom-full left-[45%] z-0 h-36 translate-y-[45%] -rotate-2 @4xl:h-52",
   },
   {
     name: "Tetsuoken",
     src: "/assets/apply/tetsuoken-cute.webp",
     className:
-      "bottom-full left-[63%] z-0 hidden h-36 translate-y-[55%] rotate-3 @2xl:block md:h-52",
+      "bottom-full left-[63%] z-0 hidden h-36 translate-y-[55%] rotate-3 @2xl:block @4xl:h-52",
   },
   {
     name: "saunhardy",
     src: "/assets/apply/saunhardy-relaxed.webp",
-    className: "right-[2%] bottom-full z-20 h-32 translate-y-[11.5%] md:h-44",
+    className: "right-[2%] bottom-full z-20 h-32 translate-y-[11.5%] @4xl:h-44",
   },
   {
     name: "Cailin05",
     src: "/assets/apply/cailin05-callout.webp",
     className:
-      "top-[18%] right-full z-0 hidden h-60 origin-bottom translate-x-[58%] -rotate-[16deg] @6xl:block",
+      "top-[18%] right-full z-0 hidden h-60 origin-bottom translate-x-[58%] -rotate-[16deg] @min-[77rem]:block",
   },
   {
     name: "The_BigShot",
     src: "/assets/apply/the-bigshot-point.webp",
     className:
-      "bottom-0 left-full z-20 hidden h-64 -translate-x-[22%] translate-y-[6%] @6xl:block",
+      "bottom-0 left-full z-20 hidden h-64 -translate-x-[22%] translate-y-[6%] @min-[77rem]:block",
   },
 ] as const;
 
@@ -93,8 +93,8 @@ export function ApplyToJoin() {
         description="Join our community and become a part of Createrington!"
       />
 
-      <div className="@container px-5 pt-28 pb-12 md:px-8 md:pt-40">
-        <div className="relative mx-auto w-full max-w-5xl">
+      <div className="@container px-5 pb-12 md:px-8">
+        <div className="relative mx-auto mt-28 w-full max-w-5xl @4xl:mt-40">
           {FIGURES.map(({ name, src, className }) => (
             <span
               key={name}
@@ -105,7 +105,7 @@ export function ApplyToJoin() {
             >
               <img
                 src={src}
-                alt={name}
+                alt=""
                 width={600}
                 height={900}
                 draggable={false}
