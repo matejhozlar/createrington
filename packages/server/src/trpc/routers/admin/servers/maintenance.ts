@@ -98,6 +98,18 @@ export const serverMaintenanceProcedures = {
                 `Failed to send maintenance ended announcement: ${error}`,
               );
             }
+
+            try {
+              await Discord.Messages.send({
+                channelId: Discord.Channels.railsNSails.MINECRAFT_CHAT,
+                content:
+                  "Server maintenance is over, the server is back online.",
+              });
+            } catch (error) {
+              logger.warn(
+                `Failed to send maintenance ended message to Minecraft chat: ${error}`,
+              );
+            }
           }
         }
       } catch (error) {
