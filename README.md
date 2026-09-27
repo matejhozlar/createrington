@@ -1,28 +1,36 @@
 <div align="center">
 
-<h1>
-  <img src="packages/client/public/assets/logo/logo.png" alt="Createrington" width="180">
-</h1>
+<img src="packages/client/public/assets/logo/logo.png" alt="Createrington" width="180">
 
-<p><b>One portal for a modded Minecraft server, its Discord guild, and its players.</b></p>
+<h1>Createrington</h1>
 
-<h2>
-  <a href="https://createrington.com">createrington.com</a>
-</h2>
+One portal for a modded Minecraft server, its Discord guild, and its players. A single TypeScript monorepo ties the game servers, the Discord bots, and the web app together, so a player registers once and their playtime, balance, roles, and chat follow them everywhere.
 
-<img src="screenshots/homepage.webp" alt="Createrington homepage">
+### [**Visit createrington.com**](https://createrington.com)
+
+[![Website](https://img.shields.io/badge/Website-createrington.com-F5A524.svg)](https://createrington.com)
+[![Modpack](https://img.shields.io/badge/Modpack-Rails_'n_Sails-F16436.svg)](https://www.curseforge.com/minecraft/modpacks/createrington-rails-n-sails)
+![License](https://img.shields.io/badge/License-Proprietary-lightgrey.svg)
+![Node.js](https://img.shields.io/badge/Node.js-22+-5FA04E.svg)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6.svg)
+![React](https://img.shields.io/badge/React-19-61DAFB.svg)
+![tRPC](https://img.shields.io/badge/tRPC-11-2596BE.svg)
+![Minecraft](https://img.shields.io/badge/NeoForge-1.21.1-DF7F3E.svg)
+
+<img src="screenshots/readme/home.png" alt="Createrington home page" width="100%">
 
 </div>
 
-Createrington is a community platform for a modded Minecraft server. One
-TypeScript monorepo ties the game servers, a Discord guild, and a web portal into
-a single system: players register once, and their playtime, balance, roles,
-and chat follow them across all three.
+---
 
 ## Contents
 
-- [What it does](#what-it-does)
-- [Screenshots](#screenshots)
+- [The portal](#the-portal)
+- [Leaderboards](#leaderboards)
+- [Live from the server](#live-from-the-server)
+- [Community](#community)
+- [Admin dashboard](#admin-dashboard)
+- [Discord render cards](#discord-render-cards)
 - [How it fits together](#how-it-fits-together)
 - [Tech stack](#tech-stack)
 - [Quick start](#quick-start)
@@ -31,85 +39,219 @@ and chat follow them across all three.
 - [Credits](#credits)
 - [License](#license)
 
-## What it does
+---
 
-### Identity and access
+## The portal
 
-Players sign in with Discord OAuth, then link a Minecraft account to unlock the
-rest of the portal. New players apply through a waitlist that admins review from
-the dashboard; approval triggers a Discord notification and an automatic
-whitelist sync to the game server. A cross-subdomain SSO flow lets sibling apps
-authenticate against the same session without storing tokens of their own.
+<table>
+<tr>
+<td width="50%">
+<img src="screenshots/readme/apply.png" alt="Apply to Join page" width="100%">
+</td>
+<td width="50%" valign="middle">
+<h3>Apply in three steps</h3>
+The apply page shows the live enrollment status and walks a new player through the whole flow: join the Discord, register a Minecraft username in the verification channel, and get whitelisted on the game server automatically. The team's skins lean in around the card to say hello.
+</td>
+</tr>
 
-### Live presence and chat
+<tr>
+<td width="50%" valign="middle">
+<h3>Guides that stay current</h3>
+Step-by-step guides cover installing and updating the modpack, with annotated screenshots and a reading time on every card. They live in the portal, so they ship with the same release as the features they describe.
+</td>
+<td width="50%">
+<img src="screenshots/readme/guides.png" alt="Guides page" width="100%">
+</td>
+</tr>
 
-Minecraft, Discord, and the web client share one chat stream and one player list.
-The game servers push presence over the mod API, the server fans it out over
-Socket.io, and Discord webhooks carry it the rest of the way. Session time is
-tracked per player and rolled up into hourly, daily, and lifetime totals that
-drive playtime-tier Discord roles, leaderboards, and a daily top-player role.
+<tr>
+<td width="50%">
+<img src="screenshots/readme/team.png" alt="Team page" width="100%">
+</td>
+<td width="50%" valign="middle">
+<h3>Meet the team</h3>
+The owner, developers, and admins who keep the server running, each rendered as a full-body skin by the in-house Createrington skin API and tagged with their role.
+</td>
+</tr>
+</table>
 
-### Community content
+---
 
-The **workshop** lets players suggest and upvote mods for the next modpack
-season, with CurseForge metadata pulled in automatically and a per-player voting
-budget. **Structure packs** rotate through a weighted pool that players can see
-and influence. **Parties and chunk claims** sync land ownership between the game
-and the portal. **Donations** run through Stripe. Support tickets round out the
-player-facing surface.
+## Leaderboards
 
-### Admin dashboard
+<table>
+<tr>
+<td width="55%">
+<img src="screenshots/readme/leaderboards.png" alt="Leaderboards title holders" width="100%">
+</td>
+<td width="45%" valign="middle">
+<h3>Three titles, one holder each</h3>
+<b>The Sleepless</b> goes to the most playtime, <b>The Unrivaled</b> to the most #1 records, and <b>Capitalist</b> to the biggest balance. The crowns are awarded again every midnight UTC, and each one is mirrored to a Discord role and an in-game rank.
+</td>
+</tr>
 
-A full operations panel: player profiles with ban, strike, and balance controls
-backed by an audit log; waitlist review; a WYSIWYG Discord embed builder with
-preset categories and linked messages; scheduled auto-messages; in-game
-announcements; a FAQ editor; inactivity and ghost-member cleanup; changelog and
-modpack tooling; feature flags; and growth, economy, and moderation analytics.
+<tr>
+<td width="45%" valign="middle">
+<h3>Every player, ranked</h3>
+Thousands of Minecraft stats are contested at once. Switch between playtime, wealth, and records, search for a player, or open a row to see exactly which stats they hold the top spot in.
+</td>
+<td width="55%">
+<img src="screenshots/readme/leaderboards-board.png" alt="Leaderboard rankings" width="100%">
+</td>
+</tr>
 
-### Image rendering
+<tr>
+<td width="55%">
+<img src="screenshots/readme/compare.png" alt="Head to head comparison" width="100%">
+</td>
+<td width="45%" valign="middle">
+<h3>Head to head</h3>
+Pick any two players and the portal scores them against each other across every board. Reroll the poses, swap sides, and copy a link that unfurls into a live social card of the matchup.
+</td>
+</tr>
+</table>
 
-Discord slash commands like `/profile`, `/top`, `/activity`, and `/compare`
-return rendered cards. Puppeteer drives a headless page for layout and
-`@napi-rs/canvas` handles direct composition, both fed by the in-house
-Createrington skin API.
+---
 
-## Screenshots
+## Live from the server
 
-<details>
-<summary><b>Web portal</b> (2 images)</summary>
+<table>
+<tr>
+<td width="50%">
+<img src="screenshots/readme/chat.png" alt="Chat bridge" width="100%">
+</td>
+<td width="50%" valign="middle">
+<h3>One chat, three places</h3>
+Minecraft, Discord, and the web client share a single chat stream. Messages, joins, and leaves arrive over Socket.io the moment they happen, tagged with where they came from.
+</td>
+</tr>
 
-**Live player list**
+<tr>
+<td width="50%" valign="middle">
+<h3>Who is online</h3>
+The game servers push presence through the mod API, so the player list, slot count, server load, and session timers are always live. Session time rolls up into hourly, daily, and lifetime totals that drive the playtime roles.
+</td>
+<td width="50%">
+<img src="screenshots/readme/online-players.png" alt="Online players" width="100%">
+</td>
+</tr>
 
-![Online players](screenshots/online-players.webp)
+<tr>
+<td width="50%">
+<img src="screenshots/readme/blue-map.png" alt="BlueMap world map" width="100%">
+</td>
+<td width="50%" valign="middle">
+<h3>The world, mapped</h3>
+An embedded BlueMap shows the whole world in the browser, with claimed land outlined on top so everyone can see who has settled where.
+</td>
+</tr>
+</table>
 
-**Chat bridge**
+---
 
-![Web chat](screenshots/web-chat.webp)
+## Community
 
-</details>
+<table>
+<tr>
+<td width="55%">
+<img src="screenshots/readme/gallery.png" alt="Screenshot gallery" width="100%">
+</td>
+<td width="45%" valign="middle">
+<h3>Gallery</h3>
+Players post screenshots in Discord, admins review them, and the best builds, views, and moments are published to the gallery with the author's skin and name attached.
+</td>
+</tr>
 
-<details>
-<summary><b>Admin dashboard</b> (2 images)</summary>
+<tr>
+<td width="45%" valign="middle">
+<h3>Shape the next world</h3>
+Mining dimensions rotate on a schedule. Players spend in-game currency to boost the themed dimension they want next, and weighted voting decides what appears through the portal.
+</td>
+<td width="55%">
+<img src="screenshots/readme/dimensions.png" alt="Dimension rotation and voting" width="100%">
+</td>
+</tr>
+</table>
 
-**Overview**
+Signed-in players get more on top of that:
 
-![Dashboard overview](screenshots/admin-dashboard.webp)
+- **Workshop** - suggest and upvote mods for the next modpack season, with CurseForge metadata pulled in automatically and a per-player voting budget.
+- **Parties and chunk claims** - land ownership syncs between the game and the portal.
+- **Donations** - handled through Stripe.
+- **Single sign-on** - sign in with Discord once, and sibling apps authenticate against the same session without storing tokens of their own.
 
-**Player management**
+---
 
-![Player management](screenshots/admin-players.webp)
+## Admin dashboard
 
-</details>
+<table>
+<tr>
+<td width="50%">
+<img src="screenshots/readme/admin-dashboard.png" alt="Admin dashboard overview" width="100%">
+</td>
+<td width="50%" valign="middle">
+<h3>Everything at a glance</h3>
+Player counts, server status, the waitlist queue, recent bans, and an audit trail of every admin action sit on one screen, next to the Discord commands players are running most.
+</td>
+</tr>
 
-<details>
-<summary><b>Discord render cards</b> (4 images)</summary>
+<tr>
+<td width="50%" valign="middle">
+<h3>A workbench of tools</h3>
+Auto messages, the FAQ auto-responder, player prompts, structure packs, workshop review, parties, gallery moderation, and inactivity cleanup are grouped by category, searchable, and pinnable.
+</td>
+<td width="50%">
+<img src="screenshots/readme/admin-tools.png" alt="Admin tools workbench" width="100%">
+</td>
+</tr>
 
-|                                               |                                              |
-| --------------------------------------------- | -------------------------------------------- |
-| ![/profile](screenshots/render-profile.webp)  | ![/top](screenshots/render-top.webp)         |
-| ![/activity](screenshots/render-activty.webp) | ![/compare](screenshots/render-compare.webp) |
+<tr>
+<td width="50%">
+<img src="screenshots/readme/admin-embed-builder.png" alt="Discord embed builder" width="100%">
+</td>
+<td width="50%" valign="middle">
+<h3>Embed builder</h3>
+A WYSIWYG editor for Discord messages, covering both classic embeds and Components V2. Click anything in the live preview to edit it, save presets into categories, and send straight to a channel.
+</td>
+</tr>
 
-</details>
+<tr>
+<td width="50%" valign="middle">
+<h3>Title generator</h3>
+Builds Minecraft-style 3D titles like the Createrington wordmark, with per-line fonts, textures, overlays, and styling, then exports a transparent PNG.
+</td>
+<td width="50%">
+<img src="screenshots/readme/admin-title-generator.png" alt="Title generator" width="100%">
+</td>
+</tr>
+</table>
+
+Player profiles round it out, with ban, strike, and balance controls, plus waitlist review, in-game announcements, changelog and modpack tooling, feature flags, and server logs.
+
+---
+
+## Discord render cards
+
+Slash commands like `/profile`, `/top`, `/activity`, `/compare`, and `/records` answer with rendered cards. Puppeteer drives a headless page for layout and `@napi-rs/canvas` handles direct composition, both fed by the Createrington skin API.
+
+<table>
+<tr>
+<td width="33%" align="center">
+<img src="screenshots/render-top.webp" alt="/top card" width="100%">
+<br><sub><b>/top</b></sub>
+</td>
+<td width="33%" align="center">
+<img src="screenshots/render-activty.webp" alt="/activity card" width="100%">
+<br><sub><b>/activity</b></sub>
+</td>
+<td width="33%" align="center">
+<img src="screenshots/render-compare.webp" alt="/compare card" width="100%">
+<br><sub><b>/compare</b></sub>
+</td>
+</tr>
+</table>
+
+---
 
 ## How it fits together
 
@@ -171,6 +313,8 @@ compile error on the other side.
 import type { AppRouter } from "@createrington/server/trpc";
 ```
 
+---
+
 ## Tech stack
 
 | Layer     | Technology                                                |
@@ -186,10 +330,12 @@ import type { AppRouter } from "@createrington/server/trpc";
 | Charts    | lightweight-charts, Recharts                              |
 | Payments  | Stripe                                                    |
 | Email     | Resend                                                    |
-| AI        | OpenAI (market news, admin tooling)                       |
+| AI        | OpenAI (admin tooling)                                    |
 | Rendering | puppeteer-core, @napi-rs/canvas, skinview3d               |
 | Maps      | BlueMap                                                   |
 | Testing   | Vitest                                                    |
+
+---
 
 ## Quick start
 
@@ -230,6 +376,8 @@ pnpm mc:up                # start the server and attach to its console
 
 See [`docker/mc/README.md`](docker/mc/README.md) for details.
 
+---
+
 ## Documentation
 
 | Document                                                     | Covers                                                  |
@@ -240,6 +388,8 @@ See [`docker/mc/README.md`](docker/mc/README.md) for details.
 | [docker/mc/README.md](docker/mc/README.md)                   | Local Minecraft server                                  |
 | [packages/api-types/README.md](packages/api-types/README.md) | Consuming the tRPC contracts from another app           |
 
+---
+
 ## Related projects
 
 - [**Createrington Currency**](https://github.com/matejhozlar/createrington-currency)
@@ -248,6 +398,8 @@ See [`docker/mc/README.md`](docker/mc/README.md) for details.
   is the official modpack.
 - [**mc-page**](https://github.com/matejhozlar/mc-page) is the predecessor: a
   single-package Node.js and React portal, rewritten into this monorepo.
+
+---
 
 ## Credits
 
@@ -259,6 +411,8 @@ free public Minecraft skin APIs cover the rest:
 - [Crafatar](https://crafatar.com/), for server-side skin downloads.
 
 Thanks to each of them for keeping their APIs open to the community.
+
+---
 
 ## License
 
