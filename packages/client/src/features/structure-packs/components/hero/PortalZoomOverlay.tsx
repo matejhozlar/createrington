@@ -344,7 +344,7 @@ function OverlayHero({
   rotationPaused,
 }: OverlayHeroProps) {
   const countdown =
-    useCountdown(nextRotationAt) ?? (rotationPaused ? "Paused" : "—");
+    useCountdown(nextRotationAt) ?? (rotationPaused ? "Paused" : "–");
 
   const leader = useMemo(() => {
     if (!pool || pool.length === 0) return null;
@@ -361,7 +361,7 @@ function OverlayHero({
       </h1>
       <div className="flex shrink-0 flex-wrap items-stretch gap-x-6 gap-y-4">
         <div className="hidden lg:contents">
-          <MiniStat label="Leading" value={leader?.pack.name ?? "—"} accent />
+          <MiniStat label="Leading" value={leader?.pack.name ?? "–"} accent />
           <div className="w-px bg-white/10" />
         </div>
         <MiniStat label="Rotation in" value={countdown} mono />

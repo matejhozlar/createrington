@@ -112,7 +112,6 @@ const AnnouncementTable = import.meta.env.DEV
   : null;
 
 // Protected user pages
-const Profile = lazyNamed(() => import("./pages/Profile/Profile"), "Profile");
 const Settings = lazyNamed(
   () => import("./pages/Settings/Settings"),
   "Settings",
@@ -139,14 +138,6 @@ const WorkshopPack = lazyNamed(
 );
 
 // Server pages
-const ServerDetail = lazyNamed(
-  () => import("./pages/ServerDetail/ServerDetail"),
-  "ServerDetail",
-);
-const ServerStatus = lazyNamed(
-  () => import("./pages/ServerStatus/ServerStatus"),
-  "ServerStatus",
-);
 const ServerChat = lazyNamed(() => import("./components/chat"), "ServerChat");
 const ChatRedirect = lazyNamed(
   () => import("./components/chat"),
@@ -368,14 +359,6 @@ function AppContent() {
           <Route path="/blue-map" element={<BlueMap />} />
           <Route path="/online-players" element={<OnlinePlayers />} />
           <Route
-            path="/profile"
-            element={
-              <ProtectedRoute>
-                <Profile />
-              </ProtectedRoute>
-            }
-          />
-          <Route
             path="/settings"
             element={
               <ProtectedRoute>
@@ -416,17 +399,6 @@ function AppContent() {
               </ProtectedRoute>
             }
           />
-
-          {/* Server Routes */}
-          <Route
-            path="/servers/:serverSlug"
-            element={
-              <ProtectedRoute>
-                <ServerDetail />
-              </ProtectedRoute>
-            }
-          />
-          <Route path="/servers/status" element={<ServerStatus />} />
 
           {/* Full-screen Routes (no footer) */}
           <Route path="/chat" element={<ChatRedirect />} />

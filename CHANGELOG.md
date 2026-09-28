@@ -1,3 +1,13 @@
+## v1.65.1 (2026-09-28)
+
+### @createrington/client (0.2.80 → 0.2.81)
+- [add] Add flat view to the title generator that renders text straight-on using an orthographic camera instead of the tilted perspective, with geometry adjustments for upright row layout, automatic overlap clearing between small and bottom text rows, and a view selector in the render settings panel
+- [add] Add team member figures to the apply page: seven rendered Minecraft skins lean in around the enrollment card with container-query-driven responsive visibility, hover lift animations, and drop shadows
+- [fix] Fix BlueMap page showing a broken iframe when the backend is down by probing the map's settings endpoint before loading the frame and displaying a proper "unavailable" fallback on failure
+- [fix] Fix portal animation on the dimensions page rendering with sub-pixel artifacts by drawing tiles at native sprite resolution (16px) and relying on CSS `image-rendering: pixelated` for scaling, instead of scaling with device pixel ratio
+- [remove] Remove unused Profile, ServerDetail, and ServerStatus placeholder pages and their route definitions
+- [chore] Rebuild the README as a feature showcase with annotated screenshot tables, tech badges, and structured sections replacing the plain-text description
+
 ## v1.65.0 (2026-09-27)
 
 ### @createrington/server (1.65.1 → 1.66.0)

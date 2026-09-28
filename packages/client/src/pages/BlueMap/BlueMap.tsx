@@ -3,8 +3,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MapPinOff } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const BLUEMAP_URL = import.meta.env.VITE_BLUEMAP_URL as string;
+const IS_SAME_ORIGIN =
+  new URL(BLUEMAP_URL, window.location.href).origin === window.location.origin;
 
 export function BlueMap() {
   // Computed once so our own replaceState below doesn't reload the iframe.
@@ -15,9 +18,34 @@ export function BlueMap() {
     handler: () => void;
     interval: ReturnType<typeof setInterval>;
   } | null>(null);
-  const [status, setStatus] = useState<"loading" | "available" | "unavailable">(
-    "loading",
+  const [mapReachable, setMapReachable] = useState<boolean | null>(
+    IS_SAME_ORIGIN ? null : true,
   );
+  const [frameLoaded, setFrameLoaded] = useState(false);
+  const status =
+    mapReachable === false
+      ? "unavailable"
+      : mapReachable && frameLoaded
+        ? "available"
+        : "loading";
+
+  useEffect(() => {
+    if (!IS_SAME_ORIGIN) return;
+    const controller = new AbortController();
+    fetch(`${BLUEMAP_URL}/settings.json`, {
+      cache: "no-store",
+      signal: controller.signal,
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error(`BlueMap responded ${res.status}`);
+        return res.json();
+      })
+      .then(() => setMapReachable(true))
+      .catch(() => {
+        if (!controller.signal.aborted) setMapReachable(false);
+      });
+    return () => controller.abort();
+  }, []);
 
   const detachSync = () => {
     if (!syncRef.current) return;
@@ -34,7 +62,7 @@ export function BlueMap() {
   };
 
   const handleLoad = () => {
-    setStatus("available");
+    setFrameLoaded(true);
     detachSync();
     const child = iframeRef.current?.contentWindow;
     if (!child) return;
@@ -89,9 +117,12 @@ export function BlueMap() {
           ref={iframeRef}
           src={iframeSrc}
           title="BlueMap Viewer"
-          className="h-full w-full flex-1 border-none"
+          className={cn(
+            "h-full w-full flex-1 border-none",
+            status !== "available" && "invisible",
+          )}
           onLoad={handleLoad}
-          onError={() => setStatus("unavailable")}
+          onError={() => setMapReachable(false)}
         />
       )}
     </div>
