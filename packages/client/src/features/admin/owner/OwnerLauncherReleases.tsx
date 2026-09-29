@@ -200,7 +200,7 @@ export function OwnerLauncherReleases() {
             <CardDescription>
               {enabled
                 ? "A published version stays pending until you release it. Download a pending installer to test it first."
-                : "Launcher releases are switched off on this environment."}
+                : "Publishing is switched off on this environment."}
             </CardDescription>
           </CardHeader>
           <CardContent className="p-0">
