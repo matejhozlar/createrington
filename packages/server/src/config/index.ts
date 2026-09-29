@@ -98,6 +98,9 @@ const config = {
       modAccessToken: {
         secret: env.MOD_JWT_SECRET,
       },
+      launcherAccessToken: {
+        secret: env.LAUNCHER_JWT_SECRET ?? "",
+      },
       refreshToken: {
         expiresInDays: env.REFRESH_TOKEN_EXPIRES_IN_DAYS,
       },

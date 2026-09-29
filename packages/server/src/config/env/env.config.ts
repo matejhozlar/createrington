@@ -117,6 +117,10 @@ const envSchema = z
     MOD_JWT_SECRET: z
       .string()
       .min(32, "Mod JWT secret must be at least 32 characters"),
+    LAUNCHER_JWT_SECRET: z
+      .string()
+      .min(32, "Launcher JWT secret must be at least 32 characters")
+      .optional(),
     JWT_ACCESS_EXPIRES_IN: z
       .string()
       .regex(
@@ -283,6 +287,19 @@ const envSchema = z
         path: ["MOD_JWT_SECRET"],
         message:
           "MOD_JWT_SECRET must differ from JWT_ACCESS_SECRET (sharing defeats the mod/web trust-boundary split)",
+      });
+    }
+
+    if (
+      data.LAUNCHER_JWT_SECRET &&
+      (data.LAUNCHER_JWT_SECRET === data.JWT_ACCESS_SECRET ||
+        data.LAUNCHER_JWT_SECRET === data.MOD_JWT_SECRET)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["LAUNCHER_JWT_SECRET"],
+        message:
+          "LAUNCHER_JWT_SECRET must differ from JWT_ACCESS_SECRET and MOD_JWT_SECRET",
       });
     }
 
