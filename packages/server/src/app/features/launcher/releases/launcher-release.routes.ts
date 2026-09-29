@@ -9,9 +9,19 @@ import { validate } from "@/app/middleware/validation.middleware";
 import { LauncherReleaseController } from "./launcher-release.controller";
 import { PublishReleaseBodySchema } from "./launcher-release.schemas";
 
-const router = Router();
+export const launcherUpdateCheckRoutes = Router();
 
-router.post(
+launcherUpdateCheckRoutes.get(
+  "/updates/:platform/:currentVersion",
+  ...customRoute(
+    [launcherUpdateCheckLimiter],
+    LauncherReleaseController.checkForUpdate,
+  ),
+);
+
+export const launcherPublishRoutes = Router();
+
+launcherPublishRoutes.post(
   "/releases",
   ...customRoute(
     [
@@ -22,13 +32,3 @@ router.post(
     LauncherReleaseController.publish,
   ),
 );
-
-router.get(
-  "/updates/:platform/:currentVersion",
-  ...customRoute(
-    [launcherUpdateCheckLimiter],
-    LauncherReleaseController.checkForUpdate,
-  ),
-);
-
-export default router;
