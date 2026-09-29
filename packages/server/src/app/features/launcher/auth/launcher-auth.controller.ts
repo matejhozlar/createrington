@@ -33,6 +33,12 @@ function launcherError(
   return new AppError(message, statusCode, true, undefined, { code });
 }
 
+function invalidRefreshToken(): UnauthorizedError {
+  return new UnauthorizedError("Invalid or expired refresh token", {
+    code: LauncherAuthErrorCode.INVALID_REFRESH_TOKEN,
+  });
+}
+
 async function requireActivePlayer(minecraftUuid: string) {
   const player = await Q.player.find({ minecraftUuid });
   if (!player) {
@@ -122,33 +128,41 @@ export class LauncherAuthController {
   static async refresh(req: Request, res: Response): Promise<void> {
     const { body } = getValidated<{ body: RefreshTokenBody }>(res);
 
-    const result = await launcherSessionService.rotateToken(
+    const session = await launcherSessionService.resolveActiveSession(
       body.refreshToken,
-      req.clientIp || req.ip,
-      req.headers["user-agent"],
     );
 
-    if (!result) {
-      throw new UnauthorizedError("Invalid or expired refresh token", {
-        code: LauncherAuthErrorCode.INVALID_REFRESH_TOKEN,
-      });
+    if (!session) {
+      throw invalidRefreshToken();
     }
 
     let player;
     try {
-      player = await requireActivePlayer(result.minecraftUuid);
+      player = await requireActivePlayer(session.playerMinecraftUuid);
     } catch (error) {
       if (error instanceof AppError && error.statusCode === 403) {
-        await launcherSessionService.revokeAllForPlayer(result.minecraftUuid);
+        await launcherSessionService.revokeAllForPlayer(
+          session.playerMinecraftUuid,
+        );
       }
       throw error;
+    }
+
+    const refreshToken = await launcherSessionService.rotateSession(
+      session,
+      req.clientIp || req.ip,
+      req.headers["user-agent"],
+    );
+
+    if (!refreshToken) {
+      throw invalidRefreshToken();
     }
 
     res.json({
       success: true,
       data: {
         accessToken: launcherJwtService.generate(player),
-        refreshToken: result.rawToken,
+        refreshToken,
         player: {
           minecraftUuid: player.minecraftUuid,
           minecraftUsername: player.minecraftUsername,

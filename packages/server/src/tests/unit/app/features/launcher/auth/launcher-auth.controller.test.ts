@@ -5,7 +5,8 @@ const mocks = vi.hoisted(() => ({
   isPlayerBanned: vi.fn(),
   verifyMojangJoin: vi.fn(),
   createSession: vi.fn(),
-  rotateToken: vi.fn(),
+  resolveActiveSession: vi.fn(),
+  rotateSession: vi.fn(),
   revokeByToken: vi.fn(),
   revokeAllForPlayer: vi.fn(),
   generate: vi.fn(),
@@ -34,7 +35,8 @@ vi.mock("@/utils/mojang-has-joined", () => ({
 vi.mock("@/services/auth/launcher/launcher-session.service", () => ({
   launcherSessionService: {
     createSession: mocks.createSession,
-    rotateToken: mocks.rotateToken,
+    resolveActiveSession: mocks.resolveActiveSession,
+    rotateSession: mocks.rotateSession,
     revokeByToken: mocks.revokeByToken,
     revokeAllForPlayer: mocks.revokeAllForPlayer,
   },
@@ -57,6 +59,13 @@ const PLAYER = {
   discordId: "123",
 };
 const REFRESH_TOKEN = "b".repeat(80);
+const ROTATED_TOKEN = "d".repeat(80);
+const SESSION = {
+  id: 7,
+  playerMinecraftUuid: PLAYER.minecraftUuid,
+  familyId: "0f6a7b1c-5d4e-4f3a-9b2c-1d0e9f8a7b6c",
+  revokedAt: null,
+};
 
 function makeReq(): Request {
   return {
@@ -247,27 +256,29 @@ describe("LauncherAuthController", () => {
   });
 
   describe("refresh", () => {
-    it("returns a new token pair after rotation", async () => {
-      mocks.rotateToken.mockResolvedValue({
-        rawToken: "d".repeat(80),
-        minecraftUuid: PLAYER.minecraftUuid,
-      });
+    beforeEach(() => {
+      mocks.resolveActiveSession.mockResolvedValue(SESSION);
+      mocks.rotateSession.mockResolvedValue(ROTATED_TOKEN);
       mocks.findPlayer.mockResolvedValue(PLAYER);
+    });
+
+    it("returns a new token pair after rotation", async () => {
       const { res, json } = makeRes({ refreshToken: REFRESH_TOKEN });
 
       await LauncherAuthController.refresh(makeReq(), res);
 
-      expect(mocks.rotateToken).toHaveBeenCalledWith(
-        REFRESH_TOKEN,
+      expect(mocks.resolveActiveSession).toHaveBeenCalledWith(REFRESH_TOKEN);
+      expect(mocks.rotateSession).toHaveBeenCalledWith(
+        SESSION,
         "203.0.113.7",
         "createrington-launcher/0.1.2",
       );
-      expect(json.mock.calls[0][0].data.refreshToken).toBe("d".repeat(80));
+      expect(json.mock.calls[0][0].data.refreshToken).toBe(ROTATED_TOKEN);
       expect(json.mock.calls[0][0].data.accessToken).toBe("access-token");
     });
 
     it("rejects an unknown, expired or replayed refresh token", async () => {
-      mocks.rotateToken.mockResolvedValue(null);
+      mocks.resolveActiveSession.mockResolvedValue(null);
       const { res } = makeRes({ refreshToken: REFRESH_TOKEN });
 
       const error = await captureError(
@@ -276,14 +287,23 @@ describe("LauncherAuthController", () => {
 
       expect(error.statusCode).toBe(401);
       expect(error.code).toBe("INVALID_REFRESH_TOKEN");
+      expect(mocks.findPlayer).not.toHaveBeenCalled();
+      expect(mocks.rotateSession).not.toHaveBeenCalled();
+    });
+
+    it("rejects the loser of two concurrent refreshes", async () => {
+      mocks.rotateSession.mockResolvedValue(null);
+      const { res, json } = makeRes({ refreshToken: REFRESH_TOKEN });
+
+      const error = await captureError(
+        LauncherAuthController.refresh(makeReq(), res),
+      );
+
+      expect(error.code).toBe("INVALID_REFRESH_TOKEN");
+      expect(json).not.toHaveBeenCalled();
     });
 
     it("cuts off a player who was banned since the last refresh", async () => {
-      mocks.rotateToken.mockResolvedValue({
-        rawToken: "d".repeat(80),
-        minecraftUuid: PLAYER.minecraftUuid,
-      });
-      mocks.findPlayer.mockResolvedValue(PLAYER);
       mocks.isPlayerBanned.mockResolvedValue(true);
       const { res, json } = makeRes({ refreshToken: REFRESH_TOKEN });
 
@@ -295,14 +315,11 @@ describe("LauncherAuthController", () => {
       expect(mocks.revokeAllForPlayer).toHaveBeenCalledWith(
         PLAYER.minecraftUuid,
       );
+      expect(mocks.rotateSession).not.toHaveBeenCalled();
       expect(json).not.toHaveBeenCalled();
     });
 
     it("cuts off a player who was removed since the last refresh", async () => {
-      mocks.rotateToken.mockResolvedValue({
-        rawToken: "d".repeat(80),
-        minecraftUuid: PLAYER.minecraftUuid,
-      });
       mocks.findPlayer.mockResolvedValue(null);
       const { res } = makeRes({ refreshToken: REFRESH_TOKEN });
 
@@ -314,18 +331,26 @@ describe("LauncherAuthController", () => {
       expect(mocks.revokeAllForPlayer).toHaveBeenCalledWith(
         PLAYER.minecraftUuid,
       );
+      expect(mocks.rotateSession).not.toHaveBeenCalled();
     });
 
-    it("keeps sessions intact when the player lookup fails unexpectedly", async () => {
-      mocks.rotateToken.mockResolvedValue({
-        rawToken: "d".repeat(80),
-        minecraftUuid: PLAYER.minecraftUuid,
-      });
+    it("does not consume the refresh token when the player lookup fails unexpectedly", async () => {
       mocks.findPlayer.mockRejectedValue(new Error("connection lost"));
       const { res } = makeRes({ refreshToken: REFRESH_TOKEN });
 
       await captureError(LauncherAuthController.refresh(makeReq(), res));
 
+      expect(mocks.rotateSession).not.toHaveBeenCalled();
+      expect(mocks.revokeAllForPlayer).not.toHaveBeenCalled();
+    });
+
+    it("does not consume the refresh token when the ban check fails unexpectedly", async () => {
+      mocks.isPlayerBanned.mockRejectedValue(new Error("pool timeout"));
+      const { res } = makeRes({ refreshToken: REFRESH_TOKEN });
+
+      await captureError(LauncherAuthController.refresh(makeReq(), res));
+
+      expect(mocks.rotateSession).not.toHaveBeenCalled();
       expect(mocks.revokeAllForPlayer).not.toHaveBeenCalled();
     });
   });

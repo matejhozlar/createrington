@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import config from "@/config";
 import { env } from "@/config/env/env.config";
+import { launcherJwtService } from "@/services/auth/launcher/launcher-jwt.service";
 import authRoutes from "./auth/auth.routes";
 import donationRoutes from "./donation/donation.routes";
 import skinRoutes from "./skin/skin.routes";
@@ -53,7 +54,7 @@ export function registerRoutes(app: Express): void {
     logger.info("Internal skin-api routes registered");
   }
 
-  if (config.app.auth.launcherAccessToken.secret) {
+  if (launcherJwtService.isEnabled()) {
     app.use(`${API_PREFIX}/launcher/auth`, launcherAuthRoutes);
     logger.info("Launcher auth routes registered");
   }

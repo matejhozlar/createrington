@@ -1,4 +1,4 @@
-import { Q } from "@/db";
+import { db, Q } from "@/db";
 import { refreshTokenService } from "@/services/auth/token/refresh-token.service";
 import type { AuthLauncherSession } from "@createrington/shared/db/auth_launcher_session.types";
 
@@ -6,11 +6,6 @@ interface CreateLauncherSessionParams {
   minecraftUuid: string;
   ip?: string;
   userAgent?: string;
-}
-
-interface LauncherRotateResult {
-  rawToken: string;
-  minecraftUuid: string;
 }
 
 /**
@@ -51,33 +46,24 @@ class LauncherSessionService {
   }
 
   /**
-   * Rotates a refresh token: revokes the current session and issues a new one in the same
-   * family. Returns null when the token is unknown, expired, or already revoked; replay of
-   * a revoked token revokes the entire family as theft.
+   * Looks up the session behind a refresh token without consuming it. Returns null when
+   * the token is unknown or expired; replay of an already-revoked token revokes the entire
+   * family as theft and also returns null.
    */
-  async rotateToken(
+  async resolveActiveSession(
     rawToken: string,
-    ip?: string,
-    userAgent?: string,
-  ): Promise<LauncherRotateResult | null> {
-    const tokenHash = refreshTokenService.hash(rawToken);
-    const session = await Q.auth.launcher.session.find({ tokenHash });
+  ): Promise<AuthLauncherSession | null> {
+    const session = await Q.auth.launcher.session.find({
+      tokenHash: refreshTokenService.hash(rawToken),
+    });
 
     if (!session) {
-      logger.warn("Launcher refresh token rotation failed: token not found");
+      logger.warn("Launcher refresh failed: token not found");
       return null;
     }
 
-    const claimed = await Q.auth.launcher.session.updateAll(
-      { revokedAt: new Date() },
-      { id: session.id, revokedAt: null },
-    );
-
-    if (claimed === 0) {
-      logger.warn(
-        `Launcher refresh token replay detected for ${session.playerMinecraftUuid}, revoking family ${session.familyId}`,
-      );
-      await this.revokeFamily(session.familyId);
+    if (session.revokedAt) {
+      await this.revokeFamilyAsReplay(session);
       return null;
     }
 
@@ -88,21 +74,46 @@ class LauncherSessionService {
       return null;
     }
 
+    return session;
+  }
+
+  /**
+   * Revokes the given session and issues its successor in the same family, atomically, and
+   * returns the new raw refresh token. A failure leaves the presented token usable for a
+   * retry. Returns null when another request consumed the session first, which is treated
+   * as a replay and revokes the family.
+   */
+  async rotateSession(
+    session: AuthLauncherSession,
+    ip?: string,
+    userAgent?: string,
+  ): Promise<string | null> {
     const newRawToken = refreshTokenService.generate();
 
-    await Q.auth.launcher.session.create({
-      playerMinecraftUuid: session.playerMinecraftUuid,
-      tokenHash: refreshTokenService.hash(newRawToken),
-      familyId: session.familyId,
-      ipAddress: ip ?? null,
-      userAgent: userAgent ?? null,
-      expiresAt: refreshTokenService.getExpiresAt(),
+    const rotated = await db.inTransaction(async (tx) => {
+      const claimed = await tx.auth.launcher.session.updateAll(
+        { revokedAt: new Date() },
+        { id: session.id, revokedAt: null },
+      );
+      if (claimed === 0) return false;
+
+      await tx.auth.launcher.session.create({
+        playerMinecraftUuid: session.playerMinecraftUuid,
+        tokenHash: refreshTokenService.hash(newRawToken),
+        familyId: session.familyId,
+        ipAddress: ip ?? null,
+        userAgent: userAgent ?? null,
+        expiresAt: refreshTokenService.getExpiresAt(),
+      });
+      return true;
     });
 
-    return {
-      rawToken: newRawToken,
-      minecraftUuid: session.playerMinecraftUuid,
-    };
+    if (!rotated) {
+      await this.revokeFamilyAsReplay(session);
+      return null;
+    }
+
+    return newRawToken;
   }
 
   /** Revokes the single session identified by the given raw refresh token (launcher sign-out). */
@@ -144,10 +155,15 @@ class LauncherSessionService {
     }
   }
 
-  private async revokeFamily(familyId: string): Promise<void> {
+  private async revokeFamilyAsReplay(
+    session: AuthLauncherSession,
+  ): Promise<void> {
+    logger.warn(
+      `Launcher refresh token replay detected for ${session.playerMinecraftUuid}, revoking family ${session.familyId}`,
+    );
     await Q.auth.launcher.session.updateAll(
       { revokedAt: new Date() },
-      { familyId, revokedAt: null },
+      { familyId: session.familyId, revokedAt: null },
     );
   }
 }

@@ -18,8 +18,15 @@ async function findSession(rawToken: string) {
   });
 }
 
+async function rotate(rawToken: string): Promise<string | null> {
+  const session = await launcherSessionService.resolveActiveSession(rawToken);
+  if (!session) return null;
+  return await launcherSessionService.rotateSession(session);
+}
+
 describe("LauncherSessionService", () => {
   beforeEach(async () => {
+    vi.restoreAllMocks();
     vi.spyOn(refreshTokenService, "getExpiresAt").mockImplementation(
       () => new Date(Date.now() + 30 * 86_400_000),
     );
@@ -61,13 +68,13 @@ describe("LauncherSessionService", () => {
       minecraftUuid: PLAYER_UUID,
     });
 
-    const rotated = await launcherSessionService.rotateToken(first);
+    const rotated = await rotate(first);
 
-    expect(rotated?.minecraftUuid).toBe(PLAYER_UUID);
-    expect(rotated?.rawToken).not.toBe(first);
+    expect(rotated).toMatch(/^[0-9a-f]{80}$/);
+    expect(rotated).not.toBe(first);
 
     const oldSession = await findSession(first);
-    const newSession = await findSession(rotated!.rawToken);
+    const newSession = await findSession(rotated!);
     expect(oldSession?.revokedAt).not.toBeNull();
     expect(newSession?.revokedAt).toBeNull();
     expect(newSession?.familyId).toBe(oldSession?.familyId);
@@ -77,19 +84,58 @@ describe("LauncherSessionService", () => {
     const first = await launcherSessionService.createSession({
       minecraftUuid: PLAYER_UUID,
     });
-    const rotated = await launcherSessionService.rotateToken(first);
+    const rotated = await rotate(first);
 
-    const replay = await launcherSessionService.rotateToken(first);
+    const replay = await rotate(first);
 
     expect(replay).toBeNull();
-    expect((await findSession(rotated!.rawToken))?.revokedAt).not.toBeNull();
-    expect(
-      await launcherSessionService.rotateToken(rotated!.rawToken),
-    ).toBeNull();
+    expect((await findSession(rotated!))?.revokedAt).not.toBeNull();
+    expect(await rotate(rotated!)).toBeNull();
+  });
+
+  it("keeps the presented token usable when issuing the successor fails", async () => {
+    const first = await launcherSessionService.createSession({
+      minecraftUuid: PLAYER_UUID,
+    });
+    const session = await launcherSessionService.resolveActiveSession(first);
+    vi.spyOn(refreshTokenService, "getExpiresAt").mockImplementationOnce(() => {
+      throw new Error("insert failed");
+    });
+
+    await expect(
+      launcherSessionService.rotateSession(session!),
+    ).rejects.toThrow("insert failed");
+
+    expect((await findSession(first))?.revokedAt).toBeNull();
+    expect(await rotate(first)).toMatch(/^[0-9a-f]{80}$/);
+  });
+
+  it("keeps the presented token usable when it was resolved but never rotated", async () => {
+    const first = await launcherSessionService.createSession({
+      minecraftUuid: PLAYER_UUID,
+    });
+
+    await launcherSessionService.resolveActiveSession(first);
+
+    expect(await rotate(first)).toMatch(/^[0-9a-f]{80}$/);
+  });
+
+  it("lets only one of two rotations of the same session win and revokes the family", async () => {
+    const first = await launcherSessionService.createSession({
+      minecraftUuid: PLAYER_UUID,
+    });
+    const session = await launcherSessionService.resolveActiveSession(first);
+
+    const winner = await launcherSessionService.rotateSession(session!);
+    const loser = await launcherSessionService.rotateSession(session!);
+
+    expect(winner).toMatch(/^[0-9a-f]{80}$/);
+    expect(loser).toBeNull();
+    expect(await rotate(winner!)).toBeNull();
   });
 
   it("rejects an unknown refresh token", async () => {
-    expect(await launcherSessionService.rotateToken("f".repeat(80))).toBeNull();
+    expect(await rotate("f".repeat(80))).toBeNull();
   });
 
   it("rejects an expired refresh token", async () => {
@@ -101,7 +147,7 @@ describe("LauncherSessionService", () => {
       { expiresAt: new Date(Date.now() - 1000) },
     );
 
-    expect(await launcherSessionService.rotateToken(rawToken)).toBeNull();
+    expect(await rotate(rawToken)).toBeNull();
   });
 
   it("revokes a single session on sign-out and leaves the others alone", async () => {
@@ -114,8 +160,8 @@ describe("LauncherSessionService", () => {
 
     await launcherSessionService.revokeByToken(first);
 
-    expect(await launcherSessionService.rotateToken(first)).toBeNull();
-    expect(await launcherSessionService.rotateToken(second)).not.toBeNull();
+    expect(await rotate(first)).toBeNull();
+    expect(await rotate(second)).not.toBeNull();
   });
 
   it("lists active sessions per player", async () => {
@@ -143,7 +189,7 @@ describe("LauncherSessionService", () => {
 
     await launcherSessionService.revokeAllForPlayer(PLAYER_UUID);
 
-    expect(await launcherSessionService.rotateToken(mine)).toBeNull();
+    expect(await rotate(mine)).toBeNull();
     expect(await launcherSessionService.listActive(PLAYER_UUID)).toEqual([]);
     expect(await launcherSessionService.listActive(OTHER_UUID)).toHaveLength(1);
   });
