@@ -1,9 +1,11 @@
 import { z } from "zod";
 import { router, ownerProcedure } from "@/trpc/trpc";
-import { rethrowTrpc } from "@/trpc/utils";
+import { id, rethrowTrpc } from "@/trpc/utils";
 import config from "@/config";
 import { launcherReleaseService } from "@/services/launcher/release/launcher-release.service";
 import type { LauncherRelease } from "@createrington/shared/db/launcher_release.types";
+
+const idInput = z.object({ id: id() });
 
 function toDto(release: LauncherRelease) {
   return {
@@ -40,7 +42,7 @@ export const ownerLauncherReleasesRouter = router({
       description:
         "Release a pending launcher version so the update check offers it",
     })
-    .input(z.object({ id: z.number().int().positive() }))
+    .input(idInput)
     .mutation(async ({ ctx, input }) => {
       try {
         return toDto(
@@ -56,7 +58,7 @@ export const ownerLauncherReleasesRouter = router({
       description:
         "Withdraw a pending or released launcher version so it is never offered",
     })
-    .input(z.object({ id: z.number().int().positive() }))
+    .input(idInput)
     .mutation(async ({ ctx, input }) => {
       try {
         return toDto(
