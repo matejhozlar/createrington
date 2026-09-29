@@ -219,6 +219,10 @@ const StructurePackDetail = lazyNamed(
     import("./features/admin/structure-packs/structure-pack-detail/StructurePackDetail"),
   "StructurePackDetail",
 );
+const OwnerLauncherReleases = lazyNamed(
+  () => import("./features/admin/owner/OwnerLauncherReleases"),
+  "OwnerLauncherReleases",
+);
 const OwnerDonations = lazyNamed(
   () => import("./features/admin/owner/OwnerDonations"),
   "OwnerDonations",
@@ -499,6 +503,10 @@ function AppContent() {
                   <Routes>
                     <Route path="admins" element={<OwnerAdmins />} />
                     <Route path="donations" element={<OwnerDonations />} />
+                    <Route
+                      path="launcher-releases"
+                      element={<OwnerLauncherReleases />}
+                    />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </ErrorBoundary>
