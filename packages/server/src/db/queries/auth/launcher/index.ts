@@ -1,23 +1,22 @@
 import type { Pool, PoolClient } from "pg";
-import { AuthLauncherQueries } from "@/db/queries/auth/launcher";
-import { AuthSessionQueries } from "@/db/queries/auth/session";
+import { AuthLauncherSessionQueries } from "@/db/queries/auth/launcher/session";
 
 /**
- * Namespace queries for auth
+ * Namespace queries for auth_launcher
  *
  * This is a pure organizational namespace that groups related query classes.
  * It does not correspond to an actual database table but provides hierarchical
- * access to child tables that share the 'auth_' prefix.
+ * access to child tables that share the 'auth_launcher_' prefix.
  *
  * Uses singleton pattern with lazy loading for optimal performance:
  * - Child instances created once per database connection
  * - Cached in WeakMap for automatic garbage collection
- * - Shared across all AuthQueries instances using same connection
+ * - Shared across all AuthLauncherQueries instances using same connection
  *
  * Auto-generated from database schema
  * DO NOT EDIT MANUALLY - regenerate with: pnpm generate
  */
-export class AuthQueries {
+export class AuthLauncherQueries {
   /**
    * Static singleton registry for child query instances
    *
@@ -25,7 +24,7 @@ export class AuthQueries {
    * - Allows garbage collection when connection is closed
    * - Prevents memory leaks in long-running applications
    * - Each connection has its own cache map
-   * - Keys are fully qualified (e.g., "auth.actions")
+   * - Keys are fully qualified (e.g., "auth_launcher.actions")
    */
   private static queryInstances = new WeakMap<
     Pool | PoolClient,
@@ -44,7 +43,7 @@ export class AuthQueries {
    * @returns Cached or newly created child query instance
    *
    * @remarks
-   * - Cache key is prefixed with namespace (e.g., "auth.actions")
+   * - Cache key is prefixed with namespace (e.g., "auth_launcher.actions")
    * - Ensures child shares the same database connection as parent
    * - Type-safe through generic parameter T
    */
@@ -53,12 +52,12 @@ export class AuthQueries {
     QueryClass: new (db: Pool | PoolClient) => T,
   ): T {
     // Initialize cache for this connection if not exists
-    if (!AuthQueries.queryInstances.has(this.db)) {
-      AuthQueries.queryInstances.set(this.db, new Map());
+    if (!AuthLauncherQueries.queryInstances.has(this.db)) {
+      AuthLauncherQueries.queryInstances.set(this.db, new Map());
     }
 
-    const cache = AuthQueries.queryInstances.get(this.db)!;
-    const fullKey = `auth.${key}`;
+    const cache = AuthLauncherQueries.queryInstances.get(this.db)!;
+    const fullKey = `auth_launcher.${key}`;
 
     // Create and cache child instance if not exists
     if (!cache.has(fullKey)) {
@@ -73,45 +72,23 @@ export class AuthQueries {
    */
   constructor(protected db: Pool | PoolClient) {}
 
-  /** Private backing field for lazy-loaded auth_launcher queries */
-  private _launcher?: AuthLauncherQueries;
+  /** Private backing field for lazy-loaded auth_launcher_session queries */
+  private _session?: AuthLauncherSessionQueries;
 
   /**
-   * Lazy-loaded singleton accessor for auth_launcher
+   * Lazy-loaded singleton accessor for auth_launcher_session
    *
-   * Returns a AuthLauncherQueries instance that shares this namespace's
+   * Returns a AuthLauncherSessionQueries instance that shares this namespace's
    * database connection. The instance is created once on first access and
    * cached for all subsequent calls.
    *
-   * @returns Singleton AuthLauncherQueries instance
+   * @returns Singleton AuthLauncherSessionQueries instance
    */
-  get launcher(): AuthLauncherQueries {
-    if (!this._launcher) {
-      this._launcher = this.getOrCreateChild<AuthLauncherQueries>(
-        "launcher",
-        AuthLauncherQueries,
-      );
-    }
-    return this._launcher;
-  }
-
-  /** Private backing field for lazy-loaded auth_session queries */
-  private _session?: AuthSessionQueries;
-
-  /**
-   * Lazy-loaded singleton accessor for auth_session
-   *
-   * Returns a AuthSessionQueries instance that shares this namespace's
-   * database connection. The instance is created once on first access and
-   * cached for all subsequent calls.
-   *
-   * @returns Singleton AuthSessionQueries instance
-   */
-  get session(): AuthSessionQueries {
+  get session(): AuthLauncherSessionQueries {
     if (!this._session) {
-      this._session = this.getOrCreateChild<AuthSessionQueries>(
+      this._session = this.getOrCreateChild<AuthLauncherSessionQueries>(
         "session",
-        AuthSessionQueries,
+        AuthLauncherSessionQueries,
       );
     }
     return this._session;

@@ -6,6 +6,7 @@
  */
 
 import type { JWTPayload } from "@/services/auth/jwt";
+import type { LauncherJwtPayload } from "@/services/auth/launcher/launcher-jwt.service";
 import type { ValidatedData } from "@/app/middleware/validation.middleware";
 
 declare global {
@@ -36,6 +37,8 @@ declare global {
        * Set by verifyModJwt middleware
        */
       modAuth?: ModJwtPayload;
+      /** Launcher JWT payload, set by authenticateLauncher middleware */
+      launcherAuth?: LauncherJwtPayload;
       /**
        * Verified server IP address
        * Set by verifyServerIp middleware

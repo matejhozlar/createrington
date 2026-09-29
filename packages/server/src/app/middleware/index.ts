@@ -4,6 +4,7 @@ export * from "./async-handler";
 export * from "./auth.middleware";
 export * from "./compose";
 export * from "./mod-jwt.middleware";
+export * from "./launcher-auth.middleware";
 export * from "./server-ip.middleware";
 export * from "./validation.middleware";
 export * from "./rate-limit.middleware";
