@@ -136,6 +136,12 @@ export function OwnerLauncherReleases() {
       render: (release) => <CellDate value={release.releasedAt} />,
     },
     {
+      key: "withdrawn",
+      header: "Withdrawn",
+      width: 130,
+      render: (release) => <CellDate value={release.withdrawnAt} />,
+    },
+    {
       key: "notes",
       header: "Notes",
       minWidth: 240,
