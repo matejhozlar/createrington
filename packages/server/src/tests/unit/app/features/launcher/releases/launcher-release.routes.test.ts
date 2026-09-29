@@ -68,8 +68,11 @@ vi.mock("@/services/launcher/release/launcher-release.service", () => ({
 
 import express from "express";
 import config from "@/config";
-import { errorHandler } from "@/app/middleware/error-handler";
-import launcherReleaseRoutes from "@/app/features/launcher/releases/launcher-release.routes";
+import { errorHandler, notFoundHandler } from "@/app/middleware/error-handler";
+import {
+  launcherPublishRoutes,
+  launcherUpdateCheckRoutes,
+} from "@/app/features/launcher/releases/launcher-release.routes";
 
 const VALID_BODY = {
   channel: "staging",
@@ -113,7 +116,8 @@ beforeAll(async () => {
 
   const app = express();
   app.use(express.json());
-  app.use("/api/launcher", launcherReleaseRoutes);
+  app.use("/api/launcher", launcherUpdateCheckRoutes);
+  app.use("/api/launcher", launcherPublishRoutes);
   app.use(errorHandler);
 
   await new Promise<void>((resolve) => {
@@ -202,6 +206,51 @@ describe("POST /api/launcher/releases", () => {
     const res = await post({ ...VALID_BODY, ...override }, auth);
 
     expect(res.status).toBe(400);
+    expect(mocks.publish).not.toHaveBeenCalled();
+  });
+});
+
+describe("an environment without a publish token", () => {
+  let bareServer: Server;
+  let bareUrl: string;
+
+  beforeAll(async () => {
+    const app = express();
+    app.use(express.json());
+    app.use("/api/launcher", launcherUpdateCheckRoutes);
+    app.use(notFoundHandler);
+    app.use(errorHandler);
+
+    await new Promise<void>((resolve) => {
+      bareServer = app.listen(0, "127.0.0.1", () => resolve());
+    });
+    bareUrl = `http://127.0.0.1:${(bareServer.address() as AddressInfo).port}`;
+  });
+
+  afterAll(async () => {
+    await new Promise<void>((resolve) => bareServer.close(() => resolve()));
+  });
+
+  it("still answers the update check", async () => {
+    const res = await fetch(
+      `${bareUrl}/api/launcher/updates/windows-x86_64/0.1.0`,
+    );
+
+    expect(res.status).toBe(204);
+    expect(mocks.checkForUpdate).toHaveBeenCalledWith(
+      "windows-x86_64",
+      "0.1.0",
+    );
+  });
+
+  it("has no publish route", async () => {
+    const res = await fetch(`${bareUrl}/api/launcher/releases`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...auth },
+      body: JSON.stringify(VALID_BODY),
+    });
+
+    expect(res.status).toBe(404);
     expect(mocks.publish).not.toHaveBeenCalled();
   });
 });

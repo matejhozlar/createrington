@@ -88,7 +88,7 @@ class LauncherReleaseService {
     return LauncherReleaseService.instance;
   }
 
-  /** True when `LAUNCHER_PUBLISH_TOKEN_HASH` is configured and launcher releases are served. */
+  /** True when `LAUNCHER_PUBLISH_TOKEN_HASH` is configured and versions can be published. */
   isEnabled(): boolean {
     return config.launcher.publishTokenHash.length > 0;
   }
