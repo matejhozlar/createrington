@@ -575,6 +575,13 @@
       "when": 1790706944521,
       "tag": "0081_parched_random",
       "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "7",
+      "when": 1790712937278,
+      "tag": "0082_abnormal_professor_monster",
+      "breakpoints": true
     }
   ]
 }
