@@ -37,6 +37,9 @@ export interface PoseFigureRequest {
    * changing it is not detected either; delete the cached file to re-render.
    */
   username: string;
+  /** Defaults to the outlined stock render the og cards use. */
+  style?: "default" | "cel";
+  outline?: boolean;
 }
 
 // Resolve a posed figure PNG: prefer the committed cache, otherwise render it
@@ -48,7 +51,11 @@ export interface PoseFigureRequest {
 // because the SDK does not forward the `outline` option, which gives the
 // figures the white edge that reads against the dark card.
 export async function getPoseFigure(req: PoseFigureRequest): Promise<Image> {
-  const file = join(FIGURES, `${req.username}-${req.pose}.png`);
+  const style = req.style ?? "default";
+  const outline = req.outline ?? true;
+  const variant =
+    (style === "default" ? "" : `-${style}`) + (outline ? "" : "-plain");
+  const file = join(FIGURES, `${req.username}-${req.pose}${variant}.png`);
   if (!existsSync(file)) {
     const { width, height } = MAX_QUALITY_RENDER;
     const apiKey = process.env.SKIN_API_KEY;
@@ -67,8 +74,9 @@ export async function getPoseFigure(req: PoseFigureRequest): Promise<Image> {
       pose: req.pose,
       width: String(width),
       height: String(height),
-      outline: "true",
     });
+    if (outline) query.set("outline", "true");
+    if (style !== "default") query.set("style", style);
     const res = await fetch(`${baseUrl}/v1/render?${query}`, {
       method: "POST",
       headers: {
