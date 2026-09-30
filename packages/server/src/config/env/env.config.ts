@@ -121,6 +121,14 @@ const envSchema = z
       .string()
       .min(32, "Launcher JWT secret must be at least 32 characters")
       .optional(),
+    LAUNCHER_PUBLISH_TOKEN_HASH: z
+      .string()
+      .regex(
+        /^[0-9a-f]{64}$/,
+        "Launcher publish token hash must be a lowercase SHA-256 hex digest",
+      )
+      .optional(),
+    LAUNCHER_DOWNLOAD_HOSTS: z.string().default(""),
     JWT_ACCESS_EXPIRES_IN: z
       .string()
       .regex(

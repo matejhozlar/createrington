@@ -2,6 +2,7 @@ import type { Express } from "express";
 import config from "@/config";
 import { env } from "@/config/env/env.config";
 import { launcherJwtService } from "@/services/auth/launcher/launcher-jwt.service";
+import { launcherReleaseService } from "@/services/launcher/release/launcher-release.service";
 import authRoutes from "./auth/auth.routes";
 import donationRoutes from "./donation/donation.routes";
 import skinRoutes from "./skin/skin.routes";
@@ -21,6 +22,10 @@ import internalPresenceRoutes from "./internal/presence/presence.routes";
 import internalSsoExchangeRoutes from "./internal/sso-exchange/sso-exchange.routes";
 import adminChatRoutes from "./admin-chat/admin-chat.routes";
 import launcherAuthRoutes from "./launcher/auth/launcher-auth.routes";
+import {
+  launcherPublishRoutes,
+  launcherUpdateCheckRoutes,
+} from "./launcher/releases/launcher-release.routes";
 
 /** Mounts all feature route modules onto the Express app under the /api prefix */
 export function registerRoutes(app: Express): void {
@@ -57,6 +62,13 @@ export function registerRoutes(app: Express): void {
   if (launcherJwtService.isEnabled()) {
     app.use(`${API_PREFIX}/launcher/auth`, launcherAuthRoutes);
     logger.info("Launcher auth routes registered");
+  }
+
+  app.use(`${API_PREFIX}/launcher`, launcherUpdateCheckRoutes);
+
+  if (launcherReleaseService.isEnabled()) {
+    app.use(`${API_PREFIX}/launcher`, launcherPublishRoutes);
+    logger.info("Launcher publish route registered");
   }
 
   // Admin chat proxy, only active when the upstream URL is configured.

@@ -9,6 +9,7 @@
  */
 
 import { env, envMode } from "./env/env.config";
+import type { LauncherChannel } from "@createrington/shared/launcher";
 import type {
   MemberRolesConfig,
   ChannelConfig,
@@ -276,6 +277,17 @@ const config = {
   sync: {
     targetUrl: env.PLAYTIME_SYNC_TARGET_URL,
     secret: env.PLAYTIME_SYNC_SECRET,
+  },
+
+  launcher: {
+    channel: (envMode.isDevDeployment
+      ? "staging"
+      : "production") satisfies LauncherChannel as LauncherChannel,
+    publishTokenHash: env.LAUNCHER_PUBLISH_TOKEN_HASH ?? "",
+    downloadHosts: (env.LAUNCHER_DOWNLOAD_HOSTS ?? "")
+      .split(",")
+      .map((host) => host.trim().toLowerCase())
+      .filter((host) => host.length > 0),
   },
 
   internal: {
