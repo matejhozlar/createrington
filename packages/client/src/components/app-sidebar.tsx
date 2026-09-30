@@ -14,6 +14,7 @@ import {
   InfoIcon,
   MapPinnedIcon,
   MessageCircleIcon,
+  RocketIcon,
   ServerIcon,
   ShieldIcon,
   TrophyIcon,
@@ -84,6 +85,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         title: "Donations",
         url: "/owner/donations",
         icon: HeartIcon,
+      },
+      {
+        title: "Launcher",
+        url: "/owner/launcher-releases",
+        icon: RocketIcon,
       },
     ],
     adminNav: [
