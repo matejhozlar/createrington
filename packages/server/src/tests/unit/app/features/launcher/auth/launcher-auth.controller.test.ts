@@ -42,6 +42,7 @@ vi.mock("@/services/auth/launcher/launcher-session.service", () => ({
   },
 }));
 vi.mock("@/services/auth/launcher/launcher-jwt.service", () => ({
+  LAUNCHER_ACCESS_TOKEN_TTL_SECONDS: 900,
   launcherJwtService: { generate: mocks.generate },
 }));
 
@@ -67,10 +68,11 @@ const SESSION = {
   revokedAt: null,
 };
 
-function makeReq(): Request {
+function makeReq(extra: Partial<Request> = {}): Request {
   return {
     headers: { "user-agent": "createrington-launcher/0.1.2" },
     ip: "203.0.113.7",
+    ...extra,
   } as unknown as Request;
 }
 
@@ -107,10 +109,13 @@ describe("LauncherAuthController", () => {
 
       await LauncherAuthController.challenge(makeReq(), res);
 
-      const payload = json.mock.calls[0][0];
-      expect(payload.success).toBe(true);
-      expect(payload.data.serverId).toMatch(/^[0-9a-f]{40}$/);
-      expect(payload.data.expiresIn).toBe(60);
+      expect(json).toHaveBeenCalledWith({
+        success: true,
+        data: {
+          serverId: expect.stringMatching(/^[0-9a-f]{40}$/),
+          expiresIn: 60,
+        },
+      });
     });
   });
 
@@ -142,6 +147,7 @@ describe("LauncherAuthController", () => {
         success: true,
         data: {
           accessToken: "access-token",
+          expiresIn: 900,
           refreshToken: REFRESH_TOKEN,
           player: {
             minecraftUuid: PLAYER.minecraftUuid,
@@ -273,8 +279,18 @@ describe("LauncherAuthController", () => {
         "203.0.113.7",
         "createrington-launcher/0.1.2",
       );
-      expect(json.mock.calls[0][0].data.refreshToken).toBe(ROTATED_TOKEN);
-      expect(json.mock.calls[0][0].data.accessToken).toBe("access-token");
+      expect(json).toHaveBeenCalledWith({
+        success: true,
+        data: {
+          accessToken: "access-token",
+          expiresIn: 900,
+          refreshToken: ROTATED_TOKEN,
+          player: {
+            minecraftUuid: PLAYER.minecraftUuid,
+            minecraftUsername: PLAYER.minecraftUsername,
+          },
+        },
+      });
     });
 
     it("rejects an unknown, expired or replayed refresh token", async () => {
@@ -362,7 +378,34 @@ describe("LauncherAuthController", () => {
       await LauncherAuthController.logout(makeReq(), res);
 
       expect(mocks.revokeByToken).toHaveBeenCalledWith(REFRESH_TOKEN);
-      expect(json.mock.calls[0][0].success).toBe(true);
+      expect(json).toHaveBeenCalledWith({
+        success: true,
+        message: "Logged out successfully",
+      });
+    });
+  });
+
+  describe("me", () => {
+    it("returns only the player identity from the token", async () => {
+      const { res, json } = makeRes();
+      const req = makeReq({
+        launcherAuth: {
+          minecraftUuid: PLAYER.minecraftUuid,
+          minecraftUsername: PLAYER.minecraftUsername,
+        },
+      });
+
+      await LauncherAuthController.me(req, res);
+
+      expect(json).toHaveBeenCalledWith({
+        success: true,
+        data: {
+          player: {
+            minecraftUuid: PLAYER.minecraftUuid,
+            minecraftUsername: PLAYER.minecraftUsername,
+          },
+        },
+      });
     });
   });
 });
