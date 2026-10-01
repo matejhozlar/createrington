@@ -33,15 +33,15 @@ const STATUS_BADGES: Record<
 > = {
   pending: {
     label: "Pending",
-    className: "border-chart-2 bg-chart-2/10 text-chart-2",
+    className: "border-primary/20 bg-primary/10 text-primary",
   },
   released: {
     label: "Released",
-    className: "border-success bg-success/10 text-success",
+    className: "border-green-500/20 bg-green-500/10 text-green-400",
   },
   withdrawn: {
     label: "Withdrawn",
-    className: "border-border bg-muted text-muted-foreground",
+    className: "border-red-500/20 bg-red-500/10 text-red-400",
   },
 };
 
