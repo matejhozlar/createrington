@@ -1,3 +1,4 @@
+import type { LauncherPlayer } from "@createrington/shared/launcher";
 import config from "@/config";
 import { InvalidJwtPayloadError } from "@/services/auth/jwt/jwt.service";
 import jwt from "jsonwebtoken";
@@ -13,10 +14,7 @@ export class LauncherTokenExpiredError extends Error {
   }
 }
 
-export interface LauncherJwtPayload {
-  minecraftUuid: string;
-  minecraftUsername: string;
-}
+export type LauncherJwtPayload = LauncherPlayer;
 
 /**
  * Issues and verifies the short-lived HS256 access tokens handed to the Createrington

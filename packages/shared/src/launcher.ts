@@ -65,9 +65,12 @@ export interface LauncherLogoutResponse {
 export interface LauncherErrorResponse {
   success: false;
   message: string;
+  playerMessage?: string;
   error: {
     message: string;
     statusCode: number;
     code?: LauncherAuthErrorCode;
+    details?: unknown;
+    stack?: string;
   };
 }

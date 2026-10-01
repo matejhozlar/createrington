@@ -4,6 +4,7 @@ import {
   type LauncherChallengeData,
   type LauncherLogoutResponse,
   type LauncherMeData,
+  type LauncherPlayer,
   type LauncherSessionData,
   type LauncherSuccessResponse,
 } from "@createrington/shared/launcher";
@@ -42,7 +43,7 @@ function invalidRefreshToken(): UnauthorizedError {
 }
 
 function sessionResponse(
-  player: { minecraftUuid: string; minecraftUsername: string },
+  player: LauncherPlayer,
   refreshToken: string,
 ): LauncherSuccessResponse<LauncherSessionData> {
   return {
