@@ -1,5 +1,14 @@
 import type { Request, Response } from "express";
 import {
+  LauncherAuthErrorCode,
+  type LauncherChallengeData,
+  type LauncherLogoutResponse,
+  type LauncherMeData,
+  type LauncherPlayer,
+  type LauncherSessionData,
+  type LauncherSuccessResponse,
+} from "@createrington/shared/launcher";
+import {
   AppError,
   TooManyRequestsError,
   UnauthorizedError,
@@ -11,24 +20,18 @@ import {
   consumeLauncherChallenge,
   issueLauncherChallenge,
 } from "@/services/auth/launcher/challenge-store";
-import { launcherJwtService } from "@/services/auth/launcher/launcher-jwt.service";
+import {
+  LAUNCHER_ACCESS_TOKEN_TTL_SECONDS,
+  launcherJwtService,
+} from "@/services/auth/launcher/launcher-jwt.service";
 import { launcherSessionService } from "@/services/auth/launcher/launcher-session.service";
 import { verifyMojangJoin } from "@/utils/mojang-has-joined";
 import type { RefreshTokenBody, VerifyBody } from "./launcher-auth.schemas";
 
-export const LauncherAuthErrorCode = {
-  INVALID_CHALLENGE: "INVALID_CHALLENGE",
-  INVALID_CLAIM: "INVALID_CLAIM",
-  NOT_A_MEMBER: "NOT_A_MEMBER",
-  BANNED: "BANNED",
-  INVALID_REFRESH_TOKEN: "INVALID_REFRESH_TOKEN",
-  MOJANG_UNAVAILABLE: "MOJANG_UNAVAILABLE",
-} as const;
-
 function launcherError(
   message: string,
   statusCode: number,
-  code: string,
+  code: LauncherAuthErrorCode,
 ): AppError {
   return new AppError(message, statusCode, true, undefined, { code });
 }
@@ -37,6 +40,24 @@ function invalidRefreshToken(): UnauthorizedError {
   return new UnauthorizedError("Invalid or expired refresh token", {
     code: LauncherAuthErrorCode.INVALID_REFRESH_TOKEN,
   });
+}
+
+function sessionResponse(
+  player: LauncherPlayer,
+  refreshToken: string,
+): LauncherSuccessResponse<LauncherSessionData> {
+  return {
+    success: true,
+    data: {
+      accessToken: launcherJwtService.generate(player),
+      expiresIn: LAUNCHER_ACCESS_TOKEN_TTL_SECONDS,
+      refreshToken,
+      player: {
+        minecraftUuid: player.minecraftUuid,
+        minecraftUsername: player.minecraftUsername,
+      },
+    },
+  };
 }
 
 async function requireActivePlayer(minecraftUuid: string) {
@@ -67,10 +88,11 @@ export class LauncherAuthController {
       throw new TooManyRequestsError("Too many pending sign-in attempts");
     }
 
-    res.json({
+    const body: LauncherSuccessResponse<LauncherChallengeData> = {
       success: true,
       data: { serverId, expiresIn: CHALLENGE_TTL_SECONDS },
-    });
+    };
+    res.json(body);
   }
 
   static async verify(req: Request, res: Response): Promise<void> {
@@ -112,17 +134,7 @@ export class LauncherAuthController {
       `Player ${player.minecraftUsername} (${player.minecraftUuid}) signed in via launcher`,
     );
 
-    res.json({
-      success: true,
-      data: {
-        accessToken: launcherJwtService.generate(player),
-        refreshToken,
-        player: {
-          minecraftUuid: player.minecraftUuid,
-          minecraftUsername: player.minecraftUsername,
-        },
-      },
-    });
+    res.json(sessionResponse(player, refreshToken));
   }
 
   static async refresh(req: Request, res: Response): Promise<void> {
@@ -158,17 +170,7 @@ export class LauncherAuthController {
       throw invalidRefreshToken();
     }
 
-    res.json({
-      success: true,
-      data: {
-        accessToken: launcherJwtService.generate(player),
-        refreshToken,
-        player: {
-          minecraftUuid: player.minecraftUuid,
-          minecraftUsername: player.minecraftUsername,
-        },
-      },
-    });
+    res.json(sessionResponse(player, refreshToken));
   }
 
   static async logout(_req: Request, res: Response): Promise<void> {
@@ -176,14 +178,29 @@ export class LauncherAuthController {
 
     await launcherSessionService.revokeByToken(body.refreshToken);
 
-    res.json({ success: true, message: "Logged out successfully" });
+    const response: LauncherLogoutResponse = {
+      success: true,
+      message: "Logged out successfully",
+    };
+    res.json(response);
   }
 
   static async me(req: Request, res: Response): Promise<void> {
     if (!req.launcherAuth) {
-      throw new UnauthorizedError("Launcher authentication required");
+      throw new UnauthorizedError("Launcher authentication required", {
+        code: LauncherAuthErrorCode.AUTH_REQUIRED,
+      });
     }
 
-    res.json({ success: true, data: { player: req.launcherAuth } });
+    const body: LauncherSuccessResponse<LauncherMeData> = {
+      success: true,
+      data: {
+        player: {
+          minecraftUuid: req.launcherAuth.minecraftUuid,
+          minecraftUsername: req.launcherAuth.minecraftUsername,
+        },
+      },
+    };
+    res.json(body);
   }
 }
