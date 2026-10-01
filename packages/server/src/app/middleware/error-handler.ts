@@ -102,9 +102,6 @@ export class ValidationError extends BadRequestError {
   }
 }
 
-/**
- * Error response interface
- */
 interface RequestBodyError extends Error {
   status: number;
   type: string;
@@ -127,6 +124,9 @@ function isRequestBodyError(err: Error): err is RequestBodyError {
   );
 }
 
+/**
+ * Error response interface
+ */
 interface ErrorResponse {
   success: false;
   message: string;

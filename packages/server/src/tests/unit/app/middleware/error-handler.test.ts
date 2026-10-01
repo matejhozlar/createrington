@@ -70,16 +70,22 @@ describe("errorHandler with request body errors", () => {
     ["a JSON string", '"text"'],
   ])("answers 400 for %s", async (_label, body) => {
     const errorLog = vi.spyOn(logger, "error");
+    const warnLog = vi.spyOn(logger, "warn");
 
     const { status, json } = await post(body);
 
     expect(status).toBe(400);
     expect(json).toEqual(errorBody(400, "Malformed JSON request body"));
     expect(errorLog).not.toHaveBeenCalled();
+    expect(warnLog).toHaveBeenCalledWith(
+      "Client Error:",
+      expect.objectContaining({ statusCode: 400 }),
+    );
   });
 
   it("answers 413 for a body over the limit", async () => {
     const errorLog = vi.spyOn(logger, "error");
+    const warnLog = vi.spyOn(logger, "warn");
 
     const { status, json } = await post(
       JSON.stringify({ data: "x".repeat(2048) }),
@@ -88,6 +94,10 @@ describe("errorHandler with request body errors", () => {
     expect(status).toBe(413);
     expect(json).toEqual(errorBody(413, "Request body too large"));
     expect(errorLog).not.toHaveBeenCalled();
+    expect(warnLog).toHaveBeenCalledWith(
+      "Client Error:",
+      expect.objectContaining({ statusCode: 413 }),
+    );
   });
 
   it("still accepts a valid object body", async () => {
