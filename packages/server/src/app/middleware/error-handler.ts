@@ -105,6 +105,28 @@ export class ValidationError extends BadRequestError {
 /**
  * Error response interface
  */
+interface RequestBodyError extends Error {
+  status: number;
+  type: string;
+  expose: true;
+}
+
+const REQUEST_BODY_ERROR_MESSAGES: Record<string, string> = {
+  "entity.parse.failed": "Malformed JSON request body",
+  "entity.too.large": "Request body too large",
+};
+
+function isRequestBodyError(err: Error): err is RequestBodyError {
+  const candidate = err as Partial<RequestBodyError>;
+  return (
+    typeof candidate.type === "string" &&
+    typeof candidate.status === "number" &&
+    candidate.status >= 400 &&
+    candidate.status < 500 &&
+    candidate.expose === true
+  );
+}
+
 interface ErrorResponse {
   success: false;
   message: string;
@@ -163,6 +185,7 @@ function redactSensitive(obj: unknown): unknown {
  * - Zod validation errors
  * - App errors (custom errors)
  * - Database errors
+ * - Request body errors from the body parsers (malformed JSON, body too large)
  * - Unknown errors
  *
  * @param err - Error object
@@ -211,6 +234,10 @@ export function errorHandler(
       statusCode = 404;
       message = err.message;
     }
+  } else if (isRequestBodyError(err)) {
+    statusCode = err.status;
+    message = REQUEST_BODY_ERROR_MESSAGES[err.type] ?? err.message;
+    isOperational = true;
   } else if (err.name === "ValidationError") {
     statusCode = 400;
     message = err.message;
