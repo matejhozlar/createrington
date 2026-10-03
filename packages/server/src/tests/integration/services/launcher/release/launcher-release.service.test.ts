@@ -114,6 +114,55 @@ describe("LauncherReleaseService", () => {
       expect(stored.structuredNotes).toEqual(structuredNotes);
     });
 
+    it("accepts a change type it has never seen", async () => {
+      const structuredNotes = {
+        summary: "Old sign-in removed",
+        changes: [
+          {
+            type: "deprecated",
+            title: "Old sign-in",
+            description: "The old sign-in goes away in the next version.",
+          },
+        ],
+      };
+
+      const release = await launcherReleaseService.publish(
+        input("0.2.0", { structuredNotes }),
+      );
+
+      expect(release.structuredNotes).toEqual(structuredNotes);
+    });
+
+    it.each([
+      ["without a summary", { changes: [] }],
+      [
+        "with a change that has no description",
+        {
+          summary: "Faster start",
+          changes: [{ type: "improved", title: "Start time" }],
+        },
+      ],
+      [
+        "with an empty description",
+        {
+          summary: "Faster start",
+          changes: [{ type: "improved", title: "Start time", description: "" }],
+        },
+      ],
+      ["that are plain text", "Faster start"],
+    ])(
+      "stores the release with its text only for structured notes %s",
+      async (_label, structuredNotes) => {
+        const release = await launcherReleaseService.publish(
+          input("0.2.0", { structuredNotes }),
+        );
+
+        expect(release.status).toBe("pending");
+        expect(release.notes).toBe("Notes for 0.2.0");
+        expect(release.structuredNotes).toBeNull();
+      },
+    );
+
     it("stores no structured notes for a release announced without them", async () => {
       const release = await launcherReleaseService.publish(input("0.2.0"));
 

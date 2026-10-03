@@ -6,7 +6,6 @@ import {
   LAUNCHER_PLATFORMS,
   type LauncherChannel,
   type LauncherPlatform,
-  type LauncherStructuredNotes,
 } from "@createrington/shared/launcher";
 import type { LauncherRelease } from "@createrington/shared/db/launcher_release.types";
 import {
@@ -16,6 +15,7 @@ import {
   newestFirst,
   newestVersion,
 } from "./release-rules";
+import { parseStructuredNotes } from "./structured-notes";
 
 const DOWNLOAD_CHECK_TIMEOUT_MS = 5000;
 const NEWEST_RELEASED_TTL_MS = 60 * 1000;
@@ -56,7 +56,7 @@ export interface PublishLauncherReleaseInput {
   url: string;
   signature: string;
   notes: string;
-  structuredNotes?: LauncherStructuredNotes;
+  structuredNotes?: unknown;
   pubDate: Date;
 }
 
@@ -99,7 +99,8 @@ class LauncherReleaseService {
   /**
    * Stores a new version as pending. Throws `LauncherReleaseError` when the channel is not
    * this environment's, the download host is not allowed or does not answer, or the version
-   * is already stored or not newer than every stored one (in any state).
+   * is already stored or not newer than every stored one (in any state). Structured notes
+   * that cannot be read are dropped with a warning, the release is stored with its text.
    */
   async publish(input: PublishLauncherReleaseInput): Promise<LauncherRelease> {
     if (input.channel !== config.launcher.channel) {
@@ -150,6 +151,13 @@ class LauncherReleaseService {
       );
     }
 
+    const structuredNotes = parseStructuredNotes(input.structuredNotes);
+    if (input.structuredNotes != null && !structuredNotes) {
+      logger.warn(
+        `Launcher release ${input.version} (${input.platform}) came with structured notes that could not be read, storing its text only`,
+      );
+    }
+
     try {
       const release = await Q.launcher.release.createAndReturn({
         version: input.version,
@@ -157,7 +165,7 @@ class LauncherReleaseService {
         url: input.url,
         signature: input.signature,
         notes: input.notes,
-        structuredNotes: input.structuredNotes ?? null,
+        structuredNotes,
         pubDate: input.pubDate,
       });
       logger.info(

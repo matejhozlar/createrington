@@ -8,7 +8,7 @@ import {
 
 const notesText = z.string().min(1).max(LAUNCHER_RELEASE_NOTES_MAX_LENGTH);
 
-export const StructuredNotesSchema = z.object({
+const StructuredNotesSchema = z.object({
   summary: notesText,
   changes: z
     .array(
