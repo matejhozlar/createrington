@@ -6,12 +6,14 @@ import {
   LAUNCHER_PLATFORMS,
   type LauncherChannel,
   type LauncherPlatform,
+  type LauncherStructuredNotes,
 } from "@createrington/shared/launcher";
 import type { LauncherRelease } from "@createrington/shared/db/launcher_release.types";
 import {
   isDownloadUrlAllowed,
   isNewerVersion,
   isValidVersion,
+  newestFirst,
   newestVersion,
 } from "./release-rules";
 
@@ -54,6 +56,7 @@ export interface PublishLauncherReleaseInput {
   url: string;
   signature: string;
   notes: string;
+  structuredNotes?: LauncherStructuredNotes;
   pubDate: Date;
 }
 
@@ -154,6 +157,7 @@ class LauncherReleaseService {
         url: input.url,
         signature: input.signature,
         notes: input.notes,
+        structuredNotes: input.structuredNotes ?? null,
         pubDate: input.pubDate,
       });
       logger.info(
@@ -204,6 +208,12 @@ class LauncherReleaseService {
       orderBy: "createdAt",
       orderDirection: "desc",
     });
+  }
+
+  /** The released versions of this environment, highest version first. */
+  async listReleased(): Promise<LauncherRelease[]> {
+    const released = await Q.launcher.release.findAll({ status: "released" });
+    return newestFirst(released);
   }
 
   /** Releases a pending version so the update check offers it. Throws `LauncherReleaseError` otherwise. */

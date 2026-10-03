@@ -193,6 +193,10 @@ const AdminDashboard = lazyNamed(
   () => import("./features/admin/AdminDashboard"),
   "AdminDashboard",
 );
+const AdminLauncher = lazyNamed(
+  () => import("./features/admin/AdminLauncher"),
+  "AdminLauncher",
+);
 const Changelog = lazyNamed(
   () => import("./features/admin/Changelog"),
   "Changelog",
@@ -485,6 +489,7 @@ function AppContent() {
                         path="tools/chat-history/:sessionId"
                         element={<ChatHistoryDetail />}
                       />
+                      <Route path="launcher" element={<AdminLauncher />} />
                       <Route path="changelog" element={<Changelog />} />
                       <Route path="logs" element={<AdminLogs />} />
                     </Routes>

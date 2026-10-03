@@ -84,6 +84,17 @@ const VALID_BODY = {
   pubDate: "2026-09-29T18:00:00Z",
 };
 
+const STRUCTURED_NOTES = {
+  summary: "Faster start",
+  changes: [
+    {
+      type: "improved",
+      title: "Start time",
+      description: "The launcher opens in half the time.",
+    },
+  ],
+};
+
 const UPDATE = {
   version: "0.2.0",
   notes: "Faster start",
@@ -161,6 +172,31 @@ describe("POST /api/launcher/releases", () => {
     });
   });
 
+  it("passes structured notes on to the service", async () => {
+    const res = await post(
+      { ...VALID_BODY, structuredNotes: STRUCTURED_NOTES },
+      auth,
+    );
+
+    expect(res.status).toBe(201);
+    expect(mocks.publish).toHaveBeenCalledWith({
+      ...VALID_BODY,
+      structuredNotes: STRUCTURED_NOTES,
+      pubDate: new Date("2026-09-29T18:00:00Z"),
+    });
+  });
+
+  it("accepts a change type it has never seen", async () => {
+    const structuredNotes = {
+      ...STRUCTURED_NOTES,
+      changes: [{ ...STRUCTURED_NOTES.changes[0], type: "deprecated" }],
+    };
+
+    const res = await post({ ...VALID_BODY, structuredNotes }, auth);
+
+    expect(res.status).toBe(201);
+  });
+
   it("refuses a call without a token", async () => {
     const res = await post(VALID_BODY);
 
@@ -202,6 +238,19 @@ describe("POST /api/launcher/releases", () => {
     ["a URL that is not one", { url: "setup.exe" }],
     ["an empty signature", { signature: "" }],
     ["an unreadable publish date", { pubDate: "yesterday" }],
+    [
+      "structured notes without a summary",
+      { structuredNotes: { changes: STRUCTURED_NOTES.changes } },
+    ],
+    [
+      "a change without a description",
+      {
+        structuredNotes: {
+          summary: "Faster start",
+          changes: [{ type: "improved", title: "Start time" }],
+        },
+      },
+    ],
   ])("refuses a body with %s", async (_label, override) => {
     const res = await post({ ...VALID_BODY, ...override }, auth);
 

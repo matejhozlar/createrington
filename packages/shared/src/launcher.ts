@@ -16,6 +16,21 @@ export type LauncherPlatform = (typeof LAUNCHER_PLATFORMS)[number];
 
 export const LAUNCHER_RELEASE_NOTES_MAX_LENGTH = 10_000;
 
+export const LAUNCHER_RELEASE_CHANGES_MAX = 500;
+
+export const LAUNCHER_RELEASE_CHANGE_TYPE_MAX_LENGTH = 32;
+
+export interface LauncherReleaseChange {
+  type: string;
+  title: string;
+  description: string;
+}
+
+export interface LauncherStructuredNotes {
+  summary: string;
+  changes: LauncherReleaseChange[];
+}
+
 export const LAUNCHER_PACK_FILE_SOURCES = [
   "curseforge",
   "modrinth",

@@ -2,6 +2,7 @@ import { formatDate, parseDateOnly } from "@createrington/shared/format";
 import { trpc } from "@/lib/trpc";
 import { Loading } from "@/components/loading-spinner";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
+import { ChangeTag } from "@/features/admin/components/ChangeTag";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Filter, Search } from "lucide-react";
@@ -187,22 +188,6 @@ function EntryText({ text }: { text: string }) {
         ),
       )}
     </>
-  );
-}
-
-function VerbTag({ kind }: { kind: Kind }) {
-  const meta = TAG_META[kind];
-  return (
-    <span
-      className="mt-0.5 inline-flex h-5 min-w-16 shrink-0 items-center justify-center rounded-[5px] border px-2 font-mono text-[10.5px] font-medium uppercase tracking-[0.06em]"
-      style={{
-        color: meta.color,
-        background: `oklch(from ${meta.color} l c h / 0.1)`,
-        borderColor: `oklch(from ${meta.color} l c h / 0.25)`,
-      }}
-    >
-      {meta.label}
-    </span>
   );
 }
 
@@ -769,7 +754,7 @@ function PackageBlock({ entry }: { entry: PackageEntry }) {
               key={i}
               className="grid grid-cols-[auto_1fr] items-start gap-3 rounded-lg px-2 py-2 text-[13.5px] leading-[1.55] text-muted-foreground transition-colors hover:bg-white/[0.025] hover:text-foreground"
             >
-              <VerbTag kind={kind} />
+              <ChangeTag {...TAG_META[kind]} />
               <span style={{ textWrap: "pretty" }}>
                 <EntryText text={text} />
               </span>
