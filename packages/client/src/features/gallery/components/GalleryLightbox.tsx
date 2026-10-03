@@ -1,4 +1,4 @@
-import type { KeyboardEvent } from "react";
+import type { KeyboardEvent, MouseEvent } from "react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import {
   Dialog,
@@ -10,7 +10,6 @@ import {
 import { PlayerLabel } from "@/components/player-label";
 import { Button } from "@/components/ui/button";
 import { formatRelativeDate } from "@/lib/format";
-import { cn } from "@/lib/utils";
 import { aspectRatio, altText, creditName, type GalleryItem } from "../format";
 
 interface GalleryLightboxProps {
@@ -27,6 +26,8 @@ export function GalleryLightbox({
   const item = index === null ? undefined : items[index];
   if (index === null || !item) return null;
 
+  const close = () => onIndexChange(null);
+
   const step = (delta: number) => {
     const next = index + delta;
     if (next >= 0 && next < items.length) onIndexChange(next);
@@ -37,83 +38,109 @@ export function GalleryLightbox({
     if (event.key === "ArrowRight") step(1);
   };
 
+  const handleStageClick = (event: MouseEvent<HTMLDivElement>) => {
+    if (event.target === event.currentTarget) close();
+  };
+
+  const ratio = aspectRatio(item);
+  const widthLimits = ["100cqw", `100cqh * ${ratio}`];
+  if (item.width) widthLimits.push(`${item.width}px`);
+
   return (
-    <Dialog open onOpenChange={(open) => !open && onIndexChange(null)}>
+    <Dialog open onOpenChange={(open) => !open && close()}>
       <DialogContent
         onKeyDown={handleKeyDown}
         showCloseButton={false}
-        className="max-h-[90dvh] max-w-[calc(100%-1rem)] gap-0 overflow-x-hidden overflow-y-auto p-0 sm:max-w-5xl"
+        className="top-0 left-0 flex h-dvh max-w-none translate-x-0 translate-y-0 flex-col gap-0 rounded-none border-0 bg-transparent p-0 shadow-none sm:max-w-none"
       >
         <DialogTitle className="sr-only">{altText(item)}</DialogTitle>
         <DialogDescription className="sr-only">
           Screenshot {index + 1} of {items.length}
         </DialogDescription>
 
-        <div className="relative bg-black/60">
-          <img
-            src={item.images.full}
-            alt={altText(item)}
-            width={item.width ?? undefined}
-            height={item.height ?? undefined}
-            style={{ aspectRatio: aspectRatio(item) }}
-            className="mx-auto max-h-[55dvh] w-full object-contain sm:max-h-[70dvh]"
-          />
+        <div
+          onClick={handleStageClick}
+          className="flex min-h-0 flex-1 items-center justify-center bg-black/50 p-2 [container-type:size] sm:p-6"
+        >
+          <div
+            style={{
+              aspectRatio: ratio,
+              width: `min(${widthLimits.join(", ")})`,
+              backgroundImage: `url("${item.images.thumb}")`,
+            }}
+            className="relative overflow-hidden rounded-lg bg-muted bg-contain bg-center bg-no-repeat shadow-lg"
+          >
+            <img
+              key={item.id}
+              src={item.images.full}
+              alt={altText(item)}
+              width={item.width ?? undefined}
+              height={item.height ?? undefined}
+              className="h-full w-full object-contain"
+            />
 
-          <DialogClose asChild>
-            <Button
-              type="button"
-              variant="secondary"
-              size="icon"
-              aria-label="Close"
-              className="absolute right-2 top-2 rounded-full opacity-80 hover:opacity-100 sm:right-3 sm:top-3"
-            >
-              <X className="size-5" />
-            </Button>
-          </DialogClose>
-
-          <NavButton
-            side="left"
-            disabled={index === 0}
-            onClick={() => step(-1)}
-          />
-          <NavButton
-            side="right"
-            disabled={index === items.length - 1}
-            onClick={() => step(1)}
-          />
+            <DialogClose asChild>
+              <Button
+                type="button"
+                variant="secondary"
+                size="icon"
+                aria-label="Close"
+                className="absolute right-2 top-2 rounded-full opacity-80 hover:opacity-100 sm:right-3 sm:top-3"
+              >
+                <X className="size-5" />
+              </Button>
+            </DialogClose>
+          </div>
         </div>
 
-        <div className="space-y-3 p-4 sm:p-6">
-          {item.caption ? (
-            <p className="text-sm text-foreground sm:text-base">
-              {item.caption}
-            </p>
-          ) : null}
+        <div className="max-h-[50dvh] shrink-0 overflow-y-auto border-t bg-background">
+          <div className="mx-auto flex max-w-5xl flex-col gap-3 p-4 sm:px-6">
+            {item.caption ? (
+              <p className="text-sm text-foreground sm:text-base">
+                {item.caption}
+              </p>
+            ) : null}
 
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
-            <PlayerLabel
-              uuid={item.author.minecraftUuid}
-              name={creditName(item.author)}
-              size={24}
-            />
-            {item.credits.length > 0 ? (
-              <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                <span>with</span>
-                {item.credits.map((credit) => (
-                  <PlayerLabel
-                    key={credit.minecraftUuid}
-                    uuid={credit.minecraftUuid}
-                    name={creditName(credit)}
-                    size={20}
-                  />
-                ))}
-              </span>
-            ) : null}
-            {item.publishedAt ? (
-              <span className="ml-auto shrink-0">
-                {formatRelativeDate(item.publishedAt)}
-              </span>
-            ) : null}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-6">
+              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground sm:min-h-9">
+                <PlayerLabel
+                  uuid={item.author.minecraftUuid}
+                  name={creditName(item.author)}
+                  size={24}
+                />
+                {item.credits.length > 0 ? (
+                  <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span>with</span>
+                    {item.credits.map((credit) => (
+                      <PlayerLabel
+                        key={credit.minecraftUuid}
+                        uuid={credit.minecraftUuid}
+                        name={creditName(credit)}
+                        size={20}
+                      />
+                    ))}
+                  </span>
+                ) : null}
+                {item.publishedAt ? (
+                  <span className="ml-auto shrink-0">
+                    {formatRelativeDate(item.publishedAt)}
+                  </span>
+                ) : null}
+              </div>
+
+              <div className="grid shrink-0 grid-cols-2 gap-2 sm:flex">
+                <NavButton
+                  side="left"
+                  disabled={index === 0}
+                  onClick={() => step(-1)}
+                />
+                <NavButton
+                  side="right"
+                  disabled={index === items.length - 1}
+                  onClick={() => step(1)}
+                />
+              </div>
+            </div>
           </div>
         </div>
       </DialogContent>
@@ -138,10 +165,7 @@ function NavButton({ side, disabled, onClick }: NavButtonProps) {
       disabled={disabled}
       onClick={onClick}
       aria-label={side === "left" ? "Previous screenshot" : "Next screenshot"}
-      className={cn(
-        "absolute top-1/2 -translate-y-1/2 rounded-full opacity-80 hover:opacity-100 disabled:opacity-25",
-        side === "left" ? "left-2 sm:left-3" : "right-2 sm:right-3",
-      )}
+      className="h-11 w-full sm:size-9"
     >
       <Icon className="size-5" />
     </Button>
