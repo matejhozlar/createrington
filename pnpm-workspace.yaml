@@ -55,3 +55,7 @@ packageExtensions:
 
 minimumReleaseAgeExclude:
   - createrington-skin-api@2.7.0 || 2.8.0 || 2.9.0 || 2.10.0 || 2.11.0 || 2.12.0 || 2.14.0
+
+auditConfig:
+  ignoreGhsas:
+    - GHSA-vfj7-8cjw-p6xm
