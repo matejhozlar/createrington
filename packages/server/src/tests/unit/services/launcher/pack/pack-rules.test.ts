@@ -79,7 +79,12 @@ describe("curseforgeFilePageUrl", () => {
   it("links the file page of the project", () => {
     expect(
       curseforgeFilePageUrl(
-        "https://www.curseforge.com/minecraft/mc-mods/create-aeronautics/",
+        {
+          websiteUrl:
+            "https://www.curseforge.com/minecraft/mc-mods/create-aeronautics/",
+          classId: 6,
+          slug: "create-aeronautics",
+        },
         7001234,
       ),
     ).toBe(
@@ -87,7 +92,30 @@ describe("curseforgeFilePageUrl", () => {
     );
   });
 
-  it("is null for a project without a page", () => {
-    expect(curseforgeFilePageUrl(null, 7001234)).toBeNull();
+  it.each([
+    [6, "mc-mods"],
+    [12, "texture-packs"],
+    [6552, "shaders"],
+  ])(
+    "builds the page from the slug when a class %i project has no stored page",
+    (classId, sitePath) => {
+      expect(
+        curseforgeFilePageUrl(
+          { websiteUrl: null, classId, slug: "some-project" },
+          7001234,
+        ),
+      ).toBe(
+        `https://www.curseforge.com/minecraft/${sitePath}/some-project/files/7001234`,
+      );
+    },
+  );
+
+  it("has no page for a class the launcher does not install", () => {
+    expect(
+      curseforgeFilePageUrl(
+        { websiteUrl: null, classId: 6945, slug: "some-pack" },
+        7001234,
+      ),
+    ).toBeNull();
   });
 });

@@ -15,6 +15,7 @@ export interface CurseforgeFileUpsert {
 export interface CurseforgeFileWithProject extends CurseforgeFileUpsert {
   resolvedAt: Date;
   classId: number;
+  slug: string;
   websiteUrl: string | null;
 }
 
@@ -83,6 +84,7 @@ export class CurseforgeFileQueries extends CurseforgeFileBaseQueries {
       download_url: string | null;
       resolved_at: Date;
       class_id: number;
+      slug: string;
       website_url: string | null;
     }>(
       "list curseforge files with project",
@@ -96,6 +98,7 @@ export class CurseforgeFileQueries extends CurseforgeFileBaseQueries {
         f.download_url,
         f.resolved_at,
         p.class_id,
+        p.slug,
         p.website_url
       FROM ${this.table} f
       JOIN curseforge_project p ON p.id = f.curseforge_project_id
@@ -113,6 +116,7 @@ export class CurseforgeFileQueries extends CurseforgeFileBaseQueries {
       downloadUrl: row.download_url,
       resolvedAt: row.resolved_at,
       classId: row.class_id,
+      slug: row.slug,
       websiteUrl: row.website_url,
     }));
   }

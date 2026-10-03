@@ -108,7 +108,7 @@ export interface LauncherPackFile {
   folder: LauncherPackFolder;
   source: LauncherPackFileSource;
   url: string | null;
-  pageUrl: string | null;
+  pageUrl: string;
 }
 
 export interface LauncherPackFilesData {

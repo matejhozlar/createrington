@@ -5,14 +5,22 @@ import type {
 } from "@createrington/shared/launcher";
 import { CURSEFORGE_CLASSES } from "@createrington/shared/workshop";
 
-const CLASS_FOLDERS: Record<number, LauncherPackFolder> = {
-  [CURSEFORGE_CLASSES.mods]: "mods",
-  [CURSEFORGE_CLASSES.resourcePacks]: "resourcepacks",
-  [CURSEFORGE_CLASSES.shaders]: "shaderpacks",
+const CURSEFORGE_SITE = "https://www.curseforge.com/minecraft";
+
+const PACK_CLASSES: Record<
+  number,
+  { folder: LauncherPackFolder; sitePath: string }
+> = {
+  [CURSEFORGE_CLASSES.mods]: { folder: "mods", sitePath: "mc-mods" },
+  [CURSEFORGE_CLASSES.resourcePacks]: {
+    folder: "resourcepacks",
+    sitePath: "texture-packs",
+  },
+  [CURSEFORGE_CLASSES.shaders]: { folder: "shaderpacks", sitePath: "shaders" },
 };
 
 export function packFolderForClass(classId: number): LauncherPackFolder | null {
-  return CLASS_FOLDERS[classId] ?? null;
+  return PACK_CLASSES[classId]?.folder ?? null;
 }
 
 export function pickFileSource(
@@ -40,9 +48,12 @@ export function parseModLoader(
 }
 
 export function curseforgeFilePageUrl(
-  projectWebsiteUrl: string | null,
+  project: { websiteUrl: string | null; classId: number; slug: string },
   fileId: number,
 ): string | null {
-  if (!projectWebsiteUrl) return null;
-  return `${projectWebsiteUrl.replace(/\/+$/, "")}/files/${fileId}`;
+  const sitePath = PACK_CLASSES[project.classId]?.sitePath;
+  const projectUrl =
+    project.websiteUrl?.replace(/\/+$/, "") ??
+    (sitePath ? `${CURSEFORGE_SITE}/${sitePath}/${project.slug}` : null);
+  return projectUrl ? `${projectUrl}/files/${fileId}` : null;
 }

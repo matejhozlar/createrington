@@ -11,7 +11,7 @@ import {
   type ModpackManifest,
   type ModpackManifestEntry,
 } from "@/services/curseforge";
-import { refreshProjects } from "@/services/curseforge/ingest";
+import { ingestProjectsWhere } from "@/services/curseforge/ingest";
 import { findModrinthFilesBySha1 } from "@/services/modrinth";
 import { getMinecraftJavaMajorVersion } from "@/utils/mojang-java-version";
 import type { Modpack, ModpackRelease } from "@createrington/shared/db";
@@ -27,7 +27,7 @@ import {
   parseModLoader,
   pickFileSource,
 } from "./pack-rules";
-import { findSandboxFileUrl } from "./sandbox-files";
+import { findSandboxFileUrls } from "./sandbox-files";
 
 const MANUAL_RECHECK_MS = 60 * 60 * 1000;
 const NOTICE_MAX_FILES = 15;
@@ -42,7 +42,8 @@ function packError(
 
 function toPackFile(row: CurseforgeFileWithProject): LauncherPackFile | null {
   const folder = packFolderForClass(row.classId);
-  if (!folder) return null;
+  const pageUrl = curseforgeFilePageUrl(row, row.id);
+  if (!folder || !pageUrl) return null;
   return {
     projectId: row.curseforgeProjectId,
     fileId: row.id,
@@ -52,7 +53,7 @@ function toPackFile(row: CurseforgeFileWithProject): LauncherPackFile | null {
     folder,
     source: row.source,
     url: row.downloadUrl,
-    pageUrl: curseforgeFilePageUrl(row.websiteUrl, row.id),
+    pageUrl,
   };
 }
 
@@ -139,7 +140,10 @@ class LauncherPackService {
     const ids = [...new Set(fileIds)];
     let stored: Map<number, CurseforgeFileWithProject>;
     try {
-      stored = await this.ensureResolved(ids, MANUAL_RECHECK_MS);
+      stored = await this.ensureResolved(ids, {
+        manualMaxAgeMs: MANUAL_RECHECK_MS,
+        strict: false,
+      });
     } catch (error) {
       logger.warn("Launcher pack file resolution failed:", error);
       throw packError(
@@ -185,10 +189,13 @@ class LauncherPackService {
     this.preparing.add(releaseId);
     try {
       const release = await Q.modpack.release.get({ id: releaseId });
-      if (
-        release.launcherReadyAt !== null ||
-        release.curseforgeFileId !== manifest.fileId
-      ) {
+      if (release.launcherReadyAt !== null) return;
+      if (release.curseforgeFileId !== manifest.fileId) {
+        await this.reportBlocked(
+          modpack,
+          release,
+          "it was recorded under the file id of its server pack, so its client pack zip is not known",
+        );
         return;
       }
 
@@ -209,7 +216,7 @@ class LauncherPackService {
       );
       const stored = await this.ensureResolved(
         clientEntries.map((entry) => entry.fileId),
-        0,
+        { manualMaxAgeMs: 0, strict: true },
       );
       const unresolved = clientEntries.filter((entry) => {
         const row = stored.get(entry.fileId);
@@ -288,7 +295,7 @@ class LauncherPackService {
 
   private async ensureResolved(
     fileIds: number[],
-    manualMaxAgeMs: number,
+    options: { manualMaxAgeMs: number; strict: boolean },
   ): Promise<Map<number, CurseforgeFileWithProject>> {
     const ids = [...new Set(fileIds)];
     const stored = await this.loadStored(ids);
@@ -296,7 +303,7 @@ class LauncherPackService {
     const missing = ids.filter((id) => !stored.has(id));
     if (missing.length > 0) await this.resolveFromSources(missing);
 
-    const staleBefore = Date.now() - manualMaxAgeMs;
+    const staleBefore = Date.now() - options.manualMaxAgeMs;
     const staleManual = [...stored.values()]
       .filter(
         (row) =>
@@ -311,6 +318,7 @@ class LauncherPackService {
       try {
         await this.resolveFromSources(staleManual);
       } catch (error) {
+        if (options.strict) throw error;
         logger.warn(
           `Could not look up ${staleManual.length} manual pack file(s) again:`,
           error,
@@ -365,16 +373,17 @@ class LauncherPackService {
         .map((detail) => detail.sha1),
     );
 
-    const sandbox = new Map<number, string>();
-    for (const detail of servable) {
-      if (detail.downloadUrl !== null || modrinth.has(detail.sha1)) continue;
-      const url = await findSandboxFileUrl({
-        fileId: detail.fileId,
-        sha1: detail.sha1,
-        size: detail.fileLength,
-      });
-      if (url) sandbox.set(detail.fileId, url);
-    }
+    const sandbox = await findSandboxFileUrls(
+      servable
+        .filter(
+          (detail) => detail.downloadUrl === null && !modrinth.has(detail.sha1),
+        )
+        .map((detail) => ({
+          fileId: detail.fileId,
+          sha1: detail.sha1,
+          size: detail.fileLength,
+        })),
+    );
 
     await Q.curseforge.file.upsertMany(
       servable.map((detail) => ({
@@ -404,8 +413,11 @@ class LauncherPackService {
     const cached = new Set(rows.map((row) => row.id));
     const missing = projectIds.filter((id) => !cached.has(id));
     if (missing.length > 0) {
-      await refreshProjects(missing);
-      rows = await read();
+      const added = await ingestProjectsWhere(
+        missing,
+        (project) => packFolderForClass(project.classId) !== null,
+      );
+      if (added > 0) rows = await read();
     }
     return new Map(rows.map((row) => [row.id, row.classId]));
   }
@@ -448,9 +460,7 @@ class LauncherPackService {
     const lines = manual.slice(0, NOTICE_MAX_FILES).map((entry) => {
       const row = stored.get(entry.fileId);
       const name = nameById.get(entry.projectId) ?? `#${entry.projectId}`;
-      const pageUrl = row
-        ? curseforgeFilePageUrl(row.websiteUrl, row.id)
-        : null;
+      const pageUrl = row ? curseforgeFilePageUrl(row, row.id) : null;
       return [
         `- ${pageUrl ? `[${name}](${pageUrl})` : name}`,
         row ? `\`${row.fileName}\`` : "",
