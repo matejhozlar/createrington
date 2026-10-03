@@ -1,3 +1,4 @@
+import type { ComponentType, SVGProps } from "react";
 import { Download } from "lucide-react";
 import { formatDate } from "@createrington/shared/format";
 import type { LauncherChannel } from "@createrington/shared/launcher";
@@ -14,6 +15,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { WindowsIcon } from "@/components/icons/windows";
 import { Loading } from "@/components/loading-spinner";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 
@@ -34,26 +36,23 @@ const CHANNELS: Record<
   },
 };
 
-const PLATFORM_LABELS: Record<string, string> = {
-  "windows-x86_64": "Windows",
-};
+const PLATFORMS = new Map<
+  string,
+  { label: string; icon: ComponentType<SVGProps<SVGSVGElement>> }
+>([["windows-x86_64", { label: "Windows", icon: WindowsIcon }]]);
 
-const CHANGE_TYPES: Record<string, { label: string; color: string }> = {
-  added: { label: "Added", color: "var(--c-add)" },
-  improved: { label: "Improved", color: "var(--c-tweak)" },
-  fixed: { label: "Fixed", color: "var(--c-fix)" },
-  changed: { label: "Changed", color: "var(--c-change)" },
-  removed: { label: "Removed", color: "var(--c-remove)" },
-};
+const CHANGE_TYPES = new Map<string, { label: string; color: string }>([
+  ["added", { label: "Added", color: "var(--c-add)" }],
+  ["improved", { label: "Improved", color: "var(--c-tweak)" }],
+  ["fixed", { label: "Fixed", color: "var(--c-fix)" }],
+  ["changed", { label: "Changed", color: "var(--c-change)" }],
+  ["removed", { label: "Removed", color: "var(--c-remove)" }],
+]);
 
 const UNKNOWN_CHANGE_COLOR = "var(--c-change)";
 
-function platformLabel(platform: string): string {
-  return PLATFORM_LABELS[platform] ?? platform;
-}
-
 function changeTag(type: string): { label: string; color: string } {
-  return CHANGE_TYPES[type] ?? { label: type, color: UNKNOWN_CHANGE_COLOR };
+  return CHANGE_TYPES.get(type) ?? { label: type, color: UNKNOWN_CHANGE_COLOR };
 }
 
 export function AdminLauncher() {
@@ -126,7 +125,7 @@ function LatestRelease({ release }: { release: Release }) {
             </span>
           </div>
           <HeaderActions>
-            <DownloadButton release={release} size="lg" />
+            <DownloadButton release={release} size="icon-lg" />
           </HeaderActions>
         </div>
 
@@ -159,7 +158,7 @@ function EarlierReleases({ releases }: { releases: Release[] }) {
               <AccordionContent className="flex flex-col gap-4">
                 <ReleaseNotes release={release} />
                 <div>
-                  <DownloadButton release={release} size="sm" />
+                  <DownloadButton release={release} size="icon-sm" />
                 </div>
               </AccordionContent>
             </AccordionItem>
@@ -175,13 +174,25 @@ function DownloadButton({
   size,
 }: {
   release: Release;
-  size: "sm" | "lg";
+  size: "icon-sm" | "icon-lg";
 }) {
+  const platform = PLATFORMS.get(release.platform);
+  const Icon = platform?.icon ?? Download;
+  const label = `Download for ${platform?.label ?? release.platform}`;
+
   return (
-    <Button asChild size={size} variant={size === "lg" ? "default" : "outline"}>
-      <a href={release.url} rel="noopener noreferrer">
-        <Download />
-        Download for {platformLabel(release.platform)}
+    <Button
+      asChild
+      size={size}
+      variant={size === "icon-lg" ? "default" : "outline"}
+    >
+      <a
+        href={release.url}
+        rel="noopener noreferrer"
+        aria-label={label}
+        title={label}
+      >
+        <Icon aria-hidden />
       </a>
     </Button>
   );
@@ -202,15 +213,15 @@ function ReleaseNotes({ release }: { release: Release }) {
     <div className="flex flex-col gap-4">
       <p className="text-sm text-foreground">{structuredNotes.summary}</p>
       {structuredNotes.changes.length > 0 && (
-        <ul className="m-0 flex list-none flex-col gap-3 p-0">
+        <ul className="m-0 grid list-none grid-cols-1 gap-x-3 gap-y-3 p-0 xs:grid-cols-[auto_1fr]">
           {structuredNotes.changes.map((change, index) => (
             <li
               key={index}
-              className="grid grid-cols-1 items-start gap-x-3 gap-y-1 xs:grid-cols-[5rem_1fr]"
+              className="col-span-full grid grid-cols-subgrid items-start gap-y-1"
             >
               <ChangeTag
                 {...changeTag(change.type)}
-                className="w-20 justify-self-start"
+                className="min-w-20 justify-self-start"
               />
               <div className="flex min-w-0 flex-col gap-0.5 text-sm">
                 <span className="font-medium text-foreground">
