@@ -291,9 +291,7 @@ const config = {
     packFiles: {
       publicUrl: env.LAUNCHER_PACK_FILES_URL?.replace(/\/+$/, "") ?? null,
       internalUrl:
-        (
-          env.LAUNCHER_PACK_FILES_INTERNAL_URL ?? env.LAUNCHER_PACK_FILES_URL
-        )?.replace(/\/+$/, "") ?? null,
+        env.LAUNCHER_PACK_FILES_INTERNAL_URL?.replace(/\/+$/, "") ?? null,
     },
   },
 

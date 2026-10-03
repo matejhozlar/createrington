@@ -12,8 +12,8 @@ export interface SandboxFileQuery {
 /**
  * The launcher's download link for a file the sandbox keeps, or null when the
  * sandbox does not keep it, cannot be reached, or serves bytes that do not
- * match the given SHA-1 and size. Always null while `LAUNCHER_PACK_FILES_URL`
- * is not set.
+ * match the given SHA-1 and size. Always null unless both
+ * `LAUNCHER_PACK_FILES_URL` and `LAUNCHER_PACK_FILES_INTERNAL_URL` are set.
  */
 export async function findSandboxFileUrl(
   file: SandboxFileQuery,
