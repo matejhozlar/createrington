@@ -2,6 +2,7 @@ import {
   pgTable,
   serial,
   text,
+  jsonb,
   timestamp,
   index,
   unique,
@@ -19,6 +20,9 @@ export const launcherRelease = pgTable(
     url: text("url").notNull(),
     signature: text("signature").notNull(),
     notes: text("notes").notNull().default(""),
+    // The same notes as summary plus typed changes, for pages that render
+    // them. Null for a release announced without them.
+    structuredNotes: jsonb("structured_notes"),
     pubDate: timestamp("pub_date", { withTimezone: true }).notNull(),
     status: launcherReleaseStatusEnum("status").notNull().default("pending"),
     createdAt: timestamp("created_at", { withTimezone: true })

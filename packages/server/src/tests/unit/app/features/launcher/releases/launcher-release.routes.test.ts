@@ -84,6 +84,17 @@ const VALID_BODY = {
   pubDate: "2026-09-29T18:00:00Z",
 };
 
+const STRUCTURED_NOTES = {
+  summary: "Faster start",
+  changes: [
+    {
+      type: "improved",
+      title: "Start time",
+      description: "The launcher opens in half the time.",
+    },
+  ],
+};
+
 const UPDATE = {
   version: "0.2.0",
   notes: "Faster start",
@@ -160,6 +171,44 @@ describe("POST /api/launcher/releases", () => {
       pubDate: new Date("2026-09-29T18:00:00Z"),
     });
   });
+
+  it("passes structured notes on to the service", async () => {
+    const res = await post(
+      { ...VALID_BODY, structuredNotes: STRUCTURED_NOTES },
+      auth,
+    );
+
+    expect(res.status).toBe(201);
+    expect(mocks.publish).toHaveBeenCalledWith({
+      ...VALID_BODY,
+      structuredNotes: STRUCTURED_NOTES,
+      pubDate: new Date("2026-09-29T18:00:00Z"),
+    });
+  });
+
+  it.each([
+    ["without a summary", { changes: STRUCTURED_NOTES.changes }],
+    [
+      "with a change that has no description",
+      {
+        summary: "Faster start",
+        changes: [{ type: "improved", title: "Start time" }],
+      },
+    ],
+    ["that are plain text", "Faster start"],
+  ])(
+    "does not refuse a release over structured notes %s",
+    async (_label, structuredNotes) => {
+      const res = await post({ ...VALID_BODY, structuredNotes }, auth);
+
+      expect(res.status).toBe(201);
+      expect(mocks.publish).toHaveBeenCalledWith({
+        ...VALID_BODY,
+        structuredNotes,
+        pubDate: new Date("2026-09-29T18:00:00Z"),
+      });
+    },
+  );
 
   it("refuses a call without a token", async () => {
     const res = await post(VALID_BODY);

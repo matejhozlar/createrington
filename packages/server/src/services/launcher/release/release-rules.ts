@@ -21,6 +21,14 @@ export function newestVersion<T extends { version: string }>(
   return newest;
 }
 
+export function newestFirst<T extends { version: string }>(
+  releases: readonly T[],
+): T[] {
+  return releases
+    .filter((release) => isValidVersion(release.version))
+    .sort((a, b) => semver.rcompare(a.version, b.version));
+}
+
 export function isDownloadUrlAllowed(
   rawUrl: string,
   allowedHosts: readonly string[],

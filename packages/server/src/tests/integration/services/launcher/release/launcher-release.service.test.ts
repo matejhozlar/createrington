@@ -93,6 +93,82 @@ describe("LauncherReleaseService", () => {
       expect(release.releasedAt).toBeNull();
     });
 
+    it("stores the structured notes next to the text", async () => {
+      const structuredNotes = {
+        summary: "Faster start",
+        changes: [
+          {
+            type: "improved",
+            title: "Start time",
+            description: "The launcher opens in half the time.",
+          },
+        ],
+      };
+
+      const release = await launcherReleaseService.publish(
+        input("0.2.0", { structuredNotes }),
+      );
+
+      const stored = await Q.launcher.release.get({ id: release.id });
+      expect(stored.notes).toBe("Notes for 0.2.0");
+      expect(stored.structuredNotes).toEqual(structuredNotes);
+    });
+
+    it("accepts a change type it has never seen", async () => {
+      const structuredNotes = {
+        summary: "Old sign-in removed",
+        changes: [
+          {
+            type: "deprecated",
+            title: "Old sign-in",
+            description: "The old sign-in goes away in the next version.",
+          },
+        ],
+      };
+
+      const release = await launcherReleaseService.publish(
+        input("0.2.0", { structuredNotes }),
+      );
+
+      expect(release.structuredNotes).toEqual(structuredNotes);
+    });
+
+    it.each([
+      ["without a summary", { changes: [] }],
+      [
+        "with a change that has no description",
+        {
+          summary: "Faster start",
+          changes: [{ type: "improved", title: "Start time" }],
+        },
+      ],
+      [
+        "with an empty description",
+        {
+          summary: "Faster start",
+          changes: [{ type: "improved", title: "Start time", description: "" }],
+        },
+      ],
+      ["that are plain text", "Faster start"],
+    ])(
+      "stores the release with its text only for structured notes %s",
+      async (_label, structuredNotes) => {
+        const release = await launcherReleaseService.publish(
+          input("0.2.0", { structuredNotes }),
+        );
+
+        expect(release.status).toBe("pending");
+        expect(release.notes).toBe("Notes for 0.2.0");
+        expect(release.structuredNotes).toBeNull();
+      },
+    );
+
+    it("stores no structured notes for a release announced without them", async () => {
+      const release = await launcherReleaseService.publish(input("0.2.0"));
+
+      expect(release.structuredNotes).toBeNull();
+    });
+
     it("checks the download address with a HEAD request before storing", async () => {
       const fetchMock = stubDownload(200);
 
@@ -347,6 +423,27 @@ describe("LauncherReleaseService", () => {
 
       expect(error.code).toBe("NOT_FOUND");
       expect(error.statusCode).toBe(404);
+    });
+  });
+
+  describe("listReleased", () => {
+    it("returns only released versions, highest version first", async () => {
+      await publishAndRelease("0.2.0");
+      await publishAndRelease("0.9.0");
+      await publishAndRelease("0.10.0");
+      const withdrawn = await publishAndRelease("0.11.0");
+      await launcherReleaseService.withdraw(withdrawn.id, OWNER);
+      await launcherReleaseService.publish(input("0.12.0"));
+
+      const releases = (await launcherReleaseService.listReleased()).filter(
+        (r) => r.platform === PLATFORM,
+      );
+
+      expect(releases.map((r) => r.version)).toEqual([
+        "0.10.0",
+        "0.9.0",
+        "0.2.0",
+      ]);
     });
   });
 

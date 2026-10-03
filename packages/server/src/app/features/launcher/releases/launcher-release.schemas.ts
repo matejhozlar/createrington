@@ -12,6 +12,7 @@ export const PublishReleaseBodySchema = z.object({
   url: z.string().url().max(2048),
   signature: z.string().min(1).max(4096),
   notes: z.string().max(LAUNCHER_RELEASE_NOTES_MAX_LENGTH).default(""),
+  structuredNotes: z.unknown().optional(),
   pubDate: z.coerce.date(),
 });
 

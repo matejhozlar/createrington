@@ -3,6 +3,7 @@ import {
   isDownloadUrlAllowed,
   isNewerVersion,
   isValidVersion,
+  newestFirst,
   newestVersion,
 } from "@/services/launcher/release/release-rules";
 
@@ -63,6 +64,36 @@ describe("newestVersion", () => {
     const releases = [{ version: "garbage" }, { version: "0.1.0" }];
 
     expect(newestVersion(releases)).toEqual({ version: "0.1.0" });
+  });
+});
+
+describe("newestFirst", () => {
+  it("orders by version, not by list order or text order", () => {
+    const releases = [
+      { version: "0.9.0" },
+      { version: "0.10.0" },
+      { version: "0.2.5" },
+    ];
+
+    expect(newestFirst(releases).map((r) => r.version)).toEqual([
+      "0.10.0",
+      "0.9.0",
+      "0.2.5",
+    ]);
+  });
+
+  it("drops entries whose version cannot be read", () => {
+    const releases = [{ version: "garbage" }, { version: "0.1.0" }];
+
+    expect(newestFirst(releases)).toEqual([{ version: "0.1.0" }]);
+  });
+
+  it("leaves the given list untouched", () => {
+    const releases = [{ version: "0.1.0" }, { version: "0.2.0" }];
+
+    newestFirst(releases);
+
+    expect(releases.map((r) => r.version)).toEqual(["0.1.0", "0.2.0"]);
   });
 });
 

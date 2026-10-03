@@ -7,6 +7,7 @@ import {
   BoxIcon,
   ClipboardIcon,
   DashboardIcon,
+  DownloadIcon,
   HammerIcon,
   HeartIcon,
   HomeIcon,
@@ -117,6 +118,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         title: "Workshop",
         url: "/admin/tools/workshop",
         icon: HammerIcon,
+      },
+      {
+        title: "Launcher",
+        url: "/admin/launcher",
+        icon: DownloadIcon,
       },
       {
         title: "Tools",
