@@ -129,6 +129,12 @@ const envSchema = z
       )
       .optional(),
     LAUNCHER_DOWNLOAD_HOSTS: z.string().default(""),
+    // Where the sandbox serves the mod files no CDN gives the launcher.
+    // LAUNCHER_PACK_FILES_URL is the address handed to the launcher, the
+    // internal one is where this app fetches a file to verify it (the
+    // sandbox only answers on the VPN, so the app goes through the host).
+    LAUNCHER_PACK_FILES_URL: z.string().url().optional(),
+    LAUNCHER_PACK_FILES_INTERNAL_URL: z.string().url().optional(),
     JWT_ACCESS_EXPIRES_IN: z
       .string()
       .regex(

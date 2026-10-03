@@ -25,6 +25,9 @@ vi.mock("@/services/curseforge/ingest", () => ({
 vi.mock("@/services/modrinth", () => ({
   findModrinthFilesBySha1: vi.fn(async () => new Map()),
 }));
+vi.mock("@/services/launcher/pack/sandbox-files", () => ({
+  findSandboxFileUrl: vi.fn(async () => null),
+}));
 vi.mock("@/utils/mojang-java-version", () => ({
   getMinecraftJavaMajorVersion: vi.fn(async () => 21),
 }));
@@ -42,6 +45,7 @@ import {
 } from "@/services/curseforge";
 import { refreshProjects } from "@/services/curseforge/ingest";
 import { launcherPackService } from "@/services/launcher/pack/launcher-pack.service";
+import { findSandboxFileUrl } from "@/services/launcher/pack/sandbox-files";
 import { findModrinthFilesBySha1 } from "@/services/modrinth";
 import { getMinecraftJavaMajorVersion } from "@/utils/mojang-java-version";
 import type { Modpack, ModpackRelease } from "@createrington/shared/db";
@@ -221,6 +225,7 @@ beforeEach(() => {
   vi.mocked(getModpackFile).mockResolvedValue(null);
   vi.mocked(refreshProjects).mockResolvedValue(0);
   vi.mocked(findModrinthFilesBySha1).mockResolvedValue(new Map());
+  vi.mocked(findSandboxFileUrl).mockResolvedValue(null);
   vi.mocked(getMinecraftJavaMajorVersion).mockResolvedValue(21);
   sendMock.mockResolvedValue({ success: true });
   vi.spyOn(Discord, "Messages", "get").mockReturnValue({
@@ -379,6 +384,38 @@ describe("LauncherPackService.prepareRelease", () => {
         url: null,
         sha1: sha1Of(manual.fileId),
         pageUrl: `https://www.curseforge.com/minecraft/mc-mods/vitest-${manual.fileId}/files/${manual.fileId}`,
+      }),
+    ]);
+  });
+
+  it("hands out the sandbox copy of a file neither CDN serves, and asks the sandbox about nothing else", async () => {
+    const modpack = await seedPack();
+    const served = await seedFile();
+    const onModrinth = await seedFile({ blocked: true });
+    const onSandbox = await seedFile({ blocked: true });
+    const files = [served, onModrinth, onSandbox];
+    serveFromCurseForge(files);
+    serveFromModrinth([onModrinth]);
+    const sandboxUrl = `https://sandbox.createrington.test/api/pack/files/${onSandbox.fileId}`;
+    vi.mocked(findSandboxFileUrl).mockResolvedValue(sandboxUrl);
+    const { release, manifest } = await seedRelease(modpack, "1.0.0", files);
+
+    await launcherPackService.prepareRelease(modpack, release.id, manifest);
+
+    expect(findSandboxFileUrl).toHaveBeenCalledTimes(1);
+    expect(findSandboxFileUrl).toHaveBeenCalledWith({
+      fileId: onSandbox.fileId,
+      sha1: sha1Of(onSandbox.fileId),
+      size: onSandbox.detail.fileLength,
+    });
+    expect(sendMock).not.toHaveBeenCalled();
+    const resolved = await launcherPackService.resolveFiles([onSandbox.fileId]);
+    expect(resolved.files).toEqual([
+      expect.objectContaining({
+        fileId: onSandbox.fileId,
+        source: "storage",
+        url: sandboxUrl,
+        sha1: sha1Of(onSandbox.fileId),
       }),
     ]);
   });

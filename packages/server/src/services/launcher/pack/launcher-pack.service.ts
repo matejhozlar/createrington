@@ -27,6 +27,7 @@ import {
   parseModLoader,
   pickFileSource,
 } from "./pack-rules";
+import { findSandboxFileUrl } from "./sandbox-files";
 
 const MANUAL_RECHECK_MS = 60 * 60 * 1000;
 const NOTICE_MAX_FILES = 15;
@@ -61,7 +62,8 @@ function toPackFile(row: CurseforgeFileWithProject): LauncherPackFile | null {
  * manifest, where to download each file and the SHA-1 to verify it against.
  * Only the pack linked to `CURSEFORGE_MODPACK_PROJECT_ID` is served. Files are
  * resolved once and stored (CurseForge CDN, else a byte-identical file on
- * Modrinth, else manual), so requests read the database; a manual file is
+ * Modrinth, else a verified copy the sandbox keeps, else manual), so requests
+ * read the database; a manual file is
  * looked up again at most once an hour. A release is offered as latest only
  * after `prepareRelease` stored its pack zip, Java version and every client
  * file. Singleton.
@@ -363,6 +365,17 @@ class LauncherPackService {
         .map((detail) => detail.sha1),
     );
 
+    const sandbox = new Map<number, string>();
+    for (const detail of servable) {
+      if (detail.downloadUrl !== null || modrinth.has(detail.sha1)) continue;
+      const url = await findSandboxFileUrl({
+        fileId: detail.fileId,
+        sha1: detail.sha1,
+        size: detail.fileLength,
+      });
+      if (url) sandbox.set(detail.fileId, url);
+    }
+
     await Q.curseforge.file.upsertMany(
       servable.map((detail) => ({
         id: detail.fileId,
@@ -373,6 +386,7 @@ class LauncherPackService {
         ...pickFileSource(
           detail.downloadUrl,
           modrinth.get(detail.sha1)?.url ?? null,
+          sandbox.get(detail.fileId) ?? null,
         ),
       })),
     );
@@ -454,7 +468,7 @@ class LauncherPackService {
         title: "⚠️ Launcher: files without a download source",
         description: [
           `**Pack**: ${modpack.name} ${version}`,
-          "CurseForge does not serve these client files and Modrinth has no identical copy, so launcher players are asked to download them in the browser:",
+          "CurseForge does not serve these client files, Modrinth has no identical copy and the sandbox keeps none, so launcher players are asked to download them in the browser:",
           ...lines,
         ].join("\n"),
         color: EmbedColors.Warning,

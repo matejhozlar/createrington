@@ -18,10 +18,12 @@ export function packFolderForClass(classId: number): LauncherPackFolder | null {
 export function pickFileSource(
   curseforgeUrl: string | null,
   modrinthUrl: string | null,
+  storageUrl: string | null,
 ): { source: LauncherPackFileSource; downloadUrl: string | null } {
   if (curseforgeUrl)
     return { source: "curseforge", downloadUrl: curseforgeUrl };
   if (modrinthUrl) return { source: "modrinth", downloadUrl: modrinthUrl };
+  if (storageUrl) return { source: "storage", downloadUrl: storageUrl };
   return { source: "manual", downloadUrl: null };
 }
 
