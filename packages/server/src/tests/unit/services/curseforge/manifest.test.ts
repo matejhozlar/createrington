@@ -11,7 +11,11 @@ function file(overrides: Partial<ModpackFile> & { id: number }): ModpackFile {
   return {
     projectId: 1,
     displayName: null,
+    fileName: null,
     fileDate: null,
+    downloadUrl: null,
+    fileLength: null,
+    sha1: null,
     fileStatus: null,
     isAvailable: true,
     serverPackFileId: null,

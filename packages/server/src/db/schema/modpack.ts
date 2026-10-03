@@ -139,6 +139,10 @@ export const modpackPublish = pgTable(
 // is re-frozen once a read carries the server pack, never the other way.
 // Otherwise rows are append-only and self-contained: CurseForge drops
 // archived files, so nothing here may depend on re-fetching them.
+// The pack* columns describe the client pack zip the launcher downloads and
+// javaMajorVersion the Java that Minecraft version asks for. launcherReadyAt
+// is set once all of that is stored and every client file of the release has
+// a curseforge_file row; the launcher is only ever offered a release with it.
 
 export const modpackRelease = pgTable(
   "modpack_release",
@@ -155,6 +159,12 @@ export const modpackRelease = pgTable(
     modLoader: text("mod_loader"),
     modCount: integer("mod_count").notNull(),
     publishedAt: timestamp("published_at", { withTimezone: true }),
+    packFileName: text("pack_file_name"),
+    packFileSize: integer("pack_file_size"),
+    packSha1: text("pack_sha1"),
+    packDownloadUrl: text("pack_download_url"),
+    javaMajorVersion: integer("java_major_version"),
+    launcherReadyAt: timestamp("launcher_ready_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

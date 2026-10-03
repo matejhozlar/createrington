@@ -76,6 +76,15 @@ export const launcherUpdateCheckLimiter = rateLimit({
   handler: rateLimitHandler,
 });
 
+/** Launcher pack limiter: 120 requests per 15-minute window per IP */
+export const launcherPackLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 120,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  handler: rateLimitHandler,
+});
+
 // Backstop for the internal SSO code-exchange endpoint. It is internet
 // exposed (skin-api is remote) and protected by the shared secret alone, so
 // this caps blind brute force if that secret ever leaks. Legitimate traffic

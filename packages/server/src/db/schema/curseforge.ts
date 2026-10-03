@@ -8,7 +8,11 @@ import {
   index,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
-import { modEnvironmentEnum, modEnvironmentSourceEnum } from "./enums";
+import {
+  curseforgeFileSourceEnum,
+  modEnvironmentEnum,
+  modEnvironmentSourceEnum,
+} from "./enums";
 
 // --- curseforge_project ---
 // Global snapshot cache, one row per project ID. Deep content (descriptions,
@@ -61,5 +65,37 @@ export const curseforgeProject = pgTable(
   (table) => [
     index("idx_curseforge_project_slug").on(table.slug),
     index("idx_curseforge_project_class").on(table.classId),
+  ],
+);
+
+// --- curseforge_file ---
+// How the launcher gets one CurseForge file, keyed by the file id. Resolved
+// once when a release is ingested (or on request for a file no release
+// ships) and read from here afterwards: a published file never changes and
+// CurseForge drops archived files. sha1 and fileSize are always CurseForge's
+// values, whichever source serves the bytes. downloadUrl is null for manual.
+// A manual row is looked up again later, since a source can appear.
+
+export const curseforgeFile = pgTable(
+  "curseforge_file",
+  {
+    id: integer("id").primaryKey(),
+    curseforgeProjectId: integer("curseforge_project_id")
+      .notNull()
+      .references(() => curseforgeProject.id),
+    fileName: text("file_name").notNull(),
+    fileSize: integer("file_size").notNull(),
+    sha1: text("sha1").notNull(),
+    source: curseforgeFileSourceEnum("source").notNull(),
+    downloadUrl: text("download_url"),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("idx_curseforge_file_project").on(table.curseforgeProjectId),
   ],
 );
