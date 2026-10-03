@@ -288,6 +288,11 @@ const config = {
       .split(",")
       .map((host) => host.trim().toLowerCase())
       .filter((host) => host.length > 0),
+    packFiles: {
+      publicUrl: env.LAUNCHER_PACK_FILES_URL?.replace(/\/+$/, "") ?? null,
+      internalUrl:
+        env.LAUNCHER_PACK_FILES_INTERNAL_URL?.replace(/\/+$/, "") ?? null,
+    },
   },
 
   internal: {

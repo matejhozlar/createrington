@@ -1796,6 +1796,10 @@ describe("WorkshopService.setModFile", () => {
         fileName: "mod-1.2.0.jar",
         fileDate: "2026-08-01T00:00:00Z",
         releaseType: 1,
+        gameId: 432,
+        downloadUrl: null,
+        fileLength: null,
+        sha1: null,
       },
     ]);
 
@@ -1840,6 +1844,10 @@ describe("WorkshopService.setModFile", () => {
         fileName: "other-1.0.0.jar",
         fileDate: "2026-08-01T00:00:00Z",
         releaseType: 1,
+        gameId: 432,
+        downloadUrl: null,
+        fileLength: null,
+        sha1: null,
       },
     ]);
 

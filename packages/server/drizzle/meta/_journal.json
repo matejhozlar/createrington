@@ -582,6 +582,13 @@
       "when": 1790712937278,
       "tag": "0082_abnormal_professor_monster",
       "breakpoints": true
+    },
+    {
+      "idx": 83,
+      "version": "7",
+      "when": 1791039038461,
+      "tag": "0083_conscious_vulcan",
+      "breakpoints": true
     }
   ]
 }

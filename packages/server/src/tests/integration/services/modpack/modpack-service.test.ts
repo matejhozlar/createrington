@@ -60,6 +60,10 @@ vi.mock("@/services/modpack/changelog", () => ({
   announceReleaseChangelog: vi.fn(async () => undefined),
 }));
 
+vi.mock("@/services/launcher/pack/launcher-pack.service", () => ({
+  launcherPackService: { prepareRelease: vi.fn(async () => undefined) },
+}));
+
 import pool, { Q } from "@/db";
 import {
   BadRequestError,
@@ -82,6 +86,7 @@ import {
   announceReview,
 } from "@/services/workshop/discord";
 import { announceReleaseChangelog } from "@/services/modpack/changelog";
+import { launcherPackService } from "@/services/launcher/pack/launcher-pack.service";
 import {
   createWorkshopTestContext,
   cleanupWorkshopTestContext,
@@ -854,6 +859,10 @@ describe("ModpackService.reconcile", () => {
         fileName: "shipped-2.0.jar",
         fileDate: null,
         releaseType: 1,
+        gameId: 432,
+        downloadUrl: null,
+        fileLength: null,
+        sha1: null,
       },
     ]);
     vi.mocked(getModpackManifest).mockResolvedValue(
@@ -1896,6 +1905,10 @@ describe("ModpackService release history", () => {
         fileName: "coolmod-1.2.3.jar",
         fileDate: "2026-01-01T00:00:00.000Z",
         releaseType: 1,
+        gameId: 432,
+        downloadUrl: null,
+        fileLength: null,
+        sha1: null,
       },
     ]);
     vi.mocked(getModpackManifest).mockResolvedValue(
@@ -1925,6 +1938,36 @@ describe("ModpackService release history", () => {
     });
   });
 
+  it("hands a release to the launcher pack service until it is ready", async () => {
+    const modpack = await seedModpack(ctx, { curseforgeProjectId: 5011 });
+    const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const member = await seedPackMod(ctx, workshop);
+    const read = manifest({
+      version: "1.0.0",
+      modIds: new Set([member.curseforgeProjectId]),
+    });
+    vi.mocked(getModpackManifest).mockResolvedValue(read);
+
+    await modpackService.reconcile(modpack.id);
+    const [release] = await modpackService.listReleases(modpack.id);
+    await modpackService.reconcile(modpack.id);
+
+    expect(launcherPackService.prepareRelease).toHaveBeenCalledTimes(2);
+    expect(launcherPackService.prepareRelease).toHaveBeenLastCalledWith(
+      expect.objectContaining({ id: modpack.id }),
+      release.id,
+      read,
+    );
+
+    await Q.modpack.release.updateAll(
+      { launcherReadyAt: new Date() },
+      { id: release.id },
+    );
+    await modpackService.reconcile(modpack.id);
+
+    expect(launcherPackService.prepareRelease).toHaveBeenCalledTimes(2);
+  });
+
   it("exposes a release's frozen membership", async () => {
     const modpack = await seedModpack(ctx, { curseforgeProjectId: 5010 });
     const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
@@ -1937,6 +1980,10 @@ describe("ModpackService release history", () => {
         fileName: "coolmod-1.2.3.jar",
         fileDate: "2026-01-01T00:00:00.000Z",
         releaseType: 1,
+        gameId: 432,
+        downloadUrl: null,
+        fileLength: null,
+        sha1: null,
       },
     ]);
     vi.mocked(getModpackManifest).mockResolvedValue(
@@ -2146,6 +2193,10 @@ describe("ModpackService release history", () => {
         fileName: "new-2.0.jar",
         fileDate: null,
         releaseType: 1,
+        gameId: 432,
+        downloadUrl: null,
+        fileLength: null,
+        sha1: null,
       },
     ]);
     vi.mocked(getModpackManifest).mockResolvedValue(
@@ -2306,7 +2357,11 @@ function cfFile(
 ): ModpackFile {
   return {
     displayName: null,
+    fileName: null,
     fileDate: null,
+    downloadUrl: null,
+    fileLength: null,
+    sha1: null,
     fileStatus: null,
     isAvailable: true,
     serverPackFileId: null,

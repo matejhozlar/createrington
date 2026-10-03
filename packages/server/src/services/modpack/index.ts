@@ -34,6 +34,7 @@ import {
   type ModpackManifest,
 } from "@/services/curseforge";
 import { refreshProjects } from "@/services/curseforge/ingest";
+import { launcherPackService } from "@/services/launcher/pack/launcher-pack.service";
 import {
   REQUIRED_DEPENDENCY,
   loadDependencyContext,
@@ -963,6 +964,9 @@ export class ModpackService {
       } else if (recorded.serverPackFileId !== null) {
         this.announceRelease(modpack, recorded.id, false);
       }
+      if (recorded.launcherReadyAt === null) {
+        this.prepareForLauncher(modpack, recorded.id, manifest);
+      }
       return;
     }
 
@@ -1007,6 +1011,7 @@ export class ModpackService {
     if (manifest.serverPackFileId !== null) {
       this.announceRelease(modpack, releaseId, true);
     }
+    this.prepareForLauncher(modpack, releaseId, manifest);
   }
 
   private async upgradeRelease(
@@ -1110,6 +1115,21 @@ export class ModpackService {
         error,
       );
     });
+  }
+
+  private prepareForLauncher(
+    modpack: Modpack,
+    releaseId: number,
+    manifest: ModpackManifest,
+  ): void {
+    void launcherPackService
+      .prepareRelease(modpack, releaseId, manifest)
+      .catch((error) => {
+        logger.warn(
+          `Modpack #${modpack.id} release #${releaseId} could not be prepared for the launcher:`,
+          error,
+        );
+      });
   }
 
   /** Items needing an admin decision for a workshop's modpack. */

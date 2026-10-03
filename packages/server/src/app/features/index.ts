@@ -22,6 +22,7 @@ import internalPresenceRoutes from "./internal/presence/presence.routes";
 import internalSsoExchangeRoutes from "./internal/sso-exchange/sso-exchange.routes";
 import adminChatRoutes from "./admin-chat/admin-chat.routes";
 import launcherAuthRoutes from "./launcher/auth/launcher-auth.routes";
+import launcherPackRoutes from "./launcher/pack/launcher-pack.routes";
 import {
   launcherPublishRoutes,
   launcherUpdateCheckRoutes,
@@ -61,7 +62,8 @@ export function registerRoutes(app: Express): void {
 
   if (launcherJwtService.isEnabled()) {
     app.use(`${API_PREFIX}/launcher/auth`, launcherAuthRoutes);
-    logger.info("Launcher auth routes registered");
+    app.use(`${API_PREFIX}/launcher/pack`, launcherPackRoutes);
+    logger.info("Launcher auth and pack routes registered");
   }
 
   app.use(`${API_PREFIX}/launcher`, launcherUpdateCheckRoutes);

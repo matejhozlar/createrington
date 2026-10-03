@@ -138,20 +138,32 @@ const rawFileDependenciesSchema = z.object({
     .nullish(),
 });
 
+const rawFileHashesSchema = z
+  .array(z.object({ value: z.string(), algo: z.number() }))
+  .nullish();
+
 const rawFileDetailSchema = z.object({
   id: z.number(),
+  gameId: z.number().nullish(),
   modId: z.number(),
   displayName: z.string().nullish(),
   fileName: z.string().nullish(),
   fileDate: z.string().nullish(),
   releaseType: z.number().nullish(),
+  downloadUrl: z.string().nullish(),
+  fileLength: z.number().nullish(),
+  hashes: rawFileHashesSchema,
 });
 
 const rawModpackFileSchema = z.object({
   id: z.number(),
   modId: z.number(),
   displayName: z.string().nullish(),
+  fileName: z.string().nullish(),
   fileDate: z.string().nullish(),
+  downloadUrl: z.string().nullish(),
+  fileLength: z.number().nullish(),
+  hashes: rawFileHashesSchema,
   fileStatus: z.number().nullish(),
   isAvailable: z.boolean().nullish(),
   serverPackFileId: z.number().nullish(),
@@ -167,6 +179,13 @@ const rawDependencyModSchema = z.object({
   logo: z.object({ thumbnailUrl: z.string() }).nullish(),
   latestFilesIndexes: z.array(rawFileIndexSchema).nullish(),
 });
+const CF_HASH_ALGO_SHA1 = 1;
+
+function sha1Of(hashes: z.infer<typeof rawFileHashesSchema>): string | null {
+  const sha1 = hashes?.find((hash) => hash.algo === CF_HASH_ALGO_SHA1)?.value;
+  return sha1 ? sha1.toLowerCase() : null;
+}
+
 const MINECRAFT_GAME_ID = CURSEFORGE_MINECRAFT_GAME_ID;
 const MOD_CLASS_ID: number = CurseForgeClass.mods;
 const NEOFORGE_LOADER_TYPE: number = CurseForgeLoader.neoforge;
@@ -713,9 +732,14 @@ export interface CurseForgeFileDetail {
   fileName: string | null;
   fileDate: string | null;
   releaseType: number | null;
+  gameId: number | null;
+  /** Null when the author opted out of third-party distribution. */
+  downloadUrl: string | null;
+  fileLength: number | null;
+  sha1: string | null;
 }
 
-/** Identity of specific mod files, batched. Unknown ids are simply absent. */
+/** Identity and download facts of specific mod files, batched. Unknown ids are simply absent. */
 export async function getFilesDetails(
   fileIds: number[],
 ): Promise<CurseForgeFileDetail[]> {
@@ -749,6 +773,10 @@ export async function getFilesDetails(
         fileName: f.fileName ?? null,
         fileDate: f.fileDate ?? null,
         releaseType: f.releaseType ?? null,
+        gameId: f.gameId ?? null,
+        downloadUrl: f.downloadUrl || null,
+        fileLength: f.fileLength ?? null,
+        sha1: sha1Of(f.hashes),
       })),
     );
   }
@@ -885,7 +913,11 @@ export interface ModpackFile {
   id: number;
   projectId: number;
   displayName: string | null;
+  fileName: string | null;
   fileDate: string | null;
+  downloadUrl: string | null;
+  fileLength: number | null;
+  sha1: string | null;
   fileStatus: number | null;
   isAvailable: boolean;
   serverPackFileId: number | null;
@@ -918,7 +950,11 @@ function toModpackFile(raw: z.infer<typeof rawModpackFileSchema>): ModpackFile {
     id: raw.id,
     projectId: raw.modId,
     displayName: raw.displayName ?? null,
+    fileName: raw.fileName ?? null,
     fileDate: raw.fileDate ?? null,
+    downloadUrl: raw.downloadUrl || null,
+    fileLength: raw.fileLength ?? null,
+    sha1: sha1Of(raw.hashes),
     fileStatus: raw.fileStatus ?? null,
     isAvailable: raw.isAvailable ?? true,
     serverPackFileId: raw.serverPackFileId ?? null,

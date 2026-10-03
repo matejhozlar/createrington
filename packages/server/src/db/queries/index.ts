@@ -13,6 +13,7 @@ export { AdminLogActionQueries } from "./admin/log/action";
 export { AppSettingQueries } from "./app/setting";
 export { AuthLauncherSessionQueries } from "./auth/launcher/session";
 export { AuthSessionQueries } from "./auth/session";
+export { CurseforgeFileQueries } from "./curseforge/file";
 export { CurseforgeProjectQueries } from "./curseforge/project";
 export { DiscordAutoMessageQueries } from "./discord/auto/message";
 export { DiscordAutoMessageConfigQueries } from "./discord/auto/message/config";

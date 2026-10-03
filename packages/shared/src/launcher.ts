@@ -16,6 +16,34 @@ export type LauncherPlatform = (typeof LAUNCHER_PLATFORMS)[number];
 
 export const LAUNCHER_RELEASE_NOTES_MAX_LENGTH = 10_000;
 
+export const LAUNCHER_PACK_FILE_SOURCES = [
+  "curseforge",
+  "modrinth",
+  "storage",
+  "manual",
+] as const;
+
+export type LauncherPackFileSource =
+  (typeof LAUNCHER_PACK_FILE_SOURCES)[number];
+
+export const LAUNCHER_PACK_FOLDERS = [
+  "mods",
+  "resourcepacks",
+  "shaderpacks",
+] as const;
+
+export type LauncherPackFolder = (typeof LAUNCHER_PACK_FOLDERS)[number];
+
+export const LAUNCHER_PACK_RESOLVE_MAX_FILES = 1000;
+
+export const LauncherPackErrorCode = {
+  PACK_UNAVAILABLE: "PACK_UNAVAILABLE",
+  FILE_SOURCES_UNAVAILABLE: "FILE_SOURCES_UNAVAILABLE",
+} as const;
+
+export type LauncherPackErrorCode =
+  (typeof LauncherPackErrorCode)[keyof typeof LauncherPackErrorCode];
+
 export const LauncherAuthErrorCode = {
   AUTH_REQUIRED: "AUTH_REQUIRED",
   TOKEN_EXPIRED: "TOKEN_EXPIRED",
@@ -52,6 +80,42 @@ export interface LauncherMeData {
   player: LauncherPlayer;
 }
 
+export interface LauncherPackData {
+  version: string;
+  releasedAt: string | null;
+  minecraftVersion: string;
+  modLoader: {
+    id: string;
+    name: string;
+    version: string;
+  };
+  javaMajorVersion: number;
+  zip: {
+    fileId: number;
+    fileName: string;
+    url: string;
+    size: number;
+    sha1: string;
+  };
+}
+
+export interface LauncherPackFile {
+  projectId: number;
+  fileId: number;
+  fileName: string;
+  size: number;
+  sha1: string;
+  folder: LauncherPackFolder;
+  source: LauncherPackFileSource;
+  url: string | null;
+  pageUrl: string;
+}
+
+export interface LauncherPackFilesData {
+  files: LauncherPackFile[];
+  unresolvedFileIds: number[];
+}
+
 export interface LauncherSuccessResponse<T> {
   success: true;
   data: T;
@@ -69,7 +133,7 @@ export interface LauncherErrorResponse {
   error: {
     message: string;
     statusCode: number;
-    code?: LauncherAuthErrorCode;
+    code?: LauncherAuthErrorCode | LauncherPackErrorCode;
     details?: unknown;
     stack?: string;
   };

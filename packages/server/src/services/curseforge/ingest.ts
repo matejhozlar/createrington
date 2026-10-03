@@ -159,3 +159,22 @@ export async function refreshProjects(projectIds: number[]): Promise<number> {
   await applyEnvironmentHints(projects);
   return projects.length;
 }
+
+/**
+ * Fetch projects and cache only the ones the predicate accepts, for callers
+ * that take project ids from outside and must not fill the cache with
+ * whatever they are handed. Returns how many were cached.
+ */
+export async function ingestProjectsWhere(
+  projectIds: number[],
+  accept: (project: CurseForgeProjectData) => boolean,
+): Promise<number> {
+  if (projectIds.length === 0) return 0;
+
+  const projects = (await getMods(projectIds)).filter(accept);
+  for (const data of projects) {
+    await Q.curseforge.project.upsert(toCreate(data), "id", UPDATE_FIELDS);
+  }
+  await applyEnvironmentHints(projects);
+  return projects.length;
+}
