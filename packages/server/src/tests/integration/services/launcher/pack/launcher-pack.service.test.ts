@@ -264,6 +264,7 @@ async function seedRelease(
       fileReleaseType: file.detail.releaseType,
       fileDate: null,
       required: file.required,
+      inClientPack: file.sides !== "server",
     })),
   );
   packZip(manifest.fileId);
@@ -936,6 +937,47 @@ describe("LauncherPackService.checkReleases", () => {
     await launcherPackService.checkReleases(modpack);
 
     expect(await listedVersions()).toEqual(["1.0.0"]);
+  });
+
+  it("keeps a release listed when an archived server-only file was resolved by a launcher request", async () => {
+    const modpack = await seedPack();
+    const client = await seedFile();
+    const serverOnly = await seedFile({ sides: "server" });
+    serveFromCurseForge([client, serverOnly]);
+    await seedReadyRelease(modpack, "1.0.0", [client, serverOnly]);
+    const resolved = await launcherPackService.resolveFiles([
+      serverOnly.fileId,
+    ]);
+
+    archivedOnCurseForge([serverOnly.fileId]);
+    await launcherPackService.checkReleases(modpack);
+
+    expect(resolved.files.map((file) => file.fileId)).toEqual([
+      serverOnly.fileId,
+    ]);
+    expect(await listedVersions()).toEqual(["1.0.0"]);
+  });
+
+  it("lets only the pack zip decide for a release recorded without sides", async () => {
+    const modpack = await seedPack();
+    const file = await seedFile();
+    serveFromCurseForge([file]);
+    const { release, manifest } = await seedReadyRelease(modpack, "1.0.0", [
+      file,
+    ]);
+    await Q.modpack.release.mod.updateAll(
+      { inClientPack: null },
+      { releaseId: release.id },
+    );
+
+    archivedOnCurseForge([file.fileId]);
+    await launcherPackService.checkReleases(modpack);
+    const afterFile = await listedVersions();
+    archivedOnCurseForge([manifest.fileId]);
+    await launcherPackService.checkReleases(modpack);
+
+    expect(afterFile).toEqual(["1.0.0"]);
+    expect(await listedVersions()).toEqual([]);
   });
 
   it("lists a release again once CurseForge serves its files again", async () => {

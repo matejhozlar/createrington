@@ -1087,6 +1087,7 @@ export class ModpackService {
         fileReleaseType: detail?.releaseType ?? null,
         fileDate: detail?.fileDate ? new Date(detail.fileDate) : null,
         required: entry.required,
+        inClientPack: entry.sides !== "server",
       };
     });
   }

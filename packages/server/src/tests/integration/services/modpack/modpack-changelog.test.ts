@@ -115,6 +115,7 @@ function fileRow(projectId: number, version: string): ReleaseModInsert {
     fileReleaseType: 1,
     fileDate: null,
     required: true,
+    inClientPack: true,
   };
 }
 

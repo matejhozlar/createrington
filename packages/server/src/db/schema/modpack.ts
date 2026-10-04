@@ -188,6 +188,8 @@ export const modpackRelease = pgTable(
 // Frozen membership of one release. fileName carries the mod version, so a diff
 // between two releases never needs CurseForge. A manifest may list the same
 // project twice with different files, hence the file id in the unique key.
+// inClientPack says whether the client pack ships the file (false for a file
+// only the server pack ships); null on rows recorded before it was stored.
 
 export const modpackReleaseMod = pgTable(
   "modpack_release_mod",
@@ -205,6 +207,7 @@ export const modpackReleaseMod = pgTable(
     fileReleaseType: integer("file_release_type"),
     fileDate: timestamp("file_date", { withTimezone: true }),
     required: boolean("required").notNull().default(true),
+    inClientPack: boolean("in_client_pack"),
   },
   (table) => [
     index("idx_modpack_release_mod_release").on(table.releaseId),

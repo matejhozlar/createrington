@@ -182,9 +182,10 @@ class LauncherPackService {
    * Asks CurseForge again about every release that is ready for the launcher
    * and takes a release out of `listReleases` while its pack zip or one of its
    * client files is archived there, or puts it back once all of them are
-   * served again. `getLatestPack` is not affected. No-op for other modpacks
-   * and while another call checks the same pack. Throws when CurseForge cannot
-   * be asked; nothing is changed then.
+   * served again. For a release recorded before the side of its files was
+   * stored only the pack zip decides. `getLatestPack` is not affected. No-op
+   * for other modpacks and while another call checks the same pack. Throws
+   * when CurseForge cannot be asked; nothing is changed then.
    */
   async checkReleases(modpack: Modpack): Promise<void> {
     if (
@@ -206,12 +207,10 @@ class LauncherPackService {
       const fileIdsByRelease = new Map(
         releases.map((release) => [release.id, [release.curseforgeFileId]]),
       );
-      for (const {
-        releaseId,
-        fileId,
-      } of await Q.curseforge.file.getIdsByRelease(
+      const clientFiles = await Q.modpack.release.mod.getClientFileIds(
         releases.map((release) => release.id),
-      )) {
+      );
+      for (const { releaseId, fileId } of clientFiles) {
         fileIdsByRelease.get(releaseId)?.push(fileId);
       }
 

@@ -1971,6 +1971,37 @@ describe("ModpackService release history", () => {
     expect(launcherPackService.prepareRelease).toHaveBeenCalledTimes(2);
   });
 
+  it("records for every file of a release whether the client pack ships it", async () => {
+    const modpack = await seedModpack(ctx, {
+      curseforgeProjectId: ctx.nextProjectId++,
+    });
+    const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const shared = await seedPackMod(ctx, workshop);
+    const clientOnly = await seedPackMod(ctx, workshop);
+    const serverOnly = await seedPackMod(ctx, workshop);
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      sidedManifest("2.0.0", [
+        [shared.curseforgeProjectId, "both"],
+        [clientOnly.curseforgeProjectId, "client"],
+        [serverOnly.curseforgeProjectId, "server"],
+      ]),
+    );
+
+    await modpackService.reconcile(modpack.id);
+
+    const [release] = await modpackService.listReleases(modpack.id);
+    const clientFiles = await Q.modpack.release.mod.getClientFileIds([
+      release.id,
+    ]);
+    expect(clientFiles.map((row) => row.fileId).sort()).toEqual(
+      [
+        fileIdFor(shared.curseforgeProjectId),
+        fileIdFor(clientOnly.curseforgeProjectId),
+      ].sort(),
+    );
+    expect(clientFiles.every((row) => row.releaseId === release.id)).toBe(true);
+  });
+
   it("has the launcher pack service check its releases on every reconcile", async () => {
     const modpack = await seedModpack(ctx, { curseforgeProjectId: 5011 });
     const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });

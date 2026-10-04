@@ -9,6 +9,7 @@ export interface ReleaseModInsert {
   fileReleaseType: number | null;
   fileDate: Date | null;
   required: boolean;
+  inClientPack: boolean;
 }
 
 export interface ReleaseModRow {
@@ -47,14 +48,16 @@ export class ModpackReleaseModQueries extends ModpackReleaseModBaseQueries {
       "insert release mods",
       `INSERT INTO ${this.table} (
         release_id, curseforge_project_id, file_id,
-        file_name, display_name, file_release_type, file_date, required
+        file_name, display_name, file_release_type, file_date, required,
+        in_client_pack
       )
       SELECT $1, d.project_id, d.file_id,
-             d.file_name, d.display_name, d.release_type, d.file_date, d.required
+             d.file_name, d.display_name, d.release_type, d.file_date, d.required,
+             d.in_client_pack
       FROM UNNEST(
         $2::int[], $3::int[], $4::text[], $5::text[], $6::int[], $7::timestamptz[],
-        $8::boolean[]
-      ) AS d(project_id, file_id, file_name, display_name, release_type, file_date, required)`,
+        $8::boolean[], $9::boolean[]
+      ) AS d(project_id, file_id, file_name, display_name, release_type, file_date, required, in_client_pack)`,
       [
         releaseId,
         rows.map((row) => row.curseforgeProjectId),
@@ -64,8 +67,32 @@ export class ModpackReleaseModQueries extends ModpackReleaseModBaseQueries {
         rows.map((row) => row.fileReleaseType),
         rows.map((row) => row.fileDate),
         rows.map((row) => row.required),
+        rows.map((row) => row.inClientPack),
       ],
     );
+  }
+
+  /** The files the client pack of each given release ships, as release id and file id pairs. Rows recorded without a side are left out. */
+  async getClientFileIds(
+    releaseIds: number[],
+  ): Promise<{ releaseId: number; fileId: number }[]> {
+    if (releaseIds.length === 0) return [];
+
+    const result = await this.runQuery<{
+      release_id: number;
+      file_id: number;
+    }>(
+      "list client file ids of releases",
+      `SELECT release_id, file_id
+       FROM ${this.table}
+       WHERE release_id = ANY($1::int[]) AND in_client_pack`,
+      [releaseIds],
+    );
+
+    return result.rows.map((row) => ({
+      releaseId: row.release_id,
+      fileId: row.file_id,
+    }));
   }
 
   /** Frozen membership of releases, joined to the projects for display. */
