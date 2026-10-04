@@ -1,3 +1,11 @@
+## v1.65.2 (2026-10-04)
+
+### @createrington/server (1.66.0 → 1.66.1)
+- [chore] Bump `createrington-skin-api` from 2.14.0 to 2.15.0, which adds the `cuckooed` and `railroaded` poses to the `/skin` command's pose autocomplete and to the skin and render endpoints
+
+### @createrington/client (0.2.81 → 0.2.82)
+- [chore] Bump `createrington-skin-api` from 2.14.0 to 2.15.0, which adds the `cuckooed` and `railroaded` poses to the render page, the compare hero's pose rotation, and the pose count in the skin API promo
+
 ## v1.65.1 (2026-09-28)
 
 ### @createrington/client (0.2.80 → 0.2.81)
