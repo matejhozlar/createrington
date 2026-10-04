@@ -120,6 +120,7 @@ const RELEASES = {
       },
     },
   ],
+  pagination: { page: 0, limit: 10, total: 2, totalPages: 1 },
 };
 
 const RESOLVED = {
@@ -148,8 +149,10 @@ async function getLatest(headers: Record<string, string> = {}) {
   return await fetch(`${baseUrl}/api/launcher/pack/latest`, { headers });
 }
 
-async function getReleases(headers: Record<string, string> = {}) {
-  return await fetch(`${baseUrl}/api/launcher/pack/releases`, { headers });
+async function getReleases(headers: Record<string, string> = {}, query = "") {
+  return await fetch(`${baseUrl}/api/launcher/pack/releases${query}`, {
+    headers,
+  });
 }
 
 async function resolve(body: unknown, headers: Record<string, string> = {}) {
@@ -228,12 +231,42 @@ describe("GET /api/launcher/pack/releases", () => {
   });
 
   it("answers with an empty list when no release can be installed", async () => {
-    mocks.listReleases.mockResolvedValue({ releases: [] });
+    const empty = {
+      releases: [],
+      pagination: { page: 0, limit: 10, total: 0, totalPages: 0 },
+    };
+    mocks.listReleases.mockResolvedValue(empty);
 
     const res = await getReleases(session);
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ success: true, data: { releases: [] } });
+    expect(await res.json()).toEqual({ success: true, data: empty });
+  });
+
+  it("asks for the first page of 10 when the launcher names no page", async () => {
+    await getReleases(session);
+
+    expect(mocks.listReleases).toHaveBeenCalledWith({ page: 0, limit: 10 });
+  });
+
+  it("asks for the page and size the launcher names", async () => {
+    const res = await getReleases(session, "?page=2&limit=5");
+
+    expect(res.status).toBe(200);
+    expect(mocks.listReleases).toHaveBeenCalledWith({ page: 2, limit: 5 });
+  });
+
+  it.each([
+    ["a negative page", "?page=-1"],
+    ["a page that is not a number", "?page=first"],
+    ["a size of zero", "?limit=0"],
+    ["a size above the maximum", "?limit=26"],
+    ["a fractional size", "?limit=2.5"],
+  ])("refuses %s", async (_label, query) => {
+    const res = await getReleases(session, query);
+
+    expect(res.status).toBe(400);
+    expect(mocks.listReleases).not.toHaveBeenCalled();
   });
 
   it("answers 401 without a launcher session", async () => {

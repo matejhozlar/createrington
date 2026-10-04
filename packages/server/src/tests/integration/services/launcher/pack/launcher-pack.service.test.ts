@@ -66,6 +66,7 @@ import {
 
 const PACK_PROJECT_ID = 995_900_001;
 const HOUR_MS = 60 * 60 * 1000;
+const FIRST_PAGE = { page: 0, limit: 25 };
 
 const ctx = createWorkshopTestContext(995_000_000);
 const originalPackProjectId = config.curseforge.modpackProjectId;
@@ -296,7 +297,7 @@ function archivedOnCurseForge(fileIds: number[]): void {
 }
 
 const listedVersions = async () =>
-  (await launcherPackService.listReleases()).releases.map(
+  (await launcherPackService.listReleases(FIRST_PAGE)).releases.map(
     (release) => release.version,
   );
 
@@ -849,7 +850,7 @@ describe("LauncherPackService.listReleases", () => {
     await seedReadyRelease(modpack, "1.1.0", [file]);
     await seedRelease(modpack, "1.2.0", [file]);
 
-    const { releases } = await launcherPackService.listReleases();
+    const { releases } = await launcherPackService.listReleases(FIRST_PAGE);
 
     expect(releases.map((release) => release.version)).toEqual([
       "1.1.0",
@@ -865,7 +866,54 @@ describe("LauncherPackService.listReleases", () => {
     const modpack = await seedPack();
     await seedRelease(modpack, "1.0.0", [await seedFile()]);
 
-    expect(await launcherPackService.listReleases()).toEqual({ releases: [] });
+    expect(await launcherPackService.listReleases(FIRST_PAGE)).toEqual({
+      releases: [],
+      pagination: { page: 0, limit: 25, total: 0, totalPages: 0 },
+    });
+  });
+
+  it("serves the list in pages and counts only the releases it lists", async () => {
+    const modpack = await seedPack();
+    const file = await seedFile();
+    serveFromCurseForge([file]);
+    const archived = await seedReadyRelease(modpack, "0.9.0", [file]);
+    await seedReadyRelease(modpack, "1.0.0", [file]);
+    await seedReadyRelease(modpack, "1.1.0", [file]);
+    await seedReadyRelease(modpack, "1.2.0", [file]);
+    await seedRelease(modpack, "1.3.0", [file]);
+    archivedOnCurseForge([archived.manifest.fileId]);
+    await launcherPackService.checkReleases(modpack);
+
+    const first = await launcherPackService.listReleases({ page: 0, limit: 2 });
+    const second = await launcherPackService.listReleases({
+      page: 1,
+      limit: 2,
+    });
+    const pastTheEnd = await launcherPackService.listReleases({
+      page: 5,
+      limit: 2,
+    });
+
+    expect(first.releases.map((release) => release.version)).toEqual([
+      "1.2.0",
+      "1.1.0",
+    ]);
+    expect(first.pagination).toEqual({
+      page: 0,
+      limit: 2,
+      total: 3,
+      totalPages: 2,
+    });
+    expect(second.releases.map((release) => release.version)).toEqual([
+      "1.0.0",
+    ]);
+    expect(pastTheEnd.releases).toEqual([]);
+    expect(pastTheEnd.pagination).toEqual({
+      page: 5,
+      limit: 2,
+      total: 3,
+      totalPages: 2,
+    });
   });
 
   it("gives each release the mods it added, updated and removed against the release before it", async () => {
@@ -879,7 +927,7 @@ describe("LauncherPackService.listReleases", () => {
     await seedReadyRelease(modpack, "1.0.0", [kept, outdated, dropped]);
     await seedReadyRelease(modpack, "1.1.0", [kept, updated, fresh]);
 
-    const { releases } = await launcherPackService.listReleases();
+    const { releases } = await launcherPackService.listReleases(FIRST_PAGE);
 
     expect(releases[0].changelog).toEqual({
       previousVersion: "1.0.0",
@@ -930,7 +978,7 @@ describe("LauncherPackService.listReleases", () => {
       notes: "Trains are faster now.\nThe nether was reset.",
     });
 
-    const { releases } = await launcherPackService.listReleases();
+    const { releases } = await launcherPackService.listReleases(FIRST_PAGE);
 
     expect(releases[0].changelog.notes).toBe(
       "Trains are faster now.\nThe nether was reset.",
@@ -947,7 +995,7 @@ describe("LauncherPackService.listReleases", () => {
     archivedOnCurseForge([old.manifest.fileId]);
     await launcherPackService.checkReleases(modpack);
 
-    const { releases } = await launcherPackService.listReleases();
+    const { releases } = await launcherPackService.listReleases(FIRST_PAGE);
 
     expect(releases.map((release) => release.version)).toEqual(["1.1.0"]);
     expect(releases[0].changelog).toEqual(

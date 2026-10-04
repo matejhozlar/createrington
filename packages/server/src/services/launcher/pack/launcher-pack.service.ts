@@ -189,22 +189,38 @@ class LauncherPackService {
    * launcher and not found archived on CurseForge by the last `checkReleases`.
    * Each comes with its changelog: the mods it added, updated and removed
    * against the release recorded before it (listed or not), and the publish
-   * notes. Reads the database only. Empty when there is none.
+   * notes. Paged, `page` counts from 0. Reads the database only. Empty when
+   * there is none or the page is past the end.
    */
-  async listReleases(): Promise<LauncherPackReleasesData> {
+  async listReleases(paging: {
+    page: number;
+    limit: number;
+  }): Promise<LauncherPackReleasesData> {
+    const { page, limit } = paging;
     const modpack = await Q.modpack.find({
       curseforgeProjectId: config.curseforge.modpackProjectId,
     });
-    if (!modpack) return { releases: [] };
+    if (!modpack) {
+      return {
+        releases: [],
+        pagination: { page, limit, total: 0, totalPages: 0 },
+      };
+    }
 
-    const rows = await Q.modpack.release.findAll(
-      {
-        modpackId: modpack.id,
-        launcherReadyAt: { $ne: null },
-        launcherUnavailableAt: null,
-      },
-      { orderBy: "id", orderDirection: "desc" },
-    );
+    const filters = {
+      modpackId: modpack.id,
+      launcherReadyAt: { $ne: null },
+      launcherUnavailableAt: null,
+    };
+    const [rows, total] = await Promise.all([
+      Q.modpack.release.findAll(filters, {
+        orderBy: "id",
+        orderDirection: "desc",
+        limit,
+        offset: page * limit,
+      }),
+      Q.modpack.release.count(filters),
+    ]);
     const releases = await Promise.all(
       rows.map(async (row): Promise<LauncherPackRelease | null> => {
         const pack = toPackData(row);
@@ -215,7 +231,10 @@ class LauncherPackService {
         };
       }),
     );
-    return { releases: releases.filter((release) => release !== null) };
+    return {
+      releases: releases.filter((release) => release !== null),
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    };
   }
 
   /**
