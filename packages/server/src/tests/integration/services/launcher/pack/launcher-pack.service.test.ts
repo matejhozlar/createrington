@@ -969,6 +969,39 @@ describe("LauncherPackService.resolveFiles", () => {
     );
   });
 
+  it("leaves a stored built address alone while the flag cannot be read", async () => {
+    await useBuiltCdnAddress(true);
+    const file = await seedFile({ blocked: true });
+    const late = await seedFile({ blocked: true });
+    serveFromCurseForge([file, late]);
+    serveFromBuiltCdnAddress([file, late]);
+    await launcherPackService.resolveFiles([file.fileId]);
+    await ageStoredFile(file.fileId, 25 * HOUR_MS);
+
+    await useBuiltCdnAddress(true);
+    vi.spyOn(Q.feature.flag, "find").mockRejectedValueOnce(
+      new Error("Connection terminated unexpectedly"),
+    );
+    const resolved = await launcherPackService.resolveFiles([
+      file.fileId,
+      late.fileId,
+    ]);
+
+    expect(findCurseforgeCdnUrls).toHaveBeenCalledTimes(1);
+    expect(resolved.files).toEqual([
+      expect.objectContaining({
+        fileId: file.fileId,
+        source: "curseforge-cdn",
+        url: builtCdnUrl(file.fileId),
+      }),
+      expect.objectContaining({
+        fileId: late.fileId,
+        source: "manual",
+        url: null,
+      }),
+    ]);
+  });
+
   it("keeps serving the built address when the daily check cannot ask CurseForge", async () => {
     await useBuiltCdnAddress(true);
     const file = await seedFile({ blocked: true });

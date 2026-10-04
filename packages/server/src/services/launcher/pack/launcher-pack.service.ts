@@ -75,11 +75,12 @@ function toPackFile(row: CurseforgeFileWithProject): LauncherPackFile | null {
  * answers, else a verified copy the sandbox keeps, else manual), so requests
  * read the database. The built address is unofficial and only used while the
  * `launcher_curseforge_cdn` feature flag is on; once the flag is off, a file
- * stored with it turns manual and is resolved again. A manual file is looked up again
- * at most once an hour, a built address once a day, and both whenever a
- * release is prepared. A release is offered as latest only after
- * `prepareRelease` stored its pack zip, Java version and every client file.
- * Singleton.
+ * stored with it turns manual and is resolved again. While the flag cannot be
+ * read, no address is built and stored ones are left as they are. A manual
+ * file is looked up again at most once an hour, a built address once a day,
+ * and both whenever a release is prepared. A release is offered as latest
+ * only after `prepareRelease` stored its pack zip, Java version and every
+ * client file. Singleton.
  */
 class LauncherPackService {
   private static instance: LauncherPackService;
@@ -312,9 +313,11 @@ class LauncherPackService {
   ): Promise<Map<number, CurseforgeFileWithProject>> {
     const ids = [...new Set(fileIds)];
     const stored = await this.loadStored(ids);
-    const useCdn = await featureFlagService.isEnabled(
+    const cdnFlag = await featureFlagService.readEnabled(
       FeatureFlags.launcherCurseforgeCdn,
     );
+    const useCdn = cdnFlag === true;
+    const cdnSwitchedOff = cdnFlag === false;
 
     const missing = ids.filter((id) => !stored.has(id));
     if (missing.length > 0) await this.resolveFromSources(missing, useCdn);
@@ -325,13 +328,13 @@ class LauncherPackService {
         const age = now - row.resolvedAt.getTime();
         if (row.source === "manual") return age >= options.manualMaxAgeMs;
         if (row.source === "curseforge-cdn") {
-          return !useCdn || age >= options.cdnMaxAgeMs;
+          return cdnSwitchedOff || (useCdn && age >= options.cdnMaxAgeMs);
         }
         return false;
       })
       .map((row) => row.id);
     if (stale.length > 0) {
-      if (!useCdn) {
+      if (cdnSwitchedOff) {
         await Q.curseforge.file.updateAll(
           { source: "manual", downloadUrl: null },
           { id: { $in: stale }, source: "curseforge-cdn" },
