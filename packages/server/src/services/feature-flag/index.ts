@@ -6,6 +6,7 @@ export const FeatureFlags = {
   modpackChangelog: "modpack_changelog",
   gallery: "gallery",
   playtimeStatsReconcile: "playtime_stats_reconcile",
+  launcherCurseforgeCdn: "launcher_curseforge_cdn",
 } as const;
 
 export type FeatureFlagName = (typeof FeatureFlags)[keyof typeof FeatureFlags];

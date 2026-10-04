@@ -12,6 +12,7 @@ import {
   type ModpackManifestEntry,
 } from "@/services/curseforge";
 import { ingestProjectsWhere } from "@/services/curseforge/ingest";
+import { featureFlagService, FeatureFlags } from "@/services/feature-flag";
 import { findModrinthFilesBySha1 } from "@/services/modrinth";
 import { getMinecraftJavaMajorVersion } from "@/utils/mojang-java-version";
 import type { Modpack, ModpackRelease } from "@createrington/shared/db";
@@ -19,8 +20,10 @@ import {
   LauncherPackErrorCode,
   type LauncherPackData,
   type LauncherPackFile,
+  type LauncherPackFileSource,
   type LauncherPackFilesData,
 } from "@createrington/shared/launcher";
+import { findCurseforgeCdnUrls } from "./curseforge-cdn";
 import {
   curseforgeFilePageUrl,
   packFolderForClass,
@@ -30,6 +33,11 @@ import {
 import { findSandboxFileUrls } from "./sandbox-files";
 
 const MANUAL_RECHECK_MS = 60 * 60 * 1000;
+const CDN_RECHECK_MS = 24 * 60 * 60 * 1000;
+const RECHECKED_SOURCES: LauncherPackFileSource[] = [
+  "manual",
+  "curseforge-cdn",
+];
 const NOTICE_MAX_FILES = 15;
 
 function packError(
@@ -62,12 +70,16 @@ function toPackFile(row: CurseforgeFileWithProject): LauncherPackFile | null {
  * pack zip: which release is the latest, and for the file ids in a pack
  * manifest, where to download each file and the SHA-1 to verify it against.
  * Only the pack linked to `CURSEFORGE_MODPACK_PROJECT_ID` is served. Files are
- * resolved once and stored (CurseForge CDN, else a byte-identical file on
- * Modrinth, else a verified copy the sandbox keeps, else manual), so requests
- * read the database; a manual file is
- * looked up again at most once an hour. A release is offered as latest only
- * after `prepareRelease` stored its pack zip, Java version and every client
- * file. Singleton.
+ * resolved once and stored (the link CurseForge gives, else a byte-identical
+ * file on Modrinth, else the file's built address on CurseForge's CDN when it
+ * answers, else a verified copy the sandbox keeps, else manual), so requests
+ * read the database. The built address is unofficial and only used while the
+ * `launcher_curseforge_cdn` feature flag is on; once the flag is off, a file
+ * stored with it turns manual and is resolved again. A manual file is looked up again
+ * at most once an hour, a built address once a day, and both whenever a
+ * release is prepared. A release is offered as latest only after
+ * `prepareRelease` stored its pack zip, Java version and every client file.
+ * Singleton.
  */
 class LauncherPackService {
   private static instance: LauncherPackService;
@@ -142,6 +154,7 @@ class LauncherPackService {
     try {
       stored = await this.ensureResolved(ids, {
         manualMaxAgeMs: MANUAL_RECHECK_MS,
+        cdnMaxAgeMs: CDN_RECHECK_MS,
         strict: false,
       });
     } catch (error) {
@@ -216,7 +229,7 @@ class LauncherPackService {
       );
       const stored = await this.ensureResolved(
         clientEntries.map((entry) => entry.fileId),
-        { manualMaxAgeMs: 0, strict: true },
+        { manualMaxAgeMs: 0, cdnMaxAgeMs: 0, strict: true },
       );
       const unresolved = clientEntries.filter((entry) => {
         const row = stored.get(entry.fileId);
@@ -295,38 +308,51 @@ class LauncherPackService {
 
   private async ensureResolved(
     fileIds: number[],
-    options: { manualMaxAgeMs: number; strict: boolean },
+    options: { manualMaxAgeMs: number; cdnMaxAgeMs: number; strict: boolean },
   ): Promise<Map<number, CurseforgeFileWithProject>> {
     const ids = [...new Set(fileIds)];
     const stored = await this.loadStored(ids);
+    const useCdn = await featureFlagService.isEnabled(
+      FeatureFlags.launcherCurseforgeCdn,
+    );
 
     const missing = ids.filter((id) => !stored.has(id));
-    if (missing.length > 0) await this.resolveFromSources(missing);
+    if (missing.length > 0) await this.resolveFromSources(missing, useCdn);
 
-    const staleBefore = Date.now() - options.manualMaxAgeMs;
-    const staleManual = [...stored.values()]
-      .filter(
-        (row) =>
-          row.source === "manual" && row.resolvedAt.getTime() <= staleBefore,
-      )
+    const now = Date.now();
+    const stale = [...stored.values()]
+      .filter((row) => {
+        const age = now - row.resolvedAt.getTime();
+        if (row.source === "manual") return age >= options.manualMaxAgeMs;
+        if (row.source === "curseforge-cdn") {
+          return !useCdn || age >= options.cdnMaxAgeMs;
+        }
+        return false;
+      })
       .map((row) => row.id);
-    if (staleManual.length > 0) {
+    if (stale.length > 0) {
+      if (!useCdn) {
+        await Q.curseforge.file.updateAll(
+          { source: "manual", downloadUrl: null },
+          { id: { $in: stale }, source: "curseforge-cdn" },
+        );
+      }
       await Q.curseforge.file.updateAll(
         { resolvedAt: new Date() },
-        { id: { $in: staleManual }, source: "manual" },
+        { id: { $in: stale }, source: { $in: RECHECKED_SOURCES } },
       );
       try {
-        await this.resolveFromSources(staleManual);
+        await this.resolveFromSources(stale, useCdn);
       } catch (error) {
         if (options.strict) throw error;
         logger.warn(
-          `Could not look up ${staleManual.length} manual pack file(s) again:`,
+          `Could not look up ${stale.length} pack file(s) again:`,
           error,
         );
       }
     }
 
-    return missing.length > 0 || staleManual.length > 0
+    return missing.length > 0 || stale.length > 0
       ? this.loadStored(ids)
       : stored;
   }
@@ -338,7 +364,10 @@ class LauncherPackService {
     return new Map(rows.map((row) => [row.id, row]));
   }
 
-  private async resolveFromSources(fileIds: number[]): Promise<void> {
+  private async resolveFromSources(
+    fileIds: number[],
+    useCdn: boolean,
+  ): Promise<void> {
     const details = (await getFilesDetails(fileIds)).flatMap((detail) =>
       detail.gameId === CURSEFORGE_MINECRAFT_GAME_ID &&
       detail.fileName !== null &&
@@ -367,17 +396,27 @@ class LauncherPackService {
     });
     if (servable.length === 0) return;
 
+    const blocked = servable.filter((detail) => detail.downloadUrl === null);
     const modrinth = await findModrinthFilesBySha1(
-      servable
-        .filter((detail) => detail.downloadUrl === null)
-        .map((detail) => detail.sha1),
+      blocked.map((detail) => detail.sha1),
     );
 
-    const sandbox = await findSandboxFileUrls(
-      servable
-        .filter(
-          (detail) => detail.downloadUrl === null && !modrinth.has(detail.sha1),
+    const notOnModrinth = blocked.filter(
+      (detail) => !modrinth.has(detail.sha1),
+    );
+    const cdn = useCdn
+      ? await findCurseforgeCdnUrls(
+          notOnModrinth.map((detail) => ({
+            fileId: detail.fileId,
+            fileName: detail.fileName,
+            size: detail.fileLength,
+          })),
         )
+      : new Map<number, string>();
+
+    const sandbox = await findSandboxFileUrls(
+      notOnModrinth
+        .filter((detail) => !cdn.has(detail.fileId))
         .map((detail) => ({
           fileId: detail.fileId,
           sha1: detail.sha1,
@@ -392,11 +431,12 @@ class LauncherPackService {
         fileName: detail.fileName,
         fileSize: detail.fileLength,
         sha1: detail.sha1,
-        ...pickFileSource(
-          detail.downloadUrl,
-          modrinth.get(detail.sha1)?.url ?? null,
-          sandbox.get(detail.fileId) ?? null,
-        ),
+        ...pickFileSource({
+          curseforge: detail.downloadUrl,
+          modrinth: modrinth.get(detail.sha1)?.url ?? null,
+          curseforgeCdn: cdn.get(detail.fileId) ?? null,
+          storage: sandbox.get(detail.fileId) ?? null,
+        }),
       })),
     );
   }
@@ -478,7 +518,7 @@ class LauncherPackService {
         title: "⚠️ Launcher: files without a download source",
         description: [
           `**Pack**: ${modpack.name} ${version}`,
-          "CurseForge does not serve these client files, Modrinth has no identical copy and the sandbox keeps none, so launcher players are asked to download them in the browser:",
+          "CurseForge gives no download link for these client files, Modrinth has no identical copy, their built address on CurseForge's CDN is switched off or does not answer, and the sandbox keeps none, so launcher players are asked to download them in the browser:",
           ...lines,
         ].join("\n"),
         color: EmbedColors.Warning,

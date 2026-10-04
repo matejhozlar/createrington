@@ -25,6 +25,9 @@ vi.mock("@/services/curseforge/ingest", () => ({
 vi.mock("@/services/modrinth", () => ({
   findModrinthFilesBySha1: vi.fn(async () => new Map()),
 }));
+vi.mock("@/services/launcher/pack/curseforge-cdn", () => ({
+  findCurseforgeCdnUrls: vi.fn(async () => new Map()),
+}));
 vi.mock("@/services/launcher/pack/sandbox-files", () => ({
   findSandboxFileUrls: vi.fn(async () => new Map()),
 }));
@@ -44,6 +47,8 @@ import {
   type ModpackManifestSides,
 } from "@/services/curseforge";
 import { ingestProjectsWhere } from "@/services/curseforge/ingest";
+import { featureFlagService, FeatureFlags } from "@/services/feature-flag";
+import { findCurseforgeCdnUrls } from "@/services/launcher/pack/curseforge-cdn";
 import { launcherPackService } from "@/services/launcher/pack/launcher-pack.service";
 import { findSandboxFileUrls } from "@/services/launcher/pack/sandbox-files";
 import { findModrinthFilesBySha1 } from "@/services/modrinth";
@@ -62,6 +67,7 @@ const HOUR_MS = 60 * 60 * 1000;
 
 const ctx = createWorkshopTestContext(995_000_000);
 const originalPackProjectId = config.curseforge.modpackProjectId;
+let cdnFlagBefore: boolean | null = null;
 
 let nextFileId = 990_000_000;
 let nextPackFileId = 990_500_000;
@@ -71,6 +77,10 @@ const cdnUrl = (fileId: number) =>
   `https://edge.forgecdn.net/files/${fileId}/mod-${fileId}.jar`;
 const modrinthUrl = (fileId: number) =>
   `https://cdn.modrinth.com/data/vitest/versions/${fileId}/mod-${fileId}.jar`;
+const builtCdnUrl = (fileId: number) =>
+  `https://mediafilez.forgecdn.net/files/vitest/${fileId}/mod-${fileId}.jar`;
+const sandboxUrl = (fileId: number) =>
+  `https://sandbox.createrington.test/api/pack/files/${fileId}`;
 
 interface SeededFile {
   fileId: number;
@@ -137,6 +147,34 @@ function serveFromModrinth(files: SeededFile[]): void {
     );
   });
 }
+
+function serveFromBuiltCdnAddress(files: SeededFile[]): void {
+  const answering = new Set(files.map((file) => file.fileId));
+  vi.mocked(findCurseforgeCdnUrls).mockImplementation(async (queries) => {
+    return new Map(
+      queries.flatMap((query) =>
+        answering.has(query.fileId)
+          ? [[query.fileId, builtCdnUrl(query.fileId)] as const]
+          : [],
+      ),
+    );
+  });
+}
+
+function serveFromSandbox(files: SeededFile[]): void {
+  vi.mocked(findSandboxFileUrls).mockResolvedValue(
+    new Map(files.map((file) => [file.fileId, sandboxUrl(file.fileId)])),
+  );
+}
+
+const useBuiltCdnAddress = (enabled: boolean) =>
+  featureFlagService.setEnabled(FeatureFlags.launcherCurseforgeCdn, enabled);
+
+const ageStoredFile = (fileId: number, ageMs: number) =>
+  Q.curseforge.file.updateAll(
+    { resolvedAt: new Date(Date.now() - ageMs) },
+    { id: fileId },
+  );
 
 function ingestFromCurseForge(classByProject: Map<number, number>): void {
   vi.mocked(ingestProjectsWhere).mockImplementation(
@@ -239,6 +277,11 @@ const isReady = async (releaseId: number) =>
 
 beforeAll(async () => {
   await pool.query("SELECT 1");
+  const flag = await Q.feature.flag.find({
+    name: FeatureFlags.launcherCurseforgeCdn,
+  });
+  cdnFlagBefore = flag?.enabled ?? null;
+  await useBuiltCdnAddress(false);
 });
 
 beforeEach(() => {
@@ -248,6 +291,7 @@ beforeEach(() => {
   vi.mocked(getModpackFile).mockResolvedValue(null);
   vi.mocked(ingestProjectsWhere).mockResolvedValue(0);
   vi.mocked(findModrinthFilesBySha1).mockResolvedValue(new Map());
+  vi.mocked(findCurseforgeCdnUrls).mockResolvedValue(new Map());
   vi.mocked(findSandboxFileUrls).mockResolvedValue(new Map());
   vi.mocked(getMinecraftJavaMajorVersion).mockResolvedValue(21);
   sendMock.mockResolvedValue({ success: true });
@@ -263,12 +307,20 @@ afterEach(async () => {
     });
   }
   await cleanupWorkshopTestContext(ctx);
+  await useBuiltCdnAddress(false);
   vi.resetAllMocks();
 });
 
 afterAll(async () => {
   (config.curseforge as { modpackProjectId: number }).modpackProjectId =
     originalPackProjectId;
+  if (cdnFlagBefore === null) {
+    await Q.feature.flag.deleteAll({
+      name: FeatureFlags.launcherCurseforgeCdn,
+    });
+  } else {
+    await useBuiltCdnAddress(cdnFlagBefore);
+  }
   await pool.end();
 });
 
@@ -419,10 +471,7 @@ describe("LauncherPackService.prepareRelease", () => {
     const files = [served, onModrinth, onSandbox];
     serveFromCurseForge(files);
     serveFromModrinth([onModrinth]);
-    const sandboxUrl = `https://sandbox.createrington.test/api/pack/files/${onSandbox.fileId}`;
-    vi.mocked(findSandboxFileUrls).mockResolvedValue(
-      new Map([[onSandbox.fileId, sandboxUrl]]),
-    );
+    serveFromSandbox([onSandbox]);
     const { release, manifest } = await seedRelease(modpack, "1.0.0", files);
 
     await launcherPackService.prepareRelease(modpack, release.id, manifest);
@@ -441,8 +490,128 @@ describe("LauncherPackService.prepareRelease", () => {
       expect.objectContaining({
         fileId: onSandbox.fileId,
         source: "storage",
-        url: sandboxUrl,
+        url: sandboxUrl(onSandbox.fileId),
         sha1: sha1Of(onSandbox.fileId),
+      }),
+    ]);
+  });
+
+  it("hands out the built CDN address of a blocked file Modrinth lacks, and asks the sandbox only about what is left", async () => {
+    await useBuiltCdnAddress(true);
+    const modpack = await seedPack();
+    const served = await seedFile();
+    const onModrinth = await seedFile({ blocked: true });
+    const onCdn = await seedFile({ blocked: true });
+    const onSandbox = await seedFile({ blocked: true });
+    const files = [served, onModrinth, onCdn, onSandbox];
+    serveFromCurseForge(files);
+    serveFromModrinth([onModrinth]);
+    serveFromBuiltCdnAddress([onCdn, onModrinth, served]);
+    serveFromSandbox([onSandbox]);
+    const { release, manifest } = await seedRelease(modpack, "1.0.0", files);
+
+    await launcherPackService.prepareRelease(modpack, release.id, manifest);
+
+    expect(findCurseforgeCdnUrls).toHaveBeenCalledTimes(1);
+    expect(findCurseforgeCdnUrls).toHaveBeenCalledWith([
+      {
+        fileId: onCdn.fileId,
+        fileName: `mod-${onCdn.fileId}.jar`,
+        size: onCdn.detail.fileLength,
+      },
+      {
+        fileId: onSandbox.fileId,
+        fileName: `mod-${onSandbox.fileId}.jar`,
+        size: onSandbox.detail.fileLength,
+      },
+    ]);
+    expect(findSandboxFileUrls).toHaveBeenCalledWith([
+      expect.objectContaining({ fileId: onSandbox.fileId }),
+    ]);
+    expect(sendMock).not.toHaveBeenCalled();
+    const resolved = await launcherPackService.resolveFiles(
+      files.map((file) => file.fileId),
+    );
+    expect(resolved.files).toEqual([
+      expect.objectContaining({ fileId: served.fileId, source: "curseforge" }),
+      expect.objectContaining({
+        fileId: onModrinth.fileId,
+        source: "modrinth",
+      }),
+      expect.objectContaining({
+        fileId: onCdn.fileId,
+        source: "curseforge-cdn",
+        url: builtCdnUrl(onCdn.fileId),
+        sha1: sha1Of(onCdn.fileId),
+      }),
+      expect.objectContaining({ fileId: onSandbox.fileId, source: "storage" }),
+    ]);
+  });
+
+  it("falls through to manual and tells the owner when the built address does not answer", async () => {
+    await useBuiltCdnAddress(true);
+    const modpack = await seedPack();
+    const blocked = await seedFile({ blocked: true });
+    serveFromCurseForge([blocked]);
+    const { release, manifest } = await seedRelease(modpack, "1.0.0", [
+      blocked,
+    ]);
+
+    await launcherPackService.prepareRelease(modpack, release.id, manifest);
+
+    expect(findCurseforgeCdnUrls).toHaveBeenCalledTimes(1);
+    expect(await isReady(release.id)).toBe(true);
+    expect(sendMock).toHaveBeenCalledTimes(1);
+    expect(sendMock.mock.calls[0][0].embeds.data.description).toContain(
+      `mod-${blocked.fileId}.jar`,
+    );
+    const resolved = await launcherPackService.resolveFiles([blocked.fileId]);
+    expect(resolved.files).toEqual([
+      expect.objectContaining({
+        fileId: blocked.fileId,
+        source: "manual",
+        url: null,
+      }),
+    ]);
+  });
+
+  it("does not build an address while the source is switched off", async () => {
+    const modpack = await seedPack();
+    const blocked = await seedFile({ blocked: true });
+    serveFromCurseForge([blocked]);
+    serveFromBuiltCdnAddress([blocked]);
+    const { release, manifest } = await seedRelease(modpack, "1.0.0", [
+      blocked,
+    ]);
+
+    await launcherPackService.prepareRelease(modpack, release.id, manifest);
+
+    expect(findCurseforgeCdnUrls).not.toHaveBeenCalled();
+    const resolved = await launcherPackService.resolveFiles([blocked.fileId]);
+    expect(resolved.files[0].source).toBe("manual");
+  });
+
+  it("checks a stored built address again when a release is prepared", async () => {
+    await useBuiltCdnAddress(true);
+    const modpack = await seedPack();
+    const blocked = await seedFile({ blocked: true });
+    serveFromCurseForge([blocked]);
+    serveFromBuiltCdnAddress([blocked]);
+    await launcherPackService.resolveFiles([blocked.fileId]);
+    serveFromBuiltCdnAddress([]);
+    serveFromSandbox([blocked]);
+    const { release, manifest } = await seedRelease(modpack, "1.0.0", [
+      blocked,
+    ]);
+
+    await launcherPackService.prepareRelease(modpack, release.id, manifest);
+
+    const resolved = await launcherPackService.resolveFiles([blocked.fileId]);
+    expect(resolved.files).toEqual([
+      expect.objectContaining({
+        fileId: blocked.fileId,
+        source: "storage",
+        url: sandboxUrl(blocked.fileId),
       }),
     ]);
   });
@@ -716,6 +885,105 @@ describe("LauncherPackService.resolveFiles", () => {
       expect.objectContaining({
         source: "modrinth",
         url: modrinthUrl(file.fileId),
+      }),
+    );
+  });
+
+  it("checks a built address again after a day and falls through when it stopped answering", async () => {
+    await useBuiltCdnAddress(true);
+    const file = await seedFile({ blocked: true });
+    serveFromCurseForge([file]);
+    serveFromBuiltCdnAddress([file]);
+    await launcherPackService.resolveFiles([file.fileId]);
+    serveFromBuiltCdnAddress([]);
+
+    await ageStoredFile(file.fileId, 23 * HOUR_MS);
+    const withinTheDay = await launcherPackService.resolveFiles([file.fileId]);
+    await ageStoredFile(file.fileId, 25 * HOUR_MS);
+    const afterTheDay = await launcherPackService.resolveFiles([file.fileId]);
+
+    expect(withinTheDay.files[0]).toEqual(
+      expect.objectContaining({
+        source: "curseforge-cdn",
+        url: builtCdnUrl(file.fileId),
+      }),
+    );
+    expect(afterTheDay.files[0]).toEqual(
+      expect.objectContaining({ source: "manual", url: null }),
+    );
+  });
+
+  it("keeps a built address that still answers at the daily check", async () => {
+    await useBuiltCdnAddress(true);
+    const file = await seedFile({ blocked: true });
+    serveFromCurseForge([file]);
+    serveFromBuiltCdnAddress([file]);
+    await launcherPackService.resolveFiles([file.fileId]);
+    await ageStoredFile(file.fileId, 25 * HOUR_MS);
+
+    const resolved = await launcherPackService.resolveFiles([file.fileId]);
+
+    expect(findCurseforgeCdnUrls).toHaveBeenCalledTimes(2);
+    expect(resolved.files[0]).toEqual(
+      expect.objectContaining({
+        source: "curseforge-cdn",
+        url: builtCdnUrl(file.fileId),
+      }),
+    );
+  });
+
+  it("resolves a file stored with the built address again as soon as the source is switched off", async () => {
+    await useBuiltCdnAddress(true);
+    const file = await seedFile({ blocked: true });
+    serveFromCurseForge([file]);
+    serveFromBuiltCdnAddress([file]);
+    const whileOn = await launcherPackService.resolveFiles([file.fileId]);
+    serveFromSandbox([file]);
+
+    await useBuiltCdnAddress(false);
+    const whileOff = await launcherPackService.resolveFiles([file.fileId]);
+
+    expect(whileOn.files[0].source).toBe("curseforge-cdn");
+    expect(findCurseforgeCdnUrls).toHaveBeenCalledTimes(1);
+    expect(whileOff.files[0]).toEqual(
+      expect.objectContaining({
+        source: "storage",
+        url: sandboxUrl(file.fileId),
+      }),
+    );
+  });
+
+  it("stops handing out the built address once the source is switched off, even while CurseForge cannot be asked", async () => {
+    await useBuiltCdnAddress(true);
+    const file = await seedFile({ blocked: true });
+    serveFromCurseForge([file]);
+    serveFromBuiltCdnAddress([file]);
+    await launcherPackService.resolveFiles([file.fileId]);
+    vi.mocked(getFilesDetails).mockRejectedValue(new Error("CurseForge 504"));
+
+    await useBuiltCdnAddress(false);
+    const resolved = await launcherPackService.resolveFiles([file.fileId]);
+
+    expect(resolved.files[0]).toEqual(
+      expect.objectContaining({ source: "manual", url: null }),
+    );
+  });
+
+  it("keeps serving the built address when the daily check cannot ask CurseForge", async () => {
+    await useBuiltCdnAddress(true);
+    const file = await seedFile({ blocked: true });
+    serveFromCurseForge([file]);
+    serveFromBuiltCdnAddress([file]);
+    await launcherPackService.resolveFiles([file.fileId]);
+    await ageStoredFile(file.fileId, 25 * HOUR_MS);
+    vi.mocked(getFilesDetails).mockRejectedValue(new Error("CurseForge 504"));
+
+    const resolved = await launcherPackService.resolveFiles([file.fileId]);
+
+    expect(resolved.files[0]).toEqual(
+      expect.objectContaining({
+        source: "curseforge-cdn",
+        url: builtCdnUrl(file.fileId),
       }),
     );
   });

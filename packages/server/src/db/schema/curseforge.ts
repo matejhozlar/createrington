@@ -74,7 +74,9 @@ export const curseforgeProject = pgTable(
 // ships) and read from here afterwards: a published file never changes and
 // CurseForge drops archived files. sha1 and fileSize are always CurseForge's
 // values, whichever source serves the bytes. downloadUrl is null for manual.
-// A manual row is looked up again later, since a source can appear.
+// A manual row is looked up again later, since a source can appear, and so
+// is a curseforge-cdn row, since its address is unofficial and can stop
+// answering.
 
 export const curseforgeFile = pgTable(
   "curseforge_file",
