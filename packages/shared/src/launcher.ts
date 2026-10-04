@@ -115,8 +115,30 @@ export interface LauncherPackData {
   };
 }
 
+export interface LauncherPackChangelogEntry {
+  projectId: number;
+  name: string;
+  url: string | null;
+  iconUrl: string | null;
+  label: string;
+  previousLabel: string | null;
+  disabled: boolean;
+}
+
+export interface LauncherPackChangelog {
+  previousVersion: string | null;
+  added: LauncherPackChangelogEntry[];
+  updated: LauncherPackChangelogEntry[];
+  removed: LauncherPackChangelogEntry[];
+  notes: string | null;
+}
+
+export interface LauncherPackRelease extends LauncherPackData {
+  changelog: LauncherPackChangelog;
+}
+
 export interface LauncherPackReleasesData {
-  releases: LauncherPackData[];
+  releases: LauncherPackRelease[];
 }
 
 export interface LauncherPackFile {

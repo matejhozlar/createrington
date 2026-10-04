@@ -99,12 +99,15 @@ async function seedFile(
     sides?: ModpackManifestSides;
     required?: boolean;
     detail?: Partial<CurseForgeFileDetail>;
+    newFileOf?: SeededFile;
   } = {},
 ): Promise<SeededFile> {
-  const projectId = await seedProject(ctx, undefined, {
-    classId: options.classId ?? 6,
-    websiteUrl: `https://www.curseforge.com/minecraft/mc-mods/vitest-${nextFileId}`,
-  });
+  const projectId =
+    options.newFileOf?.projectId ??
+    (await seedProject(ctx, undefined, {
+      classId: options.classId ?? 6,
+      websiteUrl: `https://www.curseforge.com/minecraft/mc-mods/vitest-${nextFileId}`,
+    }));
   const fileId = nextFileId++;
   return {
     fileId,
@@ -852,7 +855,10 @@ describe("LauncherPackService.listReleases", () => {
       "1.1.0",
       "1.0.0",
     ]);
-    expect(releases[0]).toEqual(await launcherPackService.getLatestPack());
+    expect(releases[0]).toEqual({
+      ...(await launcherPackService.getLatestPack()),
+      changelog: expect.any(Object),
+    });
   });
 
   it("is empty while no release is ready", async () => {
@@ -860,6 +866,96 @@ describe("LauncherPackService.listReleases", () => {
     await seedRelease(modpack, "1.0.0", [await seedFile()]);
 
     expect(await launcherPackService.listReleases()).toEqual({ releases: [] });
+  });
+
+  it("gives each release the mods it added, updated and removed against the release before it", async () => {
+    const modpack = await seedPack();
+    const kept = await seedFile();
+    const outdated = await seedFile();
+    const updated = await seedFile({ newFileOf: outdated });
+    const dropped = await seedFile();
+    const fresh = await seedFile();
+    serveFromCurseForge([kept, outdated, updated, dropped, fresh]);
+    await seedReadyRelease(modpack, "1.0.0", [kept, outdated, dropped]);
+    await seedReadyRelease(modpack, "1.1.0", [kept, updated, fresh]);
+
+    const { releases } = await launcherPackService.listReleases();
+
+    expect(releases[0].changelog).toEqual({
+      previousVersion: "1.0.0",
+      added: [
+        {
+          projectId: fresh.projectId,
+          name: expect.any(String),
+          url: expect.stringContaining("curseforge.com"),
+          iconUrl: null,
+          label: `Mod ${fresh.fileId}`,
+          previousLabel: null,
+          disabled: false,
+        },
+      ],
+      updated: [
+        expect.objectContaining({
+          projectId: updated.projectId,
+          label: `Mod ${updated.fileId}`,
+          previousLabel: `Mod ${outdated.fileId}`,
+        }),
+      ],
+      removed: [
+        expect.objectContaining({
+          projectId: dropped.projectId,
+          label: `Mod ${dropped.fileId}`,
+          previousLabel: null,
+        }),
+      ],
+      notes: null,
+    });
+    expect(releases[1].changelog).toEqual({
+      previousVersion: null,
+      added: [],
+      updated: [],
+      removed: [],
+      notes: null,
+    });
+  });
+
+  it("carries the notes written for a release", async () => {
+    const modpack = await seedPack();
+    const file = await seedFile();
+    serveFromCurseForge([file]);
+    const { manifest } = await seedReadyRelease(modpack, "1.0.0", [file]);
+    await Q.modpack.publish.create({
+      modpackId: modpack.id,
+      clientFileId: manifest.fileId,
+      notes: "Trains are faster now.\nThe nether was reset.",
+    });
+
+    const { releases } = await launcherPackService.listReleases();
+
+    expect(releases[0].changelog.notes).toBe(
+      "Trains are faster now.\nThe nether was reset.",
+    );
+  });
+
+  it("compares a release with the one recorded before it even when that one is no longer listed", async () => {
+    const modpack = await seedPack();
+    const kept = await seedFile();
+    const fresh = await seedFile();
+    serveFromCurseForge([kept, fresh]);
+    const old = await seedReadyRelease(modpack, "1.0.0", [kept]);
+    await seedReadyRelease(modpack, "1.1.0", [kept, fresh]);
+    archivedOnCurseForge([old.manifest.fileId]);
+    await launcherPackService.checkReleases(modpack);
+
+    const { releases } = await launcherPackService.listReleases();
+
+    expect(releases.map((release) => release.version)).toEqual(["1.1.0"]);
+    expect(releases[0].changelog).toEqual(
+      expect.objectContaining({
+        previousVersion: "1.0.0",
+        added: [expect.objectContaining({ projectId: fresh.projectId })],
+      }),
+    );
   });
 });
 

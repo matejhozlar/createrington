@@ -81,7 +81,26 @@ const PACK = {
 
 const RELEASES = {
   releases: [
-    PACK,
+    {
+      ...PACK,
+      changelog: {
+        previousVersion: "1.3.3",
+        added: [],
+        updated: [
+          {
+            projectId: 328085,
+            name: "Create",
+            url: "https://www.curseforge.com/minecraft/mc-mods/create",
+            iconUrl: null,
+            label: "create-1.21.1-6.0.10",
+            previousLabel: "create-1.21.1-6.0.9",
+            disabled: false,
+          },
+        ],
+        removed: [],
+        notes: "Trains are faster now.",
+      },
+    },
     {
       ...PACK,
       version: "1.3.3",
@@ -91,6 +110,13 @@ const RELEASES = {
         fileId: 7090001,
         fileName: "createrington-rails-n-sails-1.3.3.zip",
         url: "https://edge.forgecdn.net/files/7090/1/createrington-rails-n-sails-1.3.3.zip",
+      },
+      changelog: {
+        previousVersion: null,
+        added: [],
+        updated: [],
+        removed: [],
+        notes: null,
       },
     },
   ],
