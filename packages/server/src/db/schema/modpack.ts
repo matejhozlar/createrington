@@ -143,6 +143,9 @@ export const modpackPublish = pgTable(
 // javaMajorVersion the Java that Minecraft version asks for. launcherReadyAt
 // is set once all of that is stored and every client file of the release has
 // a curseforge_file row; the launcher is only ever offered a release with it.
+// launcherUnavailableAt is set while CurseForge no longer serves the pack zip
+// or one of the release's client files (archived), and cleared when it serves
+// them again; such a release is left out of the list of installable releases.
 
 export const modpackRelease = pgTable(
   "modpack_release",
@@ -165,6 +168,9 @@ export const modpackRelease = pgTable(
     packDownloadUrl: text("pack_download_url"),
     javaMajorVersion: integer("java_major_version"),
     launcherReadyAt: timestamp("launcher_ready_at", { withTimezone: true }),
+    launcherUnavailableAt: timestamp("launcher_unavailable_at", {
+      withTimezone: true,
+    }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

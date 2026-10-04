@@ -16,6 +16,7 @@ const { LAUNCHER_SECRET, WEB_SECRET, mocks } = vi.hoisted(() => ({
   WEB_SECRET: "test-web-secret-please-do-not-use-in-prod",
   mocks: {
     getLatestPack: vi.fn(),
+    listReleases: vi.fn(),
     resolveFiles: vi.fn(),
   },
 }));
@@ -53,6 +54,7 @@ vi.mock("@/services/auth/admin-status/admin-status.service", () => ({
 vi.mock("@/services/launcher/pack/launcher-pack.service", () => ({
   launcherPackService: {
     getLatestPack: mocks.getLatestPack,
+    listReleases: mocks.listReleases,
     resolveFiles: mocks.resolveFiles,
   },
 }));
@@ -75,6 +77,23 @@ const PACK = {
     size: 4500000,
     sha1: "d".repeat(40),
   },
+};
+
+const RELEASES = {
+  releases: [
+    PACK,
+    {
+      ...PACK,
+      version: "1.3.3",
+      releasedAt: "2026-09-25T10:00:00.000Z",
+      zip: {
+        ...PACK.zip,
+        fileId: 7090001,
+        fileName: "createrington-rails-n-sails-1.3.3.zip",
+        url: "https://edge.forgecdn.net/files/7090/1/createrington-rails-n-sails-1.3.3.zip",
+      },
+    },
+  ],
 };
 
 const RESOLVED = {
@@ -101,6 +120,10 @@ let session: Record<string, string>;
 
 async function getLatest(headers: Record<string, string> = {}) {
   return await fetch(`${baseUrl}/api/launcher/pack/latest`, { headers });
+}
+
+async function getReleases(headers: Record<string, string> = {}) {
+  return await fetch(`${baseUrl}/api/launcher/pack/releases`, { headers });
 }
 
 async function resolve(body: unknown, headers: Record<string, string> = {}) {
@@ -137,6 +160,7 @@ afterAll(async () => {
 beforeEach(() => {
   vi.resetAllMocks();
   mocks.getLatestPack.mockResolvedValue(PACK);
+  mocks.listReleases.mockResolvedValue(RELEASES);
   mocks.resolveFiles.mockResolvedValue(RESOLVED);
 });
 
@@ -166,6 +190,32 @@ describe("GET /api/launcher/pack/latest", () => {
     expect(res.status).toBe(401);
     expect((await res.json()).error.code).toBe("INVALID_TOKEN");
     expect(mocks.getLatestPack).not.toHaveBeenCalled();
+  });
+});
+
+describe("GET /api/launcher/pack/releases", () => {
+  it("gives a launcher session the installable releases", async () => {
+    const res = await getReleases(session);
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ success: true, data: RELEASES });
+  });
+
+  it("answers with an empty list when no release can be installed", async () => {
+    mocks.listReleases.mockResolvedValue({ releases: [] });
+
+    const res = await getReleases(session);
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ success: true, data: { releases: [] } });
+  });
+
+  it("answers 401 without a launcher session", async () => {
+    const res = await getReleases();
+
+    expect(res.status).toBe(401);
+    expect((await res.json()).error.code).toBe("AUTH_REQUIRED");
+    expect(mocks.listReleases).not.toHaveBeenCalled();
   });
 });
 

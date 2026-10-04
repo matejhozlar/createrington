@@ -61,7 +61,10 @@ vi.mock("@/services/modpack/changelog", () => ({
 }));
 
 vi.mock("@/services/launcher/pack/launcher-pack.service", () => ({
-  launcherPackService: { prepareRelease: vi.fn(async () => undefined) },
+  launcherPackService: {
+    prepareRelease: vi.fn(async () => undefined),
+    checkReleases: vi.fn(async () => undefined),
+  },
 }));
 
 import pool, { Q } from "@/db";
@@ -1966,6 +1969,27 @@ describe("ModpackService release history", () => {
     await modpackService.reconcile(modpack.id);
 
     expect(launcherPackService.prepareRelease).toHaveBeenCalledTimes(2);
+  });
+
+  it("has the launcher pack service check its releases on every reconcile", async () => {
+    const modpack = await seedModpack(ctx, { curseforgeProjectId: 5011 });
+    const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const member = await seedPackMod(ctx, workshop);
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      manifest({
+        version: "1.0.0",
+        modIds: new Set([member.curseforgeProjectId]),
+      }),
+    );
+    vi.mocked(launcherPackService.checkReleases).mockClear();
+
+    await modpackService.reconcile(modpack.id);
+    await modpackService.reconcile(modpack.id);
+
+    expect(launcherPackService.checkReleases).toHaveBeenCalledTimes(2);
+    expect(launcherPackService.checkReleases).toHaveBeenLastCalledWith(
+      expect.objectContaining({ id: modpack.id }),
+    );
   });
 
   it("exposes a release's frozen membership", async () => {

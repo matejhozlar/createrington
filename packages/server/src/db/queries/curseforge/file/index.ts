@@ -68,6 +68,27 @@ export class CurseforgeFileQueries extends CurseforgeFileBaseQueries {
     );
   }
 
+  /** The stored files each of the given releases ships (the ones the launcher installs), as release id and file id pairs. */
+  async getIdsByRelease(
+    releaseIds: number[],
+  ): Promise<{ releaseId: number; fileId: number }[]> {
+    if (releaseIds.length === 0) return [];
+
+    const result = await this.runQuery<{ release_id: number; id: number }>(
+      "list curseforge file ids by release",
+      `SELECT m.release_id, f.id
+      FROM ${this.table} f
+      JOIN modpack_release_mod m ON m.file_id = f.id
+      WHERE m.release_id = ANY($1::int[])`,
+      [releaseIds],
+    );
+
+    return result.rows.map((row) => ({
+      releaseId: row.release_id,
+      fileId: row.id,
+    }));
+  }
+
   /** Stored files by id, joined to the project for its class and page; unknown ids are absent. */
   async getWithProject(
     fileIds: number[],

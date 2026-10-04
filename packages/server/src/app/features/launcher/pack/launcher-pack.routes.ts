@@ -14,6 +14,10 @@ router.get(
   "/latest",
   ...customRoute([authenticateLauncher], LauncherPackController.latest),
 );
+router.get(
+  "/releases",
+  ...customRoute([authenticateLauncher], LauncherPackController.releases),
+);
 router.post(
   "/files/resolve",
   ...customRoute(
