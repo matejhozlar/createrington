@@ -115,6 +115,10 @@ export interface LauncherPackData {
   };
 }
 
+export interface LauncherPackReleasesData {
+  releases: LauncherPackData[];
+}
+
 export interface LauncherPackFile {
   projectId: number;
   fileId: number;

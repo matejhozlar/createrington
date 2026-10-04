@@ -468,6 +468,7 @@ export class ModpackService {
   ): Promise<void> {
     const modpack = await this.getModpack(modpackId);
     if (!modpack.curseforgeProjectId) return;
+    this.checkLauncherReleases(modpack);
 
     const workshops = await Q.workshop.findAll({ modpackId });
     const manifest = await getModpackManifest(modpack.curseforgeProjectId, {
@@ -1086,6 +1087,7 @@ export class ModpackService {
         fileReleaseType: detail?.releaseType ?? null,
         fileDate: detail?.fileDate ? new Date(detail.fileDate) : null,
         required: entry.required,
+        inClientPack: entry.sides !== "server",
       };
     });
   }
@@ -1130,6 +1132,15 @@ export class ModpackService {
           error,
         );
       });
+  }
+
+  private checkLauncherReleases(modpack: Modpack): void {
+    void launcherPackService.checkReleases(modpack).catch((error) => {
+      logger.warn(
+        `Modpack #${modpack.id} releases could not be checked for the launcher:`,
+        error,
+      );
+    });
   }
 
   /** Items needing an admin decision for a workshop's modpack. */

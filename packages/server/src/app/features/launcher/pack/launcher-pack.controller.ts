@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import type {
   LauncherPackData,
   LauncherPackFilesData,
+  LauncherPackReleasesData,
   LauncherSuccessResponse,
 } from "@createrington/shared/launcher";
 import { getValidated } from "@/app/middleware/validation.middleware";
@@ -13,6 +14,14 @@ export class LauncherPackController {
     const body: LauncherSuccessResponse<LauncherPackData> = {
       success: true,
       data: await launcherPackService.getLatestPack(),
+    };
+    res.json(body);
+  }
+
+  static async releases(_req: Request, res: Response): Promise<void> {
+    const body: LauncherSuccessResponse<LauncherPackReleasesData> = {
+      success: true,
+      data: await launcherPackService.listReleases(),
     };
     res.json(body);
   }

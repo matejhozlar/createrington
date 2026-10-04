@@ -153,6 +153,7 @@ const rawFileDetailSchema = z.object({
   downloadUrl: z.string().nullish(),
   fileLength: z.number().nullish(),
   hashes: rawFileHashesSchema,
+  isAvailable: z.boolean().nullish(),
 });
 
 const rawModpackFileSchema = z.object({
@@ -739,14 +740,13 @@ export interface CurseForgeFileDetail {
   sha1: string | null;
 }
 
-/** Identity and download facts of specific mod files, batched. Unknown ids are simply absent. */
-export async function getFilesDetails(
+async function fetchFileDetails(
   fileIds: number[],
-): Promise<CurseForgeFileDetail[]> {
+): Promise<z.infer<typeof rawFileDetailSchema>[]> {
   ensureApiKey();
   if (fileIds.length === 0) return [];
 
-  const results: CurseForgeFileDetail[] = [];
+  const results: z.infer<typeof rawFileDetailSchema>[] = [];
   for (const batch of toBatches(fileIds)) {
     const res = await fetch(`${CURSEFORGE_API}/v1/mods/files`, {
       method: "POST",
@@ -765,22 +765,43 @@ export async function getFilesDetails(
       "getFilesDetails",
     );
 
-    results.push(
-      ...body.data.map((f) => ({
-        fileId: f.id,
-        projectId: f.modId,
-        displayName: f.displayName ?? null,
-        fileName: f.fileName ?? null,
-        fileDate: f.fileDate ?? null,
-        releaseType: f.releaseType ?? null,
-        gameId: f.gameId ?? null,
-        downloadUrl: f.downloadUrl || null,
-        fileLength: f.fileLength ?? null,
-        sha1: sha1Of(f.hashes),
-      })),
-    );
+    results.push(...body.data);
   }
   return results;
+}
+
+/** Identity and download facts of specific mod files, batched. Unknown ids are simply absent. */
+export async function getFilesDetails(
+  fileIds: number[],
+): Promise<CurseForgeFileDetail[]> {
+  return (await fetchFileDetails(fileIds)).map((f) => ({
+    fileId: f.id,
+    projectId: f.modId,
+    displayName: f.displayName ?? null,
+    fileName: f.fileName ?? null,
+    fileDate: f.fileDate ?? null,
+    releaseType: f.releaseType ?? null,
+    gameId: f.gameId ?? null,
+    downloadUrl: f.downloadUrl || null,
+    fileLength: f.fileLength ?? null,
+    sha1: sha1Of(f.hashes),
+  }));
+}
+
+/**
+ * Of the given file ids (mod files or pack files), the ones CurseForge still
+ * serves, batched. An archived file stays known to the API and keeps its
+ * download link, it only reads as not available, so that flag decides; an id
+ * CurseForge does not know is left out as well.
+ */
+export async function getServedFileIds(
+  fileIds: number[],
+): Promise<Set<number>> {
+  return new Set(
+    (await fetchFileDetails(fileIds))
+      .filter((f) => f.isAvailable !== false)
+      .map((f) => f.id),
+  );
 }
 
 export async function getFilesDependencies(fileIds: number[]): Promise<

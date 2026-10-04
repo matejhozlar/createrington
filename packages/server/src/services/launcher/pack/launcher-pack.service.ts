@@ -8,6 +8,7 @@ import {
   CURSEFORGE_MINECRAFT_GAME_ID,
   getFilesDetails,
   getModpackFile,
+  getServedFileIds,
   type ModpackManifest,
   type ModpackManifestEntry,
 } from "@/services/curseforge";
@@ -22,6 +23,7 @@ import {
   type LauncherPackFile,
   type LauncherPackFileSource,
   type LauncherPackFilesData,
+  type LauncherPackReleasesData,
 } from "@createrington/shared/launcher";
 import { findCurseforgeCdnUrls } from "./curseforge-cdn";
 import {
@@ -65,10 +67,44 @@ function toPackFile(row: CurseforgeFileWithProject): LauncherPackFile | null {
   };
 }
 
+function toPackData(release: ModpackRelease): LauncherPackData | null {
+  const modLoader = release.modLoader
+    ? parseModLoader(release.modLoader)
+    : null;
+  if (
+    !release.version ||
+    !release.minecraftVersion ||
+    !modLoader ||
+    release.javaMajorVersion === null ||
+    !release.packFileName ||
+    release.packFileSize === null ||
+    !release.packSha1 ||
+    !release.packDownloadUrl
+  ) {
+    return null;
+  }
+
+  return {
+    version: release.version,
+    releasedAt: release.publishedAt?.toISOString() ?? null,
+    minecraftVersion: release.minecraftVersion,
+    modLoader,
+    javaMajorVersion: release.javaMajorVersion,
+    zip: {
+      fileId: release.curseforgeFileId,
+      fileName: release.packFileName,
+      url: release.packDownloadUrl,
+      size: release.packFileSize,
+      sha1: release.packSha1,
+    },
+  };
+}
+
 /**
  * Serves the launcher what it needs to install the modpack from its CurseForge
- * pack zip: which release is the latest, and for the file ids in a pack
- * manifest, where to download each file and the SHA-1 to verify it against.
+ * pack zip: which release is the latest, which releases can still be
+ * installed, and for the file ids in a pack manifest, where to download each
+ * file and the SHA-1 to verify it against.
  * Only the pack linked to `CURSEFORGE_MODPACK_PROJECT_ID` is served. Files are
  * resolved once and stored (the link CurseForge gives, else a byte-identical
  * file on Modrinth, else the file's built address on CurseForge's CDN when it
@@ -86,6 +122,7 @@ class LauncherPackService {
   private static instance: LauncherPackService;
 
   private readonly preparing = new Set<number>();
+  private readonly checking = new Set<number>();
   private readonly reportedBlocked = new Set<number>();
 
   static getInstance(): LauncherPackService {
@@ -106,41 +143,121 @@ class LauncherPackService {
           { orderBy: "id", orderDirection: "desc", limit: 1 },
         )
       : [];
-    const modLoader = release?.modLoader
-      ? parseModLoader(release.modLoader)
-      : null;
-
-    if (
-      !release?.version ||
-      !release.minecraftVersion ||
-      !modLoader ||
-      release.javaMajorVersion === null ||
-      !release.packFileName ||
-      release.packFileSize === null ||
-      !release.packSha1 ||
-      !release.packDownloadUrl
-    ) {
+    const pack = release ? toPackData(release) : null;
+    if (!pack) {
       throw packError(
         LauncherPackErrorCode.PACK_UNAVAILABLE,
         404,
         "No modpack release is available to the launcher yet",
       );
     }
+    return pack;
+  }
 
+  /**
+   * Every release the launcher can install, newest first: ready for the
+   * launcher and not found archived on CurseForge by the last `checkReleases`.
+   * Reads the database only. Empty when there is none.
+   */
+  async listReleases(): Promise<LauncherPackReleasesData> {
+    const modpack = await Q.modpack.find({
+      curseforgeProjectId: config.curseforge.modpackProjectId,
+    });
+    const releases = modpack
+      ? await Q.modpack.release.findAll(
+          {
+            modpackId: modpack.id,
+            launcherReadyAt: { $ne: null },
+            launcherUnavailableAt: null,
+          },
+          { orderBy: "id", orderDirection: "desc" },
+        )
+      : [];
     return {
-      version: release.version,
-      releasedAt: release.publishedAt?.toISOString() ?? null,
-      minecraftVersion: release.minecraftVersion,
-      modLoader,
-      javaMajorVersion: release.javaMajorVersion,
-      zip: {
-        fileId: release.curseforgeFileId,
-        fileName: release.packFileName,
-        url: release.packDownloadUrl,
-        size: release.packFileSize,
-        sha1: release.packSha1,
-      },
+      releases: releases.flatMap((release) => toPackData(release) ?? []),
     };
+  }
+
+  /**
+   * Asks CurseForge again about every release that is ready for the launcher
+   * and takes a release out of `listReleases` while its pack zip or one of its
+   * client files is archived there, or puts it back once all of them are
+   * served again. For a release recorded before the side of its files was
+   * stored only the pack zip decides. `getLatestPack` is not affected. No-op
+   * for other modpacks and while another call checks the same pack. Throws
+   * when CurseForge cannot be asked; nothing is changed then.
+   */
+  async checkReleases(modpack: Modpack): Promise<void> {
+    if (
+      modpack.curseforgeProjectId === null ||
+      modpack.curseforgeProjectId !== config.curseforge.modpackProjectId ||
+      this.checking.has(modpack.id)
+    ) {
+      return;
+    }
+
+    this.checking.add(modpack.id);
+    try {
+      const releases = await Q.modpack.release.findAll({
+        modpackId: modpack.id,
+        launcherReadyAt: { $ne: null },
+      });
+      if (releases.length === 0) return;
+
+      const fileIdsByRelease = new Map(
+        releases.map((release) => [release.id, [release.curseforgeFileId]]),
+      );
+      const clientFiles = await Q.modpack.release.mod.getClientFileIds(
+        releases.map((release) => release.id),
+      );
+      for (const { releaseId, fileId } of clientFiles) {
+        fileIdsByRelease.get(releaseId)?.push(fileId);
+      }
+
+      const served = await getServedFileIds([
+        ...new Set([...fileIdsByRelease.values()].flat()),
+      ]);
+      const isServed = (release: ModpackRelease) =>
+        (fileIdsByRelease.get(release.id) ?? []).every((id) => served.has(id));
+
+      const archived = releases.filter(
+        (release) =>
+          release.launcherUnavailableAt === null && !isServed(release),
+      );
+      const restored = releases.filter(
+        (release) =>
+          release.launcherUnavailableAt !== null && isServed(release),
+      );
+      if (archived.length > 0) {
+        await Q.modpack.release.updateAll(
+          { launcherUnavailableAt: new Date() },
+          { id: { $in: archived.map((release) => release.id) } },
+        );
+      }
+      if (restored.length > 0) {
+        await Q.modpack.release.updateAll(
+          { launcherUnavailableAt: null },
+          { id: { $in: restored.map((release) => release.id) } },
+        );
+      }
+
+      const label = (changed: ModpackRelease[]) =>
+        changed
+          .map((release) => release.version ?? release.curseforgeFileId)
+          .join(", ");
+      if (archived.length > 0) {
+        logger.info(
+          `${modpack.name}: CurseForge archived files of ${label(archived)}, no longer listed as installable for the launcher`,
+        );
+      }
+      if (restored.length > 0) {
+        logger.info(
+          `${modpack.name}: CurseForge serves ${label(restored)} again, listed as installable for the launcher`,
+        );
+      }
+    } finally {
+      this.checking.delete(modpack.id);
+    }
   }
 
   /**
