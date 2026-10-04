@@ -1,8 +1,6 @@
 import crypto from "node:crypto";
 import config from "@/config";
-
-const SANDBOX_STEP_TIMEOUT_MS = 20_000;
-const SANDBOX_CONCURRENCY = 8;
+import { findFileUrls } from "./file-lookup";
 
 export interface SandboxFileQuery {
   fileId: number;
@@ -63,27 +61,10 @@ async function findSandboxFileUrl(
 export async function findSandboxFileUrls(
   files: SandboxFileQuery[],
 ): Promise<Map<number, string>> {
-  const found = new Map<number, string>();
   const { publicUrl, internalUrl } = config.launcher.packFiles;
-  if (!publicUrl || !internalUrl || files.length === 0) return found;
+  if (!publicUrl || !internalUrl) return new Map();
 
-  const signal = AbortSignal.timeout(SANDBOX_STEP_TIMEOUT_MS);
-  const queue = [...files];
-  await Promise.all(
-    Array.from(
-      { length: Math.min(SANDBOX_CONCURRENCY, queue.length) },
-      async () => {
-        for (let file = queue.shift(); file; file = queue.shift()) {
-          if (signal.aborted) return;
-          const url = await findSandboxFileUrl(
-            file,
-            { publicUrl, internalUrl },
-            signal,
-          );
-          if (url) found.set(file.fileId, url);
-        }
-      },
-    ),
+  return findFileUrls(files, (file, signal) =>
+    findSandboxFileUrl(file, { publicUrl, internalUrl }, signal),
   );
-  return found;
 }

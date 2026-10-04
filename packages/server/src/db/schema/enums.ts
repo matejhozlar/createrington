@@ -133,9 +133,11 @@ export const launcherReleaseStatusEnum = pgEnum(
   LAUNCHER_RELEASE_STATUSES,
 );
 
-// Where the launcher downloads a pack file from: the CurseForge CDN, the
-// Modrinth CDN for a byte-identical file CurseForge will not serve, our own
-// storage, or manual (no URL, the player downloads it in the browser)
+// Where the launcher downloads a pack file from: the link CurseForge gives,
+// the Modrinth CDN for a byte-identical file CurseForge will not serve, the
+// file's address on CurseForge's CDN built from its id and name (curseforge-cdn,
+// CurseForge gave no link), our own storage, or manual (no URL, the player
+// downloads it in the browser)
 export const curseforgeFileSourceEnum = pgEnum(
   "curseforge_file_source",
   LAUNCHER_PACK_FILE_SOURCES,

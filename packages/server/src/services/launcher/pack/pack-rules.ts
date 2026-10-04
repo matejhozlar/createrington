@@ -6,6 +6,7 @@ import type {
 import { CURSEFORGE_CLASSES } from "@createrington/shared/workshop";
 
 const CURSEFORGE_SITE = "https://www.curseforge.com/minecraft";
+const CURSEFORGE_CDN = "https://mediafilez.forgecdn.net/files";
 
 const PACK_CLASSES: Record<
   number,
@@ -23,15 +24,26 @@ export function packFolderForClass(classId: number): LauncherPackFolder | null {
   return PACK_CLASSES[classId]?.folder ?? null;
 }
 
-export function pickFileSource(
-  curseforgeUrl: string | null,
-  modrinthUrl: string | null,
-  storageUrl: string | null,
-): { source: LauncherPackFileSource; downloadUrl: string | null } {
-  if (curseforgeUrl)
-    return { source: "curseforge", downloadUrl: curseforgeUrl };
-  if (modrinthUrl) return { source: "modrinth", downloadUrl: modrinthUrl };
-  if (storageUrl) return { source: "storage", downloadUrl: storageUrl };
+export function curseforgeCdnUrl(fileId: number, fileName: string): string {
+  const encodedName = encodeURIComponent(fileName).replace(
+    /[!'()*]/g,
+    (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`,
+  );
+  return `${CURSEFORGE_CDN}/${Math.floor(fileId / 1000)}/${fileId % 1000}/${encodedName}`;
+}
+
+export function pickFileSource(urls: {
+  curseforge: string | null;
+  modrinth: string | null;
+  curseforgeCdn: string | null;
+  storage: string | null;
+}): { source: LauncherPackFileSource; downloadUrl: string | null } {
+  if (urls.curseforge)
+    return { source: "curseforge", downloadUrl: urls.curseforge };
+  if (urls.modrinth) return { source: "modrinth", downloadUrl: urls.modrinth };
+  if (urls.curseforgeCdn)
+    return { source: "curseforge-cdn", downloadUrl: urls.curseforgeCdn };
+  if (urls.storage) return { source: "storage", downloadUrl: urls.storage };
   return { source: "manual", downloadUrl: null };
 }
 

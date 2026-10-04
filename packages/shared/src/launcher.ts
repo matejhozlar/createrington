@@ -34,6 +34,7 @@ export interface LauncherStructuredNotes {
 export const LAUNCHER_PACK_FILE_SOURCES = [
   "curseforge",
   "modrinth",
+  "curseforge-cdn",
   "storage",
   "manual",
 ] as const;

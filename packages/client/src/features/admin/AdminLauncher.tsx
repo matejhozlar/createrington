@@ -16,7 +16,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { WindowsIcon } from "@/components/icons/windows";
+import { LabeledSwitch } from "@/components/labeled-switch";
 import { Loading } from "@/components/loading-spinner";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 
 type Release =
@@ -51,12 +53,34 @@ const CHANGE_TYPES = new Map<string, { label: string; color: string }>([
 
 const UNKNOWN_CHANGE_COLOR = "var(--c-change)";
 
+const CDN_FLAG = {
+  name: "launcher_curseforge_cdn",
+  id: "launcher-curseforge-cdn-enabled",
+  label: "CurseForge CDN fallback",
+  description:
+    "Serve pack files CurseForge gives no link for from their built address on CurseForge's CDN",
+} as const;
+
 function changeTag(type: string): { label: string; color: string } {
   return CHANGE_TYPES.get(type) ?? { label: type, color: UNKNOWN_CHANGE_COLOR };
 }
 
 export function AdminLauncher() {
+  const utils = trpc.useUtils();
   const releasesQuery = trpc.admin.launcherReleases.list.useQuery();
+
+  const flagsQuery = trpc.admin.features.list.useQuery();
+  const cdnEnabled =
+    flagsQuery.data?.find((flag) => flag.name === CDN_FLAG.name)?.enabled ??
+    false;
+
+  const setFlagMutation = trpc.admin.features.set.useMutation(
+    useMutationToast({
+      success: (flag) =>
+        `${CDN_FLAG.label} ${flag.enabled ? "enabled" : "disabled"}`,
+      onSuccess: () => utils.admin.features.list.invalidate(),
+    }),
+  );
 
   const channel = releasesQuery.data?.channel;
   const [latest, ...earlier] = releasesQuery.data?.releases ?? [];
@@ -79,6 +103,25 @@ export function AdminLauncher() {
             )
           }
           description={channel && CHANNELS[channel].description}
+          actions={
+            <LabeledSwitch
+              id={CDN_FLAG.id}
+              label={CDN_FLAG.label}
+              checked={cdnEnabled}
+              disabled={
+                flagsQuery.isLoading ||
+                !!flagsQuery.error ||
+                setFlagMutation.isPending
+              }
+              onCheckedChange={(checked) =>
+                setFlagMutation.mutate({
+                  name: CDN_FLAG.name,
+                  enabled: checked,
+                  description: CDN_FLAG.description,
+                })
+              }
+            />
+          }
         />
 
         {releasesQuery.isLoading ? (
