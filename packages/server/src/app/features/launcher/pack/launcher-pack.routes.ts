@@ -4,7 +4,10 @@ import { authenticateLauncher } from "@/app/middleware/launcher-auth.middleware"
 import { launcherPackLimiter } from "@/app/middleware/rate-limit.middleware";
 import { validate } from "@/app/middleware/validation.middleware";
 import { LauncherPackController } from "./launcher-pack.controller";
-import { ResolveFilesBodySchema } from "./launcher-pack.schemas";
+import {
+  ListReleasesQuerySchema,
+  ResolveFilesBodySchema,
+} from "./launcher-pack.schemas";
 
 const router = Router();
 
@@ -16,7 +19,10 @@ router.get(
 );
 router.get(
   "/releases",
-  ...customRoute([authenticateLauncher], LauncherPackController.releases),
+  ...customRoute(
+    [authenticateLauncher, validate({ query: ListReleasesQuerySchema })],
+    LauncherPackController.releases,
+  ),
 );
 router.post(
   "/files/resolve",

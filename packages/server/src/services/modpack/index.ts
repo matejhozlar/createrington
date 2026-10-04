@@ -46,22 +46,17 @@ import {
   announceReview,
 } from "@/services/workshop/discord";
 import { recordModEvent } from "@/services/workshop/events";
-import { announceReleaseChangelog, toChangelogInput } from "./changelog";
+import { announceReleaseChangelog } from "./changelog";
 import {
   renderChangelogMarkdown,
   type ChangelogMarkdownSection,
 } from "./changelog-markdown";
 import { renderChangelogRow, type ChangelogRowImage } from "./changelog-row";
+import { getReleaseChangelog, getReleaseDiff } from "./release-changelog";
 import { isOlderVersion } from "./version";
 import type { ReleaseAnnouncementRow } from "@/db/queries/modpack/release/announcement";
-import {
-  CHANGELOG_GROUPS,
-  type ChangelogInput,
-} from "@/discord/components/presets/modpack-changelog";
+import { CHANGELOG_GROUPS } from "@/discord/components/presets/modpack-changelog";
 import config from "@/config";
-
-const CHANGELOG_CACHE_TTL_MS = 5 * 60_000;
-const CHANGELOG_CACHE_MAX = 16;
 
 const SHIP_CLAIMABLE_STATUSES: WorkshopModStatus[] = [
   "pending",
@@ -168,21 +163,6 @@ function manifestLoaderType(loaderId: string): number | null {
     : null;
 }
 
-function groupByProject(
-  rows: ReleaseModRow[],
-): Map<number, [ReleaseModRow, ...ReleaseModRow[]]> {
-  const grouped = new Map<number, [ReleaseModRow, ...ReleaseModRow[]]>();
-  for (const row of rows) {
-    const held = grouped.get(row.curseforgeProjectId);
-    if (held) held.push(row);
-    else grouped.set(row.curseforgeProjectId, [row]);
-  }
-  for (const files of grouped.values()) {
-    files.sort((a, b) => a.fileId - b.fileId);
-  }
-  return grouped;
-}
-
 function firstPerProject<T extends { curseforgeProjectId: number }>(
   rows: T[],
 ): T[] {
@@ -193,16 +173,6 @@ function firstPerProject<T extends { curseforgeProjectId: number }>(
     }
   }
   return [...held.values()];
-}
-
-function sameFiles(a: ReleaseModRow[], b: ReleaseModRow[]): boolean {
-  return (
-    a.length === b.length &&
-    a.every(
-      (row, index) =>
-        row.fileId === b[index].fileId && row.required === b[index].required,
-    )
-  );
 }
 
 export interface ModpackReleaseAnnouncementSummary {
@@ -276,11 +246,6 @@ export type ModpackAttentionItem =
  * CurseForge pack's manifest by reconcile, never set by hand.
  */
 export class ModpackService {
-  private readonly changelogCache = new Map<
-    number,
-    { expiresAt: number; changelog: Promise<ChangelogInput> }
-  >();
-
   /** All modpacks with member counts and attached workshops, for the admin panel. */
   async listModpacks(): Promise<ModpackListItem[]> {
     const [modpacks, workshops] = await Promise.all([
@@ -723,53 +688,7 @@ export class ModpackService {
    * frozen rows, so this keeps working after CurseForge archives the files.
    */
   async getReleaseDiff(releaseId: number): Promise<ModpackReleaseDiff> {
-    const release = await Q.modpack.release.get({ id: releaseId });
-    const [previous] = await Q.modpack.release.findAll(
-      { modpackId: release.modpackId, id: { $lt: release.id } },
-      { orderBy: "id", orderDirection: "desc", limit: 1 },
-    );
-
-    const rows = await Q.modpack.release.mod.listForReleases(
-      previous ? [release.id, previous.id] : [release.id],
-    );
-    // A manifest may ship a project as several files, so a project counts as
-    // changed when its whole set of files does, not when one row differs
-    const before = groupByProject(
-      rows.filter((row) => row.releaseId === previous?.id),
-    );
-    const current = groupByProject(
-      rows.filter((row) => row.releaseId === release.id),
-    );
-
-    const added: ModpackReleaseDiffEntry[] = [];
-    const updated: ModpackReleaseDiffEntry[] = [];
-    let unchanged = 0;
-    for (const [projectId, files] of current) {
-      const prior = before.get(projectId);
-      if (!prior) {
-        if (previous) added.push({ ...files[0], previousFile: null });
-        else unchanged++;
-        continue;
-      }
-      if (sameFiles(prior, files)) {
-        unchanged++;
-        continue;
-      }
-      updated.push({ ...files[0], previousFile: prior[0] });
-    }
-
-    const removed: ModpackReleaseDiffEntry[] = [...before]
-      .filter(([projectId]) => !current.has(projectId))
-      .map(([, files]) => ({ ...files[0], previousFile: null }));
-
-    return {
-      release,
-      previous: previous ?? null,
-      added,
-      updated,
-      removed,
-      unchanged,
-    };
+    return getReleaseDiff(releaseId);
   }
 
   /** Frozen membership of a recorded release, joined to cached project summaries. */
@@ -804,7 +723,7 @@ export class ModpackService {
     const sectionOf = async (
       release: ModpackRelease,
     ): Promise<ChangelogMarkdownSection> => ({
-      changelog: await this.getChangelog(modpack, release),
+      changelog: await getReleaseChangelog(modpack, release),
       rowImageBaseUrl: `${website}/api/modpacks/${options.curseforgeProjectId}/changelog/rows/${release.curseforgeFileId}`,
     });
     const [latestSection, installedSection] = await Promise.all([
@@ -874,7 +793,7 @@ export class ModpackService {
         `${modpack.name} has no recorded release for file ${options.releaseFileId}`,
       );
     }
-    const changelog = await this.getChangelog(modpack, release);
+    const changelog = await getReleaseChangelog(modpack, release);
     for (const { key } of CHANGELOG_GROUPS) {
       const entry = changelog[key].find(
         (candidate) => candidate.projectId === options.entryProjectId,
@@ -896,38 +815,6 @@ export class ModpackService {
       );
     }
     return modpack;
-  }
-
-  private getChangelog(
-    modpack: Modpack,
-    release: ModpackRelease,
-  ): Promise<ChangelogInput> {
-    const now = Date.now();
-    const cached = this.changelogCache.get(release.id);
-    if (cached && cached.expiresAt > now) {
-      this.changelogCache.delete(release.id);
-      this.changelogCache.set(release.id, cached);
-      return cached.changelog;
-    }
-    this.changelogCache.delete(release.id);
-    const changelog = this.getReleaseDiff(release.id).then((diff) =>
-      toChangelogInput(modpack, diff),
-    );
-    this.changelogCache.set(release.id, {
-      expiresAt: now + CHANGELOG_CACHE_TTL_MS,
-      changelog,
-    });
-    changelog.catch(() => {
-      if (this.changelogCache.get(release.id)?.changelog === changelog) {
-        this.changelogCache.delete(release.id);
-      }
-    });
-    if (this.changelogCache.size > CHANGELOG_CACHE_MAX) {
-      this.changelogCache.delete(
-        this.changelogCache.keys().next().value as number,
-      );
-    }
-    return changelog;
   }
 
   /**

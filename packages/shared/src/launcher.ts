@@ -115,8 +115,42 @@ export interface LauncherPackData {
   };
 }
 
+export interface LauncherPackChangelogEntry {
+  projectId: number;
+  name: string;
+  url: string | null;
+  iconUrl: string | null;
+  label: string;
+  previousLabel: string | null;
+  disabled: boolean;
+}
+
+export interface LauncherPackChangelog {
+  previousVersion: string | null;
+  added: LauncherPackChangelogEntry[];
+  updated: LauncherPackChangelogEntry[];
+  removed: LauncherPackChangelogEntry[];
+  notes: string | null;
+}
+
+export interface LauncherPackRelease extends LauncherPackData {
+  changelog: LauncherPackChangelog;
+}
+
+export const LAUNCHER_PACK_RELEASES_PAGE_SIZE = 10;
+
+export const LAUNCHER_PACK_RELEASES_MAX_PAGE_SIZE = 25;
+
+export interface LauncherPagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
 export interface LauncherPackReleasesData {
-  releases: LauncherPackData[];
+  releases: LauncherPackRelease[];
+  pagination: LauncherPagination;
 }
 
 export interface LauncherPackFile {

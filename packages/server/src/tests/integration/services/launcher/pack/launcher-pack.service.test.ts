@@ -56,6 +56,7 @@ import { findSandboxFileUrls } from "@/services/launcher/pack/sandbox-files";
 import { findModrinthFilesBySha1 } from "@/services/modrinth";
 import { getMinecraftJavaMajorVersion } from "@/utils/mojang-java-version";
 import type { Modpack, ModpackRelease } from "@createrington/shared/db";
+import { LAUNCHER_PACK_RELEASES_MAX_PAGE_SIZE } from "@createrington/shared/launcher";
 import {
   cleanupWorkshopTestContext,
   createWorkshopTestContext,
@@ -66,6 +67,7 @@ import {
 
 const PACK_PROJECT_ID = 995_900_001;
 const HOUR_MS = 60 * 60 * 1000;
+const FIRST_PAGE = { page: 0, limit: 25 };
 
 const ctx = createWorkshopTestContext(995_000_000);
 const originalPackProjectId = config.curseforge.modpackProjectId;
@@ -99,12 +101,15 @@ async function seedFile(
     sides?: ModpackManifestSides;
     required?: boolean;
     detail?: Partial<CurseForgeFileDetail>;
+    newFileOf?: SeededFile;
   } = {},
 ): Promise<SeededFile> {
-  const projectId = await seedProject(ctx, undefined, {
-    classId: options.classId ?? 6,
-    websiteUrl: `https://www.curseforge.com/minecraft/mc-mods/vitest-${nextFileId}`,
-  });
+  const projectId =
+    options.newFileOf?.projectId ??
+    (await seedProject(ctx, undefined, {
+      classId: options.classId ?? 6,
+      websiteUrl: `https://www.curseforge.com/minecraft/mc-mods/vitest-${nextFileId}`,
+    }));
   const fileId = nextFileId++;
   return {
     fileId,
@@ -293,7 +298,7 @@ function archivedOnCurseForge(fileIds: number[]): void {
 }
 
 const listedVersions = async () =>
-  (await launcherPackService.listReleases()).releases.map(
+  (await launcherPackService.listReleases(FIRST_PAGE)).releases.map(
     (release) => release.version,
   );
 
@@ -846,20 +851,193 @@ describe("LauncherPackService.listReleases", () => {
     await seedReadyRelease(modpack, "1.1.0", [file]);
     await seedRelease(modpack, "1.2.0", [file]);
 
-    const { releases } = await launcherPackService.listReleases();
+    const { releases } = await launcherPackService.listReleases(FIRST_PAGE);
 
     expect(releases.map((release) => release.version)).toEqual([
       "1.1.0",
       "1.0.0",
     ]);
-    expect(releases[0]).toEqual(await launcherPackService.getLatestPack());
+    expect(releases[0]).toEqual({
+      ...(await launcherPackService.getLatestPack()),
+      changelog: expect.any(Object),
+    });
   });
 
   it("is empty while no release is ready", async () => {
     const modpack = await seedPack();
     await seedRelease(modpack, "1.0.0", [await seedFile()]);
 
-    expect(await launcherPackService.listReleases()).toEqual({ releases: [] });
+    expect(await launcherPackService.listReleases(FIRST_PAGE)).toEqual({
+      releases: [],
+      total: 0,
+    });
+  });
+
+  it("serves the list in pages and counts only the releases it lists", async () => {
+    const modpack = await seedPack();
+    const file = await seedFile();
+    serveFromCurseForge([file]);
+    const archived = await seedReadyRelease(modpack, "0.9.0", [file]);
+    await seedReadyRelease(modpack, "1.0.0", [file]);
+    await seedReadyRelease(modpack, "1.1.0", [file]);
+    await seedReadyRelease(modpack, "1.2.0", [file]);
+    await seedRelease(modpack, "1.3.0", [file]);
+    archivedOnCurseForge([archived.manifest.fileId]);
+    await launcherPackService.checkReleases(modpack);
+
+    const first = await launcherPackService.listReleases({ page: 0, limit: 2 });
+    const second = await launcherPackService.listReleases({
+      page: 1,
+      limit: 2,
+    });
+    const pastTheEnd = await launcherPackService.listReleases({
+      page: 5,
+      limit: 2,
+    });
+
+    expect(first.releases.map((release) => release.version)).toEqual([
+      "1.2.0",
+      "1.1.0",
+    ]);
+    expect(first.total).toBe(3);
+    expect(second.releases.map((release) => release.version)).toEqual([
+      "1.0.0",
+    ]);
+    expect(pastTheEnd).toEqual({ releases: [], total: 3 });
+  });
+
+  it("serves a release that was recorded without a version once it is made ready", async () => {
+    const modpack = await seedPack();
+    const file = await seedFile();
+    serveFromCurseForge([file]);
+    const { release, manifest } = await seedRelease(modpack, "1.0.0", [file]);
+    await Q.modpack.release.updateAll(
+      { version: null, minecraftVersion: null, modLoader: null },
+      { id: release.id },
+    );
+
+    await launcherPackService.prepareRelease(modpack, release.id, manifest);
+    const listed = await launcherPackService.listReleases(FIRST_PAGE);
+
+    expect(listed.total).toBe(1);
+    expect(listed.releases).toEqual([
+      expect.objectContaining({
+        version: "1.0.0",
+        minecraftVersion: "1.21.1",
+        modLoader: expect.objectContaining({ id: "neoforge-21.1.249" }),
+      }),
+    ]);
+  });
+
+  it("answers a full-size page from the changelog cache the second time", async () => {
+    const modpack = await seedPack();
+    const file = await seedFile();
+    serveFromCurseForge([file]);
+    const fullPage = { page: 0, limit: LAUNCHER_PACK_RELEASES_MAX_PAGE_SIZE };
+    for (let minor = 0; minor < fullPage.limit; minor++) {
+      await seedReadyRelease(modpack, `1.${minor}.0`, [file]);
+    }
+    const diffReads = vi.spyOn(Q.modpack.release.mod, "listForReleases");
+
+    const first = await launcherPackService.listReleases(fullPage);
+    const readsForFirst = diffReads.mock.calls.length;
+    await launcherPackService.listReleases(fullPage);
+    const readsForBoth = diffReads.mock.calls.length;
+    diffReads.mockRestore();
+
+    expect(first.releases).toHaveLength(fullPage.limit);
+    expect(readsForFirst).toBe(fullPage.limit);
+    expect(readsForBoth).toBe(fullPage.limit);
+  });
+
+  it("gives each release the mods it added, updated and removed against the release before it", async () => {
+    const modpack = await seedPack();
+    const kept = await seedFile();
+    const outdated = await seedFile();
+    const updated = await seedFile({ newFileOf: outdated });
+    const dropped = await seedFile();
+    const fresh = await seedFile();
+    serveFromCurseForge([kept, outdated, updated, dropped, fresh]);
+    await seedReadyRelease(modpack, "1.0.0", [kept, outdated, dropped]);
+    await seedReadyRelease(modpack, "1.1.0", [kept, updated, fresh]);
+
+    const { releases } = await launcherPackService.listReleases(FIRST_PAGE);
+
+    expect(releases[0].changelog).toEqual({
+      previousVersion: "1.0.0",
+      added: [
+        {
+          projectId: fresh.projectId,
+          name: expect.any(String),
+          url: expect.stringContaining("curseforge.com"),
+          iconUrl: null,
+          label: `Mod ${fresh.fileId}`,
+          previousLabel: null,
+          disabled: false,
+        },
+      ],
+      updated: [
+        expect.objectContaining({
+          projectId: updated.projectId,
+          label: `Mod ${updated.fileId}`,
+          previousLabel: `Mod ${outdated.fileId}`,
+        }),
+      ],
+      removed: [
+        expect.objectContaining({
+          projectId: dropped.projectId,
+          label: `Mod ${dropped.fileId}`,
+          previousLabel: null,
+        }),
+      ],
+      notes: null,
+    });
+    expect(releases[1].changelog).toEqual({
+      previousVersion: null,
+      added: [],
+      updated: [],
+      removed: [],
+      notes: null,
+    });
+  });
+
+  it("carries the notes written for a release", async () => {
+    const modpack = await seedPack();
+    const file = await seedFile();
+    serveFromCurseForge([file]);
+    const { manifest } = await seedReadyRelease(modpack, "1.0.0", [file]);
+    await Q.modpack.publish.create({
+      modpackId: modpack.id,
+      clientFileId: manifest.fileId,
+      notes: "Trains are faster now.\nThe nether was reset.",
+    });
+
+    const { releases } = await launcherPackService.listReleases(FIRST_PAGE);
+
+    expect(releases[0].changelog.notes).toBe(
+      "Trains are faster now.\nThe nether was reset.",
+    );
+  });
+
+  it("compares a release with the one recorded before it even when that one is no longer listed", async () => {
+    const modpack = await seedPack();
+    const kept = await seedFile();
+    const fresh = await seedFile();
+    serveFromCurseForge([kept, fresh]);
+    const old = await seedReadyRelease(modpack, "1.0.0", [kept]);
+    await seedReadyRelease(modpack, "1.1.0", [kept, fresh]);
+    archivedOnCurseForge([old.manifest.fileId]);
+    await launcherPackService.checkReleases(modpack);
+
+    const { releases } = await launcherPackService.listReleases(FIRST_PAGE);
+
+    expect(releases.map((release) => release.version)).toEqual(["1.1.0"]);
+    expect(releases[0].changelog).toEqual(
+      expect.objectContaining({
+        previousVersion: "1.0.0",
+        added: [expect.objectContaining({ projectId: fresh.projectId })],
+      }),
+    );
   });
 });
 

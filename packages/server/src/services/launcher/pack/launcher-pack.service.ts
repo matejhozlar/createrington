@@ -2,6 +2,10 @@ import { AppError } from "@/app/middleware/error-handler";
 import config from "@/config";
 import { Q } from "@/db";
 import type { CurseforgeFileWithProject } from "@/db/queries/curseforge/file";
+import type {
+  ChangelogEntry,
+  ChangelogInput,
+} from "@/discord/components/presets/modpack-changelog";
 import { Discord } from "@/discord/constants";
 import { EmbedColors, EmbedPresets } from "@/discord/embeds";
 import {
@@ -14,16 +18,19 @@ import {
 } from "@/services/curseforge";
 import { ingestProjectsWhere } from "@/services/curseforge/ingest";
 import { featureFlagService, FeatureFlags } from "@/services/feature-flag";
+import { getReleaseChangelog } from "@/services/modpack/release-changelog";
 import { findModrinthFilesBySha1 } from "@/services/modrinth";
 import { getMinecraftJavaMajorVersion } from "@/utils/mojang-java-version";
 import type { Modpack, ModpackRelease } from "@createrington/shared/db";
 import {
   LauncherPackErrorCode,
+  type LauncherPackChangelog,
+  type LauncherPackChangelogEntry,
   type LauncherPackData,
   type LauncherPackFile,
   type LauncherPackFileSource,
   type LauncherPackFilesData,
-  type LauncherPackReleasesData,
+  type LauncherPackRelease,
 } from "@createrington/shared/launcher";
 import { findCurseforgeCdnUrls } from "./curseforge-cdn";
 import {
@@ -100,11 +107,33 @@ function toPackData(release: ModpackRelease): LauncherPackData | null {
   };
 }
 
+function toChangelogEntry(entry: ChangelogEntry): LauncherPackChangelogEntry {
+  return {
+    projectId: entry.projectId,
+    name: entry.name,
+    url: entry.url,
+    iconUrl: entry.thumbnailUrl,
+    label: entry.label,
+    previousLabel: entry.previousLabel,
+    disabled: entry.disabled,
+  };
+}
+
+function toPackChangelog(changelog: ChangelogInput): LauncherPackChangelog {
+  return {
+    previousVersion: changelog.previousVersion,
+    added: changelog.added.map(toChangelogEntry),
+    updated: changelog.updated.map(toChangelogEntry),
+    removed: changelog.removed.map(toChangelogEntry),
+    notes: changelog.notes,
+  };
+}
+
 /**
  * Serves the launcher what it needs to install the modpack from its CurseForge
  * pack zip: which release is the latest, which releases can still be
- * installed, and for the file ids in a pack manifest, where to download each
- * file and the SHA-1 to verify it against.
+ * installed and what each of them changed, and for the file ids in a pack
+ * manifest, where to download each file and the SHA-1 to verify it against.
  * Only the pack linked to `CURSEFORGE_MODPACK_PROJECT_ID` is served. Files are
  * resolved once and stored (the link CurseForge gives, else a byte-identical
  * file on Modrinth, else the file's built address on CurseForge's CDN when it
@@ -157,25 +186,52 @@ class LauncherPackService {
   /**
    * Every release the launcher can install, newest first: ready for the
    * launcher and not found archived on CurseForge by the last `checkReleases`.
-   * Reads the database only. Empty when there is none.
+   * Each comes with its changelog: the mods it added, updated and removed
+   * against the release recorded before it (listed or not), and the publish
+   * notes. Paged, `page` counts from 0, with `total` counting every listed
+   * release. Reads the database only. Empty when there is none or the page is
+   * past the end.
    */
-  async listReleases(): Promise<LauncherPackReleasesData> {
+  async listReleases(paging: {
+    page: number;
+    limit: number;
+  }): Promise<{ releases: LauncherPackRelease[]; total: number }> {
+    const { page, limit } = paging;
     const modpack = await Q.modpack.find({
       curseforgeProjectId: config.curseforge.modpackProjectId,
     });
-    const releases = modpack
-      ? await Q.modpack.release.findAll(
-          {
-            modpackId: modpack.id,
-            launcherReadyAt: { $ne: null },
-            launcherUnavailableAt: null,
-          },
-          { orderBy: "id", orderDirection: "desc" },
-        )
-      : [];
-    return {
-      releases: releases.flatMap((release) => toPackData(release) ?? []),
+    if (!modpack) return { releases: [], total: 0 };
+
+    const filters = {
+      modpackId: modpack.id,
+      launcherReadyAt: { $ne: null },
+      launcherUnavailableAt: null,
     };
+    const [rows, total] = await Promise.all([
+      Q.modpack.release.findAll(filters, {
+        orderBy: "id",
+        orderDirection: "desc",
+        limit,
+        offset: page * limit,
+      }),
+      Q.modpack.release.count(filters),
+    ]);
+    const releases = await Promise.all(
+      rows.map(async (row): Promise<LauncherPackRelease | null> => {
+        const pack = toPackData(row);
+        if (!pack) {
+          logger.warn(
+            `${modpack.name} release #${row.id} is ready for the launcher but cannot be served: a pack field is missing`,
+          );
+          return null;
+        }
+        return {
+          ...pack,
+          changelog: toPackChangelog(await getReleaseChangelog(modpack, row)),
+        };
+      }),
+    );
+    return { releases: releases.filter((release) => release !== null), total };
   }
 
   /**
@@ -397,6 +453,9 @@ class LauncherPackService {
 
       const changed = await Q.modpack.release.updateAll(
         {
+          version: manifest.version,
+          minecraftVersion: manifest.minecraftVersion,
+          modLoader: manifest.modLoader,
           packFileName: pack.fileName,
           packFileSize: pack.fileLength,
           packSha1: pack.sha1,

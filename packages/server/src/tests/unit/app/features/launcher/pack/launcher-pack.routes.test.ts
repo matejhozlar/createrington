@@ -79,9 +79,28 @@ const PACK = {
   },
 };
 
-const RELEASES = {
+const LISTED = {
   releases: [
-    PACK,
+    {
+      ...PACK,
+      changelog: {
+        previousVersion: "1.3.3",
+        added: [],
+        updated: [
+          {
+            projectId: 328085,
+            name: "Create",
+            url: "https://www.curseforge.com/minecraft/mc-mods/create",
+            iconUrl: null,
+            label: "create-1.21.1-6.0.10",
+            previousLabel: "create-1.21.1-6.0.9",
+            disabled: false,
+          },
+        ],
+        removed: [],
+        notes: "Trains are faster now.",
+      },
+    },
     {
       ...PACK,
       version: "1.3.3",
@@ -92,8 +111,16 @@ const RELEASES = {
         fileName: "createrington-rails-n-sails-1.3.3.zip",
         url: "https://edge.forgecdn.net/files/7090/1/createrington-rails-n-sails-1.3.3.zip",
       },
+      changelog: {
+        previousVersion: null,
+        added: [],
+        updated: [],
+        removed: [],
+        notes: null,
+      },
     },
   ],
+  total: 2,
 };
 
 const RESOLVED = {
@@ -122,8 +149,10 @@ async function getLatest(headers: Record<string, string> = {}) {
   return await fetch(`${baseUrl}/api/launcher/pack/latest`, { headers });
 }
 
-async function getReleases(headers: Record<string, string> = {}) {
-  return await fetch(`${baseUrl}/api/launcher/pack/releases`, { headers });
+async function getReleases(headers: Record<string, string> = {}, query = "") {
+  return await fetch(`${baseUrl}/api/launcher/pack/releases${query}`, {
+    headers,
+  });
 }
 
 async function resolve(body: unknown, headers: Record<string, string> = {}) {
@@ -160,7 +189,7 @@ afterAll(async () => {
 beforeEach(() => {
   vi.resetAllMocks();
   mocks.getLatestPack.mockResolvedValue(PACK);
-  mocks.listReleases.mockResolvedValue(RELEASES);
+  mocks.listReleases.mockResolvedValue(LISTED);
   mocks.resolveFiles.mockResolvedValue(RESOLVED);
 });
 
@@ -198,16 +227,70 @@ describe("GET /api/launcher/pack/releases", () => {
     const res = await getReleases(session);
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ success: true, data: RELEASES });
+    expect(await res.json()).toEqual({
+      success: true,
+      data: {
+        releases: LISTED.releases,
+        pagination: { page: 0, limit: 10, total: 2, totalPages: 1 },
+      },
+    });
   });
 
   it("answers with an empty list when no release can be installed", async () => {
-    mocks.listReleases.mockResolvedValue({ releases: [] });
+    mocks.listReleases.mockResolvedValue({ releases: [], total: 0 });
 
     const res = await getReleases(session);
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ success: true, data: { releases: [] } });
+    expect(await res.json()).toEqual({
+      success: true,
+      data: {
+        releases: [],
+        pagination: { page: 0, limit: 10, total: 0, totalPages: 0 },
+      },
+    });
+  });
+
+  it("says how many pages the named size makes of the total", async () => {
+    mocks.listReleases.mockResolvedValue({
+      releases: [LISTED.releases[1]],
+      total: 7,
+    });
+
+    const res = await getReleases(session, "?page=1&limit=3");
+
+    expect((await res.json()).data.pagination).toEqual({
+      page: 1,
+      limit: 3,
+      total: 7,
+      totalPages: 3,
+    });
+  });
+
+  it("asks for the first page of 10 when the launcher names no page", async () => {
+    await getReleases(session);
+
+    expect(mocks.listReleases).toHaveBeenCalledWith({ page: 0, limit: 10 });
+  });
+
+  it("asks for the page and size the launcher names", async () => {
+    const res = await getReleases(session, "?page=2&limit=5");
+
+    expect(res.status).toBe(200);
+    expect(mocks.listReleases).toHaveBeenCalledWith({ page: 2, limit: 5 });
+  });
+
+  it.each([
+    ["a negative page", "?page=-1"],
+    ["a page that is not a number", "?page=first"],
+    ["a size of zero", "?limit=0"],
+    ["a size above the maximum", "?limit=26"],
+    ["a fractional size", "?limit=2.5"],
+  ])("refuses %s", async (_label, query) => {
+    const res = await getReleases(session, query);
+
+    expect(res.status).toBe(400);
+    expect(mocks.listReleases).not.toHaveBeenCalled();
   });
 
   it("answers 401 without a launcher session", async () => {
