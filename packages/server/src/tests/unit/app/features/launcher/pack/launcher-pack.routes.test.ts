@@ -79,7 +79,7 @@ const PACK = {
   },
 };
 
-const RELEASES = {
+const LISTED = {
   releases: [
     {
       ...PACK,
@@ -120,7 +120,7 @@ const RELEASES = {
       },
     },
   ],
-  pagination: { page: 0, limit: 10, total: 2, totalPages: 1 },
+  total: 2,
 };
 
 const RESOLVED = {
@@ -189,7 +189,7 @@ afterAll(async () => {
 beforeEach(() => {
   vi.resetAllMocks();
   mocks.getLatestPack.mockResolvedValue(PACK);
-  mocks.listReleases.mockResolvedValue(RELEASES);
+  mocks.listReleases.mockResolvedValue(LISTED);
   mocks.resolveFiles.mockResolvedValue(RESOLVED);
 });
 
@@ -227,20 +227,44 @@ describe("GET /api/launcher/pack/releases", () => {
     const res = await getReleases(session);
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ success: true, data: RELEASES });
+    expect(await res.json()).toEqual({
+      success: true,
+      data: {
+        releases: LISTED.releases,
+        pagination: { page: 0, limit: 10, total: 2, totalPages: 1 },
+      },
+    });
   });
 
   it("answers with an empty list when no release can be installed", async () => {
-    const empty = {
-      releases: [],
-      pagination: { page: 0, limit: 10, total: 0, totalPages: 0 },
-    };
-    mocks.listReleases.mockResolvedValue(empty);
+    mocks.listReleases.mockResolvedValue({ releases: [], total: 0 });
 
     const res = await getReleases(session);
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ success: true, data: empty });
+    expect(await res.json()).toEqual({
+      success: true,
+      data: {
+        releases: [],
+        pagination: { page: 0, limit: 10, total: 0, totalPages: 0 },
+      },
+    });
+  });
+
+  it("says how many pages the named size makes of the total", async () => {
+    mocks.listReleases.mockResolvedValue({
+      releases: [LISTED.releases[1]],
+      total: 7,
+    });
+
+    const res = await getReleases(session, "?page=1&limit=3");
+
+    expect((await res.json()).data.pagination).toEqual({
+      page: 1,
+      limit: 3,
+      total: 7,
+      totalPages: 3,
+    });
   });
 
   it("asks for the first page of 10 when the launcher names no page", async () => {

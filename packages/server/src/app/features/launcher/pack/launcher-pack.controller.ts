@@ -7,6 +7,7 @@ import type {
 } from "@createrington/shared/launcher";
 import { getValidated } from "@/app/middleware/validation.middleware";
 import { launcherPackService } from "@/services/launcher/pack/launcher-pack.service";
+import { buildPagination } from "@/trpc/utils";
 import type {
   ListReleasesQuery,
   ResolveFilesBody,
@@ -23,10 +24,14 @@ export class LauncherPackController {
 
   static async releases(_req: Request, res: Response): Promise<void> {
     const { query } = getValidated<{ query: ListReleasesQuery }>(res);
+    const { releases, total } = await launcherPackService.listReleases(query);
 
     const body: LauncherSuccessResponse<LauncherPackReleasesData> = {
       success: true,
-      data: await launcherPackService.listReleases(query),
+      data: {
+        releases,
+        pagination: buildPagination(query.page, query.limit, total),
+      },
     };
     res.json(body);
   }

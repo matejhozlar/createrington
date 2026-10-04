@@ -56,6 +56,7 @@ import { findSandboxFileUrls } from "@/services/launcher/pack/sandbox-files";
 import { findModrinthFilesBySha1 } from "@/services/modrinth";
 import { getMinecraftJavaMajorVersion } from "@/utils/mojang-java-version";
 import type { Modpack, ModpackRelease } from "@createrington/shared/db";
+import { LAUNCHER_PACK_RELEASES_MAX_PAGE_SIZE } from "@createrington/shared/launcher";
 import {
   cleanupWorkshopTestContext,
   createWorkshopTestContext,
@@ -868,7 +869,7 @@ describe("LauncherPackService.listReleases", () => {
 
     expect(await launcherPackService.listReleases(FIRST_PAGE)).toEqual({
       releases: [],
-      pagination: { page: 0, limit: 25, total: 0, totalPages: 0 },
+      total: 0,
     });
   });
 
@@ -898,22 +899,55 @@ describe("LauncherPackService.listReleases", () => {
       "1.2.0",
       "1.1.0",
     ]);
-    expect(first.pagination).toEqual({
-      page: 0,
-      limit: 2,
-      total: 3,
-      totalPages: 2,
-    });
+    expect(first.total).toBe(3);
     expect(second.releases.map((release) => release.version)).toEqual([
       "1.0.0",
     ]);
-    expect(pastTheEnd.releases).toEqual([]);
-    expect(pastTheEnd.pagination).toEqual({
-      page: 5,
-      limit: 2,
-      total: 3,
-      totalPages: 2,
-    });
+    expect(pastTheEnd).toEqual({ releases: [], total: 3 });
+  });
+
+  it("serves a release that was recorded without a version once it is made ready", async () => {
+    const modpack = await seedPack();
+    const file = await seedFile();
+    serveFromCurseForge([file]);
+    const { release, manifest } = await seedRelease(modpack, "1.0.0", [file]);
+    await Q.modpack.release.updateAll(
+      { version: null, minecraftVersion: null, modLoader: null },
+      { id: release.id },
+    );
+
+    await launcherPackService.prepareRelease(modpack, release.id, manifest);
+    const listed = await launcherPackService.listReleases(FIRST_PAGE);
+
+    expect(listed.total).toBe(1);
+    expect(listed.releases).toEqual([
+      expect.objectContaining({
+        version: "1.0.0",
+        minecraftVersion: "1.21.1",
+        modLoader: expect.objectContaining({ id: "neoforge-21.1.249" }),
+      }),
+    ]);
+  });
+
+  it("answers a full-size page from the changelog cache the second time", async () => {
+    const modpack = await seedPack();
+    const file = await seedFile();
+    serveFromCurseForge([file]);
+    const fullPage = { page: 0, limit: LAUNCHER_PACK_RELEASES_MAX_PAGE_SIZE };
+    for (let minor = 0; minor < fullPage.limit; minor++) {
+      await seedReadyRelease(modpack, `1.${minor}.0`, [file]);
+    }
+    const diffReads = vi.spyOn(Q.modpack.release.mod, "listForReleases");
+
+    const first = await launcherPackService.listReleases(fullPage);
+    const readsForFirst = diffReads.mock.calls.length;
+    await launcherPackService.listReleases(fullPage);
+    const readsForBoth = diffReads.mock.calls.length;
+    diffReads.mockRestore();
+
+    expect(first.releases).toHaveLength(fullPage.limit);
+    expect(readsForFirst).toBe(fullPage.limit);
+    expect(readsForBoth).toBe(fullPage.limit);
   });
 
   it("gives each release the mods it added, updated and removed against the release before it", async () => {

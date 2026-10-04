@@ -31,7 +31,6 @@ import {
   type LauncherPackFileSource,
   type LauncherPackFilesData,
   type LauncherPackRelease,
-  type LauncherPackReleasesData,
 } from "@createrington/shared/launcher";
 import { findCurseforgeCdnUrls } from "./curseforge-cdn";
 import {
@@ -189,23 +188,19 @@ class LauncherPackService {
    * launcher and not found archived on CurseForge by the last `checkReleases`.
    * Each comes with its changelog: the mods it added, updated and removed
    * against the release recorded before it (listed or not), and the publish
-   * notes. Paged, `page` counts from 0. Reads the database only. Empty when
-   * there is none or the page is past the end.
+   * notes. Paged, `page` counts from 0, with `total` counting every listed
+   * release. Reads the database only. Empty when there is none or the page is
+   * past the end.
    */
   async listReleases(paging: {
     page: number;
     limit: number;
-  }): Promise<LauncherPackReleasesData> {
+  }): Promise<{ releases: LauncherPackRelease[]; total: number }> {
     const { page, limit } = paging;
     const modpack = await Q.modpack.find({
       curseforgeProjectId: config.curseforge.modpackProjectId,
     });
-    if (!modpack) {
-      return {
-        releases: [],
-        pagination: { page, limit, total: 0, totalPages: 0 },
-      };
-    }
+    if (!modpack) return { releases: [], total: 0 };
 
     const filters = {
       modpackId: modpack.id,
@@ -224,17 +219,19 @@ class LauncherPackService {
     const releases = await Promise.all(
       rows.map(async (row): Promise<LauncherPackRelease | null> => {
         const pack = toPackData(row);
-        if (!pack) return null;
+        if (!pack) {
+          logger.warn(
+            `${modpack.name} release #${row.id} is ready for the launcher but cannot be served: a pack field is missing`,
+          );
+          return null;
+        }
         return {
           ...pack,
           changelog: toPackChangelog(await getReleaseChangelog(modpack, row)),
         };
       }),
     );
-    return {
-      releases: releases.filter((release) => release !== null),
-      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
-    };
+    return { releases: releases.filter((release) => release !== null), total };
   }
 
   /**
@@ -456,6 +453,9 @@ class LauncherPackService {
 
       const changed = await Q.modpack.release.updateAll(
         {
+          version: manifest.version,
+          minecraftVersion: manifest.minecraftVersion,
+          modLoader: manifest.modLoader,
           packFileName: pack.fileName,
           packFileSize: pack.fileLength,
           packSha1: pack.sha1,

@@ -2,11 +2,12 @@ import { Q } from "@/db";
 import type { ReleaseModRow } from "@/db/queries/modpack/release/mod";
 import type { ChangelogInput } from "@/discord/components/presets/modpack-changelog";
 import type { Modpack, ModpackRelease } from "@createrington/shared/db";
+import { LAUNCHER_PACK_RELEASES_MAX_PAGE_SIZE } from "@createrington/shared/launcher";
 import { toChangelogInput } from "./changelog";
 import type { ModpackReleaseDiff, ModpackReleaseDiffEntry } from "./index";
 
 const CHANGELOG_CACHE_TTL_MS = 5 * 60_000;
-const CHANGELOG_CACHE_MAX = 16;
+const CHANGELOG_CACHE_MAX = 4 * LAUNCHER_PACK_RELEASES_MAX_PAGE_SIZE;
 
 const changelogCache = new Map<
   number,
@@ -98,6 +99,8 @@ export async function getReleaseDiff(
  * Presentation-ready changelog of a recorded release: its diff with labels,
  * links and the publish notes. Kept for five minutes per release, shared by
  * every caller, so notes edited meanwhile show up after that at the latest.
+ * The cache holds several full pages of the launcher's releases list, which
+ * asks for one changelog per row.
  */
 export function getReleaseChangelog(
   modpack: Modpack,
