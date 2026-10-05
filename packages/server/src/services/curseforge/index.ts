@@ -5,6 +5,7 @@ import path from "node:path";
 import JSZip from "jszip";
 import { z } from "zod";
 import config from "@/config";
+import { countCurseForgeCall } from "./call-counter";
 import { CURSEFORGE_CLASSES } from "@createrington/shared/workshop";
 
 // CurseForge API vocabulary
@@ -220,6 +221,35 @@ function ensureApiKey(): void {
   }
 }
 
+/**
+ * Sends one request to the CurseForge API with the key and the request
+ * timeout, and counts it. Every call to the API goes through here, so the
+ * count is all this app asks of the key. File downloads from the CDN are not
+ * calls to the API and do not come through here.
+ */
+async function cfFetch(
+  url: string,
+  init: {
+    method?: string;
+    headers?: Record<string, string>;
+    body?: string;
+  } = {},
+): Promise<Response> {
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      ...init,
+      headers: { ...cfHeaders(), ...init.headers },
+      signal: AbortSignal.timeout(CF_FETCH_TIMEOUT_MS),
+    });
+  } catch (error) {
+    countCurseForgeCall(null);
+    throw error;
+  }
+  countCurseForgeCall(res.status);
+  return res;
+}
+
 const ID_BATCH_ENDPOINTS = {
   mods: { path: "/v1/mods", idsKey: "modIds" },
   files: { path: "/v1/mods/files", idsKey: "fileIds" },
@@ -243,11 +273,10 @@ async function postIdBatches<T extends z.ZodTypeAny>(request: {
 
   const rows: z.infer<T>[] = [];
   for (const batch of toBatches(request.ids)) {
-    const res = await fetch(`${CURSEFORGE_API}${path}`, {
+    const res = await cfFetch(`${CURSEFORGE_API}${path}`, {
       method: "POST",
-      headers: { ...cfHeaders(), "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ [idsKey]: batch }),
-      signal: AbortSignal.timeout(CF_FETCH_TIMEOUT_MS),
     });
     if (res.status === 404) {
       await res.body?.cancel();
@@ -386,10 +415,7 @@ export async function searchMods(
   }
   url.searchParams.set("gameVersion", gameVersion);
 
-  const res = await fetch(url.toString(), {
-    headers: cfHeaders(),
-    signal: AbortSignal.timeout(CF_FETCH_TIMEOUT_MS),
-  });
+  const res = await cfFetch(url.toString());
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     throw new Error(`CurseForge search failed (${res.status}): ${text}`);
@@ -443,10 +469,7 @@ export async function findModBySlug(
   url.searchParams.set("classId", String(classId));
   url.searchParams.set("slug", slug);
 
-  const res = await fetch(url.toString(), {
-    headers: cfHeaders(),
-    signal: AbortSignal.timeout(CF_FETCH_TIMEOUT_MS),
-  });
+  const res = await cfFetch(url.toString());
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     throw new Error(`CurseForge slug lookup failed (${res.status}): ${text}`);
@@ -486,10 +509,7 @@ export async function getModFiles(
   url.searchParams.set("gameVersion", gameVersion);
   url.searchParams.set("modLoaderType", String(modLoaderType));
 
-  const res = await fetch(url.toString(), {
-    headers: cfHeaders(),
-    signal: AbortSignal.timeout(CF_FETCH_TIMEOUT_MS),
-  });
+  const res = await cfFetch(url.toString());
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     throw new Error(`CurseForge getModFiles failed (${res.status}): ${text}`);
@@ -592,10 +612,7 @@ export async function getMod(
 ): Promise<CurseForgeProjectData> {
   ensureApiKey();
 
-  const res = await fetch(`${CURSEFORGE_API}/v1/mods/${projectId}`, {
-    headers: cfHeaders(),
-    signal: AbortSignal.timeout(CF_FETCH_TIMEOUT_MS),
-  });
+  const res = await cfFetch(`${CURSEFORGE_API}/v1/mods/${projectId}`);
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     throw new Error(`CurseForge getMod failed (${res.status}): ${text}`);
@@ -650,10 +667,7 @@ export async function getMinecraftVersions(): Promise<string[]> {
   }
   ensureApiKey();
 
-  const res = await fetch(`${CURSEFORGE_API}/v1/minecraft/version`, {
-    headers: cfHeaders(),
-    signal: AbortSignal.timeout(CF_FETCH_TIMEOUT_MS),
-  });
+  const res = await cfFetch(`${CURSEFORGE_API}/v1/minecraft/version`);
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     throw new Error(
@@ -680,9 +694,8 @@ export async function getModFileDownloadUrl(
 ): Promise<string> {
   ensureApiKey();
 
-  const res = await fetch(
+  const res = await cfFetch(
     `${CURSEFORGE_API}/v1/mods/${modId}/files/${fileId}/download-url`,
-    { headers: cfHeaders(), signal: AbortSignal.timeout(CF_FETCH_TIMEOUT_MS) },
   );
   if (!res.ok) {
     const text = await res.text().catch(() => "");
@@ -931,10 +944,7 @@ export async function searchProjects(
     url.searchParams.set("modLoaderType", String(options.modLoaderType));
   }
 
-  const res = await fetch(url.toString(), {
-    headers: cfHeaders(),
-    signal: AbortSignal.timeout(CF_FETCH_TIMEOUT_MS),
-  });
+  const res = await cfFetch(url.toString());
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     throw new Error(`CurseForge search failed (${res.status}): ${text}`);
@@ -989,10 +999,7 @@ export async function listProjectFiles(
     url.searchParams.set("modLoaderType", String(options.modLoaderType));
   }
 
-  const res = await fetch(url.toString(), {
-    headers: cfHeaders(),
-    signal: AbortSignal.timeout(CF_FETCH_TIMEOUT_MS),
-  });
+  const res = await cfFetch(url.toString());
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     throw new Error(
@@ -1172,9 +1179,8 @@ export async function getModpackFile(
   fileId: number,
 ): Promise<ModpackFile | null> {
   ensureApiKey();
-  const res = await fetch(
+  const res = await cfFetch(
     `${CURSEFORGE_API}/v1/mods/${packProjectId}/files/${fileId}`,
-    { headers: cfHeaders(), signal: AbortSignal.timeout(CF_FETCH_TIMEOUT_MS) },
   );
   if (res.status === 404) return null;
   if (!res.ok) {
@@ -1191,9 +1197,8 @@ export async function getModpackFile(
 async function getLatestListedModpackFile(
   packProjectId: number,
 ): Promise<ModpackFile | null> {
-  const res = await fetch(
+  const res = await cfFetch(
     `${CURSEFORGE_API}/v1/mods/${packProjectId}/files?pageSize=1`,
-    { headers: cfHeaders(), signal: AbortSignal.timeout(CF_FETCH_TIMEOUT_MS) },
   );
   if (!res.ok) {
     throw new Error(`Failed to fetch modpack files (${res.status})`);
@@ -1460,9 +1465,8 @@ const packManifestSchema = z.object({
 });
 
 async function downloadPackManifest(packProjectId: number, fileId: number) {
-  const dlRes = await fetch(
+  const dlRes = await cfFetch(
     `${CURSEFORGE_API}/v1/mods/${packProjectId}/files/${fileId}/download-url`,
-    { headers: cfHeaders(), signal: AbortSignal.timeout(CF_FETCH_TIMEOUT_MS) },
   );
   if (!dlRes.ok) {
     throw new Error(
