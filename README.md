@@ -347,7 +347,8 @@ git clone https://gitea.matejhoz.com/Createrington/app.git createrington
 cd createrington
 pnpm install
 cp .env.example .env      # then fill in section 1
-pnpm db:up                # PostgreSQL on port 5433, Redis on port 6380
+pnpm db:up                # PostgreSQL on port 5433
+pnpm redis:up             # Redis on port 6380 (optional)
 pnpm db:migrate
 pnpm db:seed
 pnpm generate             # DB types + query classes
