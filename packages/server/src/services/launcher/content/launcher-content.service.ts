@@ -8,7 +8,12 @@ import {
   listProjectFiles,
   searchProjects,
 } from "@/services/curseforge";
-import { keyValueStore, readThrough } from "@/services/key-value-store";
+import {
+  keyValueStore,
+  readStored,
+  readThrough,
+  writeStored,
+} from "@/services/key-value-store";
 import {
   LAUNCHER_CONTENT_MAX_RESULTS,
   LauncherContentErrorCode,
@@ -71,6 +76,11 @@ function loaderTypeFor(
 class LauncherContentService {
   private static instance: LauncherContentService;
 
+  private readonly loadingProjects = new Map<
+    number,
+    Promise<LauncherProject | null>
+  >();
+
   static getInstance(): LauncherContentService {
     if (!LauncherContentService.instance) {
       LauncherContentService.instance = new LauncherContentService();
@@ -84,11 +94,12 @@ class LauncherContentService {
       ContentPage,
   ): Promise<{ projects: LauncherProjectHit[]; total: number }> {
     const classId = classForContentKind(params.kind);
+    const modLoaderType = loaderTypeFor(classId, params.loader);
     const key = `${KEY_PREFIX}:search:${JSON.stringify([
       params.query.toLowerCase(),
       params.kind,
       params.minecraftVersion ?? null,
-      params.loader ?? null,
+      modLoaderType,
       params.page,
       params.limit,
     ])}`;
@@ -99,7 +110,7 @@ class LauncherContentService {
           query: params.query,
           classId,
           gameVersion: params.minecraftVersion,
-          modLoaderType: loaderTypeFor(classId, params.loader),
+          modLoaderType,
           index: params.page * params.limit,
           pageSize: params.limit,
         }),
@@ -147,11 +158,14 @@ class LauncherContentService {
       );
     }
 
-    const classId = classForContentKind(project.kind);
+    const modLoaderType = loaderTypeFor(
+      classForContentKind(project.kind),
+      params.loader,
+    );
     const key = `${KEY_PREFIX}:files:${JSON.stringify([
       projectId,
       params.minecraftVersion ?? null,
-      params.loader ?? null,
+      modLoaderType,
       params.page,
       params.limit,
     ])}`;
@@ -160,7 +174,7 @@ class LauncherContentService {
       const listed = await this.ask("file list", () =>
         listProjectFiles(projectId, {
           gameVersion: params.minecraftVersion,
-          modLoaderType: loaderTypeFor(classId, params.loader),
+          modLoaderType,
           index: params.page * params.limit,
           pageSize: params.limit,
         }),
@@ -208,18 +222,49 @@ class LauncherContentService {
   private async loadProjects(
     projectIds: number[],
   ): Promise<Map<number, LauncherProject | null>> {
-    const projects = new Map<number, LauncherProject | null>();
-    const missing: number[] = [];
-    for (const id of projectIds) {
-      const stored = await keyValueStore.get(this.projectKey(id));
-      if (stored === null) missing.push(id);
-      else projects.set(id, JSON.parse(stored) as LauncherProject | null);
-    }
-    if (missing.length === 0) return projects;
+    const stored = await Promise.all(
+      projectIds.map((id) =>
+        readStored<LauncherProject | null>(keyValueStore, this.projectKey(id)),
+      ),
+    );
 
-    const fetched = await this.ask("projects", () => getMods(missing));
+    const projects = new Map<number, LauncherProject | null>();
+    const waiting: Array<[number, Promise<LauncherProject | null>]> = [];
+    const missing: number[] = [];
+    projectIds.forEach((id, index) => {
+      const project = stored[index];
+      const loading = this.loadingProjects.get(id);
+      if (project !== undefined) projects.set(id, project);
+      else if (loading) waiting.push([id, loading]);
+      else missing.push(id);
+    });
+
+    if (missing.length > 0) {
+      const fetched = this.fetchProjects(missing);
+      for (const id of missing) {
+        const loading = fetched.then((found) => found.get(id) ?? null);
+        this.loadingProjects.set(id, loading);
+        waiting.push([id, loading]);
+      }
+      const done = () => {
+        for (const id of missing) this.loadingProjects.delete(id);
+      };
+      fetched.then(done, done);
+    }
+
+    const loaded = await Promise.all(waiting.map(([, loading]) => loading));
+    waiting.forEach(([id], index) => projects.set(id, loaded[index] ?? null));
+    return projects;
+  }
+
+  private async fetchProjects(
+    projectIds: number[],
+  ): Promise<Map<number, LauncherProject | null>> {
+    const fetched = await this.ask("projects", () => getMods(projectIds));
     const byId = new Map(fetched.map((data) => [data.id, data]));
-    for (const id of missing) {
+
+    const projects = new Map<number, LauncherProject | null>();
+    for (const id of projectIds) {
       const data = byId.get(id);
       const project = data
         ? toLauncherProject({
@@ -234,9 +279,10 @@ class LauncherContentService {
           })
         : null;
       projects.set(id, project);
-      await keyValueStore.set(
+      await writeStored(
+        keyValueStore,
         this.projectKey(id),
-        JSON.stringify(project),
+        project,
         project ? PROJECT_TTL_MS : UNKNOWN_PROJECT_TTL_MS,
       );
     }

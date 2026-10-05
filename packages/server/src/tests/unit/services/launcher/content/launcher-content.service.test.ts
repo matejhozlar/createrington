@@ -463,3 +463,128 @@ describe("LauncherContentService.getFile", () => {
     );
   });
 });
+
+describe("LauncherContentService caching", () => {
+  it("asks CurseForge once for a shader search whatever loader is named", async () => {
+    vi.mocked(searchProjects).mockResolvedValue({ projects: [], total: 0 });
+    const search = { query: "bsl", kind: "shader", ...FIRST_PAGE } as const;
+
+    await launcherContentService.search({ ...search, loader: "neoforge" });
+    await launcherContentService.search({ ...search, loader: "fabric" });
+    await launcherContentService.search(search);
+
+    expect(searchProjects).toHaveBeenCalledTimes(1);
+  });
+
+  it("asks CurseForge once for a shader's files whatever loader is named", async () => {
+    vi.mocked(getMods).mockResolvedValue([
+      makeProjectData(6552001, { classId: 6552 }),
+    ]);
+    vi.mocked(listProjectFiles).mockResolvedValue({ files: [], total: 0 });
+
+    await launcherContentService.listFiles(6552001, {
+      loader: "neoforge",
+      ...FIRST_PAGE,
+    });
+    await launcherContentService.listFiles(6552001, {
+      loader: "fabric",
+      ...FIRST_PAGE,
+    });
+
+    expect(listProjectFiles).toHaveBeenCalledTimes(1);
+  });
+
+  it("still asks per loader for a mod", async () => {
+    vi.mocked(searchProjects).mockResolvedValue({ projects: [], total: 0 });
+    const search = { query: "create", kind: "mod", ...FIRST_PAGE } as const;
+
+    await launcherContentService.search({ ...search, loader: "neoforge" });
+    await launcherContentService.search({ ...search, loader: "fabric" });
+
+    expect(searchProjects).toHaveBeenCalledTimes(2);
+  });
+
+  it("shares one CurseForge call between lookups of the same project at the same time", async () => {
+    vi.mocked(getMods).mockImplementation(async (ids) =>
+      ids.map((id) => makeProjectData(id)),
+    );
+
+    const [first, second] = await Promise.all([
+      launcherContentService.getProjects([328085]),
+      launcherContentService.getProjects([328085, 238222]),
+    ]);
+
+    expect(vi.mocked(getMods).mock.calls).toEqual([[[328085]], [[238222]]]);
+    expect(first.projects.map((project) => project.id)).toEqual(["328085"]);
+    expect(second.projects.map((project) => project.id)).toEqual([
+      "328085",
+      "238222",
+    ]);
+  });
+
+  it("fails every lookup that shared a failed call, and asks again next time", async () => {
+    vi.mocked(getMods)
+      .mockRejectedValueOnce(new Error("down"))
+      .mockResolvedValue([createProject()]);
+
+    const results = await Promise.allSettled([
+      launcherContentService.getProjects([328085]),
+      launcherContentService.getProjects([328085]),
+    ]);
+
+    expect(results.map((result) => result.status)).toEqual([
+      "rejected",
+      "rejected",
+    ]);
+    expect(getMods).toHaveBeenCalledTimes(1);
+    expect(
+      (await launcherContentService.getProjects([328085])).projects,
+    ).toHaveLength(1);
+  });
+});
+
+describe("LauncherContentService with a store that fails", () => {
+  beforeEach(() => {
+    stores.current = {
+      get: async () => {
+        throw new Error("store down");
+      },
+      set: async () => {
+        throw new Error("store down");
+      },
+    };
+  });
+
+  it("still answers a search, from CurseForge every time", async () => {
+    vi.mocked(searchProjects).mockResolvedValue({
+      projects: [makeHit()],
+      total: 1,
+    });
+    const search = { query: "create", kind: "mod", ...FIRST_PAGE } as const;
+
+    expect((await launcherContentService.search(search)).projects).toHaveLength(
+      1,
+    );
+    expect((await launcherContentService.search(search)).projects).toHaveLength(
+      1,
+    );
+    expect(searchProjects).toHaveBeenCalledTimes(2);
+  });
+
+  it("still answers projects, files and a single file", async () => {
+    vi.mocked(getMods).mockResolvedValue([createProject()]);
+    vi.mocked(listProjectFiles).mockResolvedValue({
+      files: [makeContentFile()],
+      total: 1,
+    });
+    vi.mocked(getContentFiles).mockResolvedValue([makeContentFile()]);
+
+    expect(
+      (await launcherContentService.getProjects([328085])).projects,
+    ).toHaveLength(1);
+    expect(
+      (await launcherContentService.listFiles(328085, FIRST_PAGE)).files,
+    ).toHaveLength(1);
+    expect((await launcherContentService.getFile(7000001)).id).toBe("7000001");
+  });
+});

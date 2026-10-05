@@ -1,5 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { MemoryKeyValueStore, readThrough } from "@/services/key-value-store";
+import {
+  MemoryKeyValueStore,
+  readStored,
+  readThrough,
+  writeStored,
+  type KeyValueStore,
+} from "@/services/key-value-store";
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -129,5 +135,51 @@ describe("readThrough", () => {
     );
     expect(await readThrough(store, "flaky", 1000, load)).toBe("value");
     expect(load).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("a store that fails", () => {
+  const failing: KeyValueStore = {
+    get: async () => {
+      throw new Error("store down");
+    },
+    set: async () => {
+      throw new Error("store down");
+    },
+  };
+
+  it("reads as nothing stored", async () => {
+    expect(await readStored(failing, "key")).toBeUndefined();
+  });
+
+  it("skips the write without failing", async () => {
+    await expect(
+      writeStored(failing, "key", { answer: 42 }, 1000),
+    ).resolves.toBeUndefined();
+  });
+
+  it("only costs a load in readThrough", async () => {
+    const load = vi.fn(async () => "value");
+
+    expect(await readThrough(failing, "down", 1000, load)).toBe("value");
+    expect(await readThrough(failing, "down", 1000, load)).toBe("value");
+    expect(load).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("readStored", () => {
+  it("tells a stored null from nothing stored", async () => {
+    const store = new MemoryKeyValueStore();
+    await writeStored(store, "null", null, 1000);
+
+    expect(await readStored(store, "null")).toBeNull();
+    expect(await readStored(store, "missing")).toBeUndefined();
+  });
+
+  it("reads something that is not JSON as nothing stored", async () => {
+    const store = new MemoryKeyValueStore();
+    await store.set("broken", "{not json", 1000);
+
+    expect(await readStored(store, "broken")).toBeUndefined();
   });
 });
