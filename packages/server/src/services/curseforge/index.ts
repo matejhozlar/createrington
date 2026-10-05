@@ -156,6 +156,15 @@ const rawFileDetailSchema = z.object({
   isAvailable: z.boolean().nullish(),
 });
 
+const rawContentFileSchema = rawFileDetailSchema.extend({
+  gameVersions: z.array(z.string()).nullish(),
+  dependencies: z
+    .array(z.object({ modId: z.number(), relationType: z.number() }))
+    .nullish(),
+});
+
+const rawPaginationSchema = z.object({ totalCount: z.number() });
+
 const rawModpackFileSchema = z.object({
   id: z.number(),
   modId: z.number(),
@@ -570,6 +579,10 @@ export async function getMods(
       body: JSON.stringify({ modIds: batch }),
       signal: AbortSignal.timeout(CF_FETCH_TIMEOUT_MS),
     });
+    if (res.status === 404) {
+      await res.body?.cancel();
+      continue;
+    }
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       throw new Error(`CurseForge getMods failed (${res.status}): ${text}`);
@@ -848,6 +861,222 @@ export async function getFilesDependencies(fileIds: number[]): Promise<
         ),
       })),
     );
+  }
+  return results;
+}
+
+export interface CurseForgePage {
+  /** Zero-based offset of the first result; CurseForge refuses `index + pageSize` above 10,000. */
+  index: number;
+  pageSize: number;
+}
+
+export interface CurseForgeProjectHit {
+  id: number;
+  classId: number;
+  slug: string;
+  name: string;
+  summary: string | null;
+  websiteUrl: string;
+  thumbnailUrl: string | null;
+  primaryAuthor: string | null;
+  downloadCount: number;
+}
+
+export interface CurseForgeContentFile {
+  id: number;
+  projectId: number;
+  gameId: number | null;
+  displayName: string | null;
+  fileName: string | null;
+  fileDate: string | null;
+  releaseType: number | null;
+  /** Null when the author opted out of third-party distribution. */
+  downloadUrl: string | null;
+  fileLength: number | null;
+  sha1: string | null;
+  gameVersions: string[];
+  dependencies: Array<{ projectId: number; required: boolean }>;
+}
+
+const CF_RELATION_OPTIONAL = 2;
+const CF_RELATION_REQUIRED = 3;
+
+function toContentFile(
+  raw: z.infer<typeof rawContentFileSchema>,
+): CurseForgeContentFile {
+  return {
+    id: raw.id,
+    projectId: raw.modId,
+    gameId: raw.gameId ?? null,
+    displayName: raw.displayName ?? null,
+    fileName: raw.fileName ?? null,
+    fileDate: raw.fileDate ?? null,
+    releaseType: raw.releaseType ?? null,
+    downloadUrl: raw.downloadUrl || null,
+    fileLength: raw.fileLength ?? null,
+    sha1: sha1Of(raw.hashes),
+    gameVersions: raw.gameVersions ?? [],
+    dependencies: (raw.dependencies ?? [])
+      .filter(
+        (dependency) =>
+          dependency.relationType === CF_RELATION_OPTIONAL ||
+          dependency.relationType === CF_RELATION_REQUIRED,
+      )
+      .map((dependency) => ({
+        projectId: dependency.modId,
+        required: dependency.relationType === CF_RELATION_REQUIRED,
+      })),
+  };
+}
+
+/**
+ * One page of the Minecraft projects of a class that match the text, most
+ * popular first, with the number of matches CurseForge counts in total. An
+ * empty text lists the class. Unlike `searchMods` it targets no default game
+ * version or loader and does not look at the modpack.
+ */
+export async function searchProjects(
+  options: {
+    query: string;
+    classId: number;
+    gameVersion?: string;
+    modLoaderType?: number | null;
+  } & CurseForgePage,
+): Promise<{ projects: CurseForgeProjectHit[]; total: number }> {
+  ensureApiKey();
+
+  const url = new URL(`${CURSEFORGE_API}/v1/mods/search`);
+  url.searchParams.set("gameId", String(MINECRAFT_GAME_ID));
+  url.searchParams.set("classId", String(options.classId));
+  url.searchParams.set("sortField", "2"); // popularity
+  url.searchParams.set("sortOrder", "desc");
+  url.searchParams.set("index", String(options.index));
+  url.searchParams.set("pageSize", String(options.pageSize));
+  if (options.query) url.searchParams.set("searchFilter", options.query);
+  if (options.gameVersion) {
+    url.searchParams.set("gameVersion", options.gameVersion);
+  }
+  if (options.modLoaderType != null) {
+    url.searchParams.set("modLoaderType", String(options.modLoaderType));
+  }
+
+  const res = await fetch(url.toString(), {
+    headers: cfHeaders(),
+    signal: AbortSignal.timeout(CF_FETCH_TIMEOUT_MS),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`CurseForge search failed (${res.status}): ${text}`);
+  }
+
+  const body = parseCfResponse(
+    z.object({
+      data: z.array(rawSearchResultSchema),
+      pagination: rawPaginationSchema,
+    }),
+    await res.json(),
+    "search",
+  );
+
+  return {
+    projects: body.data.map((project) => ({
+      id: project.id,
+      classId: options.classId,
+      slug: project.slug,
+      name: project.name,
+      summary: project.summary || null,
+      websiteUrl: project.links.websiteUrl,
+      thumbnailUrl: project.logo?.thumbnailUrl ?? null,
+      primaryAuthor: project.authors?.[0]?.name ?? null,
+      downloadCount: project.downloadCount ?? 0,
+    })),
+    total: body.pagination.totalCount,
+  };
+}
+
+/**
+ * One page of a project's files in the order CurseForge lists them, with the
+ * number of files that match in total. Unlike `getModFiles` it targets no
+ * default game version or loader.
+ */
+export async function listProjectFiles(
+  projectId: number,
+  options: {
+    gameVersion?: string;
+    modLoaderType?: number | null;
+  } & CurseForgePage,
+): Promise<{ files: CurseForgeContentFile[]; total: number }> {
+  ensureApiKey();
+
+  const url = new URL(`${CURSEFORGE_API}/v1/mods/${projectId}/files`);
+  url.searchParams.set("index", String(options.index));
+  url.searchParams.set("pageSize", String(options.pageSize));
+  if (options.gameVersion) {
+    url.searchParams.set("gameVersion", options.gameVersion);
+  }
+  if (options.modLoaderType != null) {
+    url.searchParams.set("modLoaderType", String(options.modLoaderType));
+  }
+
+  const res = await fetch(url.toString(), {
+    headers: cfHeaders(),
+    signal: AbortSignal.timeout(CF_FETCH_TIMEOUT_MS),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(
+      `CurseForge listProjectFiles failed (${res.status}): ${text}`,
+    );
+  }
+
+  const body = parseCfResponse(
+    z.object({
+      data: z.array(rawContentFileSchema),
+      pagination: rawPaginationSchema,
+    }),
+    await res.json(),
+    "listProjectFiles",
+  );
+
+  return {
+    files: body.data.map(toContentFile),
+    total: body.pagination.totalCount,
+  };
+}
+
+/** Files by id with their game versions and dependencies, batched. Unknown ids are simply absent. */
+export async function getContentFiles(
+  fileIds: number[],
+): Promise<CurseForgeContentFile[]> {
+  ensureApiKey();
+  if (fileIds.length === 0) return [];
+
+  const results: CurseForgeContentFile[] = [];
+  for (const batch of toBatches(fileIds)) {
+    const res = await fetch(`${CURSEFORGE_API}/v1/mods/files`, {
+      method: "POST",
+      headers: { ...cfHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({ fileIds: batch }),
+      signal: AbortSignal.timeout(CF_FETCH_TIMEOUT_MS),
+    });
+    if (res.status === 404) {
+      await res.body?.cancel();
+      continue;
+    }
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(
+        `CurseForge getContentFiles failed (${res.status}): ${text}`,
+      );
+    }
+
+    const body = parseCfResponse(
+      z.object({ data: z.array(rawContentFileSchema) }),
+      await res.json(),
+      "getContentFiles",
+    );
+    results.push(...body.data.map(toContentFile));
   }
   return results;
 }

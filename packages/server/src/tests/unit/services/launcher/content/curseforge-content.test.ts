@@ -3,11 +3,14 @@ import type {
   CurseforgeFileProject,
   CurseforgeFileWithProject,
 } from "@/db/queries/curseforge/file";
+import type { CurseForgeContentFile } from "@/services/curseforge";
 import {
+  classForContentKind,
   contentKindForClass,
   curseforgeFilePageUrl,
   curseforgeProjectUrl,
   toLauncherContentFile,
+  toLauncherContentFileDetails,
   toLauncherProject,
 } from "@/services/launcher/content/curseforge-content";
 
@@ -248,6 +251,133 @@ describe("toLauncherContentFile", () => {
           project: makeProject({ classId: 6945, websiteUrl: null }),
         }),
       ),
+    ).toBeNull();
+  });
+});
+
+describe("classForContentKind", () => {
+  it.each([
+    ["mod", 6],
+    ["resourcepack", 12],
+    ["shader", 6552],
+  ] as const)("looks a %s up in class %i", (kind, classId) => {
+    expect(classForContentKind(kind)).toBe(classId);
+    expect(contentKindForClass(classId)).toBe(kind);
+  });
+});
+
+describe("toLauncherContentFileDetails", () => {
+  function makeContentFile(
+    overrides: Partial<CurseForgeContentFile> = {},
+  ): CurseForgeContentFile {
+    return {
+      id: 7000001,
+      projectId: 439890,
+      gameId: 432,
+      displayName: "Create Crafts & Additions 1.7.2",
+      fileName: "createaddition-1.7.2.jar",
+      fileDate: "2026-03-01T10:00:00.000Z",
+      releaseType: 2,
+      downloadUrl:
+        "https://edge.forgecdn.net/files/7000/1/createaddition-1.7.2.jar",
+      fileLength: 1234,
+      sha1: "a".repeat(40),
+      gameVersions: ["Client", "1.21.1", "NeoForge", "Server", "1.21"],
+      dependencies: [
+        { projectId: 238222, required: false },
+        { projectId: 328085, required: true },
+      ],
+      ...overrides,
+    };
+  }
+
+  const PROJECT_PAGE =
+    "https://www.curseforge.com/minecraft/mc-mods/createaddition";
+
+  it("describes a file with its versions, loaders and dependencies", () => {
+    expect(
+      toLauncherContentFileDetails(makeContentFile(), PROJECT_PAGE),
+    ).toEqual({
+      source: "curseforge",
+      projectId: "439890",
+      id: "7000001",
+      fileName: "createaddition-1.7.2.jar",
+      size: 1234,
+      sha1: "a".repeat(40),
+      pageUrl: `${PROJECT_PAGE}/files/7000001`,
+      download: {
+        servedBy: "curseforge",
+        url: "https://edge.forgecdn.net/files/7000/1/createaddition-1.7.2.jar",
+      },
+      displayName: "Create Crafts & Additions 1.7.2",
+      releaseType: "beta",
+      publishedAt: "2026-03-01T10:00:00.000Z",
+      gameVersions: ["1.21.1", "1.21"],
+      loaders: ["neoforge"],
+      dependencies: [
+        { source: "curseforge", projectId: "238222", required: false },
+        { source: "curseforge", projectId: "328085", required: true },
+      ],
+    });
+  });
+
+  it("is manual without an address when CurseForge gives no download link", () => {
+    expect(
+      toLauncherContentFileDetails(
+        makeContentFile({ downloadUrl: null }),
+        PROJECT_PAGE,
+      )?.download,
+    ).toEqual({ servedBy: "manual", url: null });
+  });
+
+  it.each([
+    [1, "release"],
+    [2, "beta"],
+    [3, "alpha"],
+    [null, "release"],
+    [9, "release"],
+  ])("reads release type %j as %s", (releaseType, expected) => {
+    expect(
+      toLauncherContentFileDetails(
+        makeContentFile({ releaseType }),
+        PROJECT_PAGE,
+      )?.releaseType,
+    ).toBe(expected);
+  });
+
+  it("names a file without a display name by its file name", () => {
+    expect(
+      toLauncherContentFileDetails(
+        makeContentFile({ displayName: null }),
+        PROJECT_PAGE,
+      )?.displayName,
+    ).toBe("createaddition-1.7.2.jar");
+  });
+
+  it("lists every loader a file is tagged with and none for a loaderless one", () => {
+    expect(
+      toLauncherContentFileDetails(
+        makeContentFile({
+          gameVersions: ["Fabric", "1.20.1", "Quilt", "Forge"],
+        }),
+        PROJECT_PAGE,
+      )?.loaders,
+    ).toEqual(["fabric", "quilt", "forge"]);
+    expect(
+      toLauncherContentFileDetails(
+        makeContentFile({ gameVersions: ["1.21.1"] }),
+        PROJECT_PAGE,
+      )?.loaders,
+    ).toEqual([]);
+  });
+
+  it.each([
+    ["no file name", { fileName: null }],
+    ["no size", { fileLength: null }],
+    ["no SHA-1", { sha1: null }],
+  ])("has no file when CurseForge gives %s", (_label, overrides) => {
+    expect(
+      toLauncherContentFileDetails(makeContentFile(overrides), PROJECT_PAGE),
     ).toBeNull();
   });
 });

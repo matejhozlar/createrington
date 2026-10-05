@@ -85,6 +85,17 @@ export const launcherPackLimiter = rateLimit({
   handler: rateLimitHandler,
 });
 
+/** Launcher content limiter: 60 requests per minute per launcher player (per IP without a session) */
+export const launcherContentLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 60,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  handler: rateLimitHandler,
+  keyGenerator: (req: Request) =>
+    req.launcherAuth?.minecraftUuid ?? ipKeyGenerator(req.ip ?? "unknown"),
+});
+
 // Backstop for the internal SSO code-exchange endpoint. It is internet
 // exposed (skin-api is remote) and protected by the shared secret alone, so
 // this caps blind brute force if that secret ever leaks. Legitimate traffic

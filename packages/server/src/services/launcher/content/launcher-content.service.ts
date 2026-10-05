@@ -1,0 +1,267 @@
+import { AppError } from "@/app/middleware/error-handler";
+import {
+  CURSEFORGE_MINECRAFT_GAME_ID,
+  CurseForgeLoader,
+  LOADERLESS_CLASSES,
+  getContentFiles,
+  getMods,
+  listProjectFiles,
+  searchProjects,
+} from "@/services/curseforge";
+import { keyValueStore, readThrough } from "@/services/key-value-store";
+import {
+  LAUNCHER_CONTENT_MAX_RESULTS,
+  LauncherContentErrorCode,
+  type LauncherContentFileDetails,
+  type LauncherContentKind,
+  type LauncherContentLoader,
+  type LauncherContentProjectsData,
+  type LauncherProject,
+  type LauncherProjectHit,
+} from "@createrington/shared/launcher";
+import {
+  classForContentKind,
+  toLauncherContentFileDetails,
+  toLauncherProject,
+} from "./curseforge-content";
+
+const SEARCH_TTL_MS = 5 * 60_000;
+const PROJECT_TTL_MS = 60 * 60_000;
+const UNKNOWN_PROJECT_TTL_MS = 5 * 60_000;
+const FILES_TTL_MS = 10 * 60_000;
+const KEY_PREFIX = "launcher:content:curseforge";
+
+export interface ContentPage {
+  page: number;
+  limit: number;
+}
+
+export interface ContentTarget {
+  minecraftVersion?: string;
+  loader?: LauncherContentLoader;
+}
+
+function contentError(
+  code: LauncherContentErrorCode,
+  statusCode: number,
+  message: string,
+): AppError {
+  return new AppError(message, statusCode, true, undefined, { code });
+}
+
+function loaderTypeFor(
+  classId: number,
+  loader: LauncherContentLoader | undefined,
+): number | null {
+  if (!loader || LOADERLESS_CLASSES.has(classId)) return null;
+  return CurseForgeLoader[loader];
+}
+
+/**
+ * Looks CurseForge up for content a launcher player adds to a modpack: search,
+ * projects, a project's files and single files, for any mod, resource pack or
+ * shader of Minecraft, not only what our pack ships. Answers come from the
+ * key-value store while they are fresh (a search for 5 minutes, a project for
+ * an hour, files for 10 minutes), so the same question from many players is
+ * one CurseForge call. Nothing is written to the database, and a file
+ * CurseForge blocks is answered as manual: the other sources the pack service
+ * has for blocked files are for our pack only. Throws `CONTENT_UNAVAILABLE`
+ * (503) when CurseForge cannot be asked. Singleton.
+ */
+class LauncherContentService {
+  private static instance: LauncherContentService;
+
+  static getInstance(): LauncherContentService {
+    if (!LauncherContentService.instance) {
+      LauncherContentService.instance = new LauncherContentService();
+    }
+    return LauncherContentService.instance;
+  }
+
+  /** One page of the projects of a kind that match the text, most popular first. `page` counts from 0; `total` never exceeds what CurseForge lets a search page through. */
+  async search(
+    params: { query: string; kind: LauncherContentKind } & ContentTarget &
+      ContentPage,
+  ): Promise<{ projects: LauncherProjectHit[]; total: number }> {
+    const classId = classForContentKind(params.kind);
+    const key = `${KEY_PREFIX}:search:${JSON.stringify([
+      params.query.toLowerCase(),
+      params.kind,
+      params.minecraftVersion ?? null,
+      params.loader ?? null,
+      params.page,
+      params.limit,
+    ])}`;
+
+    return readThrough(keyValueStore, key, SEARCH_TTL_MS, async () => {
+      const found = await this.ask("search", () =>
+        searchProjects({
+          query: params.query,
+          classId,
+          gameVersion: params.minecraftVersion,
+          modLoaderType: loaderTypeFor(classId, params.loader),
+          index: params.page * params.limit,
+          pageSize: params.limit,
+        }),
+      );
+
+      const projects = found.projects.flatMap((hit) => {
+        const project = toLauncherProject(hit);
+        return project ? [{ ...project, downloads: hit.downloadCount }] : [];
+      });
+      return {
+        projects,
+        total: Math.min(found.total, LAUNCHER_CONTENT_MAX_RESULTS),
+      };
+    });
+  }
+
+  /** The projects with these ids. An id CurseForge does not know, or one that is not a mod, resource pack or shader, comes back in `unknownProjectIds`. */
+  async getProjects(
+    projectIds: number[],
+  ): Promise<LauncherContentProjectsData> {
+    const ids = [...new Set(projectIds)];
+    const found = await this.loadProjects(ids);
+
+    const projects: LauncherProject[] = [];
+    const unknownProjectIds: string[] = [];
+    for (const id of ids) {
+      const project = found.get(id);
+      if (project) projects.push(project);
+      else unknownProjectIds.push(String(id));
+    }
+    return { projects, unknownProjectIds };
+  }
+
+  /** One page of a project's files for a Minecraft version and a loader, in CurseForge's order. Throws `PROJECT_NOT_FOUND` (404) for a project `getProjects` would not know. */
+  async listFiles(
+    projectId: number,
+    params: ContentTarget & ContentPage,
+  ): Promise<{ files: LauncherContentFileDetails[]; total: number }> {
+    const project = (await this.loadProjects([projectId])).get(projectId);
+    if (!project) {
+      throw contentError(
+        LauncherContentErrorCode.PROJECT_NOT_FOUND,
+        404,
+        "CurseForge has no such mod, resource pack or shader",
+      );
+    }
+
+    const classId = classForContentKind(project.kind);
+    const key = `${KEY_PREFIX}:files:${JSON.stringify([
+      projectId,
+      params.minecraftVersion ?? null,
+      params.loader ?? null,
+      params.page,
+      params.limit,
+    ])}`;
+
+    return readThrough(keyValueStore, key, FILES_TTL_MS, async () => {
+      const listed = await this.ask("file list", () =>
+        listProjectFiles(projectId, {
+          gameVersion: params.minecraftVersion,
+          modLoaderType: loaderTypeFor(classId, params.loader),
+          index: params.page * params.limit,
+          pageSize: params.limit,
+        }),
+      );
+      return {
+        files: listed.files.flatMap((file) => {
+          const details = toLauncherContentFileDetails(file, project.url);
+          return details ? [details] : [];
+        }),
+        total: Math.min(listed.total, LAUNCHER_CONTENT_MAX_RESULTS),
+      };
+    });
+  }
+
+  /** One file with its address, hash and dependencies. Throws `FILE_NOT_FOUND` (404) when CurseForge does not know it, publishes no SHA-1 for it, or it belongs to no mod, resource pack or shader of Minecraft. */
+  async getFile(fileId: number): Promise<LauncherContentFileDetails> {
+    const file = await readThrough(
+      keyValueStore,
+      `${KEY_PREFIX}:file:${fileId}`,
+      FILES_TTL_MS,
+      async () => {
+        const [found] = await this.ask("file", () => getContentFiles([fileId]));
+        if (!found || found.gameId !== CURSEFORGE_MINECRAFT_GAME_ID) {
+          return null;
+        }
+        const project = (await this.loadProjects([found.projectId])).get(
+          found.projectId,
+        );
+        return project
+          ? toLauncherContentFileDetails(found, project.url)
+          : null;
+      },
+    );
+
+    if (!file) {
+      throw contentError(
+        LauncherContentErrorCode.FILE_NOT_FOUND,
+        404,
+        "CurseForge has no such file of a mod, resource pack or shader",
+      );
+    }
+    return file;
+  }
+
+  private async loadProjects(
+    projectIds: number[],
+  ): Promise<Map<number, LauncherProject | null>> {
+    const projects = new Map<number, LauncherProject | null>();
+    const missing: number[] = [];
+    for (const id of projectIds) {
+      const stored = await keyValueStore.get(this.projectKey(id));
+      if (stored === null) missing.push(id);
+      else projects.set(id, JSON.parse(stored) as LauncherProject | null);
+    }
+    if (missing.length === 0) return projects;
+
+    const fetched = await this.ask("projects", () => getMods(missing));
+    const byId = new Map(fetched.map((data) => [data.id, data]));
+    for (const id of missing) {
+      const data = byId.get(id);
+      const project = data
+        ? toLauncherProject({
+            id: data.id,
+            classId: data.classId,
+            slug: data.slug,
+            name: data.name,
+            summary: data.summary || null,
+            thumbnailUrl: data.thumbnailUrl,
+            websiteUrl: data.websiteUrl,
+            primaryAuthor: data.authors[0]?.name ?? null,
+          })
+        : null;
+      projects.set(id, project);
+      await keyValueStore.set(
+        this.projectKey(id),
+        JSON.stringify(project),
+        project ? PROJECT_TTL_MS : UNKNOWN_PROJECT_TTL_MS,
+      );
+    }
+    return projects;
+  }
+
+  private projectKey(projectId: number): string {
+    return `${KEY_PREFIX}:project:${projectId}`;
+  }
+
+  private async ask<T>(what: string, call: () => Promise<T>): Promise<T> {
+    try {
+      return await call();
+    } catch (error) {
+      logger.warn(
+        `Launcher content ${what} lookup on CurseForge failed:`,
+        error,
+      );
+      throw contentError(
+        LauncherContentErrorCode.CONTENT_UNAVAILABLE,
+        503,
+        "CurseForge cannot be asked right now",
+      );
+    }
+  }
+}
+
+export const launcherContentService = LauncherContentService.getInstance();
