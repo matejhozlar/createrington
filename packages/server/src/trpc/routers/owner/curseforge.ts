@@ -27,12 +27,12 @@ export const ownerCurseforgeCallsRouter = router({
         .default({ days: DEFAULT_DAYS }),
     )
     .query(async ({ input }) => {
-      const { stored, days } = await curseforgeCallCounter.read(
+      const { source, days } = await curseforgeCallCounter.read(
         CURSEFORGE_CALL_COUNTS,
         input.days,
       );
       return {
-        stored,
+        source,
         days: days.map(({ date, counts }) => ({ date, ...counts })),
       };
     }),

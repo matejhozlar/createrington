@@ -84,6 +84,12 @@ const CDN_SWITCH = {
 
 const CALL_WEEK_DAYS = 7;
 
+const CALLS_UNAVAILABLE_MESSAGE =
+  "The stored counts cannot be read right now. Calls are still being counted and show up here once the store is back.";
+
+const CALLS_IN_MEMORY_NOTE =
+  "The counts are not stored on this environment. This shows only the calls since the server last started.";
+
 const CALL_SUMMARY: {
   label: string;
   hint: string;
@@ -339,6 +345,7 @@ function CurseforgeCard() {
     }),
   );
 
+  const source = callsQuery.data?.source;
   const days = callsQuery.data?.days ?? [];
 
   return (
@@ -365,12 +372,16 @@ function CurseforgeCard() {
           message={`Failed to load the CurseForge calls: ${callsQuery.error.message}`}
           onRetry={() => void callsQuery.refetch()}
         />
+      ) : source === "unavailable" ? (
+        <CardError
+          message={CALLS_UNAVAILABLE_MESSAGE}
+          onRetry={() => void callsQuery.refetch()}
+        />
       ) : (
         <CardContent className="flex flex-col gap-4">
-          {callsQuery.data && !callsQuery.data.stored && (
+          {source === "memory" && (
             <p className="text-sm text-muted-foreground">
-              The counts are not being stored right now. This shows only the
-              calls since the server last started.
+              {CALLS_IN_MEMORY_NOTE}
             </p>
           )}
           <dl className="m-0 grid grid-cols-2 gap-4 lg:grid-cols-4">

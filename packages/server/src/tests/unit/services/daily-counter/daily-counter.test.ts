@@ -10,6 +10,7 @@ function fakeRedis() {
   const values = new Map<string, number>();
   const expiries = new Map<string, number>();
   const redis = {
+    enabled: true,
     isReady: true,
     failing: false,
     values,
@@ -83,7 +84,7 @@ describe("DailyCounter", () => {
     await counter.write();
 
     expect(await counter.read(NAMES, 3)).toEqual({
-      stored: true,
+      source: "redis",
       days: [
         { date: "2026-10-07", counts: { calls: 1, refused: 1 } },
         { date: "2026-10-06", counts: { calls: 0, refused: 0 } },
@@ -92,8 +93,9 @@ describe("DailyCounter", () => {
     });
   });
 
-  it("counts in memory while Redis cannot be reached and says so", async () => {
+  it("counts in memory for good when no Redis is configured", async () => {
     const redis = fakeRedis();
+    redis.enabled = false;
     redis.isReady = false;
     const counter = new DailyCounter<Name>("count:test", redis);
 
@@ -103,8 +105,32 @@ describe("DailyCounter", () => {
 
     expect(redis.sendCommand).not.toHaveBeenCalled();
     expect(await counter.read(NAMES, 1)).toEqual({
-      stored: false,
+      source: "memory",
       days: [{ date: "2026-10-05", counts: { calls: 2, refused: 0 } }],
+    });
+  });
+
+  it("says the counts are unavailable while a configured Redis cannot be reached", async () => {
+    const redis = fakeRedis();
+    redis.values.set("count:test:calls:2026-10-05", 40);
+    redis.isReady = false;
+    const counter = new DailyCounter<Name>("count:test", redis);
+
+    expect((await counter.read(NAMES, 1)).source).toBe("unavailable");
+  });
+
+  it("says the counts are unavailable when Redis fails the read", async () => {
+    const redis = fakeRedis();
+    redis.values.set("count:test:calls:2026-10-05", 40);
+    redis.failing = true;
+    const counter = new DailyCounter<Name>("count:test", redis);
+
+    expect((await counter.read(NAMES, 1)).source).toBe("unavailable");
+
+    redis.failing = false;
+    expect(await counter.read(NAMES, 1)).toEqual({
+      source: "redis",
+      days: [{ date: "2026-10-05", counts: { calls: 40, refused: 0 } }],
     });
   });
 

@@ -1,8 +1,9 @@
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_RETENTION_DAYS = 90;
 
-/** What the counter needs from Redis: whether it can be reached, and one raw command at a time. */
+/** What the counter needs from Redis: whether it is configured, whether it can be reached, and one raw command at a time. */
 export interface CounterRedis {
+  readonly enabled: boolean;
   readonly isReady: boolean;
   sendCommand(args: string[]): Promise<unknown>;
 }
@@ -12,6 +13,14 @@ export interface DailyCounts<Name extends string> {
   date: string;
   counts: Record<Name, number>;
 }
+
+/**
+ * Where the counts of a read come from: `redis` is the stored history plus
+ * what is not written yet, `memory` is everything this process counted since
+ * it started (no Redis is configured), and `unavailable` means Redis holds
+ * the history but could not be read, so the counts are not the real ones.
+ */
+export type DailyCountsSource = "redis" | "memory" | "unavailable";
 
 function utcDay(time: number): string {
   return new Date(time).toISOString().slice(0, 10);
@@ -26,9 +35,9 @@ function toCount(reply: unknown): number {
  * Counts events per UTC day under a name, for numbers that are only looked
  * at. Counting never waits and never fails: an event is counted in memory
  * first and written to Redis in the background, so counts survive a restart
- * of the app once they are written. While Redis cannot be reached (or is not
- * configured) the counts wait in memory and are added to Redis when it is
- * back; a restart in between loses them. A day is kept for `retentionDays`.
+ * of the app once they are written. While Redis cannot be reached the counts
+ * wait in memory and are added to Redis when it is back; a restart in
+ * between loses them. Without a configured Redis they stay in memory for good. A day is kept for `retentionDays`.
  * A write Redis applied but did not confirm in time is written again, so a
  * count can come out slightly high after trouble with Redis, never low.
  */
@@ -53,13 +62,13 @@ export class DailyCounter<Name extends string> {
 
   /**
    * The counts of the names for each of the last `days` days, today first.
-   * `stored` is false when Redis could not be read, so the counts are only
-   * what this process counted and has not written yet.
+   * With the source `unavailable` the days only hold what is not written yet
+   * and must not be shown as the counts.
    */
   async read(
     names: readonly Name[],
     days: number,
-  ): Promise<{ stored: boolean; days: DailyCounts<Name>[] }> {
+  ): Promise<{ source: DailyCountsSource; days: DailyCounts<Name>[] }> {
     const now = Date.now();
     const dates = Array.from({ length: days }, (_, index) =>
       utcDay(now - index * DAY_MS),
@@ -70,7 +79,11 @@ export class DailyCounter<Name extends string> {
 
     const replies = await this.readStored(keys);
     return {
-      stored: replies !== null,
+      source: !this.redis.enabled
+        ? "memory"
+        : replies === null
+          ? "unavailable"
+          : "redis",
       days: dates.map((date, dateIndex) => {
         const counts = {} as Record<Name, number>;
         names.forEach((name, nameIndex) => {
