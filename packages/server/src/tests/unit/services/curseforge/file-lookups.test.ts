@@ -12,6 +12,7 @@ import {
   getFilesDependencies,
   getFilesDetails,
   getServedFileIds,
+  resolveDependencies,
 } from "@/services/curseforge";
 
 const fetchMock = vi.fn<typeof fetch>();
@@ -146,11 +147,115 @@ describe("getFilesDependencies", () => {
     expect(await getFilesDependencies([999999999])).toEqual([]);
   });
 
+  it("keeps the files of the other batches when one batch is unknown as a whole", async () => {
+    fetchMock
+      .mockResolvedValueOnce(answer({}, 404))
+      .mockResolvedValueOnce(answer({ data: [rawFile(7000001)] }));
+
+    const files = await getFilesDependencies([
+      ...idsOf(100, 990000000),
+      7000001,
+    ]);
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(files).toEqual([
+      {
+        fileId: 7000001,
+        modId: 328085,
+        dependencies: [{ modId: 238222, relationType: 2 }],
+      },
+    ]);
+  });
+
   it("still throws when CurseForge fails", async () => {
     fetchMock.mockResolvedValue(answer({}, 503));
 
     await expect(getFilesDependencies([7000001])).rejects.toThrow(
       "Failed to fetch file dependencies (503)",
     );
+  });
+});
+
+describe("resolveDependencies", () => {
+  function rawMod(id: number) {
+    return {
+      id,
+      name: `Mod ${id}`,
+      links: {
+        websiteUrl: `https://www.curseforge.com/minecraft/mc-mods/mod-${id}`,
+      },
+      logo: { thumbnailUrl: `https://media.forgecdn.net/avatars/${id}.png` },
+      latestFilesIndexes: [
+        {
+          gameVersion: "1.21.1",
+          fileId: id + 1,
+          filename: `mod-${id}.jar`,
+          releaseType: 1,
+          modLoader: 6,
+        },
+      ],
+    };
+  }
+
+  const TARGET = { gameVersion: "1.21.1", modLoaderType: 6 };
+
+  it("asks for the projects by id and resolves the ones CurseForge knows", async () => {
+    fetchMock.mockResolvedValue(answer({ data: [rawMod(238222)] }));
+
+    const resolved = await resolveDependencies(
+      [238222, 999999999],
+      new Set([238222]),
+      TARGET,
+    );
+
+    expect(
+      new URL(String(fetchMock.mock.calls[0]?.[0])).pathname.endsWith(
+        "/v1/mods",
+      ),
+    ).toBe(true);
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({
+      modIds: [238222, 999999999],
+    });
+    expect(resolved).toEqual([
+      {
+        modId: 238222,
+        modName: "Mod 238222",
+        modUrl: "https://www.curseforge.com/minecraft/mc-mods/mod-238222",
+        thumbnailUrl: "https://media.forgecdn.net/avatars/238222.png",
+        inPack: true,
+        bestFile: { id: 238223, fileName: "mod-238222.jar" },
+      },
+    ]);
+  });
+
+  it("resolves nothing when CurseForge knows none of the ids", async () => {
+    fetchMock.mockResolvedValue(answer({}, 404));
+
+    expect(await resolveDependencies([999999999], new Set(), TARGET)).toEqual(
+      [],
+    );
+  });
+
+  it("keeps the projects of the other batches when one batch is unknown as a whole", async () => {
+    fetchMock
+      .mockResolvedValueOnce(answer({}, 404))
+      .mockResolvedValueOnce(answer({ data: [rawMod(238222)] }));
+
+    const resolved = await resolveDependencies(
+      [...idsOf(100, 990000000), 238222],
+      new Set(),
+      TARGET,
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(resolved.map((dependency) => dependency.modId)).toEqual([238222]);
+  });
+
+  it("still throws when CurseForge fails", async () => {
+    fetchMock.mockResolvedValue(answer({}, 500));
+
+    await expect(
+      resolveDependencies([238222], new Set(), TARGET),
+    ).rejects.toThrow("Failed to resolve dependencies (500)");
   });
 });

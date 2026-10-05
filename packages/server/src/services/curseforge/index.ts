@@ -220,6 +220,54 @@ function ensureApiKey(): void {
   }
 }
 
+const ID_BATCH_ENDPOINTS = {
+  mods: { path: "/v1/mods", idsKey: "modIds" },
+  files: { path: "/v1/mods/files", idsKey: "fileIds" },
+} as const;
+
+/**
+ * Posts ids to one of the batch endpoints, 100 per request, and returns every
+ * row CurseForge answers. CurseForge answers a batch of which it knows no id
+ * with a 404 and no body, not with an empty list, so that batch counts as no
+ * rows; any other failure throws `<failure> (<status>)`.
+ */
+async function postIdBatches<T extends z.ZodTypeAny>(request: {
+  of: keyof typeof ID_BATCH_ENDPOINTS;
+  ids: number[];
+  row: T;
+  endpoint: string;
+  failure: string;
+}): Promise<z.infer<T>[]> {
+  ensureApiKey();
+  const { path, idsKey } = ID_BATCH_ENDPOINTS[request.of];
+
+  const rows: z.infer<T>[] = [];
+  for (const batch of toBatches(request.ids)) {
+    const res = await fetch(`${CURSEFORGE_API}${path}`, {
+      method: "POST",
+      headers: { ...cfHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({ [idsKey]: batch }),
+      signal: AbortSignal.timeout(CF_FETCH_TIMEOUT_MS),
+    });
+    if (res.status === 404) {
+      await res.body?.cancel();
+      continue;
+    }
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(`${request.failure} (${res.status}): ${text}`);
+    }
+
+    const body = parseCfResponse(
+      z.object({ data: z.array(request.row) }),
+      await res.json(),
+      request.endpoint,
+    );
+    rows.push(...body.data);
+  }
+  return rows;
+}
+
 export interface CurseForgeTarget {
   gameVersion?: string;
   modLoaderType?: number;
@@ -568,34 +616,14 @@ export async function getMod(
 export async function getMods(
   projectIds: number[],
 ): Promise<CurseForgeProjectData[]> {
-  ensureApiKey();
-  if (projectIds.length === 0) return [];
-
-  const results: CurseForgeProjectData[] = [];
-  for (const batch of toBatches(projectIds)) {
-    const res = await fetch(`${CURSEFORGE_API}/v1/mods`, {
-      method: "POST",
-      headers: { ...cfHeaders(), "Content-Type": "application/json" },
-      body: JSON.stringify({ modIds: batch }),
-      signal: AbortSignal.timeout(CF_FETCH_TIMEOUT_MS),
-    });
-    if (res.status === 404) {
-      await res.body?.cancel();
-      continue;
-    }
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      throw new Error(`CurseForge getMods failed (${res.status}): ${text}`);
-    }
-
-    const body = parseCfResponse(
-      z.object({ data: z.array(rawModSchema) }),
-      await res.json(),
-      "getMods",
-    );
-    results.push(...body.data.map(mapProject));
-  }
-  return results;
+  const mods = await postIdBatches({
+    of: "mods",
+    ids: projectIds,
+    row: rawModSchema,
+    endpoint: "getMods",
+    failure: "CurseForge getMods failed",
+  });
+  return mods.map(mapProject);
 }
 
 let minecraftVersionsCache: { versions: string[]; fetchedAt: number } | null =
@@ -688,28 +716,13 @@ export async function resolveDependencies(
     modLoaderType = NEOFORGE_LOADER_TYPE,
   } = target;
 
-  const mods: Array<z.infer<typeof rawDependencyModSchema>> = [];
-  for (const batch of toBatches(modIds)) {
-    const res = await fetch(`${CURSEFORGE_API}/v1/mods`, {
-      method: "POST",
-      headers: { ...cfHeaders(), "Content-Type": "application/json" },
-      body: JSON.stringify({ modIds: batch }),
-      signal: AbortSignal.timeout(CF_FETCH_TIMEOUT_MS),
-    });
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      throw new Error(
-        `Failed to resolve dependencies (${res.status}): ${text}`,
-      );
-    }
-
-    const body = parseCfResponse(
-      z.object({ data: z.array(rawDependencyModSchema) }),
-      await res.json(),
-      "resolveDependencies",
-    );
-    mods.push(...body.data);
-  }
+  const mods = await postIdBatches({
+    of: "mods",
+    ids: modIds,
+    row: rawDependencyModSchema,
+    endpoint: "resolveDependencies",
+    failure: "Failed to resolve dependencies",
+  });
 
   return mods.map((mod) => {
     const indexes = mod.latestFilesIndexes ?? [];
@@ -734,11 +747,6 @@ export async function resolveDependencies(
   });
 }
 
-/**
- * Fetch per-file dependency info for multiple mod files in batched requests
- *
- * Only optional (relationType 2) and required (relationType 3) dependencies are returned.
- */
 export interface CurseForgeFileDetail {
   fileId: number;
   projectId: number;
@@ -756,35 +764,13 @@ export interface CurseForgeFileDetail {
 async function fetchFileDetails(
   fileIds: number[],
 ): Promise<z.infer<typeof rawFileDetailSchema>[]> {
-  ensureApiKey();
-  if (fileIds.length === 0) return [];
-
-  const results: z.infer<typeof rawFileDetailSchema>[] = [];
-  for (const batch of toBatches(fileIds)) {
-    const res = await fetch(`${CURSEFORGE_API}/v1/mods/files`, {
-      method: "POST",
-      headers: { ...cfHeaders(), "Content-Type": "application/json" },
-      body: JSON.stringify({ fileIds: batch }),
-      signal: AbortSignal.timeout(CF_FETCH_TIMEOUT_MS),
-    });
-    if (res.status === 404) {
-      await res.body?.cancel();
-      continue;
-    }
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      throw new Error(`Failed to fetch file details (${res.status}): ${text}`);
-    }
-
-    const body = parseCfResponse(
-      z.object({ data: z.array(rawFileDetailSchema) }),
-      await res.json(),
-      "getFilesDetails",
-    );
-
-    results.push(...body.data);
-  }
-  return results;
+  return postIdBatches({
+    of: "files",
+    ids: fileIds,
+    row: rawFileDetailSchema,
+    endpoint: "getFilesDetails",
+    failure: "Failed to fetch file details",
+  });
 }
 
 /** Identity and download facts of specific mod files, batched. Unknown ids are simply absent. */
@@ -821,6 +807,11 @@ export async function getServedFileIds(
   );
 }
 
+/**
+ * Fetch per-file dependency info for multiple mod files in batched requests
+ *
+ * Only optional (relationType 2) and required (relationType 3) dependencies are returned.
+ */
 export async function getFilesDependencies(fileIds: number[]): Promise<
   Array<{
     fileId: number;
@@ -828,49 +819,20 @@ export async function getFilesDependencies(fileIds: number[]): Promise<
     dependencies: Array<{ modId: number; relationType: number }>;
   }>
 > {
-  ensureApiKey();
-  if (fileIds.length === 0) return [];
-
-  const results: Array<{
-    fileId: number;
-    modId: number;
-    dependencies: Array<{ modId: number; relationType: number }>;
-  }> = [];
-  for (const batch of toBatches(fileIds)) {
-    const res = await fetch(`${CURSEFORGE_API}/v1/mods/files`, {
-      method: "POST",
-      headers: { ...cfHeaders(), "Content-Type": "application/json" },
-      body: JSON.stringify({ fileIds: batch }),
-      signal: AbortSignal.timeout(CF_FETCH_TIMEOUT_MS),
-    });
-    if (res.status === 404) {
-      await res.body?.cancel();
-      continue;
-    }
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      throw new Error(
-        `Failed to fetch file dependencies (${res.status}): ${text}`,
-      );
-    }
-
-    const body = parseCfResponse(
-      z.object({ data: z.array(rawFileDependenciesSchema) }),
-      await res.json(),
-      "getFilesDependencies",
-    );
-
-    results.push(
-      ...body.data.map((f) => ({
-        fileId: f.id,
-        modId: f.modId,
-        dependencies: (f.dependencies ?? []).filter(
-          (d) => d.relationType === 2 || d.relationType === 3,
-        ),
-      })),
-    );
-  }
-  return results;
+  const files = await postIdBatches({
+    of: "files",
+    ids: fileIds,
+    row: rawFileDependenciesSchema,
+    endpoint: "getFilesDependencies",
+    failure: "Failed to fetch file dependencies",
+  });
+  return files.map((f) => ({
+    fileId: f.id,
+    modId: f.modId,
+    dependencies: (f.dependencies ?? []).filter(
+      (d) => d.relationType === 2 || d.relationType === 3,
+    ),
+  }));
 }
 
 export interface CurseForgePage {
@@ -1057,36 +1019,14 @@ export async function listProjectFiles(
 export async function getContentFiles(
   fileIds: number[],
 ): Promise<CurseForgeContentFile[]> {
-  ensureApiKey();
-  if (fileIds.length === 0) return [];
-
-  const results: CurseForgeContentFile[] = [];
-  for (const batch of toBatches(fileIds)) {
-    const res = await fetch(`${CURSEFORGE_API}/v1/mods/files`, {
-      method: "POST",
-      headers: { ...cfHeaders(), "Content-Type": "application/json" },
-      body: JSON.stringify({ fileIds: batch }),
-      signal: AbortSignal.timeout(CF_FETCH_TIMEOUT_MS),
-    });
-    if (res.status === 404) {
-      await res.body?.cancel();
-      continue;
-    }
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      throw new Error(
-        `CurseForge getContentFiles failed (${res.status}): ${text}`,
-      );
-    }
-
-    const body = parseCfResponse(
-      z.object({ data: z.array(rawContentFileSchema) }),
-      await res.json(),
-      "getContentFiles",
-    );
-    results.push(...body.data.map(toContentFile));
-  }
-  return results;
+  const files = await postIdBatches({
+    of: "files",
+    ids: fileIds,
+    row: rawContentFileSchema,
+    endpoint: "getContentFiles",
+    failure: "CurseForge getContentFiles failed",
+  });
+  return files.map(toContentFile);
 }
 
 /** Which of a release's manifests listed an entry. */
