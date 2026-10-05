@@ -1,6 +1,9 @@
 import type { Pool, PoolClient } from "pg";
 import { CurseforgeFileBaseQueries } from "@/generated/db/curseforge_file.queries";
-import type { CurseforgeFileSource } from "@createrington/shared/db";
+import type {
+  CurseforgeFileSource,
+  CurseforgeProject,
+} from "@createrington/shared/db";
 
 export interface CurseforgeFileUpsert {
   id: number;
@@ -12,11 +15,21 @@ export interface CurseforgeFileUpsert {
   downloadUrl: string | null;
 }
 
+export type CurseforgeFileProject = Pick<
+  CurseforgeProject,
+  | "id"
+  | "classId"
+  | "slug"
+  | "name"
+  | "summary"
+  | "thumbnailUrl"
+  | "websiteUrl"
+  | "primaryAuthor"
+>;
+
 export interface CurseforgeFileWithProject extends CurseforgeFileUpsert {
   resolvedAt: Date;
-  classId: number;
-  slug: string;
-  websiteUrl: string | null;
+  project: CurseforgeFileProject;
 }
 
 /**
@@ -68,7 +81,7 @@ export class CurseforgeFileQueries extends CurseforgeFileBaseQueries {
     );
   }
 
-  /** Stored files by id, joined to the project for its class and page; unknown ids are absent. */
+  /** Stored files by id, each with the project it belongs to; unknown ids are absent. */
   async getWithProject(
     fileIds: number[],
   ): Promise<CurseforgeFileWithProject[]> {
@@ -85,7 +98,11 @@ export class CurseforgeFileQueries extends CurseforgeFileBaseQueries {
       resolved_at: Date;
       class_id: number;
       slug: string;
+      name: string;
+      summary: string | null;
+      thumbnail_url: string | null;
       website_url: string | null;
+      primary_author: string | null;
     }>(
       "list curseforge files with project",
       `SELECT
@@ -99,7 +116,11 @@ export class CurseforgeFileQueries extends CurseforgeFileBaseQueries {
         f.resolved_at,
         p.class_id,
         p.slug,
-        p.website_url
+        p.name,
+        p.summary,
+        p.thumbnail_url,
+        p.website_url,
+        p.primary_author
       FROM ${this.table} f
       JOIN curseforge_project p ON p.id = f.curseforge_project_id
       WHERE f.id = ANY($1::int[])`,
@@ -115,9 +136,16 @@ export class CurseforgeFileQueries extends CurseforgeFileBaseQueries {
       source: row.source,
       downloadUrl: row.download_url,
       resolvedAt: row.resolved_at,
-      classId: row.class_id,
-      slug: row.slug,
-      websiteUrl: row.website_url,
+      project: {
+        id: row.curseforge_project_id,
+        classId: row.class_id,
+        slug: row.slug,
+        name: row.name,
+        summary: row.summary,
+        thumbnailUrl: row.thumbnail_url,
+        websiteUrl: row.website_url,
+        primaryAuthor: row.primary_author,
+      },
     }));
   }
 }

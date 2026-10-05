@@ -50,6 +50,18 @@ export const LAUNCHER_PACK_FOLDERS = [
 
 export type LauncherPackFolder = (typeof LAUNCHER_PACK_FOLDERS)[number];
 
+export const LAUNCHER_CONTENT_SOURCES = ["curseforge", "modrinth"] as const;
+
+export type LauncherContentSource = (typeof LAUNCHER_CONTENT_SOURCES)[number];
+
+export const LAUNCHER_CONTENT_KINDS = [
+  "mod",
+  "resourcepack",
+  "shader",
+] as const;
+
+export type LauncherContentKind = (typeof LAUNCHER_CONTENT_KINDS)[number];
+
 export const LAUNCHER_PACK_RESOLVE_MAX_FILES = 1000;
 
 export const LauncherPackErrorCode = {
@@ -153,6 +165,34 @@ export interface LauncherPackReleasesData {
   pagination: LauncherPagination;
 }
 
+export interface LauncherProject {
+  source: LauncherContentSource;
+  id: string;
+  slug: string;
+  kind: LauncherContentKind;
+  name: string;
+  summary: string | null;
+  author: string | null;
+  iconUrl: string | null;
+  url: string;
+}
+
+export interface LauncherContentDownload {
+  servedBy: LauncherPackFileSource;
+  url: string | null;
+}
+
+export interface LauncherContentFile {
+  source: LauncherContentSource;
+  projectId: string;
+  id: string;
+  fileName: string;
+  size: number;
+  sha1: string;
+  pageUrl: string;
+  download: LauncherContentDownload;
+}
+
 export interface LauncherPackFile {
   projectId: number;
   fileId: number;
@@ -163,6 +203,8 @@ export interface LauncherPackFile {
   source: LauncherPackFileSource;
   url: string | null;
   pageUrl: string;
+  file: LauncherContentFile;
+  project: LauncherProject;
 }
 
 export interface LauncherPackFilesData {
