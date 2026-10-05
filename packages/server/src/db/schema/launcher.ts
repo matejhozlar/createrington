@@ -2,6 +2,7 @@ import {
   pgTable,
   serial,
   text,
+  boolean,
   jsonb,
   timestamp,
   index,
@@ -25,6 +26,9 @@ export const launcherRelease = pgTable(
     structuredNotes: jsonb("structured_notes"),
     pubDate: timestamp("pub_date", { withTimezone: true }).notNull(),
     status: launcherReleaseStatusEnum("status").notNull().default("pending"),
+    // Set when the owner releases the version as required. The newest
+    // released required version is the oldest launcher the app still serves.
+    required: boolean("required").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

@@ -6,6 +6,7 @@ import { launcherReleaseService } from "@/services/launcher/release/launcher-rel
 import type { LauncherRelease } from "@createrington/shared/db/launcher_release.types";
 
 const idInput = z.object({ id: id() });
+const releaseInput = idInput.extend({ required: z.boolean().default(false) });
 
 function toDto(release: LauncherRelease) {
   return {
@@ -15,6 +16,7 @@ function toDto(release: LauncherRelease) {
     url: release.url,
     notes: release.notes,
     status: release.status,
+    required: release.required,
     pubDate: release.pubDate.toISOString(),
     createdAt: release.createdAt.toISOString(),
     releasedAt: release.releasedAt?.toISOString() ?? null,
@@ -40,13 +42,17 @@ export const ownerLauncherReleasesRouter = router({
   release: ownerProcedure
     .meta({
       description:
-        "Release a pending launcher version so the update check offers it",
+        "Release a pending launcher version so the update check offers it, optionally as an update older launchers must take",
     })
-    .input(idInput)
+    .input(releaseInput)
     .mutation(async ({ ctx, input }) => {
       try {
         return toDto(
-          await launcherReleaseService.release(input.id, ctx.user.discordId),
+          await launcherReleaseService.release(
+            input.id,
+            ctx.user.discordId,
+            input.required,
+          ),
         );
       } catch (error) {
         rethrowTrpc(error);

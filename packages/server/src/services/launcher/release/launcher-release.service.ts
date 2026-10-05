@@ -18,7 +18,7 @@ import {
 import { parseStructuredNotes } from "./structured-notes";
 
 const DOWNLOAD_CHECK_TIMEOUT_MS = 5000;
-const NEWEST_RELEASED_TTL_MS = 60 * 1000;
+const RELEASED_TTL_MS = 60 * 1000;
 
 export type LauncherReleaseErrorCode =
   | "CHANNEL_MISMATCH"
@@ -66,22 +66,31 @@ export interface LauncherUpdate {
   pub_date: string;
   url: string;
   signature: string;
+  /** True when the launcher that asked is older than a released version marked as required. */
+  required: boolean;
+}
+
+interface ReleasedVersions {
+  newest: LauncherRelease | null;
+  minimumVersion: string | null;
 }
 
 /**
  * Keeps the list of launcher versions for this environment's channel and answers the
  * launcher's update check. A release build publishes a version as pending, and it is only
  * offered to launchers after the owner released it; a withdrawn version is never offered
- * again. The app stores the description of a release, never the installer or a signing key.
- * The newest released version per platform is cached in memory for a minute and dropped on
- * every release and withdraw. Singleton.
+ * again. A version can be released as required: the newest released required version of a
+ * platform is the oldest launcher the app still serves. The app stores the description of a
+ * release, never the installer or a signing key. The newest released version and that
+ * minimum are cached per platform in memory for a minute and dropped on every release and
+ * withdraw. Singleton.
  */
 class LauncherReleaseService {
   private static instance: LauncherReleaseService;
 
-  private readonly newestReleased = new Map<
+  private readonly released = new Map<
     string,
-    { release: LauncherRelease | null; expiresAt: number }
+    ReleasedVersions & { expiresAt: number }
   >();
 
   static getInstance(): LauncherReleaseService {
@@ -185,7 +194,9 @@ class LauncherReleaseService {
 
   /**
    * The newest released version when it is newer than `currentVersion`, else null. An
-   * unknown platform or an unreadable version also yields null, never an error.
+   * unknown platform or an unreadable version also yields null, never an error. The update
+   * is `required` when any released version newer than `currentVersion` is, also when the
+   * newest one itself is not.
    */
   async checkForUpdate(
     platform: string,
@@ -196,7 +207,7 @@ class LauncherReleaseService {
     }
     if (!isValidVersion(currentVersion)) return null;
 
-    const newest = await this.getNewestReleased(platform);
+    const { newest, minimumVersion } = await this.getReleased(platform);
     if (!newest || !isNewerVersion(newest.version, currentVersion)) {
       return null;
     }
@@ -207,7 +218,25 @@ class LauncherReleaseService {
       pub_date: newest.pubDate.toISOString(),
       url: newest.url,
       signature: newest.signature,
+      required:
+        minimumVersion !== null &&
+        isNewerVersion(minimumVersion, currentVersion),
     };
+  }
+
+  /**
+   * Whether a launcher of this platform and version is older than the newest released
+   * version marked as required, so it has to update before it may keep using the app.
+   * False for an unknown platform or an unreadable version, never an error for them.
+   */
+  async isUpdateRequired(platform: string, version: string): Promise<boolean> {
+    if (!(LAUNCHER_PLATFORMS as readonly string[]).includes(platform)) {
+      return false;
+    }
+    if (!isValidVersion(version)) return false;
+
+    const { minimumVersion } = await this.getReleased(platform);
+    return minimumVersion !== null && isNewerVersion(minimumVersion, version);
   }
 
   /** Every stored release of this environment, newest publish first. */
@@ -224,11 +253,20 @@ class LauncherReleaseService {
     return newestFirst(released);
   }
 
-  /** Releases a pending version so the update check offers it. Throws `LauncherReleaseError` otherwise. */
-  async release(id: number, byDiscordId: string): Promise<LauncherRelease> {
+  /**
+   * Releases a pending version so the update check offers it. With `required` every older
+   * launcher of its platform has to update to keep using the app. Throws
+   * `LauncherReleaseError` otherwise.
+   */
+  async release(
+    id: number,
+    byDiscordId: string,
+    required = false,
+  ): Promise<LauncherRelease> {
     const changed = await Q.launcher.release.updateAll(
       {
         status: "released",
+        required,
         releasedAt: new Date(),
         releasedByDiscordId: byDiscordId,
       },
@@ -237,7 +275,7 @@ class LauncherReleaseService {
 
     const release = await this.requireChanged(id, changed, "released");
     logger.info(
-      `Launcher release ${release.version} (${release.platform}) released by ${byDiscordId}`,
+      `Launcher release ${release.version} (${release.platform}) released${required ? " as required" : ""} by ${byDiscordId}`,
     );
     return release;
   }
@@ -260,9 +298,9 @@ class LauncherReleaseService {
     return release;
   }
 
-  /** Drops the cached newest released versions; the next update check reads the database. */
+  /** Drops the cached released versions; the next update check reads the database. */
   clearCache(): void {
-    this.newestReleased.clear();
+    this.released.clear();
   }
 
   private async requireChanged(
@@ -284,22 +322,25 @@ class LauncherReleaseService {
     return release;
   }
 
-  private async getNewestReleased(
-    platform: string,
-  ): Promise<LauncherRelease | null> {
-    const cached = this.newestReleased.get(platform);
-    if (cached && cached.expiresAt > Date.now()) return cached.release;
+  private async getReleased(platform: string): Promise<ReleasedVersions> {
+    const cached = this.released.get(platform);
+    if (cached && cached.expiresAt > Date.now()) return cached;
 
     const released = await Q.launcher.release.findAll({
       platform,
       status: "released",
     });
-    const newest = newestVersion(released);
-    this.newestReleased.set(platform, {
-      release: newest,
-      expiresAt: Date.now() + NEWEST_RELEASED_TTL_MS,
+    const versions: ReleasedVersions = {
+      newest: newestVersion(released),
+      minimumVersion:
+        newestVersion(released.filter((release) => release.required))
+          ?.version ?? null,
+    };
+    this.released.set(platform, {
+      ...versions,
+      expiresAt: Date.now() + RELEASED_TTL_MS,
     });
-    return newest;
+    return versions;
   }
 
   private async downloadAnswers(url: string): Promise<boolean> {

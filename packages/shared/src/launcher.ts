@@ -14,6 +14,10 @@ export const LAUNCHER_PLATFORMS = ["windows-x86_64"] as const;
 
 export type LauncherPlatform = (typeof LAUNCHER_PLATFORMS)[number];
 
+export const LAUNCHER_VERSION_HEADER = "X-Launcher-Version";
+
+export const LAUNCHER_PLATFORM_HEADER = "X-Launcher-Platform";
+
 export const LAUNCHER_RELEASE_NOTES_MAX_LENGTH = 10_000;
 
 export const LAUNCHER_RELEASE_CHANGES_MAX = 500;
@@ -119,6 +123,7 @@ export const LauncherAuthErrorCode = {
   BANNED: "BANNED",
   INVALID_REFRESH_TOKEN: "INVALID_REFRESH_TOKEN",
   MOJANG_UNAVAILABLE: "MOJANG_UNAVAILABLE",
+  UPDATE_REQUIRED: "UPDATE_REQUIRED",
 } as const;
 
 export type LauncherAuthErrorCode =

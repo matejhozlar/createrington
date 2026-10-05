@@ -617,6 +617,13 @@
       "when": 1791119304827,
       "tag": "0087_nosy_krista_starr",
       "breakpoints": true
+    },
+    {
+      "idx": 88,
+      "version": "7",
+      "when": 1791239965079,
+      "tag": "0088_stiff_stick",
+      "breakpoints": true
     }
   ]
 }
