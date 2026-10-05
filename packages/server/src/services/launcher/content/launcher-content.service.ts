@@ -34,7 +34,7 @@ const SEARCH_TTL_MS = 5 * 60_000;
 const PROJECT_TTL_MS = 60 * 60_000;
 const UNKNOWN_PROJECT_TTL_MS = 5 * 60_000;
 const FILES_TTL_MS = 10 * 60_000;
-const KEY_PREFIX = "launcher:content:curseforge";
+const KEY_PREFIX = "launcher:content:curseforge:v1";
 
 export interface ContentPage {
   page: number;
