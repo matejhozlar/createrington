@@ -22,6 +22,7 @@ const { PUBLISH_TOKEN, mocks } = vi.hoisted(() => ({
 vi.mock("@/config", () => ({
   default: {
     envMode: { isProd: false, isDev: false },
+    redis: { url: null },
     meta: { links: { website: "http://localhost:3000" } },
     app: {
       devClientOrigin: "http://localhost:3000",

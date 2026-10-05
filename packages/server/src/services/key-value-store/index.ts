@@ -1,3 +1,5 @@
+import { redisService } from "@/services/redis";
+
 const DEFAULT_MAX_ENTRIES = 5000;
 
 /** A store of short-lived string values by key. Every value is written with a time limit. */
@@ -52,7 +54,75 @@ export class MemoryKeyValueStore implements KeyValueStore {
   }
 }
 
-export const keyValueStore: KeyValueStore = new MemoryKeyValueStore();
+/**
+ * Key-value store kept in Redis, so it survives a restart of the app and is
+ * shared between processes. Every call rejects while Redis cannot be reached.
+ */
+export class RedisKeyValueStore implements KeyValueStore {
+  constructor(
+    private readonly redis: { sendCommand(args: string[]): Promise<unknown> },
+  ) {}
+
+  /** The value under the key, or `null` when there is none or its time is up. */
+  async get(key: string): Promise<string | null> {
+    const reply = await this.redis.sendCommand(["GET", key]);
+    return typeof reply === "string" ? reply : null;
+  }
+
+  /** Writes the value under the key for `ttlMs` milliseconds, replacing what was there. */
+  async set(key: string, value: string, ttlMs: number): Promise<void> {
+    const milliseconds = Math.max(1, Math.ceil(ttlMs));
+    await this.redis.sendCommand(["SET", key, value, "PX", `${milliseconds}`]);
+  }
+}
+
+/**
+ * Key-value store that uses `primary` while `isPrimaryUp()` says so and
+ * `fallback` otherwise. A call the primary fails is answered by the fallback
+ * too, so a caller never sees the primary fail. The two are not synced: what
+ * was written to one is not found in the other.
+ */
+export class FallbackKeyValueStore implements KeyValueStore {
+  constructor(
+    private readonly primary: KeyValueStore,
+    private readonly fallback: KeyValueStore,
+    private readonly isPrimaryUp: () => boolean,
+  ) {}
+
+  /** The value under the key in the store in use, or `null` when there is none or its time is up. */
+  async get(key: string): Promise<string | null> {
+    if (this.isPrimaryUp()) {
+      try {
+        return await this.primary.get(key);
+      } catch {
+        return this.fallback.get(key);
+      }
+    }
+    return this.fallback.get(key);
+  }
+
+  /** Writes the value under the key in the store in use for `ttlMs` milliseconds. */
+  async set(key: string, value: string, ttlMs: number): Promise<void> {
+    if (this.isPrimaryUp()) {
+      try {
+        await this.primary.set(key, value, ttlMs);
+        return;
+      } catch {
+        await this.fallback.set(key, value, ttlMs);
+        return;
+      }
+    }
+    await this.fallback.set(key, value, ttlMs);
+  }
+}
+
+export const keyValueStore: KeyValueStore = redisService.enabled
+  ? new FallbackKeyValueStore(
+      new RedisKeyValueStore(redisService),
+      new MemoryKeyValueStore(),
+      () => redisService.isReady,
+    )
+  : new MemoryKeyValueStore();
 
 /**
  * The JSON value stored under the key, or `undefined` when there is none.
