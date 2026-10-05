@@ -767,6 +767,10 @@ async function fetchFileDetails(
       body: JSON.stringify({ fileIds: batch }),
       signal: AbortSignal.timeout(CF_FETCH_TIMEOUT_MS),
     });
+    if (res.status === 404) {
+      await res.body?.cancel();
+      continue;
+    }
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       throw new Error(`Failed to fetch file details (${res.status}): ${text}`);
@@ -839,6 +843,10 @@ export async function getFilesDependencies(fileIds: number[]): Promise<
       body: JSON.stringify({ fileIds: batch }),
       signal: AbortSignal.timeout(CF_FETCH_TIMEOUT_MS),
     });
+    if (res.status === 404) {
+      await res.body?.cancel();
+      continue;
+    }
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       throw new Error(
