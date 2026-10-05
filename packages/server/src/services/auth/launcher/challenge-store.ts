@@ -12,6 +12,10 @@ interface ChallengeRedis {
   sendCommand(args: string[]): Promise<unknown>;
 }
 
+function newServerId(): string {
+  return crypto.randomBytes(20).toString("hex");
+}
+
 function hashServerId(serverId: string): string {
   return crypto.createHash("sha256").update(serverId).digest("hex");
 }
@@ -22,8 +26,10 @@ function hashServerId(serverId: string): string {
  * within a minute. They are kept in Redis, so a challenge survives a restart
  * of the app between those two requests, and in process memory while Redis is
  * unset or cannot be reached. A challenge verifies once, whichever of the two
- * holds it. One that sits in Redis while Redis cannot be reached does not
- * verify, and the launcher asks for a new one.
+ * holds it: a server id is only ever put in one of them, and one Redis may
+ * have taken without confirming is never handed out. One that sits in Redis
+ * while Redis cannot be reached does not verify, and the launcher asks for a
+ * new one.
  */
 export class LauncherChallengeStore {
   private readonly memory = new Map<string, number>();
@@ -32,14 +38,14 @@ export class LauncherChallengeStore {
 
   /** Opens a challenge and answers its server id, or `null` when it has to be kept in memory and too many are open there. */
   async issue(): Promise<string | null> {
-    const serverId = crypto.randomBytes(20).toString("hex");
-    const hash = hashServerId(serverId);
-    if (await this.putInRedis(hash)) return serverId;
+    const forRedis = newServerId();
+    if (await this.putInRedis(hashServerId(forRedis))) return forRedis;
 
     this.pruneMemory();
     if (this.memory.size >= MAX_PENDING_CHALLENGES) return null;
-    this.memory.set(hash, Date.now() + CHALLENGE_TTL_MS);
-    return serverId;
+    const forMemory = newServerId();
+    this.memory.set(hashServerId(forMemory), Date.now() + CHALLENGE_TTL_MS);
+    return forMemory;
   }
 
   /** Whether the server id is an open challenge. The call closes it, so a second call answers false. */

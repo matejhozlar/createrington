@@ -11,12 +11,16 @@ function fakeRedis() {
   const redis = {
     isReady: true,
     failing: false,
+    unansweredWrites: false,
     expiries,
     sendCommand: vi.fn(async (args: string[]): Promise<unknown> => {
-      if (redis.failing) throw new Error("Redis did not answer");
+      if (redis.failing) throw new Error("Redis is not connected");
       const [command, key] = args;
       if (command === "SET") {
         expiries.set(key!, Date.now() + Number(args[4]));
+        if (redis.unansweredWrites) {
+          throw new Error("Redis did not answer within 1000 ms");
+        }
         return "OK";
       }
       if (command === "GETDEL") {
@@ -151,6 +155,21 @@ describe("launcher challenge store with Redis", () => {
     const serverId = (await store.issue())!;
 
     expect(await store.consume(serverId)).toBe(true);
+  });
+
+  it("verifies a challenge once when Redis took the write without confirming it", async () => {
+    const redis = fakeRedis();
+    redis.unansweredWrites = true;
+    const store = new LauncherChallengeStore(redis);
+
+    const serverId = (await store.issue())!;
+    redis.isReady = false;
+    expect(await store.consume(serverId)).toBe(true);
+
+    redis.isReady = true;
+    redis.unansweredWrites = false;
+    expect(redis.expiries.size).toBe(1);
+    expect(await store.consume(serverId)).toBe(false);
   });
 
   it("does not verify a challenge held by a Redis that cannot be reached", async () => {
