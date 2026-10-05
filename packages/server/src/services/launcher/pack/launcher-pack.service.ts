@@ -18,6 +18,11 @@ import {
 } from "@/services/curseforge";
 import { ingestProjectsWhere } from "@/services/curseforge/ingest";
 import { featureFlagService, FeatureFlags } from "@/services/feature-flag";
+import {
+  curseforgeFilePageUrl,
+  toLauncherContentFile,
+  toLauncherProject,
+} from "@/services/launcher/content/curseforge-content";
 import { getReleaseChangelog } from "@/services/modpack/release-changelog";
 import { findModrinthFilesBySha1 } from "@/services/modrinth";
 import { getMinecraftJavaMajorVersion } from "@/utils/mojang-java-version";
@@ -34,7 +39,6 @@ import {
 } from "@createrington/shared/launcher";
 import { findCurseforgeCdnUrls } from "./curseforge-cdn";
 import {
-  curseforgeFilePageUrl,
   packFolderForClass,
   parseModLoader,
   pickFileSource,
@@ -58,9 +62,10 @@ function packError(
 }
 
 function toPackFile(row: CurseforgeFileWithProject): LauncherPackFile | null {
-  const folder = packFolderForClass(row.classId);
-  const pageUrl = curseforgeFilePageUrl(row, row.id);
-  if (!folder || !pageUrl) return null;
+  const folder = packFolderForClass(row.project.classId);
+  const file = toLauncherContentFile(row);
+  const project = toLauncherProject(row.project);
+  if (!folder || !file || !project) return null;
   return {
     projectId: row.curseforgeProjectId,
     fileId: row.id,
@@ -70,7 +75,9 @@ function toPackFile(row: CurseforgeFileWithProject): LauncherPackFile | null {
     folder,
     source: row.source,
     url: row.downloadUrl,
-    pageUrl,
+    pageUrl: file.pageUrl,
+    file,
+    project,
   };
 }
 
@@ -317,8 +324,9 @@ class LauncherPackService {
   }
 
   /**
-   * Download facts for CurseForge file ids from a pack manifest. Ids not stored
-   * yet are resolved and stored first; throws `FILE_SOURCES_UNAVAILABLE` (503)
+   * Download facts for CurseForge file ids from a pack manifest, each with the
+   * project it belongs to for display. Ids not stored yet are resolved and
+   * stored first; throws `FILE_SOURCES_UNAVAILABLE` (503)
    * when that lookup fails. Ids that cannot be served (unknown to CurseForge,
    * no SHA-1, not a mod, resource pack or shader) come back in `unresolvedFileIds`.
    */
@@ -407,7 +415,7 @@ class LauncherPackService {
       );
       const unresolved = clientEntries.filter((entry) => {
         const row = stored.get(entry.fileId);
-        return !row || packFolderForClass(row.classId) === null;
+        return !row || packFolderForClass(row.project.classId) === null;
       });
       if (unresolved.length > 0) {
         await this.reportBlocked(
@@ -679,7 +687,7 @@ class LauncherPackService {
     const lines = manual.slice(0, NOTICE_MAX_FILES).map((entry) => {
       const row = stored.get(entry.fileId);
       const name = nameById.get(entry.projectId) ?? `#${entry.projectId}`;
-      const pageUrl = row ? curseforgeFilePageUrl(row, row.id) : null;
+      const pageUrl = row ? curseforgeFilePageUrl(row.project, row.id) : null;
       return [
         `- ${pageUrl ? `[${name}](${pageUrl})` : name}`,
         row ? `\`${row.fileName}\`` : "",

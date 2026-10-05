@@ -404,6 +404,14 @@ describe("LauncherPackService.prepareRelease", () => {
   it("stores each client file with its source, folder and CurseForge hash", async () => {
     const modpack = await seedPack();
     const served = await seedFile();
+    await Q.curseforge.project.updateAll(
+      {
+        summary: "A synthetic test project",
+        thumbnailUrl: "https://media.forgecdn.net/avatars/vitest.png",
+        primaryAuthor: "vitest",
+      },
+      { id: served.projectId },
+    );
     const onModrinth = await seedFile({ blocked: true });
     const shader = await seedFile({ classId: 6552, sides: "client" });
     const resourcePack = await seedFile({ classId: 12, sides: "client" });
@@ -431,6 +439,27 @@ describe("LauncherPackService.prepareRelease", () => {
         source: "curseforge",
         url: cdnUrl(served.fileId),
         pageUrl: `https://www.curseforge.com/minecraft/mc-mods/vitest-${served.fileId}/files/${served.fileId}`,
+        file: {
+          source: "curseforge",
+          projectId: String(served.projectId),
+          id: String(served.fileId),
+          fileName: `mod-${served.fileId}.jar`,
+          size: served.detail.fileLength,
+          sha1: sha1Of(served.fileId),
+          pageUrl: `https://www.curseforge.com/minecraft/mc-mods/vitest-${served.fileId}/files/${served.fileId}`,
+          download: { servedBy: "curseforge", url: cdnUrl(served.fileId) },
+        },
+        project: {
+          source: "curseforge",
+          id: String(served.projectId),
+          slug: `vitest-mod-${served.projectId}`,
+          kind: "mod",
+          name: `Vitest Mod ${served.projectId}`,
+          summary: "A synthetic test project",
+          author: "vitest",
+          iconUrl: "https://media.forgecdn.net/avatars/vitest.png",
+          url: `https://www.curseforge.com/minecraft/mc-mods/vitest-${served.fileId}`,
+        },
       },
       expect.objectContaining({
         fileId: onModrinth.fileId,
@@ -438,16 +467,33 @@ describe("LauncherPackService.prepareRelease", () => {
         folder: "mods",
         source: "modrinth",
         url: modrinthUrl(onModrinth.fileId),
+        file: expect.objectContaining({
+          source: "curseforge",
+          id: String(onModrinth.fileId),
+          download: {
+            servedBy: "modrinth",
+            url: modrinthUrl(onModrinth.fileId),
+          },
+        }),
+        project: expect.objectContaining({
+          source: "curseforge",
+          id: String(onModrinth.projectId),
+          summary: null,
+          author: null,
+          iconUrl: null,
+        }),
       }),
       expect.objectContaining({
         fileId: shader.fileId,
         folder: "shaderpacks",
         source: "curseforge",
+        project: expect.objectContaining({ kind: "shader" }),
       }),
       expect.objectContaining({
         fileId: resourcePack.fileId,
         folder: "resourcepacks",
         source: "curseforge",
+        project: expect.objectContaining({ kind: "resourcepack" }),
       }),
     ]);
   });
