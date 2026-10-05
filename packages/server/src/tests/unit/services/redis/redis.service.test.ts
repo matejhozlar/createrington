@@ -132,9 +132,12 @@ describe("RedisService", () => {
     const { client } = connected();
     vi.mocked(logger.info).mockClear();
 
+    client.isReady = false;
     client.emit("error", new Error("connect ECONNREFUSED"));
+    client.isReady = true;
     client.emit("ready");
     client.emit("ready");
+    client.isReady = false;
     client.emit("error", new Error("connect ECONNREFUSED"));
 
     expect(logger.info).toHaveBeenCalledTimes(1);
@@ -168,6 +171,100 @@ describe("RedisService", () => {
     client.emit("error", new Error("Socket closed unexpectedly"));
 
     expect(logger.warn).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects a command Redis does not answer after a second", async () => {
+    vi.useFakeTimers();
+    const { service, client } = connected();
+    client.sendCommand.mockReturnValue(new Promise(() => {}));
+
+    const unanswered = expect(
+      service.sendCommand(["GET", "key"]),
+    ).rejects.toThrow("Redis did not answer within 1000 ms");
+    await vi.advanceTimersByTimeAsync(999);
+    expect(logger.warn).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+
+    await unanswered;
+    expect(logger.warn).toHaveBeenCalledTimes(1);
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining("cannot be reached"),
+    );
+  });
+
+  it("leaves Redis alone for a while after a command it did not answer", async () => {
+    vi.useFakeTimers();
+    const { service, client } = connected();
+    vi.mocked(logger.info).mockClear();
+    client.sendCommand.mockReturnValueOnce(new Promise(() => {}));
+
+    const unanswered = expect(
+      service.sendCommand(["GET", "key"]),
+    ).rejects.toThrow("Redis did not answer");
+    await vi.advanceTimersByTimeAsync(1000);
+    await unanswered;
+
+    expect(service.isReady).toBe(false);
+    await expect(service.sendCommand(["GET", "key"])).rejects.toThrow(
+      "Redis is not connected",
+    );
+    expect(client.sendCommand).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(6000);
+    expect(service.isReady).toBe(true);
+    expect(await service.sendCommand(["GET", "key"])).toBe("OK");
+    expect(logger.info).toHaveBeenCalledTimes(1);
+    expect(logger.warn).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses Redis at once again when the connection was made anew", async () => {
+    vi.useFakeTimers();
+    const { service, client } = connected();
+    client.sendCommand.mockReturnValueOnce(new Promise(() => {}));
+
+    const unanswered = expect(
+      service.sendCommand(["GET", "key"]),
+    ).rejects.toThrow("Redis did not answer");
+    await vi.advanceTimersByTimeAsync(1000);
+    await unanswered;
+    client.emit("ready");
+
+    expect(service.isReady).toBe(true);
+  });
+
+  it("answers a reply that arrives within the second", async () => {
+    vi.useFakeTimers();
+    const { service, client } = connected();
+    client.sendCommand.mockReturnValue(
+      new Promise((resolve) => setTimeout(() => resolve("late"), 900)),
+    );
+
+    const reply = service.sendCommand(["GET", "key"]);
+    await vi.advanceTimersByTimeAsync(900);
+
+    expect(await reply).toBe("late");
+  });
+
+  it("keeps counting Redis as up when the client reports an error while connected", () => {
+    const { client } = connected();
+    vi.mocked(logger.info).mockClear();
+
+    client.emit("error", new Error("could not parse a reply"));
+    expect(logger.warn).toHaveBeenCalledTimes(1);
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining("while connected"),
+    );
+
+    client.isReady = false;
+    client.emit("error", new Error("Socket closed unexpectedly"));
+    expect(logger.warn).toHaveBeenCalledTimes(2);
+    expect(logger.warn).toHaveBeenLastCalledWith(
+      expect.stringContaining("cannot be reached"),
+    );
+
+    client.isReady = true;
+    client.emit("ready");
+    expect(logger.info).toHaveBeenCalledTimes(1);
   });
 
   it("closes the connection on shutdown and rejects commands afterwards", async () => {
