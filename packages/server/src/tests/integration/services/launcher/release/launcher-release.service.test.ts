@@ -49,9 +49,9 @@ function stubDownload(status: number) {
   return fetchMock;
 }
 
-async function publishAndRelease(version: string) {
+async function publishAndRelease(version: string, required = false) {
   const release = await launcherReleaseService.publish(input(version));
-  return await launcherReleaseService.release(release.id, OWNER);
+  return await launcherReleaseService.release(release.id, OWNER, required);
 }
 
 async function refusal(promise: Promise<unknown>) {
@@ -293,6 +293,7 @@ describe("LauncherReleaseService", () => {
         pub_date: "2026-09-29T18:00:00.000Z",
         url: input("0.2.0").url,
         signature: "signature-of-0.2.0",
+        required: false,
       });
     });
 
@@ -366,6 +367,67 @@ describe("LauncherReleaseService", () => {
       expect(
         await launcherReleaseService.checkForUpdate(platform, version),
       ).toBeNull();
+    });
+  });
+
+  describe("required releases", () => {
+    it("stores that a version was released as required", async () => {
+      const required = await publishAndRelease("0.2.0", true);
+      const optional = await publishAndRelease("0.3.0");
+
+      expect(required.required).toBe(true);
+      expect(optional.required).toBe(false);
+      expect(
+        (await Q.launcher.release.find({ id: required.id }))?.required,
+      ).toBe(true);
+    });
+
+    it("requires the update from a launcher older than a required release, also when the newest is optional", async () => {
+      await publishAndRelease("0.2.0", true);
+      await publishAndRelease("0.3.0");
+
+      expect(
+        await launcherReleaseService.checkForUpdate(PLATFORM, "0.1.0"),
+      ).toMatchObject({ version: "0.3.0", required: true });
+      expect(
+        await launcherReleaseService.isUpdateRequired(PLATFORM, "0.1.0"),
+      ).toBe(true);
+    });
+
+    it("leaves the update optional for a launcher on the required release", async () => {
+      await publishAndRelease("0.2.0", true);
+      await publishAndRelease("0.3.0");
+
+      expect(
+        await launcherReleaseService.checkForUpdate(PLATFORM, "0.2.0"),
+      ).toMatchObject({ version: "0.3.0", required: false });
+      expect(
+        await launcherReleaseService.isUpdateRequired(PLATFORM, "0.2.0"),
+      ).toBe(false);
+    });
+
+    it("stops requiring the update once the required release is withdrawn", async () => {
+      const required = await publishAndRelease("0.2.0", true);
+      await publishAndRelease("0.3.0");
+      await launcherReleaseService.isUpdateRequired(PLATFORM, "0.1.0");
+
+      await launcherReleaseService.withdraw(required.id, OWNER);
+
+      expect(
+        await launcherReleaseService.checkForUpdate(PLATFORM, "0.1.0"),
+      ).toMatchObject({ version: "0.3.0", required: false });
+      expect(
+        await launcherReleaseService.isUpdateRequired(PLATFORM, "0.1.0"),
+      ).toBe(false);
+    });
+
+    it("does not count a required version that is still pending", async () => {
+      await publishAndRelease("0.2.0");
+      await launcherReleaseService.publish(input("0.3.0"));
+
+      expect(
+        await launcherReleaseService.isUpdateRequired(PLATFORM, "0.1.0"),
+      ).toBe(false);
     });
   });
 

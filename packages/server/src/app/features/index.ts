@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import config from "@/config";
 import { env } from "@/config/env/env.config";
+import { requireSupportedLauncher } from "@/app/middleware/launcher-version.middleware";
 import { launcherJwtService } from "@/services/auth/launcher/launcher-jwt.service";
 import { launcherReleaseService } from "@/services/launcher/release/launcher-release.service";
 import authRoutes from "./auth/auth.routes";
@@ -62,9 +63,21 @@ export function registerRoutes(app: Express): void {
   }
 
   if (launcherJwtService.isEnabled()) {
-    app.use(`${API_PREFIX}/launcher/auth`, launcherAuthRoutes);
-    app.use(`${API_PREFIX}/launcher/pack`, launcherPackRoutes);
-    app.use(`${API_PREFIX}/launcher/content`, launcherContentRoutes);
+    app.use(
+      `${API_PREFIX}/launcher/auth`,
+      requireSupportedLauncher,
+      launcherAuthRoutes,
+    );
+    app.use(
+      `${API_PREFIX}/launcher/pack`,
+      requireSupportedLauncher,
+      launcherPackRoutes,
+    );
+    app.use(
+      `${API_PREFIX}/launcher/content`,
+      requireSupportedLauncher,
+      launcherContentRoutes,
+    );
     logger.info("Launcher auth, pack and content routes registered");
   }
 
