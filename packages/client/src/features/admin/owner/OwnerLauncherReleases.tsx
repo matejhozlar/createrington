@@ -226,7 +226,8 @@ export function OwnerLauncherReleases() {
       width: 110,
       skeleton: () => <BadgeCellSkeleton />,
       render: (release) =>
-        release.required && (
+        release.required &&
+        release.status === "released" && (
           <Badge variant="outline" className={REQUIRED_BADGE.className}>
             {REQUIRED_BADGE.label}
           </Badge>

@@ -102,6 +102,7 @@ const UPDATE = {
   pub_date: "2026-09-29T18:00:00.000Z",
   url: VALID_BODY.url,
   signature: VALID_BODY.signature,
+  required: false,
 };
 
 let server: Server;
