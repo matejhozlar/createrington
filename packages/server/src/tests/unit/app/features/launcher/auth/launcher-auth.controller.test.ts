@@ -27,7 +27,10 @@ vi.mock("@/db/utils", () => ({
   QueryError: class QueryError extends Error {},
 }));
 vi.mock("@/config", () => ({
-  default: { envMode: { isProd: false, isDev: false } },
+  default: {
+    envMode: { isProd: false, isDev: false },
+    redis: { url: null },
+  },
 }));
 vi.mock("@/utils/mojang-has-joined", () => ({
   verifyMojangJoin: mocks.verifyMojangJoin,
@@ -121,7 +124,7 @@ describe("LauncherAuthController", () => {
 
   describe("verify", () => {
     it("issues a launcher session for a whitelisted player, looked up by uuid", async () => {
-      const serverId = issueLauncherChallenge()!;
+      const serverId = (await issueLauncherChallenge())!;
       mocks.verifyMojangJoin.mockResolvedValue({
         uuid: PLAYER.minecraftUuid,
         username: "Alice_Renamed",
@@ -158,7 +161,7 @@ describe("LauncherAuthController", () => {
     });
 
     it("answers NOT_A_MEMBER for a verified account that is not a player", async () => {
-      const serverId = issueLauncherChallenge()!;
+      const serverId = (await issueLauncherChallenge())!;
       mocks.verifyMojangJoin.mockResolvedValue({
         uuid: PLAYER.minecraftUuid,
         username: "Stranger",
@@ -176,7 +179,7 @@ describe("LauncherAuthController", () => {
     });
 
     it("rejects a forged claim that Mojang does not confirm", async () => {
-      const serverId = issueLauncherChallenge()!;
+      const serverId = (await issueLauncherChallenge())!;
       mocks.verifyMojangJoin.mockResolvedValue(null);
       const { res } = makeRes({ username: PLAYER.minecraftUsername, serverId });
 
@@ -191,7 +194,7 @@ describe("LauncherAuthController", () => {
     });
 
     it("rejects a replayed serverId without asking Mojang again", async () => {
-      const serverId = issueLauncherChallenge()!;
+      const serverId = (await issueLauncherChallenge())!;
       mocks.verifyMojangJoin.mockResolvedValue({
         uuid: PLAYER.minecraftUuid,
         username: PLAYER.minecraftUsername,
@@ -225,7 +228,7 @@ describe("LauncherAuthController", () => {
     });
 
     it("refuses a banned player", async () => {
-      const serverId = issueLauncherChallenge()!;
+      const serverId = (await issueLauncherChallenge())!;
       mocks.verifyMojangJoin.mockResolvedValue({
         uuid: PLAYER.minecraftUuid,
         username: PLAYER.minecraftUsername,
@@ -244,7 +247,7 @@ describe("LauncherAuthController", () => {
     });
 
     it("reports a Mojang outage as 503 and still burns the challenge", async () => {
-      const serverId = issueLauncherChallenge()!;
+      const serverId = (await issueLauncherChallenge())!;
       mocks.verifyMojangJoin.mockRejectedValue(new Error("network down"));
       const body = { username: PLAYER.minecraftUsername, serverId };
 
