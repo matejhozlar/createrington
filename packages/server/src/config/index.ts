@@ -309,6 +309,10 @@ const config = {
     },
   },
 
+  redis: {
+    url: env.REDIS_URL ?? null,
+  },
+
   curseforge: {
     apiKey: env.CURSEFORGE_API_KEY,
     apiBaseUrl: "https://api.curseforge.com",
