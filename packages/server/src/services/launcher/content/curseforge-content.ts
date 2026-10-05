@@ -37,7 +37,7 @@ export function contentKindForClass(
 export function curseforgeProjectUrl(project: ProjectPage): string | null {
   const sitePath = CONTENT_CLASSES[project.classId]?.sitePath;
   return (
-    project.websiteUrl?.replace(/\/+$/, "") ??
+    project.websiteUrl?.replace(/\/+$/, "") ||
     (sitePath ? `${CURSEFORGE_SITE}/${sitePath}/${project.slug}` : null)
   );
 }

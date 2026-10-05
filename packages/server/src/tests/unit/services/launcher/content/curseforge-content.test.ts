@@ -86,10 +86,29 @@ describe("curseforgeProjectUrl", () => {
     },
   );
 
+  it.each(["", "/"])(
+    "builds the page from the slug when the stored page is %j",
+    (websiteUrl) => {
+      expect(
+        curseforgeProjectUrl({ websiteUrl, classId: 6, slug: "some-project" }),
+      ).toBe("https://www.curseforge.com/minecraft/mc-mods/some-project");
+    },
+  );
+
   it("has no page for a class the launcher does not install", () => {
     expect(
       curseforgeProjectUrl({
         websiteUrl: null,
+        classId: 6945,
+        slug: "some-pack",
+      }),
+    ).toBeNull();
+  });
+
+  it("has no page for an empty stored page of a class the launcher does not install", () => {
+    expect(
+      curseforgeProjectUrl({
+        websiteUrl: "",
         classId: 6945,
         slug: "some-pack",
       }),
@@ -169,6 +188,12 @@ describe("toLauncherProject", () => {
       iconUrl: null,
       url: "https://www.curseforge.com/minecraft/shaders/some-shader",
     });
+  });
+
+  it("keeps a project whose stored page is empty, with the page built from its slug", () => {
+    expect(toLauncherProject(makeProject({ websiteUrl: "" }))?.url).toBe(
+      CREATE_PAGE,
+    );
   });
 
   it("has no project for a class the launcher does not install", () => {
