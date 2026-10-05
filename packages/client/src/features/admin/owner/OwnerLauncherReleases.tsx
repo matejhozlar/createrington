@@ -13,6 +13,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CellDate, CellText } from "@/components/cell-text";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -54,6 +56,17 @@ const STATUS_BADGES: Record<
     className: "border-red-500/20 bg-red-500/10 text-red-400",
   },
 };
+
+const REQUIRED_BADGE = {
+  label: "Required",
+  className: "border-amber-500/20 bg-amber-500/10 text-amber-400",
+} as const;
+
+const REQUIRED_CHECKBOX = {
+  id: "launcher-release-required",
+  label: "Required update",
+  hint: "Older launchers cannot use the app until they update. Tick it when this version goes with a change that breaks them.",
+} as const;
 
 const CHANNEL_LABELS = {
   staging: "Staging",
@@ -158,6 +171,7 @@ function sumCalls(days: CallDay[], count: CallCount, limit?: number): number {
 
 export function OwnerLauncherReleases() {
   const [action, setAction] = useState<PendingAction | null>(null);
+  const [required, setRequired] = useState(false);
   const display = useStickyValue(action);
 
   const utils = trpc.useUtils();
@@ -167,7 +181,8 @@ export function OwnerLauncherReleases() {
 
   const releaseMutation = trpc.owner.launcherReleases.release.useMutation(
     useMutationToast({
-      success: (release) => `Released ${release.version}`,
+      success: (release) =>
+        `Released ${release.version}${release.required ? " as required" : ""}`,
       onSuccess: refresh,
     }),
   );
@@ -204,6 +219,18 @@ export function OwnerLauncherReleases() {
           {STATUS_BADGES[release.status].label}
         </Badge>
       ),
+    },
+    {
+      key: "required",
+      header: "Update",
+      width: 110,
+      skeleton: () => <BadgeCellSkeleton />,
+      render: (release) =>
+        release.required && (
+          <Badge variant="outline" className={REQUIRED_BADGE.className}>
+            {REQUIRED_BADGE.label}
+          </Badge>
+        ),
     },
     {
       key: "platform",
@@ -249,7 +276,10 @@ export function OwnerLauncherReleases() {
       label: "Release",
       icon: Rocket,
       disabled: release.status !== "pending",
-      onClick: () => setAction({ kind: "release", release }),
+      onClick: () => {
+        setRequired(false);
+        setAction({ kind: "release", release });
+      },
     },
     {
       label: "Withdraw",
@@ -262,9 +292,11 @@ export function OwnerLauncherReleases() {
 
   const confirm = async () => {
     if (!action) return;
-    const mutation =
-      action.kind === "release" ? releaseMutation : withdrawMutation;
-    await mutation.mutateAsync({ id: action.release.id });
+    if (action.kind === "release") {
+      await releaseMutation.mutateAsync({ id: action.release.id, required });
+    } else {
+      await withdrawMutation.mutateAsync({ id: action.release.id });
+    }
   };
 
   const copy = display ? CONFIRM_COPY[display.kind] : null;
@@ -327,7 +359,29 @@ export function OwnerLauncherReleases() {
         confirmLabel={copy?.confirmLabel ?? ""}
         variant={copy?.variant}
         onConfirm={confirm}
-      />
+      >
+        {display?.kind === "release" && (
+          <div className="flex items-start gap-2">
+            <Checkbox
+              id={REQUIRED_CHECKBOX.id}
+              className="mt-0.5"
+              checked={required}
+              onCheckedChange={(checked) => setRequired(checked === true)}
+            />
+            <div className="flex flex-col gap-1">
+              <Label
+                htmlFor={REQUIRED_CHECKBOX.id}
+                className="cursor-pointer text-sm"
+              >
+                {REQUIRED_CHECKBOX.label}
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                {REQUIRED_CHECKBOX.hint}
+              </p>
+            </div>
+          </div>
+        )}
+      </ConfirmDialog>
     </div>
   );
 }
