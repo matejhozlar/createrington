@@ -57,6 +57,7 @@ export const authLimiter = rateLimit({
   standardHeaders: "draft-7",
   legacyHeaders: false,
   handler: rateLimitHandler,
+  store: createRateLimitStore("auth"),
 });
 
 /** Launcher sign-in limiter: 30 requests per 15-minute window per IP */
@@ -66,6 +67,7 @@ export const launcherAuthLimiter = rateLimit({
   standardHeaders: "draft-7",
   legacyHeaders: false,
   handler: rateLimitHandler,
+  store: createRateLimitStore("launcher-auth"),
 });
 
 /** Launcher update check limiter: 60 requests per 15-minute window per IP */
@@ -109,6 +111,7 @@ export const internalSsoLimiter = rateLimit({
   standardHeaders: "draft-7",
   legacyHeaders: false,
   handler: rateLimitHandler,
+  store: createRateLimitStore("internal-sso"),
 });
 
 // Per-player limiter for mod-side mutating currency endpoints (deposit,
@@ -123,4 +126,5 @@ export const modCurrencyMutationLimiter = rateLimit({
   handler: rateLimitHandler,
   keyGenerator: (req: Request) =>
     req.modAuth?.uuid ?? ipKeyGenerator(req.ip ?? "unknown"),
+  store: createRateLimitStore("mod-currency-mutation"),
 });

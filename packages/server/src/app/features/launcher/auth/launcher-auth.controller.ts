@@ -83,7 +83,7 @@ async function requireActivePlayer(minecraftUuid: string) {
 
 export class LauncherAuthController {
   static async challenge(_req: Request, res: Response): Promise<void> {
-    const serverId = issueLauncherChallenge();
+    const serverId = await issueLauncherChallenge();
     if (!serverId) {
       throw new TooManyRequestsError("Too many pending sign-in attempts");
     }
@@ -98,7 +98,7 @@ export class LauncherAuthController {
   static async verify(req: Request, res: Response): Promise<void> {
     const { body } = getValidated<{ body: VerifyBody }>(res);
 
-    if (!consumeLauncherChallenge(body.serverId)) {
+    if (!(await consumeLauncherChallenge(body.serverId))) {
       throw new UnauthorizedError("Invalid or expired challenge", {
         code: LauncherAuthErrorCode.INVALID_CHALLENGE,
       });

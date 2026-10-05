@@ -100,10 +100,7 @@ export class RedisService {
         this.pausedUntil = Date.now() + UNANSWERED_PAUSE_MS;
         this.markDown(error);
       } else {
-        this.noteFailure(
-          `Redis command ${args[0] ?? "(none)"} failed, memory is used for it`,
-          error,
-        );
+        this.noteFailure(`Redis command ${args[0] ?? "(none)"} failed`, error);
       }
       throw error;
     }
