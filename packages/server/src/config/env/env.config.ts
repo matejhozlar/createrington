@@ -240,6 +240,16 @@ const envSchema = z
     CLAUDE_API_URL: z.string().url().optional(),
     ADMIN_CHAT_SECRET: z.string().min(1).optional(),
 
+    // Redis (optional; caches, rate limits and counters stay in process
+    // memory when not configured)
+    REDIS_URL: z
+      .string()
+      .regex(
+        /^rediss?:\/\/.+/,
+        "Redis URL must start with redis:// or rediss://",
+      )
+      .optional(),
+
     // CurseForge
     CURSEFORGE_API_KEY: z.string().min(1).optional(),
     CURSEFORGE_MODPACK_PROJECT_ID: z.coerce

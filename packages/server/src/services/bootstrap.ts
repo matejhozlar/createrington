@@ -41,6 +41,7 @@ import { DonationService } from "./donation/donation.service";
 import { structurePackService } from "./structure-pack";
 import { StructurePackRotationService } from "./structure-pack/rotation";
 import { PlayerPromptService } from "./player-prompt";
+import { redisService } from "./redis";
 
 /**
  * Registers all application services with the shared container
@@ -67,6 +68,17 @@ export function registerServices(): void {
     const app = createApp();
     return http.createServer(app);
   });
+
+  if (redisService.enabled) {
+    container.register(Services.REDIS, async () => {
+      redisService.initialize();
+      return redisService;
+    });
+  } else {
+    logger.info(
+      "Redis not configured, caches and rate limits stay in process memory",
+    );
+  }
 
   container.register(Services.PUPPETEER_SERVICE, async () => {
     const service = new PuppeteerService();

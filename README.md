@@ -323,6 +323,7 @@ import type { AppRouter } from "@createrington/server/trpc";
 | Backend   | Express 5, tRPC v11                                       |
 | Frontend  | React 19, Vite 7, Tailwind CSS v4, Shadcn/ui, Radix UI    |
 | Database  | PostgreSQL 15, Drizzle ORM                                |
+| Cache     | Redis 8 (optional, falls back to process memory)          |
 | Real-time | Socket.io                                                 |
 | Auth      | Discord OAuth, JWT access token + httpOnly refresh cookie |
 | Discord   | Discord.js v14 (two bot instances)                        |
@@ -347,6 +348,7 @@ cd createrington
 pnpm install
 cp .env.example .env      # then fill in section 1
 pnpm db:up                # PostgreSQL on port 5433
+pnpm redis:up             # Redis on port 6380 (optional)
 pnpm db:migrate
 pnpm db:seed
 pnpm generate             # DB types + query classes

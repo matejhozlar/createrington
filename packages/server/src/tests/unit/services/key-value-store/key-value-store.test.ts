@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
+  FallbackKeyValueStore,
   MemoryKeyValueStore,
+  RedisKeyValueStore,
   readStored,
   readThrough,
   writeStored,
@@ -70,6 +72,135 @@ describe("MemoryKeyValueStore", () => {
 
     expect(await store.get("a")).toBe("1");
     expect(await store.get("b")).toBe("3");
+  });
+});
+
+describe("RedisKeyValueStore", () => {
+  function fakeRedis(reply: unknown = null) {
+    return { sendCommand: vi.fn(async (_args: string[]) => reply) };
+  }
+
+  it("reads the value Redis holds under the key", async () => {
+    const redis = fakeRedis("value");
+
+    expect(await new RedisKeyValueStore(redis).get("key")).toBe("value");
+    expect(redis.sendCommand).toHaveBeenCalledWith(["GET", "key"]);
+  });
+
+  it("has nothing under a key Redis does not hold", async () => {
+    expect(await new RedisKeyValueStore(fakeRedis(null)).get("key")).toBeNull();
+  });
+
+  it("writes a value with its time limit in milliseconds", async () => {
+    const redis = fakeRedis("OK");
+
+    await new RedisKeyValueStore(redis).set("key", "value", 1500);
+
+    expect(redis.sendCommand).toHaveBeenCalledWith([
+      "SET",
+      "key",
+      "value",
+      "PX",
+      "1500",
+    ]);
+  });
+
+  it("keeps a value for at least one whole millisecond", async () => {
+    const redis = fakeRedis("OK");
+
+    await new RedisKeyValueStore(redis).set("key", "value", 0.2);
+
+    expect(redis.sendCommand).toHaveBeenCalledWith([
+      "SET",
+      "key",
+      "value",
+      "PX",
+      "1",
+    ]);
+  });
+
+  it("fails when Redis fails", async () => {
+    const redis = {
+      sendCommand: vi.fn(async () => {
+        throw new Error("Redis is not connected");
+      }),
+    };
+
+    await expect(new RedisKeyValueStore(redis).get("key")).rejects.toThrow(
+      "Redis is not connected",
+    );
+  });
+});
+
+describe("FallbackKeyValueStore", () => {
+  const failing: KeyValueStore = {
+    get: async () => {
+      throw new Error("store down");
+    },
+    set: async () => {
+      throw new Error("store down");
+    },
+  };
+
+  it("uses the primary while it is up", async () => {
+    const primary = new MemoryKeyValueStore();
+    const fallback = new MemoryKeyValueStore();
+    const store = new FallbackKeyValueStore(primary, fallback, () => true);
+
+    await store.set("key", "value", 1000);
+
+    expect(await store.get("key")).toBe("value");
+    expect(await primary.get("key")).toBe("value");
+    expect(await fallback.get("key")).toBeNull();
+  });
+
+  it("uses the fallback while the primary is down", async () => {
+    const primary = new MemoryKeyValueStore();
+    const fallback = new MemoryKeyValueStore();
+    const store = new FallbackKeyValueStore(primary, fallback, () => false);
+
+    await store.set("key", "value", 1000);
+
+    expect(await store.get("key")).toBe("value");
+    expect(await primary.get("key")).toBeNull();
+    expect(await fallback.get("key")).toBe("value");
+  });
+
+  it("answers from the fallback when the primary fails", async () => {
+    const fallback = new MemoryKeyValueStore();
+    const store = new FallbackKeyValueStore(failing, fallback, () => true);
+
+    await store.set("key", "value", 1000);
+
+    expect(await store.get("key")).toBe("value");
+    expect(await fallback.get("key")).toBe("value");
+  });
+
+  it("goes back to the primary once it is up again", async () => {
+    const primary = new MemoryKeyValueStore();
+    const fallback = new MemoryKeyValueStore();
+    let up = false;
+    const store = new FallbackKeyValueStore(primary, fallback, () => up);
+
+    await store.set("key", "written while down", 1000);
+    up = true;
+    await store.set("key", "written while up", 1000);
+
+    expect(await store.get("key")).toBe("written while up");
+    expect(await primary.get("key")).toBe("written while up");
+  });
+
+  it("keeps a cache working through readThrough while the primary is down", async () => {
+    const store = new FallbackKeyValueStore(
+      failing,
+      new MemoryKeyValueStore(),
+      () => false,
+    );
+    const load = vi.fn(async () => "value");
+
+    expect(await readThrough(store, "cached", 1000, load)).toBe("value");
+    expect(await readThrough(store, "cached", 1000, load)).toBe("value");
+    expect(load).toHaveBeenCalledTimes(1);
   });
 });
 

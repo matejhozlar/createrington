@@ -24,6 +24,7 @@ const { LAUNCHER_SECRET, WEB_SECRET, mocks } = vi.hoisted(() => ({
 vi.mock("@/config", () => ({
   default: {
     envMode: { isProd: false, isDev: false },
+    redis: { url: null },
     app: {
       auth: {
         accessToken: { secret: WEB_SECRET, expiresIn: "15m" },

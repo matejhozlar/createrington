@@ -1,5 +1,6 @@
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import type { Request, Response } from "express";
+import { createRateLimitStore } from "@/services/rate-limit";
 
 /** Shared handler for rate limit violations, logs the offending IP and returns 429 */
 function rateLimitHandler(req: Request, res: Response) {
@@ -94,6 +95,7 @@ export const launcherContentLimiter = rateLimit({
   handler: rateLimitHandler,
   keyGenerator: (req: Request) =>
     req.launcherAuth?.minecraftUuid ?? ipKeyGenerator(req.ip ?? "unknown"),
+  store: createRateLimitStore("launcher-content"),
 });
 
 // Backstop for the internal SSO code-exchange endpoint. It is internet
