@@ -62,6 +62,43 @@ export const LAUNCHER_CONTENT_KINDS = [
 
 export type LauncherContentKind = (typeof LAUNCHER_CONTENT_KINDS)[number];
 
+export const LAUNCHER_CONTENT_LOADERS = [
+  "neoforge",
+  "forge",
+  "fabric",
+  "quilt",
+] as const;
+
+export type LauncherContentLoader = (typeof LAUNCHER_CONTENT_LOADERS)[number];
+
+export const LAUNCHER_CONTENT_RELEASE_TYPES = [
+  "release",
+  "beta",
+  "alpha",
+] as const;
+
+export type LauncherContentReleaseType =
+  (typeof LAUNCHER_CONTENT_RELEASE_TYPES)[number];
+
+export const LAUNCHER_CONTENT_PAGE_SIZE = 20;
+
+export const LAUNCHER_CONTENT_MAX_PAGE_SIZE = 50;
+
+export const LAUNCHER_CONTENT_MAX_RESULTS = 10_000;
+
+export const LAUNCHER_CONTENT_SEARCH_MAX_LENGTH = 100;
+
+export const LAUNCHER_CONTENT_PROJECTS_MAX = 100;
+
+export const LauncherContentErrorCode = {
+  CONTENT_UNAVAILABLE: "CONTENT_UNAVAILABLE",
+  PROJECT_NOT_FOUND: "PROJECT_NOT_FOUND",
+  FILE_NOT_FOUND: "FILE_NOT_FOUND",
+} as const;
+
+export type LauncherContentErrorCode =
+  (typeof LauncherContentErrorCode)[keyof typeof LauncherContentErrorCode];
+
 export const LAUNCHER_PACK_RESOLVE_MAX_FILES = 1000;
 
 export const LauncherPackErrorCode = {
@@ -193,6 +230,44 @@ export interface LauncherContentFile {
   download: LauncherContentDownload;
 }
 
+export interface LauncherContentDependency {
+  source: LauncherContentSource;
+  projectId: string;
+  required: boolean;
+}
+
+export interface LauncherContentFileDetails extends LauncherContentFile {
+  displayName: string;
+  releaseType: LauncherContentReleaseType;
+  publishedAt: string | null;
+  gameVersions: string[];
+  loaders: LauncherContentLoader[];
+  dependencies: LauncherContentDependency[];
+}
+
+export interface LauncherProjectHit extends LauncherProject {
+  downloads: number;
+}
+
+export interface LauncherContentSearchData {
+  projects: LauncherProjectHit[];
+  pagination: LauncherPagination;
+}
+
+export interface LauncherContentProjectsData {
+  projects: LauncherProject[];
+  unknownProjectIds: string[];
+}
+
+export interface LauncherContentFilesData {
+  files: LauncherContentFileDetails[];
+  pagination: LauncherPagination;
+}
+
+export interface LauncherContentFileData {
+  file: LauncherContentFileDetails;
+}
+
 export interface LauncherPackFile {
   projectId: number;
   fileId: number;
@@ -229,7 +304,8 @@ export interface LauncherErrorResponse {
   error: {
     message: string;
     statusCode: number;
-    code?: LauncherAuthErrorCode | LauncherPackErrorCode;
+    code?:
+      LauncherAuthErrorCode | LauncherPackErrorCode | LauncherContentErrorCode;
     details?: unknown;
     stack?: string;
   };

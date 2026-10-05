@@ -2,14 +2,20 @@ import type {
   CurseforgeFileProject,
   CurseforgeFileWithProject,
 } from "@/db/queries/curseforge/file";
-import type {
-  LauncherContentFile,
-  LauncherContentKind,
-  LauncherProject,
+import type { CurseForgeContentFile } from "@/services/curseforge";
+import {
+  LAUNCHER_CONTENT_LOADERS,
+  type LauncherContentFile,
+  type LauncherContentFileDetails,
+  type LauncherContentKind,
+  type LauncherContentLoader,
+  type LauncherContentReleaseType,
+  type LauncherProject,
 } from "@createrington/shared/launcher";
 import { CURSEFORGE_CLASSES } from "@createrington/shared/workshop";
 
 const CURSEFORGE_SITE = "https://www.curseforge.com/minecraft";
+const GAME_VERSION_PATTERN = /^\d+\.\d+/;
 
 const CONTENT_CLASSES: Record<
   number,
@@ -23,6 +29,20 @@ const CONTENT_CLASSES: Record<
   [CURSEFORGE_CLASSES.shaders]: { kind: "shader", sitePath: "shaders" },
 };
 
+const CLASS_BY_KIND: Record<LauncherContentKind, number> = {
+  mod: CURSEFORGE_CLASSES.mods,
+  resourcepack: CURSEFORGE_CLASSES.resourcePacks,
+  shader: CURSEFORGE_CLASSES.shaders,
+};
+
+const RELEASE_TYPES: Record<number, LauncherContentReleaseType> = {
+  1: "release",
+  2: "beta",
+  3: "alpha",
+};
+
+const LOADER_NAMES = new Set<string>(LAUNCHER_CONTENT_LOADERS);
+
 type ProjectPage = Pick<
   CurseforgeFileProject,
   "websiteUrl" | "classId" | "slug"
@@ -32,6 +52,10 @@ export function contentKindForClass(
   classId: number,
 ): LauncherContentKind | null {
   return CONTENT_CLASSES[classId]?.kind ?? null;
+}
+
+export function classForContentKind(kind: LauncherContentKind): number {
+  return CLASS_BY_KIND[kind];
 }
 
 export function curseforgeProjectUrl(project: ProjectPage): string | null {
@@ -83,5 +107,40 @@ export function toLauncherContentFile(
     sha1: file.sha1,
     pageUrl,
     download: { servedBy: file.source, url: file.downloadUrl },
+  };
+}
+
+export function toLauncherContentFileDetails(
+  file: CurseForgeContentFile,
+  projectUrl: string,
+): LauncherContentFileDetails | null {
+  if (!file.fileName || file.fileLength === null || !file.sha1) return null;
+  return {
+    source: "curseforge",
+    projectId: String(file.projectId),
+    id: String(file.id),
+    fileName: file.fileName,
+    size: file.fileLength,
+    sha1: file.sha1,
+    pageUrl: `${projectUrl}/files/${file.id}`,
+    download: file.downloadUrl
+      ? { servedBy: "curseforge", url: file.downloadUrl }
+      : { servedBy: "manual", url: null },
+    displayName: file.displayName || file.fileName,
+    releaseType: RELEASE_TYPES[file.releaseType ?? 1] ?? "release",
+    publishedAt: file.fileDate,
+    gameVersions: file.gameVersions.filter((entry) =>
+      GAME_VERSION_PATTERN.test(entry),
+    ),
+    loaders: file.gameVersions
+      .map((entry) => entry.toLowerCase())
+      .filter((entry): entry is LauncherContentLoader =>
+        LOADER_NAMES.has(entry),
+      ),
+    dependencies: file.dependencies.map((dependency) => ({
+      source: "curseforge",
+      projectId: String(dependency.projectId),
+      required: dependency.required,
+    })),
   };
 }
