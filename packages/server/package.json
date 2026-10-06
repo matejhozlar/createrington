@@ -30,7 +30,6 @@
     "util:generate-structure": "node src/scripts/tools/generate-structure.js",
     "util:env-gen": "tsx src/scripts/env/env-gen.ts",
     "util:import-find": "node src/scripts/dependency/import-find.js",
-    "util:schema-info": "node src/scripts/db/get-table-info.js",
     "util:deploy-commands": "tsx src/discord/deployers/command-deployer.ts",
     "util:generate-command-docs": "tsx src/scripts/discord/generate-command-docs.ts",
     "util:generate-command-docs:json": "tsx src/scripts/discord/generate-command-docs.ts --json",
@@ -57,8 +56,7 @@
     "test:coverage": "vitest run --coverage",
     "test:unit": "vitest run tests/unit",
     "test:types": "vitest run --typecheck.only",
-    "test:integration": "vitest run tests/integration",
-    "test:e2e": "vitest run tests/e2e"
+    "test:integration": "vitest run tests/integration"
   },
   "keywords": [],
   "author": "Matej Hozlar",
