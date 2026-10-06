@@ -7,6 +7,7 @@ import { LauncherContentController } from "./launcher-content.controller";
 import {
   ContentIdParamsSchema,
   GetProjectsBodySchema,
+  IdentifyFingerprintsBodySchema,
   ListFilesQuerySchema,
   SearchContentQuerySchema,
 } from "./launcher-content.schemas";
@@ -27,6 +28,13 @@ router.post(
   ...customRoute(
     [validate({ body: GetProjectsBodySchema })],
     LauncherContentController.projects,
+  ),
+);
+router.post(
+  "/fingerprints",
+  ...customRoute(
+    [validate({ body: IdentifyFingerprintsBodySchema })],
+    LauncherContentController.fingerprints,
   ),
 );
 router.get(

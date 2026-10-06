@@ -164,6 +164,16 @@ const rawContentFileSchema = rawFileDetailSchema.extend({
     .nullish(),
 });
 
+const rawFingerprintMatchesSchema = z.object({
+  exactMatches: z
+    .array(
+      z.object({
+        file: rawContentFileSchema.extend({ fileFingerprint: z.number() }),
+      }),
+    )
+    .nullish(),
+});
+
 const rawPaginationSchema = z.object({ totalCount: z.number() });
 
 const rawModpackFileSchema = z.object({
@@ -1034,6 +1044,49 @@ export async function getContentFiles(
     failure: "CurseForge getContentFiles failed",
   });
   return files.map(toContentFile);
+}
+
+export interface CurseForgeFingerprintMatch {
+  fingerprint: number;
+  file: CurseForgeContentFile;
+}
+
+/**
+ * The Minecraft files whose CurseForge fingerprint (murmur2 with seed 1 over
+ * the file's bytes without whitespace) is one of these, asked in one request.
+ * A fingerprint CurseForge does not know is simply absent, and one that
+ * several files share comes back once per file, in CurseForge's order.
+ */
+export async function matchFingerprints(
+  fingerprints: number[],
+): Promise<CurseForgeFingerprintMatch[]> {
+  ensureApiKey();
+
+  const res = await cfFetch(
+    `${CURSEFORGE_API}/v1/fingerprints/${MINECRAFT_GAME_ID}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fingerprints }),
+    },
+  );
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(
+      `CurseForge matchFingerprints failed (${res.status}): ${text}`,
+    );
+  }
+
+  const body = parseCfResponse(
+    z.object({ data: rawFingerprintMatchesSchema }),
+    await res.json(),
+    "matchFingerprints",
+  );
+
+  return (body.data.exactMatches ?? []).map(({ file }) => ({
+    fingerprint: file.fileFingerprint,
+    file: toContentFile(file),
+  }));
 }
 
 /** Which of a release's manifests listed an entry. */

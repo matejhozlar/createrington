@@ -12,6 +12,7 @@ import {
   getContentFiles,
   getMods,
   listProjectFiles,
+  matchFingerprints,
   searchProjects,
 } from "@/services/curseforge";
 
@@ -268,6 +269,85 @@ describe("getContentFiles", () => {
 
     await expect(getContentFiles([7000001])).rejects.toThrow(
       "CurseForge getContentFiles failed (503)",
+    );
+  });
+});
+
+describe("matchFingerprints", () => {
+  function matches(files: unknown[]) {
+    return {
+      data: {
+        isCacheBuilt: true,
+        exactMatches: files.map((file) => ({
+          id: 439890,
+          file,
+          latestFiles: [],
+        })),
+        exactFingerprints: [],
+        partialMatches: [],
+        partialMatchFingerprints: {},
+        installedFingerprints: [],
+        unmatchedFingerprints: null,
+      },
+    };
+  }
+
+  it("asks Minecraft for the fingerprints in one request and reads the files", async () => {
+    fetchMock.mockResolvedValue(
+      answer(matches([{ ...RAW_FILE, fileFingerprint: 522093599 }])),
+    );
+
+    const found = await matchFingerprints([522093599, 1]);
+
+    expect(requestedUrl().pathname).toMatch(/\/v1\/fingerprints\/432$/);
+    expect(fetchMock.mock.calls[0]?.[1]?.method).toBe("POST");
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({
+      fingerprints: [522093599, 1],
+    });
+    expect(found).toHaveLength(1);
+    expect(found[0]).toMatchObject({
+      fingerprint: 522093599,
+      file: {
+        id: 7000001,
+        projectId: 439890,
+        sha1: "abcdef0123456789abcdef0123456789abcdef01",
+        dependencies: [
+          { projectId: 238222, required: false },
+          { projectId: 328085, required: true },
+        ],
+      },
+    });
+  });
+
+  it("finds nothing when CurseForge knows none of the fingerprints", async () => {
+    fetchMock.mockResolvedValue(answer(matches([])));
+
+    expect(await matchFingerprints([1, 2])).toEqual([]);
+  });
+
+  it("answers every file that shares a fingerprint, in CurseForge's order", async () => {
+    fetchMock.mockResolvedValue(
+      answer(
+        matches([
+          { ...RAW_FILE, fileFingerprint: 7 },
+          { ...RAW_FILE, id: 7000002, modId: 238222, fileFingerprint: 7 },
+        ]),
+      ),
+    );
+
+    const found = await matchFingerprints([7]);
+
+    expect(found.map((match) => [match.fingerprint, match.file.id])).toEqual([
+      [7, 7000001],
+      [7, 7000002],
+    ]);
+  });
+
+  it("throws when CurseForge fails", async () => {
+    fetchMock.mockResolvedValue(answer({}, 503));
+
+    await expect(matchFingerprints([1])).rejects.toThrow(
+      "CurseForge matchFingerprints failed (503)",
     );
   });
 });

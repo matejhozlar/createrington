@@ -94,6 +94,10 @@ export const LAUNCHER_CONTENT_SEARCH_MAX_LENGTH = 100;
 
 export const LAUNCHER_CONTENT_PROJECTS_MAX = 100;
 
+export const LAUNCHER_CONTENT_FINGERPRINTS_MAX = 1000;
+
+export const LAUNCHER_CONTENT_FINGERPRINT_MAX_VALUE = 4_294_967_295;
+
 export const LauncherContentErrorCode = {
   CONTENT_UNAVAILABLE: "CONTENT_UNAVAILABLE",
   PROJECT_NOT_FOUND: "PROJECT_NOT_FOUND",
@@ -271,6 +275,17 @@ export interface LauncherContentFilesData {
 
 export interface LauncherContentFileData {
   file: LauncherContentFileDetails;
+}
+
+export interface LauncherContentFingerprintMatch {
+  fingerprint: number;
+  project: LauncherProject;
+  file: LauncherContentFileDetails;
+}
+
+export interface LauncherContentFingerprintsData {
+  matches: LauncherContentFingerprintMatch[];
+  unmatchedFingerprints: number[];
 }
 
 export interface LauncherPackFile {

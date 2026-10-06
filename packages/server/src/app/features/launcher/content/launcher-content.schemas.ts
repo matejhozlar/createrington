@@ -1,5 +1,7 @@
 import { z } from "zod";
 import {
+  LAUNCHER_CONTENT_FINGERPRINT_MAX_VALUE,
+  LAUNCHER_CONTENT_FINGERPRINTS_MAX,
   LAUNCHER_CONTENT_KINDS,
   LAUNCHER_CONTENT_LOADERS,
   LAUNCHER_CONTENT_MAX_PAGE_SIZE,
@@ -59,6 +61,17 @@ export const GetProjectsBodySchema = z.object({
 });
 
 export type GetProjectsBody = z.infer<typeof GetProjectsBodySchema>;
+
+export const IdentifyFingerprintsBodySchema = z.object({
+  fingerprints: z
+    .array(z.number().int().min(0).max(LAUNCHER_CONTENT_FINGERPRINT_MAX_VALUE))
+    .min(1)
+    .max(LAUNCHER_CONTENT_FINGERPRINTS_MAX),
+});
+
+export type IdentifyFingerprintsBody = z.infer<
+  typeof IdentifyFingerprintsBodySchema
+>;
 
 export const ContentIdParamsSchema = z.object({ id: CurseforgeIdSchema });
 

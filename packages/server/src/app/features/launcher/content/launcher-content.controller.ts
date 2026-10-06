@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import type {
   LauncherContentFileData,
   LauncherContentFilesData,
+  LauncherContentFingerprintsData,
   LauncherContentProjectsData,
   LauncherContentSearchData,
   LauncherSuccessResponse,
@@ -12,6 +13,7 @@ import { buildPagination } from "@/trpc/utils";
 import type {
   ContentIdParams,
   GetProjectsBody,
+  IdentifyFingerprintsBody,
   ListFilesQuery,
   SearchContentQuery,
 } from "./launcher-content.schemas";
@@ -37,6 +39,18 @@ export class LauncherContentController {
     const response: LauncherSuccessResponse<LauncherContentProjectsData> = {
       success: true,
       data: await launcherContentService.getProjects(body.projectIds),
+    };
+    res.json(response);
+  }
+
+  static async fingerprints(_req: Request, res: Response): Promise<void> {
+    const { body } = getValidated<{ body: IdentifyFingerprintsBody }>(res);
+
+    const response: LauncherSuccessResponse<LauncherContentFingerprintsData> = {
+      success: true,
+      data: await launcherContentService.identifyFingerprints(
+        body.fingerprints,
+      ),
     };
     res.json(response);
   }

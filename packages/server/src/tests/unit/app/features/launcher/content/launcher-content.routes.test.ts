@@ -19,6 +19,7 @@ const { LAUNCHER_SECRET, WEB_SECRET, mocks } = vi.hoisted(() => ({
     getProjects: vi.fn(),
     listFiles: vi.fn(),
     getFile: vi.fn(),
+    identifyFingerprints: vi.fn(),
   },
 }));
 
@@ -59,6 +60,7 @@ vi.mock("@/services/launcher/content/launcher-content.service", () => ({
     getProjects: mocks.getProjects,
     listFiles: mocks.listFiles,
     getFile: mocks.getFile,
+    identifyFingerprints: mocks.identifyFingerprints,
   },
 }));
 
@@ -134,6 +136,17 @@ async function postProjects(
   });
 }
 
+async function postFingerprints(
+  body: unknown,
+  headers: Record<string, string> = {},
+) {
+  return await fetch(baseUrl + "/api/launcher/content/fingerprints", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...headers },
+    body: JSON.stringify(body),
+  });
+}
+
 beforeAll(async () => {
   const app = express();
   app.use(express.json());
@@ -162,6 +175,10 @@ beforeEach(() => {
   });
   mocks.listFiles.mockResolvedValue({ files: [FILE], total: 11 });
   mocks.getFile.mockResolvedValue(FILE);
+  mocks.identifyFingerprints.mockResolvedValue({
+    matches: [{ fingerprint: 522093599, project: PROJECT, file: FILE }],
+    unmatchedFingerprints: [1],
+  });
 });
 
 describe("GET /api/launcher/content/search", () => {
@@ -300,6 +317,81 @@ describe("POST /api/launcher/content/projects", () => {
 
     expect(res.status).toBe(401);
     expect(mocks.getProjects).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/launcher/content/fingerprints", () => {
+  it("identifies the files behind the fingerprints", async () => {
+    const res = await postFingerprints(
+      { fingerprints: [522093599, 1] },
+      newSession(),
+    );
+
+    expect(res.status).toBe(200);
+    expect(mocks.identifyFingerprints).toHaveBeenCalledWith([522093599, 1]);
+    expect(await res.json()).toEqual({
+      success: true,
+      data: {
+        matches: [{ fingerprint: 522093599, project: PROJECT, file: FILE }],
+        unmatchedFingerprints: [1],
+      },
+    });
+  });
+
+  it("takes the smallest and the largest fingerprint, and 1000 of them", async () => {
+    const few = await postFingerprints(
+      { fingerprints: [0, 4294967295] },
+      newSession(),
+    );
+    const many = await postFingerprints(
+      { fingerprints: Array.from({ length: 1000 }, (_, index) => index) },
+      newSession(),
+    );
+
+    expect(few.status).toBe(200);
+    expect(many.status).toBe(200);
+  });
+
+  it.each([
+    ["no fingerprints", {}],
+    ["an empty list", { fingerprints: [] }],
+    ["a fingerprint that is a string", { fingerprints: ["522093599"] }],
+    ["a fingerprint that is not whole", { fingerprints: [1.5] }],
+    ["a negative fingerprint", { fingerprints: [-1] }],
+    ["a fingerprint above 32 bits", { fingerprints: [4294967296] }],
+    [
+      "more fingerprints than one request may carry",
+      { fingerprints: Array(1001).fill(1) },
+    ],
+  ])("refuses %s", async (_label, body) => {
+    const res = await postFingerprints(body, newSession());
+
+    expect(res.status).toBe(400);
+    expect(mocks.identifyFingerprints).not.toHaveBeenCalled();
+  });
+
+  it("passes the service's error code on when CurseForge cannot be asked", async () => {
+    mocks.identifyFingerprints.mockRejectedValue(
+      new AppError(
+        "CurseForge cannot be asked right now",
+        503,
+        true,
+        undefined,
+        { code: "CONTENT_UNAVAILABLE" },
+      ),
+    );
+
+    const res = await postFingerprints({ fingerprints: [1] }, newSession());
+
+    expect(res.status).toBe(503);
+    expect((await res.json()).error.code).toBe("CONTENT_UNAVAILABLE");
+  });
+
+  it("answers 401 without a launcher session", async () => {
+    const res = await postFingerprints({ fingerprints: [1] });
+
+    expect(res.status).toBe(401);
+    expect(mocks.identifyFingerprints).not.toHaveBeenCalled();
   });
 });
 
