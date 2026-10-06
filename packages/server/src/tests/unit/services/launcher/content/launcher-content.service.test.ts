@@ -18,6 +18,7 @@ vi.mock("@/services/curseforge", async (importOriginal) => {
     getMods: vi.fn(),
     listProjectFiles: vi.fn(),
     getContentFiles: vi.fn(),
+    matchFingerprints: vi.fn(),
   };
 });
 vi.mock("@/services/key-value-store", async (importOriginal) => {
@@ -38,6 +39,7 @@ import {
   getContentFiles,
   getMods,
   listProjectFiles,
+  matchFingerprints,
   searchProjects,
   type CurseForgeContentFile,
   type CurseForgeProjectData,
@@ -464,6 +466,148 @@ describe("LauncherContentService.getFile", () => {
   });
 });
 
+describe("LauncherContentService.identifyFingerprints", () => {
+  it("answers the project and the file behind each fingerprint and names the ones it does not know", async () => {
+    vi.mocked(matchFingerprints).mockResolvedValue([
+      { fingerprint: 522093599, file: makeContentFile() },
+    ]);
+    vi.mocked(getMods).mockResolvedValue([createProject()]);
+
+    const answer = await launcherContentService.identifyFingerprints([
+      522093599, 1, 522093599,
+    ]);
+
+    expect(matchFingerprints).toHaveBeenCalledWith([522093599, 1]);
+    expect(getMods).toHaveBeenCalledWith([328085]);
+    expect(answer.unmatchedFingerprints).toEqual([1]);
+    expect(answer.matches).toHaveLength(1);
+    expect(answer.matches[0]).toMatchObject({
+      fingerprint: 522093599,
+      project: { source: "curseforge", id: "328085", kind: "mod" },
+      file: {
+        projectId: "328085",
+        id: "7000001",
+        sha1: "0e97e49837bed766e6f28a4c95b04885d6acc353",
+        pageUrl: CREATE_PAGE + "/files/7000001",
+        download: { servedBy: "curseforge" },
+      },
+    });
+  });
+
+  it("keeps the order the fingerprints were asked in", async () => {
+    vi.mocked(matchFingerprints).mockResolvedValue([
+      { fingerprint: 30, file: makeContentFile({ id: 7000030 }) },
+      { fingerprint: 10, file: makeContentFile({ id: 7000010 }) },
+    ]);
+    vi.mocked(getMods).mockResolvedValue([createProject()]);
+
+    const answer = await launcherContentService.identifyFingerprints([
+      10, 20, 30, 40,
+    ]);
+
+    expect(answer.matches.map((match) => match.fingerprint)).toEqual([10, 30]);
+    expect(answer.unmatchedFingerprints).toEqual([20, 40]);
+  });
+
+  it("answers no match without failing when CurseForge knows none of them", async () => {
+    vi.mocked(matchFingerprints).mockResolvedValue([]);
+
+    const answer = await launcherContentService.identifyFingerprints([1, 2]);
+
+    expect(answer).toEqual({ matches: [], unmatchedFingerprints: [1, 2] });
+    expect(getMods).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["has no SHA-1", makeContentFile({ sha1: null }), createProject()],
+    [
+      "belongs to no mod, resource pack or shader",
+      makeContentFile({ projectId: 4471001 }),
+      makeProjectData(4471001, { classId: 4471 }),
+    ],
+  ])("counts a file that %s as unmatched", async (_label, file, project) => {
+    vi.mocked(matchFingerprints).mockResolvedValue([{ fingerprint: 7, file }]);
+    vi.mocked(getMods).mockResolvedValue([project]);
+
+    const answer = await launcherContentService.identifyFingerprints([7]);
+
+    expect(answer).toEqual({ matches: [], unmatchedFingerprints: [7] });
+  });
+
+  it("takes the first file it can answer when several share a fingerprint", async () => {
+    vi.mocked(matchFingerprints).mockResolvedValue([
+      { fingerprint: 7, file: makeContentFile({ id: 7000002, sha1: null }) },
+      { fingerprint: 7, file: makeContentFile({ id: 7000003 }) },
+      { fingerprint: 7, file: makeContentFile({ id: 7000004 }) },
+    ]);
+    vi.mocked(getMods).mockResolvedValue([createProject()]);
+
+    const answer = await launcherContentService.identifyFingerprints([7]);
+
+    expect(answer.matches.map((match) => match.file.id)).toEqual(["7000003"]);
+  });
+
+  it("only asks CurseForge about fingerprints it has not just looked up", async () => {
+    vi.mocked(matchFingerprints)
+      .mockResolvedValueOnce([
+        { fingerprint: 10, file: makeContentFile({ id: 7000010 }) },
+      ])
+      .mockResolvedValueOnce([]);
+    vi.mocked(getMods).mockResolvedValue([createProject()]);
+
+    await launcherContentService.identifyFingerprints([10, 20]);
+    const answer = await launcherContentService.identifyFingerprints([
+      10, 20, 30,
+    ]);
+
+    expect(matchFingerprints).toHaveBeenCalledTimes(2);
+    expect(matchFingerprints).toHaveBeenLastCalledWith([30]);
+    expect(getMods).toHaveBeenCalledTimes(1);
+    expect(answer.matches.map((match) => match.fingerprint)).toEqual([10]);
+    expect(answer.unmatchedFingerprints).toEqual([20, 30]);
+  });
+
+  it("asks CurseForge nothing when every fingerprint was just looked up", async () => {
+    vi.mocked(matchFingerprints).mockResolvedValue([
+      { fingerprint: 10, file: makeContentFile() },
+    ]);
+    vi.mocked(getMods).mockResolvedValue([createProject()]);
+
+    const first = await launcherContentService.identifyFingerprints([10, 20]);
+    const second = await launcherContentService.identifyFingerprints([10, 20]);
+
+    expect(second).toEqual(first);
+    expect(matchFingerprints).toHaveBeenCalledTimes(1);
+  });
+
+  it("answers an identified file by its id without asking CurseForge again", async () => {
+    vi.mocked(matchFingerprints).mockResolvedValue([
+      { fingerprint: 10, file: makeContentFile() },
+    ]);
+    vi.mocked(getMods).mockResolvedValue([createProject()]);
+
+    const answer = await launcherContentService.identifyFingerprints([10]);
+    const file = await launcherContentService.getFile(7000001);
+
+    expect(file).toEqual(answer.matches[0]?.file);
+    expect(getContentFiles).not.toHaveBeenCalled();
+  });
+
+  it("answers 503 when CurseForge fails, and asks again next time", async () => {
+    vi.mocked(matchFingerprints)
+      .mockRejectedValueOnce(new Error("down"))
+      .mockResolvedValueOnce([{ fingerprint: 10, file: makeContentFile() }]);
+    vi.mocked(getMods).mockResolvedValue([createProject()]);
+
+    await expect(
+      launcherContentService.identifyFingerprints([10]),
+    ).rejects.toMatchObject({ statusCode: 503, code: "CONTENT_UNAVAILABLE" });
+    expect(
+      (await launcherContentService.identifyFingerprints([10])).matches,
+    ).toHaveLength(1);
+  });
+});
+
 describe("LauncherContentService caching", () => {
   it("asks CurseForge once for a shader search whatever loader is named", async () => {
     vi.mocked(searchProjects).mockResolvedValue({ projects: [], total: 0 });
@@ -586,5 +730,19 @@ describe("LauncherContentService with a store that fails", () => {
       (await launcherContentService.listFiles(328085, FIRST_PAGE)).files,
     ).toHaveLength(1);
     expect((await launcherContentService.getFile(7000001)).id).toBe("7000001");
+  });
+
+  it("still identifies fingerprints, with one call for the files and one for the projects", async () => {
+    vi.mocked(matchFingerprints).mockResolvedValue([
+      { fingerprint: 10, file: makeContentFile() },
+    ]);
+    vi.mocked(getMods).mockResolvedValue([createProject()]);
+
+    const answer = await launcherContentService.identifyFingerprints([10, 20]);
+
+    expect(answer.matches.map((match) => match.fingerprint)).toEqual([10]);
+    expect(answer.unmatchedFingerprints).toEqual([20]);
+    expect(matchFingerprints).toHaveBeenCalledTimes(1);
+    expect(getMods).toHaveBeenCalledTimes(1);
   });
 });

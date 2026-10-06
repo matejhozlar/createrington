@@ -6,6 +6,7 @@ import {
   getContentFiles,
   getMods,
   listProjectFiles,
+  matchFingerprints,
   searchProjects,
 } from "@/services/curseforge";
 import {
@@ -18,6 +19,8 @@ import {
   LAUNCHER_CONTENT_MAX_RESULTS,
   LauncherContentErrorCode,
   type LauncherContentFileDetails,
+  type LauncherContentFingerprintMatch,
+  type LauncherContentFingerprintsData,
   type LauncherContentKind,
   type LauncherContentLoader,
   type LauncherContentProjectsData,
@@ -34,6 +37,8 @@ const SEARCH_TTL_MS = 5 * 60_000;
 const PROJECT_TTL_MS = 60 * 60_000;
 const UNKNOWN_PROJECT_TTL_MS = 5 * 60_000;
 const FILES_TTL_MS = 10 * 60_000;
+const FINGERPRINT_TTL_MS = 60 * 60_000;
+const UNKNOWN_FINGERPRINT_TTL_MS = 10 * 60_000;
 const KEY_PREFIX = "launcher:content:curseforge:v1";
 
 export interface ContentPage {
@@ -64,11 +69,12 @@ function loaderTypeFor(
 
 /**
  * Looks CurseForge up for content a launcher player adds to a modpack: search,
- * projects, a project's files and single files, for any mod, resource pack or
- * shader of Minecraft, not only what our pack ships. Answers come from the
- * key-value store while they are fresh (a search for 5 minutes, a project for
- * an hour, files for 10 minutes), so the same question from many players is
- * one CurseForge call. Nothing is written to the database, and a file
+ * projects, a project's files, single files and the files behind fingerprints,
+ * for any mod, resource pack or shader of Minecraft, not only what our pack
+ * ships. Answers come from the key-value store while they are fresh (a search
+ * for 5 minutes, a project or a known fingerprint for an hour, files and
+ * unknown fingerprints for 10 minutes), so the same question from many players
+ * is one CurseForge call. Nothing is written to the database, and a file
  * CurseForge blocks is answered as manual: the other sources the pack service
  * has for blocked files are for our pack only. Throws `CONTENT_UNAVAILABLE`
  * (503) when CurseForge cannot be asked. Singleton.
@@ -193,7 +199,7 @@ class LauncherContentService {
   async getFile(fileId: number): Promise<LauncherContentFileDetails> {
     const file = await readThrough(
       keyValueStore,
-      `${KEY_PREFIX}:file:${fileId}`,
+      this.fileKey(fileId),
       FILES_TTL_MS,
       async () => {
         const [found] = await this.ask("file", () => getContentFiles([fileId]));
@@ -217,6 +223,85 @@ class LauncherContentService {
       );
     }
     return file;
+  }
+
+  /** Which project and file each CurseForge fingerprint is, in the order asked. A fingerprint CurseForge does not know, or whose file `getFile` would not answer, comes back in `unmatchedFingerprints`. */
+  async identifyFingerprints(
+    fingerprints: number[],
+  ): Promise<LauncherContentFingerprintsData> {
+    const asked = [...new Set(fingerprints)];
+    const stored = await Promise.all(
+      asked.map((fingerprint) =>
+        readStored<LauncherContentFileDetails | null>(
+          keyValueStore,
+          this.fingerprintKey(fingerprint),
+        ),
+      ),
+    );
+
+    const files = new Map<number, LauncherContentFileDetails | null>();
+    const missing: number[] = [];
+    asked.forEach((fingerprint, index) => {
+      const file = stored[index];
+      if (file !== undefined) files.set(fingerprint, file);
+      else missing.push(fingerprint);
+    });
+
+    const found =
+      missing.length > 0
+        ? await this.ask("fingerprint", () => matchFingerprints(missing))
+        : [];
+    const projects = await this.loadProjects([
+      ...new Set([
+        ...[...files.values()].flatMap((file) =>
+          file ? [Number(file.projectId)] : [],
+        ),
+        ...found.map(({ file }) => file.projectId),
+      ]),
+    ]);
+
+    const identified = new Map<number, LauncherContentFileDetails | null>(
+      missing.map((fingerprint) => [fingerprint, null]),
+    );
+    for (const { fingerprint, file } of found) {
+      if (identified.get(fingerprint) !== null) continue;
+      const project = projects.get(file.projectId);
+      if (!project) continue;
+      identified.set(
+        fingerprint,
+        toLauncherContentFileDetails(file, project.url),
+      );
+    }
+    await Promise.all(
+      [...identified].flatMap(([fingerprint, file]) => [
+        writeStored(
+          keyValueStore,
+          this.fingerprintKey(fingerprint),
+          file,
+          file ? FINGERPRINT_TTL_MS : UNKNOWN_FINGERPRINT_TTL_MS,
+        ),
+        ...(file
+          ? [
+              writeStored(
+                keyValueStore,
+                this.fileKey(Number(file.id)),
+                file,
+                FILES_TTL_MS,
+              ),
+            ]
+          : []),
+      ]),
+    );
+
+    const matches: LauncherContentFingerprintMatch[] = [];
+    const unmatchedFingerprints: number[] = [];
+    for (const fingerprint of asked) {
+      const file = files.get(fingerprint) ?? identified.get(fingerprint);
+      const project = file ? projects.get(Number(file.projectId)) : null;
+      if (file && project) matches.push({ fingerprint, project, file });
+      else unmatchedFingerprints.push(fingerprint);
+    }
+    return { matches, unmatchedFingerprints };
   }
 
   private async loadProjects(
@@ -291,6 +376,14 @@ class LauncherContentService {
 
   private projectKey(projectId: number): string {
     return `${KEY_PREFIX}:project:${projectId}`;
+  }
+
+  private fileKey(fileId: number): string {
+    return `${KEY_PREFIX}:file:${fileId}`;
+  }
+
+  private fingerprintKey(fingerprint: number): string {
+    return `${KEY_PREFIX}:fingerprint:${fingerprint}`;
   }
 
   private async ask<T>(what: string, call: () => Promise<T>): Promise<T> {
