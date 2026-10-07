@@ -4,7 +4,9 @@ import {
   CurseForgeLoader,
   LOADERLESS_CLASSES,
   getContentFiles,
+  getFileChangelog,
   getMods,
+  getProjectDescription,
   listCategories,
   listProjectFiles,
   matchFingerprints,
@@ -28,14 +30,17 @@ import {
   type LauncherContentProjectsData,
   type LauncherContentSort,
   type LauncherProject,
+  type LauncherProjectDetails,
   type LauncherProjectHit,
 } from "@createrington/shared/launcher";
 import {
   classForContentKind,
+  describeLauncherProject,
   sortFieldForContentSort,
   toLauncherContentCategory,
   toLauncherContentFileDetails,
   toLauncherProject,
+  toLauncherProjectDetails,
   toLauncherProjectLatestFiles,
 } from "./curseforge-content";
 
@@ -44,6 +49,7 @@ const CATEGORIES_TTL_MS = 24 * 60 * 60_000;
 const PROJECT_TTL_MS = 60 * 60_000;
 const UNKNOWN_PROJECT_TTL_MS = 5 * 60_000;
 const FILES_TTL_MS = 10 * 60_000;
+const CHANGELOG_TTL_MS = 24 * 60 * 60_000;
 const FINGERPRINT_TTL_MS = 60 * 60_000;
 const UNKNOWN_FINGERPRINT_TTL_MS = 10 * 60_000;
 const KEY_PREFIX = "launcher:content:curseforge:v1";
@@ -71,6 +77,26 @@ function contentError(
   return new AppError(message, statusCode, true, undefined, { code });
 }
 
+function projectNotFound(): AppError {
+  return contentError(
+    LauncherContentErrorCode.PROJECT_NOT_FOUND,
+    404,
+    "CurseForge has no such mod, resource pack or shader",
+  );
+}
+
+function fileNotFound(): AppError {
+  return contentError(
+    LauncherContentErrorCode.FILE_NOT_FOUND,
+    404,
+    "CurseForge has no such file of a mod, resource pack or shader",
+  );
+}
+
+function htmlOrNull(html: string | null): string | null {
+  return html?.trim() ? html : null;
+}
+
 function withoutLatestFiles({
   latestFiles: _latestFiles,
   ...project
@@ -88,14 +114,15 @@ function loaderTypeFor(
 
 /**
  * Looks CurseForge up for content a launcher player adds to a modpack: search,
- * categories, projects, a project's files, single files and the files behind
- * fingerprints, for any mod, resource pack or shader of Minecraft, not only
- * what our pack ships. Answers come from the key-value store while they are
- * fresh (a search for 5 minutes, a project or a known fingerprint for an hour,
- * files and unknown fingerprints for 10 minutes, categories for a day), so the
- * same question from many players is one CurseForge call. Nothing is written
- * to the database, and a file CurseForge blocks is answered as manual: the
- * other sources the pack service has for blocked files are for our pack only.
+ * categories, projects, one project in full, a project's files, single files
+ * with their changelogs and the files behind fingerprints, for any mod,
+ * resource pack or shader of Minecraft, not only what our pack ships. Answers
+ * come from the key-value store while they are fresh (a search for 5 minutes,
+ * a project or a known fingerprint for an hour, files and unknown fingerprints
+ * for 10 minutes, categories and a changelog for a day), so the same question
+ * from many players is one CurseForge call. Nothing is written to the
+ * database, and a file CurseForge blocks is answered as manual: the other
+ * sources the pack service has for blocked files are for our pack only.
  * Throws `CONTENT_UNAVAILABLE` (503) when CurseForge cannot be asked.
  * Singleton.
  */
@@ -201,19 +228,33 @@ class LauncherContentService {
     return { projects, unknownProjectIds };
   }
 
+  /** One project with its description, downloads, categories, links, dates and pictures, the description as CurseForge's HTML. Throws `PROJECT_NOT_FOUND` (404) for a project `getProjects` would not know. */
+  async getProjectDetails(projectId: number): Promise<LauncherProjectDetails> {
+    const details = await readThrough(
+      keyValueStore,
+      this.projectDetailsKey(projectId),
+      (found) => (found ? PROJECT_TTL_MS : UNKNOWN_PROJECT_TTL_MS),
+      async () => {
+        const [[data], description] = await this.ask("project details", () =>
+          Promise.all([getMods([projectId]), getProjectDescription(projectId)]),
+        );
+        return data
+          ? toLauncherProjectDetails(data, htmlOrNull(description))
+          : null;
+      },
+    );
+
+    if (!details) throw projectNotFound();
+    return details;
+  }
+
   /** One page of a project's files for a Minecraft version and a loader, in CurseForge's order. Throws `PROJECT_NOT_FOUND` (404) for a project `getProjects` would not know. */
   async listFiles(
     projectId: number,
     params: ContentTarget & ContentPage,
   ): Promise<{ files: LauncherContentFileDetails[]; total: number }> {
     const project = (await this.loadProjects([projectId])).get(projectId);
-    if (!project) {
-      throw contentError(
-        LauncherContentErrorCode.PROJECT_NOT_FOUND,
-        404,
-        "CurseForge has no such mod, resource pack or shader",
-      );
-    }
+    if (!project) throw projectNotFound();
 
     const modLoaderType = loaderTypeFor(
       classForContentKind(project.kind),
@@ -266,14 +307,28 @@ class LauncherContentService {
       },
     );
 
-    if (!file) {
-      throw contentError(
-        LauncherContentErrorCode.FILE_NOT_FOUND,
-        404,
-        "CurseForge has no such file of a mod, resource pack or shader",
-      );
-    }
+    if (!file) throw fileNotFound();
     return file;
+  }
+
+  /** What changed in one file, as CurseForge's HTML, or null when the file has no changelog. Without `projectId` the file is looked up as `getFile` does, and throws `FILE_NOT_FOUND` (404) as it does. A caller that knows the file's project names it in `projectId`, which saves that lookup: then `FILE_NOT_FOUND` is for a project that is no mod, resource pack or shader and for a file that is no file of it, and the file is not held to the other rules of `getFile` (a name, a size, a SHA-1). A changelog kept from an earlier call is answered either way. */
+  async getFileChangelog(
+    fileId: number,
+    projectId?: number,
+  ): Promise<string | null> {
+    return readThrough(
+      keyValueStore,
+      this.changelogKey(fileId),
+      CHANGELOG_TTL_MS,
+      async () => {
+        const ownerId = await this.projectOfFile(fileId, projectId);
+        const changelog = await this.ask("changelog", () =>
+          getFileChangelog(ownerId, fileId),
+        );
+        if (changelog === null) throw fileNotFound();
+        return htmlOrNull(changelog);
+      },
+    );
   }
 
   /** Which project and file each CurseForge fingerprint is, in the order asked. A fingerprint CurseForge does not know, or whose file `getFile` would not answer, comes back in `unmatchedFingerprints`. */
@@ -360,6 +415,20 @@ class LauncherContentService {
     return { matches, unmatchedFingerprints };
   }
 
+  private async projectOfFile(
+    fileId: number,
+    namedProjectId: number | undefined,
+  ): Promise<number> {
+    if (namedProjectId === undefined) {
+      return Number((await this.getFile(fileId)).projectId);
+    }
+    const project = (await this.loadProjects([namedProjectId])).get(
+      namedProjectId,
+    );
+    if (!project) throw fileNotFound();
+    return namedProjectId;
+  }
+
   private async loadProjects(
     projectIds: number[],
   ): Promise<Map<number, LauncherProject | null>> {
@@ -407,18 +476,7 @@ class LauncherContentService {
     const projects = new Map<number, LauncherProject | null>();
     for (const id of projectIds) {
       const data = byId.get(id);
-      const described = data
-        ? toLauncherProject({
-            id: data.id,
-            classId: data.classId,
-            slug: data.slug,
-            name: data.name,
-            summary: data.summary || null,
-            thumbnailUrl: data.thumbnailUrl,
-            websiteUrl: data.websiteUrl,
-            primaryAuthor: data.authors[0]?.name ?? null,
-          })
-        : null;
+      const described = data ? describeLauncherProject(data) : null;
       const project =
         data && described
           ? {
@@ -443,8 +501,16 @@ class LauncherContentService {
     return `${KEY_PREFIX}:project:${projectId}`;
   }
 
+  private projectDetailsKey(projectId: number): string {
+    return `${KEY_PREFIX}:project-details:${projectId}`;
+  }
+
   private fileKey(fileId: number): string {
     return `${KEY_PREFIX}:file:${fileId}`;
+  }
+
+  private changelogKey(fileId: number): string {
+    return `${KEY_PREFIX}:changelog:${fileId}`;
   }
 
   private fingerprintKey(fingerprint: number): string {

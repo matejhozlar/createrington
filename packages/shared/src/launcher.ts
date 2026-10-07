@@ -300,6 +300,26 @@ export interface LauncherContentProjectsData {
   unknownProjectIds: string[];
 }
 
+export interface LauncherProjectLinks {
+  source: string | null;
+  issues: string | null;
+  wiki: string | null;
+}
+
+export interface LauncherProjectDetails extends LauncherProject {
+  description: string | null;
+  downloads: number;
+  categories: string[];
+  links: LauncherProjectLinks;
+  createdAt: string | null;
+  updatedAt: string;
+  gallery: string[];
+}
+
+export interface LauncherContentProjectData {
+  project: LauncherProjectDetails;
+}
+
 export interface LauncherContentFilesData {
   files: LauncherContentFileDetails[];
   pagination: LauncherPagination;
@@ -307,6 +327,10 @@ export interface LauncherContentFilesData {
 
 export interface LauncherContentFileData {
   file: LauncherContentFileDetails;
+}
+
+export interface LauncherContentChangelogData {
+  changelog: string | null;
 }
 
 export interface LauncherContentFingerprintMatch {

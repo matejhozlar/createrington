@@ -6,6 +6,7 @@ import { validate } from "@/app/middleware/validation.middleware";
 import { LauncherContentController } from "./launcher-content.controller";
 import {
   ContentIdParamsSchema,
+  FileChangelogQuerySchema,
   GetProjectsBodySchema,
   IdentifyFingerprintsBodySchema,
   ListCategoriesQuerySchema,
@@ -38,6 +39,13 @@ router.post(
     LauncherContentController.projects,
   ),
 );
+router.get(
+  "/projects/:id",
+  ...customRoute(
+    [validate({ params: ContentIdParamsSchema })],
+    LauncherContentController.project,
+  ),
+);
 router.post(
   "/fingerprints",
   ...customRoute(
@@ -57,6 +65,18 @@ router.get(
   ...customRoute(
     [validate({ params: ContentIdParamsSchema })],
     LauncherContentController.file,
+  ),
+);
+router.get(
+  "/files/:id/changelog",
+  ...customRoute(
+    [
+      validate({
+        params: ContentIdParamsSchema,
+        query: FileChangelogQuerySchema,
+      }),
+    ],
+    LauncherContentController.fileChangelog,
   ),
 );
 

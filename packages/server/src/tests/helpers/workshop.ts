@@ -162,6 +162,9 @@ export function makeProjectData(
     name: `Vitest Mod ${projectId}`,
     summary: "A synthetic test project",
     websiteUrl: `https://www.curseforge.com/minecraft/mc-mods/vitest-mod-${projectId}`,
+    wikiUrl: null,
+    issuesUrl: null,
+    sourceUrl: null,
     thumbnailUrl: null,
     authors: [{ id: 1, name: "vitest", url: "https://example.com" }],
     categories: [],
@@ -169,6 +172,7 @@ export function makeProjectData(
     downloadCount: 0,
     isAvailable: true,
     allowModDistribution: true,
+    dateCreated: new Date().toISOString(),
     dateModified: new Date().toISOString(),
     dateReleased: new Date().toISOString(),
     latestFilesIndexes: [

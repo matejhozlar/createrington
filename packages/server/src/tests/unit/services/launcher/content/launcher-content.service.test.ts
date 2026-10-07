@@ -16,9 +16,11 @@ vi.mock("@/services/curseforge", async (importOriginal) => {
     ...actual,
     searchProjects: vi.fn(),
     getMods: vi.fn(),
+    getProjectDescription: vi.fn(),
     listCategories: vi.fn(),
     listProjectFiles: vi.fn(),
     getContentFiles: vi.fn(),
+    getFileChangelog: vi.fn(),
     matchFingerprints: vi.fn(),
   };
 });
@@ -38,7 +40,9 @@ vi.mock("@/services/key-value-store", async (importOriginal) => {
 
 import {
   getContentFiles,
+  getFileChangelog,
   getMods,
+  getProjectDescription,
   listCategories,
   listProjectFiles,
   matchFingerprints,
@@ -100,6 +104,9 @@ function makeProjectData(
     name: `Vitest Mod ${projectId}`,
     summary: "A synthetic test project",
     websiteUrl: `https://www.curseforge.com/minecraft/mc-mods/vitest-mod-${projectId}`,
+    wikiUrl: null,
+    issuesUrl: null,
+    sourceUrl: null,
     thumbnailUrl: null,
     authors: [{ id: 1, name: "vitest", url: "https://example.com" }],
     categories: [],
@@ -107,6 +114,7 @@ function makeProjectData(
     downloadCount: 0,
     isAvailable: true,
     allowModDistribution: true,
+    dateCreated: "2026-10-01T00:00:00.000Z",
     dateModified: "2026-10-05T00:00:00.000Z",
     dateReleased: "2026-10-05T00:00:00.000Z",
     latestFilesIndexes: [],
@@ -507,6 +515,185 @@ describe("LauncherContentService.getProjects", () => {
   });
 });
 
+describe("LauncherContentService.getProjectDetails", () => {
+  const CREATE_DETAILS = {
+    categories: [{ id: 412, name: "Technology", slug: "technology" }],
+    screenshots: [
+      {
+        title: "Contraptions",
+        thumbnailUrl: "https://media.forgecdn.net/attachments/thumb.png",
+        url: "https://media.forgecdn.net/attachments/full.png",
+      },
+    ],
+    downloadCount: 213407951,
+    sourceUrl: "https://github.com/Creators-of-Create/Create",
+    latestFilesIndexes: CREATE_LATEST_FILES,
+  };
+
+  it("answers the project as a lookup does, with what CurseForge tells beyond it", async () => {
+    vi.mocked(getMods).mockResolvedValue([
+      { ...createProject(), ...CREATE_DETAILS },
+    ]);
+    vi.mocked(getProjectDescription).mockResolvedValue("<p>Rotate!</p>");
+
+    const details = await launcherContentService.getProjectDetails(328085);
+
+    expect(getMods).toHaveBeenCalledWith([328085]);
+    expect(getProjectDescription).toHaveBeenCalledWith(328085);
+    expect(details).toEqual({
+      source: "curseforge",
+      id: "328085",
+      slug: "create",
+      kind: "mod",
+      name: "Create",
+      summary: "A synthetic test project",
+      author: "vitest",
+      iconUrl: null,
+      url: CREATE_PAGE,
+      description: "<p>Rotate!</p>",
+      downloads: 213407951,
+      categories: ["Technology"],
+      links: {
+        source: "https://github.com/Creators-of-Create/Create",
+        issues: null,
+        wiki: null,
+      },
+      createdAt: "2026-10-01T00:00:00.000Z",
+      updatedAt: "2026-10-05T00:00:00.000Z",
+      gallery: ["https://media.forgecdn.net/attachments/full.png"],
+    });
+  });
+
+  it.each([
+    ["resourcepack", 12],
+    ["shader", 6552],
+  ] as const)("answers a %s", async (kind, classId) => {
+    vi.mocked(getMods).mockResolvedValue([makeProjectData(555, { classId })]);
+    vi.mocked(getProjectDescription).mockResolvedValue(null);
+
+    const details = await launcherContentService.getProjectDetails(555);
+
+    expect(details).toMatchObject({ id: "555", kind, description: null });
+  });
+
+  it.each([
+    ["an empty one", ""],
+    ["nothing but whitespace", " \n"],
+    ["none", null],
+  ])(
+    "has no description when CurseForge holds %s",
+    async (_label, description) => {
+      vi.mocked(getMods).mockResolvedValue([createProject()]);
+      vi.mocked(getProjectDescription).mockResolvedValue(description);
+
+      const details = await launcherContentService.getProjectDetails(328085);
+
+      expect(details.description).toBeNull();
+    },
+  );
+
+  it("asks CurseForge once for the same project", async () => {
+    vi.mocked(getMods).mockResolvedValue([createProject()]);
+    vi.mocked(getProjectDescription).mockResolvedValue("<p>Rotate!</p>");
+
+    const first = await launcherContentService.getProjectDetails(328085);
+    const second = await launcherContentService.getProjectDetails(328085);
+
+    expect(second).toEqual(first);
+    expect(getMods).toHaveBeenCalledTimes(1);
+    expect(getProjectDescription).toHaveBeenCalledTimes(1);
+  });
+
+  it("shares one lookup between players who open the same project at the same time", async () => {
+    vi.mocked(getMods).mockResolvedValue([createProject()]);
+    vi.mocked(getProjectDescription).mockResolvedValue("<p>Rotate!</p>");
+
+    const [first, second] = await Promise.all([
+      launcherContentService.getProjectDetails(328085),
+      launcherContentService.getProjectDetails(328085),
+    ]);
+
+    expect(second).toEqual(first);
+    expect(getMods).toHaveBeenCalledTimes(1);
+    expect(getProjectDescription).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ["CurseForge does not know", () => []],
+    [
+      "is no mod, resource pack or shader",
+      () => [makeProjectData(4471001, { classId: 4471 })],
+    ],
+  ])("answers 404 for a project that %s", async (_label, projects) => {
+    vi.mocked(getMods).mockResolvedValue(projects());
+    vi.mocked(getProjectDescription).mockResolvedValue(null);
+
+    await expect(
+      launcherContentService.getProjectDetails(4471001),
+    ).rejects.toMatchObject({ statusCode: 404, code: "PROJECT_NOT_FOUND" });
+  });
+
+  it("forgets an unknown project sooner than a known one", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.mocked(getMods).mockImplementation(async ([id]) =>
+        id === 328085 ? [createProject()] : [],
+      );
+      vi.mocked(getProjectDescription).mockResolvedValue(null);
+      const unknown = () =>
+        launcherContentService.getProjectDetails(999999999).catch(() => null);
+
+      await launcherContentService.getProjectDetails(328085);
+      await unknown();
+      await unknown();
+      expect(getMods).toHaveBeenCalledTimes(2);
+
+      vi.advanceTimersByTime(5 * 60_000);
+      await launcherContentService.getProjectDetails(328085);
+      await unknown();
+
+      expect(vi.mocked(getMods).mock.calls).toEqual([
+        [[328085]],
+        [[999999999]],
+        [[999999999]],
+      ]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it.each([
+    [
+      "the project lookup",
+      () => vi.mocked(getMods).mockRejectedValueOnce(new Error("down")),
+    ],
+    [
+      "the description lookup",
+      () =>
+        vi
+          .mocked(getProjectDescription)
+          .mockRejectedValueOnce(new Error("down")),
+    ],
+  ])(
+    "answers 503 when %s fails, and asks again next time",
+    async (_label, fail) => {
+      vi.mocked(getMods).mockResolvedValue([createProject()]);
+      vi.mocked(getProjectDescription).mockResolvedValue("<p>Rotate!</p>");
+      fail();
+
+      await expect(
+        launcherContentService.getProjectDetails(328085),
+      ).rejects.toMatchObject({
+        statusCode: 503,
+        code: "CONTENT_UNAVAILABLE",
+      });
+      expect(
+        (await launcherContentService.getProjectDetails(328085)).description,
+      ).toBe("<p>Rotate!</p>");
+    },
+  );
+});
+
 describe("LauncherContentService.listFiles", () => {
   it("answers one page of a project's files", async () => {
     vi.mocked(getMods).mockResolvedValue([createProject()]);
@@ -654,6 +841,193 @@ describe("LauncherContentService.getFile", () => {
 
     await expect(launcherContentService.getFile(7000001)).rejects.toMatchObject(
       { statusCode: 404, code: "FILE_NOT_FOUND" },
+    );
+  });
+});
+
+describe("LauncherContentService.getFileChangelog", () => {
+  const CHANGELOG = "<p>Fixed the crash on load</p>";
+
+  beforeEach(() => {
+    vi.mocked(getContentFiles).mockResolvedValue([makeContentFile()]);
+    vi.mocked(getMods).mockResolvedValue([createProject()]);
+    vi.mocked(getFileChangelog).mockResolvedValue(CHANGELOG);
+  });
+
+  it("looks the file up for its project and answers the changelog of the file", async () => {
+    const changelog = await launcherContentService.getFileChangelog(7000001);
+
+    expect(getContentFiles).toHaveBeenCalledWith([7000001]);
+    expect(getFileChangelog).toHaveBeenCalledWith(328085, 7000001);
+    expect(changelog).toBe(CHANGELOG);
+  });
+
+  it.each([
+    ["empty", ""],
+    ["nothing but whitespace", " \n"],
+  ])(
+    "answers null for a file whose changelog is %s, and does not ask again",
+    async (_label, html) => {
+      vi.mocked(getFileChangelog).mockResolvedValue(html);
+
+      expect(await launcherContentService.getFileChangelog(7000001)).toBeNull();
+      expect(await launcherContentService.getFileChangelog(7000001)).toBeNull();
+      expect(getFileChangelog).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it("asks under the project the caller names, without looking the file up", async () => {
+    const changelog = await launcherContentService.getFileChangelog(
+      7000001,
+      328085,
+    );
+
+    expect(changelog).toBe(CHANGELOG);
+    expect(getFileChangelog).toHaveBeenCalledWith(328085, 7000001);
+    expect(getContentFiles).not.toHaveBeenCalled();
+  });
+
+  it("asks CurseForge for the changelog alone when the project named was just looked up", async () => {
+    await launcherContentService.getProjects([328085]);
+    vi.mocked(getMods).mockClear();
+
+    await launcherContentService.getFileChangelog(7000001, 328085);
+
+    expect(getMods).not.toHaveBeenCalled();
+    expect(getContentFiles).not.toHaveBeenCalled();
+    expect(getFileChangelog).toHaveBeenCalledTimes(1);
+  });
+
+  it("answers 404 for a file that is no file of the project named, and keeps nothing", async () => {
+    vi.mocked(getMods).mockImplementation(async (ids) =>
+      ids.map((id) => makeProjectData(id)),
+    );
+    vi.mocked(getFileChangelog).mockImplementation(async (projectId) =>
+      projectId === 328085 ? CHANGELOG : null,
+    );
+
+    await expect(
+      launcherContentService.getFileChangelog(7000001, 238222),
+    ).rejects.toMatchObject({ statusCode: 404, code: "FILE_NOT_FOUND" });
+    expect(await launcherContentService.getFileChangelog(7000001, 328085)).toBe(
+      CHANGELOG,
+    );
+    expect(await launcherContentService.getFileChangelog(7000001)).toBe(
+      CHANGELOG,
+    );
+    expect(getFileChangelog).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([
+    ["CurseForge does not know", () => []],
+    [
+      "is no mod, resource pack or shader",
+      () => [makeProjectData(4471001, { classId: 4471 })],
+    ],
+  ])(
+    "answers 404 when the project named %s, without asking for a changelog",
+    async (_label, projects) => {
+      vi.mocked(getMods).mockResolvedValue(projects());
+
+      await expect(
+        launcherContentService.getFileChangelog(7000001, 4471001),
+      ).rejects.toMatchObject({ statusCode: 404, code: "FILE_NOT_FOUND" });
+      expect(getFileChangelog).not.toHaveBeenCalled();
+      expect(getContentFiles).not.toHaveBeenCalled();
+    },
+  );
+
+  it("holds a file to the rules of a file lookup only when no project is named", async () => {
+    vi.mocked(getContentFiles).mockResolvedValue([
+      makeContentFile({ sha1: null }),
+    ]);
+
+    await expect(
+      launcherContentService.getFileChangelog(7000001),
+    ).rejects.toMatchObject({ statusCode: 404, code: "FILE_NOT_FOUND" });
+    expect(getFileChangelog).not.toHaveBeenCalled();
+
+    expect(await launcherContentService.getFileChangelog(7000001, 328085)).toBe(
+      CHANGELOG,
+    );
+    expect(await launcherContentService.getFileChangelog(7000001)).toBe(
+      CHANGELOG,
+    );
+    expect(getFileChangelog).toHaveBeenCalledTimes(1);
+  });
+
+  it("answers 404 when the file is gone by the time its changelog is asked for", async () => {
+    vi.mocked(getFileChangelog).mockResolvedValue(null);
+
+    await expect(
+      launcherContentService.getFileChangelog(7000001),
+    ).rejects.toMatchObject({ statusCode: 404, code: "FILE_NOT_FOUND" });
+  });
+
+  it("asks CurseForge once for the same changelog, also after the file itself was forgotten", async () => {
+    vi.useFakeTimers();
+    try {
+      await launcherContentService.getFileChangelog(7000001);
+      vi.advanceTimersByTime(60 * 60_000);
+      const again = await launcherContentService.getFileChangelog(7000001);
+
+      expect(again).toBe(CHANGELOG);
+      expect(getFileChangelog).toHaveBeenCalledTimes(1);
+      expect(getContentFiles).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("shares one lookup between players who open the same changelog at the same time", async () => {
+    const [first, second] = await Promise.all([
+      launcherContentService.getFileChangelog(7000001),
+      launcherContentService.getFileChangelog(7000001),
+    ]);
+
+    expect([first, second]).toEqual([CHANGELOG, CHANGELOG]);
+    expect(getFileChangelog).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not look up a file again that was just answered", async () => {
+    await launcherContentService.getFile(7000001);
+    await launcherContentService.getFileChangelog(7000001);
+
+    expect(getContentFiles).toHaveBeenCalledTimes(1);
+  });
+
+  it("asks for no changelog when only the file is asked for", async () => {
+    const file = await launcherContentService.getFile(7000001);
+
+    expect(file.id).toBe("7000001");
+    expect(getFileChangelog).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["CurseForge does not know", () => []],
+    ["belongs to another game", () => [makeContentFile({ gameId: 1 })]],
+  ])(
+    "answers 404 for a file that %s, without asking for a changelog",
+    async (_label, files) => {
+      vi.mocked(getContentFiles).mockResolvedValue(files());
+
+      await expect(
+        launcherContentService.getFileChangelog(7000001),
+      ).rejects.toMatchObject({ statusCode: 404, code: "FILE_NOT_FOUND" });
+      expect(getFileChangelog).not.toHaveBeenCalled();
+    },
+  );
+
+  it("answers 503 when CurseForge fails, and asks again next time", async () => {
+    vi.mocked(getFileChangelog)
+      .mockRejectedValueOnce(new Error("down"))
+      .mockResolvedValueOnce(CHANGELOG);
+
+    await expect(
+      launcherContentService.getFileChangelog(7000001),
+    ).rejects.toMatchObject({ statusCode: 503, code: "CONTENT_UNAVAILABLE" });
+    expect(await launcherContentService.getFileChangelog(7000001)).toBe(
+      CHANGELOG,
     );
   });
 });
@@ -935,6 +1309,25 @@ describe("LauncherContentService with a store that fails", () => {
       1,
     );
     expect(searchProjects).toHaveBeenCalledTimes(2);
+  });
+
+  it("still answers one project in full", async () => {
+    vi.mocked(getMods).mockResolvedValue([createProject()]);
+    vi.mocked(getProjectDescription).mockResolvedValue("<p>Rotate!</p>");
+
+    expect(
+      (await launcherContentService.getProjectDetails(328085)).description,
+    ).toBe("<p>Rotate!</p>");
+  });
+
+  it("still answers the changelog of a file", async () => {
+    vi.mocked(getContentFiles).mockResolvedValue([makeContentFile()]);
+    vi.mocked(getMods).mockResolvedValue([createProject()]);
+    vi.mocked(getFileChangelog).mockResolvedValue("<p>Fixed the crash</p>");
+
+    expect(await launcherContentService.getFileChangelog(7000001)).toBe(
+      "<p>Fixed the crash</p>",
+    );
   });
 
   it("still answers projects, files and a single file", async () => {

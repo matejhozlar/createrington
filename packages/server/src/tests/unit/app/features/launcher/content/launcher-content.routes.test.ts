@@ -18,8 +18,10 @@ const { LAUNCHER_SECRET, WEB_SECRET, mocks } = vi.hoisted(() => ({
     search: vi.fn(),
     listCategories: vi.fn(),
     getProjects: vi.fn(),
+    getProjectDetails: vi.fn(),
     listFiles: vi.fn(),
     getFile: vi.fn(),
+    getFileChangelog: vi.fn(),
     identifyFingerprints: vi.fn(),
   },
 }));
@@ -60,8 +62,10 @@ vi.mock("@/services/launcher/content/launcher-content.service", () => ({
     search: mocks.search,
     listCategories: mocks.listCategories,
     getProjects: mocks.getProjects,
+    getProjectDetails: mocks.getProjectDetails,
     listFiles: mocks.listFiles,
     getFile: mocks.getFile,
+    getFileChangelog: mocks.getFileChangelog,
     identifyFingerprints: mocks.identifyFingerprints,
   },
 }));
@@ -81,6 +85,21 @@ const PROJECT = {
   author: "simibubi",
   iconUrl: "https://media.forgecdn.net/avatars/create.png",
   url: "https://www.curseforge.com/minecraft/mc-mods/create",
+};
+
+const PROJECT_DETAILS = {
+  ...PROJECT,
+  description: "<p>Aesthetic Technology that empowers the Player</p>",
+  downloads: 213407951,
+  categories: ["Technology"],
+  links: {
+    source: "https://github.com/Creators-of-Create/Create",
+    issues: "https://github.com/Creators-of-Create/Create/issues",
+    wiki: null,
+  },
+  createdAt: "2019-07-08T15:24:07.787Z",
+  updatedAt: "2026-09-30T09:41:00.000Z",
+  gallery: ["https://media.forgecdn.net/attachments/full.png"],
 };
 
 const CATEGORY = {
@@ -110,6 +129,8 @@ const FILE = {
   loaders: ["neoforge"],
   dependencies: [],
 };
+
+const CHANGELOG = "<p>Fixed the crash on load</p>";
 
 let server: Server;
 let baseUrl: string;
@@ -184,8 +205,10 @@ beforeEach(() => {
     projects: [PROJECT],
     unknownProjectIds: ["999999999"],
   });
+  mocks.getProjectDetails.mockResolvedValue(PROJECT_DETAILS);
   mocks.listFiles.mockResolvedValue({ files: [FILE], total: 11 });
   mocks.getFile.mockResolvedValue(FILE);
+  mocks.getFileChangelog.mockResolvedValue(CHANGELOG);
   mocks.identifyFingerprints.mockResolvedValue({
     matches: [{ fingerprint: 522093599, project: PROJECT, file: FILE }],
     unmatchedFingerprints: [1],
@@ -424,6 +447,78 @@ describe("POST /api/launcher/content/projects", () => {
   });
 });
 
+describe("GET /api/launcher/content/projects/:id", () => {
+  it("answers one project in full", async () => {
+    const res = await get("/projects/328085", newSession());
+
+    expect(res.status).toBe(200);
+    expect(mocks.getProjectDetails).toHaveBeenCalledWith(328085);
+    expect(await res.json()).toEqual({
+      success: true,
+      data: { project: PROJECT_DETAILS },
+    });
+  });
+
+  it.each([
+    ["a project id that is not a number", "/projects/create"],
+    ["a project id of zero", "/projects/0"],
+    ["a project id too large for CurseForge", "/projects/2147483648"],
+  ])("refuses %s", async (_label, path) => {
+    const res = await get(path, newSession());
+
+    expect(res.status).toBe(400);
+    expect(mocks.getProjectDetails).not.toHaveBeenCalled();
+  });
+
+  it("answers 404 with the service's code for an unknown project", async () => {
+    mocks.getProjectDetails.mockRejectedValue(
+      new AppError("no such project", 404, true, undefined, {
+        code: "PROJECT_NOT_FOUND",
+      }),
+    );
+
+    const res = await get("/projects/999999999", newSession());
+
+    expect(res.status).toBe(404);
+    expect(await res.json()).toMatchObject({
+      success: false,
+      error: { statusCode: 404, code: "PROJECT_NOT_FOUND" },
+    });
+  });
+
+  it("passes the service's error code on when CurseForge cannot be asked", async () => {
+    mocks.getProjectDetails.mockRejectedValue(
+      new AppError(
+        "CurseForge cannot be asked right now",
+        503,
+        true,
+        undefined,
+        { code: "CONTENT_UNAVAILABLE" },
+      ),
+    );
+
+    const res = await get("/projects/328085", newSession());
+
+    expect(res.status).toBe(503);
+    expect((await res.json()).error.code).toBe("CONTENT_UNAVAILABLE");
+  });
+
+  it("answers 401 without a launcher session", async () => {
+    const res = await get("/projects/328085");
+
+    expect(res.status).toBe(401);
+    expect(mocks.getProjectDetails).not.toHaveBeenCalled();
+  });
+
+  it("leaves the file list of a project to its own route", async () => {
+    const res = await get("/projects/328085/files", newSession());
+
+    expect(res.status).toBe(200);
+    expect(mocks.listFiles).toHaveBeenCalled();
+    expect(mocks.getProjectDetails).not.toHaveBeenCalled();
+  });
+});
+
 describe("POST /api/launcher/content/fingerprints", () => {
   it("identifies the files behind the fingerprints", async () => {
     const res = await postFingerprints(
@@ -597,6 +692,112 @@ describe("GET /api/launcher/content/files/:id", () => {
 
     expect(res.status).toBe(401);
     expect(mocks.getFile).not.toHaveBeenCalled();
+  });
+});
+
+describe("GET /api/launcher/content/files/:id/changelog", () => {
+  it("answers the changelog of one file, and not the file", async () => {
+    const res = await get("/files/7000001/changelog", newSession());
+
+    expect(res.status).toBe(200);
+    expect(mocks.getFileChangelog).toHaveBeenCalledWith(7000001, undefined);
+    expect(mocks.getFile).not.toHaveBeenCalled();
+    expect(await res.json()).toEqual({
+      success: true,
+      data: { changelog: CHANGELOG },
+    });
+  });
+
+  it("passes the project on when the launcher names it", async () => {
+    const res = await get(
+      "/files/7000001/changelog?projectId=328085",
+      newSession(),
+    );
+
+    expect(res.status).toBe(200);
+    expect(mocks.getFileChangelog).toHaveBeenCalledWith(7000001, 328085);
+    expect(await res.json()).toEqual({
+      success: true,
+      data: { changelog: CHANGELOG },
+    });
+  });
+
+  it.each([
+    ["a project id that is not a number", "?projectId=create"],
+    ["a project id of zero", "?projectId=0"],
+    ["a project id too large for CurseForge", "?projectId=2147483648"],
+    ["two project ids", "?projectId=328085&projectId=238222"],
+  ])("refuses %s", async (_label, query) => {
+    const res = await get(`/files/7000001/changelog${query}`, newSession());
+
+    expect(res.status).toBe(400);
+    expect(mocks.getFileChangelog).not.toHaveBeenCalled();
+  });
+
+  it("answers null for a file without a changelog", async () => {
+    mocks.getFileChangelog.mockResolvedValue(null);
+
+    const res = await get("/files/7000001/changelog", newSession());
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({
+      success: true,
+      data: { changelog: null },
+    });
+  });
+
+  it("leaves the changelog to its own route when the file is asked for", async () => {
+    const res = await get("/files/7000001", newSession());
+
+    expect(await res.json()).toEqual({ success: true, data: { file: FILE } });
+    expect(mocks.getFileChangelog).not.toHaveBeenCalled();
+  });
+
+  it("refuses a file id that is not a number", async () => {
+    const res = await get("/files/latest/changelog", newSession());
+
+    expect(res.status).toBe(400);
+    expect(mocks.getFileChangelog).not.toHaveBeenCalled();
+  });
+
+  it("answers 404 with the service's code for an unknown file", async () => {
+    mocks.getFileChangelog.mockRejectedValue(
+      new AppError("no such file", 404, true, undefined, {
+        code: "FILE_NOT_FOUND",
+      }),
+    );
+
+    const res = await get("/files/999999999/changelog", newSession());
+
+    expect(res.status).toBe(404);
+    expect(await res.json()).toMatchObject({
+      success: false,
+      error: { statusCode: 404, code: "FILE_NOT_FOUND" },
+    });
+  });
+
+  it("passes the service's error code on when CurseForge cannot be asked", async () => {
+    mocks.getFileChangelog.mockRejectedValue(
+      new AppError(
+        "CurseForge cannot be asked right now",
+        503,
+        true,
+        undefined,
+        { code: "CONTENT_UNAVAILABLE" },
+      ),
+    );
+
+    const res = await get("/files/7000001/changelog", newSession());
+
+    expect(res.status).toBe(503);
+    expect((await res.json()).error.code).toBe("CONTENT_UNAVAILABLE");
+  });
+
+  it("answers 401 without a launcher session", async () => {
+    const res = await get("/files/7000001/changelog");
+
+    expect(res.status).toBe(401);
+    expect(mocks.getFileChangelog).not.toHaveBeenCalled();
   });
 });
 

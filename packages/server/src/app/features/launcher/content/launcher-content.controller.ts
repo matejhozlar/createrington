@@ -1,9 +1,11 @@
 import type { Request, Response } from "express";
 import type {
   LauncherContentCategoriesData,
+  LauncherContentChangelogData,
   LauncherContentFileData,
   LauncherContentFilesData,
   LauncherContentFingerprintsData,
+  LauncherContentProjectData,
   LauncherContentProjectsData,
   LauncherContentSearchData,
   LauncherSuccessResponse,
@@ -13,6 +15,7 @@ import { launcherContentService } from "@/services/launcher/content/launcher-con
 import { buildPagination } from "@/trpc/utils";
 import type {
   ContentIdParams,
+  FileChangelogQuery,
   GetProjectsBody,
   IdentifyFingerprintsBody,
   ListCategoriesQuery,
@@ -61,6 +64,18 @@ export class LauncherContentController {
     res.json(response);
   }
 
+  static async project(_req: Request, res: Response): Promise<void> {
+    const { params } = getValidated<{ params: ContentIdParams }>(res);
+
+    const body: LauncherSuccessResponse<LauncherContentProjectData> = {
+      success: true,
+      data: {
+        project: await launcherContentService.getProjectDetails(params.id),
+      },
+    };
+    res.json(body);
+  }
+
   static async fingerprints(_req: Request, res: Response): Promise<void> {
     const { body } = getValidated<{ body: IdentifyFingerprintsBody }>(res);
 
@@ -99,6 +114,24 @@ export class LauncherContentController {
     const body: LauncherSuccessResponse<LauncherContentFileData> = {
       success: true,
       data: { file: await launcherContentService.getFile(params.id) },
+    };
+    res.json(body);
+  }
+
+  static async fileChangelog(_req: Request, res: Response): Promise<void> {
+    const { params, query } = getValidated<{
+      params: ContentIdParams;
+      query: FileChangelogQuery;
+    }>(res);
+
+    const body: LauncherSuccessResponse<LauncherContentChangelogData> = {
+      success: true,
+      data: {
+        changelog: await launcherContentService.getFileChangelog(
+          params.id,
+          query.projectId,
+        ),
+      },
     };
     res.json(body);
   }

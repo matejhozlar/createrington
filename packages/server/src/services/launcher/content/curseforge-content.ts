@@ -19,6 +19,7 @@ import {
   type LauncherContentReleaseType,
   type LauncherContentSort,
   type LauncherProject,
+  type LauncherProjectDetails,
   type LauncherProjectLatestFile,
 } from "@createrington/shared/launcher";
 import { CURSEFORGE_CLASSES } from "@createrington/shared/workshop";
@@ -129,6 +130,43 @@ export function toLauncherProject(
     author: project.primaryAuthor,
     iconUrl: project.thumbnailUrl,
     url,
+  };
+}
+
+export function describeLauncherProject(
+  data: CurseForgeProjectData,
+): LauncherProject | null {
+  return toLauncherProject({
+    id: data.id,
+    classId: data.classId,
+    slug: data.slug,
+    name: data.name,
+    summary: data.summary || null,
+    thumbnailUrl: data.thumbnailUrl,
+    websiteUrl: data.websiteUrl,
+    primaryAuthor: data.authors[0]?.name ?? null,
+  });
+}
+
+export function toLauncherProjectDetails(
+  data: CurseForgeProjectData,
+  description: string | null,
+): LauncherProjectDetails | null {
+  const project = describeLauncherProject(data);
+  if (!project) return null;
+  return {
+    ...project,
+    description,
+    downloads: data.downloadCount,
+    categories: data.categories.map((category) => category.name),
+    links: {
+      source: data.sourceUrl,
+      issues: data.issuesUrl,
+      wiki: data.wikiUrl,
+    },
+    createdAt: data.dateCreated,
+    updatedAt: data.dateModified,
+    gallery: data.screenshots.map((screenshot) => screenshot.url),
   };
 }
 
