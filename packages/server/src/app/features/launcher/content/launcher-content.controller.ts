@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import type {
   LauncherContentCategoriesData,
+  LauncherContentChangelogData,
   LauncherContentFileData,
   LauncherContentFilesData,
   LauncherContentFingerprintsData,
@@ -112,6 +113,18 @@ export class LauncherContentController {
     const body: LauncherSuccessResponse<LauncherContentFileData> = {
       success: true,
       data: { file: await launcherContentService.getFile(params.id) },
+    };
+    res.json(body);
+  }
+
+  static async fileChangelog(_req: Request, res: Response): Promise<void> {
+    const { params } = getValidated<{ params: ContentIdParams }>(res);
+
+    const body: LauncherSuccessResponse<LauncherContentChangelogData> = {
+      success: true,
+      data: {
+        changelog: await launcherContentService.getFileChangelog(params.id),
+      },
     };
     res.json(body);
   }

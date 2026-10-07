@@ -20,6 +20,7 @@ vi.mock("@/services/curseforge", async (importOriginal) => {
     listCategories: vi.fn(),
     listProjectFiles: vi.fn(),
     getContentFiles: vi.fn(),
+    getFileChangelog: vi.fn(),
     matchFingerprints: vi.fn(),
   };
 });
@@ -39,6 +40,7 @@ vi.mock("@/services/key-value-store", async (importOriginal) => {
 
 import {
   getContentFiles,
+  getFileChangelog,
   getMods,
   getProjectDescription,
   listCategories,
@@ -827,6 +829,99 @@ describe("LauncherContentService.getFile", () => {
   });
 });
 
+describe("LauncherContentService.getFileChangelog", () => {
+  const CHANGELOG = "<p>Fixed the crash on load</p>";
+
+  beforeEach(() => {
+    vi.mocked(getContentFiles).mockResolvedValue([makeContentFile()]);
+    vi.mocked(getMods).mockResolvedValue([createProject()]);
+    vi.mocked(getFileChangelog).mockResolvedValue(CHANGELOG);
+  });
+
+  it("looks the file up for its project and answers the changelog of the file", async () => {
+    const changelog = await launcherContentService.getFileChangelog(7000001);
+
+    expect(getContentFiles).toHaveBeenCalledWith([7000001]);
+    expect(getFileChangelog).toHaveBeenCalledWith(328085, 7000001);
+    expect(changelog).toBe(CHANGELOG);
+  });
+
+  it("answers null for a file without a changelog, and does not ask again", async () => {
+    vi.mocked(getFileChangelog).mockResolvedValue(null);
+
+    expect(await launcherContentService.getFileChangelog(7000001)).toBeNull();
+    expect(await launcherContentService.getFileChangelog(7000001)).toBeNull();
+    expect(getFileChangelog).toHaveBeenCalledTimes(1);
+  });
+
+  it("asks CurseForge once for the same changelog, also after the file itself was forgotten", async () => {
+    vi.useFakeTimers();
+    try {
+      await launcherContentService.getFileChangelog(7000001);
+      vi.advanceTimersByTime(60 * 60_000);
+      const again = await launcherContentService.getFileChangelog(7000001);
+
+      expect(again).toBe(CHANGELOG);
+      expect(getFileChangelog).toHaveBeenCalledTimes(1);
+      expect(getContentFiles).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("shares one lookup between players who open the same changelog at the same time", async () => {
+    const [first, second] = await Promise.all([
+      launcherContentService.getFileChangelog(7000001),
+      launcherContentService.getFileChangelog(7000001),
+    ]);
+
+    expect([first, second]).toEqual([CHANGELOG, CHANGELOG]);
+    expect(getFileChangelog).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not look up a file again that was just answered", async () => {
+    await launcherContentService.getFile(7000001);
+    await launcherContentService.getFileChangelog(7000001);
+
+    expect(getContentFiles).toHaveBeenCalledTimes(1);
+  });
+
+  it("asks for no changelog when only the file is asked for", async () => {
+    const file = await launcherContentService.getFile(7000001);
+
+    expect(file.id).toBe("7000001");
+    expect(getFileChangelog).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["CurseForge does not know", () => []],
+    ["belongs to another game", () => [makeContentFile({ gameId: 1 })]],
+  ])(
+    "answers 404 for a file that %s, without asking for a changelog",
+    async (_label, files) => {
+      vi.mocked(getContentFiles).mockResolvedValue(files());
+
+      await expect(
+        launcherContentService.getFileChangelog(7000001),
+      ).rejects.toMatchObject({ statusCode: 404, code: "FILE_NOT_FOUND" });
+      expect(getFileChangelog).not.toHaveBeenCalled();
+    },
+  );
+
+  it("answers 503 when CurseForge fails, and asks again next time", async () => {
+    vi.mocked(getFileChangelog)
+      .mockRejectedValueOnce(new Error("down"))
+      .mockResolvedValueOnce(CHANGELOG);
+
+    await expect(
+      launcherContentService.getFileChangelog(7000001),
+    ).rejects.toMatchObject({ statusCode: 503, code: "CONTENT_UNAVAILABLE" });
+    expect(await launcherContentService.getFileChangelog(7000001)).toBe(
+      CHANGELOG,
+    );
+  });
+});
+
 describe("LauncherContentService.identifyFingerprints", () => {
   it("answers the project and the file behind each fingerprint and names the ones it does not know", async () => {
     vi.mocked(matchFingerprints).mockResolvedValue([
@@ -1113,6 +1208,16 @@ describe("LauncherContentService with a store that fails", () => {
     expect(
       (await launcherContentService.getProjectDetails(328085)).description,
     ).toBe("<p>Rotate!</p>");
+  });
+
+  it("still answers the changelog of a file", async () => {
+    vi.mocked(getContentFiles).mockResolvedValue([makeContentFile()]);
+    vi.mocked(getMods).mockResolvedValue([createProject()]);
+    vi.mocked(getFileChangelog).mockResolvedValue("<p>Fixed the crash</p>");
+
+    expect(await launcherContentService.getFileChangelog(7000001)).toBe(
+      "<p>Fixed the crash</p>",
+    );
   });
 
   it("still answers projects, files and a single file", async () => {

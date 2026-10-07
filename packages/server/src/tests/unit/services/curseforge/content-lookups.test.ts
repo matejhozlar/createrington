@@ -10,6 +10,7 @@ import {
 import config from "@/config";
 import {
   getContentFiles,
+  getFileChangelog,
   getMods,
   getProjectDescription,
   listCategories,
@@ -492,6 +493,38 @@ describe("getProjectDescription", () => {
 
     await expect(getProjectDescription(328085)).rejects.toThrow(
       "CurseForge getProjectDescription failed (500)",
+    );
+  });
+});
+
+describe("getFileChangelog", () => {
+  it("asks for the changelog of the file under its project and answers the HTML as it comes", async () => {
+    const html = "<p>Fixed the crash on load</p>\n<ul><li>More jars</li></ul>";
+    fetchMock.mockResolvedValue(answer({ data: html }));
+
+    const changelog = await getFileChangelog(439890, 7000001);
+
+    expect(requestedUrl().pathname).toMatch(
+      /\/v1\/mods\/439890\/files\/7000001\/changelog$/,
+    );
+    expect(changelog).toBe(html);
+  });
+
+  it.each([
+    ["an empty text", answer({ data: "" })],
+    ["nothing but whitespace", answer({ data: "\n" })],
+    ["404", answer({}, 404)],
+  ])("has no changelog when CurseForge answers %s", async (_label, res) => {
+    fetchMock.mockResolvedValue(res);
+
+    expect(await getFileChangelog(439890, 7000001)).toBeNull();
+  });
+
+  it("throws when CurseForge fails", async () => {
+    fetchMock.mockResolvedValue(answer({}, 500));
+
+    await expect(getFileChangelog(439890, 7000001)).rejects.toThrow(
+      "CurseForge getFileChangelog failed (500)",
     );
   });
 });

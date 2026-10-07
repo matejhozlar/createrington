@@ -1166,6 +1166,21 @@ export async function getProjectDescription(
   return getHtml(`/v1/mods/${projectId}/description`, "getProjectDescription");
 }
 
+/**
+ * What changed in a file as CurseForge holds it, in HTML. Null when
+ * CurseForge does not know the file under that project or holds no changelog
+ * for it.
+ */
+export async function getFileChangelog(
+  projectId: number,
+  fileId: number,
+): Promise<string | null> {
+  return getHtml(
+    `/v1/mods/${projectId}/files/${fileId}/changelog`,
+    "getFileChangelog",
+  );
+}
+
 export interface CurseForgeFingerprintMatch {
   fingerprint: number;
   file: CurseForgeContentFile;

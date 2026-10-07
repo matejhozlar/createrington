@@ -329,6 +329,10 @@ export interface LauncherContentFileData {
   file: LauncherContentFileDetails;
 }
 
+export interface LauncherContentChangelogData {
+  changelog: string | null;
+}
+
 export interface LauncherContentFingerprintMatch {
   fingerprint: number;
   project: LauncherProject;

@@ -4,6 +4,7 @@ import {
   CurseForgeLoader,
   LOADERLESS_CLASSES,
   getContentFiles,
+  getFileChangelog,
   getMods,
   getProjectDescription,
   listCategories,
@@ -48,6 +49,7 @@ const CATEGORIES_TTL_MS = 24 * 60 * 60_000;
 const PROJECT_TTL_MS = 60 * 60_000;
 const UNKNOWN_PROJECT_TTL_MS = 5 * 60_000;
 const FILES_TTL_MS = 10 * 60_000;
+const CHANGELOG_TTL_MS = 24 * 60 * 60_000;
 const FINGERPRINT_TTL_MS = 60 * 60_000;
 const UNKNOWN_FINGERPRINT_TTL_MS = 10 * 60_000;
 const KEY_PREFIX = "launcher:content:curseforge:v1";
@@ -101,15 +103,16 @@ function loaderTypeFor(
 /**
  * Looks CurseForge up for content a launcher player adds to a modpack: search,
  * categories, projects, one project in full, a project's files, single files
- * and the files behind fingerprints, for any mod, resource pack or shader of
- * Minecraft, not only what our pack ships. Answers come from the key-value
- * store while they are fresh (a search for 5 minutes, a project or a known
- * fingerprint for an hour, files and unknown fingerprints for 10 minutes,
- * categories for a day), so the same question from many players is one
- * CurseForge call. Nothing is written to the database, and a file CurseForge
- * blocks is answered as manual: the other sources the pack service has for
- * blocked files are for our pack only. Throws `CONTENT_UNAVAILABLE` (503) when
- * CurseForge cannot be asked. Singleton.
+ * with their changelogs and the files behind fingerprints, for any mod,
+ * resource pack or shader of Minecraft, not only what our pack ships. Answers
+ * come from the key-value store while they are fresh (a search for 5 minutes,
+ * a project or a known fingerprint for an hour, files and unknown fingerprints
+ * for 10 minutes, categories and a changelog for a day), so the same question
+ * from many players is one CurseForge call. Nothing is written to the
+ * database, and a file CurseForge blocks is answered as manual: the other
+ * sources the pack service has for blocked files are for our pack only.
+ * Throws `CONTENT_UNAVAILABLE` (503) when CurseForge cannot be asked.
+ * Singleton.
  */
 class LauncherContentService {
   private static instance: LauncherContentService;
@@ -300,6 +303,21 @@ class LauncherContentService {
     return file;
   }
 
+  /** What changed in one file, as CurseForge's HTML, or null when the file has no changelog. Throws `FILE_NOT_FOUND` (404) for a file `getFile` would not answer. */
+  async getFileChangelog(fileId: number): Promise<string | null> {
+    return readThrough(
+      keyValueStore,
+      this.changelogKey(fileId),
+      CHANGELOG_TTL_MS,
+      async () => {
+        const file = await this.getFile(fileId);
+        return this.ask("changelog", () =>
+          getFileChangelog(Number(file.projectId), fileId),
+        );
+      },
+    );
+  }
+
   /** Which project and file each CurseForge fingerprint is, in the order asked. A fingerprint CurseForge does not know, or whose file `getFile` would not answer, comes back in `unmatchedFingerprints`. */
   async identifyFingerprints(
     fingerprints: number[],
@@ -462,6 +480,10 @@ class LauncherContentService {
 
   private fileKey(fileId: number): string {
     return `${KEY_PREFIX}:file:${fileId}`;
+  }
+
+  private changelogKey(fileId: number): string {
+    return `${KEY_PREFIX}:changelog:${fileId}`;
   }
 
   private fingerprintKey(fingerprint: number): string {

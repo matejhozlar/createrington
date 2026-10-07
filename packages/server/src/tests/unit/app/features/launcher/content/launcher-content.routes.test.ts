@@ -21,6 +21,7 @@ const { LAUNCHER_SECRET, WEB_SECRET, mocks } = vi.hoisted(() => ({
     getProjectDetails: vi.fn(),
     listFiles: vi.fn(),
     getFile: vi.fn(),
+    getFileChangelog: vi.fn(),
     identifyFingerprints: vi.fn(),
   },
 }));
@@ -64,6 +65,7 @@ vi.mock("@/services/launcher/content/launcher-content.service", () => ({
     getProjectDetails: mocks.getProjectDetails,
     listFiles: mocks.listFiles,
     getFile: mocks.getFile,
+    getFileChangelog: mocks.getFileChangelog,
     identifyFingerprints: mocks.identifyFingerprints,
   },
 }));
@@ -127,6 +129,8 @@ const FILE = {
   loaders: ["neoforge"],
   dependencies: [],
 };
+
+const CHANGELOG = "<p>Fixed the crash on load</p>";
 
 let server: Server;
 let baseUrl: string;
@@ -204,6 +208,7 @@ beforeEach(() => {
   mocks.getProjectDetails.mockResolvedValue(PROJECT_DETAILS);
   mocks.listFiles.mockResolvedValue({ files: [FILE], total: 11 });
   mocks.getFile.mockResolvedValue(FILE);
+  mocks.getFileChangelog.mockResolvedValue(CHANGELOG);
   mocks.identifyFingerprints.mockResolvedValue({
     matches: [{ fingerprint: 522093599, project: PROJECT, file: FILE }],
     unmatchedFingerprints: [1],
@@ -687,6 +692,86 @@ describe("GET /api/launcher/content/files/:id", () => {
 
     expect(res.status).toBe(401);
     expect(mocks.getFile).not.toHaveBeenCalled();
+  });
+});
+
+describe("GET /api/launcher/content/files/:id/changelog", () => {
+  it("answers the changelog of one file, and not the file", async () => {
+    const res = await get("/files/7000001/changelog", newSession());
+
+    expect(res.status).toBe(200);
+    expect(mocks.getFileChangelog).toHaveBeenCalledWith(7000001);
+    expect(mocks.getFile).not.toHaveBeenCalled();
+    expect(await res.json()).toEqual({
+      success: true,
+      data: { changelog: CHANGELOG },
+    });
+  });
+
+  it("answers null for a file without a changelog", async () => {
+    mocks.getFileChangelog.mockResolvedValue(null);
+
+    const res = await get("/files/7000001/changelog", newSession());
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({
+      success: true,
+      data: { changelog: null },
+    });
+  });
+
+  it("leaves the changelog to its own route when the file is asked for", async () => {
+    const res = await get("/files/7000001", newSession());
+
+    expect(await res.json()).toEqual({ success: true, data: { file: FILE } });
+    expect(mocks.getFileChangelog).not.toHaveBeenCalled();
+  });
+
+  it("refuses a file id that is not a number", async () => {
+    const res = await get("/files/latest/changelog", newSession());
+
+    expect(res.status).toBe(400);
+    expect(mocks.getFileChangelog).not.toHaveBeenCalled();
+  });
+
+  it("answers 404 with the service's code for an unknown file", async () => {
+    mocks.getFileChangelog.mockRejectedValue(
+      new AppError("no such file", 404, true, undefined, {
+        code: "FILE_NOT_FOUND",
+      }),
+    );
+
+    const res = await get("/files/999999999/changelog", newSession());
+
+    expect(res.status).toBe(404);
+    expect(await res.json()).toMatchObject({
+      success: false,
+      error: { statusCode: 404, code: "FILE_NOT_FOUND" },
+    });
+  });
+
+  it("passes the service's error code on when CurseForge cannot be asked", async () => {
+    mocks.getFileChangelog.mockRejectedValue(
+      new AppError(
+        "CurseForge cannot be asked right now",
+        503,
+        true,
+        undefined,
+        { code: "CONTENT_UNAVAILABLE" },
+      ),
+    );
+
+    const res = await get("/files/7000001/changelog", newSession());
+
+    expect(res.status).toBe(503);
+    expect((await res.json()).error.code).toBe("CONTENT_UNAVAILABLE");
+  });
+
+  it("answers 401 without a launcher session", async () => {
+    const res = await get("/files/7000001/changelog");
+
+    expect(res.status).toBe(401);
+    expect(mocks.getFileChangelog).not.toHaveBeenCalled();
   });
 });
 

@@ -66,5 +66,12 @@ router.get(
     LauncherContentController.file,
   ),
 );
+router.get(
+  "/files/:id/changelog",
+  ...customRoute(
+    [validate({ params: ContentIdParamsSchema })],
+    LauncherContentController.fileChangelog,
+  ),
+);
 
 export default router;
