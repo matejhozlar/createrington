@@ -11,6 +11,7 @@ import config from "@/config";
 import {
   getContentFiles,
   getMods,
+  getProjectDescription,
   listCategories,
   listProjectFiles,
   matchFingerprints,
@@ -464,7 +465,115 @@ describe("matchFingerprints", () => {
   });
 });
 
+describe("getProjectDescription", () => {
+  it("asks for the description of the project and answers the HTML as it comes", async () => {
+    const html = '<p>Aesthetic Technology</p>\n<img src="https://a.b/c.png">';
+    fetchMock.mockResolvedValue(answer({ data: html }));
+
+    const description = await getProjectDescription(328085);
+
+    expect(requestedUrl().pathname).toMatch(/\/v1\/mods\/328085\/description$/);
+    expect(description).toBe(html);
+  });
+
+  it.each([
+    ["an empty text", answer({ data: "" })],
+    ["nothing but whitespace", answer({ data: " \n" })],
+    ["no text", answer({ data: null })],
+    ["404", answer({}, 404)],
+  ])("has no description when CurseForge answers %s", async (_label, res) => {
+    fetchMock.mockResolvedValue(res);
+
+    expect(await getProjectDescription(328085)).toBeNull();
+  });
+
+  it("throws when CurseForge fails", async () => {
+    fetchMock.mockResolvedValue(answer({}, 500));
+
+    await expect(getProjectDescription(328085)).rejects.toThrow(
+      "CurseForge getProjectDescription failed (500)",
+    );
+  });
+});
+
 describe("getMods", () => {
+  const RAW_MOD = {
+    id: 328085,
+    gameId: 432,
+    classId: 6,
+    slug: "create",
+    name: "Create",
+    summary: "Aesthetic Technology that empowers the Player",
+    links: {
+      websiteUrl: "https://www.curseforge.com/minecraft/mc-mods/create",
+      wikiUrl: "https://create.fandom.com",
+      issuesUrl: "https://github.com/Creators-of-Create/Create/issues",
+      sourceUrl: "https://github.com/Creators-of-Create/Create",
+    },
+    logo: { thumbnailUrl: "https://media.forgecdn.net/avatars/create.png" },
+    authors: [{ id: 1, name: "simibubi", url: "https://example.com" }],
+    categories: [{ id: 412, name: "Technology", slug: "technology" }],
+    screenshots: [
+      {
+        id: 1,
+        title: "Contraptions",
+        thumbnailUrl: "https://media.forgecdn.net/attachments/thumb.png",
+        url: "https://media.forgecdn.net/attachments/full.png",
+      },
+    ],
+    downloadCount: 213407951,
+    isAvailable: true,
+    dateCreated: "2019-07-08T15:24:07.787Z",
+    dateModified: "2026-09-30T09:41:00.000Z",
+    dateReleased: "2026-09-30T09:30:00.000Z",
+  };
+
+  it("reads a project with its links and the day it was created", async () => {
+    fetchMock.mockResolvedValue(answer({ data: [RAW_MOD] }));
+
+    const [mod] = await getMods([328085]);
+
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({
+      modIds: [328085],
+    });
+    expect(mod).toMatchObject({
+      id: 328085,
+      websiteUrl: "https://www.curseforge.com/minecraft/mc-mods/create",
+      wikiUrl: "https://create.fandom.com",
+      issuesUrl: "https://github.com/Creators-of-Create/Create/issues",
+      sourceUrl: "https://github.com/Creators-of-Create/Create",
+      dateCreated: "2019-07-08T15:24:07.787Z",
+      dateModified: "2026-09-30T09:41:00.000Z",
+    });
+  });
+
+  it("reads a project CurseForge names no links or creation day for", async () => {
+    fetchMock.mockResolvedValue(
+      answer({
+        data: [
+          {
+            ...RAW_MOD,
+            links: {
+              websiteUrl: RAW_MOD.links.websiteUrl,
+              wikiUrl: "",
+              issuesUrl: null,
+            },
+            dateCreated: undefined,
+          },
+        ],
+      }),
+    );
+
+    const [mod] = await getMods([328085]);
+
+    expect(mod).toMatchObject({
+      wikiUrl: null,
+      issuesUrl: null,
+      sourceUrl: null,
+      dateCreated: null,
+    });
+  });
+
   it("finds nothing when CurseForge knows none of the ids", async () => {
     fetchMock.mockResolvedValue(answer({}, 404));
 

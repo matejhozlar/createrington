@@ -74,7 +74,12 @@ const rawModSchema = z.object({
   slug: z.string(),
   name: z.string(),
   summary: z.string(),
-  links: z.object({ websiteUrl: z.string() }),
+  links: z.object({
+    websiteUrl: z.string(),
+    wikiUrl: z.string().nullish(),
+    issuesUrl: z.string().nullish(),
+    sourceUrl: z.string().nullish(),
+  }),
   logo: z.object({ thumbnailUrl: z.string() }).nullish(),
   authors: z.array(
     z.object({
@@ -104,6 +109,7 @@ const rawModSchema = z.object({
   downloadCount: z.number(),
   isAvailable: z.boolean(),
   allowModDistribution: z.boolean().nullish(),
+  dateCreated: z.string().nullish(),
   dateModified: z.string(),
   dateReleased: z.string(),
   latestFiles: z
@@ -362,6 +368,9 @@ export interface CurseForgeProjectData {
   name: string;
   summary: string;
   websiteUrl: string;
+  wikiUrl: string | null;
+  issuesUrl: string | null;
+  sourceUrl: string | null;
   thumbnailUrl: string | null;
   authors: Array<{
     id: number;
@@ -379,6 +388,7 @@ export interface CurseForgeProjectData {
   downloadCount: number;
   isAvailable: boolean;
   allowModDistribution: boolean | null;
+  dateCreated: string | null;
   dateModified: string;
   dateReleased: string;
   latestFilesIndexes: Array<{
@@ -600,6 +610,9 @@ function mapProject(raw: RawCurseForgeMod): CurseForgeProjectData {
     name: raw.name,
     summary: raw.summary,
     websiteUrl: raw.links.websiteUrl,
+    wikiUrl: raw.links.wikiUrl || null,
+    issuesUrl: raw.links.issuesUrl || null,
+    sourceUrl: raw.links.sourceUrl || null,
     thumbnailUrl: raw.logo?.thumbnailUrl ?? null,
     authors: raw.authors,
     categories: raw.categories,
@@ -607,6 +620,7 @@ function mapProject(raw: RawCurseForgeMod): CurseForgeProjectData {
     downloadCount: raw.downloadCount,
     isAvailable: raw.isAvailable,
     allowModDistribution: raw.allowModDistribution ?? null,
+    dateCreated: raw.dateCreated ?? null,
     dateModified: raw.dateModified,
     dateReleased: raw.dateReleased,
     latestFilesIndexes: (raw.latestFilesIndexes ?? []).map((idx) => ({
@@ -1115,6 +1129,41 @@ export async function getContentFiles(
     failure: "CurseForge getContentFiles failed",
   });
   return files.map(toContentFile);
+}
+
+/**
+ * Reads an endpoint that answers one piece of HTML. Null when CurseForge
+ * answers 404 or holds no text there.
+ */
+async function getHtml(path: string, endpoint: string): Promise<string | null> {
+  ensureApiKey();
+
+  const res = await cfFetch(`${CURSEFORGE_API}${path}`);
+  if (res.status === 404) {
+    await res.body?.cancel();
+    return null;
+  }
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`CurseForge ${endpoint} failed (${res.status}): ${text}`);
+  }
+
+  const body = parseCfResponse(
+    z.object({ data: z.string().nullish() }),
+    await res.json(),
+    endpoint,
+  );
+  return body.data?.trim() ? body.data : null;
+}
+
+/**
+ * The long description of a project as CurseForge holds it, in HTML. Null
+ * when CurseForge does not know the project or holds no description for it.
+ */
+export async function getProjectDescription(
+  projectId: number,
+): Promise<string | null> {
+  return getHtml(`/v1/mods/${projectId}/description`, "getProjectDescription");
 }
 
 export interface CurseForgeFingerprintMatch {

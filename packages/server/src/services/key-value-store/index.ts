@@ -160,14 +160,15 @@ const loading = new Map<string, Promise<unknown>>();
 
 /**
  * The JSON value stored under the key, or the result of `load`, which is then
- * stored for `ttlMs` milliseconds. Callers that miss at the same time share
- * one `load`. A `load` that throws stores nothing. A store that fails only
- * costs a `load`: the read counts as a miss and the write is skipped.
+ * stored for `ttlMs` milliseconds: one number, or a function that picks the
+ * time by the value loaded. Callers that miss at the same time share one
+ * `load`. A `load` that throws stores nothing. A store that fails only costs
+ * a `load`: the read counts as a miss and the write is skipped.
  */
 export async function readThrough<T>(
   store: KeyValueStore,
   key: string,
-  ttlMs: number,
+  ttlMs: number | ((value: T) => number),
   load: () => Promise<T>,
 ): Promise<T> {
   const stored = await readStored<T>(store, key);
@@ -178,7 +179,12 @@ export async function readThrough<T>(
 
   const loaded = load()
     .then(async (value) => {
-      await writeStored(store, key, value, ttlMs);
+      await writeStored(
+        store,
+        key,
+        value,
+        typeof ttlMs === "function" ? ttlMs(value) : ttlMs,
+      );
       return value;
     })
     .finally(() => loading.delete(key));

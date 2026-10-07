@@ -16,6 +16,7 @@ vi.mock("@/services/curseforge", async (importOriginal) => {
     ...actual,
     searchProjects: vi.fn(),
     getMods: vi.fn(),
+    getProjectDescription: vi.fn(),
     listCategories: vi.fn(),
     listProjectFiles: vi.fn(),
     getContentFiles: vi.fn(),
@@ -39,6 +40,7 @@ vi.mock("@/services/key-value-store", async (importOriginal) => {
 import {
   getContentFiles,
   getMods,
+  getProjectDescription,
   listCategories,
   listProjectFiles,
   matchFingerprints,
@@ -100,6 +102,9 @@ function makeProjectData(
     name: `Vitest Mod ${projectId}`,
     summary: "A synthetic test project",
     websiteUrl: `https://www.curseforge.com/minecraft/mc-mods/vitest-mod-${projectId}`,
+    wikiUrl: null,
+    issuesUrl: null,
+    sourceUrl: null,
     thumbnailUrl: null,
     authors: [{ id: 1, name: "vitest", url: "https://example.com" }],
     categories: [],
@@ -107,6 +112,7 @@ function makeProjectData(
     downloadCount: 0,
     isAvailable: true,
     allowModDistribution: true,
+    dateCreated: "2026-10-01T00:00:00.000Z",
     dateModified: "2026-10-05T00:00:00.000Z",
     dateReleased: "2026-10-05T00:00:00.000Z",
     latestFilesIndexes: [],
@@ -505,6 +511,169 @@ describe("LauncherContentService.getProjects", () => {
       code: "CONTENT_UNAVAILABLE",
     });
   });
+});
+
+describe("LauncherContentService.getProjectDetails", () => {
+  const CREATE_DETAILS = {
+    categories: [{ id: 412, name: "Technology", slug: "technology" }],
+    screenshots: [
+      {
+        title: "Contraptions",
+        thumbnailUrl: "https://media.forgecdn.net/attachments/thumb.png",
+        url: "https://media.forgecdn.net/attachments/full.png",
+      },
+    ],
+    downloadCount: 213407951,
+    sourceUrl: "https://github.com/Creators-of-Create/Create",
+    latestFilesIndexes: CREATE_LATEST_FILES,
+  };
+
+  it("answers the project as a lookup does, with what CurseForge tells beyond it", async () => {
+    vi.mocked(getMods).mockResolvedValue([
+      { ...createProject(), ...CREATE_DETAILS },
+    ]);
+    vi.mocked(getProjectDescription).mockResolvedValue("<p>Rotate!</p>");
+
+    const details = await launcherContentService.getProjectDetails(328085);
+
+    expect(getMods).toHaveBeenCalledWith([328085]);
+    expect(getProjectDescription).toHaveBeenCalledWith(328085);
+    expect(details).toEqual({
+      source: "curseforge",
+      id: "328085",
+      slug: "create",
+      kind: "mod",
+      name: "Create",
+      summary: "A synthetic test project",
+      author: "vitest",
+      iconUrl: null,
+      url: CREATE_PAGE,
+      description: "<p>Rotate!</p>",
+      downloads: 213407951,
+      categories: ["Technology"],
+      links: {
+        source: "https://github.com/Creators-of-Create/Create",
+        issues: null,
+        wiki: null,
+      },
+      createdAt: "2026-10-01T00:00:00.000Z",
+      updatedAt: "2026-10-05T00:00:00.000Z",
+      gallery: ["https://media.forgecdn.net/attachments/full.png"],
+    });
+  });
+
+  it.each([
+    ["resourcepack", 12],
+    ["shader", 6552],
+  ] as const)("answers a %s", async (kind, classId) => {
+    vi.mocked(getMods).mockResolvedValue([makeProjectData(555, { classId })]);
+    vi.mocked(getProjectDescription).mockResolvedValue(null);
+
+    const details = await launcherContentService.getProjectDetails(555);
+
+    expect(details).toMatchObject({ id: "555", kind, description: null });
+  });
+
+  it("asks CurseForge once for the same project", async () => {
+    vi.mocked(getMods).mockResolvedValue([createProject()]);
+    vi.mocked(getProjectDescription).mockResolvedValue("<p>Rotate!</p>");
+
+    const first = await launcherContentService.getProjectDetails(328085);
+    const second = await launcherContentService.getProjectDetails(328085);
+
+    expect(second).toEqual(first);
+    expect(getMods).toHaveBeenCalledTimes(1);
+    expect(getProjectDescription).toHaveBeenCalledTimes(1);
+  });
+
+  it("shares one lookup between players who open the same project at the same time", async () => {
+    vi.mocked(getMods).mockResolvedValue([createProject()]);
+    vi.mocked(getProjectDescription).mockResolvedValue("<p>Rotate!</p>");
+
+    const [first, second] = await Promise.all([
+      launcherContentService.getProjectDetails(328085),
+      launcherContentService.getProjectDetails(328085),
+    ]);
+
+    expect(second).toEqual(first);
+    expect(getMods).toHaveBeenCalledTimes(1);
+    expect(getProjectDescription).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ["CurseForge does not know", () => []],
+    [
+      "is no mod, resource pack or shader",
+      () => [makeProjectData(4471001, { classId: 4471 })],
+    ],
+  ])("answers 404 for a project that %s", async (_label, projects) => {
+    vi.mocked(getMods).mockResolvedValue(projects());
+    vi.mocked(getProjectDescription).mockResolvedValue(null);
+
+    await expect(
+      launcherContentService.getProjectDetails(4471001),
+    ).rejects.toMatchObject({ statusCode: 404, code: "PROJECT_NOT_FOUND" });
+  });
+
+  it("forgets an unknown project sooner than a known one", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.mocked(getMods).mockImplementation(async ([id]) =>
+        id === 328085 ? [createProject()] : [],
+      );
+      vi.mocked(getProjectDescription).mockResolvedValue(null);
+      const unknown = () =>
+        launcherContentService.getProjectDetails(999999999).catch(() => null);
+
+      await launcherContentService.getProjectDetails(328085);
+      await unknown();
+      await unknown();
+      expect(getMods).toHaveBeenCalledTimes(2);
+
+      vi.advanceTimersByTime(5 * 60_000);
+      await launcherContentService.getProjectDetails(328085);
+      await unknown();
+
+      expect(vi.mocked(getMods).mock.calls).toEqual([
+        [[328085]],
+        [[999999999]],
+        [[999999999]],
+      ]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it.each([
+    [
+      "the project lookup",
+      () => vi.mocked(getMods).mockRejectedValueOnce(new Error("down")),
+    ],
+    [
+      "the description lookup",
+      () =>
+        vi
+          .mocked(getProjectDescription)
+          .mockRejectedValueOnce(new Error("down")),
+    ],
+  ])(
+    "answers 503 when %s fails, and asks again next time",
+    async (_label, fail) => {
+      vi.mocked(getMods).mockResolvedValue([createProject()]);
+      vi.mocked(getProjectDescription).mockResolvedValue("<p>Rotate!</p>");
+      fail();
+
+      await expect(
+        launcherContentService.getProjectDetails(328085),
+      ).rejects.toMatchObject({
+        statusCode: 503,
+        code: "CONTENT_UNAVAILABLE",
+      });
+      expect(
+        (await launcherContentService.getProjectDetails(328085)).description,
+      ).toBe("<p>Rotate!</p>");
+    },
+  );
 });
 
 describe("LauncherContentService.listFiles", () => {
@@ -935,6 +1104,15 @@ describe("LauncherContentService with a store that fails", () => {
       1,
     );
     expect(searchProjects).toHaveBeenCalledTimes(2);
+  });
+
+  it("still answers one project in full", async () => {
+    vi.mocked(getMods).mockResolvedValue([createProject()]);
+    vi.mocked(getProjectDescription).mockResolvedValue("<p>Rotate!</p>");
+
+    expect(
+      (await launcherContentService.getProjectDetails(328085)).description,
+    ).toBe("<p>Rotate!</p>");
   });
 
   it("still answers projects, files and a single file", async () => {

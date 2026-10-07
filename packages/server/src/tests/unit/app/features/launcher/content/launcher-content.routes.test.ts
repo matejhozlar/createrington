@@ -18,6 +18,7 @@ const { LAUNCHER_SECRET, WEB_SECRET, mocks } = vi.hoisted(() => ({
     search: vi.fn(),
     listCategories: vi.fn(),
     getProjects: vi.fn(),
+    getProjectDetails: vi.fn(),
     listFiles: vi.fn(),
     getFile: vi.fn(),
     identifyFingerprints: vi.fn(),
@@ -60,6 +61,7 @@ vi.mock("@/services/launcher/content/launcher-content.service", () => ({
     search: mocks.search,
     listCategories: mocks.listCategories,
     getProjects: mocks.getProjects,
+    getProjectDetails: mocks.getProjectDetails,
     listFiles: mocks.listFiles,
     getFile: mocks.getFile,
     identifyFingerprints: mocks.identifyFingerprints,
@@ -81,6 +83,21 @@ const PROJECT = {
   author: "simibubi",
   iconUrl: "https://media.forgecdn.net/avatars/create.png",
   url: "https://www.curseforge.com/minecraft/mc-mods/create",
+};
+
+const PROJECT_DETAILS = {
+  ...PROJECT,
+  description: "<p>Aesthetic Technology that empowers the Player</p>",
+  downloads: 213407951,
+  categories: ["Technology"],
+  links: {
+    source: "https://github.com/Creators-of-Create/Create",
+    issues: "https://github.com/Creators-of-Create/Create/issues",
+    wiki: null,
+  },
+  createdAt: "2019-07-08T15:24:07.787Z",
+  updatedAt: "2026-09-30T09:41:00.000Z",
+  gallery: ["https://media.forgecdn.net/attachments/full.png"],
 };
 
 const CATEGORY = {
@@ -184,6 +201,7 @@ beforeEach(() => {
     projects: [PROJECT],
     unknownProjectIds: ["999999999"],
   });
+  mocks.getProjectDetails.mockResolvedValue(PROJECT_DETAILS);
   mocks.listFiles.mockResolvedValue({ files: [FILE], total: 11 });
   mocks.getFile.mockResolvedValue(FILE);
   mocks.identifyFingerprints.mockResolvedValue({
@@ -421,6 +439,78 @@ describe("POST /api/launcher/content/projects", () => {
 
     expect(res.status).toBe(401);
     expect(mocks.getProjects).not.toHaveBeenCalled();
+  });
+});
+
+describe("GET /api/launcher/content/projects/:id", () => {
+  it("answers one project in full", async () => {
+    const res = await get("/projects/328085", newSession());
+
+    expect(res.status).toBe(200);
+    expect(mocks.getProjectDetails).toHaveBeenCalledWith(328085);
+    expect(await res.json()).toEqual({
+      success: true,
+      data: { project: PROJECT_DETAILS },
+    });
+  });
+
+  it.each([
+    ["a project id that is not a number", "/projects/create"],
+    ["a project id of zero", "/projects/0"],
+    ["a project id too large for CurseForge", "/projects/2147483648"],
+  ])("refuses %s", async (_label, path) => {
+    const res = await get(path, newSession());
+
+    expect(res.status).toBe(400);
+    expect(mocks.getProjectDetails).not.toHaveBeenCalled();
+  });
+
+  it("answers 404 with the service's code for an unknown project", async () => {
+    mocks.getProjectDetails.mockRejectedValue(
+      new AppError("no such project", 404, true, undefined, {
+        code: "PROJECT_NOT_FOUND",
+      }),
+    );
+
+    const res = await get("/projects/999999999", newSession());
+
+    expect(res.status).toBe(404);
+    expect(await res.json()).toMatchObject({
+      success: false,
+      error: { statusCode: 404, code: "PROJECT_NOT_FOUND" },
+    });
+  });
+
+  it("passes the service's error code on when CurseForge cannot be asked", async () => {
+    mocks.getProjectDetails.mockRejectedValue(
+      new AppError(
+        "CurseForge cannot be asked right now",
+        503,
+        true,
+        undefined,
+        { code: "CONTENT_UNAVAILABLE" },
+      ),
+    );
+
+    const res = await get("/projects/328085", newSession());
+
+    expect(res.status).toBe(503);
+    expect((await res.json()).error.code).toBe("CONTENT_UNAVAILABLE");
+  });
+
+  it("answers 401 without a launcher session", async () => {
+    const res = await get("/projects/328085");
+
+    expect(res.status).toBe(401);
+    expect(mocks.getProjectDetails).not.toHaveBeenCalled();
+  });
+
+  it("leaves the file list of a project to its own route", async () => {
+    const res = await get("/projects/328085/files", newSession());
+
+    expect(res.status).toBe(200);
+    expect(mocks.listFiles).toHaveBeenCalled();
+    expect(mocks.getProjectDetails).not.toHaveBeenCalled();
   });
 });
 

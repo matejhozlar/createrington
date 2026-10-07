@@ -3,17 +3,22 @@ import type {
   CurseforgeFileProject,
   CurseforgeFileWithProject,
 } from "@/db/queries/curseforge/file";
-import type { CurseForgeContentFile } from "@/services/curseforge";
+import type {
+  CurseForgeContentFile,
+  CurseForgeProjectData,
+} from "@/services/curseforge";
 import {
   classForContentKind,
   contentKindForClass,
   curseforgeFilePageUrl,
   curseforgeProjectUrl,
+  describeLauncherProject,
   sortFieldForContentSort,
   toLauncherContentCategory,
   toLauncherContentFile,
   toLauncherContentFileDetails,
   toLauncherProject,
+  toLauncherProjectDetails,
   toLauncherProjectLatestFiles,
 } from "@/services/launcher/content/curseforge-content";
 
@@ -263,6 +268,121 @@ describe("toLauncherProject", () => {
 
   it("has no project for a class the launcher does not install", () => {
     expect(toLauncherProject(makeProject({ classId: 4471 }))).toBeNull();
+  });
+});
+
+describe("toLauncherProjectDetails", () => {
+  function makeProjectData(
+    overrides: Partial<CurseForgeProjectData> = {},
+  ): CurseForgeProjectData {
+    return {
+      id: 412082,
+      classId: 6,
+      slug: "supplementaries",
+      name: "Supplementaries",
+      summary: "Vanilla+ content that fills the gaps",
+      websiteUrl:
+        "https://www.curseforge.com/minecraft/mc-mods/supplementaries",
+      wikiUrl: null,
+      issuesUrl: "https://github.com/MehVahdJukaar/Supplementaries/issues",
+      sourceUrl: "https://github.com/MehVahdJukaar/Supplementaries",
+      thumbnailUrl: "https://media.forgecdn.net/avatars/supplementaries.png",
+      authors: [
+        { id: 1, name: "MehVahdJukaar", url: "https://example.com/1" },
+        { id: 2, name: "Plantkillable", url: "https://example.com/2" },
+      ],
+      categories: [
+        { id: 424, name: "Decoration", slug: "cosmetic" },
+        { id: 5191, name: "Utility & QoL", slug: "utility-qol" },
+      ],
+      screenshots: [
+        {
+          title: "Jars",
+          thumbnailUrl: "https://media.forgecdn.net/attachments/thumb-1.png",
+          url: "https://media.forgecdn.net/attachments/full-1.png",
+        },
+        {
+          title: "Signs",
+          thumbnailUrl: "https://media.forgecdn.net/attachments/thumb-2.png",
+          url: "https://media.forgecdn.net/attachments/full-2.png",
+        },
+      ],
+      downloadCount: 12345678,
+      isAvailable: true,
+      allowModDistribution: true,
+      dateCreated: "2020-11-14T18:12:00.000Z",
+      dateModified: "2026-09-30T09:41:00.000Z",
+      dateReleased: "2026-09-30T09:30:00.000Z",
+      latestFilesIndexes: [],
+      environmentHint: null,
+      ...overrides,
+    };
+  }
+
+  it("describes a project in full, with the project as a lookup answers it", () => {
+    const data = makeProjectData();
+
+    const details = toLauncherProjectDetails(data, "<p>Jars and more</p>");
+
+    expect(details).toEqual({
+      source: "curseforge",
+      id: "412082",
+      slug: "supplementaries",
+      kind: "mod",
+      name: "Supplementaries",
+      summary: "Vanilla+ content that fills the gaps",
+      author: "MehVahdJukaar",
+      iconUrl: "https://media.forgecdn.net/avatars/supplementaries.png",
+      url: "https://www.curseforge.com/minecraft/mc-mods/supplementaries",
+      description: "<p>Jars and more</p>",
+      downloads: 12345678,
+      categories: ["Decoration", "Utility & QoL"],
+      links: {
+        source: "https://github.com/MehVahdJukaar/Supplementaries",
+        issues: "https://github.com/MehVahdJukaar/Supplementaries/issues",
+        wiki: null,
+      },
+      createdAt: "2020-11-14T18:12:00.000Z",
+      updatedAt: "2026-09-30T09:41:00.000Z",
+      gallery: [
+        "https://media.forgecdn.net/attachments/full-1.png",
+        "https://media.forgecdn.net/attachments/full-2.png",
+      ],
+    });
+    expect(details).toMatchObject({ ...describeLauncherProject(data) });
+  });
+
+  it("keeps a project CurseForge tells nothing more about", () => {
+    expect(
+      toLauncherProjectDetails(
+        makeProjectData({
+          classId: 6552,
+          summary: "",
+          authors: [],
+          categories: [],
+          screenshots: [],
+          issuesUrl: null,
+          sourceUrl: null,
+          dateCreated: null,
+        }),
+        null,
+      ),
+    ).toMatchObject({
+      kind: "shader",
+      summary: null,
+      author: null,
+      description: null,
+      categories: [],
+      links: { source: null, issues: null, wiki: null },
+      createdAt: null,
+      gallery: [],
+    });
+  });
+
+  it("has no details for a class the launcher does not install", () => {
+    expect(
+      toLauncherProjectDetails(makeProjectData({ classId: 4471 }), "<p></p>"),
+    ).toBeNull();
   });
 });
 

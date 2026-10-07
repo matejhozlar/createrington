@@ -4,6 +4,7 @@ import type {
   LauncherContentFileData,
   LauncherContentFilesData,
   LauncherContentFingerprintsData,
+  LauncherContentProjectData,
   LauncherContentProjectsData,
   LauncherContentSearchData,
   LauncherSuccessResponse,
@@ -59,6 +60,18 @@ export class LauncherContentController {
       data: await launcherContentService.getProjects(body.projectIds),
     };
     res.json(response);
+  }
+
+  static async project(_req: Request, res: Response): Promise<void> {
+    const { params } = getValidated<{ params: ContentIdParams }>(res);
+
+    const body: LauncherSuccessResponse<LauncherContentProjectData> = {
+      success: true,
+      data: {
+        project: await launcherContentService.getProjectDetails(params.id),
+      },
+    };
+    res.json(body);
   }
 
   static async fingerprints(_req: Request, res: Response): Promise<void> {

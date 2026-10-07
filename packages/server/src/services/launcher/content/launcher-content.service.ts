@@ -5,6 +5,7 @@ import {
   LOADERLESS_CLASSES,
   getContentFiles,
   getMods,
+  getProjectDescription,
   listCategories,
   listProjectFiles,
   matchFingerprints,
@@ -28,14 +29,17 @@ import {
   type LauncherContentProjectsData,
   type LauncherContentSort,
   type LauncherProject,
+  type LauncherProjectDetails,
   type LauncherProjectHit,
 } from "@createrington/shared/launcher";
 import {
   classForContentKind,
+  describeLauncherProject,
   sortFieldForContentSort,
   toLauncherContentCategory,
   toLauncherContentFileDetails,
   toLauncherProject,
+  toLauncherProjectDetails,
   toLauncherProjectLatestFiles,
 } from "./curseforge-content";
 
@@ -71,6 +75,14 @@ function contentError(
   return new AppError(message, statusCode, true, undefined, { code });
 }
 
+function projectNotFound(): AppError {
+  return contentError(
+    LauncherContentErrorCode.PROJECT_NOT_FOUND,
+    404,
+    "CurseForge has no such mod, resource pack or shader",
+  );
+}
+
 function withoutLatestFiles({
   latestFiles: _latestFiles,
   ...project
@@ -88,16 +100,16 @@ function loaderTypeFor(
 
 /**
  * Looks CurseForge up for content a launcher player adds to a modpack: search,
- * categories, projects, a project's files, single files and the files behind
- * fingerprints, for any mod, resource pack or shader of Minecraft, not only
- * what our pack ships. Answers come from the key-value store while they are
- * fresh (a search for 5 minutes, a project or a known fingerprint for an hour,
- * files and unknown fingerprints for 10 minutes, categories for a day), so the
- * same question from many players is one CurseForge call. Nothing is written
- * to the database, and a file CurseForge blocks is answered as manual: the
- * other sources the pack service has for blocked files are for our pack only.
- * Throws `CONTENT_UNAVAILABLE` (503) when CurseForge cannot be asked.
- * Singleton.
+ * categories, projects, one project in full, a project's files, single files
+ * and the files behind fingerprints, for any mod, resource pack or shader of
+ * Minecraft, not only what our pack ships. Answers come from the key-value
+ * store while they are fresh (a search for 5 minutes, a project or a known
+ * fingerprint for an hour, files and unknown fingerprints for 10 minutes,
+ * categories for a day), so the same question from many players is one
+ * CurseForge call. Nothing is written to the database, and a file CurseForge
+ * blocks is answered as manual: the other sources the pack service has for
+ * blocked files are for our pack only. Throws `CONTENT_UNAVAILABLE` (503) when
+ * CurseForge cannot be asked. Singleton.
  */
 class LauncherContentService {
   private static instance: LauncherContentService;
@@ -201,19 +213,31 @@ class LauncherContentService {
     return { projects, unknownProjectIds };
   }
 
+  /** One project with its description, downloads, categories, links, dates and pictures, the description as CurseForge's HTML. Throws `PROJECT_NOT_FOUND` (404) for a project `getProjects` would not know. */
+  async getProjectDetails(projectId: number): Promise<LauncherProjectDetails> {
+    const details = await readThrough(
+      keyValueStore,
+      this.projectDetailsKey(projectId),
+      (found) => (found ? PROJECT_TTL_MS : UNKNOWN_PROJECT_TTL_MS),
+      async () => {
+        const [[data], description] = await this.ask("project details", () =>
+          Promise.all([getMods([projectId]), getProjectDescription(projectId)]),
+        );
+        return data ? toLauncherProjectDetails(data, description) : null;
+      },
+    );
+
+    if (!details) throw projectNotFound();
+    return details;
+  }
+
   /** One page of a project's files for a Minecraft version and a loader, in CurseForge's order. Throws `PROJECT_NOT_FOUND` (404) for a project `getProjects` would not know. */
   async listFiles(
     projectId: number,
     params: ContentTarget & ContentPage,
   ): Promise<{ files: LauncherContentFileDetails[]; total: number }> {
     const project = (await this.loadProjects([projectId])).get(projectId);
-    if (!project) {
-      throw contentError(
-        LauncherContentErrorCode.PROJECT_NOT_FOUND,
-        404,
-        "CurseForge has no such mod, resource pack or shader",
-      );
-    }
+    if (!project) throw projectNotFound();
 
     const modLoaderType = loaderTypeFor(
       classForContentKind(project.kind),
@@ -407,18 +431,7 @@ class LauncherContentService {
     const projects = new Map<number, LauncherProject | null>();
     for (const id of projectIds) {
       const data = byId.get(id);
-      const described = data
-        ? toLauncherProject({
-            id: data.id,
-            classId: data.classId,
-            slug: data.slug,
-            name: data.name,
-            summary: data.summary || null,
-            thumbnailUrl: data.thumbnailUrl,
-            websiteUrl: data.websiteUrl,
-            primaryAuthor: data.authors[0]?.name ?? null,
-          })
-        : null;
+      const described = data ? describeLauncherProject(data) : null;
       const project =
         data && described
           ? {
@@ -441,6 +454,10 @@ class LauncherContentService {
 
   private projectKey(projectId: number): string {
     return `${KEY_PREFIX}:project:${projectId}`;
+  }
+
+  private projectDetailsKey(projectId: number): string {
+    return `${KEY_PREFIX}:project-details:${projectId}`;
   }
 
   private fileKey(fileId: number): string {

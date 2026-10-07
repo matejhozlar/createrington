@@ -38,6 +38,13 @@ router.post(
     LauncherContentController.projects,
   ),
 );
+router.get(
+  "/projects/:id",
+  ...customRoute(
+    [validate({ params: ContentIdParamsSchema })],
+    LauncherContentController.project,
+  ),
+);
 router.post(
   "/fingerprints",
   ...customRoute(

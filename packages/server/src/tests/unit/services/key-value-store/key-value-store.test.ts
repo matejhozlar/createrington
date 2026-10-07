@@ -238,6 +238,22 @@ describe("readThrough", () => {
     expect(load).toHaveBeenCalledTimes(1);
   });
 
+  it("keeps a value for the time picked by what was loaded", async () => {
+    const store = new MemoryKeyValueStore();
+    const ttlMs = (value: string | null) => (value ? 5000 : 1000);
+    const known = vi.fn(async () => "value" as string | null);
+    const unknown = vi.fn(async () => null as string | null);
+
+    await readThrough(store, "known", ttlMs, known);
+    await readThrough(store, "unknown", ttlMs, unknown);
+    vi.advanceTimersByTime(1000);
+    await readThrough(store, "known", ttlMs, known);
+    await readThrough(store, "unknown", ttlMs, unknown);
+
+    expect(known).toHaveBeenCalledTimes(1);
+    expect(unknown).toHaveBeenCalledTimes(2);
+  });
+
   it("shares one load between callers that miss at the same time", async () => {
     const store = new MemoryKeyValueStore();
     let finish: (value: string) => void = () => {};
