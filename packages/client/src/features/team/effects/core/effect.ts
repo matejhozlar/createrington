@@ -1,8 +1,11 @@
 import { PlayerAnimation, type SkinViewer } from "skinview3d";
+import type { Bleed } from "./view";
+
 export type EffectContext = {
   viewer: SkinViewer;
   username: string;
   card: HTMLElement | null;
+  setBleed: (bleed: Bleed) => void;
   onFinished: () => void;
 };
 
@@ -10,6 +13,7 @@ export abstract class TeamEffect extends PlayerAnimation {
   protected readonly viewer: SkinViewer;
   protected readonly username: string;
   protected readonly card: HTMLElement | null;
+  protected readonly setBleed: (bleed: Bleed) => void;
   protected stoppedAt: number | null = null;
   private readonly onFinished: () => void;
   private finished = false;
@@ -19,6 +23,7 @@ export abstract class TeamEffect extends PlayerAnimation {
     this.viewer = context.viewer;
     this.username = context.username;
     this.card = context.card;
+    this.setBleed = context.setBleed;
     this.onFinished = context.onFinished;
   }
 

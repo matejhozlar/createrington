@@ -110,6 +110,7 @@ export function resetPlayer(player: PlayerObject): void {
   player.rotation.set(0, 0, 0);
   player.scale.set(1, 1, 1);
   player.skin.head.position.set(0, 0, 0);
+  player.skin.body.position.x = 0;
   for (const name of PART_NAMES) {
     const part = player.skin[name];
     part.visible = true;

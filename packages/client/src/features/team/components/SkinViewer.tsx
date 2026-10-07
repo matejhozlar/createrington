@@ -12,6 +12,7 @@ import type { HoverAnimation } from "../data";
 import type { TeamEffect } from "../effects/core/effect";
 import { BlendedAnimation, capturePose, type Pose } from "../effects/core/pose";
 import { stage, type GuestAnimation } from "../effects/core/stage";
+import { BASE_BLEED, frameViewer } from "../effects/core/view";
 import { createIdleAnimation } from "../effects/idle";
 import { createEffect } from "../effects/registry";
 
@@ -21,7 +22,7 @@ export type SkinViewerHandle = {
 };
 
 type SkinViewerProps = {
-  uuid: string;
+  skin: string;
   username: string;
   width: number;
   height: number;
@@ -40,15 +41,11 @@ type Controller = {
 const IDLE_BLEND_SECONDS = 0.4;
 const EFFECT_BLEND_SECONDS = 0.2;
 const GUEST_BLEND_SECONDS = 0.18;
-const BASE_FOV_TAN = Math.tan((50 * Math.PI) / 360);
-const BASE_ZOOM = 0.9;
-const BLEED_X = 2.6;
-const BLEED_Y = 1.6;
 
 export const SkinViewer = forwardRef<SkinViewerHandle, SkinViewerProps>(
   (
     {
-      uuid,
+      skin,
       username,
       width,
       height,
@@ -65,7 +62,7 @@ export const SkinViewer = forwardRef<SkinViewerHandle, SkinViewerProps>(
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
 
-    const depsKey = `${uuid}-${width}-${height}-${index}-${total}`;
+    const depsKey = `${username}-${width}-${height}-${index}-${total}`;
     const [prevDepsKey, setPrevDepsKey] = useState(depsKey);
     if (prevDepsKey !== depsKey) {
       setPrevDepsKey(depsKey);
@@ -82,23 +79,17 @@ export const SkinViewer = forwardRef<SkinViewerHandle, SkinViewerProps>(
       let effect: TeamEffect | null = null;
       let guest: GuestAnimation | null = null;
 
-      const bleedX = Math.round((width * (BLEED_X - 1)) / 2);
-      const bleedY = Math.round((height * (BLEED_Y - 1)) / 2);
-      const canvasHeight = height + bleedY * 2;
-      const heightRatio = canvasHeight / height;
+      const slot = { width, height };
       const viewer = new SkinViewerLib({
-        width: width + bleedX * 2,
-        height: canvasHeight,
+        width,
+        height,
         enableControls: false,
-        fov: (Math.atan(heightRatio * BASE_FOV_TAN) * 360) / Math.PI,
-        zoom: BASE_ZOOM / heightRatio,
       });
       const player = viewer.playerObject;
       viewer.autoRotate = false;
       viewer.canvas.style.position = "absolute";
-      viewer.canvas.style.left = `${-bleedX}px`;
-      viewer.canvas.style.top = `${-bleedY}px`;
       viewer.canvas.style.pointerEvents = "none";
+      frameViewer(viewer, slot, BASE_BLEED);
 
       const show = (
         animation: PlayerAnimation,
@@ -118,7 +109,7 @@ export const SkinViewer = forwardRef<SkinViewerHandle, SkinViewerProps>(
       };
 
       const endGuest = () => {
-        if (!guest) return;
+        if (!guest || disposed) return;
         const pose = capturePose(player);
         guest.dispose?.();
         guest = null;
@@ -144,6 +135,9 @@ export const SkinViewer = forwardRef<SkinViewerHandle, SkinViewerProps>(
             viewer,
             username,
             card: container.closest("button"),
+            setBleed: (bleed) => {
+              if (!disposed) frameViewer(viewer, slot, bleed);
+            },
             onFinished: finishEffect,
           });
           show(effect, pose, EFFECT_BLEND_SECONDS);
@@ -176,7 +170,7 @@ export const SkinViewer = forwardRef<SkinViewerHandle, SkinViewerProps>(
       startIdle();
 
       viewer
-        .loadSkin(`/api/skin/${uuid}`)
+        .loadSkin(skin)
         .then(() => {
           if (disposed) return;
           skinReady = true;
@@ -205,7 +199,7 @@ export const SkinViewer = forwardRef<SkinViewerHandle, SkinViewerProps>(
         viewer.dispose();
         viewer.canvas.remove();
       };
-    }, [uuid, username, width, height, index, total, hoverAnimation]);
+    }, [skin, username, width, height, index, total, hoverAnimation]);
 
     const handleMouseEnter = () => controllerRef.current?.play();
     const handleMouseLeave = () => controllerRef.current?.stop();

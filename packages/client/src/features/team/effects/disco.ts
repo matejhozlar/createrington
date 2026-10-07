@@ -17,16 +17,16 @@ const DANCE_SECONDS = DANCE_BEATS * BEAT_SECONDS;
 const BOW_SECONDS = 2;
 const SHOW_SECONDS = DANCE_SECONDS + BOW_SECONDS;
 const HIT_SHARE = 0.4;
-const SPIN_CANON_BEATS = 0.15;
+const SPIN_CANON_BEATS = 0.75;
 const SPIN_BEATS = 1.1;
 const TRAVEL_UNITS = 3.2;
-const WAVE_CANON_BEATS = 0.45;
+const WAVE_CANON_BEATS = 2.25;
 const WAVE_BEATS = 1.5;
 const FINAL_SPIN_START = 4;
 const FINAL_SPIN_END = 5.6;
 const FINAL_HIT = 6;
 
-type Dancer = { index: number; mirror: 1 | -1 };
+type Dancer = { place: number; mirror: 1 | -1 };
 
 type Frame = { pose: Joints; travel: number; turn: number; squash: number };
 
@@ -124,7 +124,7 @@ function pointPhrase(local: number, dancer: Dancer): Frame {
   let pose = mixJoints(previous, target, hit(local - step));
   pose = addGroove(pose, local, 0.6);
 
-  const spinStart = 6 + dancer.index * SPIN_CANON_BEATS;
+  const spinStart = 6 + dancer.place * SPIN_CANON_BEATS;
   const spinEnd = spinStart + SPIN_BEATS;
   const spin = span(local, spinStart, spinEnd);
   const spinWeight =
@@ -178,7 +178,7 @@ function stepPhrase(local: number): Frame {
 }
 
 function wavePhrase(local: number, dancer: Dancer): Frame {
-  const delay = dancer.index * WAVE_CANON_BEATS;
+  const delay = dancer.place * WAVE_CANON_BEATS;
   const lift =
     bump(span(local, delay, delay + WAVE_BEATS)) +
     bump(span(local, 4 + delay, 4 + delay + WAVE_BEATS));
@@ -186,7 +186,7 @@ function wavePhrase(local: number, dancer: Dancer): Frame {
     bump(span(local, delay - 0.45, delay + 0.1)) +
     bump(span(local, 4 + delay - 0.45, 4 + delay + 0.1));
   const front = (local % 4) / WAVE_CANON_BEATS;
-  const watch = clamp((front - dancer.index) * 0.22, -0.5, 0.5) * (1 - lift);
+  const watch = clamp((front - dancer.place) * 1.1, -0.5, 0.5) * (1 - lift);
 
   let pose = addGroove(groove(local, 1), local, 0.3);
   pose.headY = watch;
@@ -292,10 +292,13 @@ export function startDisco(): void {
     return a.top - b.top || a.left - b.left;
   });
 
+  const last = Math.max(members.length - 1, 1);
+
   members.forEach((member, index) => {
     const mirror = index < members.length / 2 ? 1 : -1;
     member.playGuest(
-      (_viewer, done) => new DiscoAnimation(startedAt, { index, mirror }, done),
+      (_viewer, done) =>
+        new DiscoAnimation(startedAt, { place: index / last, mirror }, done),
     );
   });
 }

@@ -22,6 +22,28 @@ export function toViewport(
   };
 }
 
+export function visibleBox(element: HTMLElement): {
+  left: number;
+  right: number;
+  top: number;
+} {
+  const box = {
+    left: 0,
+    right: document.documentElement.clientWidth,
+    top: 0,
+  };
+  for (let node = element.parentElement; node; node = node.parentElement) {
+    const style = getComputedStyle(node);
+    const rect = node.getBoundingClientRect();
+    if (style.overflowX !== "visible") {
+      box.left = Math.max(box.left, rect.left);
+      box.right = Math.min(box.right, rect.right);
+    }
+    if (style.overflowY !== "visible") box.top = Math.max(box.top, rect.top);
+  }
+  return box;
+}
+
 export function pixelsPerUnit(viewer: SkinViewer): number {
   const wrapper = viewer.playerWrapper;
   const origin = toViewport(viewer, wrapper, 0, 0, 0);

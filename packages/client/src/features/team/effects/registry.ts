@@ -12,6 +12,7 @@ import hulkSkinUrl from "@/assets/skins/hulk.png";
 import type { HoverAnimation } from "../data";
 import { TeamEffect, type EffectContext } from "./core/effect";
 import { loadSkinPixels } from "./core/skin-dissolve";
+import { ExplodeEffect } from "./explode";
 import { FlashlightHoverEffect } from "./flashlight";
 import { HeadKickEffect } from "./headkick";
 import { HulkEffect } from "./hulk";
@@ -55,6 +56,8 @@ export function createEffect(
       return new MoonwalkEffect(context);
     case "headkick":
       return new HeadKickEffect(context);
+    case "explode":
+      return new ExplodeEffect(context);
     case "wave":
       return new BuiltinEffect(context, new WaveAnimation());
     case "running":
