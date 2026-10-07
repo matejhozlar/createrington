@@ -84,6 +84,17 @@ export const LAUNCHER_CONTENT_RELEASE_TYPES = [
 export type LauncherContentReleaseType =
   (typeof LAUNCHER_CONTENT_RELEASE_TYPES)[number];
 
+export const LAUNCHER_CONTENT_SORTS = [
+  "relevance",
+  "downloads",
+  "newest",
+  "updated",
+] as const;
+
+export type LauncherContentSort = (typeof LAUNCHER_CONTENT_SORTS)[number];
+
+export const LAUNCHER_CONTENT_CATEGORIES_MAX = 10;
+
 export const LAUNCHER_CONTENT_PAGE_SIZE = 20;
 
 export const LAUNCHER_CONTENT_MAX_PAGE_SIZE = 50;
@@ -270,6 +281,18 @@ export interface LauncherProjectHit extends LauncherProject {
 export interface LauncherContentSearchData {
   projects: LauncherProjectHit[];
   pagination: LauncherPagination;
+}
+
+export interface LauncherContentCategory {
+  id: string;
+  name: string;
+  slug: string;
+  iconUrl: string | null;
+  parentId: string | null;
+}
+
+export interface LauncherContentCategoriesData {
+  categories: LauncherContentCategory[];
 }
 
 export interface LauncherContentProjectsData {

@@ -8,6 +8,7 @@ import {
   ContentIdParamsSchema,
   GetProjectsBodySchema,
   IdentifyFingerprintsBodySchema,
+  ListCategoriesQuerySchema,
   ListFilesQuerySchema,
   SearchContentQuerySchema,
 } from "./launcher-content.schemas";
@@ -21,6 +22,13 @@ router.get(
   ...customRoute(
     [validate({ query: SearchContentQuerySchema })],
     LauncherContentController.search,
+  ),
+);
+router.get(
+  "/categories",
+  ...customRoute(
+    [validate({ query: ListCategoriesQuerySchema })],
+    LauncherContentController.categories,
   ),
 );
 router.post(

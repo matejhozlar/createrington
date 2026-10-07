@@ -4,16 +4,20 @@ import type {
 } from "@/db/queries/curseforge/file";
 import {
   CurseForgeLoader,
+  CurseForgeSortField,
+  type CurseForgeCategory,
   type CurseForgeContentFile,
   type CurseForgeProjectData,
 } from "@/services/curseforge";
 import {
   LAUNCHER_CONTENT_LOADERS,
+  type LauncherContentCategory,
   type LauncherContentFile,
   type LauncherContentFileDetails,
   type LauncherContentKind,
   type LauncherContentLoader,
   type LauncherContentReleaseType,
+  type LauncherContentSort,
   type LauncherProject,
   type LauncherProjectLatestFile,
 } from "@createrington/shared/launcher";
@@ -38,6 +42,13 @@ const CLASS_BY_KIND: Record<LauncherContentKind, number> = {
   mod: CURSEFORGE_CLASSES.mods,
   resourcepack: CURSEFORGE_CLASSES.resourcePacks,
   shader: CURSEFORGE_CLASSES.shaders,
+};
+
+const SORT_FIELDS: Record<LauncherContentSort, number> = {
+  relevance: CurseForgeSortField.popularity,
+  downloads: CurseForgeSortField.totalDownloads,
+  newest: CurseForgeSortField.releasedDate,
+  updated: CurseForgeSortField.lastUpdated,
 };
 
 const RELEASE_TYPES: Record<number, LauncherContentReleaseType> = {
@@ -65,6 +76,25 @@ export function contentKindForClass(
 
 export function classForContentKind(kind: LauncherContentKind): number {
   return CLASS_BY_KIND[kind];
+}
+
+export function sortFieldForContentSort(sort: LauncherContentSort): number {
+  return SORT_FIELDS[sort];
+}
+
+export function toLauncherContentCategory(
+  category: CurseForgeCategory,
+  classId: number,
+): LauncherContentCategory {
+  const parentId = category.parentCategoryId;
+  return {
+    id: String(category.id),
+    name: category.name,
+    slug: category.slug,
+    iconUrl: category.iconUrl,
+    parentId:
+      parentId === null || parentId === classId ? null : String(parentId),
+  };
 }
 
 export function curseforgeProjectUrl(project: ProjectPage): string | null {

@@ -20,6 +20,13 @@ export const CurseForgeLoader = {
   neoforge: 6,
 } as const;
 
+export const CurseForgeSortField = {
+  popularity: 2,
+  lastUpdated: 3,
+  totalDownloads: 6,
+  releasedDate: 11,
+} as const;
+
 const CURSEFORGE_API = config.curseforge.apiBaseUrl;
 // CloudFront has been seen holding requests ~90s before returning a 504;
 // without timeouts those calls stack up behind a single stuck mutation
@@ -924,10 +931,11 @@ function toContentFile(
 }
 
 /**
- * One page of the Minecraft projects of a class that match the text, most
- * popular first, with the number of matches CurseForge counts in total. An
- * empty text lists the class. Unlike `searchMods` it targets no default game
- * version or loader and does not look at the modpack.
+ * One page of the Minecraft projects of a class that match the text, with the
+ * number of matches CurseForge counts in total: most popular first, or highest
+ * first by `sortField`. An empty text lists the class, and `categoryIds`
+ * narrows it to those categories. Unlike `searchMods` it targets no default
+ * game version or loader and does not look at the modpack.
  */
 export async function searchProjects(
   options: {
@@ -935,6 +943,8 @@ export async function searchProjects(
     classId: number;
     gameVersion?: string;
     modLoaderType?: number | null;
+    categoryIds?: number[];
+    sortField?: number;
   } & CurseForgePage,
 ): Promise<{ projects: CurseForgeProjectHit[]; total: number }> {
   ensureApiKey();
@@ -942,11 +952,17 @@ export async function searchProjects(
   const url = new URL(`${CURSEFORGE_API}/v1/mods/search`);
   url.searchParams.set("gameId", String(MINECRAFT_GAME_ID));
   url.searchParams.set("classId", String(options.classId));
-  url.searchParams.set("sortField", "2"); // popularity
+  url.searchParams.set(
+    "sortField",
+    String(options.sortField ?? CurseForgeSortField.popularity),
+  );
   url.searchParams.set("sortOrder", "desc");
   url.searchParams.set("index", String(options.index));
   url.searchParams.set("pageSize", String(options.pageSize));
   if (options.query) url.searchParams.set("searchFilter", options.query);
+  if (options.categoryIds?.length) {
+    url.searchParams.set("categoryIds", JSON.stringify(options.categoryIds));
+  }
   if (options.gameVersion) {
     url.searchParams.set("gameVersion", options.gameVersion);
   }
@@ -983,6 +999,61 @@ export async function searchProjects(
     })),
     total: body.pagination.totalCount,
   };
+}
+
+export interface CurseForgeCategory {
+  id: number;
+  name: string;
+  slug: string;
+  iconUrl: string | null;
+  parentCategoryId: number | null;
+}
+
+/**
+ * The categories of a Minecraft class in the order CurseForge lists them,
+ * nested ones included, each with the category it sits under.
+ */
+export async function listCategories(
+  classId: number,
+): Promise<CurseForgeCategory[]> {
+  ensureApiKey();
+
+  const url = new URL(`${CURSEFORGE_API}/v1/categories`);
+  url.searchParams.set("gameId", String(MINECRAFT_GAME_ID));
+  url.searchParams.set("classId", String(classId));
+
+  const res = await cfFetch(url.toString());
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`CurseForge categories failed (${res.status}): ${text}`);
+  }
+
+  const body = parseCfResponse(
+    z.object({
+      data: z.array(
+        z.object({
+          id: z.number(),
+          name: z.string(),
+          slug: z.string(),
+          iconUrl: z.string().nullish(),
+          isClass: z.boolean().nullish(),
+          parentCategoryId: z.number().nullish(),
+        }),
+      ),
+    }),
+    await res.json(),
+    "categories",
+  );
+
+  return body.data
+    .filter((category) => !category.isClass)
+    .map((category) => ({
+      id: category.id,
+      name: category.name,
+      slug: category.slug,
+      iconUrl: category.iconUrl || null,
+      parentCategoryId: category.parentCategoryId ?? null,
+    }));
 }
 
 /**
