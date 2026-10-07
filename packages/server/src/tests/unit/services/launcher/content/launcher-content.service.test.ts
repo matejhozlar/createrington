@@ -937,6 +937,25 @@ describe("LauncherContentService.getFileChangelog", () => {
     },
   );
 
+  it("holds a file to the rules of a file lookup only when no project is named", async () => {
+    vi.mocked(getContentFiles).mockResolvedValue([
+      makeContentFile({ sha1: null }),
+    ]);
+
+    await expect(
+      launcherContentService.getFileChangelog(7000001),
+    ).rejects.toMatchObject({ statusCode: 404, code: "FILE_NOT_FOUND" });
+    expect(getFileChangelog).not.toHaveBeenCalled();
+
+    expect(await launcherContentService.getFileChangelog(7000001, 328085)).toBe(
+      CHANGELOG,
+    );
+    expect(await launcherContentService.getFileChangelog(7000001)).toBe(
+      CHANGELOG,
+    );
+    expect(getFileChangelog).toHaveBeenCalledTimes(1);
+  });
+
   it("answers 404 when the file is gone by the time its changelog is asked for", async () => {
     vi.mocked(getFileChangelog).mockResolvedValue(null);
 

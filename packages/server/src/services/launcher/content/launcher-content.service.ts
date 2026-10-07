@@ -311,7 +311,7 @@ class LauncherContentService {
     return file;
   }
 
-  /** What changed in one file, as CurseForge's HTML, or null when the file has no changelog. A caller that knows the file's project names it in `projectId`, which saves looking the file up. Throws `FILE_NOT_FOUND` (404) for a file `getFile` would not answer, and for one that is no file of the project named. */
+  /** What changed in one file, as CurseForge's HTML, or null when the file has no changelog. Without `projectId` the file is looked up as `getFile` does, and throws `FILE_NOT_FOUND` (404) as it does. A caller that knows the file's project names it in `projectId`, which saves that lookup: then `FILE_NOT_FOUND` is for a project that is no mod, resource pack or shader and for a file that is no file of it, and the file is not held to the other rules of `getFile` (a name, a size, a SHA-1). A changelog kept from an earlier call is answered either way. */
   async getFileChangelog(
     fileId: number,
     projectId?: number,
