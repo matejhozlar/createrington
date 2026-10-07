@@ -170,9 +170,13 @@ class LauncherContentService {
       `${KEY_PREFIX}:categories:${classId}`,
       CATEGORIES_TTL_MS,
       async () => {
-        const categories = await this.ask("categories", () =>
-          listCategories(classId),
-        );
+        const categories = await this.ask("categories", async () => {
+          const listed = await listCategories(classId);
+          if (listed.length === 0) {
+            throw new Error(`CurseForge listed no categories of ${kind}`);
+          }
+          return listed;
+        });
         return categories.map((category) =>
           toLauncherContentCategory(category, classId),
         );

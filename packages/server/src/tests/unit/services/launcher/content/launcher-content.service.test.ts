@@ -402,6 +402,21 @@ describe("LauncherContentService.listCategories", () => {
     });
     expect(await launcherContentService.listCategories("mod")).toHaveLength(1);
   });
+
+  it("answers 503 when CurseForge lists no categories, and asks again next time", async () => {
+    vi.mocked(listCategories)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([technology]);
+
+    await expect(
+      launcherContentService.listCategories("mod"),
+    ).rejects.toMatchObject({
+      statusCode: 503,
+      code: "CONTENT_UNAVAILABLE",
+    });
+    expect(await launcherContentService.listCategories("mod")).toHaveLength(1);
+    expect(listCategories).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe("LauncherContentService.getProjects", () => {
