@@ -5,6 +5,7 @@ import {
   LOADERLESS_CLASSES,
   getContentFiles,
   getMods,
+  listCategories,
   listProjectFiles,
   matchFingerprints,
   searchProjects,
@@ -18,23 +19,28 @@ import {
 import {
   LAUNCHER_CONTENT_MAX_RESULTS,
   LauncherContentErrorCode,
+  type LauncherContentCategory,
   type LauncherContentFileDetails,
   type LauncherContentFingerprintMatch,
   type LauncherContentFingerprintsData,
   type LauncherContentKind,
   type LauncherContentLoader,
   type LauncherContentProjectsData,
+  type LauncherContentSort,
   type LauncherProject,
   type LauncherProjectHit,
 } from "@createrington/shared/launcher";
 import {
   classForContentKind,
+  sortFieldForContentSort,
+  toLauncherContentCategory,
   toLauncherContentFileDetails,
   toLauncherProject,
   toLauncherProjectLatestFiles,
 } from "./curseforge-content";
 
 const SEARCH_TTL_MS = 5 * 60_000;
+const CATEGORIES_TTL_MS = 24 * 60 * 60_000;
 const PROJECT_TTL_MS = 60 * 60_000;
 const UNKNOWN_PROJECT_TTL_MS = 5 * 60_000;
 const FILES_TTL_MS = 10 * 60_000;
@@ -45,6 +51,11 @@ const KEY_PREFIX = "launcher:content:curseforge:v1";
 export interface ContentPage {
   page: number;
   limit: number;
+}
+
+export interface ContentSearchFilters {
+  categoryIds?: number[];
+  sort?: LauncherContentSort;
 }
 
 export interface ContentTarget {
@@ -77,15 +88,16 @@ function loaderTypeFor(
 
 /**
  * Looks CurseForge up for content a launcher player adds to a modpack: search,
- * projects, a project's files, single files and the files behind fingerprints,
- * for any mod, resource pack or shader of Minecraft, not only what our pack
- * ships. Answers come from the key-value store while they are fresh (a search
- * for 5 minutes, a project or a known fingerprint for an hour, files and
- * unknown fingerprints for 10 minutes), so the same question from many players
- * is one CurseForge call. Nothing is written to the database, and a file
- * CurseForge blocks is answered as manual: the other sources the pack service
- * has for blocked files are for our pack only. Throws `CONTENT_UNAVAILABLE`
- * (503) when CurseForge cannot be asked. Singleton.
+ * categories, projects, a project's files, single files and the files behind
+ * fingerprints, for any mod, resource pack or shader of Minecraft, not only
+ * what our pack ships. Answers come from the key-value store while they are
+ * fresh (a search for 5 minutes, a project or a known fingerprint for an hour,
+ * files and unknown fingerprints for 10 minutes, categories for a day), so the
+ * same question from many players is one CurseForge call. Nothing is written
+ * to the database, and a file CurseForge blocks is answered as manual: the
+ * other sources the pack service has for blocked files are for our pack only.
+ * Throws `CONTENT_UNAVAILABLE` (503) when CurseForge cannot be asked.
+ * Singleton.
  */
 class LauncherContentService {
   private static instance: LauncherContentService;
@@ -102,13 +114,16 @@ class LauncherContentService {
     return LauncherContentService.instance;
   }
 
-  /** One page of the projects of a kind that match the text, most popular first. `page` counts from 0; `total` never exceeds what CurseForge lets a search page through. */
+  /** One page of the projects of a kind that match the text, in `categoryIds` when given, most popular first unless `sort` says otherwise. `page` counts from 0; `total` never exceeds what CurseForge lets a search page through. */
   async search(
     params: { query: string; kind: LauncherContentKind } & ContentTarget &
+      ContentSearchFilters &
       ContentPage,
   ): Promise<{ projects: LauncherProjectHit[]; total: number }> {
     const classId = classForContentKind(params.kind);
     const modLoaderType = loaderTypeFor(classId, params.loader);
+    const categoryIds = [...new Set(params.categoryIds)].sort((a, b) => a - b);
+    const sortField = sortFieldForContentSort(params.sort ?? "relevance");
     const key = `${KEY_PREFIX}:search:${JSON.stringify([
       params.query.toLowerCase(),
       params.kind,
@@ -116,6 +131,8 @@ class LauncherContentService {
       modLoaderType,
       params.page,
       params.limit,
+      categoryIds,
+      sortField,
     ])}`;
 
     return readThrough(keyValueStore, key, SEARCH_TTL_MS, async () => {
@@ -125,6 +142,8 @@ class LauncherContentService {
           classId,
           gameVersion: params.minecraftVersion,
           modLoaderType,
+          categoryIds,
+          sortField,
           index: params.page * params.limit,
           pageSize: params.limit,
         }),
@@ -139,6 +158,30 @@ class LauncherContentService {
         total: Math.min(found.total, LAUNCHER_CONTENT_MAX_RESULTS),
       };
     });
+  }
+
+  /** The categories a search of this kind can be narrowed to, nested ones with their `parentId`, in CurseForge's order. */
+  async listCategories(
+    kind: LauncherContentKind,
+  ): Promise<LauncherContentCategory[]> {
+    const classId = classForContentKind(kind);
+    return readThrough(
+      keyValueStore,
+      `${KEY_PREFIX}:categories:${classId}`,
+      CATEGORIES_TTL_MS,
+      async () => {
+        const categories = await this.ask("categories", async () => {
+          const listed = await listCategories(classId);
+          if (listed.length === 0) {
+            throw new Error(`CurseForge listed no categories of ${kind}`);
+          }
+          return listed;
+        });
+        return categories.map((category) =>
+          toLauncherContentCategory(category, classId),
+        );
+      },
+    );
   }
 
   /** The projects with these ids, each with its newest file per Minecraft version and loader. An id CurseForge does not know, or one that is not a mod, resource pack or shader, comes back in `unknownProjectIds`. */

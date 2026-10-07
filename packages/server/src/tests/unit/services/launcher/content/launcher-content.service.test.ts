@@ -16,6 +16,7 @@ vi.mock("@/services/curseforge", async (importOriginal) => {
     ...actual,
     searchProjects: vi.fn(),
     getMods: vi.fn(),
+    listCategories: vi.fn(),
     listProjectFiles: vi.fn(),
     getContentFiles: vi.fn(),
     matchFingerprints: vi.fn(),
@@ -38,6 +39,7 @@ vi.mock("@/services/key-value-store", async (importOriginal) => {
 import {
   getContentFiles,
   getMods,
+  listCategories,
   listProjectFiles,
   matchFingerprints,
   searchProjects,
@@ -166,6 +168,8 @@ describe("LauncherContentService.search", () => {
       classId: 6,
       gameVersion: "1.21.1",
       modLoaderType: 6,
+      categoryIds: [],
+      sortField: 2,
       index: 40,
       pageSize: 20,
     });
@@ -242,6 +246,65 @@ describe("LauncherContentService.search", () => {
     },
   );
 
+  it("asks CurseForge for the categories and the sort order it is given", async () => {
+    vi.mocked(searchProjects).mockResolvedValue({ projects: [], total: 0 });
+
+    await launcherContentService.search({
+      query: "",
+      kind: "mod",
+      minecraftVersion: "1.21.1",
+      loader: "neoforge",
+      categoryIds: [420, 412, 420],
+      sort: "newest",
+      ...FIRST_PAGE,
+    });
+
+    expect(searchProjects).toHaveBeenCalledWith({
+      query: "",
+      classId: 6,
+      gameVersion: "1.21.1",
+      modLoaderType: 6,
+      categoryIds: [412, 420],
+      sortField: 11,
+      index: 0,
+      pageSize: 20,
+    });
+  });
+
+  it("asks again for another category or sort order", async () => {
+    vi.mocked(searchProjects).mockResolvedValue({ projects: [], total: 0 });
+    const search = { query: "create", kind: "mod", ...FIRST_PAGE } as const;
+
+    await launcherContentService.search(search);
+    await launcherContentService.search({ ...search, categoryIds: [412] });
+    await launcherContentService.search({ ...search, categoryIds: [420] });
+    await launcherContentService.search({
+      ...search,
+      categoryIds: [412, 420],
+    });
+    await launcherContentService.search({ ...search, sort: "downloads" });
+    await launcherContentService.search({ ...search, sort: "updated" });
+
+    expect(searchProjects).toHaveBeenCalledTimes(6);
+  });
+
+  it("asks CurseForge once for the same categories in another order, and for relevance as for no sort order", async () => {
+    vi.mocked(searchProjects).mockResolvedValue({ projects: [], total: 0 });
+    const search = { query: "create", kind: "mod", ...FIRST_PAGE } as const;
+
+    await launcherContentService.search({
+      ...search,
+      categoryIds: [412, 420],
+    });
+    await launcherContentService.search({
+      ...search,
+      categoryIds: [420, 412],
+      sort: "relevance",
+    });
+
+    expect(searchProjects).toHaveBeenCalledTimes(1);
+  });
+
   it("never counts more results than a search can page through", async () => {
     vi.mocked(searchProjects).mockResolvedValue({
       projects: [],
@@ -270,6 +333,89 @@ describe("LauncherContentService.search", () => {
     expect((await launcherContentService.search(search)).projects).toHaveLength(
       1,
     );
+  });
+});
+
+describe("LauncherContentService.listCategories", () => {
+  const technology = {
+    id: 412,
+    name: "Technology",
+    slug: "technology",
+    iconUrl: "https://media.forgecdn.net/avatars/technology.png",
+    parentCategoryId: 6,
+  };
+  const energy = {
+    id: 417,
+    name: "Energy",
+    slug: "technology-energy",
+    iconUrl: null,
+    parentCategoryId: 412,
+  };
+
+  it("answers the categories of the kind's class with their parents", async () => {
+    vi.mocked(listCategories).mockResolvedValue([technology, energy]);
+
+    const categories = await launcherContentService.listCategories("mod");
+
+    expect(listCategories).toHaveBeenCalledWith(6);
+    expect(categories).toEqual([
+      {
+        id: "412",
+        name: "Technology",
+        slug: "technology",
+        iconUrl: "https://media.forgecdn.net/avatars/technology.png",
+        parentId: null,
+      },
+      {
+        id: "417",
+        name: "Energy",
+        slug: "technology-energy",
+        iconUrl: null,
+        parentId: "412",
+      },
+    ]);
+  });
+
+  it("asks CurseForge once per kind", async () => {
+    vi.mocked(listCategories).mockResolvedValue([technology]);
+
+    await launcherContentService.listCategories("mod");
+    await launcherContentService.listCategories("mod");
+    await launcherContentService.listCategories("shader");
+    await launcherContentService.listCategories("resourcepack");
+
+    expect(
+      vi.mocked(listCategories).mock.calls.map(([classId]) => classId),
+    ).toEqual([6, 6552, 12]);
+  });
+
+  it("answers 503 when CurseForge fails, and asks again next time", async () => {
+    vi.mocked(listCategories)
+      .mockRejectedValueOnce(new Error("CurseForge categories failed (500)"))
+      .mockResolvedValueOnce([technology]);
+
+    await expect(
+      launcherContentService.listCategories("mod"),
+    ).rejects.toMatchObject({
+      statusCode: 503,
+      code: "CONTENT_UNAVAILABLE",
+    });
+    expect(await launcherContentService.listCategories("mod")).toHaveLength(1);
+  });
+
+  it("answers 503 when CurseForge lists no categories, and asks again next time", async () => {
+    vi.mocked(listCategories)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([technology]);
+
+    await expect(
+      launcherContentService.listCategories("mod"),
+    ).rejects.toMatchObject({
+      statusCode: 503,
+      code: "CONTENT_UNAVAILABLE",
+    });
+    expect(await launcherContentService.listCategories("mod")).toHaveLength(1);
+    expect(listCategories).toHaveBeenCalledTimes(2);
   });
 });
 

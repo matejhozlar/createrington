@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import type {
+  LauncherContentCategoriesData,
   LauncherContentFileData,
   LauncherContentFilesData,
   LauncherContentFingerprintsData,
@@ -14,6 +15,7 @@ import type {
   ContentIdParams,
   GetProjectsBody,
   IdentifyFingerprintsBody,
+  ListCategoriesQuery,
   ListFilesQuery,
   SearchContentQuery,
 } from "./launcher-content.schemas";
@@ -21,13 +23,29 @@ import type {
 export class LauncherContentController {
   static async search(_req: Request, res: Response): Promise<void> {
     const { query } = getValidated<{ query: SearchContentQuery }>(res);
-    const { projects, total } = await launcherContentService.search(query);
+    const { categoryId: categoryIds, ...search } = query;
+    const { projects, total } = await launcherContentService.search({
+      ...search,
+      categoryIds,
+    });
 
     const body: LauncherSuccessResponse<LauncherContentSearchData> = {
       success: true,
       data: {
         projects,
         pagination: buildPagination(query.page, query.limit, total),
+      },
+    };
+    res.json(body);
+  }
+
+  static async categories(_req: Request, res: Response): Promise<void> {
+    const { query } = getValidated<{ query: ListCategoriesQuery }>(res);
+
+    const body: LauncherSuccessResponse<LauncherContentCategoriesData> = {
+      success: true,
+      data: {
+        categories: await launcherContentService.listCategories(query.kind),
       },
     };
     res.json(body);

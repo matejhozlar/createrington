@@ -11,6 +11,7 @@ import config from "@/config";
 import {
   getContentFiles,
   getMods,
+  listCategories,
   listProjectFiles,
   matchFingerprints,
   searchProjects,
@@ -144,6 +145,53 @@ describe("searchProjects", () => {
     expect(params.get("classId")).toBe("6552");
   });
 
+  it("narrows the search to categories and sorts by the field it is given", async () => {
+    fetchMock.mockResolvedValue(
+      answer({ data: [], pagination: { totalCount: 0 } }),
+    );
+
+    await searchProjects({
+      query: "",
+      classId: 6,
+      gameVersion: "1.21.1",
+      modLoaderType: 6,
+      categoryIds: [412, 420],
+      sortField: 11,
+      index: 0,
+      pageSize: 20,
+    });
+
+    expect(Object.fromEntries(requestedUrl().searchParams)).toEqual({
+      gameId: "432",
+      classId: "6",
+      sortField: "11",
+      sortOrder: "desc",
+      index: "0",
+      pageSize: "20",
+      categoryIds: "[412,420]",
+      gameVersion: "1.21.1",
+      modLoaderType: "6",
+    });
+  });
+
+  it("names no categories when the list is empty", async () => {
+    fetchMock.mockResolvedValue(
+      answer({ data: [], pagination: { totalCount: 0 } }),
+    );
+
+    await searchProjects({
+      query: "create",
+      classId: 6,
+      categoryIds: [],
+      index: 0,
+      pageSize: 20,
+    });
+
+    const params = requestedUrl().searchParams;
+    expect(params.has("categoryIds")).toBe(false);
+    expect(params.get("sortField")).toBe("2");
+  });
+
   it("reads a hit without summary, author, picture or download count", async () => {
     fetchMock.mockResolvedValue(
       answer({
@@ -180,6 +228,70 @@ describe("searchProjects", () => {
     await expect(
       searchProjects({ query: "x", classId: 6, index: 0, pageSize: 20 }),
     ).rejects.toThrow("CurseForge search failed (500)");
+  });
+});
+
+describe("listCategories", () => {
+  it("asks for the categories of a Minecraft class and reads each with its parent", async () => {
+    fetchMock.mockResolvedValue(
+      answer({
+        data: [
+          {
+            id: 412,
+            gameId: 432,
+            name: "Technology",
+            slug: "technology",
+            url: "https://www.curseforge.com/minecraft/mc-mods/technology",
+            iconUrl: "https://media.forgecdn.net/avatars/technology.png",
+            isClass: false,
+            classId: 6,
+            parentCategoryId: 6,
+          },
+          {
+            id: 417,
+            name: "Energy",
+            slug: "technology-energy",
+            iconUrl: "",
+            classId: 6,
+            parentCategoryId: 412,
+          },
+          { id: 6, name: "Mods", slug: "mc-mods", isClass: true },
+        ],
+      }),
+    );
+
+    const categories = await listCategories(6);
+
+    const url = requestedUrl();
+    expect(url.pathname).toMatch(/\/v1\/categories$/);
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      gameId: "432",
+      classId: "6",
+    });
+    expect(categories).toEqual([
+      {
+        id: 412,
+        name: "Technology",
+        slug: "technology",
+        iconUrl: "https://media.forgecdn.net/avatars/technology.png",
+        parentCategoryId: 6,
+      },
+      {
+        id: 417,
+        name: "Energy",
+        slug: "technology-energy",
+        iconUrl: null,
+        parentCategoryId: 412,
+      },
+    ]);
+  });
+
+  it("throws when CurseForge refuses", async () => {
+    fetchMock.mockResolvedValue(answer({}, 500));
+
+    await expect(listCategories(6)).rejects.toThrow(
+      "CurseForge categories failed (500)",
+    );
   });
 });
 

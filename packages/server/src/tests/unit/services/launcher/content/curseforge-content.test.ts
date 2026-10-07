@@ -9,6 +9,8 @@ import {
   contentKindForClass,
   curseforgeFilePageUrl,
   curseforgeProjectUrl,
+  sortFieldForContentSort,
+  toLauncherContentCategory,
   toLauncherContentFile,
   toLauncherContentFileDetails,
   toLauncherProject,
@@ -154,6 +156,65 @@ describe("curseforgeFilePageUrl", () => {
         { websiteUrl: null, classId: 6945, slug: "some-pack" },
         7001234,
       ),
+    ).toBeNull();
+  });
+});
+
+describe("sortFieldForContentSort", () => {
+  it.each([
+    ["relevance", 2],
+    ["downloads", 6],
+    ["newest", 11],
+    ["updated", 3],
+  ] as const)("sorts by %s with CurseForge field %i", (sort, field) => {
+    expect(sortFieldForContentSort(sort)).toBe(field);
+  });
+});
+
+describe("toLauncherContentCategory", () => {
+  const technology = {
+    id: 412,
+    name: "Technology",
+    slug: "technology",
+    iconUrl: "https://media.forgecdn.net/avatars/technology.png",
+    parentCategoryId: 6,
+  };
+
+  it("has no parent for a category that sits right under its class", () => {
+    expect(toLauncherContentCategory(technology, 6)).toEqual({
+      id: "412",
+      name: "Technology",
+      slug: "technology",
+      iconUrl: "https://media.forgecdn.net/avatars/technology.png",
+      parentId: null,
+    });
+  });
+
+  it("names the category a nested one sits under", () => {
+    expect(
+      toLauncherContentCategory(
+        {
+          id: 417,
+          name: "Energy",
+          slug: "technology-energy",
+          iconUrl: null,
+          parentCategoryId: 412,
+        },
+        6,
+      ),
+    ).toEqual({
+      id: "417",
+      name: "Energy",
+      slug: "technology-energy",
+      iconUrl: null,
+      parentId: "412",
+    });
+  });
+
+  it("has no parent when CurseForge names none", () => {
+    expect(
+      toLauncherContentCategory({ ...technology, parentCategoryId: null }, 6)
+        .parentId,
     ).toBeNull();
   });
 });

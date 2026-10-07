@@ -16,6 +16,7 @@ const { LAUNCHER_SECRET, WEB_SECRET, mocks } = vi.hoisted(() => ({
   WEB_SECRET: "test-web-secret-please-do-not-use-in-prod",
   mocks: {
     search: vi.fn(),
+    listCategories: vi.fn(),
     getProjects: vi.fn(),
     listFiles: vi.fn(),
     getFile: vi.fn(),
@@ -57,6 +58,7 @@ vi.mock("@/services/auth/admin-status/admin-status.service", () => ({
 vi.mock("@/services/launcher/content/launcher-content.service", () => ({
   launcherContentService: {
     search: mocks.search,
+    listCategories: mocks.listCategories,
     getProjects: mocks.getProjects,
     listFiles: mocks.listFiles,
     getFile: mocks.getFile,
@@ -79,6 +81,14 @@ const PROJECT = {
   author: "simibubi",
   iconUrl: "https://media.forgecdn.net/avatars/create.png",
   url: "https://www.curseforge.com/minecraft/mc-mods/create",
+};
+
+const CATEGORY = {
+  id: "412",
+  name: "Technology",
+  slug: "technology",
+  iconUrl: "https://media.forgecdn.net/avatars/technology.png",
+  parentId: null,
 };
 
 const FILE = {
@@ -169,6 +179,7 @@ beforeEach(() => {
     projects: [{ ...PROJECT, downloads: 213407951 }],
     total: 45,
   });
+  mocks.listCategories.mockResolvedValue([CATEGORY]);
   mocks.getProjects.mockResolvedValue({
     projects: [PROJECT],
     unknownProjectIds: ["999999999"],
@@ -217,7 +228,45 @@ describe("GET /api/launcher/content/search", () => {
     });
   });
 
+  it("passes one category and the sort order on", async () => {
+    await get("/search?categoryId=412&sort=newest", newSession());
+
+    expect(mocks.search).toHaveBeenCalledWith({
+      query: "",
+      kind: "mod",
+      categoryIds: [412],
+      sort: "newest",
+      page: 0,
+      limit: 20,
+    });
+  });
+
+  it("passes several categories on", async () => {
+    await get("/search?categoryId=412&categoryId=420", newSession());
+
+    expect(mocks.search.mock.calls[0]?.[0]).toMatchObject({
+      categoryIds: [412, 420],
+    });
+  });
+
+  it.each(["relevance", "downloads", "newest", "updated"])(
+    "takes the sort order %s",
+    async (sort) => {
+      const res = await get(`/search?sort=${sort}`, newSession());
+
+      expect(res.status).toBe(200);
+      expect(mocks.search.mock.calls[0]?.[0]).toMatchObject({ sort });
+    },
+  );
+
   it.each([
+    ["an unknown sort order", "?sort=name"],
+    ["a category that is not a number", "?categoryId=technology"],
+    ["a category of zero", "?categoryId=0"],
+    [
+      "more categories than CurseForge takes",
+      `?${Array.from({ length: 11 }, (_, index) => `categoryId=${index + 1}`).join("&")}`,
+    ],
     ["an unknown kind", "?kind=modpack"],
     ["an unknown loader", "?loader=rift"],
     ["a version that is not a release", "?minecraftVersion=latest"],
@@ -276,6 +325,61 @@ describe("GET /api/launcher/content/search", () => {
 
     expect(res.status).toBe(503);
     expect((await res.json()).error.code).toBe("CONTENT_UNAVAILABLE");
+  });
+});
+
+describe("GET /api/launcher/content/categories", () => {
+  it("lists the categories of mods by default", async () => {
+    const res = await get("/categories", newSession());
+
+    expect(res.status).toBe(200);
+    expect(mocks.listCategories).toHaveBeenCalledWith("mod");
+    expect(await res.json()).toEqual({
+      success: true,
+      data: { categories: [CATEGORY] },
+    });
+  });
+
+  it.each(["mod", "resourcepack", "shader"])(
+    "lists the categories of the kind %s",
+    async (kind) => {
+      await get(`/categories?kind=${kind}`, newSession());
+
+      expect(mocks.listCategories).toHaveBeenCalledWith(kind);
+    },
+  );
+
+  it("refuses an unknown kind", async () => {
+    const res = await get("/categories?kind=modpack", newSession());
+
+    expect(res.status).toBe(400);
+    expect(mocks.listCategories).not.toHaveBeenCalled();
+  });
+
+  it("passes the service's error code on when CurseForge cannot be asked", async () => {
+    mocks.listCategories.mockRejectedValue(
+      new AppError(
+        "CurseForge cannot be asked right now",
+        503,
+        true,
+        undefined,
+        {
+          code: "CONTENT_UNAVAILABLE",
+        },
+      ),
+    );
+
+    const res = await get("/categories", newSession());
+
+    expect(res.status).toBe(503);
+    expect((await res.json()).error.code).toBe("CONTENT_UNAVAILABLE");
+  });
+
+  it("answers 401 without a launcher session", async () => {
+    const res = await get("/categories");
+
+    expect(res.status).toBe(401);
+    expect(mocks.listCategories).not.toHaveBeenCalled();
   });
 });
 
