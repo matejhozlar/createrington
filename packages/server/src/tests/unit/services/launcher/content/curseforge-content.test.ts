@@ -12,6 +12,7 @@ import {
   toLauncherContentFile,
   toLauncherContentFileDetails,
   toLauncherProject,
+  toLauncherProjectLatestFiles,
 } from "@/services/launcher/content/curseforge-content";
 
 const CREATE_PAGE = "https://www.curseforge.com/minecraft/mc-mods/create";
@@ -201,6 +202,115 @@ describe("toLauncherProject", () => {
 
   it("has no project for a class the launcher does not install", () => {
     expect(toLauncherProject(makeProject({ classId: 4471 }))).toBeNull();
+  });
+});
+
+describe("toLauncherProjectLatestFiles", () => {
+  it("names each file by its id as a string, with its version, loader and release type", () => {
+    expect(
+      toLauncherProjectLatestFiles([
+        {
+          gameVersion: "1.21.1",
+          fileId: 7000001,
+          filename: "create-1.21.1-6.0.10.jar",
+          releaseType: 1,
+          modLoader: 6,
+        },
+        {
+          gameVersion: "1.20.1",
+          fileId: 6000002,
+          filename: "create-1.20.1-6.0.9-beta.jar",
+          releaseType: 2,
+          modLoader: 1,
+        },
+        {
+          gameVersion: "1.20.1",
+          fileId: 6000003,
+          filename: "create-fabric-1.20.1-6.0.9-alpha.jar",
+          releaseType: 3,
+          modLoader: 4,
+        },
+        {
+          gameVersion: "1.20.1",
+          fileId: 6000004,
+          filename: "create-quilt-1.20.1-6.0.9.jar",
+          releaseType: 1,
+          modLoader: 5,
+        },
+      ]),
+    ).toEqual([
+      {
+        fileId: "7000001",
+        fileName: "create-1.21.1-6.0.10.jar",
+        gameVersion: "1.21.1",
+        loader: "neoforge",
+        releaseType: "release",
+      },
+      {
+        fileId: "6000002",
+        fileName: "create-1.20.1-6.0.9-beta.jar",
+        gameVersion: "1.20.1",
+        loader: "forge",
+        releaseType: "beta",
+      },
+      {
+        fileId: "6000003",
+        fileName: "create-fabric-1.20.1-6.0.9-alpha.jar",
+        gameVersion: "1.20.1",
+        loader: "fabric",
+        releaseType: "alpha",
+      },
+      {
+        fileId: "6000004",
+        fileName: "create-quilt-1.20.1-6.0.9.jar",
+        gameVersion: "1.20.1",
+        loader: "quilt",
+        releaseType: "release",
+      },
+    ]);
+  });
+
+  it.each([[null], [0], [3]])(
+    "has no loader for a file CurseForge lists under loader %s",
+    (modLoader) => {
+      expect(
+        toLauncherProjectLatestFiles([
+          {
+            gameVersion: "1.21.1",
+            fileId: 5000001,
+            filename: "faithful-32x-1.21.1.zip",
+            releaseType: 1,
+            modLoader,
+          },
+        ]),
+      ).toEqual([
+        {
+          fileId: "5000001",
+          fileName: "faithful-32x-1.21.1.zip",
+          gameVersion: "1.21.1",
+          loader: null,
+          releaseType: "release",
+        },
+      ]);
+    },
+  );
+
+  it("reads a release type it does not know as a release", () => {
+    expect(
+      toLauncherProjectLatestFiles([
+        {
+          gameVersion: "1.21.1",
+          fileId: 5000001,
+          filename: "some-mod-1.21.1.jar",
+          releaseType: 9,
+          modLoader: 6,
+        },
+      ])[0].releaseType,
+    ).toBe("release");
+  });
+
+  it("answers an empty list for a project without files", () => {
+    expect(toLauncherProjectLatestFiles([])).toEqual([]);
   });
 });
 

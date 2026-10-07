@@ -211,6 +211,14 @@ export interface LauncherPackReleasesData {
   pagination: LauncherPagination;
 }
 
+export interface LauncherProjectLatestFile {
+  fileId: string;
+  fileName: string;
+  gameVersion: string;
+  loader: LauncherContentLoader | null;
+  releaseType: LauncherContentReleaseType;
+}
+
 export interface LauncherProject {
   source: LauncherContentSource;
   id: string;
@@ -221,6 +229,7 @@ export interface LauncherProject {
   author: string | null;
   iconUrl: string | null;
   url: string;
+  latestFiles?: LauncherProjectLatestFile[];
 }
 
 export interface LauncherContentDownload {
