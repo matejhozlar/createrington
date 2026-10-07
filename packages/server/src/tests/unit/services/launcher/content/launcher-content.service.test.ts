@@ -121,6 +121,23 @@ function createProject() {
   });
 }
 
+const CREATE_LATEST_FILES: CurseForgeProjectData["latestFilesIndexes"] = [
+  {
+    gameVersion: "1.21.1",
+    fileId: 7000001,
+    filename: "create-1.21.1-6.0.10.jar",
+    releaseType: 1,
+    modLoader: 6,
+  },
+  {
+    gameVersion: "1.20.1",
+    fileId: 6000002,
+    filename: "create-1.20.1-6.0.9.jar",
+    releaseType: 2,
+    modLoader: 1,
+  },
+];
+
 const FIRST_PAGE = { page: 0, limit: 20 };
 
 beforeEach(() => {
@@ -279,9 +296,38 @@ describe("LauncherContentService.getProjects", () => {
         author: "vitest",
         iconUrl: null,
         url: CREATE_PAGE,
+        latestFiles: [],
       },
     ]);
     expect(answer.unknownProjectIds).toEqual(["4471001", "999999999"]);
+  });
+
+  it("answers the newest file of a project per Minecraft version and loader", async () => {
+    vi.mocked(getMods).mockResolvedValue([
+      makeProjectData(328085, { latestFilesIndexes: CREATE_LATEST_FILES }),
+    ]);
+
+    const first = await launcherContentService.getProjects([328085]);
+    const second = await launcherContentService.getProjects([328085]);
+
+    expect(getMods).toHaveBeenCalledTimes(1);
+    expect(first.projects[0].latestFiles).toEqual([
+      {
+        fileId: "7000001",
+        fileName: "create-1.21.1-6.0.10.jar",
+        gameVersion: "1.21.1",
+        loader: "neoforge",
+        releaseType: "release",
+      },
+      {
+        fileId: "6000002",
+        fileName: "create-1.20.1-6.0.9.jar",
+        gameVersion: "1.20.1",
+        loader: "forge",
+        releaseType: "beta",
+      },
+    ]);
+    expect(second).toEqual(first);
   });
 
   it("only asks CurseForge about projects it has not just looked up", async () => {
@@ -491,6 +537,36 @@ describe("LauncherContentService.identifyFingerprints", () => {
         pageUrl: CREATE_PAGE + "/files/7000001",
         download: { servedBy: "curseforge" },
       },
+    });
+  });
+
+  it("answers the project of a match as the search and the pack files do, without its newest files", async () => {
+    vi.mocked(matchFingerprints).mockResolvedValue([
+      { fingerprint: 522093599, file: makeContentFile() },
+    ]);
+    vi.mocked(getMods).mockResolvedValue([
+      makeProjectData(328085, {
+        slug: "create",
+        name: "Create",
+        websiteUrl: CREATE_PAGE,
+        latestFilesIndexes: CREATE_LATEST_FILES,
+      }),
+    ]);
+
+    const answer = await launcherContentService.identifyFingerprints([
+      522093599,
+    ]);
+
+    expect(answer.matches[0].project).toEqual({
+      source: "curseforge",
+      id: "328085",
+      slug: "create",
+      kind: "mod",
+      name: "Create",
+      summary: "A synthetic test project",
+      author: "vitest",
+      iconUrl: null,
+      url: CREATE_PAGE,
     });
   });
 

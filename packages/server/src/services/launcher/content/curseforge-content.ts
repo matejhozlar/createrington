@@ -2,7 +2,11 @@ import type {
   CurseforgeFileProject,
   CurseforgeFileWithProject,
 } from "@/db/queries/curseforge/file";
-import type { CurseForgeContentFile } from "@/services/curseforge";
+import {
+  CurseForgeLoader,
+  type CurseForgeContentFile,
+  type CurseForgeProjectData,
+} from "@/services/curseforge";
 import {
   LAUNCHER_CONTENT_LOADERS,
   type LauncherContentFile,
@@ -11,6 +15,7 @@ import {
   type LauncherContentLoader,
   type LauncherContentReleaseType,
   type LauncherProject,
+  type LauncherProjectLatestFile,
 } from "@createrington/shared/launcher";
 import { CURSEFORGE_CLASSES } from "@createrington/shared/workshop";
 
@@ -42,6 +47,10 @@ const RELEASE_TYPES: Record<number, LauncherContentReleaseType> = {
 };
 
 const LOADER_NAMES = new Set<string>(LAUNCHER_CONTENT_LOADERS);
+
+const LOADERS_BY_TYPE = new Map<number, LauncherContentLoader>(
+  LAUNCHER_CONTENT_LOADERS.map((loader) => [CurseForgeLoader[loader], loader]),
+);
 
 type ProjectPage = Pick<
   CurseforgeFileProject,
@@ -91,6 +100,21 @@ export function toLauncherProject(
     iconUrl: project.thumbnailUrl,
     url,
   };
+}
+
+export function toLauncherProjectLatestFiles(
+  indexes: CurseForgeProjectData["latestFilesIndexes"],
+): LauncherProjectLatestFile[] {
+  return indexes.map((index) => ({
+    fileId: String(index.fileId),
+    fileName: index.filename,
+    gameVersion: index.gameVersion,
+    loader:
+      index.modLoader === null
+        ? null
+        : (LOADERS_BY_TYPE.get(index.modLoader) ?? null),
+    releaseType: RELEASE_TYPES[index.releaseType] ?? "release",
+  }));
 }
 
 export function toLauncherContentFile(

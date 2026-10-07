@@ -31,6 +31,7 @@ import {
   classForContentKind,
   toLauncherContentFileDetails,
   toLauncherProject,
+  toLauncherProjectLatestFiles,
 } from "./curseforge-content";
 
 const SEARCH_TTL_MS = 5 * 60_000;
@@ -57,6 +58,13 @@ function contentError(
   message: string,
 ): AppError {
   return new AppError(message, statusCode, true, undefined, { code });
+}
+
+function withoutLatestFiles({
+  latestFiles: _latestFiles,
+  ...project
+}: LauncherProject): LauncherProject {
+  return project;
 }
 
 function loaderTypeFor(
@@ -133,7 +141,7 @@ class LauncherContentService {
     });
   }
 
-  /** The projects with these ids. An id CurseForge does not know, or one that is not a mod, resource pack or shader, comes back in `unknownProjectIds`. */
+  /** The projects with these ids, each with its newest file per Minecraft version and loader. An id CurseForge does not know, or one that is not a mod, resource pack or shader, comes back in `unknownProjectIds`. */
   async getProjects(
     projectIds: number[],
   ): Promise<LauncherContentProjectsData> {
@@ -298,8 +306,13 @@ class LauncherContentService {
     for (const fingerprint of asked) {
       const file = files.get(fingerprint) ?? identified.get(fingerprint);
       const project = file ? projects.get(Number(file.projectId)) : null;
-      if (file && project) matches.push({ fingerprint, project, file });
-      else unmatchedFingerprints.push(fingerprint);
+      if (file && project) {
+        matches.push({
+          fingerprint,
+          project: withoutLatestFiles(project),
+          file,
+        });
+      } else unmatchedFingerprints.push(fingerprint);
     }
     return { matches, unmatchedFingerprints };
   }
@@ -351,7 +364,7 @@ class LauncherContentService {
     const projects = new Map<number, LauncherProject | null>();
     for (const id of projectIds) {
       const data = byId.get(id);
-      const project = data
+      const described = data
         ? toLauncherProject({
             id: data.id,
             classId: data.classId,
@@ -363,6 +376,15 @@ class LauncherContentService {
             primaryAuthor: data.authors[0]?.name ?? null,
           })
         : null;
+      const project =
+        data && described
+          ? {
+              ...described,
+              latestFiles: toLauncherProjectLatestFiles(
+                data.latestFilesIndexes,
+              ),
+            }
+          : null;
       projects.set(id, project);
       await writeStored(
         keyValueStore,
