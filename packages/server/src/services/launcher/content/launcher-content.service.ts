@@ -85,6 +85,18 @@ function projectNotFound(): AppError {
   );
 }
 
+function fileNotFound(): AppError {
+  return contentError(
+    LauncherContentErrorCode.FILE_NOT_FOUND,
+    404,
+    "CurseForge has no such file of a mod, resource pack or shader",
+  );
+}
+
+function htmlOrNull(html: string | null): string | null {
+  return html?.trim() ? html : null;
+}
+
 function withoutLatestFiles({
   latestFiles: _latestFiles,
   ...project
@@ -226,7 +238,9 @@ class LauncherContentService {
         const [[data], description] = await this.ask("project details", () =>
           Promise.all([getMods([projectId]), getProjectDescription(projectId)]),
         );
-        return data ? toLauncherProjectDetails(data, description) : null;
+        return data
+          ? toLauncherProjectDetails(data, htmlOrNull(description))
+          : null;
       },
     );
 
@@ -293,27 +307,26 @@ class LauncherContentService {
       },
     );
 
-    if (!file) {
-      throw contentError(
-        LauncherContentErrorCode.FILE_NOT_FOUND,
-        404,
-        "CurseForge has no such file of a mod, resource pack or shader",
-      );
-    }
+    if (!file) throw fileNotFound();
     return file;
   }
 
-  /** What changed in one file, as CurseForge's HTML, or null when the file has no changelog. Throws `FILE_NOT_FOUND` (404) for a file `getFile` would not answer. */
-  async getFileChangelog(fileId: number): Promise<string | null> {
+  /** What changed in one file, as CurseForge's HTML, or null when the file has no changelog. A caller that knows the file's project names it in `projectId`, which saves looking the file up. Throws `FILE_NOT_FOUND` (404) for a file `getFile` would not answer, and for one that is no file of the project named. */
+  async getFileChangelog(
+    fileId: number,
+    projectId?: number,
+  ): Promise<string | null> {
     return readThrough(
       keyValueStore,
       this.changelogKey(fileId),
       CHANGELOG_TTL_MS,
       async () => {
-        const file = await this.getFile(fileId);
-        return this.ask("changelog", () =>
-          getFileChangelog(Number(file.projectId), fileId),
+        const ownerId = await this.projectOfFile(fileId, projectId);
+        const changelog = await this.ask("changelog", () =>
+          getFileChangelog(ownerId, fileId),
         );
+        if (changelog === null) throw fileNotFound();
+        return htmlOrNull(changelog);
       },
     );
   }
@@ -400,6 +413,20 @@ class LauncherContentService {
       } else unmatchedFingerprints.push(fingerprint);
     }
     return { matches, unmatchedFingerprints };
+  }
+
+  private async projectOfFile(
+    fileId: number,
+    namedProjectId: number | undefined,
+  ): Promise<number> {
+    if (namedProjectId === undefined) {
+      return Number((await this.getFile(fileId)).projectId);
+    }
+    const project = (await this.loadProjects([namedProjectId])).get(
+      namedProjectId,
+    );
+    if (!project) throw fileNotFound();
+    return namedProjectId;
   }
 
   private async loadProjects(

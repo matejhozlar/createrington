@@ -15,6 +15,7 @@ import { launcherContentService } from "@/services/launcher/content/launcher-con
 import { buildPagination } from "@/trpc/utils";
 import type {
   ContentIdParams,
+  FileChangelogQuery,
   GetProjectsBody,
   IdentifyFingerprintsBody,
   ListCategoriesQuery,
@@ -118,12 +119,18 @@ export class LauncherContentController {
   }
 
   static async fileChangelog(_req: Request, res: Response): Promise<void> {
-    const { params } = getValidated<{ params: ContentIdParams }>(res);
+    const { params, query } = getValidated<{
+      params: ContentIdParams;
+      query: FileChangelogQuery;
+    }>(res);
 
     const body: LauncherSuccessResponse<LauncherContentChangelogData> = {
       success: true,
       data: {
-        changelog: await launcherContentService.getFileChangelog(params.id),
+        changelog: await launcherContentService.getFileChangelog(
+          params.id,
+          query.projectId,
+        ),
       },
     };
     res.json(body);

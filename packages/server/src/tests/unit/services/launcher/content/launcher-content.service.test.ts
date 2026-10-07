@@ -576,6 +576,22 @@ describe("LauncherContentService.getProjectDetails", () => {
     expect(details).toMatchObject({ id: "555", kind, description: null });
   });
 
+  it.each([
+    ["an empty one", ""],
+    ["nothing but whitespace", " \n"],
+    ["none", null],
+  ])(
+    "has no description when CurseForge holds %s",
+    async (_label, description) => {
+      vi.mocked(getMods).mockResolvedValue([createProject()]);
+      vi.mocked(getProjectDescription).mockResolvedValue(description);
+
+      const details = await launcherContentService.getProjectDetails(328085);
+
+      expect(details.description).toBeNull();
+    },
+  );
+
   it("asks CurseForge once for the same project", async () => {
     vi.mocked(getMods).mockResolvedValue([createProject()]);
     vi.mocked(getProjectDescription).mockResolvedValue("<p>Rotate!</p>");
@@ -846,12 +862,87 @@ describe("LauncherContentService.getFileChangelog", () => {
     expect(changelog).toBe(CHANGELOG);
   });
 
-  it("answers null for a file without a changelog, and does not ask again", async () => {
+  it.each([
+    ["empty", ""],
+    ["nothing but whitespace", " \n"],
+  ])(
+    "answers null for a file whose changelog is %s, and does not ask again",
+    async (_label, html) => {
+      vi.mocked(getFileChangelog).mockResolvedValue(html);
+
+      expect(await launcherContentService.getFileChangelog(7000001)).toBeNull();
+      expect(await launcherContentService.getFileChangelog(7000001)).toBeNull();
+      expect(getFileChangelog).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it("asks under the project the caller names, without looking the file up", async () => {
+    const changelog = await launcherContentService.getFileChangelog(
+      7000001,
+      328085,
+    );
+
+    expect(changelog).toBe(CHANGELOG);
+    expect(getFileChangelog).toHaveBeenCalledWith(328085, 7000001);
+    expect(getContentFiles).not.toHaveBeenCalled();
+  });
+
+  it("asks CurseForge for the changelog alone when the project named was just looked up", async () => {
+    await launcherContentService.getProjects([328085]);
+    vi.mocked(getMods).mockClear();
+
+    await launcherContentService.getFileChangelog(7000001, 328085);
+
+    expect(getMods).not.toHaveBeenCalled();
+    expect(getContentFiles).not.toHaveBeenCalled();
+    expect(getFileChangelog).toHaveBeenCalledTimes(1);
+  });
+
+  it("answers 404 for a file that is no file of the project named, and keeps nothing", async () => {
+    vi.mocked(getMods).mockImplementation(async (ids) =>
+      ids.map((id) => makeProjectData(id)),
+    );
+    vi.mocked(getFileChangelog).mockImplementation(async (projectId) =>
+      projectId === 328085 ? CHANGELOG : null,
+    );
+
+    await expect(
+      launcherContentService.getFileChangelog(7000001, 238222),
+    ).rejects.toMatchObject({ statusCode: 404, code: "FILE_NOT_FOUND" });
+    expect(await launcherContentService.getFileChangelog(7000001, 328085)).toBe(
+      CHANGELOG,
+    );
+    expect(await launcherContentService.getFileChangelog(7000001)).toBe(
+      CHANGELOG,
+    );
+    expect(getFileChangelog).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([
+    ["CurseForge does not know", () => []],
+    [
+      "is no mod, resource pack or shader",
+      () => [makeProjectData(4471001, { classId: 4471 })],
+    ],
+  ])(
+    "answers 404 when the project named %s, without asking for a changelog",
+    async (_label, projects) => {
+      vi.mocked(getMods).mockResolvedValue(projects());
+
+      await expect(
+        launcherContentService.getFileChangelog(7000001, 4471001),
+      ).rejects.toMatchObject({ statusCode: 404, code: "FILE_NOT_FOUND" });
+      expect(getFileChangelog).not.toHaveBeenCalled();
+      expect(getContentFiles).not.toHaveBeenCalled();
+    },
+  );
+
+  it("answers 404 when the file is gone by the time its changelog is asked for", async () => {
     vi.mocked(getFileChangelog).mockResolvedValue(null);
 
-    expect(await launcherContentService.getFileChangelog(7000001)).toBeNull();
-    expect(await launcherContentService.getFileChangelog(7000001)).toBeNull();
-    expect(getFileChangelog).toHaveBeenCalledTimes(1);
+    await expect(
+      launcherContentService.getFileChangelog(7000001),
+    ).rejects.toMatchObject({ statusCode: 404, code: "FILE_NOT_FOUND" });
   });
 
   it("asks CurseForge once for the same changelog, also after the file itself was forgotten", async () => {

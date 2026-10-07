@@ -700,12 +700,38 @@ describe("GET /api/launcher/content/files/:id/changelog", () => {
     const res = await get("/files/7000001/changelog", newSession());
 
     expect(res.status).toBe(200);
-    expect(mocks.getFileChangelog).toHaveBeenCalledWith(7000001);
+    expect(mocks.getFileChangelog).toHaveBeenCalledWith(7000001, undefined);
     expect(mocks.getFile).not.toHaveBeenCalled();
     expect(await res.json()).toEqual({
       success: true,
       data: { changelog: CHANGELOG },
     });
+  });
+
+  it("passes the project on when the launcher names it", async () => {
+    const res = await get(
+      "/files/7000001/changelog?projectId=328085",
+      newSession(),
+    );
+
+    expect(res.status).toBe(200);
+    expect(mocks.getFileChangelog).toHaveBeenCalledWith(7000001, 328085);
+    expect(await res.json()).toEqual({
+      success: true,
+      data: { changelog: CHANGELOG },
+    });
+  });
+
+  it.each([
+    ["a project id that is not a number", "?projectId=create"],
+    ["a project id of zero", "?projectId=0"],
+    ["a project id too large for CurseForge", "?projectId=2147483648"],
+    ["two project ids", "?projectId=328085&projectId=238222"],
+  ])("refuses %s", async (_label, query) => {
+    const res = await get(`/files/7000001/changelog${query}`, newSession());
+
+    expect(res.status).toBe(400);
+    expect(mocks.getFileChangelog).not.toHaveBeenCalled();
   });
 
   it("answers null for a file without a changelog", async () => {

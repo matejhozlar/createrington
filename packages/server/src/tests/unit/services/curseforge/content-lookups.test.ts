@@ -478,14 +478,21 @@ describe("getProjectDescription", () => {
   });
 
   it.each([
-    ["an empty text", answer({ data: "" })],
-    ["nothing but whitespace", answer({ data: " \n" })],
-    ["no text", answer({ data: null })],
-    ["404", answer({}, 404)],
-  ])("has no description when CurseForge answers %s", async (_label, res) => {
-    fetchMock.mockResolvedValue(res);
+    ["an empty text", { data: "" }],
+    ["no text", { data: null }],
+  ])(
+    "answers an empty text when CurseForge answers %s",
+    async (_label, body) => {
+      fetchMock.mockResolvedValue(answer(body));
 
-    expect(await getProjectDescription(328085)).toBeNull();
+      expect(await getProjectDescription(328085)).toBe("");
+    },
+  );
+
+  it("answers null for a project CurseForge does not know", async () => {
+    fetchMock.mockResolvedValue(answer({}, 404));
+
+    expect(await getProjectDescription(999999999)).toBeNull();
   });
 
   it("throws when CurseForge fails", async () => {
@@ -510,14 +517,16 @@ describe("getFileChangelog", () => {
     expect(changelog).toBe(html);
   });
 
-  it.each([
-    ["an empty text", answer({ data: "" })],
-    ["nothing but whitespace", answer({ data: "\n" })],
-    ["404", answer({}, 404)],
-  ])("has no changelog when CurseForge answers %s", async (_label, res) => {
-    fetchMock.mockResolvedValue(res);
+  it("answers an empty text for a file without a changelog", async () => {
+    fetchMock.mockResolvedValue(answer({ data: "" }));
 
-    expect(await getFileChangelog(439890, 7000001)).toBeNull();
+    expect(await getFileChangelog(439890, 7000001)).toBe("");
+  });
+
+  it("answers null when CurseForge knows no such file of that project", async () => {
+    fetchMock.mockResolvedValue(answer({}, 404));
+
+    expect(await getFileChangelog(328085, 7000001)).toBeNull();
   });
 
   it("throws when CurseForge fails", async () => {

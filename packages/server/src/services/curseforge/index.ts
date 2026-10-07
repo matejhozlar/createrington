@@ -1132,8 +1132,8 @@ export async function getContentFiles(
 }
 
 /**
- * Reads an endpoint that answers one piece of HTML. Null when CurseForge
- * answers 404 or holds no text there.
+ * Reads an endpoint that answers one piece of HTML, an empty text when
+ * CurseForge holds none there. Null when CurseForge answers 404.
  */
 async function getHtml(path: string, endpoint: string): Promise<string | null> {
   ensureApiKey();
@@ -1153,12 +1153,12 @@ async function getHtml(path: string, endpoint: string): Promise<string | null> {
     await res.json(),
     endpoint,
   );
-  return body.data?.trim() ? body.data : null;
+  return body.data ?? "";
 }
 
 /**
- * The long description of a project as CurseForge holds it, in HTML. Null
- * when CurseForge does not know the project or holds no description for it.
+ * The long description of a project as CurseForge holds it, in HTML: an empty
+ * text when it holds none. Null when CurseForge does not know the project.
  */
 export async function getProjectDescription(
   projectId: number,
@@ -1167,9 +1167,9 @@ export async function getProjectDescription(
 }
 
 /**
- * What changed in a file as CurseForge holds it, in HTML. Null when
- * CurseForge does not know the file under that project or holds no changelog
- * for it.
+ * What changed in a file as CurseForge holds it, in HTML: an empty text when
+ * the file has no changelog. Null when CurseForge knows no such file of that
+ * project.
  */
 export async function getFileChangelog(
   projectId: number,

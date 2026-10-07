@@ -6,6 +6,7 @@ import { validate } from "@/app/middleware/validation.middleware";
 import { LauncherContentController } from "./launcher-content.controller";
 import {
   ContentIdParamsSchema,
+  FileChangelogQuerySchema,
   GetProjectsBodySchema,
   IdentifyFingerprintsBodySchema,
   ListCategoriesQuerySchema,
@@ -69,7 +70,12 @@ router.get(
 router.get(
   "/files/:id/changelog",
   ...customRoute(
-    [validate({ params: ContentIdParamsSchema })],
+    [
+      validate({
+        params: ContentIdParamsSchema,
+        query: FileChangelogQuerySchema,
+      }),
+    ],
     LauncherContentController.fileChangelog,
   ),
 );

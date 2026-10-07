@@ -92,6 +92,12 @@ export const ContentIdParamsSchema = z.object({ id: CurseforgeIdSchema });
 
 export type ContentIdParams = z.infer<typeof ContentIdParamsSchema>;
 
+export const FileChangelogQuerySchema = z.object({
+  projectId: CurseforgeIdSchema.optional(),
+});
+
+export type FileChangelogQuery = z.infer<typeof FileChangelogQuerySchema>;
+
 export const ListFilesQuerySchema = z
   .object({ ...TargetShape, ...PageShape })
   .refine(withinResults, { path: ["page"] });
