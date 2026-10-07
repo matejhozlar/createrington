@@ -1,3 +1,13 @@
+## v1.65.3 (2026-10-08)
+
+### @createrington/client (0.2.82 → 0.2.83)
+- [add] Add Saidai_V to the team page as an admin with an explode hover animation: a shake builds up, the body bursts into its six parts, they tumble, bounce and settle around the feet while the head looks around, and they hop back together when the hover ends. Tetsuoken picks up the arm that lands at his feet and waves it, and drops it if he is pulled into another animation
+- [refactor] Rework the team page hover animations on a shared effects core under `features/team/effects`: every animation blends in from and back to the idle pose instead of snapping, the Hulk grows crisply from the feet with a pixel-dissolve skin change, the jetpack gains exhaust and a landing, the nuke gains a flash and mushroom cloud that blows the others away, the nearest neighbour delivers the head kick, the moonwalk spins into a held pose, the disco gets a new four-phrase routine, and the others turn their heads toward whoever is performing
+- [fix] Fix team characters being cut off during idle and hover animations by drawing each one on a canvas larger than its slot, which an effect can enlarge further while it plays
+- [fix] Fix the team row overflowing next to the sidebar on narrower windows: the owner now stands in the centre of a seven-member row, and the single-row, two-row and compact layouts are chosen from the width the podium actually has instead of the window width
+- [fix] Fix team members occasionally rendering with the default Steve skin by loading their skins from bundled assets instead of the skin proxy
+- [remove] Remove the team member dialog: a desktop click no longer opens anything, and on phones the first tap plays the animation and the second stops it
+
 ## v1.65.2 (2026-10-04)
 
 ### @createrington/server (1.66.0 → 1.66.1)
