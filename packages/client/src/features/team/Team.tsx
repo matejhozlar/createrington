@@ -1,17 +1,13 @@
 import { PageHeader } from "@/components/page-header";
 import { TeamPodium } from "./components/TeamPodium";
+import { startDisco } from "./effects/disco";
 
 export function Team() {
   return (
-    <div>
+    <div className="overflow-x-clip">
       <PageHeader
         title={
-          <span
-            className="cursor-pointer select-none"
-            onClick={() =>
-              document.dispatchEvent(new CustomEvent("team-dance-start"))
-            }
-          >
+          <span className="cursor-pointer select-none" onClick={startDisco}>
             Our Team
           </span>
         }

@@ -1,5 +1,15 @@
 import { PlayerAnimation } from "skinview3d";
-import type { PlayerObject } from "skinview3d";
+import type { PlayerObject, SkinViewer } from "skinview3d";
+import { clamp, damp, lerp } from "./core/math";
+import { headPoint } from "./core/screen";
+import { stage } from "./core/stage";
+
+const FOCUS_DEPTH_PX = 260;
+const FOCUS_MAX_YAW = 1.1;
+const FOCUS_MAX_PITCH_UP = 0.7;
+const FOCUS_MAX_PITCH_DOWN = 0.5;
+
+type Focus = { yaw: number; pitch: number };
 
 type AnimState =
   | "idle"
@@ -54,6 +64,7 @@ type AnimState =
 export class LookAroundIdleAnimation extends PlayerAnimation {
   private readonly index: number;
   private readonly total: number;
+  private readonly getFocus: (() => Focus | null) | undefined;
 
   private state: AnimState = "idle";
   private stateStart = 0;
@@ -70,10 +81,19 @@ export class LookAroundIdleAnimation extends PlayerAnimation {
   // Weight-shift direction (1 = right, -1 = left)
   private shiftDir = 1;
 
-  constructor(index: number = 0, total: number = 1) {
+  private focusWeight = 0;
+  private focusYaw = 0;
+  private focusPitch = 0;
+
+  constructor(
+    index: number = 0,
+    total: number = 1,
+    getFocus?: () => Focus | null,
+  ) {
     super();
     this.index = index;
     this.total = total;
+    this.getFocus = getFocus;
     this.stateDuration = 2 + Math.random() * 6;
   }
 
@@ -240,9 +260,16 @@ export class LookAroundIdleAnimation extends PlayerAnimation {
     }
   }
 
-  protected animate(player: PlayerObject): void {
+  protected animate(player: PlayerObject, delta: number): void {
     const elapsed = this.progress - this.stateStart;
     const t = Math.min(elapsed / this.stateDuration, 1);
+
+    const focus = this.getFocus?.() ?? null;
+    this.focusWeight = damp(this.focusWeight, focus ? 1 : 0, 7, delta);
+    if (focus) {
+      this.focusYaw = damp(this.focusYaw, focus.yaw, 12, delta);
+      this.focusPitch = damp(this.focusPitch, focus.pitch, 12, delta);
+    }
 
     // Defaults: breathing arms, neutral everything else
     const bt = this.progress * 1.5;
@@ -261,7 +288,7 @@ export class LookAroundIdleAnimation extends PlayerAnimation {
 
     switch (this.state) {
       case "idle":
-        if (t >= 1) {
+        if (t >= 1 && !focus) {
           const roll = Math.random();
           if (roll < 0.05) this.enterState("sneeze-windup");
           else if (roll < 0.12) this.enterState("nod-drooping");
@@ -703,11 +730,16 @@ export class LookAroundIdleAnimation extends PlayerAnimation {
     }
 
     // Apply all rotations
-    player.skin.head.rotation.x = this.headX;
-    player.skin.head.rotation.y = this.headY;
+    const headYaw = lerp(this.headY, this.focusYaw, this.focusWeight);
+    player.skin.head.rotation.x = lerp(
+      this.headX,
+      this.focusPitch,
+      this.focusWeight,
+    );
+    player.skin.head.rotation.y = headYaw;
     player.skin.head.rotation.z = headZ;
     player.skin.body.rotation.x = bodyX;
-    player.skin.body.rotation.y = this.headY * 0.2;
+    player.skin.body.rotation.y = headYaw * 0.2;
     player.skin.body.rotation.z = bodyZ;
     player.skin.leftArm.rotation.x = armLeftX;
     player.skin.leftArm.rotation.z = armLeftZ;
@@ -719,4 +751,29 @@ export class LookAroundIdleAnimation extends PlayerAnimation {
     player.skin.rightLeg.rotation.z = legRightZ;
     player.position.y = posY;
   }
+}
+
+export function createIdleAnimation(
+  viewer: SkinViewer,
+  username: string,
+  index: number,
+  total: number,
+): LookAroundIdleAnimation {
+  return new LookAroundIdleAnimation(index, total, () => {
+    const point = stage.attentionFor(username);
+    if (!point) return null;
+    const head = headPoint(viewer);
+    return {
+      yaw: clamp(
+        Math.atan2(point.x - head.x, FOCUS_DEPTH_PX),
+        -FOCUS_MAX_YAW,
+        FOCUS_MAX_YAW,
+      ),
+      pitch: clamp(
+        Math.atan2(point.y - head.y, FOCUS_DEPTH_PX * 1.4),
+        -FOCUS_MAX_PITCH_UP,
+        FOCUS_MAX_PITCH_DOWN,
+      ),
+    };
+  });
 }

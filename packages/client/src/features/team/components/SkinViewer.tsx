@@ -6,24 +6,14 @@ import {
   useRef,
   useState,
 } from "react";
-import {
-  FlyingAnimation,
-  HitAnimation,
-  RunningAnimation,
-  SkinViewer as SkinViewerLib,
-  WalkingAnimation,
-  WaveAnimation,
-} from "skinview3d";
+import { SkinViewer as SkinViewerLib, type PlayerAnimation } from "skinview3d";
 import { cn } from "@/lib/utils";
 import type { HoverAnimation } from "../data";
-import { LookAroundIdleAnimation } from "./animations";
-import { FlashlightAimAnimation, FlashlightEffect } from "./flashlight-effects";
-import { HeadKickAnimation, KickAnimation } from "./headkick-effects";
-import { HulkAnimation } from "./hulk-effects";
-import { JetpackAnimation } from "./jetpack-effects";
-import { MoonwalkAnimation } from "./moonwalk-effects";
-import { DiscoAnimation } from "./dance-effects";
-import { NukeAnimation } from "./nuke-effects";
+import type { TeamEffect } from "../effects/core/effect";
+import { BlendedAnimation, capturePose, type Pose } from "../effects/core/pose";
+import { stage, type GuestAnimation } from "../effects/core/stage";
+import { createIdleAnimation } from "../effects/idle";
+import { createEffect } from "../effects/registry";
 
 export type SkinViewerHandle = {
   playAnimation: () => void;
@@ -42,25 +32,18 @@ type SkinViewerProps = {
   className?: string;
 };
 
-function createAnimation(
-  type: Exclude<
-    HoverAnimation,
-    "jetpack" | "flashlight" | "moonwalk" | "headkick" | "hulk" | "nuke"
-  >,
-) {
-  switch (type) {
-    case "wave":
-      return new WaveAnimation();
-    case "running":
-      return new RunningAnimation();
-    case "flying":
-      return new FlyingAnimation();
-    case "hit":
-      return new HitAnimation();
-    case "walking":
-      return new WalkingAnimation();
-  }
-}
+type Controller = {
+  play: () => void;
+  stop: () => void;
+};
+
+const IDLE_BLEND_SECONDS = 0.4;
+const EFFECT_BLEND_SECONDS = 0.2;
+const GUEST_BLEND_SECONDS = 0.18;
+const BASE_FOV_TAN = Math.tan((50 * Math.PI) / 360);
+const BASE_ZOOM = 0.9;
+const BLEED_X = 2.6;
+const BLEED_Y = 1.6;
 
 export const SkinViewer = forwardRef<SkinViewerHandle, SkinViewerProps>(
   (
@@ -78,17 +61,7 @@ export const SkinViewer = forwardRef<SkinViewerHandle, SkinViewerProps>(
     ref,
   ) => {
     const containerRef = useRef<HTMLDivElement>(null);
-    const viewerRef = useRef<SkinViewerLib | null>(null);
-    const jetpackRef = useRef<JetpackAnimation | null>(null);
-    const flashlightRef = useRef<FlashlightEffect | null>(null);
-    const flashlightTimerRef = useRef<number | null>(null);
-    const moonwalkRef = useRef<MoonwalkAnimation | null>(null);
-    const headkickRef = useRef<HeadKickAnimation | null>(null);
-    const hulkRef = useRef<HulkAnimation | null>(null);
-    const nukeRef = useRef<NukeAnimation | null>(null);
-    const nukeExplosionRef = useRef<Animation | null>(null);
-    const kickAnimRef = useRef<KickAnimation | null>(null);
-    const danceTimerRef = useRef<number | null>(null);
+    const controllerRef = useRef<Controller | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
 
@@ -105,355 +78,141 @@ export const SkinViewer = forwardRef<SkinViewerHandle, SkinViewerProps>(
       if (!container) return;
 
       let disposed = false;
+      let skinReady = false;
+      let effect: TeamEffect | null = null;
+      let guest: GuestAnimation | null = null;
 
+      const bleedX = Math.round((width * (BLEED_X - 1)) / 2);
+      const bleedY = Math.round((height * (BLEED_Y - 1)) / 2);
+      const canvasHeight = height + bleedY * 2;
+      const heightRatio = canvasHeight / height;
       const viewer = new SkinViewerLib({
-        width,
-        height,
+        width: width + bleedX * 2,
+        height: canvasHeight,
         enableControls: false,
-        fov: 50,
-        zoom: 0.9,
+        fov: (Math.atan(heightRatio * BASE_FOV_TAN) * 360) / Math.PI,
+        zoom: BASE_ZOOM / heightRatio,
+      });
+      const player = viewer.playerObject;
+      viewer.autoRotate = false;
+      viewer.canvas.style.position = "absolute";
+      viewer.canvas.style.left = `${-bleedX}px`;
+      viewer.canvas.style.top = `${-bleedY}px`;
+      viewer.canvas.style.pointerEvents = "none";
+
+      const show = (
+        animation: PlayerAnimation,
+        from: Pose,
+        seconds: number,
+      ) => {
+        const blended = new BlendedAnimation(animation, from, seconds);
+        viewer.animation = blended;
+        blended.update(player, 0);
+        viewer.render();
+      };
+
+      const startIdle = (from?: Pose) => {
+        const idle = createIdleAnimation(viewer, username, index, total);
+        if (from) show(idle, from, IDLE_BLEND_SECONDS);
+        else viewer.animation = idle;
+      };
+
+      const endGuest = () => {
+        if (!guest) return;
+        const pose = capturePose(player);
+        guest.dispose?.();
+        guest = null;
+        startIdle(pose);
+      };
+
+      const finishEffect = () => {
+        if (!effect) return;
+        const pose = capturePose(player);
+        effect.dispose();
+        effect = null;
+        startIdle(pose);
+      };
+
+      controllerRef.current = {
+        play: () => {
+          if (!skinReady || !hoverAnimation) return;
+          effect?.dispose();
+          guest?.dispose?.();
+          guest = null;
+          const pose = capturePose(player);
+          effect = createEffect(hoverAnimation, {
+            viewer,
+            username,
+            card: container.closest("button"),
+            onFinished: finishEffect,
+          });
+          show(effect, pose, EFFECT_BLEND_SECONDS);
+        },
+        stop: () => effect?.stop(),
+      };
+
+      const unregister = stage.register({
+        username,
+        viewer,
+        card: container.closest("button"),
+        isBusy: () => effect !== null,
+        playGuest: (create) => {
+          if (effect || !skinReady) return null;
+          const pose = capturePose(player);
+          guest?.dispose?.();
+          const next = create(viewer, () => {
+            if (guest === next) endGuest();
+          });
+          guest = next;
+          show(next, pose, GUEST_BLEND_SECONDS);
+          return {
+            cancel: () => {
+              if (guest === next) endGuest();
+            },
+          };
+        },
       });
 
-      viewer.autoRotate = false;
-      viewer.animation = new LookAroundIdleAnimation(index, total);
+      startIdle();
 
       viewer
         .loadSkin(`/api/skin/${uuid}`)
         .then(() => {
-          if (!disposed) setLoading(false);
+          if (disposed) return;
+          skinReady = true;
+          setLoading(false);
         })
         .catch(() => {
-          if (!disposed) {
-            setLoading(false);
-            setError(true);
-          }
+          if (disposed) return;
+          setLoading(false);
+          setError(true);
         });
 
       container.appendChild(viewer.canvas);
-      viewerRef.current = viewer;
 
       const observer = new IntersectionObserver(([entry]) => {
         if (entry) viewer.renderPaused = !entry.isIntersecting;
       });
-      observer.observe(container);
+      observer.observe(container.parentElement ?? container);
 
       return () => {
         disposed = true;
+        controllerRef.current = null;
         observer.disconnect();
-        if (flashlightTimerRef.current !== null) {
-          clearTimeout(flashlightTimerRef.current);
-          flashlightTimerRef.current = null;
-        }
-        if (flashlightRef.current) {
-          flashlightRef.current.dispose();
-          flashlightRef.current = null;
-        }
-        if (jetpackRef.current) {
-          jetpackRef.current.dispose();
-          jetpackRef.current = null;
-        }
-        if (moonwalkRef.current) {
-          moonwalkRef.current.dispose();
-          moonwalkRef.current = null;
-        }
-        if (headkickRef.current) {
-          headkickRef.current.dispose();
-          headkickRef.current = null;
-        }
-        if (hulkRef.current) {
-          hulkRef.current.dispose();
-          hulkRef.current = null;
-        }
-        if (nukeRef.current) {
-          nukeRef.current.dispose();
-          nukeRef.current = null;
-        }
-        if (nukeExplosionRef.current) {
-          nukeExplosionRef.current.cancel();
-          nukeExplosionRef.current = null;
-        }
+        unregister();
+        effect?.dispose();
+        guest?.dispose?.();
         viewer.dispose();
-        if (container.contains(viewer.canvas)) {
-          container.removeChild(viewer.canvas);
-        }
-        viewerRef.current = null;
+        viewer.canvas.remove();
       };
-    }, [uuid, width, height, index, total]);
+    }, [uuid, username, width, height, index, total, hoverAnimation]);
 
-    // Cailin05 listens for kick requests from Tetsuoken's headkick animation
-    useEffect(() => {
-      if (username !== "Cailin05") return;
-
-      const handleKickRequest = (e: Event) => {
-        const viewer = viewerRef.current;
-        if (!viewer) return;
-
-        // Ignore if any custom animation is active (e.g., moonwalk hover)
-        if (
-          moonwalkRef.current ||
-          flashlightRef.current ||
-          jetpackRef.current ||
-          headkickRef.current ||
-          hulkRef.current ||
-          nukeRef.current
-        )
-          return;
-
-        const { headCenterX } = (e as CustomEvent<{ headCenterX: number }>)
-          .detail;
-        const myRect = viewer.canvas.getBoundingClientRect();
-        const slideDistance = myRect.left + myRect.width / 2 - headCenterX;
-        const kick = new KickAnimation(viewer, slideDistance);
-        kickAnimRef.current = kick;
-        viewer.animation = kick;
-      };
-
-      const handleKickDone = () => {
-        const viewer = viewerRef.current;
-        if (!viewer) return;
-        if (kickAnimRef.current) {
-          kickAnimRef.current.dispose();
-          kickAnimRef.current = null;
-        }
-        viewer.animation = new LookAroundIdleAnimation(index, total);
-      };
-
-      document.addEventListener("team-kick-request", handleKickRequest);
-      document.addEventListener("team-kick-done", handleKickDone);
-      document.addEventListener("team-kick-cancel", handleKickDone);
-
-      return () => {
-        document.removeEventListener("team-kick-request", handleKickRequest);
-        document.removeEventListener("team-kick-done", handleKickDone);
-        document.removeEventListener("team-kick-cancel", handleKickDone);
-      };
-    }, [username, index, total]);
-
-    // Non-nuke-initiator members listen for nuke events
-    useEffect(() => {
-      if (username === "diablothe2nd") return;
-
-      const handleDetonate = () => {
-        // Skip if any custom animation is active on this member
-        if (
-          moonwalkRef.current ||
-          flashlightRef.current ||
-          jetpackRef.current ||
-          headkickRef.current ||
-          hulkRef.current ||
-          kickAnimRef.current
-        )
-          return;
-
-        const card = containerRef.current?.closest(
-          "button",
-        ) as HTMLElement | null;
-        if (!card) return;
-
-        // Cancel any previous explosion
-        if (nukeExplosionRef.current) {
-          nukeExplosionRef.current.cancel();
-          nukeExplosionRef.current = null;
-        }
-
-        // Random explosion direction
-        const angle = Math.random() * Math.PI * 2;
-        const distance = 800 + Math.random() * 400;
-        const dx = Math.cos(angle) * distance;
-        const dy = Math.sin(angle) * distance;
-        const rot = (Math.random() - 0.5) * 720;
-        const shakeX = (Math.random() - 0.5) * 12;
-        const shakeY = (Math.random() - 0.5) * 12;
-
-        const anim = card.animate(
-          [
-            { transform: "none", opacity: 1, offset: 0 },
-            {
-              transform: `translate(${shakeX}px, ${shakeY}px)`,
-              opacity: 1,
-              offset: 0.15,
-            },
-            {
-              transform: `translate(${dx}px, ${dy}px) rotate(${rot}deg)`,
-              opacity: 0,
-              offset: 1,
-            },
-          ],
-          {
-            duration: 900,
-            easing: "cubic-bezier(0.25, 0.1, 0.25, 1)",
-            fill: "forwards",
-          },
-        );
-
-        nukeExplosionRef.current = anim;
-      };
-
-      const handleReset = () => {
-        if (nukeExplosionRef.current) {
-          nukeExplosionRef.current.cancel();
-          nukeExplosionRef.current = null;
-        }
-      };
-
-      document.addEventListener("team-nuke-detonate", handleDetonate);
-      document.addEventListener("team-nuke-reset", handleReset);
-
-      return () => {
-        document.removeEventListener("team-nuke-detonate", handleDetonate);
-        document.removeEventListener("team-nuke-reset", handleReset);
-        if (nukeExplosionRef.current) {
-          nukeExplosionRef.current.cancel();
-          nukeExplosionRef.current = null;
-        }
-      };
-    }, [username]);
-
-    // All members listen for disco dance event from title click
-    useEffect(() => {
-      const handleDanceStart = () => {
-        const viewer = viewerRef.current;
-        if (!viewer) return;
-
-        // Skip if any hover animation is active
-        if (
-          moonwalkRef.current ||
-          flashlightRef.current ||
-          jetpackRef.current ||
-          headkickRef.current ||
-          hulkRef.current ||
-          nukeRef.current ||
-          kickAnimRef.current
-        )
-          return;
-
-        // Clear any existing dance timer (double-click restarts)
-        if (danceTimerRef.current !== null) {
-          clearTimeout(danceTimerRef.current);
-        }
-
-        viewer.animation = new DiscoAnimation();
-
-        danceTimerRef.current = window.setTimeout(() => {
-          danceTimerRef.current = null;
-          const v = viewerRef.current;
-          if (v) {
-            v.animation = new LookAroundIdleAnimation(index, total);
-          }
-        }, 20_000);
-      };
-
-      document.addEventListener("team-dance-start", handleDanceStart);
-
-      return () => {
-        document.removeEventListener("team-dance-start", handleDanceStart);
-        if (danceTimerRef.current !== null) {
-          clearTimeout(danceTimerRef.current);
-          danceTimerRef.current = null;
-        }
-      };
-    }, [index, total]);
-
-    const handleMouseEnter = () => {
-      const viewer = viewerRef.current;
-      if (!viewer || !hoverAnimation) return;
-
-      // Cancel dance if active: hover takes priority
-      if (danceTimerRef.current !== null) {
-        clearTimeout(danceTimerRef.current);
-        danceTimerRef.current = null;
-        viewer.playerObject.rotation.y = 0;
-      }
-
-      if (hoverAnimation === "flashlight") {
-        viewer.animation = new FlashlightAimAnimation();
-        flashlightTimerRef.current = window.setTimeout(() => {
-          flashlightTimerRef.current = null;
-          const flashlight = new FlashlightEffect(viewer.canvas);
-          flashlightRef.current = flashlight;
-          flashlight.start();
-        }, 1000);
-      } else if (hoverAnimation === "jetpack") {
-        const jetpack = new JetpackAnimation(viewer);
-        jetpackRef.current = jetpack;
-        viewer.animation = jetpack;
-      } else if (hoverAnimation === "moonwalk") {
-        const moonwalk = new MoonwalkAnimation(viewer);
-        moonwalkRef.current = moonwalk;
-        viewer.animation = moonwalk;
-      } else if (hoverAnimation === "headkick") {
-        const headkick = new HeadKickAnimation(viewer);
-        headkickRef.current = headkick;
-        viewer.animation = headkick;
-      } else if (hoverAnimation === "hulk") {
-        const hulk = new HulkAnimation(viewer);
-        hulkRef.current = hulk;
-        viewer.animation = hulk;
-      } else if (hoverAnimation === "nuke") {
-        const nuke = new NukeAnimation(viewer);
-        nukeRef.current = nuke;
-        viewer.animation = nuke;
-      } else {
-        viewer.animation = createAnimation(hoverAnimation);
-      }
-    };
-
-    const handleMouseLeave = () => {
-      const viewer = viewerRef.current;
-      if (!viewer) return;
-
-      if (flashlightTimerRef.current !== null) {
-        clearTimeout(flashlightTimerRef.current);
-        flashlightTimerRef.current = null;
-      }
-
-      if (flashlightRef.current) {
-        flashlightRef.current.dispose();
-        flashlightRef.current = null;
-      }
-
-      if (jetpackRef.current) {
-        jetpackRef.current.dispose();
-        jetpackRef.current = null;
-        // Reload original skin, then set idle animation
-        viewer
-          .loadSkin(`/api/skin/${uuid}`)
-          .then(() => {
-            // Skin loaded, idle animation already handles pose reset
-          })
-          .catch(() => {
-            // Skin reload failed, still reset animation
-          });
-      }
-
-      if (moonwalkRef.current) {
-        moonwalkRef.current.dispose();
-        moonwalkRef.current = null;
-      }
-
-      if (headkickRef.current) {
-        headkickRef.current.dispose();
-        headkickRef.current = null;
-      }
-
-      if (hulkRef.current) {
-        hulkRef.current.dispose();
-        hulkRef.current = null;
-        // Reload original skin after hulk transformation
-        viewer.loadSkin(`/api/skin/${uuid}`);
-      }
-
-      if (nukeRef.current) {
-        nukeRef.current.dispose();
-        nukeRef.current = null;
-      }
-
-      viewer.animation = new LookAroundIdleAnimation(index, total);
-    };
+    const handleMouseEnter = () => controllerRef.current?.play();
+    const handleMouseLeave = () => controllerRef.current?.stop();
 
     useImperativeHandle(ref, () => ({
-      playAnimation: () => handleMouseEnter(),
-      stopAnimation: () => handleMouseLeave(),
+      playAnimation: () => controllerRef.current?.play(),
+      stopAnimation: () => controllerRef.current?.stop(),
     }));
 
     return (
