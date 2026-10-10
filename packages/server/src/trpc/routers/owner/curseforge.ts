@@ -11,7 +11,7 @@ import { featureFlagService, FeatureFlags } from "@/services/feature-flag";
 const DEFAULT_DAYS = 14;
 const MAX_DAYS = 90;
 const CDN_FLAG_DESCRIPTION =
-  "Serve pack files CurseForge gives no link for from their built address on CurseForge's CDN";
+  "Serve pack files and files a player adds that CurseForge gives no link for from their built address on CurseForge's CDN";
 
 export const ownerCurseforgeCallsRouter = router({
   list: ownerProcedure
@@ -42,7 +42,7 @@ export const ownerCurseforgeCdnRouter = router({
   get: ownerProcedure
     .meta({
       description:
-        "Whether the launcher serves pack files without a CurseForge link from CurseForge's CDN",
+        "Whether the launcher serves pack files and files a player adds without a CurseForge link from CurseForge's CDN",
     })
     .query(async () => ({
       enabled: await featureFlagService.isEnabled(
@@ -53,7 +53,7 @@ export const ownerCurseforgeCdnRouter = router({
   update: ownerProcedure
     .meta({
       description:
-        "Switch the launcher's CurseForge CDN fallback for pack files on or off",
+        "Switch the launcher's CurseForge CDN fallback for pack files and files a player adds on or off",
     })
     .input(z.object({ enabled: z.boolean() }))
     .mutation(async ({ ctx, input }) => {

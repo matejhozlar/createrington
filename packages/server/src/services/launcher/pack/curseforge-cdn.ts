@@ -1,4 +1,4 @@
-import { findFileUrls } from "./file-lookup";
+import { findFileUrls, resolveFileUrls } from "./file-lookup";
 import { curseforgeCdnUrl } from "./pack-rules";
 
 export interface CurseforgeCdnFileQuery {
@@ -10,14 +10,14 @@ export interface CurseforgeCdnFileQuery {
 async function findCurseforgeCdnUrl(
   file: CurseforgeCdnFileQuery,
   signal: AbortSignal,
-): Promise<string | null> {
+): Promise<string | null | undefined> {
   const url = curseforgeCdnUrl(file.fileId, file.fileName);
   try {
     const res = await fetch(url, { method: "HEAD", signal });
     if (res.status !== 200) {
       if (res.status !== 403) {
         logger.warn(
-          `CurseForge's CDN answered ${res.status} for pack file ${file.fileId}`,
+          `CurseForge's CDN answered ${res.status} for file ${file.fileId}`,
         );
       }
       return null;
@@ -26,18 +26,15 @@ async function findCurseforgeCdnUrl(
     const declared = res.headers.get("content-length");
     if (declared === null || Number(declared) !== file.size) {
       logger.warn(
-        `CurseForge's CDN lists ${declared ?? "no size"} for pack file ${file.fileId}, CurseForge's API lists ${file.size} bytes`,
+        `CurseForge's CDN lists ${declared ?? "no size"} for file ${file.fileId}, CurseForge's API lists ${file.size} bytes`,
       );
       return null;
     }
 
     return url;
   } catch (error) {
-    logger.warn(
-      `CurseForge CDN lookup of pack file ${file.fileId} failed:`,
-      error,
-    );
-    return null;
+    logger.warn(`CurseForge CDN lookup of file ${file.fileId} failed:`, error);
+    return undefined;
   }
 }
 
@@ -53,4 +50,18 @@ export async function findCurseforgeCdnUrls(
   files: CurseforgeCdnFileQuery[],
 ): Promise<Map<number, string>> {
   return findFileUrls(files, findCurseforgeCdnUrl);
+}
+
+/**
+ * Like `findCurseforgeCdnUrls`, within `budgetMs`, but tells an answer from
+ * none: a file the CDN answered for is in the map, with its address or with
+ * null when the CDN does not have it at the given size. A file is absent
+ * when the CDN could not be reached for it or the budget ran out before it
+ * was asked, so a caller that remembers misses does not remember those.
+ */
+export async function resolveCurseforgeCdnUrls(
+  files: CurseforgeCdnFileQuery[],
+  budgetMs: number,
+): Promise<Map<number, string | null>> {
+  return resolveFileUrls(files, findCurseforgeCdnUrl, budgetMs);
 }
