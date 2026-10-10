@@ -32,9 +32,9 @@ interface CreateTicketResult {
 /**
  * Manages the full Discord support-ticket lifecycle: create channel with
  * role-scoped permission overwrites, close (lock + post closure embed),
- * reopen (restore permissions), add participants, delete, and produce HTML
- * transcripts via `discord-html-transcripts`. State is persisted through
- * `TicketRepository`; the transcripts library is loaded lazily because it
+ * reopen (restore permissions), add or remove participants, delete, and
+ * produce HTML transcripts via `discord-html-transcripts`. State is persisted
+ * through `TicketRepository`; the transcripts library is loaded lazily because it
  * pulls React 19 while the workspace pins React 18, and the transcripts
  * directory is created (recursively) at construction. Requires the main bot
  * client and is brought up by the service container at startup.
@@ -435,6 +435,42 @@ export class TicketService {
   ): Promise<{ added: boolean; reason?: "not-in-guild" | "channel-error" }> {
     const results = await this.addParticipants(channelId, [discordId]);
     return results.get(discordId) ?? { added: false, reason: "channel-error" };
+  }
+
+  /**
+   * Revokes a user's own access to a ticket channel by deleting their
+   * permission overwrite. Works for users who already left the guild, and
+   * leaves role-based access (staff) untouched. Never throws.
+   */
+  async removeParticipant(
+    channelId: string,
+    discordId: string,
+  ): Promise<{
+    removed: boolean;
+    reason?: "not-participant" | "channel-error";
+  }> {
+    try {
+      const channel = await this.bot.channels.fetch(channelId);
+      if (channel?.type !== ChannelType.GuildText) {
+        return { removed: false, reason: "channel-error" };
+      }
+
+      const textChannel = channel as TextChannel;
+      if (!textChannel.permissionOverwrites.cache.has(discordId)) {
+        return { removed: false, reason: "not-participant" };
+      }
+
+      await textChannel.permissionOverwrites.delete(discordId);
+
+      logger.debug(`Removed ${discordId} from ticket channel ${channelId}`);
+      return { removed: true };
+    } catch (error) {
+      logger.error(
+        `Failed to remove ${discordId} from ticket channel ${channelId}:`,
+        error,
+      );
+      return { removed: false, reason: "channel-error" };
+    }
   }
 
   /** Permanently delete a ticket and its Discord channel. Cannot be undone. */

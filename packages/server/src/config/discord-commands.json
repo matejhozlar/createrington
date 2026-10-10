@@ -204,6 +204,19 @@
               "required": false
             }
           ]
+        },
+        {
+          "type": 1,
+          "name": "remove",
+          "description": "Revoke a user's access to the current ticket",
+          "options": [
+            {
+              "name": "user",
+              "description": "Discord user to remove",
+              "required": true,
+              "type": 6
+            }
+          ]
         }
       ],
       "defaultMemberPermissions": "8",
