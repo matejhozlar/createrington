@@ -1,5 +1,8 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
-import { findCurseforgeCdnUrls } from "@/services/launcher/pack/curseforge-cdn";
+import {
+  findCurseforgeCdnUrls,
+  resolveCurseforgeCdnUrls,
+} from "@/services/launcher/pack/curseforge-cdn";
 
 const BLOCKED = {
   fileId: 8584761,
@@ -99,5 +102,67 @@ describe("findCurseforgeCdnUrls", () => {
 
     expect((await findCurseforgeCdnUrls([])).size).toBe(0);
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("resolveCurseforgeCdnUrls", () => {
+  it("answers the address of a file the CDN has and null for one it does not", async () => {
+    stubCdn(
+      new Map([[BLOCKED_URL, { status: 200, contentLength: BLOCKED.size }]]),
+    );
+
+    const urls = await resolveCurseforgeCdnUrls([BLOCKED, OTHER], 5000);
+
+    expect([...urls]).toEqual([
+      [BLOCKED.fileId, BLOCKED_URL],
+      [OTHER.fileId, null],
+    ]);
+  });
+
+  it("answers null for an address that answers with another size", async () => {
+    stubCdn(
+      new Map([
+        [BLOCKED_URL, { status: 200, contentLength: BLOCKED.size + 1 }],
+      ]),
+    );
+
+    const urls = await resolveCurseforgeCdnUrls([BLOCKED], 5000);
+
+    expect([...urls]).toEqual([[BLOCKED.fileId, null]]);
+  });
+
+  it("leaves out a file the CDN could not be reached for", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        if (url === BLOCKED_URL) throw new TypeError("fetch failed");
+        return new Response(null, { status: 403 });
+      }),
+    );
+
+    const urls = await resolveCurseforgeCdnUrls([BLOCKED, OTHER], 5000);
+
+    expect([...urls]).toEqual([[OTHER.fileId, null]]);
+  });
+
+  it("leaves out the files it did not get an answer for within the budget", async () => {
+    const files = Array.from({ length: 9 }, (_, index) => ({
+      ...BLOCKED,
+      fileId: BLOCKED.fileId + index,
+    }));
+    const fetchMock = vi.fn(
+      (_url: string, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () =>
+            reject(new DOMException("timed out", "TimeoutError")),
+          );
+        }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const urls = await resolveCurseforgeCdnUrls(files, 50);
+
+    expect(urls.size).toBe(0);
+    expect(fetchMock).toHaveBeenCalledTimes(8);
   });
 });

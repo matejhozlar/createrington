@@ -29,7 +29,7 @@ vi.mock("@/services/feature-flag", () => ({
   featureFlagService: { isEnabled: vi.fn() },
 }));
 vi.mock("@/services/launcher/pack/curseforge-cdn", () => ({
-  findCurseforgeCdnUrls: vi.fn(),
+  resolveCurseforgeCdnUrls: vi.fn(),
 }));
 vi.mock("@/services/key-value-store", async (importOriginal) => {
   const actual =
@@ -60,7 +60,7 @@ import {
 } from "@/services/curseforge";
 import { featureFlagService } from "@/services/feature-flag";
 import { launcherContentService } from "@/services/launcher/content/launcher-content.service";
-import { findCurseforgeCdnUrls } from "@/services/launcher/pack/curseforge-cdn";
+import { resolveCurseforgeCdnUrls } from "@/services/launcher/pack/curseforge-cdn";
 
 const CREATE_PAGE = "https://www.curseforge.com/minecraft/mc-mods/create";
 
@@ -799,13 +799,16 @@ describe("LauncherContentService.listFiles", () => {
       ],
       total: 3,
     });
-    vi.mocked(findCurseforgeCdnUrls).mockResolvedValue(
-      new Map([[7000001, BLOCKED_CDN_URL]]),
+    vi.mocked(resolveCurseforgeCdnUrls).mockResolvedValue(
+      new Map([
+        [7000001, BLOCKED_CDN_URL],
+        [7000003, null],
+      ]),
     );
 
     const listed = await launcherContentService.listFiles(328085, FIRST_PAGE);
 
-    expect(findCurseforgeCdnUrls).toHaveBeenCalledWith(
+    expect(resolveCurseforgeCdnUrls).toHaveBeenCalledWith(
       [
         {
           fileId: 7000001,
@@ -844,7 +847,7 @@ describe("LauncherContentService.listFiles", () => {
       servedBy: "manual",
       url: null,
     });
-    expect(findCurseforgeCdnUrls).not.toHaveBeenCalled();
+    expect(resolveCurseforgeCdnUrls).not.toHaveBeenCalled();
   });
 });
 
@@ -880,7 +883,7 @@ describe("LauncherContentService.getFile", () => {
         makeContentFile({ downloadUrl: null }),
       ]);
       vi.mocked(getMods).mockResolvedValue([createProject()]);
-      vi.mocked(findCurseforgeCdnUrls).mockResolvedValue(
+      vi.mocked(resolveCurseforgeCdnUrls).mockResolvedValue(
         new Map([[7000001, BLOCKED_CDN_URL]]),
       );
     });
@@ -891,7 +894,7 @@ describe("LauncherContentService.getFile", () => {
       const file = await launcherContentService.getFile(7000001);
 
       expect(file.download).toEqual({ servedBy: "manual", url: null });
-      expect(findCurseforgeCdnUrls).not.toHaveBeenCalled();
+      expect(resolveCurseforgeCdnUrls).not.toHaveBeenCalled();
     });
 
     it("answers its CDN address while the flag is on, and asks the CDN once", async () => {
@@ -905,28 +908,59 @@ describe("LauncherContentService.getFile", () => {
         url: BLOCKED_CDN_URL,
       });
       expect(second).toEqual(first);
-      expect(findCurseforgeCdnUrls).toHaveBeenCalledTimes(1);
+      expect(resolveCurseforgeCdnUrls).toHaveBeenCalledTimes(1);
     });
 
     it("answers manual when the CDN does not have it, and asks again after 10 minutes", async () => {
       vi.useFakeTimers();
       try {
         switchCdn(true);
-        vi.mocked(findCurseforgeCdnUrls).mockResolvedValue(new Map());
+        vi.mocked(resolveCurseforgeCdnUrls).mockResolvedValue(
+          new Map([[7000001, null]]),
+        );
 
         const first = await launcherContentService.getFile(7000001);
         await launcherContentService.getFile(7000001);
 
         expect(first.download).toEqual({ servedBy: "manual", url: null });
-        expect(findCurseforgeCdnUrls).toHaveBeenCalledTimes(1);
+        expect(resolveCurseforgeCdnUrls).toHaveBeenCalledTimes(1);
 
         vi.advanceTimersByTime(10 * 60_000 + 1);
         await launcherContentService.getFile(7000001);
 
-        expect(findCurseforgeCdnUrls).toHaveBeenCalledTimes(2);
+        expect(resolveCurseforgeCdnUrls).toHaveBeenCalledTimes(2);
       } finally {
         vi.useRealTimers();
       }
+    });
+
+    it("answers manual when the CDN gave no answer, and asks again next time", async () => {
+      switchCdn(true);
+      vi.mocked(resolveCurseforgeCdnUrls).mockResolvedValueOnce(new Map());
+
+      const first = await launcherContentService.getFile(7000001);
+      const second = await launcherContentService.getFile(7000001);
+
+      expect(first.download).toEqual({ servedBy: "manual", url: null });
+      expect(second.download).toEqual({
+        servedBy: "curseforge-cdn",
+        url: BLOCKED_CDN_URL,
+      });
+      expect(resolveCurseforgeCdnUrls).toHaveBeenCalledTimes(2);
+    });
+
+    it("asks the CDN once for callers that ask at the same time", async () => {
+      switchCdn(true);
+      const files = await Promise.all([
+        launcherContentService.getFile(7000001),
+        launcherContentService.getFile(7000001),
+      ]);
+
+      expect(files.map((file) => file.download.url)).toEqual([
+        BLOCKED_CDN_URL,
+        BLOCKED_CDN_URL,
+      ]);
+      expect(resolveCurseforgeCdnUrls).toHaveBeenCalledTimes(1);
     });
 
     it("answers manual again as soon as the flag is switched off", async () => {

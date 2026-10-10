@@ -19,7 +19,7 @@ import {
   readThrough,
   writeStored,
 } from "@/services/key-value-store";
-import { findCurseforgeCdnUrls } from "@/services/launcher/pack/curseforge-cdn";
+import { resolveCurseforgeCdnUrls } from "@/services/launcher/pack/curseforge-cdn";
 import {
   LAUNCHER_CONTENT_MAX_RESULTS,
   LauncherContentErrorCode,
@@ -130,10 +130,11 @@ function loaderTypeFor(
  * `listFiles` and `getFile` while the `launcher_curseforge_cdn` feature flag
  * is on: they answer the file's built address on CurseForge's CDN when it
  * answers there with the right size (remembered for an hour, a miss for 10
- * minutes), and the flag is read on every answer, so switching it takes
- * effect at once. The other sources the pack service has for blocked files
- * are for our pack only. Throws `CONTENT_UNAVAILABLE` (503) when CurseForge
- * cannot be asked. Singleton.
+ * minutes, a file the CDN gave no answer for not at all), and the flag is
+ * read on every answer, so switching it takes effect at once. The other
+ * sources the pack service has for blocked files are for our pack only.
+ * Throws `CONTENT_UNAVAILABLE` (503) when CurseForge cannot be asked.
+ * Singleton.
  */
 class LauncherContentService {
   private static instance: LauncherContentService;
@@ -142,6 +143,8 @@ class LauncherContentService {
     number,
     Promise<LauncherProject | null>
   >();
+
+  private readonly resolvingCdnUrls = new Map<string, Promise<string | null>>();
 
   static getInstance(): LauncherContentService {
     if (!LauncherContentService.instance) {
@@ -452,35 +455,33 @@ class LauncherContentService {
       ),
     );
     const urls = new Map<string, string | null>();
+    const waiting: Array<[string, Promise<string | null>]> = [];
     const missing: LauncherContentFileDetails[] = [];
     blocked.forEach((file, index) => {
       const url = stored[index];
+      const resolving = this.resolvingCdnUrls.get(file.id);
       if (url !== undefined) urls.set(file.id, url);
+      else if (resolving) waiting.push([file.id, resolving]);
       else missing.push(file);
     });
 
     if (missing.length > 0) {
-      const found = await findCurseforgeCdnUrls(
-        missing.map((file) => ({
-          fileId: Number(file.id),
-          fileName: file.fileName,
-          size: file.size,
-        })),
-        CDN_LOOKUP_BUDGET_MS,
-      );
-      await Promise.all(
-        missing.map((file) => {
-          const url = found.get(Number(file.id)) ?? null;
-          urls.set(file.id, url);
-          return writeStored(
-            keyValueStore,
-            this.cdnUrlKey(file.id),
-            url,
-            url ? CDN_URL_TTL_MS : UNKNOWN_CDN_URL_TTL_MS,
-          );
-        }),
-      );
+      const resolved = this.resolveCdnUrls(missing);
+      for (const file of missing) {
+        const resolving = resolved.then((found) => found.get(file.id) ?? null);
+        this.resolvingCdnUrls.set(file.id, resolving);
+        waiting.push([file.id, resolving]);
+      }
+      const done = () => {
+        for (const file of missing) this.resolvingCdnUrls.delete(file.id);
+      };
+      resolved.then(done, done);
     }
+
+    const awaited = await Promise.all(
+      waiting.map(([, resolving]) => resolving),
+    );
+    waiting.forEach(([id], index) => urls.set(id, awaited[index] ?? null));
 
     return files.map((file) => {
       const url = urls.get(file.id);
@@ -488,6 +489,33 @@ class LauncherContentService {
         ? { ...file, download: { servedBy: "curseforge-cdn", url } }
         : file;
     });
+  }
+
+  private async resolveCdnUrls(
+    files: LauncherContentFileDetails[],
+  ): Promise<Map<string, string | null>> {
+    const resolved = await resolveCurseforgeCdnUrls(
+      files.map((file) => ({
+        fileId: Number(file.id),
+        fileName: file.fileName,
+        size: file.size,
+      })),
+      CDN_LOOKUP_BUDGET_MS,
+    );
+
+    const urls = new Map<string, string | null>();
+    await Promise.all(
+      [...resolved].map(([fileId, url]) => {
+        urls.set(String(fileId), url);
+        return writeStored(
+          keyValueStore,
+          this.cdnUrlKey(String(fileId)),
+          url,
+          url ? CDN_URL_TTL_MS : UNKNOWN_CDN_URL_TTL_MS,
+        );
+      }),
+    );
+    return urls;
   }
 
   private async projectOfFile(

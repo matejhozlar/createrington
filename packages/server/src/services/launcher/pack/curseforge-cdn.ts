@@ -1,4 +1,4 @@
-import { findFileUrls } from "./file-lookup";
+import { findFileUrls, resolveFileUrls } from "./file-lookup";
 import { curseforgeCdnUrl } from "./pack-rules";
 
 export interface CurseforgeCdnFileQuery {
@@ -10,7 +10,7 @@ export interface CurseforgeCdnFileQuery {
 async function findCurseforgeCdnUrl(
   file: CurseforgeCdnFileQuery,
   signal: AbortSignal,
-): Promise<string | null> {
+): Promise<string | null | undefined> {
   const url = curseforgeCdnUrl(file.fileId, file.fileName);
   try {
     const res = await fetch(url, { method: "HEAD", signal });
@@ -34,7 +34,7 @@ async function findCurseforgeCdnUrl(
     return url;
   } catch (error) {
     logger.warn(`CurseForge CDN lookup of file ${file.fileId} failed:`, error);
-    return null;
+    return undefined;
   }
 }
 
@@ -44,12 +44,24 @@ async function findCurseforgeCdnUrl(
  * and name. The address is unofficial, so a file is left out unless a HEAD
  * request answers 200 with the given size; the bytes are not read, the
  * launcher verifies the SHA-1 when it downloads. An address that is missing
- * answers 403. The whole lookup shares one budget, 20 seconds unless
- * `budgetMs` says otherwise.
+ * answers 403. The whole lookup shares one 20 second budget.
  */
 export async function findCurseforgeCdnUrls(
   files: CurseforgeCdnFileQuery[],
-  budgetMs?: number,
 ): Promise<Map<number, string>> {
-  return findFileUrls(files, findCurseforgeCdnUrl, budgetMs);
+  return findFileUrls(files, findCurseforgeCdnUrl);
+}
+
+/**
+ * Like `findCurseforgeCdnUrls`, within `budgetMs`, but tells an answer from
+ * none: a file the CDN answered for is in the map, with its address or with
+ * null when the CDN does not have it at the given size. A file is absent
+ * when the CDN could not be reached for it or the budget ran out before it
+ * was asked, so a caller that remembers misses does not remember those.
+ */
+export async function resolveCurseforgeCdnUrls(
+  files: CurseforgeCdnFileQuery[],
+  budgetMs: number,
+): Promise<Map<number, string | null>> {
+  return resolveFileUrls(files, findCurseforgeCdnUrl, budgetMs);
 }
