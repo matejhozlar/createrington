@@ -12,12 +12,14 @@ import {
   matchFingerprints,
   searchProjects,
 } from "@/services/curseforge";
+import { FeatureFlags, featureFlagService } from "@/services/feature-flag";
 import {
   keyValueStore,
   readStored,
   readThrough,
   writeStored,
 } from "@/services/key-value-store";
+import { findCurseforgeCdnUrls } from "@/services/launcher/pack/curseforge-cdn";
 import {
   LAUNCHER_CONTENT_MAX_RESULTS,
   LauncherContentErrorCode,
@@ -52,6 +54,9 @@ const FILES_TTL_MS = 10 * 60_000;
 const CHANGELOG_TTL_MS = 24 * 60 * 60_000;
 const FINGERPRINT_TTL_MS = 60 * 60_000;
 const UNKNOWN_FINGERPRINT_TTL_MS = 10 * 60_000;
+const CDN_URL_TTL_MS = 60 * 60_000;
+const UNKNOWN_CDN_URL_TTL_MS = 10 * 60_000;
+const CDN_LOOKUP_BUDGET_MS = 5_000;
 const KEY_PREFIX = "launcher:content:curseforge:v1";
 
 export interface ContentPage {
@@ -121,10 +126,14 @@ function loaderTypeFor(
  * a project or a known fingerprint for an hour, files and unknown fingerprints
  * for 10 minutes, categories and a changelog for a day), so the same question
  * from many players is one CurseForge call. Nothing is written to the
- * database, and a file CurseForge blocks is answered as manual: the other
- * sources the pack service has for blocked files are for our pack only.
- * Throws `CONTENT_UNAVAILABLE` (503) when CurseForge cannot be asked.
- * Singleton.
+ * database. A file CurseForge blocks is answered as manual, except by
+ * `listFiles` and `getFile` while the `launcher_curseforge_cdn` feature flag
+ * is on: they answer the file's built address on CurseForge's CDN when it
+ * answers there with the right size (remembered for an hour, a miss for 10
+ * minutes), and the flag is read on every answer, so switching it takes
+ * effect at once. The other sources the pack service has for blocked files
+ * are for our pack only. Throws `CONTENT_UNAVAILABLE` (503) when CurseForge
+ * cannot be asked. Singleton.
  */
 class LauncherContentService {
   private static instance: LauncherContentService;
@@ -248,7 +257,7 @@ class LauncherContentService {
     return details;
   }
 
-  /** One page of a project's files for a Minecraft version and a loader, in CurseForge's order. Throws `PROJECT_NOT_FOUND` (404) for a project `getProjects` would not know. */
+  /** One page of a project's files for a Minecraft version and a loader, in CurseForge's order, blocked files with their CDN address while the flag is on. Throws `PROJECT_NOT_FOUND` (404) for a project `getProjects` would not know. */
   async listFiles(
     projectId: number,
     params: ContentTarget & ContentPage,
@@ -268,46 +277,34 @@ class LauncherContentService {
       params.limit,
     ])}`;
 
-    return readThrough(keyValueStore, key, FILES_TTL_MS, async () => {
-      const listed = await this.ask("file list", () =>
-        listProjectFiles(projectId, {
-          gameVersion: params.minecraftVersion,
-          modLoaderType,
-          index: params.page * params.limit,
-          pageSize: params.limit,
-        }),
-      );
-      return {
-        files: listed.files.flatMap((file) => {
-          const details = toLauncherContentFileDetails(file, project.url);
-          return details ? [details] : [];
-        }),
-        total: Math.min(listed.total, LAUNCHER_CONTENT_MAX_RESULTS),
-      };
-    });
-  }
-
-  /** One file with its address, hash and dependencies. Throws `FILE_NOT_FOUND` (404) when CurseForge does not know it, publishes no SHA-1 for it, or it belongs to no mod, resource pack or shader of Minecraft. */
-  async getFile(fileId: number): Promise<LauncherContentFileDetails> {
-    const file = await readThrough(
+    const page = await readThrough(
       keyValueStore,
-      this.fileKey(fileId),
+      key,
       FILES_TTL_MS,
       async () => {
-        const [found] = await this.ask("file", () => getContentFiles([fileId]));
-        if (!found || found.gameId !== CURSEFORGE_MINECRAFT_GAME_ID) {
-          return null;
-        }
-        const project = (await this.loadProjects([found.projectId])).get(
-          found.projectId,
+        const listed = await this.ask("file list", () =>
+          listProjectFiles(projectId, {
+            gameVersion: params.minecraftVersion,
+            modLoaderType,
+            index: params.page * params.limit,
+            pageSize: params.limit,
+          }),
         );
-        return project
-          ? toLauncherContentFileDetails(found, project.url)
-          : null;
+        return {
+          files: listed.files.flatMap((file) => {
+            const details = toLauncherContentFileDetails(file, project.url);
+            return details ? [details] : [];
+          }),
+          total: Math.min(listed.total, LAUNCHER_CONTENT_MAX_RESULTS),
+        };
       },
     );
+    return { ...page, files: await this.withCdnDownloads(page.files) };
+  }
 
-    if (!file) throw fileNotFound();
+  /** One file with its address, hash and dependencies, a blocked file with its CDN address while the flag is on. Throws `FILE_NOT_FOUND` (404) when CurseForge does not know it, publishes no SHA-1 for it, or it belongs to no mod, resource pack or shader of Minecraft. */
+  async getFile(fileId: number): Promise<LauncherContentFileDetails> {
+    const [file] = await this.withCdnDownloads([await this.loadFile(fileId)]);
     return file;
   }
 
@@ -415,12 +412,90 @@ class LauncherContentService {
     return { matches, unmatchedFingerprints };
   }
 
+  private async loadFile(fileId: number): Promise<LauncherContentFileDetails> {
+    const file = await readThrough(
+      keyValueStore,
+      this.fileKey(fileId),
+      FILES_TTL_MS,
+      async () => {
+        const [found] = await this.ask("file", () => getContentFiles([fileId]));
+        if (!found || found.gameId !== CURSEFORGE_MINECRAFT_GAME_ID) {
+          return null;
+        }
+        const project = (await this.loadProjects([found.projectId])).get(
+          found.projectId,
+        );
+        return project
+          ? toLauncherContentFileDetails(found, project.url)
+          : null;
+      },
+    );
+
+    if (!file) throw fileNotFound();
+    return file;
+  }
+
+  private async withCdnDownloads(
+    files: LauncherContentFileDetails[],
+  ): Promise<LauncherContentFileDetails[]> {
+    const blocked = files.filter((file) => file.download.url === null);
+    if (blocked.length === 0) return files;
+
+    const useCdn = await featureFlagService.isEnabled(
+      FeatureFlags.launcherCurseforgeCdn,
+    );
+    if (!useCdn) return files;
+
+    const stored = await Promise.all(
+      blocked.map((file) =>
+        readStored<string | null>(keyValueStore, this.cdnUrlKey(file.id)),
+      ),
+    );
+    const urls = new Map<string, string | null>();
+    const missing: LauncherContentFileDetails[] = [];
+    blocked.forEach((file, index) => {
+      const url = stored[index];
+      if (url !== undefined) urls.set(file.id, url);
+      else missing.push(file);
+    });
+
+    if (missing.length > 0) {
+      const found = await findCurseforgeCdnUrls(
+        missing.map((file) => ({
+          fileId: Number(file.id),
+          fileName: file.fileName,
+          size: file.size,
+        })),
+        CDN_LOOKUP_BUDGET_MS,
+      );
+      await Promise.all(
+        missing.map((file) => {
+          const url = found.get(Number(file.id)) ?? null;
+          urls.set(file.id, url);
+          return writeStored(
+            keyValueStore,
+            this.cdnUrlKey(file.id),
+            url,
+            url ? CDN_URL_TTL_MS : UNKNOWN_CDN_URL_TTL_MS,
+          );
+        }),
+      );
+    }
+
+    return files.map((file) => {
+      const url = urls.get(file.id);
+      return url
+        ? { ...file, download: { servedBy: "curseforge-cdn", url } }
+        : file;
+    });
+  }
+
   private async projectOfFile(
     fileId: number,
     namedProjectId: number | undefined,
   ): Promise<number> {
     if (namedProjectId === undefined) {
-      return Number((await this.getFile(fileId)).projectId);
+      return Number((await this.loadFile(fileId)).projectId);
     }
     const project = (await this.loadProjects([namedProjectId])).get(
       namedProjectId,
@@ -507,6 +582,10 @@ class LauncherContentService {
 
   private fileKey(fileId: number): string {
     return `${KEY_PREFIX}:file:${fileId}`;
+  }
+
+  private cdnUrlKey(fileId: string): string {
+    return `${KEY_PREFIX}:cdn-url:${fileId}`;
   }
 
   private changelogKey(fileId: number): string {

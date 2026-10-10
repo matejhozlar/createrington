@@ -17,7 +17,7 @@ async function findCurseforgeCdnUrl(
     if (res.status !== 200) {
       if (res.status !== 403) {
         logger.warn(
-          `CurseForge's CDN answered ${res.status} for pack file ${file.fileId}`,
+          `CurseForge's CDN answered ${res.status} for file ${file.fileId}`,
         );
       }
       return null;
@@ -26,17 +26,14 @@ async function findCurseforgeCdnUrl(
     const declared = res.headers.get("content-length");
     if (declared === null || Number(declared) !== file.size) {
       logger.warn(
-        `CurseForge's CDN lists ${declared ?? "no size"} for pack file ${file.fileId}, CurseForge's API lists ${file.size} bytes`,
+        `CurseForge's CDN lists ${declared ?? "no size"} for file ${file.fileId}, CurseForge's API lists ${file.size} bytes`,
       );
       return null;
     }
 
     return url;
   } catch (error) {
-    logger.warn(
-      `CurseForge CDN lookup of pack file ${file.fileId} failed:`,
-      error,
-    );
+    logger.warn(`CurseForge CDN lookup of file ${file.fileId} failed:`, error);
     return null;
   }
 }
@@ -47,10 +44,12 @@ async function findCurseforgeCdnUrl(
  * and name. The address is unofficial, so a file is left out unless a HEAD
  * request answers 200 with the given size; the bytes are not read, the
  * launcher verifies the SHA-1 when it downloads. An address that is missing
- * answers 403. The whole lookup shares one 20 second budget.
+ * answers 403. The whole lookup shares one budget, 20 seconds unless
+ * `budgetMs` says otherwise.
  */
 export async function findCurseforgeCdnUrls(
   files: CurseforgeCdnFileQuery[],
+  budgetMs?: number,
 ): Promise<Map<number, string>> {
-  return findFileUrls(files, findCurseforgeCdnUrl);
+  return findFileUrls(files, findCurseforgeCdnUrl, budgetMs);
 }
