@@ -2,6 +2,7 @@ import {
   Client,
   TextChannel,
   ChannelType,
+  OverwriteType,
   PermissionFlagsBits,
   ActionRowBuilder,
   ButtonBuilder,
@@ -177,8 +178,9 @@ export class TicketService {
 
   /**
    * Close an active ticket: optionally write a transcript, mark the row
-   * closed, lock the channel for the creator, and post the closure embed.
-   * Throws if the ticket is already closed.
+   * closed, lock the channel for the creator, drop everyone added to it
+   * afterwards, and post the closure embed. Throws if the ticket is already
+   * closed.
    */
   async closeTicket(
     ticketId: number,
@@ -237,8 +239,24 @@ export class TicketService {
         SendMessages: false,
       });
 
+      const participants = textChannel.permissionOverwrites.cache.filter(
+        (overwrite) =>
+          overwrite.type === OverwriteType.Member && overwrite.id !== creatorId,
+      );
+
+      for (const overwrite of participants.values()) {
+        try {
+          await overwrite.delete();
+        } catch (error) {
+          logger.error(
+            `Failed to remove ${overwrite.id} from ticket channel ${channelId}:`,
+            error,
+          );
+        }
+      }
+
       logger.debug(
-        `Locked ticket channel ${channelId} and removed creator ${creatorId}`,
+        `Locked ticket channel ${channelId}, removed creator ${creatorId} and ${participants.size} added participant(s)`,
       );
     } catch (error) {
       logger.error(`Failed to lock ticket channel ${channelId}:`, error);

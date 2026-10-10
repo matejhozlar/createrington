@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   ChannelType,
   Collection,
@@ -137,5 +137,54 @@ describe("TicketService.removeParticipant", () => {
     const result = await service.removeParticipant("channel-1", "guest-1");
 
     expect(result).toEqual({ removed: false, reason: "channel-error" });
+  });
+});
+
+describe("TicketService.closeTicket", () => {
+  const ticket = {
+    id: 7,
+    ticketNumber: 12,
+    status: "open",
+    channelId: "channel-1",
+    creatorDiscordId: "owner-1",
+  };
+
+  beforeEach(() => {
+    ticketGet.mockReset();
+    ticketGet.mockResolvedValue(ticket);
+    repository.close.mockReset();
+    repository.close.mockResolvedValue({ ...ticket, status: "closed" });
+    repository.updateMetadata.mockReset();
+    sendMessage.mockReset();
+    sendMessage.mockResolvedValue({ messageId: "message-1" });
+  });
+
+  it("locks out the owner and removes everyone added to the ticket", async () => {
+    const { client, cache, permissionOverwrites } = fakeBot({
+      roleIds: ["guild-1", "admin-role"],
+      memberIds: ["owner-1", "guest-1", "guest-2"],
+    });
+    const service = new TicketService(client);
+
+    await service.closeTicket(7, "admin-1");
+
+    expect(permissionOverwrites.edit).toHaveBeenCalledWith("owner-1", {
+      ViewChannel: false,
+      SendMessages: false,
+    });
+    expect([...cache.keys()]).toEqual(["guild-1", "admin-role", "owner-1"]);
+  });
+
+  it("keeps removing the others when one removal fails", async () => {
+    const { client, cache } = fakeBot({
+      memberIds: ["owner-1", "guest-1", "guest-2"],
+      failingIds: ["guest-1"],
+    });
+    const service = new TicketService(client);
+
+    await service.closeTicket(7, "admin-1");
+
+    expect([...cache.keys()]).toEqual(["owner-1", "guest-1"]);
+    expect(sendMessage).toHaveBeenCalledTimes(1);
   });
 });
