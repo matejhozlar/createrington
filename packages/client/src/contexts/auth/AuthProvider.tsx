@@ -40,11 +40,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
           sessionStorage.setItem("oauth_state", data.data.state);
         }
 
-        // Save current path (including query) so we can redirect back after
-        // login. The query matters for deep links like /authorize?state=...
+        // Save current path (including query and hash) so we can redirect back
+        // after login. The query matters for deep links like
+        // /authorize?state=..., the hash for /admin/changelog#v1.66.0
         sessionStorage.setItem(
           "oauth_redirect",
-          window.location.pathname + window.location.search,
+          window.location.pathname +
+            window.location.search +
+            window.location.hash,
         );
 
         window.location.href = data.data.url;

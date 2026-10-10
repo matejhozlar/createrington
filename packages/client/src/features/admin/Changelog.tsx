@@ -236,6 +236,12 @@ export function Changelog() {
     return () => obs.disconnect();
   }, [sections]);
 
+  useEffect(() => {
+    if (sections.length === 0) return;
+    const version = decodeURIComponent(window.location.hash.slice(1));
+    versionRefs.current[version]?.scrollIntoView();
+  }, [sections]);
+
   const allPackages = useMemo(() => {
     const set = new Set<string>();
     sections.forEach((s) => s.entries.forEach((e) => set.add(e.name)));
