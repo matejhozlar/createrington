@@ -37,6 +37,7 @@ import { AiService } from "./ai";
 import { AutoMessageService } from "./discord/auto-message";
 import { maintenanceService } from "./maintenance";
 import { MaintenanceScheduler } from "./maintenance/scheduler";
+import { releaseAnnouncementService } from "./release-announcement";
 import { DonationService } from "./donation/donation.service";
 import { structurePackService } from "./structure-pack";
 import { StructurePackRotationService } from "./structure-pack/rotation";
@@ -545,6 +546,8 @@ export async function initializeServices(): Promise<void> {
   maintenanceService
     .initialize([config.servers.rails.id])
     .catch((err) => logger.warn(`Maintenance service init failed: ${err}`));
+
+  void releaseAnnouncementService.announceIfNew();
 }
 
 /**
