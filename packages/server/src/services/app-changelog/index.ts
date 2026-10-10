@@ -15,7 +15,8 @@ export const CHANGE_KINDS = [
   "remove",
   "security",
   "chore",
-  "other",
+  "tweak",
+  "change",
 ] as const;
 
 export type ChangeKind = (typeof CHANGE_KINDS)[number];
@@ -56,7 +57,8 @@ export function summarizeRelease(
             remove: 0,
             security: 0,
             chore: 0,
-            other: 0,
+            tweak: 0,
+            change: 0,
           },
         };
       }
@@ -68,8 +70,8 @@ export function summarizeRelease(
     const entry = line.match(ENTRY);
     if (!entry) continue;
 
-    const tag = entry[1]?.toLowerCase() ?? "other";
-    summary.counts[isChangeKind(tag) ? tag : "other"]++;
+    const tag = entry[1]?.toLowerCase() ?? "change";
+    summary.counts[isChangeKind(tag) ? tag : "change"]++;
   }
 
   return summary;

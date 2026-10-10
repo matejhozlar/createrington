@@ -27,7 +27,8 @@ function counts(
     remove: 0,
     security: 0,
     chore: 0,
-    other: 0,
+    tweak: 0,
+    change: 0,
     ...overrides,
   };
 }
@@ -73,7 +74,8 @@ describe("AppReleaseComponentPresets.live", () => {
           date: "2026-10-08",
           counts: counts({
             chore: 2,
-            other: 1,
+            change: 1,
+            tweak: 2,
             security: 1,
             remove: 3,
             refactor: 2,
@@ -85,7 +87,7 @@ describe("AppReleaseComponentPresets.live", () => {
     );
 
     expect(lines(message)[2]).toBe(
-      "**5** additions · **4** fixes · **2** refactors · **3** removals · **1** security fix · **2** chores · **1** other change",
+      "**5** additions · **4** fixes · **2** refactors · **3** removals · **1** security fix · **2** chores · **2** tweaks · **1** change",
     );
   });
 

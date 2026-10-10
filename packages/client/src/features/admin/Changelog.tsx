@@ -238,8 +238,7 @@ export function Changelog() {
 
   useEffect(() => {
     if (sections.length === 0) return;
-    const version = decodeURIComponent(window.location.hash.slice(1));
-    versionRefs.current[version]?.scrollIntoView();
+    versionRefs.current[window.location.hash.slice(1)]?.scrollIntoView();
   }, [sections]);
 
   const allPackages = useMemo(() => {

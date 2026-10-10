@@ -28,7 +28,8 @@ const KIND_LABELS: Record<ChangeKind, [singular: string, plural: string]> = {
   remove: ["removal", "removals"],
   security: ["security fix", "security fixes"],
   chore: ["chore", "chores"],
-  other: ["other change", "other changes"],
+  tweak: ["tweak", "tweaks"],
+  change: ["change", "changes"],
 };
 
 function countsLine(counts: ReleaseSummary["counts"]): string {

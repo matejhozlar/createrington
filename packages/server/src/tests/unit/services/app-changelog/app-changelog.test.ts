@@ -11,6 +11,8 @@ const CHANGELOG = [
   "### @createrington/client (0.2.83 → 0.2.84)",
   "- [fix] Fix the team row overflowing",
   "- [security] Reject unsigned uploads",
+  "- [tweak] Restyle the release rail",
+  "- [change] Raise the upload limit",
   "- [polish] Tune the hover timing",
   "- Reword the empty state",
   "",
@@ -25,7 +27,7 @@ const CHANGELOG = [
 ].join("\n");
 
 describe("summarizeRelease", () => {
-  it("counts the entries of the requested version across its packages", () => {
+  it("counts the entries of the requested version across its packages, with untagged and unknown tags as plain changes", () => {
     expect(summarizeRelease(CHANGELOG, "1.66.0")).toEqual({
       date: "2026-10-10",
       counts: {
@@ -35,7 +37,8 @@ describe("summarizeRelease", () => {
         remove: 0,
         security: 1,
         chore: 0,
-        other: 2,
+        tweak: 1,
+        change: 3,
       },
     });
   });
@@ -50,7 +53,8 @@ describe("summarizeRelease", () => {
         remove: 1,
         security: 0,
         chore: 1,
-        other: 0,
+        tweak: 0,
+        change: 0,
       },
     });
   });
