@@ -10,7 +10,7 @@ type TeamMemberCardProps = {
   member: TeamMember;
   index: number;
   total: number;
-  onClick: () => void;
+  compact: boolean;
 };
 
 const AUTO_RESET_MS = 6000;
@@ -19,11 +19,11 @@ export function TeamMemberCard({
   member,
   index,
   total,
-  onClick,
+  compact,
 }: TeamMemberCardProps) {
   const isMobile = useIsMobile();
   const config = TIER_CONFIG[member.tier];
-  const size = isMobile ? config.size.mobile : config.size.desktop;
+  const size = compact ? config.size.mobile : config.size.desktop;
 
   const skinRef = useRef<SkinViewerHandle>(null);
   const [animationActive, setAnimationActive] = useState(false);
@@ -39,33 +39,29 @@ export function TeamMemberCard({
   useEffect(() => clearTimer, [clearTimer]);
 
   const handleClick = () => {
-    if (!isMobile) {
-      onClick();
+    if (!isMobile) return;
+    clearTimer();
+
+    if (animationActive) {
+      skinRef.current?.stopAnimation();
+      setAnimationActive(false);
       return;
     }
 
-    if (!animationActive) {
-      skinRef.current?.playAnimation();
-      setAnimationActive(true);
-      clearTimer();
-      timerRef.current = window.setTimeout(() => {
-        timerRef.current = null;
-        skinRef.current?.stopAnimation();
-        setAnimationActive(false);
-      }, AUTO_RESET_MS);
-    } else {
-      clearTimer();
+    skinRef.current?.playAnimation();
+    setAnimationActive(true);
+    timerRef.current = window.setTimeout(() => {
+      timerRef.current = null;
       skinRef.current?.stopAnimation();
       setAnimationActive(false);
-      onClick();
-    }
+    }, AUTO_RESET_MS);
   };
 
   return (
     <button
       type="button"
       onClick={handleClick}
-      className="flex flex-col items-center gap-2 transition-transform duration-300 md:hover:scale-105 cursor-pointer opacity-0"
+      className="flex flex-col items-center gap-2 transition-transform duration-300 md:hover:scale-105 opacity-0"
       style={{
         animation: "fade-in-up 0.5s ease-out forwards",
         animationDelay: `${index * 100}ms`,
@@ -73,7 +69,7 @@ export function TeamMemberCard({
     >
       <SkinViewer
         ref={skinRef}
-        uuid={member.uuid}
+        skin={member.skin}
         username={member.username}
         width={size.width}
         height={size.height}

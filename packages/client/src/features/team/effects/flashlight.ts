@@ -1,4 +1,5 @@
 import { PlayerAnimation, type PlayerObject } from "skinview3d";
+import { TeamEffect, type EffectContext } from "./core/effect";
 
 const AIM_DURATION = 0.4;
 
@@ -39,12 +40,12 @@ const BEAM_EXTEND_DURATION = 2000;
 export class FlashlightEffect {
   private canvasOverlay: HTMLCanvasElement | null = null;
   private ctx: CanvasRenderingContext2D | null = null;
-  private sourceElement: HTMLCanvasElement;
+  private sourceElement: HTMLElement;
   private animationId: number | null = null;
   private disposed = false;
   private startTime = 0;
 
-  constructor(sourceElement: HTMLCanvasElement) {
+  constructor(sourceElement: HTMLElement) {
     this.sourceElement = sourceElement;
   }
 
@@ -242,5 +243,41 @@ export class FlashlightEffect {
       signal: controller.signal,
     });
     const fallbackTimer = setTimeout(removeOverlay, FADE_OUT_DURATION + 100);
+  }
+}
+
+const BEAM_DELAY_MS = 1000;
+
+export class FlashlightHoverEffect extends TeamEffect {
+  private readonly aim = new FlashlightAimAnimation();
+  private timer: number | null;
+  private beam: FlashlightEffect | null = null;
+
+  constructor(context: EffectContext) {
+    super(context);
+    const canvas = context.viewer.canvas;
+    const slot = canvas.closest<HTMLElement>('[role="img"]') ?? canvas;
+    this.timer = window.setTimeout(() => {
+      this.timer = null;
+      this.beam = new FlashlightEffect(slot);
+      this.beam.start();
+    }, BEAM_DELAY_MS);
+  }
+
+  protected animate(player: PlayerObject, delta: number): void {
+    this.aim.update(player, delta);
+  }
+
+  protected onStop(): void {
+    this.finish();
+  }
+
+  dispose(): void {
+    if (this.timer !== null) {
+      clearTimeout(this.timer);
+      this.timer = null;
+    }
+    this.beam?.dispose();
+    this.beam = null;
   }
 }
