@@ -1,3 +1,9 @@
+## v1.66.0 (2026-10-10)
+
+### @createrington/server (1.66.1 → 1.67.0)
+- [add] Add a `/ticket remove` admin subcommand that revokes one user's access to the ticket of the current channel by deleting their permission overwrite. It refuses the user who owns the ticket (close the ticket instead), works for users who have left the guild, and leaves the role-based access of staff untouched
+- [fix] Fix closing a ticket only locking out its owner: everyone added to the ticket with `/ticket add` kept their access to the closed channel. Closing now also removes every added user, from both the Close button and `/ticket close`
+
 ## v1.65.3 (2026-10-08)
 
 ### @createrington/client (0.2.82 → 0.2.83)
