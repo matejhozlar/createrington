@@ -10,7 +10,7 @@ export const LAUNCHER_CHANNELS = ["staging", "production"] as const;
 
 export type LauncherChannel = (typeof LAUNCHER_CHANNELS)[number];
 
-export const LAUNCHER_PLATFORMS = ["windows-x86_64"] as const;
+export const LAUNCHER_PLATFORMS = ["windows-x86_64", "linux-x86_64"] as const;
 
 export type LauncherPlatform = (typeof LAUNCHER_PLATFORMS)[number];
 

@@ -1,8 +1,10 @@
 import { describe, it, expect } from "vitest";
 import {
+  groupByVersion,
   isDownloadUrlAllowed,
   isNewerVersion,
   isValidVersion,
+  mergeVersionBuilds,
   newestFirst,
   newestVersion,
 } from "@/services/launcher/release/release-rules";
@@ -94,6 +96,136 @@ describe("newestFirst", () => {
     newestFirst(releases);
 
     expect(releases.map((r) => r.version)).toEqual(["0.1.0", "0.2.0"]);
+  });
+});
+
+describe("groupByVersion", () => {
+  it("puts the builds of one version together, highest version first", () => {
+    const releases = [
+      { version: "0.9.0", platform: "windows-x86_64" },
+      { version: "0.10.0", platform: "linux-x86_64" },
+      { version: "0.9.0", platform: "linux-x86_64" },
+      { version: "0.10.0", platform: "windows-x86_64" },
+    ];
+
+    expect(groupByVersion(releases)).toEqual([
+      [
+        { version: "0.10.0", platform: "linux-x86_64" },
+        { version: "0.10.0", platform: "windows-x86_64" },
+      ],
+      [
+        { version: "0.9.0", platform: "windows-x86_64" },
+        { version: "0.9.0", platform: "linux-x86_64" },
+      ],
+    ]);
+  });
+
+  it("keeps a version that only one platform has", () => {
+    const releases = [
+      { version: "0.2.0", platform: "windows-x86_64" },
+      { version: "0.1.0", platform: "windows-x86_64" },
+      { version: "0.1.0", platform: "linux-x86_64" },
+    ];
+
+    expect(groupByVersion(releases).map((builds) => builds.length)).toEqual([
+      1, 2,
+    ]);
+  });
+
+  it("returns no groups for an empty list", () => {
+    expect(groupByVersion([])).toEqual([]);
+  });
+});
+
+describe("mergeVersionBuilds", () => {
+  const PLATFORMS = ["windows-x86_64", "linux-x86_64"];
+
+  function build(platform: string, releasedAt: string | null = null) {
+    return {
+      platform,
+      notes: `Notes of the ${platform} build`,
+      releasedAt: releasedAt ? new Date(releasedAt) : null,
+    };
+  }
+
+  it("orders the builds by the given platform order, whatever order they arrive in", () => {
+    const merged = mergeVersionBuilds(
+      [build("linux-x86_64"), build("windows-x86_64")],
+      PLATFORMS,
+    );
+
+    expect(merged.builds.map((b) => b.platform)).toEqual([
+      "windows-x86_64",
+      "linux-x86_64",
+    ]);
+  });
+
+  it("leads with the Windows build when both exist, so its notes are the version's", () => {
+    const merged = mergeVersionBuilds(
+      [build("linux-x86_64"), build("windows-x86_64")],
+      PLATFORMS,
+    );
+
+    expect(merged.builds[0].notes).toBe("Notes of the windows-x86_64 build");
+  });
+
+  it("leads with the Linux build when it is the only one", () => {
+    const merged = mergeVersionBuilds([build("linux-x86_64")], PLATFORMS);
+
+    expect(merged.builds).toHaveLength(1);
+    expect(merged.builds[0].notes).toBe("Notes of the linux-x86_64 build");
+  });
+
+  it("puts a platform outside the order after the known ones", () => {
+    const merged = mergeVersionBuilds(
+      [build("amiga-68k"), build("linux-x86_64")],
+      PLATFORMS,
+    );
+
+    expect(merged.builds.map((b) => b.platform)).toEqual([
+      "linux-x86_64",
+      "amiga-68k",
+    ]);
+  });
+
+  it("dates the version by the earliest release among its builds", () => {
+    const merged = mergeVersionBuilds(
+      [
+        build("windows-x86_64", "2026-10-08T12:00:00.000Z"),
+        build("linux-x86_64", "2026-10-06T12:00:00.000Z"),
+      ],
+      PLATFORMS,
+    );
+
+    expect(merged.releasedAt?.toISOString()).toBe("2026-10-06T12:00:00.000Z");
+  });
+
+  it("ignores a build without a release date and has none when no build has one", () => {
+    const dated = mergeVersionBuilds(
+      [
+        build("windows-x86_64"),
+        build("linux-x86_64", "2026-10-06T12:00:00.000Z"),
+      ],
+      PLATFORMS,
+    );
+    const undated = mergeVersionBuilds([build("windows-x86_64")], PLATFORMS);
+
+    expect(dated.releasedAt?.toISOString()).toBe("2026-10-06T12:00:00.000Z");
+    expect(undated.releasedAt).toBeNull();
+  });
+
+  it("leaves the given list untouched", () => {
+    const builds: [ReturnType<typeof build>, ...ReturnType<typeof build>[]] = [
+      build("linux-x86_64"),
+      build("windows-x86_64"),
+    ];
+
+    mergeVersionBuilds(builds, PLATFORMS);
+
+    expect(builds.map((b) => b.platform)).toEqual([
+      "linux-x86_64",
+      "windows-x86_64",
+    ]);
   });
 });
 

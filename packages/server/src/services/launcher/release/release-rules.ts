@@ -29,6 +29,45 @@ export function newestFirst<T extends { version: string }>(
     .sort((a, b) => semver.rcompare(a.version, b.version));
 }
 
+export function groupByVersion<T extends { version: string }>(
+  releases: readonly T[],
+): [T, ...T[]][] {
+  const groups = new Map<string, [T, ...T[]]>();
+  for (const release of newestFirst(releases)) {
+    const group = groups.get(release.version);
+    if (group) {
+      group.push(release);
+    } else {
+      groups.set(release.version, [release]);
+    }
+  }
+  return [...groups.values()];
+}
+
+export function mergeVersionBuilds<
+  T extends { platform: string; releasedAt: Date | null },
+>(
+  builds: readonly [T, ...T[]],
+  platformOrder: readonly string[],
+): { builds: [T, ...T[]]; releasedAt: Date | null } {
+  const rank = (platform: string) => {
+    const index = platformOrder.indexOf(platform);
+    return index === -1 ? platformOrder.length : index;
+  };
+  const ordered = [...builds].sort(
+    (a, b) => rank(a.platform) - rank(b.platform),
+  ) as [T, ...T[]];
+  const releaseTimes = ordered.flatMap((build) =>
+    build.releasedAt ? [build.releasedAt.getTime()] : [],
+  );
+
+  return {
+    builds: ordered,
+    releasedAt:
+      releaseTimes.length > 0 ? new Date(Math.min(...releaseTimes)) : null,
+  };
+}
+
 export function isDownloadUrlAllowed(
   rawUrl: string,
   allowedHosts: readonly string[],

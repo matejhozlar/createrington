@@ -174,6 +174,22 @@ describe("POST /api/launcher/releases", () => {
     });
   });
 
+  it("stores a Linux release from the same body shape", async () => {
+    const body = {
+      ...VALID_BODY,
+      platform: "linux-x86_64",
+      url: "https://gitea.example.com/packages/launcher/0.2.0/launcher.AppImage",
+    };
+
+    const res = await post(body, auth);
+
+    expect(res.status).toBe(201);
+    expect(mocks.publish).toHaveBeenCalledWith({
+      ...body,
+      pubDate: new Date("2026-09-29T18:00:00Z"),
+    });
+  });
+
   it("passes structured notes on to the service", async () => {
     const res = await post(
       { ...VALID_BODY, structuredNotes: STRUCTURED_NOTES },
@@ -249,7 +265,7 @@ describe("POST /api/launcher/releases", () => {
 
   it.each([
     ["an unknown channel", { channel: "nightly" }],
-    ["an unknown platform", { platform: "linux-x86_64" }],
+    ["an unknown platform", { platform: "darwin-aarch64" }],
     ["a URL that is not one", { url: "setup.exe" }],
     ["an empty signature", { signature: "" }],
     ["an unreadable publish date", { pubDate: "yesterday" }],
