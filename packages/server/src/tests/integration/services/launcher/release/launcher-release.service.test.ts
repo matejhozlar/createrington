@@ -15,6 +15,7 @@ import {
 } from "@/services/launcher/release/launcher-release.service";
 
 const PLATFORM = "windows-x86_64";
+const LINUX = "linux-x86_64";
 const OWNER = "915110000000000001";
 const HOST = "gitea.example.com";
 
@@ -49,8 +50,21 @@ function stubDownload(status: number) {
   return fetchMock;
 }
 
+function linuxInput(version: string): PublishLauncherReleaseInput {
+  return input(version, {
+    platform: LINUX,
+    url: `https://${HOST}/packages/launcher/${version}/launcher.AppImage`,
+    signature: `linux-signature-of-${version}`,
+  });
+}
+
 async function publishAndRelease(version: string, required = false) {
   const release = await launcherReleaseService.publish(input(version));
+  return await launcherReleaseService.release(release.id, OWNER, required);
+}
+
+async function publishAndReleaseLinux(version: string, required = false) {
+  const release = await launcherReleaseService.publish(linuxInput(version));
   return await launcherReleaseService.release(release.id, OWNER, required);
 }
 
@@ -64,7 +78,9 @@ async function refusal(promise: Promise<unknown>) {
 }
 
 async function clearReleases(): Promise<void> {
-  await Q.launcher.release.deleteAll({ platform: PLATFORM });
+  await Q.launcher.release.deleteAll({
+    platform: { $in: [PLATFORM, LINUX] },
+  });
   launcherReleaseService.clearCache();
 }
 
@@ -358,7 +374,7 @@ describe("LauncherReleaseService", () => {
     });
 
     it.each([
-      ["an unknown platform", "linux-x86_64", "0.1.0"],
+      ["an unknown platform", "darwin-aarch64", "0.1.0"],
       ["an unreadable version", PLATFORM, "not-a-version"],
       ["an empty version", PLATFORM, ""],
     ])("answers nothing for %s", async (_label, platform, version) => {
@@ -367,6 +383,80 @@ describe("LauncherReleaseService", () => {
       expect(
         await launcherReleaseService.checkForUpdate(platform, version),
       ).toBeNull();
+    });
+  });
+
+  describe("a second platform", () => {
+    it("stores a Linux build of a version Windows already has as pending", async () => {
+      await publishAndRelease("0.2.0");
+
+      const linux = await launcherReleaseService.publish(linuxInput("0.2.0"));
+
+      expect(linux.status).toBe("pending");
+      expect(linux.platform).toBe(LINUX);
+    });
+
+    it("accepts a Linux version older than the newest Windows one", async () => {
+      await launcherReleaseService.publish(input("0.5.0"));
+
+      const linux = await launcherReleaseService.publish(linuxInput("0.2.0"));
+
+      expect(linux.version).toBe("0.2.0");
+    });
+
+    it("answers each platform with its own build once the Linux one is released", async () => {
+      await publishAndRelease("0.2.0");
+      const before = await launcherReleaseService.checkForUpdate(
+        PLATFORM,
+        "0.1.0",
+      );
+      const linux = await launcherReleaseService.publish(linuxInput("0.2.0"));
+      expect(
+        await launcherReleaseService.checkForUpdate(LINUX, "0.1.0"),
+      ).toBeNull();
+
+      await launcherReleaseService.release(linux.id, OWNER);
+
+      expect(
+        await launcherReleaseService.checkForUpdate(LINUX, "0.1.0"),
+      ).toEqual({
+        version: "0.2.0",
+        notes: "Notes for 0.2.0",
+        pub_date: "2026-09-29T18:00:00.000Z",
+        url: linuxInput("0.2.0").url,
+        signature: "linux-signature-of-0.2.0",
+        required: false,
+      });
+      expect(
+        await launcherReleaseService.checkForUpdate(PLATFORM, "0.1.0"),
+      ).toEqual(before);
+    });
+
+    it("keeps serving Windows while the Linux build of a version is withdrawn", async () => {
+      await publishAndRelease("0.2.0");
+      const linux = await publishAndReleaseLinux("0.2.0");
+
+      await launcherReleaseService.withdraw(linux.id, OWNER);
+
+      expect(
+        await launcherReleaseService.checkForUpdate(LINUX, "0.1.0"),
+      ).toBeNull();
+      expect(
+        (await launcherReleaseService.checkForUpdate(PLATFORM, "0.1.0"))
+          ?.version,
+      ).toBe("0.2.0");
+    });
+
+    it("requires the update only from launchers of the platform it was required on", async () => {
+      await publishAndRelease("0.2.0");
+      await publishAndReleaseLinux("0.2.0", true);
+
+      expect(
+        await launcherReleaseService.isUpdateRequired(LINUX, "0.1.0"),
+      ).toBe(true);
+      expect(
+        await launcherReleaseService.isUpdateRequired(PLATFORM, "0.1.0"),
+      ).toBe(false);
     });
   });
 

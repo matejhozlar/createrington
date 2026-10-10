@@ -1,9 +1,17 @@
 import { useState } from "react";
 import { Ban, Download, Rocket } from "lucide-react";
 import { formatDate } from "@createrington/shared/format";
-import type { LauncherReleaseStatus } from "@createrington/shared/launcher";
+import {
+  LAUNCHER_PLATFORMS,
+  type LauncherPlatform,
+  type LauncherReleaseStatus,
+} from "@createrington/shared/launcher";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { CardError } from "@/features/admin/components/CardState";
+import {
+  LAUNCHER_PLATFORM_DISPLAY,
+  launcherPlatformLabel,
+} from "@/features/admin/launcherPlatforms";
 import {
   Card,
   CardAction,
@@ -16,6 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CellDate, CellText } from "@/components/cell-text";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import {
@@ -75,14 +84,16 @@ const CHANNEL_LABELS = {
 
 const CONFIRM_COPY = {
   release: {
-    title: (version: string) => `Release ${version}?`,
+    title: (version: string, platform: string) =>
+      `Release ${version} for ${platform}?`,
     description:
       "Installed launchers will be offered this version the next time they check for updates.",
     confirmLabel: "Release",
     variant: "default",
   },
   withdraw: {
-    title: (version: string) => `Withdraw ${version}?`,
+    title: (version: string, platform: string) =>
+      `Withdraw ${version} for ${platform}?`,
     description:
       "This version will no longer be offered. Launchers that already installed it keep it, and the version number cannot be used again.",
     confirmLabel: "Withdraw",
@@ -172,6 +183,9 @@ function sumCalls(days: CallDay[], count: CallCount, limit?: number): number {
 export function OwnerLauncherReleases() {
   const [action, setAction] = useState<PendingAction | null>(null);
   const [required, setRequired] = useState(false);
+  const [platform, setPlatform] = useState<LauncherPlatform>(
+    LAUNCHER_PLATFORMS[0],
+  );
   const display = useStickyValue(action);
 
   const utils = trpc.useUtils();
@@ -182,13 +196,14 @@ export function OwnerLauncherReleases() {
   const releaseMutation = trpc.owner.launcherReleases.release.useMutation(
     useMutationToast({
       success: (release) =>
-        `Released ${release.version}${release.required ? " as required" : ""}`,
+        `Released ${release.version} for ${launcherPlatformLabel(release.platform)}${release.required ? " as required" : ""}`,
       onSuccess: refresh,
     }),
   );
   const withdrawMutation = trpc.owner.launcherReleases.withdraw.useMutation(
     useMutationToast({
-      success: (release) => `Withdrew ${release.version}`,
+      success: (release) =>
+        `Withdrew ${release.version} for ${launcherPlatformLabel(release.platform)}`,
       onSuccess: refresh,
     }),
   );
@@ -196,6 +211,11 @@ export function OwnerLauncherReleases() {
   const releases = releasesQuery.data?.releases ?? [];
   const channel = releasesQuery.data?.channel;
   const enabled = releasesQuery.data?.enabled ?? true;
+  const tabs = LAUNCHER_PLATFORMS.map((value) => ({
+    value,
+    ...LAUNCHER_PLATFORM_DISPLAY[value],
+    rows: releases.filter((release) => release.platform === value),
+  }));
 
   const columns: DataTableColumn<ReleaseRow>[] = [
     {
@@ -234,13 +254,6 @@ export function OwnerLauncherReleases() {
         ),
     },
     {
-      key: "platform",
-      header: "Platform",
-      width: 150,
-      cellClassName: "text-sm text-muted-foreground",
-      render: (release) => <CellText value={release.platform} />,
-    },
-    {
       key: "published",
       header: "Published",
       width: 130,
@@ -269,7 +282,7 @@ export function OwnerLauncherReleases() {
 
   const rowActions = (release: ReleaseRow): DataTableAction[] => [
     {
-      label: "Download installer",
+      label: "Download",
       icon: Download,
       onClick: () => window.open(release.url, "_blank", "noopener,noreferrer"),
     },
@@ -321,7 +334,7 @@ export function OwnerLauncherReleases() {
             </CardTitle>
             <CardDescription>
               {enabled
-                ? "A published version stays pending until you release it. Download a pending installer to test it first."
+                ? "A published version stays pending until you release it. Download a pending build to test it first."
                 : "Publishing is switched off on this environment."}
             </CardDescription>
           </CardHeader>
@@ -330,19 +343,41 @@ export function OwnerLauncherReleases() {
               <p className="py-8 text-center text-destructive">
                 Failed to load launcher releases: {releasesQuery.error.message}
               </p>
-            ) : !releasesQuery.isLoading && releases.length === 0 ? (
-              <p className="py-8 text-center text-muted-foreground">
-                No launcher version has been published yet.
-              </p>
             ) : (
-              <DataTable
-                columns={columns}
-                rows={releases}
-                loading={releasesQuery.isLoading}
-                rowKey={(release) => release.id}
-                actions={rowActions}
-                actionSlots={2}
-              />
+              <Tabs
+                value={platform}
+                onValueChange={(value) =>
+                  setPlatform(value as LauncherPlatform)
+                }
+              >
+                <TabsList className="mx-6">
+                  {tabs.map(({ value, label, icon: Icon, rows }) => (
+                    <TabsTrigger key={value} value={value}>
+                      <Icon aria-hidden />
+                      {label}
+                      {!releasesQuery.isLoading && ` (${rows.length})`}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+                {tabs.map(({ value, label, rows }) => (
+                  <TabsContent key={value} value={value}>
+                    {!releasesQuery.isLoading && rows.length === 0 ? (
+                      <p className="py-8 text-center text-muted-foreground">
+                        No {label} version has been published yet.
+                      </p>
+                    ) : (
+                      <DataTable
+                        columns={columns}
+                        rows={rows}
+                        loading={releasesQuery.isLoading}
+                        rowKey={(release) => release.id}
+                        actions={rowActions}
+                        actionSlots={2}
+                      />
+                    )}
+                  </TabsContent>
+                ))}
+              </Tabs>
             )}
           </CardContent>
         </Card>
@@ -355,7 +390,14 @@ export function OwnerLauncherReleases() {
         onOpenChange={(open) => {
           if (!open) setAction(null);
         }}
-        title={copy && display ? copy.title(display.release.version) : ""}
+        title={
+          copy && display
+            ? copy.title(
+                display.release.version,
+                launcherPlatformLabel(display.release.platform),
+              )
+            : ""
+        }
         description={copy?.description}
         confirmLabel={copy?.confirmLabel ?? ""}
         variant={copy?.variant}

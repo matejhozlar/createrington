@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  groupByVersion,
   isDownloadUrlAllowed,
   isNewerVersion,
   isValidVersion,
@@ -94,6 +95,44 @@ describe("newestFirst", () => {
     newestFirst(releases);
 
     expect(releases.map((r) => r.version)).toEqual(["0.1.0", "0.2.0"]);
+  });
+});
+
+describe("groupByVersion", () => {
+  it("puts the builds of one version together, highest version first", () => {
+    const releases = [
+      { version: "0.9.0", platform: "windows-x86_64" },
+      { version: "0.10.0", platform: "linux-x86_64" },
+      { version: "0.9.0", platform: "linux-x86_64" },
+      { version: "0.10.0", platform: "windows-x86_64" },
+    ];
+
+    expect(groupByVersion(releases)).toEqual([
+      [
+        { version: "0.10.0", platform: "linux-x86_64" },
+        { version: "0.10.0", platform: "windows-x86_64" },
+      ],
+      [
+        { version: "0.9.0", platform: "windows-x86_64" },
+        { version: "0.9.0", platform: "linux-x86_64" },
+      ],
+    ]);
+  });
+
+  it("keeps a version that only one platform has", () => {
+    const releases = [
+      { version: "0.2.0", platform: "windows-x86_64" },
+      { version: "0.1.0", platform: "windows-x86_64" },
+      { version: "0.1.0", platform: "linux-x86_64" },
+    ];
+
+    expect(groupByVersion(releases).map((builds) => builds.length)).toEqual([
+      1, 2,
+    ]);
+  });
+
+  it("returns no groups for an empty list", () => {
+    expect(groupByVersion([])).toEqual([]);
   });
 });
 

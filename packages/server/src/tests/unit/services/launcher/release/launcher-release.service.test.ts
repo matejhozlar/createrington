@@ -25,12 +25,13 @@ vi.mock("@/db/utils", () => ({
 import { launcherReleaseService } from "@/services/launcher/release/launcher-release.service";
 
 const PLATFORM = "windows-x86_64";
+const LINUX = "linux-x86_64";
 
-function released(version: string, required = false) {
+function released(version: string, required = false, platform = PLATFORM) {
   return {
     id: Number(version.replaceAll(".", "")),
     version,
-    platform: PLATFORM,
+    platform,
     url: `https://gitea.example.com/launcher-${version}.exe`,
     signature: `signature-${version}`,
     notes: `Notes of ${version}`,
@@ -91,6 +92,27 @@ describe("checkForUpdate", () => {
     expect(update).toMatchObject({ version: "0.3.0", required: false });
   });
 
+  it("answers a Linux launcher from the Linux releases only", async () => {
+    release.findAll.mockImplementation(async ({ platform }) =>
+      platform === LINUX
+        ? [released("0.2.0", false, LINUX)]
+        : [released("0.2.0"), released("0.3.0", true)],
+    );
+
+    const linux = await launcherReleaseService.checkForUpdate(LINUX, "0.1.0");
+    const windows = await launcherReleaseService.checkForUpdate(
+      PLATFORM,
+      "0.1.0",
+    );
+
+    expect(linux).toMatchObject({ version: "0.2.0", required: false });
+    expect(windows).toMatchObject({ version: "0.3.0", required: true });
+    expect(release.findAll).toHaveBeenCalledWith({
+      platform: LINUX,
+      status: "released",
+    });
+  });
+
   it("has nothing for a launcher on the newest release, required or not", async () => {
     release.findAll.mockResolvedValue([released("0.3.0", true)]);
 
@@ -132,6 +154,21 @@ describe("isUpdateRequired", () => {
 
     expect(
       await launcherReleaseService.isUpdateRequired(PLATFORM, "0.1.0"),
+    ).toBe(false);
+  });
+
+  it("judges a launcher by the required releases of its own platform", async () => {
+    release.findAll.mockImplementation(async ({ platform }) =>
+      platform === LINUX
+        ? [released("0.3.0", true, LINUX)]
+        : [released("0.3.0")],
+    );
+
+    expect(await launcherReleaseService.isUpdateRequired(LINUX, "0.2.0")).toBe(
+      true,
+    );
+    expect(
+      await launcherReleaseService.isUpdateRequired(PLATFORM, "0.2.0"),
     ).toBe(false);
   });
 

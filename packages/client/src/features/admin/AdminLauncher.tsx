@@ -1,4 +1,3 @@
-import type { ComponentType, SVGProps } from "react";
 import { Download } from "lucide-react";
 import { formatDate } from "@createrington/shared/format";
 import type { LauncherChannel } from "@createrington/shared/launcher";
@@ -6,6 +5,10 @@ import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { ChangeTag } from "@/features/admin/components/ChangeTag";
 import { HeaderActions } from "@/features/admin/components/HeaderActions";
+import {
+  launcherPlatformDisplay,
+  launcherPlatformLabel,
+} from "@/features/admin/launcherPlatforms";
 import {
   Accordion,
   AccordionContent,
@@ -15,12 +18,13 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { WindowsIcon } from "@/components/icons/windows";
 import { Loading } from "@/components/loading-spinner";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 
 type Release =
   RouterOutput["admin"]["launcherReleases"]["list"]["releases"][number];
+
+type ReleaseDownload = Release["downloads"][number];
 
 const CHANNELS: Record<
   LauncherChannel,
@@ -35,11 +39,6 @@ const CHANNELS: Record<
     description: "Player builds of the Createrington Launcher.",
   },
 };
-
-const PLATFORMS = new Map<
-  string,
-  { label: string; icon: ComponentType<SVGProps<SVGSVGElement>> }
->([["windows-x86_64", { label: "Windows", icon: WindowsIcon }]]);
 
 const CHANGE_TYPES = new Map<string, { label: string; color: string }>([
   ["added", { label: "Added", color: "var(--c-add)" }],
@@ -125,7 +124,13 @@ function LatestRelease({ release }: { release: Release }) {
             </span>
           </div>
           <HeaderActions>
-            <DownloadButton release={release} size="icon-lg" />
+            {release.downloads.map((download) => (
+              <DownloadButton
+                key={download.platform}
+                download={download}
+                size="icon-lg"
+              />
+            ))}
           </HeaderActions>
         </div>
 
@@ -144,7 +149,7 @@ function EarlierReleases({ releases }: { releases: Release[] }) {
       <CardContent>
         <Accordion type="multiple">
           {releases.map((release) => (
-            <AccordionItem key={release.id} value={String(release.id)}>
+            <AccordionItem key={release.version} value={release.version}>
               <AccordionTrigger className="hover:no-underline">
                 <span className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-3 gap-y-1">
                   <span className="font-mono text-sm font-semibold text-foreground">
@@ -157,8 +162,14 @@ function EarlierReleases({ releases }: { releases: Release[] }) {
               </AccordionTrigger>
               <AccordionContent className="flex flex-col gap-4">
                 <ReleaseNotes release={release} />
-                <div>
-                  <DownloadButton release={release} size="icon-sm" />
+                <div className="flex flex-wrap gap-2">
+                  {release.downloads.map((download) => (
+                    <DownloadButton
+                      key={download.platform}
+                      download={download}
+                      size="icon-sm"
+                    />
+                  ))}
                 </div>
               </AccordionContent>
             </AccordionItem>
@@ -170,15 +181,14 @@ function EarlierReleases({ releases }: { releases: Release[] }) {
 }
 
 function DownloadButton({
-  release,
+  download,
   size,
 }: {
-  release: Release;
+  download: ReleaseDownload;
   size: "icon-sm" | "icon-lg";
 }) {
-  const platform = PLATFORMS.get(release.platform);
-  const Icon = platform?.icon ?? Download;
-  const label = `Download for ${platform?.label ?? release.platform}`;
+  const Icon = launcherPlatformDisplay(download.platform)?.icon ?? Download;
+  const label = `Download for ${launcherPlatformLabel(download.platform)}`;
 
   return (
     <Button
@@ -187,7 +197,7 @@ function DownloadButton({
       variant={size === "icon-lg" ? "default" : "outline"}
     >
       <a
-        href={release.url}
+        href={download.url}
         rel="noopener noreferrer"
         aria-label={label}
         title={label}

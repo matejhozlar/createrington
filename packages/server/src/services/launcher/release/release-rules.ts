@@ -29,6 +29,21 @@ export function newestFirst<T extends { version: string }>(
     .sort((a, b) => semver.rcompare(a.version, b.version));
 }
 
+export function groupByVersion<T extends { version: string }>(
+  releases: readonly T[],
+): [T, ...T[]][] {
+  const groups = new Map<string, [T, ...T[]]>();
+  for (const release of newestFirst(releases)) {
+    const group = groups.get(release.version);
+    if (group) {
+      group.push(release);
+    } else {
+      groups.set(release.version, [release]);
+    }
+  }
+  return [...groups.values()];
+}
+
 export function isDownloadUrlAllowed(
   rawUrl: string,
   allowedHosts: readonly string[],
