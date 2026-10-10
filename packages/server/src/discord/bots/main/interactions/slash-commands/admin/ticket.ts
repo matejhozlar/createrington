@@ -53,6 +53,17 @@ export const data = new SlashCommandBuilder()
           .setRequired(false)
           .setAutocomplete(true),
       ),
+  )
+  .addSubcommand((sub) =>
+    sub
+      .setName("remove")
+      .setDescription("Revoke a user's access to the current ticket")
+      .addUserOption((opt) =>
+        opt
+          .setName("user")
+          .setDescription("Discord user to remove")
+          .setRequired(true),
+      ),
   );
 
 export const cooldown = {
@@ -285,6 +296,57 @@ export async function execute(
           : EmbedPresets.info("Nothing Added", lines.join("\n"));
 
       await interaction.editReply({ embeds: [embed.build()] });
+    } else if (subcommand === "remove") {
+      const ticket = await Q.ticket.find({
+        channelId: interaction.channelId,
+      });
+
+      if (!ticket) {
+        await replyError(
+          interaction,
+          "Not a Ticket",
+          "This command can only be used inside a ticket channel.",
+        );
+        return;
+      }
+
+      const user = interaction.options.getUser("user", true);
+
+      if (user.id === ticket.creatorDiscordId) {
+        await replyError(
+          interaction,
+          "Ticket Owner",
+          `${Discord.Users.mention(user.id)} owns this ticket and cannot be removed from it. Close the ticket instead.`,
+        );
+        return;
+      }
+
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+      const result = await ticketService.removeParticipant(
+        interaction.channelId,
+        user.id,
+      );
+
+      if (result.removed) {
+        const embed = EmbedPresets.success(
+          "Removed from Ticket",
+          `${Discord.Users.mention(user.id)} no longer has access to this ticket.`,
+        );
+        await interaction.editReply({ embeds: [embed.build()] });
+      } else if (result.reason === "not-participant") {
+        const embed = EmbedPresets.info(
+          "Nothing Removed",
+          `${Discord.Users.mention(user.id)} was never added to this ticket.`,
+        );
+        await interaction.editReply({ embeds: [embed.build()] });
+      } else {
+        await replyError(
+          interaction,
+          "Ticket Error",
+          `Could not remove ${Discord.Users.mention(user.id)} from this ticket. Please try again.`,
+        );
+      }
     } else {
       await replyError(interaction, "Error", "Invalid subcommand.");
       return;
