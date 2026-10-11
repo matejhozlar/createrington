@@ -66,6 +66,17 @@ import launcherPackRoutes from "@/app/features/launcher/pack/launcher-pack.route
 import { launcherJwtService } from "@/services/auth/launcher/launcher-jwt.service";
 
 const PACK = {
+  project: {
+    source: "curseforge",
+    id: "1660984",
+    slug: "createrington-rails-n-sails",
+    kind: "modpack",
+    name: "Createrington Rails 'n Sails",
+    summary: "Trains, ships and a community to build them with",
+    author: "createrington",
+    iconUrl: "https://media.forgecdn.net/avatars/thumbnails/3/4/256/256/b.png",
+    url: "https://www.curseforge.com/minecraft/modpacks/createrington-rails-n-sails",
+  },
   version: "1.3.4",
   releasedAt: "2026-09-28T10:00:00.000Z",
   minecraftVersion: "1.21.1",

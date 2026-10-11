@@ -11,6 +11,7 @@ import {
 } from "@/services/curseforge";
 import {
   LAUNCHER_CONTENT_LOADERS,
+  LAUNCHER_MODPACK_KIND,
   type LauncherContentCategory,
   type LauncherContentFile,
   type LauncherContentFileDetails,
@@ -18,13 +19,16 @@ import {
   type LauncherContentLoader,
   type LauncherContentReleaseType,
   type LauncherContentSort,
+  type LauncherPackProject,
   type LauncherProject,
   type LauncherProjectDetails,
+  type LauncherProjectKind,
   type LauncherProjectLatestFile,
 } from "@createrington/shared/launcher";
 import { CURSEFORGE_CLASSES } from "@createrington/shared/workshop";
 
 const CURSEFORGE_SITE = "https://www.curseforge.com/minecraft";
+const MODPACK_SITE_PATH = "modpacks";
 const GAME_VERSION_PATTERN = /^\d+\.\d+/;
 
 const CONTENT_CLASSES: Record<
@@ -99,7 +103,10 @@ export function toLauncherContentCategory(
 }
 
 export function curseforgeProjectUrl(project: ProjectPage): string | null {
-  const sitePath = CONTENT_CLASSES[project.classId]?.sitePath;
+  const sitePath =
+    project.classId === CURSEFORGE_CLASSES.modpacks
+      ? MODPACK_SITE_PATH
+      : CONTENT_CLASSES[project.classId]?.sitePath;
   return (
     project.websiteUrl?.replace(/\/+$/, "") ||
     (sitePath ? `${CURSEFORGE_SITE}/${sitePath}/${project.slug}` : null)
@@ -114,10 +121,10 @@ export function curseforgeFilePageUrl(
   return projectUrl ? `${projectUrl}/files/${fileId}` : null;
 }
 
-export function toLauncherProject(
+function projectOfKind<Kind extends LauncherProjectKind>(
   project: CurseforgeFileProject,
-): LauncherProject | null {
-  const kind = contentKindForClass(project.classId);
+  kind: Kind | null,
+): LauncherProject<Kind> | null {
   const url = curseforgeProjectUrl(project);
   if (!kind || !url) return null;
   return {
@@ -131,6 +138,23 @@ export function toLauncherProject(
     iconUrl: project.thumbnailUrl,
     url,
   };
+}
+
+export function toLauncherProject(
+  project: CurseforgeFileProject,
+): LauncherProject | null {
+  return projectOfKind(project, contentKindForClass(project.classId));
+}
+
+export function toLauncherPackProject(
+  project: CurseforgeFileProject,
+): LauncherPackProject | null {
+  return projectOfKind(
+    project,
+    project.classId === CURSEFORGE_CLASSES.modpacks
+      ? LAUNCHER_MODPACK_KIND
+      : null,
+  );
 }
 
 export function describeLauncherProject(

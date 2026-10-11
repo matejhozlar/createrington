@@ -66,6 +66,11 @@ export const LAUNCHER_CONTENT_KINDS = [
 
 export type LauncherContentKind = (typeof LAUNCHER_CONTENT_KINDS)[number];
 
+export const LAUNCHER_MODPACK_KIND = "modpack";
+
+export type LauncherProjectKind =
+  LauncherContentKind | typeof LAUNCHER_MODPACK_KIND;
+
 export const LAUNCHER_CONTENT_LOADERS = [
   "neoforge",
   "forge",
@@ -166,6 +171,7 @@ export interface LauncherMeData {
 }
 
 export interface LauncherPackData {
+  project: LauncherPackProject;
   version: string;
   releasedAt: string | null;
   minecraftVersion: string;
@@ -230,11 +236,13 @@ export interface LauncherProjectLatestFile {
   releaseType: LauncherContentReleaseType;
 }
 
-export interface LauncherProject {
+export interface LauncherProject<
+  Kind extends LauncherProjectKind = LauncherContentKind,
+> {
   source: LauncherContentSource;
   id: string;
   slug: string;
-  kind: LauncherContentKind;
+  kind: Kind;
   name: string;
   summary: string | null;
   author: string | null;
@@ -242,6 +250,8 @@ export interface LauncherProject {
   url: string;
   latestFiles?: LauncherProjectLatestFile[];
 }
+
+export type LauncherPackProject = LauncherProject<typeof LAUNCHER_MODPACK_KIND>;
 
 export interface LauncherContentDownload {
   servedBy: LauncherPackFileSource;
