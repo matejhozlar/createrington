@@ -17,6 +17,7 @@ import {
   toLauncherContentCategory,
   toLauncherContentFile,
   toLauncherContentFileDetails,
+  toLauncherPackProject,
   toLauncherProject,
   toLauncherProjectDetails,
   toLauncherProjectLatestFiles,
@@ -84,6 +85,7 @@ describe("curseforgeProjectUrl", () => {
     [6, "mc-mods"],
     [12, "texture-packs"],
     [6552, "shaders"],
+    [4471, "modpacks"],
   ])(
     "builds the page from the slug when a class %i project has no stored page",
     (classId, sitePath) => {
@@ -269,6 +271,69 @@ describe("toLauncherProject", () => {
   it("has no project for a class the launcher does not install", () => {
     expect(toLauncherProject(makeProject({ classId: 4471 }))).toBeNull();
   });
+});
+
+describe("toLauncherPackProject", () => {
+  const PACK_PAGE =
+    "https://www.curseforge.com/minecraft/modpacks/createrington-rails-n-sails";
+
+  function makePack(
+    overrides: Partial<CurseforgeFileProject> = {},
+  ): CurseforgeFileProject {
+    return makeProject({
+      id: 1660984,
+      classId: 4471,
+      slug: "createrington-rails-n-sails",
+      name: "Createrington Rails 'n Sails",
+      summary: "Trains, ships and a community to build them with",
+      thumbnailUrl:
+        "https://media.forgecdn.net/avatars/thumbnails/3/4/256/256/b.png",
+      websiteUrl: PACK_PAGE,
+      primaryAuthor: "createrington",
+      ...overrides,
+    });
+  }
+
+  it("describes a modpack in the shape of any other project", () => {
+    expect(toLauncherPackProject(makePack())).toEqual({
+      source: "curseforge",
+      id: "1660984",
+      slug: "createrington-rails-n-sails",
+      kind: "modpack",
+      name: "Createrington Rails 'n Sails",
+      summary: "Trains, ships and a community to build them with",
+      author: "createrington",
+      iconUrl:
+        "https://media.forgecdn.net/avatars/thumbnails/3/4/256/256/b.png",
+      url: PACK_PAGE,
+    });
+  });
+
+  it("keeps a modpack without summary, author, picture or stored page", () => {
+    expect(
+      toLauncherPackProject(
+        makePack({
+          summary: null,
+          thumbnailUrl: null,
+          websiteUrl: null,
+          primaryAuthor: null,
+        }),
+      ),
+    ).toMatchObject({
+      kind: "modpack",
+      summary: null,
+      author: null,
+      iconUrl: null,
+      url: PACK_PAGE,
+    });
+  });
+
+  it.each([6, 12, 6552, 6945])(
+    "has no pack for a class %i project",
+    (classId) => {
+      expect(toLauncherPackProject(makePack({ classId }))).toBeNull();
+    },
+  );
 });
 
 describe("toLauncherProjectDetails", () => {

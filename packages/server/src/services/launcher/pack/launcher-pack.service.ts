@@ -16,11 +16,15 @@ import {
   type ModpackManifest,
   type ModpackManifestEntry,
 } from "@/services/curseforge";
-import { ingestProjectsWhere } from "@/services/curseforge/ingest";
+import {
+  ingestProjectsWhere,
+  refreshProjects,
+} from "@/services/curseforge/ingest";
 import { featureFlagService, FeatureFlags } from "@/services/feature-flag";
 import {
   curseforgeFilePageUrl,
   toLauncherContentFile,
+  toLauncherPackProject,
   toLauncherProject,
 } from "@/services/launcher/content/curseforge-content";
 import { getReleaseChangelog } from "@/services/modpack/release-changelog";
@@ -35,6 +39,7 @@ import {
   type LauncherPackFile,
   type LauncherPackFileSource,
   type LauncherPackFilesData,
+  type LauncherPackProject,
   type LauncherPackRelease,
 } from "@createrington/shared/launcher";
 import { findCurseforgeCdnUrls } from "./curseforge-cdn";
@@ -52,6 +57,7 @@ const RECHECKED_SOURCES: LauncherPackFileSource[] = [
   "curseforge-cdn",
 ];
 const NOTICE_MAX_FILES = 15;
+const PROJECT_LOOKUP_RETRY_MS = 60 * 1000;
 
 function packError(
   code: LauncherPackErrorCode,
@@ -81,7 +87,10 @@ function toPackFile(row: CurseforgeFileWithProject): LauncherPackFile | null {
   };
 }
 
-function toPackData(release: ModpackRelease): LauncherPackData | null {
+function toPackData(
+  release: ModpackRelease,
+  project: LauncherPackProject,
+): LauncherPackData | null {
   const modLoader = release.modLoader
     ? parseModLoader(release.modLoader)
     : null;
@@ -99,6 +108,7 @@ function toPackData(release: ModpackRelease): LauncherPackData | null {
   }
 
   return {
+    project,
     version: release.version,
     releasedAt: release.publishedAt?.toISOString() ?? null,
     minecraftVersion: release.minecraftVersion,
@@ -141,18 +151,22 @@ function toPackChangelog(changelog: ChangelogInput): LauncherPackChangelog {
  * pack zip: which release is the latest, which releases can still be
  * installed and what each of them changed, and for the file ids in a pack
  * manifest, where to download each file and the SHA-1 to verify it against.
- * Only the pack linked to `CURSEFORGE_MODPACK_PROJECT_ID` is served. Files are
- * resolved once and stored (the link CurseForge gives, else a byte-identical
- * file on Modrinth, else the file's built address on CurseForge's CDN when it
- * answers, else a verified copy the sandbox keeps, else manual), so requests
- * read the database. The built address is unofficial and only used while the
- * `launcher_curseforge_cdn` feature flag is on; once the flag is off, a file
- * stored with it turns manual and is resolved again. While the flag cannot be
- * read, no address is built and stored ones are left as they are. A manual
- * file is looked up again at most once an hour, a built address once a day,
- * and both whenever a release is prepared. A release is offered as latest
- * only after `prepareRelease` stored its pack zip, Java version and every
- * client file. Singleton.
+ * Only the pack linked to `CURSEFORGE_MODPACK_PROJECT_ID` is served, and every
+ * release comes with the project that identifies the pack: its name, icon,
+ * summary and page as CurseForge publishes them, read from the stored project
+ * and never from the app's own modpack fields. A pack whose project is not
+ * stored is asked for on CurseForge (at most once a minute) and is not served
+ * until it is. Files are resolved once and stored (the link CurseForge gives,
+ * else a byte-identical file on Modrinth, else the file's built address on
+ * CurseForge's CDN when it answers, else a verified copy the sandbox keeps,
+ * else manual), so requests read the database. The built address is
+ * unofficial and only used while the `launcher_curseforge_cdn` feature flag
+ * is on; once the flag is off, a file stored with it turns manual and is
+ * resolved again. While the flag cannot be read, no address is built and
+ * stored ones are left as they are. A manual file is looked up again at most
+ * once an hour, a built address once a day, and both whenever a release is
+ * prepared. A release is offered as latest only after `prepareRelease` stored
+ * its pack zip, Java version and every client file. Singleton.
  */
 class LauncherPackService {
   private static instance: LauncherPackService;
@@ -160,6 +174,10 @@ class LauncherPackService {
   private readonly preparing = new Set<number>();
   private readonly checking = new Set<number>();
   private readonly reportedBlocked = new Set<number>();
+  private readonly projectLookups = new Map<
+    number,
+    { lookup: Promise<void>; startedAt: number }
+  >();
 
   static getInstance(): LauncherPackService {
     if (!LauncherPackService.instance) {
@@ -168,18 +186,20 @@ class LauncherPackService {
     return LauncherPackService.instance;
   }
 
-  /** The newest release that is ready for the launcher. Throws `PACK_UNAVAILABLE` (404) when there is none. */
+  /** The newest release that is ready for the launcher, with the project that identifies the pack. Throws `PACK_UNAVAILABLE` (404) when there is none or the pack's project cannot be served. */
   async getLatestPack(): Promise<LauncherPackData> {
     const modpack = await Q.modpack.find({
       curseforgeProjectId: config.curseforge.modpackProjectId,
     });
-    const [release] = modpack
-      ? await Q.modpack.release.findAll(
-          { modpackId: modpack.id, launcherReadyAt: { $ne: null } },
-          { orderBy: "id", orderDirection: "desc", limit: 1 },
-        )
-      : [];
-    const pack = release ? toPackData(release) : null;
+    const project = modpack ? await this.loadPackProject(modpack) : null;
+    const [release] =
+      modpack && project
+        ? await Q.modpack.release.findAll(
+            { modpackId: modpack.id, launcherReadyAt: { $ne: null } },
+            { orderBy: "id", orderDirection: "desc", limit: 1 },
+          )
+        : [];
+    const pack = release && project ? toPackData(release, project) : null;
     if (!pack) {
       throw packError(
         LauncherPackErrorCode.PACK_UNAVAILABLE,
@@ -196,8 +216,9 @@ class LauncherPackService {
    * Each comes with its changelog: the mods it added, updated and removed
    * against the release recorded before it (listed or not), and the publish
    * notes. Paged, `page` counts from 0, with `total` counting every listed
-   * release. Reads the database only. Empty when there is none or the page is
-   * past the end.
+   * release. Reads the database only, unless the pack's project is not stored
+   * yet. Empty when there is none, when the page is past the end, and while
+   * the pack's project cannot be served.
    */
   async listReleases(paging: {
     page: number;
@@ -207,7 +228,8 @@ class LauncherPackService {
     const modpack = await Q.modpack.find({
       curseforgeProjectId: config.curseforge.modpackProjectId,
     });
-    if (!modpack) return { releases: [], total: 0 };
+    const project = modpack ? await this.loadPackProject(modpack) : null;
+    if (!modpack || !project) return { releases: [], total: 0 };
 
     const filters = {
       modpackId: modpack.id,
@@ -225,7 +247,7 @@ class LauncherPackService {
     ]);
     const releases = await Promise.all(
       rows.map(async (row): Promise<LauncherPackRelease | null> => {
-        const pack = toPackData(row);
+        const pack = toPackData(row, project);
         if (!pack) {
           logger.warn(
             `${modpack.name} release #${row.id} is ready for the launcher but cannot be served: a pack field is missing`,
@@ -246,9 +268,11 @@ class LauncherPackService {
    * and takes a release out of `listReleases` while its pack zip or one of its
    * client files is archived there, or puts it back once all of them are
    * served again. For a release recorded before the side of its files was
-   * stored only the pack zip decides. `getLatestPack` is not affected. No-op
-   * for other modpacks and while another call checks the same pack. Throws
-   * when CurseForge cannot be asked; nothing is changed then.
+   * stored only the pack zip decides. `getLatestPack` is not affected. Stores
+   * the pack's CurseForge project again first, so the name, icon, summary and
+   * page the launcher is given follow CurseForge. No-op for other modpacks and
+   * while another call checks the same pack. Throws when CurseForge cannot be
+   * asked; no release is changed then.
    */
   async checkReleases(modpack: Modpack): Promise<void> {
     if (
@@ -261,6 +285,8 @@ class LauncherPackService {
 
     this.checking.add(modpack.id);
     try {
+      await refreshProjects([modpack.curseforgeProjectId]);
+
       const releases = await Q.modpack.release.findAll({
         modpackId: modpack.id,
         launcherReadyAt: { $ne: null },
@@ -489,6 +515,45 @@ class LauncherPackService {
     } finally {
       this.preparing.delete(releaseId);
     }
+  }
+
+  private async loadPackProject(
+    modpack: Modpack,
+  ): Promise<LauncherPackProject | null> {
+    const projectId = modpack.curseforgeProjectId;
+    if (projectId === null) return null;
+
+    let row = await Q.curseforge.project.find({ id: projectId });
+    if (!row) {
+      await this.storePackProject(projectId);
+      row = await Q.curseforge.project.find({ id: projectId });
+    }
+    const project = row ? toLauncherPackProject(row) : null;
+    if (!project) {
+      logger.warn(
+        `${modpack.name} cannot be served to the launcher: CurseForge project #${projectId} is ${row ? "not a modpack" : "not stored"}`,
+      );
+    }
+    return project;
+  }
+
+  private storePackProject(projectId: number): Promise<void> {
+    const held = this.projectLookups.get(projectId);
+    if (held && Date.now() - held.startedAt < PROJECT_LOOKUP_RETRY_MS) {
+      return held.lookup;
+    }
+
+    const lookup = refreshProjects([projectId]).then(
+      () => undefined,
+      (error) => {
+        logger.warn(
+          `CurseForge project #${projectId} of the launcher's pack could not be stored:`,
+          error,
+        );
+      },
+    );
+    this.projectLookups.set(projectId, { lookup, startedAt: Date.now() });
+    return lookup;
   }
 
   private async ensureResolved(

@@ -22,6 +22,7 @@ vi.mock("@/services/curseforge", async (importOriginal) => {
 });
 vi.mock("@/services/curseforge/ingest", () => ({
   ingestProjectsWhere: vi.fn(async () => 0),
+  refreshProjects: vi.fn(async () => 0),
 }));
 vi.mock("@/services/modrinth", () => ({
   findModrinthFilesBySha1: vi.fn(async () => new Map()),
@@ -48,14 +49,21 @@ import {
   type ModpackManifest,
   type ModpackManifestSides,
 } from "@/services/curseforge";
-import { ingestProjectsWhere } from "@/services/curseforge/ingest";
+import {
+  ingestProjectsWhere,
+  refreshProjects,
+} from "@/services/curseforge/ingest";
 import { featureFlagService, FeatureFlags } from "@/services/feature-flag";
 import { findCurseforgeCdnUrls } from "@/services/launcher/pack/curseforge-cdn";
 import { launcherPackService } from "@/services/launcher/pack/launcher-pack.service";
 import { findSandboxFileUrls } from "@/services/launcher/pack/sandbox-files";
 import { findModrinthFilesBySha1 } from "@/services/modrinth";
 import { getMinecraftJavaMajorVersion } from "@/utils/mojang-java-version";
-import type { Modpack, ModpackRelease } from "@createrington/shared/db";
+import type {
+  CurseforgeProjectCreate,
+  Modpack,
+  ModpackRelease,
+} from "@createrington/shared/db";
 import { LAUNCHER_PACK_RELEASES_MAX_PAGE_SIZE } from "@createrington/shared/launcher";
 import {
   cleanupWorkshopTestContext,
@@ -68,6 +76,15 @@ import {
 const PACK_PROJECT_ID = 995_900_001;
 const HOUR_MS = 60 * 60 * 1000;
 const FIRST_PAGE = { page: 0, limit: 25 };
+const PACK_ON_CURSEFORGE = {
+  classId: 4471,
+  slug: "vitest-pack",
+  name: "Vitest Pack on CurseForge",
+  summary: "A synthetic test pack",
+  thumbnailUrl: "https://media.forgecdn.net/avatars/vitest-pack.png",
+  websiteUrl: "https://www.curseforge.com/minecraft/modpacks/vitest-pack",
+  primaryAuthor: "vitest",
+};
 
 const ctx = createWorkshopTestContext(995_000_000);
 const originalPackProjectId = config.curseforge.modpackProjectId;
@@ -302,10 +319,46 @@ const listedVersions = async () =>
     (release) => release.version,
   );
 
-async function seedPack(): Promise<Modpack> {
+const packProject = (projectId = PACK_PROJECT_ID) => ({
+  source: "curseforge",
+  id: String(projectId),
+  slug: "vitest-pack",
+  kind: "modpack",
+  name: "Vitest Pack on CurseForge",
+  summary: "A synthetic test pack",
+  author: "vitest",
+  iconUrl: "https://media.forgecdn.net/avatars/vitest-pack.png",
+  url: "https://www.curseforge.com/minecraft/modpacks/vitest-pack",
+});
+
+async function seedPackProject(
+  projectId = PACK_PROJECT_ID,
+  overrides: Partial<CurseforgeProjectCreate> = {},
+): Promise<void> {
+  await Q.curseforge.project.create({
+    id: projectId,
+    ...PACK_ON_CURSEFORGE,
+    ...overrides,
+  });
+  ctx.projectIds.push(projectId);
+}
+
+async function seedPack(
+  project: Partial<CurseforgeProjectCreate> = {},
+): Promise<Modpack> {
+  await seedPackProject(PACK_PROJECT_ID, project);
   return seedModpack(ctx, {
     name: "Vitest Pack",
     curseforgeProjectId: PACK_PROJECT_ID,
+  });
+}
+
+async function seedPackWithoutProject(projectId: number): Promise<Modpack> {
+  (config.curseforge as { modpackProjectId: number }).modpackProjectId =
+    projectId;
+  return seedModpack(ctx, {
+    name: "Vitest Pack",
+    curseforgeProjectId: projectId,
   });
 }
 
@@ -337,6 +390,7 @@ beforeEach(() => {
   vi.mocked(getModpackFile).mockResolvedValue(null);
   archivedOnCurseForge([]);
   vi.mocked(ingestProjectsWhere).mockResolvedValue(0);
+  vi.mocked(refreshProjects).mockResolvedValue(0);
   vi.mocked(findModrinthFilesBySha1).mockResolvedValue(new Map());
   vi.mocked(findCurseforgeCdnUrls).mockResolvedValue(new Map());
   vi.mocked(findSandboxFileUrls).mockResolvedValue(new Map());
@@ -381,6 +435,7 @@ describe("LauncherPackService.prepareRelease", () => {
     await launcherPackService.prepareRelease(modpack, release.id, manifest);
 
     expect(await launcherPackService.getLatestPack()).toEqual({
+      project: packProject(),
       version: "1.0.0",
       releasedAt: "2026-10-01T10:00:00.000Z",
       minecraftVersion: "1.21.1",
@@ -886,6 +941,83 @@ describe("LauncherPackService.getLatestPack", () => {
 
     expect((await launcherPackService.getLatestPack()).version).toBe("1.1.0");
   });
+
+  it("names the pack as CurseForge does, not as the app does", async () => {
+    const modpack = await seedPack({
+      name: "Rails 'n Sails",
+      summary: null,
+      thumbnailUrl: null,
+      primaryAuthor: null,
+    });
+    const file = await seedFile();
+    serveFromCurseForge([file]);
+    await seedReadyRelease(modpack, "1.0.0", [file]);
+
+    const { project } = await launcherPackService.getLatestPack();
+
+    expect(modpack.name).toBe("Vitest Pack");
+    expect(project).toEqual({
+      ...packProject(),
+      name: "Rails 'n Sails",
+      summary: null,
+      author: null,
+      iconUrl: null,
+    });
+    expect(refreshProjects).not.toHaveBeenCalled();
+  });
+
+  it("stores the pack's project from CurseForge when it is not stored yet", async () => {
+    const projectId = PACK_PROJECT_ID + 10;
+    const modpack = await seedPackWithoutProject(projectId);
+    const file = await seedFile();
+    serveFromCurseForge([file]);
+    await seedReadyRelease(modpack, "1.0.0", [file]);
+    vi.mocked(refreshProjects).mockImplementation(async ([id]) => {
+      await seedPackProject(id);
+      return 1;
+    });
+
+    const [first, second] = await Promise.all([
+      launcherPackService.getLatestPack(),
+      launcherPackService.getLatestPack(),
+    ]);
+
+    expect(first.project).toEqual(packProject(projectId));
+    expect(second).toEqual(first);
+    expect(refreshProjects).toHaveBeenCalledTimes(1);
+    expect(refreshProjects).toHaveBeenCalledWith([projectId]);
+  });
+
+  it("does not serve the pack while its project cannot be stored, and asks CurseForge once", async () => {
+    const modpack = await seedPackWithoutProject(PACK_PROJECT_ID + 11);
+    const file = await seedFile();
+    serveFromCurseForge([file]);
+    await seedReadyRelease(modpack, "1.0.0", [file]);
+    vi.mocked(refreshProjects).mockRejectedValue(new Error("CurseForge 504"));
+
+    const error = await refusal(launcherPackService.getLatestPack());
+    const listed = await launcherPackService.listReleases(FIRST_PAGE);
+
+    expect(error.statusCode).toBe(404);
+    expect(error.code).toBe("PACK_UNAVAILABLE");
+    expect(listed).toEqual({ releases: [], total: 0 });
+    expect(refreshProjects).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not serve a pack whose CurseForge project is not a modpack", async () => {
+    const modpack = await seedPack({ classId: 6 });
+    const file = await seedFile();
+    serveFromCurseForge([file]);
+    await seedReadyRelease(modpack, "1.0.0", [file]);
+
+    const error = await refusal(launcherPackService.getLatestPack());
+
+    expect(error.code).toBe("PACK_UNAVAILABLE");
+    expect(await launcherPackService.listReleases(FIRST_PAGE)).toEqual({
+      releases: [],
+      total: 0,
+    });
+  });
 });
 
 describe("LauncherPackService.listReleases", () => {
@@ -907,6 +1039,10 @@ describe("LauncherPackService.listReleases", () => {
       ...(await launcherPackService.getLatestPack()),
       changelog: expect.any(Object),
     });
+    expect(releases.map((release) => release.project)).toEqual([
+      packProject(),
+      packProject(),
+    ]);
   });
 
   it("is empty while no release is ready", async () => {
@@ -1234,6 +1370,31 @@ describe("LauncherPackService.checkReleases", () => {
     expect(await listedVersions()).toEqual(["1.0.0"]);
   });
 
+  it("stores the pack's project again, so what CurseForge changed reaches the launcher", async () => {
+    const modpack = await seedPack();
+    const file = await seedFile();
+    serveFromCurseForge([file]);
+    await seedReadyRelease(modpack, "1.0.0", [file]);
+    vi.mocked(refreshProjects).mockImplementation(async (projectIds) => {
+      return Q.curseforge.project.updateAll(
+        {
+          name: "Vitest Pack, renamed",
+          thumbnailUrl: "https://media.forgecdn.net/avatars/vitest-new.png",
+        },
+        { id: { $in: projectIds } },
+      );
+    });
+
+    await launcherPackService.checkReleases(modpack);
+
+    expect(refreshProjects).toHaveBeenCalledWith([PACK_PROJECT_ID]);
+    expect((await launcherPackService.getLatestPack()).project).toEqual({
+      ...packProject(),
+      name: "Vitest Pack, renamed",
+      iconUrl: "https://media.forgecdn.net/avatars/vitest-new.png",
+    });
+  });
+
   it("ignores a modpack the launcher does not install", async () => {
     const modpack = await seedModpack(ctx, {
       curseforgeProjectId: PACK_PROJECT_ID + 1,
@@ -1242,6 +1403,7 @@ describe("LauncherPackService.checkReleases", () => {
     await launcherPackService.checkReleases(modpack);
 
     expect(getServedFileIds).not.toHaveBeenCalled();
+    expect(refreshProjects).not.toHaveBeenCalled();
   });
 });
 
