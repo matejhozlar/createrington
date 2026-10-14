@@ -22,20 +22,23 @@ type StrayIdentifierKeys<TIdentifier, T> = Exclude<
  * fields only. Otherwise it resolves to an object naming each stray key, so
  * the call fails to compile instead of the key being dropped from the WHERE
  * clause. Covers values held in variables, which the excess-property check
- * on object literals does not.
+ * on object literals does not. Distributes over a union, so each member is
+ * judged on its own keys.
  */
 export type IdentifierArg<
   TConfig extends { Entity: object; Identifier?: object },
   T,
-> = keyof TConfig["Entity"] extends keyof T
-  ? T
-  : [StrayIdentifierKeys<TConfig["Identifier"], T>] extends [never]
+> = T extends unknown
+  ? keyof TConfig["Entity"] extends keyof T
     ? T
-    : {
-        [
-          K in StrayIdentifierKeys<TConfig["Identifier"], T>
-        ]: "is not an identifier field of this table";
-      };
+    : [StrayIdentifierKeys<TConfig["Identifier"], T>] extends [never]
+      ? T
+      : {
+          [
+            K in StrayIdentifierKeys<TConfig["Identifier"], T>
+          ]: "is not an identifier field of this table";
+        }
+  : never;
 
 /**
  * Base class for database query operations
@@ -595,9 +598,14 @@ export abstract class BaseQueries<
     identifier: NonNullable<TConfig["Identifier"]>,
     options?: { select?: ReadonlyArray<keyof TConfig["Entity"]> },
   ): Promise<TConfig["Entity"] | null> {
-    const extracted = this.extractIdentifier(
-      identifier as Record<string, unknown>,
-    );
+    return this.findOne(identifier as Record<string, unknown>, options);
+  }
+
+  private async findOne(
+    identifier: Record<string, unknown>,
+    options?: { select?: ReadonlyArray<keyof TConfig["Entity"]> },
+  ): Promise<TConfig["Entity"] | null> {
+    const extracted = this.extractIdentifier(identifier);
     const { whereClause, values } = this.getColumnMapping(extracted);
 
     const columns = options?.select?.length
@@ -660,7 +668,10 @@ export abstract class BaseQueries<
     identifier: NonNullable<TConfig["Identifier"]>,
     options?: { select?: ReadonlyArray<keyof TConfig["Entity"]> },
   ): Promise<TConfig["Entity"]> {
-    const entity = await this.find(identifier, options);
+    const entity = await this.findOne(
+      identifier as Record<string, unknown>,
+      options,
+    );
 
     if (!entity) {
       const extracted = this.extractIdentifier(
@@ -872,9 +883,14 @@ export abstract class BaseQueries<
     identifier: IdentifierArg<TConfig, I>,
     field: K,
   ): Promise<TConfig["Entity"][K]> {
-    const extracted = this.extractIdentifier(
-      identifier as Record<string, unknown>,
-    );
+    return this.pluckField(identifier as Record<string, unknown>, field);
+  }
+
+  private async pluckField<K extends keyof TConfig["Entity"]>(
+    identifier: Record<string, unknown>,
+    field: K,
+  ): Promise<TConfig["Entity"][K]> {
+    const extracted = this.extractIdentifier(identifier);
     const { whereClause, values } = this.getColumnMapping(extracted);
     const columnName = this.getColumnName(field as string);
 
@@ -910,8 +926,8 @@ export abstract class BaseQueries<
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Proxy target requires any for dynamic property access
   readonly select = new Proxy({} as Record<string, any>, {
     get: (_, field: string) => {
-      return async (identifier: NonNullable<TConfig["Identifier"]>) => {
-        return this.pluck(identifier, field as keyof TConfig["Entity"]);
+      return async (identifier: Record<string, unknown>) => {
+        return this.pluckField(identifier, field as keyof TConfig["Entity"]);
       };
     },
   }) as {

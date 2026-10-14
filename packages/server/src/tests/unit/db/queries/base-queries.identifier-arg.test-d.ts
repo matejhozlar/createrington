@@ -57,6 +57,23 @@ describe("single-row methods reject stray keys", () => {
     await Q.player.update(filter, { online: false });
   });
 
+  it("rejects a union whose members do not all consist of identifier fields", async () => {
+    const byUuid = uuid.length > 0;
+    const id = byUuid
+      ? { minecraftUuid: uuid }
+      : { discordId: "1", online: true };
+    // @ts-expect-error online is not an identifier field in the second member
+    await Q.player.find(id);
+  });
+
+  it("accepts a union whose members each consist of identifier fields", async () => {
+    const byUuid = uuid.length > 0;
+    const id = byUuid ? { minecraftUuid: uuid } : { discordId: "1" };
+    expectTypeOf(await Q.player.find(id)).toEqualTypeOf<Player | null>();
+    const withRow = byUuid ? { minecraftUuid: uuid } : player;
+    expectTypeOf(await Q.player.get(withRow)).toEqualTypeOf<Player>();
+  });
+
   it("rejects a row of another table", async () => {
     // @ts-expect-error a player row is not a player_balance entity
     await Q.player.balance.get(player);
