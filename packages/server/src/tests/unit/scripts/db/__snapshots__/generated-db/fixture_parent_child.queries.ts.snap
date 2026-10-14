@@ -39,6 +39,14 @@ export class FixtureParentChildBaseQueries extends BaseQueries<{
    */
   protected readonly IDENTIFIER_GROUPS = [['parentId', 'childKey'], ['source', 'externalId']];
 
+  /**
+   * Every column of this table in camelCase
+   *
+   * Used by extractIdentifier to tell a full entity (which may carry
+   * non-identifier fields) from an identifier with a stray condition.
+   */
+  protected readonly COLUMNS = ['parentId', 'childKey', 'source', 'externalId', 'amount', 'quantity', 'ledger', 'ratio', 'bigAmount', 'note', 'createdAt'];
+
   constructor(db: Pool | PoolClient) {
     super(db);
   }

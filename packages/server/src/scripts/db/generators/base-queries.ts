@@ -40,6 +40,8 @@ import { extractIdentifierGroups } from "./types";
  * - IDENTIFIER_GROUPS lists field combinations that uniquely identify a row
  * - Used by extractIdentifier to filter full entities to identifiers
  * - Composite groups are only valid when all their fields are provided
+ * - COLUMNS lists every column so a full entity can be told apart from an
+ *   identifier carrying a stray condition, which is rejected
  *
  * @example
  * ```typescript
@@ -69,6 +71,9 @@ export function generateBaseQueries(
   const identifierGroups = extractIdentifierGroups(table);
   const identifierGroupsLiteral = `[${identifierGroups
     .map((group) => `[${group.map((f) => `'${f}'`).join(", ")}]`)
+    .join(", ")}]`;
+  const columnsLiteral = `[${table.columns
+    .map((col) => `'${snakeToCamel(col.columnName)}'`)
     .join(", ")}]`;
   const hasUpdatedAt = table.columns.some(
     (col) => col.columnName === "updated_at",
@@ -125,7 +130,15 @@ export class ${className}BaseQueries extends BaseQueries<{
    * Used by extractIdentifier to filter full entities to identifiers only and
    * to reject partial composite identifiers.
    */
-  protected readonly IDENTIFIER_GROUPS = ${identifierGroupsLiteral};${hasUpdatedAt ? `\n  protected readonly AUTO_SET_UPDATED_AT = true;` : ""}${generatedFieldsLiteral}
+  protected readonly IDENTIFIER_GROUPS = ${identifierGroupsLiteral};
+
+  /**
+   * Every column of this table in camelCase
+   *
+   * Used by extractIdentifier to tell a full entity (which may carry
+   * non-identifier fields) from an identifier with a stray condition.
+   */
+  protected readonly COLUMNS = ${columnsLiteral};${hasUpdatedAt ? `\n  protected readonly AUTO_SET_UPDATED_AT = true;` : ""}${generatedFieldsLiteral}
 
   constructor(db: Pool | PoolClient) {
     super(db);

@@ -37,6 +37,14 @@ export class FixtureAuditEntryBaseQueries extends BaseQueries<{
    */
   protected readonly IDENTIFIER_GROUPS = [['id'], ['actorId', 'action'], ['reference']];
 
+  /**
+   * Every column of this table in camelCase
+   *
+   * Used by extractIdentifier to tell a full entity (which may carry
+   * non-identifier fields) from an identifier with a stray condition.
+   */
+  protected readonly COLUMNS = ['id', 'actorId', 'action', 'reference', 'payload', 'occurredAt'];
+
   /** Columns the database computes itself; stripped from create and update payloads */
   protected readonly GENERATED_FIELDS = ['id'];
 
