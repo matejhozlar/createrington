@@ -8,12 +8,44 @@ import { QueryBuilder, type Selected } from "./query-builder";
 
 const MAX_QUERY_PARAMS = 65_535;
 
+type KeysOfUnion<T> = T extends unknown ? keyof T : never;
+
+type StrayIdentifierKeys<TIdentifier, T> = Exclude<
+  keyof T,
+  KeysOfUnion<NonNullable<TIdentifier>>
+>;
+
+/**
+ * Argument type of the single-row methods (find, get, update, delete, ...)
+ *
+ * Resolves to T when T is a full entity of the table or carries identifier
+ * fields only. Otherwise it resolves to an object naming each stray key, so
+ * the call fails to compile instead of the key being dropped from the WHERE
+ * clause. Covers values held in variables, which the excess-property check
+ * on object literals does not. Distributes over a union, so each member is
+ * judged on its own keys.
+ */
+export type IdentifierArg<
+  TConfig extends { Entity: object; Identifier?: object },
+  T,
+> = T extends unknown
+  ? keyof TConfig["Entity"] extends keyof T
+    ? T
+    : [StrayIdentifierKeys<TConfig["Identifier"], T>] extends [never]
+      ? T
+      : {
+          [
+            K in StrayIdentifierKeys<TConfig["Identifier"], T>
+          ]: "is not an identifier field of this table";
+        }
+  : never;
+
 /**
  * Base class for database query operations
  *
  * - Provides typed CRUD operations (find, get, create, update, delete) with automatic camelCase/snake_case conversion
  * - Single-row methods accept a minimal identifier or a full entity; every recognized identifier field is ANDed in the WHERE clause, so a stale identifier value fails with NotFound instead of matching another row
- * - An identifier carrying a non-identifier key (e.g. `find({ slug, enabled: true })`) is rejected instead of silently widening the lookup; filter on arbitrary columns with findAll / where().first()
+ * - An identifier carrying a non-identifier key (e.g. `find({ slug, enabled: true })`, or a row of another table) fails to compile via IdentifierArg and is rejected at runtime as a backstop; filter on arbitrary columns with findAll / where().first()
  * - Supports filter operators ($eq, $ne, $gt, $lt, $in, $between, etc.) for composable WHERE clauses
  * - Fluent query builder via .where().orderBy().limit().all() chain
  * - Singleton child registry (WeakMap per pool) for hierarchical Q.player.balance style access
@@ -551,21 +583,29 @@ export abstract class BaseQueries<
    * // With field projection
    * await Q.player.find({ minecraftUuid: "abc-123" }, { select: ["id", "minecraftUsername"] })
    */
-  async find<K extends keyof TConfig["Entity"]>(
-    identifier: NonNullable<TConfig["Identifier"]>,
+  async find<
+    I extends NonNullable<TConfig["Identifier"]>,
+    K extends keyof TConfig["Entity"],
+  >(
+    identifier: IdentifierArg<TConfig, I>,
     options: { select: readonly K[] },
   ): Promise<Selected<TConfig["Entity"], K> | null>;
-  async find(
-    identifier: NonNullable<TConfig["Identifier"]>,
+  async find<I extends NonNullable<TConfig["Identifier"]>>(
+    identifier: IdentifierArg<TConfig, I>,
     options?: { select?: ReadonlyArray<keyof TConfig["Entity"]> },
   ): Promise<TConfig["Entity"] | null>;
   async find(
     identifier: NonNullable<TConfig["Identifier"]>,
     options?: { select?: ReadonlyArray<keyof TConfig["Entity"]> },
   ): Promise<TConfig["Entity"] | null> {
-    const extracted = this.extractIdentifier(
-      identifier as Record<string, unknown>,
-    );
+    return this.findOne(identifier as Record<string, unknown>, options);
+  }
+
+  private async findOne(
+    identifier: Record<string, unknown>,
+    options?: { select?: ReadonlyArray<keyof TConfig["Entity"]> },
+  ): Promise<TConfig["Entity"] | null> {
+    const extracted = this.extractIdentifier(identifier);
     const { whereClause, values } = this.getColumnMapping(extracted);
 
     const columns = options?.select?.length
@@ -613,19 +653,25 @@ export abstract class BaseQueries<
    * // With field projection
    * const player = await Q.player.get({ discordId: "123" }, { select: ["id", "minecraftUsername"] })
    */
-  async get<K extends keyof TConfig["Entity"]>(
-    identifier: NonNullable<TConfig["Identifier"]>,
+  async get<
+    I extends NonNullable<TConfig["Identifier"]>,
+    K extends keyof TConfig["Entity"],
+  >(
+    identifier: IdentifierArg<TConfig, I>,
     options: { select: readonly K[] },
   ): Promise<Selected<TConfig["Entity"], K>>;
-  async get(
-    identifier: NonNullable<TConfig["Identifier"]>,
+  async get<I extends NonNullable<TConfig["Identifier"]>>(
+    identifier: IdentifierArg<TConfig, I>,
     options?: { select?: ReadonlyArray<keyof TConfig["Entity"]> },
   ): Promise<TConfig["Entity"]>;
   async get(
     identifier: NonNullable<TConfig["Identifier"]>,
     options?: { select?: ReadonlyArray<keyof TConfig["Entity"]> },
   ): Promise<TConfig["Entity"]> {
-    const entity = await this.find(identifier, options);
+    const entity = await this.findOne(
+      identifier as Record<string, unknown>,
+      options,
+    );
 
     if (!entity) {
       const extracted = this.extractIdentifier(
@@ -650,8 +696,8 @@ export abstract class BaseQueries<
    *   // Player exists
    * }
    */
-  async exists(
-    identifier: NonNullable<TConfig["Identifier"]>,
+  async exists<I extends NonNullable<TConfig["Identifier"]>>(
+    identifier: IdentifierArg<TConfig, I>,
   ): Promise<boolean> {
     const extracted = this.extractIdentifier(
       identifier as Record<string, unknown>,
@@ -687,8 +733,8 @@ export abstract class BaseQueries<
    * // Pass full entity
    * await Q.player.update(player, { minecraftUsername: "NewName" })
    */
-  async update(
-    identifier: NonNullable<TConfig["Identifier"]>,
+  async update<I extends NonNullable<TConfig["Identifier"]>>(
+    identifier: IdentifierArg<TConfig, I>,
     updates: Partial<NonNullable<TConfig["Update"]>>,
   ): Promise<void> {
     const extracted = this.extractIdentifier(
@@ -741,8 +787,8 @@ export abstract class BaseQueries<
    *   minecraftUsername: "NewName"
    * });
    */
-  async updateAndReturn(
-    identifier: NonNullable<TConfig["Identifier"]>,
+  async updateAndReturn<I extends NonNullable<TConfig["Identifier"]>>(
+    identifier: IdentifierArg<TConfig, I>,
     updates: Partial<NonNullable<TConfig["Update"]>>,
   ): Promise<TConfig["Entity"]> {
     const extracted = this.extractIdentifier(
@@ -795,7 +841,9 @@ export abstract class BaseQueries<
    * @example
    * await Q.player.delete(player) // Matches on all identifier fields
    */
-  async delete(identifier: NonNullable<TConfig["Identifier"]>): Promise<void> {
+  async delete<I extends NonNullable<TConfig["Identifier"]>>(
+    identifier: IdentifierArg<TConfig, I>,
+  ): Promise<void> {
     const extracted = this.extractIdentifier(
       identifier as Record<string, unknown>,
     );
@@ -828,13 +876,21 @@ export abstract class BaseQueries<
    * @example
    * const username = await Q.player.pluck(player, "minecraftUsername")
    */
-  async pluck<K extends keyof TConfig["Entity"]>(
-    identifier: NonNullable<TConfig["Identifier"]>,
+  async pluck<
+    I extends NonNullable<TConfig["Identifier"]>,
+    K extends keyof TConfig["Entity"],
+  >(
+    identifier: IdentifierArg<TConfig, I>,
     field: K,
   ): Promise<TConfig["Entity"][K]> {
-    const extracted = this.extractIdentifier(
-      identifier as Record<string, unknown>,
-    );
+    return this.pluckField(identifier as Record<string, unknown>, field);
+  }
+
+  private async pluckField<K extends keyof TConfig["Entity"]>(
+    identifier: Record<string, unknown>,
+    field: K,
+  ): Promise<TConfig["Entity"][K]> {
+    const extracted = this.extractIdentifier(identifier);
     const { whereClause, values } = this.getColumnMapping(extracted);
     const columnName = this.getColumnName(field as string);
 
@@ -870,13 +926,15 @@ export abstract class BaseQueries<
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Proxy target requires any for dynamic property access
   readonly select = new Proxy({} as Record<string, any>, {
     get: (_, field: string) => {
-      return async (identifier: NonNullable<TConfig["Identifier"]>) => {
-        return this.pluck(identifier, field as keyof TConfig["Entity"]);
+      return async (identifier: Record<string, unknown>) => {
+        return this.pluckField(identifier, field as keyof TConfig["Entity"]);
       };
     },
   }) as {
-    [K in keyof TConfig["Entity"]]: (
-      identifier: NonNullable<TConfig["Identifier"]>,
+    [K in keyof TConfig["Entity"]]: <
+      I extends NonNullable<TConfig["Identifier"]>,
+    >(
+      identifier: IdentifierArg<TConfig, I>,
     ) => Promise<TConfig["Entity"][K]>;
   };
 
