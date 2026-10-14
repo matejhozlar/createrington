@@ -13,6 +13,7 @@ const MAX_QUERY_PARAMS = 65_535;
  *
  * - Provides typed CRUD operations (find, get, create, update, delete) with automatic camelCase/snake_case conversion
  * - Single-row methods accept a minimal identifier or a full entity; every recognized identifier field is ANDed in the WHERE clause, so a stale identifier value fails with NotFound instead of matching another row
+ * - An identifier carrying a non-identifier key (e.g. `find({ slug, enabled: true })`) is rejected instead of silently widening the lookup; filter on arbitrary columns with findAll / where().first()
  * - Supports filter operators ($eq, $ne, $gt, $lt, $in, $between, etc.) for composable WHERE clauses
  * - Fluent query builder via .where().orderBy().limit().all() chain
  * - Singleton child registry (WeakMap per pool) for hierarchical Q.player.balance style access
@@ -37,6 +38,7 @@ export abstract class BaseQueries<
   protected abstract readonly table: string;
   protected readonly COLUMN_MAP?: Record<string, string>;
   protected readonly IDENTIFIER_GROUPS?: ReadonlyArray<readonly string[]>;
+  protected readonly COLUMNS?: readonly string[];
   protected readonly GENERATED_FIELDS?: readonly string[];
   protected readonly AUTO_SET_UPDATED_AT: boolean = false;
 
@@ -196,9 +198,15 @@ export abstract class BaseQueries<
    * one row while a partial composite (e.g. one column of a two-column unique
    * index) is rejected instead of silently matching multiple rows.
    *
-   * @param obj - Object that may contain identifier fields plus extra data
+   * Non-identifier keys are only tolerated on a full entity (an object that
+   * carries every column of the table, as a row read from it does). An
+   * identifier plus a stray condition is rejected, since the condition would
+   * otherwise be dropped from the WHERE clause without a trace.
+   *
+   * @param obj - Identifier, or a full entity whose identifier fields are extracted
    * @returns Identifier object containing all recognized identifier fields
-   * @throws Error if the provided fields do not cover any identifier group
+   * @throws Error if the provided fields do not cover any identifier group,
+   *   or if a non-entity object carries keys outside the identifier groups
    *
    * @example
    * // PlayerIdentifier = { minecraftUuid: string } | { discordId: string }
@@ -209,6 +217,9 @@ export abstract class BaseQueries<
    * // Composite unique group (channelId + messageId)
    * extractIdentifier({ channelId: "1", messageId: "2" }) // OK
    * extractIdentifier({ channelId: "1" }) // throws: incomplete group
+   *
+   * @example
+   * extractIdentifier({ slug: "main", enabled: true }) // throws: enabled is not an identifier field
    */
   protected extractIdentifier(
     obj: Record<string, unknown>,
@@ -257,9 +268,24 @@ export abstract class BaseQueries<
       );
     }
 
+    const strayKeys = availableKeys.filter((key) => !knownFields.has(key));
+    if (strayKeys.length > 0 && !this.isFullEntity(obj)) {
+      throw new Error(
+        `Identifier for ${this.table} carries non-identifier field(s) ` +
+          `(${strayKeys.join(", ")}), which single-row methods would ignore. ` +
+          `Use findAll or where().first() to filter on them, or pass only: ${expected}`,
+      );
+    }
+
     const result: Record<string, unknown> = {};
     for (const key of validKeys) result[key] = obj[key];
     return result as NonNullable<TConfig["Identifier"]>;
+  }
+
+  private isFullEntity(obj: Record<string, unknown>): boolean {
+    const columns = this.COLUMNS;
+    if (!columns || columns.length === 0) return false;
+    return columns.every((column) => column in obj);
   }
   /**
    * Maps an update object to an array of column-value pairs
@@ -526,15 +552,15 @@ export abstract class BaseQueries<
    * await Q.player.find({ minecraftUuid: "abc-123" }, { select: ["id", "minecraftUsername"] })
    */
   async find<K extends keyof TConfig["Entity"]>(
-    identifier: NonNullable<TConfig["Identifier"]> | TConfig["Entity"],
+    identifier: NonNullable<TConfig["Identifier"]>,
     options: { select: readonly K[] },
   ): Promise<Selected<TConfig["Entity"], K> | null>;
   async find(
-    identifier: NonNullable<TConfig["Identifier"]> | TConfig["Entity"],
+    identifier: NonNullable<TConfig["Identifier"]>,
     options?: { select?: ReadonlyArray<keyof TConfig["Entity"]> },
   ): Promise<TConfig["Entity"] | null>;
   async find(
-    identifier: NonNullable<TConfig["Identifier"]> | TConfig["Entity"],
+    identifier: NonNullable<TConfig["Identifier"]>,
     options?: { select?: ReadonlyArray<keyof TConfig["Entity"]> },
   ): Promise<TConfig["Entity"] | null> {
     const extracted = this.extractIdentifier(
@@ -585,15 +611,15 @@ export abstract class BaseQueries<
    * const player = await Q.player.get({ discordId: "123" }, { select: ["id", "minecraftUsername"] })
    */
   async get<K extends keyof TConfig["Entity"]>(
-    identifier: NonNullable<TConfig["Identifier"]> | TConfig["Entity"],
+    identifier: NonNullable<TConfig["Identifier"]>,
     options: { select: readonly K[] },
   ): Promise<Selected<TConfig["Entity"], K>>;
   async get(
-    identifier: NonNullable<TConfig["Identifier"]> | TConfig["Entity"],
+    identifier: NonNullable<TConfig["Identifier"]>,
     options?: { select?: ReadonlyArray<keyof TConfig["Entity"]> },
   ): Promise<TConfig["Entity"]>;
   async get(
-    identifier: NonNullable<TConfig["Identifier"]> | TConfig["Entity"],
+    identifier: NonNullable<TConfig["Identifier"]>,
     options?: { select?: ReadonlyArray<keyof TConfig["Entity"]> },
   ): Promise<TConfig["Entity"]> {
     const entity = await this.find(identifier, options);
@@ -622,7 +648,7 @@ export abstract class BaseQueries<
    * }
    */
   async exists(
-    identifier: NonNullable<TConfig["Identifier"]> | TConfig["Entity"],
+    identifier: NonNullable<TConfig["Identifier"]>,
   ): Promise<boolean> {
     const extracted = this.extractIdentifier(
       identifier as Record<string, unknown>,
@@ -659,7 +685,7 @@ export abstract class BaseQueries<
    * await Q.player.update(player, { minecraftUsername: "NewName" })
    */
   async update(
-    identifier: NonNullable<TConfig["Identifier"]> | TConfig["Entity"],
+    identifier: NonNullable<TConfig["Identifier"]>,
     updates: Partial<NonNullable<TConfig["Update"]>>,
   ): Promise<void> {
     const extracted = this.extractIdentifier(
@@ -713,7 +739,7 @@ export abstract class BaseQueries<
    * });
    */
   async updateAndReturn(
-    identifier: NonNullable<TConfig["Identifier"]> | TConfig["Entity"],
+    identifier: NonNullable<TConfig["Identifier"]>,
     updates: Partial<NonNullable<TConfig["Update"]>>,
   ): Promise<TConfig["Entity"]> {
     const extracted = this.extractIdentifier(
@@ -766,9 +792,7 @@ export abstract class BaseQueries<
    * @example
    * await Q.player.delete(player) // Matches on all identifier fields
    */
-  async delete(
-    identifier: NonNullable<TConfig["Identifier"]> | TConfig["Entity"],
-  ): Promise<void> {
+  async delete(identifier: NonNullable<TConfig["Identifier"]>): Promise<void> {
     const extracted = this.extractIdentifier(
       identifier as Record<string, unknown>,
     );
@@ -802,7 +826,7 @@ export abstract class BaseQueries<
    * const username = await Q.player.pluck(player, "minecraftUsername")
    */
   async pluck<K extends keyof TConfig["Entity"]>(
-    identifier: NonNullable<TConfig["Identifier"]> | TConfig["Entity"],
+    identifier: NonNullable<TConfig["Identifier"]>,
     field: K,
   ): Promise<TConfig["Entity"][K]> {
     const extracted = this.extractIdentifier(
@@ -843,15 +867,13 @@ export abstract class BaseQueries<
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Proxy target requires any for dynamic property access
   readonly select = new Proxy({} as Record<string, any>, {
     get: (_, field: string) => {
-      return async (
-        identifier: NonNullable<TConfig["Identifier"]> | TConfig["Entity"],
-      ) => {
+      return async (identifier: NonNullable<TConfig["Identifier"]>) => {
         return this.pluck(identifier, field as keyof TConfig["Entity"]);
       };
     },
   }) as {
     [K in keyof TConfig["Entity"]]: (
-      identifier: NonNullable<TConfig["Identifier"]> | TConfig["Entity"],
+      identifier: NonNullable<TConfig["Identifier"]>,
     ) => Promise<TConfig["Entity"][K]>;
   };
 

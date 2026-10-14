@@ -38,6 +38,14 @@ export class FixtureParentBaseQueries extends BaseQueries<{
    * to reject partial composite identifiers.
    */
   protected readonly IDENTIFIER_GROUPS = [['id'], ['slug'], ['email']];
+
+  /**
+   * Every column of this table in camelCase
+   *
+   * Used by extractIdentifier to tell a full entity (which may carry
+   * non-identifier fields) from an identifier with a stray condition.
+   */
+  protected readonly COLUMNS = ['id', 'slug', 'email', 'status', 'kind', 'displayName', 'score', 'isActive', 'metadata', 'createdAt', 'updatedAt'];
   protected readonly AUTO_SET_UPDATED_AT = true;
 
   constructor(db: Pool | PoolClient) {
