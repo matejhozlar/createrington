@@ -62,6 +62,7 @@ import { findCurseforgeCdnUrls } from "@/services/launcher/pack/curseforge-cdn";
 import { launcherPackService } from "@/services/launcher/pack/launcher-pack.service";
 import { findSandboxFileUrls } from "@/services/launcher/pack/sandbox-files";
 import { findModrinthFilesBySha1 } from "@/services/modrinth";
+import { settings } from "@/services/settings";
 import { getMinecraftJavaMajorVersion } from "@/utils/mojang-java-version";
 import type {
   CurseforgeProjectCreate,
@@ -1092,6 +1093,27 @@ describe("LauncherPackService.getLatestPack for a pack the launcher is not offer
     );
   });
 
+  it("serves no CurseForge release of a pack whose releases the sandbox reports", async () => {
+    const modpack = await seedPack();
+    const file = await seedFile();
+    serveFromCurseForge([file]);
+    await seedReadyRelease(modpack, "1.0.0", [file]);
+    await Q.launcher.pack.updateAll({ source: "sandbox" }, { slug: PACK_SLUG });
+    vi.mocked(refreshProjects).mockClear();
+
+    const latest = await refusal(launcherPackService.getLatestPack(PACK_SLUG));
+    const listed = await launcherPackService.listReleases(
+      PACK_SLUG,
+      FIRST_PAGE,
+    );
+    const [summary] = await launcherPackService.listPacks();
+
+    expect(latest.code).toBe("PACK_UNAVAILABLE");
+    expect(listed).toEqual({ releases: [], total: 0 });
+    expect(summary.latest).toBeNull();
+    expect(refreshProjects).not.toHaveBeenCalled();
+  });
+
   it("does not prepare the releases of a pack whose releases the sandbox reports", async () => {
     const modpack = await seedModpack(ctx, {
       curseforgeProjectId: PACK_PROJECT_ID + 2,
@@ -1196,13 +1218,18 @@ describe("LauncherPackService.listPacks", () => {
 
 describe("LauncherPackService.seedDefaultPack", () => {
   const originalPackProjectId = config.curseforge.modpackProjectId;
+  const SEEDED_KEY = "launcher_packs_seeded";
   let storedPacks: LauncherPack[] = [];
+  let storedSeeded: Record<string, unknown> | null = null;
 
   beforeEach(async () => {
     storedPacks = await Q.launcher.pack.getAll();
     await Q.launcher.pack.deleteAll({
       id: { $in: storedPacks.map((p) => p.id) },
     });
+    storedSeeded =
+      (await Q.app.setting.find({ key: SEEDED_KEY }))?.value ?? null;
+    await Q.app.setting.deleteAll({ key: SEEDED_KEY });
   });
 
   afterEach(async () => {
@@ -1213,6 +1240,39 @@ describe("LauncherPackService.seedDefaultPack", () => {
       const { id: _id, createdAt: _c, updatedAt: _u, ...row } = pack;
       await Q.launcher.pack.create(row);
     }
+    await Q.app.setting.deleteAll({ key: SEEDED_KEY });
+    if (storedSeeded !== null) {
+      await Q.app.setting.create({ key: SEEDED_KEY, value: storedSeeded });
+    }
+  });
+
+  it("does not seed again after the owner removed every pack", async () => {
+    await seedPackProject(PACK_PROJECT_ID);
+    await seedModpack(ctx, { curseforgeProjectId: PACK_PROJECT_ID });
+    (config.curseforge as { modpackProjectId: number }).modpackProjectId =
+      PACK_PROJECT_ID;
+    await launcherPackService.seedDefaultPack();
+    await Q.launcher.pack.deleteAll({ slug: "createrington" });
+
+    await launcherPackService.seedDefaultPack();
+
+    expect(await Q.launcher.pack.count()).toBe(0);
+    expect(await settings.getLauncherPacksSeeded()).toBe(true);
+  });
+
+  it("seeds on a later start once a modpack carries the configured project", async () => {
+    (config.curseforge as { modpackProjectId: number }).modpackProjectId =
+      PACK_PROJECT_ID;
+    await launcherPackService.seedDefaultPack();
+    expect(await settings.getLauncherPacksSeeded()).toBe(false);
+    await seedPackProject(PACK_PROJECT_ID);
+    await seedModpack(ctx, { curseforgeProjectId: PACK_PROJECT_ID });
+
+    await launcherPackService.seedDefaultPack();
+
+    expect((await Q.launcher.pack.getAll()).map((p) => p.slug)).toEqual([
+      "createrington",
+    ]);
   });
 
   it("offers the modpack linked to the configured project as the createrington pack", async () => {
@@ -1262,6 +1322,7 @@ describe("LauncherPackService.seedDefaultPack", () => {
     const packs = await Q.launcher.pack.getAll();
     expect(packs.map((p) => p.slug)).toEqual(["vitest-other"]);
     expect(packs[0].modpackId).not.toBe(modpack.id);
+    expect(await settings.getLauncherPacksSeeded()).toBe(true);
   });
 });
 
