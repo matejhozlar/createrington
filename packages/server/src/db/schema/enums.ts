@@ -2,6 +2,7 @@ import { pgEnum } from "drizzle-orm/pg-core";
 import { GALLERY_SUBMISSION_STATUSES } from "@createrington/shared/gallery";
 import {
   LAUNCHER_PACK_FILE_SOURCES,
+  LAUNCHER_PACK_SOURCES,
   LAUNCHER_RELEASE_STATUSES,
 } from "@createrington/shared/launcher";
 import { PLAYER_PROMPT_ENTRY_MODES } from "@createrington/shared/player-prompt";
@@ -131,6 +132,13 @@ export const gallerySubmissionStatusEnum = pgEnum(
 export const launcherReleaseStatusEnum = pgEnum(
   "launcher_release_status",
   LAUNCHER_RELEASE_STATUSES,
+);
+
+// Where a launcher pack gets its releases from: the reconcile of its
+// published CurseForge project, or snapshots the sandbox reports
+export const launcherPackSourceEnum = pgEnum(
+  "launcher_pack_source",
+  LAUNCHER_PACK_SOURCES,
 );
 
 // Where the launcher downloads a pack file from: the link CurseForge gives,

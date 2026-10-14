@@ -69,7 +69,7 @@ export function registerRoutes(app: Express): void {
       launcherAuthRoutes,
     );
     app.use(
-      `${API_PREFIX}/launcher/pack`,
+      `${API_PREFIX}/launcher/packs`,
       requireSupportedLauncher,
       launcherPackRoutes,
     );

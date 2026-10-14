@@ -309,7 +309,8 @@ export class ModpackService {
 
   /**
    * Update modpack fields. Linking the published CurseForge project for the
-   * first time kicks off an immediate reconcile.
+   * first time kicks off an immediate reconcile. Refused when the project of
+   * a modpack the launcher offers would change.
    */
   async updateModpack(
     modpackId: number,
@@ -324,10 +325,16 @@ export class ModpackService {
   ): Promise<Modpack> {
     const modpack = await this.getModpack(modpackId);
     if (
-      patch.curseforgeProjectId &&
+      patch.curseforgeProjectId !== undefined &&
       patch.curseforgeProjectId !== modpack.curseforgeProjectId
     ) {
-      await this.assertModpackProject(patch.curseforgeProjectId);
+      await this.assertNotOfferedByLauncher(
+        modpack,
+        "its CurseForge project cannot be changed",
+      );
+      if (patch.curseforgeProjectId) {
+        await this.assertModpackProject(patch.curseforgeProjectId);
+      }
     }
     if (patch.serverId) await this.assertServer(patch.serverId);
 
@@ -348,8 +355,9 @@ export class ModpackService {
 
   /**
    * Delete a modpack together with its members and release history. Refused
-   * while any workshop, archived ones included, still points at it. Returns
-   * counts of what was destroyed for the audit trail.
+   * while any workshop, archived ones included, still points at it, and while
+   * the launcher offers it. Returns counts of what was destroyed for the audit
+   * trail.
    */
   async deleteModpack(
     modpackId: number,
@@ -365,6 +373,7 @@ export class ModpackService {
         `${workshops.length} workshop(s) still use this modpack: ${names}. Delete those workshops first.`,
       );
     }
+    await this.assertNotOfferedByLauncher(modpack, "it cannot be deleted");
     const [modCount, releaseCount] = await Promise.all([
       Q.modpack.mod.count({ modpackId }),
       Q.modpack.release.count({ modpackId }),
@@ -374,12 +383,24 @@ export class ModpackService {
     } catch (error) {
       if (error instanceof ForeignKeyViolationError) {
         throw new ConflictError(
-          "A workshop was attached to this modpack while it was being deleted",
+          "A workshop or launcher pack was attached to this modpack while it was being deleted",
         );
       }
       throw error;
     }
     return { modpack, modCount, releaseCount };
+  }
+
+  private async assertNotOfferedByLauncher(
+    modpack: Modpack,
+    consequence: string,
+  ): Promise<void> {
+    const pack = await Q.launcher.pack.find({ modpackId: modpack.id });
+    if (pack) {
+      throw new ConflictError(
+        `The launcher offers this modpack as "${pack.slug}", so ${consequence}. Point that launcher pack at another modpack first.`,
+      );
+    }
   }
 
   /** Members of a modpack with project summaries, credit, and live state; liveOnly leaves out members the latest publish dropped. */

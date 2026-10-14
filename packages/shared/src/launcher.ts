@@ -46,6 +46,14 @@ export const LAUNCHER_PACK_FILE_SOURCES = [
 export type LauncherPackFileSource =
   (typeof LAUNCHER_PACK_FILE_SOURCES)[number];
 
+export const LAUNCHER_PACK_SOURCES = ["curseforge", "sandbox"] as const;
+
+export type LauncherPackSource = (typeof LAUNCHER_PACK_SOURCES)[number];
+
+export const LAUNCHER_PACK_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+export const LAUNCHER_PACK_SLUG_MAX_LENGTH = 40;
+
 export const LAUNCHER_PACK_FOLDERS = [
   "mods",
   "resourcepacks",
@@ -126,6 +134,7 @@ export type LauncherContentErrorCode =
 export const LAUNCHER_PACK_RESOLVE_MAX_FILES = 1000;
 
 export const LauncherPackErrorCode = {
+  PACK_NOT_FOUND: "PACK_NOT_FOUND",
   PACK_UNAVAILABLE: "PACK_UNAVAILABLE",
   FILE_SOURCES_UNAVAILABLE: "FILE_SOURCES_UNAVAILABLE",
 } as const;
@@ -188,6 +197,26 @@ export interface LauncherPackData {
     size: number;
     sha1: string;
   };
+}
+
+export interface LauncherPackServer {
+  id: number;
+  name: string;
+  identifier: string;
+}
+
+export interface LauncherPackSummary {
+  slug: string;
+  source: LauncherPackSource;
+  name: string;
+  summary: string | null;
+  iconUrl: string | null;
+  server: LauncherPackServer | null;
+  latest: LauncherPackData | null;
+}
+
+export interface LauncherPacksData {
+  packs: LauncherPackSummary[];
 }
 
 export interface LauncherPackChangelogEntry {

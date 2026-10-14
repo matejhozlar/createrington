@@ -32,6 +32,7 @@ export { FaqEntryQueries } from "./faq/entry";
 export { FeatureFlagQueries } from "./feature/flag";
 export { GallerySubmissionQueries } from "./gallery/submission";
 export { GallerySubmissionCreditQueries } from "./gallery/submission/credit";
+export { LauncherPackQueries } from "./launcher/pack";
 export { LauncherReleaseQueries } from "./launcher/release";
 export { LeaderboardMessageQueries } from "./leaderboard/message";
 export { ModpackQueries } from "./modpack";

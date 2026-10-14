@@ -6,6 +6,7 @@ import { validate } from "@/app/middleware/validation.middleware";
 import { LauncherPackController } from "./launcher-pack.controller";
 import {
   ListReleasesQuerySchema,
+  PackParamsSchema,
   ResolveFilesBodySchema,
 } from "./launcher-pack.schemas";
 
@@ -14,13 +15,23 @@ const router = Router();
 router.use(launcherPackLimiter);
 
 router.get(
-  "/latest",
-  ...customRoute([authenticateLauncher], LauncherPackController.latest),
+  "/",
+  ...customRoute([authenticateLauncher], LauncherPackController.list),
 );
 router.get(
-  "/releases",
+  "/:slug/latest",
   ...customRoute(
-    [authenticateLauncher, validate({ query: ListReleasesQuerySchema })],
+    [authenticateLauncher, validate({ params: PackParamsSchema })],
+    LauncherPackController.latest,
+  ),
+);
+router.get(
+  "/:slug/releases",
+  ...customRoute(
+    [
+      authenticateLauncher,
+      validate({ params: PackParamsSchema, query: ListReleasesQuerySchema }),
+    ],
     LauncherPackController.releases,
   ),
 );

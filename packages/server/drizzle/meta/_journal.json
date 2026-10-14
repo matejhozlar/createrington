@@ -624,6 +624,13 @@
       "when": 1791239965079,
       "tag": "0088_stiff_stick",
       "breakpoints": true
+    },
+    {
+      "idx": 89,
+      "version": "7",
+      "when": 1791987782167,
+      "tag": "0089_curved_thunderbolt",
+      "breakpoints": true
     }
   ]
 }

@@ -38,6 +38,7 @@ import { AutoMessageService } from "./discord/auto-message";
 import { maintenanceService } from "./maintenance";
 import { MaintenanceScheduler } from "./maintenance/scheduler";
 import { releaseAnnouncementService } from "./release-announcement";
+import { launcherPackService } from "./launcher/pack/launcher-pack.service";
 import { DonationService } from "./donation/donation.service";
 import { structurePackService } from "./structure-pack";
 import { StructurePackRotationService } from "./structure-pack/rotation";
@@ -548,6 +549,9 @@ export async function initializeServices(): Promise<void> {
     .catch((err) => logger.warn(`Maintenance service init failed: ${err}`));
 
   void releaseAnnouncementService.announceIfNew();
+  launcherPackService
+    .seedDefaultPack()
+    .catch((error) => logger.warn("Launcher pack seed failed:", error));
 }
 
 /**

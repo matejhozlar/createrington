@@ -3,7 +3,18 @@ import {
   LAUNCHER_PACK_RELEASES_MAX_PAGE_SIZE,
   LAUNCHER_PACK_RELEASES_PAGE_SIZE,
   LAUNCHER_PACK_RESOLVE_MAX_FILES,
+  LAUNCHER_PACK_SLUG_MAX_LENGTH,
+  LAUNCHER_PACK_SLUG_PATTERN,
 } from "@createrington/shared/launcher";
+
+export const PackParamsSchema = z.object({
+  slug: z
+    .string()
+    .max(LAUNCHER_PACK_SLUG_MAX_LENGTH)
+    .regex(LAUNCHER_PACK_SLUG_PATTERN),
+});
+
+export type PackParams = z.infer<typeof PackParamsSchema>;
 
 export const ListReleasesQuerySchema = z.object({
   page: z.coerce.number().int().min(0).max(10_000).default(0),
