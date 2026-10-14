@@ -533,7 +533,7 @@ export abstract class BaseQueries<
    * Finds a single entity by unique identifier
    * Returns null if not found
    *
-   * Accepts either a minimal identifier OR a full entity object
+   * Accepts either a minimal identifier OR a full entity of this table
    *
    * @param identifier - Unique identifier or full entity object
    * @param options - Optional query options including field selection
@@ -590,7 +590,7 @@ export abstract class BaseQueries<
    * Retrieves a single entity by unique identifier
    * Throws an error if not found
    *
-   * Accepts either a minimal identifier OR a full entity object
+   * Accepts either a minimal identifier OR a full entity of this table
    *
    * @param identifier - Unique identifier or full entity object
    * @param options - Optional query options including field selection
@@ -604,7 +604,10 @@ export abstract class BaseQueries<
    * @example
    * // Pass full entity (matches on all identifier fields)
    * await Q.player.get(player)
-   * await Q.player.balance.get(player) // Uses player.minecraftUuid
+   *
+   * @example
+   * // A row of another table is not an entity of this one; pass the key explicitly
+   * await Q.player.balance.get({ minecraftUuid: player.minecraftUuid })
    *
    * @example
    * // With field projection
@@ -637,7 +640,7 @@ export abstract class BaseQueries<
   /**
    * Checks if an entity exists by unique identifier
    *
-   * Accepts either a minimal identifier OR a full entity object
+   * Accepts either a minimal identifier OR a full entity of this table
    *
    * @param identifier - Unique identifier or full entity object
    * @returns Promise resolving to true if entity exists, false otherwise
@@ -669,7 +672,7 @@ export abstract class BaseQueries<
   /**
    * Updates a single entity by unique identifier
    *
-   * Accepts either a minimal identifier OR a full entity object
+   * Accepts either a minimal identifier OR a full entity of this table
    *
    * @param identifier - Unique identifier or full entity object to find the entity
    * @param updates - Object containing fields to update
@@ -726,7 +729,7 @@ export abstract class BaseQueries<
   /**
    * Updates a single entity and returns the updated record
    *
-   * Accepts either a minimal identifier OR a full entity object
+   * Accepts either a minimal identifier OR a full entity of this table
    *
    * @param identifier - Unique identifier or full entity object to find the entity
    * @param updates - Object containing fields to update
@@ -783,7 +786,7 @@ export abstract class BaseQueries<
   /**
    * Deletes a single entity by unique identifier
    *
-   * Accepts either a minimal identifier OR a full entity object
+   * Accepts either a minimal identifier OR a full entity of this table
    *
    * @param identifier - Unique identifier or full entity object to find the entity
    * @returns Promise resolving when the deletion is complete
@@ -815,7 +818,7 @@ export abstract class BaseQueries<
    * Gets a specific field value with an optimized query
    * Only fetches the requested column from the database
    *
-   * Accepts either a minimal identifier OR a full entity object
+   * Accepts either a minimal identifier OR a full entity of this table
    *
    * @param identifier - Unique identifier or full entity object
    * @param field - Field name to retrieve

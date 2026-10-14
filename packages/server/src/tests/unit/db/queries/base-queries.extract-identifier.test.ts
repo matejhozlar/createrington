@@ -190,6 +190,19 @@ describe("extractIdentifier with stray non-identifier keys", () => {
     });
   });
 
+  it("rejects a full row of a related table passed to this table's lookup", () => {
+    const playerRow = {
+      id: 3,
+      playerMinecraftUuid: "uuid-1",
+      minecraftUsername: "Steve",
+      discordId: "123",
+      online: true,
+    };
+    expect(() => composite.extract(playerRow)).toThrow(
+      /non-identifier field\(s\) \(minecraftUsername, discordId, online\)/,
+    );
+  });
+
   it("rejects a projected row that lacks some columns but carries a stray one", () => {
     expect(() =>
       composite.extract({ id: 7, playerMinecraftUuid: "uuid-1", amount: 100n }),
