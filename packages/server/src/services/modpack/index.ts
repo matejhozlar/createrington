@@ -603,13 +603,33 @@ export class ModpackService {
       );
     }
     const modpack = await this.getModpack(pack.modpackId);
+    const notes =
+      report.notes === undefined ? undefined : report.notes.trim() || null;
 
     const recorded = await Q.modpack.release.find({
       modpackId: modpack.id,
       curseforgeFileId: report.snapshotId,
     });
     if (recorded?.launcherReadyAt) {
-      return { release: recorded, ready: true, error: null };
+      if (notes !== undefined) {
+        await this.upsertPublish(modpack.id, report.snapshotId, null, notes);
+      }
+      return this.snapshotAnswer(recorded, null);
+    }
+
+    const [newest] = await Q.modpack.release.findAll(
+      { modpackId: modpack.id, launcherReadyAt: { $ne: null } },
+      { orderBy: "id", orderDirection: "desc", limit: 1 },
+    );
+    if (newest && newest.curseforgeFileId > report.snapshotId) {
+      const error = `Snapshot ${newest.curseforgeFileId} is newer and already offered, so snapshot ${report.snapshotId} will not be`;
+      if (recorded) {
+        await Q.modpack.publish.updateAll(
+          { lastError: error },
+          { modpackId: modpack.id, clientFileId: report.snapshotId },
+        );
+      }
+      return { release: recorded ?? newest, ready: false, error };
     }
 
     const downloadUrl = await findSandboxSnapshotUrl({
@@ -623,8 +643,6 @@ export class ModpackService {
       );
     }
 
-    const notes =
-      report.notes === undefined ? undefined : report.notes.trim() || null;
     const release =
       recorded ?? (await this.recordSnapshotRelease(modpack, report, notes));
     if (notes !== undefined && recorded) {
@@ -633,13 +651,26 @@ export class ModpackService {
 
     let error: string | null = null;
     try {
-      await launcherPackService.prepareSnapshot(modpack, release.id, {
-        version: report.version,
-        minecraftVersion: report.minecraftVersion,
-        modLoader: report.modLoader,
-        zip: { ...report.zip, downloadUrl },
-        entries: report.files,
-      });
+      const outcome = await launcherPackService.prepareSnapshot(
+        modpack,
+        release.id,
+        {
+          version: report.version,
+          minecraftVersion: report.minecraftVersion,
+          modLoader: report.modLoader,
+          zip: { ...report.zip, downloadUrl },
+          entries: report.files,
+        },
+      );
+      if (outcome.status === "busy") {
+        return {
+          release: await Q.modpack.release.get({ id: release.id }),
+          ready: false,
+          error:
+            "The snapshot is being prepared for an earlier report; ask again in a moment",
+        };
+      }
+      if (outcome.status === "blocked") error = outcome.reason;
     } catch (caught) {
       error = caught instanceof Error ? caught.message : String(caught);
       logger.warn(
@@ -648,17 +679,36 @@ export class ModpackService {
       );
     }
 
-    const stored = await Q.modpack.release.get({ id: release.id });
-    const ready = stored.launcherReadyAt !== null;
-    if (!ready && error === null) {
-      error =
-        "The snapshot was recorded but cannot be offered to the launcher yet; the owner was told why";
-    }
+    const answer = this.snapshotAnswer(
+      await Q.modpack.release.get({ id: release.id }),
+      error,
+    );
     await Q.modpack.publish.updateAll(
-      { ingestedAt: ready ? new Date() : null, lastError: error },
+      {
+        ingestedAt: answer.ready ? new Date() : null,
+        lastError: answer.error,
+      },
       { modpackId: modpack.id, clientFileId: report.snapshotId },
     );
-    return { release: stored, ready, error };
+    return answer;
+  }
+
+  private snapshotAnswer(
+    release: ModpackRelease,
+    error: string | null,
+  ): ModpackSnapshotResult {
+    const ready =
+      release.launcherReadyAt !== null &&
+      release.launcherUnavailableAt === null;
+    return {
+      release,
+      ready,
+      error:
+        error ??
+        (ready || release.launcherReadyAt === null
+          ? null
+          : "A newer snapshot is offered instead, so this one no longer is"),
+    };
   }
 
   private async recordSnapshotRelease(

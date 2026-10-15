@@ -1210,14 +1210,19 @@ describe("LauncherPackService.prepareSnapshot", () => {
     serveFromCurseForge([file]);
     const release = await seedSnapshot(modpack, 7, "1.4.2-test.7", [file]);
 
-    await launcherPackService.prepareSnapshot(modpack, release.id, {
-      version: "1.4.2-test.7",
-      minecraftVersion: "1.21.1",
-      modLoader: "neoforge-21.1.249",
-      zip: SNAPSHOT_ZIP,
-      entries: entriesOf([file]),
-    });
+    const outcome = await launcherPackService.prepareSnapshot(
+      modpack,
+      release.id,
+      {
+        version: "1.4.2-test.7",
+        minecraftVersion: "1.21.1",
+        modLoader: "neoforge-21.1.249",
+        zip: SNAPSHOT_ZIP,
+        entries: entriesOf([file]),
+      },
+    );
 
+    expect(outcome).toEqual({ status: "ready" });
     const latest = await launcherPackService.getLatestPack("vitest-test");
     expect(latest).toEqual({
       project: {
@@ -1300,16 +1305,27 @@ describe("LauncherPackService.prepareSnapshot", () => {
     serveFromCurseForge([file]);
     const release = await seedSnapshot(modpack, 9, "test.9", [file]);
 
-    await launcherPackService.prepareSnapshot(modpack, release.id, {
-      version: "test.9",
-      minecraftVersion: "1.21.1",
-      modLoader: "neoforge",
-      zip: SNAPSHOT_ZIP,
-      entries: entriesOf([file]),
-    });
+    const outcome = await launcherPackService.prepareSnapshot(
+      modpack,
+      release.id,
+      {
+        version: "test.9",
+        minecraftVersion: "1.21.1",
+        modLoader: "neoforge",
+        zip: SNAPSHOT_ZIP,
+        entries: entriesOf([file]),
+      },
+    );
 
+    expect(outcome).toEqual({
+      status: "blocked",
+      reason: 'its mod loader "neoforge" does not name a loader and a version',
+    });
     expect(await isReady(release.id)).toBe(false);
     expect(sendMock).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(sendMock.mock.calls[0][0])).toContain(
+      "report the snapshot again",
+    );
     const error = await refusal(
       launcherPackService.getLatestPack("vitest-test"),
     );
@@ -1321,14 +1337,22 @@ describe("LauncherPackService.prepareSnapshot", () => {
     const file = await seedFile();
     const release = await seedSnapshot(modpack, 10, "test.10", [file]);
 
-    await launcherPackService.prepareSnapshot(modpack, release.id, {
-      version: "test.10",
-      minecraftVersion: "1.21.1",
-      modLoader: "neoforge-21.1.249",
-      zip: SNAPSHOT_ZIP,
-      entries: entriesOf([file]),
-    });
+    const outcome = await launcherPackService.prepareSnapshot(
+      modpack,
+      release.id,
+      {
+        version: "test.10",
+        minecraftVersion: "1.21.1",
+        modLoader: "neoforge-21.1.249",
+        zip: SNAPSHOT_ZIP,
+        entries: entriesOf([file]),
+      },
+    );
 
+    expect(outcome).toMatchObject({
+      status: "blocked",
+      reason: expect.stringContaining("could not be resolved on CurseForge"),
+    });
     expect(await isReady(release.id)).toBe(false);
     expect(sendMock).toHaveBeenCalledTimes(1);
   });

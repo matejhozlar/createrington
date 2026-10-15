@@ -2811,20 +2811,31 @@ describe("ModpackService.recordSnapshot", () => {
     };
   }
 
+  const BLOCKED_REASON =
+    "1 client file(s) could not be resolved on CurseForge (file ids 700001)";
+
   function readyOnPrepare() {
     vi.mocked(launcherPackService.prepareSnapshot).mockImplementation(
-      async (_modpack, releaseId) => {
+      async (modpack, releaseId) => {
         await Q.modpack.release.updateAll(
           { launcherReadyAt: new Date() },
           { id: releaseId },
         );
+        await Q.modpack.release.updateAll(
+          { launcherUnavailableAt: new Date() },
+          { modpackId: modpack.id, id: { $lt: releaseId } },
+        );
+        return { status: "ready" as const };
       },
     );
   }
 
   beforeEach(() => {
     vi.mocked(findSandboxSnapshotUrl).mockResolvedValue(SNAPSHOT_URL);
-    vi.mocked(launcherPackService.prepareSnapshot).mockResolvedValue(undefined);
+    vi.mocked(launcherPackService.prepareSnapshot).mockResolvedValue({
+      status: "blocked",
+      reason: BLOCKED_REASON,
+    });
   });
 
   it("records the verified snapshot as a release with its files and notes, readies it, and says so", async () => {
@@ -2928,7 +2939,7 @@ describe("ModpackService.recordSnapshot", () => {
     );
 
     expect(first.ready).toBe(false);
-    expect(first.error).toMatch(/cannot be offered to the launcher yet/);
+    expect(first.error).toBe(BLOCKED_REASON);
     expect(second.ready).toBe(true);
     expect(second.release.id).toBe(first.release.id);
     expect(await Q.modpack.release.count({ modpackId: modpack.id })).toBe(1);
@@ -2952,6 +2963,88 @@ describe("ModpackService.recordSnapshot", () => {
     expect(findSandboxSnapshotUrl).not.toHaveBeenCalled();
     expect(launcherPackService.prepareSnapshot).not.toHaveBeenCalled();
     expect(await Q.modpack.release.count({ modpackId: modpack.id })).toBe(1);
+  });
+
+  it("tells the sandbox the reason a snapshot is blocked, and keeps it on the publish row", async () => {
+    const modpack = await seedSandboxPack();
+    const projectId = await seedProject(ctx);
+
+    const result = await modpackService.recordSnapshot(report(projectId));
+
+    expect(result).toMatchObject({ ready: false, error: BLOCKED_REASON });
+    expect(
+      await Q.modpack.publish.get({ modpackId: modpack.id, clientFileId: 7 }),
+    ).toMatchObject({ lastError: BLOCKED_REASON, ingestedAt: null });
+  });
+
+  it("answers a report that arrives while an earlier one is still preparing as in progress, without touching the publish row", async () => {
+    const modpack = await seedSandboxPack();
+    const projectId = await seedProject(ctx);
+    vi.mocked(launcherPackService.prepareSnapshot).mockResolvedValue({
+      status: "busy",
+    });
+
+    const result = await modpackService.recordSnapshot(report(projectId));
+
+    expect(result.ready).toBe(false);
+    expect(result.error).toMatch(/being prepared/);
+    expect(
+      await Q.modpack.publish.get({ modpackId: modpack.id, clientFileId: 7 }),
+    ).toMatchObject({ lastError: null, ingestedAt: null });
+  });
+
+  it("updates the notes of a ready snapshot on a resend", async () => {
+    const modpack = await seedSandboxPack();
+    const projectId = await seedProject(ctx);
+    readyOnPrepare();
+    await modpackService.recordSnapshot(report(projectId));
+    vi.mocked(findSandboxSnapshotUrl).mockClear();
+
+    const again = await modpackService.recordSnapshot(
+      report(projectId, { notes: "Corrected notes." }),
+    );
+    const kept = await modpackService.recordSnapshot(
+      report(projectId, { notes: undefined }),
+    );
+
+    expect(again.ready).toBe(true);
+    expect(kept.ready).toBe(true);
+    expect(findSandboxSnapshotUrl).not.toHaveBeenCalled();
+    expect(
+      await Q.modpack.publish.get({ modpackId: modpack.id, clientFileId: 7 }),
+    ).toMatchObject({ notes: "Corrected notes." });
+  });
+
+  it("does not offer a snapshot older than the one already offered, and says so", async () => {
+    const modpack = await seedSandboxPack();
+    const projectId = await seedProject(ctx);
+    readyOnPrepare();
+    const seven = await modpackService.recordSnapshot(report(projectId));
+    const eight = await modpackService.recordSnapshot(
+      report(projectId, { snapshotId: 8 }),
+    );
+    vi.mocked(findSandboxSnapshotUrl).mockClear();
+    vi.mocked(launcherPackService.prepareSnapshot).mockClear();
+
+    const sevenAgain = await modpackService.recordSnapshot(report(projectId));
+    const six = await modpackService.recordSnapshot(
+      report(projectId, { snapshotId: 6 }),
+    );
+
+    expect(seven.ready).toBe(true);
+    expect(eight.ready).toBe(true);
+    expect(sevenAgain).toMatchObject({
+      ready: false,
+      error: expect.stringMatching(/newer snapshot/),
+    });
+    expect(sevenAgain.release.id).toBe(seven.release.id);
+    expect(six).toMatchObject({
+      ready: false,
+      error: expect.stringMatching(/Snapshot 8 is newer/),
+    });
+    expect(findSandboxSnapshotUrl).not.toHaveBeenCalled();
+    expect(launcherPackService.prepareSnapshot).not.toHaveBeenCalled();
+    expect(await Q.modpack.release.count({ modpackId: modpack.id })).toBe(2);
   });
 
   it("keeps the recorded release when prepareSnapshot throws, and reports the failure", async () => {
