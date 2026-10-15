@@ -1,3 +1,8 @@
+## v1.66.1 (2026-10-15)
+
+### @createrington/server (1.67.0 → 1.67.1)
+- [security] Fix any socket.io client being able to crash the server with a malformed `subscribe`, `unsubscribe` or `request:initial` frame. The listeners trusted the payload shape, and a missing payload threw inside the error handler itself, which surfaced as an unhandled rejection that the process-level handler turned into a shutdown. Every inbound socket payload is now validated with zod before use (subscription type, positive integer server id, bounded message limit), malformed frames are answered with a rejection ack or an `error` event, a lone function argument is treated as the ack so a payload-less call no longer hangs the client promise, and the async handlers are guarded so an unexpected failure is logged instead of taking the process down
+
 ## v1.66.0 (2026-10-10)
 
 ### @createrington/server (1.66.1 → 1.67.0)
