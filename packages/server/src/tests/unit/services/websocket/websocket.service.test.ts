@@ -12,7 +12,7 @@ import {
   parseInitialDataRequest,
   parseSubscriptionRequest,
   rejectedSubscription,
-  resolveAck,
+  splitFrame,
 } from "@/services/websocket/request-validation";
 import { SocketEvent, SubscriptionType } from "@createrington/shared/socket";
 
@@ -156,6 +156,25 @@ describe("WebSocketService inbound event handling", () => {
     expect(unhandled).not.toHaveBeenCalled();
   });
 
+  it("answers a payload-less initial data request with the default snapshot", async () => {
+    const { socket, send } = connectFakeSocket(service);
+    const snapshot = { servers: [], messages: {} };
+    const getInitialData = vi.fn(async () => snapshot);
+    (service as unknown as { dataProvider: unknown }).dataProvider = {
+      getInitialData,
+      getServerInitialData: vi.fn(),
+    };
+    const ack = vi.fn();
+
+    expect(() => send(SocketEvent.REQUEST_INITIAL_DATA, ack)).not.toThrow();
+    await settle();
+
+    expect(getInitialData).toHaveBeenCalledWith(true, 50);
+    expect(ack).toHaveBeenCalledWith(snapshot);
+    expect(socket.emit).not.toHaveBeenCalled();
+    expect(unhandled).not.toHaveBeenCalled();
+  });
+
   it("still joins rooms and acks success for a valid subscribe", async () => {
     const { socket, send } = connectFakeSocket(service);
     const ack = vi.fn();
@@ -223,11 +242,12 @@ describe("request-validation helpers", () => {
 
   it("only treats functions as acks and echoes a string type back on rejection", () => {
     const fn = () => {};
-    expect(resolveAck(undefined, undefined)).toBeUndefined();
-    expect(resolveAck({ type: "all" }, "cb")).toBeUndefined();
-    expect(resolveAck({ type: "all" }, fn)).toBe(fn);
-    expect(resolveAck(fn, undefined)).toBe(fn);
-    expect(resolveAck(fn, "cb")).toBeUndefined();
+    const payload = { type: "all" };
+    expect(splitFrame(undefined, undefined)).toEqual({ payload: undefined });
+    expect(splitFrame(payload, "cb")).toEqual({ payload });
+    expect(splitFrame(payload, fn)).toEqual({ payload, ack: fn });
+    expect(splitFrame(fn, undefined)).toEqual({ payload: undefined, ack: fn });
+    expect(splitFrame(fn, "cb")).toEqual({ payload: fn });
     expect(rejectedSubscription(undefined, "e")).toEqual({
       type: "",
       room: "",

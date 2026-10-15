@@ -40,17 +40,22 @@ export function parseInitialDataRequest(
   return result.success ? result.data : null;
 }
 
-export function resolveAck<T>(
+export interface SocketFrame<T> {
+  payload: unknown;
+  ack?: (response: T) => void;
+}
+
+export function splitFrame<T>(
   rawRequest: unknown,
   rawCallback: unknown,
-): ((response: T) => void) | undefined {
+): SocketFrame<T> {
   if (typeof rawCallback === "function") {
-    return rawCallback as (response: T) => void;
+    return { payload: rawRequest, ack: rawCallback as (response: T) => void };
   }
   if (rawCallback === undefined && typeof rawRequest === "function") {
-    return rawRequest as (response: T) => void;
+    return { payload: undefined, ack: rawRequest as (response: T) => void };
   }
-  return undefined;
+  return { payload: rawRequest };
 }
 
 export function rejectedSubscription(

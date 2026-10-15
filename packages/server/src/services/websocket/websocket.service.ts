@@ -21,7 +21,7 @@ import {
   parseInitialDataRequest,
   parseSubscriptionRequest,
   rejectedSubscription,
-  resolveAck,
+  splitFrame,
 } from "./request-validation";
 import type { CachedMessage } from "../discord/message/cache";
 import type { SessionEndEvent, SessionStartEvent } from "../playtime";
@@ -206,24 +206,22 @@ export class WebSocketService {
     rawRequest: unknown,
     rawCallback: unknown,
   ): void {
-    const callback = resolveAck<SubscriptionConfirmation>(
+    const { payload, ack } = splitFrame<SubscriptionConfirmation>(
       rawRequest,
       rawCallback,
     );
     if (!this.allowSocketEvent(socket.id)) {
       logger.warn(`[ws] rate-limited ${socket.id} on subscribe`);
-      callback?.(rejectedSubscription(rawRequest, "Rate limited"));
+      ack?.(rejectedSubscription(payload, "Rate limited"));
       return;
     }
-    const request = parseSubscriptionRequest(rawRequest);
+    const request = parseSubscriptionRequest(payload);
     if (!request) {
       logger.warn(`[ws] invalid subscribe payload from ${socket.id}`);
-      callback?.(
-        rejectedSubscription(rawRequest, "Invalid subscription request"),
-      );
+      ack?.(rejectedSubscription(payload, "Invalid subscription request"));
       return;
     }
-    this.handleSubscribe(socket, request, callback).catch((error) => {
+    this.handleSubscribe(socket, request, ack).catch((error) => {
       logger.error(`Unhandled subscribe failure for ${socket.id}:`, error);
     });
   }
@@ -233,24 +231,22 @@ export class WebSocketService {
     rawRequest: unknown,
     rawCallback: unknown,
   ): void {
-    const callback = resolveAck<SubscriptionConfirmation>(
+    const { payload, ack } = splitFrame<SubscriptionConfirmation>(
       rawRequest,
       rawCallback,
     );
     if (!this.allowSocketEvent(socket.id)) {
       logger.warn(`[ws] rate-limited ${socket.id} on unsubscribe`);
-      callback?.(rejectedSubscription(rawRequest, "Rate limited"));
+      ack?.(rejectedSubscription(payload, "Rate limited"));
       return;
     }
-    const request = parseSubscriptionRequest(rawRequest);
+    const request = parseSubscriptionRequest(payload);
     if (!request) {
       logger.warn(`[ws] invalid unsubscribe payload from ${socket.id}`);
-      callback?.(
-        rejectedSubscription(rawRequest, "Invalid subscription request"),
-      );
+      ack?.(rejectedSubscription(payload, "Invalid subscription request"));
       return;
     }
-    this.handleUnsubscribe(socket, request, callback).catch((error) => {
+    this.handleUnsubscribe(socket, request, ack).catch((error) => {
       logger.error(`Unhandled unsubscribe failure for ${socket.id}:`, error);
     });
   }
@@ -260,10 +256,9 @@ export class WebSocketService {
     rawRequest: unknown,
     rawCallback: unknown,
   ): void {
-    const callback = resolveAck<InitialDataPayload | ServerInitialDataPayload>(
-      rawRequest,
-      rawCallback,
-    );
+    const { payload, ack } = splitFrame<
+      InitialDataPayload | ServerInitialDataPayload
+    >(rawRequest, rawCallback);
     if (!this.allowSocketEvent(socket.id)) {
       logger.warn(`[ws] rate-limited ${socket.id} on initialDataRequest`);
       socket.emit(SocketEvent.ERROR, {
@@ -272,7 +267,7 @@ export class WebSocketService {
       });
       return;
     }
-    const request = parseInitialDataRequest(rawRequest);
+    const request = parseInitialDataRequest(payload);
     if (!request) {
       logger.warn(`[ws] invalid initial data payload from ${socket.id}`);
       socket.emit(SocketEvent.ERROR, {
@@ -281,7 +276,7 @@ export class WebSocketService {
       });
       return;
     }
-    this.handleInitialDataRequest(socket, request, callback).catch((error) => {
+    this.handleInitialDataRequest(socket, request, ack).catch((error) => {
       logger.error(`Unhandled initial data failure for ${socket.id}:`, error);
     });
   }
