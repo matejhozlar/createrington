@@ -1,6 +1,7 @@
 import {
   pgTable,
   serial,
+  integer,
   text,
   boolean,
   jsonb,
@@ -8,7 +9,41 @@ import {
   index,
   unique,
 } from "drizzle-orm/pg-core";
-import { launcherReleaseStatusEnum } from "./enums";
+import { launcherPackSourceEnum, launcherReleaseStatusEnum } from "./enums";
+import { modpack } from "./modpack";
+
+// --- launcher_pack ---
+// One row per modpack the launcher offers, owner-managed. slug is the key a
+// launcher stores with an installed instance and never changes once a row
+// exists. source says where the modpack's releases come from. A modpack a row
+// points at cannot be deleted and its CurseForge project cannot be relinked;
+// the owner changes the row instead. enabled false hides the pack from the
+// list and refuses its endpoints while keeping its releases prepared.
+// position orders the list, lowest first.
+
+export const launcherPack = pgTable(
+  "launcher_pack",
+  {
+    id: serial("id").primaryKey(),
+    slug: text("slug").notNull(),
+    modpackId: integer("modpack_id")
+      .notNull()
+      .references(() => modpack.id, { onDelete: "restrict" }),
+    source: launcherPackSourceEnum("source").notNull(),
+    position: integer("position").notNull().default(0),
+    enabled: boolean("enabled").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    unique("uq_launcher_pack_slug").on(table.slug),
+    unique("uq_launcher_pack_modpack").on(table.modpackId),
+  ],
+);
 
 // --- launcher_release ---
 

@@ -101,6 +101,10 @@ import {
   seedProject,
   seedRequiredDependency,
 } from "@/tests/helpers/workshop";
+import {
+  cleanupLauncherPacks,
+  seedLauncherPack,
+} from "@/tests/helpers/launcher-pack";
 
 const USER_A = "999900000000000002";
 const ADMIN = "999900000000000001";
@@ -180,6 +184,7 @@ beforeAll(async () => {
 });
 
 afterEach(async () => {
+  await cleanupLauncherPacks(ctx);
   await cleanupWorkshopTestContext(ctx);
   vi.clearAllMocks();
 });
@@ -2389,6 +2394,23 @@ describe("ModpackService.deleteModpack", () => {
     expect(await Q.modpack.find({ id: workshop.modpackId })).not.toBeNull();
   });
 
+  it("refuses while the launcher offers it, and names the pack", async () => {
+    const modpack = await seedModpack(ctx, {
+      curseforgeProjectId: 992_700_001,
+    });
+    await seedLauncherPack(ctx, {
+      slug: "vitest-offered",
+      modpackId: modpack.id,
+      source: "curseforge",
+    });
+
+    await expect(modpackService.deleteModpack(modpack.id)).rejects.toThrow(
+      /"vitest-offered"/,
+    );
+
+    expect(await Q.modpack.find({ id: modpack.id })).not.toBeNull();
+  });
+
   it("deletes members and releases once no workshop uses it", async () => {
     const workshop = await seedWorkshop(ctx, { status: "archived" });
     const member = await seedPackMod(ctx, workshop);
@@ -2404,6 +2426,66 @@ describe("ModpackService.deleteModpack", () => {
     expect(await Q.modpack.find({ id: workshop.modpackId })).toBeNull();
     expect(await Q.modpack.mod.find({ id: member.id })).toBeNull();
     expect(await Q.modpack.release.find({ id: release.id })).toBeNull();
+  });
+});
+
+describe("ModpackService.updateModpack for a modpack the launcher offers", () => {
+  async function seedOffered() {
+    const modpack = await seedModpack(ctx, {
+      curseforgeProjectId: 992_700_002,
+    });
+    await seedLauncherPack(ctx, {
+      slug: "vitest-offered",
+      modpackId: modpack.id,
+      source: "curseforge",
+    });
+    return modpack;
+  }
+
+  it("refuses to unlink its CurseForge project", async () => {
+    const modpack = await seedOffered();
+
+    await expect(
+      modpackService.updateModpack(modpack.id, { curseforgeProjectId: null }),
+    ).rejects.toThrow(ConflictError);
+
+    expect((await Q.modpack.get({ id: modpack.id })).curseforgeProjectId).toBe(
+      992_700_002,
+    );
+  });
+
+  it("refuses to link another CurseForge project", async () => {
+    const modpack = await seedOffered();
+
+    await expect(
+      modpackService.updateModpack(modpack.id, {
+        curseforgeProjectId: 992_700_003,
+      }),
+    ).rejects.toThrow(/"vitest-offered"/);
+  });
+
+  it("keeps every other field editable", async () => {
+    const modpack = await seedOffered();
+
+    const updated = await modpackService.updateModpack(modpack.id, {
+      name: "Renamed Pack",
+      curseforgeProjectId: 992_700_002,
+    });
+
+    expect(updated.name).toBe("Renamed Pack");
+    expect(updated.curseforgeProjectId).toBe(992_700_002);
+  });
+
+  it("lets a modpack the launcher does not offer unlink its project", async () => {
+    const modpack = await seedModpack(ctx, {
+      curseforgeProjectId: 992_700_004,
+    });
+
+    const updated = await modpackService.updateModpack(modpack.id, {
+      curseforgeProjectId: null,
+    });
+
+    expect(updated.curseforgeProjectId).toBeNull();
   });
 });
 

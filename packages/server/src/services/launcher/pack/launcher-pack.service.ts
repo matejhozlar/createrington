@@ -28,9 +28,14 @@ import {
   toLauncherProject,
 } from "@/services/launcher/content/curseforge-content";
 import { getReleaseChangelog } from "@/services/modpack/release-changelog";
+import { settings } from "@/services/settings";
 import { findModrinthFilesBySha1 } from "@/services/modrinth";
 import { getMinecraftJavaMajorVersion } from "@/utils/mojang-java-version";
-import type { Modpack, ModpackRelease } from "@createrington/shared/db";
+import type {
+  LauncherPack,
+  Modpack,
+  ModpackRelease,
+} from "@createrington/shared/db";
 import {
   LauncherPackErrorCode,
   type LauncherPackChangelog,
@@ -41,6 +46,7 @@ import {
   type LauncherPackFilesData,
   type LauncherPackProject,
   type LauncherPackRelease,
+  type LauncherPackSummary,
 } from "@createrington/shared/launcher";
 import { findCurseforgeCdnUrls } from "./curseforge-cdn";
 import {
@@ -58,6 +64,8 @@ const RECHECKED_SOURCES: LauncherPackFileSource[] = [
 ];
 const NOTICE_MAX_FILES = 15;
 const PROJECT_LOOKUP_RETRY_MS = 60 * 1000;
+const DEFAULT_PACK_SLUG = "createrington";
+const PACK_ORDER = { orderBy: "position", orderDirection: "asc" } as const;
 
 function packError(
   code: LauncherPackErrorCode,
@@ -147,26 +155,32 @@ function toPackChangelog(changelog: ChangelogInput): LauncherPackChangelog {
 }
 
 /**
- * Serves the launcher what it needs to install the modpack from its CurseForge
- * pack zip: which release is the latest, which releases can still be
- * installed and what each of them changed, and for the file ids in a pack
- * manifest, where to download each file and the SHA-1 to verify it against.
- * Only the pack linked to `CURSEFORGE_MODPACK_PROJECT_ID` is served, and every
- * release comes with the project that identifies the pack: its name, icon,
- * summary and page as CurseForge publishes them, read from the stored project
- * and never from the app's own modpack fields. A pack whose project is not
- * stored is asked for on CurseForge (at most once a minute) and is not served
- * until it is. Files are resolved once and stored (the link CurseForge gives,
- * else a byte-identical file on Modrinth, else the file's built address on
- * CurseForge's CDN when it answers, else a verified copy the sandbox keeps,
- * else manual), so requests read the database. The built address is
- * unofficial and only used while the `launcher_curseforge_cdn` feature flag
- * is on; once the flag is off, a file stored with it turns manual and is
- * resolved again. While the flag cannot be read, no address is built and
- * stored ones are left as they are. A manual file is looked up again at most
- * once an hour, a built address once a day, and both whenever a release is
- * prepared. A release is offered as latest only after `prepareRelease` stored
- * its pack zip, Java version and every client file. Singleton.
+ * Serves the launcher what it needs to install the modpacks the owner offers
+ * it: which packs there are, which release of each is the latest, which
+ * releases can still be installed and what each of them changed, and for the
+ * file ids in a pack manifest, where to download each file and the SHA-1 to
+ * verify it against. A pack is a `launcher_pack` row the owner manages, keyed
+ * by the slug the launcher stores; the first row is seeded once at startup for
+ * the modpack linked to `CURSEFORGE_MODPACK_PROJECT_ID`, so a deploy needs no
+ * setup step, and a table the owner emptied afterwards stays empty. A pack
+ * whose releases come from CurseForge is described by its CurseForge project:
+ * its name, icon, summary and page as CurseForge publishes them, read from the
+ * stored project and never from the app's own modpack fields. A pack whose
+ * project is not stored is asked for on CurseForge (at most once a minute) and
+ * is not served until it is. A pack whose releases come from the sandbox has
+ * no CurseForge project to serve and so no release yet, whatever its modpack
+ * row still links. Files are resolved once
+ * and stored (the link CurseForge gives, else a byte-identical file on
+ * Modrinth, else the file's built address on CurseForge's CDN when it
+ * answers, else a verified copy the sandbox keeps, else manual), so requests
+ * read the database. The built address is unofficial and only used while the
+ * `launcher_curseforge_cdn` feature flag is on; once the flag is off, a file
+ * stored with it turns manual and is resolved again. While the flag cannot be
+ * read, no address is built and stored ones are left as they are. A manual
+ * file is looked up again at most once an hour, a built address once a day,
+ * and both whenever a release is prepared. A release is offered as latest only
+ * after `prepareRelease` stored its pack zip, Java version and every client
+ * file. Singleton.
  */
 class LauncherPackService {
   private static instance: LauncherPackService;
@@ -186,50 +200,84 @@ class LauncherPackService {
     return LauncherPackService.instance;
   }
 
-  /** The newest release that is ready for the launcher, with the project that identifies the pack. Throws `PACK_UNAVAILABLE` (404) when there is none or the pack's project cannot be served. */
-  async getLatestPack(): Promise<LauncherPackData> {
+  /**
+   * Offers the modpack linked to `CURSEFORGE_MODPACK_PROJECT_ID` to the
+   * launcher as the `createrington` pack, once: the first time a pack is
+   * stored, by this seed or by the owner, that is recorded, and from then on
+   * the table is the owner's, empty or not. No-op while no modpack carries
+   * that project, so the seed happens on a later start once one does.
+   */
+  async seedDefaultPack(): Promise<void> {
+    if (await settings.getLauncherPacksSeeded()) return;
+    if ((await Q.launcher.pack.count()) > 0) {
+      await settings.markLauncherPacksSeeded();
+      return;
+    }
     const modpack = await Q.modpack.find({
       curseforgeProjectId: config.curseforge.modpackProjectId,
     });
-    const project = modpack ? await this.loadPackProject(modpack) : null;
-    const [release] =
-      modpack && project
-        ? await Q.modpack.release.findAll(
-            { modpackId: modpack.id, launcherReadyAt: { $ne: null } },
-            { orderBy: "id", orderDirection: "desc", limit: 1 },
-          )
-        : [];
-    const pack = release && project ? toPackData(release, project) : null;
-    if (!pack) {
+    if (!modpack) return;
+
+    await Q.launcher.pack.create({
+      slug: DEFAULT_PACK_SLUG,
+      modpackId: modpack.id,
+      source: "curseforge",
+    });
+    await settings.markLauncherPacksSeeded();
+    logger.info(
+      `Offering ${modpack.name} to the launcher as the "${DEFAULT_PACK_SLUG}" pack`,
+    );
+  }
+
+  /**
+   * Every enabled pack in the owner's order, each described for the pack list
+   * (name, summary, icon, the server it belongs to) with its newest ready
+   * release, or `latest: null` while it has none. A pack served from
+   * CurseForge takes its description from its project, and from its modpack
+   * row while the project cannot be served.
+   */
+  async listPacks(): Promise<LauncherPackSummary[]> {
+    const packs = await Q.launcher.pack.findAll({ enabled: true }, PACK_ORDER);
+    return Promise.all(packs.map((pack) => this.describePack(pack)));
+  }
+
+  /** The newest release of the pack that is ready for the launcher, with the project that identifies the pack. Throws `PACK_NOT_FOUND` (404) for a slug no enabled pack carries and `PACK_UNAVAILABLE` (404) when no release is ready or the pack's project cannot be served. */
+  async getLatestPack(slug: string): Promise<LauncherPackData> {
+    const pack = await this.requirePack(slug);
+    const modpack = await Q.modpack.get({ id: pack.modpackId });
+    const project = await this.projectFor(pack, modpack);
+    const release = project ? await this.findLatestRelease(modpack.id) : null;
+    const data = release && project ? toPackData(release, project) : null;
+    if (!data) {
       throw packError(
         LauncherPackErrorCode.PACK_UNAVAILABLE,
         404,
         "No modpack release is available to the launcher yet",
       );
     }
-    return pack;
+    return data;
   }
 
   /**
-   * Every release the launcher can install, newest first: ready for the
-   * launcher and not found archived on CurseForge by the last `checkReleases`.
-   * Each comes with its changelog: the mods it added, updated and removed
-   * against the release recorded before it (listed or not), and the publish
-   * notes. Paged, `page` counts from 0, with `total` counting every listed
-   * release. Reads the database only, unless the pack's project is not stored
-   * yet. Empty when there is none, when the page is past the end, and while
-   * the pack's project cannot be served.
+   * Every release of the pack the launcher can install, newest first: ready
+   * for the launcher and not found archived on CurseForge by the last
+   * `checkReleases`. Each comes with its changelog: the mods it added, updated
+   * and removed against the release recorded before it (listed or not), and
+   * the publish notes. Paged, `page` counts from 0, with `total` counting
+   * every listed release. Reads the database only, unless the pack's project
+   * is not stored yet. Throws `PACK_NOT_FOUND` (404) for a slug no enabled
+   * pack carries. Empty when there is no release, when the page is past the
+   * end, and while the pack's project cannot be served.
    */
-  async listReleases(paging: {
-    page: number;
-    limit: number;
-  }): Promise<{ releases: LauncherPackRelease[]; total: number }> {
+  async listReleases(
+    slug: string,
+    paging: { page: number; limit: number },
+  ): Promise<{ releases: LauncherPackRelease[]; total: number }> {
     const { page, limit } = paging;
-    const modpack = await Q.modpack.find({
-      curseforgeProjectId: config.curseforge.modpackProjectId,
-    });
-    const project = modpack ? await this.loadPackProject(modpack) : null;
-    if (!modpack || !project) return { releases: [], total: 0 };
+    const pack = await this.requirePack(slug);
+    const modpack = await Q.modpack.get({ id: pack.modpackId });
+    const project = await this.projectFor(pack, modpack);
+    if (!project) return { releases: [], total: 0 };
 
     const filters = {
       modpackId: modpack.id,
@@ -270,22 +318,23 @@ class LauncherPackService {
    * served again. For a release recorded before the side of its files was
    * stored only the pack zip decides. `getLatestPack` is not affected. Stores
    * the pack's CurseForge project again first, so the name, icon, summary and
-   * page the launcher is given follow CurseForge. No-op for other modpacks and
-   * while another call checks the same pack. Throws when CurseForge cannot be
-   * asked; no release is changed then.
+   * page the launcher is given follow CurseForge. No-op for a modpack no pack
+   * serves from CurseForge and while another call checks the same pack.
+   * Throws when CurseForge cannot be asked; no release is changed then.
    */
   async checkReleases(modpack: Modpack): Promise<void> {
+    const projectId = modpack.curseforgeProjectId;
     if (
-      modpack.curseforgeProjectId === null ||
-      modpack.curseforgeProjectId !== config.curseforge.modpackProjectId ||
-      this.checking.has(modpack.id)
+      projectId === null ||
+      this.checking.has(modpack.id) ||
+      !(await this.servesFromCurseforge(modpack))
     ) {
       return;
     }
 
     this.checking.add(modpack.id);
     try {
-      await refreshProjects([modpack.curseforgeProjectId]);
+      await refreshProjects([projectId]);
 
       const releases = await Q.modpack.release.findAll({
         modpackId: modpack.id,
@@ -390,19 +439,21 @@ class LauncherPackService {
    * file of its manifest, stores the pack zip's link and hash and the Java
    * version, then marks it ready. Posts to the admin notifications channel when
    * a client file ends up manual, or when the release cannot be made ready.
-   * No-op for other modpacks, for a release that is already ready, and while
-   * another call prepares the same release. Throws when CurseForge, Modrinth
-   * or Mojang cannot be reached; the next reconcile tries again.
+   * No-op for a modpack no pack serves from CurseForge, for a release that is
+   * already ready, and while another call prepares the same release. Throws
+   * when CurseForge, Modrinth or Mojang cannot be reached; the next reconcile
+   * tries again.
    */
   async prepareRelease(
     modpack: Modpack,
     releaseId: number,
     manifest: ModpackManifest,
   ): Promise<void> {
+    const projectId = modpack.curseforgeProjectId;
     if (
-      modpack.curseforgeProjectId === null ||
-      modpack.curseforgeProjectId !== config.curseforge.modpackProjectId ||
-      this.preparing.has(releaseId)
+      projectId === null ||
+      this.preparing.has(releaseId) ||
+      !(await this.servesFromCurseforge(modpack))
     ) {
       return;
     }
@@ -455,10 +506,7 @@ class LauncherPackService {
         return;
       }
 
-      const pack = await getModpackFile(
-        modpack.curseforgeProjectId,
-        manifest.fileId,
-      );
+      const pack = await getModpackFile(projectId, manifest.fileId);
       if (
         !pack?.fileName ||
         !pack.downloadUrl ||
@@ -515,6 +563,62 @@ class LauncherPackService {
     } finally {
       this.preparing.delete(releaseId);
     }
+  }
+
+  private async requirePack(slug: string): Promise<LauncherPack> {
+    const pack = await Q.launcher.pack.find({ slug });
+    if (!pack?.enabled) {
+      throw packError(
+        LauncherPackErrorCode.PACK_NOT_FOUND,
+        404,
+        "The launcher offers no pack by this name",
+      );
+    }
+    return pack;
+  }
+
+  private async servesFromCurseforge(modpack: Modpack): Promise<boolean> {
+    const pack = await Q.launcher.pack.find({ modpackId: modpack.id });
+    return pack?.source === "curseforge";
+  }
+
+  private async findLatestRelease(
+    modpackId: number,
+  ): Promise<ModpackRelease | null> {
+    const [release] = await Q.modpack.release.findAll(
+      { modpackId, launcherReadyAt: { $ne: null } },
+      { orderBy: "id", orderDirection: "desc", limit: 1 },
+    );
+    return release ?? null;
+  }
+
+  private async describePack(pack: LauncherPack): Promise<LauncherPackSummary> {
+    const modpack = await Q.modpack.get({ id: pack.modpackId });
+    const server = modpack.serverId
+      ? await Q.server.find(
+          { id: modpack.serverId },
+          { select: ["id", "name", "identifier"] },
+        )
+      : null;
+    const project = await this.projectFor(pack, modpack);
+    const release = project ? await this.findLatestRelease(modpack.id) : null;
+
+    return {
+      slug: pack.slug,
+      source: pack.source,
+      name: project?.name ?? modpack.name,
+      summary: project?.summary ?? modpack.description,
+      iconUrl: project?.iconUrl ?? null,
+      server,
+      latest: release && project ? toPackData(release, project) : null,
+    };
+  }
+
+  private async projectFor(
+    pack: LauncherPack,
+    modpack: Modpack,
+  ): Promise<LauncherPackProject | null> {
+    return pack.source === "curseforge" ? this.loadPackProject(modpack) : null;
   }
 
   private async loadPackProject(

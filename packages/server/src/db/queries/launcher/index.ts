@@ -1,4 +1,5 @@
 import type { Pool, PoolClient } from "pg";
+import { LauncherPackQueries } from "@/db/queries/launcher/pack";
 import { LauncherReleaseQueries } from "@/db/queries/launcher/release";
 
 /**
@@ -71,6 +72,28 @@ export class LauncherQueries {
    * @param db - Database pool or client to use for all child queries
    */
   constructor(protected db: Pool | PoolClient) {}
+
+  /** Private backing field for lazy-loaded launcher_pack queries */
+  private _pack?: LauncherPackQueries;
+
+  /**
+   * Lazy-loaded singleton accessor for launcher_pack
+   *
+   * Returns a LauncherPackQueries instance that shares this namespace's
+   * database connection. The instance is created once on first access and
+   * cached for all subsequent calls.
+   *
+   * @returns Singleton LauncherPackQueries instance
+   */
+  get pack(): LauncherPackQueries {
+    if (!this._pack) {
+      this._pack = this.getOrCreateChild<LauncherPackQueries>(
+        "pack",
+        LauncherPackQueries,
+      );
+    }
+    return this._pack;
+  }
 
   /** Private backing field for lazy-loaded launcher_release queries */
   private _release?: LauncherReleaseQueries;

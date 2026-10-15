@@ -15,6 +15,7 @@ const { LAUNCHER_SECRET, WEB_SECRET, mocks } = vi.hoisted(() => ({
   LAUNCHER_SECRET: "test-launcher-secret-please-do-not-use-in-prod",
   WEB_SECRET: "test-web-secret-please-do-not-use-in-prod",
   mocks: {
+    listPacks: vi.fn(),
     getLatestPack: vi.fn(),
     listReleases: vi.fn(),
     resolveFiles: vi.fn(),
@@ -54,6 +55,7 @@ vi.mock("@/services/auth/admin-status/admin-status.service", () => ({
 }));
 vi.mock("@/services/launcher/pack/launcher-pack.service", () => ({
   launcherPackService: {
+    listPacks: mocks.listPacks,
     getLatestPack: mocks.getLatestPack,
     listReleases: mocks.listReleases,
     resolveFiles: mocks.resolveFiles,
@@ -61,7 +63,7 @@ vi.mock("@/services/launcher/pack/launcher-pack.service", () => ({
 }));
 
 import express from "express";
-import { errorHandler } from "@/app/middleware/error-handler";
+import { AppError, errorHandler } from "@/app/middleware/error-handler";
 import launcherPackRoutes from "@/app/features/launcher/pack/launcher-pack.routes";
 import { launcherJwtService } from "@/services/auth/launcher/launcher-jwt.service";
 
@@ -135,6 +137,27 @@ const LISTED = {
   total: 2,
 };
 
+const PACKS = [
+  {
+    slug: "createrington",
+    source: "curseforge",
+    name: PACK.project.name,
+    summary: PACK.project.summary,
+    iconUrl: PACK.project.iconUrl,
+    server: { id: 1, name: "Rails 'n Sails", identifier: "rails" },
+    latest: PACK,
+  },
+  {
+    slug: "test",
+    source: "sandbox",
+    name: "Createrington Test Server",
+    summary: null,
+    iconUrl: null,
+    server: { id: 2, name: "Test Server", identifier: "test" },
+    latest: null,
+  },
+];
+
 const RESOLVED = {
   files: [
     {
@@ -157,18 +180,31 @@ let server: Server;
 let baseUrl: string;
 let session: Record<string, string>;
 
-async function getLatest(headers: Record<string, string> = {}) {
-  return await fetch(`${baseUrl}/api/launcher/pack/latest`, { headers });
+async function getPacks(headers: Record<string, string> = {}) {
+  return await fetch(`${baseUrl}/api/launcher/packs`, { headers });
 }
 
-async function getReleases(headers: Record<string, string> = {}, query = "") {
-  return await fetch(`${baseUrl}/api/launcher/pack/releases${query}`, {
+async function getLatest(
+  headers: Record<string, string> = {},
+  slug = "createrington",
+) {
+  return await fetch(`${baseUrl}/api/launcher/packs/${slug}/latest`, {
+    headers,
+  });
+}
+
+async function getReleases(
+  headers: Record<string, string> = {},
+  query = "",
+  slug = "createrington",
+) {
+  return await fetch(`${baseUrl}/api/launcher/packs/${slug}/releases${query}`, {
     headers,
   });
 }
 
 async function resolve(body: unknown, headers: Record<string, string> = {}) {
-  return await fetch(`${baseUrl}/api/launcher/pack/files/resolve`, {
+  return await fetch(`${baseUrl}/api/launcher/packs/files/resolve`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...headers },
     body: JSON.stringify(body),
@@ -185,7 +221,7 @@ beforeAll(async () => {
 
   const app = express();
   app.use(express.json());
-  app.use("/api/launcher/pack", launcherPackRoutes);
+  app.use("/api/launcher/packs", launcherPackRoutes);
   app.use(errorHandler);
 
   await new Promise<void>((done) => {
@@ -200,17 +236,82 @@ afterAll(async () => {
 
 beforeEach(() => {
   vi.resetAllMocks();
+  mocks.listPacks.mockResolvedValue(PACKS);
   mocks.getLatestPack.mockResolvedValue(PACK);
   mocks.listReleases.mockResolvedValue(LISTED);
   mocks.resolveFiles.mockResolvedValue(RESOLVED);
 });
 
-describe("GET /api/launcher/pack/latest", () => {
-  it("gives a launcher session the latest pack", async () => {
-    const res = await getLatest(session);
+describe("GET /api/launcher/packs", () => {
+  it("gives a launcher session every pack it may install", async () => {
+    const res = await getPacks(session);
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ success: true, data: { packs: PACKS } });
+  });
+
+  it("answers 304 to a launcher that already holds the same list", async () => {
+    const first = await getPacks(session);
+    const etag = first.headers.get("etag");
+
+    const res = await getPacks({
+      ...session,
+      "If-None-Match": etag ?? "",
+      "Cache-Control": "max-age=0",
+    });
+
+    expect(etag).toBeTruthy();
+    expect(res.status).toBe(304);
+  });
+
+  it("answers 401 without a launcher session", async () => {
+    const res = await getPacks();
+
+    expect(res.status).toBe(401);
+    expect((await res.json()).error.code).toBe("AUTH_REQUIRED");
+    expect(mocks.listPacks).not.toHaveBeenCalled();
+  });
+});
+
+describe("GET /api/launcher/packs/:slug/latest", () => {
+  it("gives a launcher session the latest release of the named pack", async () => {
+    const res = await getLatest(session, "test");
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ success: true, data: PACK });
+    expect(mocks.getLatestPack).toHaveBeenCalledWith("test");
+  });
+
+  it("passes on that the pack is not offered", async () => {
+    mocks.getLatestPack.mockRejectedValue(
+      new AppError(
+        "The launcher offers no pack by this name",
+        404,
+        true,
+        undefined,
+        {
+          code: "PACK_NOT_FOUND",
+        },
+      ),
+    );
+
+    const res = await getLatest(session, "nope");
+
+    expect(res.status).toBe(404);
+    expect((await res.json()).error.code).toBe("PACK_NOT_FOUND");
+  });
+
+  it.each([
+    ["an upper-case slug", "Createrington"],
+    ["a slug with a space", "my%20pack"],
+    ["a slug with an underscore", "my_pack"],
+    ["a slug that starts with a hyphen", "-pack"],
+    ["a slug longer than 40 characters", "a".repeat(41)],
+  ])("refuses %s", async (_label, slug) => {
+    const res = await getLatest(session, slug);
+
+    expect(res.status).toBe(400);
+    expect(mocks.getLatestPack).not.toHaveBeenCalled();
   });
 
   it("answers 401 without a launcher session", async () => {
@@ -234,9 +335,14 @@ describe("GET /api/launcher/pack/latest", () => {
   });
 });
 
-describe("GET /api/launcher/pack/releases", () => {
-  it("gives a launcher session the installable releases", async () => {
-    const res = await getReleases(session);
+describe("GET /api/launcher/packs/:slug/releases", () => {
+  it("gives a launcher session the installable releases of the named pack", async () => {
+    const res = await getReleases(session, "", "test");
+
+    expect(mocks.listReleases).toHaveBeenCalledWith("test", {
+      page: 0,
+      limit: 10,
+    });
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({
@@ -282,14 +388,20 @@ describe("GET /api/launcher/pack/releases", () => {
   it("asks for the first page of 10 when the launcher names no page", async () => {
     await getReleases(session);
 
-    expect(mocks.listReleases).toHaveBeenCalledWith({ page: 0, limit: 10 });
+    expect(mocks.listReleases).toHaveBeenCalledWith("createrington", {
+      page: 0,
+      limit: 10,
+    });
   });
 
   it("asks for the page and size the launcher names", async () => {
     const res = await getReleases(session, "?page=2&limit=5");
 
     expect(res.status).toBe(200);
-    expect(mocks.listReleases).toHaveBeenCalledWith({ page: 2, limit: 5 });
+    expect(mocks.listReleases).toHaveBeenCalledWith("createrington", {
+      page: 2,
+      limit: 5,
+    });
   });
 
   it.each([
@@ -314,7 +426,7 @@ describe("GET /api/launcher/pack/releases", () => {
   });
 });
 
-describe("POST /api/launcher/pack/files/resolve", () => {
+describe("POST /api/launcher/packs/files/resolve", () => {
   it("resolves the file ids of a launcher session", async () => {
     const res = await resolve({ fileIds: [7000001] }, session);
 
