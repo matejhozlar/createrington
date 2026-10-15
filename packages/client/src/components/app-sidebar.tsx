@@ -92,6 +92,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         url: "/owner/launcher-releases",
         icon: RocketIcon,
       },
+      {
+        title: "Launcher packs",
+        url: "/owner/launcher-packs",
+        icon: BoxIcon,
+      },
     ],
     adminNav: [
       {

@@ -63,6 +63,7 @@ import { launcherPackService } from "@/services/launcher/pack/launcher-pack.serv
 import { findSandboxFileUrls } from "@/services/launcher/pack/sandbox-files";
 import { findModrinthFilesBySha1 } from "@/services/modrinth";
 import { settings } from "@/services/settings";
+import { NotFoundError } from "@/db/utils";
 import { getMinecraftJavaMajorVersion } from "@/utils/mojang-java-version";
 import type {
   CurseforgeProjectCreate,
@@ -84,6 +85,10 @@ import {
 
 const PACK_PROJECT_ID = 995_900_001;
 const PACK_SLUG = "vitest";
+const PACK_ORDER_FOR_TESTS = {
+  orderBy: "position",
+  orderDirection: "asc",
+} as const;
 const HOUR_MS = 60 * 60 * 1000;
 const FIRST_PAGE = { page: 0, limit: 25 };
 const PACK_ON_CURSEFORGE = {
@@ -1323,6 +1328,207 @@ describe("LauncherPackService.seedDefaultPack", () => {
     expect(packs.map((p) => p.slug)).toEqual(["vitest-other"]);
     expect(packs[0].modpackId).not.toBe(modpack.id);
     expect(await settings.getLauncherPacksSeeded()).toBe(true);
+  });
+});
+
+describe("LauncherPackService owner methods", () => {
+  const SEEDED_KEY = "launcher_packs_seeded";
+  let storedSeeded: Record<string, unknown> | null = null;
+
+  beforeEach(async () => {
+    storedSeeded =
+      (await Q.app.setting.find({ key: SEEDED_KEY }))?.value ?? null;
+    await Q.app.setting.deleteAll({ key: SEEDED_KEY });
+  });
+
+  afterEach(async () => {
+    await Q.app.setting.deleteAll({ key: SEEDED_KEY });
+    if (storedSeeded !== null) {
+      await Q.app.setting.create({ key: SEEDED_KEY, value: storedSeeded });
+    }
+  });
+
+  const owned = async () =>
+    (await launcherPackService.listOwned()).filter((pack) =>
+      ctx.modpackIds.includes(pack.modpackId),
+    );
+
+  it("adds a pack last in the list and records that a pack was stored", async () => {
+    const first = await seedPack();
+    const test = await seedModpack(ctx, { name: "Vitest Test Server" });
+
+    const added = await launcherPackService.addPack({
+      slug: "vitest-test",
+      modpackId: test.id,
+      source: "sandbox",
+    });
+
+    const packs = await owned();
+    expect(added).toMatchObject({
+      slug: "vitest-test",
+      modpackId: test.id,
+      source: "sandbox",
+      enabled: true,
+    });
+    expect(packs.map((pack) => pack.slug)).toEqual([PACK_SLUG, "vitest-test"]);
+    expect(packs[1].position).toBeGreaterThan(packs[0].position);
+    expect(packs[0].modpack).toEqual({
+      id: first.id,
+      name: first.name,
+      curseforgeProjectId: PACK_PROJECT_ID,
+      serverId: null,
+    });
+    expect(await settings.getLauncherPacksSeeded()).toBe(true);
+  });
+
+  it("refuses a CurseForge pack for a modpack without a project", async () => {
+    const modpack = await seedModpack(ctx, { name: "Vitest Unlinked" });
+
+    await expect(
+      launcherPackService.addPack({
+        slug: "vitest-unlinked",
+        modpackId: modpack.id,
+        source: "curseforge",
+      }),
+    ).rejects.toThrow(/no CurseForge project/);
+
+    expect(await Q.launcher.pack.find({ slug: "vitest-unlinked" })).toBeNull();
+  });
+
+  it("refuses a slug that is taken and a modpack that is already offered", async () => {
+    const modpack = await seedPack();
+    const other = await seedModpack(ctx, { name: "Vitest Other" });
+
+    await expect(
+      launcherPackService.addPack({
+        slug: PACK_SLUG,
+        modpackId: other.id,
+        source: "sandbox",
+      }),
+    ).rejects.toThrow(/already offers a pack as "vitest"/);
+    await expect(
+      launcherPackService.addPack({
+        slug: "vitest-again",
+        modpackId: modpack.id,
+        source: "curseforge",
+      }),
+    ).rejects.toThrow(/already offers "Vitest Pack"/);
+  });
+
+  it("refuses to add a pack for a modpack that does not exist", async () => {
+    await expect(
+      launcherPackService.addPack({
+        slug: "vitest-ghost",
+        modpackId: 999_999_999,
+        source: "sandbox",
+      }),
+    ).rejects.toThrow(NotFoundError);
+  });
+
+  it("lists the modpacks the launcher is not offered yet", async () => {
+    const offered = await seedPack();
+    const free = await seedModpack(ctx, { name: "Vitest Free" });
+
+    const candidates = await launcherPackService.listCandidates();
+    const ids = candidates.map((modpack) => modpack.id);
+
+    expect(ids).toContain(free.id);
+    expect(ids).not.toContain(offered.id);
+  });
+
+  it("hides and shows a pack without touching its releases", async () => {
+    const modpack = await seedPack();
+    const file = await seedFile();
+    serveFromCurseForge([file]);
+    await seedReadyRelease(modpack, "1.0.0", [file]);
+    const [pack] = await owned();
+
+    const hidden = await launcherPackService.setPackEnabled(pack.id, false);
+    const listedWhileHidden = await launcherPackService.listPacks();
+    const shown = await launcherPackService.setPackEnabled(pack.id, true);
+
+    expect(hidden.enabled).toBe(false);
+    expect(listedWhileHidden.map((p) => p.slug)).not.toContain(PACK_SLUG);
+    expect(shown.enabled).toBe(true);
+    expect((await owned())[0].latestVersion).toBe("1.0.0");
+  });
+
+  it("puts the packs in the given order", async () => {
+    await seedPack();
+    const second = await seedModpack(ctx, { name: "Vitest Second" });
+    const third = await seedModpack(ctx, { name: "Vitest Third" });
+    await launcherPackService.addPack({
+      slug: "vitest-second",
+      modpackId: second.id,
+      source: "sandbox",
+    });
+    await launcherPackService.addPack({
+      slug: "vitest-third",
+      modpackId: third.id,
+      source: "sandbox",
+    });
+    const before = await owned();
+
+    const mine = new Set(before.map((pack) => pack.id));
+    const others = (await Q.launcher.pack.findAll({}, PACK_ORDER_FOR_TESTS))
+      .map((pack) => pack.id)
+      .filter((id) => !mine.has(id));
+
+    await launcherPackService.reorderPacks([
+      ...others,
+      before[2].id,
+      before[0].id,
+      before[1].id,
+    ]);
+
+    expect((await owned()).map((pack) => pack.slug)).toEqual([
+      "vitest-third",
+      PACK_SLUG,
+      "vitest-second",
+    ]);
+    expect((await launcherPackService.listPacks()).map((p) => p.slug)).toEqual([
+      "vitest-third",
+      PACK_SLUG,
+      "vitest-second",
+    ]);
+  });
+
+  it("refuses an order that does not name every pack exactly once", async () => {
+    await seedPack();
+    const [pack] = await owned();
+    const all = await Q.launcher.pack.findAll({});
+
+    await expect(
+      launcherPackService.reorderPacks([pack.id, pack.id]),
+    ).rejects.toThrow(/every launcher pack exactly once/);
+    await expect(
+      launcherPackService.reorderPacks([...all.map((p) => p.id), 999_999_999]),
+    ).rejects.toThrow(/every launcher pack exactly once/);
+    if (all.length > 1) {
+      await expect(launcherPackService.reorderPacks([pack.id])).rejects.toThrow(
+        /every launcher pack exactly once/,
+      );
+    }
+  });
+
+  it("removes a pack and keeps its modpack and releases", async () => {
+    const modpack = await seedPack();
+    const file = await seedFile();
+    serveFromCurseForge([file]);
+    const { release } = await seedReadyRelease(modpack, "1.0.0", [file]);
+    const [pack] = await owned();
+
+    const removed = await launcherPackService.removePack(pack.id);
+    const latest = await refusal(launcherPackService.getLatestPack(PACK_SLUG));
+
+    expect(removed.slug).toBe(PACK_SLUG);
+    expect(await Q.launcher.pack.find({ id: pack.id })).toBeNull();
+    expect(await Q.modpack.find({ id: modpack.id })).not.toBeNull();
+    expect(await Q.modpack.release.find({ id: release.id })).not.toBeNull();
+    expect(latest.code).toBe("PACK_NOT_FOUND");
+    await expect(launcherPackService.removePack(pack.id)).rejects.toThrow(
+      NotFoundError,
+    );
   });
 });
 

@@ -5,6 +5,7 @@ import {
   ownerCurseforgeCdnRouter,
 } from "./curseforge";
 import { ownerDonationsRouter } from "./donations";
+import { ownerLauncherPacksRouter } from "./launcher-packs";
 import { ownerLauncherReleasesRouter } from "./launcher-releases";
 
 /** Owner-only router namespace. Every procedure gates on `OWNER_DISCORD_ID`. */
@@ -13,5 +14,6 @@ export const ownerRouter = router({
   curseforgeCalls: ownerCurseforgeCallsRouter,
   curseforgeCdn: ownerCurseforgeCdnRouter,
   donations: ownerDonationsRouter,
+  launcherPacks: ownerLauncherPacksRouter,
   launcherReleases: ownerLauncherReleasesRouter,
 });
