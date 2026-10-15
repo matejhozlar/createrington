@@ -8,44 +8,59 @@ export interface SandboxFileQuery {
   size: number;
 }
 
-async function findSandboxFileUrl(
-  file: SandboxFileQuery,
+export interface SandboxSnapshotQuery {
+  snapshotId: number;
+  sha1: string;
+  size: number;
+}
+
+const SNAPSHOT_CHECK_BUDGET_MS = 60_000;
+
+function sandboxUrls(): { publicUrl: string; internalUrl: string } | null {
+  const { publicUrl, internalUrl } = config.launcher.packFiles;
+  return publicUrl && internalUrl ? { publicUrl, internalUrl } : null;
+}
+
+async function verifySandboxFile(
+  label: string,
+  path: string,
+  expected: { sha1: string; size: number },
   urls: { publicUrl: string; internalUrl: string },
   signal: AbortSignal,
 ): Promise<string | null> {
   try {
-    const res = await fetch(`${urls.internalUrl}/${file.fileId}`, { signal });
+    const res = await fetch(`${urls.internalUrl}/${path}`, { signal });
     if (!res.ok) {
       await res.body?.cancel();
       if (res.status !== 404) {
-        logger.warn(
-          `Sandbox answered ${res.status} for pack file ${file.fileId}`,
-        );
+        logger.warn(`Sandbox answered ${res.status} for ${label}`);
       }
       return null;
     }
 
     const declared = Number(res.headers.get("content-length"));
-    if (Number.isFinite(declared) && declared > 0 && declared !== file.size) {
+    if (
+      Number.isFinite(declared) &&
+      declared > 0 &&
+      declared !== expected.size
+    ) {
       await res.body?.cancel();
       logger.warn(
-        `Sandbox pack file ${file.fileId} has ${declared} bytes, CurseForge lists ${file.size}`,
+        `Sandbox ${label} has ${declared} bytes, ${expected.size} were expected`,
       );
       return null;
     }
 
     const bytes = Buffer.from(await res.arrayBuffer());
     const sha1 = crypto.createHash("sha1").update(bytes).digest("hex");
-    if (bytes.length !== file.size || sha1 !== file.sha1) {
-      logger.warn(
-        `Sandbox pack file ${file.fileId} does not match CurseForge's SHA-1`,
-      );
+    if (bytes.length !== expected.size || sha1 !== expected.sha1) {
+      logger.warn(`Sandbox ${label} does not match the expected SHA-1`);
       return null;
     }
 
-    return `${urls.publicUrl}/${file.fileId}`;
+    return `${urls.publicUrl}/${path}`;
   } catch (error) {
-    logger.warn(`Sandbox pack file ${file.fileId} lookup failed:`, error);
+    logger.warn(`Sandbox ${label} lookup failed:`, error);
     return null;
   }
 }
@@ -61,10 +76,37 @@ async function findSandboxFileUrl(
 export async function findSandboxFileUrls(
   files: SandboxFileQuery[],
 ): Promise<Map<number, string>> {
-  const { publicUrl, internalUrl } = config.launcher.packFiles;
-  if (!publicUrl || !internalUrl) return new Map();
+  const urls = sandboxUrls();
+  if (!urls) return new Map();
 
   return findFileUrls(files, (file, signal) =>
-    findSandboxFileUrl(file, { publicUrl, internalUrl }, signal),
+    verifySandboxFile(
+      `pack file ${file.fileId}`,
+      String(file.fileId),
+      file,
+      urls,
+      signal,
+    ),
+  );
+}
+
+/**
+ * The launcher's download link for a snapshot zip the sandbox keeps, once
+ * the sandbox served it through the internal address with the given SHA-1
+ * and size; null when it does not, cannot be reached, or the sandbox
+ * addresses are not configured. Reads the whole zip, within a minute.
+ */
+export async function findSandboxSnapshotUrl(
+  snapshot: SandboxSnapshotQuery,
+): Promise<string | null> {
+  const urls = sandboxUrls();
+  if (!urls) return null;
+
+  return verifySandboxFile(
+    `snapshot ${snapshot.snapshotId}`,
+    `snapshot/${snapshot.snapshotId}`,
+    snapshot,
+    urls,
+    AbortSignal.timeout(SNAPSHOT_CHECK_BUDGET_MS),
   );
 }

@@ -631,6 +631,13 @@
       "when": 1791987782167,
       "tag": "0089_curved_thunderbolt",
       "breakpoints": true
+    },
+    {
+      "idx": 90,
+      "version": "7",
+      "when": 1792074013534,
+      "tag": "0090_brown_sinister_six",
+      "breakpoints": true
     }
   ]
 }

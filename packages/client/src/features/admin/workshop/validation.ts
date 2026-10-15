@@ -39,17 +39,22 @@ export function workshopFormError(fields: {
   return null;
 }
 
+const HTTP_URL = /^https?:\/\/\S+$/i;
+
 export function modpackFormError(
   publishedPackId: string,
   titleImageUrl = "",
+  iconUrl = "",
 ): string | null {
   const trimmed = publishedPackId.trim();
   if (trimmed && (!Number.isInteger(Number(trimmed)) || Number(trimmed) <= 0)) {
     return "Published modpack project ID must be a positive number";
   }
-  const url = titleImageUrl.trim();
-  if (url && !/^https?:\/\/\S+$/i.test(url)) {
+  if (titleImageUrl.trim() && !HTTP_URL.test(titleImageUrl.trim())) {
     return "Title image URL must start with http:// or https://";
+  }
+  if (iconUrl.trim() && !HTTP_URL.test(iconUrl.trim())) {
+    return "Icon URL must start with http:// or https://";
   }
   return null;
 }

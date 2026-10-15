@@ -32,9 +32,11 @@ import {
   manifestDisabledModIds,
   type CurseForgeProjectData,
   type ModpackManifest,
+  type ModpackManifestEntry,
 } from "@/services/curseforge";
 import { refreshProjects } from "@/services/curseforge/ingest";
 import { launcherPackService } from "@/services/launcher/pack/launcher-pack.service";
+import { findSandboxSnapshotUrl } from "@/services/launcher/pack/sandbox-files";
 import {
   REQUIRED_DEPENDENCY,
   loadDependencyContext,
@@ -148,6 +150,23 @@ export interface ModpackPublishReport {
   clientFileId: number;
   serverPackFileId: number;
   notes?: string;
+}
+
+export interface ModpackSnapshotReport {
+  slug: string;
+  snapshotId: number;
+  version: string;
+  minecraftVersion: string;
+  modLoader: string;
+  zip: { fileName: string; size: number; sha1: string };
+  files: Array<{ projectId: number; fileId: number; required: boolean }>;
+  notes?: string;
+}
+
+export interface ModpackSnapshotResult {
+  release: ModpackRelease;
+  ready: boolean;
+  error: string | null;
 }
 
 export interface ModpackPublishResult {
@@ -321,6 +340,7 @@ export class ModpackService {
       shipsServerPack: boolean;
       serverId: number | null;
       titleImageUrl: string | null;
+      iconUrl: string | null;
     }>,
   ): Promise<Modpack> {
     const modpack = await this.getModpack(modpackId);
@@ -561,10 +581,140 @@ export class ModpackService {
     return { publish: stored, ingested: stored.ingestedAt !== null, error };
   }
 
+  /**
+   * Take the sandbox's word for a snapshot of a pack whose releases it
+   * reports: the zip it keeps under the snapshot id is read back through the
+   * internal address and checked against the reported SHA-1 and size, the
+   * snapshot is recorded as a release keyed by that id with its frozen file
+   * list, the notes are kept on a publish row, and the release is readied
+   * for the launcher, which retires every older snapshot. A snapshot that is
+   * already ready is answered as it is. Throws `NotFoundError` for a slug no
+   * sandbox pack carries and `BadRequestError` when the sandbox does not
+   * serve the zip as reported; a snapshot that cannot be readied is recorded
+   * anyway and the reason comes back as `error`, so a resend can finish it.
+   */
+  async recordSnapshot(
+    report: ModpackSnapshotReport,
+  ): Promise<ModpackSnapshotResult> {
+    const pack = await Q.launcher.pack.find({ slug: report.slug });
+    if (!pack || pack.source !== "sandbox") {
+      throw new NotFoundError(
+        `The launcher offers no pack as "${report.slug}" whose releases the sandbox reports`,
+      );
+    }
+    const modpack = await this.getModpack(pack.modpackId);
+
+    const recorded = await Q.modpack.release.find({
+      modpackId: modpack.id,
+      curseforgeFileId: report.snapshotId,
+    });
+    if (recorded?.launcherReadyAt) {
+      return { release: recorded, ready: true, error: null };
+    }
+
+    const downloadUrl = await findSandboxSnapshotUrl({
+      snapshotId: report.snapshotId,
+      sha1: report.zip.sha1,
+      size: report.zip.size,
+    });
+    if (!downloadUrl) {
+      throw new BadRequestError(
+        `The sandbox does not serve snapshot ${report.snapshotId} with the reported SHA-1 and size, so the main app cannot offer it`,
+      );
+    }
+
+    const notes =
+      report.notes === undefined ? undefined : report.notes.trim() || null;
+    const release =
+      recorded ?? (await this.recordSnapshotRelease(modpack, report, notes));
+    if (notes !== undefined && recorded) {
+      await this.upsertPublish(modpack.id, report.snapshotId, null, notes);
+    }
+
+    let error: string | null = null;
+    try {
+      await launcherPackService.prepareSnapshot(modpack, release.id, {
+        version: report.version,
+        minecraftVersion: report.minecraftVersion,
+        modLoader: report.modLoader,
+        zip: { ...report.zip, downloadUrl },
+        entries: report.files,
+      });
+    } catch (caught) {
+      error = caught instanceof Error ? caught.message : String(caught);
+      logger.warn(
+        `Modpack #${modpack.id} snapshot ${report.snapshotId} could not be prepared for the launcher:`,
+        caught,
+      );
+    }
+
+    const stored = await Q.modpack.release.get({ id: release.id });
+    const ready = stored.launcherReadyAt !== null;
+    if (!ready && error === null) {
+      error =
+        "The snapshot was recorded but cannot be offered to the launcher yet; the owner was told why";
+    }
+    await Q.modpack.publish.updateAll(
+      { ingestedAt: ready ? new Date() : null, lastError: error },
+      { modpackId: modpack.id, clientFileId: report.snapshotId },
+    );
+    return { release: stored, ready, error };
+  }
+
+  private async recordSnapshotRelease(
+    modpack: Modpack,
+    report: ModpackSnapshotReport,
+    notes: string | null | undefined,
+  ): Promise<ModpackRelease> {
+    const entries: ModpackManifestEntry[] = report.files.map((file) => ({
+      ...file,
+      sides: "client",
+    }));
+    const rows = await this.buildReleaseRows({
+      fileId: report.snapshotId,
+      serverPackFileId: null,
+      displayName: null,
+      version: report.version,
+      minecraftVersion: report.minecraftVersion,
+      modLoader: report.modLoader,
+      publishedAt: null,
+      entries,
+      modIds: new Set(entries.map((entry) => entry.projectId)),
+      disabledModIds: manifestDisabledModIds(entries),
+    });
+
+    await this.upsertPublish(modpack.id, report.snapshotId, null, notes);
+    try {
+      return await db.inTransaction(async (tx) => {
+        const release = await tx.modpack.release.createAndReturn({
+          modpackId: modpack.id,
+          curseforgeFileId: report.snapshotId,
+          serverPackFileId: null,
+          version: report.version,
+          displayName: null,
+          minecraftVersion: report.minecraftVersion,
+          modLoader: report.modLoader,
+          modCount: new Set(rows.map((row) => row.curseforgeProjectId)).size,
+          publishedAt: new Date(),
+        });
+        await tx.modpack.release.mod.insertMany(release.id, rows);
+        return release;
+      });
+    } catch (error) {
+      if (error instanceof UniqueViolationError) {
+        return Q.modpack.release.get({
+          modpackId: modpack.id,
+          curseforgeFileId: report.snapshotId,
+        });
+      }
+      throw error;
+    }
+  }
+
   private async upsertPublish(
     modpackId: number,
     clientFileId: number,
-    serverPackFileId: number,
+    serverPackFileId: number | null,
     notes: string | null | undefined,
   ): Promise<ModpackPublish> {
     const refresh = async (id: number) =>
