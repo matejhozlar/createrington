@@ -45,8 +45,7 @@ const PAGE_COPY = {
   title: "Launcher packs",
   description:
     "The modpacks every launcher may install, in the order its list shows them. The slug is what an installed pack is stored under, so it never changes; hide a pack instead of removing it when launchers may still hold it.",
-  empty:
-    "No pack is offered yet. The first start of the app offers the main pack on its own once a modpack is linked to its CurseForge project.",
+  empty: "No pack is offered yet. Offer a modpack to list it in the launcher.",
 } as const;
 
 const REMOVE_COPY = {

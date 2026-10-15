@@ -343,7 +343,6 @@ class LauncherPackService {
 
   /** Shows or hides a pack in the launcher's list. Its releases keep being prepared either way. Throws `NotFoundError` for an unknown pack. */
   async setPackEnabled(id: number, enabled: boolean): Promise<LauncherPack> {
-    await Q.launcher.pack.get({ id });
     return Q.launcher.pack.updateAndReturn(
       { id },
       { enabled, updatedAt: new Date() },

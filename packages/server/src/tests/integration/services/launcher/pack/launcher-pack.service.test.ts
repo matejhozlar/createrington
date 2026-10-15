@@ -1453,6 +1453,12 @@ describe("LauncherPackService owner methods", () => {
     expect((await owned())[0].latestVersion).toBe("1.0.0");
   });
 
+  it("refuses to hide a pack that does not exist", async () => {
+    await expect(
+      launcherPackService.setPackEnabled(999_999_999, false),
+    ).rejects.toThrow(NotFoundError);
+  });
+
   it("puts the packs in the given order", async () => {
     await seedPack();
     const second = await seedModpack(ctx, { name: "Vitest Second" });
