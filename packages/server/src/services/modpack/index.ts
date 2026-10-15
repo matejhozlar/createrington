@@ -98,6 +98,7 @@ export type ModpackListItem = Modpack & {
   modCount: number;
   liveCount: number;
   workshops: Array<Pick<Workshop, "id" | "name" | "slug" | "status">>;
+  launcherPackSlug: string | null;
 };
 
 /**
@@ -265,15 +266,19 @@ export type ModpackAttentionItem =
  * CurseForge pack's manifest by reconcile, never set by hand.
  */
 export class ModpackService {
-  /** All modpacks with member counts and attached workshops, for the admin panel. */
+  /** All modpacks with member counts, attached workshops and the slug of the launcher pack offering each, for the admin panel. */
   async listModpacks(): Promise<ModpackListItem[]> {
-    const [modpacks, workshops] = await Promise.all([
+    const [modpacks, workshops, launcherPacks] = await Promise.all([
       Q.modpack.findAll({}, { orderBy: "createdAt", orderDirection: "desc" }),
       Q.workshop.findAll(
         {},
         { select: ["id", "name", "slug", "status", "modpackId"] },
       ),
+      Q.launcher.pack.findAll({}, { select: ["modpackId", "slug"] }),
     ]);
+    const launcherPackSlugs = new Map(
+      launcherPacks.map((pack) => [pack.modpackId, pack.slug]),
+    );
     return Promise.all(
       modpacks.map(async (modpack) => {
         const rows = await Q.modpack.mod.findAll(
@@ -287,6 +292,7 @@ export class ModpackService {
           workshops: workshops
             .filter((workshop) => workshop.modpackId === modpack.id)
             .map(({ id, name, slug, status }) => ({ id, name, slug, status })),
+          launcherPackSlug: launcherPackSlugs.get(modpack.id) ?? null,
         };
       }),
     );
@@ -418,7 +424,7 @@ export class ModpackService {
     const pack = await Q.launcher.pack.find({ modpackId: modpack.id });
     if (pack) {
       throw new ConflictError(
-        `The launcher offers this modpack as "${pack.slug}", so ${consequence}. Point that launcher pack at another modpack first.`,
+        `The launcher offers this modpack as "${pack.slug}", so ${consequence}. Remove that launcher pack on the owner Launcher packs page first.`,
       );
     }
   }

@@ -2385,6 +2385,26 @@ describe("ModpackService.recordRelease durability", () => {
   });
 });
 
+describe("ModpackService.listModpacks", () => {
+  it("names the launcher pack offering a modpack, and null for the rest", async () => {
+    const offered = await seedModpack(ctx, {
+      curseforgeProjectId: 992_700_011,
+    });
+    const plain = await seedModpack(ctx);
+    await seedLauncherPack(ctx, {
+      slug: "vitest-listed",
+      modpackId: offered.id,
+      source: "curseforge",
+    });
+
+    const rows = await modpackService.listModpacks();
+    const slugById = new Map(rows.map((row) => [row.id, row.launcherPackSlug]));
+
+    expect(slugById.get(offered.id)).toBe("vitest-listed");
+    expect(slugById.get(plain.id)).toBeNull();
+  });
+});
+
 describe("ModpackService.deleteModpack", () => {
   it("throws NotFoundError for a modpack that does not exist", async () => {
     await expect(modpackService.deleteModpack(99_999_999)).rejects.toThrow(

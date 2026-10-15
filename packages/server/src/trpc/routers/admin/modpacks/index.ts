@@ -80,7 +80,7 @@ export const adminModpacksRouter = router({
   delete: adminProcedure
     .meta({
       description:
-        "Delete a modpack no workshop uses, with its members and release history",
+        "Delete a modpack no workshop or launcher pack uses, with its members and release history",
     })
     .input(z.object({ modpackId: id() }))
     .mutation(async ({ ctx, input }) => {

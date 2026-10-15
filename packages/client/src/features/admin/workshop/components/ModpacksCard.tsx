@@ -108,6 +108,14 @@ const columns: DataTableColumn<AdminModpackRow>[] = [
   },
 ];
 
+function deleteLabel(modpack: AdminModpackRow): string {
+  if (modpack.workshops.length > 0) return "In use by a workshop";
+  if (modpack.launcherPackSlug !== null) {
+    return `Offered by the launcher as "${modpack.launcherPackSlug}"`;
+  }
+  return "Delete";
+}
+
 export function ModpacksCard() {
   const toast = useToastActions();
   const utils = trpc.useUtils();
@@ -193,13 +201,12 @@ export function ModpacksCard() {
                   onClick: () => openSettings(modpack),
                 },
                 {
-                  label:
-                    modpack.workshops.length > 0
-                      ? "In use by a workshop"
-                      : "Delete",
+                  label: deleteLabel(modpack),
                   icon: Trash2,
                   variant: "destructive",
-                  disabled: modpack.workshops.length > 0,
+                  disabled:
+                    modpack.workshops.length > 0 ||
+                    modpack.launcherPackSlug !== null,
                   onClick: () => setDeleteTarget(modpack),
                 },
               ]}
