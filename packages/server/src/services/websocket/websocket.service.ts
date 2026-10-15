@@ -17,6 +17,12 @@ import type { MessageCacheService } from "../discord/message/cache";
 import type { PlaytimeManagerService } from "../playtime/playtime-manager.service";
 import { RoomManager } from "./room-manager";
 import { WebSocketDataProvider } from "./data-provider";
+import {
+  parseInitialDataRequest,
+  parseSubscriptionRequest,
+  rejectedSubscription,
+  resolveAck,
+} from "./request-validation";
 import type { CachedMessage } from "../discord/message/cache";
 import type { SessionEndEvent, SessionStartEvent } from "../playtime";
 import { jwtService } from "@/services/auth/jwt";
@@ -159,57 +165,20 @@ export class WebSocketService {
         void socket.join(RoomManager.getUserRoom(user.minecraftUuid));
       }
 
-      socket.on(
-        SocketEvent.SUBSCRIBE,
-        (request: SubscriptionRequest, callback) => {
-          if (!this.allowSocketEvent(socket.id)) {
-            logger.warn(`[ws] rate-limited ${socket.id} on subscribe`);
-            callback?.({
-              type: request.type,
-              serverId: request.serverId,
-              room: "",
-              success: false,
-              error: "Rate limited",
-            });
-            return;
-          }
-          this.handleSubscribe(socket, request, callback);
-        },
+      socket.on(SocketEvent.SUBSCRIBE, (request: unknown, callback: unknown) =>
+        this.onSubscribe(socket, request, callback),
       );
 
       socket.on(
         SocketEvent.UNSUBSCRIBE,
-        (request: SubscriptionRequest, callback) => {
-          if (!this.allowSocketEvent(socket.id)) {
-            logger.warn(`[ws] rate-limited ${socket.id} on unsubscribe`);
-            callback?.({
-              type: request.type,
-              serverId: request.serverId,
-              room: "",
-              success: false,
-              error: "Rate limited",
-            });
-            return;
-          }
-          this.handleUnsubscribe(socket, request, callback);
-        },
+        (request: unknown, callback: unknown) =>
+          this.onUnsubscribe(socket, request, callback),
       );
 
       socket.on(
         SocketEvent.REQUEST_INITIAL_DATA,
-        (request: InitialDataRequest, callback) => {
-          if (!this.allowSocketEvent(socket.id)) {
-            logger.warn(`[ws] rate-limited ${socket.id} on initialDataRequest`);
-            // Callback type is data-only; signal via ERROR event instead so
-            // the client can detect it without hanging on the ack.
-            socket.emit(SocketEvent.ERROR, {
-              message: "Rate limited",
-              event: SocketEvent.REQUEST_INITIAL_DATA,
-            });
-            return;
-          }
-          this.handleInitialDataRequest(socket, request, callback);
-        },
+        (request: unknown, callback: unknown) =>
+          this.onInitialDataRequest(socket, request, callback),
       );
 
       socket.on(SocketEvent.DISCONNECT, () => {
@@ -230,6 +199,91 @@ export class WebSocketService {
     });
 
     logger.debug("Socket.IO connection handlers registered");
+  }
+
+  private onSubscribe(
+    socket: Socket,
+    rawRequest: unknown,
+    rawCallback: unknown,
+  ): void {
+    const callback = resolveAck<SubscriptionConfirmation>(
+      rawRequest,
+      rawCallback,
+    );
+    if (!this.allowSocketEvent(socket.id)) {
+      logger.warn(`[ws] rate-limited ${socket.id} on subscribe`);
+      callback?.(rejectedSubscription(rawRequest, "Rate limited"));
+      return;
+    }
+    const request = parseSubscriptionRequest(rawRequest);
+    if (!request) {
+      logger.warn(`[ws] invalid subscribe payload from ${socket.id}`);
+      callback?.(
+        rejectedSubscription(rawRequest, "Invalid subscription request"),
+      );
+      return;
+    }
+    this.handleSubscribe(socket, request, callback).catch((error) => {
+      logger.error(`Unhandled subscribe failure for ${socket.id}:`, error);
+    });
+  }
+
+  private onUnsubscribe(
+    socket: Socket,
+    rawRequest: unknown,
+    rawCallback: unknown,
+  ): void {
+    const callback = resolveAck<SubscriptionConfirmation>(
+      rawRequest,
+      rawCallback,
+    );
+    if (!this.allowSocketEvent(socket.id)) {
+      logger.warn(`[ws] rate-limited ${socket.id} on unsubscribe`);
+      callback?.(rejectedSubscription(rawRequest, "Rate limited"));
+      return;
+    }
+    const request = parseSubscriptionRequest(rawRequest);
+    if (!request) {
+      logger.warn(`[ws] invalid unsubscribe payload from ${socket.id}`);
+      callback?.(
+        rejectedSubscription(rawRequest, "Invalid subscription request"),
+      );
+      return;
+    }
+    this.handleUnsubscribe(socket, request, callback).catch((error) => {
+      logger.error(`Unhandled unsubscribe failure for ${socket.id}:`, error);
+    });
+  }
+
+  private onInitialDataRequest(
+    socket: Socket,
+    rawRequest: unknown,
+    rawCallback: unknown,
+  ): void {
+    const callback = resolveAck<InitialDataPayload | ServerInitialDataPayload>(
+      rawRequest,
+      rawCallback,
+    );
+    if (!this.allowSocketEvent(socket.id)) {
+      logger.warn(`[ws] rate-limited ${socket.id} on initialDataRequest`);
+      socket.emit(SocketEvent.ERROR, {
+        message: "Rate limited",
+        event: SocketEvent.REQUEST_INITIAL_DATA,
+      });
+      return;
+    }
+    const request = parseInitialDataRequest(rawRequest);
+    if (!request) {
+      logger.warn(`[ws] invalid initial data payload from ${socket.id}`);
+      socket.emit(SocketEvent.ERROR, {
+        message: "Invalid initial data request",
+        event: SocketEvent.REQUEST_INITIAL_DATA,
+      });
+      return;
+    }
+    this.handleInitialDataRequest(socket, request, callback).catch((error) => {
+      logger.error(`Unhandled initial data failure for ${socket.id}:`, error);
+    });
   }
 
   private async handleSubscribe(
