@@ -21,7 +21,9 @@ import { workshopMod } from "./workshop";
 // pack; from then on a client-only read is refused instead of applied, since
 // it would drop every server-side member. titleImageUrl is the full-width
 // banner at the top of the pack's changelog posts; null falls back to a text
-// heading.
+// heading. iconUrl is the square icon the launcher shows for a pack whose
+// releases do not come from CurseForge (a published pack keeps its project's
+// icon); null shows the launcher's default.
 
 export const modpack = pgTable(
   "modpack",
@@ -33,6 +35,7 @@ export const modpack = pgTable(
     shipsServerPack: boolean("ships_server_pack").notNull().default(false),
     serverId: integer("server_id").references(() => server.id),
     titleImageUrl: text("title_image_url"),
+    iconUrl: text("icon_url"),
     createdBy: text("created_by").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()

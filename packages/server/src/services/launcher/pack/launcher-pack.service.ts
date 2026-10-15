@@ -19,7 +19,6 @@ import {
   getModpackFile,
   getServedFileIds,
   type ModpackManifest,
-  type ModpackManifestEntry,
 } from "@/services/curseforge";
 import {
   ingestProjectsWhere,
@@ -43,6 +42,8 @@ import type {
   ModpackRelease,
 } from "@createrington/shared/db";
 import {
+  LAUNCHER_APP_SOURCE,
+  LAUNCHER_MODPACK_KIND,
   LauncherPackErrorCode,
   type LauncherPackChangelog,
   type LauncherPackChangelogEntry,
@@ -62,6 +63,38 @@ import {
 } from "./pack-rules";
 import { findSandboxFileUrls } from "./sandbox-files";
 
+export interface SnapshotZip {
+  fileName: string;
+  size: number;
+  sha1: string;
+  downloadUrl: string;
+}
+
+export interface SnapshotEntry {
+  projectId: number;
+  fileId: number;
+  required: boolean;
+}
+
+export type SnapshotOutcome =
+  | { status: "ready" }
+  | { status: "busy" }
+  | { status: "blocked"; reason: string };
+
+function toAppProject(slug: string, modpack: Modpack): LauncherPackProject {
+  return {
+    source: LAUNCHER_APP_SOURCE,
+    id: String(modpack.id),
+    slug,
+    kind: LAUNCHER_MODPACK_KIND,
+    name: modpack.name,
+    summary: modpack.description,
+    author: null,
+    iconUrl: modpack.iconUrl,
+    url: config.meta.links.website ?? APP_PROJECT_FALLBACK_URL,
+  };
+}
+
 const MANUAL_RECHECK_MS = 60 * 60 * 1000;
 const CDN_RECHECK_MS = 24 * 60 * 60 * 1000;
 const RECHECKED_SOURCES: LauncherPackFileSource[] = [
@@ -71,6 +104,11 @@ const RECHECKED_SOURCES: LauncherPackFileSource[] = [
 const NOTICE_MAX_FILES = 15;
 const PROJECT_LOOKUP_RETRY_MS = 60 * 1000;
 const DEFAULT_PACK_SLUG = "createrington";
+const RELEASE_NEXT_STEP =
+  "Fix the release or publish a new one, then check the published pack again.";
+const SNAPSHOT_NEXT_STEP =
+  "Fix the cause and report the snapshot again, or restart the test server.";
+const APP_PROJECT_FALLBACK_URL = "https://createrington.com";
 const PACK_ORDER = { orderBy: "position", orderDirection: "asc" } as const;
 const SLUG_CONSTRAINT = "uq_launcher_pack_slug";
 const MODPACK_CONSTRAINT = "uq_launcher_pack_modpack";
@@ -185,13 +223,13 @@ function toPackChangelog(changelog: ChangelogInput): LauncherPackChangelog {
  * its name, icon, summary and page as CurseForge publishes them, read from the
  * stored project and never from the app's own modpack fields. A pack whose
  * project is not stored is asked for on CurseForge (at most once a minute) and
- * is not served until it is. A pack whose releases come from the sandbox has
- * no CurseForge project to serve and so no release yet, whatever its modpack
- * row still links. Files are resolved once
- * and stored (the link CurseForge gives, else a byte-identical file on
- * Modrinth, else the file's built address on CurseForge's CDN when it
- * answers, else a verified copy the sandbox keeps, else manual), so requests
- * read the database. The built address is unofficial and only used while the
+ * is not served until it is. A pack whose releases come from the sandbox is
+ * described by its modpack row instead (name, description, icon), and its
+ * releases are the snapshots `prepareSnapshot` readied, the newest one only.
+ * Files are resolved once and stored (the link CurseForge gives, else a
+ * byte-identical file on Modrinth, else the file's built address on
+ * CurseForge's CDN when it answers, else a verified copy the sandbox keeps,
+ * else manual), so requests read the database. The built address is unofficial and only used while the
  * `launcher_curseforge_cdn` feature flag is on; once the flag is off, a file
  * stored with it turns manual and is resolved again. While the flag cannot be
  * read, no address is built and stored ones are left as they are. A manual
@@ -676,48 +714,187 @@ class LauncherPackService {
         return;
       }
 
-      const javaMajorVersion = await getMinecraftJavaMajorVersion(
-        manifest.minecraftVersion,
-      );
-      if (javaMajorVersion === null) {
-        await this.reportBlocked(
-          modpack,
-          release,
-          `Mojang lists no Java version for Minecraft ${manifest.minecraftVersion}`,
-        );
-        return;
-      }
-
-      const changed = await Q.modpack.release.updateAll(
+      await this.readyRelease(
+        modpack,
+        release,
         {
           version: manifest.version,
           minecraftVersion: manifest.minecraftVersion,
-          modLoader: manifest.modLoader,
-          packFileName: pack.fileName,
-          packFileSize: pack.fileLength,
-          packSha1: pack.sha1,
-          packDownloadUrl: pack.downloadUrl,
-          javaMajorVersion,
-          launcherReadyAt: new Date(),
+          modLoader: modLoader.id,
+          zip: {
+            fileName: pack.fileName,
+            size: pack.fileLength,
+            sha1: pack.sha1,
+            downloadUrl: pack.downloadUrl,
+          },
+          clientEntries,
+          stored,
         },
-        { id: release.id, launcherReadyAt: null },
+        RELEASE_NEXT_STEP,
       );
-      if (changed === 0) return;
-
-      this.reportedBlocked.delete(release.id);
-      logger.info(
-        `Modpack #${modpack.id} release ${manifest.version} is ready for the launcher: ${clientEntries.length} client files`,
-      );
-
-      const manual = clientEntries.filter(
-        (entry) => stored.get(entry.fileId)?.source === "manual",
-      );
-      if (manual.length > 0) {
-        await this.notifyManualFiles(modpack, manifest.version, manual, stored);
-      }
     } finally {
       this.preparing.delete(releaseId);
     }
+  }
+
+  /**
+   * Makes a recorded snapshot of a sandbox pack available to the launcher:
+   * resolves every client file, stores the zip the sandbox verified and the
+   * Java version, marks the release ready and takes every older release of
+   * the modpack out of the list of installable releases, so the launcher
+   * only ever offers the newest snapshot. Posts to the admin notifications
+   * channel when a client file ends up manual or the snapshot cannot be made
+   * ready. Answers `ready` for a release that is ready, by this call or
+   * before, `busy` while another call prepares it, and `blocked` with the
+   * reason the owner was told. Throws when CurseForge, Modrinth or Mojang
+   * cannot be reached.
+   */
+  async prepareSnapshot(
+    modpack: Modpack,
+    releaseId: number,
+    snapshot: {
+      version: string;
+      minecraftVersion: string;
+      modLoader: string;
+      zip: SnapshotZip;
+      entries: SnapshotEntry[];
+    },
+  ): Promise<SnapshotOutcome> {
+    if (this.preparing.has(releaseId)) return { status: "busy" };
+
+    this.preparing.add(releaseId);
+    try {
+      const release = await Q.modpack.release.get({ id: releaseId });
+      if (release.launcherReadyAt !== null) return { status: "ready" };
+
+      const modLoader = parseModLoader(snapshot.modLoader);
+      if (!modLoader) {
+        return {
+          status: "blocked",
+          reason: await this.reportBlocked(
+            modpack,
+            release,
+            `its mod loader "${snapshot.modLoader}" does not name a loader and a version`,
+            SNAPSHOT_NEXT_STEP,
+          ),
+        };
+      }
+
+      const stored = await this.ensureResolved(
+        snapshot.entries.map((entry) => entry.fileId),
+        { manualMaxAgeMs: 0, cdnMaxAgeMs: 0, strict: true },
+      );
+      const unresolved = snapshot.entries.filter((entry) => {
+        const row = stored.get(entry.fileId);
+        return !row || packFolderForClass(row.project.classId) === null;
+      });
+      if (unresolved.length > 0) {
+        return {
+          status: "blocked",
+          reason: await this.reportBlocked(
+            modpack,
+            release,
+            `${unresolved.length} client file(s) could not be resolved on CurseForge (file ids ${unresolved
+              .slice(0, NOTICE_MAX_FILES)
+              .map((entry) => entry.fileId)
+              .join(", ")})`,
+            SNAPSHOT_NEXT_STEP,
+          ),
+        };
+      }
+
+      const blocked = await this.readyRelease(
+        modpack,
+        release,
+        {
+          version: snapshot.version,
+          minecraftVersion: snapshot.minecraftVersion,
+          modLoader: snapshot.modLoader,
+          zip: snapshot.zip,
+          clientEntries: snapshot.entries,
+          stored,
+        },
+        SNAPSHOT_NEXT_STEP,
+      );
+      if (blocked !== null) return { status: "blocked", reason: blocked };
+
+      const retired = await Q.modpack.release.updateAll(
+        { launcherUnavailableAt: new Date() },
+        {
+          modpackId: modpack.id,
+          id: { $lt: release.id },
+          launcherUnavailableAt: null,
+        },
+      );
+      if (retired > 0) {
+        logger.info(
+          `${modpack.name}: ${retired} older snapshot(s) no longer listed as installable for the launcher`,
+        );
+      }
+      return { status: "ready" };
+    } finally {
+      this.preparing.delete(releaseId);
+    }
+  }
+
+  private async readyRelease(
+    modpack: Modpack,
+    release: ModpackRelease,
+    facts: {
+      version: string;
+      minecraftVersion: string;
+      modLoader: string;
+      zip: SnapshotZip;
+      clientEntries: SnapshotEntry[];
+      stored: Map<number, CurseforgeFileWithProject>;
+    },
+    nextStep: string,
+  ): Promise<string | null> {
+    const javaMajorVersion = await getMinecraftJavaMajorVersion(
+      facts.minecraftVersion,
+    );
+    if (javaMajorVersion === null) {
+      return this.reportBlocked(
+        modpack,
+        release,
+        `Mojang lists no Java version for Minecraft ${facts.minecraftVersion}`,
+        nextStep,
+      );
+    }
+
+    const changed = await Q.modpack.release.updateAll(
+      {
+        version: facts.version,
+        minecraftVersion: facts.minecraftVersion,
+        modLoader: facts.modLoader,
+        packFileName: facts.zip.fileName,
+        packFileSize: facts.zip.size,
+        packSha1: facts.zip.sha1,
+        packDownloadUrl: facts.zip.downloadUrl,
+        javaMajorVersion,
+        launcherReadyAt: new Date(),
+      },
+      { id: release.id, launcherReadyAt: null },
+    );
+    if (changed === 0) return null;
+
+    this.reportedBlocked.delete(release.id);
+    logger.info(
+      `Modpack #${modpack.id} release ${facts.version} is ready for the launcher: ${facts.clientEntries.length} client files`,
+    );
+
+    const manual = facts.clientEntries.filter(
+      (entry) => facts.stored.get(entry.fileId)?.source === "manual",
+    );
+    if (manual.length > 0) {
+      await this.notifyManualFiles(
+        modpack,
+        facts.version,
+        manual,
+        facts.stored,
+      );
+    }
+    return null;
   }
 
   private async requirePack(slug: string): Promise<LauncherPack> {
@@ -773,7 +950,9 @@ class LauncherPackService {
     pack: LauncherPack,
     modpack: Modpack,
   ): Promise<LauncherPackProject | null> {
-    return pack.source === "curseforge" ? this.loadPackProject(modpack) : null;
+    return pack.source === "curseforge"
+      ? this.loadPackProject(modpack)
+      : toAppProject(pack.slug, modpack);
   }
 
   private async loadPackProject(
@@ -977,10 +1156,11 @@ class LauncherPackService {
     modpack: Modpack,
     release: ModpackRelease,
     reason: string,
-  ): Promise<void> {
+    nextStep: string = RELEASE_NEXT_STEP,
+  ): Promise<string> {
     const label = `${modpack.name} ${release.version ?? `file ${release.curseforgeFileId}`}`;
     logger.warn(`${label} is not offered to the launcher: ${reason}`);
-    if (this.reportedBlocked.has(release.id)) return;
+    if (this.reportedBlocked.has(release.id)) return reason;
     this.reportedBlocked.add(release.id);
 
     await this.notifyOwner(
@@ -989,17 +1169,18 @@ class LauncherPackService {
         description: [
           `**Pack**: ${label}`,
           `The launcher keeps installing the previous release, because ${reason}.`,
-          "Fix the release or publish a new one, then check the published pack again.",
+          nextStep,
         ].join("\n"),
         color: EmbedColors.Error,
       }),
     );
+    return reason;
   }
 
   private async notifyManualFiles(
     modpack: Modpack,
     version: string,
-    manual: ModpackManifestEntry[],
+    manual: SnapshotEntry[],
     stored: Map<number, CurseforgeFileWithProject>,
   ): Promise<void> {
     const projects = await Q.curseforge.project.findAll(

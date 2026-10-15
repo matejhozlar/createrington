@@ -66,6 +66,11 @@ export const LAUNCHER_CONTENT_SOURCES = ["curseforge", "modrinth"] as const;
 
 export type LauncherContentSource = (typeof LAUNCHER_CONTENT_SOURCES)[number];
 
+export const LAUNCHER_APP_SOURCE = "createrington";
+
+export type LauncherProjectSource =
+  LauncherContentSource | typeof LAUNCHER_APP_SOURCE;
+
 export const LAUNCHER_CONTENT_KINDS = [
   "mod",
   "resourcepack",
@@ -268,7 +273,7 @@ export interface LauncherProjectLatestFile {
 export interface LauncherProject<
   Kind extends LauncherProjectKind = LauncherContentKind,
 > {
-  source: LauncherContentSource;
+  source: LauncherProjectSource;
   id: string;
   slug: string;
   kind: Kind;

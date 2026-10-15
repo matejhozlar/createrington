@@ -54,6 +54,7 @@ export const adminModpacksRouter = router({
           shipsServerPack: z.boolean().optional(),
           serverId: id().nullable().optional(),
           titleImageUrl: httpUrlSchema.nullable().optional(),
+          iconUrl: httpUrlSchema.nullable().optional(),
         }),
       }),
     )
