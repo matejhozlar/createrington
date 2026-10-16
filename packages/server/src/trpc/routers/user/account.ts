@@ -7,6 +7,7 @@ import { BalanceUtils } from "@/db/repositories/balance/utils";
 import { playerDeletionService } from "@/services/player/deletion";
 import { getService, Services } from "@/services";
 import config from "@/config";
+import type { AuthSessionRow } from "@createrington/shared/db/auth_session.types";
 
 const exportLimit = createRateLimit({
   name: "user.account.exportData",
@@ -14,6 +15,17 @@ const exportLimit = createRateLimit({
   windowMs: 60 * 60 * 1000,
   key: (ctx) => ctx.user?.discordId ?? "anonymous",
 });
+
+function toSessionView(session: AuthSessionRow) {
+  return {
+    id: session.id,
+    ipAddress: session.ip_address,
+    userAgent: session.user_agent,
+    createdAt: session.created_at.toISOString(),
+    lastUsedAt: session.last_used_at.toISOString(),
+    expiresAt: session.expires_at.toISOString(),
+  };
+}
 
 /** User account router: profile info, session management, data export, and account deletion. */
 export const accountRouter = router({
@@ -61,14 +73,7 @@ export const accountRouter = router({
         ctx.user.discordId,
       );
 
-      return sessions.map((s) => ({
-        id: s.id,
-        ipAddress: s.ip_address,
-        userAgent: s.user_agent,
-        createdAt: s.created_at.toISOString(),
-        lastUsedAt: s.last_used_at.toISOString(),
-        expiresAt: s.expires_at.toISOString(),
-      }));
+      return sessions.map(toSessionView);
     }),
 
   revokeSession: userProcedure
@@ -146,9 +151,11 @@ export const accountRouter = router({
       const data = {
         exportedAt: new Date().toISOString(),
         player: playerData ?? null,
-        sessions,
+        sessions: sessions.map(toSessionView),
         balance,
-        balanceTransactions,
+        balanceTransactions: balanceTransactions.map(
+          ({ metadata: _metadata, ...transaction }) => transaction,
+        ),
         gameSessions,
         playtime: {
           daily: playtimeDaily,
