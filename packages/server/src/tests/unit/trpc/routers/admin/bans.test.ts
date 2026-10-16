@@ -60,6 +60,8 @@ import { AuthRole } from "@createrington/shared/auth";
 import { BAN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
 import type { Context } from "@/trpc/context";
 
+const EXPIRES_AT = new Date("2026-11-01T00:00:00.000Z");
+
 const PLAYER = {
   discordId: "100000000000000001",
   minecraftUsername: "steve",
@@ -85,6 +87,7 @@ beforeEach(() => {
   Q.player.ban.get.mockResolvedValue({
     id: 1,
     reason: "griefing",
+    expiresAt: EXPIRES_AT,
     playerMinecraftUuid: PLAYER.minecraftUuid,
   });
   bans.issueTemporary.mockImplementation(
@@ -220,7 +223,25 @@ describe("admin.players.bans.unban", () => {
     });
     expect(rcon.banAll).toHaveBeenCalledWith(
       PLAYER.minecraftUsername,
-      "griefing",
+      `griefing (Expires: ${EXPIRES_AT.toISOString()})`,
+    );
+  });
+
+  it("caps an older over-long reason when banning again in game", async () => {
+    Q.player.ban.get.mockResolvedValue({
+      id: 1,
+      reason: "x".repeat(BAN_REASON_MAX_LENGTH + 200),
+      expiresAt: EXPIRES_AT,
+      playerMinecraftUuid: PLAYER.minecraftUuid,
+    });
+    rcon.pardonAll.mockRejectedValue(new Error("pardon failed"));
+
+    await expect(caller.unban(input)).rejects.toMatchObject({
+      code: "BAD_GATEWAY",
+    });
+    expect(rcon.banAll).toHaveBeenCalledWith(
+      PLAYER.minecraftUsername,
+      `${"x".repeat(BAN_REASON_MAX_LENGTH)} (Expires: ${EXPIRES_AT.toISOString()})`,
     );
   });
 

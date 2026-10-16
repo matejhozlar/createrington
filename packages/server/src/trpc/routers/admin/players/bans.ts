@@ -17,6 +17,13 @@ import { discordTimestamp } from "@/utils/format";
 import { parsePlayerId } from "@/trpc/utils";
 import { sessionService } from "@/services/auth/session/session.service";
 
+function inGameBanReason(reason: string, expiresAt?: Date | null): string {
+  const suffix = expiresAt
+    ? `(Expires: ${expiresAt.toISOString()})`
+    : "(PERMANENT)";
+  return `${reason.slice(0, BAN_REASON_MAX_LENGTH)} ${suffix}`;
+}
+
 async function recordWithInGame<T>(
   action: string,
   inGame: { apply: () => Promise<unknown>; undo: () => Promise<unknown> },
@@ -108,7 +115,7 @@ export const bansRouter = router({
           apply: () =>
             minecraftRcon.banAll(
               player.minecraftUsername,
-              `${input.reason} (Expires: ${expiresAt.toISOString()})`,
+              inGameBanReason(input.reason, expiresAt),
             ),
           undo: () => minecraftRcon.pardonAll(player.minecraftUsername),
         },
@@ -210,7 +217,7 @@ export const bansRouter = router({
             );
             await minecraftRcon.banAll(
               player.minecraftUsername,
-              `${input.reason} (PERMANENT)`,
+              inGameBanReason(input.reason, null),
             );
           },
           undo: async () => {
@@ -344,7 +351,10 @@ export const bansRouter = router({
             {
               apply: () => minecraftRcon.pardonAll(minecraftUsername),
               undo: () =>
-                minecraftRcon.banAll(minecraftUsername, existingBan.reason),
+                minecraftRcon.banAll(
+                  minecraftUsername,
+                  inGameBanReason(existingBan.reason, existingBan.expiresAt),
+                ),
             },
             unban,
           )
