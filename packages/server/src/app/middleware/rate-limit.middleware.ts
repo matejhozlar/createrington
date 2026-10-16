@@ -128,3 +128,15 @@ export const modCurrencyMutationLimiter = rateLimit({
     req.modAuth?.uuid ?? ipKeyGenerator(req.ip ?? "unknown"),
   store: createRateLimitStore("mod-currency-mutation"),
 });
+
+/** Message send limiter: 20 messages per minute per user, mounted before the upload is buffered */
+export const messageSendLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 20,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  handler: rateLimitHandler,
+  keyGenerator: (req: Request) =>
+    req.user?.discordId ?? ipKeyGenerator(req.ip ?? "unknown"),
+  store: createRateLimitStore("message-send"),
+});

@@ -1,4 +1,4 @@
-import { BadRequestError, route } from "@/app/middleware";
+import { BadRequestError, messageSendLimiter, route } from "@/app/middleware";
 import { Router } from "express";
 import multer from "multer";
 import { MessageController } from "./message.controller";
@@ -51,11 +51,17 @@ const upload = multer({
  * Authentication: USER level (verified Discord account required)
  *
  * Response: 201 on success with { messageId, serverId, channelId }
- * Errors:   400 (validation), 401 (not authenticated), 404 (server not monitored)
+ * Errors:   400 (validation), 401 (not authenticated), 404 (server not monitored),
+ *           429 (more than 20 messages per minute)
  */
 router.post(
   "/",
-  ...route("user", upload.single("image"), MessageController.sendMessage),
+  ...route(
+    "user",
+    messageSendLimiter,
+    upload.single("image"),
+    MessageController.sendMessage,
+  ),
 );
 
 export default router;
