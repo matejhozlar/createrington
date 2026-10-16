@@ -162,7 +162,7 @@ export function ModDetailDialog({
                         {credit.verb}{" "}
                         <PlayerLabel
                           name={data.mod.submitterName}
-                          playerId={data.mod.submittedBy}
+                          uuid={data.mod.submitterUuid}
                           size={16}
                         />
                       </>

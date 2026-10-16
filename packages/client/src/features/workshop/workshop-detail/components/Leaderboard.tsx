@@ -300,7 +300,7 @@ function submitterPart(mod: RaceMod): ReactNode {
     <PlayerLabel
       key="submitter"
       name={mod.submitterName}
-      playerId={mod.submittedBy}
+      uuid={mod.submitterUuid}
       size={16}
     />
   );
