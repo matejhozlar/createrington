@@ -16,6 +16,7 @@ import { SocketEvent, SubscriptionType } from "./types";
 import type { MessageCacheService } from "../discord/message/cache";
 import type { PlaytimeManagerService } from "../playtime/playtime-manager.service";
 import { RoomManager } from "./room-manager";
+import { isValidServerId } from "../playtime/config";
 import { WebSocketDataProvider } from "./data-provider";
 import {
   parseInitialDataRequest,
@@ -219,6 +220,13 @@ export class WebSocketService {
     if (!request) {
       logger.warn(`[ws] invalid subscribe payload from ${socket.id}`);
       ack?.(rejectedSubscription(payload, "Invalid subscription request"));
+      return;
+    }
+    if (request.serverId !== undefined && !isValidServerId(request.serverId)) {
+      logger.warn(
+        `[ws] subscribe to unknown server ${request.serverId} from ${socket.id}`,
+      );
+      ack?.(rejectedSubscription(payload, "Unknown server"));
       return;
     }
     this.handleSubscribe(socket, request, ack).catch((error) => {
