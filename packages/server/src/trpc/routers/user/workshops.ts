@@ -38,6 +38,7 @@ const upvoteLimit = createRateLimit({
 
 function redactMod<
   T extends {
+    submittedBy: string;
     reviewedBy: string | null;
     reviewedAt: Date | null;
     reviewerName?: string | null;
@@ -45,15 +46,24 @@ function redactMod<
   },
 >(
   mod: T,
-): Omit<T, "reviewedBy" | "reviewedAt" | "reviewerName" | "discordThreadId"> {
+  viewerDiscordId: string,
+): Omit<
+  T,
+  | "submittedBy"
+  | "reviewedBy"
+  | "reviewedAt"
+  | "reviewerName"
+  | "discordThreadId"
+> & { submittedByMe: boolean } {
   const {
+    submittedBy,
     reviewedBy: _reviewedBy,
     reviewedAt: _reviewedAt,
     reviewerName: _reviewerName,
     discordThreadId: _discordThreadId,
     ...rest
   } = mod;
-  return rest;
+  return { ...rest, submittedByMe: submittedBy === viewerDiscordId };
 }
 
 function redactWorkshop<
@@ -84,7 +94,7 @@ export const userWorkshopsRouter = router({
   get: workshopProcedure
     .meta({ description: "Get a workshop with its visible mods by slug" })
     .input(z.object({ slug: z.string().min(1).max(100) }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       try {
         const workshop = await workshopService.getVisibleWorkshopBySlug(
           input.slug,
@@ -92,7 +102,7 @@ export const userWorkshopsRouter = router({
         const mods = await workshopService.getWorkshopMods(workshop.id);
         return {
           workshop: redactWorkshop(workshop),
-          mods: mods.map((m) => redactMod(m)),
+          mods: mods.map((m) => redactMod(m, ctx.user.discordId)),
         };
       } catch (error) {
         rethrowTrpc(error);
@@ -102,10 +112,10 @@ export const userWorkshopsRouter = router({
   getMod: workshopProcedure
     .meta({ description: "Get a mod with its full project detail" })
     .input(z.object({ workshopModId: id() }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       try {
         const detail = await workshopService.getModDetail(input.workshopModId);
-        return { ...detail, mod: redactMod(detail.mod) };
+        return { ...detail, mod: redactMod(detail.mod, ctx.user.discordId) };
       } catch (error) {
         rethrowTrpc(error);
       }
@@ -143,7 +153,7 @@ export const userWorkshopsRouter = router({
           input.workshopId,
           ctx.user.discordId,
         );
-        return mods.map((m) => redactMod(m));
+        return mods.map((m) => redactMod(m, ctx.user.discordId));
       } catch (error) {
         rethrowTrpc(error);
       }
@@ -173,7 +183,7 @@ export const userWorkshopsRouter = router({
         const mods = await workshopService.getMySuggestionHistory(
           ctx.user.discordId,
         );
-        return mods.map((m) => redactMod(m));
+        return mods.map((m) => redactMod(m, ctx.user.discordId));
       } catch (error) {
         rethrowTrpc(error);
       }
@@ -229,7 +239,7 @@ export const userWorkshopsRouter = router({
           ctx.user.discordId,
           { projectId: input.projectId, note: input.note },
         );
-        return redactMod(mod);
+        return redactMod(mod, ctx.user.discordId);
       } catch (error) {
         rethrowTrpc(error);
       }
@@ -253,10 +263,10 @@ export const userWorkshopsRouter = router({
   listRejected: workshopProcedure
     .meta({ description: "Mods ruled out of a workshop, with reasons" })
     .input(z.object({ workshopId: id() }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       try {
         const mods = await workshopService.getRejectedMods(input.workshopId);
-        return mods.map((m) => redactMod(m));
+        return mods.map((m) => redactMod(m, ctx.user.discordId));
       } catch (error) {
         rethrowTrpc(error);
       }

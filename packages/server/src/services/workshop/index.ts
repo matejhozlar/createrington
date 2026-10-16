@@ -88,6 +88,7 @@ export interface WorkshopModListItem extends WorkshopMod {
   project: WorkshopProjectSummary;
   upvoteCount: number;
   submitterName: string | null;
+  submitterUuid: string | null;
   discordThreadUrl: string | null;
   dependencies: WorkshopModDependencyInfo[];
   liveInVersion: string | null;
@@ -321,6 +322,7 @@ export class WorkshopService {
   ): Promise<{
     mod: WorkshopMod & {
       submitterName: string | null;
+      submitterUuid: string | null;
       reviewerName: string | null;
       discordThreadUrl: string | null;
       dependencies: WorkshopModDependencyInfo[];
@@ -357,6 +359,7 @@ export class WorkshopService {
       mod: {
         ...mod,
         submitterName: submitter?.minecraftUsername ?? null,
+        submitterUuid: submitter?.minecraftUuid ?? null,
         reviewerName: reviewer?.minecraftUsername ?? null,
         discordThreadUrl: mod.discordThreadId
           ? discordThreadUrl(mod.discordThreadId)
@@ -1325,8 +1328,8 @@ export class WorkshopService {
         }),
       ]);
     const byId = new Map(projects.map((p) => [p.id, p]));
-    const nameByDiscordId = new Map(
-      submitters.map((p) => [p.discordId, p.minecraftUsername]),
+    const submitterByDiscordId = new Map(
+      submitters.map((p) => [p.discordId, p]),
     );
     const packByProjectId = new Map(
       packRows.map((row) => [row.curseforgeProjectId, row]),
@@ -1337,12 +1340,14 @@ export class WorkshopService {
       const project = byId.get(mod.curseforgeProjectId);
       if (!project) return [];
       const packRow = packByProjectId.get(mod.curseforgeProjectId);
+      const submitter = submitterByDiscordId.get(mod.submittedBy);
       return [
         {
           ...mod,
           project: this.toProjectSummary(project),
           upvoteCount: upvoteCounts[mod.id] ?? 0,
-          submitterName: nameByDiscordId.get(mod.submittedBy) ?? null,
+          submitterName: submitter?.minecraftUsername ?? null,
+          submitterUuid: submitter?.minecraftUuid ?? null,
           discordThreadUrl: mod.discordThreadId
             ? discordThreadUrl(mod.discordThreadId)
             : null,
