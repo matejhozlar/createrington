@@ -419,8 +419,8 @@ export class BalanceRepository {
       throw new Error("Transfer amount must be positive");
     }
 
-    const senderUuid = await this.resolvePlayerUuid(from);
-    const recipientUuid = await this.resolvePlayerUuid(to);
+    const senderUuid = (await this.resolvePlayerUuid(from)).toLowerCase();
+    const recipientUuid = (await this.resolvePlayerUuid(to)).toLowerCase();
     const amountBigInt = BalanceUtils.toStorage(amount);
 
     if (senderUuid === recipientUuid) {
