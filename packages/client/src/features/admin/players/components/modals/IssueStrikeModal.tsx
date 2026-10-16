@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { STRIKE_DESCRIPTION_MAX_LENGTH } from "@createrington/shared/admin-reason";
 import { Input } from "@/components/ui/input";
 import { Field, FieldLabel } from "@/components/ui/field";
 import {
@@ -113,6 +114,7 @@ export function IssueStrikeModal({
           placeholder="Describe the violation..."
           value={description}
           onChange={(e) => setDescription(e.target.value)}
+          maxLength={STRIKE_DESCRIPTION_MAX_LENGTH}
           className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           rows={4}
         />

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ADMIN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q, waitlistRepo } from "@/db";
 import { waitlistService } from "@/services/waitlist/waitlist.service";
@@ -89,7 +90,10 @@ export const waitlistsRouter = router({
     .input(
       z.object({
         id: z.number().int().positive(),
-        reason: z.string().min(1, "Reason is required"),
+        reason: z
+          .string()
+          .min(1, "Reason is required")
+          .max(ADMIN_REASON_MAX_LENGTH),
       }),
     )
     .mutation(async ({ input, ctx }) => {

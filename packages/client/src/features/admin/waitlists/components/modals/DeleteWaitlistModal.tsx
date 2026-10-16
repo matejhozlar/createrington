@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ADMIN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field, FieldLabel } from "@/components/ui/field";
@@ -135,6 +136,7 @@ export function DeleteWaitlistModal({
                 placeholder="Enter reason for deletion"
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
+                maxLength={ADMIN_REASON_MAX_LENGTH}
               />
             </Field>
           </div>

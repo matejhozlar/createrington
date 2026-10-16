@@ -19,6 +19,7 @@ export class PlayerBanRepository extends BasePlayerRepository {
   /**
    * Issue a temporary ban that expires at the given timestamp. Rejects if the
    * player already has an active ban or if expiresAt is not in the future.
+   * `beforeCommit` runs last inside the transaction; throwing from it rolls the ban back.
    */
   async issueTemporary(
     identifier: PlayerIdentifier,
@@ -30,6 +31,7 @@ export class PlayerBanRepository extends BasePlayerRepository {
     },
     adminDiscordId: string,
     adminUsername: string,
+    beforeCommit?: () => Promise<void>,
   ): Promise<PlayerBan> {
     const uuid = await this.resolvePlayerUuid(identifier);
     const player = await Q.player.get({ minecraftUuid: uuid });
@@ -78,6 +80,8 @@ export class PlayerBanRepository extends BasePlayerRepository {
       logger.info(
         `Temporary ban #${ban.id} issued to ${player.minecraftUsername} (${uuid}) by ${adminUsername}, expires: ${data.expiresAt.toISOString()}`,
       );
+
+      await beforeCommit?.();
 
       return ban;
     });
@@ -152,13 +156,15 @@ export class PlayerBanRepository extends BasePlayerRepository {
   /**
    * Lift a ban by ID. Works for both ban types, but permanent bans that
    * already cascade-deleted the player cannot be undone; the player record
-   * stays gone.
+   * stays gone. `beforeCommit` runs last inside the transaction; throwing
+   * from it keeps the ban in place.
    */
   async unban(
     banId: number,
     adminDiscordId: string,
     adminUsername: string,
     reason: string,
+    beforeCommit?: () => Promise<void>,
   ): Promise<PlayerBan> {
     const ban = await Q.player.ban.get({ id: banId });
 
@@ -213,6 +219,8 @@ export class PlayerBanRepository extends BasePlayerRepository {
       logger.info(
         `Ban #${banId} lifted for ${playerName} by ${adminUsername}: ${reason}`,
       );
+
+      await beforeCommit?.();
 
       return updatedBan;
     });

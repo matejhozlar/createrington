@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { BAN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
 import { Input } from "@/components/ui/input";
 import { Field, FieldLabel } from "@/components/ui/field";
 import {
@@ -33,10 +34,10 @@ export function IssueBanModal({
 }: IssueBanModalProps) {
   const toast = useToastActions();
   const issueTemporaryBan = trpc.admin.players.bans.issueTemporary.useMutation({
-    onError: () => toast.error("Failed to issue ban"),
+    onError: (error) => toast.error(error.message, "Failed to issue ban"),
   });
   const issuePermanentBan = trpc.admin.players.bans.issuePermanent.useMutation({
-    onError: () => toast.error("Failed to issue ban"),
+    onError: (error) => toast.error(error.message, "Failed to issue ban"),
   });
 
   const [banType, setBanType] = useState<BanType>("temporary");
@@ -181,6 +182,7 @@ export function IssueBanModal({
             placeholder="Enter reason for ban..."
             value={reason}
             onChange={(e) => setReason(e.target.value)}
+            maxLength={BAN_REASON_MAX_LENGTH}
             className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             rows={4}
             required

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ADMIN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { useToastActions } from "@/hooks/use-toast";
 import { trpc } from "@/lib/trpc";
@@ -60,6 +61,7 @@ export function RemoveStrikeModal({
           placeholder="Explain why this strike is being removed..."
           value={reason}
           onChange={(e) => setReason(e.target.value)}
+          maxLength={ADMIN_REASON_MAX_LENGTH}
           className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           rows={4}
         />

@@ -1,8 +1,13 @@
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { playerService } from "@/services/player";
 import { playerDeletionService } from "@/services/player/deletion";
 import { Q } from "@/db";
+import {
+  ADMIN_REASON_MAX_LENGTH,
+  BAN_REASON_MAX_LENGTH,
+} from "@createrington/shared/admin-reason";
 import type { PlayerBan } from "@createrington/shared/db";
 import { getService, Services } from "@/services";
 import { Discord } from "@/discord/constants";
@@ -11,6 +16,42 @@ import { minecraftRcon, WhitelistAction } from "@/utils/rcon";
 import { discordTimestamp } from "@/utils/format";
 import { parsePlayerId } from "@/trpc/utils";
 import { sessionService } from "@/services/auth/session/session.service";
+
+function inGameBanReason(reason: string, expiresAt?: Date | null): string {
+  const suffix = expiresAt
+    ? `(Expires: ${expiresAt.toISOString()})`
+    : "(PERMANENT)";
+  return `${reason.slice(0, BAN_REASON_MAX_LENGTH)} ${suffix}`;
+}
+
+async function recordWithInGame<T>(
+  action: string,
+  inGame: { apply: () => Promise<unknown>; undo: () => Promise<unknown> },
+  record: (applyInGame: () => Promise<void>) => Promise<T>,
+): Promise<T> {
+  let attempted = false;
+  try {
+    return await record(async () => {
+      attempted = true;
+      try {
+        await inGame.apply();
+      } catch (error) {
+        logger.error(`In-game ${action} failed:`, error);
+        throw new TRPCError({
+          code: "BAD_GATEWAY",
+          message: `The in-game ${action} failed on the Minecraft server, so nothing was changed. Try again once the server is reachable.`,
+        });
+      }
+    });
+  } catch (error) {
+    if (attempted) {
+      await inGame.undo().catch((undoError: unknown) => {
+        logger.error(`Failed to roll back the in-game ${action}:`, undoError);
+      });
+    }
+    throw error;
+  }
+}
 
 /** Admin bans router: issue temporary/permanent bans, unban, and list recent bans. */
 export const bansRouter = router({
@@ -45,7 +86,10 @@ export const bansRouter = router({
     .input(
       z.object({
         id: z.string().min(1),
-        reason: z.string().min(1, "Reason is required"),
+        reason: z
+          .string()
+          .min(1, "Reason is required")
+          .max(BAN_REASON_MAX_LENGTH),
         durationDays: z.number().int().min(1).max(365),
         serverId: z.number().int().positive().optional(),
         metadata: z
@@ -63,38 +107,37 @@ export const bansRouter = router({
         Date.now() + input.durationDays * 24 * 60 * 60 * 1000,
       );
 
-      const ban = await playerService.bans.issueTemporary(
-        identifier,
+      const player = await Q.player.get(identifier);
+
+      const ban = await recordWithInGame(
+        "ban",
         {
-          reason: input.reason,
-          expiresAt,
-          serverId: input.serverId,
-          metadata: input.metadata,
+          apply: () =>
+            minecraftRcon.banAll(
+              player.minecraftUsername,
+              inGameBanReason(input.reason, expiresAt),
+            ),
+          undo: () => minecraftRcon.pardonAll(player.minecraftUsername),
         },
-        ctx.user.discordId,
-        ctx.user.minecraftUsername,
+        (applyInGame) =>
+          playerService.bans.issueTemporary(
+            identifier,
+            {
+              reason: input.reason,
+              expiresAt,
+              serverId: input.serverId,
+              metadata: input.metadata,
+            },
+            ctx.user.discordId,
+            ctx.user.minecraftUsername,
+            applyInGame,
+          ),
+      );
+      logger.info(
+        `Banned ${player.minecraftUsername} on all Minecraft servers`,
       );
 
-      const player = await Q.player.get({
-        minecraftUuid: ban.playerMinecraftUuid,
-      });
-
       await sessionService.revokeAllForUser(player.discordId);
-
-      try {
-        await minecraftRcon.banAll(
-          player.minecraftUsername,
-          `${input.reason} (Expires: ${expiresAt.toISOString()})`,
-        );
-        logger.info(
-          `Banned ${player.minecraftUsername} on all Minecraft servers`,
-        );
-      } catch (error) {
-        logger.error(
-          `Failed to ban ${player.minecraftUsername} on Minecraft servers:`,
-          error,
-        );
-      }
 
       try {
         const embed = EmbedPresets.plain({
@@ -128,7 +171,10 @@ export const bansRouter = router({
     .input(
       z.object({
         id: z.string().min(1),
-        reason: z.string().min(1, "Reason is required"),
+        reason: z
+          .string()
+          .min(1, "Reason is required")
+          .max(BAN_REASON_MAX_LENGTH),
         serverId: z.number().int().positive().optional(),
         metadata: z
           .record(
@@ -161,53 +207,61 @@ export const bansRouter = router({
       }
 
       let ban: PlayerBan | undefined;
-      await playerDeletionService.delete(identifier, {
-        actor: {
-          type: "admin",
-          discordId: ctx.user.discordId,
-          username: ctx.user.minecraftUsername,
+      await recordWithInGame(
+        "ban",
+        {
+          apply: async () => {
+            await minecraftRcon.whitelistAll(
+              WhitelistAction.REMOVE,
+              player.minecraftUsername,
+            );
+            await minecraftRcon.banAll(
+              player.minecraftUsername,
+              inGameBanReason(input.reason, null),
+            );
+          },
+          undo: async () => {
+            await minecraftRcon.pardonAll(player.minecraftUsername);
+            await minecraftRcon.whitelistAll(
+              WhitelistAction.ADD,
+              player.minecraftUsername,
+            );
+          },
         },
-        reason: input.reason,
-        writeAudit: false,
-        removeFromWhitelist: false,
-        serverId: input.serverId,
-        beforeDelete: async (tx, deletedPlayer) => {
-          ban = await playerService.bans.createPermanent(
-            tx,
-            deletedPlayer,
-            {
-              reason: input.reason,
-              serverId: input.serverId,
-              metadata: input.metadata,
+        (applyInGame) =>
+          playerDeletionService.delete(identifier, {
+            actor: {
+              type: "admin",
+              discordId: ctx.user.discordId,
+              username: ctx.user.minecraftUsername,
             },
-            ctx.user.discordId,
-            ctx.user.minecraftUsername,
-          );
-        },
-      });
+            reason: input.reason,
+            writeAudit: false,
+            removeFromWhitelist: false,
+            serverId: input.serverId,
+            beforeDelete: async (tx, deletedPlayer) => {
+              ban = await playerService.bans.createPermanent(
+                tx,
+                deletedPlayer,
+                {
+                  reason: input.reason,
+                  serverId: input.serverId,
+                  metadata: input.metadata,
+                },
+                ctx.user.discordId,
+                ctx.user.minecraftUsername,
+              );
+              await applyInGame();
+            },
+          }),
+      );
 
       if (!ban) {
         throw new Error("Failed to create permanent ban record");
       }
-
-      try {
-        await minecraftRcon.whitelistAll(
-          WhitelistAction.REMOVE,
-          player.minecraftUsername,
-        );
-        await minecraftRcon.banAll(
-          player.minecraftUsername,
-          `${input.reason} (PERMANENT)`,
-        );
-        logger.info(
-          `Permanently banned ${player.minecraftUsername} on all Minecraft servers`,
-        );
-      } catch (error) {
-        logger.error(
-          `Failed to ban ${player.minecraftUsername} on Minecraft servers:`,
-          error,
-        );
-      }
+      logger.info(
+        `Permanently banned ${player.minecraftUsername} on all Minecraft servers`,
+      );
 
       if (member) {
         try {
@@ -256,7 +310,10 @@ export const bansRouter = router({
     .input(
       z.object({
         banId: z.number().int().positive(),
-        reason: z.string().min(1, "Reason is required"),
+        reason: z
+          .string()
+          .min(1, "Reason is required")
+          .max(ADMIN_REASON_MAX_LENGTH),
       }),
     )
     .mutation(async ({ input, ctx }) => {
@@ -278,23 +335,32 @@ export const bansRouter = router({
         wasDeleted = true;
       }
 
-      const ban = await playerService.bans.unban(
-        input.banId,
-        ctx.user.discordId,
-        ctx.user.minecraftUsername,
-        input.reason,
-      );
+      const pardonInGame = !wasDeleted && minecraftUsername !== "Unknown";
+      const unban = (beforeCommit?: () => Promise<void>) =>
+        playerService.bans.unban(
+          input.banId,
+          ctx.user.discordId,
+          ctx.user.minecraftUsername,
+          input.reason,
+          beforeCommit,
+        );
 
-      if (!wasDeleted && minecraftUsername !== "Unknown") {
-        try {
-          await minecraftRcon.pardonAll(minecraftUsername);
-          logger.info(`Pardoned ${minecraftUsername} on all Minecraft servers`);
-        } catch (error) {
-          logger.error(
-            `Failed to pardon ${minecraftUsername} on Minecraft servers:`,
-            error,
-          );
-        }
+      const ban = pardonInGame
+        ? await recordWithInGame(
+            "pardon",
+            {
+              apply: () => minecraftRcon.pardonAll(minecraftUsername),
+              undo: () =>
+                minecraftRcon.banAll(
+                  minecraftUsername,
+                  inGameBanReason(existingBan.reason, existingBan.expiresAt),
+                ),
+            },
+            unban,
+          )
+        : await unban();
+      if (pardonInGame) {
+        logger.info(`Pardoned ${minecraftUsername} on all Minecraft servers`);
       }
 
       try {

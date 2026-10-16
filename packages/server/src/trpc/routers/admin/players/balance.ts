@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ADMIN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { playerService } from "@/services/player";
 import { balanceRepo } from "@/db";
@@ -6,7 +7,6 @@ import { parsePlayerId, rethrowTrpc, trpcError } from "@/trpc/utils";
 
 const BALANCE_ADJUST_MODES = ["add", "remove", "set"] as const;
 const MAX_ADJUSTMENT = 1_000_000_000;
-const MAX_REASON_LENGTH = 500;
 
 const hasAtMostCents = (value: number) =>
   Math.abs(value * 100 - Math.round(value * 100)) < 1e-6;
@@ -64,7 +64,7 @@ export const balanceRouter = router({
           .string()
           .trim()
           .min(1, "Reason is required")
-          .max(MAX_REASON_LENGTH),
+          .max(ADMIN_REASON_MAX_LENGTH),
       }),
     )
     .mutation(async ({ input, ctx }) => {
@@ -116,7 +116,10 @@ export const balanceRouter = router({
           .min(1, "At least one player UUID is required")
           .max(100, "At most 100 players per bulk adjust"),
         amount: z.number().int().min(-1_000_000_000).max(1_000_000_000),
-        reason: z.string().min(1, "Reason is required"),
+        reason: z
+          .string()
+          .min(1, "Reason is required")
+          .max(ADMIN_REASON_MAX_LENGTH),
       }),
     )
     .mutation(async ({ input, ctx }) => {

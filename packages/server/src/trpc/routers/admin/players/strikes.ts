@@ -1,4 +1,8 @@
 import { z } from "zod";
+import {
+  ADMIN_REASON_MAX_LENGTH,
+  STRIKE_DESCRIPTION_MAX_LENGTH,
+} from "@createrington/shared/admin-reason";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { playerService } from "@/services/player";
 import { parsePlayerId } from "@/trpc/utils";
@@ -43,7 +47,10 @@ export const strikesRouter = router({
           "rule_violation",
           "other",
         ]),
-        description: z.string().min(1, "Description is required"),
+        description: z
+          .string()
+          .min(1, "Description is required")
+          .max(STRIKE_DESCRIPTION_MAX_LENGTH),
         severity: z.union([
           z.literal(1),
           z.literal(2),
@@ -85,7 +92,10 @@ export const strikesRouter = router({
       z.object({
         id: z.string().min(1),
         strikeId: z.number().int().positive(),
-        reason: z.string().min(1, "Reason is required"),
+        reason: z
+          .string()
+          .min(1, "Reason is required")
+          .max(ADMIN_REASON_MAX_LENGTH),
       }),
     )
     .mutation(async ({ input, ctx }) => {
