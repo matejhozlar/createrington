@@ -277,6 +277,7 @@ function DangerZoneRow({
 
 /** Fetches the current user's data export on demand and triggers a JSON file download */
 function ExportDataButton() {
+  const toast = useToastActions();
   const { isFetching, refetch } = trpc.user.account.exportData.useQuery(
     undefined,
     { enabled: false },
@@ -284,6 +285,10 @@ function ExportDataButton() {
 
   const handleExport = async () => {
     const result = await refetch();
+    if (result.error) {
+      toast.error(result.error.message || "Failed to export your data");
+      return;
+    }
     if (result.data) {
       const blob = new Blob([JSON.stringify(result.data, null, 2)], {
         type: "application/json",

@@ -1,11 +1,19 @@
 import { z } from "zod";
 import { router, userProcedure } from "@/trpc/trpc";
 import { findOrThrow, trpcError } from "@/trpc/utils";
+import { createRateLimit } from "@/trpc/middleware/rate-limit";
 import { Q } from "@/db";
 import { BalanceUtils } from "@/db/repositories/balance/utils";
 import { playerDeletionService } from "@/services/player/deletion";
 import { getService, Services } from "@/services";
 import config from "@/config";
+
+const exportLimit = createRateLimit({
+  name: "user.account.exportData",
+  limit: 3,
+  windowMs: 60 * 60 * 1000,
+  key: (ctx) => ctx.user?.discordId ?? "anonymous",
+});
 
 /** User account router: profile info, session management, data export, and account deletion. */
 export const accountRouter = router({
@@ -84,6 +92,7 @@ export const accountRouter = router({
     }),
 
   exportData: userProcedure
+    .use(exportLimit)
     .meta({
       description:
         "Export all personal data as a single JSON object, covering playtime, balance, moderation history, and more",
@@ -148,11 +157,35 @@ export const accountRouter = router({
         },
         minecraftStats,
         moderation: {
-          bans,
-          strikes,
+          bans: bans.map(
+            ({
+              bannedByDiscordId: _bannedByDiscordId,
+              bannedByUsername: _bannedByUsername,
+              unbannedByDiscordId: _unbannedByDiscordId,
+              unbannedByUsername: _unbannedByUsername,
+              metadata: _metadata,
+              ...ban
+            }) => ban,
+          ),
+          strikes: strikes.map(
+            ({
+              issuedByDiscordId: _issuedByDiscordId,
+              issuedByUsername: _issuedByUsername,
+              removedByDiscordId: _removedByDiscordId,
+              removedByUsername: _removedByUsername,
+              metadata: _metadata,
+              ...strike
+            }) => strike,
+          ),
         },
         rewardClaims,
-        tickets,
+        tickets: tickets.map(
+          ({
+            closedByDiscordId: _closedByDiscordId,
+            metadata: _metadata,
+            ...ticket
+          }) => ticket,
+        ),
       };
 
       // BigInt values can't be JSON-serialized, convert them to strings
