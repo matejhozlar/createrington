@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
+import { httpUrlSchema } from "@createrington/shared/api/embed";
 import { structurePackService } from "@/services/structure-pack";
 import {
   searchMods,
@@ -21,7 +22,7 @@ export const structurePackModProcedures = {
         curseforgeFileId: z.number().int().positive(),
         fileName: modFileName,
         modName: z.string().min(1),
-        modUrl: z.string().url().optional(),
+        modUrl: httpUrlSchema.optional(),
         thumbnailUrl: z.string().url().optional(),
       }),
     )
