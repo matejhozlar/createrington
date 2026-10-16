@@ -1,6 +1,12 @@
-import { customRoute, verifyModJWT, verifyServerIP } from "@/app/middleware";
+import {
+  customRoute,
+  validate,
+  verifyModJWT,
+  verifyServerIP,
+} from "@/app/middleware";
 import { Router } from "express";
 import { ForceloadsController } from "./forceloads.controller";
+import { ForceloadSyncBodySchema } from "./forceloads.schemas";
 
 const router = Router();
 
@@ -24,7 +30,10 @@ const router = Router();
  */
 router.post(
   "/sync",
-  ...customRoute([verifyServerIP, verifyModJWT], ForceloadsController.sync),
+  ...customRoute(
+    [verifyServerIP, verifyModJWT, validate({ body: ForceloadSyncBodySchema })],
+    ForceloadsController.sync,
+  ),
 );
 
 export default router;

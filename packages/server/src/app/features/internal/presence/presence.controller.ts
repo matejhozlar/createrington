@@ -1,12 +1,16 @@
-import { BadRequestError, InternalServerError } from "@/app/middleware";
+import {
+  BadRequestError,
+  getValidated,
+  InternalServerError,
+} from "@/app/middleware";
+import type {
+  HeartbeatBody,
+  PresenceBody,
+} from "@/app/features/mod/presence/presence.schemas";
 import { Q } from "@/db";
 import { getService, Services } from "@/services";
 import type { HeartbeatPlayer, PlaytimeService } from "@/services/playtime";
-import {
-  parseEventTimestamp,
-  parsePlayTimeTicks,
-} from "@/services/playtime/credit";
-import { MC_UUID_REGEX } from "@/utils/zod-schemas";
+import { parseEventTimestamp } from "@/services/playtime/credit";
 import type { Request, Response } from "express";
 
 const TEST_SERVER_NAME = "Rails 'n Sails (Test)";
@@ -66,35 +70,26 @@ export class InternalPresenceController {
   /**
    * Processes a forwarded presence event from the dev server.
    *
-   * @param req - Express request with forwarded presence data
-   * @param res - Express response
+   * @param res - Express response carrying the validated presence data
    */
   static async handleSyncedPresence(
-    req: Request,
+    _req: Request,
     res: Response,
   ): Promise<void> {
-    const { uuid, minecraftUsername: username, state, timestamp } = req.body;
-
-    if (!uuid || !username || !state) {
-      throw new BadRequestError(
-        "uuid, minecraftUsername, and state are required",
-      );
-    }
-
-    if (!["joined", "left"].includes(state)) {
-      throw new BadRequestError('state must be either "joined" or "left"');
-    }
-
-    if (!MC_UUID_REGEX.test(uuid)) {
-      throw new BadRequestError("Invalid UUID format");
-    }
+    const {
+      body: {
+        uuid,
+        minecraftUsername: username,
+        state,
+        timestamp,
+        playTimeTicks,
+      },
+    } = getValidated<{ body: PresenceBody }>(res);
 
     const eventTimestamp = parseEventTimestamp(timestamp);
     if (!eventTimestamp) {
       throw new BadRequestError("Invalid timestamp");
     }
-
-    const playTimeTicks = parsePlayTimeTicks(req.body.playTimeTicks);
 
     try {
       const { serverId, service } = await testServerPlaytime();
@@ -147,25 +142,19 @@ export class InternalPresenceController {
    * server's tracked sessions against the reported online roster.
    */
   static async handleSyncedHeartbeat(
-    req: Request,
+    _req: Request,
     res: Response,
   ): Promise<void> {
-    const { players } = req.body;
-
-    if (!Array.isArray(players)) {
-      throw new BadRequestError("players must be an array");
-    }
-
-    const onlinePlayers: HeartbeatPlayer[] = [];
-    for (const p of players) {
-      if (!p.uuid || !p.minecraftUsername) continue;
-      if (!MC_UUID_REGEX.test(p.uuid)) continue;
-      onlinePlayers.push({
+    const {
+      body: { players },
+    } = getValidated<{ body: HeartbeatBody }>(res);
+    const onlinePlayers: HeartbeatPlayer[] = players
+      .filter((p) => p !== null)
+      .map((p) => ({
         uuid: p.uuid,
         username: p.minecraftUsername,
-        playTimeTicks: parsePlayTimeTicks(p.playTimeTicks),
-      });
-    }
+        playTimeTicks: p.playTimeTicks,
+      }));
 
     try {
       const { service } = await testServerPlaytime();

@@ -17,7 +17,11 @@ export default defineApiSpec({
       request: {
         name: "PresenceRequest",
         fields: [
-          { name: "minecraftUsername", type: "string" },
+          {
+            name: "minecraftUsername",
+            type: "string",
+            description: "1-16 letters, digits or underscores",
+          },
           {
             name: "uuid",
             type: "string",
@@ -55,7 +59,8 @@ export default defineApiSpec({
             name: "dimension",
             type: "string",
             nullable: true,
-            description: 'e.g. "minecraft:overworld"',
+            description:
+              'e.g. "minecraft:overworld"; dropped when longer than 255 characters',
           },
           {
             name: "playTimeTicks",
@@ -103,6 +108,8 @@ export default defineApiSpec({
         fields: [
           {
             name: "players",
+            description:
+              "At most 1,000 entries; an entry with an invalid uuid or username is skipped",
             type: {
               type: "array",
               items: {

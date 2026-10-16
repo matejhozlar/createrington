@@ -1,6 +1,12 @@
-import { customRoute, verifyModJWT, verifyServerIP } from "@/app/middleware";
+import {
+  customRoute,
+  validate,
+  verifyModJWT,
+  verifyServerIP,
+} from "@/app/middleware";
 import { Router } from "express";
 import { AlliesController } from "./allies.controller";
+import { AllySyncBodySchema } from "./allies.schemas";
 
 const router = Router();
 
@@ -25,7 +31,10 @@ const router = Router();
  */
 router.post(
   "/sync",
-  ...customRoute([verifyServerIP, verifyModJWT], AlliesController.sync),
+  ...customRoute(
+    [verifyServerIP, verifyModJWT, validate({ body: AllySyncBodySchema })],
+    AlliesController.sync,
+  ),
 );
 
 export default router;
