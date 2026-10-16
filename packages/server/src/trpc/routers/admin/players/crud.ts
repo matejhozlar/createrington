@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ADMIN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { playerService } from "@/services/player";
 import { playerDeletionService } from "@/services/player/deletion";
@@ -179,7 +180,10 @@ export const playersRouter = router({
           .regex(/^[a-zA-Z0-9_]{3,16}$/, "Invalid Minecraft username")
           .optional(),
         discordId: discordId.optional(),
-        reason: z.string().min(1, "Reason is required"),
+        reason: z
+          .string()
+          .min(1, "Reason is required")
+          .max(ADMIN_REASON_MAX_LENGTH),
       }),
     )
     .mutation(async ({ input, ctx }) => {
@@ -212,7 +216,10 @@ export const playersRouter = router({
     .input(
       z.object({
         id: z.string().min(1),
-        reason: z.string().min(1, "Reason is required"),
+        reason: z
+          .string()
+          .min(1, "Reason is required")
+          .max(ADMIN_REASON_MAX_LENGTH),
       }),
     )
     .mutation(async ({ input, ctx }) => {

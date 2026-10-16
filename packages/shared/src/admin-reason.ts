@@ -1,0 +1,5 @@
+export const ADMIN_REASON_MAX_LENGTH = 500;
+
+export const BAN_REASON_MAX_LENGTH = 300;
+
+export const STRIKE_DESCRIPTION_MAX_LENGTH = 1000;

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ADMIN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
@@ -39,8 +40,11 @@ export function UnbanModal({
       setReason("");
       onSuccess();
       onClose();
-    } catch {
-      toast.error("Failed to unban player");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Something went wrong",
+        "Failed to unban player",
+      );
     }
   };
 
@@ -74,6 +78,7 @@ export function UnbanModal({
           placeholder="Enter reason for lifting the ban..."
           value={reason}
           onChange={(e) => setReason(e.target.value)}
+          maxLength={ADMIN_REASON_MAX_LENGTH}
           className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           rows={4}
         />

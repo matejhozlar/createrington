@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ADMIN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
 import { Input } from "@/components/ui/input";
 import {
   Field,
@@ -208,6 +209,7 @@ export function EditPlayerModal({
             id="edit-reason"
             placeholder="Explain why these changes are being made..."
             value={reason}
+            maxLength={ADMIN_REASON_MAX_LENGTH}
             onChange={(e) => {
               setReason(e.target.value);
               if (errors.reason) {
