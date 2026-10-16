@@ -10,6 +10,8 @@ import {
 
 const ALICE = "11111111-1111-1111-1111-111111111111";
 const BOB = "22222222-2222-2222-2222-222222222222";
+const CAROL = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+const NEAR_MAX_BALANCE = 9_223_372_036_850_000n;
 
 async function seedPlayer(
   uuid: string,
@@ -154,6 +156,32 @@ describe("BalanceRepository (integration)", () => {
       await expect(R.balanceRepo.transfer(ALICE, ALICE, 5)).rejects.toThrow(
         "Cannot transfer to self",
       );
+    });
+
+    it("rejects transfers to self when the uuids differ only in case", async () => {
+      await seedPlayer(CAROL, "carol", "300", 10);
+
+      await expect(
+        R.balanceRepo.transfer(CAROL, CAROL.toUpperCase(), 5),
+      ).rejects.toThrow("Cannot transfer to self");
+
+      expect(await R.balanceRepo.getRaw(CAROL)).toBe(10_000n);
+    });
+
+    it("rolls back entirely when the recipient would exceed the maximum balance", async () => {
+      await seedPlayer(ALICE, "alice", "100", 10);
+      await seedPlayer(BOB, "bob", "200", 0);
+      await getTestPool().query(
+        "UPDATE player_balance SET balance = $1 WHERE minecraft_uuid = $2",
+        [NEAR_MAX_BALANCE.toString(), BOB],
+      );
+
+      await expect(R.balanceRepo.transfer(ALICE, BOB, 5)).rejects.toThrow(
+        "exceeds maximum balance",
+      );
+
+      expect(await R.balanceRepo.getRaw(ALICE)).toBe(10_000n);
+      expect(await R.balanceRepo.getRaw(BOB)).toBe(NEAR_MAX_BALANCE);
     });
   });
 
