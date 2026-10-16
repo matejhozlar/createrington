@@ -1,5 +1,6 @@
-import { getValidated, InternalServerError } from "@/app/middleware";
+import { getValidated } from "@/app/middleware";
 import { resolveServerId } from "../shared/resolve-server-id";
+import { runSync } from "../shared/run-sync";
 import type { Request, Response } from "express";
 import type { ChunkSyncBody } from "./chunks.schemas";
 import { syncChunkState } from "./chunks.service";
@@ -22,19 +23,12 @@ export class ChunksController {
     const serverId = resolveServerId(req, "Chunk sync");
     const totalChunks = players.reduce((sum, p) => sum + p.chunks.length, 0);
 
-    try {
-      await syncChunkState({ serverId, players });
+    await runSync("chunk sync", () => syncChunkState({ serverId, players }));
 
-      logger.info(
-        `Chunk sync for server ${serverId}: ${players.length} player(s), ${totalChunks} chunk(s)`,
-      );
+    logger.info(
+      `Chunk sync for server ${serverId}: ${players.length} player(s), ${totalChunks} chunk(s)`,
+    );
 
-      res.json({ success: true });
-    } catch (error) {
-      logger.error("Failed to process chunk sync:", error);
-      throw new InternalServerError(
-        "Failed to process chunk sync. Please try again.",
-      );
-    }
+    res.json({ success: true });
   }
 }

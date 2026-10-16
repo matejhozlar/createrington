@@ -1,5 +1,6 @@
-import { getValidated, InternalServerError } from "@/app/middleware";
+import { getValidated } from "@/app/middleware";
 import { resolveServerId } from "../shared/resolve-server-id";
+import { runSync } from "../shared/run-sync";
 import type { Request, Response } from "express";
 import type { ForceloadSyncBody } from "./forceloads.schemas";
 import { replaceForceloadState } from "./forceloads.service";
@@ -17,19 +18,14 @@ export class ForceloadsController {
     } = getValidated<{ body: ForceloadSyncBody }>(res);
     const serverId = resolveServerId(req, "Forceload sync");
 
-    try {
-      await replaceForceloadState({ serverId, players, parties });
+    await runSync("forceload sync", () =>
+      replaceForceloadState({ serverId, players, parties }),
+    );
 
-      logger.info(
-        `Forceload sync for server ${serverId}: ${players.length} solo player(s), ${parties.length} opted-in part${parties.length === 1 ? "y" : "ies"}`,
-      );
+    logger.info(
+      `Forceload sync for server ${serverId}: ${players.length} solo player(s), ${parties.length} opted-in part${parties.length === 1 ? "y" : "ies"}`,
+    );
 
-      res.json({ success: true });
-    } catch (error) {
-      logger.error("Failed to process forceload sync:", error);
-      throw new InternalServerError(
-        "Failed to process forceload sync. Please try again.",
-      );
-    }
+    res.json({ success: true });
   }
 }
