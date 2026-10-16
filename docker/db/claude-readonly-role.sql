@@ -25,15 +25,29 @@ GRANT SELECT ON ALL TABLES IN SCHEMA public TO claude_readonly;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO claude_readonly;
 
 -- ============================================================
--- 2. Blocked tables — fully revoked, no access at all
---    ADD NEW SENSITIVE TABLES HERE as the schema evolves.
+-- 2. Blocked tables: fully revoked, no access at all.
+--    ADD NEW SENSITIVE TABLES HERE as the schema evolves. The unit test
+--    readonly-role-grants.test.ts fails when a table with a token, IP,
+--    user agent or Stripe column is visible to this role.
 -- ============================================================
 REVOKE SELECT ON auth_session FROM claude_readonly;
+REVOKE SELECT ON auth_launcher_session FROM claude_readonly;
 
 -- ============================================================
--- 3. Partially visible tables — revoke full access, then grant
---    only specific safe columns.
+-- 3. Partially visible tables: revoke full access, then grant
+--    only specific safe columns. Columns added later stay hidden
+--    until they are listed here.
 -- ============================================================
 
--- (none currently; waitlist_entry stopped storing emails and is fully
--- visible via the blanket grant)
+REVOKE SELECT ON donation FROM claude_readonly;
+GRANT SELECT (
+  id,
+  player_discord_id,
+  type,
+  amount_cents,
+  currency,
+  status,
+  supporter_role_granted,
+  created_at,
+  completed_at
+) ON donation TO claude_readonly;
