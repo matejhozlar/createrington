@@ -196,6 +196,27 @@ describe("WebSocketService inbound event handling", () => {
     expect(unhandled).not.toHaveBeenCalled();
   });
 
+  it("rejects a subscribe to a server that is not configured without joining rooms", async () => {
+    const { socket, send } = connectFakeSocket(service);
+    const ack = vi.fn();
+
+    send(
+      SocketEvent.SUBSCRIBE,
+      { type: SubscriptionType.PLAYERS, serverId: 999 },
+      ack,
+    );
+    await settle();
+
+    expect(socket.join).not.toHaveBeenCalled();
+    expect(ack).toHaveBeenCalledTimes(1);
+    expect(ack.mock.calls[0][0]).toMatchObject({
+      success: false,
+      type: SubscriptionType.PLAYERS,
+      error: "Unknown server",
+    });
+    expect(unhandled).not.toHaveBeenCalled();
+  });
+
   it("acks a rate-limited subscribe without touching the payload", async () => {
     const { send } = connectFakeSocket(service);
     const ack = vi.fn();
