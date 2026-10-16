@@ -405,14 +405,13 @@ See [`docker/mc/README.md`](docker/mc/README.md) for details.
 
 ## Credits
 
-Full-body skin renders come from the in-house Createrington skin API. A couple of
-free public Minecraft skin APIs cover the rest:
+Full-body skin renders come from the in-house Createrington skin API. A free
+public Minecraft skin API covers the rest:
 
 - [MCHeads](https://mc-heads.net/), for avatar thumbnails and as the fallback
   body renderer.
-- [Crafatar](https://crafatar.com/), for server-side skin downloads.
 
-Thanks to each of them for keeping their APIs open to the community.
+Thanks to MCHeads for keeping its API open to the community.
 
 ---
 

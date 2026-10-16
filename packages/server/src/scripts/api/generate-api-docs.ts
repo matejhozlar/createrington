@@ -65,7 +65,7 @@ const ROUTE_MODULES: RouteModule[] = [
     routeFile: "skin/skin.routes.ts",
     controllerFile: null,
     description:
-      "Proxies Minecraft skin requests to avoid CORS issues with external APIs.",
+      "Posed figures of registered players, rendered through the skin API.",
     authNote: "Public",
   },
   {
