@@ -86,7 +86,7 @@ export const playersRouter = router({
     })
     .input(
       z.object({
-        minecraftUuid: z.string().optional(),
+        minecraftUuid: mcUuid.optional(),
         minecraftUsername: z.string().optional(),
         online: z
           .enum(["true", "false"])
