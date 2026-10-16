@@ -31,7 +31,7 @@ export default defineApiSpec({
           {
             name: "players",
             description:
-              "All players with at least one claimed chunk, grouped by player. Players with no claims are omitted entirely.",
+              "All players with at least one claimed chunk, grouped by player. Players with no claims are omitted entirely. At most 10,000 players and 50,000 chunks in total.",
             type: {
               type: "array",
               items: {
@@ -53,7 +53,8 @@ export default defineApiSpec({
                     name: "partyName",
                     type: "string",
                     nullable: true,
-                    description: "Party display name (null if solo player)",
+                    description:
+                      "Party display name (null if solo player); at most 255 characters",
                   },
                   {
                     name: "partyMembers",
@@ -81,7 +82,8 @@ export default defineApiSpec({
                           {
                             name: "dimension",
                             type: "string",
-                            description: 'e.g. "minecraft:overworld"',
+                            description:
+                              'e.g. "minecraft:overworld"; at most 255 characters',
                           },
                           {
                             name: "x",

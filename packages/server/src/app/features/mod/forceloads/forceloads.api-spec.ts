@@ -10,7 +10,7 @@ const CHUNK_DATA: ObjectFieldType = {
     {
       name: "dimension",
       type: "string",
-      description: 'e.g. "minecraft:overworld"',
+      description: 'e.g. "minecraft:overworld"; at most 255 characters',
     },
     { name: "x", type: "int", description: "Chunk X coordinate" },
     { name: "z", type: "int", description: "Chunk Z coordinate" },
@@ -54,7 +54,7 @@ export default defineApiSpec({
           {
             name: "players",
             description:
-              "Solo players (not in any party, or in a non-opted-in party). A player appears here OR in a party's members, never both.",
+              "Solo players (not in any party, or in a non-opted-in party). A player appears here OR in a party's members, never both. At most 10,000 entries; players and parties together carry at most 50,000 chunks.",
             type: {
               type: "array",
               items: {
@@ -77,7 +77,7 @@ export default defineApiSpec({
           {
             name: "parties",
             description:
-              "Parties that have opted in to shared forceloading. Chunks are active when any member is online.",
+              "Parties that have opted in to shared forceloading. Chunks are active when any member is online. At most 10,000 entries.",
             type: {
               type: "array",
               items: {
@@ -92,7 +92,7 @@ export default defineApiSpec({
                   {
                     name: "partyName",
                     type: "string",
-                    description: "Party display name",
+                    description: "Party display name; at most 255 characters",
                   },
                   {
                     name: "memberCount",

@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("@/app/middleware", () =>
-  vi.importActual("@/app/middleware/error-handler"),
-);
+vi.mock("@/app/middleware", async () => ({
+  ...(await vi.importActual("@/app/middleware/error-handler")),
+  ...(await vi.importActual("@/app/middleware/validation.middleware")),
+}));
 
 const { getServiceMock, findServerMock, createServerMock } = vi.hoisted(() => ({
   getServiceMock: vi.fn(),
@@ -19,6 +20,10 @@ vi.mock("@/db", () => ({
   Q: { server: { find: findServerMock, createAndReturn: createServerMock } },
 }));
 
+import {
+  HeartbeatBodySchema,
+  PresenceBodySchema,
+} from "@/app/features/mod/presence/presence.schemas";
 import type { Request, Response } from "express";
 
 const TEST_SERVER_ID = 7;
@@ -31,14 +36,23 @@ async function loadController() {
   return module.InternalPresenceController;
 }
 
-function makeRes(): Response & { json: ReturnType<typeof vi.fn> } {
-  return { json: vi.fn() } as unknown as Response & {
+const req = {} as Request;
+
+function makeRes(body: unknown): Response & { json: ReturnType<typeof vi.fn> } {
+  return {
+    json: vi.fn(),
+    locals: { validated: { body } },
+  } as unknown as Response & {
     json: ReturnType<typeof vi.fn>;
   };
 }
 
-function makeReq(body: Record<string, unknown>): Request {
-  return { body } as unknown as Request;
+function presenceRes(body: Record<string, unknown>) {
+  return makeRes(PresenceBodySchema.parse(body));
+}
+
+function heartbeatRes(body: Record<string, unknown>) {
+  return makeRes(HeartbeatBodySchema.parse(body));
 }
 
 function makePlaytimeManager() {
@@ -67,36 +81,13 @@ beforeEach(() => {
 });
 
 describe("InternalPresenceController.handleSyncedPresence", () => {
-  it("rejects a payload missing uuid, username or state", async () => {
-    const controller = await loadController();
-
-    await expect(
-      controller.handleSyncedPresence(
-        makeReq({ uuid: PLAYER_UUID, state: "joined" }),
-        makeRes(),
-      ),
-    ).rejects.toThrow("uuid, minecraftUsername, and state are required");
-    expect(getServiceMock).not.toHaveBeenCalled();
-  });
-
-  it("rejects a state other than joined or left", async () => {
-    const controller = await loadController();
-
-    await expect(
-      controller.handleSyncedPresence(
-        makeReq({ ...joinBody, state: "afk" }),
-        makeRes(),
-      ),
-    ).rejects.toThrow('state must be either "joined" or "left"');
-  });
-
   it("rejects an unparseable timestamp before touching the tracker", async () => {
     const controller = await loadController();
 
     await expect(
       controller.handleSyncedPresence(
-        makeReq({ ...joinBody, timestamp: "yesterday-ish" }),
-        makeRes(),
+        req,
+        presenceRes({ ...joinBody, timestamp: "yesterday-ish" }),
       ),
     ).rejects.toThrow("Invalid timestamp");
     expect(getServiceMock).not.toHaveBeenCalled();
@@ -105,9 +96,9 @@ describe("InternalPresenceController.handleSyncedPresence", () => {
   it("starts a session on the test server through its playtime service", async () => {
     const controller = await loadController();
     const { service, ensureService } = makePlaytimeManager();
-    const res = makeRes();
+    const res = presenceRes(joinBody);
 
-    await controller.handleSyncedPresence(makeReq(joinBody), res);
+    await controller.handleSyncedPresence(req, res);
 
     expect(ensureService).toHaveBeenCalledWith(TEST_SERVER_ID);
     expect(service.handlePlayerJoinFromMod).toHaveBeenCalledWith({
@@ -132,13 +123,13 @@ describe("InternalPresenceController.handleSyncedPresence", () => {
     const { service } = makePlaytimeManager();
 
     await controller.handleSyncedPresence(
-      makeReq({
+      req,
+      presenceRes({
         uuid: PLAYER_UUID,
         minecraftUsername: "steve",
         state: "left",
         timestamp: "2026-09-16T11:00:00.000Z",
       }),
-      makeRes(),
     );
 
     expect(service.handlePlayerLeaveFromMod).toHaveBeenCalledWith({
@@ -156,7 +147,7 @@ describe("InternalPresenceController.handleSyncedPresence", () => {
     findServerMock.mockResolvedValue(null);
     createServerMock.mockResolvedValue({ id: 9 });
 
-    await controller.handleSyncedPresence(makeReq(joinBody), makeRes());
+    await controller.handleSyncedPresence(req, presenceRes(joinBody));
 
     expect(createServerMock).toHaveBeenCalledWith({
       name: "Rails 'n Sails (Test)",
@@ -169,39 +160,25 @@ describe("InternalPresenceController.handleSyncedPresence", () => {
     const controller = await loadController();
     makePlaytimeManager();
 
-    await controller.handleSyncedPresence(makeReq(joinBody), makeRes());
-    await controller.handleSyncedPresence(makeReq(joinBody), makeRes());
+    await controller.handleSyncedPresence(req, presenceRes(joinBody));
+    await controller.handleSyncedPresence(req, presenceRes(joinBody));
 
     expect(findServerMock).toHaveBeenCalledTimes(1);
   });
 });
 
 describe("InternalPresenceController.handleSyncedHeartbeat", () => {
-  it("rejects a heartbeat whose players field is not an array", async () => {
-    const controller = await loadController();
-
-    await expect(
-      controller.handleSyncedHeartbeat(
-        makeReq({ players: "steve" }),
-        makeRes(),
-      ),
-    ).rejects.toThrow("players must be an array");
-  });
-
   it("reconciles the roster through the playtime service and reports the counts", async () => {
     const controller = await loadController();
     const { service } = makePlaytimeManager();
-    const res = makeRes();
+    const res = heartbeatRes({
+      players: [
+        { uuid: PLAYER_UUID, minecraftUsername: "steve", playTimeTicks: 500 },
+        { uuid: "not-a-uuid", minecraftUsername: "ghost" },
+      ],
+    });
 
-    await controller.handleSyncedHeartbeat(
-      makeReq({
-        players: [
-          { uuid: PLAYER_UUID, minecraftUsername: "steve", playTimeTicks: 500 },
-          { uuid: "not-a-uuid", minecraftUsername: "ghost" },
-        ],
-      }),
-      res,
-    );
+    await controller.handleSyncedHeartbeat(req, res);
 
     expect(service.reconcileWithHeartbeat).toHaveBeenCalledWith([
       { uuid: PLAYER_UUID, username: "steve", playTimeTicks: 500 },

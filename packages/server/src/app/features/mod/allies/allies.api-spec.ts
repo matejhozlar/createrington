@@ -45,7 +45,8 @@ export default defineApiSpec({
                 {
                   name: "ownerName",
                   type: "string",
-                  description: "Display name of the fake-player party owner",
+                  description:
+                    "Display name of the fake-player party owner; at most 255 characters",
                 },
                 {
                   name: "members",
@@ -70,7 +71,7 @@ export default defineApiSpec({
           {
             name: "allies",
             description:
-              "Real-player parties currently allied with the fake-player party",
+              "Real-player parties currently allied with the fake-player party; at most 10,000 entries",
             type: {
               type: "array",
               items: {
@@ -95,7 +96,7 @@ export default defineApiSpec({
           {
             name: "qualified",
             description:
-              "Players who have met the ally trigger requirements and are currently in an allied party",
+              "Players who have met the ally trigger requirements and are currently in an allied party; at most 10,000 entries",
             type: {
               type: "array",
               items: {
@@ -119,7 +120,7 @@ export default defineApiSpec({
           {
             name: "pending",
             description:
-              "Players who have qualified but are not yet in any allied party",
+              "Players who have qualified but are not yet in any allied party; at most 10,000 entries",
             type: {
               type: "array",
               items: {

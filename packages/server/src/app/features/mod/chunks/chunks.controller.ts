@@ -1,122 +1,8 @@
-import { BadRequestError, InternalServerError } from "@/app/middleware";
-import { MC_UUID_REGEX } from "@/utils/zod-schemas";
+import { getValidated, InternalServerError } from "@/app/middleware";
 import { resolveServerId } from "../shared/resolve-server-id";
 import type { Request, Response } from "express";
-import {
-  syncChunkState,
-  type ChunkSyncPayload,
-  type PlayerChunkData,
-  type PlayerChunkEntry,
-} from "./chunks.service";
-
-const MAX_CHUNKS_PER_SYNC = 50_000;
-
-function parseChunkEntry(
-  raw: unknown,
-  playerIndex: number,
-  chunkIndex: number,
-): PlayerChunkEntry {
-  if (!raw || typeof raw !== "object") {
-    throw new BadRequestError(
-      `players[${playerIndex}].chunks[${chunkIndex}] must be an object`,
-    );
-  }
-  const c = raw as Record<string, unknown>;
-
-  if (typeof c.dimension !== "string" || c.dimension.length === 0) {
-    throw new BadRequestError(
-      `players[${playerIndex}].chunks[${chunkIndex}].dimension must be a non-empty string`,
-    );
-  }
-  if (typeof c.x !== "number" || !Number.isInteger(c.x)) {
-    throw new BadRequestError(
-      `players[${playerIndex}].chunks[${chunkIndex}].x must be an integer`,
-    );
-  }
-  if (typeof c.z !== "number" || !Number.isInteger(c.z)) {
-    throw new BadRequestError(
-      `players[${playerIndex}].chunks[${chunkIndex}].z must be an integer`,
-    );
-  }
-  if (typeof c.forceloadable !== "boolean") {
-    throw new BadRequestError(
-      `players[${playerIndex}].chunks[${chunkIndex}].forceloadable must be a boolean`,
-    );
-  }
-  if (typeof c.active !== "boolean") {
-    throw new BadRequestError(
-      `players[${playerIndex}].chunks[${chunkIndex}].active must be a boolean`,
-    );
-  }
-
-  return {
-    dimension: c.dimension,
-    x: c.x,
-    z: c.z,
-    forceloadable: c.forceloadable,
-    active: c.active,
-  };
-}
-
-function parsePlayer(raw: unknown, index: number): PlayerChunkData {
-  if (!raw || typeof raw !== "object") {
-    throw new BadRequestError(`players[${index}] must be an object`);
-  }
-  const p = raw as Record<string, unknown>;
-
-  if (typeof p.playerUuid !== "string" || !MC_UUID_REGEX.test(p.playerUuid)) {
-    throw new BadRequestError(
-      `players[${index}].playerUuid must be a valid UUID`,
-    );
-  }
-
-  const partyId =
-    p.partyId === null || p.partyId === undefined
-      ? null
-      : typeof p.partyId === "string" && MC_UUID_REGEX.test(p.partyId)
-        ? p.partyId
-        : (() => {
-            throw new BadRequestError(
-              `players[${index}].partyId must be a valid UUID or null`,
-            );
-          })();
-
-  const partyName =
-    p.partyName === null || p.partyName === undefined
-      ? null
-      : typeof p.partyName === "string"
-        ? p.partyName
-        : (() => {
-            throw new BadRequestError(
-              `players[${index}].partyName must be a string or null`,
-            );
-          })();
-
-  const partyOptedIn =
-    p.partyOptedIn === null || p.partyOptedIn === undefined
-      ? null
-      : typeof p.partyOptedIn === "boolean"
-        ? p.partyOptedIn
-        : (() => {
-            throw new BadRequestError(
-              `players[${index}].partyOptedIn must be a boolean or null`,
-            );
-          })();
-
-  if (!Array.isArray(p.chunks)) {
-    throw new BadRequestError(`players[${index}].chunks must be an array`);
-  }
-
-  const chunks = p.chunks.map((c, i) => parseChunkEntry(c, index, i));
-
-  return {
-    playerUuid: p.playerUuid,
-    partyId,
-    partyName,
-    partyOptedIn,
-    chunks,
-  };
-}
+import type { ChunkSyncBody } from "./chunks.schemas";
+import { syncChunkState } from "./chunks.service";
 
 /**
  * Chunks Controller
@@ -130,29 +16,14 @@ function parsePlayer(raw: unknown, index: number): PlayerChunkData {
  */
 export class ChunksController {
   static async sync(req: Request, res: Response): Promise<void> {
-    const body = req.body as Record<string, unknown>;
-
-    if (!body || typeof body !== "object") {
-      throw new BadRequestError("Request body must be a JSON object");
-    }
-    if (!Array.isArray(body.players)) {
-      throw new BadRequestError("players must be an array");
-    }
-
+    const {
+      body: { players },
+    } = getValidated<{ body: ChunkSyncBody }>(res);
     const serverId = resolveServerId(req, "Chunk sync");
-    const players = body.players.map((p, i) => parsePlayer(p, i));
-
     const totalChunks = players.reduce((sum, p) => sum + p.chunks.length, 0);
-    if (totalChunks > MAX_CHUNKS_PER_SYNC) {
-      throw new BadRequestError(
-        `total chunk count exceeds maximum size of ${MAX_CHUNKS_PER_SYNC}`,
-      );
-    }
-
-    const payload: ChunkSyncPayload = { serverId, players };
 
     try {
-      await syncChunkState(payload);
+      await syncChunkState({ serverId, players });
 
       logger.info(
         `Chunk sync for server ${serverId}: ${players.length} player(s), ${totalChunks} chunk(s)`,
