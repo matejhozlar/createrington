@@ -69,9 +69,9 @@ const envSchema = z
   .object({
     // Server
     PORT: port("Server port").default(5001),
-    NODE_ENV: z
-      .enum(["development", "production", "test"])
-      .default("development"),
+    NODE_ENV: z.enum(["development", "production", "test"], {
+      message: "NODE_ENV must be set to development, production or test",
+    }),
     APP_VERSION: z.string().optional(),
 
     // Database: required in every environment
