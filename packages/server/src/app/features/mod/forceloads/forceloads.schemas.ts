@@ -30,7 +30,7 @@ export const ForceloadSyncBodySchema = z
       z.object({
         partyId: mcUuid,
         partyName: syncName,
-        memberCount: z.number().int(),
+        memberCount: z.int32().nonnegative(),
         optedIn: z.boolean(),
         members: syncList(z.object({ uuid: mcUuid })),
         chunks: ForceloadChunksSchema,

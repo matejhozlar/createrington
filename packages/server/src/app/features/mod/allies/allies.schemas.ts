@@ -1,10 +1,10 @@
 import { mcUuid } from "@/utils/zod-schemas";
 import { z } from "zod";
-import { syncList, syncName } from "../shared/sync-schemas";
+import { epochMillis, syncList, syncName } from "../shared/sync-schemas";
 
 const QualifiedPlayerSchema = z.object({
   uuid: mcUuid,
-  qualifiedAt: z.number(),
+  qualifiedAt: epochMillis,
 });
 
 export const AllySyncBodySchema = z.object({
@@ -17,7 +17,7 @@ export const AllySyncBodySchema = z.object({
   allies: syncList(
     z.object({
       partyId: mcUuid,
-      alliedAt: z.number(),
+      alliedAt: epochMillis,
     }),
   ),
   qualified: syncList(QualifiedPlayerSchema),

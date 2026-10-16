@@ -40,6 +40,14 @@ describe("PresenceBodySchema", () => {
     ).toBe(false);
   });
 
+  it("drops a playTimeTicks that is negative, fractional or past int4", () => {
+    for (const playTimeTicks of [-1, 1.5, 2 ** 31, "100"]) {
+      expect(
+        PresenceBodySchema.parse({ ...joinBody, playTimeTicks }).playTimeTicks,
+      ).toBeUndefined();
+    }
+  });
+
   it("drops an overlong logout dimension instead of rejecting the event", () => {
     const parsed = PresenceBodySchema.parse({
       ...joinBody,
@@ -93,6 +101,23 @@ describe("AllySyncBodySchema", () => {
     ).toBe(false);
   });
 
+  it("rejects a timestamp that is not valid epoch millis", () => {
+    for (const qualifiedAt of [1e20, -1, 1.5]) {
+      expect(
+        AllySyncBodySchema.safeParse({
+          ...body,
+          qualified: [{ uuid: UUID, qualifiedAt }],
+        }).success,
+      ).toBe(false);
+    }
+    expect(
+      AllySyncBodySchema.safeParse({
+        ...body,
+        allies: [{ partyId: UUID, alliedAt: 1e20 }],
+      }).success,
+    ).toBe(false);
+  });
+
   it("rejects a list longer than the cap", () => {
     expect(
       AllySyncBodySchema.safeParse({
@@ -133,6 +158,14 @@ describe("ChunkSyncBodySchema", () => {
     ).toBe(false);
   });
 
+  it("rejects a chunk coordinate outside int4", () => {
+    expect(
+      ChunkSyncBodySchema.safeParse({
+        players: [{ playerUuid: UUID, chunks: [{ ...claimed, x: 3e9 }] }],
+      }).success,
+    ).toBe(false);
+  });
+
   it("rejects more chunks in total than the cap", () => {
     const player = { playerUuid: UUID, chunks: repeat(claimed, 25_001) };
 
@@ -159,6 +192,21 @@ describe("ForceloadSyncBodySchema", () => {
         parties: [party],
       }).success,
     ).toBe(true);
+  });
+
+  it("rejects a member count or coordinate outside int4", () => {
+    expect(
+      ForceloadSyncBodySchema.safeParse({
+        players: [],
+        parties: [{ ...party, memberCount: 2 ** 31 }],
+      }).success,
+    ).toBe(false);
+    expect(
+      ForceloadSyncBodySchema.safeParse({
+        players: [{ uuid: UUID, chunks: [{ ...chunk, z: -(2 ** 31) - 1 }] }],
+        parties: [],
+      }).success,
+    ).toBe(false);
   });
 
   it("rejects an overlong party name", () => {

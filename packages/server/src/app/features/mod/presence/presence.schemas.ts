@@ -4,12 +4,7 @@ import { dimensionId, syncList } from "../shared/sync-schemas";
 
 const MAX_HEARTBEAT_PLAYERS = 1_000;
 
-const playTimeTicks = z
-  .number()
-  .int()
-  .nonnegative()
-  .optional()
-  .catch(undefined);
+const playTimeTicks = z.int32().nonnegative().optional().catch(undefined);
 
 export const PresenceBodySchema = z.object({
   minecraftUsername: mcUsername,
