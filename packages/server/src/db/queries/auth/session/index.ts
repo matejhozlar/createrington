@@ -34,12 +34,14 @@ export class AuthSessionQueries extends AuthSessionBaseQueries {
    * Revoke a single session by ID
    *
    * @param id - Session row ID
+   * @returns Whether this call revoked it (false when it was already revoked)
    */
-  async revokeById(id: number): Promise<void> {
-    await this.db.query(
+  async revokeById(id: number): Promise<boolean> {
+    const result = await this.db.query(
       `UPDATE auth_session SET revoked_at = NOW() WHERE id = $1 AND revoked_at IS NULL`,
       [id],
     );
+    return (result.rowCount ?? 0) > 0;
   }
 
   /**
