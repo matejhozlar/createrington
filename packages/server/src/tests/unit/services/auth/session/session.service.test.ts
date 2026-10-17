@@ -244,18 +244,24 @@ describe("SessionService.rotateToken", () => {
     expect(successor!.revoked_at).toBeNull();
   });
 
-  it("returns null on a grace replay when the successor has been revoked", async () => {
+  it("returns null on a grace replay after a logout without treating it as theft", async () => {
     seedSession(tok("logout"), { family_id: "family-logout" });
+    const sibling = seedSession(tok("logout-sibling"), {
+      family_id: "family-logout",
+    });
 
     const first = await sessionService.rotateToken(tok("logout"));
     expect(first).not.toBeNull();
 
-    const successor = rows.find((r) => r.token_hash === hash(first!.rawToken))!;
-    successor.revoked_at = new Date();
+    await sessionService.revokeByToken(first!.rawToken);
+    const warn = vi.spyOn(logger, "warn");
 
     const replay = await sessionService.rotateToken(tok("logout"));
 
     expect(replay).toBeNull();
+    expect(sibling.revoked_at).toBeNull();
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
   });
 
   it("follows the rotation chain when the successor was itself already rotated", async () => {

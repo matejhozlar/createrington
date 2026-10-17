@@ -107,6 +107,10 @@ class SessionService {
       );
       if (!successor) return null;
       if (successor.revoked_at) {
+        const next = this.recentRotations.get(
+          refreshTokenService.hash(result.rawToken),
+        );
+        if (!next || next.expiresAt <= Date.now()) return null;
         return this.rotateToken(result.rawToken, ip, userAgent);
       }
 
