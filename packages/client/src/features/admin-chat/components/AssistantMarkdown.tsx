@@ -5,6 +5,8 @@ import remarkBreaks from "remark-breaks";
 import { Check, Copy } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+const INTERNAL_PATH = /^\/(?![/\\])/;
+
 interface AssistantMarkdownProps {
   text: string;
   navigate: (to: string) => void;
@@ -117,7 +119,7 @@ export function AssistantMarkdown({
             </a>
           );
         }
-        if (typeof href === "string" && href.startsWith("/")) {
+        if (typeof href === "string" && INTERNAL_PATH.test(href)) {
           return (
             <a
               href={href}
