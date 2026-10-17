@@ -126,4 +126,45 @@ describe("errorHandler with request body errors", () => {
     expect(await res.json()).toEqual(errorBody(500, "Internal Server Error"));
     expect(errorLog).toHaveBeenCalled();
   });
+
+  it("redacts sensitive keys at any depth of a logged body", async () => {
+    const app = express();
+    app.use(express.json());
+    app.post("/boom", () => {
+      throw new Error("kaboom");
+    });
+    app.use(errorHandler);
+    const errorLog = vi.spyOn(logger, "error").mockImplementation(() => logger);
+    const local = app.listen(0);
+    await new Promise<void>((resolve) => local.once("listening", resolve));
+
+    await fetch(
+      `http://127.0.0.1:${(local.address() as AddressInfo).port}/boom?apiKey=q1&page=2`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          name: "Steve",
+          auth: { accessToken: "t1", nested: { clientSecret: "s1" } },
+          items: [{ password: "p1", label: "a" }],
+        }),
+      },
+    );
+    await new Promise<void>((resolve) => local.close(() => resolve()));
+
+    expect(errorLog).toHaveBeenCalledWith(
+      "Error Handler:",
+      expect.objectContaining({
+        body: {
+          name: "Steve",
+          auth: {
+            accessToken: "[REDACTED]",
+            nested: { clientSecret: "[REDACTED]" },
+          },
+          items: [{ password: "[REDACTED]", label: "a" }],
+        },
+        query: { apiKey: "[REDACTED]", page: "2" },
+      }),
+    );
+  });
 });

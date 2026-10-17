@@ -18,7 +18,7 @@ fs.rmSync(DIST, { recursive: true, force: true });
 
 fs.cpSync(SERVER_DIST, DIST, {
   recursive: true,
-  filter: (src) => !src.endsWith(".d.ts"),
+  filter: (src) => !src.endsWith(".d.ts") && !src.endsWith(".map"),
 });
 
 fs.cpSync(CLIENT_DIST, path.join(DIST, "public"), { recursive: true });
