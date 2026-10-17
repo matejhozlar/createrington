@@ -95,6 +95,10 @@ function toAppProject(slug: string, modpack: Modpack): LauncherPackProject {
   };
 }
 
+const ZIP_SERVED_BY: Record<LauncherPackSource, LauncherPackFileSource> = {
+  curseforge: "curseforge",
+  sandbox: "storage",
+};
 const MANUAL_RECHECK_MS = 60 * 60 * 1000;
 const CDN_RECHECK_MS = 24 * 60 * 60 * 1000;
 const RECHECKED_SOURCES: LauncherPackFileSource[] = [
@@ -154,6 +158,7 @@ function toPackFile(row: CurseforgeFileWithProject): LauncherPackFile | null {
 function toPackData(
   release: ModpackRelease,
   project: LauncherPackProject,
+  source: LauncherPackSource,
 ): LauncherPackData | null {
   const modLoader = release.modLoader
     ? parseModLoader(release.modLoader)
@@ -184,6 +189,7 @@ function toPackData(
       url: release.packDownloadUrl,
       size: release.packFileSize,
       sha1: release.packSha1,
+      servedBy: ZIP_SERVED_BY[source],
     },
   };
 }
@@ -440,7 +446,8 @@ class LauncherPackService {
     const modpack = await Q.modpack.get({ id: pack.modpackId });
     const project = await this.projectFor(pack, modpack);
     const release = project ? await this.findLatestRelease(modpack.id) : null;
-    const data = release && project ? toPackData(release, project) : null;
+    const data =
+      release && project ? toPackData(release, project, pack.source) : null;
     if (!data) {
       throw packError(
         LauncherPackErrorCode.PACK_UNAVAILABLE,
@@ -488,15 +495,15 @@ class LauncherPackService {
     ]);
     const releases = await Promise.all(
       rows.map(async (row): Promise<LauncherPackRelease | null> => {
-        const pack = toPackData(row, project);
-        if (!pack) {
+        const data = toPackData(row, project, pack.source);
+        if (!data) {
           logger.warn(
             `${modpack.name} release #${row.id} is ready for the launcher but cannot be served: a pack field is missing`,
           );
           return null;
         }
         return {
-          ...pack,
+          ...data,
           changelog: toPackChangelog(await getReleaseChangelog(modpack, row)),
         };
       }),
@@ -942,7 +949,8 @@ class LauncherPackService {
       summary: project?.summary ?? modpack.description,
       iconUrl: project?.iconUrl ?? null,
       server,
-      latest: release && project ? toPackData(release, project) : null,
+      latest:
+        release && project ? toPackData(release, project, pack.source) : null,
     };
   }
 

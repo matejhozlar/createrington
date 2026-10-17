@@ -478,6 +478,7 @@ describe("LauncherPackService.prepareRelease", () => {
         url: `https://edge.forgecdn.net/files/${manifest.fileId}/vitest-pack.zip`,
         size: 4_500_000,
         sha1: sha1Of(manifest.fileId),
+        servedBy: "curseforge",
       },
     });
     expect(sendMock).not.toHaveBeenCalled();
@@ -1251,6 +1252,7 @@ describe("LauncherPackService.prepareSnapshot", () => {
         url: SNAPSHOT_ZIP.downloadUrl,
         size: SNAPSHOT_ZIP.size,
         sha1: SNAPSHOT_ZIP.sha1,
+        servedBy: "storage",
       },
     });
     const [summary] = await launcherPackService.listPacks();
