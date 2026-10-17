@@ -169,11 +169,14 @@ export function formatZodError(error: ZodError<unknown>): {
 const SENSITIVE_KEYS =
   /(password|secret|token|api_?key|authorization|cookie|jwt)/i;
 
-function redactSensitive(obj: unknown): unknown {
-  if (!obj || typeof obj !== "object") return obj;
+function redactSensitive(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(redactSensitive);
+  if (!value || typeof value !== "object") return value;
   const result: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
-    result[key] = SENSITIVE_KEYS.test(key) ? "[REDACTED]" : value;
+  for (const [key, inner] of Object.entries(value as Record<string, unknown>)) {
+    result[key] = SENSITIVE_KEYS.test(key)
+      ? "[REDACTED]"
+      : redactSensitive(inner);
   }
   return result;
 }
