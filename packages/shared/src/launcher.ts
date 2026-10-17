@@ -201,6 +201,7 @@ export interface LauncherPackData {
     url: string;
     size: number;
     sha1: string;
+    servedBy: LauncherPackFileSource;
   };
 }
 

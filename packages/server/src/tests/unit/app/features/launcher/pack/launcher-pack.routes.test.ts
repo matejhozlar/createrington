@@ -90,6 +90,7 @@ const PACK = {
     url: "https://edge.forgecdn.net/files/7100/1/createrington-rails-n-sails-1.3.4.zip",
     size: 4500000,
     sha1: "d".repeat(40),
+    servedBy: "curseforge",
   },
 };
 
