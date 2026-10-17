@@ -238,7 +238,10 @@ const envSchema = z
     // Claude automation proxy: admin chat widget talks to claude-automation
     // through the app backend so the shared secret never ships to clients.
     CLAUDE_API_URL: z.string().url().optional(),
-    ADMIN_CHAT_SECRET: z.string().min(1).optional(),
+    ADMIN_CHAT_SECRET: z
+      .string()
+      .min(32, "Admin chat secret must be at least 32 characters")
+      .optional(),
 
     // Redis (optional; caches, rate limits and counters stay in process
     // memory when not configured)
