@@ -84,4 +84,18 @@ describe("MessageController.sendMessage", () => {
 
     expect(sentContent()).toBe("**<Web User>**:");
   });
+
+  it("answers a failed Discord send with a generic error", async () => {
+    sendMock.mockResolvedValue({
+      success: false,
+      error: "Missing Permissions",
+    });
+
+    await expect(
+      MessageController.sendMessage(makeReq({ content: "hi" }), makeRes()),
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      message: "Failed to send message",
+    });
+  });
 });
