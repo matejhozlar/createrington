@@ -289,10 +289,8 @@ const envSchema = z
       .url("R2 public URL must be a valid URL")
       .optional(),
 
-    // Email: Resend transactional API
-    // Production-only: waitlist mailer is the only consumer; in dev the
-    // EmailService short-circuits when the key is absent. Required at runtime
-    // by the prod superRefine below.
+    // Email: Resend transactional API, no consumer yet.
+    // Required at runtime by the prod superRefine below.
     RESEND_API_KEY: z.string().min(1).optional(),
     RESEND_FROM_EMAIL: z
       .string()
