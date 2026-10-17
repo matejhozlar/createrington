@@ -31,9 +31,8 @@ const ROTATION_GRACE_MS = 60_000;
  * instance falls back to strict theft detection. Revoking the old row and inserting its
  * successor run in one transaction that only proceeds if it claimed the row, so two
  * rotations that slip past the cache never both issue a successor: the loser is treated
- * as a replay. Instantiated as a singleton; an hourly
- * cleanup interval starts automatically on first access and runs for the lifetime of
- * the process.
+ * as a replay. Instantiated as a singleton; an hourly cleanup interval starts
+ * automatically on first access and runs for the lifetime of the process.
  */
 class SessionService {
   private static instance: SessionService;
