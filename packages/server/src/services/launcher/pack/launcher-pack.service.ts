@@ -727,6 +727,7 @@ class LauncherPackService {
     try {
       download = await openSandboxFile(path, size, signal);
     } catch (error) {
+      if (signal.aborted) throw error;
       if (error instanceof SandboxUnavailableError) {
         logger.warn(`Storage file ${path} cannot be served: ${error.message}`);
         throw packError(

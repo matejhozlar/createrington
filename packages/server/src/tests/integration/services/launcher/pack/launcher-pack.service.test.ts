@@ -2606,3 +2606,28 @@ describe("LauncherPackService.openStorageFile", () => {
     ).rejects.toMatchObject({ statusCode: 502, code: "FILE_UNAVAILABLE" });
   });
 });
+
+describe("LauncherPackService.openStorageFile after the launcher went away", () => {
+  it("passes the failure on as it is instead of blaming the sandbox", async () => {
+    const modpack = await seedPack();
+    const onSandbox = await seedFile({ blocked: true });
+    serveFromCurseForge([onSandbox]);
+    serveFromSandbox([onSandbox]);
+    const { release, manifest } = await seedRelease(modpack, "1.0.0", [
+      onSandbox,
+    ]);
+    await launcherPackService.prepareRelease(modpack, release.id, manifest);
+    const gone = new AbortController();
+    const failure = new SandboxUnavailableError(
+      "The sandbox could not be reached: This operation was aborted",
+    );
+    vi.mocked(openSandboxFile).mockImplementation(async () => {
+      gone.abort();
+      throw failure;
+    });
+
+    await expect(
+      launcherPackService.openStorageFile(onSandbox.fileId, gone.signal),
+    ).rejects.toBe(failure);
+  });
+});
