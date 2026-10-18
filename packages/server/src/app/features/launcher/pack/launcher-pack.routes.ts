@@ -8,6 +8,8 @@ import {
   ListReleasesQuerySchema,
   PackParamsSchema,
   ResolveFilesBodySchema,
+  StorageFileParamsSchema,
+  StorageSnapshotParamsSchema,
 } from "./launcher-pack.schemas";
 
 const router = Router();
@@ -17,6 +19,27 @@ router.use(launcherPackLimiter);
 router.get(
   "/",
   ...customRoute([authenticateLauncher], LauncherPackController.list),
+);
+router.post(
+  "/files/resolve",
+  ...customRoute(
+    [authenticateLauncher, validate({ body: ResolveFilesBodySchema })],
+    LauncherPackController.resolveFiles,
+  ),
+);
+router.get(
+  "/files/snapshot/:id",
+  ...customRoute(
+    [authenticateLauncher, validate({ params: StorageSnapshotParamsSchema })],
+    LauncherPackController.storageSnapshot,
+  ),
+);
+router.get(
+  "/files/:fileId",
+  ...customRoute(
+    [authenticateLauncher, validate({ params: StorageFileParamsSchema })],
+    LauncherPackController.storageFile,
+  ),
 );
 router.get(
   "/:slug/latest",
@@ -33,13 +56,6 @@ router.get(
       validate({ params: PackParamsSchema, query: ListReleasesQuerySchema }),
     ],
     LauncherPackController.releases,
-  ),
-);
-router.post(
-  "/files/resolve",
-  ...customRoute(
-    [authenticateLauncher, validate({ body: ResolveFilesBodySchema })],
-    LauncherPackController.resolveFiles,
   ),
 );
 

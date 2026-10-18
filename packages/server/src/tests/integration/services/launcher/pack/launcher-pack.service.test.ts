@@ -30,9 +30,13 @@ vi.mock("@/services/modrinth", () => ({
 vi.mock("@/services/launcher/pack/curseforge-cdn", () => ({
   findCurseforgeCdnUrls: vi.fn(async () => new Map()),
 }));
-vi.mock("@/services/launcher/pack/sandbox-files", () => ({
+vi.mock("@/services/launcher/pack/sandbox-files", async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import("@/services/launcher/pack/sandbox-files")
+  >()),
   findSandboxFileUrls: vi.fn(async () => new Map()),
   findSandboxSnapshotUrl: vi.fn(async () => null),
+  openSandboxFile: vi.fn(async () => null),
 }));
 vi.mock("@/utils/mojang-java-version", () => ({
   getMinecraftJavaMajorVersion: vi.fn(async () => 21),
@@ -61,7 +65,11 @@ import {
 import { featureFlagService, FeatureFlags } from "@/services/feature-flag";
 import { findCurseforgeCdnUrls } from "@/services/launcher/pack/curseforge-cdn";
 import { launcherPackService } from "@/services/launcher/pack/launcher-pack.service";
-import { findSandboxFileUrls } from "@/services/launcher/pack/sandbox-files";
+import {
+  findSandboxFileUrls,
+  openSandboxFile,
+  SandboxUnavailableError,
+} from "@/services/launcher/pack/sandbox-files";
 import { findModrinthFilesBySha1 } from "@/services/modrinth";
 import { settings } from "@/services/settings";
 import { NotFoundError } from "@/db/utils";
@@ -117,6 +125,12 @@ const builtCdnUrl = (fileId: number) =>
   `https://mediafilez.forgecdn.net/files/vitest/${fileId}/mod-${fileId}.jar`;
 const sandboxUrl = (fileId: number) =>
   `https://sandbox.createrington.test/api/pack/files/${fileId}`;
+const storageUrl = (fileId: number) =>
+  expect.stringMatching(new RegExp(`/api/launcher/packs/files/${fileId}$`));
+const storageSnapshotUrl = (snapshotId: number) =>
+  expect.stringMatching(
+    new RegExp(`/api/launcher/packs/files/snapshot/${snapshotId}$`),
+  );
 
 interface SeededFile {
   fileId: number;
@@ -666,7 +680,7 @@ describe("LauncherPackService.prepareRelease", () => {
       expect.objectContaining({
         fileId: onSandbox.fileId,
         source: "storage",
-        url: sandboxUrl(onSandbox.fileId),
+        url: storageUrl(onSandbox.fileId),
         sha1: sha1Of(onSandbox.fileId),
       }),
     ]);
@@ -787,7 +801,7 @@ describe("LauncherPackService.prepareRelease", () => {
       expect.objectContaining({
         fileId: blocked.fileId,
         source: "storage",
-        url: sandboxUrl(blocked.fileId),
+        url: storageUrl(blocked.fileId),
       }),
     ]);
   });
@@ -1249,7 +1263,7 @@ describe("LauncherPackService.prepareSnapshot", () => {
       zip: {
         fileId: 7,
         fileName: SNAPSHOT_ZIP.fileName,
-        url: SNAPSHOT_ZIP.downloadUrl,
+        url: storageSnapshotUrl(7),
         size: SNAPSHOT_ZIP.size,
         sha1: SNAPSHOT_ZIP.sha1,
         servedBy: "storage",
@@ -1258,6 +1272,96 @@ describe("LauncherPackService.prepareSnapshot", () => {
     const [summary] = await launcherPackService.listPacks();
     expect(summary.latest).toEqual(latest);
     expect(getFilesDetails).toHaveBeenCalledWith([file.fileId]);
+  });
+
+  describe("openStorageSnapshot", () => {
+    const stream = () => ({
+      body: new Blob([Buffer.from("zip bytes")]).stream(),
+      size: SNAPSHOT_ZIP.size,
+    });
+
+    async function readySnapshot(id: number): Promise<Modpack> {
+      const modpack = await seedSandboxPack();
+      const file = await seedFile();
+      serveFromCurseForge([file]);
+      const release = await seedSnapshot(modpack, id, `test.${id}`, [file]);
+      await launcherPackService.prepareSnapshot(modpack, release.id, {
+        version: `test.${id}`,
+        minecraftVersion: "1.21.1",
+        modLoader: "neoforge-21.1.249",
+        zip: SNAPSHOT_ZIP,
+        entries: entriesOf([file]),
+      });
+      return modpack;
+    }
+
+    it("opens the zip of a readied snapshot on the sandbox, named and sized from the release", async () => {
+      await readySnapshot(7);
+      vi.mocked(openSandboxFile).mockResolvedValue(stream());
+      const signal = new AbortController().signal;
+
+      const download = await launcherPackService.openStorageSnapshot(7, signal);
+
+      expect(openSandboxFile).toHaveBeenCalledWith(
+        "snapshot/7",
+        SNAPSHOT_ZIP.size,
+        signal,
+      );
+      expect(download.fileName).toBe(SNAPSHOT_ZIP.fileName);
+      expect(download.size).toBe(SNAPSHOT_ZIP.size);
+      expect(await new Response(download.body).text()).toBe("zip bytes");
+    });
+
+    it("refuses a snapshot that is recorded but not ready, without asking the sandbox", async () => {
+      const modpack = await seedSandboxPack();
+      await seedSnapshot(modpack, 7, "test.7", [await seedFile()]);
+
+      await expect(
+        launcherPackService.openStorageSnapshot(
+          7,
+          new AbortController().signal,
+        ),
+      ).rejects.toMatchObject({ statusCode: 404, code: "FILE_NOT_FOUND" });
+      expect(openSandboxFile).not.toHaveBeenCalled();
+    });
+
+    it("refuses a snapshot id no sandbox pack carries", async () => {
+      await readySnapshot(7);
+
+      await expect(
+        launcherPackService.openStorageSnapshot(
+          8,
+          new AbortController().signal,
+        ),
+      ).rejects.toMatchObject({ statusCode: 404, code: "FILE_NOT_FOUND" });
+      expect(openSandboxFile).not.toHaveBeenCalled();
+    });
+
+    it("says the zip is not found when the sandbox no longer keeps it", async () => {
+      await readySnapshot(7);
+      vi.mocked(openSandboxFile).mockResolvedValue(null);
+
+      await expect(
+        launcherPackService.openStorageSnapshot(
+          7,
+          new AbortController().signal,
+        ),
+      ).rejects.toMatchObject({ statusCode: 404, code: "FILE_NOT_FOUND" });
+    });
+
+    it("says the zip cannot be served while the sandbox fails", async () => {
+      await readySnapshot(7);
+      vi.mocked(openSandboxFile).mockRejectedValue(
+        new SandboxUnavailableError("The sandbox answered 500 for snapshot/7"),
+      );
+
+      await expect(
+        launcherPackService.openStorageSnapshot(
+          7,
+          new AbortController().signal,
+        ),
+      ).rejects.toMatchObject({ statusCode: 502, code: "FILE_UNAVAILABLE" });
+    });
   });
 
   it("retires every older snapshot so only the newest is installable", async () => {
@@ -2325,7 +2429,7 @@ describe("LauncherPackService.resolveFiles", () => {
     expect(whileOff.files[0]).toEqual(
       expect.objectContaining({
         source: "storage",
-        url: sandboxUrl(file.fileId),
+        url: storageUrl(file.fileId),
       }),
     );
   });
@@ -2411,5 +2515,94 @@ describe("LauncherPackService.resolveFiles", () => {
     const resolved = await launcherPackService.resolveFiles([file.fileId]);
 
     expect(resolved.files[0].source).toBe("manual");
+  });
+});
+
+describe("LauncherPackService.openStorageFile", () => {
+  async function storeFromSandbox(): Promise<SeededFile> {
+    const modpack = await seedPack();
+    const onSandbox = await seedFile({ blocked: true });
+    serveFromCurseForge([onSandbox]);
+    serveFromSandbox([onSandbox]);
+    const { release, manifest } = await seedRelease(modpack, "1.0.0", [
+      onSandbox,
+    ]);
+    await launcherPackService.prepareRelease(modpack, release.id, manifest);
+    return onSandbox;
+  }
+
+  it("opens the sandbox copy of a stored file, named and sized from the stored row", async () => {
+    const file = await storeFromSandbox();
+    vi.mocked(openSandboxFile).mockResolvedValue({
+      body: new Blob([Buffer.from("jar bytes")]).stream(),
+      size: file.detail.fileLength ?? 0,
+    });
+    const signal = new AbortController().signal;
+
+    const download = await launcherPackService.openStorageFile(
+      file.fileId,
+      signal,
+    );
+
+    expect(openSandboxFile).toHaveBeenCalledWith(
+      String(file.fileId),
+      file.detail.fileLength,
+      signal,
+    );
+    expect(download.fileName).toBe(file.detail.fileName);
+    expect(download.size).toBe(file.detail.fileLength);
+    expect(await new Response(download.body).text()).toBe("jar bytes");
+  });
+
+  it("refuses a file CurseForge serves itself, without asking the sandbox", async () => {
+    const modpack = await seedPack();
+    const served = await seedFile();
+    serveFromCurseForge([served]);
+    const { release, manifest } = await seedRelease(modpack, "1.0.0", [served]);
+    await launcherPackService.prepareRelease(modpack, release.id, manifest);
+
+    await expect(
+      launcherPackService.openStorageFile(
+        served.fileId,
+        new AbortController().signal,
+      ),
+    ).rejects.toMatchObject({ statusCode: 404, code: "FILE_NOT_FOUND" });
+    expect(openSandboxFile).not.toHaveBeenCalled();
+  });
+
+  it("refuses a file id nothing is stored under", async () => {
+    await expect(
+      launcherPackService.openStorageFile(
+        999_999_999,
+        new AbortController().signal,
+      ),
+    ).rejects.toMatchObject({ statusCode: 404, code: "FILE_NOT_FOUND" });
+    expect(openSandboxFile).not.toHaveBeenCalled();
+  });
+
+  it("says the file is not found when the sandbox no longer keeps it", async () => {
+    const file = await storeFromSandbox();
+    vi.mocked(openSandboxFile).mockResolvedValue(null);
+
+    await expect(
+      launcherPackService.openStorageFile(
+        file.fileId,
+        new AbortController().signal,
+      ),
+    ).rejects.toMatchObject({ statusCode: 404, code: "FILE_NOT_FOUND" });
+  });
+
+  it("says the file cannot be served while the sandbox fails", async () => {
+    const file = await storeFromSandbox();
+    vi.mocked(openSandboxFile).mockRejectedValue(
+      new SandboxUnavailableError("The sandbox could not be reached"),
+    );
+
+    await expect(
+      launcherPackService.openStorageFile(
+        file.fileId,
+        new AbortController().signal,
+      ),
+    ).rejects.toMatchObject({ statusCode: 502, code: "FILE_UNAVAILABLE" });
   });
 });
