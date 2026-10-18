@@ -8,8 +8,8 @@ import React, {
 import type {
   PlayerData,
   PlayersUpdatePayload,
-  SubscriptionType,
 } from "@createrington/shared/socket";
+import { SubscriptionType } from "@createrington/shared/socket";
 import { WebSocketContext } from "@/contexts/websocket";
 import type { PlayerDataContextType } from "./types";
 import { PlayerDataContext } from "./context";
@@ -192,11 +192,11 @@ export function PlayerDataProvider({
       if (serverIds) {
         // Subscribe to specific servers
         for (const serverId of serverIds) {
-          await subscribe("players" as SubscriptionType, serverId);
+          await subscribe(SubscriptionType.PLAYERS, serverId);
         }
       } else {
         // Subscribe to all servers
-        await subscribe("players" as SubscriptionType);
+        await subscribe(SubscriptionType.PLAYERS);
       }
     };
 
@@ -219,10 +219,10 @@ export function PlayerDataProvider({
     try {
       if (serverIds) {
         for (const serverId of serverIds) {
-          await unsubscribe("players" as SubscriptionType, serverId);
+          await unsubscribe(SubscriptionType.PLAYERS, serverId);
         }
       } else {
-        await unsubscribe("players" as SubscriptionType);
+        await unsubscribe(SubscriptionType.PLAYERS);
       }
 
       setIsSubscribed(false);

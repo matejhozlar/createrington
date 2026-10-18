@@ -8,8 +8,8 @@ import React, {
 import type {
   ServerStatus,
   ServerStatusUpdatePayload,
-  SubscriptionType,
 } from "@createrington/shared/socket";
+import { SubscriptionType } from "@createrington/shared/socket";
 import { WebSocketContext } from "@/contexts/websocket";
 import type { ServerDataContextType } from "./types";
 import { ServerDataContext } from "./context";
@@ -133,11 +133,11 @@ export function ServerDataProvider({
       if (serverIds) {
         // Subscribe to specific servers
         for (const serverId of serverIds) {
-          await subscribe("server:status" as SubscriptionType, serverId);
+          await subscribe(SubscriptionType.SERVER_STATUS, serverId);
         }
       } else {
         // Subscribe to all servers
-        await subscribe("server:status" as SubscriptionType);
+        await subscribe(SubscriptionType.SERVER_STATUS);
       }
     };
 
@@ -160,10 +160,10 @@ export function ServerDataProvider({
     try {
       if (serverIds) {
         for (const serverId of serverIds) {
-          await unsubscribe("server:status" as SubscriptionType, serverId);
+          await unsubscribe(SubscriptionType.SERVER_STATUS, serverId);
         }
       } else {
-        await unsubscribe("server:status" as SubscriptionType);
+        await unsubscribe(SubscriptionType.SERVER_STATUS);
       }
 
       setIsSubscribed(false);
