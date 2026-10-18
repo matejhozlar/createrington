@@ -200,11 +200,14 @@ export async function openSandboxFile(
     );
   }
 
-  const declared = Number(res.headers.get("content-length"));
-  if (Number.isFinite(declared) && declared > 0 && declared !== size) {
+  const header = res.headers.get("content-length");
+  const declared = header === null ? NaN : Number(header);
+  if (!Number.isInteger(declared) || declared !== size) {
     await res.body.cancel();
     throw new SandboxUnavailableError(
-      `The sandbox serves ${path} with ${declared} bytes, ${size} were expected`,
+      header === null
+        ? `The sandbox serves ${path} without a size`
+        : `The sandbox serves ${path} with ${header} bytes, ${size} were expected`,
     );
   }
 

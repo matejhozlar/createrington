@@ -675,3 +675,19 @@ describe("storage downloads", () => {
     await vi.waitFor(() => expect(seen?.aborted).toBe(true));
   });
 });
+
+describe("storage downloads of the wrong length", () => {
+  it("cuts the connection instead of ending a body shorter than announced", async () => {
+    mocks.openStorageFile.mockResolvedValue({
+      fileName: "short.jar",
+      size: 1000,
+      body: new Blob([Buffer.alloc(10)]).stream(),
+    });
+
+    const res = await getStorageFile("7000001", session);
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-length")).toBe("1000");
+    await expect(res.arrayBuffer()).rejects.toThrow();
+  });
+});

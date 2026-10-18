@@ -331,3 +331,26 @@ describe("openSandboxFile", () => {
     expect(seen?.aborted).toBe(true);
   });
 });
+
+describe("openSandboxFile without a declared size", () => {
+  it("refuses a file the sandbox streams without saying how long it is", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(new Uint8Array(KEPT.bytes), {
+            status: 200,
+            headers: { "transfer-encoding": "chunked" },
+          }),
+      ),
+    );
+
+    await expect(
+      openSandboxFile(
+        String(KEPT.query.fileId),
+        KEPT.query.size,
+        new AbortController().signal,
+      ),
+    ).rejects.toBeInstanceOf(SandboxUnavailableError);
+  });
+});

@@ -1,4 +1,4 @@
-import { Readable } from "node:stream";
+import { Readable, Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import type { ReadableStream as NodeReadableStream } from "node:stream/web";
 import type { Request, Response } from "express";
@@ -23,6 +23,27 @@ import type {
   StorageSnapshotParams,
 } from "./launcher-pack.schemas";
 
+function exactLength(size: number): Transform {
+  let seen = 0;
+  return new Transform({
+    transform(chunk: Buffer, _encoding, callback) {
+      seen += chunk.length;
+      if (seen > size) {
+        callback(new Error(`more than the announced ${size} bytes arrived`));
+        return;
+      }
+      callback(null, chunk);
+    },
+    flush(callback) {
+      callback(
+        seen === size
+          ? null
+          : new Error(`${seen} of the announced ${size} bytes arrived`),
+      );
+    },
+  });
+}
+
 async function streamStorage(
   req: Request,
   res: Response,
@@ -33,7 +54,13 @@ async function streamStorage(
     if (!res.writableFinished) client.abort();
   });
 
-  const download = await open(client.signal);
+  let download: StorageDownload;
+  try {
+    download = await open(client.signal);
+  } catch (error) {
+    if (client.signal.aborted) return;
+    throw error;
+  }
   res.status(200);
   res.attachment(download.fileName);
   res.setHeader("Content-Length", String(download.size));
@@ -42,6 +69,7 @@ async function streamStorage(
   try {
     await pipeline(
       Readable.fromWeb(download.body as NodeReadableStream<Uint8Array>),
+      exactLength(download.size),
       res,
     );
   } catch (error) {
