@@ -9,7 +9,7 @@ import type {
   PlayerData,
   PlayersUpdatePayload,
 } from "@createrington/shared/socket";
-import { SubscriptionType } from "@createrington/shared/socket";
+import { SocketEvent, SubscriptionType } from "@createrington/shared/socket";
 import { WebSocketContext } from "@/contexts/websocket";
 import type { PlayerDataContextType } from "./types";
 import { PlayerDataContext } from "./context";
@@ -325,7 +325,7 @@ export function PlayerDataProvider({
   useEffect(() => {
     if (!isConnected) return;
 
-    const unsubscribe = on("update:players", (data) => {
+    const unsubscribe = on(SocketEvent.UPDATE_PLAYERS, (data) => {
       handlePlayersUpdate(data as PlayersUpdatePayload);
     });
 

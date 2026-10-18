@@ -9,7 +9,7 @@ import type {
   ServerStatus,
   ServerStatusUpdatePayload,
 } from "@createrington/shared/socket";
-import { SubscriptionType } from "@createrington/shared/socket";
+import { SocketEvent, SubscriptionType } from "@createrington/shared/socket";
 import { WebSocketContext } from "@/contexts/websocket";
 import type { ServerDataContextType } from "./types";
 import { ServerDataContext } from "./context";
@@ -239,7 +239,7 @@ export function ServerDataProvider({
   useEffect(() => {
     if (!isConnected) return;
 
-    const unsubscribe = on("update:server:status", (data) => {
+    const unsubscribe = on(SocketEvent.UPDATE_SERVER_STATUS, (data) => {
       handleServerStatusUpdate(data as ServerStatusUpdatePayload);
     });
 
