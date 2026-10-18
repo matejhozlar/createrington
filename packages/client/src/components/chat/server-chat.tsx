@@ -8,11 +8,12 @@ import {
 } from "react";
 import { Navigate, useParams } from "react-router";
 import { ChevronDown, Users } from "lucide-react";
-import type {
-  CachedMessage,
+import type { CachedMessage } from "@createrington/shared/socket";
+import {
+  MessageSource,
+  SocketEvent,
   SubscriptionType,
 } from "@createrington/shared/socket";
-import { MessageSource } from "@createrington/shared/socket";
 import { useWebSocket } from "@/contexts/websocket";
 import { useServerData } from "@/contexts/server-data";
 import { usePlayerData } from "@/contexts/player-data";
@@ -169,14 +170,14 @@ export function ServerChat() {
       if (data && "messages" in data) {
         setMessages(data.messages as CachedMessage[]);
       }
-      await subscribe("messages" as SubscriptionType, serverId ?? 0);
+      await subscribe(SubscriptionType.MESSAGES, serverId ?? 0);
       setLoading(false);
     }
 
     init();
     return () => {
       cancelled = true;
-      unsubscribe("messages" as SubscriptionType, serverId);
+      unsubscribe(SubscriptionType.MESSAGES, serverId);
     };
   }, [isConnected, serverId, requestInitialData, subscribe, unsubscribe]);
 
@@ -195,7 +196,7 @@ export function ServerChat() {
   useEffect(() => {
     if (!isConnected || !serverId) return;
 
-    const unsub = on("update:message", (raw) => {
+    const unsub = on(SocketEvent.UPDATE_MESSAGE, (raw) => {
       const payload = raw as {
         serverId: number;
         type: "new" | "update" | "delete";
