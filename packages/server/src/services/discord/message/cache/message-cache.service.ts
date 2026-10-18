@@ -164,6 +164,7 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
       const maxMessages = serverConfig.maxMessages || 100;
 
       const messages = await textChannel.messages.fetch({ limit: maxMessages });
+      await this.loadAuthorMembers(textChannel, messages.values());
 
       const cachedMessages = Array.from(messages.values())
         .map((msg) => this.convertToCachedMessage(msg, serverConfig.serverId))
@@ -177,6 +178,29 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
     } catch (error) {
       logger.error(
         `Failed to load history for channel ${serverConfig.channelId}`,
+        error,
+      );
+    }
+  }
+
+  private async loadAuthorMembers(
+    channel: TextChannel,
+    messages: Iterable<Message>,
+  ): Promise<void> {
+    const missing = new Set<string>();
+    for (const message of messages) {
+      if (message.webhookId || message.author.bot) continue;
+      if (!channel.guild.members.cache.has(message.author.id)) {
+        missing.add(message.author.id);
+      }
+    }
+    if (missing.size === 0) return;
+
+    try {
+      await channel.guild.members.fetch({ user: [...missing] });
+    } catch (error) {
+      logger.warn(
+        `Failed to load ${missing.size} message authors for channel ${channel.id}, falling back to account names`,
         error,
       );
     }
@@ -477,7 +501,8 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
       authorId: message.author.id,
       authorUsername: message.author.username,
       authorTag: message.author.tag,
-      authorDisplayname: message.author.displayName,
+      authorDisplayname:
+        message.member?.displayName ?? message.author.displayName,
       authorAvatarUrl: message.author.displayAvatarURL({ size: 128 }),
       content: this.resolveMentions(message.content),
       createdAt: message.createdAt,
