@@ -69,7 +69,10 @@ vi.mock("@/services/launcher/pack/launcher-pack.service", () => ({
   },
 }));
 
-vi.mock("@/services/launcher/pack/sandbox-files", () => ({
+vi.mock("@/services/launcher/pack/sandbox-files", async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import("@/services/launcher/pack/sandbox-files")
+  >()),
   findSandboxFileUrls: vi.fn(async () => new Map()),
   findSandboxSnapshotUrl: vi.fn(async () => null),
 }));

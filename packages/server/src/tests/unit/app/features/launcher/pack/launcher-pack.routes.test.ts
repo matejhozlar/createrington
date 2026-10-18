@@ -19,6 +19,8 @@ const { LAUNCHER_SECRET, WEB_SECRET, mocks } = vi.hoisted(() => ({
     getLatestPack: vi.fn(),
     listReleases: vi.fn(),
     resolveFiles: vi.fn(),
+    openStorageFile: vi.fn(),
+    openStorageSnapshot: vi.fn(),
   },
 }));
 
@@ -59,6 +61,8 @@ vi.mock("@/services/launcher/pack/launcher-pack.service", () => ({
     getLatestPack: mocks.getLatestPack,
     listReleases: mocks.listReleases,
     resolveFiles: mocks.resolveFiles,
+    openStorageFile: mocks.openStorageFile,
+    openStorageSnapshot: mocks.openStorageSnapshot,
   },
 }));
 
@@ -202,6 +206,33 @@ async function getReleases(
   return await fetch(`${baseUrl}/api/launcher/packs/${slug}/releases${query}`, {
     headers,
   });
+}
+
+async function getStorageFile(
+  fileId: string,
+  headers: Record<string, string> = {},
+) {
+  return await fetch(`${baseUrl}/api/launcher/packs/files/${fileId}`, {
+    headers,
+  });
+}
+
+async function getStorageSnapshot(
+  id: string,
+  headers: Record<string, string> = {},
+) {
+  return await fetch(`${baseUrl}/api/launcher/packs/files/snapshot/${id}`, {
+    headers,
+  });
+}
+
+function download(fileName: string, content: string) {
+  const bytes = Buffer.from(content);
+  return {
+    fileName,
+    size: bytes.length,
+    body: new Blob([bytes]).stream(),
+  };
 }
 
 async function resolve(body: unknown, headers: Record<string, string> = {}) {
@@ -455,5 +486,208 @@ describe("POST /api/launcher/packs/files/resolve", () => {
 
     expect(res.status).toBe(400);
     expect(mocks.resolveFiles).not.toHaveBeenCalled();
+  });
+});
+
+describe("GET /api/launcher/packs/files/:fileId", () => {
+  it("streams the file the service opened, named and sized for the launcher", async () => {
+    mocks.openStorageFile.mockResolvedValue(
+      download("create-1.21.1-6.0.10.jar", "the bytes of the jar"),
+    );
+
+    const res = await getStorageFile("7000001", session);
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-length")).toBe("20");
+    expect(res.headers.get("content-disposition")).toBe(
+      'attachment; filename="create-1.21.1-6.0.10.jar"',
+    );
+    expect(res.headers.get("cache-control")).toBe("private, no-store");
+    expect(await res.text()).toBe("the bytes of the jar");
+    expect(mocks.openStorageFile).toHaveBeenCalledWith(
+      7000001,
+      expect.any(AbortSignal),
+    );
+  });
+
+  it("passes on that no file is served under the id", async () => {
+    mocks.openStorageFile.mockRejectedValue(
+      new AppError(
+        "No pack file is served under this id",
+        404,
+        true,
+        undefined,
+        { code: "FILE_NOT_FOUND" },
+      ),
+    );
+
+    const res = await getStorageFile("7000001", session);
+
+    expect(res.status).toBe(404);
+    expect((await res.json()).error.code).toBe("FILE_NOT_FOUND");
+  });
+
+  it("passes on that the file cannot be served right now", async () => {
+    mocks.openStorageFile.mockRejectedValue(
+      new AppError(
+        "The file cannot be served right now",
+        502,
+        true,
+        undefined,
+        { code: "FILE_UNAVAILABLE" },
+      ),
+    );
+
+    const res = await getStorageFile("7000001", session);
+
+    expect(res.status).toBe(502);
+    expect((await res.json()).error.code).toBe("FILE_UNAVAILABLE");
+  });
+
+  it.each([
+    ["a name instead of an id", "create.jar"],
+    ["a negative id", "-1"],
+    ["a fractional id", "1.5"],
+    ["an id past the integer range", "2147483648"],
+  ])("refuses %s", async (_label, fileId) => {
+    const res = await getStorageFile(fileId, session);
+
+    expect(res.status).toBe(400);
+    expect(mocks.openStorageFile).not.toHaveBeenCalled();
+  });
+
+  it("answers 401 without a launcher session", async () => {
+    const res = await getStorageFile("7000001");
+
+    expect(res.status).toBe(401);
+    expect((await res.json()).error.code).toBe("AUTH_REQUIRED");
+    expect(mocks.openStorageFile).not.toHaveBeenCalled();
+  });
+});
+
+describe("GET /api/launcher/packs/files/snapshot/:id", () => {
+  it("streams the snapshot zip the service opened", async () => {
+    mocks.openStorageSnapshot.mockResolvedValue(
+      download("createrington-test-7.zip", "zip bytes"),
+    );
+
+    const res = await getStorageSnapshot("7", session);
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-length")).toBe("9");
+    expect(res.headers.get("content-disposition")).toBe(
+      'attachment; filename="createrington-test-7.zip"',
+    );
+    expect(await res.text()).toBe("zip bytes");
+    expect(mocks.openStorageSnapshot).toHaveBeenCalledWith(
+      7,
+      expect.any(AbortSignal),
+    );
+    expect(mocks.openStorageFile).not.toHaveBeenCalled();
+  });
+
+  it("passes on that no snapshot is served under the id", async () => {
+    mocks.openStorageSnapshot.mockRejectedValue(
+      new AppError(
+        "No pack file is served under this id",
+        404,
+        true,
+        undefined,
+        { code: "FILE_NOT_FOUND" },
+      ),
+    );
+
+    const res = await getStorageSnapshot("7", session);
+
+    expect(res.status).toBe(404);
+    expect((await res.json()).error.code).toBe("FILE_NOT_FOUND");
+  });
+
+  it("refuses an id that is not a positive integer", async () => {
+    const res = await getStorageSnapshot("latest", session);
+
+    expect(res.status).toBe(400);
+    expect(mocks.openStorageSnapshot).not.toHaveBeenCalled();
+  });
+
+  it("answers 401 without a launcher session", async () => {
+    const res = await getStorageSnapshot("7");
+
+    expect(res.status).toBe(401);
+    expect(mocks.openStorageSnapshot).not.toHaveBeenCalled();
+  });
+});
+
+describe("storage downloads", () => {
+  function slowBody(chunks: number, chunkSize: number, delayMs: number) {
+    let sent = 0;
+    return new ReadableStream<Uint8Array>({
+      async pull(controller) {
+        if (sent === chunks) {
+          controller.close();
+          return;
+        }
+        if (delayMs > 0) {
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
+        }
+        controller.enqueue(new Uint8Array(chunkSize).fill(sent % 256));
+        sent++;
+      },
+    });
+  }
+
+  it("streams a large file to the end", async () => {
+    const chunks = 48;
+    const chunkSize = 64 * 1024;
+    mocks.openStorageFile.mockResolvedValue({
+      fileName: "big.jar",
+      size: chunks * chunkSize,
+      body: slowBody(chunks, chunkSize, 0),
+    });
+
+    const res = await getStorageFile("7000001", session);
+    const bytes = new Uint8Array(await res.arrayBuffer());
+
+    expect(res.status).toBe(200);
+    expect(bytes.byteLength).toBe(chunks * chunkSize);
+    expect(bytes[bytes.byteLength - 1]).toBe((chunks - 1) % 256);
+  });
+
+  it("cancels the download the service opened when the launcher goes away", async () => {
+    let seen: AbortSignal | undefined;
+    mocks.openStorageFile.mockImplementation(async (_id, signal) => {
+      seen = signal;
+      return {
+        fileName: "big.jar",
+        size: 1000 * 1024,
+        body: slowBody(1000, 1024, 5),
+      };
+    });
+    const launcher = new AbortController();
+
+    const res = await fetch(`${baseUrl}/api/launcher/packs/files/7000001`, {
+      headers: session,
+      signal: launcher.signal,
+    });
+    const reader = res.body?.getReader();
+    await reader?.read();
+    launcher.abort();
+    await vi.waitFor(() => expect(seen?.aborted).toBe(true));
+  });
+});
+
+describe("storage downloads of the wrong length", () => {
+  it("cuts the connection instead of ending a body shorter than announced", async () => {
+    mocks.openStorageFile.mockResolvedValue({
+      fileName: "short.jar",
+      size: 1000,
+      body: new Blob([Buffer.alloc(10)]).stream(),
+    });
+
+    const res = await getStorageFile("7000001", session);
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-length")).toBe("1000");
+    await expect(res.arrayBuffer()).rejects.toThrow();
   });
 });

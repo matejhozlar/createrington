@@ -61,7 +61,14 @@ import {
   parseModLoader,
   pickFileSource,
 } from "./pack-rules";
-import { findSandboxFileUrls } from "./sandbox-files";
+import {
+  findSandboxFileUrls,
+  openSandboxFile,
+  SandboxUnavailableError,
+  storageFileUrl,
+  storageSnapshotUrl,
+  type SandboxDownload,
+} from "./sandbox-files";
 
 export interface SnapshotZip {
   fileName: string;
@@ -80,6 +87,10 @@ export type SnapshotOutcome =
   | { status: "ready" }
   | { status: "busy" }
   | { status: "blocked"; reason: string };
+
+export interface StorageDownload extends SandboxDownload {
+  fileName: string;
+}
 
 function toAppProject(slug: string, modpack: Modpack): LauncherPackProject {
   return {
@@ -135,6 +146,14 @@ function packError(
   return new AppError(message, statusCode, true, undefined, { code });
 }
 
+function fileNotFound(): AppError {
+  return packError(
+    LauncherPackErrorCode.FILE_NOT_FOUND,
+    404,
+    "No pack file is served under this id",
+  );
+}
+
 function toPackFile(row: CurseforgeFileWithProject): LauncherPackFile | null {
   const folder = packFolderForClass(row.project.classId);
   const file = toLauncherContentFile(row);
@@ -148,7 +167,7 @@ function toPackFile(row: CurseforgeFileWithProject): LauncherPackFile | null {
     sha1: row.sha1,
     folder,
     source: row.source,
-    url: row.downloadUrl,
+    url: row.source === "storage" ? storageFileUrl(row.id) : row.downloadUrl,
     pageUrl: file.pageUrl,
     file,
     project,
@@ -186,7 +205,10 @@ function toPackData(
     zip: {
       fileId: release.curseforgeFileId,
       fileName: release.packFileName,
-      url: release.packDownloadUrl,
+      url:
+        source === "sandbox"
+          ? storageSnapshotUrl(release.curseforgeFileId)
+          : release.packDownloadUrl,
       size: release.packFileSize,
       sha1: release.packSha1,
       servedBy: ZIP_SERVED_BY[source],
@@ -632,6 +654,92 @@ class LauncherPackService {
       else unresolvedFileIds.push(id);
     }
     return { files, unresolvedFileIds };
+  }
+
+  /**
+   * Opens a jar the sandbox keeps under this CurseForge file id for streaming
+   * to the launcher, with its name and size. Throws `FILE_NOT_FOUND` (404)
+   * when no stored file is served from storage under the id or the sandbox
+   * no longer keeps it, and `FILE_UNAVAILABLE` (502) when the sandbox cannot
+   * serve it. Aborting `signal` cancels the download.
+   */
+  async openStorageFile(
+    fileId: number,
+    signal: AbortSignal,
+  ): Promise<StorageDownload> {
+    const [row] = await Q.curseforge.file.findAll(
+      { id: fileId, source: "storage" },
+      { limit: 1 },
+    );
+    if (!row) throw fileNotFound();
+    return this.openFromSandbox(
+      String(fileId),
+      row.fileName,
+      row.fileSize,
+      signal,
+    );
+  }
+
+  /**
+   * Opens the pack zip of a readied test snapshot for streaming to the
+   * launcher, with its name and size. Throws `FILE_NOT_FOUND` (404) when no
+   * enabled sandbox pack has a ready release under the snapshot id or the
+   * sandbox no longer keeps the zip, and `FILE_UNAVAILABLE` (502) when the
+   * sandbox cannot serve it. Aborting `signal` cancels the download.
+   */
+  async openStorageSnapshot(
+    snapshotId: number,
+    signal: AbortSignal,
+  ): Promise<StorageDownload> {
+    const packs = await Q.launcher.pack.findAll({
+      source: "sandbox",
+      enabled: true,
+    });
+    const [release] =
+      packs.length === 0
+        ? []
+        : await Q.modpack.release.findAll(
+            {
+              modpackId: { $in: packs.map((pack) => pack.modpackId) },
+              curseforgeFileId: snapshotId,
+              launcherReadyAt: { $ne: null },
+            },
+            { limit: 1 },
+          );
+    if (!release?.packFileName || release.packFileSize === null) {
+      throw fileNotFound();
+    }
+    return this.openFromSandbox(
+      `snapshot/${snapshotId}`,
+      release.packFileName,
+      release.packFileSize,
+      signal,
+    );
+  }
+
+  private async openFromSandbox(
+    path: string,
+    fileName: string,
+    size: number,
+    signal: AbortSignal,
+  ): Promise<StorageDownload> {
+    let download: SandboxDownload | null;
+    try {
+      download = await openSandboxFile(path, size, signal);
+    } catch (error) {
+      if (signal.aborted) throw error;
+      if (error instanceof SandboxUnavailableError) {
+        logger.warn(`Storage file ${path} cannot be served: ${error.message}`);
+        throw packError(
+          LauncherPackErrorCode.FILE_UNAVAILABLE,
+          502,
+          "The file cannot be served right now",
+        );
+      }
+      throw error;
+    }
+    if (!download) throw fileNotFound();
+    return { ...download, fileName };
   }
 
   /**

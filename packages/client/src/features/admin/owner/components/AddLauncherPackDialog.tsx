@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Package } from "lucide-react";
 import {
   LAUNCHER_PACK_SLUG_MAX_LENGTH,
-  LAUNCHER_PACK_SLUG_PATTERN,
+  isLauncherPackSlug,
   type LauncherPackSource,
 } from "@createrington/shared/launcher";
 import {
@@ -111,7 +111,7 @@ export function AddLauncherPackDialog({
     setSource(defaultSource(picked));
   };
 
-  const slugValid = LAUNCHER_PACK_SLUG_PATTERN.test(slug);
+  const slugValid = isLauncherPackSlug(slug);
   const sourceAllowed =
     source === "sandbox" || modpack?.curseforgeProjectId != null;
   const canAdd = modpack !== null && slugValid && sourceAllowed;

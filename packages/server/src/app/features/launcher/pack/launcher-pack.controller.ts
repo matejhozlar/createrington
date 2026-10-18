@@ -1,3 +1,6 @@
+import { Readable, Transform } from "node:stream";
+import { pipeline } from "node:stream/promises";
+import type { ReadableStream as NodeReadableStream } from "node:stream/web";
 import type { Request, Response } from "express";
 import type {
   LauncherPackData,
@@ -7,13 +10,76 @@ import type {
   LauncherSuccessResponse,
 } from "@createrington/shared/launcher";
 import { getValidated } from "@/app/middleware/validation.middleware";
-import { launcherPackService } from "@/services/launcher/pack/launcher-pack.service";
+import {
+  launcherPackService,
+  type StorageDownload,
+} from "@/services/launcher/pack/launcher-pack.service";
 import { buildPagination } from "@/trpc/utils";
 import type {
   ListReleasesQuery,
   PackParams,
   ResolveFilesBody,
+  StorageFileParams,
+  StorageSnapshotParams,
 } from "./launcher-pack.schemas";
+
+function exactLength(size: number): Transform {
+  let seen = 0;
+  return new Transform({
+    transform(chunk: Buffer, _encoding, callback) {
+      seen += chunk.length;
+      if (seen > size) {
+        callback(new Error(`more than the announced ${size} bytes arrived`));
+        return;
+      }
+      callback(null, chunk);
+    },
+    flush(callback) {
+      callback(
+        seen === size
+          ? null
+          : new Error(`${seen} of the announced ${size} bytes arrived`),
+      );
+    },
+  });
+}
+
+async function streamStorage(
+  req: Request,
+  res: Response,
+  open: (signal: AbortSignal) => Promise<StorageDownload>,
+): Promise<void> {
+  const client = new AbortController();
+  res.on("close", () => {
+    if (!res.writableFinished) client.abort();
+  });
+
+  let download: StorageDownload;
+  try {
+    download = await open(client.signal);
+  } catch (error) {
+    if (client.signal.aborted) return;
+    throw error;
+  }
+  res.status(200);
+  res.attachment(download.fileName);
+  res.setHeader("Content-Length", String(download.size));
+  res.setHeader("Cache-Control", "private, no-store");
+
+  try {
+    await pipeline(
+      Readable.fromWeb(download.body as NodeReadableStream<Uint8Array>),
+      exactLength(download.size),
+      res,
+    );
+  } catch (error) {
+    if (!res.headersSent) throw error;
+    logger.debug(
+      `Storage download ${req.originalUrl} ended early: ${error instanceof Error ? error.message : String(error)}`,
+    );
+    res.destroy();
+  }
+}
 
 export class LauncherPackController {
   static async list(_req: Request, res: Response): Promise<void> {
@@ -61,5 +127,19 @@ export class LauncherPackController {
       data: await launcherPackService.resolveFiles(body.fileIds),
     };
     res.json(response);
+  }
+
+  static async storageFile(req: Request, res: Response): Promise<void> {
+    const { params } = getValidated<{ params: StorageFileParams }>(res);
+    await streamStorage(req, res, (signal) =>
+      launcherPackService.openStorageFile(params.fileId, signal),
+    );
+  }
+
+  static async storageSnapshot(req: Request, res: Response): Promise<void> {
+    const { params } = getValidated<{ params: StorageSnapshotParams }>(res);
+    await streamStorage(req, res, (signal) =>
+      launcherPackService.openStorageSnapshot(params.id, signal),
+    );
   }
 }

@@ -7,6 +7,8 @@ import {
   LAUNCHER_PACK_SLUG_PATTERN,
 } from "@createrington/shared/launcher";
 
+const idSchema = z.coerce.number().int().positive().max(2_147_483_647);
+
 export const PackParamsSchema = z.object({
   slug: z
     .string()
@@ -36,3 +38,15 @@ export const ResolveFilesBodySchema = z.object({
 });
 
 export type ResolveFilesBody = z.infer<typeof ResolveFilesBodySchema>;
+
+export const StorageFileParamsSchema = z.object({
+  fileId: idSchema,
+});
+
+export type StorageFileParams = z.infer<typeof StorageFileParamsSchema>;
+
+export const StorageSnapshotParamsSchema = z.object({
+  id: idSchema,
+});
+
+export type StorageSnapshotParams = z.infer<typeof StorageSnapshotParamsSchema>;

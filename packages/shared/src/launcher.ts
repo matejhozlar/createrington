@@ -54,6 +54,15 @@ export const LAUNCHER_PACK_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 export const LAUNCHER_PACK_SLUG_MAX_LENGTH = 40;
 
+export const LAUNCHER_PACK_RESERVED_SLUGS = ["files"] as const;
+
+export function isLauncherPackSlug(slug: string): boolean {
+  return (
+    LAUNCHER_PACK_SLUG_PATTERN.test(slug) &&
+    !(LAUNCHER_PACK_RESERVED_SLUGS as readonly string[]).includes(slug)
+  );
+}
+
 export const LAUNCHER_PACK_FOLDERS = [
   "mods",
   "resourcepacks",
@@ -142,6 +151,8 @@ export const LauncherPackErrorCode = {
   PACK_NOT_FOUND: "PACK_NOT_FOUND",
   PACK_UNAVAILABLE: "PACK_UNAVAILABLE",
   FILE_SOURCES_UNAVAILABLE: "FILE_SOURCES_UNAVAILABLE",
+  FILE_NOT_FOUND: "FILE_NOT_FOUND",
+  FILE_UNAVAILABLE: "FILE_UNAVAILABLE",
 } as const;
 
 export type LauncherPackErrorCode =
