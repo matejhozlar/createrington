@@ -9,6 +9,7 @@ import {
 import { modpackService } from "@/services/modpack";
 import type { LauncherPack } from "@createrington/shared/db";
 import {
+  LAUNCHER_PACK_RESERVED_SLUGS,
   LAUNCHER_PACK_SLUG_MAX_LENGTH,
   LAUNCHER_PACK_SLUG_PATTERN,
   LAUNCHER_PACK_SOURCES,
@@ -27,6 +28,11 @@ const slug = z
   .regex(
     LAUNCHER_PACK_SLUG_PATTERN,
     "Lower-case letters, digits and single hyphens only",
+  )
+  .refine(
+    (value) =>
+      !(LAUNCHER_PACK_RESERVED_SLUGS as readonly string[]).includes(value),
+    "This name is taken by the launcher API",
   );
 
 function toDto(pack: LauncherPack) {
