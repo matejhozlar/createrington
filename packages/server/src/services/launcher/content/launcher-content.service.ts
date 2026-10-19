@@ -1,5 +1,6 @@
 import { AppError } from "@/app/middleware/error-handler";
 import {
+  CURSEFORGE_BATCH_SIZE,
   CURSEFORGE_MINECRAFT_GAME_ID,
   CurseForgeLoader,
   LOADERLESS_CLASSES,
@@ -128,6 +129,8 @@ function loaderTypeFor(
  * fingerprint for an hour, files and unknown fingerprints for 10 minutes,
  * categories and a changelog for a day), so the same question from many
  * players is one CurseForge call, and a lookup already running is shared.
+ * Projects and files are fetched in batches of 100 that are kept and shared
+ * one by one, so a batch that fails costs only itself on the next call.
  * Nothing is written to the database. A file CurseForge blocks is answered as
  * manual, except by `listFiles`, `getFile` and `getFiles` while the
  * `launcher_curseforge_cdn` feature flag is on: they answer the file's built
@@ -451,6 +454,7 @@ class LauncherContentService {
       (id) => this.fileKey(id),
       this.loadingFiles,
       (missing) => this.fetchFiles(missing),
+      CURSEFORGE_BATCH_SIZE,
     );
   }
 
@@ -565,6 +569,7 @@ class LauncherContentService {
       (id) => this.projectKey(id),
       this.loadingProjects,
       (missing) => this.fetchProjects(missing),
+      CURSEFORGE_BATCH_SIZE,
     );
   }
 
@@ -573,6 +578,7 @@ class LauncherContentService {
     keyOf: (id: Id) => string,
     loading: Map<Id, Promise<Value | null>>,
     fetch: (missing: Id[]) => Promise<Map<Id, Value | null>>,
+    batchSize = Infinity,
   ): Promise<Map<Id, Value | null>> {
     const stored = await Promise.all(
       ids.map((id) => readStored<Value | null>(keyValueStore, keyOf(id))),
@@ -589,15 +595,16 @@ class LauncherContentService {
       else missing.push(id);
     });
 
-    if (missing.length > 0) {
-      const fetched = fetch(missing);
-      for (const id of missing) {
+    for (let start = 0; start < missing.length; start += batchSize) {
+      const batch = missing.slice(start, start + batchSize);
+      const fetched = fetch(batch);
+      for (const id of batch) {
         const pending = fetched.then((values) => values.get(id) ?? null);
         loading.set(id, pending);
         waiting.push([id, pending]);
       }
       const done = () => {
-        for (const id of missing) loading.delete(id);
+        for (const id of batch) loading.delete(id);
       };
       fetched.then(done, done);
     }

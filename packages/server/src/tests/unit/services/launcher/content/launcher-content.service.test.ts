@@ -1318,6 +1318,73 @@ describe("LauncherContentService.getFiles", () => {
     ]);
   });
 
+  it("asks CurseForge for the files it has not just looked up in batches of 100", async () => {
+    serveFiles([]);
+    const ids = (from: number, count: number) =>
+      Array.from({ length: count }, (_, index) => from + index);
+
+    await launcherContentService.getFiles(ids(7000001, 20));
+    await launcherContentService.getFiles(ids(7000001, 250));
+
+    expect(
+      vi.mocked(getContentFiles).mock.calls.map(([asked]) => asked),
+    ).toEqual([
+      ids(7000001, 20),
+      ids(7000021, 100),
+      ids(7000121, 100),
+      ids(7000221, 30),
+    ]);
+  });
+
+  it("keeps the batches that came back when another one fails, and asks again only for the one that failed", async () => {
+    const ids = Array.from({ length: 150 }, (_, index) => 7000001 + index);
+    const files = ids.map((id) => makeContentFile({ id }));
+    let failing = true;
+    vi.mocked(getContentFiles).mockImplementation(async (asked) => {
+      if (failing && asked.includes(7000150)) {
+        throw new Error("CurseForge getContentFiles failed (503)");
+      }
+      return files.filter((file) => asked.includes(file.id));
+    });
+    serveProjects([createProject()]);
+
+    await expect(launcherContentService.getFiles(ids)).rejects.toMatchObject({
+      statusCode: 503,
+      code: "CONTENT_UNAVAILABLE",
+    });
+    failing = false;
+    vi.mocked(getContentFiles).mockClear();
+    const answer = await launcherContentService.getFiles(ids);
+
+    expect(answer.files).toHaveLength(150);
+    expect(
+      vi.mocked(getContentFiles).mock.calls.map(([asked]) => asked),
+    ).toEqual([ids.slice(100)]);
+  });
+
+  it("answers a lookup that waits on a batch that came back, while another batch fails", async () => {
+    const ids = Array.from({ length: 150 }, (_, index) => 7000001 + index);
+    vi.mocked(getContentFiles).mockImplementation(async (asked) => {
+      if (asked.includes(7000150)) {
+        throw new Error("CurseForge getContentFiles failed (503)");
+      }
+      return asked.map((id) => makeContentFile({ id }));
+    });
+    serveProjects([createProject()]);
+
+    const [batch, single] = await Promise.allSettled([
+      launcherContentService.getFiles(ids),
+      launcherContentService.getFile(7000001),
+    ]);
+
+    expect(batch.status).toBe("rejected");
+    expect(single).toMatchObject({
+      status: "fulfilled",
+      value: { id: "7000001" },
+    });
+    expect(getContentFiles).toHaveBeenCalledTimes(2);
+  });
+
   it("asks again about an unknown file after 10 minutes", async () => {
     vi.useFakeTimers();
     try {
