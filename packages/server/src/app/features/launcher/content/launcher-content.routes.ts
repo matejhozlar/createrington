@@ -1,7 +1,10 @@
 import { Router } from "express";
 import { customRoute } from "@/app/middleware/compose";
 import { authenticateLauncher } from "@/app/middleware/launcher-auth.middleware";
-import { launcherContentLimiter } from "@/app/middleware/rate-limit.middleware";
+import {
+  launcherContentFileBatchLimiter,
+  launcherContentLimiter,
+} from "@/app/middleware/rate-limit.middleware";
 import { validate } from "@/app/middleware/validation.middleware";
 import { LauncherContentController } from "./launcher-content.controller";
 import {
@@ -64,7 +67,7 @@ router.get(
 router.post(
   "/files",
   ...customRoute(
-    [validate({ body: GetFilesBodySchema })],
+    [launcherContentFileBatchLimiter, validate({ body: GetFilesBodySchema })],
     LauncherContentController.filesById,
   ),
 );

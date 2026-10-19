@@ -911,4 +911,20 @@ describe("the content rate limit", () => {
     expect(statuses[60]).toBe(429);
     expect((await get("/files/7000001", other)).status).toBe(200);
   });
+
+  it("lets one player look files up in batches 10 times in 15 minutes, and leaves their other lookups and another player alone", async () => {
+    const busy = newSession();
+    const other = newSession();
+
+    const statuses: number[] = [];
+    for (let request = 0; request < 11; request += 1) {
+      statuses.push((await postFiles({ fileIds: ["7000001"] }, busy)).status);
+    }
+
+    expect(statuses.slice(0, 10).every((status) => status === 200)).toBe(true);
+    expect(statuses[10]).toBe(429);
+    expect(mocks.getFiles).toHaveBeenCalledTimes(10);
+    expect((await get("/files/7000001", busy)).status).toBe(200);
+    expect((await postFiles({ fileIds: ["7000001"] }, other)).status).toBe(200);
+  });
 });

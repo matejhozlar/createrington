@@ -88,6 +88,10 @@ export const launcherPackLimiter = rateLimit({
   handler: rateLimitHandler,
 });
 
+function launcherPlayerKey(req: Request): string {
+  return req.launcherAuth?.minecraftUuid ?? ipKeyGenerator(req.ip ?? "unknown");
+}
+
 /** Launcher content limiter: 60 requests per minute per launcher player (per IP without a session) */
 export const launcherContentLimiter = rateLimit({
   windowMs: 60 * 1000,
@@ -95,9 +99,19 @@ export const launcherContentLimiter = rateLimit({
   standardHeaders: "draft-7",
   legacyHeaders: false,
   handler: rateLimitHandler,
-  keyGenerator: (req: Request) =>
-    req.launcherAuth?.minecraftUuid ?? ipKeyGenerator(req.ip ?? "unknown"),
+  keyGenerator: launcherPlayerKey,
   store: createRateLimitStore("launcher-content"),
+});
+
+/** Launcher content file batch limiter: 10 requests per 15-minute window per launcher player, on top of the content limiter, as one batch can cost 20 CurseForge calls */
+export const launcherContentFileBatchLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  handler: rateLimitHandler,
+  keyGenerator: launcherPlayerKey,
+  store: createRateLimitStore("launcher-content-file-batch"),
 });
 
 // Backstop for the internal SSO code-exchange endpoint. It is internet
