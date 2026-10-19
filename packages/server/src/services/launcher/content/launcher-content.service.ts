@@ -1,5 +1,6 @@
 import { AppError } from "@/app/middleware/error-handler";
 import {
+  CURSEFORGE_BATCH_SIZE,
   CURSEFORGE_MINECRAFT_GAME_ID,
   CurseForgeLoader,
   LOADERLESS_CLASSES,
@@ -24,24 +25,25 @@ import {
   LAUNCHER_CONTENT_MAX_RESULTS,
   LauncherContentErrorCode,
   type LauncherContentCategory,
+  type LauncherContentFileBatchData,
   type LauncherContentFileDetails,
   type LauncherContentFingerprintMatch,
   type LauncherContentFingerprintsData,
-  type LauncherContentKind,
   type LauncherContentLoader,
+  type LauncherContentProject,
   type LauncherContentProjectsData,
   type LauncherContentSort,
-  type LauncherProject,
   type LauncherProjectDetails,
   type LauncherProjectHit,
+  type LauncherProjectKind,
 } from "@createrington/shared/launcher";
 import {
-  classForContentKind,
+  classForProjectKind,
   describeLauncherProject,
   sortFieldForContentSort,
   toLauncherContentCategory,
   toLauncherContentFileDetails,
-  toLauncherProject,
+  toLauncherContentProject,
   toLauncherProjectDetails,
   toLauncherProjectLatestFiles,
 } from "./curseforge-content";
@@ -86,7 +88,7 @@ function projectNotFound(): AppError {
   return contentError(
     LauncherContentErrorCode.PROJECT_NOT_FOUND,
     404,
-    "CurseForge has no such mod, resource pack or shader",
+    "CurseForge has no such mod, resource pack, shader or modpack",
   );
 }
 
@@ -94,7 +96,7 @@ function fileNotFound(): AppError {
   return contentError(
     LauncherContentErrorCode.FILE_NOT_FOUND,
     404,
-    "CurseForge has no such file of a mod, resource pack or shader",
+    "CurseForge has no such file of a mod, resource pack, shader or modpack",
   );
 }
 
@@ -105,7 +107,7 @@ function htmlOrNull(html: string | null): string | null {
 function withoutLatestFiles({
   latestFiles: _latestFiles,
   ...project
-}: LauncherProject): LauncherProject {
+}: LauncherContentProject): LauncherContentProject {
   return project;
 }
 
@@ -118,30 +120,38 @@ function loaderTypeFor(
 }
 
 /**
- * Looks CurseForge up for content a launcher player adds to a modpack: search,
- * categories, projects, one project in full, a project's files, single files
- * with their changelogs and the files behind fingerprints, for any mod,
- * resource pack or shader of Minecraft, not only what our pack ships. Answers
- * come from the key-value store while they are fresh (a search for 5 minutes,
- * a project or a known fingerprint for an hour, files and unknown fingerprints
- * for 10 minutes, categories and a changelog for a day), so the same question
- * from many players is one CurseForge call. Nothing is written to the
- * database. A file CurseForge blocks is answered as manual, except by
- * `listFiles` and `getFile` while the `launcher_curseforge_cdn` feature flag
- * is on: they answer the file's built address on CurseForge's CDN when it
- * answers there with the right size (remembered for an hour, a miss for 10
- * minutes, a file the CDN gave no answer for not at all), and the flag is
- * read on every answer, so switching it takes effect at once. The other
- * sources the pack service has for blocked files are for our pack only.
- * Throws `CONTENT_UNAVAILABLE` (503) when CurseForge cannot be asked.
- * Singleton.
+ * Looks CurseForge up for content a launcher player adds to a modpack, and for
+ * modpacks that are not ours: search, categories, projects, one project in
+ * full, a project's files, files by id with their changelogs and the files
+ * behind fingerprints, for any mod, resource pack, shader or modpack of
+ * Minecraft, not only what our pack ships. Answers come from the key-value
+ * store while they are fresh (a search for 5 minutes, a project or a known
+ * fingerprint for an hour, files and unknown fingerprints for 10 minutes,
+ * categories and a changelog for a day), so the same question from many
+ * players is one CurseForge call, and a lookup already running is shared.
+ * Projects and files are fetched in batches of 100 that are kept and shared
+ * one by one, so a batch that fails costs only itself on the next call.
+ * Nothing is written to the database. A file CurseForge blocks is answered as
+ * manual, except by `listFiles`, `getFile` and `getFiles` while the
+ * `launcher_curseforge_cdn` feature flag is on: they answer the file's built
+ * address on CurseForge's CDN when it answers there with the right size
+ * (remembered for an hour, a miss for 10 minutes, a file the CDN gave no
+ * answer for not at all), and the flag is read on every answer, so switching
+ * it takes effect at once. The other sources the pack service has for blocked
+ * files are for our pack only. Throws `CONTENT_UNAVAILABLE` (503) when
+ * CurseForge cannot be asked. Singleton.
  */
 class LauncherContentService {
   private static instance: LauncherContentService;
 
   private readonly loadingProjects = new Map<
     number,
-    Promise<LauncherProject | null>
+    Promise<LauncherContentProject | null>
+  >();
+
+  private readonly loadingFiles = new Map<
+    number,
+    Promise<LauncherContentFileDetails | null>
   >();
 
   private readonly resolvingCdnUrls = new Map<string, Promise<string | null>>();
@@ -155,11 +165,11 @@ class LauncherContentService {
 
   /** One page of the projects of a kind that match the text, in `categoryIds` when given, most popular first unless `sort` says otherwise. `page` counts from 0; `total` never exceeds what CurseForge lets a search page through. */
   async search(
-    params: { query: string; kind: LauncherContentKind } & ContentTarget &
+    params: { query: string; kind: LauncherProjectKind } & ContentTarget &
       ContentSearchFilters &
       ContentPage,
   ): Promise<{ projects: LauncherProjectHit[]; total: number }> {
-    const classId = classForContentKind(params.kind);
+    const classId = classForProjectKind(params.kind);
     const modLoaderType = loaderTypeFor(classId, params.loader);
     const categoryIds = [...new Set(params.categoryIds)].sort((a, b) => a - b);
     const sortField = sortFieldForContentSort(params.sort ?? "relevance");
@@ -189,7 +199,7 @@ class LauncherContentService {
       );
 
       const projects = found.projects.flatMap((hit) => {
-        const project = toLauncherProject(hit);
+        const project = toLauncherContentProject(hit);
         return project ? [{ ...project, downloads: hit.downloadCount }] : [];
       });
       return {
@@ -201,9 +211,9 @@ class LauncherContentService {
 
   /** The categories a search of this kind can be narrowed to, nested ones with their `parentId`, in CurseForge's order. */
   async listCategories(
-    kind: LauncherContentKind,
+    kind: LauncherProjectKind,
   ): Promise<LauncherContentCategory[]> {
-    const classId = classForContentKind(kind);
+    const classId = classForProjectKind(kind);
     return readThrough(
       keyValueStore,
       `${KEY_PREFIX}:categories:${classId}`,
@@ -223,14 +233,14 @@ class LauncherContentService {
     );
   }
 
-  /** The projects with these ids, each with its newest file per Minecraft version and loader. An id CurseForge does not know, or one that is not a mod, resource pack or shader, comes back in `unknownProjectIds`. */
+  /** The projects with these ids, each with its newest file per Minecraft version and loader. An id CurseForge does not know, or one that is not a mod, resource pack, shader or modpack, comes back in `unknownProjectIds`. */
   async getProjects(
     projectIds: number[],
   ): Promise<LauncherContentProjectsData> {
     const ids = [...new Set(projectIds)];
     const found = await this.loadProjects(ids);
 
-    const projects: LauncherProject[] = [];
+    const projects: LauncherContentProject[] = [];
     const unknownProjectIds: string[] = [];
     for (const id of ids) {
       const project = found.get(id);
@@ -269,7 +279,7 @@ class LauncherContentService {
     if (!project) throw projectNotFound();
 
     const modLoaderType = loaderTypeFor(
-      classForContentKind(project.kind),
+      classForProjectKind(project.kind),
       params.loader,
     );
     const key = `${KEY_PREFIX}:files:${JSON.stringify([
@@ -305,13 +315,28 @@ class LauncherContentService {
     return { ...page, files: await this.withCdnDownloads(page.files) };
   }
 
-  /** One file with its address, hash and dependencies, a blocked file with its CDN address while the flag is on. Throws `FILE_NOT_FOUND` (404) when CurseForge does not know it, publishes no SHA-1 for it, or it belongs to no mod, resource pack or shader of Minecraft. */
+  /** One file with its address, hash and dependencies, a blocked file with its CDN address while the flag is on. Throws `FILE_NOT_FOUND` (404) when CurseForge does not know it, publishes no SHA-1 for it, or it belongs to no mod, resource pack, shader or modpack of Minecraft. */
   async getFile(fileId: number): Promise<LauncherContentFileDetails> {
     const [file] = await this.withCdnDownloads([await this.loadFile(fileId)]);
     return file;
   }
 
-  /** What changed in one file, as CurseForge's HTML, or null when the file has no changelog. Without `projectId` the file is looked up as `getFile` does, and throws `FILE_NOT_FOUND` (404) as it does. A caller that knows the file's project names it in `projectId`, which saves that lookup: then `FILE_NOT_FOUND` is for a project that is no mod, resource pack or shader and for a file that is no file of it, and the file is not held to the other rules of `getFile` (a name, a size, a SHA-1). A changelog kept from an earlier call is answered either way. */
+  /** The files with these ids as `getFile` answers each, in the order asked, with one CurseForge call per 100 files it has not just looked up. An id `getFile` would answer 404 for comes back in `unknownFileIds`. */
+  async getFiles(fileIds: number[]): Promise<LauncherContentFileBatchData> {
+    const ids = [...new Set(fileIds)];
+    const found = await this.loadFiles(ids);
+
+    const known: LauncherContentFileDetails[] = [];
+    const unknownFileIds: string[] = [];
+    for (const id of ids) {
+      const file = found.get(id);
+      if (file) known.push(file);
+      else unknownFileIds.push(String(id));
+    }
+    return { files: await this.withCdnDownloads(known), unknownFileIds };
+  }
+
+  /** What changed in one file, as CurseForge's HTML, or null when the file has no changelog. Without `projectId` the file is looked up as `getFile` does, and throws `FILE_NOT_FOUND` (404) as it does. A caller that knows the file's project names it in `projectId`, which saves that lookup: then `FILE_NOT_FOUND` is for a project that is no mod, resource pack, shader or modpack and for a file that is no file of it, and the file is not held to the other rules of `getFile` (a name, a size, a SHA-1). A changelog kept from an earlier call is answered either way. */
   async getFileChangelog(
     fileId: number,
     projectId?: number,
@@ -416,26 +441,55 @@ class LauncherContentService {
   }
 
   private async loadFile(fileId: number): Promise<LauncherContentFileDetails> {
-    const file = await readThrough(
-      keyValueStore,
-      this.fileKey(fileId),
-      FILES_TTL_MS,
-      async () => {
-        const [found] = await this.ask("file", () => getContentFiles([fileId]));
-        if (!found || found.gameId !== CURSEFORGE_MINECRAFT_GAME_ID) {
-          return null;
-        }
-        const project = (await this.loadProjects([found.projectId])).get(
-          found.projectId,
-        );
-        return project
-          ? toLauncherContentFileDetails(found, project.url)
-          : null;
-      },
-    );
-
+    const file = (await this.loadFiles([fileId])).get(fileId);
     if (!file) throw fileNotFound();
     return file;
+  }
+
+  private loadFiles(
+    fileIds: number[],
+  ): Promise<Map<number, LauncherContentFileDetails | null>> {
+    return this.loadShared(
+      fileIds,
+      (id) => this.fileKey(id),
+      this.loadingFiles,
+      (missing) => this.fetchFiles(missing),
+      CURSEFORGE_BATCH_SIZE,
+    );
+  }
+
+  private async fetchFiles(
+    fileIds: number[],
+  ): Promise<Map<number, LauncherContentFileDetails | null>> {
+    const fetched = await this.ask("file", () => getContentFiles(fileIds));
+    const byId = new Map(
+      fetched
+        .filter((file) => file.gameId === CURSEFORGE_MINECRAFT_GAME_ID)
+        .map((file) => [file.id, file]),
+    );
+    const projects = await this.loadProjects([
+      ...new Set([...byId.values()].map((file) => file.projectId)),
+    ]);
+
+    const files = new Map<number, LauncherContentFileDetails | null>();
+    await Promise.all(
+      fileIds.map((id) => {
+        const file = byId.get(id);
+        const project = file ? projects.get(file.projectId) : null;
+        const details =
+          file && project
+            ? toLauncherContentFileDetails(file, project.url)
+            : null;
+        files.set(id, details);
+        return writeStored(
+          keyValueStore,
+          this.fileKey(id),
+          details,
+          FILES_TTL_MS,
+        );
+      }),
+    );
+    return files;
   }
 
   private async withCdnDownloads(
@@ -449,39 +503,14 @@ class LauncherContentService {
     );
     if (!useCdn) return files;
 
-    const stored = await Promise.all(
-      blocked.map((file) =>
-        readStored<string | null>(keyValueStore, this.cdnUrlKey(file.id)),
-      ),
+    const blockedById = new Map(blocked.map((file) => [file.id, file]));
+    const urls = await this.loadShared(
+      [...blockedById.keys()],
+      (id) => this.cdnUrlKey(id),
+      this.resolvingCdnUrls,
+      (missing) =>
+        this.resolveCdnUrls(missing.flatMap((id) => blockedById.get(id) ?? [])),
     );
-    const urls = new Map<string, string | null>();
-    const waiting: Array<[string, Promise<string | null>]> = [];
-    const missing: LauncherContentFileDetails[] = [];
-    blocked.forEach((file, index) => {
-      const url = stored[index];
-      const resolving = this.resolvingCdnUrls.get(file.id);
-      if (url !== undefined) urls.set(file.id, url);
-      else if (resolving) waiting.push([file.id, resolving]);
-      else missing.push(file);
-    });
-
-    if (missing.length > 0) {
-      const resolved = this.resolveCdnUrls(missing);
-      for (const file of missing) {
-        const resolving = resolved.then((found) => found.get(file.id) ?? null);
-        this.resolvingCdnUrls.set(file.id, resolving);
-        waiting.push([file.id, resolving]);
-      }
-      const done = () => {
-        for (const file of missing) this.resolvingCdnUrls.delete(file.id);
-      };
-      resolved.then(done, done);
-    }
-
-    const awaited = await Promise.all(
-      waiting.map(([, resolving]) => resolving),
-    );
-    waiting.forEach(([id], index) => urls.set(id, awaited[index] ?? null));
 
     return files.map((file) => {
       const url = urls.get(file.id);
@@ -532,51 +561,66 @@ class LauncherContentService {
     return namedProjectId;
   }
 
-  private async loadProjects(
+  private loadProjects(
     projectIds: number[],
-  ): Promise<Map<number, LauncherProject | null>> {
+  ): Promise<Map<number, LauncherContentProject | null>> {
+    return this.loadShared(
+      projectIds,
+      (id) => this.projectKey(id),
+      this.loadingProjects,
+      (missing) => this.fetchProjects(missing),
+      CURSEFORGE_BATCH_SIZE,
+    );
+  }
+
+  private async loadShared<Id, Value>(
+    ids: Id[],
+    keyOf: (id: Id) => string,
+    loading: Map<Id, Promise<Value | null>>,
+    fetch: (missing: Id[]) => Promise<Map<Id, Value | null>>,
+    batchSize = Infinity,
+  ): Promise<Map<Id, Value | null>> {
     const stored = await Promise.all(
-      projectIds.map((id) =>
-        readStored<LauncherProject | null>(keyValueStore, this.projectKey(id)),
-      ),
+      ids.map((id) => readStored<Value | null>(keyValueStore, keyOf(id))),
     );
 
-    const projects = new Map<number, LauncherProject | null>();
-    const waiting: Array<[number, Promise<LauncherProject | null>]> = [];
-    const missing: number[] = [];
-    projectIds.forEach((id, index) => {
-      const project = stored[index];
-      const loading = this.loadingProjects.get(id);
-      if (project !== undefined) projects.set(id, project);
-      else if (loading) waiting.push([id, loading]);
+    const found = new Map<Id, Value | null>();
+    const waiting: Array<[Id, Promise<Value | null>]> = [];
+    const missing: Id[] = [];
+    ids.forEach((id, index) => {
+      const value = stored[index];
+      const pending = loading.get(id);
+      if (value !== undefined) found.set(id, value);
+      else if (pending) waiting.push([id, pending]);
       else missing.push(id);
     });
 
-    if (missing.length > 0) {
-      const fetched = this.fetchProjects(missing);
-      for (const id of missing) {
-        const loading = fetched.then((found) => found.get(id) ?? null);
-        this.loadingProjects.set(id, loading);
-        waiting.push([id, loading]);
+    for (let start = 0; start < missing.length; start += batchSize) {
+      const batch = missing.slice(start, start + batchSize);
+      const fetched = fetch(batch);
+      for (const id of batch) {
+        const pending = fetched.then((values) => values.get(id) ?? null);
+        loading.set(id, pending);
+        waiting.push([id, pending]);
       }
       const done = () => {
-        for (const id of missing) this.loadingProjects.delete(id);
+        for (const id of batch) loading.delete(id);
       };
       fetched.then(done, done);
     }
 
-    const loaded = await Promise.all(waiting.map(([, loading]) => loading));
-    waiting.forEach(([id], index) => projects.set(id, loaded[index] ?? null));
-    return projects;
+    const loaded = await Promise.all(waiting.map(([, pending]) => pending));
+    waiting.forEach(([id], index) => found.set(id, loaded[index] ?? null));
+    return found;
   }
 
   private async fetchProjects(
     projectIds: number[],
-  ): Promise<Map<number, LauncherProject | null>> {
+  ): Promise<Map<number, LauncherContentProject | null>> {
     const fetched = await this.ask("projects", () => getMods(projectIds));
     const byId = new Map(fetched.map((data) => [data.id, data]));
 
-    const projects = new Map<number, LauncherProject | null>();
+    const projects = new Map<number, LauncherContentProject | null>();
     for (const id of projectIds) {
       const data = byId.get(id);
       const described = data ? describeLauncherProject(data) : null;

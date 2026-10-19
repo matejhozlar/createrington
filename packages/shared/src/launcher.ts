@@ -90,8 +90,12 @@ export type LauncherContentKind = (typeof LAUNCHER_CONTENT_KINDS)[number];
 
 export const LAUNCHER_MODPACK_KIND = "modpack";
 
-export type LauncherProjectKind =
-  LauncherContentKind | typeof LAUNCHER_MODPACK_KIND;
+export const LAUNCHER_PROJECT_KINDS = [
+  ...LAUNCHER_CONTENT_KINDS,
+  LAUNCHER_MODPACK_KIND,
+] as const;
+
+export type LauncherProjectKind = (typeof LAUNCHER_PROJECT_KINDS)[number];
 
 export const LAUNCHER_CONTENT_LOADERS = [
   "neoforge",
@@ -135,6 +139,8 @@ export const LAUNCHER_CONTENT_PROJECTS_MAX = 100;
 export const LAUNCHER_CONTENT_FINGERPRINTS_MAX = 1000;
 
 export const LAUNCHER_CONTENT_FINGERPRINT_MAX_VALUE = 4_294_967_295;
+
+export const LAUNCHER_CONTENT_FILES_MAX = 1000;
 
 export const LauncherContentErrorCode = {
   CONTENT_UNAVAILABLE: "CONTENT_UNAVAILABLE",
@@ -330,7 +336,9 @@ export interface LauncherContentFileDetails extends LauncherContentFile {
   dependencies: LauncherContentDependency[];
 }
 
-export interface LauncherProjectHit extends LauncherProject {
+export type LauncherContentProject = LauncherProject<LauncherProjectKind>;
+
+export interface LauncherProjectHit extends LauncherContentProject {
   downloads: number;
 }
 
@@ -352,7 +360,7 @@ export interface LauncherContentCategoriesData {
 }
 
 export interface LauncherContentProjectsData {
-  projects: LauncherProject[];
+  projects: LauncherContentProject[];
   unknownProjectIds: string[];
 }
 
@@ -362,7 +370,7 @@ export interface LauncherProjectLinks {
   wiki: string | null;
 }
 
-export interface LauncherProjectDetails extends LauncherProject {
+export interface LauncherProjectDetails extends LauncherContentProject {
   description: string | null;
   downloads: number;
   categories: string[];
@@ -385,13 +393,18 @@ export interface LauncherContentFileData {
   file: LauncherContentFileDetails;
 }
 
+export interface LauncherContentFileBatchData {
+  files: LauncherContentFileDetails[];
+  unknownFileIds: string[];
+}
+
 export interface LauncherContentChangelogData {
   changelog: string | null;
 }
 
 export interface LauncherContentFingerprintMatch {
   fingerprint: number;
-  project: LauncherProject;
+  project: LauncherContentProject;
   file: LauncherContentFileDetails;
 }
 

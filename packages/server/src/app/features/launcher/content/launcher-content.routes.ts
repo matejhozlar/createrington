@@ -1,12 +1,16 @@
 import { Router } from "express";
 import { customRoute } from "@/app/middleware/compose";
 import { authenticateLauncher } from "@/app/middleware/launcher-auth.middleware";
-import { launcherContentLimiter } from "@/app/middleware/rate-limit.middleware";
+import {
+  launcherContentFileBatchLimiter,
+  launcherContentLimiter,
+} from "@/app/middleware/rate-limit.middleware";
 import { validate } from "@/app/middleware/validation.middleware";
 import { LauncherContentController } from "./launcher-content.controller";
 import {
   ContentIdParamsSchema,
   FileChangelogQuerySchema,
+  GetFilesBodySchema,
   GetProjectsBodySchema,
   IdentifyFingerprintsBodySchema,
   ListCategoriesQuerySchema,
@@ -58,6 +62,13 @@ router.get(
   ...customRoute(
     [validate({ params: ContentIdParamsSchema, query: ListFilesQuerySchema })],
     LauncherContentController.files,
+  ),
+);
+router.post(
+  "/files",
+  ...customRoute(
+    [launcherContentFileBatchLimiter, validate({ body: GetFilesBodySchema })],
+    LauncherContentController.filesById,
   ),
 );
 router.get(

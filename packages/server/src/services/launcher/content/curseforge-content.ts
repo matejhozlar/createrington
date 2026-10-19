@@ -17,6 +17,7 @@ import {
   type LauncherContentFileDetails,
   type LauncherContentKind,
   type LauncherContentLoader,
+  type LauncherContentProject,
   type LauncherContentReleaseType,
   type LauncherContentSort,
   type LauncherPackProject,
@@ -28,12 +29,11 @@ import {
 import { CURSEFORGE_CLASSES } from "@createrington/shared/workshop";
 
 const CURSEFORGE_SITE = "https://www.curseforge.com/minecraft";
-const MODPACK_SITE_PATH = "modpacks";
 const GAME_VERSION_PATTERN = /^\d+\.\d+/;
 
 const CONTENT_CLASSES: Record<
   number,
-  { kind: LauncherContentKind; sitePath: string }
+  { kind: LauncherProjectKind; sitePath: string }
 > = {
   [CURSEFORGE_CLASSES.mods]: { kind: "mod", sitePath: "mc-mods" },
   [CURSEFORGE_CLASSES.resourcePacks]: {
@@ -41,12 +41,17 @@ const CONTENT_CLASSES: Record<
     sitePath: "texture-packs",
   },
   [CURSEFORGE_CLASSES.shaders]: { kind: "shader", sitePath: "shaders" },
+  [CURSEFORGE_CLASSES.modpacks]: {
+    kind: LAUNCHER_MODPACK_KIND,
+    sitePath: "modpacks",
+  },
 };
 
-const CLASS_BY_KIND: Record<LauncherContentKind, number> = {
+const CLASS_BY_KIND: Record<LauncherProjectKind, number> = {
   mod: CURSEFORGE_CLASSES.mods,
   resourcepack: CURSEFORGE_CLASSES.resourcePacks,
   shader: CURSEFORGE_CLASSES.shaders,
+  modpack: CURSEFORGE_CLASSES.modpacks,
 };
 
 const SORT_FIELDS: Record<LauncherContentSort, number> = {
@@ -73,13 +78,20 @@ type ProjectPage = Pick<
   "websiteUrl" | "classId" | "slug"
 >;
 
-export function contentKindForClass(
+export function projectKindForClass(
   classId: number,
-): LauncherContentKind | null {
+): LauncherProjectKind | null {
   return CONTENT_CLASSES[classId]?.kind ?? null;
 }
 
-export function classForContentKind(kind: LauncherContentKind): number {
+export function contentKindForClass(
+  classId: number,
+): LauncherContentKind | null {
+  const kind = projectKindForClass(classId);
+  return kind === LAUNCHER_MODPACK_KIND ? null : kind;
+}
+
+export function classForProjectKind(kind: LauncherProjectKind): number {
   return CLASS_BY_KIND[kind];
 }
 
@@ -103,10 +115,7 @@ export function toLauncherContentCategory(
 }
 
 export function curseforgeProjectUrl(project: ProjectPage): string | null {
-  const sitePath =
-    project.classId === CURSEFORGE_CLASSES.modpacks
-      ? MODPACK_SITE_PATH
-      : CONTENT_CLASSES[project.classId]?.sitePath;
+  const sitePath = CONTENT_CLASSES[project.classId]?.sitePath;
   return (
     project.websiteUrl?.replace(/\/+$/, "") ||
     (sitePath ? `${CURSEFORGE_SITE}/${sitePath}/${project.slug}` : null)
@@ -157,10 +166,16 @@ export function toLauncherPackProject(
   );
 }
 
+export function toLauncherContentProject(
+  project: CurseforgeFileProject,
+): LauncherContentProject | null {
+  return projectOfKind(project, projectKindForClass(project.classId));
+}
+
 export function describeLauncherProject(
   data: CurseForgeProjectData,
-): LauncherProject | null {
-  return toLauncherProject({
+): LauncherContentProject | null {
+  return toLauncherContentProject({
     id: data.id,
     classId: data.classId,
     slug: data.slug,

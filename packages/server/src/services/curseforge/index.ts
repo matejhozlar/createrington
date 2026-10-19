@@ -33,12 +33,12 @@ const CURSEFORGE_API = config.curseforge.apiBaseUrl;
 const CF_FETCH_TIMEOUT_MS = 15_000;
 const CF_DOWNLOAD_TIMEOUT_MS = 120_000;
 // The batch endpoints reject oversized id lists in the request body
-const CF_BATCH_SIZE = 100;
+export const CURSEFORGE_BATCH_SIZE = 100;
 
 function toBatches<T>(items: T[]): T[][] {
   const batches: T[][] = [];
-  for (let i = 0; i < items.length; i += CF_BATCH_SIZE) {
-    batches.push(items.slice(i, i + CF_BATCH_SIZE));
+  for (let i = 0; i < items.length; i += CURSEFORGE_BATCH_SIZE) {
+    batches.push(items.slice(i, i + CURSEFORGE_BATCH_SIZE));
   }
   return batches;
 }
