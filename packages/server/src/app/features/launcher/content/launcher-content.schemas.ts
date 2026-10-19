@@ -1,9 +1,9 @@
 import { z } from "zod";
 import {
   LAUNCHER_CONTENT_CATEGORIES_MAX,
+  LAUNCHER_CONTENT_FILES_MAX,
   LAUNCHER_CONTENT_FINGERPRINT_MAX_VALUE,
   LAUNCHER_CONTENT_FINGERPRINTS_MAX,
-  LAUNCHER_CONTENT_KINDS,
   LAUNCHER_CONTENT_LOADERS,
   LAUNCHER_CONTENT_MAX_PAGE_SIZE,
   LAUNCHER_CONTENT_MAX_RESULTS,
@@ -11,6 +11,7 @@ import {
   LAUNCHER_CONTENT_PROJECTS_MAX,
   LAUNCHER_CONTENT_SEARCH_MAX_LENGTH,
   LAUNCHER_CONTENT_SORTS,
+  LAUNCHER_PROJECT_KINDS,
 } from "@createrington/shared/launcher";
 
 const CurseforgeIdSchema = z
@@ -47,7 +48,7 @@ export const SearchContentQuerySchema = z
       .trim()
       .max(LAUNCHER_CONTENT_SEARCH_MAX_LENGTH)
       .default(""),
-    kind: z.enum(LAUNCHER_CONTENT_KINDS).default("mod"),
+    kind: z.enum(LAUNCHER_PROJECT_KINDS).default("mod"),
     categoryId: z
       .union([
         CurseforgeIdSchema.transform((id) => [id]),
@@ -63,7 +64,7 @@ export const SearchContentQuerySchema = z
 export type SearchContentQuery = z.infer<typeof SearchContentQuerySchema>;
 
 export const ListCategoriesQuerySchema = z.object({
-  kind: z.enum(LAUNCHER_CONTENT_KINDS).default("mod"),
+  kind: z.enum(LAUNCHER_PROJECT_KINDS).default("mod"),
 });
 
 export type ListCategoriesQuery = z.infer<typeof ListCategoriesQuerySchema>;
@@ -76,6 +77,12 @@ export const GetProjectsBodySchema = z.object({
 });
 
 export type GetProjectsBody = z.infer<typeof GetProjectsBodySchema>;
+
+export const GetFilesBodySchema = z.object({
+  fileIds: z.array(CurseforgeIdSchema).min(1).max(LAUNCHER_CONTENT_FILES_MAX),
+});
+
+export type GetFilesBody = z.infer<typeof GetFilesBodySchema>;
 
 export const IdentifyFingerprintsBodySchema = z.object({
   fingerprints: z

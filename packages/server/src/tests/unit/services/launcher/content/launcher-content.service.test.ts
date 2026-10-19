@@ -159,6 +159,35 @@ const CREATE_LATEST_FILES: CurseForgeProjectData["latestFilesIndexes"] = [
 
 const FIRST_PAGE = { page: 0, limit: 20 };
 
+const PACK_PAGE =
+  "https://www.curseforge.com/minecraft/modpacks/all-the-mods-10";
+
+function packProject() {
+  return makeProjectData(925200, {
+    classId: 4471,
+    slug: "all-the-mods-10",
+    name: "All the Mods 10",
+    summary: "The kitchen sink for 1.21.1",
+    websiteUrl: PACK_PAGE,
+    thumbnailUrl: "https://media.forgecdn.net/avatars/atm10.png",
+  });
+}
+
+function packZip(overrides: Partial<CurseForgeContentFile> = {}) {
+  return makeContentFile({
+    id: 6500000,
+    projectId: 925200,
+    displayName: "All the Mods 10-2.40",
+    fileName: "All the Mods 10-2.40.zip",
+    downloadUrl:
+      "https://edge.forgecdn.net/files/6500/0/All%20the%20Mods%2010-2.40.zip",
+    fileLength: 2481204,
+    sha1: "9a1c03ad1b5f9c4f3c0e1f6a3b2d4e5f60718293",
+    gameVersions: ["1.21.1", "NeoForge"],
+    ...overrides,
+  });
+}
+
 const BLOCKED_CDN_URL =
   "https://mediafilez.forgecdn.net/files/7000/1/create-1.21.1-6.0.10.jar";
 
@@ -449,14 +478,14 @@ describe("LauncherContentService.getProjects", () => {
   it("answers the known projects and names the ids it does not know", async () => {
     vi.mocked(getMods).mockResolvedValue([
       createProject(),
-      makeProjectData(4471001, { classId: 4471 }),
+      makeProjectData(6945001, { classId: 6945 }),
     ]);
 
     const answer = await launcherContentService.getProjects([
-      328085, 4471001, 999999999, 328085,
+      328085, 6945001, 999999999, 328085,
     ]);
 
-    expect(getMods).toHaveBeenCalledWith([328085, 4471001, 999999999]);
+    expect(getMods).toHaveBeenCalledWith([328085, 6945001, 999999999]);
     expect(answer.projects).toEqual([
       {
         source: "curseforge",
@@ -471,7 +500,7 @@ describe("LauncherContentService.getProjects", () => {
         latestFiles: [],
       },
     ]);
-    expect(answer.unknownProjectIds).toEqual(["4471001", "999999999"]);
+    expect(answer.unknownProjectIds).toEqual(["6945001", "999999999"]);
   });
 
   it("answers the newest file of a project per Minecraft version and loader", async () => {
@@ -639,15 +668,15 @@ describe("LauncherContentService.getProjectDetails", () => {
   it.each([
     ["CurseForge does not know", () => []],
     [
-      "is no mod, resource pack or shader",
-      () => [makeProjectData(4471001, { classId: 4471 })],
+      "is no mod, resource pack, shader or modpack",
+      () => [makeProjectData(6945001, { classId: 6945 })],
     ],
   ])("answers 404 for a project that %s", async (_label, projects) => {
     vi.mocked(getMods).mockResolvedValue(projects());
     vi.mocked(getProjectDescription).mockResolvedValue(null);
 
     await expect(
-      launcherContentService.getProjectDetails(4471001),
+      launcherContentService.getProjectDetails(6945001),
     ).rejects.toMatchObject({ statusCode: 404, code: "PROJECT_NOT_FOUND" });
   });
 
@@ -1010,17 +1039,315 @@ describe("LauncherContentService.getFile", () => {
     );
   });
 
-  it("answers 404 for a file of a project that is no mod, resource pack or shader", async () => {
+  it("answers 404 for a file of a project that is no mod, resource pack, shader or modpack", async () => {
     vi.mocked(getContentFiles).mockResolvedValue([
-      makeContentFile({ projectId: 4471001 }),
+      makeContentFile({ projectId: 6945001 }),
     ]);
     vi.mocked(getMods).mockResolvedValue([
-      makeProjectData(4471001, { classId: 4471 }),
+      makeProjectData(6945001, { classId: 6945 }),
     ]);
 
     await expect(launcherContentService.getFile(7000001)).rejects.toMatchObject(
       { statusCode: 404, code: "FILE_NOT_FOUND" },
     );
+  });
+});
+
+describe("LauncherContentService for modpacks", () => {
+  it("searches the modpack class with the loader and Minecraft version", async () => {
+    vi.mocked(searchProjects).mockResolvedValue({
+      projects: [
+        makeHit({
+          id: 925200,
+          classId: 4471,
+          slug: "all-the-mods-10",
+          name: "All the Mods 10",
+          websiteUrl: `${PACK_PAGE}/`,
+        }),
+      ],
+      total: 1,
+    });
+
+    const found = await launcherContentService.search({
+      query: "all the mods",
+      kind: "modpack",
+      minecraftVersion: "1.21.1",
+      loader: "neoforge",
+      ...FIRST_PAGE,
+    });
+
+    expect(searchProjects).toHaveBeenCalledWith(
+      expect.objectContaining({
+        classId: 4471,
+        gameVersion: "1.21.1",
+        modLoaderType: 6,
+      }),
+    );
+    expect(found.projects).toEqual([
+      expect.objectContaining({
+        id: "925200",
+        kind: "modpack",
+        url: PACK_PAGE,
+      }),
+    ]);
+  });
+
+  it("lists the categories of the modpack class", async () => {
+    vi.mocked(listCategories).mockResolvedValue([
+      {
+        id: 4472,
+        name: "Tech",
+        slug: "tech",
+        iconUrl: null,
+        parentCategoryId: 4471,
+      },
+    ]);
+
+    const categories = await launcherContentService.listCategories("modpack");
+
+    expect(listCategories).toHaveBeenCalledWith(4471);
+    expect(categories).toEqual([
+      { id: "4472", name: "Tech", slug: "tech", iconUrl: null, parentId: null },
+    ]);
+  });
+
+  it("answers a modpack by id and in full, with its picture and summary", async () => {
+    vi.mocked(getMods).mockResolvedValue([packProject()]);
+    vi.mocked(getProjectDescription).mockResolvedValue("<p>Everything</p>");
+
+    const { projects, unknownProjectIds } =
+      await launcherContentService.getProjects([925200]);
+    const details = await launcherContentService.getProjectDetails(925200);
+
+    expect(unknownProjectIds).toEqual([]);
+    expect(projects[0]).toMatchObject({
+      id: "925200",
+      kind: "modpack",
+      summary: "The kitchen sink for 1.21.1",
+      iconUrl: "https://media.forgecdn.net/avatars/atm10.png",
+      url: PACK_PAGE,
+    });
+    expect(details).toMatchObject({
+      kind: "modpack",
+      description: "<p>Everything</p>",
+    });
+  });
+
+  it("lists the files of a modpack for a loader", async () => {
+    vi.mocked(getMods).mockResolvedValue([packProject()]);
+    vi.mocked(listProjectFiles).mockResolvedValue({
+      files: [packZip()],
+      total: 1,
+    });
+
+    const listed = await launcherContentService.listFiles(925200, {
+      minecraftVersion: "1.21.1",
+      loader: "neoforge",
+      ...FIRST_PAGE,
+    });
+
+    expect(listProjectFiles).toHaveBeenCalledWith(
+      925200,
+      expect.objectContaining({ gameVersion: "1.21.1", modLoaderType: 6 }),
+    );
+    expect(listed.files[0]).toMatchObject({
+      id: "6500000",
+      pageUrl: `${PACK_PAGE}/files/6500000`,
+    });
+  });
+
+  it("answers the zip of a modpack with its address and SHA-1", async () => {
+    vi.mocked(getContentFiles).mockResolvedValue([packZip()]);
+    vi.mocked(getMods).mockResolvedValue([packProject()]);
+
+    const file = await launcherContentService.getFile(6500000);
+
+    expect(file).toMatchObject({
+      projectId: "925200",
+      fileName: "All the Mods 10-2.40.zip",
+      size: 2481204,
+      sha1: "9a1c03ad1b5f9c4f3c0e1f6a3b2d4e5f60718293",
+      download: {
+        servedBy: "curseforge",
+        url: "https://edge.forgecdn.net/files/6500/0/All%20the%20Mods%2010-2.40.zip",
+      },
+    });
+  });
+});
+
+describe("LauncherContentService.getFiles", () => {
+  const FLYWHEEL_PAGE =
+    "https://www.curseforge.com/minecraft/mc-mods/vitest-mod-486392";
+
+  function serveFiles(files: CurseForgeContentFile[]) {
+    vi.mocked(getContentFiles).mockImplementation(async (ids) =>
+      files.filter((file) => ids.includes(file.id)),
+    );
+  }
+
+  function serveProjects(projects: CurseForgeProjectData[]) {
+    vi.mocked(getMods).mockImplementation(async (ids) =>
+      projects.filter((project) => ids.includes(project.id)),
+    );
+  }
+
+  it("answers each file as a single lookup does, in the order asked, and names the ids it cannot answer", async () => {
+    serveFiles([
+      makeContentFile(),
+      makeContentFile({ id: 7000002, projectId: 486392 }),
+      makeContentFile({ id: 7000003, sha1: null }),
+      makeContentFile({ id: 7000004, gameId: 1 }),
+      makeContentFile({ id: 7000005, projectId: 6945001 }),
+    ]);
+    serveProjects([
+      createProject(),
+      makeProjectData(486392),
+      makeProjectData(6945001, { classId: 6945 }),
+    ]);
+
+    const answer = await launcherContentService.getFiles([
+      7000002, 7000003, 7000001, 7000004, 7000005, 7999999, 7000002,
+    ]);
+
+    expect(getContentFiles).toHaveBeenCalledTimes(1);
+    expect(getContentFiles).toHaveBeenCalledWith([
+      7000002, 7000003, 7000001, 7000004, 7000005, 7999999,
+    ]);
+    expect(getMods).toHaveBeenCalledTimes(1);
+    expect(answer.files.map((file) => file.id)).toEqual(["7000002", "7000001"]);
+    expect(answer.files[0]).toMatchObject({
+      projectId: "486392",
+      pageUrl: `${FLYWHEEL_PAGE}/files/7000002`,
+      size: 19123767,
+      sha1: "0e97e49837bed766e6f28a4c95b04885d6acc353",
+      download: { servedBy: "curseforge" },
+    });
+    expect(answer.unknownFileIds).toEqual([
+      "7000003",
+      "7000004",
+      "7000005",
+      "7999999",
+    ]);
+  });
+
+  it("answers what a single lookup answers for the same file", async () => {
+    serveFiles([makeContentFile()]);
+    serveProjects([createProject()]);
+
+    const { files } = await launcherContentService.getFiles([7000001]);
+    stores.current = stores.create();
+
+    expect(files).toEqual([await launcherContentService.getFile(7000001)]);
+  });
+
+  it("answers a blocked file as manual while the flag is off, without asking the CDN", async () => {
+    switchCdn(false);
+    serveFiles([makeContentFile({ downloadUrl: null })]);
+    serveProjects([createProject()]);
+
+    const { files } = await launcherContentService.getFiles([7000001]);
+
+    expect(files[0].download).toEqual({ servedBy: "manual", url: null });
+    expect(resolveCurseforgeCdnUrls).not.toHaveBeenCalled();
+  });
+
+  it("answers a blocked file with its CDN address while the flag is on, in one CDN lookup", async () => {
+    switchCdn(true);
+    serveFiles([
+      makeContentFile({ downloadUrl: null }),
+      makeContentFile({ id: 7000002 }),
+      makeContentFile({ id: 7000003, downloadUrl: null }),
+    ]);
+    serveProjects([createProject()]);
+    vi.mocked(resolveCurseforgeCdnUrls).mockResolvedValue(
+      new Map([
+        [7000001, BLOCKED_CDN_URL],
+        [7000003, null],
+      ]),
+    );
+
+    const { files } = await launcherContentService.getFiles([
+      7000001, 7000002, 7000003,
+    ]);
+
+    expect(files.map((file) => file.download)).toEqual([
+      { servedBy: "curseforge-cdn", url: BLOCKED_CDN_URL },
+      {
+        servedBy: "curseforge",
+        url: "https://edge.forgecdn.net/files/7000/1/create-1.21.1-6.0.10.jar",
+      },
+      { servedBy: "manual", url: null },
+    ]);
+    expect(resolveCurseforgeCdnUrls).toHaveBeenCalledTimes(1);
+    expect(
+      vi
+        .mocked(resolveCurseforgeCdnUrls)
+        .mock.calls[0][0].map((file) => file.fileId),
+    ).toEqual([7000001, 7000003]);
+  });
+
+  it("only asks CurseForge about files it has not just looked up", async () => {
+    serveFiles([makeContentFile(), makeContentFile({ id: 7000002 })]);
+    serveProjects([createProject()]);
+
+    await launcherContentService.getFile(7000001);
+    await launcherContentService.getFiles([7000001, 7000002, 7999999]);
+    await launcherContentService.getFiles([7000002, 7999999]);
+    await launcherContentService.getFile(7000002);
+
+    expect(vi.mocked(getContentFiles).mock.calls).toEqual([
+      [[7000001]],
+      [[7000002, 7999999]],
+    ]);
+    expect(getMods).toHaveBeenCalledTimes(1);
+  });
+
+  it("shares one CurseForge call with a lookup of the same file running at the same time", async () => {
+    serveFiles([makeContentFile(), makeContentFile({ id: 7000002 })]);
+    serveProjects([createProject()]);
+
+    const [file, batch] = await Promise.all([
+      launcherContentService.getFile(7000001),
+      launcherContentService.getFiles([7000001, 7000002]),
+    ]);
+
+    expect(batch.files[0]).toEqual(file);
+    expect(vi.mocked(getContentFiles).mock.calls).toEqual([
+      [[7000001]],
+      [[7000002]],
+    ]);
+  });
+
+  it("asks again about an unknown file after 10 minutes", async () => {
+    vi.useFakeTimers();
+    try {
+      serveFiles([]);
+
+      await launcherContentService.getFiles([7999999]);
+      await launcherContentService.getFiles([7999999]);
+      expect(getContentFiles).toHaveBeenCalledTimes(1);
+
+      vi.advanceTimersByTime(10 * 60_000 + 1);
+      await launcherContentService.getFiles([7999999]);
+
+      expect(getContentFiles).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("answers 503 when CurseForge fails, and asks again next time", async () => {
+    vi.mocked(getContentFiles)
+      .mockRejectedValueOnce(new Error("CurseForge getContentFiles failed"))
+      .mockResolvedValueOnce([makeContentFile()]);
+    serveProjects([createProject()]);
+
+    await expect(
+      launcherContentService.getFiles([7000001]),
+    ).rejects.toMatchObject({ statusCode: 503, code: "CONTENT_UNAVAILABLE" });
+    expect(
+      (await launcherContentService.getFiles([7000001])).files,
+    ).toHaveLength(1);
   });
 });
 
@@ -1100,8 +1427,8 @@ describe("LauncherContentService.getFileChangelog", () => {
   it.each([
     ["CurseForge does not know", () => []],
     [
-      "is no mod, resource pack or shader",
-      () => [makeProjectData(4471001, { classId: 4471 })],
+      "is no mod, resource pack, shader or modpack",
+      () => [makeProjectData(6945001, { classId: 6945 })],
     ],
   ])(
     "answers 404 when the project named %s, without asking for a changelog",
@@ -1109,7 +1436,7 @@ describe("LauncherContentService.getFileChangelog", () => {
       vi.mocked(getMods).mockResolvedValue(projects());
 
       await expect(
-        launcherContentService.getFileChangelog(7000001, 4471001),
+        launcherContentService.getFileChangelog(7000001, 6945001),
       ).rejects.toMatchObject({ statusCode: 404, code: "FILE_NOT_FOUND" });
       expect(getFileChangelog).not.toHaveBeenCalled();
       expect(getContentFiles).not.toHaveBeenCalled();
@@ -1296,9 +1623,9 @@ describe("LauncherContentService.identifyFingerprints", () => {
   it.each([
     ["has no SHA-1", makeContentFile({ sha1: null }), createProject()],
     [
-      "belongs to no mod, resource pack or shader",
-      makeContentFile({ projectId: 4471001 }),
-      makeProjectData(4471001, { classId: 4471 }),
+      "belongs to no mod, resource pack, shader or modpack",
+      makeContentFile({ projectId: 6945001 }),
+      makeProjectData(6945001, { classId: 6945 }),
     ],
   ])("counts a file that %s as unmatched", async (_label, file, project) => {
     vi.mocked(matchFingerprints).mockResolvedValue([{ fingerprint: 7, file }]);
@@ -1524,6 +1851,18 @@ describe("LauncherContentService with a store that fails", () => {
       (await launcherContentService.listFiles(328085, FIRST_PAGE)).files,
     ).toHaveLength(1);
     expect((await launcherContentService.getFile(7000001)).id).toBe("7000001");
+  });
+
+  it("still answers files by id, with one call for the files and one for the projects", async () => {
+    vi.mocked(getContentFiles).mockResolvedValue([makeContentFile()]);
+    vi.mocked(getMods).mockResolvedValue([createProject()]);
+
+    const answer = await launcherContentService.getFiles([7000001, 7999999]);
+
+    expect(answer.files.map((file) => file.id)).toEqual(["7000001"]);
+    expect(answer.unknownFileIds).toEqual(["7999999"]);
+    expect(getContentFiles).toHaveBeenCalledTimes(1);
+    expect(getMods).toHaveBeenCalledTimes(1);
   });
 
   it("still identifies fingerprints, with one call for the files and one for the projects", async () => {

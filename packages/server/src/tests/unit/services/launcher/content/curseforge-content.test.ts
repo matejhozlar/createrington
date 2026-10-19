@@ -8,15 +8,17 @@ import type {
   CurseForgeProjectData,
 } from "@/services/curseforge";
 import {
-  classForContentKind,
+  classForProjectKind,
   contentKindForClass,
   curseforgeFilePageUrl,
   curseforgeProjectUrl,
   describeLauncherProject,
+  projectKindForClass,
   sortFieldForContentSort,
   toLauncherContentCategory,
   toLauncherContentFile,
   toLauncherContentFileDetails,
+  toLauncherContentProject,
   toLauncherPackProject,
   toLauncherProject,
   toLauncherProjectDetails,
@@ -71,6 +73,21 @@ describe("contentKindForClass", () => {
 
   it.each([4471, 6945, 17, 0])("has no kind for class %i", (classId) => {
     expect(contentKindForClass(classId)).toBeNull();
+  });
+});
+
+describe("projectKindForClass", () => {
+  it.each([
+    [6, "mod"],
+    [12, "resourcepack"],
+    [6552, "shader"],
+    [4471, "modpack"],
+  ])("reads class %i as a %s", (classId, kind) => {
+    expect(projectKindForClass(classId)).toBe(kind);
+  });
+
+  it.each([6945, 17, 0])("has no kind for class %i", (classId) => {
+    expect(projectKindForClass(classId)).toBeNull();
   });
 });
 
@@ -268,8 +285,43 @@ describe("toLauncherProject", () => {
     );
   });
 
+  it.each([4471, 6945])(
+    "has no project for a class %i project, which goes in no instance folder",
+    (classId) => {
+      expect(toLauncherProject(makeProject({ classId }))).toBeNull();
+    },
+  );
+});
+
+describe("toLauncherContentProject", () => {
+  it("describes a modpack as a mod is described", () => {
+    expect(
+      toLauncherContentProject(
+        makeProject({
+          id: 925200,
+          classId: 4471,
+          slug: "all-the-mods-10",
+          name: "All the Mods 10",
+          websiteUrl: null,
+        }),
+      ),
+    ).toMatchObject({
+      source: "curseforge",
+      id: "925200",
+      kind: "modpack",
+      name: "All the Mods 10",
+      url: "https://www.curseforge.com/minecraft/modpacks/all-the-mods-10",
+    });
+  });
+
+  it("describes a mod as toLauncherProject does", () => {
+    expect(toLauncherContentProject(makeProject())).toEqual(
+      toLauncherProject(makeProject()),
+    );
+  });
+
   it("has no project for a class the launcher does not install", () => {
-    expect(toLauncherProject(makeProject({ classId: 4471 }))).toBeNull();
+    expect(toLauncherContentProject(makeProject({ classId: 6945 }))).toBeNull();
   });
 });
 
@@ -444,9 +496,15 @@ describe("toLauncherProjectDetails", () => {
     });
   });
 
-  it("has no details for a class the launcher does not install", () => {
+  it("describes a modpack in full", () => {
     expect(
       toLauncherProjectDetails(makeProjectData({ classId: 4471 }), "<p></p>"),
+    ).toMatchObject({ kind: "modpack" });
+  });
+
+  it("has no details for a class the launcher does not install", () => {
+    expect(
+      toLauncherProjectDetails(makeProjectData({ classId: 6945 }), "<p></p>"),
     ).toBeNull();
   });
 });
@@ -611,14 +669,15 @@ describe("toLauncherContentFile", () => {
   });
 });
 
-describe("classForContentKind", () => {
+describe("classForProjectKind", () => {
   it.each([
     ["mod", 6],
     ["resourcepack", 12],
     ["shader", 6552],
+    ["modpack", 4471],
   ] as const)("looks a %s up in class %i", (kind, classId) => {
-    expect(classForContentKind(kind)).toBe(classId);
-    expect(contentKindForClass(classId)).toBe(kind);
+    expect(classForProjectKind(kind)).toBe(classId);
+    expect(projectKindForClass(classId)).toBe(kind);
   });
 });
 

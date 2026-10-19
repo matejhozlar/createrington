@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import type {
   LauncherContentCategoriesData,
   LauncherContentChangelogData,
+  LauncherContentFileBatchData,
   LauncherContentFileData,
   LauncherContentFilesData,
   LauncherContentFingerprintsData,
@@ -16,6 +17,7 @@ import { buildPagination } from "@/trpc/utils";
 import type {
   ContentIdParams,
   FileChangelogQuery,
+  GetFilesBody,
   GetProjectsBody,
   IdentifyFingerprintsBody,
   ListCategoriesQuery,
@@ -116,6 +118,16 @@ export class LauncherContentController {
       data: { file: await launcherContentService.getFile(params.id) },
     };
     res.json(body);
+  }
+
+  static async filesById(_req: Request, res: Response): Promise<void> {
+    const { body } = getValidated<{ body: GetFilesBody }>(res);
+
+    const response: LauncherSuccessResponse<LauncherContentFileBatchData> = {
+      success: true,
+      data: await launcherContentService.getFiles(body.fileIds),
+    };
+    res.json(response);
   }
 
   static async fileChangelog(_req: Request, res: Response): Promise<void> {

@@ -21,6 +21,7 @@ const { LAUNCHER_SECRET, WEB_SECRET, mocks } = vi.hoisted(() => ({
     getProjectDetails: vi.fn(),
     listFiles: vi.fn(),
     getFile: vi.fn(),
+    getFiles: vi.fn(),
     getFileChangelog: vi.fn(),
     identifyFingerprints: vi.fn(),
   },
@@ -65,6 +66,7 @@ vi.mock("@/services/launcher/content/launcher-content.service", () => ({
     getProjectDetails: mocks.getProjectDetails,
     listFiles: mocks.listFiles,
     getFile: mocks.getFile,
+    getFiles: mocks.getFiles,
     getFileChangelog: mocks.getFileChangelog,
     identifyFingerprints: mocks.identifyFingerprints,
   },
@@ -167,6 +169,14 @@ async function postProjects(
   });
 }
 
+async function postFiles(body: unknown, headers: Record<string, string> = {}) {
+  return await fetch(`${baseUrl}/api/launcher/content/files`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...headers },
+    body: JSON.stringify(body),
+  });
+}
+
 async function postFingerprints(
   body: unknown,
   headers: Record<string, string> = {},
@@ -208,6 +218,10 @@ beforeEach(() => {
   mocks.getProjectDetails.mockResolvedValue(PROJECT_DETAILS);
   mocks.listFiles.mockResolvedValue({ files: [FILE], total: 11 });
   mocks.getFile.mockResolvedValue(FILE);
+  mocks.getFiles.mockResolvedValue({
+    files: [FILE],
+    unknownFileIds: ["999999999"],
+  });
   mocks.getFileChangelog.mockResolvedValue(CHANGELOG);
   mocks.identifyFingerprints.mockResolvedValue({
     matches: [{ fingerprint: 522093599, project: PROJECT, file: FILE }],
@@ -251,6 +265,20 @@ describe("GET /api/launcher/content/search", () => {
     });
   });
 
+  it("passes a modpack search on with its loader and version", async () => {
+    const res = await get(
+      "/search?kind=modpack&loader=neoforge&minecraftVersion=1.21.1",
+      newSession(),
+    );
+
+    expect(res.status).toBe(200);
+    expect(mocks.search.mock.calls[0]?.[0]).toMatchObject({
+      kind: "modpack",
+      loader: "neoforge",
+      minecraftVersion: "1.21.1",
+    });
+  });
+
   it("passes one category and the sort order on", async () => {
     await get("/search?categoryId=412&sort=newest", newSession());
 
@@ -290,7 +318,7 @@ describe("GET /api/launcher/content/search", () => {
       "more categories than CurseForge takes",
       `?${Array.from({ length: 11 }, (_, index) => `categoryId=${index + 1}`).join("&")}`,
     ],
-    ["an unknown kind", "?kind=modpack"],
+    ["an unknown kind", "?kind=datapack"],
     ["an unknown loader", "?loader=rift"],
     ["a version that is not a release", "?minecraftVersion=latest"],
     ["a text that is too long", `?query=${"a".repeat(101)}`],
@@ -363,7 +391,7 @@ describe("GET /api/launcher/content/categories", () => {
     });
   });
 
-  it.each(["mod", "resourcepack", "shader"])(
+  it.each(["mod", "resourcepack", "shader", "modpack"])(
     "lists the categories of the kind %s",
     async (kind) => {
       await get(`/categories?kind=${kind}`, newSession());
@@ -373,7 +401,7 @@ describe("GET /api/launcher/content/categories", () => {
   );
 
   it("refuses an unknown kind", async () => {
-    const res = await get("/categories?kind=modpack", newSession());
+    const res = await get("/categories?kind=datapack", newSession());
 
     expect(res.status).toBe(400);
     expect(mocks.listCategories).not.toHaveBeenCalled();
@@ -692,6 +720,74 @@ describe("GET /api/launcher/content/files/:id", () => {
 
     expect(res.status).toBe(401);
     expect(mocks.getFile).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/launcher/content/files", () => {
+  it("looks the files up by their ids", async () => {
+    const res = await postFiles(
+      { fileIds: ["7000001", "999999999"] },
+      newSession(),
+    );
+
+    expect(res.status).toBe(200);
+    expect(mocks.getFiles).toHaveBeenCalledWith([7000001, 999999999]);
+    expect(await res.json()).toEqual({
+      success: true,
+      data: { files: [FILE], unknownFileIds: ["999999999"] },
+    });
+  });
+
+  it("takes as many ids as a CurseForge manifest may name", async () => {
+    const fileIds = Array.from({ length: 1000 }, (_, index) =>
+      String(7000001 + index),
+    );
+
+    const res = await postFiles({ fileIds }, newSession());
+
+    expect(res.status).toBe(200);
+    expect(mocks.getFiles.mock.calls[0]?.[0]).toHaveLength(1000);
+  });
+
+  it.each([
+    ["no ids", {}],
+    ["an empty list", { fileIds: [] }],
+    ["an id that is a number", { fileIds: [7000001] }],
+    ["an id that is not a CurseForge id", { fileIds: ["AANobbMI"] }],
+    ["an id of zero", { fileIds: ["0"] }],
+    ["an id too large for CurseForge", { fileIds: ["2147483648"] }],
+    ["more ids than one request may carry", { fileIds: Array(1001).fill("1") }],
+  ])("refuses %s", async (_label, body) => {
+    const res = await postFiles(body, newSession());
+
+    expect(res.status).toBe(400);
+    expect(mocks.getFiles).not.toHaveBeenCalled();
+  });
+
+  it("passes the service's error code on when CurseForge cannot be asked", async () => {
+    mocks.getFiles.mockRejectedValue(
+      new AppError(
+        "CurseForge cannot be asked right now",
+        503,
+        true,
+        undefined,
+        {
+          code: "CONTENT_UNAVAILABLE",
+        },
+      ),
+    );
+
+    const res = await postFiles({ fileIds: ["7000001"] }, newSession());
+
+    expect(res.status).toBe(503);
+    expect((await res.json()).error.code).toBe("CONTENT_UNAVAILABLE");
+  });
+
+  it("answers 401 without a launcher session", async () => {
+    const res = await postFiles({ fileIds: ["7000001"] });
+
+    expect(res.status).toBe(401);
+    expect(mocks.getFiles).not.toHaveBeenCalled();
   });
 });
 

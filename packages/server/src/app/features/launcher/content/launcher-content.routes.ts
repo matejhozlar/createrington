@@ -7,6 +7,7 @@ import { LauncherContentController } from "./launcher-content.controller";
 import {
   ContentIdParamsSchema,
   FileChangelogQuerySchema,
+  GetFilesBodySchema,
   GetProjectsBodySchema,
   IdentifyFingerprintsBodySchema,
   ListCategoriesQuerySchema,
@@ -58,6 +59,13 @@ router.get(
   ...customRoute(
     [validate({ params: ContentIdParamsSchema, query: ListFilesQuerySchema })],
     LauncherContentController.files,
+  ),
+);
+router.post(
+  "/files",
+  ...customRoute(
+    [validate({ body: GetFilesBodySchema })],
+    LauncherContentController.filesById,
   ),
 );
 router.get(
