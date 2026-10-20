@@ -31,7 +31,6 @@ export function DeletePlayerModal({
   );
 
   const [reason, setReason] = useState("");
-  const [confirmText, setConfirmText] = useState("");
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
   const handleDeleteClick = () => {
@@ -107,32 +106,14 @@ export function DeletePlayerModal({
 
       <ConfirmDialog
         open={showConfirmDialog}
-        onOpenChange={(isOpen) => {
-          setShowConfirmDialog(isOpen);
-          if (!isOpen) setConfirmText("");
-        }}
+        onOpenChange={setShowConfirmDialog}
         title="Confirm Deletion"
-        description={
-          <>
-            This action is permanent and cannot be undone. Type{" "}
-            <span className="font-semibold">DELETE</span> to confirm.
-          </>
-        }
+        description="This action is permanent and cannot be undone."
         confirmLabel="Confirm"
         variant="destructive"
-        confirmDisabled={confirmText !== "DELETE"}
+        confirmToken="DELETE"
         onConfirm={handleConfirmDelete}
-      >
-        <Field>
-          <Input
-            type="text"
-            placeholder="Type DELETE to confirm"
-            value={confirmText}
-            onChange={(e) => setConfirmText(e.target.value)}
-            autoFocus
-          />
-        </Field>
-      </ConfirmDialog>
+      />
     </>
   );
 }

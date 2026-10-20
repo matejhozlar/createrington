@@ -1,7 +1,4 @@
-import { useState } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { Field, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
 import { useStickyValue } from "@/hooks/use-sticky-value";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { trpc, type RouterOutput } from "@/lib/trpc";
@@ -14,22 +11,16 @@ interface RemoveWarningModalProps {
   onSuccess: () => void;
 }
 
-const CONFIRM_TOKEN = "REMOVE";
-
 export function RemoveWarningModal({
   warning,
   onClose,
   onSuccess,
 }: RemoveWarningModalProps) {
-  const [confirmText, setConfirmText] = useState("");
   const removeWarning = trpc.admin.inactivity.removeManual.useMutation(
     useMutationToast({
       success: "Player removed",
       error: (error) => error.message || "Failed to remove player",
-      onSuccess: () => {
-        setConfirmText("");
-        onSuccess();
-      },
+      onSuccess,
     }),
   );
   const displayWarning = useStickyValue(warning);
@@ -43,10 +34,7 @@ export function RemoveWarningModal({
     <ConfirmDialog
       open={warning !== null}
       onOpenChange={(isOpen) => {
-        if (!isOpen) {
-          setConfirmText("");
-          onClose();
-        }
+        if (!isOpen) onClose();
       }}
       title={<span className="text-destructive">Remove Player Now</span>}
       description={
@@ -62,7 +50,7 @@ export function RemoveWarningModal({
       }
       confirmLabel="Remove Player"
       variant="destructive"
-      confirmDisabled={confirmText !== CONFIRM_TOKEN}
+      confirmToken="REMOVE"
       onConfirm={() =>
         warning ? removeWarning.mutateAsync({ id: warning.id }) : undefined
       }
@@ -91,20 +79,6 @@ export function RemoveWarningModal({
           </div>
         </div>
       )}
-      <Field>
-        <FieldLabel htmlFor="remove-confirm">
-          Type <span className="font-mono font-semibold">{CONFIRM_TOKEN}</span>{" "}
-          to confirm
-        </FieldLabel>
-        <Input
-          id="remove-confirm"
-          type="text"
-          placeholder={CONFIRM_TOKEN}
-          value={confirmText}
-          onChange={(e) => setConfirmText(e.target.value)}
-          autoFocus
-        />
-      </Field>
     </ConfirmDialog>
   );
 }

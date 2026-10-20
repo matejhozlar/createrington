@@ -1,7 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { Field, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
 import { CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { useStickyValue } from "@/hooks/use-sticky-value";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
@@ -17,25 +15,18 @@ interface RemoveGhostModalProps {
   onSuccess: () => void;
 }
 
-const CONFIRM_TOKEN = "REMOVE";
-
 export function RemoveGhostModal({
   ghost,
   onClose,
   canMutate,
   onSuccess,
 }: RemoveGhostModalProps) {
-  const [confirmText, setConfirmText] = useState("");
-
   const verifyGhost = trpc.admin.inactivity.ghosts.verify.useMutation();
   const removeGhost = trpc.admin.inactivity.ghosts.remove.useMutation(
     useMutationToast({
       success: "Ghost member removed",
       error: (error) => error.message || "Failed to remove ghost",
-      onSuccess: () => {
-        setConfirmText("");
-        onSuccess();
-      },
+      onSuccess,
     }),
   );
   const displayGhost = useStickyValue(ghost);
@@ -54,20 +45,13 @@ export function RemoveGhostModal({
   const stillGone = verifyGhost.data?.stillGone === true;
   const rejoined = verifyGhost.data?.stillGone === false;
 
-  const canConfirm =
-    canMutate &&
-    stillGone &&
-    confirmText === CONFIRM_TOKEN &&
-    !verifyGhost.isPending;
+  const canConfirm = canMutate && stillGone && !verifyGhost.isPending;
 
   return (
     <ConfirmDialog
       open={ghost !== null}
       onOpenChange={(isOpen) => {
-        if (!isOpen) {
-          setConfirmText("");
-          onClose();
-        }
+        if (!isOpen) onClose();
       }}
       title={<span className="text-destructive">Remove Ghost Player</span>}
       description={
@@ -85,6 +69,7 @@ export function RemoveGhostModal({
       confirmLabel="Remove Ghost"
       variant="destructive"
       confirmDisabled={!canConfirm}
+      confirmToken="REMOVE"
       onConfirm={() =>
         ghost
           ? removeGhost.mutateAsync({ discordId: ghost.discordId })
@@ -163,22 +148,6 @@ export function RemoveGhostModal({
           </div>
         </div>
       )}
-
-      <Field>
-        <FieldLabel htmlFor="remove-ghost-confirm">
-          Type <span className="font-mono font-semibold">{CONFIRM_TOKEN}</span>{" "}
-          to confirm
-        </FieldLabel>
-        <Input
-          id="remove-ghost-confirm"
-          type="text"
-          placeholder={CONFIRM_TOKEN}
-          value={confirmText}
-          onChange={(e) => setConfirmText(e.target.value)}
-          disabled={!stillGone || verifyGhost.isPending}
-          autoFocus
-        />
-      </Field>
     </ConfirmDialog>
   );
 }
