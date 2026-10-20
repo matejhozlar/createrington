@@ -28,12 +28,19 @@ function isTextField(element: HTMLElement) {
   return element.isContentEditable;
 }
 
+function canTakeFocus(element: HTMLElement) {
+  return element.tabIndex >= 0 && element.getClientRects().length > 0;
+}
+
 export function focusTextFieldOnOpen(event: Event) {
   if (event.defaultPrevented) return;
   event.preventDefault();
   const content = event.currentTarget;
   if (!(content instanceof HTMLElement)) return;
-  const first = content.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
+  const first = [
+    ...content.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
+  ].find(canTakeFocus);
   const target = first && isTextField(first) ? first : content;
   target.focus({ preventScroll: true });
+  if (document.activeElement !== target) content.focus({ preventScroll: true });
 }
