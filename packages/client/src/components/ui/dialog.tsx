@@ -2,6 +2,7 @@ import * as React from "react";
 import { XIcon } from "lucide-react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 
+import { focusTextFieldOnOpen } from "@/lib/dialogFocus";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
@@ -49,6 +50,7 @@ function DialogContent({
   className,
   children,
   showCloseButton = true,
+  onOpenAutoFocus,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean;
@@ -63,6 +65,10 @@ function DialogContent({
           className,
         )}
         {...props}
+        onOpenAutoFocus={(event) => {
+          onOpenAutoFocus?.(event);
+          focusTextFieldOnOpen(event);
+        }}
       >
         {children}
         {showCloseButton && (
