@@ -19,7 +19,7 @@ import { PlayerLabel } from "@/components/player-label";
 import { RefreshCw, RotateCcw, Search, X } from "lucide-react";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 
 interface MaintenanceSettingsDialogProps {
   serverId: number;
@@ -154,7 +154,6 @@ function MaintenanceSettingsForm({
   settings,
   onClose,
 }: MaintenanceSettingsFormProps) {
-  const toast = useToastActions();
   const utils = trpc.useUtils();
 
   const [motd, setMotd] = useState(settings.motd ?? settings.presets.motd);
@@ -173,51 +172,50 @@ function MaintenanceSettingsForm({
     utils.admin.servers.maintenanceSettings.invalidate({ serverId });
 
   const saveMutation = trpc.admin.servers.updateMaintenanceSettings.useMutation(
-    {
-      onSuccess: ({ pushed }) => {
-        toast.success(
-          pushed
-            ? "Maintenance messages saved and pushed to the server"
-            : "Maintenance messages saved; the server is unreachable and will receive them when it's back",
-        );
+    useMutationToast({
+      success: ({ pushed }) =>
+        pushed
+          ? "Maintenance messages saved and pushed to the server"
+          : "Maintenance messages saved; the server is unreachable and will receive them when it's back",
+      onSuccess: () => {
         invalidateSettings();
       },
-      onError: (err: { message: string }) => toast.error(err.message),
-    },
+    }),
   );
 
   const addMutation =
-    trpc.admin.servers.addMaintenanceAllowedPlayer.useMutation({
-      onSuccess: ({ username, pushed }) => {
-        toast.success(
+    trpc.admin.servers.addMaintenanceAllowedPlayer.useMutation(
+      useMutationToast({
+        success: ({ username, pushed }) =>
           pushed
             ? `${username} can now join during maintenance`
             : `${username} added; the server is unreachable and will be synced when it's back`,
-        );
-        setQuery("");
-        invalidateSettings();
-      },
-      onError: (err: { message: string }) => toast.error(err.message),
-    });
+        onSuccess: () => {
+          setQuery("");
+          invalidateSettings();
+        },
+      }),
+    );
 
   const removeMutation =
-    trpc.admin.servers.removeMaintenanceAllowedPlayer.useMutation({
-      onSuccess: ({ username }) => {
-        toast.success(`${username} removed from the allow list`);
-        invalidateSettings();
-      },
-      onError: (err: { message: string }) => toast.error(err.message),
-    });
+    trpc.admin.servers.removeMaintenanceAllowedPlayer.useMutation(
+      useMutationToast({
+        success: ({ username }) => `${username} removed from the allow list`,
+        onSuccess: () => {
+          invalidateSettings();
+        },
+      }),
+    );
 
-  const pushMutation = trpc.admin.servers.pushMaintenanceSettings.useMutation({
-    onSuccess: ({ added, removed }) => {
-      toast.success(
+  const pushMutation = trpc.admin.servers.pushMaintenanceSettings.useMutation(
+    useMutationToast({
+      success: ({ added, removed }) =>
         `Settings pushed to the server (+${added.length} / -${removed.length} allowed players)`,
-      );
-      utils.admin.servers.maintenanceStatus.invalidate({ serverId });
-    },
-    onError: (err: { message: string }) => toast.error(err.message),
-  });
+      onSuccess: () => {
+        utils.admin.servers.maintenanceStatus.invalidate({ serverId });
+      },
+    }),
+  );
 
   const allowedUuids = new Set(settings.allowedPlayers.map((p) => p.uuid));
   const results = (searchQuery.data?.players ?? []).filter(

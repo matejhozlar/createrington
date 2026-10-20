@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import {
   Monitor,
   Smartphone,
@@ -319,15 +320,15 @@ function ExportDataButton() {
 /** Opens a confirmation dialog requiring the user to type a phrase before permanently deleting their account */
 function DeleteAccountButton() {
   const { logout } = useAuth();
-  const toast = useToastActions();
   const [open, setOpen] = useState(false);
   const [confirmation, setConfirmation] = useState("");
 
-  const deleteMutation = trpc.user.account.deleteAccount.useMutation({
-    onSuccess: () => logout(),
-    onError: (error) =>
-      toast.error(error.message || "Failed to delete account"),
-  });
+  const deleteMutation = trpc.user.account.deleteAccount.useMutation(
+    useMutationToast({
+      error: (err) => err.message || "Failed to delete account",
+      onSuccess: () => logout(),
+    }),
+  );
 
   const isValid = confirmation === "DELETE MY ACCOUNT";
 

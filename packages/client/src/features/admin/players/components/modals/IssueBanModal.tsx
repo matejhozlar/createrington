@@ -13,6 +13,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { AlertTriangle } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { AdminActionModal } from "./AdminActionModal";
 
 interface IssueBanModalProps {
@@ -33,12 +34,22 @@ export function IssueBanModal({
   onSuccess,
 }: IssueBanModalProps) {
   const toast = useToastActions();
-  const issueTemporaryBan = trpc.admin.players.bans.issueTemporary.useMutation({
-    onError: (error) => toast.error(error.message, "Failed to issue ban"),
-  });
-  const issuePermanentBan = trpc.admin.players.bans.issuePermanent.useMutation({
-    onError: (error) => toast.error(error.message, "Failed to issue ban"),
-  });
+  const issueTemporaryBan = trpc.admin.players.bans.issueTemporary.useMutation(
+    useMutationToast({
+      error: (err) => ({
+        title: "Failed to issue ban",
+        description: err.message,
+      }),
+    }),
+  );
+  const issuePermanentBan = trpc.admin.players.bans.issuePermanent.useMutation(
+    useMutationToast({
+      error: (err) => ({
+        title: "Failed to issue ban",
+        description: err.message,
+      }),
+    }),
+  );
 
   const [banType, setBanType] = useState<BanType>("temporary");
   const [reason, setReason] = useState("");

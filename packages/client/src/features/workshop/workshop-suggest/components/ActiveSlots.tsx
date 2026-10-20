@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { X } from "lucide-react";
 import { trpc, type RouterOutput } from "@/lib/trpc";
-import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useStickyValue } from "@/hooks/use-sticky-value";
 import { Badge } from "@/components/ui/badge";
@@ -27,7 +27,6 @@ export function ActiveSlots({
   suggestions: Suggestion[];
   isOpen: boolean;
 }) {
-  const toast = useToastActions();
   const utils = trpc.useUtils();
 
   const [confirmMod, setConfirmMod] = useState<Suggestion | null>(null);
@@ -36,20 +35,21 @@ export function ActiveSlots({
   const pending = suggestions.filter((m) => m.status === "pending");
   const emptySlots = Math.max(0, workshop.maxModsPerUser - pending.length);
 
-  const removeMutation = trpc.user.workshops.removeSuggestion.useMutation({
-    onSuccess: () => {
-      toast.success("Suggestion removed");
-      utils.user.workshops.mySuggestions.invalidate({
-        workshopId: workshop.id,
-      });
-      utils.user.workshops.mySuggestionHistory.invalidate();
-      utils.user.workshops.searchProjects.invalidate();
-      utils.user.workshops.get.invalidate();
-      utils.user.workshops.list.invalidate();
-      utils.user.workshops.myUpvotes.invalidate({ workshopId: workshop.id });
-    },
-    onError: (err) => toast.error(err.message),
-  });
+  const removeMutation = trpc.user.workshops.removeSuggestion.useMutation(
+    useMutationToast({
+      success: "Suggestion removed",
+      onSuccess: () => {
+        utils.user.workshops.mySuggestions.invalidate({
+          workshopId: workshop.id,
+        });
+        utils.user.workshops.mySuggestionHistory.invalidate();
+        utils.user.workshops.searchProjects.invalidate();
+        utils.user.workshops.get.invalidate();
+        utils.user.workshops.list.invalidate();
+        utils.user.workshops.myUpvotes.invalidate({ workshopId: workshop.id });
+      },
+    }),
+  );
 
   return (
     <section>

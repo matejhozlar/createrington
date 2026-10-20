@@ -3,7 +3,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { useStickyValue } from "@/hooks/use-sticky-value";
-import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 
 type Warning = RouterOutput["admin"]["inactivity"]["list"]["warnings"][number];
@@ -21,16 +21,17 @@ export function RemoveWarningModal({
   onClose,
   onSuccess,
 }: RemoveWarningModalProps) {
-  const toast = useToastActions();
   const [confirmText, setConfirmText] = useState("");
-  const removeWarning = trpc.admin.inactivity.removeManual.useMutation({
-    onSuccess: () => {
-      toast.success("Player removed");
-      setConfirmText("");
-      onSuccess();
-    },
-    onError: (error) => toast.error(error.message || "Failed to remove player"),
-  });
+  const removeWarning = trpc.admin.inactivity.removeManual.useMutation(
+    useMutationToast({
+      success: "Player removed",
+      error: (error) => error.message || "Failed to remove player",
+      onSuccess: () => {
+        setConfirmText("");
+        onSuccess();
+      },
+    }),
+  );
   const displayWarning = useStickyValue(warning);
 
   const displayName = displayWarning

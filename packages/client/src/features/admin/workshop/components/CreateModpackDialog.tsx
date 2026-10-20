@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -27,14 +28,15 @@ export function CreateModpackDialog({
   const [description, setDescription] = useState("");
   const [publishedPackId, setPublishedPackId] = useState("");
 
-  const createMutation = trpc.admin.modpacks.create.useMutation({
-    onSuccess: (modpack) => {
-      toast.success(`Modpack "${modpack.name}" created`);
-      utils.admin.modpacks.list.invalidate();
-      onOpenChange(false);
-    },
-    onError: (err) => toast.error(err.message),
-  });
+  const createMutation = trpc.admin.modpacks.create.useMutation(
+    useMutationToast({
+      success: (modpack) => `Modpack "${modpack.name}" created`,
+      onSuccess: () => {
+        utils.admin.modpacks.list.invalidate();
+        onOpenChange(false);
+      },
+    }),
+  );
 
   const handleCreate = () => {
     const validationError = modpackFormError(publishedPackId);

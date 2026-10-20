@@ -14,6 +14,7 @@ import {
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useStickyValue } from "@/hooks/use-sticky-value";
 import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 
 type WaitlistEntry =
@@ -36,16 +37,18 @@ export function DeleteWaitlistModal({
   const [confirmText, setConfirmText] = useState("");
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
-  const deleteEntry = trpc.admin.waitlists.delete.useMutation({
-    onSuccess: () => {
-      toast.success("Waitlist entry deleted");
-      setReason("");
-      setConfirmText("");
-      onSuccess();
-      onClose();
-    },
-    onError: () => toast.error("Failed to delete waitlist entry"),
-  });
+  const deleteEntry = trpc.admin.waitlists.delete.useMutation(
+    useMutationToast({
+      success: "Waitlist entry deleted",
+      error: "Failed to delete waitlist entry",
+      onSuccess: () => {
+        setReason("");
+        setConfirmText("");
+        onSuccess();
+        onClose();
+      },
+    }),
+  );
 
   const displayEntry = useStickyValue(entry);
 

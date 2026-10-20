@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { MessageSquare, Lock, RefreshCw, Trash2 } from "lucide-react";
 import { mcHeadsAvatar } from "@/lib/external-urls";
 import { trpc, type RouterOutput } from "@/lib/trpc";
-import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { describeEntryRules } from "./format";
 import { DeletePromptModal } from "./components/DeletePromptModal";
 
@@ -60,7 +60,6 @@ function groupByResponder(responses: ResponseRow[]): ResponderGroup[] {
 export function PromptDetail() {
   const { id } = useParams<{ id: string }>();
   const promptId = id ? parseInt(id, 10) : NaN;
-  const toast = useToastActions();
   const navigate = useNavigate();
   const [deleteOpen, setDeleteOpen] = useState(false);
 
@@ -69,13 +68,14 @@ export function PromptDetail() {
     { enabled: Number.isFinite(promptId) },
   );
 
-  const closeMutation = trpc.admin.prompts.close.useMutation({
-    onSuccess: () => {
-      toast.success("Prompt closed");
-      void detailQuery.refetch();
-    },
-    onError: (err) => toast.error(err.message),
-  });
+  const closeMutation = trpc.admin.prompts.close.useMutation(
+    useMutationToast({
+      success: "Prompt closed",
+      onSuccess: () => {
+        void detailQuery.refetch();
+      },
+    }),
+  );
 
   if (!Number.isFinite(promptId)) {
     return <div className="p-6 text-muted-foreground">Invalid prompt id.</div>;

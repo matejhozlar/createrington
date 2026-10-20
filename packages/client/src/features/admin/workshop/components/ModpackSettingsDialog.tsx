@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -49,18 +50,19 @@ export function ModpackSettingsDialog({
   );
   const [iconUrl, setIconUrl] = useState(modpack.iconUrl ?? "");
 
-  const updateMutation = trpc.admin.modpacks.update.useMutation({
-    onSuccess: () => {
-      toast.success("Modpack settings saved");
-      utils.admin.modpacks.list.invalidate();
-      utils.admin.workshops.listPackMods.invalidate();
-      utils.admin.workshops.getAttention.invalidate();
-      utils.user.workshops.list.invalidate();
-      utils.user.workshops.get.invalidate();
-      onOpenChange(false);
-    },
-    onError: (err) => toast.error(err.message),
-  });
+  const updateMutation = trpc.admin.modpacks.update.useMutation(
+    useMutationToast({
+      success: "Modpack settings saved",
+      onSuccess: () => {
+        utils.admin.modpacks.list.invalidate();
+        utils.admin.workshops.listPackMods.invalidate();
+        utils.admin.workshops.getAttention.invalidate();
+        utils.user.workshops.list.invalidate();
+        utils.user.workshops.get.invalidate();
+        onOpenChange(false);
+      },
+    }),
+  );
 
   const handleSave = () => {
     const validationError = modpackFormError(

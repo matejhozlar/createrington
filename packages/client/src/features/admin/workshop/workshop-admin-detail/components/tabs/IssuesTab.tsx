@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { CircleCheck, ExternalLink, Eye, PackageMinus } from "lucide-react";
 import { trpc } from "@/lib/trpc";
-import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { useStickyValue } from "@/hooks/use-sticky-value";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -87,20 +87,20 @@ export function IssuesTab({
   envDisplay: EnvironmentDisplay;
   onSetEnvironment: (projectId: number, environment: ModEnvironment) => void;
 }) {
-  const toast = useToastActions();
   const [removeTarget, setRemoveTarget] = useState<DroppedItem | null>(null);
   const displayTarget = useStickyValue(removeTarget);
 
-  const removeMutation = trpc.admin.workshops.removeDroppedMember.useMutation({
-    onSuccess: () => {
-      toast.success("Removed from the pack");
-      onResolved();
-    },
-    onError: (err) => {
-      toast.error(err.message);
-      onResolved();
-    },
-  });
+  const removeMutation = trpc.admin.workshops.removeDroppedMember.useMutation(
+    useMutationToast({
+      success: "Removed from the pack",
+      onSuccess: () => {
+        onResolved();
+      },
+      onError: () => {
+        onResolved();
+      },
+    }),
+  );
 
   const columns: DataTableColumn<AttentionItem>[] = [
     {
