@@ -13,6 +13,7 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 
 const DONATION_TIERS = [
   { amountCents: 300, label: "€3" },
@@ -86,45 +87,53 @@ export function Donate() {
   const isSupporter =
     history.data?.some((d) => d.status === "completed") ?? false;
   const cancelSubscription = trpc.user.donations.cancelSubscription.useMutation(
-    {
-      onSuccess: () => {
-        toast.success(
-          "Subscription cancelled",
+    useMutationToast({
+      success: {
+        title: "Subscription cancelled",
+        description:
           "Your subscription will end at the end of the current billing period.",
-        );
+      },
+      error: (err) => ({
+        title: "Failed to cancel subscription",
+        description: err.message,
+      }),
+      onSuccess: () => {
         subscription.refetch();
       },
-      onError: (err) => {
-        toast.error("Failed to cancel subscription", err.message);
-      },
-    },
+    }),
   );
 
   const reactivateSubscription =
-    trpc.user.donations.reactivateSubscription.useMutation({
-      onSuccess: () => {
-        toast.success(
-          "Subscription reactivated",
-          "Your subscription will continue as normal.",
-        );
-        subscription.refetch();
-      },
-      onError: (err) => {
-        toast.error("Failed to reactivate subscription", err.message);
-      },
-    });
+    trpc.user.donations.reactivateSubscription.useMutation(
+      useMutationToast({
+        success: {
+          title: "Subscription reactivated",
+          description: "Your subscription will continue as normal.",
+        },
+        error: (err) => ({
+          title: "Failed to reactivate subscription",
+          description: err.message,
+        }),
+        onSuccess: () => {
+          subscription.refetch();
+        },
+      }),
+    );
 
-  const createCheckout = trpc.user.donations.createCheckout.useMutation({
-    onSuccess: ({ url }) => {
-      const { hostname } = new URL(url);
-      if (hostname !== "stripe.com" && !hostname.endsWith(".stripe.com"))
-        return;
-      window.location.href = url;
-    },
-    onError: (err) => {
-      toast.error("Failed to start checkout", err.message);
-    },
-  });
+  const createCheckout = trpc.user.donations.createCheckout.useMutation(
+    useMutationToast({
+      error: (err) => ({
+        title: "Failed to start checkout",
+        description: err.message,
+      }),
+      onSuccess: ({ url }) => {
+        const { hostname } = new URL(url);
+        if (hostname !== "stripe.com" && !hostname.endsWith(".stripe.com"))
+          return;
+        window.location.href = url;
+      },
+    }),
+  );
 
   const donationCents = isCustom
     ? Math.round(Number(customValue) * 100)
@@ -134,8 +143,8 @@ export function Donate() {
   function handleDonate() {
     if (!isValidAmount) {
       toast.error(
-        "Invalid amount",
         "Please enter an amount between €1 and €1,000",
+        "Invalid amount",
       );
       return;
     }

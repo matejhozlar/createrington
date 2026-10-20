@@ -3,6 +3,7 @@ import { FileUp, Package, RefreshCw, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import {
   modpackManifestUploadSchema,
   type ModpackManifestUpload,
@@ -166,33 +167,37 @@ export function InPackTab({
     { enabled: releaseId !== null },
   );
 
-  const reconcileMutation = trpc.admin.modpacks.reconcile.useMutation({
-    onSuccess: () => {
-      toast.success("Checked against the published pack");
-      onReconciled();
-      utils.admin.modpacks.listReleases.invalidate({ modpackId });
-    },
-    onError: (err) => toast.error(err.message),
-  });
+  const reconcileMutation = trpc.admin.modpacks.reconcile.useMutation(
+    useMutationToast({
+      success: "Checked against the published pack",
+      onSuccess: () => {
+        onReconciled();
+        utils.admin.modpacks.listReleases.invalidate({ modpackId });
+      },
+    }),
+  );
 
-  const seedMutation = trpc.admin.modpacks.seedFromManifest.useMutation({
-    onSuccess: (result) => {
-      if (result.unresolvedProjectIds.length > 0) {
-        toast.warning(
-          `Imported ${result.memberCount} mods, ${result.unresolvedProjectIds.length} could not be resolved on CurseForge`,
-        );
-      } else if (result.duplicateProjectIds.length > 0) {
-        toast.warning(
-          `Imported ${result.memberCount} mods, ${result.duplicateProjectIds.length} listed more than once in the manifest and were merged`,
-        );
-      } else {
-        toast.success(`Imported ${result.memberCount} mods from the manifest`);
-      }
-      onReconciled();
-      utils.admin.modpacks.list.invalidate();
-    },
-    onError: (err) => toast.error(err.message),
-  });
+  const seedMutation = trpc.admin.modpacks.seedFromManifest.useMutation(
+    useMutationToast({
+      onSuccess: (result) => {
+        if (result.unresolvedProjectIds.length > 0) {
+          toast.warning(
+            `Imported ${result.memberCount} mods, ${result.unresolvedProjectIds.length} could not be resolved on CurseForge`,
+          );
+        } else if (result.duplicateProjectIds.length > 0) {
+          toast.warning(
+            `Imported ${result.memberCount} mods, ${result.duplicateProjectIds.length} listed more than once in the manifest and were merged`,
+          );
+        } else {
+          toast.success(
+            `Imported ${result.memberCount} mods from the manifest`,
+          );
+        }
+        onReconciled();
+        utils.admin.modpacks.list.invalidate();
+      },
+    }),
+  );
 
   const handleManifestFile = async (file: File) => {
     if (file.size > MAX_MANIFEST_BYTES) {

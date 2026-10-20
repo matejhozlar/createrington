@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { PinnedTools } from "./components/PinnedTools";
 import { ToolCard } from "./components/ToolCard";
 import { MAX_PINNED_TOOLS, usePinnedTools } from "./hooks/use-pinned-tools";
@@ -181,14 +182,12 @@ export function AdminTools() {
   const [category, setCategory] = useState(ALL_CATEGORY);
   const [pinned, togglePin] = usePinnedTools(TOOL_HREFS);
 
-  const refetchMutation = trpc.admin.refetchDiscordEntities.useMutation({
-    onSuccess: (data) => {
-      toast.success(
+  const refetchMutation = trpc.admin.refetchDiscordEntities.useMutation(
+    useMutationToast({
+      success: (data) =>
         `Refreshed: ${data.roles} roles, ${data.channels} channels, ${data.categories} categories`,
-      );
-    },
-    onError: (err) => toast.error(err.message),
-  });
+    }),
+  );
 
   const needle = query.trim().toLowerCase();
   const filtered = TOOLS.filter(

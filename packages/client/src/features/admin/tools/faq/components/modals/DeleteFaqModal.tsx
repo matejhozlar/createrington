@@ -1,6 +1,6 @@
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useStickyValue } from "@/hooks/use-sticky-value";
-import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 
 type FaqEntry = RouterOutput["admin"]["faq"]["list"]["entries"][number];
@@ -16,14 +16,15 @@ export function DeleteFaqModal({
   onClose,
   onSuccess,
 }: DeleteFaqModalProps) {
-  const toast = useToastActions();
-  const deleteEntry = trpc.admin.faq.delete.useMutation({
-    onSuccess: () => {
-      toast.success("FAQ entry deleted");
-      onSuccess();
-    },
-    onError: () => toast.error("Failed to delete FAQ entry"),
-  });
+  const deleteEntry = trpc.admin.faq.delete.useMutation(
+    useMutationToast({
+      success: "FAQ entry deleted",
+      error: "Failed to delete FAQ entry",
+      onSuccess: () => {
+        onSuccess();
+      },
+    }),
+  );
   const displayEntry = useStickyValue(entry);
 
   return (

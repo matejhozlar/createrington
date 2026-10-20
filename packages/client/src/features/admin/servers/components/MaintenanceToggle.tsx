@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { useCountdown } from "@/hooks/use-countdown";
 import { MaintenanceSettingsDialog } from "./MaintenanceSettingsDialog";
 
@@ -101,23 +102,21 @@ export function MaintenanceToggle({
     },
   });
 
-  const scheduleMutation = trpc.admin.servers.scheduleMaintenance.useMutation({
-    onSuccess: () => {
-      toast.success("Maintenance scheduled");
-      invalidate();
-      setDialogOpen(false);
-      setScheduledAt("");
-      setEstimatedMinutes(30);
-    },
-    onError: (err: { message: string }) => toast.error(err.message),
-  });
+  const scheduleMutation = trpc.admin.servers.scheduleMaintenance.useMutation(
+    useMutationToast({
+      success: "Maintenance scheduled",
+      onSuccess: () => {
+        invalidate();
+        setDialogOpen(false);
+        setScheduledAt("");
+        setEstimatedMinutes(30);
+      },
+    }),
+  );
 
   const cancelMutation =
     trpc.admin.servers.cancelScheduledMaintenance.useMutation({
-      onSuccess: () => {
-        toast.success("Scheduled maintenance cancelled");
-      },
-      onError: (err: { message: string }) => toast.error(err.message),
+      ...useMutationToast({ success: "Scheduled maintenance cancelled" }),
       onSettled: () => {
         invalidate();
       },

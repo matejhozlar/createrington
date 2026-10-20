@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { Minus, Plus } from "lucide-react";
 
 interface BoostDialogProps {
@@ -49,19 +50,18 @@ export function BoostDialog({
   const totalCost = units * boostUnitPrice;
   const canAfford = balance >= totalCost;
 
-  const boostMutation = trpc.user.structurePacks.boost.useMutation({
-    onSuccess: () => {
-      toast.success(
-        `Boosted "${packName}" with ${units} unit${units > 1 ? "s" : ""}`,
-      );
-      utils.public.structurePacks.pool.invalidate();
-      utils.user.structurePacks.myBoosts.invalidate();
-      utils.user.account.balance.invalidate();
-      onOpenChange(false);
-      setUnits(1);
-    },
-    onError: (err) => toast.error(err.message),
-  });
+  const boostMutation = trpc.user.structurePacks.boost.useMutation(
+    useMutationToast({
+      success: `Boosted "${packName}" with ${units} unit${units > 1 ? "s" : ""}`,
+      onSuccess: () => {
+        utils.public.structurePacks.pool.invalidate();
+        utils.user.structurePacks.myBoosts.invalidate();
+        utils.user.account.balance.invalidate();
+        onOpenChange(false);
+        setUnits(1);
+      },
+    }),
+  );
 
   const handleConfirm = () => {
     if (!canAfford) {

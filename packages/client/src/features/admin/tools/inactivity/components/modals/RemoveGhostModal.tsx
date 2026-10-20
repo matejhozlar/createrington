@@ -4,7 +4,7 @@ import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { useStickyValue } from "@/hooks/use-sticky-value";
-import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 
 type Ghost =
@@ -25,18 +25,19 @@ export function RemoveGhostModal({
   canMutate,
   onSuccess,
 }: RemoveGhostModalProps) {
-  const toast = useToastActions();
   const [confirmText, setConfirmText] = useState("");
 
   const verifyGhost = trpc.admin.inactivity.ghosts.verify.useMutation();
-  const removeGhost = trpc.admin.inactivity.ghosts.remove.useMutation({
-    onSuccess: () => {
-      toast.success("Ghost member removed");
-      setConfirmText("");
-      onSuccess();
-    },
-    onError: (error) => toast.error(error.message || "Failed to remove ghost"),
-  });
+  const removeGhost = trpc.admin.inactivity.ghosts.remove.useMutation(
+    useMutationToast({
+      success: "Ghost member removed",
+      error: (error) => error.message || "Failed to remove ghost",
+      onSuccess: () => {
+        setConfirmText("");
+        onSuccess();
+      },
+    }),
+  );
   const displayGhost = useStickyValue(ghost);
 
   const discordId = ghost?.discordId ?? null;

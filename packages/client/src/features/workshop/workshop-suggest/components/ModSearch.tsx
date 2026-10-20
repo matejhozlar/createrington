@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Info, Loader2, Search } from "lucide-react";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ClearButton } from "../../components/ClearButton";
@@ -23,7 +23,6 @@ export function ModSearch({
   packProjectIds: Set<number>;
   initialQuery: string;
 }) {
-  const toast = useToastActions();
   const utils = trpc.useUtils();
   const containerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -61,22 +60,23 @@ export function ModSearch({
     return () => document.removeEventListener("pointerdown", onPointerDown);
   }, [dropdownOpen]);
 
-  const suggestMutation = trpc.user.workshops.suggestMod.useMutation({
-    onSuccess: (mod) => {
-      toast.success(`"${mod.project.name}" suggested, awaiting review`);
-      setNoteFor(null);
-      setNote("");
-      utils.user.workshops.mySuggestions.invalidate({
-        workshopId: workshop.id,
-      });
-      utils.user.workshops.mySuggestionHistory.invalidate();
-      utils.user.workshops.searchProjects.invalidate();
-      utils.user.workshops.get.invalidate();
-      utils.user.workshops.list.invalidate();
-      utils.user.workshops.myUpvotes.invalidate({ workshopId: workshop.id });
-    },
-    onError: (err) => toast.error(err.message),
-  });
+  const suggestMutation = trpc.user.workshops.suggestMod.useMutation(
+    useMutationToast({
+      success: (mod) => `"${mod.project.name}" suggested, awaiting review`,
+      onSuccess: () => {
+        setNoteFor(null);
+        setNote("");
+        utils.user.workshops.mySuggestions.invalidate({
+          workshopId: workshop.id,
+        });
+        utils.user.workshops.mySuggestionHistory.invalidate();
+        utils.user.workshops.searchProjects.invalidate();
+        utils.user.workshops.get.invalidate();
+        utils.user.workshops.list.invalidate();
+        utils.user.workshops.myUpvotes.invalidate({ workshopId: workshop.id });
+      },
+    }),
+  );
 
   const noteReady = note.trim().length >= 10;
   const confirmSuggest = (projectId: number) => {

@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { AdminActionModal } from "./AdminActionModal";
 
 type PlayerDetailed = RouterOutput["admin"]["players"]["players"]["get"];
@@ -25,9 +26,9 @@ export function DeletePlayerModal({
   const toast = useToastActions();
   const utils = trpc.useUtils();
 
-  const deletePlayer = trpc.admin.players.players.delete.useMutation({
-    onError: () => toast.error("Failed to delete player"),
-  });
+  const deletePlayer = trpc.admin.players.players.delete.useMutation(
+    useMutationToast({ error: "Failed to delete player" }),
+  );
 
   const [reason, setReason] = useState("");
   const [confirmText, setConfirmText] = useState("");

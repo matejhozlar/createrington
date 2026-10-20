@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Package, Pencil, Plus, Trash2 } from "lucide-react";
 import { trpc, type RouterOutput } from "@/lib/trpc";
-import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -117,7 +117,6 @@ function deleteLabel(modpack: AdminModpackRow): string {
 }
 
 export function ModpacksCard() {
-  const toast = useToastActions();
   const utils = trpc.useUtils();
 
   const modpacksQuery = trpc.admin.modpacks.list.useQuery();
@@ -133,14 +132,15 @@ export function ModpacksCard() {
   );
   const displayDeleteTarget = useStickyValue(deleteTarget);
 
-  const deleteMutation = trpc.admin.modpacks.delete.useMutation({
-    onSuccess: () => {
-      toast.success("Modpack deleted");
-      utils.admin.modpacks.list.invalidate();
-      setDeleteTarget(null);
-    },
-    onError: (err) => toast.error(err.message),
-  });
+  const deleteMutation = trpc.admin.modpacks.delete.useMutation(
+    useMutationToast({
+      success: "Modpack deleted",
+      onSuccess: () => {
+        utils.admin.modpacks.list.invalidate();
+        setDeleteTarget(null);
+      },
+    }),
+  );
 
   const openCreate = () => {
     setCreateKey((key) => key + 1);
