@@ -34,7 +34,6 @@ export function DeleteWaitlistModal({
   const toast = useToastActions();
 
   const [reason, setReason] = useState("");
-  const [confirmText, setConfirmText] = useState("");
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
   const deleteEntry = trpc.admin.waitlists.delete.useMutation(
@@ -43,7 +42,6 @@ export function DeleteWaitlistModal({
       error: "Failed to delete waitlist entry",
       onSuccess: () => {
         setReason("");
-        setConfirmText("");
         onSuccess();
         onClose();
       },
@@ -54,7 +52,6 @@ export function DeleteWaitlistModal({
 
   const handleClose = () => {
     setReason("");
-    setConfirmText("");
     setShowConfirmDialog(false);
     onClose();
   };
@@ -167,36 +164,18 @@ export function DeleteWaitlistModal({
 
       <ConfirmDialog
         open={showConfirmDialog}
-        onOpenChange={(open) => {
-          setShowConfirmDialog(open);
-          if (!open) setConfirmText("");
-        }}
+        onOpenChange={setShowConfirmDialog}
         title="Confirm Deletion"
-        description={
-          <>
-            This action is permanent and cannot be undone. Type{" "}
-            <span className="font-semibold">DELETE</span> to confirm.
-          </>
-        }
+        description="This action is permanent and cannot be undone."
         confirmLabel="Confirm"
         variant="destructive"
-        confirmDisabled={confirmText !== "DELETE"}
+        confirmToken="DELETE"
         onConfirm={() =>
           entry
             ? deleteEntry.mutateAsync({ id: entry.id, reason: reason.trim() })
             : undefined
         }
-      >
-        <Field>
-          <Input
-            type="text"
-            placeholder="Type DELETE to confirm"
-            value={confirmText}
-            onChange={(e) => setConfirmText(e.target.value)}
-            autoFocus
-          />
-        </Field>
-      </ConfirmDialog>
+      />
     </>
   );
 }

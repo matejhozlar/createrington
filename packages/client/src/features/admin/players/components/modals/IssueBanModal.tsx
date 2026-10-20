@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { BAN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
-import { Input } from "@/components/ui/input";
 import { Field, FieldLabel } from "@/components/ui/field";
 import {
   Select,
@@ -55,13 +54,11 @@ export function IssueBanModal({
   const [reason, setReason] = useState("");
   const [durationDays, setDurationDays] = useState<number>(7);
   const [showPermanentConfirm, setShowPermanentConfirm] = useState(false);
-  const [confirmText, setConfirmText] = useState("");
 
   const handleClose = () => {
     setReason("");
     setDurationDays(7);
     setBanType("temporary");
-    setConfirmText("");
     setShowPermanentConfirm(false);
     onClose();
   };
@@ -101,7 +98,6 @@ export function IssueBanModal({
     setReason("");
     setDurationDays(7);
     setBanType("temporary");
-    setConfirmText("");
 
     onSuccess();
     onClose();
@@ -203,34 +199,20 @@ export function IssueBanModal({
 
       <ConfirmDialog
         open={showPermanentConfirm}
-        onOpenChange={(isOpen) => {
-          setShowPermanentConfirm(isOpen);
-          if (!isOpen) setConfirmText("");
-        }}
+        onOpenChange={setShowPermanentConfirm}
         title={<span className="text-destructive">Confirm Permanent Ban</span>}
         description={
           <>
             This will permanently ban and DELETE all data for{" "}
             <span className="font-semibold">{playerUsername}</span>. This action
-            cannot be undone. Type{" "}
-            <span className="font-semibold">PERMANENTLY BAN</span> to confirm.
+            cannot be undone.
           </>
         }
         confirmLabel="Confirm Permanent Ban"
         variant="destructive"
-        confirmDisabled={confirmText !== "PERMANENTLY BAN"}
+        confirmToken="PERMANENTLY BAN"
         onConfirm={executeBan}
-      >
-        <Field>
-          <Input
-            type="text"
-            placeholder="Type PERMANENTLY BAN to confirm"
-            value={confirmText}
-            onChange={(e) => setConfirmText(e.target.value)}
-            autoFocus
-          />
-        </Field>
-      </ConfirmDialog>
+      />
     </>
   );
 }
