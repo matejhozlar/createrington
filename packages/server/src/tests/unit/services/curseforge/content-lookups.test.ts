@@ -224,6 +224,31 @@ describe("searchProjects", () => {
     });
   });
 
+  it.each([
+    [
+      "the full picture when CurseForge made no thumbnail",
+      { thumbnailUrl: "", url: "https://media.forgecdn.net/avatars/full.webp" },
+      "https://media.forgecdn.net/avatars/full.webp",
+    ],
+    ["no picture when the logo has neither", { thumbnailUrl: "" }, null],
+  ])("answers %s", async (_label, logo, thumbnailUrl) => {
+    fetchMock.mockResolvedValue(
+      answer({
+        data: [{ ...RAW_HIT, logo }],
+        pagination: { totalCount: 1 },
+      }),
+    );
+
+    const found = await searchProjects({
+      query: "prominence",
+      classId: 4471,
+      index: 0,
+      pageSize: 20,
+    });
+
+    expect(found.projects[0]?.thumbnailUrl).toBe(thumbnailUrl);
+  });
+
   it("throws when CurseForge refuses the search", async () => {
     fetchMock.mockResolvedValue(answer({}, 500));
 
@@ -614,6 +639,28 @@ describe("getMods", () => {
       sourceUrl: null,
       dateCreated: null,
     });
+  });
+
+  it("reads the full picture of a project CurseForge made no thumbnail for", async () => {
+    fetchMock.mockResolvedValue(
+      answer({
+        data: [
+          {
+            ...RAW_MOD,
+            logo: {
+              thumbnailUrl: "",
+              url: "https://media.forgecdn.net/avatars/full.webp",
+            },
+          },
+        ],
+      }),
+    );
+
+    const [mod] = await getMods([328085]);
+
+    expect(mod?.thumbnailUrl).toBe(
+      "https://media.forgecdn.net/avatars/full.webp",
+    );
   });
 
   it("finds nothing when CurseForge knows none of the ids", async () => {
