@@ -68,6 +68,10 @@ const rawFileIndexSchema = z.object({
   modLoader: z.number().nullish(),
 });
 
+const rawLogoSchema = z
+  .object({ thumbnailUrl: z.string(), url: z.string().nullish() })
+  .nullish();
+
 const rawModSchema = z.object({
   id: z.number(),
   classId: z.number(),
@@ -80,7 +84,7 @@ const rawModSchema = z.object({
     issuesUrl: z.string().nullish(),
     sourceUrl: z.string().nullish(),
   }),
-  logo: z.object({ thumbnailUrl: z.string() }).nullish(),
+  logo: rawLogoSchema,
   authors: z.array(
     z.object({
       id: z.number(),
@@ -126,7 +130,7 @@ const rawSearchResultSchema = z.object({
   authors: z.array(z.object({ name: z.string() })).nullish(),
   downloadCount: z.number().nullish(),
   links: z.object({ websiteUrl: z.string() }),
-  logo: z.object({ thumbnailUrl: z.string() }).nullish(),
+  logo: rawLogoSchema,
 });
 
 const rawModFileSchema = z.object({
@@ -210,10 +214,14 @@ const rawDependencyModSchema = z.object({
   id: z.number(),
   name: z.string(),
   links: z.object({ websiteUrl: z.string() }),
-  logo: z.object({ thumbnailUrl: z.string() }).nullish(),
+  logo: rawLogoSchema,
   latestFilesIndexes: z.array(rawFileIndexSchema).nullish(),
 });
 const CF_HASH_ALGO_SHA1 = 1;
+
+function logoUrlOf(logo: z.infer<typeof rawLogoSchema>): string | null {
+  return logo?.thumbnailUrl || logo?.url || null;
+}
 
 function sha1Of(hashes: z.infer<typeof rawFileHashesSchema>): string | null {
   const sha1 = hashes?.find((hash) => hash.algo === CF_HASH_ALGO_SHA1)?.value;
@@ -473,7 +481,7 @@ export async function searchMods(
     name: m.name,
     slug: m.slug,
     url: m.links.websiteUrl,
-    thumbnailUrl: m.logo?.thumbnailUrl,
+    thumbnailUrl: logoUrlOf(m.logo) ?? undefined,
     summary: m.summary ?? null,
     primaryAuthor: m.authors?.[0]?.name ?? null,
     downloadCount: m.downloadCount ?? 0,
@@ -613,7 +621,7 @@ function mapProject(raw: RawCurseForgeMod): CurseForgeProjectData {
     wikiUrl: raw.links.wikiUrl || null,
     issuesUrl: raw.links.issuesUrl || null,
     sourceUrl: raw.links.sourceUrl || null,
-    thumbnailUrl: raw.logo?.thumbnailUrl ?? null,
+    thumbnailUrl: logoUrlOf(raw.logo),
     authors: raw.authors,
     categories: raw.categories,
     screenshots: raw.screenshots ?? [],
@@ -782,7 +790,7 @@ export async function resolveDependencies(
       modId: mod.id,
       modName: mod.name,
       modUrl: mod.links.websiteUrl,
-      thumbnailUrl: mod.logo?.thumbnailUrl,
+      thumbnailUrl: logoUrlOf(mod.logo) ?? undefined,
       inPack: packModIds.has(mod.id),
       bestFile: bestIndex
         ? { id: bestIndex.fileId, fileName: bestIndex.filename }
@@ -1007,7 +1015,7 @@ export async function searchProjects(
       name: project.name,
       summary: project.summary || null,
       websiteUrl: project.links.websiteUrl,
-      thumbnailUrl: project.logo?.thumbnailUrl ?? null,
+      thumbnailUrl: logoUrlOf(project.logo),
       primaryAuthor: project.authors?.[0]?.name ?? null,
       downloadCount: project.downloadCount ?? 0,
     })),
