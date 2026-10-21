@@ -71,6 +71,9 @@ export const launcherRelease = pgTable(
     releasedByDiscordId: text("released_by_discord_id"),
     withdrawnAt: timestamp("withdrawn_at", { withTimezone: true }),
     withdrawnByDiscordId: text("withdrawn_by_discord_id"),
+    // Set when the launcher's CI reported that the file is no longer on the
+    // bucket. The status is pruned from then on, whatever it was before.
+    prunedAt: timestamp("pruned_at", { withTimezone: true }),
   },
   (table) => [
     unique("uq_launcher_release_platform_version").on(

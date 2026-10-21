@@ -38,6 +38,21 @@ function released(version: string, required = false, platform = PLATFORM) {
     pubDate: new Date("2026-10-01T10:00:00.000Z"),
     status: "released",
     required,
+    releasedAt: new Date("2026-10-02T10:00:00.000Z"),
+    withdrawnAt: null,
+    prunedAt: null,
+  };
+}
+
+function pruned(
+  version: string,
+  overrides: Partial<ReturnType<typeof released>> = {},
+) {
+  return {
+    ...released(version),
+    status: "pruned",
+    prunedAt: new Date("2026-10-03T10:00:00.000Z"),
+    ...overrides,
   };
 }
 
@@ -60,7 +75,7 @@ describe("checkForUpdate", () => {
     expect(update).toMatchObject({ version: "0.3.0", required: false });
     expect(release.findAll).toHaveBeenCalledWith({
       platform: PLATFORM,
-      status: "released",
+      status: { $in: ["released", "pruned"] },
     });
   });
 
@@ -109,8 +124,36 @@ describe("checkForUpdate", () => {
     expect(windows).toMatchObject({ version: "0.3.0", required: true });
     expect(release.findAll).toHaveBeenCalledWith({
       platform: LINUX,
-      status: "released",
+      status: { $in: ["released", "pruned"] },
     });
+  });
+
+  it("never offers a pruned version, even when it is the newest", async () => {
+    release.findAll.mockResolvedValue([released("0.2.0"), pruned("0.3.0")]);
+
+    const update = await launcherReleaseService.checkForUpdate(
+      PLATFORM,
+      "0.1.0",
+    );
+
+    expect(update).toMatchObject({ version: "0.2.0" });
+    expect(
+      await launcherReleaseService.checkForUpdate(PLATFORM, "0.2.0"),
+    ).toBeNull();
+  });
+
+  it("keeps the update required past a required release whose file was pruned", async () => {
+    release.findAll.mockResolvedValue([
+      pruned("0.2.0", { required: true }),
+      released("0.3.0"),
+    ]);
+
+    const update = await launcherReleaseService.checkForUpdate(
+      PLATFORM,
+      "0.1.0",
+    );
+
+    expect(update).toMatchObject({ version: "0.3.0", required: true });
   });
 
   it("has nothing for a launcher on the newest release, required or not", async () => {
@@ -172,6 +215,32 @@ describe("isUpdateRequired", () => {
     ).toBe(false);
   });
 
+  it("is true past a pruned required release, as long as it was released and not withdrawn", async () => {
+    release.findAll.mockResolvedValue([
+      pruned("0.2.0", { required: true }),
+      released("0.3.0"),
+    ]);
+
+    expect(
+      await launcherReleaseService.isUpdateRequired(PLATFORM, "0.1.0"),
+    ).toBe(true);
+  });
+
+  it("ignores a pruned required version that was never released or was withdrawn", async () => {
+    release.findAll.mockResolvedValue([
+      pruned("0.2.0", { required: true, releasedAt: null }),
+      pruned("0.3.0", {
+        required: true,
+        withdrawnAt: new Date("2026-10-02T12:00:00.000Z"),
+      }),
+      released("0.4.0"),
+    ]);
+
+    expect(
+      await launcherReleaseService.isUpdateRequired(PLATFORM, "0.1.0"),
+    ).toBe(false);
+  });
+
   it("is false for a platform or a version it cannot read, without asking the database", async () => {
     expect(
       await launcherReleaseService.isUpdateRequired("amiga-68k", "0.1.0"),
@@ -227,5 +296,57 @@ describe("release", () => {
       expect.objectContaining({ required: false }),
       { id: 30, status: "pending" },
     );
+  });
+});
+
+describe("prune", () => {
+  it("marks every version that is not on the bucket and forgets the cached releases", async () => {
+    release.findAll.mockResolvedValueOnce([released("0.2.0")]);
+    await launcherReleaseService.isUpdateRequired(PLATFORM, "0.1.0");
+    release.findAll.mockResolvedValueOnce([
+      released("0.1.0"),
+      released("0.1.0", false, LINUX),
+    ]);
+    release.updateAll.mockResolvedValue(2);
+
+    const result = await launcherReleaseService.prune("staging", [
+      "0.2.0",
+      "0.3.0",
+    ]);
+
+    expect(release.findAll).toHaveBeenLastCalledWith({
+      version: { $nin: ["0.2.0", "0.3.0"] },
+      status: { $ne: "pruned" },
+    });
+    expect(release.updateAll).toHaveBeenCalledWith(
+      { status: "pruned", prunedAt: expect.any(Date) },
+      { id: { $in: [10, 10] } },
+    );
+    expect(result).toMatchObject([
+      { version: "0.1.0", platform: PLATFORM, status: "pruned" },
+      { version: "0.1.0", platform: LINUX, status: "pruned" },
+    ]);
+
+    release.findAll.mockResolvedValueOnce([]);
+    await launcherReleaseService.isUpdateRequired(PLATFORM, "0.1.0");
+    expect(release.findAll).toHaveBeenCalledTimes(3);
+  });
+
+  it("changes nothing when every stored version remains", async () => {
+    release.findAll.mockResolvedValue([]);
+
+    const result = await launcherReleaseService.prune("staging", ["0.2.0"]);
+
+    expect(result).toEqual([]);
+    expect(release.updateAll).not.toHaveBeenCalled();
+  });
+
+  it("refuses a report for the other channel without touching the database", async () => {
+    await expect(
+      launcherReleaseService.prune("production", ["0.2.0"]),
+    ).rejects.toMatchObject({ code: "CHANNEL_MISMATCH" });
+
+    expect(release.findAll).not.toHaveBeenCalled();
+    expect(release.updateAll).not.toHaveBeenCalled();
   });
 });

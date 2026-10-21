@@ -79,11 +79,14 @@ interface ReleasedVersions {
  * Keeps the list of launcher versions for this environment's channel and answers the
  * launcher's update check. A release build publishes a version as pending, and it is only
  * offered to launchers after the owner released it; a withdrawn version is never offered
- * again. A version can be released as required: the newest released required version of a
- * platform is the oldest launcher the app still serves. The app stores the description of a
- * release, never the installer or a signing key. The newest released version and that
- * minimum are cached per platform in memory for a minute and dropped on every release and
- * withdraw. Singleton.
+ * again. The launcher's CI reports which versions are still on the download bucket after it
+ * pruned old builds, and every other version becomes pruned: never offered, no download
+ * link, though a required release it once was keeps older launchers out. A version can be
+ * released as required: the newest released required version of a platform is the oldest
+ * launcher the app still serves. The app stores the description of a release, never the
+ * installer or a signing key. The newest released version and that minimum are cached per
+ * platform in memory for a minute and dropped on every release, withdraw and prune.
+ * Singleton.
  */
 class LauncherReleaseService {
   private static instance: LauncherReleaseService;
@@ -225,8 +228,9 @@ class LauncherReleaseService {
   }
 
   /**
-   * Whether a launcher of this platform and version is older than the newest released
-   * version marked as required, so it has to update before it may keep using the app.
+   * Whether a launcher of this platform and version is older than the newest version
+   * released as required, so it has to update before it may keep using the app. A required
+   * release counts until it is withdrawn, also once its file was pruned from the bucket.
    * False for an unknown platform or an unreadable version, never an error for them.
    */
   async isUpdateRequired(platform: string, version: string): Promise<boolean> {
@@ -298,6 +302,47 @@ class LauncherReleaseService {
     return release;
   }
 
+  /**
+   * Marks every stored version that is not in `availableVersions` as pruned, whatever its
+   * state was, because its file is no longer on the download bucket. Versions already pruned
+   * are left as they are, so repeating a report changes nothing. Throws
+   * `LauncherReleaseError` when the channel is not this environment's.
+   */
+  async prune(
+    channel: LauncherChannel,
+    availableVersions: readonly string[],
+  ): Promise<LauncherRelease[]> {
+    if (channel !== config.launcher.channel) {
+      throw new LauncherReleaseError(
+        "CHANNEL_MISMATCH",
+        `This environment serves the ${config.launcher.channel} channel`,
+      );
+    }
+
+    const gone = await Q.launcher.release.findAll({
+      version: { $nin: [...availableVersions] },
+      status: { $ne: "pruned" },
+    });
+    if (gone.length === 0) return [];
+
+    const prunedAt = new Date();
+    await Q.launcher.release.updateAll(
+      { status: "pruned", prunedAt },
+      { id: { $in: gone.map((release) => release.id) } },
+    );
+    this.clearCache();
+
+    const pruned = gone.map((release) => ({
+      ...release,
+      status: "pruned" as const,
+      prunedAt,
+    }));
+    logger.info(
+      `Launcher releases pruned, no longer on the bucket: ${pruned.map((release) => `${release.version} (${release.platform})`).join(", ")}`,
+    );
+    return pruned;
+  }
+
   /** Drops the cached released versions; the next update check reads the database. */
   clearCache(): void {
     this.released.clear();
@@ -326,15 +371,23 @@ class LauncherReleaseService {
     const cached = this.released.get(platform);
     if (cached && cached.expiresAt > Date.now()) return cached;
 
-    const released = await Q.launcher.release.findAll({
+    const stored = await Q.launcher.release.findAll({
       platform,
-      status: "released",
+      status: { $in: ["released", "pruned"] },
     });
     const versions: ReleasedVersions = {
-      newest: newestVersion(released),
+      newest: newestVersion(
+        stored.filter((release) => release.status === "released"),
+      ),
       minimumVersion:
-        newestVersion(released.filter((release) => release.required))
-          ?.version ?? null,
+        newestVersion(
+          stored.filter(
+            (release) =>
+              release.required &&
+              release.releasedAt !== null &&
+              release.withdrawnAt === null,
+          ),
+        )?.version ?? null,
     };
     this.released.set(platform, {
       ...versions,

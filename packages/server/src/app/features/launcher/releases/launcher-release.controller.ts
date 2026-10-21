@@ -1,7 +1,10 @@
 import type { Request, Response } from "express";
 import { getValidated } from "@/app/middleware/validation.middleware";
 import { launcherReleaseService } from "@/services/launcher/release/launcher-release.service";
-import type { PublishReleaseBody } from "./launcher-release.schemas";
+import type {
+  AvailableReleasesBody,
+  PublishReleaseBody,
+} from "./launcher-release.schemas";
 
 export class LauncherReleaseController {
   static async publish(_req: Request, res: Response): Promise<void> {
@@ -16,6 +19,26 @@ export class LauncherReleaseController {
         version: release.version,
         platform: release.platform,
         status: release.status,
+      },
+    });
+  }
+
+  static async setAvailable(_req: Request, res: Response): Promise<void> {
+    const { body } = getValidated<{ body: AvailableReleasesBody }>(res);
+
+    const pruned = await launcherReleaseService.prune(
+      body.channel,
+      body.versions,
+    );
+
+    res.json({
+      success: true,
+      data: {
+        pruned: pruned.map((release) => ({
+          id: release.id,
+          version: release.version,
+          platform: release.platform,
+        })),
       },
     });
   }
