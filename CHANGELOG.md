@@ -1,3 +1,11 @@
+## v1.66.2 (2026-10-21)
+
+### @createrington/server (1.67.1 → 1.67.2)
+- [security] Bump axios to 1.20.0 and sharp to 0.35.5, and pin proxy-addr, shell-quote, undici, engine.io, source-map-js, brace-expansion, follow-redirects and ip-address through pnpm overrides, clearing every critical and high finding of `pnpm audit` on the server package (IP spoofing through proxy-addr, command injection in shell-quote, the axios ReDoS and prototype pollution advisories, the Engine.IO protocol mismatch DoS, the librsvg advisory in sharp)
+
+### @createrington/client (0.2.83 → 0.2.84)
+- [security] Bump vite to 7.3.7 for the launch-editor advisory (GHSA-587h-7wmj-h5pm) and pin source-map-js and brace-expansion, so the CI audit gate passes again; the braces advisory under vite-plugin-pwa stays ignored in the audit config, as on dev
+
 ## v1.66.1 (2026-10-15)
 
 ### @createrington/server (1.67.0 → 1.67.1)
