@@ -35,6 +35,15 @@ import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { useCountdown } from "@/hooks/use-countdown";
 import { MaintenanceSettingsDialog } from "./MaintenanceSettingsDialog";
 
+const DEFAULT_ESTIMATED_MINUTES = 30;
+
+function parseEstimatedMinutes(value: string) {
+  const minutes = parseInt(value, 10);
+  return Number.isNaN(minutes) || minutes < 1
+    ? DEFAULT_ESTIMATED_MINUTES
+    : minutes;
+}
+
 interface MaintenanceToggleProps {
   serverId: number;
   isMaintenance: boolean;
@@ -55,7 +64,9 @@ export function MaintenanceToggle({
     "maintenance" | "modpack_update"
   >("maintenance");
   const [scheduledAt, setScheduledAt] = useState("");
-  const [estimatedMinutes, setEstimatedMinutes] = useState(30);
+  const [estimatedMinutes, setEstimatedMinutes] = useState(
+    String(DEFAULT_ESTIMATED_MINUTES),
+  );
   const utils = trpc.useUtils();
 
   const [minDatetime, setMinDatetime] = useState("");
@@ -109,7 +120,7 @@ export function MaintenanceToggle({
         invalidate();
         setDialogOpen(false);
         setScheduledAt("");
-        setEstimatedMinutes(30);
+        setEstimatedMinutes(String(DEFAULT_ESTIMATED_MINUTES));
       },
     }),
   );
@@ -133,7 +144,7 @@ export function MaintenanceToggle({
       serverId,
       type: maintenanceType,
       scheduledAt: date.toISOString(),
-      estimatedMinutes,
+      estimatedMinutes: parseEstimatedMinutes(estimatedMinutes),
     });
   }
 
@@ -364,8 +375,11 @@ export function MaintenanceToggle({
                     min={1}
                     max={10080}
                     value={estimatedMinutes}
-                    onChange={(e) =>
-                      setEstimatedMinutes(parseInt(e.target.value) || 30)
+                    onChange={(e) => setEstimatedMinutes(e.target.value)}
+                    onBlur={() =>
+                      setEstimatedMinutes(
+                        String(parseEstimatedMinutes(estimatedMinutes)),
+                      )
                     }
                   />
                 </div>
