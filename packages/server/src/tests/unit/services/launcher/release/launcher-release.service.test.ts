@@ -27,7 +27,26 @@ import { launcherReleaseService } from "@/services/launcher/release/launcher-rel
 const PLATFORM = "windows-x86_64";
 const LINUX = "linux-x86_64";
 
-function released(version: string, required = false, platform = PLATFORM) {
+type ReleaseRow = {
+  id: number;
+  version: string;
+  platform: string;
+  url: string;
+  signature: string;
+  notes: string;
+  pubDate: Date;
+  status: string;
+  required: boolean;
+  releasedAt: Date | null;
+  withdrawnAt: Date | null;
+  prunedAt: Date | null;
+};
+
+function released(
+  version: string,
+  required = false,
+  platform = PLATFORM,
+): ReleaseRow {
   return {
     id: Number(version.replaceAll(".", "")),
     version,
