@@ -7,7 +7,10 @@ import {
 import { launcherUpdateCheckLimiter } from "@/app/middleware/rate-limit.middleware";
 import { validate } from "@/app/middleware/validation.middleware";
 import { LauncherReleaseController } from "./launcher-release.controller";
-import { PublishReleaseBodySchema } from "./launcher-release.schemas";
+import {
+  AvailableReleasesBodySchema,
+  PublishReleaseBodySchema,
+} from "./launcher-release.schemas";
 
 export const launcherUpdateCheckRoutes = Router();
 
@@ -30,5 +33,17 @@ launcherPublishRoutes.post(
       validate({ body: PublishReleaseBodySchema }),
     ],
     LauncherReleaseController.publish,
+  ),
+);
+
+launcherPublishRoutes.put(
+  "/releases/available",
+  ...customRoute(
+    [
+      requireDirectRequest,
+      verifyLauncherPublishToken,
+      validate({ body: AvailableReleasesBodySchema }),
+    ],
+    LauncherReleaseController.setAvailable,
   ),
 );

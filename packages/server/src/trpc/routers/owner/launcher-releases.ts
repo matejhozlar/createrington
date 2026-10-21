@@ -21,6 +21,7 @@ function toDto(release: LauncherRelease) {
     createdAt: release.createdAt.toISOString(),
     releasedAt: release.releasedAt?.toISOString() ?? null,
     withdrawnAt: release.withdrawnAt?.toISOString() ?? null,
+    prunedAt: release.prunedAt?.toISOString() ?? null,
   };
 }
 

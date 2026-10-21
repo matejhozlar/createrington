@@ -17,3 +17,10 @@ export const PublishReleaseBodySchema = z.object({
 });
 
 export type PublishReleaseBody = z.infer<typeof PublishReleaseBodySchema>;
+
+export const AvailableReleasesBodySchema = z.object({
+  channel: z.enum(LAUNCHER_CHANNELS),
+  versions: z.array(z.string().min(1).max(64)).min(1).max(1000),
+});
+
+export type AvailableReleasesBody = z.infer<typeof AvailableReleasesBodySchema>;

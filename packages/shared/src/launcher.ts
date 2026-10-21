@@ -2,6 +2,7 @@ export const LAUNCHER_RELEASE_STATUSES = [
   "pending",
   "released",
   "withdrawn",
+  "pruned",
 ] as const;
 
 export type LauncherReleaseStatus = (typeof LAUNCHER_RELEASE_STATUSES)[number];

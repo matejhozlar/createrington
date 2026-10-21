@@ -15,6 +15,7 @@ const { PUBLISH_TOKEN, mocks } = vi.hoisted(() => ({
   PUBLISH_TOKEN: "test-publish-token-please-do-not-use-in-prod",
   mocks: {
     publish: vi.fn(),
+    prune: vi.fn(),
     checkForUpdate: vi.fn(),
   },
 }));
@@ -63,6 +64,7 @@ vi.mock("@/services/auth/admin-status/admin-status.service", () => ({
 vi.mock("@/services/launcher/release/launcher-release.service", () => ({
   launcherReleaseService: {
     publish: mocks.publish,
+    prune: mocks.prune,
     checkForUpdate: mocks.checkForUpdate,
   },
 }));
@@ -119,6 +121,27 @@ async function post(
   });
 }
 
+const AVAILABLE_BODY = {
+  channel: "staging",
+  versions: ["0.2.0", "0.3.0"],
+};
+
+const PRUNED = [
+  { id: 1, version: "0.1.0", platform: "windows-x86_64" },
+  { id: 2, version: "0.1.0", platform: "linux-x86_64" },
+];
+
+async function putAvailable(
+  body: unknown,
+  headers: Record<string, string> = {},
+): Promise<Response> {
+  return await fetch(`${baseUrl}/api/launcher/releases/available`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...headers },
+    body: JSON.stringify(body),
+  });
+}
+
 const auth = { Authorization: `Bearer ${PUBLISH_TOKEN}` };
 
 beforeAll(async () => {
@@ -152,6 +175,9 @@ beforeEach(() => {
     status: "pending",
   });
   mocks.checkForUpdate.mockResolvedValue(null);
+  mocks.prune.mockResolvedValue(
+    PRUNED.map((release) => ({ ...release, status: "pruned" })),
+  );
 });
 
 describe("POST /api/launcher/releases", () => {
@@ -277,6 +303,72 @@ describe("POST /api/launcher/releases", () => {
   });
 });
 
+describe("PUT /api/launcher/releases/available", () => {
+  it("tells the service which versions remain and answers with what was pruned", async () => {
+    const res = await putAvailable(AVAILABLE_BODY, auth);
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({
+      success: true,
+      data: { pruned: PRUNED },
+    });
+    expect(mocks.prune).toHaveBeenCalledWith("staging", ["0.2.0", "0.3.0"]);
+  });
+
+  it("answers an empty list when every stored version is still there", async () => {
+    mocks.prune.mockResolvedValue([]);
+
+    const res = await putAvailable(AVAILABLE_BODY, auth);
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ success: true, data: { pruned: [] } });
+  });
+
+  it("refuses a call without a token", async () => {
+    const res = await putAvailable(AVAILABLE_BODY);
+
+    expect(res.status).toBe(401);
+    expect(mocks.prune).not.toHaveBeenCalled();
+  });
+
+  it("refuses a call with a wrong token", async () => {
+    const res = await putAvailable(AVAILABLE_BODY, {
+      Authorization: "Bearer not-the-publish-token",
+    });
+
+    expect(res.status).toBe(401);
+    expect(mocks.prune).not.toHaveBeenCalled();
+  });
+
+  it.each(["X-Forwarded-For", "X-Real-IP"])(
+    "answers 404 to a call that arrived through a proxy (%s), even with a valid token",
+    async (header) => {
+      const res = await putAvailable(AVAILABLE_BODY, {
+        ...auth,
+        [header]: "203.0.113.7",
+      });
+
+      expect(res.status).toBe(404);
+      expect(mocks.prune).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    ["an unknown channel", { channel: "nightly" }],
+    [
+      "no versions at all, so a failed listing cannot prune everything",
+      { versions: [] },
+    ],
+    ["a version that is not a string", { versions: ["0.2.0", 3] }],
+    ["an empty version", { versions: ["0.2.0", ""] }],
+  ])("refuses a body with %s", async (_label, override) => {
+    const res = await putAvailable({ ...AVAILABLE_BODY, ...override }, auth);
+
+    expect(res.status).toBe(400);
+    expect(mocks.prune).not.toHaveBeenCalled();
+  });
+});
+
 describe("an environment without a publish token", () => {
   let bareServer: Server;
   let bareUrl: string;
@@ -319,6 +411,17 @@ describe("an environment without a publish token", () => {
 
     expect(res.status).toBe(404);
     expect(mocks.publish).not.toHaveBeenCalled();
+  });
+
+  it("has no route for the versions that remain", async () => {
+    const res = await fetch(`${bareUrl}/api/launcher/releases/available`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...auth },
+      body: JSON.stringify(AVAILABLE_BODY),
+    });
+
+    expect(res.status).toBe(404);
+    expect(mocks.prune).not.toHaveBeenCalled();
   });
 });
 

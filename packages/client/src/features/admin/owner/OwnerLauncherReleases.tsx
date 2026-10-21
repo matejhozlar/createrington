@@ -64,6 +64,10 @@ const STATUS_BADGES: Record<
     label: "Withdrawn",
     className: "border-red-500/20 bg-red-500/10 text-red-400",
   },
+  pruned: {
+    label: "File removed",
+    className: "border-muted-foreground/40 text-muted-foreground",
+  },
 };
 
 const REQUIRED_BADGE = {
@@ -272,6 +276,12 @@ export function OwnerLauncherReleases() {
       render: (release) => <CellDate value={release.withdrawnAt} />,
     },
     {
+      key: "removed",
+      header: "Removed",
+      width: 130,
+      render: (release) => <CellDate value={release.prunedAt} />,
+    },
+    {
       key: "notes",
       header: "Notes",
       minWidth: 240,
@@ -284,6 +294,7 @@ export function OwnerLauncherReleases() {
     {
       label: "Download",
       icon: Download,
+      disabled: release.status === "pruned",
       onClick: () => window.open(release.url, "_blank", "noopener,noreferrer"),
     },
     {
@@ -299,7 +310,7 @@ export function OwnerLauncherReleases() {
       label: "Withdraw",
       icon: Ban,
       variant: "destructive",
-      disabled: release.status === "withdrawn",
+      disabled: release.status === "withdrawn" || release.status === "pruned",
       onClick: () => setAction({ kind: "withdraw", release }),
     },
   ];

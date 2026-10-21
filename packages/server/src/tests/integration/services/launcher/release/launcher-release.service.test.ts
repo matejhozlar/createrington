@@ -578,6 +578,122 @@ describe("LauncherReleaseService", () => {
     });
   });
 
+  describe("prune", () => {
+    it("marks the versions that are no longer on the bucket, on every platform and in every state", async () => {
+      const pendingOld = await launcherReleaseService.publish(input("0.1.0"));
+      const linuxOld = await launcherReleaseService.publish(
+        linuxInput("0.1.0"),
+      );
+      const withdrawn = await publishAndRelease("0.2.0");
+      await launcherReleaseService.withdraw(withdrawn.id, OWNER);
+      const kept = await publishAndRelease("0.3.0");
+      const newest = await launcherReleaseService.publish(input("0.4.0"));
+
+      const pruned = await launcherReleaseService.prune("staging", [
+        "0.3.0",
+        "0.4.0",
+        "0.5.0",
+      ]);
+
+      expect(pruned.map((r) => r.id).sort()).toEqual(
+        [pendingOld.id, linuxOld.id, withdrawn.id].sort(),
+      );
+      for (const id of [pendingOld.id, linuxOld.id, withdrawn.id]) {
+        const stored = await Q.launcher.release.get({ id });
+        expect(stored.status).toBe("pruned");
+        expect(stored.prunedAt).toBeInstanceOf(Date);
+      }
+      expect(
+        (await Q.launcher.release.get({ id: withdrawn.id })).withdrawnAt,
+      ).toBeInstanceOf(Date);
+      expect((await Q.launcher.release.get({ id: kept.id })).status).toBe(
+        "released",
+      );
+      expect((await Q.launcher.release.get({ id: newest.id })).status).toBe(
+        "pending",
+      );
+    });
+
+    it("changes nothing the second time the same report comes in", async () => {
+      await publishAndRelease("0.1.0");
+      await publishAndRelease("0.2.0");
+      await launcherReleaseService.prune("staging", ["0.2.0"]);
+
+      const pruned = await launcherReleaseService.prune("staging", ["0.2.0"]);
+
+      expect(pruned).toEqual([]);
+    });
+
+    it("stops offering a pruned release and falls back to the one before", async () => {
+      await publishAndRelease("0.2.0");
+      await publishAndRelease("0.3.0");
+      expect(
+        await launcherReleaseService.checkForUpdate(PLATFORM, "0.1.0"),
+      ).toMatchObject({ version: "0.3.0" });
+
+      await launcherReleaseService.prune("staging", ["0.2.0"]);
+
+      expect(
+        await launcherReleaseService.checkForUpdate(PLATFORM, "0.1.0"),
+      ).toMatchObject({ version: "0.2.0" });
+      expect(
+        (await launcherReleaseService.listReleased()).map((r) => r.version),
+      ).toEqual(["0.2.0"]);
+    });
+
+    it("keeps requiring the update past a pruned required release", async () => {
+      await publishAndRelease("0.2.0", true);
+      await publishAndRelease("0.3.0");
+
+      await launcherReleaseService.prune("staging", ["0.3.0"]);
+
+      expect(
+        await launcherReleaseService.isUpdateRequired(PLATFORM, "0.1.0"),
+      ).toBe(true);
+      expect(
+        await launcherReleaseService.checkForUpdate(PLATFORM, "0.1.0"),
+      ).toMatchObject({ version: "0.3.0", required: true });
+    });
+
+    it("refuses to release or withdraw a pruned version", async () => {
+      const pending = await launcherReleaseService.publish(input("0.2.0"));
+      const released = await publishAndRelease("0.3.0");
+      await launcherReleaseService.prune("staging", ["0.4.0"]);
+
+      expect(
+        (await refusal(launcherReleaseService.release(pending.id, OWNER))).code,
+      ).toBe("INVALID_STATE");
+      expect(
+        (await refusal(launcherReleaseService.withdraw(released.id, OWNER)))
+          .code,
+      ).toBe("INVALID_STATE");
+    });
+
+    it("still refuses a pruned version number for a new publish", async () => {
+      await publishAndRelease("0.2.0");
+      await launcherReleaseService.prune("staging", ["0.3.0"]);
+
+      const error = await refusal(
+        launcherReleaseService.publish(input("0.2.0")),
+      );
+
+      expect(error.code).toBe("DUPLICATE_VERSION");
+    });
+
+    it("refuses a report for the other channel", async () => {
+      await publishAndRelease("0.2.0");
+
+      const error = await refusal(
+        launcherReleaseService.prune("production", ["0.9.0"]),
+      );
+
+      expect(error.code).toBe("CHANNEL_MISMATCH");
+      expect(
+        await launcherReleaseService.checkForUpdate(PLATFORM, "0.1.0"),
+      ).toMatchObject({ version: "0.2.0" });
+    });
+  });
+
   describe("listReleased", () => {
     it("returns only released versions, highest version first", async () => {
       await publishAndRelease("0.2.0");
