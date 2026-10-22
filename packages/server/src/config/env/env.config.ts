@@ -265,7 +265,7 @@ const envSchema = z
       .number()
       .int()
       .min(1)
-      .default(120),
+      .default(300),
 
     // Sandbox: shared secret the sandbox presents as a bearer token when it
     // reports a publish from a background job (no user session to forward)
