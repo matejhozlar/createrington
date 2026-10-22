@@ -258,6 +258,14 @@ const envSchema = z
       .int()
       .positive()
       .default(1660984),
+    // How many calls a minute the launcher's content lookups (search, files,
+    // changelogs, fingerprints) may make on the key, app-wide; the rest are
+    // answered 503 with a Retry-After until the next minute
+    CURSEFORGE_LAUNCHER_CALLS_PER_MINUTE: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .default(120),
 
     // Sandbox: shared secret the sandbox presents as a bearer token when it
     // reports a publish from a background job (no user session to forward)

@@ -21,7 +21,7 @@ vi.mock("@/db/utils", () => ({
   QueryError: class QueryError extends Error {},
 }));
 
-import { errorHandler } from "@/app/middleware/error-handler";
+import { AppError, errorHandler } from "@/app/middleware/error-handler";
 
 let server: Server;
 let baseUrl: string;
@@ -105,6 +105,29 @@ describe("errorHandler with request body errors", () => {
 
     expect(status).toBe(200);
     expect(json).toEqual({ success: true, data: { ok: true } });
+  });
+
+  it("sends the headers an AppError carries", async () => {
+    const app = express();
+    app.get("/held", () => {
+      throw new AppError("Held off", 503, true, undefined, {
+        code: "HELD",
+        headers: { "Retry-After": "9" },
+      });
+    });
+    app.use(errorHandler);
+    vi.spyOn(logger, "error").mockImplementation(() => logger);
+    const local = app.listen(0);
+    await new Promise<void>((resolve) => local.once("listening", resolve));
+
+    const res = await fetch(
+      `http://127.0.0.1:${(local.address() as AddressInfo).port}/held`,
+    );
+    await new Promise<void>((resolve) => local.close(() => resolve()));
+
+    expect(res.status).toBe(503);
+    expect(res.headers.get("retry-after")).toBe("9");
+    expect((await res.json()).error.code).toBe("HELD");
   });
 
   it("still answers 500 for an unexpected error", async () => {

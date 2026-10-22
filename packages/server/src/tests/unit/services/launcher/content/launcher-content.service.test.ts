@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, afterAll, beforeEach, vi } from "vitest";
 import type { KeyValueStore } from "@/services/key-value-store";
 
 const { stores } = vi.hoisted(() => ({
@@ -58,6 +58,11 @@ import {
   type CurseForgeProjectData,
   type CurseForgeProjectHit,
 } from "@/services/curseforge";
+import config from "@/config";
+import {
+  CurseForgeBudgetError,
+  curseforgeBudget,
+} from "@/services/curseforge/budget";
 import { featureFlagService } from "@/services/feature-flag";
 import { launcherContentService } from "@/services/launcher/content/launcher-content.service";
 import { resolveCurseforgeCdnUrls } from "@/services/launcher/pack/curseforge-cdn";
@@ -1944,5 +1949,60 @@ describe("LauncherContentService with a store that fails", () => {
     expect(answer.unmatchedFingerprints).toEqual([20]);
     expect(matchFingerprints).toHaveBeenCalledTimes(1);
     expect(getMods).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("LauncherContentService under the CurseForge budget", () => {
+  const originalLimit = config.curseforge.launcherCallsPerMinute;
+  const search = { query: "create", kind: "mod", ...FIRST_PAGE } as const;
+
+  beforeEach(() => {
+    curseforgeBudget.forget();
+  });
+
+  afterAll(() => {
+    (
+      config.curseforge as { launcherCallsPerMinute: number }
+    ).launcherCallsPerMinute = originalLimit;
+  });
+
+  it("answers 503 with a Retry-After when the budget refuses the call", async () => {
+    vi.mocked(searchProjects).mockRejectedValue(
+      new CurseForgeBudgetError("budget", 12_500),
+    );
+
+    await expect(launcherContentService.search(search)).rejects.toMatchObject({
+      statusCode: 503,
+      code: "CONTENT_UNAVAILABLE",
+      headers: { "Retry-After": "13" },
+    });
+  });
+
+  it("answers 503 with a Retry-After while CurseForge is holding the key off", async () => {
+    vi.mocked(searchProjects).mockRejectedValue(
+      new CurseForgeBudgetError("hold", 400),
+    );
+
+    await expect(launcherContentService.search(search)).rejects.toMatchObject({
+      statusCode: 503,
+      code: "CONTENT_UNAVAILABLE",
+      headers: { "Retry-After": "1" },
+    });
+  });
+
+  it("makes its CurseForge calls inside the budget", async () => {
+    (
+      config.curseforge as { launcherCallsPerMinute: number }
+    ).launcherCallsPerMinute = 1;
+    vi.mocked(searchProjects).mockImplementation(async () => {
+      await curseforgeBudget.admit();
+      await curseforgeBudget.admit();
+      return { projects: [makeHit()], total: 1 };
+    });
+
+    await expect(launcherContentService.search(search)).rejects.toMatchObject({
+      statusCode: 503,
+      headers: { "Retry-After": expect.stringMatching(/^\d+$/) },
+    });
   });
 });

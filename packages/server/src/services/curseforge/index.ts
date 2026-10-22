@@ -5,7 +5,8 @@ import path from "node:path";
 import JSZip from "jszip";
 import { z } from "zod";
 import config from "@/config";
-import { countCurseForgeCall } from "./call-counter";
+import { countCurseForgeCall, countCurseForgeWithheld } from "./call-counter";
+import { curseforgeBudget } from "./budget";
 import { CURSEFORGE_CLASSES } from "@createrington/shared/workshop";
 
 // CurseForge API vocabulary
@@ -255,7 +256,10 @@ function ensureApiKey(): void {
 /**
  * Sends one request to the CurseForge API with the key and the request
  * timeout, and counts it. Every call to the API goes through here, so the
- * count is all this app asks of the key. File downloads from the CDN are not
+ * count is all this app asks of the key, and the budget admits every call
+ * first: one it refuses is counted as withheld and throws its
+ * `CurseForgeBudgetError` without a request. A 429 answer holds every later
+ * call off as its `Retry-After` asks. File downloads from the CDN are not
  * calls to the API and do not come through here.
  */
 async function cfFetch(
@@ -266,6 +270,11 @@ async function cfFetch(
     body?: string;
   } = {},
 ): Promise<Response> {
+  await curseforgeBudget.admit().catch((error: unknown) => {
+    countCurseForgeWithheld();
+    throw error;
+  });
+
   let res: Response;
   try {
     res = await fetch(url, {
@@ -278,6 +287,7 @@ async function cfFetch(
     throw error;
   }
   countCurseForgeCall(res.status);
+  if (res.status === 429) curseforgeBudget.hold(res.headers.get("retry-after"));
   return res;
 }
 

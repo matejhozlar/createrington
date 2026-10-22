@@ -13,18 +13,24 @@ import { ZodError } from "zod";
 export class AppError extends Error {
   public playerMessage?: string;
   public code?: string;
+  public headers?: Record<string, string>;
 
   constructor(
     message: string,
     public statusCode: number = 500,
     public isOperational: boolean = true,
     public details?: unknown,
-    options?: { playerMessage?: string; code?: string },
+    options?: {
+      playerMessage?: string;
+      code?: string;
+      headers?: Record<string, string>;
+    },
   ) {
     super(message);
     this.name = "AppError";
     if (options?.playerMessage) this.playerMessage = options.playerMessage;
     if (options?.code) this.code = options.code;
+    if (options?.headers) this.headers = options.headers;
     Error.captureStackTrace(this, this.constructor);
   }
 }
@@ -229,6 +235,7 @@ export function errorHandler(
     details = err.details;
     playerMessage = err.playerMessage;
     code = err.code;
+    if (err.headers) res.set(err.headers);
   } else if (err instanceof DatabaseError) {
     statusCode = 500;
     message = config.envMode.isDev ? err.message : "Database error occurred";

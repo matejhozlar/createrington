@@ -46,6 +46,8 @@ type CallDay = RouterOutput["owner"]["curseforgeCalls"]["list"]["days"][number];
 
 type CallCount = Exclude<keyof CallDay, "date">;
 
+type BudgetState = RouterOutput["owner"]["curseforgeBudget"]["get"];
+
 type PendingAction = { kind: "release" | "withdraw"; release: ReleaseRow };
 
 const STATUS_BADGES: Record<
@@ -146,6 +148,43 @@ const CALL_SUMMARY: {
   },
 ];
 
+const BUDGET_REFRESH_MS = 15_000;
+
+const BUDGET_IN_MEMORY_NOTE =
+  "The budget is not shared on this environment. This shows only this server process's own count.";
+
+const BUDGET_SUMMARY: {
+  label: string;
+  hint: string;
+  value: (budget: BudgetState) => string;
+  alert?: (budget: BudgetState) => boolean;
+}[] = [
+  {
+    label: "This minute",
+    hint: "Launcher lookups on the key, of the budget per minute",
+    value: (budget) =>
+      `${formatCount(budget.used)} / ${formatCount(budget.limitPerMinute)}`,
+  },
+  {
+    label: "Refused",
+    hint: "Answered 503 this minute, budget spent",
+    value: (budget) => formatCount(budget.refused),
+    alert: (budget) => budget.refused > 0,
+  },
+  {
+    label: "Resets at",
+    hint: "The count starts over every minute",
+    value: (budget) => formatTime(budget.resetsAt),
+  },
+  {
+    label: "CurseForge hold",
+    hint: "No call goes out until then after a 429",
+    value: (budget) =>
+      budget.heldUntil ? `Until ${formatTime(budget.heldUntil)}` : "None",
+    alert: (budget) => budget.heldUntil !== null,
+  },
+];
+
 const CALL_COLUMNS: DataTableColumn<CallDay>[] = [
   {
     key: "date",
@@ -174,10 +213,25 @@ const CALL_COLUMNS: DataTableColumn<CallDay>[] = [
     align: "right",
     render: (day) => <CallCountCell value={day.throttled} alert />,
   },
+  {
+    key: "withheld",
+    header: "Withheld",
+    width: 110,
+    align: "right",
+    render: (day) => <CallCountCell value={day.withheld} alert />,
+  },
 ];
 
 function formatCount(value: number): string {
   return value.toLocaleString("en-US");
+}
+
+function formatTime(value: string): string {
+  return new Date(value).toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
 }
 
 function sumCalls(days: CallDay[], count: CallCount, limit?: number): number {
@@ -443,6 +497,9 @@ export function OwnerLauncherReleases() {
 function CurseforgeCard() {
   const utils = trpc.useUtils();
   const callsQuery = trpc.owner.curseforgeCalls.list.useQuery();
+  const budgetQuery = trpc.owner.curseforgeBudget.get.useQuery(undefined, {
+    refetchInterval: BUDGET_REFRESH_MS,
+  });
   const cdnQuery = trpc.owner.curseforgeCdn.get.useQuery();
 
   const cdnMutation = trpc.owner.curseforgeCdn.update.useMutation(
@@ -455,13 +512,15 @@ function CurseforgeCard() {
 
   const source = callsQuery.data?.source;
   const days = callsQuery.data?.days ?? [];
+  const budget = budgetQuery.data;
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>CurseForge</CardTitle>
         <CardDescription className="max-sm:col-start-1">
-          Requests this server sent to the CurseForge API with its key, per day.
+          Requests this server sent to the CurseForge API with its key, per day,
+          and the launcher's budget of calls on it this minute.
         </CardDescription>
         <CardAction className="max-sm:col-span-full max-sm:row-start-3 max-sm:mt-2 max-sm:justify-self-stretch">
           <LabeledSwitch
@@ -515,6 +574,44 @@ function CurseforgeCard() {
               );
             })}
           </dl>
+          <div className="flex flex-col gap-4 border-t pt-4">
+            <h3 className="m-0 text-sm font-medium">Launcher budget</h3>
+            {budgetQuery.isError ? (
+              <p className="text-sm text-destructive">
+                Failed to load the budget: {budgetQuery.error.message}
+              </p>
+            ) : (
+              <>
+                {budget?.source === "memory" && (
+                  <p className="text-sm text-muted-foreground">
+                    {BUDGET_IN_MEMORY_NOTE}
+                  </p>
+                )}
+                <dl className="m-0 grid grid-cols-2 gap-4 lg:grid-cols-4">
+                  {BUDGET_SUMMARY.map(({ label, hint, value, alert }) => (
+                    <div key={label} className="flex flex-col gap-1">
+                      <dt className="text-sm text-muted-foreground">{label}</dt>
+                      <dd
+                        className={cn(
+                          "m-0 text-2xl font-semibold leading-none",
+                          budget && alert?.(budget) && "text-destructive",
+                        )}
+                      >
+                        {budget ? (
+                          value(budget)
+                        ) : (
+                          <Skeleton className="h-6 w-16" />
+                        )}
+                      </dd>
+                      <dd className="m-0 text-xs text-muted-foreground">
+                        {hint}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </>
+            )}
+          </div>
           <DataTable
             columns={CALL_COLUMNS}
             rows={days}
