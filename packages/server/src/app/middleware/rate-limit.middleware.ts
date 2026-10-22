@@ -70,27 +70,30 @@ export const launcherAuthLimiter = rateLimit({
   store: createRateLimitStore("launcher-auth"),
 });
 
-/** Launcher update check limiter: 60 requests per 15-minute window per IP */
+/** Launcher update check limiter: 60 requests per 15-minute window per IP (the check is unauthenticated) */
 export const launcherUpdateCheckLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 60,
   standardHeaders: "draft-7",
   legacyHeaders: false,
   handler: rateLimitHandler,
+  store: createRateLimitStore("launcher-update-check"),
 });
 
-/** Launcher pack limiter: 120 requests per 15-minute window per IP */
+function launcherPlayerKey(req: Request): string {
+  return req.launcherAuth?.minecraftUuid ?? ipKeyGenerator(req.ip ?? "unknown");
+}
+
+/** Launcher pack limiter: 120 requests per 15-minute window per launcher player (per IP without a session), so launchers behind one NAT do not share a budget */
 export const launcherPackLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 120,
   standardHeaders: "draft-7",
   legacyHeaders: false,
   handler: rateLimitHandler,
+  keyGenerator: launcherPlayerKey,
+  store: createRateLimitStore("launcher-pack"),
 });
-
-function launcherPlayerKey(req: Request): string {
-  return req.launcherAuth?.minecraftUuid ?? ipKeyGenerator(req.ip ?? "unknown");
-}
 
 /** Launcher content limiter: 60 requests per minute per launcher player (per IP without a session) */
 export const launcherContentLimiter = rateLimit({
