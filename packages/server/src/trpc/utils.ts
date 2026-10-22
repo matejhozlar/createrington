@@ -45,6 +45,7 @@ const APP_ERROR_TO_TRPC_CODE: Record<number, TrpcCode> = {
   404: "NOT_FOUND",
   409: "CONFLICT",
   429: "TOO_MANY_REQUESTS",
+  503: "SERVICE_UNAVAILABLE",
 };
 
 /**

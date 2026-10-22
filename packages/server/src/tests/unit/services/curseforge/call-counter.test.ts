@@ -20,6 +20,7 @@ import {
   curseforgeCallCounter,
   type CurseForgeCallCount,
 } from "@/services/curseforge/call-counter";
+import { curseforgeBudget } from "@/services/curseforge/budget";
 
 const fetchMock = vi.fn<typeof fetch>();
 const originalApiKey = config.curseforge.apiKey;
@@ -43,6 +44,7 @@ async function countedBy(
     calls: after.calls - before.calls,
     refused: after.refused - before.refused,
     throttled: after.throttled - before.throttled,
+    withheld: after.withheld - before.withheld,
   };
 }
 
@@ -58,6 +60,7 @@ afterAll(() => {
 
 beforeEach(() => {
   fetchMock.mockReset();
+  curseforgeBudget.forget();
 });
 
 describe("counting calls to the CurseForge API", () => {
@@ -68,6 +71,7 @@ describe("counting calls to the CurseForge API", () => {
       calls: 1,
       refused: 0,
       throttled: 0,
+      withheld: 0,
     });
   });
 
@@ -86,6 +90,7 @@ describe("counting calls to the CurseForge API", () => {
       calls: 1,
       refused: 1,
       throttled: 0,
+      withheld: 0,
     });
   });
 
@@ -96,7 +101,43 @@ describe("counting calls to the CurseForge API", () => {
       calls: 1,
       refused: 0,
       throttled: 1,
+      withheld: 0,
     });
+  });
+
+  it("counts a request held off after a 429 as withheld, not as a call", async () => {
+    fetchMock.mockResolvedValue(
+      new Response("{}", { status: 429, headers: { "Retry-After": "5" } }),
+    );
+    await getMod(328085).catch(() => undefined);
+
+    expect(await countedBy(() => getMod(328085))).toEqual({
+      calls: 0,
+      refused: 0,
+      throttled: 0,
+      withheld: 1,
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("counts a request over the launcher budget as withheld, not as a call", async () => {
+    const originalLimit = config.curseforge.launcherCallsPerMinute;
+    (
+      config.curseforge as { launcherCallsPerMinute: number }
+    ).launcherCallsPerMinute = 1;
+    fetchMock.mockResolvedValue(answer({ data: [] }));
+    try {
+      await curseforgeBudget.budgeted(() => getMods([1]));
+
+      expect(
+        await countedBy(() => curseforgeBudget.budgeted(() => getMods([2]))),
+      ).toEqual({ calls: 0, refused: 0, throttled: 0, withheld: 1 });
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    } finally {
+      (
+        config.curseforge as { launcherCallsPerMinute: number }
+      ).launcherCallsPerMinute = originalLimit;
+    }
   });
 
   it("counts a request that got no answer", async () => {
@@ -106,6 +147,7 @@ describe("counting calls to the CurseForge API", () => {
       calls: 1,
       refused: 0,
       throttled: 0,
+      withheld: 0,
     });
   });
 

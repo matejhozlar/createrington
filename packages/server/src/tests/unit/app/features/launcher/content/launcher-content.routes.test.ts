@@ -377,6 +377,27 @@ describe("GET /api/launcher/content/search", () => {
     expect(res.status).toBe(503);
     expect((await res.json()).error.code).toBe("CONTENT_UNAVAILABLE");
   });
+
+  it("passes the service's Retry-After on when the CurseForge budget is spent", async () => {
+    mocks.search.mockRejectedValue(
+      new AppError(
+        "This server has asked CurseForge enough this minute, try again in 7 s",
+        503,
+        true,
+        undefined,
+        {
+          code: "CONTENT_UNAVAILABLE",
+          headers: { "Retry-After": "7" },
+        },
+      ),
+    );
+
+    const res = await get("/search", newSession());
+
+    expect(res.status).toBe(503);
+    expect(res.headers.get("retry-after")).toBe("7");
+    expect((await res.json()).error.code).toBe("CONTENT_UNAVAILABLE");
+  });
 });
 
 describe("GET /api/launcher/content/categories", () => {

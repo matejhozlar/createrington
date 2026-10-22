@@ -5,6 +5,7 @@ export const CURSEFORGE_CALL_COUNTS = [
   "calls",
   "refused",
   "throttled",
+  "withheld",
 ] as const;
 
 export type CurseForgeCallCount = (typeof CURSEFORGE_CALL_COUNTS)[number];
@@ -26,4 +27,9 @@ export function countCurseForgeCall(status: number | null): void {
   curseforgeCallCounter.add("calls");
   if (status === HTTP_FORBIDDEN) curseforgeCallCounter.add("refused");
   if (status === HTTP_TOO_MANY_REQUESTS) curseforgeCallCounter.add("throttled");
+}
+
+/** Counts one request to the CurseForge API this app did not send: the budget of the minute was spent, or CurseForge was holding the key off after a 429. */
+export function countCurseForgeWithheld(): void {
+  curseforgeCallCounter.add("withheld");
 }

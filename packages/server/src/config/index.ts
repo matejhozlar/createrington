@@ -317,6 +317,7 @@ const config = {
     apiBaseUrl: "https://api.curseforge.com",
     defaultGameVersion: "1.21.1",
     modpackProjectId: env.CURSEFORGE_MODPACK_PROJECT_ID,
+    launcherCallsPerMinute: env.CURSEFORGE_LAUNCHER_CALLS_PER_MINUTE,
     modpackCacheTtlMs: 60 * 60 * 1000,
     modpackIncompleteCacheTtlMs: 60 * 1000,
   },

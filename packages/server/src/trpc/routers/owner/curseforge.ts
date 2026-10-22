@@ -6,6 +6,7 @@ import {
   CURSEFORGE_CALL_COUNTS,
   curseforgeCallCounter,
 } from "@/services/curseforge/call-counter";
+import { curseforgeBudget } from "@/services/curseforge/budget";
 import { featureFlagService, FeatureFlags } from "@/services/feature-flag";
 
 const DEFAULT_DAYS = 14;
@@ -36,6 +37,15 @@ export const ownerCurseforgeCallsRouter = router({
         days: days.map(({ date, counts }) => ({ date, ...counts })),
       };
     }),
+});
+
+export const ownerCurseforgeBudgetRouter = router({
+  get: ownerProcedure
+    .meta({
+      description:
+        "The launcher content lookups' budget of calls on the CurseForge key this minute, and until when CurseForge is holding the key off after a 429",
+    })
+    .query(() => curseforgeBudget.read()),
 });
 
 export const ownerCurseforgeCdnRouter = router({

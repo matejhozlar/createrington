@@ -13,6 +13,10 @@ import {
   matchFingerprints,
   searchProjects,
 } from "@/services/curseforge";
+import {
+  CurseForgeBudgetError,
+  curseforgeBudget,
+} from "@/services/curseforge/budget";
 import { FeatureFlags, featureFlagService } from "@/services/feature-flag";
 import {
   keyValueStore,
@@ -80,8 +84,9 @@ function contentError(
   code: LauncherContentErrorCode,
   statusCode: number,
   message: string,
+  headers?: Record<string, string>,
 ): AppError {
-  return new AppError(message, statusCode, true, undefined, { code });
+  return new AppError(message, statusCode, true, undefined, { code, headers });
 }
 
 function projectNotFound(): AppError {
@@ -138,8 +143,10 @@ function loaderTypeFor(
  * (remembered for an hour, a miss for 10 minutes, a file the CDN gave no
  * answer for not at all), and the flag is read on every answer, so switching
  * it takes effect at once. The other sources the pack service has for blocked
- * files are for our pack only. Throws `CONTENT_UNAVAILABLE` (503) when
- * CurseForge cannot be asked. Singleton.
+ * files are for our pack only. Every CurseForge call draws from the app's
+ * CurseForge budget. Throws `CONTENT_UNAVAILABLE` (503) when CurseForge
+ * cannot be asked, with a `Retry-After` header when the budget of the minute
+ * is spent or CurseForge is holding the key off after a 429. Singleton.
  */
 class LauncherContentService {
   private static instance: LauncherContentService;
@@ -670,8 +677,16 @@ class LauncherContentService {
 
   private async ask<T>(what: string, call: () => Promise<T>): Promise<T> {
     try {
-      return await call();
+      return await curseforgeBudget.budgeted(call);
     } catch (error) {
+      if (error instanceof CurseForgeBudgetError) {
+        throw contentError(
+          LauncherContentErrorCode.CONTENT_UNAVAILABLE,
+          503,
+          error.message,
+          { "Retry-After": `${error.retryAfterSeconds}` },
+        );
+      }
       logger.warn(
         `Launcher content ${what} lookup on CurseForge failed:`,
         error,
