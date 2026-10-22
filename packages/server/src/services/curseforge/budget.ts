@@ -1,9 +1,14 @@
 import { AsyncLocalStorage } from "node:async_hooks";
+import { AppError } from "@/app/middleware/error-handler";
 import config from "@/config";
 import { redisService } from "@/services/redis";
 
 const MINUTE_MS = 60_000;
 const MINUTE_KEY_TTL_MS = 2 * MINUTE_MS;
+const TAKE_SCRIPT =
+  "local count = redis.call('INCR', KEYS[1]) " +
+  "if count == 1 then redis.call('PEXPIRE', KEYS[1], ARGV[1]) end " +
+  "return count";
 const HOLD_WHEN_NOT_TOLD_MS = 30_000;
 const SHORTEST_HOLD_MS = 1_000;
 const LONGEST_HOLD_MS = 10 * MINUTE_MS;
@@ -34,10 +39,13 @@ export interface CurseForgeBudgetState {
 
 /**
  * Thrown instead of a call to CurseForge: for a hold after a 429, or because
- * the budget of the minute is spent. `retryAfterMs` says when the next call
- * can go out.
+ * the budget of the minute is spent. A 503 with a `Retry-After` header, so a
+ * route answers it as such and a tRPC procedure maps it to
+ * SERVICE_UNAVAILABLE. `retryAfterMs` says when the next call can go out.
  */
-export class CurseForgeBudgetError extends Error {
+export class CurseForgeBudgetError extends AppError {
+  readonly retryAfterSeconds: number;
+
   constructor(
     readonly refusal: CurseForgeRefusal,
     readonly retryAfterMs: number,
@@ -47,13 +55,13 @@ export class CurseForgeBudgetError extends Error {
       refusal === "hold"
         ? `CurseForge is holding this server off, try again in ${seconds} s`
         : `This server has asked CurseForge enough this minute, try again in ${seconds} s`,
+      503,
+      true,
+      undefined,
+      { headers: { "Retry-After": `${seconds}` } },
     );
     this.name = "CurseForgeBudgetError";
-  }
-
-  /** The wait for an HTTP `Retry-After` header: whole seconds, at least 1. */
-  get retryAfterSeconds(): number {
-    return Math.max(1, Math.ceil(this.retryAfterMs / 1000));
+    this.retryAfterSeconds = seconds;
   }
 }
 
@@ -159,14 +167,15 @@ export class CurseForgeBudget {
   private async take(minute: number): Promise<number> {
     if (this.redis.isReady) {
       try {
-        const key = this.minuteKey(minute);
-        const count = toCount(await this.redis.sendCommand(["INCR", key]));
-        if (count === 1) {
-          this.redis
-            .sendCommand(["PEXPIRE", key, `${MINUTE_KEY_TTL_MS}`])
-            .catch(() => undefined);
-        }
-        return count;
+        return toCount(
+          await this.redis.sendCommand([
+            "EVAL",
+            TAKE_SCRIPT,
+            "1",
+            this.minuteKey(minute),
+            `${MINUTE_KEY_TTL_MS}`,
+          ]),
+        );
       } catch {
         return this.takeInMemory(minute);
       }

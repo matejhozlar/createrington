@@ -3,7 +3,13 @@ import { TRPCError } from "@trpc/server";
 
 vi.mock("@/db", () => ({}));
 
-import { findOrThrow, paginateQuery, sortDirection } from "@/trpc/utils";
+import { AppError } from "@/app/middleware/error-handler";
+import {
+  findOrThrow,
+  paginateQuery,
+  rethrowTrpc,
+  sortDirection,
+} from "@/trpc/utils";
 
 describe("sortDirection", () => {
   it("accepts asc and desc", () => {
@@ -98,5 +104,21 @@ describe("paginateQuery", () => {
       rows,
       pagination: { page: 2, limit: 20, total: 41, totalPages: 3 },
     });
+  });
+});
+
+describe("rethrowTrpc", () => {
+  it("maps a 503 AppError to SERVICE_UNAVAILABLE", () => {
+    const error = new AppError("CurseForge is holding this server off", 503);
+
+    expect(() => rethrowTrpc(error)).toThrow(
+      expect.objectContaining({ code: "SERVICE_UNAVAILABLE", cause: error }),
+    );
+  });
+
+  it("passes an error that is no AppError through unchanged", () => {
+    const error = new Error("boom");
+
+    expect(() => rethrowTrpc(error)).toThrow(error);
   });
 });

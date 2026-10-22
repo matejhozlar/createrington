@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
+import { AppError } from "@/app/middleware/error-handler";
 import {
   CurseForgeBudget,
   CurseForgeBudgetError,
@@ -22,9 +23,10 @@ class FakeRedis implements BudgetRedis {
     if (this.failing) throw new Error("Redis down");
     const [command, key, value] = args as [string, string, string?];
     switch (command) {
-      case "INCR": {
-        const count = Number(this.values.get(key) ?? 0) + 1;
-        this.values.set(key, `${count}`);
+      case "EVAL": {
+        const [minuteKey] = args.slice(3) as [string];
+        const count = Number(this.values.get(minuteKey) ?? 0) + 1;
+        this.values.set(minuteKey, `${count}`);
         return count;
       }
       case "GET":
@@ -32,8 +34,6 @@ class FakeRedis implements BudgetRedis {
       case "SET":
         this.values.set(key, value!);
         return "OK";
-      case "PEXPIRE":
-        return 1;
       default:
         throw new Error(`unexpected command ${command}`);
     }
@@ -81,7 +81,7 @@ describe("CurseForgeBudget outside a budgeted context", () => {
   it("lets every call through without counting it", async () => {
     for (let call = 0; call < 5; call += 1) await budget.admit();
 
-    expect(redis.sent("INCR")).toEqual([]);
+    expect(redis.sent("EVAL")).toEqual([]);
     expect((await budget.read()).used).toBe(0);
   });
 });
@@ -111,14 +111,19 @@ describe("CurseForgeBudget inside a budgeted context", () => {
     });
   });
 
-  it("counts in Redis under the minute's key, which expires on its own", async () => {
+  it("counts in Redis under the minute's key, with its expiry set in the same command", async () => {
     await budget.budgeted(() => budget.admit());
 
-    expect(redis.sent("INCR")).toEqual([
-      ["INCR", `${PREFIX}:minute:${MINUTE}`],
-    ]);
-    expect(redis.sent("PEXPIRE")).toEqual([
-      ["PEXPIRE", `${PREFIX}:minute:${MINUTE}`, `${2 * MINUTE_MS}`],
+    const [command, script, keys, key, ttl] = redis.sent("EVAL")[0]!;
+
+    expect(redis.sent("EVAL")).toHaveLength(1);
+    expect(command).toBe("EVAL");
+    expect(script).toMatch(/INCR/);
+    expect(script).toMatch(/PEXPIRE/);
+    expect([keys, key, ttl]).toEqual([
+      "1",
+      `${PREFIX}:minute:${MINUTE}`,
+      `${2 * MINUTE_MS}`,
     ]);
   });
 
@@ -139,7 +144,7 @@ describe("CurseForgeBudget inside a budgeted context", () => {
       await budget.admit();
     });
 
-    expect(redis.sent("INCR")).toHaveLength(1);
+    expect(redis.sent("EVAL")).toHaveLength(1);
   });
 
   it("counts in memory while Redis is not ready", async () => {
@@ -178,7 +183,7 @@ describe("CurseForgeBudget after a 429", () => {
     expect(outside.refusal).toBe("hold");
     expect(outside.retryAfterMs).toBe(2_000);
     expect(inside.refusal).toBe("hold");
-    expect(redis.sent("INCR")).toEqual([]);
+    expect(redis.sent("EVAL")).toEqual([]);
   });
 
   it("lets calls through again once the hold is over", async () => {
@@ -248,6 +253,19 @@ describe("CurseForgeBudget after a 429", () => {
     budget.forget();
 
     await expect(budget.admit()).resolves.toBeUndefined();
+  });
+});
+
+describe("CurseForgeBudgetError", () => {
+  it("is a 503 with a Retry-After header of whole seconds, at least one", () => {
+    const budgetSpent = new CurseForgeBudgetError("budget", 12_500);
+    const held = new CurseForgeBudgetError("hold", 400);
+
+    expect(budgetSpent).toBeInstanceOf(AppError);
+    expect(budgetSpent.statusCode).toBe(503);
+    expect(budgetSpent.headers).toEqual({ "Retry-After": "13" });
+    expect(budgetSpent.retryAfterSeconds).toBe(13);
+    expect(held.headers).toEqual({ "Retry-After": "1" });
   });
 });
 
