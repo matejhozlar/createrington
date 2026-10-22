@@ -14,47 +14,41 @@ import {
 
 const router = Router();
 
-router.use(launcherPackLimiter);
+router.use(authenticateLauncher, launcherPackLimiter);
 
-router.get(
-  "/",
-  ...customRoute([authenticateLauncher], LauncherPackController.list),
-);
+router.get("/", ...customRoute([], LauncherPackController.list));
 router.post(
   "/files/resolve",
   ...customRoute(
-    [authenticateLauncher, validate({ body: ResolveFilesBodySchema })],
+    [validate({ body: ResolveFilesBodySchema })],
     LauncherPackController.resolveFiles,
   ),
 );
 router.get(
   "/files/snapshot/:id",
   ...customRoute(
-    [authenticateLauncher, validate({ params: StorageSnapshotParamsSchema })],
+    [validate({ params: StorageSnapshotParamsSchema })],
     LauncherPackController.storageSnapshot,
   ),
 );
 router.get(
   "/files/:fileId",
   ...customRoute(
-    [authenticateLauncher, validate({ params: StorageFileParamsSchema })],
+    [validate({ params: StorageFileParamsSchema })],
     LauncherPackController.storageFile,
   ),
 );
 router.get(
   "/:slug/latest",
   ...customRoute(
-    [authenticateLauncher, validate({ params: PackParamsSchema })],
+    [validate({ params: PackParamsSchema })],
     LauncherPackController.latest,
   ),
 );
 router.get(
   "/:slug/releases",
   ...customRoute(
-    [
-      authenticateLauncher,
-      validate({ params: PackParamsSchema, query: ListReleasesQuerySchema }),
-    ],
+    [validate({ params: PackParamsSchema, query: ListReleasesQuerySchema })],
     LauncherPackController.releases,
   ),
 );
