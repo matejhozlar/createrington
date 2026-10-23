@@ -16,6 +16,7 @@ import { minecraftRcon, WhitelistAction } from "@/utils/rcon";
 import { discordTimestamp } from "@/utils/format";
 import { parsePlayerId } from "@/trpc/utils";
 import { sessionService } from "@/services/auth/session/session.service";
+import { launcherSessionService } from "@/services/auth/launcher/launcher-session.service";
 
 function inGameBanReason(reason: string, expiresAt?: Date | null): string {
   const suffix = expiresAt
@@ -138,6 +139,7 @@ export const bansRouter = router({
       );
 
       await sessionService.revokeAllForUser(player.discordId);
+      await launcherSessionService.revokeAllForPlayer(player.minecraftUuid);
 
       try {
         const embed = EmbedPresets.plain({

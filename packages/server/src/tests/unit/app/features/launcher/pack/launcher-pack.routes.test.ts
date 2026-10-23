@@ -248,6 +248,7 @@ beforeAll(async () => {
     Authorization: `Bearer ${launcherJwtService.generate({
       minecraftUuid: "069a79f4-44e9-4726-a5be-fca90e38aaf5",
       minecraftUsername: "Alice_MC",
+      familyId: "0f6a7b1c-5d4e-4f3a-9b2c-1d0e9f8a7b6c",
     })}`,
   };
 

@@ -143,6 +143,7 @@ function sessionOf(minecraftUuid: string): Record<string, string> {
     Authorization: `Bearer ${launcherJwtService.generate({
       minecraftUuid,
       minecraftUsername: "Alice_MC",
+      familyId: "0f6a7b1c-5d4e-4f3a-9b2c-1d0e9f8a7b6c",
     })}`,
   };
 }

@@ -1,6 +1,10 @@
 import { db, Q } from "@/db";
 import { refreshTokenService } from "@/services/auth/token/refresh-token.service";
 import type { AuthLauncherSession } from "@createrington/shared/db/auth_launcher_session.types";
+import {
+  denyLauncherFamily,
+  denyLauncherPlayer,
+} from "./launcher-token-denylist";
 
 interface CreateLauncherSessionParams {
   minecraftUuid: string;
@@ -8,12 +12,19 @@ interface CreateLauncherSessionParams {
   userAgent?: string;
 }
 
+export interface IssuedLauncherSession {
+  refreshToken: string;
+  familyId: string;
+}
+
 /**
  * Manages launcher sessions backed by the `auth_launcher_session` table, kept apart from
  * the web `auth_session` table so a launcher refresh token can never mint a web session.
  * Issues opaque refresh tokens on sign-in, rotates them on each use, and revokes the whole
- * token family when an already-revoked token is replayed (theft detection). Singleton; an
- * hourly cleanup of expired rows starts on first access.
+ * token family when an already-revoked token is replayed (theft detection). Every revocation
+ * also denies the access tokens already issued for the sessions it ends, so the launcher's
+ * next request is refused, not only its next refresh. Singleton; an hourly cleanup of
+ * expired rows starts on first access.
  */
 class LauncherSessionService {
   private static instance: LauncherSessionService;
@@ -29,11 +40,13 @@ class LauncherSessionService {
     return LauncherSessionService.instance;
   }
 
-  /** Issues a session in a new token family and returns the raw refresh token. */
-  async createSession(params: CreateLauncherSessionParams): Promise<string> {
+  /** Issues a session in a new token family and returns the raw refresh token with the family id. */
+  async createSession(
+    params: CreateLauncherSessionParams,
+  ): Promise<IssuedLauncherSession> {
     const rawToken = refreshTokenService.generate();
 
-    await Q.auth.launcher.session.create({
+    const session = await Q.auth.launcher.session.createAndReturn({
       playerMinecraftUuid: params.minecraftUuid,
       tokenHash: refreshTokenService.hash(rawToken),
       ipAddress: params.ip ?? null,
@@ -42,7 +55,7 @@ class LauncherSessionService {
     });
 
     logger.debug(`Created launcher session for ${params.minecraftUuid}`);
-    return rawToken;
+    return { refreshToken: rawToken, familyId: session.familyId };
   }
 
   /**
@@ -116,20 +129,27 @@ class LauncherSessionService {
     return newRawToken;
   }
 
-  /** Revokes the single session identified by the given raw refresh token (launcher sign-out). */
+  /** Revokes the session family behind the raw refresh token and its access tokens (launcher sign-out). */
   async revokeByToken(rawToken: string): Promise<void> {
+    const session = await Q.auth.launcher.session.find({
+      tokenHash: refreshTokenService.hash(rawToken),
+    });
+    if (!session) return;
+
     await Q.auth.launcher.session.updateAll(
       { revokedAt: new Date() },
-      { tokenHash: refreshTokenService.hash(rawToken), revokedAt: null },
+      { familyId: session.familyId, revokedAt: null },
     );
+    await denyLauncherFamily(session.familyId);
   }
 
-  /** Revokes every active launcher session for the player (removal, ban, or forced sign-out). */
+  /** Revokes every launcher session and access token of the player (removal, ban, or forced sign-out). */
   async revokeAllForPlayer(minecraftUuid: string): Promise<void> {
     await Q.auth.launcher.session.updateAll(
       { revokedAt: new Date() },
       { playerMinecraftUuid: minecraftUuid, revokedAt: null },
     );
+    await denyLauncherPlayer(minecraftUuid);
     logger.info(`Revoked all launcher sessions for player ${minecraftUuid}`);
   }
 
@@ -165,6 +185,7 @@ class LauncherSessionService {
       { revokedAt: new Date() },
       { familyId: session.familyId, revokedAt: null },
     );
+    await denyLauncherFamily(session.familyId);
   }
 }
 
