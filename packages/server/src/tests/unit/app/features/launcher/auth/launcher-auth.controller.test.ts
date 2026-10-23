@@ -102,7 +102,10 @@ describe("LauncherAuthController", () => {
     vi.resetAllMocks();
     __resetLauncherChallengesForTests();
     mocks.generate.mockReturnValue("access-token");
-    mocks.createSession.mockResolvedValue(REFRESH_TOKEN);
+    mocks.createSession.mockResolvedValue({
+      refreshToken: REFRESH_TOKEN,
+      familyId: SESSION.familyId,
+    });
     mocks.isPlayerBanned.mockResolvedValue(false);
   });
 
@@ -145,6 +148,11 @@ describe("LauncherAuthController", () => {
         minecraftUuid: PLAYER.minecraftUuid,
         ip: "203.0.113.7",
         userAgent: "createrington-launcher/0.1.2",
+      });
+      expect(mocks.generate).toHaveBeenCalledWith({
+        minecraftUuid: PLAYER.minecraftUuid,
+        minecraftUsername: PLAYER.minecraftUsername,
+        familyId: SESSION.familyId,
       });
       expect(json).toHaveBeenCalledWith({
         success: true,
@@ -282,6 +290,11 @@ describe("LauncherAuthController", () => {
         "203.0.113.7",
         "createrington-launcher/0.1.2",
       );
+      expect(mocks.generate).toHaveBeenCalledWith({
+        minecraftUuid: PLAYER.minecraftUuid,
+        minecraftUsername: PLAYER.minecraftUsername,
+        familyId: SESSION.familyId,
+      });
       expect(json).toHaveBeenCalledWith({
         success: true,
         data: {
@@ -395,6 +408,8 @@ describe("LauncherAuthController", () => {
         launcherAuth: {
           minecraftUuid: PLAYER.minecraftUuid,
           minecraftUsername: PLAYER.minecraftUsername,
+          familyId: SESSION.familyId,
+          issuedAt: 1_761_220_800,
         },
       });
 

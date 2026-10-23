@@ -45,11 +45,16 @@ function invalidRefreshToken(): UnauthorizedError {
 function sessionResponse(
   player: LauncherPlayer,
   refreshToken: string,
+  familyId: string,
 ): LauncherSuccessResponse<LauncherSessionData> {
   return {
     success: true,
     data: {
-      accessToken: launcherJwtService.generate(player),
+      accessToken: launcherJwtService.generate({
+        minecraftUuid: player.minecraftUuid,
+        minecraftUsername: player.minecraftUsername,
+        familyId,
+      }),
       expiresIn: LAUNCHER_ACCESS_TOKEN_TTL_SECONDS,
       refreshToken,
       player: {
@@ -124,7 +129,7 @@ export class LauncherAuthController {
 
     const player = await requireActivePlayer(profile.uuid);
 
-    const refreshToken = await launcherSessionService.createSession({
+    const session = await launcherSessionService.createSession({
       minecraftUuid: player.minecraftUuid,
       ip: req.clientIp || req.ip,
       userAgent: req.headers["user-agent"],
@@ -134,7 +139,7 @@ export class LauncherAuthController {
       `Player ${player.minecraftUsername} (${player.minecraftUuid}) signed in via launcher`,
     );
 
-    res.json(sessionResponse(player, refreshToken));
+    res.json(sessionResponse(player, session.refreshToken, session.familyId));
   }
 
   static async refresh(req: Request, res: Response): Promise<void> {
@@ -170,7 +175,7 @@ export class LauncherAuthController {
       throw invalidRefreshToken();
     }
 
-    res.json(sessionResponse(player, refreshToken));
+    res.json(sessionResponse(player, refreshToken, session.familyId));
   }
 
   static async logout(_req: Request, res: Response): Promise<void> {

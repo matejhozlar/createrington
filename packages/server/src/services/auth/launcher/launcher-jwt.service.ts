@@ -14,16 +14,23 @@ export class LauncherTokenExpiredError extends Error {
   }
 }
 
-export type LauncherJwtPayload = LauncherPlayer;
+export interface LauncherTokenClaims extends LauncherPlayer {
+  familyId: string;
+}
+
+export interface LauncherJwtPayload extends LauncherTokenClaims {
+  issuedAt: number;
+}
 
 /**
  * Issues and verifies the short-lived HS256 access tokens handed to the Createrington
  * Launcher. Tokens are signed with `LAUNCHER_JWT_SECRET` and the `createrington.launcher`
  * audience, so they never satisfy a web or mod auth check, and web or mod tokens never
- * satisfy a launcher one. Carries the Minecraft identity only, no Discord identity or role.
- * Tokens live `LAUNCHER_ACCESS_TOKEN_TTL_SECONDS` (15 minutes), independent of the web token
- * lifetime: launcher clients are written against this value, and it is also how long a banned
- * or removed player keeps access until the next refresh rejects them.
+ * satisfy a launcher one. Carries the Minecraft identity and the id of the refresh token
+ * family it was issued in, no Discord identity or role. Tokens live
+ * `LAUNCHER_ACCESS_TOKEN_TTL_SECONDS` (15 minutes), independent of the web token lifetime:
+ * launcher clients are written against this value. A token is cut off before it expires
+ * when its family or its player is denied (see `launcher-token-denylist`).
  * Singleton; `isEnabled()` is false when the secret is not configured, and signing or
  * verifying in that state throws.
  */
@@ -48,12 +55,13 @@ export class LauncherJwtService {
     return this.secret.length > 0;
   }
 
-  /** Signs a new launcher access token for a verified player. */
-  generate(payload: LauncherJwtPayload): string {
+  /** Signs a new launcher access token for a verified player's session family. */
+  generate(claims: LauncherTokenClaims): string {
     return jwt.sign(
       {
-        minecraftUuid: payload.minecraftUuid,
-        minecraftUsername: payload.minecraftUsername,
+        minecraftUuid: claims.minecraftUuid,
+        minecraftUsername: claims.minecraftUsername,
+        familyId: claims.familyId,
       },
       this.requireSecret(),
       {
@@ -108,12 +116,16 @@ function assertLauncherJwtPayload(value: unknown): LauncherJwtPayload {
   const p = value as Record<string, unknown>;
   if (
     typeof p.minecraftUuid !== "string" ||
-    typeof p.minecraftUsername !== "string"
+    typeof p.minecraftUsername !== "string" ||
+    typeof p.familyId !== "string" ||
+    typeof p.iat !== "number"
   ) {
     throw new InvalidJwtPayloadError();
   }
   return {
     minecraftUuid: p.minecraftUuid,
     minecraftUsername: p.minecraftUsername,
+    familyId: p.familyId,
+    issuedAt: p.iat,
   };
 }

@@ -2,19 +2,21 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 type BeforeCommit = (() => Promise<void>) | undefined;
 
-const { Q, bans, rcon, revokeAllForUser, deletePlayer } = vi.hoisted(() => ({
-  Q: {
-    player: {
-      get: vi.fn(),
-      find: vi.fn(),
-      ban: { get: vi.fn() },
+const { Q, bans, rcon, revokeAllForUser, revokeAllForPlayer, deletePlayer } =
+  vi.hoisted(() => ({
+    Q: {
+      player: {
+        get: vi.fn(),
+        find: vi.fn(),
+        ban: { get: vi.fn() },
+      },
     },
-  },
-  bans: { issueTemporary: vi.fn(), createPermanent: vi.fn(), unban: vi.fn() },
-  rcon: { banAll: vi.fn(), pardonAll: vi.fn(), whitelistAll: vi.fn() },
-  revokeAllForUser: vi.fn(),
-  deletePlayer: vi.fn(),
-}));
+    bans: { issueTemporary: vi.fn(), createPermanent: vi.fn(), unban: vi.fn() },
+    rcon: { banAll: vi.fn(), pardonAll: vi.fn(), whitelistAll: vi.fn() },
+    revokeAllForUser: vi.fn(),
+    revokeAllForPlayer: vi.fn(),
+    deletePlayer: vi.fn(),
+  }));
 
 vi.mock("@/db", () => ({ Q }));
 vi.mock("@/services/player", () => ({ playerService: { bans } }));
@@ -29,6 +31,9 @@ vi.mock("@/services", () => ({
 }));
 vi.mock("@/services/auth/session/session.service", () => ({
   sessionService: { revokeAllForUser },
+}));
+vi.mock("@/services/auth/launcher/launcher-session.service", () => ({
+  launcherSessionService: { revokeAllForPlayer },
 }));
 vi.mock("@/services/discord/oauth/oauth.service", async () => ({
   AuthRole: (
@@ -144,6 +149,7 @@ describe("admin.players.bans.issueTemporary", () => {
       expect.stringContaining("griefing"),
     );
     expect(revokeAllForUser).toHaveBeenCalledWith(PLAYER.discordId);
+    expect(revokeAllForPlayer).toHaveBeenCalledWith(PLAYER.minecraftUuid);
     expect(rcon.pardonAll).not.toHaveBeenCalled();
   });
 

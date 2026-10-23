@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterAll, vi } from "vitest";
 import { Q } from "@/db";
 import { launcherSessionService } from "@/services/auth/launcher/launcher-session.service";
+import { isLauncherTokenDenied } from "@/services/auth/launcher/launcher-token-denylist";
 import { refreshTokenService } from "@/services/auth/token/refresh-token.service";
 
 const PLAYER_UUID = "7e57ab1e-0000-4000-8000-000000001507";
@@ -16,6 +17,31 @@ async function findSession(rawToken: string) {
   return await Q.auth.launcher.session.find({
     tokenHash: refreshTokenService.hash(rawToken),
   });
+}
+
+async function signIn(params: {
+  minecraftUuid: string;
+  ip?: string;
+  userAgent?: string;
+}): Promise<string> {
+  return (await launcherSessionService.createSession(params)).refreshToken;
+}
+
+function accessTokenOf(
+  minecraftUuid: string,
+  familyId: string,
+  issuedAt: number,
+) {
+  return {
+    minecraftUuid,
+    minecraftUsername: "launcher_test",
+    familyId,
+    issuedAt,
+  };
+}
+
+function nowInSeconds(): number {
+  return Math.floor(Date.now() / 1000);
 }
 
 async function rotate(rawToken: string): Promise<string | null> {
@@ -48,7 +74,7 @@ describe("LauncherSessionService", () => {
   });
 
   it("stores only the hash of the refresh token", async () => {
-    const rawToken = await launcherSessionService.createSession({
+    const rawToken = await signIn({
       minecraftUuid: PLAYER_UUID,
       ip: "203.0.113.7",
       userAgent: "createrington-launcher/0.1.2",
@@ -64,7 +90,7 @@ describe("LauncherSessionService", () => {
   });
 
   it("rotates into a new token in the same family and revokes the old one", async () => {
-    const first = await launcherSessionService.createSession({
+    const first = await signIn({
       minecraftUuid: PLAYER_UUID,
     });
 
@@ -81,7 +107,7 @@ describe("LauncherSessionService", () => {
   });
 
   it("treats a replayed refresh token as theft and revokes the whole family", async () => {
-    const first = await launcherSessionService.createSession({
+    const first = await signIn({
       minecraftUuid: PLAYER_UUID,
     });
     const rotated = await rotate(first);
@@ -94,7 +120,7 @@ describe("LauncherSessionService", () => {
   });
 
   it("keeps the presented token usable when issuing the successor fails", async () => {
-    const first = await launcherSessionService.createSession({
+    const first = await signIn({
       minecraftUuid: PLAYER_UUID,
     });
     const session = await launcherSessionService.resolveActiveSession(first);
@@ -111,7 +137,7 @@ describe("LauncherSessionService", () => {
   });
 
   it("keeps the presented token usable when it was resolved but never rotated", async () => {
-    const first = await launcherSessionService.createSession({
+    const first = await signIn({
       minecraftUuid: PLAYER_UUID,
     });
 
@@ -121,7 +147,7 @@ describe("LauncherSessionService", () => {
   });
 
   it("lets only one of two rotations of the same session win and revokes the family", async () => {
-    const first = await launcherSessionService.createSession({
+    const first = await signIn({
       minecraftUuid: PLAYER_UUID,
     });
     const session = await launcherSessionService.resolveActiveSession(first);
@@ -139,7 +165,7 @@ describe("LauncherSessionService", () => {
   });
 
   it("rejects an expired refresh token", async () => {
-    const rawToken = await launcherSessionService.createSession({
+    const rawToken = await signIn({
       minecraftUuid: PLAYER_UUID,
     });
     await Q.auth.launcher.session.update(
@@ -151,10 +177,10 @@ describe("LauncherSessionService", () => {
   });
 
   it("revokes a single session on sign-out and leaves the others alone", async () => {
-    const first = await launcherSessionService.createSession({
+    const first = await signIn({
       minecraftUuid: PLAYER_UUID,
     });
-    const second = await launcherSessionService.createSession({
+    const second = await signIn({
       minecraftUuid: PLAYER_UUID,
     });
 
@@ -165,13 +191,13 @@ describe("LauncherSessionService", () => {
   });
 
   it("lists active sessions per player", async () => {
-    const kept = await launcherSessionService.createSession({
+    const kept = await signIn({
       minecraftUuid: PLAYER_UUID,
     });
-    const revoked = await launcherSessionService.createSession({
+    const revoked = await signIn({
       minecraftUuid: PLAYER_UUID,
     });
-    await launcherSessionService.createSession({ minecraftUuid: OTHER_UUID });
+    await signIn({ minecraftUuid: OTHER_UUID });
     await launcherSessionService.revokeByToken(revoked);
 
     const sessions = await launcherSessionService.listActive(PLAYER_UUID);
@@ -182,10 +208,10 @@ describe("LauncherSessionService", () => {
   });
 
   it("revokes every session of one player without touching another player", async () => {
-    const mine = await launcherSessionService.createSession({
+    const mine = await signIn({
       minecraftUuid: PLAYER_UUID,
     });
-    await launcherSessionService.createSession({ minecraftUuid: OTHER_UUID });
+    await signIn({ minecraftUuid: OTHER_UUID });
 
     await launcherSessionService.revokeAllForPlayer(PLAYER_UUID);
 
@@ -194,8 +220,80 @@ describe("LauncherSessionService", () => {
     expect(await launcherSessionService.listActive(OTHER_UUID)).toHaveLength(1);
   });
 
+  it("returns the family id of the new session", async () => {
+    const issued = await launcherSessionService.createSession({
+      minecraftUuid: PLAYER_UUID,
+    });
+
+    const session = await findSession(issued.refreshToken);
+
+    expect(session?.familyId).toBe(issued.familyId);
+  });
+
+  it("denies the access tokens of the family on sign-out and no others", async () => {
+    const signedOut = await launcherSessionService.createSession({
+      minecraftUuid: OTHER_UUID,
+    });
+    const kept = await launcherSessionService.createSession({
+      minecraftUuid: OTHER_UUID,
+    });
+    const issuedAt = nowInSeconds();
+
+    await launcherSessionService.revokeByToken(signedOut.refreshToken);
+
+    expect(
+      await isLauncherTokenDenied(
+        accessTokenOf(OTHER_UUID, signedOut.familyId, issuedAt),
+      ),
+    ).toBe(true);
+    expect(
+      await isLauncherTokenDenied(
+        accessTokenOf(OTHER_UUID, kept.familyId, issuedAt),
+      ),
+    ).toBe(false);
+  });
+
+  it("denies every access token of the player when all their sessions are revoked", async () => {
+    const mine = await launcherSessionService.createSession({
+      minecraftUuid: PLAYER_UUID,
+    });
+    const theirs = await launcherSessionService.createSession({
+      minecraftUuid: OTHER_UUID,
+    });
+    const issuedAt = nowInSeconds();
+
+    await launcherSessionService.revokeAllForPlayer(PLAYER_UUID);
+
+    expect(
+      await isLauncherTokenDenied(
+        accessTokenOf(PLAYER_UUID, mine.familyId, issuedAt),
+      ),
+    ).toBe(true);
+    expect(
+      await isLauncherTokenDenied(
+        accessTokenOf(OTHER_UUID, theirs.familyId, issuedAt),
+      ),
+    ).toBe(false);
+  });
+
+  it("denies the access tokens of a family whose refresh token was replayed", async () => {
+    const issued = await launcherSessionService.createSession({
+      minecraftUuid: OTHER_UUID,
+    });
+    await rotate(issued.refreshToken);
+    const issuedAt = nowInSeconds();
+
+    await rotate(issued.refreshToken);
+
+    expect(
+      await isLauncherTokenDenied(
+        accessTokenOf(OTHER_UUID, issued.familyId, issuedAt),
+      ),
+    ).toBe(true);
+  });
+
   it("drops the sessions when the player row is removed", async () => {
-    const rawToken = await launcherSessionService.createSession({
+    const rawToken = await signIn({
       minecraftUuid: PLAYER_UUID,
     });
 

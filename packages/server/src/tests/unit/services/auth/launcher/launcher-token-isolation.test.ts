@@ -10,6 +10,7 @@ const { WEB_SECRET, MOD_SECRET, LAUNCHER_SECRET } = vi.hoisted(() => ({
 vi.mock("@/config", () => ({
   default: {
     envMode: { isProd: false, isDev: false },
+    redis: { url: null },
     meta: { links: { website: "http://localhost:3000" } },
     app: {
       devClientOrigin: "http://localhost:3000",
@@ -58,6 +59,7 @@ import type { NextFunction, Request, Response } from "express";
 const PLAYER = {
   minecraftUuid: "069a79f4-44e9-4726-a5be-fca90e38aaf5",
   minecraftUsername: "Alice_MC",
+  familyId: "0f6a7b1c-5d4e-4f3a-9b2c-1d0e9f8a7b6c",
 };
 
 const WEB_USER = {
@@ -91,12 +93,15 @@ async function run(
 }
 
 describe("LauncherJwtService", () => {
-  it("round-trips the Minecraft identity and nothing else", () => {
+  it("round-trips the Minecraft identity and session family and nothing else", () => {
     const token = launcherJwtService.generate({
       ...WEB_USER,
     });
 
-    expect(launcherJwtService.verify(token)).toEqual(PLAYER);
+    expect(launcherJwtService.verify(token)).toEqual({
+      ...PLAYER,
+      issuedAt: expect.any(Number),
+    });
 
     const raw = jwt.decode(token) as Record<string, unknown>;
     expect(raw.aud).toBe(JWT_AUDIENCE_LAUNCHER);
@@ -153,7 +158,10 @@ describe("token isolation between launcher and website", () => {
     const req = makeReq(launcherJwtService.generate(PLAYER));
 
     expect(await run(authenticateLauncher, req)).toBe("passed");
-    expect(req.launcherAuth).toEqual(PLAYER);
+    expect(req.launcherAuth).toEqual({
+      ...PLAYER,
+      issuedAt: expect.any(Number),
+    });
   });
 
   it("rejects a website token on a launcher route", async () => {
