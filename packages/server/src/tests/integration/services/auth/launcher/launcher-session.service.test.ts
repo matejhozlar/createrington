@@ -190,6 +190,21 @@ describe("LauncherSessionService", () => {
     expect(await rotate(second)).not.toBeNull();
   });
 
+  it("signs out the whole family when an already rotated token is presented", async () => {
+    const first = await signIn({ minecraftUuid: PLAYER_UUID });
+    const current = await rotate(first);
+    const other = await signIn({ minecraftUuid: PLAYER_UUID });
+
+    await launcherSessionService.revokeByToken(first);
+
+    expect(
+      (await launcherSessionService.listActive(PLAYER_UUID)).map(
+        (s) => s.tokenHash,
+      ),
+    ).toEqual([refreshTokenService.hash(other)]);
+    expect((await findSession(current!))?.revokedAt).not.toBeNull();
+  });
+
   it("lists active sessions per player", async () => {
     const kept = await signIn({
       minecraftUuid: PLAYER_UUID,

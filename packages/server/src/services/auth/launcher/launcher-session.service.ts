@@ -129,7 +129,7 @@ class LauncherSessionService {
     return newRawToken;
   }
 
-  /** Revokes the session behind the raw refresh token and the access tokens of its family (launcher sign-out). */
+  /** Revokes the session family behind the raw refresh token and its access tokens (launcher sign-out). */
   async revokeByToken(rawToken: string): Promise<void> {
     const session = await Q.auth.launcher.session.find({
       tokenHash: refreshTokenService.hash(rawToken),
@@ -138,7 +138,7 @@ class LauncherSessionService {
 
     await Q.auth.launcher.session.updateAll(
       { revokedAt: new Date() },
-      { id: session.id, revokedAt: null },
+      { familyId: session.familyId, revokedAt: null },
     );
     await denyLauncherFamily(session.familyId);
   }
