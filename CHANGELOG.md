@@ -1,3 +1,9 @@
+## v1.66.3 (2026-10-24)
+
+### @createrington/server (1.67.2 → 1.67.3)
+- [security] Bump multer to 2.5.0 (GHSA-q7qp-rjg7-q26m, a pending asynchronous fileFilter after request teardown), sanitize-html to 2.18.1 (GHSA-x3q4-9hxx-gx8m, GHSA-cv27-6wvh-8x7j and GHSA-374f-7chj-9948) and vitest with @vitest/ui to 4.1.12 (the @vitest/mocker advisories GHSA-qxg6-89mg-rqv8 and GHSA-xp26-3454-mjgp), and raise the pnpm overrides for undici to 6.29.1 (GHSA-xjj6-f33q-929c and GHSA-4qv8-2p9j-2685) and ip-address to 10.7.4 (GHSA-rxp7-6hxx-x8q5)
+- [security] Pin body-parser under express to 2.4.0 (GHSA-27r3-jxmh-p828) and every zod copy in the workspace to 4.6.6 or newer (GHSA-mrhx-c7xc-m3w5) through pnpm overrides, so `pnpm audit` reports no known vulnerabilities at any severity
+
 ## v1.66.2 (2026-10-21)
 
 ### @createrington/server (1.67.1 → 1.67.2)
