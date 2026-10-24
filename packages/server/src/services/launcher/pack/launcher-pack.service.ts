@@ -31,7 +31,7 @@ import {
   toLauncherPackProject,
   toLauncherProject,
 } from "@/services/launcher/content/curseforge-content";
-import { getReleaseChangelog } from "@/services/modpack/release-changelog";
+import { getReleaseChangelogs } from "@/services/modpack/release-changelog";
 import { settings } from "@/services/settings";
 import { findModrinthFilesBySha1 } from "@/services/modrinth";
 import { getMinecraftJavaMajorVersion } from "@/utils/mojang-java-version";
@@ -518,22 +518,25 @@ class LauncherPackService {
       }),
       Q.modpack.release.count(filters),
     ]);
-    const releases = await Promise.all(
-      rows.map(async (row): Promise<LauncherPackRelease | null> => {
-        const data = toPackData(row, project, pack.source);
-        if (!data) {
-          logger.warn(
-            `${modpack.name} release #${row.id} is ready for the launcher but cannot be served: a pack field is missing`,
-          );
-          return null;
-        }
-        return {
-          ...data,
-          changelog: toPackChangelog(await getReleaseChangelog(modpack, row)),
-        };
-      }),
+    const servable = rows.flatMap((row) => {
+      const data = toPackData(row, project, pack.source);
+      if (!data) {
+        logger.warn(
+          `${modpack.name} release #${row.id} is ready for the launcher but cannot be served: a pack field is missing`,
+        );
+        return [];
+      }
+      return [{ row, data }];
+    });
+    const changelogs = await getReleaseChangelogs(
+      modpack,
+      servable.map(({ row }) => row),
     );
-    return { releases: releases.filter((release) => release !== null), total };
+    const releases = servable.map(({ data }, index): LauncherPackRelease => ({
+      ...data,
+      changelog: toPackChangelog(changelogs[index]),
+    }));
+    return { releases, total };
   }
 
   /**

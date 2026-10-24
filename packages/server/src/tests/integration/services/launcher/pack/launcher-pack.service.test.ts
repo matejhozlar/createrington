@@ -1967,7 +1967,7 @@ describe("LauncherPackService.listReleases", () => {
     ]);
   });
 
-  it("answers a full-size page from the changelog cache the second time", async () => {
+  it("diffs a full-size page in two reads and answers it from the changelog store the second time", async () => {
     const modpack = await seedPack();
     const file = await seedFile();
     serveFromCurseForge([file]);
@@ -1975,17 +1975,26 @@ describe("LauncherPackService.listReleases", () => {
     for (let minor = 0; minor < fullPage.limit; minor++) {
       await seedReadyRelease(modpack, `1.${minor}.0`, [file]);
     }
-    const diffReads = vi.spyOn(Q.modpack.release.mod, "listForReleases");
+    const previousReads = vi.spyOn(Q.modpack.release, "listPreceding");
+    const modReads = vi.spyOn(Q.modpack.release.mod, "listForReleases");
 
     const first = await launcherPackService.listReleases(PACK_SLUG, fullPage);
-    const readsForFirst = diffReads.mock.calls.length;
-    await launcherPackService.listReleases(PACK_SLUG, fullPage);
-    const readsForBoth = diffReads.mock.calls.length;
-    diffReads.mockRestore();
+    const readsForFirst = [
+      previousReads.mock.calls.length,
+      modReads.mock.calls.length,
+    ];
+    const second = await launcherPackService.listReleases(PACK_SLUG, fullPage);
+    const readsForBoth = [
+      previousReads.mock.calls.length,
+      modReads.mock.calls.length,
+    ];
+    previousReads.mockRestore();
+    modReads.mockRestore();
 
     expect(first.releases).toHaveLength(fullPage.limit);
-    expect(readsForFirst).toBe(fullPage.limit);
-    expect(readsForBoth).toBe(fullPage.limit);
+    expect(readsForFirst).toEqual([1, 1]);
+    expect(readsForBoth).toEqual([1, 1]);
+    expect(second).toEqual(first);
   });
 
   it("gives each release the mods it added, updated and removed against the release before it", async () => {
