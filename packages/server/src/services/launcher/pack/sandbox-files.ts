@@ -29,7 +29,8 @@ export class SandboxUnavailableError extends Error {
 const SNAPSHOT_CHECK_BUDGET_MS = 60_000;
 const DOWNLOAD_HEADERS_TIMEOUT_MS = 10_000;
 const DOWNLOAD_IDLE_TIMEOUT_MS = 30_000;
-const DOWNLOAD_TOTAL_TIMEOUT_MS = 30 * 60_000;
+const DOWNLOAD_MIN_TOTAL_TIMEOUT_MS = 30 * 60_000;
+const DOWNLOAD_MIN_BYTES_PER_SECOND = 32 * 1024;
 const STORAGE_FILES_PATH = "/api/launcher/packs/files";
 const WEBSITE_FALLBACK_URL = "https://createrington.com";
 
@@ -159,8 +160,16 @@ export async function findSandboxSnapshotUrl(
   return kept ? storageSnapshotUrl(snapshot.snapshotId) : null;
 }
 
+function downloadCeilingMs(size: number): number {
+  return Math.max(
+    DOWNLOAD_MIN_TOTAL_TIMEOUT_MS,
+    Math.ceil(size / DOWNLOAD_MIN_BYTES_PER_SECOND) * 1000,
+  );
+}
+
 function watchProgress(
   body: ReadableStream<Uint8Array>,
+  totalMs: number,
   abort: (reason: Error) => void,
 ): ReadableStream<Uint8Array> {
   const timers: { idle?: NodeJS.Timeout; total?: NodeJS.Timeout } = {};
@@ -188,10 +197,10 @@ function watchProgress(
     () =>
       fail(
         new Error(
-          `the download did not finish within ${DOWNLOAD_TOTAL_TIMEOUT_MS / 60_000} minutes`,
+          `the download did not finish within ${Math.round(totalMs / 60_000)} minutes`,
         ),
       ),
-    DOWNLOAD_TOTAL_TIMEOUT_MS,
+    totalMs,
   );
   armIdle();
 
@@ -213,7 +222,8 @@ function watchProgress(
  * the sandbox cannot be reached, answers with an error, or declares a size
  * other than `size`. Aborting `signal` cancels the download. The body fails
  * and the sandbox connection is dropped once no bytes arrive for thirty
- * seconds, or the whole download takes longer than thirty minutes.
+ * seconds, or the whole download takes longer than thirty minutes or than
+ * the file needs at 32 KiB per second, whichever is longer.
  */
 export async function openSandboxFile(
   path: string,
@@ -271,7 +281,7 @@ export async function openSandboxFile(
     );
   }
 
-  const body = watchProgress(res.body, (reason) => {
+  const body = watchProgress(res.body, downloadCeilingMs(size), (reason) => {
     logger.warn(`Storage download ${path} was dropped: ${reason.message}`);
     upstream.abort(reason);
   });

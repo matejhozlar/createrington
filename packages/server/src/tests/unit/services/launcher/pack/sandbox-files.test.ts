@@ -374,7 +374,7 @@ describe("openSandboxFile", () => {
 });
 
 describe("openSandboxFile progress", () => {
-  function sandboxThatSends() {
+  function sandboxThatSends(size = 1000) {
     let upstream: AbortSignal | undefined;
     let push!: (chunk: Uint8Array) => void;
     let end!: () => void;
@@ -393,7 +393,7 @@ describe("openSandboxFile progress", () => {
         });
         return new Response(body, {
           status: 200,
-          headers: { "content-length": "1000" },
+          headers: { "content-length": String(size) },
         });
       }),
     );
@@ -404,10 +404,10 @@ describe("openSandboxFile progress", () => {
     };
   }
 
-  async function openWatched() {
+  async function openWatched(size = 1000) {
     const download = await openSandboxFile(
       "1",
-      1000,
+      size,
       new AbortController().signal,
     );
     return download!.body.getReader();
@@ -465,6 +465,25 @@ describe("openSandboxFile progress", () => {
     expect(sandbox.upstream()?.aborted).toBe(true);
     await expect(reader.read()).rejects.toThrow(
       "the download did not finish within 30 minutes",
+    );
+  });
+
+  it("gives a large file the time it needs at 32 KiB per second", async () => {
+    const size = 100 * 1024 * 1024;
+    const sandbox = sandboxThatSends(size);
+    const reader = await openWatched(size);
+
+    for (let i = 0; i < 319; i++) {
+      await vi.advanceTimersByTimeAsync(10_000);
+      sandbox.push(new Uint8Array(1));
+      await reader.read();
+    }
+    expect(sandbox.upstream()?.aborted).toBe(false);
+
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(sandbox.upstream()?.aborted).toBe(true);
+    await expect(reader.read()).rejects.toThrow(
+      "the download did not finish within 53 minutes",
     );
   });
 
