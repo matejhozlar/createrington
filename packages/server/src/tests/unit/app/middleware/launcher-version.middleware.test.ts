@@ -36,16 +36,24 @@ beforeEach(() => {
 });
 
 describe("requireSupportedLauncher", () => {
-  it("lets a request without a launcher version through, without looking anything up", async () => {
-    expect(await run({})).toBeUndefined();
-    expect(
-      await run({ "X-Launcher-Platform": "windows-x86_64" }),
-    ).toBeUndefined();
+  it("answers 400 to a request without a launcher version, without looking anything up", async () => {
+    const missingVersion: Record<string, string>[] = [
+      {},
+      { "X-Launcher-Platform": "windows-x86_64" },
+    ];
+    for (const headers of missingVersion) {
+      const error = await run(headers);
+      expect(error).toBeInstanceOf(AppError);
+      expect(error?.statusCode).toBe(400);
+    }
     expect(isUpdateRequired).not.toHaveBeenCalled();
   });
 
-  it("lets a request without a launcher platform through", async () => {
-    expect(await run({ "X-Launcher-Version": "0.1.0" })).toBeUndefined();
+  it("answers 400 to a request without a launcher platform", async () => {
+    const error = await run({ "X-Launcher-Version": "0.1.0" });
+
+    expect(error).toBeInstanceOf(AppError);
+    expect(error?.statusCode).toBe(400);
     expect(isUpdateRequired).not.toHaveBeenCalled();
   });
 
