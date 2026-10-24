@@ -4,9 +4,15 @@ import { createNotFoundError } from "../utils/query-helpers";
 import { translateDbError } from "../utils/errors";
 import { isJsonColumn } from "../utils/jsonb-columns";
 import type { FilterValue } from "@createrington/shared/db/base.types";
-import { QueryBuilder, type Selected } from "./query-builder";
+import {
+  QueryBuilder,
+  type OrderBy,
+  type OrderDirection,
+  type Selected,
+} from "./query-builder";
 
 const MAX_QUERY_PARAMS = 65_535;
+const CONFLICT_IGNORE = " ON CONFLICT DO NOTHING";
 
 type KeysOfUnion<T> = T extends unknown ? keyof T : never;
 
@@ -973,8 +979,8 @@ export abstract class BaseQueries<
   /**
    * Create a query builder starting with orderBy
    *
-   * @param field - Field to sort by
-   * @param direction - Sort direction (default: "asc")
+   * @param order - Field to sort by, or a list of terms for a multi-column sort
+   * @param direction - Sort direction for a single field (default: "asc")
    * @returns QueryBuilder instance
    *
    * @example
@@ -982,12 +988,17 @@ export abstract class BaseQueries<
    *   .orderBy("createdAt", "desc")
    *   .limit(10)
    *   .all()
+   *
+   * @example
+   * const queue = await Q.waitlist
+   *   .orderBy([{ field: "queuedAt" }, { field: "id" }])
+   *   .all()
    */
   orderBy(
-    field: keyof TConfig["Entity"],
-    direction: "asc" | "desc" = "asc",
+    order: OrderBy<TConfig["Entity"]>,
+    direction: OrderDirection = "asc",
   ): QueryBuilder<TConfig> {
-    return this.builder().orderBy(field, direction);
+    return this.builder().orderBy(order, direction);
   }
 
   /**
@@ -1081,8 +1092,8 @@ export abstract class BaseQueries<
     options: {
       limit?: number;
       offset?: number;
-      orderBy?: keyof TConfig["Entity"];
-      orderDirection?: "asc" | "desc";
+      orderBy?: OrderBy<TConfig["Entity"]>;
+      orderDirection?: OrderDirection;
       select: readonly K[];
     },
   ): Promise<Selected<TConfig["Entity"], K>[]>;
@@ -1091,8 +1102,8 @@ export abstract class BaseQueries<
     options?: {
       limit?: number;
       offset?: number;
-      orderBy?: keyof TConfig["Entity"];
-      orderDirection?: "asc" | "desc";
+      orderBy?: OrderBy<TConfig["Entity"]>;
+      orderDirection?: OrderDirection;
       select?: ReadonlyArray<keyof TConfig["Entity"]>;
     },
   ): Promise<TConfig["Entity"][]>;
@@ -1101,8 +1112,8 @@ export abstract class BaseQueries<
     options?: {
       limit?: number;
       offset?: number;
-      orderBy?: keyof TConfig["Entity"];
-      orderDirection?: "asc" | "desc";
+      orderBy?: OrderBy<TConfig["Entity"]>;
+      orderDirection?: OrderDirection;
       select?: ReadonlyArray<keyof TConfig["Entity"]>;
     },
   ): Promise<TConfig["Entity"][]> {
@@ -1118,10 +1129,8 @@ export abstract class BaseQueries<
 
     let query = `SELECT ${columns} FROM ${this.table} WHERE ${whereClause}`;
 
-    if (options?.orderBy) {
-      const orderColumn = this.getColumnName(options.orderBy as string);
-      const dir = options.orderDirection === "desc" ? "DESC" : "ASC";
-      query += ` ORDER BY ${orderColumn} ${dir}`;
+    if (options?.orderBy !== undefined) {
+      query += this.buildOrderClause(options.orderBy, options.orderDirection);
     }
 
     if (options?.limit !== undefined) {
@@ -1143,6 +1152,30 @@ export abstract class BaseQueries<
       logger.error(`Failed to find all ${this.table}:`, error);
       throw error;
     }
+  }
+
+  private buildOrderClause(
+    orderBy: OrderBy<TConfig["Entity"]>,
+    orderDirection?: OrderDirection,
+  ): string {
+    const terms = Array.isArray(orderBy)
+      ? orderBy.map((term) => ({
+          column: this.getColumnName(term.field as string),
+          direction: term.direction,
+        }))
+      : [
+          {
+            column: this.getColumnName(orderBy as string),
+            direction: orderDirection,
+          },
+        ];
+    if (terms.length === 0) return "";
+    return ` ORDER BY ${terms
+      .map(
+        ({ column, direction }) =>
+          `${column} ${direction === "desc" ? "DESC" : "ASC"}`,
+      )
+      .join(", ")}`;
   }
 
   private assertPageBound(name: "limit" | "offset", value: number): void {
@@ -1171,22 +1204,22 @@ export abstract class BaseQueries<
   async getAll<K extends keyof TConfig["Entity"]>(options: {
     limit?: number;
     offset?: number;
-    orderBy?: keyof TConfig["Entity"];
-    orderDirection?: "asc" | "desc";
+    orderBy?: OrderBy<TConfig["Entity"]>;
+    orderDirection?: OrderDirection;
     select: readonly K[];
   }): Promise<Selected<TConfig["Entity"], K>[]>;
   async getAll(options?: {
     limit?: number;
     offset?: number;
-    orderBy?: keyof TConfig["Entity"];
-    orderDirection?: "asc" | "desc";
+    orderBy?: OrderBy<TConfig["Entity"]>;
+    orderDirection?: OrderDirection;
     select?: ReadonlyArray<keyof TConfig["Entity"]>;
   }): Promise<TConfig["Entity"][]>;
   async getAll(options?: {
     limit?: number;
     offset?: number;
-    orderBy?: keyof TConfig["Entity"];
-    orderDirection?: "asc" | "desc";
+    orderBy?: OrderBy<TConfig["Entity"]>;
+    orderDirection?: OrderDirection;
     select?: ReadonlyArray<keyof TConfig["Entity"]>;
   }): Promise<TConfig["Entity"][]> {
     return this.findAll(undefined, options);
@@ -1205,6 +1238,30 @@ export abstract class BaseQueries<
     updates: Partial<NonNullable<TConfig["Update"]>>,
     filters?: Partial<NonNullable<TConfig["Filters"]>>,
   ): Promise<number> {
+    const result = await this.runUpdateAll(updates, filters, false);
+    return result.rowCount || 0;
+  }
+
+  /**
+   * Same as updateAll, returning the updated entities instead of their count
+   *
+   * @param updates - Object containing fields to update
+   * @param filters - Optional filter criteria to match specific entries
+   * @returns Promise resolving to the updated entities
+   */
+  async updateAllAndReturn(
+    updates: Partial<NonNullable<TConfig["Update"]>>,
+    filters?: Partial<NonNullable<TConfig["Filters"]>>,
+  ): Promise<TConfig["Entity"][]> {
+    const result = await this.runUpdateAll(updates, filters, true);
+    return this.mapRowsToEntities(result.rows);
+  }
+
+  private async runUpdateAll(
+    updates: Partial<NonNullable<TConfig["Update"]>>,
+    filters: Partial<NonNullable<TConfig["Filters"]>> | undefined,
+    returning: boolean,
+  ): Promise<QueryResult<TConfig["DbEntity"]>> {
     const { whereClause, params, hasConditions } = filters
       ? this.buildFilterClause(filters)
       : { whereClause: "1=1", params: [] as unknown[], hasConditions: true };
@@ -1228,15 +1285,15 @@ export abstract class BaseQueries<
     const query = `
         UPDATE ${this.table}
         SET ${setClauses.join(", ")}
-        WHERE ${whereClause}`;
+        WHERE ${whereClause}${returning ? " RETURNING *" : ""}`;
 
     const allParams = [...params, ...updateMappings.map((m) => m.value)];
 
     try {
-      const result = await this.db.query(query, allParams);
+      const result = await this.db.query<TConfig["DbEntity"]>(query, allParams);
 
       logger.info(`Updated ${result.rowCount} ${this.table} record(s)`);
-      return result.rowCount || 0;
+      return result;
     } catch (error) {
       logger.error(`Failed to update ${this.table}:`, error);
       throw translateDbError(error);
@@ -1389,31 +1446,121 @@ export abstract class BaseQueries<
    * Inserts every row using as few statements as the Postgres parameter limit allows.
    * Columns a row omits take their default. Large batches span several statements,
    * so call inside a transaction when the batch must be all-or-nothing.
+   * With `onConflict: "ignore"` rows that hit a unique constraint are skipped
+   * instead of failing the batch.
    */
-  async createMany(rows: NonNullable<TConfig["Create"]>[]): Promise<void> {
-    await this.insertBatch(rows, false);
+  async createMany(
+    rows: NonNullable<TConfig["Create"]>[],
+    options?: { onConflict?: "ignore" },
+  ): Promise<void> {
+    await this.insertBatch(rows, {
+      returning: false,
+      conflictClause: options?.onConflict === "ignore" ? CONFLICT_IGNORE : "",
+    });
   }
 
   /**
    * Same as createMany, returning the created entities with generated fields.
+   * With `onConflict: "ignore"` only the rows that were actually inserted come back.
    */
   async createManyAndReturn(
     rows: NonNullable<TConfig["Create"]>[],
+    options?: { onConflict?: "ignore" },
   ): Promise<TConfig["Entity"][]> {
-    return this.insertBatch(rows, true);
+    return this.insertBatch(rows, {
+      returning: true,
+      conflictClause: options?.onConflict === "ignore" ? CONFLICT_IGNORE : "",
+    });
+  }
+
+  /**
+   * Multi-row counterpart of upsert: inserts every row and, where a row
+   * conflicts on `conflictTarget`, updates `updateFields` (default: every
+   * column present in the batch) from the incoming row. When several rows of
+   * the batch share a conflict key only the last one is written, as a loop of
+   * single upserts would end up doing. A column some rows omit is written as
+   * its default, also on the update path when it is among the updated fields,
+   * so keep the rows of one batch homogeneous.
+   */
+  async upsertMany(
+    rows: NonNullable<TConfig["Create"]>[],
+    conflictTarget:
+      | keyof NonNullable<TConfig["Create"]>
+      | Array<keyof NonNullable<TConfig["Create"]>>,
+    updateFields?: Array<keyof NonNullable<TConfig["Create"]>>,
+  ): Promise<void> {
+    if (rows.length === 0) return;
+
+    const conflictKeys = Array.isArray(conflictTarget)
+      ? conflictTarget
+      : [conflictTarget];
+    const lastByKey = new Map<string, NonNullable<TConfig["Create"]>>();
+    for (const row of rows) {
+      const key = JSON.stringify(
+        conflictKeys.map((k) => (row as Record<string, unknown>)[k as string]),
+      );
+      lastByKey.set(key, row);
+    }
+
+    await this.insertBatch([...lastByKey.values()], {
+      returning: false,
+      conflictClause: (columns) =>
+        this.buildUpsertClause(conflictTarget, updateFields, columns),
+    });
+  }
+
+  private buildUpsertClause(
+    conflictTarget:
+      | keyof NonNullable<TConfig["Create"]>
+      | Array<keyof NonNullable<TConfig["Create"]>>,
+    updateFields: Array<keyof NonNullable<TConfig["Create"]>> | undefined,
+    insertColumns: string[],
+  ): string {
+    const writableUpdateFields = updateFields?.filter((key) =>
+      this.isWritableField(key as string),
+    );
+    if (writableUpdateFields && writableUpdateFields.length === 0) {
+      throw new Error(
+        `upsert on ${this.table} requires at least one field in updateFields`,
+      );
+    }
+
+    const conflictColumns = (
+      Array.isArray(conflictTarget) ? conflictTarget : [conflictTarget]
+    )
+      .map((key) => this.getColumnName(key as string))
+      .join(", ");
+
+    const fieldsToUpdate = writableUpdateFields
+      ? writableUpdateFields.map((key) => this.getColumnName(key as string))
+      : insertColumns;
+
+    const updateClause = fieldsToUpdate
+      .map((col) => `${col} = EXCLUDED.${col}`)
+      .join(", ");
+
+    return ` ON CONFLICT (${conflictColumns}) DO UPDATE SET ${updateClause}`;
   }
 
   private async insertBatch(
     rows: NonNullable<TConfig["Create"]>[],
-    returning: boolean,
+    mode: {
+      returning: boolean;
+      conflictClause: string | ((insertColumns: string[]) => string);
+    },
   ): Promise<TConfig["Entity"][]> {
     if (rows.length === 0) return [];
+    const { returning } = mode;
 
     const mapped = rows.map(
       (row) =>
         new Map(this.getCreateMapping(row).map((m) => [m.column, m.value])),
     );
     const columns = [...new Set(mapped.flatMap((row) => [...row.keys()]))];
+    const conflictClause =
+      typeof mode.conflictClause === "function"
+        ? mode.conflictClause(columns)
+        : mode.conflictClause;
     const rowsPerStatement = Math.max(
       1,
       Math.floor(MAX_QUERY_PARAMS / columns.length),
@@ -1434,7 +1581,7 @@ export abstract class BaseQueries<
             return `(${cells.join(", ")})`;
           });
 
-        const query = `INSERT INTO ${this.table} (${columns.join(", ")}) VALUES ${tuples.join(", ")}${returning ? " RETURNING *" : ""}`;
+        const query = `INSERT INTO ${this.table} (${columns.join(", ")}) VALUES ${tuples.join(", ")}${conflictClause}${returning ? " RETURNING *" : ""}`;
         const result = await this.db.query<TConfig["DbEntity"]>(query, values);
 
         if (returning) {
@@ -1465,42 +1612,19 @@ export abstract class BaseQueries<
       | Array<keyof NonNullable<TConfig["Create"]>>,
     updateFields?: Array<keyof NonNullable<TConfig["Create"]>>,
   ): Promise<TConfig["Entity"]> {
-    const writableUpdateFields = updateFields?.filter((key) =>
-      this.isWritableField(key as string),
-    );
-    if (writableUpdateFields && writableUpdateFields.length === 0) {
-      throw new Error(
-        `upsert on ${this.table} requires at least one field in updateFields`,
-      );
-    }
-
     const createMappings = this.getCreateMapping(data);
-    const columns = createMappings.map((m) => m.column).join(", ");
+    const insertColumns = createMappings.map((m) => m.column);
+    const upsertClause = this.buildUpsertClause(
+      conflictTarget,
+      updateFields,
+      insertColumns,
+    );
     const placeholders = createMappings
       .map((_, index) => `$${index + 1}`)
       .join(", ");
     const values = createMappings.map((m) => m.value);
 
-    const conflictColumns = Array.isArray(conflictTarget)
-      ? conflictTarget
-          .map((key) => this.getColumnName(key as string))
-          .join(", ")
-      : this.getColumnName(conflictTarget as string);
-
-    const fieldsToUpdate = writableUpdateFields
-      ? writableUpdateFields.map((key) => this.getColumnName(key as string))
-      : createMappings.map((m) => m.column);
-
-    const updateClause = fieldsToUpdate
-      .map((col) => `${col} = EXCLUDED.${col}`)
-      .join(", ");
-
-    const query = `
-        INSERT INTO ${this.table} (${columns})
-        VALUES (${placeholders})
-        ON CONFLICT (${conflictColumns})
-        DO UPDATE SET ${updateClause}
-        RETURNING *`;
+    const query = `INSERT INTO ${this.table} (${insertColumns.join(", ")}) VALUES (${placeholders})${upsertClause} RETURNING *`;
 
     try {
       const result = await this.db.query<TConfig["DbEntity"]>(query, values);
@@ -1539,6 +1663,41 @@ export abstract class BaseQueries<
       logger.error(`Failed to count ${this.table}:`, error);
       throw error;
     }
+  }
+
+  /**
+   * Counts the matching rows per distinct value of one column with a single
+   * GROUP BY query. Values that no row carries are absent from the result,
+   * so read with `counts.get(value) ?? 0`. A NULL column value groups under
+   * the key null.
+   *
+   * @param column - Entity field to group by
+   * @param filters - Optional filter criteria applied before grouping
+   * @returns Map from column value to the number of rows carrying it
+   *
+   * @example
+   * const perStatus = await Q.gallery.submission.countBy("status")
+   * perStatus.get("pending") ?? 0
+   */
+  async countBy<K extends keyof TConfig["Entity"]>(
+    column: K,
+    filters?: Partial<NonNullable<TConfig["Filters"]>>,
+  ): Promise<Map<TConfig["Entity"][K], number>> {
+    const { whereClause, params } = filters
+      ? this.buildFilterClause(filters)
+      : { whereClause: "1=1", params: [] as unknown[] };
+    const groupColumn = this.getColumnName(column as string);
+
+    const query = `SELECT ${groupColumn} AS value, COUNT(*) AS count FROM ${this.table} WHERE ${whereClause} GROUP BY ${groupColumn}`;
+
+    const result = await this.runQuery<{
+      value: TConfig["Entity"][K];
+      count: string | number | bigint;
+    }>(`count ${this.table} by ${groupColumn}`, query, params);
+
+    return new Map(
+      result.rows.map((row) => [row.value, Number(row.count)] as const),
+    );
   }
 
   /**
