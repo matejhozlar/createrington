@@ -99,7 +99,7 @@ export function ApplyToJoin() {
             <span
               key={name}
               className={cn(
-                "group pointer-events-none absolute aspect-[2/3]",
+                "pointer-events-none absolute aspect-[2/3]",
                 className,
               )}
             >
@@ -110,7 +110,7 @@ export function ApplyToJoin() {
                 height={900}
                 draggable={false}
                 decoding="async"
-                className="pointer-events-auto h-full w-auto max-w-none select-none drop-shadow-[0_10px_14px_rgba(0,0,0,0.55)] transition-transform duration-300 ease-out group-hover:-translate-y-[8%]"
+                className="h-full w-auto max-w-none select-none drop-shadow-[0_10px_14px_rgba(0,0,0,0.55)]"
               />
             </span>
           ))}
