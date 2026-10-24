@@ -10,8 +10,10 @@ import {
 import type { AddressInfo } from "node:net";
 import type { Server } from "node:http";
 import jwt from "jsonwebtoken";
+import type { KeyValueStore } from "@/services/key-value-store";
 
-const { LAUNCHER_SECRET, WEB_SECRET, mocks } = vi.hoisted(() => ({
+const { LAUNCHER_SECRET, WEB_SECRET, mocks, cache } = vi.hoisted(() => ({
+  cache: { current: null as KeyValueStore | null },
   LAUNCHER_SECRET: "test-launcher-secret-please-do-not-use-in-prod",
   WEB_SECRET: "test-web-secret-please-do-not-use-in-prod",
   mocks: {
@@ -55,6 +57,22 @@ vi.mock("@/services/auth/token/access-cookie.service", () => ({
 vi.mock("@/services/auth/admin-status/admin-status.service", () => ({
   adminStatusService: { isAdmin: vi.fn(async () => false) },
 }));
+vi.mock("@/services/key-value-store", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/services/key-value-store")>();
+  const current = (): KeyValueStore => {
+    if (!cache.current) throw new Error("no cache for this test");
+    return cache.current;
+  };
+  return {
+    ...actual,
+    createKeyValueStore: (): KeyValueStore => ({
+      get: (key) => current().get(key),
+      getMany: (keys) => current().getMany(keys),
+      set: (key, value, ttlMs) => current().set(key, value, ttlMs),
+    }),
+  };
+});
 vi.mock("@/services/launcher/pack/launcher-pack.service", () => ({
   launcherPackService: {
     listPacks: mocks.listPacks,
@@ -70,6 +88,7 @@ import express from "express";
 import { AppError, errorHandler } from "@/app/middleware/error-handler";
 import launcherPackRoutes from "@/app/features/launcher/pack/launcher-pack.routes";
 import { launcherJwtService } from "@/services/auth/launcher/launcher-jwt.service";
+import { MemoryKeyValueStore } from "@/services/key-value-store";
 
 const PACK = {
   project: {
@@ -269,6 +288,8 @@ afterAll(async () => {
 
 beforeEach(() => {
   vi.resetAllMocks();
+  vi.useRealTimers();
+  cache.current = new MemoryKeyValueStore();
   mocks.listPacks.mockResolvedValue(PACKS);
   mocks.getLatestPack.mockResolvedValue(PACK);
   mocks.listReleases.mockResolvedValue(LISTED);
@@ -283,7 +304,14 @@ describe("GET /api/launcher/packs", () => {
     expect(await res.json()).toEqual({ success: true, data: { packs: PACKS } });
   });
 
-  it("answers 304 to a launcher that already holds the same list", async () => {
+  it("tags the list and lets the launcher keep it for a minute", async () => {
+    const res = await getPacks(session);
+
+    expect(res.headers.get("etag")).toMatch(/^"[A-Za-z0-9_-]+"$/);
+    expect(res.headers.get("cache-control")).toBe("private, max-age=60");
+  });
+
+  it("answers 304 to a launcher that already holds the same list, without asking the service again", async () => {
     const first = await getPacks(session);
     const etag = first.headers.get("etag");
 
@@ -295,6 +323,43 @@ describe("GET /api/launcher/packs", () => {
 
     expect(etag).toBeTruthy();
     expect(res.status).toBe(304);
+    expect(res.headers.get("etag")).toBe(etag);
+    expect(res.headers.get("cache-control")).toBe("private, max-age=60");
+    expect(await res.text()).toBe("");
+    expect(mocks.listPacks).toHaveBeenCalledTimes(1);
+  });
+
+  it("answers the list in full to a launcher that holds another version", async () => {
+    await getPacks(session);
+
+    const res = await getPacks({ ...session, "If-None-Match": '"other"' });
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ success: true, data: { packs: PACKS } });
+  });
+
+  it("answers a repeat within the minute from what it stored", async () => {
+    await getPacks(session);
+    mocks.listPacks.mockResolvedValue([]);
+
+    const res = await getPacks(session);
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ success: true, data: { packs: PACKS } });
+    expect(mocks.listPacks).toHaveBeenCalledTimes(1);
+  });
+
+  it("asks the service again once the minute is over", async () => {
+    await getPacks(session);
+    mocks.listPacks.mockResolvedValue([]);
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(Date.now() + 61_000);
+
+    const res = await getPacks(session);
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ success: true, data: { packs: [] } });
+    expect(mocks.listPacks).toHaveBeenCalledTimes(2);
   });
 
   it("answers 401 without a launcher session", async () => {
@@ -315,6 +380,43 @@ describe("GET /api/launcher/packs/:slug/latest", () => {
     expect(mocks.getLatestPack).toHaveBeenCalledWith("test");
   });
 
+  it("answers 304 to a launcher that already holds the release, without asking the service again", async () => {
+    const first = await getLatest(session);
+    const etag = first.headers.get("etag");
+
+    const res = await getLatest({
+      ...session,
+      "If-None-Match": etag ?? "",
+      "Cache-Control": "max-age=0",
+    });
+
+    expect(etag).toMatch(/^"[A-Za-z0-9_-]+"$/);
+    expect(res.status).toBe(304);
+    expect(res.headers.get("cache-control")).toBe("private, max-age=60");
+    expect(await res.text()).toBe("");
+    expect(mocks.getLatestPack).toHaveBeenCalledTimes(1);
+  });
+
+  it("answers a repeat within the minute from what it stored", async () => {
+    await getLatest(session);
+
+    const res = await getLatest(session);
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("cache-control")).toBe("private, max-age=60");
+    expect(await res.json()).toEqual({ success: true, data: PACK });
+    expect(mocks.getLatestPack).toHaveBeenCalledTimes(1);
+  });
+
+  it("stores the answer of each pack on its own", async () => {
+    await getLatest(session, "createrington");
+    await getLatest(session, "test");
+
+    expect(mocks.getLatestPack).toHaveBeenCalledTimes(2);
+    expect(mocks.getLatestPack).toHaveBeenCalledWith("createrington");
+    expect(mocks.getLatestPack).toHaveBeenCalledWith("test");
+  });
+
   it("passes on that the pack is not offered", async () => {
     mocks.getLatestPack.mockRejectedValue(
       new AppError(
@@ -332,6 +434,26 @@ describe("GET /api/launcher/packs/:slug/latest", () => {
 
     expect(res.status).toBe(404);
     expect((await res.json()).error.code).toBe("PACK_NOT_FOUND");
+  });
+
+  it("does not keep a refusal", async () => {
+    mocks.getLatestPack.mockRejectedValueOnce(
+      new AppError(
+        "No modpack release is available to the launcher yet",
+        404,
+        true,
+        undefined,
+        { code: "PACK_UNAVAILABLE" },
+      ),
+    );
+
+    const refused = await getLatest(session);
+    const res = await getLatest(session);
+
+    expect(refused.status).toBe(404);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ success: true, data: PACK });
+    expect(mocks.getLatestPack).toHaveBeenCalledTimes(2);
   });
 
   it.each([
@@ -385,6 +507,31 @@ describe("GET /api/launcher/packs/:slug/releases", () => {
         pagination: { page: 0, limit: 10, total: 2, totalPages: 1 },
       },
     });
+  });
+
+  it("answers 304 to a launcher that already holds the page, without asking the service again", async () => {
+    const first = await getReleases(session, "?page=1&limit=5");
+    const etag = first.headers.get("etag");
+
+    const res = await getReleases(
+      { ...session, "If-None-Match": etag ?? "", "Cache-Control": "max-age=0" },
+      "?page=1&limit=5",
+    );
+
+    expect(etag).toMatch(/^"[A-Za-z0-9_-]+"$/);
+    expect(res.status).toBe(304);
+    expect(res.headers.get("cache-control")).toBe("private, max-age=60");
+    expect(await res.text()).toBe("");
+    expect(mocks.listReleases).toHaveBeenCalledTimes(1);
+  });
+
+  it("stores each page on its own", async () => {
+    await getReleases(session, "?page=0&limit=5");
+    await getReleases(session, "?page=1&limit=5");
+    await getReleases(session, "?page=1&limit=10");
+    await getReleases(session, "?page=1&limit=5");
+
+    expect(mocks.listReleases).toHaveBeenCalledTimes(3);
   });
 
   it("answers with an empty list when no release can be installed", async () => {

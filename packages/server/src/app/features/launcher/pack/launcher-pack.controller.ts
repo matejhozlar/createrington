@@ -10,6 +10,8 @@ import type {
   LauncherSuccessResponse,
 } from "@createrington/shared/launcher";
 import { getValidated } from "@/app/middleware/validation.middleware";
+import { sendCachedJson } from "@/app/utils/cached-json";
+import { createKeyValueStore } from "@/services/key-value-store";
 import {
   launcherPackService,
   type StorageDownload,
@@ -22,6 +24,12 @@ import type {
   StorageFileParams,
   StorageSnapshotParams,
 } from "./launcher-pack.schemas";
+
+const KEY_PREFIX = "launcher:packs";
+const ANSWER_TTL_MS = 60_000;
+const MAX_MEMORY_ANSWERS = 500;
+
+const answerCache = createKeyValueStore(MAX_MEMORY_ANSWERS);
 
 function exactLength(size: number): Transform {
   let seen = 0;
@@ -82,41 +90,60 @@ async function streamStorage(
 }
 
 export class LauncherPackController {
-  static async list(_req: Request, res: Response): Promise<void> {
-    const body: LauncherSuccessResponse<LauncherPacksData> = {
-      success: true,
-      data: { packs: await launcherPackService.listPacks() },
-    };
-    res.json(body);
+  static async list(req: Request, res: Response): Promise<void> {
+    await sendCachedJson(
+      req,
+      res,
+      answerCache,
+      `${KEY_PREFIX}:list`,
+      ANSWER_TTL_MS,
+      async (): Promise<LauncherSuccessResponse<LauncherPacksData>> => ({
+        success: true,
+        data: { packs: await launcherPackService.listPacks() },
+      }),
+    );
   }
 
-  static async latest(_req: Request, res: Response): Promise<void> {
+  static async latest(req: Request, res: Response): Promise<void> {
     const { params } = getValidated<{ params: PackParams }>(res);
-    const body: LauncherSuccessResponse<LauncherPackData> = {
-      success: true,
-      data: await launcherPackService.getLatestPack(params.slug),
-    };
-    res.json(body);
+    await sendCachedJson(
+      req,
+      res,
+      answerCache,
+      `${KEY_PREFIX}:latest:${params.slug}`,
+      ANSWER_TTL_MS,
+      async (): Promise<LauncherSuccessResponse<LauncherPackData>> => ({
+        success: true,
+        data: await launcherPackService.getLatestPack(params.slug),
+      }),
+    );
   }
 
-  static async releases(_req: Request, res: Response): Promise<void> {
+  static async releases(req: Request, res: Response): Promise<void> {
     const { params, query } = getValidated<{
       params: PackParams;
       query: ListReleasesQuery;
     }>(res);
-    const { releases, total } = await launcherPackService.listReleases(
-      params.slug,
-      query,
-    );
-
-    const body: LauncherSuccessResponse<LauncherPackReleasesData> = {
-      success: true,
-      data: {
-        releases,
-        pagination: buildPagination(query.page, query.limit, total),
+    await sendCachedJson(
+      req,
+      res,
+      answerCache,
+      `${KEY_PREFIX}:releases:${params.slug}:${query.page}:${query.limit}`,
+      ANSWER_TTL_MS,
+      async (): Promise<LauncherSuccessResponse<LauncherPackReleasesData>> => {
+        const { releases, total } = await launcherPackService.listReleases(
+          params.slug,
+          query,
+        );
+        return {
+          success: true,
+          data: {
+            releases,
+            pagination: buildPagination(query.page, query.limit, total),
+          },
+        };
       },
-    };
-    res.json(body);
+    );
   }
 
   static async resolveFiles(_req: Request, res: Response): Promise<void> {
