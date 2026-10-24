@@ -32,6 +32,7 @@ import type { DiscordStickyMessageService } from "./discord/sticky-message";
 import type { GalleryService } from "./gallery";
 import type { AppEmojiService } from "./discord/emojis";
 import type { RedisService } from "./redis";
+import type { MaintenanceService } from "./maintenance/maintenance.service";
 
 /**
  * Service lifecycle states
@@ -431,6 +432,7 @@ export const Services = {
   GALLERY_SERVICE: "gallery.service",
   APP_EMOJI_SERVICE: "discord.appEmojiService",
   REDIS: "infra.redisService",
+  MAINTENANCE_SERVICE: "server.maintenanceService",
 } as const;
 
 export type ServiceKey = (typeof Services)[keyof typeof Services];
@@ -472,4 +474,5 @@ export interface ServiceTypeMap {
   [Services.GALLERY_SERVICE]: GalleryService;
   [Services.APP_EMOJI_SERVICE]: AppEmojiService;
   [Services.REDIS]: RedisService;
+  [Services.MAINTENANCE_SERVICE]: MaintenanceService;
 }

@@ -490,6 +490,33 @@ export function registerServices(): void {
     { dependencies: [Services.DATABASE] },
   );
 
+  container.register(
+    Services.MAINTENANCE_SERVICE,
+    async (c) => {
+      try {
+        const messageService = await c.get(Services.MESSAGE_SERVICE);
+        const scheduler = new MaintenanceScheduler(
+          maintenanceService,
+          messageService,
+        );
+        maintenanceService.setScheduler(scheduler);
+        await scheduler.initialize();
+        logger.info("Maintenance scheduler initialized");
+      } catch (error) {
+        logger.warn(`Maintenance scheduler init failed: ${error}`);
+      }
+
+      maintenanceService
+        .initialize([config.servers.rails.id])
+        .catch((error) =>
+          logger.warn(`Maintenance service init failed: ${error}`),
+        );
+
+      return maintenanceService;
+    },
+    { dependencies: [Services.DATABASE] },
+  );
+
   container.on("serviceReady", async (serviceName) => {
     // Wire message cache into playtime manager for server shutdown detection
     if (serviceName === Services.MESSAGE_CACHE) {
@@ -542,23 +569,6 @@ export async function initializeServices(): Promise<void> {
 
   logger.info(`✓ Service initialization complete: ${ready}/${total} ready`);
 
-  try {
-    const messageService = await container.get(Services.MESSAGE_SERVICE);
-    const scheduler = new MaintenanceScheduler(
-      maintenanceService,
-      messageService,
-    );
-    maintenanceService.setScheduler(scheduler);
-    await scheduler.initialize();
-    logger.info("Maintenance scheduler initialized");
-  } catch (error) {
-    logger.warn(`Maintenance scheduler init failed: ${error}`);
-  }
-
-  maintenanceService
-    .initialize([config.servers.rails.id])
-    .catch((err) => logger.warn(`Maintenance service init failed: ${err}`));
-
   void releaseAnnouncementService.announceIfNew();
   launcherPackService
     .seedDefaultPack()
@@ -574,6 +584,5 @@ export async function initializeServices(): Promise<void> {
  * @returns Promise that resolves once all shutdown hooks have settled
  */
 export async function shutdownServices(): Promise<void> {
-  maintenanceService.shutdown();
   await container.shutdown();
 }
