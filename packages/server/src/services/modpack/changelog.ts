@@ -392,12 +392,9 @@ export async function toChangelogInputs(
       $in: diffs.map((diff) => diff.release.curseforgeFileId),
     },
   });
-  const notesOf = new Map<number, string | null>();
-  for (const publish of publishes) {
-    if (!notesOf.has(publish.clientFileId)) {
-      notesOf.set(publish.clientFileId, publish.notes);
-    }
-  }
+  const notesOf = new Map(
+    publishes.map((publish) => [publish.clientFileId, publish.notes]),
+  );
   const packUrl = httpUrl(project?.websiteUrl);
   return diffs.map(
     ({ release, previous, added, updated, removed, unchanged }) => ({
