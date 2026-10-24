@@ -556,4 +556,236 @@ describe("BaseQueries (server table)", () => {
       expect(await Q.server.count()).toBe(0);
     });
   });
+
+  // ==========================================================================
+  // ON CONFLICT: createMany ignore / upsertMany
+  // ==========================================================================
+
+  describe("createMany onConflict / upsertMany", () => {
+    it("should skip conflicting rows and return only the inserted ones with onConflict ignore", async () => {
+      await Q.server.create({ name: "Survival", identifier: "survival" });
+
+      const inserted = await Q.server.createManyAndReturn(
+        [
+          { name: "Other", identifier: "survival" },
+          { name: "Creative", identifier: "creative" },
+        ],
+        { onConflict: "ignore" },
+      );
+
+      expect(inserted.map((row) => row.identifier)).toEqual(["creative"]);
+      expect(await Q.server.count()).toBe(2);
+      const kept = await Q.server.find({ identifier: "survival" });
+      expect(kept!.name).toBe("Survival");
+    });
+
+    it("should insert new rows and update conflicting ones with upsertMany", async () => {
+      await Q.server.create({ name: "Survival", identifier: "survival" });
+
+      await Q.server.upsertMany(
+        [
+          { name: "SMP", identifier: "survival" },
+          { name: "Creative", identifier: "creative" },
+        ],
+        "identifier",
+        ["name"],
+      );
+
+      expect(await Q.server.count()).toBe(2);
+      const updated = await Q.server.find({ identifier: "survival" });
+      expect(updated!.name).toBe("SMP");
+      expect(await Q.server.exists({ identifier: "creative" })).toBe(true);
+    });
+
+    it("should update every column of the batch when updateFields is omitted", async () => {
+      await Q.server.create({ name: "Survival", identifier: "survival" });
+
+      await Q.server.upsertMany(
+        [{ name: "SMP", identifier: "survival" }],
+        "identifier",
+      );
+
+      const updated = await Q.server.find({ identifier: "survival" });
+      expect(updated!.name).toBe("SMP");
+    });
+
+    it("should do nothing for an empty upsertMany batch", async () => {
+      await Q.server.upsertMany([], "identifier");
+      expect(await Q.server.count()).toBe(0);
+    });
+
+    it("should reject an empty updateFields list", async () => {
+      await expect(
+        Q.server.upsertMany(
+          [{ name: "Survival", identifier: "survival" }],
+          "identifier",
+          [],
+        ),
+      ).rejects.toThrow("requires at least one field in updateFields");
+      expect(await Q.server.count()).toBe(0);
+    });
+  });
+
+  // ==========================================================================
+  // GROUPED COUNTS, MULTI-COLUMN ORDER, UPDATE ALL AND RETURN
+  // (server_maintenance_schedule: has a non-unique status column and updated_at)
+  // ==========================================================================
+
+  describe("countBy / multi-column orderBy / updateAllAndReturn", () => {
+    const past = new Date("2026-01-01T00:00:00Z");
+    let serverId: number;
+    let otherServerId: number;
+
+    beforeEach(async () => {
+      const [alpha, beta] = await Q.server.createManyAndReturn([
+        { name: "Alpha", identifier: "alpha" },
+        { name: "Beta", identifier: "beta" },
+      ]);
+      serverId = alpha.id;
+      otherServerId = beta.id;
+
+      await Q.server.maintenance.schedule.createMany([
+        {
+          serverId,
+          status: "completed",
+          scheduledAt: new Date("2026-01-01T00:00:00Z"),
+          scheduledByDiscordId: "1",
+          estimatedMinutes: 30,
+          updatedAt: past,
+        },
+        {
+          serverId,
+          status: "completed",
+          scheduledAt: new Date("2026-01-03T00:00:00Z"),
+          scheduledByDiscordId: "1",
+          estimatedMinutes: null,
+          updatedAt: past,
+        },
+        {
+          serverId,
+          status: "cancelled",
+          scheduledAt: new Date("2026-01-02T00:00:00Z"),
+          scheduledByDiscordId: "1",
+          estimatedMinutes: null,
+          updatedAt: past,
+        },
+        {
+          serverId: otherServerId,
+          status: "completed",
+          scheduledAt: new Date("2026-01-04T00:00:00Z"),
+          scheduledByDiscordId: "1",
+          updatedAt: past,
+        },
+      ]);
+    });
+
+    it("should count rows per column value with countBy", async () => {
+      const perStatus = await Q.server.maintenance.schedule.countBy("status");
+
+      expect(perStatus.get("completed")).toBe(3);
+      expect(perStatus.get("cancelled")).toBe(1);
+      expect(perStatus.get("scheduled")).toBeUndefined();
+    });
+
+    it("should apply filters before grouping in countBy", async () => {
+      const perStatus = await Q.server.maintenance.schedule.countBy("status", {
+        serverId,
+      });
+
+      expect([...perStatus.entries()].sort()).toEqual([
+        ["cancelled", 1],
+        ["completed", 2],
+      ]);
+    });
+
+    it("should group NULL values under the key null in countBy", async () => {
+      const perEstimate =
+        await Q.server.maintenance.schedule.countBy("estimatedMinutes");
+
+      expect(perEstimate.get(30)).toBe(1);
+      expect(perEstimate.get(null)).toBe(3);
+    });
+
+    it("should order by several columns in findAll", async () => {
+      const rows = await Q.server.maintenance.schedule.findAll(
+        { serverId },
+        {
+          orderBy: [
+            { field: "status" },
+            { field: "scheduledAt", direction: "desc" },
+          ],
+        },
+      );
+
+      expect(
+        rows.map((row) => [row.status, row.scheduledAt.toISOString()]),
+      ).toEqual([
+        ["cancelled", "2026-01-02T00:00:00.000Z"],
+        ["completed", "2026-01-03T00:00:00.000Z"],
+        ["completed", "2026-01-01T00:00:00.000Z"],
+      ]);
+    });
+
+    it("should order by several columns through the query builder", async () => {
+      const rows = await Q.server.maintenance.schedule
+        .where({ serverId })
+        .orderBy([
+          { field: "status", direction: "desc" },
+          { field: "scheduledAt" },
+        ])
+        .all();
+
+      expect(
+        rows.map((row) => [row.status, row.scheduledAt.toISOString()]),
+      ).toEqual([
+        ["completed", "2026-01-01T00:00:00.000Z"],
+        ["completed", "2026-01-03T00:00:00.000Z"],
+        ["cancelled", "2026-01-02T00:00:00.000Z"],
+      ]);
+    });
+
+    it("should treat an empty order list as no ordering", async () => {
+      const rows = await Q.server.maintenance.schedule.findAll(undefined, {
+        orderBy: [],
+      });
+      expect(rows).toHaveLength(4);
+    });
+
+    it("should return the updated entities from updateAllAndReturn", async () => {
+      const updated = await Q.server.maintenance.schedule.updateAllAndReturn(
+        { status: "cancelled" },
+        { serverId, status: "completed" },
+      );
+
+      expect(updated).toHaveLength(2);
+      for (const row of updated) {
+        expect(row.serverId).toBe(serverId);
+        expect(row.status).toBe("cancelled");
+        expect(row.updatedAt.getTime()).toBeGreaterThan(past.getTime());
+      }
+      expect(
+        await Q.server.maintenance.schedule.count({ status: "cancelled" }),
+      ).toBe(3);
+    });
+
+    it("should return an empty list when updateAllAndReturn matches nothing", async () => {
+      const updated = await Q.server.maintenance.schedule.updateAllAndReturn(
+        { status: "cancelled" },
+        { status: "scheduled" },
+      );
+      expect(updated).toEqual([]);
+    });
+
+    it("should throw when every updateAllAndReturn filter value is undefined", async () => {
+      await expect(
+        Q.server.maintenance.schedule.updateAllAndReturn(
+          { status: "cancelled" },
+          { serverId: undefined },
+        ),
+      ).rejects.toThrow("no usable conditions");
+      expect(
+        await Q.server.maintenance.schedule.count({ status: "cancelled" }),
+      ).toBe(1);
+    });
+  });
 });

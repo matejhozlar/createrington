@@ -94,6 +94,21 @@ describe("paginateQuery", () => {
     );
   });
 
+  it("forwards a multi-column order unchanged", async () => {
+    const source = fakeSource([], 0);
+    const orderBy = [
+      { field: "id", direction: "desc" },
+      { field: "id" },
+    ] as const;
+
+    await paginateQuery(source, {}, { page: 0, limit: 10 }, { orderBy });
+
+    expect(source.findAll).toHaveBeenCalledWith(
+      {},
+      { limit: 10, offset: 0, orderBy },
+    );
+  });
+
   it("returns the rows with the pagination metadata", async () => {
     const rows = [{ id: 7 }, { id: 8 }];
     const source = fakeSource(rows, 41);
