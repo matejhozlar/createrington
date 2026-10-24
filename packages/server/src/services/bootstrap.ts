@@ -493,14 +493,13 @@ export function registerServices(): void {
   container.register(
     Services.MAINTENANCE_SERVICE,
     async (c) => {
-      const messageService = await c.get(Services.MESSAGE_SERVICE);
-      const scheduler = new MaintenanceScheduler(
-        maintenanceService,
-        messageService,
-      );
-      maintenanceService.setScheduler(scheduler);
-
       try {
+        const messageService = await c.get(Services.MESSAGE_SERVICE);
+        const scheduler = new MaintenanceScheduler(
+          maintenanceService,
+          messageService,
+        );
+        maintenanceService.setScheduler(scheduler);
         await scheduler.initialize();
         logger.info("Maintenance scheduler initialized");
       } catch (error) {
@@ -515,12 +514,7 @@ export function registerServices(): void {
 
       return maintenanceService;
     },
-    {
-      dependencies: [
-        Services.MESSAGE_SERVICE,
-        Services.PLAYTIME_MANAGER_SERVICE,
-      ],
-    },
+    { dependencies: [Services.DATABASE] },
   );
 
   container.on("serviceReady", async (serviceName) => {
