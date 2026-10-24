@@ -6,6 +6,8 @@ const DEFAULT_MAX_ENTRIES = 5000;
 export interface KeyValueStore {
   /** The value under the key, or `null` when there is none or its time is up. */
   get(key: string): Promise<string | null>;
+  /** The values under the keys in the order asked, `null` where there is none or its time is up. */
+  getMany(keys: string[]): Promise<Array<string | null>>;
   /** Writes the value under the key for `ttlMs` milliseconds, replacing what was there. */
   set(key: string, value: string, ttlMs: number): Promise<void>;
 }
@@ -33,6 +35,11 @@ export class MemoryKeyValueStore implements KeyValueStore {
       return null;
     }
     return entry.value;
+  }
+
+  /** The values under the keys in the order asked, `null` where there is none or its time is up. */
+  async getMany(keys: string[]): Promise<Array<string | null>> {
+    return Promise.all(keys.map((key) => this.get(key)));
   }
 
   /** Writes the value under the key for `ttlMs` milliseconds, replacing what was there. */
@@ -69,6 +76,16 @@ export class RedisKeyValueStore implements KeyValueStore {
     return typeof reply === "string" ? reply : null;
   }
 
+  /** The values under the keys in the order asked, in one MGET, `null` where Redis holds none. */
+  async getMany(keys: string[]): Promise<Array<string | null>> {
+    if (keys.length === 0) return [];
+    const reply = await this.redis.sendCommand(["MGET", ...keys]);
+    if (!Array.isArray(reply) || reply.length !== keys.length) {
+      throw new Error(`Redis answered MGET of ${keys.length} keys oddly`);
+    }
+    return reply.map((value) => (typeof value === "string" ? value : null));
+  }
+
   /** Writes the value under the key for `ttlMs` milliseconds, replacing what was there. */
   async set(key: string, value: string, ttlMs: number): Promise<void> {
     const milliseconds = Math.max(1, Math.ceil(ttlMs));
@@ -101,6 +118,18 @@ export class FallbackKeyValueStore implements KeyValueStore {
     return this.fallback.get(key);
   }
 
+  /** The values under the keys in the store in use, `null` where there is none or its time is up. */
+  async getMany(keys: string[]): Promise<Array<string | null>> {
+    if (this.isPrimaryUp()) {
+      try {
+        return await this.primary.getMany(keys);
+      } catch {
+        return this.fallback.getMany(keys);
+      }
+    }
+    return this.fallback.getMany(keys);
+  }
+
   /** Writes the value under the key in the store in use for `ttlMs` milliseconds. */
   async set(key: string, value: string, ttlMs: number): Promise<void> {
     if (this.isPrimaryUp()) {
@@ -116,13 +145,24 @@ export class FallbackKeyValueStore implements KeyValueStore {
   }
 }
 
-export const keyValueStore: KeyValueStore = redisService.enabled
-  ? new FallbackKeyValueStore(
-      new RedisKeyValueStore(redisService),
-      new MemoryKeyValueStore(),
-      () => redisService.isReady,
-    )
-  : new MemoryKeyValueStore();
+/**
+ * A key-value store of its own for one consumer: Redis while it is configured
+ * and up, process memory otherwise, holding at most `maxMemoryEntries` values
+ * there. Every consumer makes its own store, so what one writes in bulk never
+ * makes room at the expense of another while the app runs on memory.
+ */
+export function createKeyValueStore(
+  maxMemoryEntries = DEFAULT_MAX_ENTRIES,
+): KeyValueStore {
+  const memory = new MemoryKeyValueStore(maxMemoryEntries);
+  return redisService.enabled
+    ? new FallbackKeyValueStore(
+        new RedisKeyValueStore(redisService),
+        memory,
+        () => redisService.isReady,
+      )
+    : memory;
+}
 
 /**
  * The JSON value stored under the key, or `undefined` when there is none.
@@ -140,6 +180,33 @@ export async function readStored<T>(
     logger.warn(`Key-value store could not read ${key}:`, error);
     return undefined;
   }
+}
+
+/**
+ * The JSON values stored under the keys in the order asked, `undefined` where
+ * there is none. A store that fails counts as none for every key, a value that
+ * is unreadable as none for its key, and both are logged.
+ */
+export async function readStoredMany<T>(
+  store: KeyValueStore,
+  keys: string[],
+): Promise<Array<T | undefined>> {
+  let stored: Array<string | null>;
+  try {
+    stored = await store.getMany(keys);
+  } catch (error) {
+    logger.warn(`Key-value store could not read ${keys.length} keys:`, error);
+    return keys.map(() => undefined);
+  }
+  return stored.map((value, index) => {
+    if (value === null) return undefined;
+    try {
+      return JSON.parse(value) as T;
+    } catch (error) {
+      logger.warn(`Key-value store could not read ${keys[index]}:`, error);
+      return undefined;
+    }
+  });
 }
 
 /** Stores the value as JSON under the key for `ttlMs` milliseconds. A store that fails is logged and the value is not stored. */

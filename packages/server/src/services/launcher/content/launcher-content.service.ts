@@ -19,8 +19,8 @@ import {
 } from "@/services/curseforge/budget";
 import { FeatureFlags, featureFlagService } from "@/services/feature-flag";
 import {
-  keyValueStore,
-  readStored,
+  createKeyValueStore,
+  readStoredMany,
   readThrough,
   writeStored,
 } from "@/services/key-value-store";
@@ -64,6 +64,9 @@ const CDN_URL_TTL_MS = 60 * 60_000;
 const UNKNOWN_CDN_URL_TTL_MS = 10 * 60_000;
 const CDN_LOOKUP_BUDGET_MS = 5_000;
 const KEY_PREFIX = "launcher:content:curseforge:v1";
+const MAX_MEMORY_ENTRIES = 20_000;
+
+const cache = createKeyValueStore(MAX_MEMORY_ENTRIES);
 
 export interface ContentPage {
   page: number;
@@ -191,7 +194,7 @@ class LauncherContentService {
       sortField,
     ])}`;
 
-    return readThrough(keyValueStore, key, SEARCH_TTL_MS, async () => {
+    return readThrough(cache, key, SEARCH_TTL_MS, async () => {
       const found = await this.ask("search", () =>
         searchProjects({
           query: params.query,
@@ -222,7 +225,7 @@ class LauncherContentService {
   ): Promise<LauncherContentCategory[]> {
     const classId = classForProjectKind(kind);
     return readThrough(
-      keyValueStore,
+      cache,
       `${KEY_PREFIX}:categories:${classId}`,
       CATEGORIES_TTL_MS,
       async () => {
@@ -260,7 +263,7 @@ class LauncherContentService {
   /** One project with its description, downloads, categories, links, dates and pictures, the description as CurseForge's HTML. Throws `PROJECT_NOT_FOUND` (404) for a project `getProjects` would not know. */
   async getProjectDetails(projectId: number): Promise<LauncherProjectDetails> {
     const details = await readThrough(
-      keyValueStore,
+      cache,
       this.projectDetailsKey(projectId),
       (found) => (found ? PROJECT_TTL_MS : UNKNOWN_PROJECT_TTL_MS),
       async () => {
@@ -297,28 +300,23 @@ class LauncherContentService {
       params.limit,
     ])}`;
 
-    const page = await readThrough(
-      keyValueStore,
-      key,
-      FILES_TTL_MS,
-      async () => {
-        const listed = await this.ask("file list", () =>
-          listProjectFiles(projectId, {
-            gameVersion: params.minecraftVersion,
-            modLoaderType,
-            index: params.page * params.limit,
-            pageSize: params.limit,
-          }),
-        );
-        return {
-          files: listed.files.flatMap((file) => {
-            const details = toLauncherContentFileDetails(file, project.url);
-            return details ? [details] : [];
-          }),
-          total: Math.min(listed.total, LAUNCHER_CONTENT_MAX_RESULTS),
-        };
-      },
-    );
+    const page = await readThrough(cache, key, FILES_TTL_MS, async () => {
+      const listed = await this.ask("file list", () =>
+        listProjectFiles(projectId, {
+          gameVersion: params.minecraftVersion,
+          modLoaderType,
+          index: params.page * params.limit,
+          pageSize: params.limit,
+        }),
+      );
+      return {
+        files: listed.files.flatMap((file) => {
+          const details = toLauncherContentFileDetails(file, project.url);
+          return details ? [details] : [];
+        }),
+        total: Math.min(listed.total, LAUNCHER_CONTENT_MAX_RESULTS),
+      };
+    });
     return { ...page, files: await this.withCdnDownloads(page.files) };
   }
 
@@ -349,7 +347,7 @@ class LauncherContentService {
     projectId?: number,
   ): Promise<string | null> {
     return readThrough(
-      keyValueStore,
+      cache,
       this.changelogKey(fileId),
       CHANGELOG_TTL_MS,
       async () => {
@@ -368,13 +366,9 @@ class LauncherContentService {
     fingerprints: number[],
   ): Promise<LauncherContentFingerprintsData> {
     const asked = [...new Set(fingerprints)];
-    const stored = await Promise.all(
-      asked.map((fingerprint) =>
-        readStored<LauncherContentFileDetails | null>(
-          keyValueStore,
-          this.fingerprintKey(fingerprint),
-        ),
-      ),
+    const stored = await readStoredMany<LauncherContentFileDetails | null>(
+      cache,
+      asked.map((fingerprint) => this.fingerprintKey(fingerprint)),
     );
 
     const files = new Map<number, LauncherContentFileDetails | null>();
@@ -413,7 +407,7 @@ class LauncherContentService {
     await Promise.all(
       [...identified].flatMap(([fingerprint, file]) => [
         writeStored(
-          keyValueStore,
+          cache,
           this.fingerprintKey(fingerprint),
           file,
           file ? FINGERPRINT_TTL_MS : UNKNOWN_FINGERPRINT_TTL_MS,
@@ -421,7 +415,7 @@ class LauncherContentService {
         ...(file
           ? [
               writeStored(
-                keyValueStore,
+                cache,
                 this.fileKey(Number(file.id)),
                 file,
                 FILES_TTL_MS,
@@ -488,12 +482,7 @@ class LauncherContentService {
             ? toLauncherContentFileDetails(file, project.url)
             : null;
         files.set(id, details);
-        return writeStored(
-          keyValueStore,
-          this.fileKey(id),
-          details,
-          FILES_TTL_MS,
-        );
+        return writeStored(cache, this.fileKey(id), details, FILES_TTL_MS);
       }),
     );
     return files;
@@ -544,7 +533,7 @@ class LauncherContentService {
       [...resolved].map(([fileId, url]) => {
         urls.set(String(fileId), url);
         return writeStored(
-          keyValueStore,
+          cache,
           this.cdnUrlKey(String(fileId)),
           url,
           url ? CDN_URL_TTL_MS : UNKNOWN_CDN_URL_TTL_MS,
@@ -587,9 +576,7 @@ class LauncherContentService {
     fetch: (missing: Id[]) => Promise<Map<Id, Value | null>>,
     batchSize = Infinity,
   ): Promise<Map<Id, Value | null>> {
-    const stored = await Promise.all(
-      ids.map((id) => readStored<Value | null>(keyValueStore, keyOf(id))),
-    );
+    const stored = await readStoredMany<Value | null>(cache, ids.map(keyOf));
 
     const found = new Map<Id, Value | null>();
     const waiting: Array<[Id, Promise<Value | null>]> = [];
@@ -642,7 +629,7 @@ class LauncherContentService {
           : null;
       projects.set(id, project);
       await writeStored(
-        keyValueStore,
+        cache,
         this.projectKey(id),
         project,
         project ? PROJECT_TTL_MS : UNKNOWN_PROJECT_TTL_MS,

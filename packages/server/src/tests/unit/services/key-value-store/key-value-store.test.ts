@@ -3,7 +3,9 @@ import {
   FallbackKeyValueStore,
   MemoryKeyValueStore,
   RedisKeyValueStore,
+  createKeyValueStore,
   readStored,
+  readStoredMany,
   readThrough,
   writeStored,
   type KeyValueStore,
@@ -64,6 +66,19 @@ describe("MemoryKeyValueStore", () => {
     expect(await store.get("new")).toBe("3");
   });
 
+  it("reads many keys in the order asked, null where there is nothing", async () => {
+    const store = new MemoryKeyValueStore();
+    await store.set("a", "1", 1000);
+    await store.set("expired", "2", 100);
+    vi.advanceTimersByTime(200);
+
+    expect(await store.getMany(["a", "missing", "expired"])).toEqual([
+      "1",
+      null,
+      null,
+    ]);
+  });
+
   it("does not count a rewritten key twice", async () => {
     const store = new MemoryKeyValueStore(2);
     await store.set("a", "1", 1000);
@@ -89,6 +104,32 @@ describe("RedisKeyValueStore", () => {
 
   it("has nothing under a key Redis does not hold", async () => {
     expect(await new RedisKeyValueStore(fakeRedis(null)).get("key")).toBeNull();
+  });
+
+  it("reads many keys in one MGET", async () => {
+    const redis = fakeRedis(["1", null]);
+
+    expect(await new RedisKeyValueStore(redis).getMany(["a", "b"])).toEqual([
+      "1",
+      null,
+    ]);
+    expect(redis.sendCommand).toHaveBeenCalledTimes(1);
+    expect(redis.sendCommand).toHaveBeenCalledWith(["MGET", "a", "b"]);
+  });
+
+  it("asks Redis nothing for no keys", async () => {
+    const redis = fakeRedis();
+
+    expect(await new RedisKeyValueStore(redis).getMany([])).toEqual([]);
+    expect(redis.sendCommand).not.toHaveBeenCalled();
+  });
+
+  it("fails when Redis answers MGET with the wrong number of values", async () => {
+    const redis = fakeRedis(["1"]);
+
+    await expect(
+      new RedisKeyValueStore(redis).getMany(["a", "b"]),
+    ).rejects.toThrow("MGET");
   });
 
   it("writes a value with its time limit in milliseconds", async () => {
@@ -137,6 +178,9 @@ describe("FallbackKeyValueStore", () => {
     get: async () => {
       throw new Error("store down");
     },
+    getMany: async () => {
+      throw new Error("store down");
+    },
     set: async () => {
       throw new Error("store down");
     },
@@ -164,6 +208,14 @@ describe("FallbackKeyValueStore", () => {
     expect(await store.get("key")).toBe("value");
     expect(await primary.get("key")).toBeNull();
     expect(await fallback.get("key")).toBe("value");
+  });
+
+  it("reads many keys from the fallback when the primary fails", async () => {
+    const fallback = new MemoryKeyValueStore();
+    await fallback.set("a", "1", 1000);
+    const store = new FallbackKeyValueStore(failing, fallback, () => true);
+
+    expect(await store.getMany(["a", "b"])).toEqual(["1", null]);
   });
 
   it("answers from the fallback when the primary fails", async () => {
@@ -290,6 +342,9 @@ describe("a store that fails", () => {
     get: async () => {
       throw new Error("store down");
     },
+    getMany: async () => {
+      throw new Error("store down");
+    },
     set: async () => {
       throw new Error("store down");
     },
@@ -311,6 +366,65 @@ describe("a store that fails", () => {
     expect(await readThrough(failing, "down", 1000, load)).toBe("value");
     expect(await readThrough(failing, "down", 1000, load)).toBe("value");
     expect(load).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("createKeyValueStore", () => {
+  it("gives every caller a store of its own, full on its own", async () => {
+    const small = createKeyValueStore(1);
+    const other = createKeyValueStore(1);
+    await other.set("kept", "value", 1000);
+
+    await small.set("a", "1", 1000);
+    await small.set("b", "2", 1000);
+
+    expect(await small.get("a")).toBeNull();
+    expect(await small.get("b")).toBe("2");
+    expect(await other.get("kept")).toBe("value");
+  });
+});
+
+describe("readStoredMany", () => {
+  it("tells stored values, stored nulls and nothing stored apart", async () => {
+    const store = new MemoryKeyValueStore();
+    await writeStored(store, "value", { answer: 42 }, 1000);
+    await writeStored(store, "null", null, 1000);
+
+    expect(await readStoredMany(store, ["value", "null", "missing"])).toEqual([
+      { answer: 42 },
+      null,
+      undefined,
+    ]);
+  });
+
+  it("reads only what is not JSON as nothing stored", async () => {
+    const store = new MemoryKeyValueStore();
+    await store.set("broken", "{not json", 1000);
+    await writeStored(store, "fine", "ok", 1000);
+
+    expect(await readStoredMany(store, ["broken", "fine"])).toEqual([
+      undefined,
+      "ok",
+    ]);
+  });
+
+  it("reads every key as nothing stored when the store fails", async () => {
+    const failing: KeyValueStore = {
+      get: async () => {
+        throw new Error("store down");
+      },
+      getMany: async () => {
+        throw new Error("store down");
+      },
+      set: async () => {
+        throw new Error("store down");
+      },
+    };
+
+    expect(await readStoredMany(failing, ["a", "b"])).toEqual([
+      undefined,
+      undefined,
+    ]);
   });
 });
 
