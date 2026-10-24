@@ -1476,9 +1476,11 @@ export abstract class BaseQueries<
   /**
    * Multi-row counterpart of upsert: inserts every row and, where a row
    * conflicts on `conflictTarget`, updates `updateFields` (default: every
-   * column present in the batch) from the incoming row. A column some rows
-   * omit is written as its default, also on the update path when it is among
-   * the updated fields, so keep the rows of one batch homogeneous.
+   * column present in the batch) from the incoming row. When several rows of
+   * the batch share a conflict key only the last one is written, as a loop of
+   * single upserts would end up doing. A column some rows omit is written as
+   * its default, also on the update path when it is among the updated fields,
+   * so keep the rows of one batch homogeneous.
    */
   async upsertMany(
     rows: NonNullable<TConfig["Create"]>[],
@@ -1489,7 +1491,18 @@ export abstract class BaseQueries<
   ): Promise<void> {
     if (rows.length === 0) return;
 
-    await this.insertBatch(rows, {
+    const conflictKeys = Array.isArray(conflictTarget)
+      ? conflictTarget
+      : [conflictTarget];
+    const lastByKey = new Map<string, NonNullable<TConfig["Create"]>>();
+    for (const row of rows) {
+      const key = JSON.stringify(
+        conflictKeys.map((k) => (row as Record<string, unknown>)[k as string]),
+      );
+      lastByKey.set(key, row);
+    }
+
+    await this.insertBatch([...lastByKey.values()], {
       returning: false,
       conflictClause: (columns) =>
         this.buildUpsertClause(conflictTarget, updateFields, columns),

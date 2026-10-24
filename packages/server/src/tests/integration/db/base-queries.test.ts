@@ -609,6 +609,24 @@ describe("BaseQueries (server table)", () => {
       expect(updated!.name).toBe("SMP");
     });
 
+    it("should keep the last row when a batch repeats a conflict key", async () => {
+      await Q.server.create({ name: "Survival", identifier: "survival" });
+
+      await Q.server.upsertMany(
+        [
+          { name: "First", identifier: "survival" },
+          { name: "Creative", identifier: "creative" },
+          { name: "Last", identifier: "survival" },
+        ],
+        "identifier",
+        ["name"],
+      );
+
+      expect(await Q.server.count()).toBe(2);
+      const updated = await Q.server.find({ identifier: "survival" });
+      expect(updated!.name).toBe("Last");
+    });
+
     it("should do nothing for an empty upsertMany batch", async () => {
       await Q.server.upsertMany([], "identifier");
       expect(await Q.server.count()).toBe(0);
