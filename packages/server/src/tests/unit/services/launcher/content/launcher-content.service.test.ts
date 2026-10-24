@@ -37,11 +37,12 @@ vi.mock("@/services/key-value-store", async (importOriginal) => {
   stores.create = () => new actual.MemoryKeyValueStore();
   return {
     ...actual,
-    keyValueStore: {
+    createKeyValueStore: (): KeyValueStore => ({
       get: (key: string) => stores.current.get(key),
+      getMany: (keys: string[]) => stores.current.getMany(keys),
       set: (key: string, value: string, ttlMs: number) =>
         stores.current.set(key, value, ttlMs),
-    },
+    }),
   };
 });
 
@@ -1865,6 +1866,9 @@ describe("LauncherContentService with a store that fails", () => {
   beforeEach(() => {
     stores.current = {
       get: async () => {
+        throw new Error("store down");
+      },
+      getMany: async () => {
         throw new Error("store down");
       },
       set: async () => {

@@ -19,8 +19,8 @@ import {
 } from "@/services/curseforge/budget";
 import { FeatureFlags, featureFlagService } from "@/services/feature-flag";
 import {
-  keyValueStore,
-  readStored,
+  createKeyValueStore,
+  readStoredMany,
   readThrough,
   writeStored,
 } from "@/services/key-value-store";
@@ -64,6 +64,11 @@ const CDN_URL_TTL_MS = 60 * 60_000;
 const UNKNOWN_CDN_URL_TTL_MS = 10 * 60_000;
 const CDN_LOOKUP_BUDGET_MS = 5_000;
 const KEY_PREFIX = "launcher:content:curseforge:v1";
+const MAX_MEMORY_ANSWERS = 5_000;
+const MAX_MEMORY_ITEMS = 20_000;
+
+const answerCache = createKeyValueStore(MAX_MEMORY_ANSWERS);
+const itemCache = createKeyValueStore(MAX_MEMORY_ITEMS);
 
 export interface ContentPage {
   page: number;
@@ -129,11 +134,15 @@ function loaderTypeFor(
  * modpacks that are not ours: search, categories, projects, one project in
  * full, a project's files, files by id with their changelogs and the files
  * behind fingerprints, for any mod, resource pack, shader or modpack of
- * Minecraft, not only what our pack ships. Answers come from the key-value
- * store while they are fresh (a search for 5 minutes, a project or a known
+ * Minecraft, not only what our pack ships. Answers come from two key-value
+ * stores while they are fresh (a search for 5 minutes, a project or a known
  * fingerprint for an hour, files and unknown fingerprints for 10 minutes,
  * categories and a changelog for a day), so the same question from many
  * players is one CurseForge call, and a lookup already running is shared.
+ * Whole answers (a search page, categories, a project in full, a page of
+ * files, a changelog) and single items (a project, a file, a fingerprint, a
+ * CDN address) are kept apart, so a batch of a thousand ids never makes room
+ * at the expense of the answers.
  * Projects and files are fetched in batches of 100 that are kept and shared
  * one by one, so a batch that fails costs only itself on the next call.
  * Nothing is written to the database. A file CurseForge blocks is answered as
@@ -191,7 +200,7 @@ class LauncherContentService {
       sortField,
     ])}`;
 
-    return readThrough(keyValueStore, key, SEARCH_TTL_MS, async () => {
+    return readThrough(answerCache, key, SEARCH_TTL_MS, async () => {
       const found = await this.ask("search", () =>
         searchProjects({
           query: params.query,
@@ -222,7 +231,7 @@ class LauncherContentService {
   ): Promise<LauncherContentCategory[]> {
     const classId = classForProjectKind(kind);
     return readThrough(
-      keyValueStore,
+      answerCache,
       `${KEY_PREFIX}:categories:${classId}`,
       CATEGORIES_TTL_MS,
       async () => {
@@ -260,7 +269,7 @@ class LauncherContentService {
   /** One project with its description, downloads, categories, links, dates and pictures, the description as CurseForge's HTML. Throws `PROJECT_NOT_FOUND` (404) for a project `getProjects` would not know. */
   async getProjectDetails(projectId: number): Promise<LauncherProjectDetails> {
     const details = await readThrough(
-      keyValueStore,
+      answerCache,
       this.projectDetailsKey(projectId),
       (found) => (found ? PROJECT_TTL_MS : UNKNOWN_PROJECT_TTL_MS),
       async () => {
@@ -297,28 +306,23 @@ class LauncherContentService {
       params.limit,
     ])}`;
 
-    const page = await readThrough(
-      keyValueStore,
-      key,
-      FILES_TTL_MS,
-      async () => {
-        const listed = await this.ask("file list", () =>
-          listProjectFiles(projectId, {
-            gameVersion: params.minecraftVersion,
-            modLoaderType,
-            index: params.page * params.limit,
-            pageSize: params.limit,
-          }),
-        );
-        return {
-          files: listed.files.flatMap((file) => {
-            const details = toLauncherContentFileDetails(file, project.url);
-            return details ? [details] : [];
-          }),
-          total: Math.min(listed.total, LAUNCHER_CONTENT_MAX_RESULTS),
-        };
-      },
-    );
+    const page = await readThrough(answerCache, key, FILES_TTL_MS, async () => {
+      const listed = await this.ask("file list", () =>
+        listProjectFiles(projectId, {
+          gameVersion: params.minecraftVersion,
+          modLoaderType,
+          index: params.page * params.limit,
+          pageSize: params.limit,
+        }),
+      );
+      return {
+        files: listed.files.flatMap((file) => {
+          const details = toLauncherContentFileDetails(file, project.url);
+          return details ? [details] : [];
+        }),
+        total: Math.min(listed.total, LAUNCHER_CONTENT_MAX_RESULTS),
+      };
+    });
     return { ...page, files: await this.withCdnDownloads(page.files) };
   }
 
@@ -349,7 +353,7 @@ class LauncherContentService {
     projectId?: number,
   ): Promise<string | null> {
     return readThrough(
-      keyValueStore,
+      answerCache,
       this.changelogKey(fileId),
       CHANGELOG_TTL_MS,
       async () => {
@@ -368,13 +372,9 @@ class LauncherContentService {
     fingerprints: number[],
   ): Promise<LauncherContentFingerprintsData> {
     const asked = [...new Set(fingerprints)];
-    const stored = await Promise.all(
-      asked.map((fingerprint) =>
-        readStored<LauncherContentFileDetails | null>(
-          keyValueStore,
-          this.fingerprintKey(fingerprint),
-        ),
-      ),
+    const stored = await readStoredMany<LauncherContentFileDetails | null>(
+      itemCache,
+      asked.map((fingerprint) => this.fingerprintKey(fingerprint)),
     );
 
     const files = new Map<number, LauncherContentFileDetails | null>();
@@ -413,7 +413,7 @@ class LauncherContentService {
     await Promise.all(
       [...identified].flatMap(([fingerprint, file]) => [
         writeStored(
-          keyValueStore,
+          itemCache,
           this.fingerprintKey(fingerprint),
           file,
           file ? FINGERPRINT_TTL_MS : UNKNOWN_FINGERPRINT_TTL_MS,
@@ -421,7 +421,7 @@ class LauncherContentService {
         ...(file
           ? [
               writeStored(
-                keyValueStore,
+                itemCache,
                 this.fileKey(Number(file.id)),
                 file,
                 FILES_TTL_MS,
@@ -488,12 +488,7 @@ class LauncherContentService {
             ? toLauncherContentFileDetails(file, project.url)
             : null;
         files.set(id, details);
-        return writeStored(
-          keyValueStore,
-          this.fileKey(id),
-          details,
-          FILES_TTL_MS,
-        );
+        return writeStored(itemCache, this.fileKey(id), details, FILES_TTL_MS);
       }),
     );
     return files;
@@ -544,7 +539,7 @@ class LauncherContentService {
       [...resolved].map(([fileId, url]) => {
         urls.set(String(fileId), url);
         return writeStored(
-          keyValueStore,
+          itemCache,
           this.cdnUrlKey(String(fileId)),
           url,
           url ? CDN_URL_TTL_MS : UNKNOWN_CDN_URL_TTL_MS,
@@ -587,8 +582,9 @@ class LauncherContentService {
     fetch: (missing: Id[]) => Promise<Map<Id, Value | null>>,
     batchSize = Infinity,
   ): Promise<Map<Id, Value | null>> {
-    const stored = await Promise.all(
-      ids.map((id) => readStored<Value | null>(keyValueStore, keyOf(id))),
+    const stored = await readStoredMany<Value | null>(
+      itemCache,
+      ids.map(keyOf),
     );
 
     const found = new Map<Id, Value | null>();
@@ -642,7 +638,7 @@ class LauncherContentService {
           : null;
       projects.set(id, project);
       await writeStored(
-        keyValueStore,
+        itemCache,
         this.projectKey(id),
         project,
         project ? PROJECT_TTL_MS : UNKNOWN_PROJECT_TTL_MS,
