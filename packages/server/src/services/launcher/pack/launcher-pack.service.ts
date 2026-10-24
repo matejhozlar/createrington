@@ -1115,26 +1115,29 @@ class LauncherPackService {
    * Looks stored files up again whose source can change: manual files
    * resolved more than an hour ago and built CDN addresses resolved more than
    * a day ago, or every built address once that source is switched off.
-   * Oldest first, at most 50 per call; each is marked resolved before the
-   * lookup, so a lookup that fails is not repeated before the file is due
-   * again. Returns how many files were looked up. Throws when CurseForge
-   * cannot be asked.
+   * Works through every due file in batches of 50, the files of offered
+   * releases first; each batch is marked resolved before its lookup, so a
+   * lookup that fails is not repeated before those files are due again.
+   * Returns how many files were looked up. Throws when CurseForge cannot be
+   * asked.
    */
   async recheckStaleFiles(): Promise<number> {
     const cdnFlag = await this.readCdnFlag();
     const now = Date.now();
-    const ids = await Q.curseforge.file.getDueIds(
-      {
-        manualBefore: new Date(now - MANUAL_RECHECK_MS),
-        cdnBefore:
-          cdnFlag === null
-            ? null
-            : new Date(cdnFlag ? now - CDN_RECHECK_MS : now),
-      },
-      RECHECK_BATCH_SIZE,
-    );
-    if (ids.length > 0) await this.recheckStored(ids, cdnFlag);
-    return ids.length;
+    const due = {
+      manualBefore: new Date(now - MANUAL_RECHECK_MS),
+      cdnBefore:
+        cdnFlag === null
+          ? null
+          : new Date(cdnFlag ? now - CDN_RECHECK_MS : now),
+    };
+    let total = 0;
+    for (;;) {
+      const ids = await Q.curseforge.file.getDueIds(due, RECHECK_BATCH_SIZE);
+      if (ids.length > 0) await this.recheckStored(ids, cdnFlag);
+      total += ids.length;
+      if (ids.length < RECHECK_BATCH_SIZE) return total;
+    }
   }
 
   private async ensureResolved(

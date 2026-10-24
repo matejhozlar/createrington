@@ -2593,6 +2593,51 @@ describe("LauncherPackService.recheckStaleFiles", () => {
     expect(getFilesDetails).toHaveBeenCalledTimes(1);
     expect((await storedSource(file.fileId)).source).toBe("manual");
   });
+
+  it("works through every due file in one run, fifty at a time", async () => {
+    const files: SeededFile[] = [];
+    for (let i = 0; i < 51; i++) files.push(await seedFile({ blocked: true }));
+    const fileIds = files.map((file) => file.fileId);
+    serveFromCurseForge(files);
+    await launcherPackService.resolveFiles(fileIds);
+    serveFromModrinth(files);
+    await Q.curseforge.file.updateAll(
+      { resolvedAt: new Date(Date.now() - 2 * HOUR_MS) },
+      { id: { $in: fileIds } },
+    );
+    vi.mocked(getFilesDetails).mockClear();
+
+    const rechecked = await launcherPackService.recheckStaleFiles();
+
+    expect(rechecked).toBeGreaterThanOrEqual(51);
+    expect(getFilesDetails).toHaveBeenCalledTimes(2);
+    const asked = vi.mocked(getFilesDetails).mock.calls.flatMap(([ids]) => ids);
+    expect(asked).toEqual(expect.arrayContaining(fileIds));
+    expect(vi.mocked(getFilesDetails).mock.calls[0][0]).toHaveLength(50);
+    const resolved = await launcherPackService.resolveFiles(fileIds);
+    expect(resolved.files.every((file) => file.source === "modrinth")).toBe(
+      true,
+    );
+  });
+
+  it("puts the files of an offered release ahead of older rows no release ships", async () => {
+    const modpack = await seedPack();
+    const shipped = await seedFile({ blocked: true });
+    const adHoc = await seedFile({ blocked: true });
+    serveFromCurseForge([shipped, adHoc]);
+    await launcherPackService.resolveFiles([adHoc.fileId]);
+    await seedReadyRelease(modpack, "1.0.0", [shipped]);
+    await ageStoredFile(adHoc.fileId, 3 * HOUR_MS);
+    await ageStoredFile(shipped.fileId, 2 * HOUR_MS);
+
+    const due = await Q.curseforge.file.getDueIds(
+      { manualBefore: new Date(Date.now() - HOUR_MS), cdnBefore: null },
+      100,
+    );
+
+    expect(due).toEqual(expect.arrayContaining([shipped.fileId, adHoc.fileId]));
+    expect(due.indexOf(shipped.fileId)).toBeLessThan(due.indexOf(adHoc.fileId));
+  });
 });
 
 describe("LauncherPackService.openStorageFile", () => {
