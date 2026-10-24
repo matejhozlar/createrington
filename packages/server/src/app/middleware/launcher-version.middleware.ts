@@ -4,7 +4,7 @@ import {
   LAUNCHER_VERSION_HEADER,
   LauncherAuthErrorCode,
 } from "@createrington/shared/launcher";
-import { AppError } from "./error-handler";
+import { AppError, BadRequestError } from "./error-handler";
 import { launcherReleaseService } from "@/services/launcher/release/launcher-release.service";
 
 const HTTP_UPGRADE_REQUIRED = 426;
@@ -17,7 +17,11 @@ export const requireSupportedLauncher = async (
   const platform = req.get(LAUNCHER_PLATFORM_HEADER);
   const version = req.get(LAUNCHER_VERSION_HEADER);
   if (!platform || !version) {
-    next();
+    next(
+      new BadRequestError(
+        `Launcher requests must carry the ${LAUNCHER_PLATFORM_HEADER} and ${LAUNCHER_VERSION_HEADER} headers`,
+      ),
+    );
     return;
   }
 
