@@ -83,9 +83,19 @@ async function verifySandboxFile(
       return false;
     }
 
-    const bytes = Buffer.from(await res.arrayBuffer());
-    const sha1 = crypto.createHash("sha1").update(bytes).digest("hex");
-    if (bytes.length !== expected.size || sha1 !== expected.sha1) {
+    const hash = crypto.createHash("sha1");
+    let received = 0;
+    for await (const chunk of res.body ?? []) {
+      received += chunk.byteLength;
+      if (received > expected.size) {
+        logger.warn(
+          `Sandbox ${label} is longer than the ${expected.size} bytes expected`,
+        );
+        return false;
+      }
+      hash.update(chunk);
+    }
+    if (received !== expected.size || hash.digest("hex") !== expected.sha1) {
       logger.warn(`Sandbox ${label} does not match the expected SHA-1`);
       return false;
     }

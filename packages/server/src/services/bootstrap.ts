@@ -39,6 +39,7 @@ import { maintenanceService } from "./maintenance";
 import { MaintenanceScheduler } from "./maintenance/scheduler";
 import { releaseAnnouncementService } from "./release-announcement";
 import { launcherPackService } from "./launcher/pack/launcher-pack.service";
+import { LauncherPackFileRefreshService } from "./launcher/pack/file-refresh.service";
 import { DonationService } from "./donation/donation.service";
 import { structurePackService } from "./structure-pack";
 import { StructurePackRotationService } from "./structure-pack/rotation";
@@ -248,6 +249,16 @@ export function registerServices(): void {
       },
     );
   }
+
+  container.register(
+    Services.LAUNCHER_PACK_FILE_REFRESH,
+    async () => {
+      const service = new LauncherPackFileRefreshService();
+      await service.initialize();
+      return service;
+    },
+    { dependencies: [Services.DATABASE] },
+  );
 
   container.register(
     Services.WORKSHOP_PROJECT_REFRESH,

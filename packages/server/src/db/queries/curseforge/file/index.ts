@@ -81,6 +81,29 @@ export class CurseforgeFileQueries extends CurseforgeFileBaseQueries {
     );
   }
 
+  /**
+   * Ids of manual files resolved before `manualBefore` and of built CDN
+   * addresses resolved before `cdnBefore` (none when null), oldest first, at
+   * most `limit` of them.
+   */
+  async getDueIds(
+    due: { manualBefore: Date; cdnBefore: Date | null },
+    limit: number,
+  ): Promise<number[]> {
+    const result = await this.runQuery<{ id: number }>(
+      "list curseforge files due for a recheck",
+      `SELECT id
+      FROM ${this.table}
+      WHERE (source = 'manual' AND resolved_at < $1)
+         OR ($2::timestamptz IS NOT NULL
+             AND source = 'curseforge-cdn' AND resolved_at < $2)
+      ORDER BY resolved_at ASC
+      LIMIT $3`,
+      [due.manualBefore, due.cdnBefore, limit],
+    );
+    return result.rows.map((row) => row.id);
+  }
+
   /** Stored files by id, each with the project it belongs to; unknown ids are absent. */
   async getWithProject(
     fileIds: number[],

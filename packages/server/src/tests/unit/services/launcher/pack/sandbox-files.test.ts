@@ -181,6 +181,47 @@ describe("findSandboxFileUrls", () => {
     expect((await findSandboxFileUrls([KEPT.query])).size).toBe(0);
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  it("hashes a copy the sandbox streams in pieces", async () => {
+    const half = Math.floor(KEPT.bytes.length / 2);
+    const pieces = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new Uint8Array(KEPT.bytes.subarray(0, half)));
+        controller.enqueue(new Uint8Array(KEPT.bytes.subarray(half)));
+        controller.close();
+      },
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(pieces, { status: 200 })),
+    );
+
+    expect([...(await findSandboxFileUrls([KEPT.query]))]).toEqual([
+      [KEPT.query.fileId, `${STORAGE}/${KEPT.query.fileId}`],
+    ]);
+  });
+
+  it("stops reading a copy that runs past the expected size instead of buffering it", async () => {
+    let pulls = 0;
+    let cancelled = false;
+    const endless = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        pulls++;
+        controller.enqueue(new Uint8Array(KEPT.bytes));
+      },
+      cancel() {
+        cancelled = true;
+      },
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(endless, { status: 200 })),
+    );
+
+    expect((await findSandboxFileUrls([KEPT.query])).size).toBe(0);
+    expect(cancelled).toBe(true);
+    expect(pulls).toBeLessThanOrEqual(4);
+  });
 });
 
 describe("findSandboxSnapshotUrl", () => {

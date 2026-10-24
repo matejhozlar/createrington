@@ -2348,90 +2348,26 @@ describe("LauncherPackService.resolveFiles", () => {
     expect(error.code).toBe("FILE_SOURCES_UNAVAILABLE");
   });
 
-  it("looks a manual file up again after an hour and picks up a new source", async () => {
+  it("answers a stored file as stored and asks no source about it, however old it is", async () => {
     const file = await seedFile({ blocked: true });
     serveFromCurseForge([file]);
     await launcherPackService.resolveFiles([file.fileId]);
     serveFromModrinth([file]);
-
-    const withinTheHour = await launcherPackService.resolveFiles([file.fileId]);
-    await Q.curseforge.file.updateAll(
-      { resolvedAt: new Date(Date.now() - 2 * HOUR_MS) },
-      { id: file.fileId },
-    );
-    const afterTheHour = await launcherPackService.resolveFiles([file.fileId]);
-
-    expect(withinTheHour.files[0].source).toBe("manual");
-    expect(afterTheHour.files[0]).toEqual(
-      expect.objectContaining({
-        source: "modrinth",
-        url: modrinthUrl(file.fileId),
-      }),
-    );
-  });
-
-  it("checks a built address again after a day and falls through when it stopped answering", async () => {
-    await useBuiltCdnAddress(true);
-    const file = await seedFile({ blocked: true });
-    serveFromCurseForge([file]);
-    serveFromBuiltCdnAddress([file]);
-    await launcherPackService.resolveFiles([file.fileId]);
-    serveFromBuiltCdnAddress([]);
-
-    await ageStoredFile(file.fileId, 23 * HOUR_MS);
-    const withinTheDay = await launcherPackService.resolveFiles([file.fileId]);
-    await ageStoredFile(file.fileId, 25 * HOUR_MS);
-    const afterTheDay = await launcherPackService.resolveFiles([file.fileId]);
-
-    expect(withinTheDay.files[0]).toEqual(
-      expect.objectContaining({
-        source: "curseforge-cdn",
-        url: builtCdnUrl(file.fileId),
-      }),
-    );
-    expect(afterTheDay.files[0]).toEqual(
-      expect.objectContaining({ source: "manual", url: null }),
-    );
-  });
-
-  it("keeps a built address that still answers at the daily check", async () => {
-    await useBuiltCdnAddress(true);
-    const file = await seedFile({ blocked: true });
-    serveFromCurseForge([file]);
-    serveFromBuiltCdnAddress([file]);
-    await launcherPackService.resolveFiles([file.fileId]);
-    await ageStoredFile(file.fileId, 25 * HOUR_MS);
+    serveFromSandbox([file]);
+    await ageStoredFile(file.fileId, 2 * HOUR_MS);
+    vi.mocked(getFilesDetails).mockClear();
+    vi.mocked(findModrinthFilesBySha1).mockClear();
+    vi.mocked(findSandboxFileUrls).mockClear();
 
     const resolved = await launcherPackService.resolveFiles([file.fileId]);
 
-    expect(findCurseforgeCdnUrls).toHaveBeenCalledTimes(2);
     expect(resolved.files[0]).toEqual(
-      expect.objectContaining({
-        source: "curseforge-cdn",
-        url: builtCdnUrl(file.fileId),
-      }),
+      expect.objectContaining({ source: "manual", url: null }),
     );
-  });
-
-  it("resolves a file stored with the built address again as soon as the source is switched off", async () => {
-    await useBuiltCdnAddress(true);
-    const file = await seedFile({ blocked: true });
-    serveFromCurseForge([file]);
-    serveFromBuiltCdnAddress([file]);
-    const whileOn = await launcherPackService.resolveFiles([file.fileId]);
-    serveFromSandbox([file]);
-
-    await useBuiltCdnAddress(false);
-    const whileOff = await launcherPackService.resolveFiles([file.fileId]);
-
-    expect(whileOn.files[0].source).toBe("curseforge-cdn");
-    expect(findCurseforgeCdnUrls).toHaveBeenCalledTimes(1);
-    expect(whileOff.files[0]).toEqual(
-      expect.objectContaining({
-        source: "storage",
-        url: storageUrl(file.fileId),
-      }),
-    );
+    expect(getFilesDetails).not.toHaveBeenCalled();
+    expect(findModrinthFilesBySha1).not.toHaveBeenCalled();
+    expect(findCurseforgeCdnUrls).not.toHaveBeenCalled();
+    expect(findSandboxFileUrls).not.toHaveBeenCalled();
   });
 
   it("stops handing out the built address once the source is switched off, even while CurseForge cannot be asked", async () => {
@@ -2450,14 +2386,13 @@ describe("LauncherPackService.resolveFiles", () => {
     );
   });
 
-  it("leaves a stored built address alone while the flag cannot be read", async () => {
+  it("builds no address for a new file while the flag cannot be read, and leaves a stored one alone", async () => {
     await useBuiltCdnAddress(true);
     const file = await seedFile({ blocked: true });
     const late = await seedFile({ blocked: true });
     serveFromCurseForge([file, late]);
     serveFromBuiltCdnAddress([file, late]);
     await launcherPackService.resolveFiles([file.fileId]);
-    await ageStoredFile(file.fileId, 25 * HOUR_MS);
 
     await useBuiltCdnAddress(true);
     vi.spyOn(Q.feature.flag, "find").mockRejectedValueOnce(
@@ -2482,6 +2417,146 @@ describe("LauncherPackService.resolveFiles", () => {
       }),
     ]);
   });
+});
+
+describe("LauncherPackService.recheckStaleFiles", () => {
+  const storedSource = async (fileId: number) =>
+    (await launcherPackService.resolveFiles([fileId])).files[0];
+
+  it("looks a manual file up again after an hour and picks up a new source", async () => {
+    const file = await seedFile({ blocked: true });
+    serveFromCurseForge([file]);
+    await launcherPackService.resolveFiles([file.fileId]);
+    serveFromModrinth([file]);
+
+    await launcherPackService.recheckStaleFiles();
+    const withinTheHour = await storedSource(file.fileId);
+    await ageStoredFile(file.fileId, 2 * HOUR_MS);
+    const rechecked = await launcherPackService.recheckStaleFiles();
+    const afterTheHour = await storedSource(file.fileId);
+
+    expect(withinTheHour.source).toBe("manual");
+    expect(rechecked).toBeGreaterThanOrEqual(1);
+    expect(afterTheHour).toEqual(
+      expect.objectContaining({
+        source: "modrinth",
+        url: modrinthUrl(file.fileId),
+      }),
+    );
+  });
+
+  it("looks every due file up in one run", async () => {
+    const first = await seedFile({ blocked: true });
+    const second = await seedFile({ blocked: true });
+    serveFromCurseForge([first, second]);
+    await launcherPackService.resolveFiles([first.fileId, second.fileId]);
+    serveFromModrinth([first, second]);
+    await ageStoredFile(first.fileId, 3 * HOUR_MS);
+    await ageStoredFile(second.fileId, 2 * HOUR_MS);
+    vi.mocked(getFilesDetails).mockClear();
+
+    await launcherPackService.recheckStaleFiles();
+
+    expect(getFilesDetails).toHaveBeenCalledTimes(1);
+    expect(getFilesDetails).toHaveBeenCalledWith(
+      expect.arrayContaining([first.fileId, second.fileId]),
+    );
+    expect((await storedSource(first.fileId)).source).toBe("modrinth");
+    expect((await storedSource(second.fileId)).source).toBe("modrinth");
+  });
+
+  it("checks a built address again after a day and falls through when it stopped answering", async () => {
+    await useBuiltCdnAddress(true);
+    const file = await seedFile({ blocked: true });
+    serveFromCurseForge([file]);
+    serveFromBuiltCdnAddress([file]);
+    await launcherPackService.resolveFiles([file.fileId]);
+    serveFromBuiltCdnAddress([]);
+
+    await ageStoredFile(file.fileId, 23 * HOUR_MS);
+    await launcherPackService.recheckStaleFiles();
+    const withinTheDay = await storedSource(file.fileId);
+    await ageStoredFile(file.fileId, 25 * HOUR_MS);
+    await launcherPackService.recheckStaleFiles();
+    const afterTheDay = await storedSource(file.fileId);
+
+    expect(withinTheDay).toEqual(
+      expect.objectContaining({
+        source: "curseforge-cdn",
+        url: builtCdnUrl(file.fileId),
+      }),
+    );
+    expect(afterTheDay).toEqual(
+      expect.objectContaining({ source: "manual", url: null }),
+    );
+  });
+
+  it("keeps a built address that still answers at the daily check", async () => {
+    await useBuiltCdnAddress(true);
+    const file = await seedFile({ blocked: true });
+    serveFromCurseForge([file]);
+    serveFromBuiltCdnAddress([file]);
+    await launcherPackService.resolveFiles([file.fileId]);
+    await ageStoredFile(file.fileId, 25 * HOUR_MS);
+
+    await launcherPackService.recheckStaleFiles();
+
+    expect(findCurseforgeCdnUrls).toHaveBeenCalledTimes(2);
+    expect(await storedSource(file.fileId)).toEqual(
+      expect.objectContaining({
+        source: "curseforge-cdn",
+        url: builtCdnUrl(file.fileId),
+      }),
+    );
+  });
+
+  it("resolves a file stored with the built address again as soon as the source is switched off", async () => {
+    await useBuiltCdnAddress(true);
+    const file = await seedFile({ blocked: true });
+    serveFromCurseForge([file]);
+    serveFromBuiltCdnAddress([file]);
+    const whileOn = await storedSource(file.fileId);
+    serveFromSandbox([file]);
+
+    await useBuiltCdnAddress(false);
+    await launcherPackService.recheckStaleFiles();
+    const whileOff = await storedSource(file.fileId);
+
+    expect(whileOn.source).toBe("curseforge-cdn");
+    expect(findCurseforgeCdnUrls).toHaveBeenCalledTimes(1);
+    expect(whileOff).toEqual(
+      expect.objectContaining({
+        source: "storage",
+        url: storageUrl(file.fileId),
+      }),
+    );
+    expect((await Q.curseforge.file.find({ id: file.fileId }))?.source).toBe(
+      "storage",
+    );
+  });
+
+  it("leaves a stored built address alone while the flag cannot be read", async () => {
+    await useBuiltCdnAddress(true);
+    const file = await seedFile({ blocked: true });
+    serveFromCurseForge([file]);
+    serveFromBuiltCdnAddress([file]);
+    await launcherPackService.resolveFiles([file.fileId]);
+    await ageStoredFile(file.fileId, 25 * HOUR_MS);
+
+    await useBuiltCdnAddress(true);
+    vi.spyOn(Q.feature.flag, "find").mockRejectedValueOnce(
+      new Error("Connection terminated unexpectedly"),
+    );
+    await launcherPackService.recheckStaleFiles();
+
+    expect(findCurseforgeCdnUrls).toHaveBeenCalledTimes(1);
+    expect(await storedSource(file.fileId)).toEqual(
+      expect.objectContaining({
+        source: "curseforge-cdn",
+        url: builtCdnUrl(file.fileId),
+      }),
+    );
+  });
 
   it("keeps serving the built address when the daily check cannot ask CurseForge", async () => {
     await useBuiltCdnAddress(true);
@@ -2492,9 +2567,11 @@ describe("LauncherPackService.resolveFiles", () => {
     await ageStoredFile(file.fileId, 25 * HOUR_MS);
     vi.mocked(getFilesDetails).mockRejectedValue(new Error("CurseForge 504"));
 
-    const resolved = await launcherPackService.resolveFiles([file.fileId]);
+    await expect(launcherPackService.recheckStaleFiles()).rejects.toThrow(
+      "CurseForge 504",
+    );
 
-    expect(resolved.files[0]).toEqual(
+    expect(await storedSource(file.fileId)).toEqual(
       expect.objectContaining({
         source: "curseforge-cdn",
         url: builtCdnUrl(file.fileId),
@@ -2502,19 +2579,19 @@ describe("LauncherPackService.resolveFiles", () => {
     );
   });
 
-  it("keeps serving a manual file as manual when the second lookup fails", async () => {
+  it("keeps serving a manual file as manual when the second lookup fails, and does not retry it before it is due again", async () => {
     const file = await seedFile({ blocked: true });
     serveFromCurseForge([file]);
     await launcherPackService.resolveFiles([file.fileId]);
-    await Q.curseforge.file.updateAll(
-      { resolvedAt: new Date(Date.now() - 2 * HOUR_MS) },
-      { id: file.fileId },
-    );
+    await ageStoredFile(file.fileId, 2 * HOUR_MS);
+    vi.mocked(getFilesDetails).mockClear();
     vi.mocked(getFilesDetails).mockRejectedValue(new Error("CurseForge 504"));
 
-    const resolved = await launcherPackService.resolveFiles([file.fileId]);
+    await expect(launcherPackService.recheckStaleFiles()).rejects.toThrow();
+    await launcherPackService.recheckStaleFiles();
 
-    expect(resolved.files[0].source).toBe("manual");
+    expect(getFilesDetails).toHaveBeenCalledTimes(1);
+    expect((await storedSource(file.fileId)).source).toBe("manual");
   });
 });
 

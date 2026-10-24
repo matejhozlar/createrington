@@ -116,6 +116,7 @@ const RECHECKED_SOURCES: LauncherPackFileSource[] = [
   "manual",
   "curseforge-cdn",
 ];
+const RECHECK_BATCH_SIZE = 50;
 const NOTICE_MAX_FILES = 15;
 const PROJECT_LOOKUP_RETRY_MS = 60 * 1000;
 const DEFAULT_PACK_SLUG = "createrington";
@@ -261,8 +262,10 @@ function toPackChangelog(changelog: ChangelogInput): LauncherPackChangelog {
  * `launcher_curseforge_cdn` feature flag is on; once the flag is off, a file
  * stored with it turns manual and is resolved again. While the flag cannot be
  * read, no address is built and stored ones are left as they are. A manual
- * file is looked up again at most once an hour, a built address once a day,
- * and both whenever a release is prepared. A release is offered as latest only
+ * file is looked up again once an hour and a built address once a day by
+ * `recheckStaleFiles`, which the file refresh service runs on a schedule, so a
+ * player's request only reads; both are looked up again whenever a release is
+ * prepared. A release is offered as latest only
  * after `prepareRelease` stored its pack zip, Java version and every client
  * file. Singleton.
  */
@@ -622,20 +625,18 @@ class LauncherPackService {
 
   /**
    * Download facts for CurseForge file ids from a pack manifest, each with the
-   * project it belongs to for display. Ids not stored yet are resolved and
-   * stored first; throws `FILE_SOURCES_UNAVAILABLE` (503)
-   * when that lookup fails. Ids that cannot be served (unknown to CurseForge,
-   * no SHA-1, not a mod, resource pack or shader) come back in `unresolvedFileIds`.
+   * project it belongs to for display, answered from the stored rows: a stored
+   * file is served as stored, however old, and only `recheckStaleFiles` looks
+   * its source up again. Ids not stored yet are resolved and stored first;
+   * throws `FILE_SOURCES_UNAVAILABLE` (503) when that lookup fails. Ids that
+   * cannot be served (unknown to CurseForge, no SHA-1, not a mod, resource
+   * pack or shader) come back in `unresolvedFileIds`.
    */
   async resolveFiles(fileIds: number[]): Promise<LauncherPackFilesData> {
     const ids = [...new Set(fileIds)];
     let stored: Map<number, CurseforgeFileWithProject>;
     try {
-      stored = await this.ensureResolved(ids, {
-        manualMaxAgeMs: MANUAL_RECHECK_MS,
-        cdnMaxAgeMs: CDN_RECHECK_MS,
-        strict: false,
-      });
+      stored = await this.ensureResolved(ids, { recheckStored: false });
     } catch (error) {
       logger.warn("Launcher pack file resolution failed:", error);
       throw packError(
@@ -796,7 +797,7 @@ class LauncherPackService {
       );
       const stored = await this.ensureResolved(
         clientEntries.map((entry) => entry.fileId),
-        { manualMaxAgeMs: 0, cdnMaxAgeMs: 0, strict: true },
+        { recheckStored: true },
       );
       const unresolved = clientEntries.filter((entry) => {
         const row = stored.get(entry.fileId);
@@ -897,7 +898,7 @@ class LauncherPackService {
 
       const stored = await this.ensureResolved(
         snapshot.entries.map((entry) => entry.fileId),
-        { manualMaxAgeMs: 0, cdnMaxAgeMs: 0, strict: true },
+        { recheckStored: true },
       );
       const unresolved = snapshot.entries.filter((entry) => {
         const row = stored.get(entry.fileId);
@@ -1110,57 +1111,90 @@ class LauncherPackService {
     return lookup;
   }
 
+  /**
+   * Looks stored files up again whose source can change: manual files
+   * resolved more than an hour ago and built CDN addresses resolved more than
+   * a day ago, or every built address once that source is switched off.
+   * Oldest first, at most 50 per call; each is marked resolved before the
+   * lookup, so a lookup that fails is not repeated before the file is due
+   * again. Returns how many files were looked up. Throws when CurseForge
+   * cannot be asked.
+   */
+  async recheckStaleFiles(): Promise<number> {
+    const cdnFlag = await this.readCdnFlag();
+    const now = Date.now();
+    const ids = await Q.curseforge.file.getDueIds(
+      {
+        manualBefore: new Date(now - MANUAL_RECHECK_MS),
+        cdnBefore:
+          cdnFlag === null
+            ? null
+            : new Date(cdnFlag ? now - CDN_RECHECK_MS : now),
+      },
+      RECHECK_BATCH_SIZE,
+    );
+    if (ids.length > 0) await this.recheckStored(ids, cdnFlag);
+    return ids.length;
+  }
+
   private async ensureResolved(
     fileIds: number[],
-    options: { manualMaxAgeMs: number; cdnMaxAgeMs: number; strict: boolean },
+    options: { recheckStored: boolean },
   ): Promise<Map<number, CurseforgeFileWithProject>> {
     const ids = [...new Set(fileIds)];
     const stored = await this.loadStored(ids);
-    const cdnFlag = await featureFlagService.readEnabled(
-      FeatureFlags.launcherCurseforgeCdn,
-    );
-    const useCdn = cdnFlag === true;
-    const cdnSwitchedOff = cdnFlag === false;
+    const cdnFlag = await this.readCdnFlag();
 
     const missing = ids.filter((id) => !stored.has(id));
-    if (missing.length > 0) await this.resolveFromSources(missing, useCdn);
-
-    const now = Date.now();
-    const stale = [...stored.values()]
-      .filter((row) => {
-        const age = now - row.resolvedAt.getTime();
-        if (row.source === "manual") return age >= options.manualMaxAgeMs;
-        if (row.source === "curseforge-cdn") {
-          return cdnSwitchedOff || (useCdn && age >= options.cdnMaxAgeMs);
-        }
-        return false;
-      })
-      .map((row) => row.id);
-    if (stale.length > 0) {
-      if (cdnSwitchedOff) {
-        await Q.curseforge.file.updateAll(
-          { source: "manual", downloadUrl: null },
-          { id: { $in: stale }, source: "curseforge-cdn" },
-        );
-      }
-      await Q.curseforge.file.updateAll(
-        { resolvedAt: new Date() },
-        { id: { $in: stale }, source: { $in: RECHECKED_SOURCES } },
-      );
-      try {
-        await this.resolveFromSources(stale, useCdn);
-      } catch (error) {
-        if (options.strict) throw error;
-        logger.warn(
-          `Could not look up ${stale.length} pack file(s) again:`,
-          error,
-        );
-      }
+    if (missing.length > 0) {
+      await this.resolveFromSources(missing, cdnFlag === true);
     }
 
-    return missing.length > 0 || stale.length > 0
-      ? this.loadStored(ids)
-      : stored;
+    const stale = options.recheckStored
+      ? [...stored.values()]
+          .filter(
+            (row) =>
+              row.source === "manual" ||
+              (row.source === "curseforge-cdn" && cdnFlag !== null),
+          )
+          .map((row) => row.id)
+      : [];
+    if (stale.length > 0) await this.recheckStored(stale, cdnFlag);
+
+    const rows =
+      missing.length > 0 || stale.length > 0
+        ? await this.loadStored(ids)
+        : stored;
+    if (cdnFlag !== false) return rows;
+    return new Map(
+      [...rows].map(([id, row]) => [
+        id,
+        row.source === "curseforge-cdn"
+          ? { ...row, source: "manual", downloadUrl: null }
+          : row,
+      ]),
+    );
+  }
+
+  private async recheckStored(
+    fileIds: number[],
+    cdnFlag: boolean | null,
+  ): Promise<void> {
+    if (cdnFlag === false) {
+      await Q.curseforge.file.updateAll(
+        { source: "manual", downloadUrl: null },
+        { id: { $in: fileIds }, source: "curseforge-cdn" },
+      );
+    }
+    await Q.curseforge.file.updateAll(
+      { resolvedAt: new Date() },
+      { id: { $in: fileIds }, source: { $in: RECHECKED_SOURCES } },
+    );
+    await this.resolveFromSources(fileIds, cdnFlag === true);
+  }
+
+  private readCdnFlag(): Promise<boolean | null> {
+    return featureFlagService.readEnabled(FeatureFlags.launcherCurseforgeCdn);
   }
 
   private async loadStored(
