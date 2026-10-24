@@ -28,6 +28,8 @@ export class SandboxUnavailableError extends Error {
 
 const SNAPSHOT_CHECK_BUDGET_MS = 60_000;
 const DOWNLOAD_HEADERS_TIMEOUT_MS = 10_000;
+const DOWNLOAD_IDLE_TIMEOUT_MS = 30_000;
+const DOWNLOAD_TOTAL_TIMEOUT_MS = 30 * 60_000;
 const STORAGE_FILES_PATH = "/api/launcher/packs/files";
 const WEBSITE_FALLBACK_URL = "https://createrington.com";
 
@@ -157,13 +159,61 @@ export async function findSandboxSnapshotUrl(
   return kept ? storageSnapshotUrl(snapshot.snapshotId) : null;
 }
 
+function watchProgress(
+  body: ReadableStream<Uint8Array>,
+  abort: (reason: Error) => void,
+): ReadableStream<Uint8Array> {
+  const timers: { idle?: NodeJS.Timeout; total?: NodeJS.Timeout } = {};
+  const stop = () => {
+    clearTimeout(timers.idle);
+    clearTimeout(timers.total);
+  };
+  const fail = (reason: Error) => {
+    stop();
+    abort(reason);
+  };
+  const armIdle = () => {
+    clearTimeout(timers.idle);
+    timers.idle = setTimeout(
+      () =>
+        fail(
+          new Error(
+            `no bytes arrived for ${DOWNLOAD_IDLE_TIMEOUT_MS / 1000} seconds`,
+          ),
+        ),
+      DOWNLOAD_IDLE_TIMEOUT_MS,
+    );
+  };
+  timers.total = setTimeout(
+    () =>
+      fail(
+        new Error(
+          `the download did not finish within ${DOWNLOAD_TOTAL_TIMEOUT_MS / 60_000} minutes`,
+        ),
+      ),
+    DOWNLOAD_TOTAL_TIMEOUT_MS,
+  );
+  armIdle();
+
+  const progress = new TransformStream<Uint8Array, Uint8Array>({
+    transform(chunk, controller) {
+      armIdle();
+      controller.enqueue(chunk);
+    },
+  });
+  body.pipeTo(progress.writable).then(stop, stop);
+  return progress.readable;
+}
+
 /**
  * Opens a file the sandbox keeps for streaming to the launcher: the body as
  * the sandbox sends it, once its headers arrived within ten seconds, no
  * redirect followed. `null` when the sandbox has no such file. Throws
  * `SandboxUnavailableError` when the internal address is not configured,
  * the sandbox cannot be reached, answers with an error, or declares a size
- * other than `size`. Aborting `signal` cancels the download.
+ * other than `size`. Aborting `signal` cancels the download. The body fails
+ * and the sandbox connection is dropped once no bytes arrive for thirty
+ * seconds, or the whole download takes longer than thirty minutes.
  */
 export async function openSandboxFile(
   path: string,
@@ -221,5 +271,9 @@ export async function openSandboxFile(
     );
   }
 
-  return { body: res.body, size };
+  const body = watchProgress(res.body, (reason) => {
+    logger.warn(`Storage download ${path} was dropped: ${reason.message}`);
+    upstream.abort(reason);
+  });
+  return { body, size };
 }

@@ -373,6 +373,124 @@ describe("openSandboxFile", () => {
   });
 });
 
+describe("openSandboxFile progress", () => {
+  function sandboxThatSends() {
+    let upstream: AbortSignal | undefined;
+    let push!: (chunk: Uint8Array) => void;
+    let end!: () => void;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: string, init?: RequestInit) => {
+        upstream = init?.signal ?? undefined;
+        const body = new ReadableStream<Uint8Array>({
+          start(controller) {
+            push = (chunk) => controller.enqueue(chunk);
+            end = () => controller.close();
+            upstream?.addEventListener("abort", () =>
+              controller.error(upstream?.reason),
+            );
+          },
+        });
+        return new Response(body, {
+          status: 200,
+          headers: { "content-length": "1000" },
+        });
+      }),
+    );
+    return {
+      upstream: () => upstream,
+      push: (chunk: Uint8Array) => push(chunk),
+      end: () => end(),
+    };
+  }
+
+  async function openWatched() {
+    const download = await openSandboxFile(
+      "1",
+      1000,
+      new AbortController().signal,
+    );
+    return download!.body.getReader();
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("drops the sandbox connection when no bytes arrive for thirty seconds", async () => {
+    const sandbox = sandboxThatSends();
+    const reader = await openWatched();
+    sandbox.push(new Uint8Array(10));
+    await reader.read();
+
+    await vi.advanceTimersByTimeAsync(29_000);
+    expect(sandbox.upstream()?.aborted).toBe(false);
+
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(sandbox.upstream()?.aborted).toBe(true);
+    await expect(reader.read()).rejects.toThrow(
+      "no bytes arrived for 30 seconds",
+    );
+  });
+
+  it("keeps a download going while bytes keep arriving", async () => {
+    const sandbox = sandboxThatSends();
+    const reader = await openWatched();
+
+    for (let i = 0; i < 10; i++) {
+      await vi.advanceTimersByTimeAsync(20_000);
+      sandbox.push(new Uint8Array(10));
+      await reader.read();
+    }
+
+    expect(sandbox.upstream()?.aborted).toBe(false);
+  });
+
+  it("drops a download that trickles on for thirty minutes", async () => {
+    const sandbox = sandboxThatSends();
+    const reader = await openWatched();
+
+    for (let i = 0; i < 179; i++) {
+      await vi.advanceTimersByTimeAsync(10_000);
+      sandbox.push(new Uint8Array(1));
+      await reader.read();
+    }
+    expect(sandbox.upstream()?.aborted).toBe(false);
+
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(sandbox.upstream()?.aborted).toBe(true);
+    await expect(reader.read()).rejects.toThrow(
+      "the download did not finish within 30 minutes",
+    );
+  });
+
+  it("stops watching once the sandbox sent the whole file", async () => {
+    const sandbox = sandboxThatSends();
+    const reader = await openWatched();
+    sandbox.push(new Uint8Array(1000));
+    sandbox.end();
+    await reader.read();
+    expect((await reader.read()).done).toBe(true);
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(vi.getTimerCount()).toBe(0);
+    expect(sandbox.upstream()?.aborted).toBe(false);
+  });
+
+  it("stops watching once the caller gives up on the body", async () => {
+    const sandbox = sandboxThatSends();
+    const reader = await openWatched();
+    await reader.cancel();
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(vi.getTimerCount()).toBe(0);
+  });
+});
+
 describe("openSandboxFile without a declared size", () => {
   it("refuses a file the sandbox streams without saying how long it is", async () => {
     vi.stubGlobal(
