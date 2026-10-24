@@ -27,4 +27,29 @@ export class ModpackReleaseQueries extends ModpackReleaseBaseQueries {
     );
     return this.mapRowsToEntities(result.rows);
   }
+
+  /** The release recorded right before each given one in its modpack, tagged with the id of the release it precedes; a modpack's first release has no row. */
+  async listPreceding(
+    releaseIds: number[],
+  ): Promise<Array<ModpackRelease & { successorId: number }>> {
+    if (releaseIds.length === 0) return [];
+    const result = await this.runQuery(
+      "list preceding releases",
+      `SELECT prev.*, target.id AS successor_id
+       FROM ${this.table} target
+       JOIN LATERAL (
+         SELECT *
+         FROM ${this.table} p
+         WHERE p.modpack_id = target.modpack_id AND p.id < target.id
+         ORDER BY p.id DESC
+         LIMIT 1
+       ) prev ON TRUE
+       WHERE target.id = ANY($1::int[])`,
+      [releaseIds],
+    );
+    return this.mapRowsToEntities<
+      Record<string, unknown>,
+      ModpackRelease & { successorId: number }
+    >(result.rows);
+  }
 }

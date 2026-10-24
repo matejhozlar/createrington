@@ -143,6 +143,16 @@ describe("modpackService.getChangelogMarkdown", () => {
     expect(markdown).not.toContain("Your version");
   });
 
+  it("renders the same markdown from the stored changelog as from a fresh one", async () => {
+    await seedHistory();
+
+    const fresh = await changelog("1.1.0");
+    const stored = await changelog("1.1.0");
+
+    expect(stored).toBe(fresh);
+    expect(stored).toContain("1 Jan 2030 · since 1.1.0");
+  });
+
   it("appends an older installed release under an outdated label", async () => {
     const { earlyAdded, middle } = await seedHistory();
 
