@@ -1,6 +1,7 @@
 import { redisService } from "@/services/redis";
 
 const DEFAULT_MAX_ENTRIES = 5000;
+const SWEEP_SHARE_OF_CAPACITY = 0.1;
 
 /** A store of short-lived string values by key. Every value is written with a time limit. */
 export interface KeyValueStore {
@@ -15,14 +16,18 @@ export interface KeyValueStore {
 /**
  * Key-value store kept in process memory, so it is empty again after a
  * restart and is not shared between processes. Holds at most `maxEntries`
- * values: when it is full, the value written longest ago makes room, expired
- * ones first.
+ * values: when it is full, the value written longest ago makes room. Expired
+ * values are swept out ahead of live ones once per tenth of the capacity in
+ * writes to a full store (and the first time it fills), so a write never
+ * costs more than a few steps on average, whatever the capacity.
  */
 export class MemoryKeyValueStore implements KeyValueStore {
   private readonly entries = new Map<
     string,
     { value: string; expiresAt: number }
   >();
+
+  private writesUntilSweep = 0;
 
   constructor(private readonly maxEntries = DEFAULT_MAX_ENTRIES) {}
 
@@ -50,13 +55,22 @@ export class MemoryKeyValueStore implements KeyValueStore {
   }
 
   private makeRoom(): void {
-    const now = Date.now();
-    for (const [key, entry] of this.entries) {
-      if (entry.expiresAt <= now) this.entries.delete(key);
-    }
+    if (this.writesUntilSweep <= 0) {
+      this.sweepExpired();
+      this.writesUntilSweep = Math.ceil(
+        this.maxEntries * SWEEP_SHARE_OF_CAPACITY,
+      );
+    } else this.writesUntilSweep--;
     for (const key of this.entries.keys()) {
       if (this.entries.size < this.maxEntries) break;
       this.entries.delete(key);
+    }
+  }
+
+  private sweepExpired(): void {
+    const now = Date.now();
+    for (const [key, entry] of this.entries) {
+      if (entry.expiresAt <= now) this.entries.delete(key);
     }
   }
 }

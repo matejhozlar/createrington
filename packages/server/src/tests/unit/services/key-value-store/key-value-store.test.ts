@@ -79,6 +79,26 @@ describe("MemoryKeyValueStore", () => {
     ]);
   });
 
+  it("drops the oldest live value between sweeps and expired ones at the next sweep", async () => {
+    const store = new MemoryKeyValueStore(20);
+    for (let i = 0; i < 19; i++) await store.set(`live${i}`, "1", 60_000);
+    await store.set("expired", "2", 100);
+    vi.advanceTimersByTime(200);
+
+    await store.set("first", "3", 60_000);
+    expect(await store.get("live0")).toBe("1");
+
+    await store.set("short", "4", 100);
+    vi.advanceTimersByTime(200);
+    await store.set("a", "5", 60_000);
+    await store.set("b", "6", 60_000);
+
+    expect(await store.get("live0")).toBeNull();
+    expect(await store.get("live1")).toBeNull();
+    expect(await store.get("live2")).toBe("1");
+    expect(await store.get("b")).toBe("6");
+  });
+
   it("does not count a rewritten key twice", async () => {
     const store = new MemoryKeyValueStore(2);
     await store.set("a", "1", 1000);
