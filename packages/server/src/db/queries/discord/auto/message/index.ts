@@ -13,13 +13,13 @@ export class DiscordAutoMessageQueries extends DiscordAutoMessageBaseQueries {
     super(db);
   }
 
-  /** Set the sort order of several messages in one statement. */
+  /** Set the sort order of several messages in one statement; returns how many rows matched. */
   async reorder(
     items: Array<{ id: number; sortOrder: number }>,
-  ): Promise<void> {
-    if (items.length === 0) return;
+  ): Promise<number> {
+    if (items.length === 0) return 0;
 
-    await this.runQuery(
+    const result = await this.runQuery(
       "reorder auto messages",
       `UPDATE ${this.table} m
        SET sort_order = d.sort_order, updated_at = NOW()
@@ -27,6 +27,7 @@ export class DiscordAutoMessageQueries extends DiscordAutoMessageBaseQueries {
        WHERE m.id = d.id`,
       [items.map((item) => item.id), items.map((item) => item.sortOrder)],
     );
+    return result.rowCount ?? 0;
   }
 
   // Add custom query methods here

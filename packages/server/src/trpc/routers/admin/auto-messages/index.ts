@@ -1,7 +1,12 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q, db } from "@/db";
-import { findOrThrow, auditActor, assertPatchNotEmpty } from "@/trpc/utils";
+import {
+  findOrThrow,
+  auditActor,
+  assertPatchNotEmpty,
+  trpcError,
+} from "@/trpc/utils";
 import { getServiceSync, Services } from "@/services";
 import config from "@/config";
 
@@ -328,7 +333,10 @@ export const autoMessagesRouter = router({
         }),
       )
       .mutation(async ({ input }) => {
-        await Q.discord.auto.message.reorder(input.items);
+        const reordered = await Q.discord.auto.message.reorder(input.items);
+        if (reordered < new Set(input.items.map((item) => item.id)).size) {
+          throw trpcError.notFound("Message not found");
+        }
 
         return { message: "Messages reordered" };
       }),
