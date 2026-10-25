@@ -1693,7 +1693,11 @@ export class ModpackService {
       map: Map<boolean, number[]>,
       required: boolean,
       id: number,
-    ) => map.set(required, [...(map.get(required) ?? []), id]);
+    ) => {
+      const ids = map.get(required) ?? [];
+      ids.push(id);
+      map.set(required, ids);
+    };
 
     for (const row of rows) {
       if (manifest.modIds.has(row.curseforgeProjectId)) {

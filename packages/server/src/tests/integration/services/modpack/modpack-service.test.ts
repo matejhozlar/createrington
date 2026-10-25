@@ -1909,6 +1909,32 @@ describe("ModpackService.getPackMods", () => {
       suggestionWorkshopName: null,
     });
   });
+
+  it("names a requiring member once when two workshops of the pack hold the same edge", async () => {
+    const modpack = await seedModpack(ctx);
+    const first = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const second = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const subject = await seedPackMod(ctx, first);
+    const pulled = await seedPackMod(ctx, first, { origin: "dependency" });
+    const outsider = await seedProject(ctx);
+    for (const workshop of [first, second]) {
+      await seedRequiredDependency(
+        workshop,
+        subject.curseforgeProjectId,
+        pulled.curseforgeProjectId,
+      );
+    }
+    await seedRequiredDependency(second, outsider, pulled.curseforgeProjectId);
+
+    const rows = await modpackService.getPackMods(modpack.id);
+
+    expect(rows.find((row) => row.id === pulled.id)?.requiredBy).toEqual([
+      {
+        curseforgeProjectId: subject.curseforgeProjectId,
+        name: `Vitest Mod ${subject.curseforgeProjectId}`,
+      },
+    ]);
+  });
 });
 
 describe("ModpackService release history", () => {
