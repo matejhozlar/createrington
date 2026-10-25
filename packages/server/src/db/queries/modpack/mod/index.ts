@@ -7,6 +7,11 @@ export interface ModpackModSample {
   thumbnailUrl: string | null;
 }
 
+export interface ModpackModCounts {
+  modCount: number;
+  liveCount: number;
+}
+
 /**
  * Custom queries for modpack_mod table
  *
@@ -17,6 +22,27 @@ export interface ModpackModSample {
 export class ModpackModQueries extends ModpackModBaseQueries {
   constructor(db: Pool | PoolClient) {
     super(db);
+  }
+
+  /** Member and live member counts per modpack; packs without members are absent. */
+  async getCountsByModpack(): Promise<Map<number, ModpackModCounts>> {
+    const query = `
+      SELECT modpack_id,
+             COUNT(*)::int AS mod_count,
+             COUNT(*) FILTER (WHERE live_at IS NOT NULL)::int AS live_count
+      FROM ${this.table}
+      GROUP BY modpack_id`;
+    const result = await this.runQuery<{
+      modpack_id: number;
+      mod_count: number;
+      live_count: number;
+    }>("count modpack members by modpack", query);
+    return new Map(
+      result.rows.map((row) => [
+        row.modpack_id,
+        { modCount: row.mod_count, liveCount: row.live_count },
+      ]),
+    );
   }
 
   /** The newest members of a pack that are not dropped, with their cached project. */

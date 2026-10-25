@@ -268,34 +268,27 @@ export type ModpackAttentionItem =
 export class ModpackService {
   /** All modpacks with member counts, attached workshops and the slug of the launcher pack offering each, for the admin panel. */
   async listModpacks(): Promise<ModpackListItem[]> {
-    const [modpacks, workshops, launcherPacks] = await Promise.all([
+    const [modpacks, workshops, launcherPacks, counts] = await Promise.all([
       Q.modpack.findAll({}, { orderBy: "createdAt", orderDirection: "desc" }),
       Q.workshop.findAll(
         {},
         { select: ["id", "name", "slug", "status", "modpackId"] },
       ),
       Q.launcher.pack.findAll({}, { select: ["modpackId", "slug"] }),
+      Q.modpack.mod.getCountsByModpack(),
     ]);
     const launcherPackSlugs = new Map(
       launcherPacks.map((pack) => [pack.modpackId, pack.slug]),
     );
-    return Promise.all(
-      modpacks.map(async (modpack) => {
-        const rows = await Q.modpack.mod.findAll(
-          { modpackId: modpack.id },
-          { select: ["id", "liveAt"] },
-        );
-        return {
-          ...modpack,
-          modCount: rows.length,
-          liveCount: rows.filter((row) => row.liveAt !== null).length,
-          workshops: workshops
-            .filter((workshop) => workshop.modpackId === modpack.id)
-            .map(({ id, name, slug, status }) => ({ id, name, slug, status })),
-          launcherPackSlug: launcherPackSlugs.get(modpack.id) ?? null,
-        };
-      }),
-    );
+    return modpacks.map((modpack) => ({
+      ...modpack,
+      modCount: counts.get(modpack.id)?.modCount ?? 0,
+      liveCount: counts.get(modpack.id)?.liveCount ?? 0,
+      workshops: workshops
+        .filter((workshop) => workshop.modpackId === modpack.id)
+        .map(({ id, name, slug, status }) => ({ id, name, slug, status })),
+      launcherPackSlug: launcherPackSlugs.get(modpack.id) ?? null,
+    }));
   }
 
   /** A modpack by id; throws when missing. */
@@ -837,7 +830,7 @@ export class ModpackService {
     // Members dropped by an earlier seed keep their rows, so the count of
     // what this manifest covers is derived from the manifest side
     const rows = await Q.modpack.mod.findAll(
-      { modpackId },
+      { modpackId, curseforgeProjectId: { $in: [...modIds] } },
       { select: ["curseforgeProjectId"] },
     );
     const memberIds = new Set(rows.map((row) => row.curseforgeProjectId));
@@ -1533,10 +1526,10 @@ export class ModpackService {
     const suggestionIds = rows
       .map((row) => row.workshopModId)
       .filter((id): id is number => id !== null);
-    const [workshops, memberRows] = await Promise.all([
-      Q.workshop.findAll({ modpackId }, { select: ["id", "name"] }),
-      Q.modpack.mod.findAll({ modpackId }, { select: ["curseforgeProjectId"] }),
-    ]);
+    const workshops = await Q.workshop.findAll(
+      { modpackId },
+      { select: ["id", "name"] },
+    );
     const workshopNameById = new Map(workshops.map((w) => [w.id, w.name]));
 
     const [projects, suggestions, upvoteCounts, edges] = await Promise.all([
@@ -1547,22 +1540,21 @@ export class ModpackService {
       suggestionIds.length > 0
         ? Q.workshop.mod.upvote.countGroupedByMod(suggestionIds)
         : Promise.resolve({} as Record<number, number>),
-      workshops.length > 0
-        ? Q.workshop.project.dependency.findAll({
-            workshopId: { $in: workshops.map((w) => w.id) },
-            dependsOnProjectId: { $in: projectIds },
-            relationType: REQUIRED_DEPENDENCY,
-          })
-        : Promise.resolve([]),
+      Q.workshop.project.dependency.getEdgesFromPackMembers(
+        workshops.map((w) => w.id),
+        projectIds,
+        REQUIRED_DEPENDENCY,
+        modpackId,
+      ),
     ]);
 
     const projectById = new Map(projects.map((p) => [p.id, p]));
-    // Requirement context spans the whole pack, not just the rows being
-    // decorated, so a partial decorate (e.g. the dependency report) still
-    // credits the members that require a pulled dependency
-    const memberProjectIds = new Set(
-      memberRows.map((row) => row.curseforgeProjectId),
-    );
+    const requirersByDependency = new Map<number, number[]>();
+    for (const edge of edges) {
+      const list = requirersByDependency.get(edge.dependsOnProjectId) ?? [];
+      list.push(edge.curseforgeProjectId);
+      requirersByDependency.set(edge.dependsOnProjectId, list);
+    }
     const subjectIds = [
       ...new Set(edges.map((edge) => edge.curseforgeProjectId)),
     ].filter((id) => !projectById.has(id));
@@ -1593,18 +1585,12 @@ export class ModpackService {
         : undefined;
       const requiredBy =
         row.origin === "dependency"
-          ? edges
-              .filter(
-                (edge) =>
-                  edge.dependsOnProjectId === row.curseforgeProjectId &&
-                  memberProjectIds.has(edge.curseforgeProjectId),
-              )
-              .map((edge) => ({
-                curseforgeProjectId: edge.curseforgeProjectId,
-                name:
-                  projectById.get(edge.curseforgeProjectId)?.name ??
-                  `#${edge.curseforgeProjectId}`,
-              }))
+          ? (requirersByDependency.get(row.curseforgeProjectId) ?? []).map(
+              (id) => ({
+                curseforgeProjectId: id,
+                name: projectById.get(id)?.name ?? `#${id}`,
+              }),
+            )
           : [];
       return [
         {
@@ -1640,25 +1626,40 @@ export class ModpackService {
       id: { $in: workshopModIds },
       status: to === "in_pack" ? { $in: SHIP_CLAIMABLE_STATUSES } : "in_pack",
     });
-    const moved: WorkshopMod[] = [];
+    const groups = new Map<
+      string,
+      { status: WorkshopModStatus; required: boolean; ids: number[] }
+    >();
     for (const mod of mods) {
       const required = publishedRequired.get(mod.id) ?? mod.required;
-      // Concurrent reconciles read the same rows, so the guarded update picks
-      // one winner per move. Announcements and events are therefore
-      // at-most-once: a crash between the claim and the write loses them,
-      // since no later sweep retries
-      const claimed = await Q.workshop.mod.updateAll(
-        { status: to, required, fileChosen: false },
-        { id: mod.id, status: mod.status },
+      const key = `${mod.status}:${required}`;
+      const group = groups.get(key) ?? {
+        status: mod.status,
+        required,
+        ids: [],
+      };
+      group.ids.push(mod.id);
+      groups.set(key, group);
+    }
+
+    // Concurrent reconciles read the same rows, so the status-guarded update
+    // picks one winner per move. Announcements and events are therefore
+    // at-most-once: a crash between the claim and the write loses them,
+    // since no later sweep retries
+    const moved: WorkshopMod[] = [];
+    for (const group of groups.values()) {
+      const claimed = await Q.workshop.mod.updateAllAndReturn(
+        { status: to, required: group.required, fileChosen: false },
+        { id: { $in: group.ids }, status: group.status },
       );
-      if (claimed > 0) {
-        moved.push({ ...mod, status: to, required, fileChosen: false });
+      for (const mod of claimed) {
+        moved.push(mod);
         recordModEvent({
           eventType: to === "in_pack" ? "shipped" : "dropped",
           workshopId: mod.workshopId,
           workshopModId: mod.id,
           curseforgeProjectId: mod.curseforgeProjectId,
-          fromStatus: mod.status,
+          fromStatus: group.status,
           toStatus: to,
           releaseVersion,
         });
@@ -1684,29 +1685,26 @@ export class ModpackService {
     const shippedModIds: number[] = [];
     const droppedModIds: number[] = [];
     const droppedRequired = new Map<number, boolean>();
+    const goingLive = new Map<boolean, number[]>();
+    const restored = new Map<boolean, number[]>();
+    const removedImportIds: number[] = [];
+    const droppedRowIds: number[] = [];
+    const pushByRequired = (
+      map: Map<boolean, number[]>,
+      required: boolean,
+      id: number,
+    ) => map.set(required, [...(map.get(required) ?? []), id]);
 
     for (const row of rows) {
       if (manifest.modIds.has(row.curseforgeProjectId)) {
         const required = !manifest.disabledModIds.has(row.curseforgeProjectId);
         if (row.liveAt === null) {
-          await Q.modpack.mod.updateAll(
-            {
-              liveAt: now,
-              liveInVersion: manifest.version,
-              droppedFromManifestAt: null,
-              required,
-              updatedAt: now,
-            },
-            { id: row.id },
-          );
+          pushByRequired(goingLive, required, row.id);
         } else if (
           row.droppedFromManifestAt !== null ||
           row.required !== required
         ) {
-          await Q.modpack.mod.updateAll(
-            { droppedFromManifestAt: null, required, updatedAt: now },
-            { id: row.id },
-          );
+          pushByRequired(restored, required, row.id);
         }
         if (row.workshopModId) shippedModIds.push(row.workshopModId);
         continue;
@@ -1716,28 +1714,54 @@ export class ModpackService {
       // the manifest is always a drop-out. Imports have no suggestion behind
       // them to fall back to, so they simply cease to be members
       if (row.origin === "import") {
-        await Q.modpack.mod.deleteAll({ id: row.id });
+        removedImportIds.push(row.id);
         continue;
       }
-      if (row.droppedFromManifestAt === null) {
-        await Q.modpack.mod.updateAll(
-          {
-            liveAt: null,
-            liveInVersion: null,
-            droppedFromManifestAt: now,
-            updatedAt: now,
-          },
-          { id: row.id },
-        );
-      }
+      if (row.droppedFromManifestAt === null) droppedRowIds.push(row.id);
       if (row.workshopModId) {
         droppedModIds.push(row.workshopModId);
         droppedRequired.set(row.workshopModId, row.required);
       }
     }
 
+    for (const [required, ids] of goingLive) {
+      await Q.modpack.mod.updateAll(
+        {
+          liveAt: now,
+          liveInVersion: manifest.version,
+          droppedFromManifestAt: null,
+          required,
+          updatedAt: now,
+        },
+        { id: { $in: ids } },
+      );
+    }
+    for (const [required, ids] of restored) {
+      await Q.modpack.mod.updateAll(
+        { droppedFromManifestAt: null, required, updatedAt: now },
+        { id: { $in: ids } },
+      );
+    }
+    if (removedImportIds.length > 0) {
+      await Q.modpack.mod.deleteAll({ id: { $in: removedImportIds } });
+    }
+    if (droppedRowIds.length > 0) {
+      await Q.modpack.mod.updateAll(
+        {
+          liveAt: null,
+          liveInVersion: null,
+          droppedFromManifestAt: now,
+          updatedAt: now,
+        },
+        { id: { $in: droppedRowIds } },
+      );
+    }
+
+    const memberProjectIds = new Set(
+      rows.map((row) => row.curseforgeProjectId),
+    );
     const newProjectIds = [...manifest.modIds].filter(
-      (id) => !rows.some((row) => row.curseforgeProjectId === id),
+      (id) => !memberProjectIds.has(id),
     );
     if (newProjectIds.length > 0) {
       shippedModIds.push(
@@ -1843,12 +1867,10 @@ export class ModpackService {
       { select: ["id"] },
     );
 
-    const shippedModIds: number[] = [];
-    let created = 0;
-    for (const project of cached) {
-      const suggestion = suggestionByProject.get(project.id);
-      try {
-        await Q.modpack.mod.create({
+    const created = await Q.modpack.mod.createManyAndReturn(
+      cached.map((project) => {
+        const suggestion = suggestionByProject.get(project.id);
+        return {
           modpackId: modpack.id,
           curseforgeProjectId: project.id,
           origin: suggestion
@@ -1864,19 +1886,18 @@ export class ModpackService {
           required: !manifest.disabledModIds.has(project.id),
           liveAt: now,
           liveInVersion: manifest.version,
-        });
-        created++;
-        if (suggestion) shippedModIds.push(suggestion.id);
-      } catch (error) {
-        if (!(error instanceof UniqueViolationError)) throw error;
-      }
-    }
-    if (created > 0) {
+        };
+      }),
+      { onConflict: "ignore" },
+    );
+    if (created.length > 0) {
       logger.info(
-        `Recorded ${created} published mods in modpack #${modpack.id}`,
+        `Recorded ${created.length} published mods in modpack #${modpack.id}`,
       );
     }
-    return shippedModIds;
+    return created.flatMap((row) =>
+      row.workshopModId !== null ? [row.workshopModId] : [],
+    );
   }
 
   private toProjectSummary(project: CurseforgeProject): ModpackProjectSummary {

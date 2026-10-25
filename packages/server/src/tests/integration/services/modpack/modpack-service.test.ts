@@ -2406,6 +2406,23 @@ describe("ModpackService.listModpacks", () => {
     expect(slugById.get(offered.id)).toBe("vitest-listed");
     expect(slugById.get(plain.id)).toBeNull();
   });
+
+  it("counts members and live members per modpack, zero for an empty one", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const empty = await seedModpack(ctx);
+    await seedPackMod(ctx, workshop, { liveAt: new Date() });
+    await seedPackMod(ctx, workshop, { liveAt: new Date() });
+    await seedPackMod(ctx, workshop);
+
+    const rows = await modpackService.listModpacks();
+    const byId = new Map(rows.map((row) => [row.id, row]));
+
+    expect(byId.get(workshop.modpackId)).toMatchObject({
+      modCount: 3,
+      liveCount: 2,
+    });
+    expect(byId.get(empty.id)).toMatchObject({ modCount: 0, liveCount: 0 });
+  });
 });
 
 describe("ModpackService.deleteModpack", () => {
