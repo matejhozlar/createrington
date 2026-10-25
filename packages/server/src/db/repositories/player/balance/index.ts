@@ -33,13 +33,20 @@ export class PlayerBalanceRepository extends BasePlayerRepository {
     }>
   > {
     const results = [];
+    const players =
+      playerUuids.length > 0
+        ? await Q.player.findAll(
+            { minecraftUuid: { $in: playerUuids } },
+            { select: ["minecraftUuid", "minecraftUsername"] },
+          )
+        : [];
+    const usernameByUuid = new Map(
+      players.map((player) => [player.minecraftUuid, player.minecraftUsername]),
+    );
 
     for (const uuid of playerUuids) {
-      let playerUsername = "Unknown";
+      const playerUsername = usernameByUuid.get(uuid) ?? "Unknown";
       try {
-        const player = await Q.player.get({ minecraftUuid: uuid });
-        playerUsername = player.minecraftUsername;
-
         const newBalance =
           amount >= 0
             ? await balanceRepo.adminGrant(

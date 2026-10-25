@@ -15,7 +15,7 @@ interface RecordRow {
 }
 
 const db = vi.hoisted(() => ({
-  records: vi.fn<() => Promise<{ rows: RecordRow[]; contestedKeys: number }>>(),
+  records: vi.fn<() => Promise<RecordRow[]>>(),
   playtime: vi.fn(),
   playerFind: vi.fn(),
 }));
@@ -29,7 +29,7 @@ vi.mock("@/db", () => ({
       find: db.playerFind,
       balance: { getNetWorthRanking: async () => [] },
       playtime: { summary: { getGlobalLeaderboard: db.playtime } },
-      minecraft: { stat: { total: { getRecordLeaderboard: db.records } } },
+      minecraft: { stat: { total: { getRecordLeaders: db.records } } },
     },
   },
 }));
@@ -134,17 +134,17 @@ beforeEach(() => {
   db.playtime.mockResolvedValue([]);
   db.playerFind.mockResolvedValue(null);
   netWorth.rank.mockReturnValue([]);
-  db.records.mockResolvedValue({ rows: [], contestedKeys: 0 });
+  db.records.mockResolvedValue([]);
 });
 
 describe("RoleManagementService.recalculateTopRoles", () => {
   it("keeps the incumbent when the record total is tied", async () => {
     member(ALICE);
     const bob = member(BOB, [Discord.Roles.THE_UNRIVALED]);
-    db.records.mockResolvedValue({
-      rows: [row(ALICE, "alice", 40), row(BOB, "bob", 40)],
-      contestedKeys: 120,
-    });
+    db.records.mockResolvedValue([
+      row(ALICE, "alice", 40),
+      row(BOB, "bob", 40),
+    ]);
 
     const [result] = await createService().recalculateTopRoles([
       Discord.Roles.THE_UNRIVALED,
@@ -163,10 +163,7 @@ describe("RoleManagementService.recalculateTopRoles", () => {
   it("moves the role to a challenger with strictly more records", async () => {
     const alice = member(ALICE);
     const bob = member(BOB, [Discord.Roles.THE_UNRIVALED]);
-    db.records.mockResolvedValue({
-      rows: [row(ALICE, "alice", 41), row(BOB, "bob", 40)],
-      contestedKeys: 120,
-    });
+    db.records.mockResolvedValue([row(ALICE, "alice", 41)]);
 
     const [result] = await createService().recalculateTopRoles([
       Discord.Roles.THE_UNRIVALED,
@@ -191,10 +188,7 @@ describe("RoleManagementService.recalculateTopRoles", () => {
 
   it("recalculates only the requested role", async () => {
     member(ALICE);
-    db.records.mockResolvedValue({
-      rows: [row(ALICE, "alice", 3)],
-      contestedKeys: 9,
-    });
+    db.records.mockResolvedValue([row(ALICE, "alice", 3)]);
 
     const results = await createService().recalculateTopRoles([
       Discord.Roles.THE_UNRIVALED,
@@ -221,10 +215,7 @@ describe("RoleManagementService.recalculateTopRoles", () => {
 
   it("does not re-announce an unchanged leader the member cache had not seen yet", async () => {
     const alice = member(ALICE, [Discord.Roles.THE_UNRIVALED]);
-    db.records.mockResolvedValue({
-      rows: [row(ALICE, "alice", 12)],
-      contestedKeys: 30,
-    });
+    db.records.mockResolvedValue([row(ALICE, "alice", 12)]);
 
     const [result] = await createService().recalculateTopRoles([
       Discord.Roles.THE_UNRIVALED,
@@ -242,10 +233,7 @@ describe("RoleManagementService.recalculateTopRoles", () => {
 
   it("says why when the leader is not in the Discord server", async () => {
     member(BOB, [Discord.Roles.THE_UNRIVALED]);
-    db.records.mockResolvedValue({
-      rows: [row(ALICE, "alice", 41), row(BOB, "bob", 40)],
-      contestedKeys: 120,
-    });
+    db.records.mockResolvedValue([row(ALICE, "alice", 41)]);
 
     const [result] = await createService().recalculateTopRoles([
       Discord.Roles.THE_UNRIVALED,

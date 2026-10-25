@@ -183,7 +183,11 @@ export class PlayerBanService {
     nextCheck: string;
     expiredBansCount: number;
   }> {
-    const expiredBans = await Q.player.ban.getExpiredBans();
+    const expiredBansCount = await Q.player.ban.count({
+      banType: "temporary",
+      unbanned: false,
+      expiresAt: { $lte: new Date() },
+    });
 
     return {
       isRunning: this.unbanCheckInterval !== null,
@@ -191,7 +195,7 @@ export class PlayerBanService {
       nextCheck: this.unbanCheckInterval
         ? new Date(Date.now() + this.CHECK_INTERVAL).toISOString()
         : "Not running",
-      expiredBansCount: expiredBans.length,
+      expiredBansCount,
     };
   }
 

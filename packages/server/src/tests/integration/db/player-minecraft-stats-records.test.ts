@@ -187,6 +187,40 @@ describe("PlayerMinecraftStatsQueries.getRecordLeaderboard (integration)", () =>
     const limited = await Q.player.minecraft.stat.total.getRecordLeaderboard(1);
     expect(limited.rows).toHaveLength(1);
   });
+
+  it("returns every player tied for the most records, by username", async () => {
+    await seedStats(serverA, {
+      [ALICE]: {
+        "minecraft:used": { "leadertest:a": 9, "leadertest:b": 9 },
+      },
+      [BOB]: {
+        "minecraft:used": {
+          "leadertest:a": 1,
+          "leadertest:b": 1,
+          "leadertest:c": 5,
+        },
+      },
+      [CARA]: {
+        "minecraft:used": { "leadertest:c": 1, "leadertest:d": 9 },
+      },
+    });
+    await seedStats(serverB, {
+      [BOB]: { "minecraft:used": { "leadertest:d": 1 } },
+    });
+
+    const { rows } = await Q.player.minecraft.stat.total.getRecordLeaderboard();
+    const most = rows[0]?.records ?? 0;
+    const expected = rows
+      .filter((row) => row.records === most)
+      .map((row) => row.minecraftUsername)
+      .sort();
+
+    const leaders = await Q.player.minecraft.stat.total.getRecordLeaders();
+
+    expect(leaders.map((row) => row.minecraftUsername)).toEqual(expected);
+    expect(leaders.every((row) => row.records === most)).toBe(true);
+    expect(expected.length).toBeGreaterThan(0);
+  });
 });
 
 describe("PlayerMinecraftStatTotalQueries.getHeadToHead (integration)", () => {

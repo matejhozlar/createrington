@@ -148,7 +148,7 @@ export class DonationService {
     cancellingCount: number;
     mrrCents: number;
   }> {
-    const subscriptions = await donationRepo.findAllSubscriptions();
+    const subscriptions = await donationRepo.findLatestPerSubscription();
     const amountBySubscription = new Map(
       subscriptions.map((d) => [d.stripeSubscriptionId!, d.amountCents]),
     );

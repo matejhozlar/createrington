@@ -317,13 +317,12 @@ export class RoleManagementService {
   private async findTopRecordsHolder(
     holders: RoleHolders,
   ): Promise<TopHolder | null> {
-    const { rows } = await Q.player.minecraft.stat.total.getRecordLeaderboard();
+    const leaders = await Q.player.minecraft.stat.total.getRecordLeaders();
 
-    if (rows.length === 0) return null;
+    if (leaders.length === 0) return null;
 
-    const tiedForFirst = rows.filter((row) => row.records === rows[0].records);
     const topPlayer =
-      tiedForFirst.find((row) => holders.has(row.discordId)) ?? tiedForFirst[0];
+      leaders.find((row) => holders.has(row.discordId)) ?? leaders[0];
 
     return {
       discordId: topPlayer.discordId,

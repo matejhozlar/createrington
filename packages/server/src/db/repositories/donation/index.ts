@@ -40,16 +40,9 @@ export class DonationRepository {
     return donation ?? null;
   }
 
-  /** All completed monthly donations with a Stripe subscription ID. */
-  async findAllSubscriptions(): Promise<Donation[]> {
-    return Q.donation.findAll(
-      {
-        type: "monthly",
-        status: "completed",
-        stripeSubscriptionId: { $exists: true },
-      },
-      { orderBy: "createdAt", orderDirection: "desc" },
-    );
+  /** The newest completed monthly donation of each Stripe subscription. */
+  async findLatestPerSubscription(): Promise<Donation[]> {
+    return Q.donation.getLatestPerSubscription();
   }
 
   /** Fundraising totals across completed donations (cents, unique donors, count). */

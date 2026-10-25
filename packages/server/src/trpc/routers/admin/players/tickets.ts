@@ -16,14 +16,11 @@ export const ticketsRouter = router({
     .query(async ({ input }) => {
       const identifier = parsePlayerId(input.id);
 
-      const [tickets, total] = await Promise.all([
-        playerService.tickets.getAll(
-          identifier,
-          input.limit,
-          input.page * input.limit,
-        ),
-        playerService.tickets.count(identifier),
-      ]);
+      const { tickets, total } = await playerService.tickets.getPage(
+        identifier,
+        input.limit,
+        input.page * input.limit,
+      );
 
       return {
         tickets,
