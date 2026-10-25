@@ -213,6 +213,33 @@ export class PlayerInactivityWarningQueries extends PlayerInactivityWarningBaseQ
   }
 
   /**
+   * Resolve every active warning whose player has logged in since it was
+   * issued. Returns the resolved warnings with the player's name.
+   */
+  async resolveReturned(): Promise<
+    Array<{ id: number; minecraftUsername: string }>
+  > {
+    const result = await this.runQuery<{
+      id: number;
+      minecraft_username: string;
+    }>(
+      "resolve returned inactivity warnings",
+      `UPDATE ${this.table} w
+       SET resolved_at = NOW(), updated_at = NOW()
+       FROM player p
+       WHERE p.minecraft_uuid = w.player_minecraft_uuid
+         AND w.resolved_at IS NULL
+         AND w.removed_at IS NULL
+         AND p.last_seen > w.warned_at
+       RETURNING w.id, p.minecraft_username`,
+    );
+    return result.rows.map((row) => ({
+      id: row.id,
+      minecraftUsername: row.minecraft_username,
+    }));
+  }
+
+  /**
    * Resolve every active (unresolved, unremoved) warning for a player.
    * Returns the number of warnings resolved.
    */

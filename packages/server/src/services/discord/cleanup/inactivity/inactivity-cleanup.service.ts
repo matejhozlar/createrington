@@ -106,24 +106,15 @@ export class InactivityCleanupService {
    * since being warned (lastSeen > warnedAt).
    */
   private async resolveReturned(): Promise<void> {
-    const activeWarnings =
-      await Q.player.inactivity.warning.findActiveWarnings();
-
-    let resolvedCount = 0;
-
-    for (const warning of activeWarnings) {
-      if (warning.lastSeen > warning.warnedAt) {
-        await Q.player.inactivity.warning.resolveWarning(warning.id);
-        resolvedCount++;
-        logger.info(
-          `Resolved inactivity warning for ${warning.minecraftUsername} (logged in since warning)`,
-        );
-      }
-    }
-
-    if (resolvedCount > 0) {
+    const resolved = await Q.player.inactivity.warning.resolveReturned();
+    for (const warning of resolved) {
       logger.info(
-        `Resolved ${resolvedCount} inactivity warning(s), players returned`,
+        `Resolved inactivity warning for ${warning.minecraftUsername} (logged in since warning)`,
+      );
+    }
+    if (resolved.length > 0) {
+      logger.info(
+        `Resolved ${resolved.length} inactivity warning(s), players returned`,
       );
     }
   }
@@ -149,11 +140,11 @@ export class InactivityCleanupService {
       Date.now() + INACTIVITY_GRACE_DAYS * 24 * 60 * 60 * 1000,
     );
 
-    for (const player of inactivePlayers) {
-      await Q.player.inactivity.warning.create({
+    await Q.player.inactivity.warning.createMany(
+      inactivePlayers.map((player) => ({
         playerMinecraftUuid: player.minecraftUuid,
-      });
-    }
+      })),
+    );
 
     try {
       const embed = EmbedPresets.inactivity.warning({

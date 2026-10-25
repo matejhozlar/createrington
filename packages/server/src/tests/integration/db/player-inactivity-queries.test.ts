@@ -142,6 +142,30 @@ describe("Q.player.inactivity.warning.findExpiredWarnings", () => {
   });
 });
 
+describe("Q.player.inactivity.warning.resolveReturned", () => {
+  it("resolves the active warnings of players seen since they were warned", async () => {
+    await seedPlayer(ALICE, "alice", "100", 5);
+    await seedPlayer(BOB, "bob", "101", 90);
+    const aliceActive = await seedWarning(ALICE, { warnedDaysAgo: 20 });
+    const aliceRemoved = await seedWarning(ALICE, {
+      warnedDaysAgo: 100,
+      removedDaysAgo: 80,
+    });
+    const bobActive = await seedWarning(BOB, { warnedDaysAgo: 20 });
+
+    expect(await warning.resolveReturned()).toEqual([
+      { id: aliceActive, minecraftUsername: "alice" },
+    ]);
+
+    expect(
+      (await warning.find({ id: aliceActive }))?.resolvedAt,
+    ).not.toBeNull();
+    expect((await warning.find({ id: aliceRemoved }))?.resolvedAt).toBeNull();
+    expect((await warning.find({ id: bobActive }))?.resolvedAt).toBeNull();
+    expect(await warning.resolveReturned()).toEqual([]);
+  });
+});
+
 describe("Q.player.inactivity.warning.resolveActiveForPlayer", () => {
   it("resolves only the player's active warnings", async () => {
     await seedPlayer(ALICE, "alice", "100", 90);
