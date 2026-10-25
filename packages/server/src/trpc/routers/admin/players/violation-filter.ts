@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { mcUuid } from "@/utils/zod-schemas";
+import type { ViolationRequirement } from "@/db/queries/player";
 
 const violationFilterSchema = z.object({
   minecraftUuid: mcUuid.toLowerCase().optional(),
@@ -12,25 +13,19 @@ export const violationFilterInput = violationFilterSchema.shape;
 
 type ViolationFilterInput = z.infer<typeof violationFilterSchema>;
 
-export function selectViolationUuids(
+export function violationRequirement(
   input: ViolationFilterInput,
-  uuidsWithStrikes: string[],
-  uuidsWithBans: string[],
-): string[] {
-  let uuids: string[];
-
-  if (input.hasViolations === true) {
-    uuids = [...new Set([...uuidsWithStrikes, ...uuidsWithBans])];
-  } else if (input.hasStrikes === true && input.hasBans === true) {
-    uuids = uuidsWithStrikes.filter((uuid) => uuidsWithBans.includes(uuid));
-  } else if (input.hasStrikes === true) {
-    uuids = uuidsWithStrikes;
-  } else if (input.hasBans === true) {
-    uuids = uuidsWithBans;
-  } else {
-    uuids = [];
+): ViolationRequirement | "none" | null {
+  if (
+    input.hasStrikes === undefined &&
+    input.hasBans === undefined &&
+    input.hasViolations === undefined
+  ) {
+    return null;
   }
-
-  const exact = input.minecraftUuid;
-  return exact ? uuids.filter((uuid) => uuid === exact) : uuids;
+  if (input.hasViolations === true) return "either";
+  if (input.hasStrikes === true && input.hasBans === true) return "both";
+  if (input.hasStrikes === true) return "strikes";
+  if (input.hasBans === true) return "bans";
+  return "none";
 }

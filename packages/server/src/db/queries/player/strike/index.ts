@@ -196,10 +196,24 @@ export class PlayerStrikeQueries extends PlayerStrikeBaseQueries {
   async getPlayerStatistics(
     playerMinecraftUuid: string,
   ): Promise<StrikeStatistics> {
-    const allStrikes = await this.findAll({ playerMinecraftUuid });
+    const result = await this.runQuery<{
+      removed: boolean;
+      classification: StrikeClassification;
+      severity: number;
+      count: number;
+      most_recent: Date;
+    }>(
+      "get player strike statistics",
+      `SELECT removed, classification, severity,
+              COUNT(*)::int AS count, MAX(issued_at) AS most_recent
+       FROM ${this.table}
+       WHERE player_minecraft_uuid = $1
+       GROUP BY removed, classification, severity`,
+      [playerMinecraftUuid],
+    );
 
     const stats: StrikeStatistics = {
-      total: allStrikes.length,
+      total: 0,
       active: 0,
       removed: 0,
       byClassification: {
@@ -222,18 +236,17 @@ export class PlayerStrikeQueries extends PlayerStrikeBaseQueries {
       },
     };
 
-    for (const strike of allStrikes) {
-      if (strike.removed) {
-        stats.removed++;
+    for (const group of result.rows) {
+      stats.total += group.count;
+      if (group.removed) {
+        stats.removed += group.count;
       } else {
-        stats.active++;
+        stats.active += group.count;
       }
-
-      stats.byClassification[strike.classification as StrikeClassification]++;
-      stats.bySeverity[strike.severity as 1 | 2 | 3 | 4 | 5]++;
-
-      if (!stats.mostRecent || strike.issuedAt > stats.mostRecent) {
-        stats.mostRecent = strike.issuedAt;
+      stats.byClassification[group.classification] += group.count;
+      stats.bySeverity[group.severity as 1 | 2 | 3 | 4 | 5] += group.count;
+      if (!stats.mostRecent || group.most_recent > stats.mostRecent) {
+        stats.mostRecent = group.most_recent;
       }
     }
 

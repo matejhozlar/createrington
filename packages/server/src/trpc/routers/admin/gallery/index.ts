@@ -174,20 +174,18 @@ export const adminGalleryRouter = router({
       const filters = input.status ? { status: input.status } : {};
       const direction = input.status === "pending" ? "asc" : "desc";
 
-      const [{ rows, pagination }, ...countValues] = await Promise.all([
+      const [{ rows, pagination }, countsByStatus] = await Promise.all([
         paginateQuery(Q.gallery.submission, filters, input, {
           orderBy: "createdAt",
           orderDirection: direction,
         }),
-        ...GALLERY_SUBMISSION_STATUSES.map((status) =>
-          Q.gallery.submission.count({ status }),
-        ),
+        Q.gallery.submission.countBy("status"),
       ]);
 
       const counts = Object.fromEntries(
-        GALLERY_SUBMISSION_STATUSES.map((status, index) => [
+        GALLERY_SUBMISSION_STATUSES.map((status) => [
           status,
-          countValues[index],
+          countsByStatus.get(status) ?? 0,
         ]),
       ) as Record<(typeof GALLERY_SUBMISSION_STATUSES)[number], number>;
 

@@ -66,21 +66,18 @@ export const autoMessagesRouter = router({
     list: adminProcedure
       .meta({ description: "List all auto-message configs" })
       .query(async () => {
-        const configs = await Q.discord.auto.message.config.getAll({
-          orderBy: "createdAt",
-          orderDirection: "desc",
-        });
-
-        const configsWithCount = await Promise.all(
-          configs.map(async (c) => {
-            const messageCount = await Q.discord.auto.message.count({
-              configId: c.id,
-            });
-            return { ...c, messageCount };
+        const [configs, messageCounts] = await Promise.all([
+          Q.discord.auto.message.config.getAll({
+            orderBy: "createdAt",
+            orderDirection: "desc",
           }),
-        );
+          Q.discord.auto.message.countBy("configId"),
+        ]);
 
-        return configsWithCount;
+        return configs.map((c) => ({
+          ...c,
+          messageCount: messageCounts.get(c.id) ?? 0,
+        }));
       }),
 
     get: adminProcedure
@@ -97,17 +94,27 @@ export const autoMessagesRouter = router({
           .orderBy("sortOrder", "asc")
           .all();
 
-        const messagesWithFollowups = await Promise.all(
-          messages.map(async (m) => {
-            const followups = await Q.discord.auto.message.followup
-              .where({ messageId: m.id })
-              .orderBy("sortOrder", "asc")
-              .all();
-            return { ...m, followups };
-          }),
-        );
+        const followups =
+          messages.length > 0
+            ? await Q.discord.auto.message.followup.findAll(
+                { messageId: { $in: messages.map((m) => m.id) } },
+                { orderBy: "sortOrder", orderDirection: "asc" },
+              )
+            : [];
+        const followupsByMessage = new Map<number, typeof followups>();
+        for (const followup of followups) {
+          const list = followupsByMessage.get(followup.messageId) ?? [];
+          list.push(followup);
+          followupsByMessage.set(followup.messageId, list);
+        }
 
-        return { ...config, messages: messagesWithFollowups };
+        return {
+          ...config,
+          messages: messages.map((m) => ({
+            ...m,
+            followups: followupsByMessage.get(m.id) ?? [],
+          })),
+        };
       }),
 
     create: adminProcedure
@@ -321,14 +328,7 @@ export const autoMessagesRouter = router({
         }),
       )
       .mutation(async ({ input }) => {
-        await Promise.all(
-          input.items.map((item) =>
-            Q.discord.auto.message.update(
-              { id: item.id },
-              { sortOrder: item.sortOrder },
-            ),
-          ),
-        );
+        await Q.discord.auto.message.reorder(input.items);
 
         return { message: "Messages reordered" };
       }),

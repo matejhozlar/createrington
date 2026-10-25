@@ -7,18 +7,17 @@ export const embedPresetCategoriesRouter = router({
   list: adminProcedure
     .meta({ description: "List all preset categories with preset counts" })
     .query(async () => {
-      const cats = await Q.discord.embed.preset.category.getAll({
-        orderBy: "sortOrder",
-        orderDirection: "asc",
-      });
+      const [cats, counts] = await Promise.all([
+        Q.discord.embed.preset.category.getAll({
+          orderBy: "sortOrder",
+          orderDirection: "asc",
+        }),
+        Q.discord.embed.preset.countBy("categoryId"),
+      ]);
 
-      const counts = await Promise.all(
-        cats.map((cat) => Q.discord.embed.preset.count({ categoryId: cat.id })),
-      );
-
-      return cats.map((cat, i) => ({
+      return cats.map((cat) => ({
         ...cat,
-        presetCount: counts[i],
+        presetCount: counts.get(cat.id) ?? 0,
       }));
     }),
 

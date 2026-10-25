@@ -16,7 +16,7 @@ import {
 } from "@/trpc/utils";
 import { discordId } from "@/utils/zod-schemas";
 import type { Player, PlayerFilters } from "@createrington/shared/db";
-import { selectViolationUuids, violationFilterInput } from "./violation-filter";
+import { violationFilterInput, violationRequirement } from "./violation-filter";
 
 /** Admin players CRUD router: stats, list, get, update, and delete players. */
 export const playersRouter = router({
@@ -58,47 +58,30 @@ export const playersRouter = router({
       }
       if (input.online !== undefined) filters.online = input.online;
 
-      if (
-        input.hasStrikes !== undefined ||
-        input.hasBans !== undefined ||
-        input.hasViolations !== undefined
-      ) {
-        const fetchStrikes =
-          input.hasStrikes === true || input.hasViolations === true;
-        const fetchBans =
-          input.hasBans === true || input.hasViolations === true;
-
-        const [uuidsWithStrikes, uuidsWithBans] = await Promise.all([
-          fetchStrikes
-            ? Q.player.strike.getPlayersWithActiveStrikes()
-            : Promise.resolve([]),
-          fetchBans
-            ? Q.player.ban.getPlayersWithActiveBans()
-            : Promise.resolve([]),
-        ]);
-
-        const uuidsWithViolations = selectViolationUuids(
-          input,
-          uuidsWithStrikes,
-          uuidsWithBans,
-        );
-
-        if (uuidsWithViolations.length === 0) {
-          return {
-            players: [],
-            pagination: buildPagination(input.page, input.limit, 0),
-          };
-        }
-
-        filters.minecraftUuid = { $in: uuidsWithViolations };
+      const violation = violationRequirement(input);
+      if (violation === "none") {
+        return {
+          players: [],
+          pagination: buildPagination(input.page, input.limit, 0),
+        };
       }
 
-      const { rows: players, pagination } = await paginateQuery(
-        Q.player,
-        filters,
-        input,
-        { orderBy: input.orderBy, orderDirection: input.orderDirection },
-      );
+      const { rows: players, pagination } = violation
+        ? await Q.player
+            .listWithViolations(filters, violation, {
+              limit: input.limit,
+              offset: input.page * input.limit,
+              orderBy: input.orderBy,
+              orderDirection: input.orderDirection,
+            })
+            .then(({ rows, total }) => ({
+              rows,
+              pagination: buildPagination(input.page, input.limit, total),
+            }))
+        : await paginateQuery(Q.player, filters, input, {
+            orderBy: input.orderBy,
+            orderDirection: input.orderDirection,
+          });
 
       let enrichedPlayers: (Player & {
         activeStrikeCount?: number;
