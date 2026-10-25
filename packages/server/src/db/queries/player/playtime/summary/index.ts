@@ -154,6 +154,18 @@ export class PlayerPlaytimeSummaryQueries extends PlayerPlaytimeSummaryBaseQueri
     return (result.rowCount ?? 0) > 0;
   }
 
+  /** One player's total seconds summed over every server, 0 without a summary row. */
+  async getPlayerTotalSeconds(playerMinecraftUuid: string): Promise<number> {
+    const result = await this.runQuery<{ total_seconds: number | null }>(
+      "get player total seconds",
+      `SELECT SUM(total_seconds)::float8 AS total_seconds
+       FROM ${this.table}
+       WHERE player_minecraft_uuid = $1`,
+      [playerMinecraftUuid],
+    );
+    return result.rows[0]?.total_seconds ?? 0;
+  }
+
   /**
    * Current totals for the given players on a server, keyed by UUID.
    * Players without a summary row are absent from the result.

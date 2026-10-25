@@ -146,35 +146,10 @@ router.get(
 
     const fmt = (n: number) => n.toFixed(3).replace(/\.?0+$/, "") || "0";
 
-    const statsRows = await Q.player.minecraft.stats.findAll({
-      minecraftUuid: details.player.minecraftUuid,
-    });
-
-    let blocksMined = 0;
-    let mobsKilled = 0;
-    let deaths = 0;
-    let distanceCm = 0;
-
-    for (const row of statsRows) {
-      const stats = row.stats as Record<string, Record<string, number>>;
-      const mined = stats["minecraft:mined"];
-      if (mined) {
-        blocksMined += Object.values(mined).reduce((s, v) => s + v, 0);
-      }
-      const custom = stats["minecraft:custom"];
-      if (custom) {
-        mobsKilled += custom["minecraft:mob_kills"] ?? 0;
-        deaths += custom["minecraft:deaths"] ?? 0;
-        distanceCm +=
-          (custom["minecraft:walk_one_cm"] ?? 0) +
-          (custom["minecraft:sprint_one_cm"] ?? 0) +
-          (custom["minecraft:boat_one_cm"] ?? 0) +
-          (custom["minecraft:horse_one_cm"] ?? 0) +
-          (custom["minecraft:fly_one_cm"] ?? 0) +
-          (custom["minecraft:swim_one_cm"] ?? 0);
-      }
-    }
-
+    const { blocksMined, mobsKilled, deaths, distanceCm } =
+      await Q.player.minecraft.stat.total.getProfileHighlights(
+        details.player.minecraftUuid,
+      );
     const distanceKm = Math.round(distanceCm / 100_000);
 
     res.json({

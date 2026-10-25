@@ -504,14 +504,12 @@ export class PlaytimeRepository {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - ACTIVITY_WINDOW_DAYS);
 
-    const [rows, summaries, activeSession] = await Promise.all([
-      Q.player.playtime.daily
-        .where({
-          playerMinecraftUuid: minecraftUuid,
-          playDate: { $gte: calendarDay(startDate) },
-        })
-        .all(),
-      Q.player.playtime.summary.findAll({ playerMinecraftUuid: minecraftUuid }),
+    const [days, totalSeconds, activeSession] = await Promise.all([
+      Q.player.playtime.daily.getPlayerDailyTotals(
+        minecraftUuid,
+        calendarDay(startDate),
+      ),
+      Q.player.playtime.summary.getPlayerTotalSeconds(minecraftUuid),
       player.online
         ? Q.player.session
             .where({
@@ -523,21 +521,12 @@ export class PlaytimeRepository {
         : null,
     ]);
 
-    const days: Record<string, number> = {};
-    for (const row of rows) {
-      days[row.playDate] =
-        (days[row.playDate] ?? 0) + Number(row.secondsPlayed);
-    }
-
     return {
       online: player.online,
       currentSessionSeconds: activeSession
         ? Math.floor((Date.now() - activeSession.sessionStart.getTime()) / 1000)
         : null,
-      totalSeconds: summaries.reduce(
-        (sum, summary) => sum + Number(summary.totalSeconds),
-        0,
-      ),
+      totalSeconds,
       currentStreak: currentStreak(days),
       mostActiveDay: mostActiveWeekday(days),
       days,

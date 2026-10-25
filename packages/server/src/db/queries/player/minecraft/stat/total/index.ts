@@ -65,6 +65,22 @@ const HEAD_TO_HEAD_HIDDEN = [
 
 export type HeadToHeadSort = "gap" | "total";
 
+export interface ProfileStatHighlights {
+  blocksMined: number;
+  mobsKilled: number;
+  deaths: number;
+  distanceCm: number;
+}
+
+const DISTANCE_ITEMS = [
+  "minecraft:walk_one_cm",
+  "minecraft:sprint_one_cm",
+  "minecraft:boat_one_cm",
+  "minecraft:horse_one_cm",
+  "minecraft:fly_one_cm",
+  "minecraft:swim_one_cm",
+];
+
 export interface HeadToHeadStat {
   category: string;
   item: string;
@@ -144,6 +160,44 @@ export class PlayerMinecraftStatTotalQueries extends PlayerMinecraftStatTotalBas
        HAVING GREATEST(LEAST(SUM(item.value::numeric), 9223372036854775807), 0)::bigint > 0`,
       [minecraftUuids],
     );
+  }
+
+  /** The headline figures of a profile card, read off the cross-server totals. */
+  async getProfileHighlights(
+    minecraftUuid: string,
+  ): Promise<ProfileStatHighlights> {
+    const query = `
+      SELECT
+        COALESCE(SUM(t.value) FILTER (WHERE k.category = 'minecraft:mined'), 0)::float8
+          AS blocks_mined,
+        COALESCE(SUM(t.value) FILTER (
+          WHERE k.category = 'minecraft:custom' AND k.item = 'minecraft:mob_kills'
+        ), 0)::float8 AS mobs_killed,
+        COALESCE(SUM(t.value) FILTER (
+          WHERE k.category = 'minecraft:custom' AND k.item = 'minecraft:deaths'
+        ), 0)::float8 AS deaths,
+        COALESCE(SUM(t.value) FILTER (
+          WHERE k.category = 'minecraft:custom' AND k.item = ANY($2)
+        ), 0)::float8 AS distance_cm
+      FROM ${this.table} t
+      JOIN player_minecraft_stat_key k ON k.id = t.stat_key_id
+      WHERE t.minecraft_uuid = $1`;
+    const result = await this.runQuery<{
+      blocks_mined: number;
+      mobs_killed: number;
+      deaths: number;
+      distance_cm: number;
+    }>("get minecraft stat profile highlights", query, [
+      minecraftUuid,
+      DISTANCE_ITEMS,
+    ]);
+    const row = result.rows[0];
+    return {
+      blocksMined: row?.blocks_mined ?? 0,
+      mobsKilled: row?.mobs_killed ?? 0,
+      deaths: row?.deaths ?? 0,
+      distanceCm: row?.distance_cm ?? 0,
+    };
   }
 
   /**
