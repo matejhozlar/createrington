@@ -1,6 +1,12 @@
 import type { Pool, PoolClient } from "pg";
 import { ModpackModBaseQueries } from "@/generated/db/modpack_mod.queries";
 
+export interface ModpackModSample {
+  id: number;
+  name: string;
+  thumbnailUrl: string | null;
+}
+
 /**
  * Custom queries for modpack_mod table
  *
@@ -11,6 +17,30 @@ import { ModpackModBaseQueries } from "@/generated/db/modpack_mod.queries";
 export class ModpackModQueries extends ModpackModBaseQueries {
   constructor(db: Pool | PoolClient) {
     super(db);
+  }
+
+  /** The newest members of a pack that are not dropped, with their cached project. */
+  async getSampleWithProjects(
+    modpackId: number,
+    limit: number,
+  ): Promise<ModpackModSample[]> {
+    const query = `
+      SELECT mm.id, cp.name, cp.thumbnail_url
+      FROM ${this.table} mm
+      JOIN curseforge_project cp ON cp.id = mm.curseforge_project_id
+      WHERE mm.modpack_id = $1 AND mm.dropped_from_manifest_at IS NULL
+      ORDER BY mm.created_at DESC, mm.id DESC
+      LIMIT $2`;
+    const result = await this.runQuery<{
+      id: number;
+      name: string;
+      thumbnail_url: string | null;
+    }>("sample modpack members with projects", query, [modpackId, limit]);
+    return result.rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      thumbnailUrl: row.thumbnail_url,
+    }));
   }
 
   // Points members at the files a manifest ships, in one statement. Rows whose

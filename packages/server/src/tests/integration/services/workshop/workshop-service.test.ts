@@ -2270,6 +2270,54 @@ describe("WorkshopService.listVisibleWorkshops", () => {
     expect(listed?.summary?.pendingModCount).toBe(2);
     expect(listed?.summary?.suggestionCount).toBe(4);
   });
+
+  it("breaks upvote ties newest first and keeps the top three", async () => {
+    const workshop = await seedWorkshop(ctx, { status: "open" });
+    const mods = [];
+    for (let i = 0; i < 4; i++) {
+      mods.push(await seedMod(ctx, workshop, { status: "pending" }));
+    }
+    await upvoteMod(mods[1].id, [USER_A]);
+
+    const listed = (await workshopService.listVisibleWorkshops()).find(
+      (row) => row.id === workshop.id,
+    );
+
+    expect(listed?.summary?.topMods.map((row) => row.workshopModId)).toEqual([
+      mods[1].id,
+      mods[3].id,
+      mods[2].id,
+    ]);
+  });
+
+  it("counts every participant but samples only those with a player row", async () => {
+    const PLAYER = "999900000000000005";
+    await Q.player.create({
+      minecraftUuid: "99990000-0000-4000-8000-000000000005",
+      minecraftUsername: "vitest_participant",
+      discordId: PLAYER,
+    });
+    try {
+      const workshop = await seedWorkshop(ctx, { status: "open" });
+      const suggested = await seedMod(ctx, workshop, { submittedBy: PLAYER });
+      await seedMod(ctx, workshop, { submittedBy: USER_A });
+      await upvoteMod(suggested.id, [USER_A, USER_B]);
+
+      const listed = (await workshopService.listVisibleWorkshops()).find(
+        (row) => row.id === workshop.id,
+      );
+
+      expect(listed?.summary?.participantCount).toBe(3);
+      expect(listed?.summary?.participantSample).toEqual([
+        {
+          minecraftUuid: "99990000-0000-4000-8000-000000000005",
+          minecraftUsername: "vitest_participant",
+        },
+      ]);
+    } finally {
+      await Q.player.deleteAll({ discordId: PLAYER });
+    }
+  });
 });
 
 describe("WorkshopService.reviewMod allowedFrom", () => {
