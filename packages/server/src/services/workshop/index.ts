@@ -11,6 +11,7 @@ import type {
   ModEnvironment,
   Workshop,
   WorkshopMod,
+  WorkshopModCreate,
   WorkshopModEventType,
   WorkshopModRejectReason,
   WorkshopModStatus,
@@ -139,6 +140,8 @@ export interface WorkshopTopMod {
 }
 
 const PACK_SAMPLE_SIZE = 4;
+const TOP_MOD_SAMPLE_SIZE = 3;
+const PARTICIPANT_SAMPLE_SIZE = 5;
 
 export interface WorkshopPackSampleMod {
   id: number;
@@ -191,6 +194,12 @@ interface PreparedEntry {
 }
 
 type TxQueries = Parameters<Parameters<typeof db.inTransaction>[0]>[0];
+
+interface CreateModOptions {
+  submittedBy: string;
+  status?: WorkshopModStatus;
+  reviewedBy?: string;
+}
 
 function slugify(name: string): string {
   return name
@@ -456,10 +465,18 @@ export class WorkshopService {
       status: { $in: ["open", "closed"] },
     });
     if (workshops.length === 0) return [];
-    const mods = await Q.workshop.mod.findAll({
-      submittedBy: discordId,
-      workshopId: { $in: workshops.map((w) => w.id) },
-    });
+    const mods = await Q.workshop.mod.findAll(
+      {
+        submittedBy: discordId,
+        workshopId: { $in: workshops.map((w) => w.id) },
+      },
+      {
+        orderBy: [
+          { field: "createdAt", direction: "desc" },
+          { field: "id", direction: "desc" },
+        ],
+      },
+    );
     const byWorkshop = new Map<number, WorkshopMod[]>();
     for (const mod of mods) {
       const list = byWorkshop.get(mod.workshopId) ?? [];
@@ -481,11 +498,10 @@ export class WorkshopService {
         ];
       }),
     );
-    return decorated
-      .flat()
-      .sort(
-        (a, b) => b.createdAt.getTime() - a.createdAt.getTime() || b.id - a.id,
-      );
+    const itemById = new Map(
+      decorated.flat().map((item) => [item.id, item] as const),
+    );
+    return mods.flatMap((mod) => itemById.get(mod.id) ?? []);
   }
 
   /**
@@ -645,23 +661,13 @@ export class WorkshopService {
   ): Promise<{ modIds: number[]; maxUpvotes: number; votesRemaining: number }> {
     const workshop = await this.getWorkshop(workshopId);
     this.assertUserVisible(workshop);
-    const mods = await Q.workshop.mod.findAll(
-      { workshopId },
-      { select: ["id"] },
-    );
-    const modIds = mods.map((m) => m.id);
-    const [modUpvotes, used] = await Promise.all([
-      modIds.length > 0
-        ? Q.workshop.mod.upvote.findAll({
-            discordId,
-            workshopModId: { $in: modIds },
-          })
-        : Promise.resolve([]),
+    const [modIds, used] = await Promise.all([
+      Q.workshop.mod.upvote.getModIdsByUser(workshopId, discordId),
       Q.workshop.mod.upvote.countPendingByUser(workshopId, discordId),
     ]);
 
     return {
-      modIds: modUpvotes.map((u) => u.workshopModId),
+      modIds,
       maxUpvotes: workshop.maxUpvotesPerUser,
       votesRemaining: Math.max(0, workshop.maxUpvotesPerUser - used),
     };
@@ -1012,7 +1018,10 @@ export class WorkshopService {
     }
     if (edges.length === 0) return;
 
-    const { coverage } = await loadDependencyContext(workshop);
+    const { coverage } = await loadDependencyContext(
+      workshop,
+      edges.map((edge) => edge.dependsOnProjectId),
+    );
     const blocked = hasRuledOutRequiredDependency(
       edges.map((edge) => ({
         relationType: edge.relationType,
@@ -1055,19 +1064,14 @@ export class WorkshopService {
     let created: WorkshopMod[];
     try {
       created = await db.inTransaction(async (tx) => {
-        const mods: WorkshopMod[] = [];
-        for (const entry of prepared) {
-          const mod = await this.createMod(tx, workshop, entry, {
-            submittedBy: adminId,
-            status: "approved",
-            reviewedBy: adminId,
-          });
-          await tx.workshop.mod.upvote.create({
-            workshopModId: mod.id,
-            discordId: adminId,
-          });
-          mods.push(mod);
-        }
+        const mods = await this.createMods(tx, workshop, prepared, {
+          submittedBy: adminId,
+          status: "approved",
+          reviewedBy: adminId,
+        });
+        await tx.workshop.mod.upvote.createMany(
+          mods.map((mod) => ({ workshopModId: mod.id, discordId: adminId })),
+        );
         return mods;
       });
     } catch (error) {
@@ -1109,151 +1113,79 @@ export class WorkshopService {
     workshopId: number,
   ): Promise<WorkshopDependencyListItem[]> {
     const workshop = await this.getWorkshop(workshopId);
-    const [edges, context] = await Promise.all([
-      Q.workshop.project.dependency.findAll({ workshopId }),
-      loadDependencyContext(workshop),
-    ]);
-    if (edges.length === 0) return [];
+    const groups = await Q.workshop.project.dependency.getGroupsByDependency(
+      workshopId,
+      REQUIRED_DEPENDENCY,
+    );
+    if (groups.length === 0) return [];
 
+    const dependencyIds = groups.map((group) => group.dependsOnProjectId);
     const projectIds = [
-      ...new Set(
-        edges.flatMap((edge) => [
-          edge.dependsOnProjectId,
-          edge.curseforgeProjectId,
-        ]),
-      ),
+      ...new Set([
+        ...dependencyIds,
+        ...groups.flatMap((group) => group.requiredByProjectIds),
+      ]),
     ];
-    const projects = await Q.curseforge.project.findAll({
-      id: { $in: projectIds },
-    });
+    const [projects, context] = await Promise.all([
+      Q.curseforge.project.findAll({ id: { $in: projectIds } }),
+      loadDependencyContext(workshop, dependencyIds),
+    ]);
     const projectById = new Map(
       projects.map((project) => [project.id, project]),
     );
 
-    const byDependency = new Map<number, typeof edges>();
-    for (const edge of edges) {
-      const group = byDependency.get(edge.dependsOnProjectId) ?? [];
-      group.push(edge);
-      byDependency.set(edge.dependsOnProjectId, group);
-    }
-
-    const rows = [...byDependency.entries()].map(([dependencyId, group]) => {
-      const project = projectById.get(dependencyId);
-      const requiredIds = [
-        ...new Set(
-          group
-            .filter((edge) => edge.relationType === REQUIRED_DEPENDENCY)
-            .map((edge) => edge.curseforgeProjectId),
-        ),
-      ];
-      const optionalIds = new Set(
-        group
-          .filter((edge) => edge.relationType !== REQUIRED_DEPENDENCY)
-          .map((edge) => edge.curseforgeProjectId),
-      );
+    return groups.map((group) => {
+      const project = projectById.get(group.dependsOnProjectId);
       return {
-        curseforgeProjectId: dependencyId,
+        curseforgeProjectId: group.dependsOnProjectId,
         classId: project?.classId ?? null,
         name: project?.name ?? null,
         slug: project?.slug ?? null,
         thumbnailUrl: project?.thumbnailUrl ?? null,
-        coverage: context.coverage.get(dependencyId) ?? ("missing" as const),
-        requiredBy: requiredIds.map((id) => ({
+        coverage:
+          context.coverage.get(group.dependsOnProjectId) ??
+          ("missing" as const),
+        requiredBy: group.requiredByProjectIds.map((id) => ({
           curseforgeProjectId: id,
           name: projectById.get(id)?.name ?? `#${id}`,
         })),
-        optionalByCount: optionalIds.size,
-        shippingDemand: context.demand.get(dependencyId) ?? 0,
+        optionalByCount: group.optionalByCount,
+        shippingDemand: context.demand.get(group.dependsOnProjectId) ?? 0,
       };
     });
-
-    return rows;
   }
 
   private async getWorkshopSummary(
     workshop: Workshop,
   ): Promise<WorkshopSummary> {
     const workshopId = workshop.id;
-    const [packModCount, participantIds, mods, packSample] = await Promise.all([
-      Q.modpack.mod.count({
-        modpackId: workshop.modpackId,
-        droppedFromManifestAt: null,
-      }),
-      Q.workshop.participantDiscordIds(workshopId),
-      Q.workshop.mod.findAll(
-        { workshopId, status: { $in: USER_VISIBLE_MOD_STATUSES } },
-        {
-          orderBy: "createdAt",
-          orderDirection: "desc",
-          select: ["id", "curseforgeProjectId", "status"],
-        },
-      ),
-      Q.modpack.mod.findAll(
-        { modpackId: workshop.modpackId, droppedFromManifestAt: null },
-        {
-          orderBy: "createdAt",
-          orderDirection: "desc",
-          limit: PACK_SAMPLE_SIZE,
-          select: ["id", "curseforgeProjectId"],
-        },
-      ),
-    ]);
+    const [packModCount, participants, countsByStatus, topMods, packModSample] =
+      await Promise.all([
+        Q.modpack.mod.count({
+          modpackId: workshop.modpackId,
+          droppedFromManifestAt: null,
+        }),
+        Q.workshop.getParticipantSummary(workshopId, PARTICIPANT_SAMPLE_SIZE),
+        Q.workshop.mod.countBy("status", {
+          workshopId,
+          status: { $in: USER_VISIBLE_MOD_STATUSES },
+        }),
+        Q.workshop.mod.getTopPendingByUpvotes(workshopId, TOP_MOD_SAMPLE_SIZE),
+        Q.modpack.mod.getSampleWithProjects(
+          workshop.modpackId,
+          PACK_SAMPLE_SIZE,
+        ),
+      ]);
 
-    const participants =
-      participantIds.length > 0
-        ? await Q.player.findAll({ discordId: { $in: participantIds } })
-        : [];
-    const participantSample = participants.slice(0, 5).map((player) => ({
-      minecraftUuid: player.minecraftUuid,
-      minecraftUsername: player.minecraftUsername,
-    }));
-
-    const pendingMods = mods.filter((mod) => mod.status === "pending");
-    const upvoteCounts = await Q.workshop.mod.upvote.countGroupedByMod(
-      pendingMods.map((m) => m.id),
-    );
-    const top = [...pendingMods]
-      .sort((a, b) => (upvoteCounts[b.id] ?? 0) - (upvoteCounts[a.id] ?? 0))
-      .slice(0, 3);
-    const projectIds = [
-      ...new Set([...top, ...packSample].map((mod) => mod.curseforgeProjectId)),
-    ];
-    const projects =
-      projectIds.length > 0
-        ? await Q.curseforge.project.findAll({ id: { $in: projectIds } })
-        : [];
-    const projectById = new Map(projects.map((p) => [p.id, p]));
-    const topMods = top.flatMap((mod) => {
-      const project = projectById.get(mod.curseforgeProjectId);
-      if (!project) return [];
-      return [
-        {
-          workshopModId: mod.id,
-          name: project.name,
-          primaryAuthor: project.primaryAuthor,
-          upvoteCount: upvoteCounts[mod.id] ?? 0,
-          thumbnailUrl: project.thumbnailUrl,
-        },
-      ];
-    });
-    const packModSample = packSample.flatMap((row) => {
-      const project = projectById.get(row.curseforgeProjectId);
-      if (!project) return [];
-      return [
-        {
-          id: row.id,
-          name: project.name,
-          thumbnailUrl: project.thumbnailUrl,
-        },
-      ];
-    });
+    let suggestionCount = 0;
+    for (const count of countsByStatus.values()) suggestionCount += count;
 
     return {
       packModCount,
-      pendingModCount: pendingMods.length,
-      suggestionCount: mods.length,
-      participantCount: participantIds.length,
-      participantSample,
+      pendingModCount: countsByStatus.get("pending") ?? 0,
+      suggestionCount,
+      participantCount: participants.count,
+      participantSample: participants.sample,
       topMods,
       packModSample,
     };
@@ -1533,7 +1465,7 @@ export class WorkshopService {
     ];
     const [depProjects, context] = await Promise.all([
       Q.curseforge.project.findAll({ id: { $in: depProjectIds } }),
-      loadDependencyContext(workshop),
+      loadDependencyContext(workshop, depProjectIds),
     ]);
     const projectById = new Map(depProjects.map((p) => [p.id, p]));
 
@@ -1716,14 +1648,31 @@ export class WorkshopService {
     tx: TxQueries,
     workshop: Workshop,
     entry: PreparedEntry,
-    options: {
-      submittedBy: string;
-      status?: WorkshopModStatus;
-      reviewedBy?: string;
-    },
+    options: CreateModOptions,
   ): Promise<WorkshopMod> {
+    return tx.workshop.mod.createAndReturn(
+      this.toModCreate(workshop, entry, options),
+    );
+  }
+
+  private async createMods(
+    tx: TxQueries,
+    workshop: Workshop,
+    entries: PreparedEntry[],
+    options: CreateModOptions,
+  ): Promise<WorkshopMod[]> {
+    return tx.workshop.mod.createManyAndReturn(
+      entries.map((entry) => this.toModCreate(workshop, entry, options)),
+    );
+  }
+
+  private toModCreate(
+    workshop: Workshop,
+    entry: PreparedEntry,
+    options: CreateModOptions,
+  ): WorkshopModCreate {
     const reviewedBy = options.reviewedBy ?? null;
-    return tx.workshop.mod.createAndReturn({
+    return {
       workshopId: workshop.id,
       curseforgeProjectId: entry.projectId,
       submittedBy: options.submittedBy,
@@ -1734,7 +1683,7 @@ export class WorkshopService {
       fileId: entry.fileId,
       fileName: entry.fileName,
       fileReleaseType: entry.fileReleaseType,
-    });
+    };
   }
 
   private async assertBaseModpack(projectId: number): Promise<void> {

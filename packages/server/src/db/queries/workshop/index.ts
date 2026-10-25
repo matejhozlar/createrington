@@ -2,6 +2,11 @@ import type { Pool, PoolClient } from "pg";
 import type { Workshop } from "@createrington/shared/db";
 import { WorkshopBaseQueries } from "@/generated/db/workshop.queries";
 
+export interface WorkshopParticipantSummary {
+  count: number;
+  sample: Array<{ minecraftUuid: string; minecraftUsername: string }>;
+}
+
 /**
  * Custom queries for workshop table
  *
@@ -34,23 +39,49 @@ export class WorkshopQueries extends WorkshopBaseQueries {
     }));
   }
 
-  /** Distinct discord ids of everyone who suggested or upvoted in a workshop. */
-  async participantDiscordIds(workshopId: number): Promise<string[]> {
+  /**
+   * How many distinct people suggested or upvoted in a workshop, plus the
+   * first `sampleSize` of them that have a player row.
+   */
+  async getParticipantSummary(
+    workshopId: number,
+    sampleSize: number,
+  ): Promise<WorkshopParticipantSummary> {
     const query = `
-      SELECT submitted_by AS discord_id
-      FROM workshop_mod
-      WHERE workshop_id = $1
-      UNION
-      SELECT wmu.discord_id
-      FROM workshop_mod_upvote wmu
-      JOIN workshop_mod wm ON wm.id = wmu.workshop_mod_id
-      WHERE wm.workshop_id = $1`;
-    const result = await this.runQuery<{ discord_id: string }>(
-      "workshop participant discord ids",
-      query,
-      [workshopId],
-    );
-    return result.rows.map((row) => row.discord_id);
+      WITH participants AS (
+        SELECT submitted_by AS discord_id
+        FROM workshop_mod
+        WHERE workshop_id = $1
+        UNION
+        SELECT wmu.discord_id
+        FROM workshop_mod_upvote wmu
+        JOIN workshop_mod wm ON wm.id = wmu.workshop_mod_id
+        WHERE wm.workshop_id = $1
+      )
+      SELECT COUNT(*) OVER ()::int AS participant_count,
+             p.minecraft_uuid, p.minecraft_username
+      FROM participants pt
+      LEFT JOIN player p ON p.discord_id = pt.discord_id
+      ORDER BY (p.discord_id IS NULL), p.minecraft_username
+      LIMIT $2`;
+    const result = await this.runQuery<{
+      participant_count: number;
+      minecraft_uuid: string | null;
+      minecraft_username: string | null;
+    }>("workshop participant summary", query, [workshopId, sampleSize]);
+    return {
+      count: result.rows[0]?.participant_count ?? 0,
+      sample: result.rows.flatMap((row) =>
+        row.minecraft_uuid !== null && row.minecraft_username !== null
+          ? [
+              {
+                minecraftUuid: row.minecraft_uuid,
+                minecraftUsername: row.minecraft_username,
+              },
+            ]
+          : [],
+      ),
+    };
   }
 
   /** Serialize a user's per-workshop cap checks for the current transaction. */

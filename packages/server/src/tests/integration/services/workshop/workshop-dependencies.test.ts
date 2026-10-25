@@ -145,6 +145,47 @@ describe("loadDependencyContext", () => {
 
     expect(coverage.get(shipped.curseforgeProjectId)).toBe("published");
   });
+
+  it("treats a pack row as published whatever its suggestion says", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const ruledOut = await seedMod(ctx, workshop, {
+      status: "rejected",
+      rejectReason: "not_a_good_fit",
+      submittedBy: USER_A,
+    });
+    await seedPackMod(ctx, workshop, {
+      curseforgeProjectId: ruledOut.curseforgeProjectId,
+    });
+
+    const { coverage } = await loadDependencyContext(workshop);
+
+    expect(coverage.get(ruledOut.curseforgeProjectId)).toBe("published");
+  });
+
+  it("restricts both maps to the requested projects", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const staged = await seedMod(ctx, workshop, {
+      status: "next_update",
+      submittedBy: USER_A,
+    });
+    const wanted = await seedProject(ctx);
+    const ignored = await seedProject(ctx);
+    await seedRequiredDependency(workshop, staged.curseforgeProjectId, wanted);
+    await seedRequiredDependency(workshop, staged.curseforgeProjectId, ignored);
+
+    const { coverage, demand } = await loadDependencyContext(workshop, [
+      wanted,
+      staged.curseforgeProjectId,
+    ]);
+
+    expect(coverage.get(staged.curseforgeProjectId)).toBe("staged");
+    expect(demand.get(wanted)).toBe(1);
+    expect(demand.get(ignored)).toBeUndefined();
+
+    const empty = await loadDependencyContext(workshop, []);
+    expect(empty.coverage.size).toBe(0);
+    expect(empty.demand.size).toBe(0);
+  });
 });
 
 describe("getWorkshopDependencies", () => {
