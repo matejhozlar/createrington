@@ -584,12 +584,42 @@ describe("GET /api/launcher/packs/:slug/releases", () => {
     });
   });
 
+  it("asks for the one release of the version the launcher names", async () => {
+    mocks.listReleases.mockResolvedValue({
+      releases: [LISTED.releases[1]],
+      total: 1,
+    });
+
+    const res = await getReleases(session, "?version=1.3.3&page=0&limit=25");
+
+    expect(mocks.listReleases).toHaveBeenCalledWith("createrington", {
+      page: 0,
+      limit: 25,
+      version: "1.3.3",
+    });
+    expect((await res.json()).data).toEqual({
+      releases: [LISTED.releases[1]],
+      pagination: { page: 0, limit: 25, total: 1, totalPages: 1 },
+    });
+  });
+
+  it("stores the page of one version apart from the plain page and from other versions", async () => {
+    await getReleases(session, "?version=1.3.3");
+    await getReleases(session);
+    await getReleases(session, "?version=1.3.4");
+    await getReleases(session, "?version=1.3.3");
+
+    expect(mocks.listReleases).toHaveBeenCalledTimes(3);
+  });
+
   it.each([
     ["a negative page", "?page=-1"],
     ["a page that is not a number", "?page=first"],
     ["a size of zero", "?limit=0"],
     ["a size above the maximum", "?limit=26"],
     ["a fractional size", "?limit=2.5"],
+    ["an empty version", "?version="],
+    ["a version longer than 64 characters", `?version=${"1".repeat(65)}`],
   ])("refuses %s", async (_label, query) => {
     const res = await getReleases(session, query);
 

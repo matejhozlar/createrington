@@ -26,6 +26,7 @@ export const ListReleasesQuerySchema = z.object({
     .min(1)
     .max(LAUNCHER_PACK_RELEASES_MAX_PAGE_SIZE)
     .default(LAUNCHER_PACK_RELEASES_PAGE_SIZE),
+  version: z.string().min(1).max(64).optional(),
 });
 
 export type ListReleasesQuery = z.infer<typeof ListReleasesQuerySchema>;
