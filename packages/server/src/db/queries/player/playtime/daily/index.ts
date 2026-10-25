@@ -110,6 +110,27 @@ export class PlayerPlaytimeDailyQueries extends PlayerPlaytimeDailyBaseQueries {
     );
   }
 
+  /** One player's seconds per calendar day from `startDay` on, summed across servers. */
+  async getPlayerDailyTotals(
+    playerMinecraftUuid: string,
+    startDay: string,
+  ): Promise<Record<string, number>> {
+    const result = await this.runQuery<{
+      play_date: string;
+      total_seconds: number;
+    }>(
+      "get player daily totals",
+      `SELECT play_date, SUM(seconds_played)::float8 AS total_seconds
+       FROM ${this.table}
+       WHERE player_minecraft_uuid = $1 AND play_date >= $2
+       GROUP BY play_date`,
+      [playerMinecraftUuid, startDay],
+    );
+    const days: Record<string, number> = {};
+    for (const row of result.rows) days[row.play_date] = row.total_seconds;
+    return days;
+  }
+
   /** Top players on a server by summed playtime over [startDay, endDay], highest first. */
   async getTopPlayers(
     serverId: number,

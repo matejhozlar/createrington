@@ -205,6 +205,43 @@ describe("PlayerMinecraftStatTotalQueries projection (integration)", () => {
     ).toEqual([]);
   });
 
+  it("sums the profile highlights across servers", async () => {
+    await upsert(serverA, {
+      [ALICE]: {
+        "minecraft:mined": { "minecraft:stone": 100, "minecraft:dirt": 20 },
+        "minecraft:custom": {
+          "minecraft:mob_kills": 7,
+          "minecraft:deaths": 2,
+          "minecraft:walk_one_cm": 1000,
+          "minecraft:swim_one_cm": 500,
+          "minecraft:jump": 999,
+        },
+      },
+    });
+    await upsert(serverB, {
+      [ALICE]: {
+        "minecraft:mined": { "minecraft:stone": 30 },
+        "minecraft:custom": {
+          "minecraft:mob_kills": 3,
+          "minecraft:fly_one_cm": 250,
+        },
+      },
+    });
+
+    expect(await totals.getProfileHighlights(ALICE)).toEqual({
+      blocksMined: 150,
+      mobsKilled: 10,
+      deaths: 2,
+      distanceCm: 1750,
+    });
+    expect(await totals.getProfileHighlights(BOB)).toEqual({
+      blocksMined: 0,
+      mobsKilled: 0,
+      deaths: 0,
+      distanceCm: 0,
+    });
+  });
+
   it("searches stats per category with holder counts", async () => {
     await upsert(serverA, {
       [ALICE]: {
