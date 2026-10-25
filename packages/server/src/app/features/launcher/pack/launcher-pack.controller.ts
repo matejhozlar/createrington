@@ -128,7 +128,7 @@ export class LauncherPackController {
       req,
       res,
       answerCache,
-      `${KEY_PREFIX}:releases:${params.slug}:${query.page}:${query.limit}`,
+      `${KEY_PREFIX}:releases:${params.slug}:${query.page}:${query.limit}:${query.version ?? ""}`,
       ANSWER_TTL_MS,
       async (): Promise<LauncherSuccessResponse<LauncherPackReleasesData>> => {
         const { releases, total } = await launcherPackService.listReleases(

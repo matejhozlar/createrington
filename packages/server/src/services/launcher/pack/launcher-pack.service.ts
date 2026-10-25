@@ -489,16 +489,19 @@ class LauncherPackService {
    * `checkReleases`. Each comes with its changelog: the mods it added, updated
    * and removed against the release recorded before it (listed or not), and
    * the publish notes. Paged, `page` counts from 0, with `total` counting
-   * every listed release. Reads the database only, unless the pack's project
-   * is not stored yet. Throws `PACK_NOT_FOUND` (404) for a slug no enabled
-   * pack carries. Empty when there is no release, when the page is past the
-   * end, and while the pack's project cannot be served.
+   * every listed release. With `version` only the installable release of
+   * that version is listed, so the launcher finds a kept release in one
+   * request. Reads the database only, unless the pack's project is not
+   * stored yet. Throws `PACK_NOT_FOUND` (404) for a slug no enabled pack
+   * carries. Empty when there is no release, when the page is past the end,
+   * when no installable release carries the version, and while the pack's
+   * project cannot be served.
    */
   async listReleases(
     slug: string,
-    paging: { page: number; limit: number },
+    paging: { page: number; limit: number; version?: string },
   ): Promise<{ releases: LauncherPackRelease[]; total: number }> {
-    const { page, limit } = paging;
+    const { page, limit, version } = paging;
     const pack = await this.requirePack(slug);
     const modpack = await Q.modpack.get({ id: pack.modpackId });
     const project = await this.projectFor(pack, modpack);
@@ -508,6 +511,7 @@ class LauncherPackService {
       modpackId: modpack.id,
       launcherReadyAt: { $ne: null },
       launcherUnavailableAt: null,
+      ...(version === undefined ? {} : { version }),
     };
     const [rows, total] = await Promise.all([
       Q.modpack.release.findAll(filters, {

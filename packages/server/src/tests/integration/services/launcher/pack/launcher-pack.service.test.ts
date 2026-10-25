@@ -1941,6 +1941,45 @@ describe("LauncherPackService.listReleases", () => {
     expect(pastTheEnd).toEqual({ releases: [], total: 3 });
   });
 
+  it("answers the one installable release of the named version on the first page", async () => {
+    const modpack = await seedPack();
+    const file = await seedFile();
+    serveFromCurseForge([file]);
+    await seedReadyRelease(modpack, "1.0.0", [file]);
+    await seedReadyRelease(modpack, "1.1.0", [file]);
+    await seedReadyRelease(modpack, "1.2.0", [file]);
+
+    const listed = await launcherPackService.listReleases(PACK_SLUG, {
+      ...FIRST_PAGE,
+      version: "1.1.0",
+    });
+
+    expect(listed.total).toBe(1);
+    expect(listed.releases.map((release) => release.version)).toEqual([
+      "1.1.0",
+    ]);
+    expect(await listedVersions()).toEqual(["1.2.0", "1.1.0", "1.0.0"]);
+  });
+
+  it("answers no release for a version the pack never carried or can no longer install", async () => {
+    const modpack = await seedPack();
+    const file = await seedFile();
+    serveFromCurseForge([file]);
+    await seedReadyRelease(modpack, "1.0.0", [file]);
+    const archived = await seedReadyRelease(modpack, "1.1.0", [file]);
+    await seedRelease(modpack, "1.2.0", [file]);
+    archivedOnCurseForge([archived.manifest.fileId]);
+    await launcherPackService.checkReleases(modpack);
+
+    const byVersion = (version: string) =>
+      launcherPackService.listReleases(PACK_SLUG, { ...FIRST_PAGE, version });
+
+    expect(await byVersion("9.9.9")).toEqual({ releases: [], total: 0 });
+    expect(await byVersion("1.1.0")).toEqual({ releases: [], total: 0 });
+    expect(await byVersion("1.2.0")).toEqual({ releases: [], total: 0 });
+    expect((await byVersion("1.0.0")).total).toBe(1);
+  });
+
   it("serves a release that was recorded without a version once it is made ready", async () => {
     const modpack = await seedPack();
     const file = await seedFile();
