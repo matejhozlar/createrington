@@ -1,6 +1,11 @@
 import type { Pool, PoolClient } from "pg";
 import { WorkshopProjectDependencyBaseQueries } from "@/generated/db/workshop_project_dependency.queries";
 
+export interface DependencyEdgeRef {
+  curseforgeProjectId: number;
+  dependsOnProjectId: number;
+}
+
 export interface WorkshopDependencyGroup {
   dependsOnProjectId: number;
   requiredByProjectIds: number[];
@@ -65,6 +70,46 @@ export class WorkshopProjectDependencyQueries extends WorkshopProjectDependencyB
     return new Map(
       result.rows.map((row) => [row.depends_on_project_id, row.demand]),
     );
+  }
+
+  /**
+   * Distinct edges of the given relation pointing at `dependsOnProjectIds`
+   * whose subject is a member of the modpack, across the given workshops.
+   */
+  async getEdgesFromPackMembers(
+    workshopIds: number[],
+    dependsOnProjectIds: number[],
+    relationType: number,
+    modpackId: number,
+  ): Promise<DependencyEdgeRef[]> {
+    if (workshopIds.length === 0 || dependsOnProjectIds.length === 0) {
+      return [];
+    }
+
+    const query = `
+      SELECT DISTINCT e.curseforge_project_id, e.depends_on_project_id
+      FROM ${this.table} e
+      WHERE e.workshop_id = ANY($1)
+        AND e.depends_on_project_id = ANY($2)
+        AND e.relation_type = $3
+        AND EXISTS (
+          SELECT 1 FROM modpack_mod mm
+          WHERE mm.modpack_id = $4
+            AND mm.curseforge_project_id = e.curseforge_project_id
+        )`;
+    const result = await this.runQuery<{
+      curseforge_project_id: number;
+      depends_on_project_id: number;
+    }>("dependency edges from pack members", query, [
+      workshopIds,
+      dependsOnProjectIds,
+      relationType,
+      modpackId,
+    ]);
+    return result.rows.map((row) => ({
+      curseforgeProjectId: row.curseforge_project_id,
+      dependsOnProjectId: row.depends_on_project_id,
+    }));
   }
 
   /**

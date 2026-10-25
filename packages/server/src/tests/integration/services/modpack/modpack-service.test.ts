@@ -1909,6 +1909,32 @@ describe("ModpackService.getPackMods", () => {
       suggestionWorkshopName: null,
     });
   });
+
+  it("names a requiring member once when two workshops of the pack hold the same edge", async () => {
+    const modpack = await seedModpack(ctx);
+    const first = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const second = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const subject = await seedPackMod(ctx, first);
+    const pulled = await seedPackMod(ctx, first, { origin: "dependency" });
+    const outsider = await seedProject(ctx);
+    for (const workshop of [first, second]) {
+      await seedRequiredDependency(
+        workshop,
+        subject.curseforgeProjectId,
+        pulled.curseforgeProjectId,
+      );
+    }
+    await seedRequiredDependency(second, outsider, pulled.curseforgeProjectId);
+
+    const rows = await modpackService.getPackMods(modpack.id);
+
+    expect(rows.find((row) => row.id === pulled.id)?.requiredBy).toEqual([
+      {
+        curseforgeProjectId: subject.curseforgeProjectId,
+        name: `Vitest Mod ${subject.curseforgeProjectId}`,
+      },
+    ]);
+  });
 });
 
 describe("ModpackService release history", () => {
@@ -2405,6 +2431,23 @@ describe("ModpackService.listModpacks", () => {
 
     expect(slugById.get(offered.id)).toBe("vitest-listed");
     expect(slugById.get(plain.id)).toBeNull();
+  });
+
+  it("counts members and live members per modpack, zero for an empty one", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const empty = await seedModpack(ctx);
+    await seedPackMod(ctx, workshop, { liveAt: new Date() });
+    await seedPackMod(ctx, workshop, { liveAt: new Date() });
+    await seedPackMod(ctx, workshop);
+
+    const rows = await modpackService.listModpacks();
+    const byId = new Map(rows.map((row) => [row.id, row]));
+
+    expect(byId.get(workshop.modpackId)).toMatchObject({
+      modCount: 3,
+      liveCount: 2,
+    });
+    expect(byId.get(empty.id)).toMatchObject({ modCount: 0, liveCount: 0 });
   });
 });
 
