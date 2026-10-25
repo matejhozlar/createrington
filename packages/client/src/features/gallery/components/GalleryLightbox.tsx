@@ -60,7 +60,7 @@ export function GalleryLightbox({
 
         <div
           onClick={handleStageClick}
-          className="flex min-h-0 flex-1 items-center justify-center bg-black/50 p-2 [container-type:size] sm:p-6"
+          className="relative flex min-h-0 flex-1 items-center justify-center bg-black/50 p-2 [container-type:size] sm:p-6"
         >
           <div
             style={{
@@ -68,7 +68,7 @@ export function GalleryLightbox({
               width: `min(${widthLimits.join(", ")})`,
               backgroundImage: `url("${item.images.thumb}")`,
             }}
-            className="relative overflow-hidden rounded-lg bg-muted bg-contain bg-center bg-no-repeat shadow-lg"
+            className="overflow-hidden rounded-lg bg-muted bg-contain bg-center bg-no-repeat shadow-lg"
           >
             <img
               key={item.id}
@@ -78,19 +78,19 @@ export function GalleryLightbox({
               height={item.height ?? undefined}
               className="h-full w-full object-contain"
             />
-
-            <DialogClose asChild>
-              <Button
-                type="button"
-                variant="secondary"
-                size="icon"
-                aria-label="Close"
-                className="absolute right-2 top-2 rounded-full opacity-80 hover:opacity-100 sm:right-3 sm:top-3"
-              >
-                <X className="size-5" />
-              </Button>
-            </DialogClose>
           </div>
+
+          <DialogClose asChild>
+            <Button
+              type="button"
+              variant="secondary"
+              size="icon"
+              aria-label="Close"
+              className="absolute right-2 top-2 rounded-full opacity-80 shadow-md hover:opacity-100 sm:right-3 sm:top-3"
+            >
+              <X className="size-5" />
+            </Button>
+          </DialogClose>
         </div>
 
         <div className="max-h-[50dvh] shrink-0 overflow-y-auto border-t bg-background">
