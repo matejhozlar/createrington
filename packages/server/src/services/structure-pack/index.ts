@@ -12,14 +12,22 @@ import type {
 import type { StructurePackWithMods } from "@/db/queries/structure/pack";
 
 export class StructurePackService {
-  async createPack(name: string, description?: string): Promise<StructurePack> {
+  async createPack(
+    name: string,
+    description?: string,
+    options: { enabled?: boolean } = {},
+  ): Promise<StructurePack> {
     const existing = await Q.structure.pack.find({ name });
     if (existing && !existing.deletedAt) {
       throw new ConflictError(
         `A structure pack named "${name}" already exists`,
       );
     }
-    return Q.structure.pack.createAndReturn({ name, description });
+    return Q.structure.pack.createAndReturn({
+      name,
+      description,
+      ...(options.enabled !== undefined && { enabled: options.enabled }),
+    });
   }
 
   async updatePack(
@@ -77,6 +85,16 @@ export class StructurePackService {
   ): Promise<StructurePackMod> {
     await this.ensurePackExists(packId);
     return Q.structure.pack.mod.createAndReturn({ ...data, packId });
+  }
+
+  async addMods(
+    packId: number,
+    mods: Array<Omit<StructurePackModCreate, "packId">>,
+  ): Promise<void> {
+    await this.ensurePackExists(packId);
+    await Q.structure.pack.mod.createMany(
+      mods.map((data) => ({ ...data, packId })),
+    );
   }
 
   async removeMod(packId: number, modId: number): Promise<void> {

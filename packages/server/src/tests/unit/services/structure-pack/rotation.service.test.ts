@@ -59,8 +59,9 @@ vi.mock("@/db", () => {
         },
         boost: {
           findAll: async () => openBoosts,
-          delete: async ({ id }: { id: number }) => {
-            boostDeletes.push(id);
+          deleteAll: async ({ id }: { id: { $in: number[] } }) => {
+            boostDeletes.push(...id.$in);
+            return id.$in.length;
           },
         },
       },

@@ -134,13 +134,11 @@ export class LeaderboardBoardService {
     return {
       contestedKeys: 0,
       rows: withRanks(
-        rows
-          .filter((row) => row.totalSeconds > 0)
-          .map((row) => ({
-            minecraftUuid: row.playerMinecraftUuid,
-            minecraftUsername: row.minecraftUsername,
-            value: row.totalSeconds,
-          })),
+        rows.map((row) => ({
+          minecraftUuid: row.playerMinecraftUuid,
+          minecraftUsername: row.minecraftUsername,
+          value: row.totalSeconds,
+        })),
       ),
     };
   }

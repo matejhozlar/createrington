@@ -251,17 +251,7 @@ export class PlayerMinecraftStatTotalQueries extends PlayerMinecraftStatTotalBas
    */
   async getRecordLeaderboard(limit?: number): Promise<RecordLeaderboard> {
     const query = `
-      WITH ranked AS (
-        SELECT
-          t.minecraft_uuid,
-          t.stat_key_id,
-          rank() OVER (PARTITION BY t.stat_key_id ORDER BY t.value DESC) AS position,
-          count(*) OVER (PARTITION BY t.stat_key_id) AS holders
-        FROM ${this.table} t
-        JOIN player_minecraft_stat_key k ON k.id = t.stat_key_id
-        WHERE k.category = ANY($1)
-          AND NOT (k.category = 'minecraft:custom' AND k.item = ANY($2))
-      )
+      WITH ranked AS (${this.recordRankedSql()})
       SELECT
         p.minecraft_uuid AS "minecraftUuid",
         p.minecraft_username AS "minecraftUsername",
@@ -298,6 +288,53 @@ export class PlayerMinecraftStatTotalQueries extends PlayerMinecraftStatTotalBas
       })),
       contestedKeys: result.rows[0]?.contestedKeys ?? 0,
     };
+  }
+
+  /** The players tied for the most records, by username; empty when nobody holds one. */
+  async getRecordLeaders(): Promise<RecordLeaderboardEntry[]> {
+    const query = `
+      WITH ranked AS (${this.recordRankedSql()}),
+      leaders AS (
+        SELECT
+          p.minecraft_uuid,
+          p.minecraft_username,
+          p.discord_id,
+          count(*)::int AS records
+        FROM ranked r
+        JOIN player p ON p.minecraft_uuid = r.minecraft_uuid
+        WHERE r.position = 1 AND r.holders >= $3
+        GROUP BY p.minecraft_uuid, p.minecraft_username, p.discord_id
+      )
+      SELECT
+        minecraft_uuid AS "minecraftUuid",
+        minecraft_username AS "minecraftUsername",
+        discord_id AS "discordId",
+        records
+      FROM leaders
+      WHERE records = (SELECT max(records) FROM leaders)
+      ORDER BY minecraft_username ASC
+    `;
+
+    const result = await this.runQuery<RecordLeaderboardEntry>(
+      "get record leaders",
+      query,
+      [RECORD_CATEGORIES, RECORD_CUSTOM_BLOCKLIST, RECORD_MIN_HOLDERS],
+    );
+    return result.rows;
+  }
+
+  private recordRankedSql(): string {
+    return `
+        SELECT
+          t.minecraft_uuid,
+          t.stat_key_id,
+          rank() OVER (PARTITION BY t.stat_key_id ORDER BY t.value DESC) AS position,
+          count(*) OVER (PARTITION BY t.stat_key_id) AS holders
+        FROM ${this.table} t
+        JOIN player_minecraft_stat_key k ON k.id = t.stat_key_id
+        WHERE k.category = ANY($1)
+          AND NOT (k.category = 'minecraft:custom' AND k.item = ANY($2))
+      `;
   }
 
   /** Every player holding the stat, highest total first (ties by username). */

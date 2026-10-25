@@ -191,12 +191,13 @@ export class GalleryService {
   /** Withdraws every pending submission harvested from the given Discord message and deletes its stored originals. */
   async withdrawByMessage(messageId: string): Promise<number> {
     const pending = await this.pendingFromMessage(messageId);
+    if (pending.length === 0) return 0;
 
+    await Q.gallery.submission.updateAll(
+      { status: "withdrawn" },
+      { id: { $in: pending.map((submission) => submission.id) } },
+    );
     for (const submission of pending) {
-      await Q.gallery.submission.update(
-        { id: submission.id },
-        { status: "withdrawn" },
-      );
       await this.removeOriginal(submission.originalPath);
     }
 
@@ -213,10 +214,12 @@ export class GalleryService {
   async updateCaption(messageId: string, content: string): Promise<number> {
     const caption = galleryCaption(content);
     const pending = await this.pendingFromMessage(messageId);
+    if (pending.length === 0) return 0;
 
-    for (const submission of pending) {
-      await Q.gallery.submission.update({ id: submission.id }, { caption });
-    }
+    await Q.gallery.submission.updateAll(
+      { caption },
+      { id: { $in: pending.map((submission) => submission.id) } },
+    );
 
     return pending.length;
   }
@@ -331,12 +334,12 @@ export class GalleryService {
             },
           );
 
-          for (const playerMinecraftUuid of creditUuids) {
-            await tx.gallery.submission.credit.create({
+          await tx.gallery.submission.credit.createMany(
+            Array.from(creditUuids, (playerMinecraftUuid) => ({
               submissionId: id,
               playerMinecraftUuid,
-            });
-          }
+            })),
+          );
 
           return row;
         }),

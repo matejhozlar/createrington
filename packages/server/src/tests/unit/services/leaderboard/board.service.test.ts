@@ -41,12 +41,11 @@ beforeEach(() => {
 });
 
 describe("LeaderboardBoardService", () => {
-  it("ranks playtime with competition numbering and drops players without playtime", async () => {
+  it("ranks playtime with competition numbering", async () => {
     db.playtime.mockResolvedValue([
       playtimeRow("alice", 3600),
       playtimeRow("bob", 3600),
       playtimeRow("carol", 1800),
-      playtimeRow("dave", 0),
     ]);
 
     const { rows } = await new LeaderboardBoardService().getBoard("playtime");

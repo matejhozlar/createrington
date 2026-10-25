@@ -613,13 +613,12 @@ export class WaitlistService {
 
     if ((await waitlistRepo.getFreeSlots()) <= 0) return 0;
 
-    const queued = (
-      await Q.waitlist.entry.findAll(
-        { status: "queued" },
-        { orderBy: "queuedAt", orderDirection: "asc", limit: PROMOTION_BATCH },
-      )
-    ).sort(
-      (a, b) => a.queuedAt.getTime() - b.queuedAt.getTime() || a.id - b.id,
+    const queued = await Q.waitlist.entry.findAll(
+      { status: "queued" },
+      {
+        orderBy: [{ field: "queuedAt" }, { field: "id" }],
+        limit: PROMOTION_BATCH,
+      },
     );
 
     let promoted = 0;

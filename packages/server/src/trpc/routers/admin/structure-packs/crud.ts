@@ -129,20 +129,20 @@ export const structurePackCrudProcedures = {
           const pack = await structurePackService.createPack(
             packData.name,
             packData.description ?? undefined,
+            { enabled: false },
           );
 
-          await structurePackService.toggleEnabled(pack.id, false);
-
-          for (const mod of packData.mods) {
-            await structurePackService.addMod(pack.id, {
+          await structurePackService.addMods(
+            pack.id,
+            packData.mods.map((mod) => ({
               curseforgeModId: mod.curseforgeModId,
               curseforgeFileId: mod.curseforgeFileId,
               fileName: mod.fileName,
               modName: mod.modName,
               modUrl: mod.modUrl ?? undefined,
               thumbnailUrl: mod.thumbnailUrl ?? undefined,
-            });
-          }
+            })),
+          );
 
           created.push(packData.name);
         } catch {

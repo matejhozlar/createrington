@@ -13,24 +13,26 @@ export class PlayerTicketRepository extends BasePlayerRepository {
     super();
   }
 
-  /** Paginated tickets created by the player, newest first. */
-  async getAll(
+  /** One page of the player's tickets, newest first, with the total count. */
+  async getPage(
     identifier: PlayerIdentifier,
     limit: number = 20,
     offset: number = 0,
-  ): Promise<Ticket[]> {
+  ): Promise<{ tickets: Ticket[]; total: number }> {
     const uuid = await this.resolvePlayerUuid(identifier);
     const player = await Q.player.get({ minecraftUuid: uuid });
+    const filters = { creatorDiscordId: player.discordId };
 
-    return await Q.ticket.findAll(
-      { creatorDiscordId: player.discordId },
-      {
+    const [tickets, total] = await Promise.all([
+      Q.ticket.findAll(filters, {
         limit,
         offset,
         orderBy: DatabaseTable.TICKET.CAMEL_FIELDS.CREATED_AT,
         orderDirection: "desc",
-      },
-    );
+      }),
+      Q.ticket.count(filters),
+    ]);
+    return { tickets, total };
   }
 
   /** Total ticket count created by the player. */

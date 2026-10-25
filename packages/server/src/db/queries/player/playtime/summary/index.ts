@@ -441,6 +441,7 @@ export class PlayerPlaytimeSummaryQueries extends PlayerPlaytimeSummaryBaseQueri
       FROM ${this.table} s
       JOIN player p ON p.minecraft_uuid = s.player_minecraft_uuid
       GROUP BY p.discord_id, p.minecraft_username, s.player_minecraft_uuid
+      HAVING SUM(s.total_seconds) > 0
       ORDER BY total_seconds DESC
       LIMIT $1`;
 

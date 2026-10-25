@@ -83,16 +83,14 @@ export const accountRouter = router({
     })
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      const sessions = await Q.auth.session.getActiveSessions(
+      const revoked = await Q.auth.session.revokeOwnedById(
+        input.id,
         ctx.user.discordId,
       );
-      const target = sessions.find((s) => s.id === input.id);
-
-      if (!target) {
+      if (!revoked) {
         throw trpcError.notFound("Session not found");
       }
 
-      await Q.auth.session.revokeById(input.id);
       return { success: true };
     }),
 
