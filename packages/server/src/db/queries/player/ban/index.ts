@@ -12,6 +12,11 @@ export interface BanStatistics {
   expired: number;
 }
 
+const EXPIRED_BAN_WHERE = `ban_type = 'temporary'
+        AND unbanned = false
+        AND expires_at IS NOT NULL
+        AND expires_at <= NOW()`;
+
 /**
  * Custom queries for player_ban table
  *
@@ -223,14 +228,20 @@ export class PlayerBanQueries extends PlayerBanBaseQueries {
   async getExpiredBans(): Promise<PlayerBan[]> {
     const query = `
       SELECT * FROM ${this.table}
-      WHERE ban_type = 'temporary'
-        AND unbanned = false
-        AND expires_at IS NOT NULL
-        AND expires_at <= NOW()
+      WHERE ${EXPIRED_BAN_WHERE}
       ORDER BY expires_at ASC`;
 
     const result = await this.runQuery<PlayerBan>("get expired bans", query);
     return this.mapRowsToEntities(result.rows);
+  }
+
+  /** How many temporary bans have run out without being lifted yet. */
+  async countExpiredBans(): Promise<number> {
+    const result = await this.runQuery<{ count: string }>(
+      "count expired bans",
+      `SELECT COUNT(*) AS count FROM ${this.table} WHERE ${EXPIRED_BAN_WHERE}`,
+    );
+    return Number(result.rows[0]?.count ?? 0);
   }
 
   /**
