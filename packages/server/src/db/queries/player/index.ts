@@ -1,5 +1,27 @@
 import { Pool, type PoolClient } from "pg";
+import type { Player, PlayerFilters } from "@createrington/shared/db";
 import { PlayerBaseQueries } from "@/generated/db/player.queries";
+
+export type ViolationRequirement = "strikes" | "bans" | "both" | "either";
+
+const ACTIVE_STRIKE_EXISTS = `EXISTS (
+  SELECT 1 FROM player_strike s
+  WHERE s.player_minecraft_uuid = player.minecraft_uuid AND s.removed = false
+)`;
+
+const ACTIVE_BAN_EXISTS = `EXISTS (
+  SELECT 1 FROM player_ban b
+  WHERE b.player_minecraft_uuid = player.minecraft_uuid
+    AND b.unbanned = false
+    AND (b.expires_at IS NULL OR b.expires_at > NOW())
+)`;
+
+const VIOLATION_CONDITIONS: Record<ViolationRequirement, string> = {
+  strikes: ACTIVE_STRIKE_EXISTS,
+  bans: ACTIVE_BAN_EXISTS,
+  both: `${ACTIVE_STRIKE_EXISTS} AND ${ACTIVE_BAN_EXISTS}`,
+  either: `(${ACTIVE_STRIKE_EXISTS} OR ${ACTIVE_BAN_EXISTS})`,
+};
 
 /**
  * Custom queries for player table
@@ -11,6 +33,46 @@ import { PlayerBaseQueries } from "@/generated/db/player.queries";
 export class PlayerQueries extends PlayerBaseQueries {
   constructor(db: Pool | PoolClient) {
     super(db);
+  }
+
+  /**
+   * One page of players matching `filters` that also carry the required
+   * active violations, with the total matching count.
+   */
+  async listWithViolations(
+    filters: PlayerFilters,
+    violation: ViolationRequirement,
+    options: {
+      limit: number;
+      offset: number;
+      orderBy: keyof Player;
+      orderDirection: "asc" | "desc";
+    },
+  ): Promise<{ rows: Player[]; total: number }> {
+    const { whereClause, params } = this.buildFilterClause(filters);
+    const where = `${whereClause} AND ${VIOLATION_CONDITIONS[violation]}`;
+    const orderColumn = this.getColumnName(options.orderBy as string);
+    const direction = options.orderDirection === "desc" ? "DESC" : "ASC";
+
+    const [rows, count] = await Promise.all([
+      this.runQuery(
+        "list players with violations",
+        `SELECT * FROM ${this.table}
+         WHERE ${where}
+         ORDER BY ${orderColumn} ${direction}
+         LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+        [...params, options.limit, options.offset],
+      ),
+      this.runQuery<{ total: string }>(
+        "count players with violations",
+        `SELECT COUNT(*) AS total FROM ${this.table} WHERE ${where}`,
+        params,
+      ),
+    ]);
+    return {
+      rows: this.mapRowsToEntities(rows.rows),
+      total: Number(count.rows[0]?.total ?? 0),
+    };
   }
 
   /**
