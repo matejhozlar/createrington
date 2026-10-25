@@ -170,24 +170,6 @@ export class PlayerStrikeQueries extends PlayerStrikeBaseQueries {
   }
 
   /**
-   * Get all player UUIDs that have active strikes
-   *
-   * @returns Promise resolving to array of player UUIDs
-   */
-  async getPlayersWithActiveStrikes(): Promise<string[]> {
-    const query = `
-      SELECT DISTINCT player_minecraft_uuid
-      FROM ${this.table}
-      WHERE removed = false`;
-
-    const result = await this.runQuery<{ player_minecraft_uuid: string }>(
-      "get players with active strikes",
-      query,
-    );
-    return result.rows.map((row) => row.player_minecraft_uuid);
-  }
-
-  /**
    * Get strike statistics for a player
    *
    * @param playerMinecraftUuid - Player Minecraft UUID to get statistics for

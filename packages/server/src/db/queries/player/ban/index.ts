@@ -377,26 +377,4 @@ export class PlayerBanQueries extends PlayerBanBaseQueries {
 
     return counts;
   }
-
-  /**
-   * Get all player UUIDs that have active bans
-   *
-   * @returns Promise resolving to array of player UUIDs
-   */
-  async getPlayersWithActiveBans(): Promise<string[]> {
-    const query = `
-      SELECT DISTINCT player_minecraft_uuid
-      FROM ${this.table}
-      WHERE unbanned = false
-        AND (
-          expires_at IS NULL OR
-          expires_at > NOW()
-        )`;
-
-    const result = await this.runQuery<{ player_minecraft_uuid: string }>(
-      "get players with active bans",
-      query,
-    );
-    return result.rows.map((row) => row.player_minecraft_uuid);
-  }
 }
