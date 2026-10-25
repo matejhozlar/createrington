@@ -113,6 +113,31 @@ export class WorkshopProjectDependencyQueries extends WorkshopProjectDependencyB
   }
 
   /**
+   * Delete the edges of a workshop whose subject has neither a modpack row
+   * nor a live (non-rejected) suggestion. Returns how many were removed.
+   */
+  async deleteStale(workshopId: number, modpackId: number): Promise<number> {
+    const result = await this.runQuery(
+      "delete stale workshop dependency edges",
+      `DELETE FROM ${this.table} e
+       WHERE e.workshop_id = $1
+         AND NOT EXISTS (
+           SELECT 1 FROM modpack_mod mm
+           WHERE mm.modpack_id = $2
+             AND mm.curseforge_project_id = e.curseforge_project_id
+         )
+         AND NOT EXISTS (
+           SELECT 1 FROM workshop_mod wm
+           WHERE wm.workshop_id = $1
+             AND wm.curseforge_project_id = e.curseforge_project_id
+             AND wm.status <> 'rejected'
+         )`,
+      [workshopId, modpackId],
+    );
+    return result.rowCount ?? 0;
+  }
+
+  /**
    * One row per depended-on project of a workshop: which projects require
    * it and how many list it as optional.
    */

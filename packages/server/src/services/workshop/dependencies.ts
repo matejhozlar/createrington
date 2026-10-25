@@ -66,25 +66,25 @@ export async function resolveProjectDependencies(
       : [];
   const cachedIds = new Set(cached.map((project) => project.id));
 
-  for (const subject of withFile) {
-    const deps = (depsByFile.get(subject.fileId!) ?? []).filter(
-      (dep) => !basePackIds.has(dep.modId) && cachedIds.has(dep.modId),
-    );
-    await db.inTransaction(async (tx) => {
-      await tx.workshop.project.dependency.deleteAll({
+  const edges = withFile.flatMap((subject) =>
+    (depsByFile.get(subject.fileId!) ?? [])
+      .filter((dep) => !basePackIds.has(dep.modId) && cachedIds.has(dep.modId))
+      .map((dep) => ({
         workshopId: workshop.id,
         curseforgeProjectId: subject.curseforgeProjectId,
-      });
-      for (const dep of deps) {
-        await tx.workshop.project.dependency.create({
-          workshopId: workshop.id,
-          curseforgeProjectId: subject.curseforgeProjectId,
-          dependsOnProjectId: dep.modId,
-          relationType: dep.relationType,
-        });
-      }
+        dependsOnProjectId: dep.modId,
+        relationType: dep.relationType,
+      })),
+  );
+  await db.inTransaction(async (tx) => {
+    await tx.workshop.project.dependency.deleteAll({
+      workshopId: workshop.id,
+      curseforgeProjectId: {
+        $in: withFile.map((subject) => subject.curseforgeProjectId),
+      },
     });
-  }
+    await tx.workshop.project.dependency.createMany(edges);
+  });
 }
 
 /**
@@ -161,25 +161,10 @@ export async function pruneStaleDependencyEdges(
   workshop: Workshop,
 ): Promise<void> {
   try {
-    const [edges, packRows, suggestions] = await Promise.all([
-      Q.workshop.project.dependency.findAll({ workshopId: workshop.id }),
-      Q.modpack.mod.findAll({ modpackId: workshop.modpackId }),
-      Q.workshop.mod.findAll({
-        workshopId: workshop.id,
-        status: { $ne: "rejected" },
-      }),
-    ]);
-    const liveProjectIds = new Set([
-      ...packRows.map((row) => row.curseforgeProjectId),
-      ...suggestions.map((row) => row.curseforgeProjectId),
-    ]);
-    const stale = edges.filter(
-      (edge) => !liveProjectIds.has(edge.curseforgeProjectId),
+    await Q.workshop.project.dependency.deleteStale(
+      workshop.id,
+      workshop.modpackId,
     );
-    if (stale.length === 0) return;
-    await Q.workshop.project.dependency.deleteAll({
-      id: { $in: stale.map((edge) => edge.id) },
-    });
   } catch (error) {
     logger.warn(
       `Dependency edge cleanup failed for workshop #${workshop.id}:`,

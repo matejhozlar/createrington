@@ -131,27 +131,27 @@ export class PlayerPlaytimeSummaryQueries extends PlayerPlaytimeSummaryBaseQueri
     );
   }
 
-  /**
-   * Overwrites a player's server total with an authoritative value (the
-   * vanilla play_time stat). Only existing rows are touched; returns whether
-   * one was updated.
-   *
-   * @param playerMinecraftUuid - Player's Minecraft UUID
-   * @param serverId - Server the total belongs to
-   * @param totalSeconds - New total
-   */
-  async setTotalSeconds(
-    playerMinecraftUuid: string,
+  /** Overwrite the stored totals of several players on one server; returns how many rows changed. */
+  async setTotalSecondsMany(
     serverId: number,
-    totalSeconds: number,
-  ): Promise<boolean> {
-    const result = await this.db.query(
-      `UPDATE ${this.table}
-       SET total_seconds = $3, updated_at = NOW()
-       WHERE player_minecraft_uuid = $1 AND server_id = $2`,
-      [playerMinecraftUuid, serverId, totalSeconds],
+    entries: Array<{ playerMinecraftUuid: string; totalSeconds: number }>,
+  ): Promise<number> {
+    if (entries.length === 0) return 0;
+
+    const result = await this.runQuery(
+      "set playtime totals",
+      `UPDATE ${this.table} s
+       SET total_seconds = d.total_seconds, updated_at = NOW()
+       FROM UNNEST($2::uuid[], $3::bigint[]) AS d(player_minecraft_uuid, total_seconds)
+       WHERE s.server_id = $1
+         AND s.player_minecraft_uuid = d.player_minecraft_uuid`,
+      [
+        serverId,
+        entries.map((entry) => entry.playerMinecraftUuid),
+        entries.map((entry) => entry.totalSeconds),
+      ],
     );
-    return (result.rowCount ?? 0) > 0;
+    return result.rowCount ?? 0;
   }
 
   /**
