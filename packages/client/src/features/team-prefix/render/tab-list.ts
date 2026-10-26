@@ -30,6 +30,7 @@ const LOGO_WIDTH = 159;
 const LOGO_HEIGHT = 44;
 const LOGO_LINE_WIDTH = 160;
 const SCREEN_HEIGHT = 1080;
+const FILL_MARGIN = 4;
 
 function pingLevel(ms: number): number {
   if (ms < 150) return 4;
@@ -94,13 +95,17 @@ export function renderTabList(
     guiScale,
     backdrop,
     assets,
-    minCssWidth,
+    cssWidth,
+    cssHeight,
+    logo,
   }: {
     rows: TabRow[];
     guiScale: number;
     backdrop: HTMLImageElement | null;
     assets: PlateAssets;
-    minCssWidth: number;
+    cssWidth: number;
+    cssHeight?: number;
+    logo: boolean;
   },
 ) {
   const lines = rows.map((row) =>
@@ -108,29 +113,65 @@ export function renderTabList(
   );
   const nameWidth = Math.max(0, ...lines.map((line) => line.width));
   const rowWidth = HEAD_ADVANCE + nameWidth + PING_SPACE;
-  const listWidth = Math.max(rowWidth, LOGO_LINE_WIDTH);
   const dpr = window.devicePixelRatio || 1;
-  const screenWidth = Math.max(
-    listWidth + 2 + SIDE_MARGIN * 2,
-    Math.floor((minCssWidth * dpr) / guiScale),
-  );
+  const fittingScale = (listWidth: number) => {
+    let scale = guiScale;
+    while (
+      scale > 1 &&
+      ((listWidth + 2 + SIDE_MARGIN * 2) * scale) / dpr > cssWidth
+    ) {
+      scale--;
+    }
+    return scale;
+  };
+  const fill = cssHeight !== undefined;
+  const logoWidth = Math.max(rowWidth, LOGO_LINE_WIDTH);
+  const showLogo =
+    !fill && logo && fittingScale(logoWidth) === fittingScale(rowWidth);
+  const listWidth = showLogo ? logoWidth : rowWidth;
+  const listHeight = rows.length * ROW_STEP + 1;
+
+  const scale = fill
+    ? Math.max(
+        1,
+        Math.floor(
+          Math.min(
+            (cssWidth * dpr) / (listWidth + 2 + FILL_MARGIN * 2),
+            (cssHeight * dpr) / (listHeight + FILL_MARGIN * 2),
+          ),
+        ),
+      )
+    : fittingScale(listWidth);
+  const screenWidth = fill
+    ? Math.ceil((cssWidth * dpr) / scale)
+    : Math.max(
+        listWidth + 2 + SIDE_MARGIN * 2,
+        Math.floor((cssWidth * dpr) / scale),
+      );
   const centre = Math.floor(screenWidth / 2);
   const half = Math.floor(listWidth / 2);
 
   const headerTop = LIST_TOP;
   const headerBottom = headerTop + HEADER_LINES * ROW_STEP;
-  const rowsTop = headerBottom + 1;
+  const fillHeight = fill ? Math.ceil((cssHeight * dpr) / scale) : 0;
+  const rowsTop = fill
+    ? Math.floor((fillHeight - listHeight) / 2) + 1
+    : showLogo
+      ? headerBottom + 1
+      : LIST_TOP;
   const rowsBottom = rowsTop + rows.length * ROW_STEP;
-  const screenHeight = rowsBottom + BOTTOM_MARGIN;
+  const screenHeight = fill ? fillHeight : rowsBottom + BOTTOM_MARGIN;
 
   const fb = new Framebuffer(screenWidth, screenHeight);
-  fb.fill(
-    centre - half - 1,
-    headerTop - 1,
-    centre + half + 1,
-    headerBottom,
-    LIST_BACKGROUND,
-  );
+  if (showLogo) {
+    fb.fill(
+      centre - half - 1,
+      headerTop - 1,
+      centre + half + 1,
+      headerBottom,
+      LIST_BACKGROUND,
+    );
+  }
   fb.fill(
     centre - half - 1,
     rowsTop - 1,
@@ -158,13 +199,13 @@ export function renderTabList(
 
   const ctx = sizeCanvas(
     canvas,
-    (screenWidth * guiScale) / dpr,
-    (screenHeight * guiScale) / dpr,
+    (screenWidth * scale) / dpr,
+    (screenHeight * scale) / dpr,
     dpr,
   );
   if (!ctx) return;
-  const width = screenWidth * guiScale;
-  const height = screenHeight * guiScale;
+  const width = screenWidth * scale;
+  const height = screenHeight * scale;
   if (backdrop) {
     ctx.drawImage(backdropLayer(backdrop, width, height), 0, 0);
   } else {
@@ -172,15 +213,16 @@ export function renderTabList(
     ctx.fillRect(0, 0, width, height);
   }
   ctx.drawImage(fb.toCanvas(), 0, 0, width, height);
+  if (!showLogo) return;
 
   const logoX = centre - LOGO_LINE_WIDTH / 2;
   const drawLogo = (image: CanvasImageSource, offset: number) =>
     ctx.drawImage(
       image,
-      (logoX + offset) * guiScale,
-      (headerTop + offset) * guiScale,
-      LOGO_WIDTH * guiScale,
-      LOGO_HEIGHT * guiScale,
+      (logoX + offset) * scale,
+      (headerTop + offset) * scale,
+      LOGO_WIDTH * scale,
+      LOGO_HEIGHT * scale,
     );
   drawLogo(assets.logoShadow, 1);
   drawLogo(assets.logo, 0);
@@ -195,6 +237,7 @@ export function renderPlateStrip(
     skin,
     zoom,
     assets,
+    bare = false,
   }: {
     design: PlateDesign;
     name?: string;
@@ -202,16 +245,19 @@ export function renderPlateStrip(
     skin?: Bitmap;
     zoom: number;
     assets: PlateAssets;
+    bare?: boolean;
   },
 ) {
-  const pad = 2;
+  const pad = bare ? 0 : 2;
   const head = skin ? HEAD_ADVANCE : 0;
   const line = tabNameLine(name ?? "", nameColor ?? 0xffffff, design, assets);
   const width = pad * 2 + head + (name ? line.width : PLATE_WIDTH + 1);
   const height = pad * 2 + ROW_HEIGHT + 1;
   const fb = new Framebuffer(width, height);
-  fb.fill(0, 0, width, height, 0xff1b1a1f);
-  fb.fill(0, pad, width, pad + ROW_HEIGHT, ROW_BACKGROUND);
+  if (!bare) {
+    fb.fill(0, 0, width, height, 0xff1b1a1f);
+    fb.fill(0, pad, width, pad + ROW_HEIGHT, ROW_BACKGROUND);
+  }
   if (skin) drawHead(fb, skin, pad, pad);
   fb.text(line.ops, pad + head, pad);
 

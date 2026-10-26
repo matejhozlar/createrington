@@ -48,6 +48,10 @@ function contrast(a: number, b: number): number {
   return (light + 0.05) / (dark + 0.05);
 }
 
+export function readsClearly(plate: number, letters: number): boolean {
+  return contrast(plate, letters) >= MIN_CONTRAST;
+}
+
 function readable(colors: RandomColors, tag: string): boolean {
   const plateFade = colors.plateFadeOn ? colors.plateFade : null;
   const letterFade = colors.letterFadeOn ? colors.letterFade : null;

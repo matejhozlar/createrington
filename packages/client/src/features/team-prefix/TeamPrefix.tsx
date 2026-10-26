@@ -1,12 +1,32 @@
-import { useCallback, useDeferredValue, useMemo } from "react";
-import { designCode } from "@createrington/shared/team-prefix";
-import { PageHeader } from "@/components/page-header";
+import {
+  useCallback,
+  useDeferredValue,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import {
+  designCode,
+  type PlateDesign,
+} from "@createrington/shared/team-prefix";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/auth";
+import { useToastActions } from "@/hooks/use-toast";
 import { mcHeadsSkin } from "@/lib/external-urls";
-import { CodeCard } from "./components/CodeCard";
-import { DesignCard } from "./components/DesignCard";
+import { cn } from "@/lib/utils";
+import { ColoursStep } from "./components/ColoursStep";
+import { HeroBackdrop } from "./components/HeroBackdrop";
+import { PlateCloseUp } from "./components/PlateCloseUp";
+import { PreviewSettings } from "./components/PreviewSettings";
+import { PreviewStage, type StageMode } from "./components/PreviewStage";
+import { SendStep } from "./components/SendStep";
+import { StepActions } from "./components/StepActions";
+import { StepHeader, type Step } from "./components/StepHeader";
+import { StickyPlateBar } from "./components/StickyPlateBar";
 import { TabListPreview } from "./components/TabListPreview";
-import type { Backdrop, GuiScale } from "./presets";
+import { TagStep } from "./components/TagStep";
+import { RANKS } from "./presets";
+import { useElementWidth } from "./hooks/use-element-width";
 import { useLoadedImage } from "./hooks/use-loaded-image";
 import { usePlateAssets } from "./hooks/use-plate-assets";
 import {
@@ -15,8 +35,17 @@ import {
   usePlateDraft,
 } from "./hooks/use-plate-draft";
 import { usePreviewSettings } from "./hooks/use-preview-settings";
-import { useSharedDesign } from "./hooks/use-shared-design";
+import { shareLink, useSharedDesign } from "./hooks/use-shared-design";
 import { bitmapOf, type Bitmap } from "./render/assets";
+
+const WIDE_LAYOUT = 1024;
+const HEADER_OVERLAYS = [
+  "bg-linear-to-t from-background from-[8%] to-transparent to-70%",
+];
+const ZOOMS = {
+  wide: { plate: 10, line: 3 },
+  narrow: { plate: 7, line: 2 },
+} as const;
 
 function readSkin(image: HTMLImageElement | null): Bitmap | undefined {
   if (!image) return undefined;
@@ -29,48 +58,118 @@ function readSkin(image: HTMLImageElement | null): Bitmap | undefined {
 
 export function TeamPrefix() {
   const { user } = useAuth();
+  const toast = useToastActions();
   const { assets, failed } = usePlateAssets();
   const { draft, update, load } = usePlateDraft();
-  useSharedDesign(load);
   const { settings, update: updateSettings } = usePreviewSettings();
   const skinImage = useLoadedImage(
     user?.minecraftUuid ? mcHeadsSkin(user.minecraftUuid) : null,
   );
   const skin = useMemo(() => readSkin(skinImage), [skinImage]);
+  const { ref: rootRef, width } = useElementWidth<HTMLDivElement>();
+  const wide = width >= WIDE_LAYOUT;
+  const zooms = wide ? ZOOMS.wide : ZOOMS.narrow;
+
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [step, setStep] = useState<Step>(1);
+  const [stageMode, setStageMode] = useState<StageMode>("close");
 
   const design = useMemo(() => draftDesign(draft), [draft]);
   const previewDesign = useDeferredValue(design);
-  const code = isCompleteDraft(draft) ? designCode(design) : null;
+  const complete = isCompleteDraft(draft);
+  const code = complete ? designCode(design) : null;
   const name = user?.minecraftUsername ?? user?.username ?? "You";
-  const setRank = useCallback(
-    (rank: number) => updateSettings({ rank }),
-    [updateSettings],
+
+  const goTo = useCallback(
+    (next: Step) => {
+      setStep(next);
+      setStageMode(next === 3 ? "tab" : "close");
+      if (!wide) {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+      const panel = panelRef.current;
+      if (panel && panel.getBoundingClientRect().top < 0) {
+        panel.scrollIntoView({ block: "start" });
+      }
+    },
+    [wide],
   );
-  const setGuiScale = useCallback(
-    (guiScale: GuiScale) => updateSettings({ guiScale }),
-    [updateSettings],
+
+  const loadAndSend = useCallback(
+    (loaded: PlateDesign) => {
+      load(loaded);
+      goTo(3);
+    },
+    [load, goTo],
   );
-  const setBackdrop = useCallback(
-    (backdrop: Backdrop) => updateSettings({ backdrop }),
-    [updateSettings],
+  useSharedDesign(loadAndSend);
+
+  const copy = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success("Copied to clipboard");
+    } catch {
+      toast.error("Clipboard access was blocked by the browser");
+    }
+  };
+
+  const copyCode = () => code && copy(code);
+
+  const settingsFor = (layout: "row" | "list") => (
+    <PreviewSettings
+      settings={settings}
+      onChange={updateSettings}
+      layout={layout}
+    />
   );
 
   return (
-    <div>
-      <PageHeader
-        title="Team prefix"
-        description="Design the plate your party wears in the tab list, then send the code to an admin with your Team Prefix License."
-        imageSrc="/assets/hero/mountains-train-station.webp"
-      />
+    <div ref={rootRef} className="flex flex-1 flex-col">
+      {wide && (
+        <header className="relative overflow-hidden px-8 pt-14 pb-10">
+          <HeroBackdrop overlays={HEADER_OVERLAYS} />
+          <div className="relative mx-auto max-w-7xl">
+            <div className="flex max-w-160 flex-col gap-3">
+              <h1 className="text-5xl/none font-bold tracking-tight text-foreground">
+                Team prefix
+              </h1>
+              <p className="text-lg text-pretty text-muted-foreground">
+                Design the plate your party wears in the tab list, then hand the
+                code to an admin with your Team Prefix License.
+              </p>
+            </div>
+          </div>
+        </header>
+      )}
 
-      <section className="px-5 pb-16 md:px-8">
-        {failed && (
-          <p className="mx-auto mb-6 max-w-7xl text-sm text-destructive">
-            The plate images failed to load. Reload the page to try again.
-          </p>
+      <div
+        className={cn(
+          wide
+            ? "mx-auto grid w-full max-w-7xl grid-cols-[minmax(0,1fr)_420px] items-start gap-10 px-8 pt-2 pb-16"
+            : "flex flex-1 flex-col",
         )}
-        <div className="mx-auto grid max-w-7xl items-start gap-6 lg:grid-cols-[minmax(0,1fr)_400px] lg:grid-rows-[auto_1fr]">
-          <div className="min-w-0 lg:col-start-1 lg:row-start-1">
+      >
+        <PreviewStage
+          wide={wide}
+          mode={stageMode}
+          onModeChange={setStageMode}
+          closeUp={
+            assets ? (
+              <PlateCloseUp
+                design={design}
+                assets={assets}
+                name={name}
+                nameColor={RANKS[settings.rank].color}
+                skin={skin}
+                plateZoom={zooms.plate}
+                lineZoom={zooms.line}
+              />
+            ) : (
+              <Skeleton className="mx-auto h-24 w-64" />
+            )
+          }
+          tabList={
             <TabListPreview
               design={previewDesign}
               assets={assets}
@@ -79,25 +178,85 @@ export function TeamPrefix() {
               skin={skin}
               guiScale={settings.guiScale}
               backdrop={settings.backdrop}
-              onRankChange={setRank}
-              onGuiScaleChange={setGuiScale}
-              onBackdropChange={setBackdrop}
+              logo={wide}
+              fill={!wide}
+              className={
+                wide ? "relative" : "absolute inset-x-0 top-[62px] bottom-6"
+              }
             />
-          </div>
-          <div className="lg:col-start-2 lg:row-span-2 lg:row-start-1">
-            <DesignCard
-              draft={draft}
-              design={design}
-              assets={assets}
-              skin={skin}
-              onChange={update}
+          }
+          settings={settingsFor("row")}
+        />
+
+        <div
+          ref={panelRef}
+          className={cn(
+            "relative flex min-w-0 flex-col",
+            !wide &&
+              "z-10 -mt-6 flex-1 rounded-t-3xl border-t border-white/10 bg-background shadow-[0_-40px_120px_rgba(0,0,0,0.7)]",
+          )}
+        >
+          {!wide && (
+            <>
+              <div
+                aria-hidden
+                className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-primary/40 to-transparent"
+              />
+              <StickyPlateBar
+                design={design}
+                assets={assets}
+                name={name}
+                nameColor={RANKS[settings.rank].color}
+                skin={skin}
+                canCopy={complete}
+                onCopy={copyCode}
+              />
+            </>
+          )}
+          <div
+            className={cn(
+              "flex flex-col gap-6",
+              wide ? "pt-2" : "mx-auto w-full max-w-160 flex-1 px-5 pt-2 pb-8",
+            )}
+          >
+            {failed && (
+              <p className="text-sm text-destructive">
+                The plate images failed to load. Reload the page to try again.
+              </p>
+            )}
+            <StepHeader
+              step={step}
+              wide={wide}
+              locked={!complete}
+              onStepChange={goTo}
             />
+            {step === 1 && (
+              <TagStep
+                draft={draft}
+                assets={assets}
+                onChange={update}
+                onLoad={loadAndSend}
+              />
+            )}
+            {step === 2 && <ColoursStep draft={draft} onChange={update} />}
+            {step === 3 && (
+              <SendStep
+                code={code}
+                settings={wide ? null : settingsFor("list")}
+                onCopyLink={() => code && copy(shareLink(code))}
+              />
+            )}
           </div>
-          <div className="min-w-0 lg:col-start-1 lg:row-start-2">
-            <CodeCard code={code} onLoad={load} />
-          </div>
+          <StepActions
+            step={step}
+            wide={wide}
+            locked={!complete}
+            onBack={() => goTo(Math.max(1, step - 1) as Step)}
+            onNext={() => goTo(Math.min(3, step + 1) as Step)}
+            onCopy={copyCode}
+          />
         </div>
-      </section>
+      </div>
     </div>
   );
 }

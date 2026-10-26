@@ -11,6 +11,8 @@ export function PlateCanvas({
   name,
   nameColor,
   skin,
+  bare,
+  label,
   className,
 }: {
   design: PlateDesign;
@@ -19,6 +21,8 @@ export function PlateCanvas({
   name?: string;
   nameColor?: number;
   skin?: Bitmap;
+  bare?: boolean;
+  label?: string;
   className?: string;
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -32,13 +36,16 @@ export function PlateCanvas({
       name,
       nameColor,
       skin,
+      bare,
     });
-  }, [design, assets, zoom, name, nameColor, skin]);
+  }, [design, assets, zoom, name, nameColor, skin, bare]);
 
   return (
     <canvas
       ref={ref}
-      aria-hidden
+      role={label ? "img" : undefined}
+      aria-label={label}
+      aria-hidden={label ? undefined : true}
       className={cn("block [image-rendering:pixelated]", className)}
     />
   );

@@ -1,31 +1,16 @@
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import type { PlateDesign } from "@createrington/shared/team-prefix";
-import { ChoiceField } from "@/components/choice-field";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PODIUM } from "@/features/team/data";
+import { mcHeadsSkin } from "@/lib/external-urls";
+import { cn } from "@/lib/utils";
 import {
   BACKDROPS,
-  GUI_SCALES,
   PLATE_PRESETS,
   RANKS,
   type Backdrop,
   type GuiScale,
 } from "../presets";
-import { PODIUM } from "@/features/team/data";
-import { mcHeadsSkin } from "@/lib/external-urls";
 import type { Bitmap, PlateAssets } from "../render/assets";
 import { renderTabList, type TabRow } from "../render/tab-list";
 import { useLoadedImage } from "../hooks/use-loaded-image";
@@ -92,9 +77,9 @@ export const TabListPreview = memo(function TabListPreview({
   skin,
   guiScale,
   backdrop,
-  onRankChange,
-  onGuiScaleChange,
-  onBackdropChange,
+  logo,
+  fill = false,
+  className,
 }: {
   design: PlateDesign;
   assets: PlateAssets | null;
@@ -103,21 +88,24 @@ export const TabListPreview = memo(function TabListPreview({
   skin: Bitmap | undefined;
   guiScale: GuiScale;
   backdrop: Backdrop;
-  onRankChange: (rank: number) => void;
-  onGuiScaleChange: (scale: GuiScale) => void;
-  onBackdropChange: (backdrop: Backdrop) => void;
+  logo: boolean;
+  fill?: boolean;
+  className?: string;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const frameRef = useRef<HTMLDivElement>(null);
-  const [frameWidth, setFrameWidth] = useState(0);
+  const [frame, setFrame] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
-    const frame = frameRef.current;
-    if (!frame) return;
+    const element = frameRef.current;
+    if (!element) return;
     const observer = new ResizeObserver(([entry]) =>
-      setFrameWidth(Math.floor(entry.contentRect.width)),
+      setFrame({
+        width: entry.contentRect.width,
+        height: entry.contentRect.height,
+      }),
     );
-    observer.observe(frame);
+    observer.observe(element);
     return () => observer.disconnect();
   }, []);
   const backdropImage = useLoadedImage(
@@ -146,103 +134,48 @@ export const TabListPreview = memo(function TabListPreview({
       pingMs: 30,
       design,
     };
-    return [...others, you].sort((a, b) => {
-      const x = a.name.toLowerCase();
-      const y = b.name.toLowerCase();
-      return x < y ? -1 : x > y ? 1 : 0;
-    });
+    return [
+      you,
+      ...others.sort((a, b) => {
+        const x = a.name.toLowerCase();
+        const y = b.name.toLowerCase();
+        return x < y ? -1 : x > y ? 1 : 0;
+      }),
+    ];
   }, [assets, boardSkins, design, name, rank, skin]);
 
   useEffect(() => {
-    if (!canvasRef.current || !assets || !rows) return;
+    if (!canvasRef.current || !assets || !rows || !frame.width) return;
     renderTabList(canvasRef.current, {
       rows,
       guiScale: Number(guiScale),
       backdrop: backdropImage,
       assets,
-      minCssWidth: frameWidth,
+      cssWidth: frame.width,
+      cssHeight: fill ? frame.height : undefined,
+      logo,
     });
-  }, [assets, rows, guiScale, backdropImage, frameWidth]);
-
-  useEffect(() => {
-    const frame = frameRef.current;
-    if (!frame || !assets) return;
-    frame.scrollLeft = (frame.scrollWidth - frame.clientWidth) / 2;
-  }, [assets, guiScale, frameWidth]);
+  }, [assets, rows, guiScale, backdropImage, frame, fill, logo]);
 
   return (
-    <Card className="min-w-0">
-      <CardHeader>
-        <CardTitle className="text-base">In the tab list</CardTitle>
-        <CardDescription>
-          Drawn the way the game draws it, at the real size for your screen,
-          next to the Createrington team. Their plates here are only examples.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              GUI scale
-            </span>
-            <ChoiceField
-              value={guiScale}
-              options={GUI_SCALES.map((value) => ({ value, label: value }))}
-              onChange={onGuiScaleChange}
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Behind
-            </span>
-            <ChoiceField
-              value={backdrop}
-              options={BACKDROPS}
-              onChange={onBackdropChange}
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Your rank
-            </span>
-            <Select
-              value={String(rank)}
-              onValueChange={(value) => onRankChange(Number(value))}
-            >
-              <SelectTrigger className="w-52" aria-label="Your rank">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {RANKS.map((option, i) => (
-                  <SelectItem key={option.label} value={String(i)}>
-                    <img
-                      src={option.icon}
-                      alt=""
-                      className="h-4 w-[21px] shrink-0 object-contain [image-rendering:pixelated]"
-                    />
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-        <div
-          ref={frameRef}
-          className="overflow-x-auto overflow-y-hidden rounded-lg border bg-black"
-        >
-          {assets ? (
-            <canvas
-              ref={canvasRef}
-              role="img"
-              aria-label={`Tab list with your ${design.tag} plate next to ${name}`}
-              className="mx-auto block shrink-0 [image-rendering:pixelated]"
-            />
-          ) : (
-            <Skeleton className="h-80 w-full rounded-none" />
-          )}
-        </div>
-      </CardContent>
-    </Card>
+    <div
+      ref={frameRef}
+      className={cn(
+        "overflow-hidden border-t bg-black",
+        fill && "flex items-center justify-center",
+        className,
+      )}
+    >
+      {assets ? (
+        <canvas
+          ref={canvasRef}
+          role="img"
+          aria-label={`Tab list with your ${design.tag} plate next to ${name}`}
+          className="mx-auto block shrink-0 [image-rendering:pixelated]"
+        />
+      ) : (
+        <Skeleton className="h-80 w-full rounded-none" />
+      )}
+    </div>
   );
 });
