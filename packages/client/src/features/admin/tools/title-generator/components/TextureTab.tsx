@@ -9,9 +9,9 @@ import { getLayerTexture } from "../engine/pipeline";
 import { DEFAULT_GRADIENT, styleDefaults } from "../engine/settings";
 import type { TextureSource, TitleLayer } from "../engine/types";
 import { useFontTextures } from "../hooks/use-title-assets";
+import { ChoiceField } from "@/components/choice-field";
 import {
   AssetGrid,
-  ChoiceField,
   ColourField,
   Section,
   ToggleField,

@@ -6,10 +6,10 @@ import { assetUrl, thumbnailPath } from "../engine/assets";
 import { readFileAsDataUrl } from "../engine/canvas";
 import type { OverlaySource } from "../engine/types";
 import { useFontTextures } from "../hooks/use-title-assets";
+import { ChoiceField } from "@/components/choice-field";
 import {
   AssetGrid,
   BlendField,
-  ChoiceField,
   ColourField,
   Section,
   SliderField,
