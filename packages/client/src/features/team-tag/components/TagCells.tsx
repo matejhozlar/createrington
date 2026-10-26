@@ -5,6 +5,15 @@ import { sanitizeTag } from "../hooks/use-plate-draft";
 
 const CELLS = Array.from({ length: TAG_LENGTH }, (_, i) => i);
 
+const CARET_MOVES: Record<string, (start: number, length: number) => number> = {
+  ArrowLeft: (start) => Math.max(0, start - 1),
+  ArrowRight: (start) => start + 1,
+  ArrowUp: () => 0,
+  Home: () => 0,
+  ArrowDown: (_, length) => length,
+  End: (_, length) => length,
+};
+
 export function TagCells({
   tag,
   onChange,
@@ -64,6 +73,22 @@ export function TagCells({
     setEdits((count) => count + 1);
   };
 
+  const moveCaret = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    const move = CARET_MOVES[event.key];
+    if (
+      !move ||
+      event.shiftKey ||
+      event.altKey ||
+      event.ctrlKey ||
+      event.metaKey
+    ) {
+      return;
+    }
+    event.preventDefault();
+    const input = event.currentTarget;
+    placeCaret(move(input.selectionStart ?? 0, input.value.length), true);
+  };
+
   const pickCell = (event: React.MouseEvent<HTMLInputElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
     const cell = Math.floor(
@@ -100,11 +125,7 @@ export function TagCells({
         onPaste={paste}
         onFocus={() => placeCaret(tag.length, true)}
         onClick={pickCell}
-        onKeyUp={(event) =>
-          setCursor(
-            Math.min(event.currentTarget.selectionStart ?? 0, TAG_LENGTH - 1),
-          )
-        }
+        onKeyDown={moveCaret}
         onBlur={() => setCursor(null)}
         maxLength={TAG_LENGTH}
         autoCapitalize="characters"
