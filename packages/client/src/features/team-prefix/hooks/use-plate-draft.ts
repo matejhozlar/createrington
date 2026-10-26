@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import {
+  TAG_LENGTH,
   isPlateTag,
   type PlateDesign,
 } from "@createrington/shared/team-prefix";
@@ -31,7 +32,7 @@ export function sanitizeTag(value: string): string {
   return value
     .replace(/[^A-Za-z0-9]/g, "")
     .toUpperCase()
-    .slice(0, 4);
+    .slice(0, TAG_LENGTH);
 }
 
 const isColor = (value: unknown): value is number =>
