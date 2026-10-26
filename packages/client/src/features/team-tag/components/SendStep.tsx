@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 
 const INSTRUCTIONS = [
   "Copy your code.",
-  "Give your Team Prefix License to an admin in game.",
+  "Give your Team Tag License to an admin in game.",
   "Send them the code. They set it for your party, and every member gets the plate.",
 ];
 

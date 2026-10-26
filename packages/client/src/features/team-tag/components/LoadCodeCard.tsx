@@ -4,7 +4,7 @@ import {
   DesignCodeError,
   parseDesignCode,
   type PlateDesign,
-} from "@createrington/shared/team-prefix";
+} from "@createrington/shared/team-tag";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToastActions } from "@/hooks/use-toast";

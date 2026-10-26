@@ -6,7 +6,7 @@ import {
   plateLetterColor,
   plateLetterStart,
   type PlateDesign,
-} from "@createrington/shared/team-prefix";
+} from "@createrington/shared/team-tag";
 import type { PlateAssets } from "./assets";
 import type { GlyphOp } from "./framebuffer";
 

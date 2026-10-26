@@ -1,5 +1,5 @@
 import { memo, useEffect, useMemo, useRef, useState } from "react";
-import type { PlateDesign } from "@createrington/shared/team-prefix";
+import type { PlateDesign } from "@createrington/shared/team-tag";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PODIUM } from "@/features/team/data";
 import { mcHeadsSkin } from "@/lib/external-urls";

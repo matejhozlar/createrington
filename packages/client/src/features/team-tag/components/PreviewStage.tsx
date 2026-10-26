@@ -52,7 +52,7 @@ export function PreviewStage({
       ) : (
         <div className="relative flex items-center justify-between gap-3 px-5 pt-3.5">
           <h1 className="text-xl font-bold tracking-tight text-foreground">
-            Team prefix
+            Team tag
           </h1>
           <Tabs
             value={mode}

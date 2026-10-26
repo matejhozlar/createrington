@@ -4,7 +4,7 @@ import {
   DesignCodeError,
   parseDesignCode,
   type PlateDesign,
-} from "@createrington/shared/team-prefix";
+} from "@createrington/shared/team-tag";
 import { useToastActions } from "@/hooks/use-toast";
 
 const SHARE_PARAM = "design";

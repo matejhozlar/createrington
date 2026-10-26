@@ -1,4 +1,4 @@
-import type { PlateDesign } from "@createrington/shared/team-prefix";
+import type { PlateDesign } from "@createrington/shared/team-tag";
 import type { Bitmap, PlateAssets } from "../render/assets";
 import { PlateCanvas } from "./PlateCanvas";
 

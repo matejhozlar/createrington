@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import type { PlateDesign } from "@createrington/shared/team-prefix";
+import type { PlateDesign } from "@createrington/shared/team-tag";
 import type { Bitmap, PlateAssets } from "../render/assets";
 import { renderPlateStrip } from "../render/tab-list";
 import { cn } from "@/lib/utils";

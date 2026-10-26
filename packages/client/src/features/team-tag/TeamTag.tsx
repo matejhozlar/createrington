@@ -5,10 +5,7 @@ import {
   useRef,
   useState,
 } from "react";
-import {
-  designCode,
-  type PlateDesign,
-} from "@createrington/shared/team-prefix";
+import { designCode, type PlateDesign } from "@createrington/shared/team-tag";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/auth";
 import { useToastActions } from "@/hooks/use-toast";
@@ -56,7 +53,7 @@ function readSkin(image: HTMLImageElement | null): Bitmap | undefined {
   }
 }
 
-export function TeamPrefix() {
+export function TeamTag() {
   const { user } = useAuth();
   const toast = useToastActions();
   const { assets, failed } = usePlateAssets();
@@ -132,11 +129,11 @@ export function TeamPrefix() {
           <div className="relative mx-auto max-w-7xl">
             <div className="flex max-w-160 flex-col gap-3">
               <h1 className="text-5xl/none font-bold tracking-tight text-foreground">
-                Team prefix
+                Team tag
               </h1>
               <p className="text-lg text-pretty text-muted-foreground">
                 Design the plate your party wears in the tab list, then hand the
-                code to an admin with your Team Prefix License.
+                code to an admin with your Team Tag License.
               </p>
             </div>
           </div>

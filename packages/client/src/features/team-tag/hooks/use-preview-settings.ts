@@ -13,7 +13,7 @@ export type PreviewSettings = {
   rank: number;
 };
 
-const STORAGE_KEY = "team-prefix-preview";
+const STORAGE_KEY = "team-tag-preview";
 
 const DEFAULT_SETTINGS: PreviewSettings = {
   guiScale: "3",

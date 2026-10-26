@@ -1,5 +1,5 @@
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
-import { TAG_LENGTH } from "@createrington/shared/team-prefix";
+import { TAG_LENGTH } from "@createrington/shared/team-tag";
 import { cn } from "@/lib/utils";
 import { sanitizeTag } from "../hooks/use-plate-draft";
 

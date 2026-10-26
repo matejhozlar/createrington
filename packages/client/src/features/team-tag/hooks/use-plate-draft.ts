@@ -3,7 +3,7 @@ import {
   TAG_LENGTH,
   isPlateTag,
   type PlateDesign,
-} from "@createrington/shared/team-prefix";
+} from "@createrington/shared/team-tag";
 import { PLATE_PRESETS } from "../presets";
 
 export type PlateDraft = {
@@ -16,7 +16,7 @@ export type PlateDraft = {
   letterFadeOn: boolean;
 };
 
-const STORAGE_KEY = "team-prefix-draft";
+const STORAGE_KEY = "team-tag-draft";
 
 const DEFAULT_DRAFT: PlateDraft = {
   tag: "CRTN",

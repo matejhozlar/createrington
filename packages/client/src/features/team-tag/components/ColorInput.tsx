@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { colorHex } from "@createrington/shared/team-prefix";
+import { colorHex } from "@createrington/shared/team-tag";
 import { cn } from "@/lib/utils";
 
 export function ColorInput({

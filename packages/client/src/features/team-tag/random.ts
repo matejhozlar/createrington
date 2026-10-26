@@ -4,7 +4,7 @@ import {
   isPlateTag,
   plateLetterStart,
   plateLetterWidth,
-} from "@createrington/shared/team-prefix";
+} from "@createrington/shared/team-tag";
 import type { PlateDraft } from "./hooks/use-plate-draft";
 
 const FADE_CHANCE = 0.6;

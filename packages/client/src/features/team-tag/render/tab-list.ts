@@ -1,7 +1,4 @@
-import {
-  PLATE_WIDTH,
-  type PlateDesign,
-} from "@createrington/shared/team-prefix";
+import { PLATE_WIDTH, type PlateDesign } from "@createrington/shared/team-tag";
 import type { Bitmap, PlateAssets } from "./assets";
 import { Framebuffer, sizeCanvas } from "./framebuffer";
 import { tabNameLine } from "./text";

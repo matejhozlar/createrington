@@ -1,8 +1,5 @@
 import { useMemo } from "react";
-import {
-  TAG_LENGTH,
-  type PlateDesign,
-} from "@createrington/shared/team-prefix";
+import { TAG_LENGTH, type PlateDesign } from "@createrington/shared/team-tag";
 import { cn } from "@/lib/utils";
 import { PLATE_PRESETS } from "../presets";
 import type { PlateDraft } from "../hooks/use-plate-draft";

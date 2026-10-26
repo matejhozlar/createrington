@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Copy } from "lucide-react";
-import type { PlateDesign } from "@createrington/shared/team-prefix";
+import type { PlateDesign } from "@createrington/shared/team-tag";
 import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
