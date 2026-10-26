@@ -15,6 +15,7 @@ import {
   usePlateDraft,
 } from "./hooks/use-plate-draft";
 import { usePreviewSettings } from "./hooks/use-preview-settings";
+import { useSharedDesign } from "./hooks/use-shared-design";
 import { bitmapOf, type Bitmap } from "./render/assets";
 
 function readSkin(image: HTMLImageElement | null): Bitmap | undefined {
@@ -30,6 +31,7 @@ export function TeamPrefix() {
   const { user } = useAuth();
   const { assets, failed } = usePlateAssets();
   const { draft, update, load } = usePlateDraft();
+  useSharedDesign(load);
   const { settings, update: updateSettings } = usePreviewSettings();
   const skinImage = useLoadedImage(
     user?.minecraftUuid ? mcHeadsSkin(user.minecraftUuid) : null,

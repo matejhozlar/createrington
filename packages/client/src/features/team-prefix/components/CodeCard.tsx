@@ -1,5 +1,5 @@
 import { useId, useState } from "react";
-import { Copy } from "lucide-react";
+import { Copy, Link } from "lucide-react";
 import {
   DesignCodeError,
   parseDesignCode,
@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useToastActions } from "@/hooks/use-toast";
+import { shareLink } from "../hooks/use-shared-design";
 
 const STEPS = [
   "Copy your code.",
@@ -36,10 +37,9 @@ export function CodeCard({
   const [pasted, setPasted] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  const copy = async () => {
-    if (!code) return;
+  const copy = async (text: string) => {
     try {
-      await navigator.clipboard.writeText(code);
+      await navigator.clipboard.writeText(text);
       toast.success("Copied to clipboard");
     } catch {
       toast.error("Clipboard access was blocked by the browser");
@@ -64,7 +64,8 @@ export function CodeCard({
       <CardHeader>
         <CardTitle className="text-base">Your design code</CardTitle>
         <CardDescription>
-          The code is your whole design. An admin pastes it on the server.
+          The code is your whole design. An admin pastes it on the server, and
+          the link opens it in this editor for your party.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-5">
@@ -79,16 +80,28 @@ export function CodeCard({
               </span>
             )}
           </output>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={copy}
-            disabled={!code}
-            className="h-11 sm:px-5"
-          >
-            <Copy />
-            Copy
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => code && copy(code)}
+              disabled={!code}
+              className="h-11 flex-1 sm:flex-none sm:px-5"
+            >
+              <Copy />
+              Copy
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => code && copy(shareLink(code))}
+              disabled={!code}
+              className="h-11 flex-1 sm:flex-none sm:px-5"
+            >
+              <Link />
+              Copy link
+            </Button>
+          </div>
         </div>
 
         <ol className="flex flex-col gap-2 text-sm">
