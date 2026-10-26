@@ -7,7 +7,8 @@ import { Label } from "@/components/ui/label";
 import { MAX_ANTIALIAS_RESOLUTION, MAX_RENDER_SIZE } from "../engine/render";
 import { DEFAULT_CAMERA_DISTANCE, RENDER_VIEWS } from "../engine/settings";
 import type { RenderSettings, RenderView } from "../engine/types";
-import { ChoiceField, Section, SliderField, ToggleField } from "./fields";
+import { ChoiceField } from "@/components/choice-field";
+import { Section, SliderField, ToggleField } from "./fields";
 
 const VIEW_LABELS: Record<RenderView, string> = {
   tilted: "Tilted",

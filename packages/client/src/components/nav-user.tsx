@@ -8,6 +8,7 @@ import {
   HeartIcon,
   LogoutIcon,
   SettingsIcon,
+  SquarePenIcon,
   useAnimatedHover,
 } from "@createrington/icons";
 import { mcHeadsAvatar } from "@/lib/external-urls";
@@ -75,6 +76,7 @@ export function NavUser({ user }: { user: User }) {
   const { logout, loading } = useAuth();
   const [chevronRef, chevronHandlers] = useAnimatedHover();
   const [settingsRef, settingsHandlers] = useAnimatedHover();
+  const [teamPrefixRef, teamPrefixHandlers] = useAnimatedHover();
   const [adminPanelRef, adminPanelHandlers] = useAnimatedHover();
   const [changelogRef, changelogHandlers] = useAnimatedHover();
   const [donateRef, donateHandlers] = useAnimatedHover();
@@ -162,6 +164,16 @@ export function NavUser({ user }: { user: User }) {
                   className="block shrink-0"
                 />
                 Settings
+              </NavLink>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild {...teamPrefixHandlers}>
+              <NavLink to="/team-prefix" className="cursor-pointer">
+                <SquarePenIcon
+                  ref={teamPrefixRef}
+                  size={16}
+                  className="block shrink-0"
+                />
+                Team prefix
               </NavLink>
             </DropdownMenuItem>
 
