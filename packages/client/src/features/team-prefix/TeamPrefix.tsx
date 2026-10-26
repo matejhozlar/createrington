@@ -5,11 +5,8 @@ import { useAuth } from "@/contexts/auth";
 import { mcHeadsSkin } from "@/lib/external-urls";
 import { CodeCard } from "./components/CodeCard";
 import { DesignCard } from "./components/DesignCard";
-import {
-  TabListPreview,
-  type Backdrop,
-  type GuiScale,
-} from "./components/TabListPreview";
+import { TabListPreview } from "./components/TabListPreview";
+import type { Backdrop, GuiScale } from "./presets";
 import { useLoadedImage } from "./hooks/use-loaded-image";
 import { usePlateAssets } from "./hooks/use-plate-assets";
 import {

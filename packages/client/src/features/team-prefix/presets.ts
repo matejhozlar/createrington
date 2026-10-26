@@ -62,3 +62,18 @@ export const RANKS: Rank[] = [
     icon: `${RANK_ICONS}/nether-star.png`,
   },
 ];
+
+export const GUI_SCALES = ["2", "3", "4"] as const;
+export type GuiScale = (typeof GUI_SCALES)[number];
+
+export const BACKDROPS = [
+  { value: "night", label: "Night", src: "/assets/hero/dark-warehouse.webp" },
+  { value: "metro", label: "Metro", src: "/assets/hero/metro.webp" },
+  {
+    value: "sunset",
+    label: "Sunset",
+    src: "/assets/hero/high-speed-train.webp",
+  },
+  { value: "sky", label: "Sky", src: "/assets/hero/space-station.webp" },
+] as const;
+export type Backdrop = (typeof BACKDROPS)[number]["value"];

@@ -16,28 +16,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { PLATE_PRESETS, RANKS } from "../presets";
+import {
+  BACKDROPS,
+  GUI_SCALES,
+  PLATE_PRESETS,
+  RANKS,
+  type Backdrop,
+  type GuiScale,
+} from "../presets";
 import { PODIUM } from "@/features/team/data";
 import { mcHeadsSkin } from "@/lib/external-urls";
 import type { Bitmap, PlateAssets } from "../render/assets";
 import { renderTabList, type TabRow } from "../render/tab-list";
 import { useLoadedImage } from "../hooks/use-loaded-image";
 import { useSkinBitmaps } from "../hooks/use-skin-bitmaps";
-
-export const GUI_SCALES = ["2", "3", "4"] as const;
-export type GuiScale = (typeof GUI_SCALES)[number];
-
-export const BACKDROPS = [
-  { value: "night", label: "Night", src: "/assets/hero/dark-warehouse.webp" },
-  { value: "metro", label: "Metro", src: "/assets/hero/metro.webp" },
-  {
-    value: "sunset",
-    label: "Sunset",
-    src: "/assets/hero/high-speed-train.webp",
-  },
-  { value: "sky", label: "Sky", src: "/assets/hero/space-station.webp" },
-] as const;
-export type Backdrop = (typeof BACKDROPS)[number]["value"];
 
 type BoardParty = { tag: string; preset: number };
 

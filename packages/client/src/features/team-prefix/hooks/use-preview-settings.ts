@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import { RANKS } from "../presets";
 import {
   BACKDROPS,
   GUI_SCALES,
+  RANKS,
   type Backdrop,
   type GuiScale,
-} from "../components/TabListPreview";
+} from "../presets";
 
 export type PreviewSettings = {
   guiScale: GuiScale;
