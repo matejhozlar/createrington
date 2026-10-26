@@ -18,10 +18,12 @@ function toVersionDto(group: [LauncherRelease, ...LauncherRelease[]]) {
     notes: first.notes,
     structuredNotes: parseStructuredNotes(first.structuredNotes),
     releasedAt: releasedAt?.toISOString() ?? null,
-    downloads: builds.map((build) => ({
-      platform: build.platform,
-      url: build.url,
-    })),
+    downloads: builds
+      .filter((build) => build.status === "released")
+      .map((build) => ({
+        platform: build.platform,
+        url: build.url,
+      })),
   };
 }
 
@@ -29,7 +31,7 @@ export const adminLauncherReleasesRouter = router({
   list: adminProcedure
     .meta({
       description:
-        "List the released launcher versions of this environment's channel with a download per released platform, highest version first",
+        "List the released launcher versions of this environment's channel, also those pruned from the bucket, with a download per platform still available, highest version first",
     })
     .query(async () => {
       const releases = await launcherReleaseService.listReleased();

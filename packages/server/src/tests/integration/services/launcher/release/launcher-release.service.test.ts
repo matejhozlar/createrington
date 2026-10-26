@@ -636,9 +636,6 @@ describe("LauncherReleaseService", () => {
       expect(
         await launcherReleaseService.checkForUpdate(PLATFORM, "0.1.0"),
       ).toMatchObject({ version: "0.2.0" });
-      expect(
-        (await launcherReleaseService.listReleased()).map((r) => r.version),
-      ).toEqual(["0.2.0"]);
     });
 
     it("keeps requiring the update past a pruned required release", async () => {
@@ -711,6 +708,25 @@ describe("LauncherReleaseService", () => {
         "0.10.0",
         "0.9.0",
         "0.2.0",
+      ]);
+    });
+
+    it("keeps a released version once it is pruned, but not one pruned while pending or withdrawn", async () => {
+      await publishAndRelease("0.2.0");
+      const withdrawn = await publishAndRelease("0.3.0");
+      await launcherReleaseService.withdraw(withdrawn.id, OWNER);
+      await launcherReleaseService.publish(input("0.4.0"));
+      await publishAndRelease("0.5.0");
+
+      await launcherReleaseService.prune("staging", ["0.5.0"]);
+
+      const releases = (await launcherReleaseService.listReleased()).filter(
+        (r) => r.platform === PLATFORM,
+      );
+
+      expect(releases.map((r) => [r.version, r.status])).toEqual([
+        ["0.5.0", "released"],
+        ["0.2.0", "pruned"],
       ]);
     });
   });

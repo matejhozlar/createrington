@@ -251,9 +251,13 @@ class LauncherReleaseService {
     });
   }
 
-  /** The released versions of this environment, highest version first. */
+  /** Every version of this environment that was released and never withdrawn, also once pruned, highest version first. */
   async listReleased(): Promise<LauncherRelease[]> {
-    const released = await Q.launcher.release.findAll({ status: "released" });
+    const released = await Q.launcher.release.findAll({
+      status: { $in: ["released", "pruned"] },
+      releasedAt: { $ne: null },
+      withdrawnAt: null,
+    });
     return newestFirst(released);
   }
 

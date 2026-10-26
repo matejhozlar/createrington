@@ -50,6 +50,11 @@ const CHANGE_TYPES = new Map<string, { label: string; color: string }>([
 
 const UNKNOWN_CHANGE_COLOR = "var(--c-change)";
 
+const UNAVAILABLE_BADGE = {
+  label: "No longer available",
+  className: "border-muted-foreground/40 font-normal text-muted-foreground",
+} as const;
+
 function changeTag(type: string): { label: string; color: string } {
   return CHANGE_TYPES.get(type) ?? { label: type, color: UNKNOWN_CHANGE_COLOR };
 }
@@ -124,13 +129,17 @@ function LatestRelease({ release }: { release: Release }) {
             </span>
           </div>
           <HeaderActions>
-            {release.downloads.map((download) => (
-              <DownloadButton
-                key={download.platform}
-                download={download}
-                size="icon-lg"
-              />
-            ))}
+            {release.downloads.length === 0 ? (
+              <UnavailableBadge />
+            ) : (
+              release.downloads.map((download) => (
+                <DownloadButton
+                  key={download.platform}
+                  download={download}
+                  size="icon-lg"
+                />
+              ))
+            )}
           </HeaderActions>
         </div>
 
@@ -158,25 +167,36 @@ function EarlierReleases({ releases }: { releases: Release[] }) {
                   <span className="text-sm font-normal text-muted-foreground">
                     {formatDate(release.releasedAt)}
                   </span>
+                  {release.downloads.length === 0 && <UnavailableBadge />}
                 </span>
               </AccordionTrigger>
               <AccordionContent className="flex flex-col gap-4">
                 <ReleaseNotes release={release} />
-                <div className="flex flex-wrap gap-2">
-                  {release.downloads.map((download) => (
-                    <DownloadButton
-                      key={download.platform}
-                      download={download}
-                      size="icon-sm"
-                    />
-                  ))}
-                </div>
+                {release.downloads.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {release.downloads.map((download) => (
+                      <DownloadButton
+                        key={download.platform}
+                        download={download}
+                        size="icon-sm"
+                      />
+                    ))}
+                  </div>
+                )}
               </AccordionContent>
             </AccordionItem>
           ))}
         </Accordion>
       </CardContent>
     </Card>
+  );
+}
+
+function UnavailableBadge() {
+  return (
+    <Badge variant="outline" className={UNAVAILABLE_BADGE.className}>
+      {UNAVAILABLE_BADGE.label}
+    </Badge>
   );
 }
 
