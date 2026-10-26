@@ -76,7 +76,7 @@ export function NavUser({ user }: { user: User }) {
   const { logout, loading } = useAuth();
   const [chevronRef, chevronHandlers] = useAnimatedHover();
   const [settingsRef, settingsHandlers] = useAnimatedHover();
-  const [teamPrefixRef, teamPrefixHandlers] = useAnimatedHover();
+  const [teamTagRef, teamTagHandlers] = useAnimatedHover();
   const [adminPanelRef, adminPanelHandlers] = useAnimatedHover();
   const [changelogRef, changelogHandlers] = useAnimatedHover();
   const [donateRef, donateHandlers] = useAnimatedHover();
@@ -166,14 +166,14 @@ export function NavUser({ user }: { user: User }) {
                 Settings
               </NavLink>
             </DropdownMenuItem>
-            <DropdownMenuItem asChild {...teamPrefixHandlers}>
-              <NavLink to="/team-prefix" className="cursor-pointer">
+            <DropdownMenuItem asChild {...teamTagHandlers}>
+              <NavLink to="/team-tag" className="cursor-pointer">
                 <SquarePenIcon
-                  ref={teamPrefixRef}
+                  ref={teamTagRef}
                   size={16}
                   className="block shrink-0"
                 />
-                Team prefix
+                Team tag
               </NavLink>
             </DropdownMenuItem>
 

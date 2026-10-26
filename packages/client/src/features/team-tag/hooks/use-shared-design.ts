@@ -4,7 +4,7 @@ import {
   DesignCodeError,
   parseDesignCode,
   type PlateDesign,
-} from "@createrington/shared/team-prefix";
+} from "@createrington/shared/team-tag";
 import { useToastActions } from "@/hooks/use-toast";
 
 const SHARE_PARAM = "design";
@@ -28,7 +28,7 @@ export function useSharedDesign(load: (design: PlateDesign) => void) {
     handled.current = true;
     try {
       load(parseDesignCode(shared));
-      toast.success("Design loaded from the link");
+      toast.success("Design loaded");
     } catch (caught) {
       if (!(caught instanceof DesignCodeError)) throw caught;
       toast.error(caught.message, "This link has no valid design");

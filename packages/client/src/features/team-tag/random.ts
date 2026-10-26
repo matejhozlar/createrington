@@ -4,7 +4,7 @@ import {
   isPlateTag,
   plateLetterStart,
   plateLetterWidth,
-} from "@createrington/shared/team-prefix";
+} from "@createrington/shared/team-tag";
 import type { PlateDraft } from "./hooks/use-plate-draft";
 
 const FADE_CHANCE = 0.6;
@@ -46,6 +46,10 @@ function luminance(rgb: number): number {
 function contrast(a: number, b: number): number {
   const [light, dark] = [luminance(a), luminance(b)].sort((x, y) => y - x);
   return (light + 0.05) / (dark + 0.05);
+}
+
+export function readsClearly(plate: number, letters: number): boolean {
+  return contrast(plate, letters) >= MIN_CONTRAST;
 }
 
 function readable(colors: RandomColors, tag: string): boolean {

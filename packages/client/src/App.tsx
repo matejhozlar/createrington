@@ -62,9 +62,9 @@ const TermsOfService = lazyNamed(
   "TermsOfService",
 );
 const Team = lazyNamed(() => import("./features/team/Team"), "Team");
-const TeamPrefix = lazyNamed(
-  () => import("./features/team-prefix/TeamPrefix"),
-  "TeamPrefix",
+const TeamTag = lazyNamed(
+  () => import("./features/team-tag/TeamTag"),
+  "TeamTag",
 );
 const Leaderboards = lazyNamed(
   () => import("./features/leaderboards/Leaderboards"),
@@ -383,10 +383,10 @@ function AppContent() {
             }
           />
           <Route
-            path="/team-prefix"
+            path="/team-tag"
             element={
               <ProtectedRoute promptLogin>
-                <TeamPrefix />
+                <TeamTag />
               </ProtectedRoute>
             }
           />

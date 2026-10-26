@@ -11,12 +11,12 @@ import {
   plateLetterColor,
   plateLetterStart,
   plateLetterWidth,
-} from "@createrington/shared/team-prefix";
+} from "@createrington/shared/team-tag";
 
 const LETTER_ROWS = ["ABCDEFGHIJKLMNOPQR", "STUVWXYZ0123456789"];
 const PLATE_LETTERS_PNG = fileURLToPath(
   new URL(
-    "../../../../../client/public/assets/team-prefix/plate_letters.png",
+    "../../../../../client/public/assets/team-tag/plate_letters.png",
     import.meta.url,
   ),
 );

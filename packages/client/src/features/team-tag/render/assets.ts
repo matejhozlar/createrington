@@ -1,4 +1,4 @@
-import type { PlateColumn } from "@createrington/shared/team-prefix";
+import type { PlateColumn } from "@createrington/shared/team-tag";
 import { loadImage } from "@/lib/skin-runner/skin";
 import { STEVE_SKIN_DATA_URI } from "@/lib/skin-runner/steve";
 
@@ -23,7 +23,7 @@ export type PlateAssets = {
   logoShadow: HTMLCanvasElement;
 };
 
-const ROOT = "/assets/team-prefix";
+const ROOT = "/assets/team-tag";
 const PLATE_LETTER_ROWS = ["ABCDEFGHIJKLMNOPQR", "STUVWXYZ0123456789"];
 const PLATE_COLUMNS: PlateColumn[] = ["edge", "rivet", "fill"];
 const VANILLA_SPACE_ADVANCE = 4;

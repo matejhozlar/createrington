@@ -21,7 +21,7 @@ export type Rank = {
   icon: string;
 };
 
-const RANK_ICONS = "/assets/team-prefix/ranks";
+const RANK_ICONS = "/assets/team-tag/ranks";
 
 export const RANKS: Rank[] = [
   { label: "Shaft Scraper", color: 0x7b5733, icon: `${RANK_ICONS}/wood.png` },
