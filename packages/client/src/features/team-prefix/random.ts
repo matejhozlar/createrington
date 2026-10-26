@@ -1,14 +1,16 @@
 import {
-  TAG_LENGTH,
-  blendColor,
   PLATE_WIDTH,
+  blendColor,
+  isPlateTag,
+  plateLetterStart,
+  plateLetterWidth,
 } from "@createrington/shared/team-prefix";
 import type { PlateDraft } from "./hooks/use-plate-draft";
 
 const FADE_CHANCE = 0.6;
 const MIN_CONTRAST = 3;
 const ATTEMPTS = 500;
-const PLATE_SAMPLES = [0, 8, 15, 22, PLATE_WIDTH - 1];
+const WIDEST_TAG = "MMMM";
 
 type RandomColors = Pick<
   PlateDraft,
@@ -46,26 +48,19 @@ function contrast(a: number, b: number): number {
   return (light + 0.05) / (dark + 0.05);
 }
 
-function readable(colors: RandomColors): boolean {
-  const plates = PLATE_SAMPLES.map((x) =>
-    blendColor(
-      colors.plate,
-      colors.plateFadeOn ? colors.plateFade : null,
-      x,
-      PLATE_WIDTH,
-    ),
-  );
-  const letters = Array.from({ length: TAG_LENGTH }, (_, i) =>
-    blendColor(
-      colors.letters,
-      colors.letterFadeOn ? colors.letterFade : null,
-      i,
-      TAG_LENGTH,
-    ),
-  );
-  return plates.every((plate) =>
-    letters.every((letter) => contrast(plate, letter) >= MIN_CONTRAST),
-  );
+function readable(colors: RandomColors, tag: string): boolean {
+  const plateFade = colors.plateFadeOn ? colors.plateFade : null;
+  const letterFade = colors.letterFadeOn ? colors.letterFade : null;
+  let x = plateLetterStart(tag);
+  return [...tag].every((char, i) => {
+    const letter = blendColor(colors.letters, letterFade, i, tag.length);
+    const width = plateLetterWidth(char);
+    const start = x;
+    x += width + 1;
+    return Array.from({ length: width }, (_, column) =>
+      blendColor(colors.plate, plateFade, start + column, PLATE_WIDTH),
+    ).every((plate) => contrast(plate, letter) >= MIN_CONTRAST);
+  });
 }
 
 function roll(): RandomColors {
@@ -79,10 +74,13 @@ function roll(): RandomColors {
   };
 }
 
-export function randomColors(): RandomColors {
+export function randomColors(tag: string): RandomColors {
+  const sample = isPlateTag(tag) ? tag : WIDEST_TAG;
   let colors = roll();
-  for (let i = 1; i < ATTEMPTS && !readable(colors); i++) colors = roll();
-  if (readable(colors)) return colors;
+  for (let i = 1; i < ATTEMPTS && !readable(colors, sample); i++) {
+    colors = roll();
+  }
+  if (readable(colors, sample)) return colors;
   const letters = luminance(colors.plate) > 0.18 ? 0x000000 : 0xffffff;
   return { ...colors, letters, plateFadeOn: false, letterFadeOn: false };
 }

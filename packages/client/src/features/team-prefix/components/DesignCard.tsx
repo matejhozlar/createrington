@@ -114,7 +114,7 @@ export function DesignCard({
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => onChange(randomColors())}
+            onClick={() => onChange(randomColors(draft.tag))}
           >
             <Dices />
             Random
