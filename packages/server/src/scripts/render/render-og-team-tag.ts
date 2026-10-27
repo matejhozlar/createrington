@@ -1,9 +1,8 @@
-// Headless tool: composites the /team-tag social card (team-tag.png), a canvas
-// rebuild of the editor's preview stage: the page's blurred mountain station
-// backdrop, the close-up plate drawn pixel-exact from the same plate textures
-// the game uses (with its floor shadow and reflection), and two members of a
-// party standing under it. Figures come from the committed cache under
-// assets/figures/; to refresh one, delete it and re-run with SKIN_API_KEY set.
+// Headless tool: composites the /team-tag social card (team-tag.png): the
+// editor page's blurred mountain station backdrop with a pile of team tag
+// plates in different colours and fades, each drawn pixel-exact from the same
+// plate textures the game uses. The editor's starting plate (CRTN, brass) lies
+// on top of the pile.
 //
 // Run: pnpm --filter @createrington/server util:render-og-team-tag [outPath]
 
@@ -40,14 +39,7 @@ import {
   paintWordmark,
   wrapText,
 } from "@/utils/og-card";
-import {
-  ASSETS,
-  paintPosedFigure,
-  writeCard,
-  type PosedFigureSpec,
-} from "./og-shared";
-
-const amber = (a: number) => `rgba(255,185,0,${a})`;
+import { ASSETS, writeCard } from "./og-shared";
 
 const TEAM_TAG_ASSETS = join(ASSETS, "team-tag");
 const PLATE_LETTER_ROWS = ["ABCDEFGHIJKLMNOPQR", "STUVWXYZ0123456789"];
@@ -55,44 +47,162 @@ const PLATE_COLUMNS: readonly PlateColumn[] = ["edge", "rivet", "fill"];
 const ROW_HEIGHT = 8;
 const SHADOW_DIM = 0.25;
 
-// The editor's starting design, so the card shows the plate a visitor sees
-// first when the page opens.
-const DESIGN: PlateDesign = {
-  style: "riveted",
-  tag: "CRTN",
-  plate: 0xd9a441,
-  letters: 0x3b230e,
-  plateFade: null,
-  letterFade: null,
-};
+interface PileSpec {
+  tag: string;
+  plate: number;
+  letters: number;
+  plateFade?: number;
+  letterFade?: number;
+  cx: number;
+  cy: number;
+  zoom: number;
+  rotation: number;
+  shade?: number;
+}
 
-const PLATE_ZOOM = 12;
-const PLATE_CENTER_X = 900;
-const PLATE_TOP = 168;
-
-// Two members of the party cheering under their plate.
-const FIGURES: readonly PosedFigureSpec[] = [
+// Back to front: the farther plates are smaller and darker, the editor's
+// starting plate is painted last so it lies on top.
+const PILE: readonly PileSpec[] = [
   {
-    username: "Cailin05",
-    uuid: "aee71815-6420-444c-a245-9047c41f4a39",
-    pose: "cheer",
-    height: 268,
-    centerX: 792,
-    groundY: 602,
+    tag: "MILL",
+    plate: 0x9a9c97,
+    letters: 0x222421,
+    cx: 760,
+    cy: 236,
+    zoom: 6,
+    rotation: -13,
+    shade: 0.55,
   },
   {
-    username: "Tetsuoken",
-    uuid: "32ff995f-cf92-417b-b745-891738346120",
-    pose: "cheer",
-    height: 274,
-    centerX: 1010,
-    groundY: 606,
-    mirror: true,
+    tag: "DOCK",
+    plate: 0x2d5b8a,
+    letters: 0xffe49a,
+    plateFade: 0x3fa37a,
+    cx: 1078,
+    cy: 210,
+    zoom: 6,
+    rotation: 11,
+    shade: 0.55,
+  },
+  {
+    tag: "BEES",
+    plate: 0xffd23f,
+    letters: 0x2b1d00,
+    cx: 922,
+    cy: 176,
+    zoom: 6,
+    rotation: -4,
+    shade: 0.55,
+  },
+  {
+    tag: "LAVA",
+    plate: 0xb5302a,
+    letters: 0xffe49a,
+    plateFade: 0xff9a2e,
+    cx: 1000,
+    cy: 262,
+    zoom: 7,
+    rotation: 17,
+    shade: 0.7,
+  },
+  {
+    tag: "MOSS",
+    plate: 0x3fa37a,
+    letters: 0x0e2a1d,
+    cx: 700,
+    cy: 360,
+    zoom: 7,
+    rotation: 9,
+    shade: 0.7,
+  },
+  {
+    tag: "VOID",
+    plate: 0x2a2340,
+    letters: 0xc9a6ff,
+    letterFade: 0x6ee7ff,
+    cx: 826,
+    cy: 300,
+    zoom: 7,
+    rotation: -8,
+    shade: 0.7,
+  },
+  {
+    tag: "SNOW",
+    plate: 0xbcc8cb,
+    letters: 0x24323a,
+    plateFade: 0xf2f6f7,
+    cx: 1080,
+    cy: 340,
+    zoom: 6,
+    rotation: -12,
+    shade: 0.7,
+  },
+  {
+    tag: "RAIL",
+    plate: 0x2d5b8a,
+    letters: 0xffe49a,
+    cx: 694,
+    cy: 452,
+    zoom: 9,
+    rotation: -18,
+    shade: 0.85,
+  },
+  {
+    tag: "ZINC",
+    plate: 0xbcc8cb,
+    letters: 0x24323a,
+    cx: 1112,
+    cy: 470,
+    zoom: 9,
+    rotation: 14,
+    shade: 0.85,
+  },
+  {
+    tag: "GEAR",
+    plate: 0xc96a3d,
+    letters: 0xfff0dc,
+    plateFade: 0xd9a441,
+    cx: 944,
+    cy: 400,
+    zoom: 8,
+    rotation: 6,
+    shade: 0.85,
+  },
+  {
+    tag: "BOOM",
+    plate: 0xb5302a,
+    letters: 0xffffff,
+    letterFade: 0xffd23f,
+    cx: 676,
+    cy: 590,
+    zoom: 10,
+    rotation: 12,
+  },
+  {
+    tag: "SAIL",
+    plate: 0x2a2340,
+    letters: 0xffffff,
+    plateFade: 0x2d5b8a,
+    letterFade: 0x6ee7ff,
+    cx: 1066,
+    cy: 588,
+    zoom: 10,
+    rotation: 4,
+  },
+  {
+    tag: "CRTN",
+    plate: 0xd9a441,
+    letters: 0x3b230e,
+    cx: 880,
+    cy: 520,
+    zoom: 12,
+    rotation: -4,
   },
 ];
 
 type Bitmap = { width: number; height: number; data: Uint8ClampedArray };
 type Glyph = { bitmap: Bitmap; x: number; color: number };
+type PlateSheets = { riveted: Bitmap; letters: Bitmap };
 
 async function loadBitmap(file: string): Promise<Bitmap> {
   const img = await loadImage(join(TEAM_TAG_ASSETS, file));
@@ -127,9 +237,8 @@ function glyphWidth(bitmap: Bitmap): number {
   return width;
 }
 
-async function plateGlyphs(design: PlateDesign): Promise<Glyph[]> {
-  const riveted = await loadBitmap("plate_riveted.png");
-  const letters = await loadBitmap("plate_letters.png");
+function plateGlyphs(design: PlateDesign, sheets: PlateSheets): Glyph[] {
+  const { riveted, letters } = sheets;
   const cellW = letters.width / PLATE_LETTER_ROWS[0].length;
   const cellH = letters.height / PLATE_LETTER_ROWS.length;
 
@@ -154,8 +263,6 @@ async function plateGlyphs(design: PlateDesign): Promise<Glyph[]> {
   return glyphs;
 }
 
-// The game's text pass: every shadow of the line first, then the glyphs, with
-// the colour applied as a multiply tint.
 function blend(
   out: Uint8ClampedArray,
   i: number,
@@ -172,8 +279,15 @@ function blend(
   out[i + 3] = total * 255;
 }
 
-async function plateCanvas(design: PlateDesign): Promise<Canvas> {
-  const glyphs = await plateGlyphs(design);
+// The game's text pass: every shadow of the line first, then the glyphs, with
+// the colour applied as a multiply tint. Scaled up by whole pixels so the
+// later rotation resamples crisp texels instead of a 32x9 bitmap.
+function plateCanvas(
+  design: PlateDesign,
+  sheets: PlateSheets,
+  zoom: number,
+): Canvas {
+  const glyphs = plateGlyphs(design, sheets);
   const width = PLATE_WIDTH + 1;
   const height = ROW_HEIGHT + 1;
   const out = new Uint8ClampedArray(width * height * 4);
@@ -206,12 +320,17 @@ async function plateCanvas(design: PlateDesign): Promise<Canvas> {
     }
   }
 
-  const canvas = createCanvas(width, height);
-  const ctx = canvas.getContext("2d");
-  const image = ctx.createImageData(width, height);
+  const texels = createCanvas(width, height);
+  const tctx = texels.getContext("2d");
+  const image = tctx.createImageData(width, height);
   image.data.set(out);
-  ctx.putImageData(image, 0, 0);
-  return canvas;
+  tctx.putImageData(image, 0, 0);
+
+  const scaled = createCanvas(width * zoom, height * zoom);
+  const sctx = scaled.getContext("2d");
+  sctx.imageSmoothingEnabled = false;
+  sctx.drawImage(texels, 0, 0, width * zoom, height * zoom);
+  return scaled;
 }
 
 // The page header treatment from HeroBackdrop: the mountain station blurred,
@@ -248,67 +367,59 @@ async function paintBackdrop(ctx: SKRSContext2D): Promise<void> {
   ]);
 }
 
-function paintPlateLight(ctx: SKRSContext2D, cy: number): void {
-  paintEllipseGradient(ctx, PLATE_CENTER_X, cy, 330, 190, [
-    [0, "rgba(255,200,110,0.18)"],
+function paintPileLight(ctx: SKRSContext2D): void {
+  paintEllipseGradient(ctx, 920, 400, 400, 300, [
+    [0, "rgba(255,200,110,0.16)"],
     [0.6, "rgba(255,200,110,0.05)"],
     [1, "rgba(255,200,110,0)"],
   ]);
 }
 
-async function paintPlate(ctx: SKRSContext2D): Promise<void> {
-  const plate = await plateCanvas(DESIGN);
-  const w = plate.width * PLATE_ZOOM;
-  const h = plate.height * PLATE_ZOOM;
-  const x = Math.round(PLATE_CENTER_X - w / 2);
-  const y = PLATE_TOP;
+async function paintPile(ctx: SKRSContext2D): Promise<void> {
+  const sheets = {
+    riveted: await loadBitmap("plate_riveted.png"),
+    letters: await loadBitmap("plate_letters.png"),
+  };
 
-  paintPlateLight(ctx, y + h / 2);
+  for (const spec of PILE) {
+    const plate = plateCanvas(
+      {
+        style: "riveted",
+        tag: spec.tag,
+        plate: spec.plate,
+        letters: spec.letters,
+        plateFade: spec.plateFade ?? null,
+        letterFade: spec.letterFade ?? null,
+      },
+      sheets,
+      spec.zoom,
+    );
 
-  ctx.save();
-  ctx.filter = "blur(10px)";
-  ctx.fillStyle = "rgba(0,0,0,0.7)";
-  ctx.beginPath();
-  ctx.ellipse(PLATE_CENTER_X, y + h - 2, w * 0.38, 9, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
+    const image =
+      spec.shade === undefined ? plate : shadedPlate(plate, spec.shade);
 
-  ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(plate, x, y, w, h);
-
-  const reflectionH = 34;
-  const reflection = createCanvas(w, reflectionH);
-  const rctx = reflection.getContext("2d");
-  rctx.imageSmoothingEnabled = false;
-  rctx.translate(0, reflectionH);
-  rctx.scale(1, -1);
-  rctx.drawImage(plate, 0, reflectionH - h, w, h);
-  rctx.setTransform(1, 0, 0, 1, 0, 0);
-  rctx.globalCompositeOperation = "destination-in";
-  const mask = rctx.createLinearGradient(0, 0, 0, reflectionH);
-  mask.addColorStop(0, "rgba(0,0,0,0.9)");
-  mask.addColorStop(1, "rgba(0,0,0,0)");
-  rctx.fillStyle = mask;
-  rctx.fillRect(0, 0, w, reflectionH);
-
-  ctx.save();
-  ctx.globalAlpha = 0.18;
-  ctx.filter = "blur(1px)";
-  ctx.drawImage(reflection, x, y + h);
-  ctx.restore();
-  ctx.imageSmoothingEnabled = true;
+    ctx.save();
+    ctx.translate(spec.cx, spec.cy);
+    ctx.rotate((spec.rotation * Math.PI) / 180);
+    ctx.shadowColor = "rgba(0,0,0,0.65)";
+    ctx.shadowBlur = spec.zoom * 2.2;
+    ctx.shadowOffsetY = spec.zoom * 0.9;
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(image, -image.width / 2, -image.height / 2);
+    ctx.restore();
+  }
 }
 
-async function paintFigures(ctx: SKRSContext2D): Promise<void> {
-  for (const spec of FIGURES) {
-    await paintPosedFigure(ctx, spec, {
-      glow: amber(0.3),
-      glowBlur: 14,
-      shadowScale: 0.6,
-      shadowRy: 10,
-      shadowAlpha: 0.55,
-    });
-  }
+// Darkens only the plate's own pixels so the back of the pile recedes into
+// the night backdrop.
+function shadedPlate(plate: Canvas, shade: number): Canvas {
+  const shaded = createCanvas(plate.width, plate.height);
+  const sctx = shaded.getContext("2d");
+  sctx.drawImage(plate, 0, 0);
+  sctx.globalCompositeOperation = "source-atop";
+  sctx.fillStyle = `rgba(11,11,14,${1 - shade})`;
+  sctx.fillRect(0, 0, plate.width, plate.height);
+  return shaded;
 }
 
 async function paintCopy(ctx: SKRSContext2D): Promise<void> {
@@ -360,8 +471,8 @@ async function main(): Promise<void> {
   registerBrandFonts();
   await writeCard(outPath, async (ctx) => {
     await paintBackdrop(ctx);
-    await paintPlate(ctx);
-    await paintFigures(ctx);
+    paintPileLight(ctx);
+    await paintPile(ctx);
     await paintCopy(ctx);
   });
 }
