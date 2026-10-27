@@ -42,6 +42,7 @@
     "util:render-emojis": "tsx src/scripts/render/render-emojis.ts",
     "util:mint-session": "infisical run --env=dev -- tsx src/scripts/auth/mint-session.ts",
     "util:render-profile-poses": "infisical run --env=dev -- tsx src/scripts/render/render-profile-poses.ts",
+    "util:render-og-team-tag": "tsx src/scripts/render/render-og-team-tag.ts",
     "util:render-og-card": "tsx src/scripts/render/render-og-card.ts",
     "util:render-og-structure-packs": "tsx src/scripts/render/render-og-structure-packs.ts",
     "util:render-og-workshop": "tsx src/scripts/render/render-og-workshop.ts",
