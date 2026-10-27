@@ -1,3 +1,14 @@
+## v1.67.0 (2026-10-27)
+
+### @createrington/client (0.2.84 → 0.2.85)
+- [add] Add the team tag editor at `/team-tag` (logged in, linked from the user menu as "Team tag"), where a player who earned a Team Tag License designs their party's 4 character tab list plate in three steps: the tag (with starting points and a box for an existing code), the plate and letter colours with optional fades, a contrast hint and a Random button, and the design code they hand to an admin in game, who sets it for the whole party. Steps 2 and 3 unlock once the tag has 4 characters, and the draft is kept in local storage
+- [add] Add a pixel-exact preview of the plate next to the steps: a close-up, the in-game line and the 1.21.1 tab list (rows, heads with hat layer, ping sprites, rank icons and the Createrington logo) at GUI scale 2, 3 or 4, drawn with the plate and font textures copied from core's resource pack. The player's own row is pinned to the top of an example board, and on phones the preview becomes a hero above the steps with a sticky plate bar and Copy button
+- [add] Add shareable design links: **Copy link** on the send step builds `/team-tag?design=<code>`, opening it loads the design with the same validation messages as the paste box, and the parameter is removed from the address bar once loaded
+- [refactor] Move the title generator's segmented `ChoiceField` control to `components/choice-field.tsx` so the team tag editor can use it as well
+
+### @createrington/shared (1.15.1 → 1.16.0)
+- [add] Add `@createrington/shared/team-tag` with the design code parser and writer (`parseDesignCode`, `designCode`, following core's `CRP1:` format and error messages) and the plate layout helpers (`plateLetterStart`, `plateLetterWidth`, `plateColumn`, `blendColor`) that mirror core's `PlateLayout`
+
 ## v1.66.3 (2026-10-24)
 
 ### @createrington/server (1.67.2 → 1.67.3)
