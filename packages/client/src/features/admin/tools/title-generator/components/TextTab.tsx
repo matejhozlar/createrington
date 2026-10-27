@@ -6,7 +6,8 @@ import { normalizeTitleText } from "../engine/geometry";
 import { fontSwitchPatch } from "../engine/settings";
 import type { TextType } from "../engine/types";
 import { useFontCharacters } from "../hooks/use-title-assets";
-import { AssetGrid, ChoiceField, Section, SliderField } from "./fields";
+import { ChoiceField } from "@/components/choice-field";
+import { AssetGrid, Section, SliderField } from "./fields";
 import type { LayerTabProps } from "./types";
 
 const TEXT_TYPES: { value: TextType; label: string }[] = [

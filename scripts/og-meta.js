@@ -35,4 +35,11 @@ export const OG_ROUTES = {
     imageAlt:
       "Createrington players gathered around an open chest as suggested mods drop in.",
   },
+  "/team-tag": {
+    title: "Design your party's tag.",
+    description:
+      "Pick four letters and your colours, see the plate in a live copy of the tab list, and hand the code to an admin with your Team Tag License.",
+    imageAlt:
+      "A pile of team tag plates in different colours and fades, with a brass CRTN plate on top.",
+  },
 };
