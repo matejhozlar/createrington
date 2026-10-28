@@ -1,25 +1,28 @@
 import type { Pool, PoolClient } from "pg";
 import { ServerPartyAllyBaseQueries } from "@/generated/db/server_party_ally.queries";
 
-/**
- * Custom queries for server_party_ally table
- *
- * Extends the auto-generated base class with custom methods.
- * This file is scaffolded once and never overwritten - add your custom
- * query methods here while inheriting all generated CRUD operations.
- */
+export interface PartyAllyWithPlayer {
+  minecraftUuid: string;
+  minecraftUsername: string | null;
+}
+
 export class ServerPartyAllyQueries extends ServerPartyAllyBaseQueries {
   constructor(db: Pool | PoolClient) {
     super(db);
   }
 
-  // Add custom query methods here
-  // Example:
-  // async findByCustomCriteria(criteria: CustomType): Promise<ServerPartyAlly[]> {
-  //   const result = await this.db.query<ServerPartyAlly>(
-  //     `SELECT * FROM server_party_ally WHERE ...`,
-  //     [criteria]
-  //   );
-  //   return result.rows;
-  // }
+  /** Allies of a party with their player name, by name. */
+  async getWithPlayers(partyId: number): Promise<PartyAllyWithPlayer[]> {
+    const result = await this.db.query<PartyAllyWithPlayer>(
+      `SELECT
+        a.minecraft_uuid AS "minecraftUuid",
+        p.minecraft_username AS "minecraftUsername"
+      FROM server_party_ally a
+      LEFT JOIN player p ON p.minecraft_uuid = a.minecraft_uuid
+      WHERE a.party_id = $1
+      ORDER BY LOWER(p.minecraft_username) ASC NULLS LAST, a.minecraft_uuid ASC`,
+      [partyId],
+    );
+    return result.rows;
+  }
 }
