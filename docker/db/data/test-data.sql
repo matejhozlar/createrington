@@ -28,14 +28,9 @@ TRUNCATE TABLE player_minecraft_stat_key CASCADE;
 TRUNCATE TABLE discord_top_role CASCADE;
 TRUNCATE TABLE discord_top_role_reign CASCADE;
 TRUNCATE TABLE reward_claim CASCADE;
-TRUNCATE TABLE server_forceload_chunk CASCADE;
-TRUNCATE TABLE server_forceload_member CASCADE;
-TRUNCATE TABLE server_forceload_player CASCADE;
-TRUNCATE TABLE server_forceload_party CASCADE;
-TRUNCATE TABLE server_ally_fake_party_member CASCADE;
-TRUNCATE TABLE server_ally_fake_party CASCADE;
-TRUNCATE TABLE server_ally_party CASCADE;
-TRUNCATE TABLE server_ally_qualified_player CASCADE;
+TRUNCATE TABLE server_party_ally CASCADE;
+TRUNCATE TABLE server_party_member CASCADE;
+TRUNCATE TABLE server_party CASCADE;
 TRUNCATE TABLE playtime_archive CASCADE;
 
 -- Reset sequences
@@ -55,14 +50,9 @@ ALTER SEQUENCE discord_sticky_message_id_seq RESTART WITH 1;
 ALTER SEQUENCE leaderboard_message_id_seq RESTART WITH 1;
 ALTER SEQUENCE player_balance_transaction_id_seq RESTART WITH 1;
 ALTER SEQUENCE reward_claim_id_seq RESTART WITH 1;
-ALTER SEQUENCE server_forceload_player_id_seq RESTART WITH 1;
-ALTER SEQUENCE server_forceload_party_id_seq RESTART WITH 1;
-ALTER SEQUENCE server_forceload_member_id_seq RESTART WITH 1;
-ALTER SEQUENCE server_forceload_chunk_id_seq RESTART WITH 1;
-ALTER SEQUENCE server_ally_fake_party_id_seq RESTART WITH 1;
-ALTER SEQUENCE server_ally_fake_party_member_id_seq RESTART WITH 1;
-ALTER SEQUENCE server_ally_party_id_seq RESTART WITH 1;
-ALTER SEQUENCE server_ally_qualified_player_id_seq RESTART WITH 1;
+ALTER SEQUENCE server_party_id_seq RESTART WITH 1;
+ALTER SEQUENCE server_party_member_id_seq RESTART WITH 1;
+ALTER SEQUENCE server_party_ally_id_seq RESTART WITH 1;
 ALTER SEQUENCE playtime_archive_id_seq RESTART WITH 1;
 
 -- ============================================================================
@@ -883,88 +873,40 @@ INSERT INTO playtime_archive (label, total_seconds, total_sessions, player_count
   ('Cogs & Steam (season 2)', 18720000, 4210, 63);
 
 -- ============================================================================
--- SERVER FORCELOADS
+-- SERVER PARTIES (FTB Teams, synced by core)
 -- ============================================================================
 
--- Solo players with forceloaded chunks on Rails 'n Sails (server_id = 1)
-INSERT INTO server_forceload_player (server_id, player_uuid, synced_at) VALUES
-  -- id 1: Notch, synced recently
-  (1, '550e8400-e29b-41d4-a716-446655440003'::uuid, NOW() - INTERVAL '10 minutes'),
-  -- id 2: Herobrine, synced a while ago
-  (1, '550e8400-e29b-41d4-a716-446655440004'::uuid, NOW() - INTERVAL '2 hours'),
-  -- id 3: Dream, synced recently
-  (1, '550e8400-e29b-41d4-a716-446655440006'::uuid, NOW() - INTERVAL '30 minutes');
+-- Parties on Rails 'n Sails (server_id = 1). OPAC runs with party-owned
+-- claims, so a party's claims sit under its owner; the third party shows a
+-- server without OPAC (NULL counters).
+INSERT INTO server_party (server_id, team_id, name, description, color, free_to_join, owner_uuid, tag_code, tag, first_seen_at, synced_at) VALUES
+  -- id 1: Hermitcraft Friends, owned by Mumbo, tagged
+  (1, 'aaaaaaaa-0000-4000-8000-000000000001'::uuid, 'Hermitcraft Friends', 'Redstone, builds and far too many trains.', 14354944, false,
+   '550e8400-e29b-41d4-a716-446655440009'::uuid, 'CRP1:R:HERM:DB0C00:FFE08A:pFF8A00', 'HERM', NOW() - INTERVAL '40 days', NOW() - INTERVAL '5 minutes'),
+  -- id 2: Dream SMP Alliance, owned by Dream, tagged, free to join
+  (1, 'bbbbbbbb-0000-4000-8000-000000000002'::uuid, 'Dream SMP Alliance', '', 5592575, true,
+   '550e8400-e29b-41d4-a716-446655440006'::uuid, 'CRP1:R:DSMP:1B1240:B18CFF', 'DSMP', NOW() - INTERVAL '12 days', NOW() - INTERVAL '5 minutes'),
+  -- id 3: Lone Wolves, owned by Herobrine, no tag yet
+  (1, 'cccccccc-0000-4000-8000-000000000003'::uuid, 'Lone Wolves', 'No tag yet.', 3394611, false,
+   '550e8400-e29b-41d4-a716-446655440004'::uuid, NULL, NULL, NOW() - INTERVAL '2 days', NOW() - INTERVAL '5 minutes');
 
--- Parties that have (or had) opted in to shared forceloading
-INSERT INTO server_forceload_party (server_id, party_id, party_name, member_count, opted_in, synced_at) VALUES
-  -- id 1: active opted-in party
-  (1, 'aaaaaaaa-0000-4000-8000-000000000001'::uuid, 'Hermitcraft Friends', 3, true,  NOW() - INTERVAL '15 minutes'),
-  -- id 2: party that has since opted out (kept for history/cleanup tests)
-  (1, 'bbbbbbbb-0000-4000-8000-000000000002'::uuid, 'Dream SMP Alliance',  4, false, NOW() - INTERVAL '3 days');
+INSERT INTO server_party_member (party_id, minecraft_uuid, rank, claim_count, forceload_count) VALUES
+  -- Hermitcraft Friends: Mumbo owns, Grian officer, Scar member
+  (1, '550e8400-e29b-41d4-a716-446655440009'::uuid, 'owner',   142, 12),
+  (1, '550e8400-e29b-41d4-a716-446655440010'::uuid, 'officer',   0,  0),
+  (1, '550e8400-e29b-41d4-a716-446655440011'::uuid, 'member',    0,  0),
+  -- Dream SMP Alliance: Dream owns, Notch member
+  (2, '550e8400-e29b-41d4-a716-446655440006'::uuid, 'owner',    38,  2),
+  (2, '550e8400-e29b-41d4-a716-446655440003'::uuid, 'member',    0,  0),
+  -- Lone Wolves: Herobrine alone, no OPAC counters
+  (3, '550e8400-e29b-41d4-a716-446655440004'::uuid, 'owner',  NULL, NULL);
 
--- Members of the opted-in party (party_id = 1)
-INSERT INTO server_forceload_member (party_id, player_uuid) VALUES
-  -- Mumbo
-  (1, '550e8400-e29b-41d4-a716-446655440009'::uuid),
-  -- Grian
-  (1, '550e8400-e29b-41d4-a716-446655440010'::uuid),
-  -- Scar
-  (1, '550e8400-e29b-41d4-a716-446655440011'::uuid);
-
--- Forceloaded chunks. Exactly one of (player_id, party_id) is set per row.
-INSERT INTO server_forceload_chunk (player_id, party_id, dimension, x, z, active) VALUES
-  -- Notch (player_id = 1): base + farm in overworld, parked nether chunk
-  (1, NULL, 'minecraft:overworld',   12,  -34, true),
-  (1, NULL, 'minecraft:overworld',   13,  -34, true),
-  (1, NULL, 'minecraft:the_nether',   1,    2, false),
-  -- Herobrine (player_id = 2): single end chunk
-  (2, NULL, 'minecraft:the_end',     -5,    7, true),
-  -- Dream (player_id = 3): two overworld chunks
-  (3, NULL, 'minecraft:overworld',  100,  200, true),
-  (3, NULL, 'minecraft:overworld',  101,  200, true),
-  -- Hermitcraft Friends party (party_id = 1): shared base across dimensions
-  (NULL, 1, 'minecraft:overworld',    0,    0, true),
-  (NULL, 1, 'minecraft:overworld',    1,    0, true),
-  (NULL, 1, 'minecraft:the_nether',   0,    0, true),
-  (NULL, 1, 'minecraft:the_end',     42,  -17, false);
-
--- ============================================================================
--- SERVER ALLIES (opac-fakeplayer)
--- ============================================================================
-
--- Fake-player party on Rails 'n Sails (server_id = 1). The fake party UUIDs are
--- synthetic and intentionally not in the player table — fake players aren't
--- real accounts.
-INSERT INTO server_ally_fake_party (server_id, party_id, owner_uuid, owner_name, synced_at) VALUES
-  (1,
-   'cccccccc-0000-4000-8000-000000000001'::uuid,
-   'cccccccc-0000-4000-8000-0000000000aa'::uuid,
-   'Createrington', NOW() - INTERVAL '5 minutes');
-
--- Fake-player party members (bots, not real players)
-INSERT INTO server_ally_fake_party_member (fake_party_id, player_uuid) VALUES
-  (1, 'cccccccc-0000-4000-8000-0000000000aa'::uuid),
-  (1, 'cccccccc-0000-4000-8000-0000000000bb'::uuid),
-  (1, 'cccccccc-0000-4000-8000-0000000000cc'::uuid);
-
--- Allied real-player parties. The party_id matches the Hermitcraft Friends
--- party from server_forceload_party so the admin UI can JOIN to its member
--- roster.
-INSERT INTO server_ally_party (server_id, party_id, allied_at, synced_at) VALUES
-  (1, 'aaaaaaaa-0000-4000-8000-000000000001'::uuid,
-      NOW() - INTERVAL '2 days', NOW() - INTERVAL '5 minutes');
-
--- Qualified players. is_pending=false → currently in an allied party.
--- is_pending=true → met the trigger but not in any allied party yet.
-INSERT INTO server_ally_qualified_player (server_id, player_uuid, qualified_at, is_pending, synced_at) VALUES
-  -- Mumbo (member of allied Hermitcraft Friends party)
-  (1, '550e8400-e29b-41d4-a716-446655440009'::uuid, NOW() - INTERVAL '2 days',  false, NOW() - INTERVAL '5 minutes'),
-  -- Grian (member of allied Hermitcraft Friends party)
-  (1, '550e8400-e29b-41d4-a716-446655440010'::uuid, NOW() - INTERVAL '2 days',  false, NOW() - INTERVAL '5 minutes'),
-  -- Notch (qualified solo, no party)
-  (1, '550e8400-e29b-41d4-a716-446655440003'::uuid, NOW() - INTERVAL '1 day',   true,  NOW() - INTERVAL '5 minutes'),
-  -- Herobrine (qualified solo, no party)
-  (1, '550e8400-e29b-41d4-a716-446655440004'::uuid, NOW() - INTERVAL '6 hours', true,  NOW() - INTERVAL '5 minutes');
+INSERT INTO server_party_ally (party_id, minecraft_uuid) VALUES
+  -- Dream is an ally of Hermitcraft Friends
+  (1, '550e8400-e29b-41d4-a716-446655440006'::uuid),
+  -- Mumbo and Grian are allies of Dream SMP Alliance
+  (2, '550e8400-e29b-41d4-a716-446655440009'::uuid),
+  (2, '550e8400-e29b-41d4-a716-446655440010'::uuid);
 
 -- ============================================================================
 -- VOTING SYSTEM
