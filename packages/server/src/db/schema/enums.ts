@@ -147,14 +147,14 @@ export const launcherPackSourceEnum = pgEnum(
 // file's address on CurseForge's CDN built from its id and name (curseforge-cdn,
 // CurseForge gave no link), our own storage, or manual (no URL, the player
 // downloads it in the browser)
+export const curseforgeFileSourceEnum = pgEnum(
+  "curseforge_file_source",
+  LAUNCHER_PACK_FILE_SOURCES,
+);
+
 // A player's rank inside an FTB Teams party as core reports it; every party
 // has exactly one owner
 export const partyMemberRankEnum = pgEnum(
   "party_member_rank",
   PARTY_MEMBER_RANKS,
-);
-
-export const curseforgeFileSourceEnum = pgEnum(
-  "curseforge_file_source",
-  LAUNCHER_PACK_FILE_SOURCES,
 );
