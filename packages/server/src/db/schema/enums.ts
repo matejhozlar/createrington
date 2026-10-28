@@ -5,6 +5,7 @@ import {
   LAUNCHER_PACK_SOURCES,
   LAUNCHER_RELEASE_STATUSES,
 } from "@createrington/shared/launcher";
+import { PARTY_MEMBER_RANKS } from "@createrington/shared/party";
 import { PLAYER_PROMPT_ENTRY_MODES } from "@createrington/shared/player-prompt";
 import {
   MOD_ENVIRONMENTS,
@@ -149,4 +150,11 @@ export const launcherPackSourceEnum = pgEnum(
 export const curseforgeFileSourceEnum = pgEnum(
   "curseforge_file_source",
   LAUNCHER_PACK_FILE_SOURCES,
+);
+
+// A player's rank inside an FTB Teams party as core reports it; every party
+// has exactly one owner
+export const partyMemberRankEnum = pgEnum(
+  "party_member_rank",
+  PARTY_MEMBER_RANKS,
 );
