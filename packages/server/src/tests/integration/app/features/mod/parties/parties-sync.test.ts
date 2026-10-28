@@ -113,9 +113,7 @@ describe("replacePartyState", () => {
     const [after] = await partyRows();
     expect(after.id).toBe(before.id);
     expect(after.firstSeenAt).toEqual(before.firstSeenAt);
-    expect(after.updatedAt.getTime()).toBeGreaterThan(
-      before.updatedAt.getTime(),
-    );
+    expect(after.syncedAt.getTime()).toBeGreaterThan(before.syncedAt.getTime());
     expect(after.name).toBe("Alpha Prime");
 
     const members = await Q.server.party.member.findAll(
@@ -151,6 +149,38 @@ describe("replacePartyState", () => {
       tag: null,
     });
     expect(await Q.server.party.ally.count({ partyId: rows[0].id })).toBe(1);
+  });
+
+  it("keeps one row per player when a member or ally is listed twice", async () => {
+    await replacePartyState({
+      serverId,
+      parties: [
+        party(BETA, {
+          members: [
+            { uuid: OWNER, rank: "owner", claims: 5, forceloads: 1 },
+            {
+              uuid: OWNER.toLowerCase(),
+              rank: "member",
+              claims: null,
+              forceloads: null,
+            },
+            { uuid: MEMBER, rank: "member", claims: 2, forceloads: 0 },
+          ],
+          allies: [ALLY, ALLY.toLowerCase(), ALLY],
+        }),
+      ],
+    });
+
+    const [beta] = await partyRows();
+    const members = await Q.server.party.member.findAll(
+      { partyId: beta.id },
+      { orderBy: "minecraftUuid" },
+    );
+    expect(members).toMatchObject([
+      { minecraftUuid: OWNER.toLowerCase(), rank: "owner", claimCount: 5 },
+      { minecraftUuid: MEMBER, rank: "member", claimCount: 2 },
+    ]);
+    expect(await Q.server.party.ally.count({ partyId: beta.id })).toBe(1);
   });
 
   it("clears every party of the server on an empty snapshot", async () => {
