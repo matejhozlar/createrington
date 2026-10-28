@@ -36,7 +36,7 @@ const warningStatusSchema = z.enum([
  * mutate against, i.e. we're running on the real production deployment.
  */
 function isManualActionsEnabled(): boolean {
-  return config.envMode.isProd && !config.envMode.isDevDeployment;
+  return config.envMode.isProductionDeployment;
 }
 
 /** Admin inactivity router: list, stats, and manual resolve/remove/trigger. */

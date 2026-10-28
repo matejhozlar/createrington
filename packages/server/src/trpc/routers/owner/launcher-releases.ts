@@ -1,9 +1,11 @@
 import { z } from "zod";
-import { router, ownerProcedure } from "@/trpc/trpc";
+import { router, ownerProcedure, launcherAvailable } from "@/trpc/trpc";
 import { id, rethrowTrpc } from "@/trpc/utils";
 import config from "@/config";
 import { launcherReleaseService } from "@/services/launcher/release/launcher-release.service";
 import type { LauncherRelease } from "@createrington/shared/db/launcher_release.types";
+
+const launcherOwnerProcedure = ownerProcedure.use(launcherAvailable);
 
 const idInput = z.object({ id: id() });
 const releaseInput = idInput.extend({ required: z.boolean().default(false) });
@@ -26,7 +28,7 @@ function toDto(release: LauncherRelease) {
 }
 
 export const ownerLauncherReleasesRouter = router({
-  list: ownerProcedure
+  list: launcherOwnerProcedure
     .meta({
       description:
         "List the launcher releases stored for this environment's channel, newest first",
@@ -40,7 +42,7 @@ export const ownerLauncherReleasesRouter = router({
       };
     }),
 
-  release: ownerProcedure
+  release: launcherOwnerProcedure
     .meta({
       description:
         "Release a pending launcher version so the update check offers it, optionally as an update older launchers must take",
@@ -60,7 +62,7 @@ export const ownerLauncherReleasesRouter = router({
       }
     }),
 
-  withdraw: ownerProcedure
+  withdraw: launcherOwnerProcedure
     .meta({
       description:
         "Withdraw a pending or released launcher version so it is never offered",

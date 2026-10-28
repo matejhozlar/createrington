@@ -1,9 +1,6 @@
 import type { Express } from "express";
 import config from "@/config";
 import { env } from "@/config/env/env.config";
-import { requireSupportedLauncher } from "@/app/middleware/launcher-version.middleware";
-import { launcherJwtService } from "@/services/auth/launcher/launcher-jwt.service";
-import { launcherReleaseService } from "@/services/launcher/release/launcher-release.service";
 import authRoutes from "./auth/auth.routes";
 import donationRoutes from "./donation/donation.routes";
 import skinRoutes from "./skin/skin.routes";
@@ -22,13 +19,7 @@ import trainRoutes from "./mod/trains/trains.routes";
 import internalPresenceRoutes from "./internal/presence/presence.routes";
 import internalSsoExchangeRoutes from "./internal/sso-exchange/sso-exchange.routes";
 import adminChatRoutes from "./admin-chat/admin-chat.routes";
-import launcherAuthRoutes from "./launcher/auth/launcher-auth.routes";
-import launcherContentRoutes from "./launcher/content/launcher-content.routes";
-import launcherPackRoutes from "./launcher/pack/launcher-pack.routes";
-import {
-  launcherPublishRoutes,
-  launcherUpdateCheckRoutes,
-} from "./launcher/releases/launcher-release.routes";
+import { registerLauncherRoutes } from "./launcher";
 
 /** Mounts all feature route modules onto the Express app under the /api prefix */
 export function registerRoutes(app: Express): void {
@@ -62,31 +53,7 @@ export function registerRoutes(app: Express): void {
     logger.info("Internal skin-api routes registered");
   }
 
-  if (launcherJwtService.isEnabled()) {
-    app.use(
-      `${API_PREFIX}/launcher/auth`,
-      requireSupportedLauncher,
-      launcherAuthRoutes,
-    );
-    app.use(
-      `${API_PREFIX}/launcher/packs`,
-      requireSupportedLauncher,
-      launcherPackRoutes,
-    );
-    app.use(
-      `${API_PREFIX}/launcher/content`,
-      requireSupportedLauncher,
-      launcherContentRoutes,
-    );
-    logger.info("Launcher auth, pack and content routes registered");
-  }
-
-  app.use(`${API_PREFIX}/launcher`, launcherUpdateCheckRoutes);
-
-  if (launcherReleaseService.isEnabled()) {
-    app.use(`${API_PREFIX}/launcher`, launcherPublishRoutes);
-    logger.info("Launcher publish route registered");
-  }
+  registerLauncherRoutes(app, API_PREFIX);
 
   // Admin chat proxy, only active when the upstream URL is configured.
   // Routes gate on requireAdmin internally; the secret (if set) is injected

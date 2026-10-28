@@ -46,6 +46,7 @@ import { NavUser } from "./nav-user";
 import { NavAdmin } from "./nav-admin";
 import { NavOwner } from "./nav-owner";
 import { trpc } from "@/lib/trpc";
+import { LAUNCHER_ENABLED } from "@/lib/launcher";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user } = useAuth();
@@ -87,16 +88,20 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         url: "/owner/donations",
         icon: HeartIcon,
       },
-      {
-        title: "Launcher",
-        url: "/owner/launcher-releases",
-        icon: RocketIcon,
-      },
-      {
-        title: "Launcher packs",
-        url: "/owner/launcher-packs",
-        icon: BoxIcon,
-      },
+      ...(LAUNCHER_ENABLED
+        ? [
+            {
+              title: "Launcher",
+              url: "/owner/launcher-releases",
+              icon: RocketIcon,
+            },
+            {
+              title: "Launcher packs",
+              url: "/owner/launcher-packs",
+              icon: BoxIcon,
+            },
+          ]
+        : []),
     ],
     adminNav: [
       {
@@ -124,11 +129,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         url: "/admin/tools/workshop",
         icon: HammerIcon,
       },
-      {
-        title: "Launcher",
-        url: "/admin/launcher",
-        icon: DownloadIcon,
-      },
+      ...(LAUNCHER_ENABLED
+        ? [
+            {
+              title: "Launcher",
+              url: "/admin/launcher",
+              icon: DownloadIcon,
+            },
+          ]
+        : []),
       {
         title: "Tools",
         url: "/admin/tools",

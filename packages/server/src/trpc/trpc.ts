@@ -100,6 +100,14 @@ const isSandboxService = middleware(async ({ ctx, next }) => {
   return next();
 });
 
+/** Answers NOT_FOUND on the production deployment, where the launcher is not released yet. */
+export const launcherAvailable = middleware(async ({ next }) => {
+  if (!config.launcher.available) {
+    throw trpcError.notFound("Not found");
+  }
+  return next();
+});
+
 /** Procedure that requires a valid JWT and a verified (non-UNVERIFIED) account. */
 export const userProcedure = baseProcedure.use(isAuthenticated);
 /**

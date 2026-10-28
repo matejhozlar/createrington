@@ -461,6 +461,7 @@ export interface envModeConfig {
   readonly isProd: boolean;
   readonly isTest: boolean;
   readonly isDevDeployment: boolean;
+  readonly isProductionDeployment: boolean;
 }
 
 function checkIsDevDeployment(): boolean {
@@ -489,4 +490,11 @@ export const envMode: envModeConfig = {
    * Used to disable production-only features like AI generation and SFTP.
    */
   isDevDeployment: checkIsDevDeployment(),
+  /**
+   * True only on the production deployment (createrington.com): NODE_ENV is
+   * 'production' and WEBSITE_URL is not a dev/local host. The dev deployment
+   * also runs with NODE_ENV=production, so isProd alone is not enough.
+   */
+  isProductionDeployment:
+    env.NODE_ENV === "production" && !checkIsDevDeployment(),
 } as const;

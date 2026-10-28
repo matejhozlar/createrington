@@ -229,10 +229,8 @@ export function registerServices(): void {
     { dependencies: [Services.DISCORD_MAIN_BOT, Services.DATABASE] },
   );
 
-  // Production-only: never run on local dev or the dev deployment
-  // (dev.createrington.com ships with NODE_ENV=production, so the
-  // isDevDeployment hostname check is required in addition to isProd).
-  if (config.envMode.isProd && !config.envMode.isDevDeployment) {
+  // Production-only: never run on local dev or the dev deployment.
+  if (config.envMode.isProductionDeployment) {
     container.register(
       Services.INACTIVITY_CLEANUP_SERVICE,
       async () => {
@@ -250,15 +248,17 @@ export function registerServices(): void {
     );
   }
 
-  container.register(
-    Services.LAUNCHER_PACK_FILE_REFRESH,
-    async () => {
-      const service = new LauncherPackFileRefreshService();
-      await service.initialize();
-      return service;
-    },
-    { dependencies: [Services.DATABASE] },
-  );
+  if (config.launcher.available) {
+    container.register(
+      Services.LAUNCHER_PACK_FILE_REFRESH,
+      async () => {
+        const service = new LauncherPackFileRefreshService();
+        await service.initialize();
+        return service;
+      },
+      { dependencies: [Services.DATABASE] },
+    );
+  }
 
   container.register(
     Services.WORKSHOP_PROJECT_REFRESH,
@@ -570,9 +570,11 @@ export async function initializeServices(): Promise<void> {
   logger.info(`✓ Service initialization complete: ${ready}/${total} ready`);
 
   void releaseAnnouncementService.announceIfNew();
-  launcherPackService
-    .seedDefaultPack()
-    .catch((error) => logger.warn("Launcher pack seed failed:", error));
+  if (config.launcher.available) {
+    launcherPackService
+      .seedDefaultPack()
+      .catch((error) => logger.warn("Launcher pack seed failed:", error));
+  }
 }
 
 /**

@@ -280,6 +280,7 @@ const config = {
   },
 
   launcher: {
+    available: !envMode.isProductionDeployment,
     channel: (envMode.isDevDeployment
       ? "staging"
       : "production") satisfies LauncherChannel as LauncherChannel,

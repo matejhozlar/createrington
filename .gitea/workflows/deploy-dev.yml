@@ -123,6 +123,7 @@ jobs:
           VITE_APP_VERSION="$APP_VERSION" \
           VITE_API_URL=https://dev.createrington.com \
           VITE_BLUEMAP_URL=https://map-test.createrington.com \
+          VITE_LAUNCHER_ENABLED=true \
           pnpm build
 
       - name: Deploy frontend
