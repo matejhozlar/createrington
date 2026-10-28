@@ -1,3 +1,84 @@
+## v1.68.0 (2026-10-28)
+
+### @createrington/server (1.67.4 → 1.68.0)
+- [add] Add a complete launcher backend with Mojang-based sign-in (challenge-response via `hasJoined`, dedicated HS256 JWTs, refresh token rotation with family-wide theft detection, token denylist backed by Redis with in-memory fallback), owner-managed modpack packs (`launcher_pack` table with slug, source, position, enabled toggle), multi-source file resolution that falls through CurseForge direct link, Modrinth by SHA-1, CurseForge CDN (feature-flagged), sandbox storage and manual download, and a CurseForge content proxy (search, categories, project details, file listings, changelogs, fingerprint matching) with two-tier caching and in-flight request deduplication
+- [add] Add launcher release management: CI publishes pending versions (semver-validated, download-URL-reachable, strictly newer), the owner releases or withdraws them via tRPC, a `required` flag gates older launchers with an `UPDATE_REQUIRED` error, the CI reports which files remain on the bucket so pruned versions stop being offered, and each release carries optional structured notes (summary plus typed changes) displayed on the admin page
+- [add] Add Linux platform support for launcher releases, merging builds of the same version across platforms into one row on the admin page with per-platform download buttons
+- [add] Add sandbox pack snapshots: the sandbox reports a snapshot via `prepareRelease`, the service resolves all client files, stores the pack zip metadata and Java version, and retires the previous snapshot, with Discord notifications to the owner when files lack download sources
+- [add] Add an optional Redis connection (`RedisService`) for short-lived state: connects in the background, never blocks startup, falls back to in-memory stores when unreachable, and pauses Redis use briefly after a failed command before retrying
+- [add] Add `FallbackRateLimitStore` wrapping `express-rate-limit` so every limiter (auth, internal SSO, mod currency, message sends) counts in Redis when up and memory when not, and a `DailyCounter` abstraction that tracks per-UTC-day event counts across processes via Redis
+- [add] Add a per-minute CurseForge call budget (`CurseForgeBudget`) shared across processes via a Redis Lua script, with 429 back-off and `Retry-After` headers when the budget is spent, and a daily call counter exposed to the owner on the launcher page
+- [add] Add a Modrinth file lookup service (`findModrinthFilesBySha1`) for resolving CurseForge-blocked files by their hash against the Modrinth v2 API
+- [add] Add `ReleaseAnnouncementService` that posts a Discord Components V2 notice to the admin notifications channel on first boot of a new app version, with change-kind counts parsed from CHANGELOG.md and the last announced version tracked in settings
+- [add] Add `KeyValueStore` with memory, Redis, and fallback implementations, read-through cache-miss loading with dedup, and amortized expired-entry sweeps
+- [add] Add rate limiting on message sends (20 per minute per user) and data exports (one per five minutes per user), and drop staff-only fields from the data export
+- [add] Add `launcher_pack`, `launcher_release`, `auth_launcher_session`, and `curseforge_file` tables with their enums, indexes, and query classes
+- [add] Add multi-column `orderBy`, `countBy`, bulk `upsertMany` (with in-batch conflict-key dedup), `createMany` with `onConflict: "ignore"`, and `updateAllAndReturn` to the base query class
+- [add] Add compile-time `IdentifierArg` guard that rejects stray non-identifier keys in single-row query lookups (`find`, `get`, `update`, `delete`, `pluck`), with a runtime backstop
+- [fix] Fix concurrent refresh token rotations revoking the entire session family by detecting a replayed (already-revoked) token and revoking only the compromised family, and handle a grace-period replay after logout by returning null quietly instead of revoking
+- [fix] Fix a concurrent duplicate Stripe checkout webhook creating two donation rows by catching the `UniqueViolationError` on the session ID constraint and treating it as a replay
+- [fix] Fix redaction of secrets in logged error request bodies only checking top-level keys: `redactSensitive` now recurses into nested objects and arrays
+- [fix] Fix OAuth codes and tokens leaking into logged request URLs by redacting `code`, `state`, `token`, and `sig` query parameters in the request logger
+- [fix] Fix malformed or oversized request bodies returning 500 instead of 4xx by catching Express body-parser errors and mapping them to clean `BadRequestError` responses
+- [fix] Fix mc-server file paths that escape the data directory by rejecting path traversal attempts
+- [fix] Fix structure-pack mod links accepting arbitrary URL schemes by requiring http(s)
+- [fix] Fix the `minecraftUuid` filter on the public players list not being validated, allowing arbitrary strings through to the query
+- [fix] Fix mod currency requests not validating the recipient UUID or reason, and reject self-transfers whose UUIDs differ only in case
+- [fix] Fix mod sync payloads accepting unbounded numbers by adding Zod schemas with column-range caps for all sync endpoints (allies, chunks, forceloads, presence)
+- [fix] Fix admin reasons having no length cap by adding shared max-length constants (ban: 300, strike: 1000, general: 500) enforced on both server and client
+- [fix] Fix the in-game ban reason not being rebuilt when a failed unban re-bans the player, leaving the old reason in place
+- [fix] Fix websocket subscriptions to unknown server IDs not being rejected
+- [fix] Fix `NODE_ENV` defaulting to `development` when not set, which could mask missing configuration in production
+- [fix] Fix server nicknames not showing in the web chat feed
+- [fix] Fix Discord send errors from the admin chat being forwarded to the web client
+- [fix] Fix maintenance enforcement stopping when the Discord bot fails to start by decoupling the maintenance service from Discord readiness
+- [fix] Fix the `upsertMany` batch writing only the last row when multiple rows repeat the same conflict key, by deduplicating within each batch
+- [fix] Fix auto message reordering silently accepting unknown message IDs
+- [fix] Fix the CurseForge service falling back to a blank thumbnail by using the full logo URL when no thumbnail is available
+- [fix] Fix launcher storage downloads that stall or run past a ceiling by aborting streams that stop producing bytes or exceed a size-proportional timeout
+- [fix] Fix the session secrets and admin Discord IDs leaking through the user data export
+- [fix] Fix workshop suggesters' Discord IDs being returned from user-facing workshop routes
+- [fix] Fix the admin chat secret accepting values shorter than 32 characters
+- [fix] Fix modpack delete being allowed when a launcher pack references it
+- [fix] Fix readonly database role having access to launcher sessions and Stripe customer IDs
+- [refactor] Move violation filtering, group counting, message reordering, player activity aggregation, profile stat highlights, workshop summaries, dependency context reads, upvote reads, modpack member counts/joins/bulk-writes, and public player rankings into SQL, replacing per-row loops and in-memory filtering
+- [refactor] Batch the dependency, CurseForge refresh, inactivity, and reconcile sweeps so each processes all due rows in one pass instead of iterating individually
+- [refactor] Batch modpack changelog diffing: `getReleaseDiffs` reads all preceding releases and frozen mod rows in two queries however many releases are asked, cached per release in the key-value store for five minutes
+- [refactor] Register the maintenance service and its scheduler through the DI container with proper database dependency
+- [refactor] Share the mod sync error wrapper across all sync controllers and drop the unused play-time ticks parser
+- [remove] Remove the unused waitlist email service and all its templates
+- [remove] Remove the skin proxy route (`GET /api/skin/:uuid`), since the client loads skins from bundled assets
+- [remove] Remove the dead `util:schema-info` and `test:e2e` scripts
+- [remove] Remove the unused active-strike and ban-UUID list methods and the unpaged session history read
+- [chore] Add an optional production guard that disables all launcher routes via configuration, keeping the launcher off the production deployment while in testing
+- [chore] Keep tests, scripts, and source maps out of the server build by using a dedicated `tsconfig.build.json` and excluding test/script globs from `copyfiles`
+- [chore] Bump axios, multer, express-rate-limit, and add `@redis/client`, `rate-limit-redis`, `semver` dependencies; patch follow-redirects, sharp, proxy-addr, shell-quote, and source-map-js for the dependency audit
+
+### @createrington/client (0.2.85 → 0.2.86)
+- [add] Add an admin Launcher page showing released versions grouped by channel with the latest version prominent, per-platform download buttons (Windows/Linux icons), and structured release notes with color-coded change tags (added/improved/fixed/changed/removed) in an accordion for earlier versions, feature-gated behind `VITE_LAUNCHER_ENABLED`
+- [add] Add owner Launcher Packs page with pack CRUD (ordering, enable/disable, delete), and owner Launcher Releases page with release lifecycle management (create, edit notes, release, withdraw), the required-update toggle, and pruned-release display without download links
+- [add] Add the `ChangeTag` component rendering color-coded change-type badges using OkLCH-derived backgrounds, shared between the launcher page and the changelog
+- [add] Add a `confirmToken` prop to `ConfirmDialog` that renders a "type X to confirm" input and disables the confirm button until the text matches, replacing manually wired confirm-text inputs in destructive modals
+- [fix] Fix gallery lightbox: redesign as a full-viewport overlay with container-query-based image sizing, blurred thumbnail background while loading, backdrop click to close, navigation buttons moved to a pinned bottom bar, and metadata panel with its own scroll region
+- [fix] Fix the gallery lightbox close button overlapping small images by anchoring it to the viewport corner
+- [fix] Fix gallery lightbox navigation buttons shifting when credit text wraps
+- [fix] Fix dialogs auto-focusing the first button (often destructive) on open by adding a `dialogFocus` utility that targets the first text input instead, integrated into `AlertDialog`, `Dialog`, and `Sheet` primitives
+- [fix] Fix the estimated duration input not being clearable
+- [fix] Fix protocol-relative URLs in admin chat assistant messages being treated as internal links
+- [fix] Fix the hover lift animation on apply page figures
+- [fix] Fix the close button rotation using a CSS layer instead of a transform
+- [fix] Fix the OAuth redirect not preserving the URL hash, so deep links like `/admin/changelog#v1.66.0` survive the round-trip
+- [fix] Fix launcher release status badge colors not being distinguishable
+- [refactor] Migrate all remaining manual `toast.success`/`toast.error` pairs to `useMutationToast`, which now also supports structured `{ title, description }` toast messages
+- [refactor] Replace string-cast socket event and subscription names with typed enum values (`SocketEvent.SUBSCRIBE`, `SubscriptionType.PLAYERS`, etc.) across all context providers
+- [refactor] Replace the hand-rolled pagination in the player audit tab with the shared `Paginator` component
+- [refactor] Enforce admin reason max lengths on ban, strike, balance adjust, delete, edit, and unban modals using the shared constants from `@createrington/shared`
+- [chore] Add Windows and Linux SVG platform icons and a `launcherPlatforms` display helper
+
+### @createrington/shared (1.16.0 → 1.17.0)
+- [add] Add `@createrington/shared/launcher` with the full launcher API type library: release statuses, channels, platforms (windows/linux), pack sources and slugs, content sources/kinds/loaders/categories/sorts, file source waterfall, error codes (auth, pack, content), pagination, and all request/response data interfaces for auth, packs, content browsing, and releases
+- [add] Add `@createrington/shared/admin-reason` with shared max-length constants for admin actions: `ADMIN_REASON_MAX_LENGTH` (500), `BAN_REASON_MAX_LENGTH` (300), `STRIKE_DESCRIPTION_MAX_LENGTH` (1000)
+
 ## v1.67.0 (2026-10-27)
 
 ### @createrington/client (0.2.84 → 0.2.85)
