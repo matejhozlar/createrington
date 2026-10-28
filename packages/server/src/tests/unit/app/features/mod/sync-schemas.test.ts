@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { AllySyncBodySchema } from "@/app/features/mod/allies/allies.schemas";
 import { ChunkSyncBodySchema } from "@/app/features/mod/chunks/chunks.schemas";
 import { ForceloadSyncBodySchema } from "@/app/features/mod/forceloads/forceloads.schemas";
+import { PartySyncBodySchema } from "@/app/features/mod/parties/parties.schemas";
 import {
   HeartbeatBodySchema,
   PresenceBodySchema,
@@ -223,6 +224,88 @@ describe("ForceloadSyncBodySchema", () => {
       ForceloadSyncBodySchema.safeParse({
         players: [{ uuid: UUID, chunks: repeat(chunk, 25_001) }],
         parties: [{ ...party, chunks: repeat(chunk, 25_001) }],
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe("PartySyncBodySchema", () => {
+  const OTHER = "11111111-2222-3333-4444-666666666666";
+  const owner = { uuid: UUID, rank: "owner", claims: 3, forceloads: 0 };
+  const party = {
+    teamId: UUID,
+    name: "Alpha",
+    description: "",
+    color: 0xff8800,
+    freeToJoin: false,
+    members: [
+      owner,
+      { uuid: OTHER, rank: "member", claims: null, forceloads: null },
+    ],
+    allies: [OTHER],
+    tagCode: null,
+  };
+
+  it("accepts a snapshot with null chunk counters and a tag code", () => {
+    expect(
+      PartySyncBodySchema.safeParse({
+        parties: [{ ...party, tagCode: "CRP1:R:ALPH:FF8800:FFFFFF" }],
+      }).success,
+    ).toBe(true);
+    expect(PartySyncBodySchema.safeParse({ parties: [] }).success).toBe(true);
+  });
+
+  it("rejects a party without exactly one owner", () => {
+    expect(
+      PartySyncBodySchema.safeParse({
+        parties: [{ ...party, members: [{ ...owner, rank: "officer" }] }],
+      }).success,
+    ).toBe(false);
+    expect(
+      PartySyncBodySchema.safeParse({
+        parties: [{ ...party, members: [owner, { ...owner, uuid: OTHER }] }],
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects an unknown rank or a negative chunk counter", () => {
+    expect(
+      PartySyncBodySchema.safeParse({
+        parties: [
+          {
+            ...party,
+            members: [owner, { ...owner, uuid: OTHER, rank: "ally" }],
+          },
+        ],
+      }).success,
+    ).toBe(false);
+    expect(
+      PartySyncBodySchema.safeParse({
+        parties: [{ ...party, members: [{ ...owner, claims: -1 }] }],
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects an overlong name, description or tag code", () => {
+    for (const bad of [
+      { name: LONG },
+      { description: "x".repeat(1_001) },
+      { tagCode: LONG },
+    ]) {
+      expect(
+        PartySyncBodySchema.safeParse({ parties: [{ ...party, ...bad }] })
+          .success,
+      ).toBe(false);
+    }
+  });
+
+  it("rejects lists longer than the caps", () => {
+    expect(
+      PartySyncBodySchema.safeParse({ parties: repeat(party, 2_001) }).success,
+    ).toBe(false);
+    expect(
+      PartySyncBodySchema.safeParse({
+        parties: [{ ...party, allies: repeat(OTHER, 201) }],
       }).success,
     ).toBe(false);
   });

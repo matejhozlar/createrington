@@ -9,6 +9,7 @@ import modpacksRoutes from "./modpacks/modpacks.routes";
 import currencyRoutes from "./mod/currency/currency.routes";
 import alliesRoutes from "./mod/allies/allies.routes";
 import forceloadsRoutes from "./mod/forceloads/forceloads.routes";
+import partiesRoutes from "./mod/parties/parties.routes";
 import presenceRoutes from "./mod/presence/presence.routes";
 import messageRoutes from "./user/message/message.routes";
 import galleryRoutes from "./gallery/gallery.routes";
@@ -34,6 +35,7 @@ export function registerRoutes(app: Express): void {
   app.use(`${API_PREFIX}/allies`, alliesRoutes);
   app.use(`${API_PREFIX}/chunks`, chunksRoutes);
   app.use(`${API_PREFIX}/forceloads`, forceloadsRoutes);
+  app.use(`${API_PREFIX}/parties`, partiesRoutes);
   app.use(`${API_PREFIX}/presence`, presenceRoutes);
   app.use(`${API_PREFIX}/messages`, messageRoutes);
   app.use(`${API_PREFIX}/gallery`, galleryRoutes);
