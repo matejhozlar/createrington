@@ -7,6 +7,7 @@ import { R } from "@/db";
 import { BalanceTransactionType } from "@/db/repositories/balance";
 import { rewardService } from "@/services/reward/reward.service";
 import { formatDuration } from "@/utils/format";
+import { MC_UUID_REGEX } from "@/utils/zod-schemas";
 import type { Request, Response } from "express";
 import {
   hashRequest,
@@ -20,6 +21,7 @@ import { formatMoney } from "@createrington/shared/format";
 // (~9e15) and below BalanceUtils.MAX_BALANCE (~9.2e15) by enough margin that
 // downstream amount * 1000 storage conversion can't lose precision or overflow.
 const MAX_MOD_AMOUNT = 1_000_000_000_000;
+const MAX_REASON_LENGTH = 200;
 
 function parsePositiveMoney(value: unknown, name: string): number {
   if (
@@ -30,6 +32,23 @@ function parsePositiveMoney(value: unknown, name: string): number {
   ) {
     throw new BadRequestError(
       `${name} must be a positive number no greater than ${MAX_MOD_AMOUNT}`,
+    );
+  }
+  return value;
+}
+
+function parseRecipientUuid(value: unknown): string {
+  if (typeof value !== "string" || !MC_UUID_REGEX.test(value)) {
+    throw new BadRequestError("toUuid must be a valid UUID");
+  }
+  return value.toLowerCase();
+}
+
+function parseReason(value: unknown): string | undefined {
+  if (value == null) return undefined;
+  if (typeof value !== "string" || value.length > MAX_REASON_LENGTH) {
+    throw new BadRequestError(
+      `reason must be a string of at most ${MAX_REASON_LENGTH} characters`,
     );
   }
   return value;
@@ -70,12 +89,13 @@ export class CurrencyController {
    * caller cannot transfer from an account they don't own.
    */
   static async pay(req: Request, res: Response): Promise<void> {
-    const { toUuid, amount: rawAmount } = req.body;
+    const { toUuid: rawToUuid, amount: rawAmount } = req.body;
 
-    if (!toUuid || rawAmount == null) {
+    if (rawToUuid == null || rawAmount == null) {
       throw new BadRequestError("toUuid and amount are required");
     }
 
+    const toUuid = parseRecipientUuid(rawToUuid);
     const amount = parsePositiveMoney(rawAmount, "amount");
 
     const { uuid: senderUuid } = getAuthedPlayer(req);
@@ -102,6 +122,13 @@ export class CurrencyController {
             playerMessage: "You can't pay yourself.",
           });
         }
+        if (error.message.includes("exceeds maximum balance")) {
+          throw new BadRequestError(
+            "Would exceed the recipient's maximum balance",
+            undefined,
+            { playerMessage: "That player can't hold that much money." },
+          );
+        }
       }
       throw error;
     }
@@ -125,7 +152,7 @@ export class CurrencyController {
 
     const amount = parsePositiveMoney(rawAmount, "amount");
     const idempotencyKey = parseIdempotencyKey(rawKey);
-    const description = reason || "Deposit";
+    const description = parseReason(reason) || "Deposit";
 
     const outcome = await runIdempotent(
       {

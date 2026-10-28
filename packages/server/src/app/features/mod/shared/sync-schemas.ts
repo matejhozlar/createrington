@@ -1,0 +1,17 @@
+import { z } from "zod";
+
+export const MAX_SYNC_ENTRIES = 10_000;
+export const MAX_SYNC_CHUNKS = 50_000;
+export const MAX_SYNC_NAME_LENGTH = 255;
+
+export const syncName = z.string().max(MAX_SYNC_NAME_LENGTH);
+
+export const dimensionId = z.string().min(1).max(MAX_SYNC_NAME_LENGTH);
+
+export const chunkCoordinate = z.int32();
+
+export const epochMillis = z.number().int().nonnegative().max(8.64e15);
+
+export function syncList<T extends z.ZodType>(item: T, max = MAX_SYNC_ENTRIES) {
+  return z.array(item).max(max);
+}

@@ -1,106 +1,9 @@
-import { BadRequestError, InternalServerError } from "@/app/middleware";
-import { MC_UUID_REGEX } from "@/utils/zod-schemas";
+import { getValidated } from "@/app/middleware";
 import { resolveServerId } from "../shared/resolve-server-id";
+import { runSync } from "../shared/run-sync";
 import type { Request, Response } from "express";
-import {
-  replaceForceloadState,
-  type ChunkPayload,
-  type ForceloadSyncPayload,
-  type PartyPayload,
-  type PlayerPayload,
-} from "./forceloads.service";
-
-function parseChunk(raw: unknown, context: string): ChunkPayload {
-  if (!raw || typeof raw !== "object") {
-    throw new BadRequestError(`${context}: chunk must be an object`);
-  }
-  const c = raw as Record<string, unknown>;
-  if (typeof c.dimension !== "string" || c.dimension.length === 0) {
-    throw new BadRequestError(`${context}: chunk.dimension must be a string`);
-  }
-  if (typeof c.x !== "number" || !Number.isInteger(c.x)) {
-    throw new BadRequestError(`${context}: chunk.x must be an integer`);
-  }
-  if (typeof c.z !== "number" || !Number.isInteger(c.z)) {
-    throw new BadRequestError(`${context}: chunk.z must be an integer`);
-  }
-  if (typeof c.active !== "boolean") {
-    throw new BadRequestError(`${context}: chunk.active must be a boolean`);
-  }
-  return { dimension: c.dimension, x: c.x, z: c.z, active: c.active };
-}
-
-function parsePlayer(raw: unknown, index: number): PlayerPayload {
-  if (!raw || typeof raw !== "object") {
-    throw new BadRequestError(`players[${index}] must be an object`);
-  }
-  const p = raw as Record<string, unknown>;
-  if (typeof p.uuid !== "string" || !MC_UUID_REGEX.test(p.uuid)) {
-    throw new BadRequestError(`players[${index}].uuid must be a valid UUID`);
-  }
-  if (!Array.isArray(p.chunks)) {
-    throw new BadRequestError(`players[${index}].chunks must be an array`);
-  }
-  return {
-    uuid: p.uuid,
-    chunks: p.chunks.map((c, i) =>
-      parseChunk(c, `players[${index}].chunks[${i}]`),
-    ),
-  };
-}
-
-function parseParty(raw: unknown, index: number): PartyPayload {
-  if (!raw || typeof raw !== "object") {
-    throw new BadRequestError(`parties[${index}] must be an object`);
-  }
-  const p = raw as Record<string, unknown>;
-  if (typeof p.partyId !== "string" || !MC_UUID_REGEX.test(p.partyId)) {
-    throw new BadRequestError(`parties[${index}].partyId must be a valid UUID`);
-  }
-  if (typeof p.partyName !== "string") {
-    throw new BadRequestError(`parties[${index}].partyName must be a string`);
-  }
-  if (typeof p.memberCount !== "number" || !Number.isInteger(p.memberCount)) {
-    throw new BadRequestError(
-      `parties[${index}].memberCount must be an integer`,
-    );
-  }
-  if (typeof p.optedIn !== "boolean") {
-    throw new BadRequestError(`parties[${index}].optedIn must be a boolean`);
-  }
-  if (!Array.isArray(p.members)) {
-    throw new BadRequestError(`parties[${index}].members must be an array`);
-  }
-  if (!Array.isArray(p.chunks)) {
-    throw new BadRequestError(`parties[${index}].chunks must be an array`);
-  }
-
-  const members = p.members.map((m, i) => {
-    if (!m || typeof m !== "object") {
-      throw new BadRequestError(
-        `parties[${index}].members[${i}] must be an object`,
-      );
-    }
-    const uuid = (m as Record<string, unknown>).uuid;
-    if (typeof uuid !== "string" || !MC_UUID_REGEX.test(uuid)) {
-      throw new BadRequestError(
-        `parties[${index}].members[${i}].uuid must be a valid UUID`,
-      );
-    }
-    return { uuid };
-  });
-
-  return {
-    partyId: p.partyId,
-    partyName: p.partyName,
-    memberCount: p.memberCount,
-    optedIn: p.optedIn,
-    members,
-    chunks: p.chunks.map((c, i) =>
-      parseChunk(c, `parties[${index}].chunks[${i}]`),
-    ),
-  };
-}
+import type { ForceloadSyncBody } from "./forceloads.schemas";
+import { replaceForceloadState } from "./forceloads.service";
 
 /**
  * Forceloads Controller
@@ -110,37 +13,19 @@ function parseParty(raw: unknown, index: number): PartyPayload {
  */
 export class ForceloadsController {
   static async sync(req: Request, res: Response): Promise<void> {
-    const body = req.body as Record<string, unknown>;
-
-    if (!body || typeof body !== "object") {
-      throw new BadRequestError("Request body must be a JSON object");
-    }
-    if (!Array.isArray(body.players)) {
-      throw new BadRequestError("players must be an array");
-    }
-    if (!Array.isArray(body.parties)) {
-      throw new BadRequestError("parties must be an array");
-    }
-
+    const {
+      body: { players, parties },
+    } = getValidated<{ body: ForceloadSyncBody }>(res);
     const serverId = resolveServerId(req, "Forceload sync");
-    const players = body.players.map((p, i) => parsePlayer(p, i));
-    const parties = body.parties.map((p, i) => parseParty(p, i));
 
-    const payload: ForceloadSyncPayload = { serverId, players, parties };
+    await runSync("forceload sync", () =>
+      replaceForceloadState({ serverId, players, parties }),
+    );
 
-    try {
-      await replaceForceloadState(payload);
+    logger.info(
+      `Forceload sync for server ${serverId}: ${players.length} solo player(s), ${parties.length} opted-in part${parties.length === 1 ? "y" : "ies"}`,
+    );
 
-      logger.info(
-        `Forceload sync for server ${serverId}: ${players.length} solo player(s), ${parties.length} opted-in part${parties.length === 1 ? "y" : "ies"}`,
-      );
-
-      res.json({ success: true });
-    } catch (error) {
-      logger.error("Failed to process forceload sync:", error);
-      throw new InternalServerError(
-        "Failed to process forceload sync. Please try again.",
-      );
-    }
+    res.json({ success: true });
   }
 }

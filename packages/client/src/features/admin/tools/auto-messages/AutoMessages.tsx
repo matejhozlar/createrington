@@ -16,7 +16,7 @@ import {
   ArrowDown,
 } from "lucide-react";
 import { trpc, type RouterOutput } from "@/lib/trpc";
-import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { UpsertConfigDialog } from "./components/UpsertConfigDialog";
 import { MessageDialog } from "./components/MessageDialog";
 
@@ -25,8 +25,6 @@ type ConfigDetail = RouterOutput["admin"]["autoMessages"]["configs"]["get"];
 type Message = ConfigDetail["messages"][number];
 
 export function AutoMessages() {
-  const toast = useToastActions();
-
   const [configDialog, setConfigDialog] = useState<{
     open: boolean;
     config: Config | null;
@@ -51,25 +49,29 @@ export function AutoMessages() {
     { id: expandedId! },
     { enabled: expandedId !== null },
   );
-  const deleteMutation = trpc.admin.autoMessages.configs.delete.useMutation({
-    onSuccess: (_data, variables) => {
-      toast.success("Config deleted");
-      if (expandedId === variables.id) setExpandedId(null);
-      setDeleteConfigTarget(null);
-      configsQuery.refetch();
-    },
-    onError: () => toast.error("Failed to delete config"),
-  });
-  const deleteMessageMutation =
-    trpc.admin.autoMessages.messages.delete.useMutation({
-      onSuccess: () => {
-        toast.success("Message deleted");
-        setDeleteMessageId(null);
-        detailQuery.refetch();
+  const deleteMutation = trpc.admin.autoMessages.configs.delete.useMutation(
+    useMutationToast({
+      success: "Config deleted",
+      error: "Failed to delete config",
+      onSuccess: (_data, variables) => {
+        if (expandedId === variables.id) setExpandedId(null);
+        setDeleteConfigTarget(null);
         configsQuery.refetch();
       },
-      onError: () => toast.error("Failed to delete message"),
-    });
+    }),
+  );
+  const deleteMessageMutation =
+    trpc.admin.autoMessages.messages.delete.useMutation(
+      useMutationToast({
+        success: "Message deleted",
+        error: "Failed to delete message",
+        onSuccess: () => {
+          setDeleteMessageId(null);
+          detailQuery.refetch();
+          configsQuery.refetch();
+        },
+      }),
+    );
 
   const configs = configsQuery.data ?? [];
   const channels = channelsQuery.data ?? [];

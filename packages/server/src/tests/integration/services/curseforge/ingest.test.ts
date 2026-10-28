@@ -28,6 +28,7 @@ import {
 import {
   ingestProject,
   ingestProjects,
+  ingestProjectsWhere,
   refreshProjects,
 } from "@/services/curseforge/ingest";
 import { makeProjectData } from "@/tests/helpers/workshop";
@@ -259,5 +260,25 @@ describe("environment hints on ingest", () => {
       environment: "both",
       environmentSource: "cf_flag",
     });
+  });
+});
+
+describe("ingestProjectsWhere", () => {
+  it("caches only the projects the predicate accepts", async () => {
+    const mod = claimProjectId();
+    const modpack = claimProjectId();
+    vi.mocked(getMods).mockResolvedValue([
+      makeProjectData(mod, { classId: CurseForgeClass.mods }),
+      makeProjectData(modpack, { classId: CurseForgeClass.modpacks }),
+    ]);
+
+    const added = await ingestProjectsWhere(
+      [mod, modpack],
+      (project) => project.classId === CurseForgeClass.mods,
+    );
+
+    expect(added).toBe(1);
+    expect(await Q.curseforge.project.find({ id: mod })).not.toBeNull();
+    expect(await Q.curseforge.project.find({ id: modpack })).toBeNull();
   });
 });

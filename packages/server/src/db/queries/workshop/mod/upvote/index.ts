@@ -36,6 +36,24 @@ export class WorkshopModUpvoteQueries extends WorkshopModUpvoteBaseQueries {
     return counts;
   }
 
+  /** IDs of the mods in a workshop a player has upvoted. */
+  async getModIdsByUser(
+    workshopId: number,
+    discordId: string,
+  ): Promise<number[]> {
+    const query = `
+      SELECT wmu.workshop_mod_id
+      FROM ${this.table} wmu
+      JOIN workshop_mod wm ON wm.id = wmu.workshop_mod_id
+      WHERE wm.workshop_id = $1 AND wmu.discord_id = $2`;
+    const result = await this.runQuery<{ workshop_mod_id: number }>(
+      "workshop mod ids upvoted by user",
+      query,
+      [workshopId, discordId],
+    );
+    return result.rows.map((row) => row.workshop_mod_id);
+  }
+
   /** Number of the player's upvotes on other players' still-pending mods in a workshop; self-votes are free and excluded. */
   async countPendingByUser(
     workshopId: number,

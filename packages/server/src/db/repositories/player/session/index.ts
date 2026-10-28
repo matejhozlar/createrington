@@ -13,27 +13,29 @@ export class PlayerSessionRepository extends BasePlayerRepository {
     super();
   }
 
-  /** Paginated session history for a player, newest first; optional server filter. */
-  async getHistory(
+  /** One page of the player's sessions, newest first, with the total count. */
+  async getHistoryPage(
     identifier: PlayerIdentifier,
-    serverId?: number,
-    limit: number = 50,
-    offset: number = 0,
-  ): Promise<PlayerSession[]> {
+    serverId: number | undefined,
+    limit: number,
+    offset: number,
+  ): Promise<{ sessions: PlayerSession[]; total: number }> {
     const uuid = await this.resolvePlayerUuid(identifier);
+    const filters = {
+      playerMinecraftUuid: uuid,
+      ...(serverId && { serverId }),
+    };
 
-    return await Q.player.session.findAll(
-      {
-        playerMinecraftUuid: uuid,
-        ...(serverId && { serverId }),
-      },
-      {
+    const [sessions, total] = await Promise.all([
+      Q.player.session.findAll(filters, {
         limit,
         offset,
         orderBy: DatabaseTable.PLAYER_SESSION.CAMEL_FIELDS.SESSION_START,
         orderDirection: "desc",
-      },
-    );
+      }),
+      Q.player.session.count(filters),
+    ]);
+    return { sessions, total };
   }
 
   /** Total session count for a player, optionally scoped to a server. */

@@ -119,7 +119,7 @@ export class MessageController {
         result.error,
       );
 
-      throw new BadRequestError(result.error ?? "Failed to send message");
+      throw new BadRequestError("Failed to send message");
     }
 
     const response: SendMessageResponse = {

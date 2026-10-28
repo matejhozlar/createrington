@@ -1,6 +1,7 @@
 import * as React from "react";
 import { AlertDialog as AlertDialogPrimitive } from "radix-ui";
 
+import { focusTextFieldOnOpen } from "@/lib/dialogFocus";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
@@ -45,6 +46,7 @@ function AlertDialogOverlay({
 function AlertDialogContent({
   className,
   size = "default",
+  onOpenAutoFocus,
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Content> & {
   size?: "default" | "sm";
@@ -56,10 +58,14 @@ function AlertDialogContent({
         data-slot="alert-dialog-content"
         data-size={size}
         className={cn(
-          "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 group/alert-dialog-content fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border p-6 shadow-lg duration-200 data-[size=sm]:max-w-xs data-[size=default]:sm:max-w-lg",
+          "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 group/alert-dialog-content fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border p-6 shadow-lg outline-none duration-200 data-[size=sm]:max-w-xs data-[size=default]:sm:max-w-lg",
           className,
         )}
         {...props}
+        onOpenAutoFocus={(event) => {
+          onOpenAutoFocus?.(event);
+          focusTextFieldOnOpen(event);
+        }}
       />
     </AlertDialogPortal>
   );

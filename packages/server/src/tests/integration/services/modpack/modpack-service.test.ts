@@ -4,6 +4,7 @@ import {
   expect,
   beforeAll,
   afterEach,
+  beforeEach,
   afterAll,
   vi,
 } from "vitest";
@@ -60,6 +61,22 @@ vi.mock("@/services/modpack/changelog", () => ({
   announceReleaseChangelog: vi.fn(async () => undefined),
 }));
 
+vi.mock("@/services/launcher/pack/launcher-pack.service", () => ({
+  launcherPackService: {
+    prepareRelease: vi.fn(async () => undefined),
+    prepareSnapshot: vi.fn(async () => undefined),
+    checkReleases: vi.fn(async () => undefined),
+  },
+}));
+
+vi.mock("@/services/launcher/pack/sandbox-files", async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import("@/services/launcher/pack/sandbox-files")
+  >()),
+  findSandboxFileUrls: vi.fn(async () => new Map()),
+  findSandboxSnapshotUrl: vi.fn(async () => null),
+}));
+
 import pool, { Q } from "@/db";
 import {
   BadRequestError,
@@ -82,6 +99,8 @@ import {
   announceReview,
 } from "@/services/workshop/discord";
 import { announceReleaseChangelog } from "@/services/modpack/changelog";
+import { launcherPackService } from "@/services/launcher/pack/launcher-pack.service";
+import { findSandboxSnapshotUrl } from "@/services/launcher/pack/sandbox-files";
 import {
   createWorkshopTestContext,
   cleanupWorkshopTestContext,
@@ -93,6 +112,10 @@ import {
   seedProject,
   seedRequiredDependency,
 } from "@/tests/helpers/workshop";
+import {
+  cleanupLauncherPacks,
+  seedLauncherPack,
+} from "@/tests/helpers/launcher-pack";
 
 const USER_A = "999900000000000002";
 const ADMIN = "999900000000000001";
@@ -172,6 +195,7 @@ beforeAll(async () => {
 });
 
 afterEach(async () => {
+  await cleanupLauncherPacks(ctx);
   await cleanupWorkshopTestContext(ctx);
   vi.clearAllMocks();
 });
@@ -854,6 +878,10 @@ describe("ModpackService.reconcile", () => {
         fileName: "shipped-2.0.jar",
         fileDate: null,
         releaseType: 1,
+        gameId: 432,
+        downloadUrl: null,
+        fileLength: null,
+        sha1: null,
       },
     ]);
     vi.mocked(getModpackManifest).mockResolvedValue(
@@ -1881,6 +1909,32 @@ describe("ModpackService.getPackMods", () => {
       suggestionWorkshopName: null,
     });
   });
+
+  it("names a requiring member once when two workshops of the pack hold the same edge", async () => {
+    const modpack = await seedModpack(ctx);
+    const first = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const second = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const subject = await seedPackMod(ctx, first);
+    const pulled = await seedPackMod(ctx, first, { origin: "dependency" });
+    const outsider = await seedProject(ctx);
+    for (const workshop of [first, second]) {
+      await seedRequiredDependency(
+        workshop,
+        subject.curseforgeProjectId,
+        pulled.curseforgeProjectId,
+      );
+    }
+    await seedRequiredDependency(second, outsider, pulled.curseforgeProjectId);
+
+    const rows = await modpackService.getPackMods(modpack.id);
+
+    expect(rows.find((row) => row.id === pulled.id)?.requiredBy).toEqual([
+      {
+        curseforgeProjectId: subject.curseforgeProjectId,
+        name: `Vitest Mod ${subject.curseforgeProjectId}`,
+      },
+    ]);
+  });
 });
 
 describe("ModpackService release history", () => {
@@ -1896,6 +1950,10 @@ describe("ModpackService release history", () => {
         fileName: "coolmod-1.2.3.jar",
         fileDate: "2026-01-01T00:00:00.000Z",
         releaseType: 1,
+        gameId: 432,
+        downloadUrl: null,
+        fileLength: null,
+        sha1: null,
       },
     ]);
     vi.mocked(getModpackManifest).mockResolvedValue(
@@ -1925,6 +1983,88 @@ describe("ModpackService release history", () => {
     });
   });
 
+  it("hands a release to the launcher pack service until it is ready", async () => {
+    const modpack = await seedModpack(ctx, { curseforgeProjectId: 5011 });
+    const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const member = await seedPackMod(ctx, workshop);
+    const read = manifest({
+      version: "1.0.0",
+      modIds: new Set([member.curseforgeProjectId]),
+    });
+    vi.mocked(getModpackManifest).mockResolvedValue(read);
+
+    await modpackService.reconcile(modpack.id);
+    const [release] = await modpackService.listReleases(modpack.id);
+    await modpackService.reconcile(modpack.id);
+
+    expect(launcherPackService.prepareRelease).toHaveBeenCalledTimes(2);
+    expect(launcherPackService.prepareRelease).toHaveBeenLastCalledWith(
+      expect.objectContaining({ id: modpack.id }),
+      release.id,
+      read,
+    );
+
+    await Q.modpack.release.updateAll(
+      { launcherReadyAt: new Date() },
+      { id: release.id },
+    );
+    await modpackService.reconcile(modpack.id);
+
+    expect(launcherPackService.prepareRelease).toHaveBeenCalledTimes(2);
+  });
+
+  it("records for every file of a release whether the client pack ships it", async () => {
+    const modpack = await seedModpack(ctx, {
+      curseforgeProjectId: ctx.nextProjectId++,
+    });
+    const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const shared = await seedPackMod(ctx, workshop);
+    const clientOnly = await seedPackMod(ctx, workshop);
+    const serverOnly = await seedPackMod(ctx, workshop);
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      sidedManifest("2.0.0", [
+        [shared.curseforgeProjectId, "both"],
+        [clientOnly.curseforgeProjectId, "client"],
+        [serverOnly.curseforgeProjectId, "server"],
+      ]),
+    );
+
+    await modpackService.reconcile(modpack.id);
+
+    const [release] = await modpackService.listReleases(modpack.id);
+    const clientFiles = await Q.modpack.release.mod.getClientFileIds([
+      release.id,
+    ]);
+    expect(clientFiles.map((row) => row.fileId).sort()).toEqual(
+      [
+        fileIdFor(shared.curseforgeProjectId),
+        fileIdFor(clientOnly.curseforgeProjectId),
+      ].sort(),
+    );
+    expect(clientFiles.every((row) => row.releaseId === release.id)).toBe(true);
+  });
+
+  it("has the launcher pack service check its releases on every reconcile", async () => {
+    const modpack = await seedModpack(ctx, { curseforgeProjectId: 5011 });
+    const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const member = await seedPackMod(ctx, workshop);
+    vi.mocked(getModpackManifest).mockResolvedValue(
+      manifest({
+        version: "1.0.0",
+        modIds: new Set([member.curseforgeProjectId]),
+      }),
+    );
+    vi.mocked(launcherPackService.checkReleases).mockClear();
+
+    await modpackService.reconcile(modpack.id);
+    await modpackService.reconcile(modpack.id);
+
+    expect(launcherPackService.checkReleases).toHaveBeenCalledTimes(2);
+    expect(launcherPackService.checkReleases).toHaveBeenLastCalledWith(
+      expect.objectContaining({ id: modpack.id }),
+    );
+  });
+
   it("exposes a release's frozen membership", async () => {
     const modpack = await seedModpack(ctx, { curseforgeProjectId: 5010 });
     const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
@@ -1937,6 +2077,10 @@ describe("ModpackService release history", () => {
         fileName: "coolmod-1.2.3.jar",
         fileDate: "2026-01-01T00:00:00.000Z",
         releaseType: 1,
+        gameId: 432,
+        downloadUrl: null,
+        fileLength: null,
+        sha1: null,
       },
     ]);
     vi.mocked(getModpackManifest).mockResolvedValue(
@@ -2146,6 +2290,10 @@ describe("ModpackService release history", () => {
         fileName: "new-2.0.jar",
         fileDate: null,
         releaseType: 1,
+        gameId: 432,
+        downloadUrl: null,
+        fileLength: null,
+        sha1: null,
       },
     ]);
     vi.mocked(getModpackManifest).mockResolvedValue(
@@ -2266,6 +2414,43 @@ describe("ModpackService.recordRelease durability", () => {
   });
 });
 
+describe("ModpackService.listModpacks", () => {
+  it("names the launcher pack offering a modpack, and null for the rest", async () => {
+    const offered = await seedModpack(ctx, {
+      curseforgeProjectId: 992_700_011,
+    });
+    const plain = await seedModpack(ctx);
+    await seedLauncherPack(ctx, {
+      slug: "vitest-listed",
+      modpackId: offered.id,
+      source: "curseforge",
+    });
+
+    const rows = await modpackService.listModpacks();
+    const slugById = new Map(rows.map((row) => [row.id, row.launcherPackSlug]));
+
+    expect(slugById.get(offered.id)).toBe("vitest-listed");
+    expect(slugById.get(plain.id)).toBeNull();
+  });
+
+  it("counts members and live members per modpack, zero for an empty one", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const empty = await seedModpack(ctx);
+    await seedPackMod(ctx, workshop, { liveAt: new Date() });
+    await seedPackMod(ctx, workshop, { liveAt: new Date() });
+    await seedPackMod(ctx, workshop);
+
+    const rows = await modpackService.listModpacks();
+    const byId = new Map(rows.map((row) => [row.id, row]));
+
+    expect(byId.get(workshop.modpackId)).toMatchObject({
+      modCount: 3,
+      liveCount: 2,
+    });
+    expect(byId.get(empty.id)).toMatchObject({ modCount: 0, liveCount: 0 });
+  });
+});
+
 describe("ModpackService.deleteModpack", () => {
   it("throws NotFoundError for a modpack that does not exist", async () => {
     await expect(modpackService.deleteModpack(99_999_999)).rejects.toThrow(
@@ -2281,6 +2466,23 @@ describe("ModpackService.deleteModpack", () => {
     ).rejects.toThrow(ConflictError);
 
     expect(await Q.modpack.find({ id: workshop.modpackId })).not.toBeNull();
+  });
+
+  it("refuses while the launcher offers it, and names the pack", async () => {
+    const modpack = await seedModpack(ctx, {
+      curseforgeProjectId: 992_700_001,
+    });
+    await seedLauncherPack(ctx, {
+      slug: "vitest-offered",
+      modpackId: modpack.id,
+      source: "curseforge",
+    });
+
+    await expect(modpackService.deleteModpack(modpack.id)).rejects.toThrow(
+      /"vitest-offered"/,
+    );
+
+    expect(await Q.modpack.find({ id: modpack.id })).not.toBeNull();
   });
 
   it("deletes members and releases once no workshop uses it", async () => {
@@ -2301,12 +2503,76 @@ describe("ModpackService.deleteModpack", () => {
   });
 });
 
+describe("ModpackService.updateModpack for a modpack the launcher offers", () => {
+  async function seedOffered() {
+    const modpack = await seedModpack(ctx, {
+      curseforgeProjectId: 992_700_002,
+    });
+    await seedLauncherPack(ctx, {
+      slug: "vitest-offered",
+      modpackId: modpack.id,
+      source: "curseforge",
+    });
+    return modpack;
+  }
+
+  it("refuses to unlink its CurseForge project", async () => {
+    const modpack = await seedOffered();
+
+    await expect(
+      modpackService.updateModpack(modpack.id, { curseforgeProjectId: null }),
+    ).rejects.toThrow(ConflictError);
+
+    expect((await Q.modpack.get({ id: modpack.id })).curseforgeProjectId).toBe(
+      992_700_002,
+    );
+  });
+
+  it("refuses to link another CurseForge project", async () => {
+    const modpack = await seedOffered();
+
+    await expect(
+      modpackService.updateModpack(modpack.id, {
+        curseforgeProjectId: 992_700_003,
+      }),
+    ).rejects.toThrow(/"vitest-offered"/);
+  });
+
+  it("keeps every other field editable", async () => {
+    const modpack = await seedOffered();
+
+    const updated = await modpackService.updateModpack(modpack.id, {
+      name: "Renamed Pack",
+      curseforgeProjectId: 992_700_002,
+    });
+
+    expect(updated.name).toBe("Renamed Pack");
+    expect(updated.curseforgeProjectId).toBe(992_700_002);
+  });
+
+  it("lets a modpack the launcher does not offer unlink its project", async () => {
+    const modpack = await seedModpack(ctx, {
+      curseforgeProjectId: 992_700_004,
+    });
+
+    const updated = await modpackService.updateModpack(modpack.id, {
+      curseforgeProjectId: null,
+    });
+
+    expect(updated.curseforgeProjectId).toBeNull();
+  });
+});
+
 function cfFile(
   overrides: Partial<ModpackFile> & { id: number; projectId: number },
 ): ModpackFile {
   return {
     displayName: null,
+    fileName: null,
     fileDate: null,
+    downloadUrl: null,
+    fileLength: null,
+    sha1: null,
     fileStatus: null,
     isAvailable: true,
     serverPackFileId: null,
@@ -2576,6 +2842,292 @@ describe("ModpackService.recordPublish", () => {
         serverPackFileId: SERVER,
       }),
     ).rejects.toThrow(NotFoundError);
+  });
+});
+
+describe("ModpackService.recordSnapshot", () => {
+  const SNAPSHOT_URL =
+    "https://sandbox.createrington.test/api/pack/files/snapshot/7";
+
+  async function seedSandboxPack() {
+    const modpack = await seedModpack(ctx, { name: "Vitest Test Server" });
+    await seedLauncherPack(ctx, {
+      slug: "vitest-test",
+      modpackId: modpack.id,
+      source: "sandbox",
+    });
+    return modpack;
+  }
+
+  function report(projectId: number, overrides = {}) {
+    return {
+      slug: "vitest-test",
+      snapshotId: 7,
+      version: "1.4.2-test.7",
+      minecraftVersion: "1.21.1",
+      modLoader: "neoforge-21.1.249",
+      zip: {
+        fileName: "createrington-test-7.zip",
+        size: 4321,
+        sha1: "a".repeat(40),
+      },
+      files: [{ projectId, fileId: fileIdFor(projectId), required: true }],
+      notes: "First test snapshot.",
+      ...overrides,
+    };
+  }
+
+  const BLOCKED_REASON =
+    "1 client file(s) could not be resolved on CurseForge (file ids 700001)";
+
+  function readyOnPrepare() {
+    vi.mocked(launcherPackService.prepareSnapshot).mockImplementation(
+      async (modpack, releaseId) => {
+        await Q.modpack.release.updateAll(
+          { launcherReadyAt: new Date() },
+          { id: releaseId },
+        );
+        await Q.modpack.release.updateAll(
+          { launcherUnavailableAt: new Date() },
+          { modpackId: modpack.id, id: { $lt: releaseId } },
+        );
+        return { status: "ready" as const };
+      },
+    );
+  }
+
+  beforeEach(() => {
+    vi.mocked(findSandboxSnapshotUrl).mockResolvedValue(SNAPSHOT_URL);
+    vi.mocked(launcherPackService.prepareSnapshot).mockResolvedValue({
+      status: "blocked",
+      reason: BLOCKED_REASON,
+    });
+  });
+
+  it("records the verified snapshot as a release with its files and notes, readies it, and says so", async () => {
+    const modpack = await seedSandboxPack();
+    const projectId = await seedProject(ctx, "Create");
+    readyOnPrepare();
+
+    const result = await modpackService.recordSnapshot(report(projectId));
+
+    expect(findSandboxSnapshotUrl).toHaveBeenCalledWith({
+      snapshotId: 7,
+      sha1: "a".repeat(40),
+      size: 4321,
+    });
+    expect(result.ready).toBe(true);
+    expect(result.error).toBeNull();
+    expect(result.release).toMatchObject({
+      modpackId: modpack.id,
+      curseforgeFileId: 7,
+      serverPackFileId: null,
+      version: "1.4.2-test.7",
+      minecraftVersion: "1.21.1",
+      modLoader: "neoforge-21.1.249",
+      modCount: 1,
+    });
+    expect(launcherPackService.prepareSnapshot).toHaveBeenCalledWith(
+      expect.objectContaining({ id: modpack.id }),
+      result.release.id,
+      {
+        version: "1.4.2-test.7",
+        minecraftVersion: "1.21.1",
+        modLoader: "neoforge-21.1.249",
+        zip: {
+          fileName: "createrington-test-7.zip",
+          size: 4321,
+          sha1: "a".repeat(40),
+          downloadUrl: SNAPSHOT_URL,
+        },
+        entries: [{ projectId, fileId: fileIdFor(projectId), required: true }],
+      },
+    );
+    const mods = await Q.modpack.release.mod.findAll({
+      releaseId: result.release.id,
+    });
+    expect(mods).toHaveLength(1);
+    expect(mods[0]).toMatchObject({
+      curseforgeProjectId: projectId,
+      fileId: fileIdFor(projectId),
+      inClientPack: true,
+    });
+    expect(
+      await Q.modpack.publish.get({ modpackId: modpack.id, clientFileId: 7 }),
+    ).toMatchObject({
+      serverPackFileId: null,
+      notes: "First test snapshot.",
+      lastError: null,
+    });
+  });
+
+  it("refuses a slug that is not a sandbox pack, and asks the sandbox nothing", async () => {
+    const modpack = await seedModpack(ctx, {
+      curseforgeProjectId: 992_800_001,
+    });
+    await seedLauncherPack(ctx, {
+      slug: "vitest-main",
+      modpackId: modpack.id,
+      source: "curseforge",
+    });
+    const projectId = await seedProject(ctx);
+
+    await expect(
+      modpackService.recordSnapshot(report(projectId, { slug: "vitest-main" })),
+    ).rejects.toThrow(NotFoundError);
+    await expect(
+      modpackService.recordSnapshot(report(projectId, { slug: "vitest-none" })),
+    ).rejects.toThrow(NotFoundError);
+    expect(findSandboxSnapshotUrl).not.toHaveBeenCalled();
+  });
+
+  it("refuses a snapshot the sandbox does not serve as reported, and records nothing", async () => {
+    const modpack = await seedSandboxPack();
+    const projectId = await seedProject(ctx);
+    vi.mocked(findSandboxSnapshotUrl).mockResolvedValue(null);
+
+    await expect(
+      modpackService.recordSnapshot(report(projectId)),
+    ).rejects.toThrow(BadRequestError);
+
+    expect(await Q.modpack.release.count({ modpackId: modpack.id })).toBe(0);
+    expect(launcherPackService.prepareSnapshot).not.toHaveBeenCalled();
+  });
+
+  it("keeps a snapshot that could not be readied and finishes it on a resend", async () => {
+    const modpack = await seedSandboxPack();
+    const projectId = await seedProject(ctx);
+
+    const first = await modpackService.recordSnapshot(report(projectId));
+    readyOnPrepare();
+    const second = await modpackService.recordSnapshot(
+      report(projectId, { notes: "" }),
+    );
+
+    expect(first.ready).toBe(false);
+    expect(first.error).toBe(BLOCKED_REASON);
+    expect(second.ready).toBe(true);
+    expect(second.release.id).toBe(first.release.id);
+    expect(await Q.modpack.release.count({ modpackId: modpack.id })).toBe(1);
+    expect(
+      await Q.modpack.publish.get({ modpackId: modpack.id, clientFileId: 7 }),
+    ).toMatchObject({ notes: null, lastError: null });
+  });
+
+  it("answers a ready snapshot as it is without asking the sandbox again", async () => {
+    const modpack = await seedSandboxPack();
+    const projectId = await seedProject(ctx);
+    readyOnPrepare();
+    const first = await modpackService.recordSnapshot(report(projectId));
+    vi.mocked(findSandboxSnapshotUrl).mockClear();
+    vi.mocked(launcherPackService.prepareSnapshot).mockClear();
+
+    const again = await modpackService.recordSnapshot(report(projectId));
+
+    expect(again.ready).toBe(true);
+    expect(again.release.id).toBe(first.release.id);
+    expect(findSandboxSnapshotUrl).not.toHaveBeenCalled();
+    expect(launcherPackService.prepareSnapshot).not.toHaveBeenCalled();
+    expect(await Q.modpack.release.count({ modpackId: modpack.id })).toBe(1);
+  });
+
+  it("tells the sandbox the reason a snapshot is blocked, and keeps it on the publish row", async () => {
+    const modpack = await seedSandboxPack();
+    const projectId = await seedProject(ctx);
+
+    const result = await modpackService.recordSnapshot(report(projectId));
+
+    expect(result).toMatchObject({ ready: false, error: BLOCKED_REASON });
+    expect(
+      await Q.modpack.publish.get({ modpackId: modpack.id, clientFileId: 7 }),
+    ).toMatchObject({ lastError: BLOCKED_REASON, ingestedAt: null });
+  });
+
+  it("answers a report that arrives while an earlier one is still preparing as in progress, without touching the publish row", async () => {
+    const modpack = await seedSandboxPack();
+    const projectId = await seedProject(ctx);
+    vi.mocked(launcherPackService.prepareSnapshot).mockResolvedValue({
+      status: "busy",
+    });
+
+    const result = await modpackService.recordSnapshot(report(projectId));
+
+    expect(result.ready).toBe(false);
+    expect(result.error).toMatch(/being prepared/);
+    expect(
+      await Q.modpack.publish.get({ modpackId: modpack.id, clientFileId: 7 }),
+    ).toMatchObject({ lastError: null, ingestedAt: null });
+  });
+
+  it("updates the notes of a ready snapshot on a resend", async () => {
+    const modpack = await seedSandboxPack();
+    const projectId = await seedProject(ctx);
+    readyOnPrepare();
+    await modpackService.recordSnapshot(report(projectId));
+    vi.mocked(findSandboxSnapshotUrl).mockClear();
+
+    const again = await modpackService.recordSnapshot(
+      report(projectId, { notes: "Corrected notes." }),
+    );
+    const kept = await modpackService.recordSnapshot(
+      report(projectId, { notes: undefined }),
+    );
+
+    expect(again.ready).toBe(true);
+    expect(kept.ready).toBe(true);
+    expect(findSandboxSnapshotUrl).not.toHaveBeenCalled();
+    expect(
+      await Q.modpack.publish.get({ modpackId: modpack.id, clientFileId: 7 }),
+    ).toMatchObject({ notes: "Corrected notes." });
+  });
+
+  it("does not offer a snapshot older than the one already offered, and says so", async () => {
+    const modpack = await seedSandboxPack();
+    const projectId = await seedProject(ctx);
+    readyOnPrepare();
+    const seven = await modpackService.recordSnapshot(report(projectId));
+    const eight = await modpackService.recordSnapshot(
+      report(projectId, { snapshotId: 8 }),
+    );
+    vi.mocked(findSandboxSnapshotUrl).mockClear();
+    vi.mocked(launcherPackService.prepareSnapshot).mockClear();
+
+    const sevenAgain = await modpackService.recordSnapshot(report(projectId));
+    const six = await modpackService.recordSnapshot(
+      report(projectId, { snapshotId: 6 }),
+    );
+
+    expect(seven.ready).toBe(true);
+    expect(eight.ready).toBe(true);
+    expect(sevenAgain).toMatchObject({
+      ready: false,
+      error: expect.stringMatching(/newer snapshot/),
+    });
+    expect(sevenAgain.release.id).toBe(seven.release.id);
+    expect(six).toMatchObject({
+      ready: false,
+      error: expect.stringMatching(/Snapshot 8 is newer/),
+    });
+    expect(findSandboxSnapshotUrl).not.toHaveBeenCalled();
+    expect(launcherPackService.prepareSnapshot).not.toHaveBeenCalled();
+    expect(await Q.modpack.release.count({ modpackId: modpack.id })).toBe(2);
+  });
+
+  it("keeps the recorded release when prepareSnapshot throws, and reports the failure", async () => {
+    const modpack = await seedSandboxPack();
+    const projectId = await seedProject(ctx);
+    vi.mocked(launcherPackService.prepareSnapshot).mockRejectedValue(
+      new Error("CurseForge 504"),
+    );
+
+    const result = await modpackService.recordSnapshot(report(projectId));
+
+    expect(result.ready).toBe(false);
+    expect(result.error).toBe("CurseForge 504");
+    expect(await Q.modpack.release.count({ modpackId: modpack.id })).toBe(1);
+    expect(
+      await Q.modpack.publish.get({ modpackId: modpack.id, clientFileId: 7 }),
+    ).toMatchObject({ lastError: "CurseForge 504", ingestedAt: null });
   });
 });
 

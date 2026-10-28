@@ -1,0 +1,466 @@
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import {
+  FallbackKeyValueStore,
+  MemoryKeyValueStore,
+  RedisKeyValueStore,
+  createKeyValueStore,
+  readStored,
+  readStoredMany,
+  readThrough,
+  writeStored,
+  type KeyValueStore,
+} from "@/services/key-value-store";
+
+beforeEach(() => {
+  vi.useFakeTimers();
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+});
+
+describe("MemoryKeyValueStore", () => {
+  it("has nothing under a key that was never written", async () => {
+    expect(await new MemoryKeyValueStore().get("missing")).toBeNull();
+  });
+
+  it("keeps a value until its time is up", async () => {
+    const store = new MemoryKeyValueStore();
+    await store.set("key", "value", 1000);
+
+    vi.advanceTimersByTime(999);
+    expect(await store.get("key")).toBe("value");
+
+    vi.advanceTimersByTime(1);
+    expect(await store.get("key")).toBeNull();
+  });
+
+  it("replaces a value and its time limit", async () => {
+    const store = new MemoryKeyValueStore();
+    await store.set("key", "first", 1000);
+    await store.set("key", "second", 5000);
+
+    vi.advanceTimersByTime(2000);
+    expect(await store.get("key")).toBe("second");
+  });
+
+  it("drops the value written longest ago when it is full", async () => {
+    const store = new MemoryKeyValueStore(2);
+    await store.set("a", "1", 1000);
+    await store.set("b", "2", 1000);
+    await store.set("c", "3", 1000);
+
+    expect(await store.get("a")).toBeNull();
+    expect(await store.get("b")).toBe("2");
+    expect(await store.get("c")).toBe("3");
+  });
+
+  it("drops expired values before live ones when it is full", async () => {
+    const store = new MemoryKeyValueStore(2);
+    await store.set("old", "1", 5000);
+    await store.set("expired", "2", 100);
+    vi.advanceTimersByTime(200);
+    await store.set("new", "3", 5000);
+
+    expect(await store.get("old")).toBe("1");
+    expect(await store.get("new")).toBe("3");
+  });
+
+  it("reads many keys in the order asked, null where there is nothing", async () => {
+    const store = new MemoryKeyValueStore();
+    await store.set("a", "1", 1000);
+    await store.set("expired", "2", 100);
+    vi.advanceTimersByTime(200);
+
+    expect(await store.getMany(["a", "missing", "expired"])).toEqual([
+      "1",
+      null,
+      null,
+    ]);
+  });
+
+  it("drops the oldest live value between sweeps and expired ones at the next sweep", async () => {
+    const store = new MemoryKeyValueStore(20);
+    for (let i = 0; i < 19; i++) await store.set(`live${i}`, "1", 60_000);
+    await store.set("expired", "2", 100);
+    vi.advanceTimersByTime(200);
+
+    await store.set("first", "3", 60_000);
+    expect(await store.get("live0")).toBe("1");
+
+    await store.set("short", "4", 100);
+    vi.advanceTimersByTime(200);
+    await store.set("a", "5", 60_000);
+    await store.set("b", "6", 60_000);
+
+    expect(await store.get("live0")).toBeNull();
+    expect(await store.get("live1")).toBeNull();
+    expect(await store.get("live2")).toBe("1");
+    expect(await store.get("b")).toBe("6");
+  });
+
+  it("does not count a rewritten key twice", async () => {
+    const store = new MemoryKeyValueStore(2);
+    await store.set("a", "1", 1000);
+    await store.set("b", "2", 1000);
+    await store.set("b", "3", 1000);
+
+    expect(await store.get("a")).toBe("1");
+    expect(await store.get("b")).toBe("3");
+  });
+});
+
+describe("RedisKeyValueStore", () => {
+  function fakeRedis(reply: unknown = null) {
+    return { sendCommand: vi.fn(async (_args: string[]) => reply) };
+  }
+
+  it("reads the value Redis holds under the key", async () => {
+    const redis = fakeRedis("value");
+
+    expect(await new RedisKeyValueStore(redis).get("key")).toBe("value");
+    expect(redis.sendCommand).toHaveBeenCalledWith(["GET", "key"]);
+  });
+
+  it("has nothing under a key Redis does not hold", async () => {
+    expect(await new RedisKeyValueStore(fakeRedis(null)).get("key")).toBeNull();
+  });
+
+  it("reads many keys in one MGET", async () => {
+    const redis = fakeRedis(["1", null]);
+
+    expect(await new RedisKeyValueStore(redis).getMany(["a", "b"])).toEqual([
+      "1",
+      null,
+    ]);
+    expect(redis.sendCommand).toHaveBeenCalledTimes(1);
+    expect(redis.sendCommand).toHaveBeenCalledWith(["MGET", "a", "b"]);
+  });
+
+  it("asks Redis nothing for no keys", async () => {
+    const redis = fakeRedis();
+
+    expect(await new RedisKeyValueStore(redis).getMany([])).toEqual([]);
+    expect(redis.sendCommand).not.toHaveBeenCalled();
+  });
+
+  it("fails when Redis answers MGET with the wrong number of values", async () => {
+    const redis = fakeRedis(["1"]);
+
+    await expect(
+      new RedisKeyValueStore(redis).getMany(["a", "b"]),
+    ).rejects.toThrow("MGET");
+  });
+
+  it("writes a value with its time limit in milliseconds", async () => {
+    const redis = fakeRedis("OK");
+
+    await new RedisKeyValueStore(redis).set("key", "value", 1500);
+
+    expect(redis.sendCommand).toHaveBeenCalledWith([
+      "SET",
+      "key",
+      "value",
+      "PX",
+      "1500",
+    ]);
+  });
+
+  it("keeps a value for at least one whole millisecond", async () => {
+    const redis = fakeRedis("OK");
+
+    await new RedisKeyValueStore(redis).set("key", "value", 0.2);
+
+    expect(redis.sendCommand).toHaveBeenCalledWith([
+      "SET",
+      "key",
+      "value",
+      "PX",
+      "1",
+    ]);
+  });
+
+  it("fails when Redis fails", async () => {
+    const redis = {
+      sendCommand: vi.fn(async () => {
+        throw new Error("Redis is not connected");
+      }),
+    };
+
+    await expect(new RedisKeyValueStore(redis).get("key")).rejects.toThrow(
+      "Redis is not connected",
+    );
+  });
+});
+
+describe("FallbackKeyValueStore", () => {
+  const failing: KeyValueStore = {
+    get: async () => {
+      throw new Error("store down");
+    },
+    getMany: async () => {
+      throw new Error("store down");
+    },
+    set: async () => {
+      throw new Error("store down");
+    },
+  };
+
+  it("uses the primary while it is up", async () => {
+    const primary = new MemoryKeyValueStore();
+    const fallback = new MemoryKeyValueStore();
+    const store = new FallbackKeyValueStore(primary, fallback, () => true);
+
+    await store.set("key", "value", 1000);
+
+    expect(await store.get("key")).toBe("value");
+    expect(await primary.get("key")).toBe("value");
+    expect(await fallback.get("key")).toBeNull();
+  });
+
+  it("uses the fallback while the primary is down", async () => {
+    const primary = new MemoryKeyValueStore();
+    const fallback = new MemoryKeyValueStore();
+    const store = new FallbackKeyValueStore(primary, fallback, () => false);
+
+    await store.set("key", "value", 1000);
+
+    expect(await store.get("key")).toBe("value");
+    expect(await primary.get("key")).toBeNull();
+    expect(await fallback.get("key")).toBe("value");
+  });
+
+  it("reads many keys from the fallback when the primary fails", async () => {
+    const fallback = new MemoryKeyValueStore();
+    await fallback.set("a", "1", 1000);
+    const store = new FallbackKeyValueStore(failing, fallback, () => true);
+
+    expect(await store.getMany(["a", "b"])).toEqual(["1", null]);
+  });
+
+  it("answers from the fallback when the primary fails", async () => {
+    const fallback = new MemoryKeyValueStore();
+    const store = new FallbackKeyValueStore(failing, fallback, () => true);
+
+    await store.set("key", "value", 1000);
+
+    expect(await store.get("key")).toBe("value");
+    expect(await fallback.get("key")).toBe("value");
+  });
+
+  it("goes back to the primary once it is up again", async () => {
+    const primary = new MemoryKeyValueStore();
+    const fallback = new MemoryKeyValueStore();
+    let up = false;
+    const store = new FallbackKeyValueStore(primary, fallback, () => up);
+
+    await store.set("key", "written while down", 1000);
+    up = true;
+    await store.set("key", "written while up", 1000);
+
+    expect(await store.get("key")).toBe("written while up");
+    expect(await primary.get("key")).toBe("written while up");
+  });
+
+  it("keeps a cache working through readThrough while the primary is down", async () => {
+    const store = new FallbackKeyValueStore(
+      failing,
+      new MemoryKeyValueStore(),
+      () => false,
+    );
+    const load = vi.fn(async () => "value");
+
+    expect(await readThrough(store, "cached", 1000, load)).toBe("value");
+    expect(await readThrough(store, "cached", 1000, load)).toBe("value");
+    expect(load).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("readThrough", () => {
+  it("loads a missing value once and answers from the store afterwards", async () => {
+    const store = new MemoryKeyValueStore();
+    const load = vi.fn(async () => ({ answer: 42 }));
+
+    expect(await readThrough(store, "once", 1000, load)).toEqual({
+      answer: 42,
+    });
+    expect(await readThrough(store, "once", 1000, load)).toEqual({
+      answer: 42,
+    });
+    expect(load).toHaveBeenCalledTimes(1);
+  });
+
+  it("loads again once the stored value's time is up", async () => {
+    const store = new MemoryKeyValueStore();
+    const load = vi.fn(async () => "value");
+
+    await readThrough(store, "expiring", 1000, load);
+    vi.advanceTimersByTime(1000);
+    await readThrough(store, "expiring", 1000, load);
+
+    expect(load).toHaveBeenCalledTimes(2);
+  });
+
+  it("stores a null result like any other", async () => {
+    const store = new MemoryKeyValueStore();
+    const load = vi.fn(async () => null);
+
+    expect(await readThrough(store, "nothing", 1000, load)).toBeNull();
+    expect(await readThrough(store, "nothing", 1000, load)).toBeNull();
+    expect(load).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps a value for the time picked by what was loaded", async () => {
+    const store = new MemoryKeyValueStore();
+    const ttlMs = (value: string | null) => (value ? 5000 : 1000);
+    const known = vi.fn(async () => "value" as string | null);
+    const unknown = vi.fn(async () => null as string | null);
+
+    await readThrough(store, "known", ttlMs, known);
+    await readThrough(store, "unknown", ttlMs, unknown);
+    vi.advanceTimersByTime(1000);
+    await readThrough(store, "known", ttlMs, known);
+    await readThrough(store, "unknown", ttlMs, unknown);
+
+    expect(known).toHaveBeenCalledTimes(1);
+    expect(unknown).toHaveBeenCalledTimes(2);
+  });
+
+  it("shares one load between callers that miss at the same time", async () => {
+    const store = new MemoryKeyValueStore();
+    let finish: (value: string) => void = () => {};
+    const load = vi.fn(
+      () => new Promise<string>((resolve) => (finish = resolve)),
+    );
+
+    const first = readThrough(store, "shared", 1000, load);
+    const second = readThrough(store, "shared", 1000, load);
+    await vi.advanceTimersByTimeAsync(0);
+    finish("value");
+
+    expect(await Promise.all([first, second])).toEqual(["value", "value"]);
+    expect(load).toHaveBeenCalledTimes(1);
+  });
+
+  it("stores nothing when the load fails, and loads again next time", async () => {
+    const store = new MemoryKeyValueStore();
+    const load = vi
+      .fn<() => Promise<string>>()
+      .mockRejectedValueOnce(new Error("down"))
+      .mockResolvedValueOnce("value");
+
+    await expect(readThrough(store, "flaky", 1000, load)).rejects.toThrow(
+      "down",
+    );
+    expect(await readThrough(store, "flaky", 1000, load)).toBe("value");
+    expect(load).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("a store that fails", () => {
+  const failing: KeyValueStore = {
+    get: async () => {
+      throw new Error("store down");
+    },
+    getMany: async () => {
+      throw new Error("store down");
+    },
+    set: async () => {
+      throw new Error("store down");
+    },
+  };
+
+  it("reads as nothing stored", async () => {
+    expect(await readStored(failing, "key")).toBeUndefined();
+  });
+
+  it("skips the write without failing", async () => {
+    await expect(
+      writeStored(failing, "key", { answer: 42 }, 1000),
+    ).resolves.toBeUndefined();
+  });
+
+  it("only costs a load in readThrough", async () => {
+    const load = vi.fn(async () => "value");
+
+    expect(await readThrough(failing, "down", 1000, load)).toBe("value");
+    expect(await readThrough(failing, "down", 1000, load)).toBe("value");
+    expect(load).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("createKeyValueStore", () => {
+  it("gives every caller a store of its own, full on its own", async () => {
+    const small = createKeyValueStore(1);
+    const other = createKeyValueStore(1);
+    await other.set("kept", "value", 1000);
+
+    await small.set("a", "1", 1000);
+    await small.set("b", "2", 1000);
+
+    expect(await small.get("a")).toBeNull();
+    expect(await small.get("b")).toBe("2");
+    expect(await other.get("kept")).toBe("value");
+  });
+});
+
+describe("readStoredMany", () => {
+  it("tells stored values, stored nulls and nothing stored apart", async () => {
+    const store = new MemoryKeyValueStore();
+    await writeStored(store, "value", { answer: 42 }, 1000);
+    await writeStored(store, "null", null, 1000);
+
+    expect(await readStoredMany(store, ["value", "null", "missing"])).toEqual([
+      { answer: 42 },
+      null,
+      undefined,
+    ]);
+  });
+
+  it("reads only what is not JSON as nothing stored", async () => {
+    const store = new MemoryKeyValueStore();
+    await store.set("broken", "{not json", 1000);
+    await writeStored(store, "fine", "ok", 1000);
+
+    expect(await readStoredMany(store, ["broken", "fine"])).toEqual([
+      undefined,
+      "ok",
+    ]);
+  });
+
+  it("reads every key as nothing stored when the store fails", async () => {
+    const failing: KeyValueStore = {
+      get: async () => {
+        throw new Error("store down");
+      },
+      getMany: async () => {
+        throw new Error("store down");
+      },
+      set: async () => {
+        throw new Error("store down");
+      },
+    };
+
+    expect(await readStoredMany(failing, ["a", "b"])).toEqual([
+      undefined,
+      undefined,
+    ]);
+  });
+});
+
+describe("readStored", () => {
+  it("tells a stored null from nothing stored", async () => {
+    const store = new MemoryKeyValueStore();
+    await writeStored(store, "null", null, 1000);
+
+    expect(await readStored(store, "null")).toBeNull();
+    expect(await readStored(store, "missing")).toBeUndefined();
+  });
+
+  it("reads something that is not JSON as nothing stored", async () => {
+    const store = new MemoryKeyValueStore();
+    await store.set("broken", "{not json", 1000);
+
+    expect(await readStored(store, "broken")).toBeUndefined();
+  });
+});

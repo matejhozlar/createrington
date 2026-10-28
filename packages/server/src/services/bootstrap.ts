@@ -37,10 +37,14 @@ import { AiService } from "./ai";
 import { AutoMessageService } from "./discord/auto-message";
 import { maintenanceService } from "./maintenance";
 import { MaintenanceScheduler } from "./maintenance/scheduler";
+import { releaseAnnouncementService } from "./release-announcement";
+import { launcherPackService } from "./launcher/pack/launcher-pack.service";
+import { LauncherPackFileRefreshService } from "./launcher/pack/file-refresh.service";
 import { DonationService } from "./donation/donation.service";
 import { structurePackService } from "./structure-pack";
 import { StructurePackRotationService } from "./structure-pack/rotation";
 import { PlayerPromptService } from "./player-prompt";
+import { redisService } from "./redis";
 
 /**
  * Registers all application services with the shared container
@@ -67,6 +71,17 @@ export function registerServices(): void {
     const app = createApp();
     return http.createServer(app);
   });
+
+  if (redisService.enabled) {
+    container.register(Services.REDIS, async () => {
+      redisService.initialize();
+      return redisService;
+    });
+  } else {
+    logger.info(
+      "Redis not configured, caches and rate limits stay in process memory",
+    );
+  }
 
   container.register(Services.PUPPETEER_SERVICE, async () => {
     const service = new PuppeteerService();
@@ -214,10 +229,8 @@ export function registerServices(): void {
     { dependencies: [Services.DISCORD_MAIN_BOT, Services.DATABASE] },
   );
 
-  // Production-only: never run on local dev or the dev deployment
-  // (dev.createrington.com ships with NODE_ENV=production, so the
-  // isDevDeployment hostname check is required in addition to isProd).
-  if (config.envMode.isProd && !config.envMode.isDevDeployment) {
+  // Production-only: never run on local dev or the dev deployment.
+  if (config.envMode.isProductionDeployment) {
     container.register(
       Services.INACTIVITY_CLEANUP_SERVICE,
       async () => {
@@ -232,6 +245,18 @@ export function registerServices(): void {
           Services.DATABASE,
         ],
       },
+    );
+  }
+
+  if (config.launcher.available) {
+    container.register(
+      Services.LAUNCHER_PACK_FILE_REFRESH,
+      async () => {
+        const service = new LauncherPackFileRefreshService();
+        await service.initialize();
+        return service;
+      },
+      { dependencies: [Services.DATABASE] },
     );
   }
 
@@ -465,6 +490,33 @@ export function registerServices(): void {
     { dependencies: [Services.DATABASE] },
   );
 
+  container.register(
+    Services.MAINTENANCE_SERVICE,
+    async (c) => {
+      try {
+        const messageService = await c.get(Services.MESSAGE_SERVICE);
+        const scheduler = new MaintenanceScheduler(
+          maintenanceService,
+          messageService,
+        );
+        maintenanceService.setScheduler(scheduler);
+        await scheduler.initialize();
+        logger.info("Maintenance scheduler initialized");
+      } catch (error) {
+        logger.warn(`Maintenance scheduler init failed: ${error}`);
+      }
+
+      maintenanceService
+        .initialize([config.servers.rails.id])
+        .catch((error) =>
+          logger.warn(`Maintenance service init failed: ${error}`),
+        );
+
+      return maintenanceService;
+    },
+    { dependencies: [Services.DATABASE] },
+  );
+
   container.on("serviceReady", async (serviceName) => {
     // Wire message cache into playtime manager for server shutdown detection
     if (serviceName === Services.MESSAGE_CACHE) {
@@ -517,22 +569,12 @@ export async function initializeServices(): Promise<void> {
 
   logger.info(`✓ Service initialization complete: ${ready}/${total} ready`);
 
-  try {
-    const messageService = await container.get(Services.MESSAGE_SERVICE);
-    const scheduler = new MaintenanceScheduler(
-      maintenanceService,
-      messageService,
-    );
-    maintenanceService.setScheduler(scheduler);
-    await scheduler.initialize();
-    logger.info("Maintenance scheduler initialized");
-  } catch (error) {
-    logger.warn(`Maintenance scheduler init failed: ${error}`);
+  void releaseAnnouncementService.announceIfNew();
+  if (config.launcher.available) {
+    launcherPackService
+      .seedDefaultPack()
+      .catch((error) => logger.warn("Launcher pack seed failed:", error));
   }
-
-  maintenanceService
-    .initialize([config.servers.rails.id])
-    .catch((err) => logger.warn(`Maintenance service init failed: ${err}`));
 }
 
 /**
@@ -544,6 +586,5 @@ export async function initializeServices(): Promise<void> {
  * @returns Promise that resolves once all shutdown hooks have settled
  */
 export async function shutdownServices(): Promise<void> {
-  maintenanceService.shutdown();
   await container.shutdown();
 }

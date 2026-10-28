@@ -9,6 +9,7 @@ import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -71,20 +72,20 @@ export function AddModsDialog({
     { enabled: open && debouncedSearch.length >= 2 },
   );
 
-  const addMutation = trpc.admin.workshops.addMods.useMutation({
-    onSuccess: (mods) => {
-      toast.success(
+  const addMutation = trpc.admin.workshops.addMods.useMutation(
+    useMutationToast({
+      success: (mods) =>
         `Added ${mods.length} project${mods.length !== 1 ? "s" : ""} as approved`,
-      );
-      onAdded();
-      setSelected([]);
-      setNote("");
-      setSearchQuery("");
-      setClassId(workshopClassId);
-      onOpenChange(false);
-    },
-    onError: (err) => toast.error(err.message),
-  });
+      onSuccess: () => {
+        onAdded();
+        setSelected([]);
+        setNote("");
+        setSearchQuery("");
+        setClassId(workshopClassId);
+        onOpenChange(false);
+      },
+    }),
+  );
 
   const handleClose = (next: boolean) => {
     if (!next && !addMutation.isPending) {

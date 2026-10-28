@@ -1,0 +1,1 @@
+ALTER TABLE "modpack" ADD COLUMN "icon_url" text;

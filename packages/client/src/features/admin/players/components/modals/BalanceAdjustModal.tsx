@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ADMIN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
 import { Equal, Minus, Plus, type LucideIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
@@ -51,7 +52,6 @@ const MODES: {
 ];
 
 const AMOUNT_PATTERN = /^\d{0,9}(\.\d{0,2})?$/;
-const MAX_REASON_LENGTH = 500;
 
 interface BalanceAdjustModalProps {
   open: boolean;
@@ -188,7 +188,7 @@ export function BalanceAdjustModal({
           autoComplete="off"
           placeholder="e.g. Refund for items lost in a server crash"
           value={reason}
-          maxLength={MAX_REASON_LENGTH}
+          maxLength={ADMIN_REASON_MAX_LENGTH}
           onChange={(e) => setReason(e.target.value)}
         />
         <FieldDescription className="text-xs">

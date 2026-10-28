@@ -6,9 +6,15 @@ export const FeatureFlags = {
   modpackChangelog: "modpack_changelog",
   gallery: "gallery",
   playtimeStatsReconcile: "playtime_stats_reconcile",
+  launcherCurseforgeCdn: "launcher_curseforge_cdn",
 } as const;
 
 export type FeatureFlagName = (typeof FeatureFlags)[keyof typeof FeatureFlags];
+
+/** Flags only the owner may change. Admins can still read them. */
+export const OWNER_FEATURE_FLAGS: ReadonlySet<FeatureFlagName> = new Set([
+  FeatureFlags.launcherCurseforgeCdn,
+]);
 
 const CACHE_TTL_MS = 10_000;
 
@@ -25,6 +31,11 @@ export class FeatureFlagService {
 
   /** Whether the named feature is currently enabled. */
   async isEnabled(name: string): Promise<boolean> {
+    return (await this.readEnabled(name)) ?? false;
+  }
+
+  /** Like `isEnabled`, but `null` when the flag could not be read, for callers that act on a flag being switched off. */
+  async readEnabled(name: string): Promise<boolean | null> {
     const cached = this.cache.get(name);
     if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
       return cached.enabled;
@@ -35,7 +46,7 @@ export class FeatureFlagService {
       flag = await Q.feature.flag.find({ name });
     } catch (error) {
       logger.error(`Feature flag "${name}" read failed:`, error);
-      return false;
+      return null;
     }
     const enabled = flag?.enabled ?? false;
     this.cache.set(name, { enabled, fetchedAt: Date.now() });

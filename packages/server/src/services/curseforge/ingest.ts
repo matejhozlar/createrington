@@ -69,6 +69,16 @@ const UPDATE_FIELDS: Array<keyof CurseforgeProjectCreate> = [
   "updatedAt",
 ];
 
+async function upsertSnapshots(
+  projects: CurseForgeProjectData[],
+): Promise<void> {
+  await Q.curseforge.project.upsertMany(
+    projects.map(toCreate),
+    "id",
+    UPDATE_FIELDS,
+  );
+}
+
 async function applyEnvironmentHints(
   projects: CurseForgeProjectData[],
 ): Promise<void> {
@@ -136,13 +146,9 @@ export async function ingestProjects(
   if (projectIds.length === 0) return new Map();
 
   const projects = await getMods(projectIds);
-  const byId = new Map<number, CurseForgeProjectData>();
-  for (const data of projects) {
-    await Q.curseforge.project.upsert(toCreate(data), "id", UPDATE_FIELDS);
-    byId.set(data.id, data);
-  }
+  await upsertSnapshots(projects);
   await applyEnvironmentHints(projects);
-  return byId;
+  return new Map(projects.map((data) => [data.id, data]));
 }
 
 /**
@@ -153,9 +159,24 @@ export async function refreshProjects(projectIds: number[]): Promise<number> {
   if (projectIds.length === 0) return 0;
 
   const projects = await getMods(projectIds);
-  for (const data of projects) {
-    await Q.curseforge.project.upsert(toCreate(data), "id", UPDATE_FIELDS);
-  }
+  await upsertSnapshots(projects);
+  await applyEnvironmentHints(projects);
+  return projects.length;
+}
+
+/**
+ * Fetch projects and cache only the ones the predicate accepts, for callers
+ * that take project ids from outside and must not fill the cache with
+ * whatever they are handed. Returns how many were cached.
+ */
+export async function ingestProjectsWhere(
+  projectIds: number[],
+  accept: (project: CurseForgeProjectData) => boolean,
+): Promise<number> {
+  if (projectIds.length === 0) return 0;
+
+  const projects = (await getMods(projectIds)).filter(accept);
+  await upsertSnapshots(projects);
   await applyEnvironmentHints(projects);
   return projects.length;
 }

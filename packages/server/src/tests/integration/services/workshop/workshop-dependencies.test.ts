@@ -49,7 +49,10 @@ vi.mock("@/services/curseforge/ingest", () => ({
 import pool, { Q } from "@/db";
 import { NotFoundError } from "@/app/middleware/error-handler";
 import { workshopService } from "@/services/workshop";
-import { loadDependencyContext } from "@/services/workshop/dependencies";
+import {
+  loadDependencyContext,
+  pruneStaleDependencyEdges,
+} from "@/services/workshop/dependencies";
 import {
   createWorkshopTestContext,
   cleanupWorkshopTestContext,
@@ -144,6 +147,90 @@ describe("loadDependencyContext", () => {
     const { coverage } = await loadDependencyContext(workshop);
 
     expect(coverage.get(shipped.curseforgeProjectId)).toBe("published");
+  });
+
+  it("treats a pack row as published whatever its suggestion says", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const ruledOut = await seedMod(ctx, workshop, {
+      status: "rejected",
+      rejectReason: "not_a_good_fit",
+      submittedBy: USER_A,
+    });
+    await seedPackMod(ctx, workshop, {
+      curseforgeProjectId: ruledOut.curseforgeProjectId,
+    });
+
+    const { coverage } = await loadDependencyContext(workshop);
+
+    expect(coverage.get(ruledOut.curseforgeProjectId)).toBe("published");
+  });
+
+  it("restricts both maps to the requested projects", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const staged = await seedMod(ctx, workshop, {
+      status: "next_update",
+      submittedBy: USER_A,
+    });
+    const wanted = await seedProject(ctx);
+    const ignored = await seedProject(ctx);
+    await seedRequiredDependency(workshop, staged.curseforgeProjectId, wanted);
+    await seedRequiredDependency(workshop, staged.curseforgeProjectId, ignored);
+
+    const { coverage, demand } = await loadDependencyContext(workshop, [
+      wanted,
+      staged.curseforgeProjectId,
+    ]);
+
+    expect(coverage.get(staged.curseforgeProjectId)).toBe("staged");
+    expect(demand.get(wanted)).toBe(1);
+    expect(demand.get(ignored)).toBeUndefined();
+
+    const empty = await loadDependencyContext(workshop, []);
+    expect(empty.coverage.size).toBe(0);
+    expect(empty.demand.size).toBe(0);
+  });
+});
+
+describe("pruneStaleDependencyEdges", () => {
+  it("deletes the edges whose subject has neither a pack row nor a live suggestion here", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const sibling = await seedWorkshop(ctx, { modpackId: workshop.modpackId });
+    const dependency = await seedProject(ctx);
+    const member = await seedPackMod(ctx, workshop);
+    const pending = await seedMod(ctx, workshop, { submittedBy: USER_A });
+    const rejected = await seedMod(ctx, workshop, {
+      status: "rejected",
+      rejectReason: "not_a_good_fit",
+      submittedBy: USER_A,
+    });
+    const elsewhere = await seedMod(ctx, sibling, { submittedBy: USER_A });
+    for (const subject of [
+      member.curseforgeProjectId,
+      pending.curseforgeProjectId,
+      rejected.curseforgeProjectId,
+      elsewhere.curseforgeProjectId,
+    ]) {
+      await seedRequiredDependency(workshop, subject, dependency);
+    }
+
+    expect(
+      await Q.workshop.project.dependency.deleteStale(
+        workshop.id,
+        workshop.modpackId,
+      ),
+    ).toBe(2);
+
+    const remaining = await Q.workshop.project.dependency.findAll({
+      workshopId: workshop.id,
+    });
+    expect(remaining.map((edge) => edge.curseforgeProjectId).sort()).toEqual(
+      [member.curseforgeProjectId, pending.curseforgeProjectId].sort(),
+    );
+
+    await pruneStaleDependencyEdges(workshop);
+    expect(
+      await Q.workshop.project.dependency.count({ workshopId: workshop.id }),
+    ).toBe(2);
   });
 });
 

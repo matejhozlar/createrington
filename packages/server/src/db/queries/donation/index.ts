@@ -1,4 +1,5 @@
 import type { Pool, PoolClient } from "pg";
+import type { Donation } from "@createrington/shared/db";
 import { DonationBaseQueries } from "@/generated/db/donation.queries";
 
 /**
@@ -11,6 +12,20 @@ import { DonationBaseQueries } from "@/generated/db/donation.queries";
 export class DonationQueries extends DonationBaseQueries {
   constructor(db: Pool | PoolClient) {
     super(db);
+  }
+
+  /** The newest completed monthly donation of every Stripe subscription. */
+  async getLatestPerSubscription(): Promise<Donation[]> {
+    const result = await this.runQuery(
+      "get latest donation per subscription",
+      `SELECT DISTINCT ON (stripe_subscription_id) *
+       FROM ${this.table}
+       WHERE type = 'monthly'
+         AND status = 'completed'
+         AND stripe_subscription_id IS NOT NULL
+       ORDER BY stripe_subscription_id, created_at DESC`,
+    );
+    return this.mapRowsToEntities(result.rows);
   }
 
   async getCompletedStats(): Promise<{

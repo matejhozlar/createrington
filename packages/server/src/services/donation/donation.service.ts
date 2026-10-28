@@ -2,9 +2,12 @@ import Stripe from "stripe";
 import type { Client } from "discord.js";
 import config from "@/config";
 import { donationRepo } from "@/db";
+import { UniqueViolationError } from "@/db/utils";
 import { DiscordRolesNamespace as DiscordRoles } from "@/discord/constants/roles";
 import { RoleManager } from "@/discord/utils/roles/role-manager";
-import type { DonationType } from "@createrington/shared/db";
+import type { Donation, DonationType } from "@createrington/shared/db";
+
+const SESSION_ID_CONSTRAINT = "donation_stripe_session_id_unique";
 
 /**
  * Stripe-backed donation flow: creates checkout sessions for one-time and monthly
@@ -12,7 +15,8 @@ import type { DonationType } from "@createrington/shared/db";
  * subscriptions (status lookup, cancel-at-period-end, reactivate, MRR stats). Supporter
  * role assignment is best-effort; a missing role or absent guild member is logged but
  * does not block the donation from completing. Webhook handlers are idempotent against
- * replays via the `stripeSessionId` lookup.
+ * replays via the `stripeSessionId` lookup, and its unique constraint turns a concurrent
+ * duplicate delivery into a skipped replay instead of an error.
  */
 export class DonationService {
   private readonly stripe: Stripe;
@@ -144,7 +148,7 @@ export class DonationService {
     cancellingCount: number;
     mrrCents: number;
   }> {
-    const subscriptions = await donationRepo.findAllSubscriptions();
+    const subscriptions = await donationRepo.findLatestPerSubscription();
     const amountBySubscription = new Map(
       subscriptions.map((d) => [d.stripeSubscriptionId!, d.amountCents]),
     );
@@ -212,17 +216,31 @@ export class DonationService {
       return;
     }
 
-    const donation = await donationRepo.create({
-      playerDiscordId: discordId,
-      type,
-      amountCents,
-      stripeSessionId: session.id,
-      stripeCustomerId: (session.customer as string) ?? undefined,
-      stripeSubscriptionId: (session.subscription as string) ?? undefined,
-      status: "completed",
-      completedAt: new Date(),
-      supporterRoleGranted: true,
-    });
+    let donation: Donation;
+    try {
+      donation = await donationRepo.create({
+        playerDiscordId: discordId,
+        type,
+        amountCents,
+        stripeSessionId: session.id,
+        stripeCustomerId: (session.customer as string) ?? undefined,
+        stripeSubscriptionId: (session.subscription as string) ?? undefined,
+        status: "completed",
+        completedAt: new Date(),
+        supporterRoleGranted: true,
+      });
+    } catch (error) {
+      if (
+        error instanceof UniqueViolationError &&
+        error.constraint === SESSION_ID_CONSTRAINT
+      ) {
+        logger.info(
+          `Stripe webhook replay for session ${session.id}, processed concurrently, skipping`,
+        );
+        return;
+      }
+      throw error;
+    }
 
     logger.info(
       `Donation completed: ${session.id}, €${(donation.amountCents / 100).toFixed(2)} from discord ${discordId}`,

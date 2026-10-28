@@ -1,4 +1,5 @@
 import type { Pool, PoolClient } from "pg";
+import { CurseforgeFileQueries } from "@/db/queries/curseforge/file";
 import { CurseforgeProjectQueries } from "@/db/queries/curseforge/project";
 
 /**
@@ -71,6 +72,28 @@ export class CurseforgeQueries {
    * @param db - Database pool or client to use for all child queries
    */
   constructor(protected db: Pool | PoolClient) {}
+
+  /** Private backing field for lazy-loaded curseforge_file queries */
+  private _file?: CurseforgeFileQueries;
+
+  /**
+   * Lazy-loaded singleton accessor for curseforge_file
+   *
+   * Returns a CurseforgeFileQueries instance that shares this namespace's
+   * database connection. The instance is created once on first access and
+   * cached for all subsequent calls.
+   *
+   * @returns Singleton CurseforgeFileQueries instance
+   */
+  get file(): CurseforgeFileQueries {
+    if (!this._file) {
+      this._file = this.getOrCreateChild<CurseforgeFileQueries>(
+        "file",
+        CurseforgeFileQueries,
+      );
+    }
+    return this._file;
+  }
 
   /** Private backing field for lazy-loaded curseforge_project queries */
   private _project?: CurseforgeProjectQueries;

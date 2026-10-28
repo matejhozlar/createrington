@@ -10,8 +10,8 @@ import type {
   InitialDataPayload,
   ServerInitialDataPayload,
   SubscriptionType,
-  SocketEvent,
 } from "@createrington/shared/socket";
+import { SocketEvent } from "@createrington/shared/socket";
 import type {
   WebSocketConfig,
   ConnectionState,
@@ -208,7 +208,7 @@ export function WebSocketProvider({
         }
 
         socket.emit(
-          "subscribe" as SocketEvent,
+          SocketEvent.SUBSCRIBE,
           { type, serverId },
           (response: { success: boolean; error?: string }) => {
             if (import.meta.env.DEV) {
@@ -243,7 +243,7 @@ export function WebSocketProvider({
         }
 
         socket.emit(
-          "unsubscribe" as SocketEvent,
+          SocketEvent.UNSUBSCRIBE,
           { type, serverId },
           (response: { success: boolean; error?: string }) => {
             if (import.meta.env.DEV) {
@@ -280,7 +280,7 @@ export function WebSocketProvider({
         }
 
         socket.emit(
-          "request:initial" as SocketEvent,
+          SocketEvent.REQUEST_INITIAL_DATA,
           {
             serverId,
             includeMessages: options?.includeMessages ?? true,

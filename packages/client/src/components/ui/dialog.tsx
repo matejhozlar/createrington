@@ -2,6 +2,7 @@ import * as React from "react";
 import { XIcon } from "lucide-react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 
+import { focusTextFieldOnOpen } from "@/lib/dialogFocus";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
@@ -49,6 +50,7 @@ function DialogContent({
   className,
   children,
   showCloseButton = true,
+  onOpenAutoFocus,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean;
@@ -63,14 +65,18 @@ function DialogContent({
           className,
         )}
         {...props}
+        onOpenAutoFocus={(event) => {
+          onOpenAutoFocus?.(event);
+          focusTextFieldOnOpen(event);
+        }}
       >
         {children}
         {showCloseButton && (
           <DialogPrimitive.Close
             data-slot="dialog-close"
-            className="group ring-offset-background focus:ring-ring data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
+            className="group ring-offset-background focus:ring-ring data-[state=open]:bg-accent data-[state=open]:text-muted-foreground text-foreground/70 hover:text-foreground absolute top-4 right-4 rounded-xs transition-colors focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
           >
-            <XIcon className="transition-transform duration-300 group-hover:rotate-90" />
+            <XIcon className="close-turn group-hover:[--close-turn:90deg]" />
             <span className="sr-only">Close</span>
           </DialogPrimitive.Close>
         )}

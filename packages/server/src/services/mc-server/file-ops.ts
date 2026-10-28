@@ -61,10 +61,22 @@ function getDefaultBasePath(): string {
   return getBasePath(config.servers.rails.id);
 }
 
+function assertInsideDataDir(name: string): void {
+  if (
+    name.includes("\\") ||
+    path.posix.isAbsolute(name) ||
+    path.win32.isAbsolute(name) ||
+    name.split("/").some((part) => part === "" || part === "." || part === "..")
+  ) {
+    throw new Error(`Server file path escapes the data directory: ${name}`);
+  }
+}
+
 export async function writeFile(
   name: string,
   content: string | Buffer,
 ): Promise<void> {
+  assertInsideDataDir(name);
   const localPath = getLocalPath();
   if (localPath) {
     await fs.writeFile(
@@ -85,6 +97,7 @@ export async function writeFile(
 }
 
 export async function deleteFile(name: string): Promise<void> {
+  assertInsideDataDir(name);
   const localPath = getLocalPath();
   if (localPath) {
     await fs.unlink(path.join(localPath, name)).catch(() => {});
@@ -101,6 +114,7 @@ export async function deleteFile(name: string): Promise<void> {
 }
 
 export async function fileExists(name: string): Promise<boolean> {
+  assertInsideDataDir(name);
   const localPath = getLocalPath();
   if (localPath) {
     try {
@@ -130,6 +144,7 @@ export async function copyFileToServer(
   localSrcPath: string,
   serverDestPath: string,
 ): Promise<void> {
+  assertInsideDataDir(serverDestPath);
   const localPath = getLocalPath();
   if (localPath) {
     const destFull = path.join(localPath, serverDestPath);

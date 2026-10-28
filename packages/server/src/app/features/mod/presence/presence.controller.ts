@@ -1,6 +1,7 @@
 import {
   BadRequestError,
   ForbiddenError,
+  getValidated,
   InternalServerError,
 } from "@/app/middleware";
 import { getService, Services } from "@/services";
@@ -9,14 +10,11 @@ import type {
   ModPlayerJoinData,
   ModPlayerLeaveData,
 } from "@/services/playtime";
-import {
-  parseEventTimestamp,
-  parsePlayTimeTicks,
-} from "@/services/playtime/credit";
+import { parseEventTimestamp } from "@/services/playtime/credit";
 import { getPlaytimeForwarder } from "@/services/playtime/forwarder.service";
-import { MC_UUID_REGEX } from "@/utils/zod-schemas";
 import { resolveServerId } from "../shared/resolve-server-id";
 import type { Request, Response } from "express";
+import type { HeartbeatBody, PresenceBody } from "./presence.schemas";
 
 /**
  * Presence Controller
@@ -39,21 +37,8 @@ export class PresenceController {
    * @returns Promise that resolves when the event has been processed
    */
   static async updatePresence(req: Request, res: Response): Promise<void> {
-    const { minecraftUsername, uuid, state, timestamp } = req.body;
-
-    if (!minecraftUsername || !uuid || !state) {
-      throw new BadRequestError(
-        "minecraftUsername, uuid, and state are required",
-      );
-    }
-
-    if (!["joined", "left"].includes(state)) {
-      throw new BadRequestError('state must be either "joined" or "left"');
-    }
-
-    if (!MC_UUID_REGEX.test(uuid)) {
-      throw new BadRequestError("Invalid UUID format");
-    }
+    const { body } = getValidated<{ body: PresenceBody }>(res);
+    const { minecraftUsername, uuid, state, timestamp, playTimeTicks } = body;
 
     const tokenUuid = req.modAuth?.uuid;
     if (tokenUuid && tokenUuid.toLowerCase() !== uuid.toLowerCase()) {
@@ -64,7 +49,6 @@ export class PresenceController {
     }
 
     const targetServerId = resolveServerId(req, "Presence update");
-    const playTimeTicks = parsePlayTimeTicks(req.body.playTimeTicks);
     const eventTimestamp = parseEventTimestamp(timestamp);
     if (!eventTimestamp) {
       throw new BadRequestError("Invalid timestamp");
@@ -96,26 +80,13 @@ export class PresenceController {
           `Player ${minecraftUsername} (${uuid}) joined server ${targetServerId}`,
         );
       } else if (state === "left") {
-        const rawPos = req.body.position;
-        const position =
-          rawPos &&
-          typeof rawPos.x === "number" &&
-          typeof rawPos.y === "number" &&
-          typeof rawPos.z === "number"
-            ? { x: rawPos.x, y: rawPos.y, z: rawPos.z }
-            : undefined;
-        const dimension =
-          typeof req.body.dimension === "string"
-            ? req.body.dimension
-            : undefined;
-
         const leaveData: ModPlayerLeaveData = {
           uuid,
           username: minecraftUsername,
           timestamp: eventTimestamp,
           playTimeTicks,
-          dimension,
-          position,
+          dimension: body.dimension,
+          position: body.position,
         };
 
         await playtimeService.handlePlayerLeaveFromMod(leaveData);
@@ -159,22 +130,16 @@ export class PresenceController {
       throw new ForbiddenError("Heartbeat requires a server-level token");
     }
 
-    const { players } = req.body;
-
-    if (!Array.isArray(players)) {
-      throw new BadRequestError("players must be an array");
-    }
-
-    const onlinePlayers: HeartbeatPlayer[] = [];
-    for (const p of players) {
-      if (!p.uuid || !p.minecraftUsername) continue;
-      if (!MC_UUID_REGEX.test(p.uuid)) continue;
-      onlinePlayers.push({
+    const {
+      body: { players },
+    } = getValidated<{ body: HeartbeatBody }>(res);
+    const onlinePlayers: HeartbeatPlayer[] = players
+      .filter((p) => p !== null)
+      .map((p) => ({
         uuid: p.uuid,
         username: p.minecraftUsername,
-        playTimeTicks: parsePlayTimeTicks(p.playTimeTicks),
-      });
-    }
+        playTimeTicks: p.playTimeTicks,
+      }));
 
     const targetServerId = resolveServerId(req, "Heartbeat");
 

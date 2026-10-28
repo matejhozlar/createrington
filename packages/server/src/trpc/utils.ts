@@ -5,6 +5,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { idToObject } from "@/app/utils/helpers";
 import { AppError } from "@/app/middleware/error-handler";
+import type { OrderBy, OrderDirection } from "@/db/queries/query-builder";
 
 type TrpcCode = ConstructorParameters<typeof TRPCError>[0]["code"];
 
@@ -45,6 +46,7 @@ const APP_ERROR_TO_TRPC_CODE: Record<number, TrpcCode> = {
   404: "NOT_FOUND",
   409: "CONFLICT",
   429: "TOO_MANY_REQUESTS",
+  503: "SERVICE_UNAVAILABLE",
 };
 
 /**
@@ -134,8 +136,8 @@ interface PageSource<TEntity, TFilters> {
     options: {
       limit?: number;
       offset?: number;
-      orderBy?: keyof TEntity;
-      orderDirection?: "asc" | "desc";
+      orderBy?: OrderBy<TEntity>;
+      orderDirection?: OrderDirection;
     },
   ): Promise<TEntity[]>;
   count(filters?: TFilters): Promise<number>;
@@ -144,12 +146,14 @@ interface PageSource<TEntity, TFilters> {
 /**
  * Runs the page query and the total count from one filter object, so the
  * rows and the pagination metadata can never disagree on the predicate.
+ * `order` takes a single field with a direction, or a list of order terms
+ * for a stable multi-column sort.
  */
 export async function paginateQuery<TEntity, TFilters>(
   source: PageSource<TEntity, TFilters>,
   filters: TFilters,
   input: { page: number; limit: number },
-  order?: { orderBy?: keyof TEntity; orderDirection?: "asc" | "desc" },
+  order?: { orderBy?: OrderBy<TEntity>; orderDirection?: OrderDirection },
 ) {
   const [rows, total] = await Promise.all([
     source.findAll(filters, {

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -21,6 +22,7 @@ interface ModpackSettings {
   curseforgeProjectId: number | null;
   shipsServerPack: boolean;
   titleImageUrl: string | null;
+  iconUrl: string | null;
 }
 
 export function ModpackSettingsDialog({
@@ -46,22 +48,28 @@ export function ModpackSettingsDialog({
   const [titleImageUrl, setTitleImageUrl] = useState(
     modpack.titleImageUrl ?? "",
   );
+  const [iconUrl, setIconUrl] = useState(modpack.iconUrl ?? "");
 
-  const updateMutation = trpc.admin.modpacks.update.useMutation({
-    onSuccess: () => {
-      toast.success("Modpack settings saved");
-      utils.admin.modpacks.list.invalidate();
-      utils.admin.workshops.listPackMods.invalidate();
-      utils.admin.workshops.getAttention.invalidate();
-      utils.user.workshops.list.invalidate();
-      utils.user.workshops.get.invalidate();
-      onOpenChange(false);
-    },
-    onError: (err) => toast.error(err.message),
-  });
+  const updateMutation = trpc.admin.modpacks.update.useMutation(
+    useMutationToast({
+      success: "Modpack settings saved",
+      onSuccess: () => {
+        utils.admin.modpacks.list.invalidate();
+        utils.admin.workshops.listPackMods.invalidate();
+        utils.admin.workshops.getAttention.invalidate();
+        utils.user.workshops.list.invalidate();
+        utils.user.workshops.get.invalidate();
+        onOpenChange(false);
+      },
+    }),
+  );
 
   const handleSave = () => {
-    const validationError = modpackFormError(publishedPackId, titleImageUrl);
+    const validationError = modpackFormError(
+      publishedPackId,
+      titleImageUrl,
+      iconUrl,
+    );
     if (validationError) {
       toast.error(validationError);
       return;
@@ -76,6 +84,7 @@ export function ModpackSettingsDialog({
           : null,
         shipsServerPack,
         titleImageUrl: titleImageUrl.trim() || null,
+        iconUrl: iconUrl.trim() || null,
       },
     });
   };
@@ -137,6 +146,22 @@ export function ModpackSettingsDialog({
             <p className="text-xs text-muted-foreground">
               Full-width banner at the top of this pack's changelog posts in
               Discord. Leave empty to use a text heading instead.
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="modpack-settings-icon">Icon URL (Optional)</Label>
+            <Input
+              id="modpack-settings-icon"
+              inputMode="url"
+              maxLength={2048}
+              placeholder="https://assets.createrington.com/icons/..."
+              value={iconUrl}
+              onChange={(e) => setIconUrl(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Square icon the launcher shows for this pack when its releases do
+              not come from CurseForge. A published pack uses its CurseForge
+              icon instead.
             </p>
           </div>
           <label className="flex cursor-pointer items-start gap-3 rounded-md border border-border bg-card p-3 hover:border-[var(--border-strong)]">

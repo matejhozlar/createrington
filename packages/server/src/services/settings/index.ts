@@ -8,6 +8,8 @@ export const intakeModeSchema = z.enum(["auto", "closed"]);
 export const playerLimitSchema = z.number().int().min(0).max(1000);
 export const galleryRewardAmountSchema = z.number().int().min(0).max(1_000_000);
 export const galleryWeeklyRewardCapSchema = z.number().int().min(0).max(100);
+export const announcedAppVersionSchema = z.string().min(1).max(64);
+export const launcherPacksSeededSchema = z.boolean();
 
 export const GALLERY_REWARD_AMOUNT_DEFAULT = 50;
 export const GALLERY_WEEKLY_REWARD_CAP_DEFAULT = 3;
@@ -17,6 +19,8 @@ const SettingKeys = {
   intakeMode: "intake_mode",
   galleryRewardAmount: "gallery_reward_amount",
   galleryWeeklyRewardCap: "gallery_weekly_reward_cap",
+  announcedAppVersion: "announced_app_version",
+  launcherPacksSeeded: "launcher_packs_seeded",
 } as const;
 
 const CACHE_TTL_MS = 10_000;
@@ -158,6 +162,46 @@ export class SettingsService {
       galleryWeeklyRewardCapSchema.parse(value),
       updatedBy,
     );
+  }
+
+  /** App version whose release notice was posted last, null when none was. Read straight from the table (no cache, no fallback), so a failed read throws. */
+  async getAnnouncedAppVersion(): Promise<string | null> {
+    const row = await Q.app.setting.find({
+      key: SettingKeys.announcedAppVersion,
+    });
+    if (!row) return null;
+
+    const parsed = z
+      .object({ value: announcedAppVersionSchema })
+      .safeParse(row.value);
+    return parsed.success ? parsed.data.value : null;
+  }
+
+  /** Record the app version whose release notice was just posted. */
+  async setAnnouncedAppVersion(version: string): Promise<void> {
+    await this.write(
+      SettingKeys.announcedAppVersion,
+      announcedAppVersionSchema.parse(version),
+      "system",
+    );
+  }
+
+  /** Whether the launcher's first pack was seeded once; read straight from the table (no cache, no fallback), so a failed read throws. */
+  async getLauncherPacksSeeded(): Promise<boolean> {
+    const row = await Q.app.setting.find({
+      key: SettingKeys.launcherPacksSeeded,
+    });
+    if (!row) return false;
+
+    const parsed = z
+      .object({ value: launcherPacksSeededSchema })
+      .safeParse(row.value);
+    return parsed.success && parsed.data.value;
+  }
+
+  /** Record that the launcher's first pack was seeded, so an emptied table is not seeded again. */
+  async markLauncherPacksSeeded(): Promise<void> {
+    await this.write(SettingKeys.launcherPacksSeeded, true, "system");
   }
 }
 

@@ -13,18 +13,24 @@ import { ZodError } from "zod";
 export class AppError extends Error {
   public playerMessage?: string;
   public code?: string;
+  public headers?: Record<string, string>;
 
   constructor(
     message: string,
     public statusCode: number = 500,
     public isOperational: boolean = true,
     public details?: unknown,
-    options?: { playerMessage?: string; code?: string },
+    options?: {
+      playerMessage?: string;
+      code?: string;
+      headers?: Record<string, string>;
+    },
   ) {
     super(message);
     this.name = "AppError";
     if (options?.playerMessage) this.playerMessage = options.playerMessage;
     if (options?.code) this.code = options.code;
+    if (options?.headers) this.headers = options.headers;
     Error.captureStackTrace(this, this.constructor);
   }
 }
@@ -102,6 +108,28 @@ export class ValidationError extends BadRequestError {
   }
 }
 
+interface RequestBodyError extends Error {
+  status: number;
+  type: string;
+  expose: true;
+}
+
+const REQUEST_BODY_ERROR_MESSAGES: Record<string, string> = {
+  "entity.parse.failed": "Malformed JSON request body",
+  "entity.too.large": "Request body too large",
+};
+
+function isRequestBodyError(err: Error): err is RequestBodyError {
+  const candidate = err as Partial<RequestBodyError>;
+  return (
+    typeof candidate.type === "string" &&
+    typeof candidate.status === "number" &&
+    candidate.status >= 400 &&
+    candidate.status < 500 &&
+    candidate.expose === true
+  );
+}
+
 /**
  * Error response interface
  */
@@ -147,11 +175,14 @@ export function formatZodError(error: ZodError<unknown>): {
 const SENSITIVE_KEYS =
   /(password|secret|token|api_?key|authorization|cookie|jwt)/i;
 
-function redactSensitive(obj: unknown): unknown {
-  if (!obj || typeof obj !== "object") return obj;
+function redactSensitive(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(redactSensitive);
+  if (!value || typeof value !== "object") return value;
   const result: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
-    result[key] = SENSITIVE_KEYS.test(key) ? "[REDACTED]" : value;
+  for (const [key, inner] of Object.entries(value as Record<string, unknown>)) {
+    result[key] = SENSITIVE_KEYS.test(key)
+      ? "[REDACTED]"
+      : redactSensitive(inner);
   }
   return result;
 }
@@ -163,6 +194,7 @@ function redactSensitive(obj: unknown): unknown {
  * - Zod validation errors
  * - App errors (custom errors)
  * - Database errors
+ * - Request body errors from the body parsers (malformed JSON, body too large)
  * - Unknown errors
  *
  * @param err - Error object
@@ -203,6 +235,7 @@ export function errorHandler(
     details = err.details;
     playerMessage = err.playerMessage;
     code = err.code;
+    if (err.headers) res.set(err.headers);
   } else if (err instanceof DatabaseError) {
     statusCode = 500;
     message = config.envMode.isDev ? err.message : "Database error occurred";
@@ -211,6 +244,10 @@ export function errorHandler(
       statusCode = 404;
       message = err.message;
     }
+  } else if (isRequestBodyError(err)) {
+    statusCode = err.status;
+    message = REQUEST_BODY_ERROR_MESSAGES[err.type] ?? err.message;
+    isOperational = true;
   } else if (err.name === "ValidationError") {
     statusCode = 400;
     message = err.message;

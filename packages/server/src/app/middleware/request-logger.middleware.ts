@@ -9,6 +9,34 @@ const SKIP_PREFIXES = [
   "/trpc",
 ];
 
+const REDACTED_QUERY_KEYS = new Set(["code", "state", "token", "sig"]);
+
+function decodeKey(rawKey: string): string {
+  try {
+    return decodeURIComponent(rawKey.replace(/\+/g, " ")).toLowerCase();
+  } catch {
+    return rawKey.toLowerCase();
+  }
+}
+
+export function redactUrl(url: string): string {
+  const queryStart = url.indexOf("?");
+  if (queryStart === -1) return url;
+
+  const query = url
+    .slice(queryStart + 1)
+    .split("&")
+    .map((pair) => {
+      const rawKey = pair.split("=", 1)[0];
+      return REDACTED_QUERY_KEYS.has(decodeKey(rawKey))
+        ? `${rawKey}=[REDACTED]`
+        : pair;
+    })
+    .join("&");
+
+  return `${url.slice(0, queryStart)}?${query}`;
+}
+
 export function requestLogger(
   req: Request,
   res: Response,
@@ -25,7 +53,7 @@ export function requestLogger(
     const userId = req.user?.discordId;
     const userTag = userId ? ` u=${userId}` : "";
     httpLogger.info(
-      `[HTTP] ${req.method} ${req.originalUrl} ${res.statusCode} ${colorDuration(ms)}${userTag}`,
+      `[HTTP] ${req.method} ${redactUrl(req.originalUrl)} ${res.statusCode} ${colorDuration(ms)}${userTag}`,
     );
   });
 

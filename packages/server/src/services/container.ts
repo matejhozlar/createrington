@@ -27,9 +27,12 @@ import type { StructurePackRotationService } from "./structure-pack/rotation";
 import type { WaitlistCleanupService } from "./waitlist/waitlist-cleanup.service";
 import type { PlayerPromptService } from "./player-prompt";
 import type { WorkshopProjectRefreshService } from "./workshop/refresh.service";
+import type { LauncherPackFileRefreshService } from "./launcher/pack/file-refresh.service";
 import type { DiscordStickyMessageService } from "./discord/sticky-message";
 import type { GalleryService } from "./gallery";
 import type { AppEmojiService } from "./discord/emojis";
+import type { RedisService } from "./redis";
+import type { MaintenanceService } from "./maintenance/maintenance.service";
 
 /**
  * Service lifecycle states
@@ -424,9 +427,12 @@ export const Services = {
   WAITLIST_CLEANUP_SERVICE: "waitlist.cleanupService",
   PLAYER_PROMPT_SERVICE: "player.promptService",
   WORKSHOP_PROJECT_REFRESH: "workshop.projectRefreshService",
+  LAUNCHER_PACK_FILE_REFRESH: "launcher.packFileRefreshService",
   STICKY_MESSAGE_SERVICE: "discord.stickyMessageService",
   GALLERY_SERVICE: "gallery.service",
   APP_EMOJI_SERVICE: "discord.appEmojiService",
+  REDIS: "infra.redisService",
+  MAINTENANCE_SERVICE: "server.maintenanceService",
 } as const;
 
 export type ServiceKey = (typeof Services)[keyof typeof Services];
@@ -463,7 +469,10 @@ export interface ServiceTypeMap {
   [Services.WAITLIST_CLEANUP_SERVICE]: WaitlistCleanupService;
   [Services.PLAYER_PROMPT_SERVICE]: PlayerPromptService;
   [Services.WORKSHOP_PROJECT_REFRESH]: WorkshopProjectRefreshService;
+  [Services.LAUNCHER_PACK_FILE_REFRESH]: LauncherPackFileRefreshService;
   [Services.STICKY_MESSAGE_SERVICE]: DiscordStickyMessageService;
   [Services.GALLERY_SERVICE]: GalleryService;
   [Services.APP_EMOJI_SERVICE]: AppEmojiService;
+  [Services.REDIS]: RedisService;
+  [Services.MAINTENANCE_SERVICE]: MaintenanceService;
 }

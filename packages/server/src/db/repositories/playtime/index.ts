@@ -360,15 +360,21 @@ export class PlaytimeRepository {
     };
     if (entries.length === 0) return result;
 
-    const openSessions = await Q.player.session.findAll({
-      serverId,
-      sessionEnd: null,
-    });
+    const [openSessions, totals] = await Promise.all([
+      Q.player.session.findAll(
+        { serverId, sessionEnd: null },
+        { select: ["playerMinecraftUuid"] },
+      ),
+      Q.player.playtime.summary.getTotals(
+        serverId,
+        entries.map((e) => e.minecraftUuid),
+      ),
+    ]);
     const openUuids = new Set(openSessions.map((s) => s.playerMinecraftUuid));
-    const totals = await Q.player.playtime.summary.getTotals(
-      serverId,
-      entries.map((e) => e.minecraftUuid),
-    );
+    const corrections: Array<{
+      playerMinecraftUuid: string;
+      totalSeconds: number;
+    }> = [];
 
     for (const entry of entries) {
       const stored = totals.get(entry.minecraftUuid);
@@ -401,14 +407,17 @@ export class PlaytimeRepository {
         `Playtime reconcile: ${entry.minecraftUuid} on server ${serverId} drift ${drift > 0 ? "+" : ""}${drift}s (stored ${stored}s, stat ${expected}s)${options.apply ? ", applying to summary total (daily/hourly untouched)" : ""}`,
       );
 
-      if (options.apply) {
-        const updated = await Q.player.playtime.summary.setTotalSeconds(
-          entry.minecraftUuid,
-          serverId,
-          expected,
-        );
-        if (updated) result.applied++;
-      }
+      corrections.push({
+        playerMinecraftUuid: entry.minecraftUuid,
+        totalSeconds: expected,
+      });
+    }
+
+    if (options.apply) {
+      result.applied = await Q.player.playtime.summary.setTotalSecondsMany(
+        serverId,
+        corrections,
+      );
     }
 
     return result;
@@ -504,14 +513,12 @@ export class PlaytimeRepository {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - ACTIVITY_WINDOW_DAYS);
 
-    const [rows, summaries, activeSession] = await Promise.all([
-      Q.player.playtime.daily
-        .where({
-          playerMinecraftUuid: minecraftUuid,
-          playDate: { $gte: calendarDay(startDate) },
-        })
-        .all(),
-      Q.player.playtime.summary.findAll({ playerMinecraftUuid: minecraftUuid }),
+    const [days, totalSeconds, activeSession] = await Promise.all([
+      Q.player.playtime.daily.getPlayerDailyTotals(
+        minecraftUuid,
+        calendarDay(startDate),
+      ),
+      Q.player.playtime.summary.getPlayerTotalSeconds(minecraftUuid),
       player.online
         ? Q.player.session
             .where({
@@ -523,21 +530,12 @@ export class PlaytimeRepository {
         : null,
     ]);
 
-    const days: Record<string, number> = {};
-    for (const row of rows) {
-      days[row.playDate] =
-        (days[row.playDate] ?? 0) + Number(row.secondsPlayed);
-    }
-
     return {
       online: player.online,
       currentSessionSeconds: activeSession
         ? Math.floor((Date.now() - activeSession.sessionStart.getTime()) / 1000)
         : null,
-      totalSeconds: summaries.reduce(
-        (sum, summary) => sum + Number(summary.totalSeconds),
-        0,
-      ),
+      totalSeconds,
       currentStreak: currentStreak(days),
       mostActiveDay: mostActiveWeekday(days),
       days,
@@ -647,12 +645,12 @@ export class PlaytimeRepository {
       return;
     }
 
-    const remaining = await Q.player.session.findAll({
+    const remaining = await Q.player.session.count({
       playerMinecraftUuid,
       sessionEnd: null,
     });
 
-    if (remaining.length === 0) {
+    if (remaining === 0) {
       await Q.player.update(
         { minecraftUuid: playerMinecraftUuid },
         {

@@ -4,15 +4,54 @@ import { createNotFoundError } from "../utils/query-helpers";
 import { translateDbError } from "../utils/errors";
 import { isJsonColumn } from "../utils/jsonb-columns";
 import type { FilterValue } from "@createrington/shared/db/base.types";
-import { QueryBuilder, type Selected } from "./query-builder";
+import {
+  QueryBuilder,
+  type OrderBy,
+  type OrderDirection,
+  type Selected,
+} from "./query-builder";
 
 const MAX_QUERY_PARAMS = 65_535;
+const CONFLICT_IGNORE = " ON CONFLICT DO NOTHING";
+
+type KeysOfUnion<T> = T extends unknown ? keyof T : never;
+
+type StrayIdentifierKeys<TIdentifier, T> = Exclude<
+  keyof T,
+  KeysOfUnion<NonNullable<TIdentifier>>
+>;
+
+/**
+ * Argument type of the single-row methods (find, get, update, delete, ...)
+ *
+ * Resolves to T when T is a full entity of the table or carries identifier
+ * fields only. Otherwise it resolves to an object naming each stray key, so
+ * the call fails to compile instead of the key being dropped from the WHERE
+ * clause. Covers values held in variables, which the excess-property check
+ * on object literals does not. Distributes over a union, so each member is
+ * judged on its own keys.
+ */
+export type IdentifierArg<
+  TConfig extends { Entity: object; Identifier?: object },
+  T,
+> = T extends unknown
+  ? keyof TConfig["Entity"] extends keyof T
+    ? T
+    : [StrayIdentifierKeys<TConfig["Identifier"], T>] extends [never]
+      ? T
+      : {
+          [
+            K in StrayIdentifierKeys<TConfig["Identifier"], T>
+          ]: "is not an identifier field of this table";
+        }
+  : never;
 
 /**
  * Base class for database query operations
  *
  * - Provides typed CRUD operations (find, get, create, update, delete) with automatic camelCase/snake_case conversion
  * - Single-row methods accept a minimal identifier or a full entity; every recognized identifier field is ANDed in the WHERE clause, so a stale identifier value fails with NotFound instead of matching another row
+ * - An identifier carrying a non-identifier key (e.g. `find({ slug, enabled: true })`, or a row of another table) fails to compile via IdentifierArg and is rejected at runtime as a backstop; filter on arbitrary columns with findAll / where().first()
  * - Supports filter operators ($eq, $ne, $gt, $lt, $in, $between, etc.) for composable WHERE clauses
  * - Fluent query builder via .where().orderBy().limit().all() chain
  * - Singleton child registry (WeakMap per pool) for hierarchical Q.player.balance style access
@@ -37,6 +76,7 @@ export abstract class BaseQueries<
   protected abstract readonly table: string;
   protected readonly COLUMN_MAP?: Record<string, string>;
   protected readonly IDENTIFIER_GROUPS?: ReadonlyArray<readonly string[]>;
+  protected readonly COLUMNS?: readonly string[];
   protected readonly GENERATED_FIELDS?: readonly string[];
   protected readonly AUTO_SET_UPDATED_AT: boolean = false;
 
@@ -196,9 +236,15 @@ export abstract class BaseQueries<
    * one row while a partial composite (e.g. one column of a two-column unique
    * index) is rejected instead of silently matching multiple rows.
    *
-   * @param obj - Object that may contain identifier fields plus extra data
+   * Non-identifier keys are only tolerated on a full entity (an object that
+   * carries every column of the table, as a row read from it does). An
+   * identifier plus a stray condition is rejected, since the condition would
+   * otherwise be dropped from the WHERE clause without a trace.
+   *
+   * @param obj - Identifier, or a full entity whose identifier fields are extracted
    * @returns Identifier object containing all recognized identifier fields
-   * @throws Error if the provided fields do not cover any identifier group
+   * @throws Error if the provided fields do not cover any identifier group,
+   *   or if a non-entity object carries keys outside the identifier groups
    *
    * @example
    * // PlayerIdentifier = { minecraftUuid: string } | { discordId: string }
@@ -209,6 +255,9 @@ export abstract class BaseQueries<
    * // Composite unique group (channelId + messageId)
    * extractIdentifier({ channelId: "1", messageId: "2" }) // OK
    * extractIdentifier({ channelId: "1" }) // throws: incomplete group
+   *
+   * @example
+   * extractIdentifier({ slug: "main", enabled: true }) // throws: enabled is not an identifier field
    */
   protected extractIdentifier(
     obj: Record<string, unknown>,
@@ -257,9 +306,24 @@ export abstract class BaseQueries<
       );
     }
 
+    const strayKeys = availableKeys.filter((key) => !knownFields.has(key));
+    if (strayKeys.length > 0 && !this.isFullEntity(obj)) {
+      throw new Error(
+        `Identifier for ${this.table} carries non-identifier field(s) ` +
+          `(${strayKeys.join(", ")}), which single-row methods would ignore. ` +
+          `Use findAll or where().first() to filter on them, or pass only: ${expected}`,
+      );
+    }
+
     const result: Record<string, unknown> = {};
     for (const key of validKeys) result[key] = obj[key];
     return result as NonNullable<TConfig["Identifier"]>;
+  }
+
+  private isFullEntity(obj: Record<string, unknown>): boolean {
+    const columns = this.COLUMNS;
+    if (!columns || columns.length === 0) return false;
+    return columns.every((column) => column in obj);
   }
   /**
    * Maps an update object to an array of column-value pairs
@@ -507,7 +571,7 @@ export abstract class BaseQueries<
    * Finds a single entity by unique identifier
    * Returns null if not found
    *
-   * Accepts either a minimal identifier OR a full entity object
+   * Accepts either a minimal identifier OR a full entity of this table
    *
    * @param identifier - Unique identifier or full entity object
    * @param options - Optional query options including field selection
@@ -525,21 +589,29 @@ export abstract class BaseQueries<
    * // With field projection
    * await Q.player.find({ minecraftUuid: "abc-123" }, { select: ["id", "minecraftUsername"] })
    */
-  async find<K extends keyof TConfig["Entity"]>(
-    identifier: NonNullable<TConfig["Identifier"]> | TConfig["Entity"],
+  async find<
+    I extends NonNullable<TConfig["Identifier"]>,
+    K extends keyof TConfig["Entity"],
+  >(
+    identifier: IdentifierArg<TConfig, I>,
     options: { select: readonly K[] },
   ): Promise<Selected<TConfig["Entity"], K> | null>;
-  async find(
-    identifier: NonNullable<TConfig["Identifier"]> | TConfig["Entity"],
+  async find<I extends NonNullable<TConfig["Identifier"]>>(
+    identifier: IdentifierArg<TConfig, I>,
     options?: { select?: ReadonlyArray<keyof TConfig["Entity"]> },
   ): Promise<TConfig["Entity"] | null>;
   async find(
-    identifier: NonNullable<TConfig["Identifier"]> | TConfig["Entity"],
+    identifier: NonNullable<TConfig["Identifier"]>,
     options?: { select?: ReadonlyArray<keyof TConfig["Entity"]> },
   ): Promise<TConfig["Entity"] | null> {
-    const extracted = this.extractIdentifier(
-      identifier as Record<string, unknown>,
-    );
+    return this.findOne(identifier as Record<string, unknown>, options);
+  }
+
+  private async findOne(
+    identifier: Record<string, unknown>,
+    options?: { select?: ReadonlyArray<keyof TConfig["Entity"]> },
+  ): Promise<TConfig["Entity"] | null> {
+    const extracted = this.extractIdentifier(identifier);
     const { whereClause, values } = this.getColumnMapping(extracted);
 
     const columns = options?.select?.length
@@ -564,7 +636,7 @@ export abstract class BaseQueries<
    * Retrieves a single entity by unique identifier
    * Throws an error if not found
    *
-   * Accepts either a minimal identifier OR a full entity object
+   * Accepts either a minimal identifier OR a full entity of this table
    *
    * @param identifier - Unique identifier or full entity object
    * @param options - Optional query options including field selection
@@ -578,25 +650,34 @@ export abstract class BaseQueries<
    * @example
    * // Pass full entity (matches on all identifier fields)
    * await Q.player.get(player)
-   * await Q.player.balance.get(player) // Uses player.minecraftUuid
+   *
+   * @example
+   * // A row of another table is not an entity of this one; pass the key explicitly
+   * await Q.player.balance.get({ minecraftUuid: player.minecraftUuid })
    *
    * @example
    * // With field projection
    * const player = await Q.player.get({ discordId: "123" }, { select: ["id", "minecraftUsername"] })
    */
-  async get<K extends keyof TConfig["Entity"]>(
-    identifier: NonNullable<TConfig["Identifier"]> | TConfig["Entity"],
+  async get<
+    I extends NonNullable<TConfig["Identifier"]>,
+    K extends keyof TConfig["Entity"],
+  >(
+    identifier: IdentifierArg<TConfig, I>,
     options: { select: readonly K[] },
   ): Promise<Selected<TConfig["Entity"], K>>;
-  async get(
-    identifier: NonNullable<TConfig["Identifier"]> | TConfig["Entity"],
+  async get<I extends NonNullable<TConfig["Identifier"]>>(
+    identifier: IdentifierArg<TConfig, I>,
     options?: { select?: ReadonlyArray<keyof TConfig["Entity"]> },
   ): Promise<TConfig["Entity"]>;
   async get(
-    identifier: NonNullable<TConfig["Identifier"]> | TConfig["Entity"],
+    identifier: NonNullable<TConfig["Identifier"]>,
     options?: { select?: ReadonlyArray<keyof TConfig["Entity"]> },
   ): Promise<TConfig["Entity"]> {
-    const entity = await this.find(identifier, options);
+    const entity = await this.findOne(
+      identifier as Record<string, unknown>,
+      options,
+    );
 
     if (!entity) {
       const extracted = this.extractIdentifier(
@@ -611,7 +692,7 @@ export abstract class BaseQueries<
   /**
    * Checks if an entity exists by unique identifier
    *
-   * Accepts either a minimal identifier OR a full entity object
+   * Accepts either a minimal identifier OR a full entity of this table
    *
    * @param identifier - Unique identifier or full entity object
    * @returns Promise resolving to true if entity exists, false otherwise
@@ -621,8 +702,8 @@ export abstract class BaseQueries<
    *   // Player exists
    * }
    */
-  async exists(
-    identifier: NonNullable<TConfig["Identifier"]> | TConfig["Entity"],
+  async exists<I extends NonNullable<TConfig["Identifier"]>>(
+    identifier: IdentifierArg<TConfig, I>,
   ): Promise<boolean> {
     const extracted = this.extractIdentifier(
       identifier as Record<string, unknown>,
@@ -643,7 +724,7 @@ export abstract class BaseQueries<
   /**
    * Updates a single entity by unique identifier
    *
-   * Accepts either a minimal identifier OR a full entity object
+   * Accepts either a minimal identifier OR a full entity of this table
    *
    * @param identifier - Unique identifier or full entity object to find the entity
    * @param updates - Object containing fields to update
@@ -658,8 +739,8 @@ export abstract class BaseQueries<
    * // Pass full entity
    * await Q.player.update(player, { minecraftUsername: "NewName" })
    */
-  async update(
-    identifier: NonNullable<TConfig["Identifier"]> | TConfig["Entity"],
+  async update<I extends NonNullable<TConfig["Identifier"]>>(
+    identifier: IdentifierArg<TConfig, I>,
     updates: Partial<NonNullable<TConfig["Update"]>>,
   ): Promise<void> {
     const extracted = this.extractIdentifier(
@@ -700,7 +781,7 @@ export abstract class BaseQueries<
   /**
    * Updates a single entity and returns the updated record
    *
-   * Accepts either a minimal identifier OR a full entity object
+   * Accepts either a minimal identifier OR a full entity of this table
    *
    * @param identifier - Unique identifier or full entity object to find the entity
    * @param updates - Object containing fields to update
@@ -712,8 +793,8 @@ export abstract class BaseQueries<
    *   minecraftUsername: "NewName"
    * });
    */
-  async updateAndReturn(
-    identifier: NonNullable<TConfig["Identifier"]> | TConfig["Entity"],
+  async updateAndReturn<I extends NonNullable<TConfig["Identifier"]>>(
+    identifier: IdentifierArg<TConfig, I>,
     updates: Partial<NonNullable<TConfig["Update"]>>,
   ): Promise<TConfig["Entity"]> {
     const extracted = this.extractIdentifier(
@@ -757,7 +838,7 @@ export abstract class BaseQueries<
   /**
    * Deletes a single entity by unique identifier
    *
-   * Accepts either a minimal identifier OR a full entity object
+   * Accepts either a minimal identifier OR a full entity of this table
    *
    * @param identifier - Unique identifier or full entity object to find the entity
    * @returns Promise resolving when the deletion is complete
@@ -766,8 +847,8 @@ export abstract class BaseQueries<
    * @example
    * await Q.player.delete(player) // Matches on all identifier fields
    */
-  async delete(
-    identifier: NonNullable<TConfig["Identifier"]> | TConfig["Entity"],
+  async delete<I extends NonNullable<TConfig["Identifier"]>>(
+    identifier: IdentifierArg<TConfig, I>,
   ): Promise<void> {
     const extracted = this.extractIdentifier(
       identifier as Record<string, unknown>,
@@ -791,7 +872,7 @@ export abstract class BaseQueries<
    * Gets a specific field value with an optimized query
    * Only fetches the requested column from the database
    *
-   * Accepts either a minimal identifier OR a full entity object
+   * Accepts either a minimal identifier OR a full entity of this table
    *
    * @param identifier - Unique identifier or full entity object
    * @param field - Field name to retrieve
@@ -801,13 +882,21 @@ export abstract class BaseQueries<
    * @example
    * const username = await Q.player.pluck(player, "minecraftUsername")
    */
-  async pluck<K extends keyof TConfig["Entity"]>(
-    identifier: NonNullable<TConfig["Identifier"]> | TConfig["Entity"],
+  async pluck<
+    I extends NonNullable<TConfig["Identifier"]>,
+    K extends keyof TConfig["Entity"],
+  >(
+    identifier: IdentifierArg<TConfig, I>,
     field: K,
   ): Promise<TConfig["Entity"][K]> {
-    const extracted = this.extractIdentifier(
-      identifier as Record<string, unknown>,
-    );
+    return this.pluckField(identifier as Record<string, unknown>, field);
+  }
+
+  private async pluckField<K extends keyof TConfig["Entity"]>(
+    identifier: Record<string, unknown>,
+    field: K,
+  ): Promise<TConfig["Entity"][K]> {
+    const extracted = this.extractIdentifier(identifier);
     const { whereClause, values } = this.getColumnMapping(extracted);
     const columnName = this.getColumnName(field as string);
 
@@ -843,15 +932,15 @@ export abstract class BaseQueries<
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Proxy target requires any for dynamic property access
   readonly select = new Proxy({} as Record<string, any>, {
     get: (_, field: string) => {
-      return async (
-        identifier: NonNullable<TConfig["Identifier"]> | TConfig["Entity"],
-      ) => {
-        return this.pluck(identifier, field as keyof TConfig["Entity"]);
+      return async (identifier: Record<string, unknown>) => {
+        return this.pluckField(identifier, field as keyof TConfig["Entity"]);
       };
     },
   }) as {
-    [K in keyof TConfig["Entity"]]: (
-      identifier: NonNullable<TConfig["Identifier"]> | TConfig["Entity"],
+    [K in keyof TConfig["Entity"]]: <
+      I extends NonNullable<TConfig["Identifier"]>,
+    >(
+      identifier: IdentifierArg<TConfig, I>,
     ) => Promise<TConfig["Entity"][K]>;
   };
 
@@ -890,8 +979,8 @@ export abstract class BaseQueries<
   /**
    * Create a query builder starting with orderBy
    *
-   * @param field - Field to sort by
-   * @param direction - Sort direction (default: "asc")
+   * @param order - Field to sort by, or a list of terms for a multi-column sort
+   * @param direction - Sort direction for a single field (default: "asc")
    * @returns QueryBuilder instance
    *
    * @example
@@ -899,12 +988,17 @@ export abstract class BaseQueries<
    *   .orderBy("createdAt", "desc")
    *   .limit(10)
    *   .all()
+   *
+   * @example
+   * const queue = await Q.waitlist
+   *   .orderBy([{ field: "queuedAt" }, { field: "id" }])
+   *   .all()
    */
   orderBy(
-    field: keyof TConfig["Entity"],
-    direction: "asc" | "desc" = "asc",
+    order: OrderBy<TConfig["Entity"]>,
+    direction: OrderDirection = "asc",
   ): QueryBuilder<TConfig> {
-    return this.builder().orderBy(field, direction);
+    return this.builder().orderBy(order, direction);
   }
 
   /**
@@ -998,8 +1092,8 @@ export abstract class BaseQueries<
     options: {
       limit?: number;
       offset?: number;
-      orderBy?: keyof TConfig["Entity"];
-      orderDirection?: "asc" | "desc";
+      orderBy?: OrderBy<TConfig["Entity"]>;
+      orderDirection?: OrderDirection;
       select: readonly K[];
     },
   ): Promise<Selected<TConfig["Entity"], K>[]>;
@@ -1008,8 +1102,8 @@ export abstract class BaseQueries<
     options?: {
       limit?: number;
       offset?: number;
-      orderBy?: keyof TConfig["Entity"];
-      orderDirection?: "asc" | "desc";
+      orderBy?: OrderBy<TConfig["Entity"]>;
+      orderDirection?: OrderDirection;
       select?: ReadonlyArray<keyof TConfig["Entity"]>;
     },
   ): Promise<TConfig["Entity"][]>;
@@ -1018,8 +1112,8 @@ export abstract class BaseQueries<
     options?: {
       limit?: number;
       offset?: number;
-      orderBy?: keyof TConfig["Entity"];
-      orderDirection?: "asc" | "desc";
+      orderBy?: OrderBy<TConfig["Entity"]>;
+      orderDirection?: OrderDirection;
       select?: ReadonlyArray<keyof TConfig["Entity"]>;
     },
   ): Promise<TConfig["Entity"][]> {
@@ -1035,10 +1129,8 @@ export abstract class BaseQueries<
 
     let query = `SELECT ${columns} FROM ${this.table} WHERE ${whereClause}`;
 
-    if (options?.orderBy) {
-      const orderColumn = this.getColumnName(options.orderBy as string);
-      const dir = options.orderDirection === "desc" ? "DESC" : "ASC";
-      query += ` ORDER BY ${orderColumn} ${dir}`;
+    if (options?.orderBy !== undefined) {
+      query += this.buildOrderClause(options.orderBy, options.orderDirection);
     }
 
     if (options?.limit !== undefined) {
@@ -1060,6 +1152,30 @@ export abstract class BaseQueries<
       logger.error(`Failed to find all ${this.table}:`, error);
       throw error;
     }
+  }
+
+  private buildOrderClause(
+    orderBy: OrderBy<TConfig["Entity"]>,
+    orderDirection?: OrderDirection,
+  ): string {
+    const terms = Array.isArray(orderBy)
+      ? orderBy.map((term) => ({
+          column: this.getColumnName(term.field as string),
+          direction: term.direction,
+        }))
+      : [
+          {
+            column: this.getColumnName(orderBy as string),
+            direction: orderDirection,
+          },
+        ];
+    if (terms.length === 0) return "";
+    return ` ORDER BY ${terms
+      .map(
+        ({ column, direction }) =>
+          `${column} ${direction === "desc" ? "DESC" : "ASC"}`,
+      )
+      .join(", ")}`;
   }
 
   private assertPageBound(name: "limit" | "offset", value: number): void {
@@ -1088,22 +1204,22 @@ export abstract class BaseQueries<
   async getAll<K extends keyof TConfig["Entity"]>(options: {
     limit?: number;
     offset?: number;
-    orderBy?: keyof TConfig["Entity"];
-    orderDirection?: "asc" | "desc";
+    orderBy?: OrderBy<TConfig["Entity"]>;
+    orderDirection?: OrderDirection;
     select: readonly K[];
   }): Promise<Selected<TConfig["Entity"], K>[]>;
   async getAll(options?: {
     limit?: number;
     offset?: number;
-    orderBy?: keyof TConfig["Entity"];
-    orderDirection?: "asc" | "desc";
+    orderBy?: OrderBy<TConfig["Entity"]>;
+    orderDirection?: OrderDirection;
     select?: ReadonlyArray<keyof TConfig["Entity"]>;
   }): Promise<TConfig["Entity"][]>;
   async getAll(options?: {
     limit?: number;
     offset?: number;
-    orderBy?: keyof TConfig["Entity"];
-    orderDirection?: "asc" | "desc";
+    orderBy?: OrderBy<TConfig["Entity"]>;
+    orderDirection?: OrderDirection;
     select?: ReadonlyArray<keyof TConfig["Entity"]>;
   }): Promise<TConfig["Entity"][]> {
     return this.findAll(undefined, options);
@@ -1122,6 +1238,30 @@ export abstract class BaseQueries<
     updates: Partial<NonNullable<TConfig["Update"]>>,
     filters?: Partial<NonNullable<TConfig["Filters"]>>,
   ): Promise<number> {
+    const result = await this.runUpdateAll(updates, filters, false);
+    return result.rowCount || 0;
+  }
+
+  /**
+   * Same as updateAll, returning the updated entities instead of their count
+   *
+   * @param updates - Object containing fields to update
+   * @param filters - Optional filter criteria to match specific entries
+   * @returns Promise resolving to the updated entities
+   */
+  async updateAllAndReturn(
+    updates: Partial<NonNullable<TConfig["Update"]>>,
+    filters?: Partial<NonNullable<TConfig["Filters"]>>,
+  ): Promise<TConfig["Entity"][]> {
+    const result = await this.runUpdateAll(updates, filters, true);
+    return this.mapRowsToEntities(result.rows);
+  }
+
+  private async runUpdateAll(
+    updates: Partial<NonNullable<TConfig["Update"]>>,
+    filters: Partial<NonNullable<TConfig["Filters"]>> | undefined,
+    returning: boolean,
+  ): Promise<QueryResult<TConfig["DbEntity"]>> {
     const { whereClause, params, hasConditions } = filters
       ? this.buildFilterClause(filters)
       : { whereClause: "1=1", params: [] as unknown[], hasConditions: true };
@@ -1145,15 +1285,15 @@ export abstract class BaseQueries<
     const query = `
         UPDATE ${this.table}
         SET ${setClauses.join(", ")}
-        WHERE ${whereClause}`;
+        WHERE ${whereClause}${returning ? " RETURNING *" : ""}`;
 
     const allParams = [...params, ...updateMappings.map((m) => m.value)];
 
     try {
-      const result = await this.db.query(query, allParams);
+      const result = await this.db.query<TConfig["DbEntity"]>(query, allParams);
 
       logger.info(`Updated ${result.rowCount} ${this.table} record(s)`);
-      return result.rowCount || 0;
+      return result;
     } catch (error) {
       logger.error(`Failed to update ${this.table}:`, error);
       throw translateDbError(error);
@@ -1306,31 +1446,121 @@ export abstract class BaseQueries<
    * Inserts every row using as few statements as the Postgres parameter limit allows.
    * Columns a row omits take their default. Large batches span several statements,
    * so call inside a transaction when the batch must be all-or-nothing.
+   * With `onConflict: "ignore"` rows that hit a unique constraint are skipped
+   * instead of failing the batch.
    */
-  async createMany(rows: NonNullable<TConfig["Create"]>[]): Promise<void> {
-    await this.insertBatch(rows, false);
+  async createMany(
+    rows: NonNullable<TConfig["Create"]>[],
+    options?: { onConflict?: "ignore" },
+  ): Promise<void> {
+    await this.insertBatch(rows, {
+      returning: false,
+      conflictClause: options?.onConflict === "ignore" ? CONFLICT_IGNORE : "",
+    });
   }
 
   /**
    * Same as createMany, returning the created entities with generated fields.
+   * With `onConflict: "ignore"` only the rows that were actually inserted come back.
    */
   async createManyAndReturn(
     rows: NonNullable<TConfig["Create"]>[],
+    options?: { onConflict?: "ignore" },
   ): Promise<TConfig["Entity"][]> {
-    return this.insertBatch(rows, true);
+    return this.insertBatch(rows, {
+      returning: true,
+      conflictClause: options?.onConflict === "ignore" ? CONFLICT_IGNORE : "",
+    });
+  }
+
+  /**
+   * Multi-row counterpart of upsert: inserts every row and, where a row
+   * conflicts on `conflictTarget`, updates `updateFields` (default: every
+   * column present in the batch) from the incoming row. When several rows of
+   * the batch share a conflict key only the last one is written, as a loop of
+   * single upserts would end up doing. A column some rows omit is written as
+   * its default, also on the update path when it is among the updated fields,
+   * so keep the rows of one batch homogeneous.
+   */
+  async upsertMany(
+    rows: NonNullable<TConfig["Create"]>[],
+    conflictTarget:
+      | keyof NonNullable<TConfig["Create"]>
+      | Array<keyof NonNullable<TConfig["Create"]>>,
+    updateFields?: Array<keyof NonNullable<TConfig["Create"]>>,
+  ): Promise<void> {
+    if (rows.length === 0) return;
+
+    const conflictKeys = Array.isArray(conflictTarget)
+      ? conflictTarget
+      : [conflictTarget];
+    const lastByKey = new Map<string, NonNullable<TConfig["Create"]>>();
+    for (const row of rows) {
+      const key = JSON.stringify(
+        conflictKeys.map((k) => (row as Record<string, unknown>)[k as string]),
+      );
+      lastByKey.set(key, row);
+    }
+
+    await this.insertBatch([...lastByKey.values()], {
+      returning: false,
+      conflictClause: (columns) =>
+        this.buildUpsertClause(conflictTarget, updateFields, columns),
+    });
+  }
+
+  private buildUpsertClause(
+    conflictTarget:
+      | keyof NonNullable<TConfig["Create"]>
+      | Array<keyof NonNullable<TConfig["Create"]>>,
+    updateFields: Array<keyof NonNullable<TConfig["Create"]>> | undefined,
+    insertColumns: string[],
+  ): string {
+    const writableUpdateFields = updateFields?.filter((key) =>
+      this.isWritableField(key as string),
+    );
+    if (writableUpdateFields && writableUpdateFields.length === 0) {
+      throw new Error(
+        `upsert on ${this.table} requires at least one field in updateFields`,
+      );
+    }
+
+    const conflictColumns = (
+      Array.isArray(conflictTarget) ? conflictTarget : [conflictTarget]
+    )
+      .map((key) => this.getColumnName(key as string))
+      .join(", ");
+
+    const fieldsToUpdate = writableUpdateFields
+      ? writableUpdateFields.map((key) => this.getColumnName(key as string))
+      : insertColumns;
+
+    const updateClause = fieldsToUpdate
+      .map((col) => `${col} = EXCLUDED.${col}`)
+      .join(", ");
+
+    return ` ON CONFLICT (${conflictColumns}) DO UPDATE SET ${updateClause}`;
   }
 
   private async insertBatch(
     rows: NonNullable<TConfig["Create"]>[],
-    returning: boolean,
+    mode: {
+      returning: boolean;
+      conflictClause: string | ((insertColumns: string[]) => string);
+    },
   ): Promise<TConfig["Entity"][]> {
     if (rows.length === 0) return [];
+    const { returning } = mode;
 
     const mapped = rows.map(
       (row) =>
         new Map(this.getCreateMapping(row).map((m) => [m.column, m.value])),
     );
     const columns = [...new Set(mapped.flatMap((row) => [...row.keys()]))];
+    const conflictClause =
+      typeof mode.conflictClause === "function"
+        ? mode.conflictClause(columns)
+        : mode.conflictClause;
     const rowsPerStatement = Math.max(
       1,
       Math.floor(MAX_QUERY_PARAMS / columns.length),
@@ -1351,7 +1581,7 @@ export abstract class BaseQueries<
             return `(${cells.join(", ")})`;
           });
 
-        const query = `INSERT INTO ${this.table} (${columns.join(", ")}) VALUES ${tuples.join(", ")}${returning ? " RETURNING *" : ""}`;
+        const query = `INSERT INTO ${this.table} (${columns.join(", ")}) VALUES ${tuples.join(", ")}${conflictClause}${returning ? " RETURNING *" : ""}`;
         const result = await this.db.query<TConfig["DbEntity"]>(query, values);
 
         if (returning) {
@@ -1382,42 +1612,19 @@ export abstract class BaseQueries<
       | Array<keyof NonNullable<TConfig["Create"]>>,
     updateFields?: Array<keyof NonNullable<TConfig["Create"]>>,
   ): Promise<TConfig["Entity"]> {
-    const writableUpdateFields = updateFields?.filter((key) =>
-      this.isWritableField(key as string),
-    );
-    if (writableUpdateFields && writableUpdateFields.length === 0) {
-      throw new Error(
-        `upsert on ${this.table} requires at least one field in updateFields`,
-      );
-    }
-
     const createMappings = this.getCreateMapping(data);
-    const columns = createMappings.map((m) => m.column).join(", ");
+    const insertColumns = createMappings.map((m) => m.column);
+    const upsertClause = this.buildUpsertClause(
+      conflictTarget,
+      updateFields,
+      insertColumns,
+    );
     const placeholders = createMappings
       .map((_, index) => `$${index + 1}`)
       .join(", ");
     const values = createMappings.map((m) => m.value);
 
-    const conflictColumns = Array.isArray(conflictTarget)
-      ? conflictTarget
-          .map((key) => this.getColumnName(key as string))
-          .join(", ")
-      : this.getColumnName(conflictTarget as string);
-
-    const fieldsToUpdate = writableUpdateFields
-      ? writableUpdateFields.map((key) => this.getColumnName(key as string))
-      : createMappings.map((m) => m.column);
-
-    const updateClause = fieldsToUpdate
-      .map((col) => `${col} = EXCLUDED.${col}`)
-      .join(", ");
-
-    const query = `
-        INSERT INTO ${this.table} (${columns})
-        VALUES (${placeholders})
-        ON CONFLICT (${conflictColumns})
-        DO UPDATE SET ${updateClause}
-        RETURNING *`;
+    const query = `INSERT INTO ${this.table} (${insertColumns.join(", ")}) VALUES (${placeholders})${upsertClause} RETURNING *`;
 
     try {
       const result = await this.db.query<TConfig["DbEntity"]>(query, values);
@@ -1456,6 +1663,41 @@ export abstract class BaseQueries<
       logger.error(`Failed to count ${this.table}:`, error);
       throw error;
     }
+  }
+
+  /**
+   * Counts the matching rows per distinct value of one column with a single
+   * GROUP BY query. Values that no row carries are absent from the result,
+   * so read with `counts.get(value) ?? 0`. A NULL column value groups under
+   * the key null.
+   *
+   * @param column - Entity field to group by
+   * @param filters - Optional filter criteria applied before grouping
+   * @returns Map from column value to the number of rows carrying it
+   *
+   * @example
+   * const perStatus = await Q.gallery.submission.countBy("status")
+   * perStatus.get("pending") ?? 0
+   */
+  async countBy<K extends keyof TConfig["Entity"]>(
+    column: K,
+    filters?: Partial<NonNullable<TConfig["Filters"]>>,
+  ): Promise<Map<TConfig["Entity"][K], number>> {
+    const { whereClause, params } = filters
+      ? this.buildFilterClause(filters)
+      : { whereClause: "1=1", params: [] as unknown[] };
+    const groupColumn = this.getColumnName(column as string);
+
+    const query = `SELECT ${groupColumn} AS value, COUNT(*) AS count FROM ${this.table} WHERE ${whereClause} GROUP BY ${groupColumn}`;
+
+    const result = await this.runQuery<{
+      value: TConfig["Entity"][K];
+      count: string | number | bigint;
+    }>(`count ${this.table} by ${groupColumn}`, query, params);
+
+    return new Map(
+      result.rows.map((row) => [row.value, Number(row.count)] as const),
+    );
   }
 
   /**

@@ -1,0 +1,1 @@
+ALTER TYPE "public"."curseforge_file_source" ADD VALUE 'curseforge-cdn' BEFORE 'storage';

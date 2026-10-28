@@ -19,6 +19,7 @@ import trainRoutes from "./mod/trains/trains.routes";
 import internalPresenceRoutes from "./internal/presence/presence.routes";
 import internalSsoExchangeRoutes from "./internal/sso-exchange/sso-exchange.routes";
 import adminChatRoutes from "./admin-chat/admin-chat.routes";
+import { registerLauncherRoutes } from "./launcher";
 
 /** Mounts all feature route modules onto the Express app under the /api prefix */
 export function registerRoutes(app: Express): void {
@@ -51,6 +52,8 @@ export function registerRoutes(app: Express): void {
     app.use(`${API_PREFIX}/internal/sso-exchange`, internalSsoExchangeRoutes);
     logger.info("Internal skin-api routes registered");
   }
+
+  registerLauncherRoutes(app, API_PREFIX);
 
   // Admin chat proxy, only active when the upstream URL is configured.
   // Routes gate on requireAdmin internally; the secret (if set) is injected

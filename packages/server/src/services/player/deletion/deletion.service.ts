@@ -3,6 +3,7 @@ import { DatabaseTable, type DatabaseQueries } from "@/generated/db";
 import { NotFoundError } from "@/app/middleware/error-handler";
 import { AdminEdit } from "@/types";
 import { minecraftRcon, WhitelistAction } from "@/utils/rcon";
+import { launcherSessionService } from "@/services/auth/launcher/launcher-session.service";
 import type { PlayerIdentifier } from "@/db/repositories/player/base";
 
 /** Who triggered a deletion. `system` covers automated cleanup paths. */
@@ -132,6 +133,15 @@ export class PlayerDeletionService {
     logger.info(
       `Deleted player ${snapshot.minecraftUsername} (${snapshot.minecraftUuid}) by ${this.actorLabel(actor)}: ${reason}`,
     );
+
+    try {
+      await launcherSessionService.revokeAllForPlayer(snapshot.minecraftUuid);
+    } catch (error) {
+      logger.error(
+        `Failed to revoke launcher sessions of ${snapshot.minecraftUsername}:`,
+        error,
+      );
+    }
 
     if (removeFromWhitelist) {
       try {

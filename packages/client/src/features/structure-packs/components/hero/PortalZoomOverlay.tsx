@@ -326,7 +326,7 @@ function OverlayHeader({
         aria-label="Exit portal"
         className="group grid size-8 place-items-center rounded-full text-white/55 transition-colors hover:bg-white/10 hover:text-white"
       >
-        <X className="size-4 transition-transform duration-300 group-hover:rotate-90" />
+        <X className="close-turn size-4 group-hover:[--close-turn:90deg]" />
       </button>
     </header>
   );

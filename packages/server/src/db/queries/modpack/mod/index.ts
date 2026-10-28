@@ -1,6 +1,17 @@
 import type { Pool, PoolClient } from "pg";
 import { ModpackModBaseQueries } from "@/generated/db/modpack_mod.queries";
 
+export interface ModpackModSample {
+  id: number;
+  name: string;
+  thumbnailUrl: string | null;
+}
+
+export interface ModpackModCounts {
+  modCount: number;
+  liveCount: number;
+}
+
 /**
  * Custom queries for modpack_mod table
  *
@@ -11,6 +22,51 @@ import { ModpackModBaseQueries } from "@/generated/db/modpack_mod.queries";
 export class ModpackModQueries extends ModpackModBaseQueries {
   constructor(db: Pool | PoolClient) {
     super(db);
+  }
+
+  /** Member and live member counts per modpack; packs without members are absent. */
+  async getCountsByModpack(): Promise<Map<number, ModpackModCounts>> {
+    const query = `
+      SELECT modpack_id,
+             COUNT(*)::int AS mod_count,
+             COUNT(*) FILTER (WHERE live_at IS NOT NULL)::int AS live_count
+      FROM ${this.table}
+      GROUP BY modpack_id`;
+    const result = await this.runQuery<{
+      modpack_id: number;
+      mod_count: number;
+      live_count: number;
+    }>("count modpack members by modpack", query);
+    return new Map(
+      result.rows.map((row) => [
+        row.modpack_id,
+        { modCount: row.mod_count, liveCount: row.live_count },
+      ]),
+    );
+  }
+
+  /** The newest members of a pack that are not dropped, with their cached project. */
+  async getSampleWithProjects(
+    modpackId: number,
+    limit: number,
+  ): Promise<ModpackModSample[]> {
+    const query = `
+      SELECT mm.id, cp.name, cp.thumbnail_url
+      FROM ${this.table} mm
+      JOIN curseforge_project cp ON cp.id = mm.curseforge_project_id
+      WHERE mm.modpack_id = $1 AND mm.dropped_from_manifest_at IS NULL
+      ORDER BY mm.created_at DESC, mm.id DESC
+      LIMIT $2`;
+    const result = await this.runQuery<{
+      id: number;
+      name: string;
+      thumbnail_url: string | null;
+    }>("sample modpack members with projects", query, [modpackId, limit]);
+    return result.rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      thumbnailUrl: row.thumbnail_url,
+    }));
   }
 
   // Points members at the files a manifest ships, in one statement. Rows whose

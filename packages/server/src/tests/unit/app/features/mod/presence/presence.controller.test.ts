@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("@/app/middleware", () =>
-  vi.importActual("@/app/middleware/error-handler"),
-);
+vi.mock("@/app/middleware", async () => ({
+  ...(await vi.importActual("@/app/middleware/error-handler")),
+  ...(await vi.importActual("@/app/middleware/validation.middleware")),
+}));
 
 const { getServiceMock, forwardHeartbeatMock } = vi.hoisted(() => ({
   getServiceMock: vi.fn(),
@@ -26,15 +27,42 @@ import {
   ForbiddenError,
 } from "@/app/middleware/error-handler";
 import { PresenceController } from "@/app/features/mod/presence/presence.controller";
+import {
+  HeartbeatBodySchema,
+  PresenceBodySchema,
+} from "@/app/features/mod/presence/presence.schemas";
 import type { Request, Response } from "express";
 
 const PLAYER_UUID = "11111111-2222-3333-4444-555555555555";
 const OTHER_UUID = "99999999-8888-7777-6666-555555555555";
 
-function makeRes(): Response & { json: ReturnType<typeof vi.fn> } {
-  return { json: vi.fn() } as unknown as Response & {
-    json: ReturnType<typeof vi.fn>;
-  };
+type TestRes = Response & { json: ReturnType<typeof vi.fn> };
+
+function makeRes(body: unknown): TestRes {
+  return {
+    json: vi.fn(),
+    locals: { validated: { body } },
+  } as unknown as TestRes;
+}
+
+function presence(
+  body: Record<string, unknown>,
+  modAuth: Record<string, unknown> = {},
+): [Request, TestRes] {
+  return [
+    { modAuth } as unknown as Request,
+    makeRes(PresenceBodySchema.parse(body)),
+  ];
+}
+
+function heartbeat(
+  body: Record<string, unknown>,
+  modAuth: Record<string, unknown> = {},
+): [Request, TestRes] {
+  return [
+    { modAuth } as unknown as Request,
+    makeRes(HeartbeatBodySchema.parse(body)),
+  ];
 }
 
 function makePlaytimeManager() {
@@ -62,24 +90,17 @@ describe("PresenceController.updatePresence", () => {
   };
 
   it("rejects a per-player token whose uuid does not match the reported player", async () => {
-    const req = {
-      body: joinBody,
-      modAuth: { uuid: OTHER_UUID },
-    } as unknown as Request;
+    const [req, res] = presence(joinBody, { uuid: OTHER_UUID });
 
     await expect(
-      PresenceController.updatePresence(req, makeRes()),
+      PresenceController.updatePresence(req, res),
     ).rejects.toBeInstanceOf(ForbiddenError);
     expect(getServiceMock).not.toHaveBeenCalled();
   });
 
   it("accepts a per-player token matching the reported player regardless of case", async () => {
     const playtimeService = makePlaytimeManager();
-    const req = {
-      body: joinBody,
-      modAuth: { uuid: PLAYER_UUID.toUpperCase() },
-    } as unknown as Request;
-    const res = makeRes();
+    const [req, res] = presence(joinBody, { uuid: PLAYER_UUID.toUpperCase() });
 
     await PresenceController.updatePresence(req, res);
 
@@ -93,8 +114,7 @@ describe("PresenceController.updatePresence", () => {
 
   it("accepts a server-level token without a uuid claim", async () => {
     const playtimeService = makePlaytimeManager();
-    const req = { body: joinBody, modAuth: {} } as unknown as Request;
-    const res = makeRes();
+    const [req, res] = presence(joinBody);
 
     await PresenceController.updatePresence(req, res);
 
@@ -108,25 +128,37 @@ describe("PresenceController.updatePresence", () => {
     const playtimeService = makePlaytimeManager();
 
     await PresenceController.updatePresence(
-      {
-        body: { ...joinBody, playTimeTicks: 12345 },
-        modAuth: {},
-      } as unknown as Request,
-      makeRes(),
+      ...presence({ ...joinBody, playTimeTicks: 12345 }),
     );
     expect(playtimeService.handlePlayerJoinFromMod).toHaveBeenCalledWith(
       expect.objectContaining({ playTimeTicks: 12345 }),
     );
 
     await PresenceController.updatePresence(
-      {
-        body: { ...joinBody, state: "left", playTimeTicks: 12400 },
-        modAuth: {},
-      } as unknown as Request,
-      makeRes(),
+      ...presence({ ...joinBody, state: "left", playTimeTicks: 12400 }),
     );
     expect(playtimeService.handlePlayerLeaveFromMod).toHaveBeenCalledWith(
       expect.objectContaining({ playTimeTicks: 12400 }),
+    );
+  });
+
+  it("passes the logout position and dimension through on leave", async () => {
+    const playtimeService = makePlaytimeManager();
+
+    await PresenceController.updatePresence(
+      ...presence({
+        ...joinBody,
+        state: "left",
+        dimension: "minecraft:the_nether",
+        position: { x: 1.5, y: 64, z: -3 },
+      }),
+    );
+
+    expect(playtimeService.handlePlayerLeaveFromMod).toHaveBeenCalledWith(
+      expect.objectContaining({
+        dimension: "minecraft:the_nether",
+        position: { x: 1.5, y: 64, z: -3 },
+      }),
     );
   });
 
@@ -134,11 +166,7 @@ describe("PresenceController.updatePresence", () => {
     const playtimeService = makePlaytimeManager();
 
     await PresenceController.updatePresence(
-      {
-        body: { ...joinBody, playTimeTicks: "lots" },
-        modAuth: {},
-      } as unknown as Request,
-      makeRes(),
+      ...presence({ ...joinBody, playTimeTicks: "lots" }),
     );
 
     expect(playtimeService.handlePlayerJoinFromMod).toHaveBeenCalledWith(
@@ -147,13 +175,10 @@ describe("PresenceController.updatePresence", () => {
   });
 
   it("rejects an unparseable timestamp before touching the tracker", async () => {
-    const req = {
-      body: { ...joinBody, timestamp: "yesterday-ish" },
-      modAuth: {},
-    } as unknown as Request;
-
     await expect(
-      PresenceController.updatePresence(req, makeRes()),
+      PresenceController.updatePresence(
+        ...presence({ ...joinBody, timestamp: "yesterday-ish" }),
+      ),
     ).rejects.toBeInstanceOf(BadRequestError);
     expect(getServiceMock).not.toHaveBeenCalled();
   });
@@ -161,24 +186,19 @@ describe("PresenceController.updatePresence", () => {
 
 describe("PresenceController.heartbeat", () => {
   it("rejects a per-player token", async () => {
-    const req = {
-      body: { players: [] },
-      modAuth: { uuid: PLAYER_UUID },
-    } as unknown as Request;
-
     await expect(
-      PresenceController.heartbeat(req, makeRes()),
+      PresenceController.heartbeat(
+        ...heartbeat({ players: [] }, { uuid: PLAYER_UUID }),
+      ),
     ).rejects.toBeInstanceOf(ForbiddenError);
     expect(getServiceMock).not.toHaveBeenCalled();
   });
 
   it("accepts a server-level token and reconciles sessions", async () => {
     const playtimeService = makePlaytimeManager();
-    const req = {
-      body: { players: [{ uuid: PLAYER_UUID, minecraftUsername: "steve" }] },
-      modAuth: {},
-    } as unknown as Request;
-    const res = makeRes();
+    const [req, res] = heartbeat({
+      players: [{ uuid: PLAYER_UUID, minecraftUsername: "steve" }],
+    });
 
     await PresenceController.heartbeat(req, res);
 
@@ -195,18 +215,17 @@ describe("PresenceController.heartbeat", () => {
 
   it("carries playTimeTicks per player and drops malformed entries", async () => {
     const playtimeService = makePlaytimeManager();
-    const req = {
-      body: {
+
+    await PresenceController.heartbeat(
+      ...heartbeat({
         players: [
           { uuid: PLAYER_UUID, minecraftUsername: "steve", playTimeTicks: 500 },
           { uuid: OTHER_UUID, minecraftUsername: "alex", playTimeTicks: -3 },
           { uuid: "not-a-uuid", minecraftUsername: "ghost" },
+          { uuid: PLAYER_UUID, minecraftUsername: "x".repeat(300) },
         ],
-      },
-      modAuth: {},
-    } as unknown as Request;
-
-    await PresenceController.heartbeat(req, makeRes());
+      }),
+    );
 
     expect(playtimeService.reconcileWithHeartbeat).toHaveBeenCalledWith([
       { uuid: PLAYER_UUID, username: "steve", playTimeTicks: 500 },

@@ -1,6 +1,6 @@
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useStickyValue } from "@/hooks/use-sticky-value";
-import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { trpc } from "@/lib/trpc";
 
 interface DeletePromptModalProps {
@@ -20,17 +20,18 @@ export function DeletePromptModal({
   onClose,
   onSuccess,
 }: DeletePromptModalProps) {
-  const toast = useToastActions();
   const utils = trpc.useUtils();
-  const deletePrompt = trpc.admin.prompts.delete.useMutation({
-    onSuccess: async (_data, variables) => {
-      await utils.admin.prompts.list.invalidate();
-      void utils.admin.prompts.get.reset({ id: variables.id });
-      toast.success("Prompt deleted");
-      onSuccess();
-    },
-    onError: (error) => toast.error(error.message || "Failed to delete prompt"),
-  });
+  const deletePrompt = trpc.admin.prompts.delete.useMutation(
+    useMutationToast({
+      success: "Prompt deleted",
+      error: (error) => error.message || "Failed to delete prompt",
+      onSuccess: async (_data, variables) => {
+        await utils.admin.prompts.list.invalidate();
+        void utils.admin.prompts.get.reset({ id: variables.id });
+        onSuccess();
+      },
+    }),
+  );
   const displayPrompt = useStickyValue(prompt);
   const displayCount = useStickyValue(prompt !== null ? entryCount : null);
 

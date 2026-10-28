@@ -20,17 +20,13 @@ export const sessionsRouter = router({
     .query(async ({ input }) => {
       const identifier = parsePlayerId(input.id);
 
-      const totalSessions = await playerService.sessions.count(
-        identifier,
-        input.serverId,
-      );
-
-      const sessions = await playerService.sessions.getHistory(
-        identifier,
-        input.serverId,
-        input.limit,
-        input.page * input.limit,
-      );
+      const { sessions, total: totalSessions } =
+        await playerService.sessions.getHistoryPage(
+          identifier,
+          input.serverId,
+          input.limit,
+          input.page * input.limit,
+        );
 
       return {
         sessions: sessions.map((s) => ({

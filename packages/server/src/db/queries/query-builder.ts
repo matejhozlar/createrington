@@ -1,11 +1,27 @@
 import type { QueryResultRow } from "pg";
 
+export type OrderDirection = "asc" | "desc";
+
+/** One ORDER BY term; direction defaults to ascending */
+export interface OrderTerm<TEntity> {
+  field: keyof TEntity;
+  direction?: OrderDirection;
+}
+
+/**
+ * Sort specification accepted by findAll, the query builder and paginateQuery:
+ * a single field (paired with orderDirection) or an ordered list of terms
+ * whose later entries break ties among the earlier ones
+ */
+export type OrderBy<TEntity> =
+  keyof TEntity | ReadonlyArray<OrderTerm<TEntity>>;
+
 /** Shared options shape used by QueryBuilder and findAll */
 interface QueryBuilderOptions<TConfig extends { Entity: QueryResultRow }> {
   limit?: number;
   offset?: number;
-  orderBy?: keyof TConfig["Entity"];
-  orderDirection?: "asc" | "desc";
+  orderBy?: OrderBy<TConfig["Entity"]>;
+  orderDirection?: OrderDirection;
   select?: ReadonlyArray<keyof TConfig["Entity"]>;
 }
 
@@ -29,13 +45,7 @@ export class QueryBuilder<
   TResult = TConfig["Entity"],
 > {
   private filters: Partial<NonNullable<TConfig["Filters"]>> = {};
-  private options: {
-    limit?: number;
-    offset?: number;
-    orderBy?: keyof TConfig["Entity"];
-    orderDirection?: "asc" | "desc";
-    select?: ReadonlyArray<keyof TConfig["Entity"]>;
-  } = {};
+  private options: QueryBuilderOptions<TConfig> = {};
 
   constructor(
     private executor: (
@@ -65,19 +75,23 @@ export class QueryBuilder<
 
   /**
    * Set sort order
+   * Replaces any order set earlier on this builder
    *
-   * @param field - Field to sort by
-   * @param direction - Sort direction (default: "asc")
+   * @param order - Field to sort by, or a list of terms for a multi-column sort
+   * @param direction - Sort direction for a single field (default: "asc")
    * @returns This builder for chaining
    *
    * @example
    * Q.player.where({ isActive: true }).orderBy("createdAt", "desc")
+   *
+   * @example
+   * Q.waitlist.orderBy([{ field: "queuedAt" }, { field: "id" }])
    */
   orderBy(
-    field: keyof TConfig["Entity"],
-    direction: "asc" | "desc" = "asc",
+    order: OrderBy<TConfig["Entity"]>,
+    direction: OrderDirection = "asc",
   ): this {
-    this.options.orderBy = field;
+    this.options.orderBy = order;
     this.options.orderDirection = direction;
     return this;
   }

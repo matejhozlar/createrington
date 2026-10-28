@@ -1,6 +1,12 @@
-import { customRoute, verifyModJWT, verifyServerIP } from "@/app/middleware";
+import {
+  customRoute,
+  validate,
+  verifyModJWT,
+  verifyServerIP,
+} from "@/app/middleware";
 import { Router } from "express";
 import { ChunksController } from "./chunks.controller";
+import { ChunkSyncBodySchema } from "./chunks.schemas";
 
 const router = Router();
 
@@ -24,7 +30,10 @@ const router = Router();
  */
 router.post(
   "/sync",
-  ...customRoute([verifyServerIP, verifyModJWT], ChunksController.sync),
+  ...customRoute(
+    [verifyServerIP, verifyModJWT, validate({ body: ChunkSyncBodySchema })],
+    ChunksController.sync,
+  ),
 );
 
 export default router;

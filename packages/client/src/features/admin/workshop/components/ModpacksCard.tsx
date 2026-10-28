@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Package, Pencil, Plus, Trash2 } from "lucide-react";
 import { trpc, type RouterOutput } from "@/lib/trpc";
-import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -108,8 +108,15 @@ const columns: DataTableColumn<AdminModpackRow>[] = [
   },
 ];
 
+function deleteLabel(modpack: AdminModpackRow): string {
+  if (modpack.workshops.length > 0) return "In use by a workshop";
+  if (modpack.launcherPackSlug !== null) {
+    return `Offered by the launcher as "${modpack.launcherPackSlug}"`;
+  }
+  return "Delete";
+}
+
 export function ModpacksCard() {
-  const toast = useToastActions();
   const utils = trpc.useUtils();
 
   const modpacksQuery = trpc.admin.modpacks.list.useQuery();
@@ -125,14 +132,15 @@ export function ModpacksCard() {
   );
   const displayDeleteTarget = useStickyValue(deleteTarget);
 
-  const deleteMutation = trpc.admin.modpacks.delete.useMutation({
-    onSuccess: () => {
-      toast.success("Modpack deleted");
-      utils.admin.modpacks.list.invalidate();
-      setDeleteTarget(null);
-    },
-    onError: (err) => toast.error(err.message),
-  });
+  const deleteMutation = trpc.admin.modpacks.delete.useMutation(
+    useMutationToast({
+      success: "Modpack deleted",
+      onSuccess: () => {
+        utils.admin.modpacks.list.invalidate();
+        setDeleteTarget(null);
+      },
+    }),
+  );
 
   const openCreate = () => {
     setCreateKey((key) => key + 1);
@@ -193,13 +201,12 @@ export function ModpacksCard() {
                   onClick: () => openSettings(modpack),
                 },
                 {
-                  label:
-                    modpack.workshops.length > 0
-                      ? "In use by a workshop"
-                      : "Delete",
+                  label: deleteLabel(modpack),
                   icon: Trash2,
                   variant: "destructive",
-                  disabled: modpack.workshops.length > 0,
+                  disabled:
+                    modpack.workshops.length > 0 ||
+                    modpack.launcherPackSlug !== null,
                   onClick: () => setDeleteTarget(modpack),
                 },
               ]}

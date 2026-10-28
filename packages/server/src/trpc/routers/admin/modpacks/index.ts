@@ -54,6 +54,7 @@ export const adminModpacksRouter = router({
           shipsServerPack: z.boolean().optional(),
           serverId: id().nullable().optional(),
           titleImageUrl: httpUrlSchema.nullable().optional(),
+          iconUrl: httpUrlSchema.nullable().optional(),
         }),
       }),
     )
@@ -79,7 +80,7 @@ export const adminModpacksRouter = router({
   delete: adminProcedure
     .meta({
       description:
-        "Delete a modpack no workshop uses, with its members and release history",
+        "Delete a modpack no workshop or launcher pack uses, with its members and release history",
     })
     .input(z.object({ modpackId: id() }))
     .mutation(async ({ ctx, input }) => {

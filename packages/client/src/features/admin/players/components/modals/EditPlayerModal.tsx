@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ADMIN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
 import { Input } from "@/components/ui/input";
 import {
   Field,
@@ -8,6 +9,7 @@ import {
 } from "@/components/ui/field";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { AdminActionModal } from "./AdminActionModal";
 
@@ -27,12 +29,11 @@ export function EditPlayerModal({
   onSuccess,
 }: EditPlayerModalProps) {
   const toast = useToastActions();
-  const updatePlayer = trpc.admin.players.players.update.useMutation({
-    onError: (error) =>
-      toast.error(
-        error instanceof Error ? error.message : "Failed to update player",
-      ),
-  });
+  const updatePlayer = trpc.admin.players.players.update.useMutation(
+    useMutationToast({
+      error: (err) => err.message || "Failed to update player",
+    }),
+  );
 
   const [minecraftUsername, setMinecraftUsername] = useState(
     player.minecraftUsername,
@@ -208,6 +209,7 @@ export function EditPlayerModal({
             id="edit-reason"
             placeholder="Explain why these changes are being made..."
             value={reason}
+            maxLength={ADMIN_REASON_MAX_LENGTH}
             onChange={(e) => {
               setReason(e.target.value);
               if (errors.reason) {

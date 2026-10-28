@@ -1,5 +1,6 @@
-import { auth } from "@/db";
+import { auth, db } from "@/db";
 import { refreshTokenService } from "@/services/auth/token/refresh-token.service";
+import type { AuthSessionRow } from "@createrington/shared/db/auth_session.types";
 
 interface CreateSessionParams {
   discordId: string;
@@ -16,16 +17,30 @@ interface RotateResult {
   discordAvatar: string | null;
 }
 
+const ROTATION_GRACE_MS = 60_000;
+
 /**
  * Manages server-side auth sessions backed by the `auth_session` table: issues opaque
  * refresh tokens on login, rotates them on each use, and revokes whole token families
- * when a previously-revoked token is replayed (theft detection). Instantiated as a
- * singleton; an hourly cleanup interval starts automatically on first access and runs
- * for the lifetime of the process.
+ * when a previously-revoked token is replayed (theft detection). Rotations are cached
+ * in memory for a short grace window so concurrent refreshes from browser contexts
+ * sharing one domain-scoped cookie (tabs, subdomains) all receive the same successor
+ * instead of tripping theft detection. Grace replays re-validate the successor row
+ * first, so explicit revocation (logout, ban, logout-all) always wins. The cache is
+ * process-local and assumes a single-instance deployment; a restart or additional
+ * instance falls back to strict theft detection. Revoking the old row and inserting its
+ * successor run in one transaction that only proceeds if it claimed the row, so two
+ * rotations that slip past the cache never both issue a successor: the loser is treated
+ * as a replay. Instantiated as a singleton; an hourly cleanup interval starts
+ * automatically on first access and runs for the lifetime of the process.
  */
 class SessionService {
   private static instance: SessionService;
   private cleanupInterval: ReturnType<typeof setInterval> | null = null;
+  private recentRotations = new Map<
+    string,
+    { promise: Promise<RotateResult | null>; expiresAt: number }
+  >();
 
   private constructor() {
     this.cleanupInterval = setInterval(
@@ -66,8 +81,13 @@ class SessionService {
 
   /**
    * Rotates a refresh token in place: revokes the current session and issues a new one
-   * in the same family. Returns null when the token is unknown, expired, or has already
-   * been revoked; replay of a revoked token revokes the entire family as theft.
+   * in the same family. Repeated calls with the same token within the grace window
+   * (concurrent or slightly stale refreshes from other tabs/subdomains) return the same
+   * successor, re-validated against the database so revocation always wins; if the
+   * successor was itself already rotated, the call follows the chain to the newest
+   * token. Returns null when the token is unknown, expired, or has already been
+   * revoked; replay of a revoked token outside the grace window revokes the entire
+   * family as theft.
    */
   async rotateToken(
     rawToken: string,
@@ -75,6 +95,60 @@ class SessionService {
     userAgent?: string,
   ): Promise<RotateResult | null> {
     const tokenHash = refreshTokenService.hash(rawToken);
+
+    const recent = this.recentRotations.get(tokenHash);
+    if (recent && recent.expiresAt > Date.now()) {
+      const result = await recent.promise;
+      if (!result) return null;
+
+      const successor = await auth.session.findByTokenHash(
+        refreshTokenService.hash(result.rawToken),
+      );
+      if (!successor) return null;
+      if (successor.revoked_at) {
+        const next = this.recentRotations.get(
+          refreshTokenService.hash(result.rawToken),
+        );
+        if (!next || next.expiresAt <= Date.now()) return null;
+        return this.rotateToken(result.rawToken, ip, userAgent);
+      }
+
+      logger.info(
+        `Refresh token reused within rotation grace window for user ${result.discordId}`,
+      );
+      return result;
+    }
+
+    const entry = {
+      promise: this.performRotation(tokenHash, ip, userAgent),
+      expiresAt: Date.now() + ROTATION_GRACE_MS,
+    };
+    this.recentRotations.set(tokenHash, entry);
+    const evict = () => {
+      if (this.recentRotations.get(tokenHash) === entry) {
+        this.recentRotations.delete(tokenHash);
+      }
+    };
+    setTimeout(evict, ROTATION_GRACE_MS).unref();
+
+    let result: RotateResult | null;
+    try {
+      result = await entry.promise;
+    } catch (error) {
+      evict();
+      throw error;
+    }
+    if (!result) {
+      evict();
+    }
+    return result;
+  }
+
+  private async performRotation(
+    tokenHash: string,
+    ip?: string,
+    userAgent?: string,
+  ): Promise<RotateResult | null> {
     const session = await auth.session.findByTokenHash(tokenHash);
 
     // Unknown token
@@ -85,10 +159,7 @@ class SessionService {
 
     // Theft detection: token was already revoked → attacker replaying old token
     if (session.revoked_at) {
-      logger.warn(
-        `Refresh token theft detected for user ${session.discord_id}, revoking family ${session.family_id}`,
-      );
-      await auth.session.revokeByFamily(session.family_id);
+      await this.revokeFamilyAsTheft(session);
       return null;
     }
 
@@ -101,23 +172,29 @@ class SessionService {
       return null;
     }
 
-    // Valid: rotate (revoke old, create new in same family)
-    await auth.session.revokeById(session.id);
-
     const newRawToken = refreshTokenService.generate();
-    const newTokenHash = refreshTokenService.hash(newRawToken);
-    const expiresAt = refreshTokenService.getExpiresAt();
 
-    await auth.session.insertSession({
-      discordId: session.discord_id,
-      discordUsername: session.discord_username,
-      discordAvatar: session.discord_avatar,
-      tokenHash: newTokenHash,
-      familyId: session.family_id,
-      ipAddress: ip ?? null,
-      userAgent: userAgent ?? null,
-      expiresAt,
+    const rotated = await db.inTransaction(async (tx) => {
+      const claimed = await tx.auth.session.revokeById(session.id);
+      if (!claimed) return false;
+
+      await tx.auth.session.insertSession({
+        discordId: session.discord_id,
+        discordUsername: session.discord_username,
+        discordAvatar: session.discord_avatar,
+        tokenHash: refreshTokenService.hash(newRawToken),
+        familyId: session.family_id,
+        ipAddress: ip ?? null,
+        userAgent: userAgent ?? null,
+        expiresAt: refreshTokenService.getExpiresAt(),
+      });
+      return true;
     });
+
+    if (!rotated) {
+      await this.revokeFamilyAsTheft(session);
+      return null;
+    }
 
     logger.debug(
       `Rotated refresh token for user ${session.discord_id} (family: ${session.family_id})`,
@@ -129,6 +206,13 @@ class SessionService {
       discordUsername: session.discord_username,
       discordAvatar: session.discord_avatar,
     };
+  }
+
+  private async revokeFamilyAsTheft(session: AuthSessionRow): Promise<void> {
+    logger.warn(
+      `Refresh token theft detected for user ${session.discord_id}, revoking family ${session.family_id}`,
+    );
+    await auth.session.revokeByFamily(session.family_id);
   }
 
   /** Revokes the single session identified by the given raw refresh token (normal logout). */

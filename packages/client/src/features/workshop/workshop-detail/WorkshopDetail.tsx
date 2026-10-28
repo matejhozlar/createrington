@@ -283,8 +283,7 @@ export function WorkshopDetail() {
       mod.status === "pending" &&
       !upvoteMutation.isPending &&
       user?.discordId != null;
-    const hasFreeVote =
-      upvotedIds.has(mod.id) || mod.submittedBy === user?.discordId;
+    const hasFreeVote = upvotedIds.has(mod.id) || mod.submittedByMe;
     return {
       mod,
       rank: mod.status === "pending" ? (rankById.get(mod.id) ?? null) : null,

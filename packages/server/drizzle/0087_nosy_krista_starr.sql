@@ -1,0 +1,1 @@
+ALTER TABLE "modpack_release_mod" ADD COLUMN "in_client_pack" boolean;

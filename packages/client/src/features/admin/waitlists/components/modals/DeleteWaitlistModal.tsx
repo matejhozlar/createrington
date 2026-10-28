@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ADMIN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field, FieldLabel } from "@/components/ui/field";
@@ -13,6 +14,7 @@ import {
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useStickyValue } from "@/hooks/use-sticky-value";
 import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 
 type WaitlistEntry =
@@ -32,25 +34,24 @@ export function DeleteWaitlistModal({
   const toast = useToastActions();
 
   const [reason, setReason] = useState("");
-  const [confirmText, setConfirmText] = useState("");
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
-  const deleteEntry = trpc.admin.waitlists.delete.useMutation({
-    onSuccess: () => {
-      toast.success("Waitlist entry deleted");
-      setReason("");
-      setConfirmText("");
-      onSuccess();
-      onClose();
-    },
-    onError: () => toast.error("Failed to delete waitlist entry"),
-  });
+  const deleteEntry = trpc.admin.waitlists.delete.useMutation(
+    useMutationToast({
+      success: "Waitlist entry deleted",
+      error: "Failed to delete waitlist entry",
+      onSuccess: () => {
+        setReason("");
+        onSuccess();
+        onClose();
+      },
+    }),
+  );
 
   const displayEntry = useStickyValue(entry);
 
   const handleClose = () => {
     setReason("");
-    setConfirmText("");
     setShowConfirmDialog(false);
     onClose();
   };
@@ -135,6 +136,7 @@ export function DeleteWaitlistModal({
                 placeholder="Enter reason for deletion"
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
+                maxLength={ADMIN_REASON_MAX_LENGTH}
               />
             </Field>
           </div>
@@ -162,36 +164,18 @@ export function DeleteWaitlistModal({
 
       <ConfirmDialog
         open={showConfirmDialog}
-        onOpenChange={(open) => {
-          setShowConfirmDialog(open);
-          if (!open) setConfirmText("");
-        }}
+        onOpenChange={setShowConfirmDialog}
         title="Confirm Deletion"
-        description={
-          <>
-            This action is permanent and cannot be undone. Type{" "}
-            <span className="font-semibold">DELETE</span> to confirm.
-          </>
-        }
+        description="This action is permanent and cannot be undone."
         confirmLabel="Confirm"
         variant="destructive"
-        confirmDisabled={confirmText !== "DELETE"}
+        confirmToken="DELETE"
         onConfirm={() =>
           entry
             ? deleteEntry.mutateAsync({ id: entry.id, reason: reason.trim() })
             : undefined
         }
-      >
-        <Field>
-          <Input
-            type="text"
-            placeholder="Type DELETE to confirm"
-            value={confirmText}
-            onChange={(e) => setConfirmText(e.target.value)}
-            autoFocus
-          />
-        </Field>
-      </ConfirmDialog>
+      />
     </>
   );
 }

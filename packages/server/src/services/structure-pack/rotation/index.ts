@@ -537,9 +537,11 @@ export class StructurePackRotationService {
               tx,
             },
           );
-          await tx.structure.pack.boost.delete({ id: boost.id });
         }
         if (openBoosts.length > 0) {
+          await tx.structure.pack.boost.deleteAll({
+            id: { $in: openBoosts.map((boost) => boost.id) },
+          });
           logger.info(
             `Refunded ${openBoosts.length} open structure pack boost(s) after disabling rotation`,
           );

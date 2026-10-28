@@ -1,5 +1,6 @@
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import type { Request, Response } from "express";
+import { createRateLimitStore } from "@/services/rate-limit";
 
 /** Shared handler for rate limit violations, logs the offending IP and returns 429 */
 function rateLimitHandler(req: Request, res: Response) {
@@ -56,6 +57,64 @@ export const authLimiter = rateLimit({
   standardHeaders: "draft-7",
   legacyHeaders: false,
   handler: rateLimitHandler,
+  store: createRateLimitStore("auth"),
+});
+
+/** Launcher sign-in limiter: 30 requests per 15-minute window per IP */
+export const launcherAuthLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 30,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  handler: rateLimitHandler,
+  store: createRateLimitStore("launcher-auth"),
+});
+
+/** Launcher update check limiter: 60 requests per 15-minute window per IP (the check is unauthenticated) */
+export const launcherUpdateCheckLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 60,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  handler: rateLimitHandler,
+  store: createRateLimitStore("launcher-update-check"),
+});
+
+function launcherPlayerKey(req: Request): string {
+  return req.launcherAuth?.minecraftUuid ?? ipKeyGenerator(req.ip ?? "unknown");
+}
+
+/** Launcher pack limiter: 120 requests per 15-minute window per launcher player (per IP without a session), so launchers behind one NAT do not share a budget */
+export const launcherPackLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 120,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  handler: rateLimitHandler,
+  keyGenerator: launcherPlayerKey,
+  store: createRateLimitStore("launcher-pack"),
+});
+
+/** Launcher content limiter: 60 requests per minute per launcher player (per IP without a session) */
+export const launcherContentLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 60,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  handler: rateLimitHandler,
+  keyGenerator: launcherPlayerKey,
+  store: createRateLimitStore("launcher-content"),
+});
+
+/** Launcher content file batch limiter: 10 requests per 15-minute window per launcher player, on top of the content limiter, as one batch can cost 20 CurseForge calls */
+export const launcherContentFileBatchLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  handler: rateLimitHandler,
+  keyGenerator: launcherPlayerKey,
+  store: createRateLimitStore("launcher-content-file-batch"),
 });
 
 // Backstop for the internal SSO code-exchange endpoint. It is internet
@@ -69,6 +128,7 @@ export const internalSsoLimiter = rateLimit({
   standardHeaders: "draft-7",
   legacyHeaders: false,
   handler: rateLimitHandler,
+  store: createRateLimitStore("internal-sso"),
 });
 
 // Per-player limiter for mod-side mutating currency endpoints (deposit,
@@ -83,4 +143,17 @@ export const modCurrencyMutationLimiter = rateLimit({
   handler: rateLimitHandler,
   keyGenerator: (req: Request) =>
     req.modAuth?.uuid ?? ipKeyGenerator(req.ip ?? "unknown"),
+  store: createRateLimitStore("mod-currency-mutation"),
+});
+
+/** Message send limiter: 20 messages per minute per user, mounted before the upload is buffered */
+export const messageSendLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 20,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  handler: rateLimitHandler,
+  keyGenerator: (req: Request) =>
+    req.user?.discordId ?? ipKeyGenerator(req.ip ?? "unknown"),
+  store: createRateLimitStore("message-send"),
 });

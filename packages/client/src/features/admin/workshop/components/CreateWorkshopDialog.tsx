@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -52,16 +53,17 @@ export function CreateWorkshopDialog({
     { enabled: open },
   );
 
-  const createMutation = trpc.admin.workshops.create.useMutation({
-    onSuccess: (workshop) => {
-      toast.success(`Workshop "${workshop.name}" created as draft`);
-      utils.admin.workshops.list.invalidate();
-      utils.admin.modpacks.list.invalidate();
-      onOpenChange(false);
-      navigate(`/admin/tools/workshop/${workshop.slug}`);
-    },
-    onError: (err) => toast.error(err.message),
-  });
+  const createMutation = trpc.admin.workshops.create.useMutation(
+    useMutationToast({
+      success: (workshop) => `Workshop "${workshop.name}" created as draft`,
+      onSuccess: (workshop) => {
+        utils.admin.workshops.list.invalidate();
+        utils.admin.modpacks.list.invalidate();
+        onOpenChange(false);
+        navigate(`/admin/tools/workshop/${workshop.slug}`);
+      },
+    }),
+  );
 
   const handleCreate = () => {
     const validationError = workshopFormError({

@@ -4,16 +4,33 @@ interface MutationToastError {
   message: string;
 }
 
+type ToastMessage = string | { title: string; description: string };
+
 interface MutationToastOptions<TData, TVariables, TContext> {
-  success?: string | ((data: TData, variables: TVariables) => string);
+  success?:
+    ToastMessage | ((data: TData, variables: TVariables) => ToastMessage);
   error?:
-    string | ((error: MutationToastError, variables: TVariables) => string);
-  onSuccess?: (data: TData, variables: TVariables, context: TContext) => void;
+    | ToastMessage
+    | ((error: MutationToastError, variables: TVariables) => ToastMessage);
+  onSuccess?: (
+    data: TData,
+    variables: TVariables,
+    context: TContext,
+  ) => unknown;
   onError?: (
     error: MutationToastError,
     variables: TVariables,
     context: TContext,
-  ) => void;
+  ) => unknown;
+}
+
+function showToast(
+  show: (description: string, title?: string) => void,
+  message: ToastMessage | undefined,
+) {
+  if (!message) return;
+  if (typeof message === "string") show(message);
+  else show(message.description, message.title);
 }
 
 export function useMutationToast<
@@ -26,22 +43,24 @@ export function useMutationToast<
 
   return {
     onSuccess: (data: TData, variables: TVariables, context: TContext) => {
-      const message =
-        typeof success === "function" ? success(data, variables) : success;
-      if (message) toast.success(message);
-      onSuccess?.(data, variables, context);
+      showToast(
+        toast.success,
+        typeof success === "function" ? success(data, variables) : success,
+      );
+      return onSuccess?.(data, variables, context);
     },
     onError: (
       err: MutationToastError,
       variables: TVariables,
       context: TContext,
     ) => {
-      const message =
+      showToast(
+        toast.error,
         typeof error === "function"
           ? error(err, variables)
-          : (error ?? err.message);
-      if (message) toast.error(message);
-      onError?.(err, variables, context);
+          : (error ?? err.message),
+      );
+      return onError?.(err, variables, context);
     },
   };
 }

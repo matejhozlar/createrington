@@ -65,6 +65,22 @@ const HEAD_TO_HEAD_HIDDEN = [
 
 export type HeadToHeadSort = "gap" | "total";
 
+export interface ProfileStatHighlights {
+  blocksMined: number;
+  mobsKilled: number;
+  deaths: number;
+  distanceCm: number;
+}
+
+const DISTANCE_ITEMS = [
+  "minecraft:walk_one_cm",
+  "minecraft:sprint_one_cm",
+  "minecraft:boat_one_cm",
+  "minecraft:horse_one_cm",
+  "minecraft:fly_one_cm",
+  "minecraft:swim_one_cm",
+];
+
 export interface HeadToHeadStat {
   category: string;
   item: string;
@@ -146,6 +162,44 @@ export class PlayerMinecraftStatTotalQueries extends PlayerMinecraftStatTotalBas
     );
   }
 
+  /** The headline figures of a profile card, read off the cross-server totals. */
+  async getProfileHighlights(
+    minecraftUuid: string,
+  ): Promise<ProfileStatHighlights> {
+    const query = `
+      SELECT
+        COALESCE(SUM(t.value) FILTER (WHERE k.category = 'minecraft:mined'), 0)::float8
+          AS blocks_mined,
+        COALESCE(SUM(t.value) FILTER (
+          WHERE k.category = 'minecraft:custom' AND k.item = 'minecraft:mob_kills'
+        ), 0)::float8 AS mobs_killed,
+        COALESCE(SUM(t.value) FILTER (
+          WHERE k.category = 'minecraft:custom' AND k.item = 'minecraft:deaths'
+        ), 0)::float8 AS deaths,
+        COALESCE(SUM(t.value) FILTER (
+          WHERE k.category = 'minecraft:custom' AND k.item = ANY($2)
+        ), 0)::float8 AS distance_cm
+      FROM ${this.table} t
+      JOIN player_minecraft_stat_key k ON k.id = t.stat_key_id
+      WHERE t.minecraft_uuid = $1`;
+    const result = await this.runQuery<{
+      blocks_mined: number;
+      mobs_killed: number;
+      deaths: number;
+      distance_cm: number;
+    }>("get minecraft stat profile highlights", query, [
+      minecraftUuid,
+      DISTANCE_ITEMS,
+    ]);
+    const row = result.rows[0];
+    return {
+      blocksMined: row?.blocks_mined ?? 0,
+      mobsKilled: row?.mobs_killed ?? 0,
+      deaths: row?.deaths ?? 0,
+      distanceCm: row?.distance_cm ?? 0,
+    };
+  }
+
   /**
    * Compare a single item across multiple categories for all players.
    *
@@ -197,17 +251,7 @@ export class PlayerMinecraftStatTotalQueries extends PlayerMinecraftStatTotalBas
    */
   async getRecordLeaderboard(limit?: number): Promise<RecordLeaderboard> {
     const query = `
-      WITH ranked AS (
-        SELECT
-          t.minecraft_uuid,
-          t.stat_key_id,
-          rank() OVER (PARTITION BY t.stat_key_id ORDER BY t.value DESC) AS position,
-          count(*) OVER (PARTITION BY t.stat_key_id) AS holders
-        FROM ${this.table} t
-        JOIN player_minecraft_stat_key k ON k.id = t.stat_key_id
-        WHERE k.category = ANY($1)
-          AND NOT (k.category = 'minecraft:custom' AND k.item = ANY($2))
-      )
+      WITH ranked AS (${this.recordRankedSql()})
       SELECT
         p.minecraft_uuid AS "minecraftUuid",
         p.minecraft_username AS "minecraftUsername",
@@ -244,6 +288,53 @@ export class PlayerMinecraftStatTotalQueries extends PlayerMinecraftStatTotalBas
       })),
       contestedKeys: result.rows[0]?.contestedKeys ?? 0,
     };
+  }
+
+  /** The players tied for the most records, by username; empty when nobody holds one. */
+  async getRecordLeaders(): Promise<RecordLeaderboardEntry[]> {
+    const query = `
+      WITH ranked AS (${this.recordRankedSql()}),
+      leaders AS (
+        SELECT
+          p.minecraft_uuid,
+          p.minecraft_username,
+          p.discord_id,
+          count(*)::int AS records
+        FROM ranked r
+        JOIN player p ON p.minecraft_uuid = r.minecraft_uuid
+        WHERE r.position = 1 AND r.holders >= $3
+        GROUP BY p.minecraft_uuid, p.minecraft_username, p.discord_id
+      )
+      SELECT
+        minecraft_uuid AS "minecraftUuid",
+        minecraft_username AS "minecraftUsername",
+        discord_id AS "discordId",
+        records
+      FROM leaders
+      WHERE records = (SELECT max(records) FROM leaders)
+      ORDER BY minecraft_username ASC
+    `;
+
+    const result = await this.runQuery<RecordLeaderboardEntry>(
+      "get record leaders",
+      query,
+      [RECORD_CATEGORIES, RECORD_CUSTOM_BLOCKLIST, RECORD_MIN_HOLDERS],
+    );
+    return result.rows;
+  }
+
+  private recordRankedSql(): string {
+    return `
+        SELECT
+          t.minecraft_uuid,
+          t.stat_key_id,
+          rank() OVER (PARTITION BY t.stat_key_id ORDER BY t.value DESC) AS position,
+          count(*) OVER (PARTITION BY t.stat_key_id) AS holders
+        FROM ${this.table} t
+        JOIN player_minecraft_stat_key k ON k.id = t.stat_key_id
+        WHERE k.category = ANY($1)
+          AND NOT (k.category = 'minecraft:custom' AND k.item = ANY($2))
+      `;
   }
 
   /** Every player holding the stat, highest total first (ties by username). */

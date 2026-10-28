@@ -41,12 +41,6 @@ export function computeCredit(input: CreditInput): PlaytimeCredit {
   };
 }
 
-export function parsePlayTimeTicks(value: unknown): number | undefined {
-  return typeof value === "number" && Number.isInteger(value) && value >= 0
-    ? value
-    : undefined;
-}
-
 export function parseEventTimestamp(value: unknown): Date | null {
   if (!value) return new Date();
   const parsed = new Date(value as string | number | Date);

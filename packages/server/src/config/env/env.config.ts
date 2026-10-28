@@ -69,9 +69,9 @@ const envSchema = z
   .object({
     // Server
     PORT: port("Server port").default(5001),
-    NODE_ENV: z
-      .enum(["development", "production", "test"])
-      .default("development"),
+    NODE_ENV: z.enum(["development", "production", "test"], {
+      message: "NODE_ENV must be set to development, production or test",
+    }),
     APP_VERSION: z.string().optional(),
 
     // Database: required in every environment
@@ -117,6 +117,24 @@ const envSchema = z
     MOD_JWT_SECRET: z
       .string()
       .min(32, "Mod JWT secret must be at least 32 characters"),
+    LAUNCHER_JWT_SECRET: z
+      .string()
+      .min(32, "Launcher JWT secret must be at least 32 characters")
+      .optional(),
+    LAUNCHER_PUBLISH_TOKEN_HASH: z
+      .string()
+      .regex(
+        /^[0-9a-f]{64}$/,
+        "Launcher publish token hash must be a lowercase SHA-256 hex digest",
+      )
+      .optional(),
+    LAUNCHER_DOWNLOAD_HOSTS: z.string().default(""),
+    // Where the sandbox serves the mod files no CDN gives the launcher, on
+    // an address the app reaches on the host (the sandbox answers on the VPN
+    // only). The app verifies such files there and streams them to the
+    // launcher from its own /api/launcher/packs/files routes. Without it,
+    // such files stay manual.
+    LAUNCHER_PACK_FILES_INTERNAL_URL: z.string().url().optional(),
     JWT_ACCESS_EXPIRES_IN: z
       .string()
       .regex(
@@ -218,7 +236,20 @@ const envSchema = z
     // Claude automation proxy: admin chat widget talks to claude-automation
     // through the app backend so the shared secret never ships to clients.
     CLAUDE_API_URL: z.string().url().optional(),
-    ADMIN_CHAT_SECRET: z.string().min(1).optional(),
+    ADMIN_CHAT_SECRET: z
+      .string()
+      .min(32, "Admin chat secret must be at least 32 characters")
+      .optional(),
+
+    // Redis (optional; caches, rate limits and counters stay in process
+    // memory when not configured)
+    REDIS_URL: z
+      .string()
+      .regex(
+        /^rediss?:\/\/.+/,
+        "Redis URL must start with redis:// or rediss://",
+      )
+      .optional(),
 
     // CurseForge
     CURSEFORGE_API_KEY: z.string().min(1).optional(),
@@ -227,6 +258,14 @@ const envSchema = z
       .int()
       .positive()
       .default(1660984),
+    // How many calls a minute the launcher's content lookups (search, files,
+    // changelogs, fingerprints) may make on the key, app-wide; the rest are
+    // answered 503 with a Retry-After until the next minute
+    CURSEFORGE_LAUNCHER_CALLS_PER_MINUTE: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .default(300),
 
     // Sandbox: shared secret the sandbox presents as a bearer token when it
     // reports a publish from a background job (no user session to forward)
@@ -259,10 +298,8 @@ const envSchema = z
       .url("R2 public URL must be a valid URL")
       .optional(),
 
-    // Email: Resend transactional API
-    // Production-only: waitlist mailer is the only consumer; in dev the
-    // EmailService short-circuits when the key is absent. Required at runtime
-    // by the prod superRefine below.
+    // Email: Resend transactional API, no consumer yet.
+    // Required at runtime by the prod superRefine below.
     RESEND_API_KEY: z.string().min(1).optional(),
     RESEND_FROM_EMAIL: z
       .string()
@@ -283,6 +320,19 @@ const envSchema = z
         path: ["MOD_JWT_SECRET"],
         message:
           "MOD_JWT_SECRET must differ from JWT_ACCESS_SECRET (sharing defeats the mod/web trust-boundary split)",
+      });
+    }
+
+    if (
+      data.LAUNCHER_JWT_SECRET &&
+      (data.LAUNCHER_JWT_SECRET === data.JWT_ACCESS_SECRET ||
+        data.LAUNCHER_JWT_SECRET === data.MOD_JWT_SECRET)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["LAUNCHER_JWT_SECRET"],
+        message:
+          "LAUNCHER_JWT_SECRET must differ from JWT_ACCESS_SECRET and MOD_JWT_SECRET",
       });
     }
 
@@ -411,6 +461,7 @@ export interface envModeConfig {
   readonly isProd: boolean;
   readonly isTest: boolean;
   readonly isDevDeployment: boolean;
+  readonly isProductionDeployment: boolean;
 }
 
 function checkIsDevDeployment(): boolean {
@@ -439,4 +490,11 @@ export const envMode: envModeConfig = {
    * Used to disable production-only features like AI generation and SFTP.
    */
   isDevDeployment: checkIsDevDeployment(),
+  /**
+   * True only on the production deployment (createrington.com): NODE_ENV is
+   * 'production' and WEBSITE_URL is not a dev/local host. The dev deployment
+   * also runs with NODE_ENV=production, so isProd alone is not enough.
+   */
+  isProductionDeployment:
+    env.NODE_ENV === "production" && !checkIsDevDeployment(),
 } as const;

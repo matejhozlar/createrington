@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import { Hammer, Pencil, Plus, Trash2 } from "lucide-react";
 import { trpc, type RouterOutput } from "@/lib/trpc";
-import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -44,7 +44,6 @@ type FlagName = (typeof FLAGS)[number]["name"];
 
 export function AdminWorkshop() {
   const navigate = useNavigate();
-  const toast = useToastActions();
   const utils = trpc.useUtils();
 
   const workshopsQuery = trpc.admin.workshops.list.useQuery();
@@ -52,15 +51,19 @@ export function AdminWorkshop() {
   const flagEnabled = (name: FlagName) =>
     flagsQuery.data?.find((f) => f.name === name)?.enabled ?? false;
 
-  const setFlagMutation = trpc.admin.features.set.useMutation({
-    onSuccess: (flag) => {
-      const label = FLAGS.find((f) => f.name === flag.name)?.label ?? flag.name;
-      toast.success(`${label} ${flag.enabled ? "enabled" : "disabled"}`);
-      utils.admin.features.list.invalidate();
-      utils.user.workshops.isEnabled.invalidate();
-    },
-    onError: (err) => toast.error(err.message),
-  });
+  const setFlagMutation = trpc.admin.features.set.useMutation(
+    useMutationToast({
+      success: (flag) => {
+        const label =
+          FLAGS.find((f) => f.name === flag.name)?.label ?? flag.name;
+        return `${label} ${flag.enabled ? "enabled" : "disabled"}`;
+      },
+      onSuccess: () => {
+        utils.admin.features.list.invalidate();
+        utils.user.workshops.isEnabled.invalidate();
+      },
+    }),
+  );
 
   const [createOpen, setCreateOpen] = useState(false);
   const [createKey, setCreateKey] = useState(0);
@@ -73,15 +76,16 @@ export function AdminWorkshop() {
   );
   const displayDeleteTarget = useStickyValue(deleteTarget);
 
-  const deleteMutation = trpc.admin.workshops.delete.useMutation({
-    onSuccess: () => {
-      toast.success("Workshop deleted");
-      utils.admin.workshops.list.invalidate();
-      utils.admin.modpacks.list.invalidate();
-      setDeleteTarget(null);
-    },
-    onError: (err) => toast.error(err.message),
-  });
+  const deleteMutation = trpc.admin.workshops.delete.useMutation(
+    useMutationToast({
+      success: "Workshop deleted",
+      onSuccess: () => {
+        utils.admin.workshops.list.invalidate();
+        utils.admin.modpacks.list.invalidate();
+        setDeleteTarget(null);
+      },
+    }),
+  );
 
   const openCreate = () => {
     setCreateKey((key) => key + 1);

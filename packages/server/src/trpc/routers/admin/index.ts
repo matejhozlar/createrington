@@ -10,6 +10,7 @@ import { embedsRouter } from "./embeds";
 import { faqRouter } from "./faq";
 import { adminGalleryRouter } from "./gallery";
 import { inactivityRouter } from "./inactivity";
+import { adminLauncherReleasesRouter } from "./launcher-releases";
 import { logsRouter } from "./logs";
 import { adminMetricsRouter } from "./metrics";
 import { adminPlayersRouter } from "./players";
@@ -52,6 +53,7 @@ export const adminRouter = router({
   gallery: adminGalleryRouter,
   parties: adminPartiesRouter,
   inactivity: inactivityRouter,
+  launcherReleases: adminLauncherReleasesRouter,
   logs: logsRouter,
   metrics: adminMetricsRouter,
   players: adminPlayersRouter,

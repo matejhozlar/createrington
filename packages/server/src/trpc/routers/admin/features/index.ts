@@ -1,10 +1,11 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
-import { auditActor, rethrowTrpc } from "@/trpc/utils";
+import { auditActor, rethrowTrpc, trpcError } from "@/trpc/utils";
 import {
   featureFlagService,
   FeatureFlags,
+  OWNER_FEATURE_FLAGS,
   type FeatureFlagName,
 } from "@/services/feature-flag";
 
@@ -28,6 +29,10 @@ export const adminFeaturesRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      if (OWNER_FEATURE_FLAGS.has(input.name)) {
+        throw trpcError.forbidden("Only the owner can change this feature");
+      }
+
       try {
         const flag = await featureFlagService.setEnabled(
           input.name,

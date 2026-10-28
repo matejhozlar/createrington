@@ -1,0 +1,1 @@
+ALTER TABLE "modpack_release" ADD COLUMN "launcher_unavailable_at" timestamp with time zone;

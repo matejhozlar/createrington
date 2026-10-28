@@ -568,6 +568,83 @@
       "when": 1790465926855,
       "tag": "0080_tricky_santa_claus",
       "breakpoints": true
+    },
+    {
+      "idx": 81,
+      "version": "7",
+      "when": 1790706944521,
+      "tag": "0081_parched_random",
+      "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "7",
+      "when": 1790712937278,
+      "tag": "0082_abnormal_professor_monster",
+      "breakpoints": true
+    },
+    {
+      "idx": 83,
+      "version": "7",
+      "when": 1791039038461,
+      "tag": "0083_conscious_vulcan",
+      "breakpoints": true
+    },
+    {
+      "idx": 84,
+      "version": "7",
+      "when": 1791059805245,
+      "tag": "0084_early_yellow_claw",
+      "breakpoints": true
+    },
+    {
+      "idx": 85,
+      "version": "7",
+      "when": 1791115417730,
+      "tag": "0085_melodic_ted_forrester",
+      "breakpoints": true
+    },
+    {
+      "idx": 86,
+      "version": "7",
+      "when": 1791117822714,
+      "tag": "0086_good_doctor_strange",
+      "breakpoints": true
+    },
+    {
+      "idx": 87,
+      "version": "7",
+      "when": 1791119304827,
+      "tag": "0087_nosy_krista_starr",
+      "breakpoints": true
+    },
+    {
+      "idx": 88,
+      "version": "7",
+      "when": 1791239965079,
+      "tag": "0088_stiff_stick",
+      "breakpoints": true
+    },
+    {
+      "idx": 89,
+      "version": "7",
+      "when": 1791987782167,
+      "tag": "0089_curved_thunderbolt",
+      "breakpoints": true
+    },
+    {
+      "idx": 90,
+      "version": "7",
+      "when": 1792074013534,
+      "tag": "0090_brown_sinister_six",
+      "breakpoints": true
+    },
+    {
+      "idx": 91,
+      "version": "7",
+      "when": 1792600862241,
+      "tag": "0091_lame_carlie_cooper",
+      "breakpoints": true
     }
   ]
 }

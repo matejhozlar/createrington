@@ -32,8 +32,11 @@ import {
   manifestDisabledModIds,
   type CurseForgeProjectData,
   type ModpackManifest,
+  type ModpackManifestEntry,
 } from "@/services/curseforge";
 import { refreshProjects } from "@/services/curseforge/ingest";
+import { launcherPackService } from "@/services/launcher/pack/launcher-pack.service";
+import { findSandboxSnapshotUrl } from "@/services/launcher/pack/sandbox-files";
 import {
   REQUIRED_DEPENDENCY,
   loadDependencyContext,
@@ -45,22 +48,17 @@ import {
   announceReview,
 } from "@/services/workshop/discord";
 import { recordModEvent } from "@/services/workshop/events";
-import { announceReleaseChangelog, toChangelogInput } from "./changelog";
+import { announceReleaseChangelog } from "./changelog";
 import {
   renderChangelogMarkdown,
   type ChangelogMarkdownSection,
 } from "./changelog-markdown";
 import { renderChangelogRow, type ChangelogRowImage } from "./changelog-row";
+import { getReleaseChangelog, getReleaseDiff } from "./release-changelog";
 import { isOlderVersion } from "./version";
 import type { ReleaseAnnouncementRow } from "@/db/queries/modpack/release/announcement";
-import {
-  CHANGELOG_GROUPS,
-  type ChangelogInput,
-} from "@/discord/components/presets/modpack-changelog";
+import { CHANGELOG_GROUPS } from "@/discord/components/presets/modpack-changelog";
 import config from "@/config";
-
-const CHANGELOG_CACHE_TTL_MS = 5 * 60_000;
-const CHANGELOG_CACHE_MAX = 16;
 
 const SHIP_CLAIMABLE_STATUSES: WorkshopModStatus[] = [
   "pending",
@@ -100,6 +98,7 @@ export type ModpackListItem = Modpack & {
   modCount: number;
   liveCount: number;
   workshops: Array<Pick<Workshop, "id" | "name" | "slug" | "status">>;
+  launcherPackSlug: string | null;
 };
 
 /**
@@ -154,6 +153,23 @@ export interface ModpackPublishReport {
   notes?: string;
 }
 
+export interface ModpackSnapshotReport {
+  slug: string;
+  snapshotId: number;
+  version: string;
+  minecraftVersion: string;
+  modLoader: string;
+  zip: { fileName: string; size: number; sha1: string };
+  files: Array<{ projectId: number; fileId: number; required: boolean }>;
+  notes?: string;
+}
+
+export interface ModpackSnapshotResult {
+  release: ModpackRelease;
+  ready: boolean;
+  error: string | null;
+}
+
 export interface ModpackPublishResult {
   publish: ModpackPublish;
   ingested: boolean;
@@ -167,21 +183,6 @@ function manifestLoaderType(loaderId: string): number | null {
     : null;
 }
 
-function groupByProject(
-  rows: ReleaseModRow[],
-): Map<number, [ReleaseModRow, ...ReleaseModRow[]]> {
-  const grouped = new Map<number, [ReleaseModRow, ...ReleaseModRow[]]>();
-  for (const row of rows) {
-    const held = grouped.get(row.curseforgeProjectId);
-    if (held) held.push(row);
-    else grouped.set(row.curseforgeProjectId, [row]);
-  }
-  for (const files of grouped.values()) {
-    files.sort((a, b) => a.fileId - b.fileId);
-  }
-  return grouped;
-}
-
 function firstPerProject<T extends { curseforgeProjectId: number }>(
   rows: T[],
 ): T[] {
@@ -192,16 +193,6 @@ function firstPerProject<T extends { curseforgeProjectId: number }>(
     }
   }
   return [...held.values()];
-}
-
-function sameFiles(a: ReleaseModRow[], b: ReleaseModRow[]): boolean {
-  return (
-    a.length === b.length &&
-    a.every(
-      (row, index) =>
-        row.fileId === b[index].fileId && row.required === b[index].required,
-    )
-  );
 }
 
 export interface ModpackReleaseAnnouncementSummary {
@@ -275,36 +266,29 @@ export type ModpackAttentionItem =
  * CurseForge pack's manifest by reconcile, never set by hand.
  */
 export class ModpackService {
-  private readonly changelogCache = new Map<
-    number,
-    { expiresAt: number; changelog: Promise<ChangelogInput> }
-  >();
-
-  /** All modpacks with member counts and attached workshops, for the admin panel. */
+  /** All modpacks with member counts, attached workshops and the slug of the launcher pack offering each, for the admin panel. */
   async listModpacks(): Promise<ModpackListItem[]> {
-    const [modpacks, workshops] = await Promise.all([
+    const [modpacks, workshops, launcherPacks, counts] = await Promise.all([
       Q.modpack.findAll({}, { orderBy: "createdAt", orderDirection: "desc" }),
       Q.workshop.findAll(
         {},
         { select: ["id", "name", "slug", "status", "modpackId"] },
       ),
+      Q.launcher.pack.findAll({}, { select: ["modpackId", "slug"] }),
+      Q.modpack.mod.getCountsByModpack(),
     ]);
-    return Promise.all(
-      modpacks.map(async (modpack) => {
-        const rows = await Q.modpack.mod.findAll(
-          { modpackId: modpack.id },
-          { select: ["id", "liveAt"] },
-        );
-        return {
-          ...modpack,
-          modCount: rows.length,
-          liveCount: rows.filter((row) => row.liveAt !== null).length,
-          workshops: workshops
-            .filter((workshop) => workshop.modpackId === modpack.id)
-            .map(({ id, name, slug, status }) => ({ id, name, slug, status })),
-        };
-      }),
+    const launcherPackSlugs = new Map(
+      launcherPacks.map((pack) => [pack.modpackId, pack.slug]),
     );
+    return modpacks.map((modpack) => ({
+      ...modpack,
+      modCount: counts.get(modpack.id)?.modCount ?? 0,
+      liveCount: counts.get(modpack.id)?.liveCount ?? 0,
+      workshops: workshops
+        .filter((workshop) => workshop.modpackId === modpack.id)
+        .map(({ id, name, slug, status }) => ({ id, name, slug, status })),
+      launcherPackSlug: launcherPackSlugs.get(modpack.id) ?? null,
+    }));
   }
 
   /** A modpack by id; throws when missing. */
@@ -343,7 +327,8 @@ export class ModpackService {
 
   /**
    * Update modpack fields. Linking the published CurseForge project for the
-   * first time kicks off an immediate reconcile.
+   * first time kicks off an immediate reconcile. Refused when the project of
+   * a modpack the launcher offers would change.
    */
   async updateModpack(
     modpackId: number,
@@ -354,14 +339,21 @@ export class ModpackService {
       shipsServerPack: boolean;
       serverId: number | null;
       titleImageUrl: string | null;
+      iconUrl: string | null;
     }>,
   ): Promise<Modpack> {
     const modpack = await this.getModpack(modpackId);
     if (
-      patch.curseforgeProjectId &&
+      patch.curseforgeProjectId !== undefined &&
       patch.curseforgeProjectId !== modpack.curseforgeProjectId
     ) {
-      await this.assertModpackProject(patch.curseforgeProjectId);
+      await this.assertNotOfferedByLauncher(
+        modpack,
+        "its CurseForge project cannot be changed",
+      );
+      if (patch.curseforgeProjectId) {
+        await this.assertModpackProject(patch.curseforgeProjectId);
+      }
     }
     if (patch.serverId) await this.assertServer(patch.serverId);
 
@@ -382,8 +374,9 @@ export class ModpackService {
 
   /**
    * Delete a modpack together with its members and release history. Refused
-   * while any workshop, archived ones included, still points at it. Returns
-   * counts of what was destroyed for the audit trail.
+   * while any workshop, archived ones included, still points at it, and while
+   * the launcher offers it. Returns counts of what was destroyed for the audit
+   * trail.
    */
   async deleteModpack(
     modpackId: number,
@@ -399,6 +392,7 @@ export class ModpackService {
         `${workshops.length} workshop(s) still use this modpack: ${names}. Delete those workshops first.`,
       );
     }
+    await this.assertNotOfferedByLauncher(modpack, "it cannot be deleted");
     const [modCount, releaseCount] = await Promise.all([
       Q.modpack.mod.count({ modpackId }),
       Q.modpack.release.count({ modpackId }),
@@ -408,12 +402,24 @@ export class ModpackService {
     } catch (error) {
       if (error instanceof ForeignKeyViolationError) {
         throw new ConflictError(
-          "A workshop was attached to this modpack while it was being deleted",
+          "A workshop or launcher pack was attached to this modpack while it was being deleted",
         );
       }
       throw error;
     }
     return { modpack, modCount, releaseCount };
+  }
+
+  private async assertNotOfferedByLauncher(
+    modpack: Modpack,
+    consequence: string,
+  ): Promise<void> {
+    const pack = await Q.launcher.pack.find({ modpackId: modpack.id });
+    if (pack) {
+      throw new ConflictError(
+        `The launcher offers this modpack as "${pack.slug}", so ${consequence}. Remove that launcher pack on the owner Launcher packs page first.`,
+      );
+    }
   }
 
   /** Members of a modpack with project summaries, credit, and live state; liveOnly leaves out members the latest publish dropped. */
@@ -467,6 +473,7 @@ export class ModpackService {
   ): Promise<void> {
     const modpack = await this.getModpack(modpackId);
     if (!modpack.curseforgeProjectId) return;
+    this.checkLauncherReleases(modpack);
 
     const workshops = await Q.workshop.findAll({ modpackId });
     const manifest = await getModpackManifest(modpack.curseforgeProjectId, {
@@ -573,10 +580,190 @@ export class ModpackService {
     return { publish: stored, ingested: stored.ingestedAt !== null, error };
   }
 
+  /**
+   * Take the sandbox's word for a snapshot of a pack whose releases it
+   * reports: the zip it keeps under the snapshot id is read back through the
+   * internal address and checked against the reported SHA-1 and size, the
+   * snapshot is recorded as a release keyed by that id with its frozen file
+   * list, the notes are kept on a publish row, and the release is readied
+   * for the launcher, which retires every older snapshot. A snapshot that is
+   * already ready is answered as it is. Throws `NotFoundError` for a slug no
+   * sandbox pack carries and `BadRequestError` when the sandbox does not
+   * serve the zip as reported; a snapshot that cannot be readied is recorded
+   * anyway and the reason comes back as `error`, so a resend can finish it.
+   */
+  async recordSnapshot(
+    report: ModpackSnapshotReport,
+  ): Promise<ModpackSnapshotResult> {
+    const pack = await Q.launcher.pack.find({ slug: report.slug });
+    if (!pack || pack.source !== "sandbox") {
+      throw new NotFoundError(
+        `The launcher offers no pack as "${report.slug}" whose releases the sandbox reports`,
+      );
+    }
+    const modpack = await this.getModpack(pack.modpackId);
+    const notes =
+      report.notes === undefined ? undefined : report.notes.trim() || null;
+
+    const recorded = await Q.modpack.release.find({
+      modpackId: modpack.id,
+      curseforgeFileId: report.snapshotId,
+    });
+    if (recorded?.launcherReadyAt) {
+      if (notes !== undefined) {
+        await this.upsertPublish(modpack.id, report.snapshotId, null, notes);
+      }
+      return this.snapshotAnswer(recorded, null);
+    }
+
+    const [newest] = await Q.modpack.release.findAll(
+      { modpackId: modpack.id, launcherReadyAt: { $ne: null } },
+      { orderBy: "id", orderDirection: "desc", limit: 1 },
+    );
+    if (newest && newest.curseforgeFileId > report.snapshotId) {
+      const error = `Snapshot ${newest.curseforgeFileId} is newer and already offered, so snapshot ${report.snapshotId} will not be`;
+      if (recorded) {
+        await Q.modpack.publish.updateAll(
+          { lastError: error },
+          { modpackId: modpack.id, clientFileId: report.snapshotId },
+        );
+      }
+      return { release: recorded ?? newest, ready: false, error };
+    }
+
+    const downloadUrl = await findSandboxSnapshotUrl({
+      snapshotId: report.snapshotId,
+      sha1: report.zip.sha1,
+      size: report.zip.size,
+    });
+    if (!downloadUrl) {
+      throw new BadRequestError(
+        `The sandbox does not serve snapshot ${report.snapshotId} with the reported SHA-1 and size, so the main app cannot offer it`,
+      );
+    }
+
+    const release =
+      recorded ?? (await this.recordSnapshotRelease(modpack, report, notes));
+    if (notes !== undefined && recorded) {
+      await this.upsertPublish(modpack.id, report.snapshotId, null, notes);
+    }
+
+    let error: string | null = null;
+    try {
+      const outcome = await launcherPackService.prepareSnapshot(
+        modpack,
+        release.id,
+        {
+          version: report.version,
+          minecraftVersion: report.minecraftVersion,
+          modLoader: report.modLoader,
+          zip: { ...report.zip, downloadUrl },
+          entries: report.files,
+        },
+      );
+      if (outcome.status === "busy") {
+        return {
+          release: await Q.modpack.release.get({ id: release.id }),
+          ready: false,
+          error:
+            "The snapshot is being prepared for an earlier report; ask again in a moment",
+        };
+      }
+      if (outcome.status === "blocked") error = outcome.reason;
+    } catch (caught) {
+      error = caught instanceof Error ? caught.message : String(caught);
+      logger.warn(
+        `Modpack #${modpack.id} snapshot ${report.snapshotId} could not be prepared for the launcher:`,
+        caught,
+      );
+    }
+
+    const answer = this.snapshotAnswer(
+      await Q.modpack.release.get({ id: release.id }),
+      error,
+    );
+    await Q.modpack.publish.updateAll(
+      {
+        ingestedAt: answer.ready ? new Date() : null,
+        lastError: answer.error,
+      },
+      { modpackId: modpack.id, clientFileId: report.snapshotId },
+    );
+    return answer;
+  }
+
+  private snapshotAnswer(
+    release: ModpackRelease,
+    error: string | null,
+  ): ModpackSnapshotResult {
+    const ready =
+      release.launcherReadyAt !== null &&
+      release.launcherUnavailableAt === null;
+    return {
+      release,
+      ready,
+      error:
+        error ??
+        (ready || release.launcherReadyAt === null
+          ? null
+          : "A newer snapshot is offered instead, so this one no longer is"),
+    };
+  }
+
+  private async recordSnapshotRelease(
+    modpack: Modpack,
+    report: ModpackSnapshotReport,
+    notes: string | null | undefined,
+  ): Promise<ModpackRelease> {
+    const entries: ModpackManifestEntry[] = report.files.map((file) => ({
+      ...file,
+      sides: "client",
+    }));
+    const rows = await this.buildReleaseRows({
+      fileId: report.snapshotId,
+      serverPackFileId: null,
+      displayName: null,
+      version: report.version,
+      minecraftVersion: report.minecraftVersion,
+      modLoader: report.modLoader,
+      publishedAt: null,
+      entries,
+      modIds: new Set(entries.map((entry) => entry.projectId)),
+      disabledModIds: manifestDisabledModIds(entries),
+    });
+
+    await this.upsertPublish(modpack.id, report.snapshotId, null, notes);
+    try {
+      return await db.inTransaction(async (tx) => {
+        const release = await tx.modpack.release.createAndReturn({
+          modpackId: modpack.id,
+          curseforgeFileId: report.snapshotId,
+          serverPackFileId: null,
+          version: report.version,
+          displayName: null,
+          minecraftVersion: report.minecraftVersion,
+          modLoader: report.modLoader,
+          modCount: new Set(rows.map((row) => row.curseforgeProjectId)).size,
+          publishedAt: new Date(),
+        });
+        await tx.modpack.release.mod.insertMany(release.id, rows);
+        return release;
+      });
+    } catch (error) {
+      if (error instanceof UniqueViolationError) {
+        return Q.modpack.release.get({
+          modpackId: modpack.id,
+          curseforgeFileId: report.snapshotId,
+        });
+      }
+      throw error;
+    }
+  }
+
   private async upsertPublish(
     modpackId: number,
     clientFileId: number,
-    serverPackFileId: number,
+    serverPackFileId: number | null,
     notes: string | null | undefined,
   ): Promise<ModpackPublish> {
     const refresh = async (id: number) =>
@@ -643,7 +830,7 @@ export class ModpackService {
     // Members dropped by an earlier seed keep their rows, so the count of
     // what this manifest covers is derived from the manifest side
     const rows = await Q.modpack.mod.findAll(
-      { modpackId },
+      { modpackId, curseforgeProjectId: { $in: [...modIds] } },
       { select: ["curseforgeProjectId"] },
     );
     const memberIds = new Set(rows.map((row) => row.curseforgeProjectId));
@@ -721,53 +908,7 @@ export class ModpackService {
    * frozen rows, so this keeps working after CurseForge archives the files.
    */
   async getReleaseDiff(releaseId: number): Promise<ModpackReleaseDiff> {
-    const release = await Q.modpack.release.get({ id: releaseId });
-    const [previous] = await Q.modpack.release.findAll(
-      { modpackId: release.modpackId, id: { $lt: release.id } },
-      { orderBy: "id", orderDirection: "desc", limit: 1 },
-    );
-
-    const rows = await Q.modpack.release.mod.listForReleases(
-      previous ? [release.id, previous.id] : [release.id],
-    );
-    // A manifest may ship a project as several files, so a project counts as
-    // changed when its whole set of files does, not when one row differs
-    const before = groupByProject(
-      rows.filter((row) => row.releaseId === previous?.id),
-    );
-    const current = groupByProject(
-      rows.filter((row) => row.releaseId === release.id),
-    );
-
-    const added: ModpackReleaseDiffEntry[] = [];
-    const updated: ModpackReleaseDiffEntry[] = [];
-    let unchanged = 0;
-    for (const [projectId, files] of current) {
-      const prior = before.get(projectId);
-      if (!prior) {
-        if (previous) added.push({ ...files[0], previousFile: null });
-        else unchanged++;
-        continue;
-      }
-      if (sameFiles(prior, files)) {
-        unchanged++;
-        continue;
-      }
-      updated.push({ ...files[0], previousFile: prior[0] });
-    }
-
-    const removed: ModpackReleaseDiffEntry[] = [...before]
-      .filter(([projectId]) => !current.has(projectId))
-      .map(([, files]) => ({ ...files[0], previousFile: null }));
-
-    return {
-      release,
-      previous: previous ?? null,
-      added,
-      updated,
-      removed,
-      unchanged,
-    };
+    return getReleaseDiff(releaseId);
   }
 
   /** Frozen membership of a recorded release, joined to cached project summaries. */
@@ -802,7 +943,7 @@ export class ModpackService {
     const sectionOf = async (
       release: ModpackRelease,
     ): Promise<ChangelogMarkdownSection> => ({
-      changelog: await this.getChangelog(modpack, release),
+      changelog: await getReleaseChangelog(modpack, release),
       rowImageBaseUrl: `${website}/api/modpacks/${options.curseforgeProjectId}/changelog/rows/${release.curseforgeFileId}`,
     });
     const [latestSection, installedSection] = await Promise.all([
@@ -872,7 +1013,7 @@ export class ModpackService {
         `${modpack.name} has no recorded release for file ${options.releaseFileId}`,
       );
     }
-    const changelog = await this.getChangelog(modpack, release);
+    const changelog = await getReleaseChangelog(modpack, release);
     for (const { key } of CHANGELOG_GROUPS) {
       const entry = changelog[key].find(
         (candidate) => candidate.projectId === options.entryProjectId,
@@ -894,38 +1035,6 @@ export class ModpackService {
       );
     }
     return modpack;
-  }
-
-  private getChangelog(
-    modpack: Modpack,
-    release: ModpackRelease,
-  ): Promise<ChangelogInput> {
-    const now = Date.now();
-    const cached = this.changelogCache.get(release.id);
-    if (cached && cached.expiresAt > now) {
-      this.changelogCache.delete(release.id);
-      this.changelogCache.set(release.id, cached);
-      return cached.changelog;
-    }
-    this.changelogCache.delete(release.id);
-    const changelog = this.getReleaseDiff(release.id).then((diff) =>
-      toChangelogInput(modpack, diff),
-    );
-    this.changelogCache.set(release.id, {
-      expiresAt: now + CHANGELOG_CACHE_TTL_MS,
-      changelog,
-    });
-    changelog.catch(() => {
-      if (this.changelogCache.get(release.id)?.changelog === changelog) {
-        this.changelogCache.delete(release.id);
-      }
-    });
-    if (this.changelogCache.size > CHANGELOG_CACHE_MAX) {
-      this.changelogCache.delete(
-        this.changelogCache.keys().next().value as number,
-      );
-    }
-    return changelog;
   }
 
   /**
@@ -962,6 +1071,9 @@ export class ModpackService {
         this.announceRelease(modpack, recorded.id, true);
       } else if (recorded.serverPackFileId !== null) {
         this.announceRelease(modpack, recorded.id, false);
+      }
+      if (recorded.launcherReadyAt === null) {
+        this.prepareForLauncher(modpack, recorded.id, manifest);
       }
       return;
     }
@@ -1007,6 +1119,7 @@ export class ModpackService {
     if (manifest.serverPackFileId !== null) {
       this.announceRelease(modpack, releaseId, true);
     }
+    this.prepareForLauncher(modpack, releaseId, manifest);
   }
 
   private async upgradeRelease(
@@ -1081,6 +1194,7 @@ export class ModpackService {
         fileReleaseType: detail?.releaseType ?? null,
         fileDate: detail?.fileDate ? new Date(detail.fileDate) : null,
         required: entry.required,
+        inClientPack: entry.sides !== "server",
       };
     });
   }
@@ -1107,6 +1221,32 @@ export class ModpackService {
     }).catch((error) => {
       logger.warn(
         `Modpack #${modpack.id} release #${releaseId} changelog failed:`,
+        error,
+      );
+    });
+  }
+
+  private prepareForLauncher(
+    modpack: Modpack,
+    releaseId: number,
+    manifest: ModpackManifest,
+  ): void {
+    if (!config.launcher.available) return;
+    void launcherPackService
+      .prepareRelease(modpack, releaseId, manifest)
+      .catch((error) => {
+        logger.warn(
+          `Modpack #${modpack.id} release #${releaseId} could not be prepared for the launcher:`,
+          error,
+        );
+      });
+  }
+
+  private checkLauncherReleases(modpack: Modpack): void {
+    if (!config.launcher.available) return;
+    void launcherPackService.checkReleases(modpack).catch((error) => {
+      logger.warn(
+        `Modpack #${modpack.id} releases could not be checked for the launcher:`,
         error,
       );
     });
@@ -1388,10 +1528,10 @@ export class ModpackService {
     const suggestionIds = rows
       .map((row) => row.workshopModId)
       .filter((id): id is number => id !== null);
-    const [workshops, memberRows] = await Promise.all([
-      Q.workshop.findAll({ modpackId }, { select: ["id", "name"] }),
-      Q.modpack.mod.findAll({ modpackId }, { select: ["curseforgeProjectId"] }),
-    ]);
+    const workshops = await Q.workshop.findAll(
+      { modpackId },
+      { select: ["id", "name"] },
+    );
     const workshopNameById = new Map(workshops.map((w) => [w.id, w.name]));
 
     const [projects, suggestions, upvoteCounts, edges] = await Promise.all([
@@ -1402,22 +1542,21 @@ export class ModpackService {
       suggestionIds.length > 0
         ? Q.workshop.mod.upvote.countGroupedByMod(suggestionIds)
         : Promise.resolve({} as Record<number, number>),
-      workshops.length > 0
-        ? Q.workshop.project.dependency.findAll({
-            workshopId: { $in: workshops.map((w) => w.id) },
-            dependsOnProjectId: { $in: projectIds },
-            relationType: REQUIRED_DEPENDENCY,
-          })
-        : Promise.resolve([]),
+      Q.workshop.project.dependency.getEdgesFromPackMembers(
+        workshops.map((w) => w.id),
+        projectIds,
+        REQUIRED_DEPENDENCY,
+        modpackId,
+      ),
     ]);
 
     const projectById = new Map(projects.map((p) => [p.id, p]));
-    // Requirement context spans the whole pack, not just the rows being
-    // decorated, so a partial decorate (e.g. the dependency report) still
-    // credits the members that require a pulled dependency
-    const memberProjectIds = new Set(
-      memberRows.map((row) => row.curseforgeProjectId),
-    );
+    const requirersByDependency = new Map<number, number[]>();
+    for (const edge of edges) {
+      const list = requirersByDependency.get(edge.dependsOnProjectId) ?? [];
+      list.push(edge.curseforgeProjectId);
+      requirersByDependency.set(edge.dependsOnProjectId, list);
+    }
     const subjectIds = [
       ...new Set(edges.map((edge) => edge.curseforgeProjectId)),
     ].filter((id) => !projectById.has(id));
@@ -1448,18 +1587,12 @@ export class ModpackService {
         : undefined;
       const requiredBy =
         row.origin === "dependency"
-          ? edges
-              .filter(
-                (edge) =>
-                  edge.dependsOnProjectId === row.curseforgeProjectId &&
-                  memberProjectIds.has(edge.curseforgeProjectId),
-              )
-              .map((edge) => ({
-                curseforgeProjectId: edge.curseforgeProjectId,
-                name:
-                  projectById.get(edge.curseforgeProjectId)?.name ??
-                  `#${edge.curseforgeProjectId}`,
-              }))
+          ? (requirersByDependency.get(row.curseforgeProjectId) ?? []).map(
+              (id) => ({
+                curseforgeProjectId: id,
+                name: projectById.get(id)?.name ?? `#${id}`,
+              }),
+            )
           : [];
       return [
         {
@@ -1495,25 +1628,40 @@ export class ModpackService {
       id: { $in: workshopModIds },
       status: to === "in_pack" ? { $in: SHIP_CLAIMABLE_STATUSES } : "in_pack",
     });
-    const moved: WorkshopMod[] = [];
+    const groups = new Map<
+      string,
+      { status: WorkshopModStatus; required: boolean; ids: number[] }
+    >();
     for (const mod of mods) {
       const required = publishedRequired.get(mod.id) ?? mod.required;
-      // Concurrent reconciles read the same rows, so the guarded update picks
-      // one winner per move. Announcements and events are therefore
-      // at-most-once: a crash between the claim and the write loses them,
-      // since no later sweep retries
-      const claimed = await Q.workshop.mod.updateAll(
-        { status: to, required, fileChosen: false },
-        { id: mod.id, status: mod.status },
+      const key = `${mod.status}:${required}`;
+      const group = groups.get(key) ?? {
+        status: mod.status,
+        required,
+        ids: [],
+      };
+      group.ids.push(mod.id);
+      groups.set(key, group);
+    }
+
+    // Concurrent reconciles read the same rows, so the status-guarded update
+    // picks one winner per move. Announcements and events are therefore
+    // at-most-once: a crash between the claim and the write loses them,
+    // since no later sweep retries
+    const moved: WorkshopMod[] = [];
+    for (const group of groups.values()) {
+      const claimed = await Q.workshop.mod.updateAllAndReturn(
+        { status: to, required: group.required, fileChosen: false },
+        { id: { $in: group.ids }, status: group.status },
       );
-      if (claimed > 0) {
-        moved.push({ ...mod, status: to, required, fileChosen: false });
+      for (const mod of claimed) {
+        moved.push(mod);
         recordModEvent({
           eventType: to === "in_pack" ? "shipped" : "dropped",
           workshopId: mod.workshopId,
           workshopModId: mod.id,
           curseforgeProjectId: mod.curseforgeProjectId,
-          fromStatus: mod.status,
+          fromStatus: group.status,
           toStatus: to,
           releaseVersion,
         });
@@ -1539,29 +1687,30 @@ export class ModpackService {
     const shippedModIds: number[] = [];
     const droppedModIds: number[] = [];
     const droppedRequired = new Map<number, boolean>();
+    const goingLive = new Map<boolean, number[]>();
+    const restored = new Map<boolean, number[]>();
+    const removedImportIds: number[] = [];
+    const droppedRowIds: number[] = [];
+    const pushByRequired = (
+      map: Map<boolean, number[]>,
+      required: boolean,
+      id: number,
+    ) => {
+      const ids = map.get(required) ?? [];
+      ids.push(id);
+      map.set(required, ids);
+    };
 
     for (const row of rows) {
       if (manifest.modIds.has(row.curseforgeProjectId)) {
         const required = !manifest.disabledModIds.has(row.curseforgeProjectId);
         if (row.liveAt === null) {
-          await Q.modpack.mod.updateAll(
-            {
-              liveAt: now,
-              liveInVersion: manifest.version,
-              droppedFromManifestAt: null,
-              required,
-              updatedAt: now,
-            },
-            { id: row.id },
-          );
+          pushByRequired(goingLive, required, row.id);
         } else if (
           row.droppedFromManifestAt !== null ||
           row.required !== required
         ) {
-          await Q.modpack.mod.updateAll(
-            { droppedFromManifestAt: null, required, updatedAt: now },
-            { id: row.id },
-          );
+          pushByRequired(restored, required, row.id);
         }
         if (row.workshopModId) shippedModIds.push(row.workshopModId);
         continue;
@@ -1571,28 +1720,54 @@ export class ModpackService {
       // the manifest is always a drop-out. Imports have no suggestion behind
       // them to fall back to, so they simply cease to be members
       if (row.origin === "import") {
-        await Q.modpack.mod.deleteAll({ id: row.id });
+        removedImportIds.push(row.id);
         continue;
       }
-      if (row.droppedFromManifestAt === null) {
-        await Q.modpack.mod.updateAll(
-          {
-            liveAt: null,
-            liveInVersion: null,
-            droppedFromManifestAt: now,
-            updatedAt: now,
-          },
-          { id: row.id },
-        );
-      }
+      if (row.droppedFromManifestAt === null) droppedRowIds.push(row.id);
       if (row.workshopModId) {
         droppedModIds.push(row.workshopModId);
         droppedRequired.set(row.workshopModId, row.required);
       }
     }
 
+    for (const [required, ids] of goingLive) {
+      await Q.modpack.mod.updateAll(
+        {
+          liveAt: now,
+          liveInVersion: manifest.version,
+          droppedFromManifestAt: null,
+          required,
+          updatedAt: now,
+        },
+        { id: { $in: ids } },
+      );
+    }
+    for (const [required, ids] of restored) {
+      await Q.modpack.mod.updateAll(
+        { droppedFromManifestAt: null, required, updatedAt: now },
+        { id: { $in: ids } },
+      );
+    }
+    if (removedImportIds.length > 0) {
+      await Q.modpack.mod.deleteAll({ id: { $in: removedImportIds } });
+    }
+    if (droppedRowIds.length > 0) {
+      await Q.modpack.mod.updateAll(
+        {
+          liveAt: null,
+          liveInVersion: null,
+          droppedFromManifestAt: now,
+          updatedAt: now,
+        },
+        { id: { $in: droppedRowIds } },
+      );
+    }
+
+    const memberProjectIds = new Set(
+      rows.map((row) => row.curseforgeProjectId),
+    );
     const newProjectIds = [...manifest.modIds].filter(
-      (id) => !rows.some((row) => row.curseforgeProjectId === id),
+      (id) => !memberProjectIds.has(id),
     );
     if (newProjectIds.length > 0) {
       shippedModIds.push(
@@ -1698,12 +1873,10 @@ export class ModpackService {
       { select: ["id"] },
     );
 
-    const shippedModIds: number[] = [];
-    let created = 0;
-    for (const project of cached) {
-      const suggestion = suggestionByProject.get(project.id);
-      try {
-        await Q.modpack.mod.create({
+    const created = await Q.modpack.mod.createManyAndReturn(
+      cached.map((project) => {
+        const suggestion = suggestionByProject.get(project.id);
+        return {
           modpackId: modpack.id,
           curseforgeProjectId: project.id,
           origin: suggestion
@@ -1719,19 +1892,18 @@ export class ModpackService {
           required: !manifest.disabledModIds.has(project.id),
           liveAt: now,
           liveInVersion: manifest.version,
-        });
-        created++;
-        if (suggestion) shippedModIds.push(suggestion.id);
-      } catch (error) {
-        if (!(error instanceof UniqueViolationError)) throw error;
-      }
-    }
-    if (created > 0) {
+        };
+      }),
+      { onConflict: "ignore" },
+    );
+    if (created.length > 0) {
       logger.info(
-        `Recorded ${created} published mods in modpack #${modpack.id}`,
+        `Recorded ${created.length} published mods in modpack #${modpack.id}`,
       );
     }
-    return shippedModIds;
+    return created.flatMap((row) =>
+      row.workshopModId !== null ? [row.workshopModId] : [],
+    );
   }
 
   private toProjectSummary(project: CurseforgeProject): ModpackProjectSummary {

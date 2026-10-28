@@ -14,6 +14,23 @@ class CompositeQueries extends BaseQueries<TestConfig> {
     ["id"],
     ["playerMinecraftUuid", "rewardType", "claimPeriodKey"],
   ];
+  protected readonly COLUMNS = [
+    "id",
+    "playerMinecraftUuid",
+    "rewardType",
+    "claimPeriodKey",
+    "amount",
+    "claimedAt",
+  ];
+
+  extract(obj: Record<string, unknown>) {
+    return this.extractIdentifier(obj);
+  }
+}
+
+class NoColumnsQueries extends BaseQueries<TestConfig> {
+  protected readonly table = "legacy_grouped_table";
+  protected readonly IDENTIFIER_GROUPS = [["id"]];
 
   extract(obj: Record<string, unknown>) {
     return this.extractIdentifier(obj);
@@ -30,6 +47,7 @@ class NoMetadataQueries extends BaseQueries<TestConfig> {
 
 const db = {} as Pool;
 const composite = new CompositeQueries(db);
+const noColumns = new NoColumnsQueries(db);
 const noMetadata = new NoMetadataQueries(db);
 
 describe("extractIdentifier with identifier groups", () => {
@@ -123,6 +141,79 @@ describe("extractIdentifier with identifier groups", () => {
     expect(() => composite.extract({})).toThrow(
       /No valid identifier field found/,
     );
+  });
+});
+
+describe("extractIdentifier with stray non-identifier keys", () => {
+  it("rejects an identifier carrying a condition on another column", () => {
+    expect(() => composite.extract({ id: 7, amount: 100n })).toThrow(
+      /non-identifier field\(s\) \(amount\)/,
+    );
+  });
+
+  it("names every stray key and the accepted identifiers", () => {
+    const stray = () =>
+      composite.extract({ id: 7, amount: 100n, claimedAt: new Date(0) });
+    expect(stray).toThrow(/\(amount, claimedAt\)/);
+    expect(stray).toThrow(
+      /pass only: id, \(playerMinecraftUuid \+ rewardType \+ claimPeriodKey\)/,
+    );
+  });
+
+  it("rejects an identifier carrying a key that is not a column at all", () => {
+    expect(() => composite.extract({ id: 7, enabled: true })).toThrow(
+      /non-identifier field\(s\) \(enabled\)/,
+    );
+  });
+
+  it("ignores stray keys whose value is null or undefined", () => {
+    expect(
+      composite.extract({ id: 7, amount: undefined, claimedAt: null }),
+    ).toEqual({ id: 7 });
+  });
+
+  it("still narrows a full entity whose non-identifier columns are null", () => {
+    expect(
+      composite.extract({
+        id: 7,
+        playerMinecraftUuid: "uuid-1",
+        rewardType: "daily",
+        claimPeriodKey: "2026-07-19",
+        amount: null,
+        claimedAt: new Date(0),
+      }),
+    ).toEqual({
+      id: 7,
+      playerMinecraftUuid: "uuid-1",
+      rewardType: "daily",
+      claimPeriodKey: "2026-07-19",
+    });
+  });
+
+  it("rejects a full row of a related table passed to this table's lookup", () => {
+    const playerRow = {
+      id: 3,
+      playerMinecraftUuid: "uuid-1",
+      minecraftUsername: "Steve",
+      discordId: "123",
+      online: true,
+    };
+    expect(() => composite.extract(playerRow)).toThrow(
+      /non-identifier field\(s\) \(minecraftUsername, discordId, online\)/,
+    );
+  });
+
+  it("rejects a projected row that lacks some columns but carries a stray one", () => {
+    expect(() =>
+      composite.extract({ id: 7, playerMinecraftUuid: "uuid-1", amount: 100n }),
+    ).toThrow(/non-identifier field\(s\) \(amount\)/);
+  });
+
+  it("rejects stray keys when the class declares no column list", () => {
+    expect(() => noColumns.extract({ id: 1, name: "x" })).toThrow(
+      /non-identifier field\(s\) \(name\)/,
+    );
+    expect(noColumns.extract({ id: 1 })).toEqual({ id: 1 });
   });
 });
 

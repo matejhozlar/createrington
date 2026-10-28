@@ -36,6 +36,14 @@ export class FixtureParentChildLeafBaseQueries extends BaseQueries<{
    * to reject partial composite identifiers.
    */
   protected readonly IDENTIFIER_GROUPS = [['parentId', 'childKey', 'leafNo'], ['token']];
+
+  /**
+   * Every column of this table in camelCase
+   *
+   * Used by extractIdentifier to tell a full entity (which may carry
+   * non-identifier fields) from an identifier with a stray condition.
+   */
+  protected readonly COLUMNS = ['parentId', 'childKey', 'leafNo', 'token', 'label', 'recordedOn', 'recordedAt', 'sourceIp', 'totalSeconds', 'sessions', 'avgSeconds', 'weight', 'archivedAt', 'updatedAt'];
   protected readonly AUTO_SET_UPDATED_AT = true;
 
   /** Columns the database computes itself; stripped from create and update payloads */

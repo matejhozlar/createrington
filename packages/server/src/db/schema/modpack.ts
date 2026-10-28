@@ -21,7 +21,9 @@ import { workshopMod } from "./workshop";
 // pack; from then on a client-only read is refused instead of applied, since
 // it would drop every server-side member. titleImageUrl is the full-width
 // banner at the top of the pack's changelog posts; null falls back to a text
-// heading.
+// heading. iconUrl is the square icon the launcher shows for a pack whose
+// releases do not come from CurseForge (a published pack keeps its project's
+// icon); null shows the launcher's default.
 
 export const modpack = pgTable(
   "modpack",
@@ -33,6 +35,7 @@ export const modpack = pgTable(
     shipsServerPack: boolean("ships_server_pack").notNull().default(false),
     serverId: integer("server_id").references(() => server.id),
     titleImageUrl: text("title_image_url"),
+    iconUrl: text("icon_url"),
     createdBy: text("created_by").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
@@ -139,6 +142,13 @@ export const modpackPublish = pgTable(
 // is re-frozen once a read carries the server pack, never the other way.
 // Otherwise rows are append-only and self-contained: CurseForge drops
 // archived files, so nothing here may depend on re-fetching them.
+// The pack* columns describe the client pack zip the launcher downloads and
+// javaMajorVersion the Java that Minecraft version asks for. launcherReadyAt
+// is set once all of that is stored and every client file of the release has
+// a curseforge_file row; the launcher is only ever offered a release with it.
+// launcherUnavailableAt is set while CurseForge no longer serves the pack zip
+// or one of the release's client files (archived), and cleared when it serves
+// them again; such a release is left out of the list of installable releases.
 
 export const modpackRelease = pgTable(
   "modpack_release",
@@ -155,6 +165,15 @@ export const modpackRelease = pgTable(
     modLoader: text("mod_loader"),
     modCount: integer("mod_count").notNull(),
     publishedAt: timestamp("published_at", { withTimezone: true }),
+    packFileName: text("pack_file_name"),
+    packFileSize: integer("pack_file_size"),
+    packSha1: text("pack_sha1"),
+    packDownloadUrl: text("pack_download_url"),
+    javaMajorVersion: integer("java_major_version"),
+    launcherReadyAt: timestamp("launcher_ready_at", { withTimezone: true }),
+    launcherUnavailableAt: timestamp("launcher_unavailable_at", {
+      withTimezone: true,
+    }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -172,6 +191,8 @@ export const modpackRelease = pgTable(
 // Frozen membership of one release. fileName carries the mod version, so a diff
 // between two releases never needs CurseForge. A manifest may list the same
 // project twice with different files, hence the file id in the unique key.
+// inClientPack says whether the client pack ships the file (false for a file
+// only the server pack ships); null on rows recorded before it was stored.
 
 export const modpackReleaseMod = pgTable(
   "modpack_release_mod",
@@ -189,6 +210,7 @@ export const modpackReleaseMod = pgTable(
     fileReleaseType: integer("file_release_type"),
     fileDate: timestamp("file_date", { withTimezone: true }),
     required: boolean("required").notNull().default(true),
+    inClientPack: boolean("in_client_pack"),
   },
   (table) => [
     index("idx_modpack_release_mod_release").on(table.releaseId),

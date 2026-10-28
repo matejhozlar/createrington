@@ -11,7 +11,9 @@
 export { AdminQueries } from "./admin";
 export { AdminLogActionQueries } from "./admin/log/action";
 export { AppSettingQueries } from "./app/setting";
+export { AuthLauncherSessionQueries } from "./auth/launcher/session";
 export { AuthSessionQueries } from "./auth/session";
+export { CurseforgeFileQueries } from "./curseforge/file";
 export { CurseforgeProjectQueries } from "./curseforge/project";
 export { DiscordAutoMessageQueries } from "./discord/auto/message";
 export { DiscordAutoMessageConfigQueries } from "./discord/auto/message/config";
@@ -30,6 +32,8 @@ export { FaqEntryQueries } from "./faq/entry";
 export { FeatureFlagQueries } from "./feature/flag";
 export { GallerySubmissionQueries } from "./gallery/submission";
 export { GallerySubmissionCreditQueries } from "./gallery/submission/credit";
+export { LauncherPackQueries } from "./launcher/pack";
+export { LauncherReleaseQueries } from "./launcher/release";
 export { LeaderboardMessageQueries } from "./leaderboard/message";
 export { ModpackQueries } from "./modpack";
 export { ModpackModQueries } from "./modpack/mod";

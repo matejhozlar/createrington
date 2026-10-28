@@ -86,7 +86,7 @@ export function NavUser({ user }: { user: User }) {
     logout();
   };
 
-  const crafatarAvatarUrl = user.minecraftUuid
+  const avatarUrl = user.minecraftUuid
     ? mcHeadsAvatar(user.minecraftUuid)
     : undefined;
 
@@ -109,7 +109,7 @@ export function NavUser({ user }: { user: User }) {
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
               <TriggerSummary
-                avatarUrl={crafatarAvatarUrl}
+                avatarUrl={avatarUrl}
                 avatarAlt={user.minecraftUsername ?? user.username}
                 avatarFallbackLetter={avatarFallbackLetter}
                 minecraftUsername={user.minecraftUsername}

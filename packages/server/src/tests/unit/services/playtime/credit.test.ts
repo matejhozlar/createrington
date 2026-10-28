@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computeCredit, parsePlayTimeTicks } from "@/services/playtime/credit";
+import { computeCredit } from "@/services/playtime/credit";
 
 const T0 = new Date("2026-09-14T10:00:00Z");
 const after = (seconds: number) => new Date(T0.getTime() + seconds * 1000);
@@ -96,21 +96,5 @@ describe("computeCredit", () => {
     });
 
     expect(credit.seconds).toBe(0);
-  });
-});
-
-describe("parsePlayTimeTicks", () => {
-  it("accepts non-negative integers", () => {
-    expect(parsePlayTimeTicks(0)).toBe(0);
-    expect(parsePlayTimeTicks(123456)).toBe(123456);
-  });
-
-  it("rejects everything else", () => {
-    expect(parsePlayTimeTicks(-1)).toBeUndefined();
-    expect(parsePlayTimeTicks(1.5)).toBeUndefined();
-    expect(parsePlayTimeTicks("100")).toBeUndefined();
-    expect(parsePlayTimeTicks(null)).toBeUndefined();
-    expect(parsePlayTimeTicks(undefined)).toBeUndefined();
-    expect(parsePlayTimeTicks(Number.NaN)).toBeUndefined();
   });
 });

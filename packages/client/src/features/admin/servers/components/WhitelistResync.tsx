@@ -3,25 +3,25 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { ListChecks, RefreshCw } from "lucide-react";
 import { trpc } from "@/lib/trpc";
-import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 
 interface WhitelistResyncProps {
   serverId: number;
 }
 
 export function WhitelistResync({ serverId }: WhitelistResyncProps) {
-  const toast = useToastActions();
   const [dialogOpen, setDialogOpen] = useState(false);
   const utils = trpc.useUtils();
 
-  const resyncMutation = trpc.admin.servers.resyncWhitelist.useMutation({
-    onSuccess: ({ count }) => {
-      toast.success(`Whitelist resynced (${count} players)`);
-      utils.admin.servers.get.invalidate({ id: serverId });
-      utils.admin.servers.list.invalidate();
-    },
-    onError: (err: { message: string }) => toast.error(err.message),
-  });
+  const resyncMutation = trpc.admin.servers.resyncWhitelist.useMutation(
+    useMutationToast({
+      success: ({ count }) => `Whitelist resynced (${count} players)`,
+      onSuccess: () => {
+        utils.admin.servers.get.invalidate({ id: serverId });
+        utils.admin.servers.list.invalidate();
+      },
+    }),
+  );
 
   return (
     <div className="flex items-center justify-between rounded-lg border border-border bg-card p-4">

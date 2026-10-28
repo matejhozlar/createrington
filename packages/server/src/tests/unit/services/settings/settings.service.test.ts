@@ -116,4 +116,34 @@ describe("SettingsService", () => {
     await expect(svc.setPlayerLimit(2.5, "admin-1")).rejects.toThrow();
     expect(state.store.size).toBe(0);
   });
+
+  it("returns null for the announced app version until one is stored", async () => {
+    const svc = new SettingsService();
+    expect(await svc.getAnnouncedAppVersion()).toBeNull();
+
+    await svc.setAnnouncedAppVersion("1.66.0");
+
+    expect(state.store.get("announced_app_version")?.value).toEqual({
+      value: "1.66.0",
+    });
+    expect(await svc.getAnnouncedAppVersion()).toBe("1.66.0");
+  });
+
+  it("reads the announced app version from the table every time", async () => {
+    seed("announced_app_version", { value: "1.65.3" });
+    const svc = new SettingsService();
+    expect(await svc.getAnnouncedAppVersion()).toBe("1.65.3");
+
+    seed("announced_app_version", { value: "1.66.0" });
+    expect(await svc.getAnnouncedAppVersion()).toBe("1.66.0");
+    expect(state.findCalls).toBe(2);
+  });
+
+  it("throws when the announced app version cannot be read", async () => {
+    state.failReads = true;
+    const svc = new SettingsService();
+    await expect(svc.getAnnouncedAppVersion()).rejects.toThrow(
+      "connection refused",
+    );
+  });
 });

@@ -34,12 +34,27 @@ export class AuthSessionQueries extends AuthSessionBaseQueries {
    * Revoke a single session by ID
    *
    * @param id - Session row ID
+   * @returns Whether this call revoked it (false when it was already revoked)
    */
-  async revokeById(id: number): Promise<void> {
-    await this.db.query(
+  async revokeById(id: number): Promise<boolean> {
+    const result = await this.db.query(
       `UPDATE auth_session SET revoked_at = NOW() WHERE id = $1 AND revoked_at IS NULL`,
       [id],
     );
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  /** Revoke one of a user's live sessions; false when it is not theirs, already revoked or expired. */
+  async revokeOwnedById(id: number, discordId: string): Promise<boolean> {
+    const result = await this.runQuery(
+      "revoke owned auth session",
+      `UPDATE ${this.table}
+       SET revoked_at = NOW()
+       WHERE id = $1 AND discord_id = $2
+         AND revoked_at IS NULL AND expires_at > NOW()`,
+      [id, discordId],
+    );
+    return (result.rowCount ?? 0) > 0;
   }
 
   /**

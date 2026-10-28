@@ -5,6 +5,7 @@ import type { StatsReconcileEntry } from "@/db/repositories/playtime";
 import { FeatureFlags, featureFlagService } from "../feature-flag";
 import type { PlaytimeManagerService } from "../playtime/playtime-manager.service";
 import type { StatsImportServerConfig } from "./config";
+import { MC_UUID_REGEX } from "@/utils/zod-schemas";
 
 /** Debounce delay before triggering an import after a player count change */
 const DEBOUNCE_MS = 30_000;
@@ -146,9 +147,16 @@ export class StatsImportService {
         return;
       }
 
-      const players = await Q.player.findAll(undefined, {
-        select: ["minecraftUuid"],
-      });
+      const fileUuids = jsonFiles
+        .map((file) => file.name.replace(".json", ""))
+        .filter((uuid) => MC_UUID_REGEX.test(uuid));
+      const players =
+        fileUuids.length > 0
+          ? await Q.player.findAll(
+              { minecraftUuid: { $in: fileUuids } },
+              { select: ["minecraftUuid"] },
+            )
+          : [];
       const knownUuids = new Set(players.map((p) => p.minecraftUuid));
 
       const statsToUpsert: StatsUpsertEntry[] = [];

@@ -66,25 +66,25 @@ export async function resolveProjectDependencies(
       : [];
   const cachedIds = new Set(cached.map((project) => project.id));
 
-  for (const subject of withFile) {
-    const deps = (depsByFile.get(subject.fileId!) ?? []).filter(
-      (dep) => !basePackIds.has(dep.modId) && cachedIds.has(dep.modId),
-    );
-    await db.inTransaction(async (tx) => {
-      await tx.workshop.project.dependency.deleteAll({
+  const edges = withFile.flatMap((subject) =>
+    (depsByFile.get(subject.fileId!) ?? [])
+      .filter((dep) => !basePackIds.has(dep.modId) && cachedIds.has(dep.modId))
+      .map((dep) => ({
         workshopId: workshop.id,
         curseforgeProjectId: subject.curseforgeProjectId,
-      });
-      for (const dep of deps) {
-        await tx.workshop.project.dependency.create({
-          workshopId: workshop.id,
-          curseforgeProjectId: subject.curseforgeProjectId,
-          dependsOnProjectId: dep.modId,
-          relationType: dep.relationType,
-        });
-      }
+        dependsOnProjectId: dep.modId,
+        relationType: dep.relationType,
+      })),
+  );
+  await db.inTransaction(async (tx) => {
+    await tx.workshop.project.dependency.deleteAll({
+      workshopId: workshop.id,
+      curseforgeProjectId: {
+        $in: withFile.map((subject) => subject.curseforgeProjectId),
+      },
     });
-  }
+    await tx.workshop.project.dependency.createMany(edges);
+  });
 }
 
 /**
@@ -119,45 +119,36 @@ const COVERAGE_BY_STATUS: Record<WorkshopModStatus, DependencyCoverage> = {
 /**
  * Resolve every dependency's coverage and how many shipping mods want it, so
  * a suggestion can show what it still drags in without any of those
- * dependencies needing a row of their own.
+ * dependencies needing a row of their own. `projectIds` restricts both maps
+ * to the projects a caller will look up; omit it for the whole workshop.
  */
 export async function loadDependencyContext(
   workshop: Workshop,
+  projectIds?: number[],
 ): Promise<DependencyContext> {
-  const [packRows, suggestions, edges] = await Promise.all([
-    Q.modpack.mod.findAll(
-      { modpackId: workshop.modpackId },
-      { select: ["curseforgeProjectId"] },
+  const [standings, demand] = await Promise.all([
+    Q.workshop.mod.getProjectStandings(
+      workshop.id,
+      workshop.modpackId,
+      projectIds,
     ),
-    Q.workshop.mod.findAll(
-      { workshopId: workshop.id },
-      { select: ["curseforgeProjectId", "status"] },
+    Q.workshop.project.dependency.getShippingDemand(
+      workshop.id,
+      workshop.modpackId,
+      REQUIRED_DEPENDENCY,
+      projectIds,
     ),
-    Q.workshop.project.dependency.findAll({
-      workshopId: workshop.id,
-      relationType: REQUIRED_DEPENDENCY,
-    }),
   ]);
 
   const coverage = new Map<number, DependencyCoverage>();
-  for (const row of suggestions) {
-    coverage.set(row.curseforgeProjectId, COVERAGE_BY_STATUS[row.status]);
+  for (const row of standings) {
+    coverage.set(
+      row.curseforgeProjectId,
+      row.inPack || row.status === null
+        ? "published"
+        : COVERAGE_BY_STATUS[row.status],
+    );
   }
-  for (const row of packRows) {
-    coverage.set(row.curseforgeProjectId, "published");
-  }
-
-  const wanters = new Map<number, Set<number>>();
-  for (const edge of edges) {
-    const subject = coverage.get(edge.curseforgeProjectId);
-    if (subject !== "published" && subject !== "staged") continue;
-    const set = wanters.get(edge.dependsOnProjectId) ?? new Set<number>();
-    set.add(edge.curseforgeProjectId);
-    wanters.set(edge.dependsOnProjectId, set);
-  }
-  const demand = new Map(
-    [...wanters].map(([projectId, subjects]) => [projectId, subjects.size]),
-  );
 
   return { coverage, demand };
 }
@@ -170,25 +161,10 @@ export async function pruneStaleDependencyEdges(
   workshop: Workshop,
 ): Promise<void> {
   try {
-    const [edges, packRows, suggestions] = await Promise.all([
-      Q.workshop.project.dependency.findAll({ workshopId: workshop.id }),
-      Q.modpack.mod.findAll({ modpackId: workshop.modpackId }),
-      Q.workshop.mod.findAll({
-        workshopId: workshop.id,
-        status: { $ne: "rejected" },
-      }),
-    ]);
-    const liveProjectIds = new Set([
-      ...packRows.map((row) => row.curseforgeProjectId),
-      ...suggestions.map((row) => row.curseforgeProjectId),
-    ]);
-    const stale = edges.filter(
-      (edge) => !liveProjectIds.has(edge.curseforgeProjectId),
+    await Q.workshop.project.dependency.deleteStale(
+      workshop.id,
+      workshop.modpackId,
     );
-    if (stale.length === 0) return;
-    await Q.workshop.project.dependency.deleteAll({
-      id: { $in: stale.map((edge) => edge.id) },
-    });
   } catch (error) {
     logger.warn(
       `Dependency edge cleanup failed for workshop #${workshop.id}:`,

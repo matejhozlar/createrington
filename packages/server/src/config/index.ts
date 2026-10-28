@@ -9,6 +9,7 @@
  */
 
 import { env, envMode } from "./env/env.config";
+import type { LauncherChannel } from "@createrington/shared/launcher";
 import type {
   MemberRolesConfig,
   ChannelConfig,
@@ -97,6 +98,9 @@ const config = {
       },
       modAccessToken: {
         secret: env.MOD_JWT_SECRET,
+      },
+      launcherAccessToken: {
+        secret: env.LAUNCHER_JWT_SECRET ?? "",
       },
       refreshToken: {
         expiresInDays: env.REFRESH_TOKEN_EXPIRES_IN_DAYS,
@@ -275,6 +279,22 @@ const config = {
     secret: env.PLAYTIME_SYNC_SECRET,
   },
 
+  launcher: {
+    available: !envMode.isProductionDeployment,
+    channel: (envMode.isDevDeployment
+      ? "staging"
+      : "production") satisfies LauncherChannel as LauncherChannel,
+    publishTokenHash: env.LAUNCHER_PUBLISH_TOKEN_HASH ?? "",
+    downloadHosts: (env.LAUNCHER_DOWNLOAD_HOSTS ?? "")
+      .split(",")
+      .map((host) => host.trim().toLowerCase())
+      .filter((host) => host.length > 0),
+    packFiles: {
+      internalUrl:
+        env.LAUNCHER_PACK_FILES_INTERNAL_URL?.replace(/\/+$/, "") ?? null,
+    },
+  },
+
   internal: {
     secret: env.INTERNAL_API_SHARED_SECRET ?? "",
   },
@@ -289,11 +309,16 @@ const config = {
     },
   },
 
+  redis: {
+    url: env.REDIS_URL ?? null,
+  },
+
   curseforge: {
     apiKey: env.CURSEFORGE_API_KEY,
     apiBaseUrl: "https://api.curseforge.com",
     defaultGameVersion: "1.21.1",
     modpackProjectId: env.CURSEFORGE_MODPACK_PROJECT_ID,
+    launcherCallsPerMinute: env.CURSEFORGE_LAUNCHER_CALLS_PER_MINUTE,
     modpackCacheTtlMs: 60 * 60 * 1000,
     modpackIncompleteCacheTtlMs: 60 * 1000,
   },

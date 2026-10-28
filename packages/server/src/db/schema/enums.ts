@@ -1,5 +1,10 @@
 import { pgEnum } from "drizzle-orm/pg-core";
 import { GALLERY_SUBMISSION_STATUSES } from "@createrington/shared/gallery";
+import {
+  LAUNCHER_PACK_FILE_SOURCES,
+  LAUNCHER_PACK_SOURCES,
+  LAUNCHER_RELEASE_STATUSES,
+} from "@createrington/shared/launcher";
 import { PLAYER_PROMPT_ENTRY_MODES } from "@createrington/shared/player-prompt";
 import {
   MOD_ENVIRONMENTS,
@@ -122,4 +127,26 @@ export const workshopPollGranularityEnum = pgEnum("workshop_poll_granularity", [
 export const gallerySubmissionStatusEnum = pgEnum(
   "gallery_submission_status",
   GALLERY_SUBMISSION_STATUSES,
+);
+
+export const launcherReleaseStatusEnum = pgEnum(
+  "launcher_release_status",
+  LAUNCHER_RELEASE_STATUSES,
+);
+
+// Where a launcher pack gets its releases from: the reconcile of its
+// published CurseForge project, or snapshots the sandbox reports
+export const launcherPackSourceEnum = pgEnum(
+  "launcher_pack_source",
+  LAUNCHER_PACK_SOURCES,
+);
+
+// Where the launcher downloads a pack file from: the link CurseForge gives,
+// the Modrinth CDN for a byte-identical file CurseForge will not serve, the
+// file's address on CurseForge's CDN built from its id and name (curseforge-cdn,
+// CurseForge gave no link), our own storage, or manual (no URL, the player
+// downloads it in the browser)
+export const curseforgeFileSourceEnum = pgEnum(
+  "curseforge_file_source",
+  LAUNCHER_PACK_FILE_SOURCES,
 );

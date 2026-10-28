@@ -31,8 +31,18 @@ import {
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { useCountdown } from "@/hooks/use-countdown";
 import { MaintenanceSettingsDialog } from "./MaintenanceSettingsDialog";
+
+const DEFAULT_ESTIMATED_MINUTES = 30;
+
+function parseEstimatedMinutes(value: string) {
+  const minutes = parseInt(value, 10);
+  return Number.isNaN(minutes) || minutes < 1
+    ? DEFAULT_ESTIMATED_MINUTES
+    : minutes;
+}
 
 interface MaintenanceToggleProps {
   serverId: number;
@@ -54,7 +64,9 @@ export function MaintenanceToggle({
     "maintenance" | "modpack_update"
   >("maintenance");
   const [scheduledAt, setScheduledAt] = useState("");
-  const [estimatedMinutes, setEstimatedMinutes] = useState(30);
+  const [estimatedMinutes, setEstimatedMinutes] = useState(
+    String(DEFAULT_ESTIMATED_MINUTES),
+  );
   const utils = trpc.useUtils();
 
   const [minDatetime, setMinDatetime] = useState("");
@@ -101,23 +113,21 @@ export function MaintenanceToggle({
     },
   });
 
-  const scheduleMutation = trpc.admin.servers.scheduleMaintenance.useMutation({
-    onSuccess: () => {
-      toast.success("Maintenance scheduled");
-      invalidate();
-      setDialogOpen(false);
-      setScheduledAt("");
-      setEstimatedMinutes(30);
-    },
-    onError: (err: { message: string }) => toast.error(err.message),
-  });
+  const scheduleMutation = trpc.admin.servers.scheduleMaintenance.useMutation(
+    useMutationToast({
+      success: "Maintenance scheduled",
+      onSuccess: () => {
+        invalidate();
+        setDialogOpen(false);
+        setScheduledAt("");
+        setEstimatedMinutes(String(DEFAULT_ESTIMATED_MINUTES));
+      },
+    }),
+  );
 
   const cancelMutation =
     trpc.admin.servers.cancelScheduledMaintenance.useMutation({
-      onSuccess: () => {
-        toast.success("Scheduled maintenance cancelled");
-      },
-      onError: (err: { message: string }) => toast.error(err.message),
+      ...useMutationToast({ success: "Scheduled maintenance cancelled" }),
       onSettled: () => {
         invalidate();
       },
@@ -134,7 +144,7 @@ export function MaintenanceToggle({
       serverId,
       type: maintenanceType,
       scheduledAt: date.toISOString(),
-      estimatedMinutes,
+      estimatedMinutes: parseEstimatedMinutes(estimatedMinutes),
     });
   }
 
@@ -365,8 +375,11 @@ export function MaintenanceToggle({
                     min={1}
                     max={10080}
                     value={estimatedMinutes}
-                    onChange={(e) =>
-                      setEstimatedMinutes(parseInt(e.target.value) || 30)
+                    onChange={(e) => setEstimatedMinutes(e.target.value)}
+                    onBlur={() =>
+                      setEstimatedMinutes(
+                        String(parseEstimatedMinutes(estimatedMinutes)),
+                      )
                     }
                   />
                 </div>

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
+import { httpUrlSchema } from "@createrington/shared/api/embed";
 import { structurePackService } from "@/services/structure-pack";
 import { auditActor, assertPatchNotEmpty } from "@/trpc/utils";
 import { modFileName } from "./helpers";
@@ -111,7 +112,7 @@ export const structurePackCrudProcedures = {
                 curseforgeFileId: z.number().int().positive(),
                 fileName: modFileName,
                 modName: z.string().min(1),
-                modUrl: z.string().url().nullish(),
+                modUrl: httpUrlSchema.nullish(),
                 thumbnailUrl: z.string().url().nullish(),
               }),
             ),
@@ -128,20 +129,20 @@ export const structurePackCrudProcedures = {
           const pack = await structurePackService.createPack(
             packData.name,
             packData.description ?? undefined,
+            { enabled: false },
           );
 
-          await structurePackService.toggleEnabled(pack.id, false);
-
-          for (const mod of packData.mods) {
-            await structurePackService.addMod(pack.id, {
+          await structurePackService.addMods(
+            pack.id,
+            packData.mods.map((mod) => ({
               curseforgeModId: mod.curseforgeModId,
               curseforgeFileId: mod.curseforgeFileId,
               fileName: mod.fileName,
               modName: mod.modName,
               modUrl: mod.modUrl ?? undefined,
               thumbnailUrl: mod.thumbnailUrl ?? undefined,
-            });
-          }
+            })),
+          );
 
           created.push(packData.name);
         } catch {

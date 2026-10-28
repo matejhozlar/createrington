@@ -1,4 +1,5 @@
 import type { Pool, PoolClient } from "pg";
+import { AuthLauncherQueries } from "@/db/queries/auth/launcher";
 import { AuthSessionQueries } from "@/db/queries/auth/session";
 
 /**
@@ -71,6 +72,28 @@ export class AuthQueries {
    * @param db - Database pool or client to use for all child queries
    */
   constructor(protected db: Pool | PoolClient) {}
+
+  /** Private backing field for lazy-loaded auth_launcher queries */
+  private _launcher?: AuthLauncherQueries;
+
+  /**
+   * Lazy-loaded singleton accessor for auth_launcher
+   *
+   * Returns a AuthLauncherQueries instance that shares this namespace's
+   * database connection. The instance is created once on first access and
+   * cached for all subsequent calls.
+   *
+   * @returns Singleton AuthLauncherQueries instance
+   */
+  get launcher(): AuthLauncherQueries {
+    if (!this._launcher) {
+      this._launcher = this.getOrCreateChild<AuthLauncherQueries>(
+        "launcher",
+        AuthLauncherQueries,
+      );
+    }
+    return this._launcher;
+  }
 
   /** Private backing field for lazy-loaded auth_session queries */
   private _session?: AuthSessionQueries;

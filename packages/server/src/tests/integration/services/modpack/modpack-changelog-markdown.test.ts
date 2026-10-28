@@ -35,6 +35,7 @@ function fileRow(projectId: number, version: string): ReleaseModInsert {
     fileReleaseType: 1,
     fileDate: null,
     required: true,
+    inClientPack: true,
   };
 }
 
@@ -140,6 +141,16 @@ describe("modpackService.getChangelogMarkdown", () => {
       `### Updated (1)\n[![](${ROWS}/${newest.curseforgeFileId}/${kept}.png)](https://www.curseforge.com/minecraft/mc-mods/changelog-mod-0)`,
     );
     expect(markdown).not.toContain("Your version");
+  });
+
+  it("renders the same markdown from the stored changelog as from a fresh one", async () => {
+    await seedHistory();
+
+    const fresh = await changelog("1.1.0");
+    const stored = await changelog("1.1.0");
+
+    expect(stored).toBe(fresh);
+    expect(stored).toContain("1 Jan 2030 · since 1.1.0");
   });
 
   it("appends an older installed release under an outdated label", async () => {

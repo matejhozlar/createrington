@@ -50,7 +50,9 @@ export async function execute(
 
   try {
     const player = await Q.player.get({ discordId });
-    const balance = await Q.player.balance.get(player);
+    const balance = await Q.player.balance.get({
+      minecraftUuid: player.minecraftUuid,
+    });
 
     const embed = EmbedPresets.plain({
       title: "💰 Your Balance",

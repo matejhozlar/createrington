@@ -66,9 +66,10 @@ export class MemberCleanupService {
             },
           );
 
-          await Q.discord.guild.member.leave.update(member, {
-            deletedAt: new Date(),
-          });
+          await Q.discord.guild.member.leave.update(
+            { id: member.id },
+            { deletedAt: new Date() },
+          );
 
           if (member.notificationMessageId) {
             try {

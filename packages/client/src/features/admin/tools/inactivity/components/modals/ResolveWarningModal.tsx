@@ -1,6 +1,6 @@
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useStickyValue } from "@/hooks/use-sticky-value";
-import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 
 type Warning = RouterOutput["admin"]["inactivity"]["list"]["warnings"][number];
@@ -16,15 +16,15 @@ export function ResolveWarningModal({
   onClose,
   onSuccess,
 }: ResolveWarningModalProps) {
-  const toast = useToastActions();
-  const resolveWarning = trpc.admin.inactivity.resolveManual.useMutation({
-    onSuccess: () => {
-      toast.success("Warning resolved");
-      onSuccess();
-    },
-    onError: (error) =>
-      toast.error(error.message || "Failed to resolve warning"),
-  });
+  const resolveWarning = trpc.admin.inactivity.resolveManual.useMutation(
+    useMutationToast({
+      success: "Warning resolved",
+      error: (error) => error.message || "Failed to resolve warning",
+      onSuccess: () => {
+        onSuccess();
+      },
+    }),
+  );
   const displayWarning = useStickyValue(warning);
 
   const displayName = displayWarning

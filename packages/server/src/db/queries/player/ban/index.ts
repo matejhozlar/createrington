@@ -12,6 +12,11 @@ export interface BanStatistics {
   expired: number;
 }
 
+const EXPIRED_BAN_WHERE = `ban_type = 'temporary'
+        AND unbanned = false
+        AND expires_at IS NOT NULL
+        AND expires_at <= NOW()`;
+
 /**
  * Custom queries for player_ban table
  *
@@ -183,11 +188,24 @@ export class PlayerBanQueries extends PlayerBanBaseQueries {
   async getPlayerStatistics(
     playerMinecraftUuid: string,
   ): Promise<BanStatistics> {
-    const allBans = await this.findAll({ playerMinecraftUuid });
-    const now = new Date();
+    const result = await this.runQuery<{
+      ban_type: string;
+      unbanned: boolean;
+      expired: boolean;
+      count: number;
+    }>(
+      "get player ban statistics",
+      `SELECT ban_type, unbanned,
+              (expires_at IS NOT NULL AND expires_at <= NOW()) AS expired,
+              COUNT(*)::int AS count
+       FROM ${this.table}
+       WHERE player_minecraft_uuid = $1
+       GROUP BY ban_type, unbanned, expired`,
+      [playerMinecraftUuid],
+    );
 
-    const stats = {
-      total: allBans.length,
+    const stats: BanStatistics = {
+      total: 0,
       active: 0,
       unbanned: 0,
       temporary: 0,
@@ -195,19 +213,19 @@ export class PlayerBanQueries extends PlayerBanBaseQueries {
       expired: 0,
     };
 
-    for (const ban of allBans) {
-      if (ban.unbanned) {
-        stats.unbanned++;
-      } else if (ban.expiresAt && ban.expiresAt <= now) {
-        stats.expired++;
+    for (const group of result.rows) {
+      stats.total += group.count;
+      if (group.unbanned) {
+        stats.unbanned += group.count;
+      } else if (group.expired) {
+        stats.expired += group.count;
       } else {
-        stats.active++;
+        stats.active += group.count;
       }
-
-      if (ban.banType === "temporary") {
-        stats.temporary++;
+      if (group.ban_type === "temporary") {
+        stats.temporary += group.count;
       } else {
-        stats.permanent++;
+        stats.permanent += group.count;
       }
     }
 
@@ -223,14 +241,20 @@ export class PlayerBanQueries extends PlayerBanBaseQueries {
   async getExpiredBans(): Promise<PlayerBan[]> {
     const query = `
       SELECT * FROM ${this.table}
-      WHERE ban_type = 'temporary'
-        AND unbanned = false
-        AND expires_at IS NOT NULL
-        AND expires_at <= NOW()
+      WHERE ${EXPIRED_BAN_WHERE}
       ORDER BY expires_at ASC`;
 
     const result = await this.runQuery<PlayerBan>("get expired bans", query);
     return this.mapRowsToEntities(result.rows);
+  }
+
+  /** How many temporary bans have run out without being lifted yet. */
+  async countExpiredBans(): Promise<number> {
+    const result = await this.runQuery<{ count: string }>(
+      "count expired bans",
+      `SELECT COUNT(*) AS count FROM ${this.table} WHERE ${EXPIRED_BAN_WHERE}`,
+    );
+    return Number(result.rows[0]?.count ?? 0);
   }
 
   /**
@@ -363,27 +387,5 @@ export class PlayerBanQueries extends PlayerBanBaseQueries {
     });
 
     return counts;
-  }
-
-  /**
-   * Get all player UUIDs that have active bans
-   *
-   * @returns Promise resolving to array of player UUIDs
-   */
-  async getPlayersWithActiveBans(): Promise<string[]> {
-    const query = `
-      SELECT DISTINCT player_minecraft_uuid
-      FROM ${this.table}
-      WHERE unbanned = false
-        AND (
-          expires_at IS NULL OR
-          expires_at > NOW()
-        )`;
-
-    const result = await this.runQuery<{ player_minecraft_uuid: string }>(
-      "get players with active bans",
-      query,
-    );
-    return result.rows.map((row) => row.player_minecraft_uuid);
   }
 }

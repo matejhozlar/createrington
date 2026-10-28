@@ -1,0 +1,952 @@
+import {
+  describe,
+  it,
+  expect,
+  beforeAll,
+  afterAll,
+  beforeEach,
+  vi,
+} from "vitest";
+import type { AddressInfo } from "node:net";
+import type { Server } from "node:http";
+import jwt from "jsonwebtoken";
+
+const { LAUNCHER_SECRET, WEB_SECRET, mocks } = vi.hoisted(() => ({
+  LAUNCHER_SECRET: "test-launcher-secret-please-do-not-use-in-prod",
+  WEB_SECRET: "test-web-secret-please-do-not-use-in-prod",
+  mocks: {
+    search: vi.fn(),
+    listCategories: vi.fn(),
+    getProjects: vi.fn(),
+    getProjectDetails: vi.fn(),
+    listFiles: vi.fn(),
+    getFile: vi.fn(),
+    getFiles: vi.fn(),
+    getFileChangelog: vi.fn(),
+    identifyFingerprints: vi.fn(),
+  },
+}));
+
+vi.mock("@/config", () => ({
+  default: {
+    envMode: { isProd: false, isDev: false },
+    redis: { url: null },
+    app: {
+      auth: {
+        accessToken: { secret: WEB_SECRET, expiresIn: "15m" },
+        launcherAccessToken: { secret: LAUNCHER_SECRET },
+      },
+    },
+  },
+}));
+vi.mock("@/db/utils", () => ({
+  DatabaseError: class DatabaseError extends Error {},
+  NotFoundError: class NotFoundError extends Error {},
+  ConstraintViolationError: class ConstraintViolationError extends Error {},
+  QueryError: class QueryError extends Error {},
+}));
+vi.mock("@/db", () => ({ Q: { player: { find: vi.fn() } } }));
+vi.mock("@/services/discord/oauth/oauth.service", () => ({
+  AuthRole: { ADMIN: "admin", USER: "user", UNVERIFIED: "unverified" },
+}));
+vi.mock("@/services/auth/token/access-cookie.service", () => ({
+  accessCookieService: {
+    isEnabled: () => false,
+    extractFromRequest: () => undefined,
+  },
+}));
+vi.mock("@/services/auth/admin-status/admin-status.service", () => ({
+  adminStatusService: { isAdmin: vi.fn(async () => false) },
+}));
+vi.mock("@/services/launcher/content/launcher-content.service", () => ({
+  launcherContentService: {
+    search: mocks.search,
+    listCategories: mocks.listCategories,
+    getProjects: mocks.getProjects,
+    getProjectDetails: mocks.getProjectDetails,
+    listFiles: mocks.listFiles,
+    getFile: mocks.getFile,
+    getFiles: mocks.getFiles,
+    getFileChangelog: mocks.getFileChangelog,
+    identifyFingerprints: mocks.identifyFingerprints,
+  },
+}));
+
+import express from "express";
+import { AppError, errorHandler } from "@/app/middleware/error-handler";
+import launcherContentRoutes from "@/app/features/launcher/content/launcher-content.routes";
+import { launcherJwtService } from "@/services/auth/launcher/launcher-jwt.service";
+
+const PROJECT = {
+  source: "curseforge",
+  id: "328085",
+  slug: "create",
+  kind: "mod",
+  name: "Create",
+  summary: "Aesthetic Technology that empowers the Player",
+  author: "simibubi",
+  iconUrl: "https://media.forgecdn.net/avatars/create.png",
+  url: "https://www.curseforge.com/minecraft/mc-mods/create",
+};
+
+const PROJECT_DETAILS = {
+  ...PROJECT,
+  description: "<p>Aesthetic Technology that empowers the Player</p>",
+  downloads: 213407951,
+  categories: ["Technology"],
+  links: {
+    source: "https://github.com/Creators-of-Create/Create",
+    issues: "https://github.com/Creators-of-Create/Create/issues",
+    wiki: null,
+  },
+  createdAt: "2019-07-08T15:24:07.787Z",
+  updatedAt: "2026-09-30T09:41:00.000Z",
+  gallery: ["https://media.forgecdn.net/attachments/full.png"],
+};
+
+const CATEGORY = {
+  id: "412",
+  name: "Technology",
+  slug: "technology",
+  iconUrl: "https://media.forgecdn.net/avatars/technology.png",
+  parentId: null,
+};
+
+const FILE = {
+  source: "curseforge",
+  projectId: "328085",
+  id: "7000001",
+  fileName: "create-1.21.1-6.0.10.jar",
+  size: 19123767,
+  sha1: "e".repeat(40),
+  pageUrl: "https://www.curseforge.com/minecraft/mc-mods/create/files/7000001",
+  download: {
+    servedBy: "curseforge",
+    url: "https://edge.forgecdn.net/files/7000/1/create-1.21.1-6.0.10.jar",
+  },
+  displayName: "Create 6.0.10 for mc1.21.1",
+  releaseType: "release",
+  publishedAt: "2026-04-21T22:20:00.503Z",
+  gameVersions: ["1.21.1"],
+  loaders: ["neoforge"],
+  dependencies: [],
+};
+
+const CHANGELOG = "<p>Fixed the crash on load</p>";
+
+let server: Server;
+let baseUrl: string;
+let playerNumber = 0;
+
+function sessionOf(minecraftUuid: string): Record<string, string> {
+  return {
+    Authorization: `Bearer ${launcherJwtService.generate({
+      minecraftUuid,
+      minecraftUsername: "Alice_MC",
+      familyId: "0f6a7b1c-5d4e-4f3a-9b2c-1d0e9f8a7b6c",
+    })}`,
+  };
+}
+
+function newSession(): Record<string, string> {
+  playerNumber += 1;
+  return sessionOf(
+    `069a79f4-44e9-4726-a5be-${String(playerNumber).padStart(12, "0")}`,
+  );
+}
+
+async function get(path: string, headers: Record<string, string> = {}) {
+  return await fetch(`${baseUrl}/api/launcher/content${path}`, { headers });
+}
+
+async function postProjects(
+  body: unknown,
+  headers: Record<string, string> = {},
+) {
+  return await fetch(`${baseUrl}/api/launcher/content/projects`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...headers },
+    body: JSON.stringify(body),
+  });
+}
+
+async function postFiles(body: unknown, headers: Record<string, string> = {}) {
+  return await fetch(`${baseUrl}/api/launcher/content/files`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...headers },
+    body: JSON.stringify(body),
+  });
+}
+
+async function postFingerprints(
+  body: unknown,
+  headers: Record<string, string> = {},
+) {
+  return await fetch(baseUrl + "/api/launcher/content/fingerprints", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...headers },
+    body: JSON.stringify(body),
+  });
+}
+
+beforeAll(async () => {
+  const app = express();
+  app.use(express.json());
+  app.use("/api/launcher/content", launcherContentRoutes);
+  app.use(errorHandler);
+
+  await new Promise<void>((done) => {
+    server = app.listen(0, "127.0.0.1", () => done());
+  });
+  baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+});
+
+afterAll(async () => {
+  await new Promise<void>((done) => server.close(() => done()));
+});
+
+beforeEach(() => {
+  vi.resetAllMocks();
+  mocks.search.mockResolvedValue({
+    projects: [{ ...PROJECT, downloads: 213407951 }],
+    total: 45,
+  });
+  mocks.listCategories.mockResolvedValue([CATEGORY]);
+  mocks.getProjects.mockResolvedValue({
+    projects: [PROJECT],
+    unknownProjectIds: ["999999999"],
+  });
+  mocks.getProjectDetails.mockResolvedValue(PROJECT_DETAILS);
+  mocks.listFiles.mockResolvedValue({ files: [FILE], total: 11 });
+  mocks.getFile.mockResolvedValue(FILE);
+  mocks.getFiles.mockResolvedValue({
+    files: [FILE],
+    unknownFileIds: ["999999999"],
+  });
+  mocks.getFileChangelog.mockResolvedValue(CHANGELOG);
+  mocks.identifyFingerprints.mockResolvedValue({
+    matches: [{ fingerprint: 522093599, project: PROJECT, file: FILE }],
+    unmatchedFingerprints: [1],
+  });
+});
+
+describe("GET /api/launcher/content/search", () => {
+  it("searches mods on the first page by default", async () => {
+    const res = await get("/search", newSession());
+
+    expect(res.status).toBe(200);
+    expect(mocks.search).toHaveBeenCalledWith({
+      query: "",
+      kind: "mod",
+      page: 0,
+      limit: 20,
+    });
+    expect(await res.json()).toEqual({
+      success: true,
+      data: {
+        projects: [{ ...PROJECT, downloads: 213407951 }],
+        pagination: { page: 0, limit: 20, total: 45, totalPages: 3 },
+      },
+    });
+  });
+
+  it("passes the text, kind, version, loader and page on", async () => {
+    await get(
+      "/search?query=%20create%20&kind=shader&minecraftVersion=1.21.1&loader=neoforge&page=2&limit=10",
+      newSession(),
+    );
+
+    expect(mocks.search).toHaveBeenCalledWith({
+      query: "create",
+      kind: "shader",
+      minecraftVersion: "1.21.1",
+      loader: "neoforge",
+      page: 2,
+      limit: 10,
+    });
+  });
+
+  it("passes a modpack search on with its loader and version", async () => {
+    const res = await get(
+      "/search?kind=modpack&loader=neoforge&minecraftVersion=1.21.1",
+      newSession(),
+    );
+
+    expect(res.status).toBe(200);
+    expect(mocks.search.mock.calls[0]?.[0]).toMatchObject({
+      kind: "modpack",
+      loader: "neoforge",
+      minecraftVersion: "1.21.1",
+    });
+  });
+
+  it("passes one category and the sort order on", async () => {
+    await get("/search?categoryId=412&sort=newest", newSession());
+
+    expect(mocks.search).toHaveBeenCalledWith({
+      query: "",
+      kind: "mod",
+      categoryIds: [412],
+      sort: "newest",
+      page: 0,
+      limit: 20,
+    });
+  });
+
+  it("passes several categories on", async () => {
+    await get("/search?categoryId=412&categoryId=420", newSession());
+
+    expect(mocks.search.mock.calls[0]?.[0]).toMatchObject({
+      categoryIds: [412, 420],
+    });
+  });
+
+  it.each(["relevance", "downloads", "newest", "updated"])(
+    "takes the sort order %s",
+    async (sort) => {
+      const res = await get(`/search?sort=${sort}`, newSession());
+
+      expect(res.status).toBe(200);
+      expect(mocks.search.mock.calls[0]?.[0]).toMatchObject({ sort });
+    },
+  );
+
+  it.each([
+    ["an unknown sort order", "?sort=name"],
+    ["a category that is not a number", "?categoryId=technology"],
+    ["a category of zero", "?categoryId=0"],
+    [
+      "more categories than CurseForge takes",
+      `?${Array.from({ length: 11 }, (_, index) => `categoryId=${index + 1}`).join("&")}`,
+    ],
+    ["an unknown kind", "?kind=datapack"],
+    ["an unknown loader", "?loader=rift"],
+    ["a version that is not a release", "?minecraftVersion=latest"],
+    ["a text that is too long", `?query=${"a".repeat(101)}`],
+    ["a negative page", "?page=-1"],
+    ["a page size of zero", "?limit=0"],
+    ["a page size above the cap", "?limit=51"],
+    ["a page past what CurseForge lets a search reach", "?page=500&limit=20"],
+  ])("refuses %s", async (_label, query) => {
+    const res = await get(`/search${query}`, newSession());
+
+    expect(res.status).toBe(400);
+    expect(mocks.search).not.toHaveBeenCalled();
+  });
+
+  it("answers the last page CurseForge lets a search reach", async () => {
+    const res = await get("/search?page=499&limit=20", newSession());
+
+    expect(res.status).toBe(200);
+  });
+
+  it("answers 401 without a launcher session", async () => {
+    const res = await get("/search");
+
+    expect(res.status).toBe(401);
+    expect((await res.json()).error.code).toBe("AUTH_REQUIRED");
+    expect(mocks.search).not.toHaveBeenCalled();
+  });
+
+  it("answers 401 to a website token", async () => {
+    const webToken = jwt.sign({ discordId: "1", role: "admin" }, WEB_SECRET, {
+      expiresIn: "15m",
+    });
+
+    const res = await get("/search", { Authorization: `Bearer ${webToken}` });
+
+    expect(res.status).toBe(401);
+    expect((await res.json()).error.code).toBe("INVALID_TOKEN");
+    expect(mocks.search).not.toHaveBeenCalled();
+  });
+
+  it("passes the service's error code on when CurseForge cannot be asked", async () => {
+    mocks.search.mockRejectedValue(
+      new AppError(
+        "CurseForge cannot be asked right now",
+        503,
+        true,
+        undefined,
+        {
+          code: "CONTENT_UNAVAILABLE",
+        },
+      ),
+    );
+
+    const res = await get("/search", newSession());
+
+    expect(res.status).toBe(503);
+    expect((await res.json()).error.code).toBe("CONTENT_UNAVAILABLE");
+  });
+
+  it("passes the service's Retry-After on when the CurseForge budget is spent", async () => {
+    mocks.search.mockRejectedValue(
+      new AppError(
+        "This server has asked CurseForge enough this minute, try again in 7 s",
+        503,
+        true,
+        undefined,
+        {
+          code: "CONTENT_UNAVAILABLE",
+          headers: { "Retry-After": "7" },
+        },
+      ),
+    );
+
+    const res = await get("/search", newSession());
+
+    expect(res.status).toBe(503);
+    expect(res.headers.get("retry-after")).toBe("7");
+    expect((await res.json()).error.code).toBe("CONTENT_UNAVAILABLE");
+  });
+});
+
+describe("GET /api/launcher/content/categories", () => {
+  it("lists the categories of mods by default", async () => {
+    const res = await get("/categories", newSession());
+
+    expect(res.status).toBe(200);
+    expect(mocks.listCategories).toHaveBeenCalledWith("mod");
+    expect(await res.json()).toEqual({
+      success: true,
+      data: { categories: [CATEGORY] },
+    });
+  });
+
+  it.each(["mod", "resourcepack", "shader", "modpack"])(
+    "lists the categories of the kind %s",
+    async (kind) => {
+      await get(`/categories?kind=${kind}`, newSession());
+
+      expect(mocks.listCategories).toHaveBeenCalledWith(kind);
+    },
+  );
+
+  it("refuses an unknown kind", async () => {
+    const res = await get("/categories?kind=datapack", newSession());
+
+    expect(res.status).toBe(400);
+    expect(mocks.listCategories).not.toHaveBeenCalled();
+  });
+
+  it("passes the service's error code on when CurseForge cannot be asked", async () => {
+    mocks.listCategories.mockRejectedValue(
+      new AppError(
+        "CurseForge cannot be asked right now",
+        503,
+        true,
+        undefined,
+        {
+          code: "CONTENT_UNAVAILABLE",
+        },
+      ),
+    );
+
+    const res = await get("/categories", newSession());
+
+    expect(res.status).toBe(503);
+    expect((await res.json()).error.code).toBe("CONTENT_UNAVAILABLE");
+  });
+
+  it("answers 401 without a launcher session", async () => {
+    const res = await get("/categories");
+
+    expect(res.status).toBe(401);
+    expect(mocks.listCategories).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/launcher/content/projects", () => {
+  it("looks the projects up by their ids", async () => {
+    const res = await postProjects(
+      { projectIds: ["328085", "999999999"] },
+      newSession(),
+    );
+
+    expect(res.status).toBe(200);
+    expect(mocks.getProjects).toHaveBeenCalledWith([328085, 999999999]);
+    expect(await res.json()).toEqual({
+      success: true,
+      data: { projects: [PROJECT], unknownProjectIds: ["999999999"] },
+    });
+  });
+
+  it.each([
+    ["no ids", {}],
+    ["an empty list", { projectIds: [] }],
+    ["an id that is a number", { projectIds: [328085] }],
+    ["an id that is not a CurseForge id", { projectIds: ["AANobbMI"] }],
+    ["an id of zero", { projectIds: ["0"] }],
+    ["an id too large for CurseForge", { projectIds: ["2147483648"] }],
+    [
+      "more ids than one request may carry",
+      { projectIds: Array(101).fill("1") },
+    ],
+  ])("refuses %s", async (_label, body) => {
+    const res = await postProjects(body, newSession());
+
+    expect(res.status).toBe(400);
+    expect(mocks.getProjects).not.toHaveBeenCalled();
+  });
+
+  it("answers 401 without a launcher session", async () => {
+    const res = await postProjects({ projectIds: ["328085"] });
+
+    expect(res.status).toBe(401);
+    expect(mocks.getProjects).not.toHaveBeenCalled();
+  });
+});
+
+describe("GET /api/launcher/content/projects/:id", () => {
+  it("answers one project in full", async () => {
+    const res = await get("/projects/328085", newSession());
+
+    expect(res.status).toBe(200);
+    expect(mocks.getProjectDetails).toHaveBeenCalledWith(328085);
+    expect(await res.json()).toEqual({
+      success: true,
+      data: { project: PROJECT_DETAILS },
+    });
+  });
+
+  it.each([
+    ["a project id that is not a number", "/projects/create"],
+    ["a project id of zero", "/projects/0"],
+    ["a project id too large for CurseForge", "/projects/2147483648"],
+  ])("refuses %s", async (_label, path) => {
+    const res = await get(path, newSession());
+
+    expect(res.status).toBe(400);
+    expect(mocks.getProjectDetails).not.toHaveBeenCalled();
+  });
+
+  it("answers 404 with the service's code for an unknown project", async () => {
+    mocks.getProjectDetails.mockRejectedValue(
+      new AppError("no such project", 404, true, undefined, {
+        code: "PROJECT_NOT_FOUND",
+      }),
+    );
+
+    const res = await get("/projects/999999999", newSession());
+
+    expect(res.status).toBe(404);
+    expect(await res.json()).toMatchObject({
+      success: false,
+      error: { statusCode: 404, code: "PROJECT_NOT_FOUND" },
+    });
+  });
+
+  it("passes the service's error code on when CurseForge cannot be asked", async () => {
+    mocks.getProjectDetails.mockRejectedValue(
+      new AppError(
+        "CurseForge cannot be asked right now",
+        503,
+        true,
+        undefined,
+        { code: "CONTENT_UNAVAILABLE" },
+      ),
+    );
+
+    const res = await get("/projects/328085", newSession());
+
+    expect(res.status).toBe(503);
+    expect((await res.json()).error.code).toBe("CONTENT_UNAVAILABLE");
+  });
+
+  it("answers 401 without a launcher session", async () => {
+    const res = await get("/projects/328085");
+
+    expect(res.status).toBe(401);
+    expect(mocks.getProjectDetails).not.toHaveBeenCalled();
+  });
+
+  it("leaves the file list of a project to its own route", async () => {
+    const res = await get("/projects/328085/files", newSession());
+
+    expect(res.status).toBe(200);
+    expect(mocks.listFiles).toHaveBeenCalled();
+    expect(mocks.getProjectDetails).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/launcher/content/fingerprints", () => {
+  it("identifies the files behind the fingerprints", async () => {
+    const res = await postFingerprints(
+      { fingerprints: [522093599, 1] },
+      newSession(),
+    );
+
+    expect(res.status).toBe(200);
+    expect(mocks.identifyFingerprints).toHaveBeenCalledWith([522093599, 1]);
+    expect(await res.json()).toEqual({
+      success: true,
+      data: {
+        matches: [{ fingerprint: 522093599, project: PROJECT, file: FILE }],
+        unmatchedFingerprints: [1],
+      },
+    });
+  });
+
+  it("takes the smallest and the largest fingerprint, and 1000 of them", async () => {
+    const few = await postFingerprints(
+      { fingerprints: [0, 4294967295] },
+      newSession(),
+    );
+    const many = await postFingerprints(
+      { fingerprints: Array.from({ length: 1000 }, (_, index) => index) },
+      newSession(),
+    );
+
+    expect(few.status).toBe(200);
+    expect(many.status).toBe(200);
+  });
+
+  it.each([
+    ["no fingerprints", {}],
+    ["an empty list", { fingerprints: [] }],
+    ["a fingerprint that is a string", { fingerprints: ["522093599"] }],
+    ["a fingerprint that is not whole", { fingerprints: [1.5] }],
+    ["a negative fingerprint", { fingerprints: [-1] }],
+    ["a fingerprint above 32 bits", { fingerprints: [4294967296] }],
+    [
+      "more fingerprints than one request may carry",
+      { fingerprints: Array(1001).fill(1) },
+    ],
+  ])("refuses %s", async (_label, body) => {
+    const res = await postFingerprints(body, newSession());
+
+    expect(res.status).toBe(400);
+    expect(mocks.identifyFingerprints).not.toHaveBeenCalled();
+  });
+
+  it("passes the service's error code on when CurseForge cannot be asked", async () => {
+    mocks.identifyFingerprints.mockRejectedValue(
+      new AppError(
+        "CurseForge cannot be asked right now",
+        503,
+        true,
+        undefined,
+        { code: "CONTENT_UNAVAILABLE" },
+      ),
+    );
+
+    const res = await postFingerprints({ fingerprints: [1] }, newSession());
+
+    expect(res.status).toBe(503);
+    expect((await res.json()).error.code).toBe("CONTENT_UNAVAILABLE");
+  });
+
+  it("answers 401 without a launcher session", async () => {
+    const res = await postFingerprints({ fingerprints: [1] });
+
+    expect(res.status).toBe(401);
+    expect(mocks.identifyFingerprints).not.toHaveBeenCalled();
+  });
+});
+
+describe("GET /api/launcher/content/projects/:id/files", () => {
+  it("lists the first page of a project's files by default", async () => {
+    const res = await get("/projects/328085/files", newSession());
+
+    expect(res.status).toBe(200);
+    expect(mocks.listFiles).toHaveBeenCalledWith(328085, {
+      page: 0,
+      limit: 20,
+    });
+    expect(await res.json()).toEqual({
+      success: true,
+      data: {
+        files: [FILE],
+        pagination: { page: 0, limit: 20, total: 11, totalPages: 1 },
+      },
+    });
+  });
+
+  it("passes the version, loader and page on", async () => {
+    await get(
+      "/projects/328085/files?minecraftVersion=1.21.1&loader=fabric&page=1&limit=5",
+      newSession(),
+    );
+
+    expect(mocks.listFiles).toHaveBeenCalledWith(328085, {
+      minecraftVersion: "1.21.1",
+      loader: "fabric",
+      page: 1,
+      limit: 5,
+    });
+  });
+
+  it.each([
+    ["a project id that is not a number", "/projects/create/files"],
+    ["an unknown loader", "/projects/328085/files?loader=rift"],
+    ["a page size above the cap", "/projects/328085/files?limit=51"],
+  ])("refuses %s", async (_label, path) => {
+    const res = await get(path, newSession());
+
+    expect(res.status).toBe(400);
+    expect(mocks.listFiles).not.toHaveBeenCalled();
+  });
+
+  it("answers 404 with the service's code for an unknown project", async () => {
+    mocks.listFiles.mockRejectedValue(
+      new AppError("no such project", 404, true, undefined, {
+        code: "PROJECT_NOT_FOUND",
+      }),
+    );
+
+    const res = await get("/projects/999999999/files", newSession());
+
+    expect(res.status).toBe(404);
+    expect((await res.json()).error.code).toBe("PROJECT_NOT_FOUND");
+  });
+
+  it("answers 401 without a launcher session", async () => {
+    const res = await get("/projects/328085/files");
+
+    expect(res.status).toBe(401);
+    expect(mocks.listFiles).not.toHaveBeenCalled();
+  });
+});
+
+describe("GET /api/launcher/content/files/:id", () => {
+  it("answers one file", async () => {
+    const res = await get("/files/7000001", newSession());
+
+    expect(res.status).toBe(200);
+    expect(mocks.getFile).toHaveBeenCalledWith(7000001);
+    expect(await res.json()).toEqual({ success: true, data: { file: FILE } });
+  });
+
+  it("refuses a file id that is not a number", async () => {
+    const res = await get("/files/latest", newSession());
+
+    expect(res.status).toBe(400);
+    expect(mocks.getFile).not.toHaveBeenCalled();
+  });
+
+  it("answers 404 with the service's code for an unknown file", async () => {
+    mocks.getFile.mockRejectedValue(
+      new AppError("no such file", 404, true, undefined, {
+        code: "FILE_NOT_FOUND",
+      }),
+    );
+
+    const res = await get("/files/999999999", newSession());
+
+    expect(res.status).toBe(404);
+    expect((await res.json()).error.code).toBe("FILE_NOT_FOUND");
+  });
+
+  it("answers 401 without a launcher session", async () => {
+    const res = await get("/files/7000001");
+
+    expect(res.status).toBe(401);
+    expect(mocks.getFile).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/launcher/content/files", () => {
+  it("looks the files up by their ids", async () => {
+    const res = await postFiles(
+      { fileIds: ["7000001", "999999999"] },
+      newSession(),
+    );
+
+    expect(res.status).toBe(200);
+    expect(mocks.getFiles).toHaveBeenCalledWith([7000001, 999999999]);
+    expect(await res.json()).toEqual({
+      success: true,
+      data: { files: [FILE], unknownFileIds: ["999999999"] },
+    });
+  });
+
+  it("takes as many ids as a CurseForge manifest may name", async () => {
+    const fileIds = Array.from({ length: 1000 }, (_, index) =>
+      String(7000001 + index),
+    );
+
+    const res = await postFiles({ fileIds }, newSession());
+
+    expect(res.status).toBe(200);
+    expect(mocks.getFiles.mock.calls[0]?.[0]).toHaveLength(1000);
+  });
+
+  it.each([
+    ["no ids", {}],
+    ["an empty list", { fileIds: [] }],
+    ["an id that is a number", { fileIds: [7000001] }],
+    ["an id that is not a CurseForge id", { fileIds: ["AANobbMI"] }],
+    ["an id of zero", { fileIds: ["0"] }],
+    ["an id too large for CurseForge", { fileIds: ["2147483648"] }],
+    ["more ids than one request may carry", { fileIds: Array(1001).fill("1") }],
+  ])("refuses %s", async (_label, body) => {
+    const res = await postFiles(body, newSession());
+
+    expect(res.status).toBe(400);
+    expect(mocks.getFiles).not.toHaveBeenCalled();
+  });
+
+  it("passes the service's error code on when CurseForge cannot be asked", async () => {
+    mocks.getFiles.mockRejectedValue(
+      new AppError(
+        "CurseForge cannot be asked right now",
+        503,
+        true,
+        undefined,
+        {
+          code: "CONTENT_UNAVAILABLE",
+        },
+      ),
+    );
+
+    const res = await postFiles({ fileIds: ["7000001"] }, newSession());
+
+    expect(res.status).toBe(503);
+    expect((await res.json()).error.code).toBe("CONTENT_UNAVAILABLE");
+  });
+
+  it("answers 401 without a launcher session", async () => {
+    const res = await postFiles({ fileIds: ["7000001"] });
+
+    expect(res.status).toBe(401);
+    expect(mocks.getFiles).not.toHaveBeenCalled();
+  });
+});
+
+describe("GET /api/launcher/content/files/:id/changelog", () => {
+  it("answers the changelog of one file, and not the file", async () => {
+    const res = await get("/files/7000001/changelog", newSession());
+
+    expect(res.status).toBe(200);
+    expect(mocks.getFileChangelog).toHaveBeenCalledWith(7000001, undefined);
+    expect(mocks.getFile).not.toHaveBeenCalled();
+    expect(await res.json()).toEqual({
+      success: true,
+      data: { changelog: CHANGELOG },
+    });
+  });
+
+  it("passes the project on when the launcher names it", async () => {
+    const res = await get(
+      "/files/7000001/changelog?projectId=328085",
+      newSession(),
+    );
+
+    expect(res.status).toBe(200);
+    expect(mocks.getFileChangelog).toHaveBeenCalledWith(7000001, 328085);
+    expect(await res.json()).toEqual({
+      success: true,
+      data: { changelog: CHANGELOG },
+    });
+  });
+
+  it.each([
+    ["a project id that is not a number", "?projectId=create"],
+    ["a project id of zero", "?projectId=0"],
+    ["a project id too large for CurseForge", "?projectId=2147483648"],
+    ["two project ids", "?projectId=328085&projectId=238222"],
+  ])("refuses %s", async (_label, query) => {
+    const res = await get(`/files/7000001/changelog${query}`, newSession());
+
+    expect(res.status).toBe(400);
+    expect(mocks.getFileChangelog).not.toHaveBeenCalled();
+  });
+
+  it("answers null for a file without a changelog", async () => {
+    mocks.getFileChangelog.mockResolvedValue(null);
+
+    const res = await get("/files/7000001/changelog", newSession());
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({
+      success: true,
+      data: { changelog: null },
+    });
+  });
+
+  it("leaves the changelog to its own route when the file is asked for", async () => {
+    const res = await get("/files/7000001", newSession());
+
+    expect(await res.json()).toEqual({ success: true, data: { file: FILE } });
+    expect(mocks.getFileChangelog).not.toHaveBeenCalled();
+  });
+
+  it("refuses a file id that is not a number", async () => {
+    const res = await get("/files/latest/changelog", newSession());
+
+    expect(res.status).toBe(400);
+    expect(mocks.getFileChangelog).not.toHaveBeenCalled();
+  });
+
+  it("answers 404 with the service's code for an unknown file", async () => {
+    mocks.getFileChangelog.mockRejectedValue(
+      new AppError("no such file", 404, true, undefined, {
+        code: "FILE_NOT_FOUND",
+      }),
+    );
+
+    const res = await get("/files/999999999/changelog", newSession());
+
+    expect(res.status).toBe(404);
+    expect(await res.json()).toMatchObject({
+      success: false,
+      error: { statusCode: 404, code: "FILE_NOT_FOUND" },
+    });
+  });
+
+  it("passes the service's error code on when CurseForge cannot be asked", async () => {
+    mocks.getFileChangelog.mockRejectedValue(
+      new AppError(
+        "CurseForge cannot be asked right now",
+        503,
+        true,
+        undefined,
+        { code: "CONTENT_UNAVAILABLE" },
+      ),
+    );
+
+    const res = await get("/files/7000001/changelog", newSession());
+
+    expect(res.status).toBe(503);
+    expect((await res.json()).error.code).toBe("CONTENT_UNAVAILABLE");
+  });
+
+  it("answers 401 without a launcher session", async () => {
+    const res = await get("/files/7000001/changelog");
+
+    expect(res.status).toBe(401);
+    expect(mocks.getFileChangelog).not.toHaveBeenCalled();
+  });
+});
+
+describe("the content rate limit", () => {
+  it("slows one player down after 60 requests in a minute and leaves another alone", async () => {
+    const busy = newSession();
+    const other = newSession();
+
+    const statuses: number[] = [];
+    for (let request = 0; request < 61; request += 1) {
+      statuses.push((await get("/files/7000001", busy)).status);
+    }
+
+    expect(statuses.slice(0, 60).every((status) => status === 200)).toBe(true);
+    expect(statuses[60]).toBe(429);
+    expect((await get("/files/7000001", other)).status).toBe(200);
+  });
+
+  it("lets one player look files up in batches 10 times in 15 minutes, and leaves their other lookups and another player alone", async () => {
+    const busy = newSession();
+    const other = newSession();
+
+    const statuses: number[] = [];
+    for (let request = 0; request < 11; request += 1) {
+      statuses.push((await postFiles({ fileIds: ["7000001"] }, busy)).status);
+    }
+
+    expect(statuses.slice(0, 10).every((status) => status === 200)).toBe(true);
+    expect(statuses[10]).toBe(429);
+    expect(mocks.getFiles).toHaveBeenCalledTimes(10);
+    expect((await get("/files/7000001", busy)).status).toBe(200);
+    expect((await postFiles({ fileIds: ["7000001"] }, other)).status).toBe(200);
+  });
+});

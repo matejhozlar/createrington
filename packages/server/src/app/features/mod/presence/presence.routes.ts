@@ -1,6 +1,12 @@
-import { customRoute, verifyModJWT, verifyServerIP } from "@/app/middleware";
+import {
+  customRoute,
+  validate,
+  verifyModJWT,
+  verifyServerIP,
+} from "@/app/middleware";
 import { Router } from "express";
 import { PresenceController } from "./presence.controller";
+import { HeartbeatBodySchema, PresenceBodySchema } from "./presence.schemas";
 
 const router = Router();
 
@@ -33,7 +39,7 @@ const router = Router();
 router.post(
   "/",
   ...customRoute(
-    [verifyServerIP, verifyModJWT],
+    [verifyServerIP, verifyModJWT, validate({ body: PresenceBodySchema })],
     PresenceController.updatePresence,
   ),
 );
@@ -57,7 +63,10 @@ router.post(
  */
 router.post(
   "/heartbeat",
-  ...customRoute([verifyServerIP, verifyModJWT], PresenceController.heartbeat),
+  ...customRoute(
+    [verifyServerIP, verifyModJWT, validate({ body: HeartbeatBodySchema })],
+    PresenceController.heartbeat,
+  ),
 );
 
 export default router;

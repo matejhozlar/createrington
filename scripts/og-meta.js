@@ -28,6 +28,12 @@ export const OG_ROUTES = {
     imageAlt:
       "A wall of pinned Createrington screenshots with two players looking up at them.",
   },
+  "/team": {
+    title: "Meet the people behind the server.",
+    description:
+      "The owner, developers and admins who keep Createrington running.",
+    imageAlt: "The seven members of the Createrington team in a group shot.",
+  },
   "/workshop": {
     title: "What ships next? You decide.",
     description:

@@ -377,42 +377,58 @@ function toEntry(entry: ModpackReleaseDiffEntry): ChangelogEntry {
   };
 }
 
-/** Presentation-ready changelog of a release diff: labels, CurseForge links, download link and publish notes. */
+/** Presentation-ready changelogs of release diffs of one modpack, in the order given: labels, CurseForge links, download link and publish notes, from one project read and one publish read for the whole list. */
+export async function toChangelogInputs(
+  modpack: Modpack,
+  diffs: ModpackReleaseDiff[],
+): Promise<ChangelogInput[]> {
+  if (diffs.length === 0) return [];
+  const project = modpack.curseforgeProjectId
+    ? await Q.curseforge.project.find({ id: modpack.curseforgeProjectId })
+    : null;
+  const publishes = await Q.modpack.publish.findAll({
+    modpackId: modpack.id,
+    clientFileId: {
+      $in: diffs.map((diff) => diff.release.curseforgeFileId),
+    },
+  });
+  const notesOf = new Map(
+    publishes.map((publish) => [publish.clientFileId, publish.notes]),
+  );
+  const packUrl = httpUrl(project?.websiteUrl);
+  return diffs.map(
+    ({ release, previous, added, updated, removed, unchanged }) => ({
+      release: {
+        title:
+          release.displayName ??
+          [modpack.name, release.version]
+            .filter((part): part is string => part !== null)
+            .join(" "),
+        label: releaseLabel(release),
+        titleImageUrl: httpUrl(modpack.titleImageUrl),
+        minecraftVersion: release.minecraftVersion,
+        modLoader: loaderLabel(release.modLoader),
+        modCount: release.modCount,
+        publishedAt: release.publishedAt,
+        downloadUrl: packUrl
+          ? httpUrl(`${packUrl}/files/${release.curseforgeFileId}`)
+          : null,
+      },
+      previousVersion: previous ? releaseLabel(previous) : null,
+      added: added.map(toEntry),
+      updated: updated.map(toEntry),
+      removed: removed.map(toEntry),
+      unchanged,
+      notes: notesOf.get(release.curseforgeFileId) ?? null,
+    }),
+  );
+}
+
+/** Presentation-ready changelog of one release diff, see `toChangelogInputs`. */
 export async function toChangelogInput(
   modpack: Modpack,
   diff: ModpackReleaseDiff,
 ): Promise<ChangelogInput> {
-  const { release } = diff;
-  const project = modpack.curseforgeProjectId
-    ? await Q.curseforge.project.find({ id: modpack.curseforgeProjectId })
-    : null;
-  const publish = await Q.modpack.publish.find({
-    modpackId: modpack.id,
-    clientFileId: release.curseforgeFileId,
-  });
-  const packUrl = httpUrl(project?.websiteUrl);
-  return {
-    release: {
-      title:
-        release.displayName ??
-        [modpack.name, release.version]
-          .filter((part): part is string => part !== null)
-          .join(" "),
-      label: releaseLabel(release),
-      titleImageUrl: httpUrl(modpack.titleImageUrl),
-      minecraftVersion: release.minecraftVersion,
-      modLoader: loaderLabel(release.modLoader),
-      modCount: release.modCount,
-      publishedAt: release.publishedAt,
-      downloadUrl: packUrl
-        ? httpUrl(`${packUrl}/files/${release.curseforgeFileId}`)
-        : null,
-    },
-    previousVersion: diff.previous ? releaseLabel(diff.previous) : null,
-    added: diff.added.map(toEntry),
-    updated: diff.updated.map(toEntry),
-    removed: diff.removed.map(toEntry),
-    unchanged: diff.unchanged,
-    notes: publish?.notes ?? null,
-  };
+  const [input] = await toChangelogInputs(modpack, [diff]);
+  return input;
 }

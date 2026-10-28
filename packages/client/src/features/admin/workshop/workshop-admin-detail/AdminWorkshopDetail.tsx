@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import { PackagePlus, Settings2 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
-import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -70,7 +70,6 @@ const SKIP_CONFIRM_SESSION_KEY = "workshop-admin-skip-confirms";
 export function AdminWorkshopDetail() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
-  const toast = useToastActions();
   const utils = trpc.useUtils();
 
   const workshopsQuery = trpc.admin.workshops.list.useQuery();
@@ -180,29 +179,33 @@ export function AdminWorkshopDetail() {
       utils.user.workshops.getPack.invalidate({ workshopId }),
     ]);
 
-  const reviewMutation = trpc.admin.workshops.reviewMod.useMutation({
-    onSuccess: (mod, variables) => {
-      const toasts =
-        variables.action === "send_back" ? SEND_BACK_TOASTS : REVIEW_TOASTS;
-      toast.success(toasts[mod.status] ?? "Mod updated");
-      setRejectTarget(null);
-      invalidate();
-    },
-    // A refused review means the grid allowed a click the server would not,
-    // so refetch to bring the stale rows up to date
-    onError: (err) => {
-      toast.error(err.message);
-      invalidate();
-    },
-  });
+  const reviewMutation = trpc.admin.workshops.reviewMod.useMutation(
+    useMutationToast({
+      success: (mod, variables) => {
+        const toasts =
+          variables.action === "send_back" ? SEND_BACK_TOASTS : REVIEW_TOASTS;
+        return toasts[mod.status] ?? "Mod updated";
+      },
+      onSuccess: () => {
+        setRejectTarget(null);
+        invalidate();
+      },
+      // A refused review means the grid allowed a click the server would not,
+      // so refetch to bring the stale rows up to date
+      onError: () => {
+        invalidate();
+      },
+    }),
+  );
 
-  const addProjectMutation = trpc.admin.workshops.addMods.useMutation({
-    onSuccess: () => {
-      toast.success("Added to the workshop as approved");
-      invalidate();
-    },
-    onError: (err) => toast.error(err.message),
-  });
+  const addProjectMutation = trpc.admin.workshops.addMods.useMutation(
+    useMutationToast({
+      success: "Added to the workshop as approved",
+      onSuccess: () => {
+        invalidate();
+      },
+    }),
+  );
 
   const clearEnvPending = (projectId: number, environment: ModEnvironment) => {
     setEnvPending((current) => {
@@ -214,48 +217,50 @@ export function AdminWorkshopDetail() {
   };
 
   const environmentMutation =
-    trpc.admin.workshops.setProjectEnvironment.useMutation({
-      onSuccess: async (project, variables) => {
-        toast.success(
+    trpc.admin.workshops.setProjectEnvironment.useMutation(
+      useMutationToast({
+        success: (project) =>
           project.environment === "unspecified"
             ? "Environment flag cleared"
             : `Flagged as ${MOD_ENVIRONMENT_LABELS[project.environment]}`,
-        );
-        setLingeringEnvItems((current) =>
-          current.map((lingering) =>
-            lingering.item.curseforgeProjectId === variables.curseforgeProjectId
-              ? { ...lingering, environment: project.environment }
-              : lingering,
-          ),
-        );
-        await invalidate();
-        clearEnvPending(variables.curseforgeProjectId, variables.environment);
-      },
-      // A failed re-flag falls back to the value the server still holds, so a
-      // row that already resolved once keeps its place instead of vanishing
-      onError: (err, variables) => {
-        clearEnvPending(variables.curseforgeProjectId, variables.environment);
-        setLingeringEnvItems((current) =>
-          current.filter(
-            (lingering) =>
-              lingering.item.curseforgeProjectId !==
-                variables.curseforgeProjectId ||
-              lingering.environment !== "unspecified",
-          ),
-        );
-        toast.error(err.message);
-      },
-    });
+        onSuccess: async (project, variables) => {
+          setLingeringEnvItems((current) =>
+            current.map((lingering) =>
+              lingering.item.curseforgeProjectId ===
+              variables.curseforgeProjectId
+                ? { ...lingering, environment: project.environment }
+                : lingering,
+            ),
+          );
+          await invalidate();
+          clearEnvPending(variables.curseforgeProjectId, variables.environment);
+        },
+        // A failed re-flag falls back to the value the server still holds, so a
+        // row that already resolved once keeps its place instead of vanishing
+        onError: (_err, variables) => {
+          clearEnvPending(variables.curseforgeProjectId, variables.environment);
+          setLingeringEnvItems((current) =>
+            current.filter(
+              (lingering) =>
+                lingering.item.curseforgeProjectId !==
+                  variables.curseforgeProjectId ||
+                lingering.environment !== "unspecified",
+            ),
+          );
+        },
+      }),
+    );
 
-  const updateWorkshopMutation = trpc.admin.workshops.update.useMutation({
-    onSuccess: () => {
-      toast.success("Workshop updated");
-      utils.admin.workshops.list.invalidate();
-      utils.user.workshops.list.invalidate();
-      utils.user.workshops.get.invalidate();
-    },
-    onError: (err) => toast.error(err.message),
-  });
+  const updateWorkshopMutation = trpc.admin.workshops.update.useMutation(
+    useMutationToast({
+      success: "Workshop updated",
+      onSuccess: () => {
+        utils.admin.workshops.list.invalidate();
+        utils.user.workshops.list.invalidate();
+        utils.user.workshops.get.invalidate();
+      },
+    }),
+  );
 
   const mods = useMemo(() => modsQuery.data ?? [], [modsQuery.data]);
 

@@ -47,3 +47,41 @@ export const authSession = pgTable(
     index("idx_auth_session_family_id").on(table.familyId),
   ],
 );
+
+// --- auth_launcher_session ---
+
+export const authLauncherSession = pgTable(
+  "auth_launcher_session",
+  {
+    id: serial("id").primaryKey(),
+    playerMinecraftUuid: uuid("player_minecraft_uuid")
+      .notNull()
+      .references(() => player.minecraftUuid, {
+        onUpdate: "cascade",
+        onDelete: "cascade",
+      }),
+    tokenHash: text("token_hash").notNull().unique(),
+    familyId: uuid("family_id")
+      .notNull()
+      .default(sql`gen_random_uuid()`),
+    ipAddress: inet("ip_address"),
+    userAgent: text("user_agent"),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("idx_auth_launcher_session_player_uuid").on(
+      table.playerMinecraftUuid,
+    ),
+    index("idx_auth_launcher_session_expires_at")
+      .on(table.expiresAt)
+      .where(sql`revoked_at IS NULL`),
+    index("idx_auth_launcher_session_family_id").on(table.familyId),
+  ],
+);

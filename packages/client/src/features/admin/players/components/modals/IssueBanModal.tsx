@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Input } from "@/components/ui/input";
+import { BAN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
 import { Field, FieldLabel } from "@/components/ui/field";
 import {
   Select,
@@ -12,6 +12,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { AlertTriangle } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { AdminActionModal } from "./AdminActionModal";
 
 interface IssueBanModalProps {
@@ -32,24 +33,32 @@ export function IssueBanModal({
   onSuccess,
 }: IssueBanModalProps) {
   const toast = useToastActions();
-  const issueTemporaryBan = trpc.admin.players.bans.issueTemporary.useMutation({
-    onError: () => toast.error("Failed to issue ban"),
-  });
-  const issuePermanentBan = trpc.admin.players.bans.issuePermanent.useMutation({
-    onError: () => toast.error("Failed to issue ban"),
-  });
+  const issueTemporaryBan = trpc.admin.players.bans.issueTemporary.useMutation(
+    useMutationToast({
+      error: (err) => ({
+        title: "Failed to issue ban",
+        description: err.message,
+      }),
+    }),
+  );
+  const issuePermanentBan = trpc.admin.players.bans.issuePermanent.useMutation(
+    useMutationToast({
+      error: (err) => ({
+        title: "Failed to issue ban",
+        description: err.message,
+      }),
+    }),
+  );
 
   const [banType, setBanType] = useState<BanType>("temporary");
   const [reason, setReason] = useState("");
   const [durationDays, setDurationDays] = useState<number>(7);
   const [showPermanentConfirm, setShowPermanentConfirm] = useState(false);
-  const [confirmText, setConfirmText] = useState("");
 
   const handleClose = () => {
     setReason("");
     setDurationDays(7);
     setBanType("temporary");
-    setConfirmText("");
     setShowPermanentConfirm(false);
     onClose();
   };
@@ -89,7 +98,6 @@ export function IssueBanModal({
     setReason("");
     setDurationDays(7);
     setBanType("temporary");
-    setConfirmText("");
 
     onSuccess();
     onClose();
@@ -181,6 +189,7 @@ export function IssueBanModal({
             placeholder="Enter reason for ban..."
             value={reason}
             onChange={(e) => setReason(e.target.value)}
+            maxLength={BAN_REASON_MAX_LENGTH}
             className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             rows={4}
             required
@@ -190,34 +199,20 @@ export function IssueBanModal({
 
       <ConfirmDialog
         open={showPermanentConfirm}
-        onOpenChange={(isOpen) => {
-          setShowPermanentConfirm(isOpen);
-          if (!isOpen) setConfirmText("");
-        }}
+        onOpenChange={setShowPermanentConfirm}
         title={<span className="text-destructive">Confirm Permanent Ban</span>}
         description={
           <>
             This will permanently ban and DELETE all data for{" "}
             <span className="font-semibold">{playerUsername}</span>. This action
-            cannot be undone. Type{" "}
-            <span className="font-semibold">PERMANENTLY BAN</span> to confirm.
+            cannot be undone.
           </>
         }
         confirmLabel="Confirm Permanent Ban"
         variant="destructive"
-        confirmDisabled={confirmText !== "PERMANENTLY BAN"}
+        confirmToken="PERMANENTLY BAN"
         onConfirm={executeBan}
-      >
-        <Field>
-          <Input
-            type="text"
-            placeholder="Type PERMANENTLY BAN to confirm"
-            value={confirmText}
-            onChange={(e) => setConfirmText(e.target.value)}
-            autoFocus
-          />
-        </Field>
-      </ConfirmDialog>
+      />
     </>
   );
 }
