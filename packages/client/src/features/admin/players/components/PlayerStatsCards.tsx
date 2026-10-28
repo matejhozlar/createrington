@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Coins, Clock, AlertTriangle, Ticket, Handshake } from "lucide-react";
+import { Coins, Clock, AlertTriangle, Ticket, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatMoney } from "@/lib/format";
 import { trpc, type RouterOutput } from "@/lib/trpc";
@@ -26,45 +26,18 @@ export function PlayerStatsCards({
   const totalStrikes = player.strikes.totalCount;
   const totalBans = player.bans.totalCount;
 
-  const statusQuery = trpc.admin.parties.playerStatus.useQuery({
+  const partyQuery = trpc.admin.parties.playerStatus.useQuery({
     serverId: SERVER_ID,
     playerUuid,
   });
 
-  const { qualification, partyAlliance } = statusQuery.data ?? {};
-
-  const allyStatus: {
-    label: string;
-    detail: string;
-    color: "blue" | "amber" | "muted";
-  } = (() => {
-    if (qualification && !qualification.isPending && partyAlliance) {
-      return {
-        label: "Allied",
-        detail: partyAlliance.partyName ?? "Allied party",
-        color: "blue",
-      };
-    }
-    if (qualification?.isPending) {
-      return {
-        label: "Pending",
-        detail: "Qualified, awaiting party",
-        color: "amber",
-      };
-    }
-    if (!qualification && partyAlliance) {
-      return {
-        label: "Allied via Party",
-        detail: partyAlliance.partyName ?? "Allied party",
-        color: "blue",
-      };
-    }
-    return {
-      label: "Not Qualified",
-      detail: "Requirements not met",
-      color: "muted",
-    };
-  })();
+  const party = partyQuery.data?.party ?? null;
+  const allyOfCount = partyQuery.data?.allyOf.length ?? 0;
+  const partyDetail = party
+    ? `${party.rank.charAt(0).toUpperCase()}${party.rank.slice(1)} · ${party.memberCount} member${party.memberCount === 1 ? "" : "s"}`
+    : allyOfCount > 0
+      ? `Ally of ${allyOfCount} part${allyOfCount === 1 ? "y" : "ies"}`
+      : "Not in a party";
 
   const totalOffenses = activeStrikes + activeBans;
   const allTimeOffenses = totalStrikes + totalBans;
@@ -160,34 +133,30 @@ export function PlayerStatsCards({
         </p>
       </div>
 
-      {/* Ally Status */}
+      {/* Party */}
       <div className="rounded-lg border border-border bg-card p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-muted-foreground">Ally Status</p>
-            <p className="text-2xl font-semibold">{allyStatus.label}</p>
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-sm text-muted-foreground">Party</p>
+            <p className="truncate text-2xl font-semibold">
+              {party?.name ?? "None"}
+            </p>
           </div>
           <div
             className={cn(
-              "flex size-12 items-center justify-center rounded-full",
-              allyStatus.color === "blue" && "bg-blue-500/10",
-              allyStatus.color === "amber" && "bg-amber-500/10",
-              allyStatus.color === "muted" && "bg-muted",
+              "flex size-12 shrink-0 items-center justify-center rounded-full",
+              party ? "bg-chart-2/10" : "bg-muted",
             )}
           >
-            <Handshake
+            <Users
               className={cn(
                 "size-6",
-                allyStatus.color === "blue" && "text-blue-400",
-                allyStatus.color === "amber" && "text-amber-500",
-                allyStatus.color === "muted" && "text-muted-foreground",
+                party ? "text-chart-2" : "text-muted-foreground",
               )}
             />
           </div>
         </div>
-        <p className="mt-2 text-xs text-muted-foreground">
-          {allyStatus.detail}
-        </p>
+        <p className="mt-2 text-xs text-muted-foreground">{partyDetail}</p>
       </div>
     </div>
   );

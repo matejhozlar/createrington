@@ -49,7 +49,7 @@ export const data = new SlashCommandBuilder()
       .addStringOption((opt) =>
         opt
           .setName("party")
-          .setDescription("OPAC party to add (every linked member)")
+          .setDescription("Party to add (every linked member)")
           .setRequired(false)
           .setAutocomplete(true),
       ),
@@ -85,7 +85,7 @@ export async function autocomplete(
     return;
   }
 
-  const results = await Q.server.forceload.party.searchByName(
+  const results = await Q.server.party.searchByName(
     TICKET_PARTY_SERVER_ID,
     focused.value ?? "",
     25,
@@ -93,8 +93,8 @@ export async function autocomplete(
 
   await interaction.respond(
     results.map((p) => ({
-      name: `${p.partyName} (${p.memberCount} member${p.memberCount === 1 ? "" : "s"})`,
-      value: p.partyUuid,
+      name: `${p.name} (${p.memberCount} member${p.memberCount === 1 ? "" : "s"})`,
+      value: p.teamId,
     })),
   );
 }
@@ -216,23 +216,26 @@ export async function execute(
 
       let partyName: string | null = null;
       if (partyUuid) {
-        const party = await Q.server.forceload.party.getPartyMembers(
-          TICKET_PARTY_SERVER_ID,
-          partyUuid,
-        );
+        const party = await Q.server.party.find({
+          serverId: TICKET_PARTY_SERVER_ID,
+          teamId: partyUuid,
+        });
 
         if (!party) {
           partyName = "(unknown party)";
         } else {
-          partyName = party.partyName;
+          partyName = party.name;
+          const memberUuids = (
+            await Q.server.party.member.findAll({ partyId: party.id })
+          ).map((m) => m.minecraftUuid);
           const players = await Q.player.findAll({
-            minecraftUuid: { $in: party.memberUuids },
+            minecraftUuid: { $in: memberUuids },
           });
           const linkedByUuid = new Map(
             players.filter((p) => p.discordId).map((p) => [p.minecraftUuid, p]),
           );
 
-          for (const uuid of party.memberUuids) {
+          for (const uuid of memberUuids) {
             if (!linkedByUuid.has(uuid)) {
               const fallback = players.find((p) => p.minecraftUuid === uuid);
               skippedNotLinked.push(fallback?.minecraftUsername ?? uuid);

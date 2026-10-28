@@ -84,14 +84,14 @@ export default defineApiSpec({
                             type: "int",
                             nullable: true,
                             description:
-                              "The player's OPAC claimed chunk count; null when OPAC is not installed",
+                              "The player's OPAC claimed chunk count as OPAC reports it (with party-owned claims the party's claims sit under its owner); null when OPAC is not installed",
                           },
                           {
                             name: "forceloads",
                             type: "int",
                             nullable: true,
                             description:
-                              "The player's OPAC forceloaded chunk count; null when OPAC is not installed",
+                              "The player's OPAC forceloaded chunk count as OPAC reports it (with party-owned claims the party's forceloads sit under its owner); null when OPAC is not installed",
                           },
                         ],
                       },
