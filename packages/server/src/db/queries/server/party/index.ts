@@ -1,4 +1,5 @@
 import type { Pool, PoolClient } from "pg";
+import type { PartyMemberRank } from "@createrington/shared/party";
 import { ServerPartyBaseQueries } from "@/generated/db/server_party.queries";
 import { escapeLike } from "@/db/utils";
 
@@ -21,7 +22,11 @@ export interface PartyOverview {
   syncedAt: Date;
 }
 
-export interface PartyKpis {
+export interface PartyMembership extends PartyOverview {
+  rank: PartyMemberRank;
+}
+
+export interface PartyStats {
   parties: number;
   taggedParties: number;
   players: number;
@@ -30,42 +35,7 @@ export interface PartyKpis {
   lastSyncedAt: Date | null;
 }
 
-export interface PartyOverviewFilter {
-  memberUuid?: string;
-  allyUuid?: string;
-}
-
-/**
- * Queries over the FTB Teams parties core syncs into server_party, joined
- * with the player table for names where a row exists.
- */
-export class ServerPartyQueries extends ServerPartyBaseQueries {
-  constructor(db: Pool | PoolClient) {
-    super(db);
-  }
-
-  /** Every party of a server with owner name, member, ally and chunk counts, ordered by name. */
-  async getOverview(
-    serverId: number,
-    filter: PartyOverviewFilter = {},
-  ): Promise<PartyOverview[]> {
-    const params: unknown[] = [serverId];
-    const conditions = ["p.server_id = $1"];
-    if (filter.memberUuid) {
-      params.push(filter.memberUuid);
-      conditions.push(
-        `EXISTS (SELECT 1 FROM server_party_member f WHERE f.party_id = p.id AND f.minecraft_uuid = $${params.length})`,
-      );
-    }
-    if (filter.allyUuid) {
-      params.push(filter.allyUuid);
-      conditions.push(
-        `EXISTS (SELECT 1 FROM server_party_ally f WHERE f.party_id = p.id AND f.minecraft_uuid = $${params.length})`,
-      );
-    }
-
-    const result = await this.db.query<PartyOverview>(
-      `SELECT
+const OVERVIEW_COLUMNS = `
         p.id,
         p.team_id AS "teamId",
         p.name,
@@ -81,7 +51,9 @@ export class ServerPartyQueries extends ServerPartyBaseQueries {
         m.claim_count::int AS "claimCount",
         m.forceload_count::int AS "forceloadCount",
         p.first_seen_at AS "firstSeenAt",
-        p.synced_at AS "syncedAt"
+        p.synced_at AS "syncedAt"`;
+
+const OVERVIEW_JOINS = `
       FROM server_party p
       LEFT JOIN player o ON o.minecraft_uuid = p.owner_uuid
       LEFT JOIN LATERAL (
@@ -96,17 +68,72 @@ export class ServerPartyQueries extends ServerPartyBaseQueries {
         SELECT COUNT(*) AS ally_count
         FROM server_party_ally
         WHERE party_id = p.id
-      ) a ON true
-      WHERE ${conditions.join(" AND ")}
-      ORDER BY LOWER(p.name) ASC, p.id ASC`,
-      params,
+      ) a ON true`;
+
+const OVERVIEW_ORDER = `ORDER BY LOWER(p.name) ASC, p.id ASC`;
+
+/**
+ * Queries over the FTB Teams parties core syncs into server_party, joined
+ * with the player table for names where a row exists.
+ */
+export class ServerPartyQueries extends ServerPartyBaseQueries {
+  constructor(db: Pool | PoolClient) {
+    super(db);
+  }
+
+  /** Every party of a server with owner name, member, ally and chunk counts, ordered by name. */
+  async getOverview(serverId: number): Promise<PartyOverview[]> {
+    const result = await this.db.query<PartyOverview>(
+      `SELECT ${OVERVIEW_COLUMNS}
+      ${OVERVIEW_JOINS}
+      WHERE p.server_id = $1
+      ${OVERVIEW_ORDER}`,
+      [serverId],
+    );
+    return result.rows;
+  }
+
+  /** The party a player is a member of, with their rank, or null. */
+  async getForMember(
+    serverId: number,
+    minecraftUuid: string,
+  ): Promise<PartyMembership | null> {
+    const result = await this.db.query<PartyMembership>(
+      `SELECT ${OVERVIEW_COLUMNS},
+        pm.rank
+      ${OVERVIEW_JOINS}
+      JOIN server_party_member pm
+        ON pm.party_id = p.id AND pm.minecraft_uuid = $2
+      WHERE p.server_id = $1
+      ${OVERVIEW_ORDER}
+      LIMIT 1`,
+      [serverId, minecraftUuid],
+    );
+    return result.rows[0] ?? null;
+  }
+
+  /** The parties a player holds the ally rank in, ordered by name. */
+  async getForAlly(
+    serverId: number,
+    minecraftUuid: string,
+  ): Promise<PartyOverview[]> {
+    const result = await this.db.query<PartyOverview>(
+      `SELECT ${OVERVIEW_COLUMNS}
+      ${OVERVIEW_JOINS}
+      WHERE p.server_id = $1
+        AND EXISTS (
+          SELECT 1 FROM server_party_ally f
+          WHERE f.party_id = p.id AND f.minecraft_uuid = $2
+        )
+      ${OVERVIEW_ORDER}`,
+      [serverId, minecraftUuid],
     );
     return result.rows;
   }
 
   /** Server-wide totals for the admin Parties page. */
-  async getKpis(serverId: number): Promise<PartyKpis> {
-    const result = await this.db.query<PartyKpis>(
+  async getStats(serverId: number): Promise<PartyStats> {
+    const result = await this.db.query<PartyStats>(
       `SELECT
         COUNT(*)::int AS "parties",
         COUNT(*) FILTER (WHERE p.tag IS NOT NULL)::int AS "taggedParties",
