@@ -12,6 +12,7 @@ import {
   check,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
+import { partyMemberRankEnum } from "./enums";
 
 // --- server (referenced by many tables) ---
 
@@ -121,6 +122,91 @@ export const serverMaintenanceAllowedPlayer = pgTable(
       table.playerUuid,
     ),
     index("idx_server_maintenance_allowed_player_server").on(table.serverId),
+  ],
+);
+
+// --- server_party ---
+// FTB Teams parties as core reports them (party_sync). One row per
+// (server, party), upserted by team_id so id and first_seen_at survive syncs;
+// parties missing from a snapshot are deleted. tag_code is the team tag design
+// code (CRP1:...) and tag its 4 letters, both NULL when the party has no tag or
+// core sent a code that does not parse. No foreign key to player on the UUID
+// columns of these tables: they join player at read time where a row exists.
+
+export const serverParty = pgTable(
+  "server_party",
+  {
+    id: serial("id").primaryKey(),
+    serverId: integer("server_id")
+      .notNull()
+      .references(() => server.id, { onDelete: "cascade" }),
+    teamId: uuid("team_id").notNull(),
+    name: varchar("name", { length: 255 }).notNull(),
+    description: text("description").notNull().default(""),
+    // RGB packed into one int, as FTB Teams stores it
+    color: integer("color").notNull(),
+    freeToJoin: boolean("free_to_join").notNull().default(false),
+    ownerUuid: uuid("owner_uuid").notNull(),
+    tagCode: text("tag_code"),
+    tag: varchar("tag", { length: 4 }),
+    firstSeenAt: timestamp("first_seen_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("idx_server_party_unique").on(table.serverId, table.teamId),
+    index("idx_server_party_tag").on(table.serverId, table.tag),
+  ],
+);
+
+// --- server_party_member ---
+// Party members with their FTB Teams rank. claim_count and forceload_count are
+// the member's own OPAC chunk counters (claims belong to players, not parties)
+// and NULL when OPAC is not installed on the server.
+
+export const serverPartyMember = pgTable(
+  "server_party_member",
+  {
+    id: serial("id").primaryKey(),
+    partyId: integer("party_id")
+      .notNull()
+      .references(() => serverParty.id, { onDelete: "cascade" }),
+    minecraftUuid: uuid("minecraft_uuid").notNull(),
+    rank: partyMemberRankEnum("rank").notNull(),
+    claimCount: integer("claim_count"),
+    forceloadCount: integer("forceload_count"),
+  },
+  (table) => [
+    uniqueIndex("idx_server_party_member_unique").on(
+      table.partyId,
+      table.minecraftUuid,
+    ),
+    index("idx_server_party_member_player").on(table.minecraftUuid),
+  ],
+);
+
+// --- server_party_ally ---
+// Players holding the FTB Teams ally rank in a party (allies are players, not
+// parties, in FTB Teams).
+
+export const serverPartyAlly = pgTable(
+  "server_party_ally",
+  {
+    id: serial("id").primaryKey(),
+    partyId: integer("party_id")
+      .notNull()
+      .references(() => serverParty.id, { onDelete: "cascade" }),
+    minecraftUuid: uuid("minecraft_uuid").notNull(),
+  },
+  (table) => [
+    uniqueIndex("idx_server_party_ally_unique").on(
+      table.partyId,
+      table.minecraftUuid,
+    ),
+    index("idx_server_party_ally_player").on(table.minecraftUuid),
   ],
 );
 
