@@ -165,8 +165,9 @@ export const serverParty = pgTable(
 
 // --- server_party_member ---
 // Party members with their FTB Teams rank. claim_count and forceload_count are
-// the member's own OPAC chunk counters (claims belong to players, not parties)
-// and NULL when OPAC is not installed on the server.
+// the OPAC counters of that player as OPAC reports them: with party-owned
+// claims (the server's setting) the party's claims sit under its owner, so a
+// party total is the sum over its members. NULL when OPAC is not installed.
 
 export const serverPartyMember = pgTable(
   "server_party_member",
