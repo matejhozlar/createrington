@@ -1,5 +1,5 @@
 {
-  "id": "a2cfbe86-0a16-47d9-9b15-f01e83a48a2b",
+  "id": "f801054e-a0bb-44ed-866e-7e0f7e6e1b6d",
   "prevId": "dde5fa0a-520a-41a2-b281-7ee7afb0f11f",
   "version": "7",
   "dialect": "postgresql",
@@ -7509,8 +7509,8 @@
           "notNull": true,
           "default": "now()"
         },
-        "updated_at": {
-          "name": "updated_at",
+        "synced_at": {
+          "name": "synced_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,

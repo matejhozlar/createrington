@@ -58,9 +58,10 @@ function uniqueByUuid<T extends { uuid: string }>(entries: T[]): T[] {
  * Replaces the stored party state of a server with the snapshot core sent.
  *
  * Parties are upserted by (server, team) so their ids and first_seen_at
- * survive syncs, parties missing from the snapshot are deleted (members and
- * allies cascade), then every party's member and ally sets are rewritten.
- * All of it runs in one transaction.
+ * survive syncs while synced_at moves to the current sync, parties missing
+ * from the snapshot are deleted (members and allies cascade), then every
+ * party's member and ally sets are rewritten. All of it runs in one
+ * transaction.
  */
 export async function replacePartyState(
   payload: PartySyncPayload,
@@ -89,7 +90,7 @@ export async function replacePartyState(
         freeToJoin: party.freeToJoin,
         ownerUuid: party.members.find((m) => m.rank === "owner")!.uuid,
         ...resolveTag(serverId, party),
-        updatedAt: syncedAt,
+        syncedAt,
       })),
       ["serverId", "teamId"],
       [
@@ -100,7 +101,7 @@ export async function replacePartyState(
         "ownerUuid",
         "tagCode",
         "tag",
-        "updatedAt",
+        "syncedAt",
       ],
     );
 

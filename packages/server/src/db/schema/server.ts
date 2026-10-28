@@ -128,7 +128,8 @@ export const serverMaintenanceAllowedPlayer = pgTable(
 // --- server_party ---
 // FTB Teams parties as core reports them (party_sync). One row per
 // (server, party), upserted by team_id so id and first_seen_at survive syncs;
-// parties missing from a snapshot are deleted. tag_code is the team tag design
+// parties missing from a snapshot are deleted and synced_at is the last
+// snapshot that carried the party. tag_code is the team tag design
 // code (CRP1:...) and tag its 4 letters, both NULL when the party has no tag or
 // core sent a code that does not parse. No foreign key to player on the UUID
 // columns of these tables: they join player at read time where a row exists.
@@ -152,7 +153,7 @@ export const serverParty = pgTable(
     firstSeenAt: timestamp("first_seen_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
+    syncedAt: timestamp("synced_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
   },

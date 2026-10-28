@@ -11,7 +11,7 @@ CREATE TABLE "server_party" (
 	"tag_code" text,
 	"tag" varchar(4),
 	"first_seen_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+	"synced_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "server_party_ally" (
