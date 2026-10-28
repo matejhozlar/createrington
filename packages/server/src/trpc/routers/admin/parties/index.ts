@@ -5,10 +5,10 @@ import { id } from "@/trpc/utils";
 import { mcUuid } from "@/utils/zod-schemas";
 
 export const adminPartiesRouter = router({
-  kpis: adminProcedure
+  stats: adminProcedure
     .meta({ description: "Party, player, chunk and tag totals of a server" })
     .input(z.object({ serverId: id() }))
-    .query(({ input }) => Q.server.party.getKpis(input.serverId)),
+    .query(({ input }) => Q.server.party.getStats(input.serverId)),
 
   list: adminProcedure
     .meta({
@@ -36,24 +36,10 @@ export const adminPartiesRouter = router({
     })
     .input(z.object({ serverId: id(), playerUuid: mcUuid }))
     .query(async ({ input }) => {
-      const [memberOf, allyOf] = await Promise.all([
-        Q.server.party.getOverview(input.serverId, {
-          memberUuid: input.playerUuid,
-        }),
-        Q.server.party.getOverview(input.serverId, {
-          allyUuid: input.playerUuid,
-        }),
+      const [party, allyOf] = await Promise.all([
+        Q.server.party.getForMember(input.serverId, input.playerUuid),
+        Q.server.party.getForAlly(input.serverId, input.playerUuid),
       ]);
-      const party = memberOf[0] ?? null;
-      const membership = party
-        ? await Q.server.party.member.find({
-            partyId: party.id,
-            minecraftUuid: input.playerUuid,
-          })
-        : null;
-      return {
-        party: party && membership ? { ...party, rank: membership.rank } : null,
-        allyOf,
-      };
+      return { party, allyOf };
     }),
 });

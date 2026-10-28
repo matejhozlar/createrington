@@ -14,7 +14,7 @@ import { FilterBar } from "@/features/admin/components/FilterBar";
 import { formatRelativeDateSafe } from "@/features/admin/format";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { trpc } from "@/lib/trpc";
-import { PartiesKpiCards } from "./components/PartiesKpiCards";
+import { PartiesStatsCards } from "./components/PartiesStatsCards";
 import {
   PartiesTable,
   type PartyRow,
@@ -76,7 +76,7 @@ export function AdminParties() {
   );
   const needle = useDebouncedValue(search, 300).trim().toLowerCase();
 
-  const kpisQuery = trpc.admin.parties.kpis.useQuery({ serverId: SERVER_ID });
+  const statsQuery = trpc.admin.parties.stats.useQuery({ serverId: SERVER_ID });
   const listQuery = trpc.admin.parties.list.useQuery({ serverId: SERVER_ID });
   const parties = listQuery.data ?? NO_PARTIES;
 
@@ -95,7 +95,7 @@ export function AdminParties() {
         : { key, dir: key === "name" ? "asc" : "desc" },
     );
 
-  const lastSyncedAt = kpisQuery.data?.lastSyncedAt ?? null;
+  const lastSyncedAt = statsQuery.data?.lastSyncedAt ?? null;
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -122,10 +122,10 @@ export function AdminParties() {
           }
         />
 
-        {kpisQuery.isLoading ? (
+        {statsQuery.isLoading ? (
           <Loading size="medium" text="Loading party totals..." />
-        ) : kpisQuery.data ? (
-          <PartiesKpiCards kpis={kpisQuery.data} />
+        ) : statsQuery.data ? (
+          <PartiesStatsCards stats={statsQuery.data} />
         ) : null}
 
         <FilterBar

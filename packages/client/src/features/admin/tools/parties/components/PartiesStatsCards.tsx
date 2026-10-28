@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/card";
 import type { RouterOutput } from "@/lib/trpc";
 
-type Kpis = RouterOutput["admin"]["parties"]["kpis"];
+type Stats = RouterOutput["admin"]["parties"]["stats"];
 
 const CARDS: {
   key: string;
@@ -15,8 +15,8 @@ const CARDS: {
   icon: LucideIcon;
   iconBg: string;
   iconColor: string;
-  value: (kpis: Kpis) => string;
-  detail: (kpis: Kpis) => string;
+  value: (stats: Stats) => string;
+  detail: (stats: Stats) => string;
 }[] = [
   {
     key: "parties",
@@ -24,8 +24,9 @@ const CARDS: {
     icon: Users,
     iconBg: "bg-sidebar-primary/10",
     iconColor: "text-sidebar-primary",
-    value: (kpis) => String(kpis.parties),
-    detail: (kpis) => `${kpis.parties - kpis.taggedParties} without a team tag`,
+    value: (stats) => String(stats.parties),
+    detail: (stats) =>
+      `${stats.parties - stats.taggedParties} without a team tag`,
   },
   {
     key: "players",
@@ -33,11 +34,11 @@ const CARDS: {
     icon: UserRound,
     iconBg: "bg-chart-2/10",
     iconColor: "text-chart-2",
-    value: (kpis) => String(kpis.players),
-    detail: (kpis) =>
-      kpis.parties === 0
+    value: (stats) => String(stats.players),
+    detail: (stats) =>
+      stats.parties === 0
         ? "No party yet"
-        : `${(kpis.players / kpis.parties).toFixed(1)} per party on average`,
+        : `${(stats.players / stats.parties).toFixed(1)} per party on average`,
   },
   {
     key: "claims",
@@ -45,11 +46,12 @@ const CARDS: {
     icon: Grid3X3,
     iconBg: "bg-chart-3/10",
     iconColor: "text-chart-3",
-    value: (kpis) => (kpis.claimCount === null ? "-" : String(kpis.claimCount)),
-    detail: (kpis) =>
-      kpis.claimCount === null
+    value: (stats) =>
+      stats.claimCount === null ? "-" : String(stats.claimCount),
+    detail: (stats) =>
+      stats.claimCount === null
         ? "Needs OPAC on the server"
-        : `${kpis.forceloadCount ?? 0} forceloaded`,
+        : `${stats.forceloadCount ?? 0} forceloaded`,
   },
   {
     key: "tags",
@@ -57,15 +59,15 @@ const CARDS: {
     icon: Tag,
     iconBg: "bg-chart-4/10",
     iconColor: "text-chart-4",
-    value: (kpis) => String(kpis.taggedParties),
-    detail: (kpis) =>
-      kpis.parties === 0
+    value: (stats) => String(stats.taggedParties),
+    detail: (stats) =>
+      stats.parties === 0
         ? "No party yet"
-        : `${Math.round((kpis.taggedParties / kpis.parties) * 100)}% of parties`,
+        : `${Math.round((stats.taggedParties / stats.parties) * 100)}% of parties`,
   },
 ];
 
-export function PartiesKpiCards({ kpis }: { kpis: Kpis }) {
+export function PartiesStatsCards({ stats }: { stats: Stats }) {
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       {CARDS.map(
@@ -74,9 +76,9 @@ export function PartiesKpiCards({ kpis }: { kpis: Kpis }) {
             <CardContent className="flex items-start justify-between">
               <div>
                 <CardDescription>{label}</CardDescription>
-                <CardTitle className="text-2xl">{value(kpis)}</CardTitle>
+                <CardTitle className="text-2xl">{value(stats)}</CardTitle>
                 <p className="mt-2 text-xs text-muted-foreground">
-                  {detail(kpis)}
+                  {detail(stats)}
                 </p>
               </div>
               <div
