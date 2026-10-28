@@ -7,7 +7,7 @@ import {
 import type { TopRoleRule } from "./types";
 
 export function isGameRankSyncAllowed(): boolean {
-  return config.envMode.isProd && !config.envMode.isDevDeployment;
+  return config.envMode.isProductionDeployment;
 }
 
 function isNothingToRevoke(error: unknown): boolean {

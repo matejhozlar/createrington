@@ -24,7 +24,7 @@ import type { GhostMemberService } from "@/services/discord/cleanup/ghost/ghost-
  * ghost-removal action has the same destructive-action policy.
  */
 function isManualActionsEnabled(): boolean {
-  return config.envMode.isProd && !config.envMode.isDevDeployment;
+  return config.envMode.isProductionDeployment;
 }
 
 async function getGhostService(): Promise<GhostMemberService> {

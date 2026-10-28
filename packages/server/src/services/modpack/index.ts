@@ -1231,6 +1231,7 @@ export class ModpackService {
     releaseId: number,
     manifest: ModpackManifest,
   ): void {
+    if (!config.launcher.available) return;
     void launcherPackService
       .prepareRelease(modpack, releaseId, manifest)
       .catch((error) => {
@@ -1242,6 +1243,7 @@ export class ModpackService {
   }
 
   private checkLauncherReleases(modpack: Modpack): void {
+    if (!config.launcher.available) return;
     void launcherPackService.checkReleases(modpack).catch((error) => {
       logger.warn(
         `Modpack #${modpack.id} releases could not be checked for the launcher:`,

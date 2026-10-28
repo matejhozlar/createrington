@@ -1,4 +1,4 @@
-import { router, adminProcedure } from "@/trpc/trpc";
+import { router, adminProcedure, launcherAvailable } from "@/trpc/trpc";
 import config from "@/config";
 import { launcherReleaseService } from "@/services/launcher/release/launcher-release.service";
 import {
@@ -8,6 +8,8 @@ import {
 import { parseStructuredNotes } from "@/services/launcher/release/structured-notes";
 import { LAUNCHER_PLATFORMS } from "@createrington/shared/launcher";
 import type { LauncherRelease } from "@createrington/shared/db/launcher_release.types";
+
+const launcherAdminProcedure = adminProcedure.use(launcherAvailable);
 
 function toVersionDto(group: [LauncherRelease, ...LauncherRelease[]]) {
   const { builds, releasedAt } = mergeVersionBuilds(group, LAUNCHER_PLATFORMS);
@@ -28,7 +30,7 @@ function toVersionDto(group: [LauncherRelease, ...LauncherRelease[]]) {
 }
 
 export const adminLauncherReleasesRouter = router({
-  list: adminProcedure
+  list: launcherAdminProcedure
     .meta({
       description:
         "List the released launcher versions of this environment's channel, also those pruned from the bucket, with a download per platform still available, highest version first",

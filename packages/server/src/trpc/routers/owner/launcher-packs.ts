@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { router, ownerProcedure } from "@/trpc/trpc";
+import { router, ownerProcedure, launcherAvailable } from "@/trpc/trpc";
 import { auditActor, id, rethrowTrpc } from "@/trpc/utils";
 import { Q } from "@/db";
 import {
@@ -14,6 +14,8 @@ import {
   LAUNCHER_PACK_SLUG_PATTERN,
   LAUNCHER_PACK_SOURCES,
 } from "@createrington/shared/launcher";
+
+const launcherOwnerProcedure = ownerProcedure.use(launcherAvailable);
 
 const ACTION_ADD = "launcher_pack_add";
 const ACTION_ENABLE = "launcher_pack_enable";
@@ -55,7 +57,7 @@ function toOwnedDto(pack: OwnedLauncherPack) {
 }
 
 export const ownerLauncherPacksRouter = router({
-  list: ownerProcedure
+  list: launcherOwnerProcedure
     .meta({
       description:
         "Every pack the launcher is offered, in list order, with the modpack it points at and its newest ready release",
@@ -65,7 +67,7 @@ export const ownerLauncherPacksRouter = router({
       return { packs: packs.map(toOwnedDto) };
     }),
 
-  candidates: ownerProcedure
+  candidates: launcherOwnerProcedure
     .meta({
       description: "Modpacks the launcher is not offered yet, to add one from",
     })
@@ -73,7 +75,7 @@ export const ownerLauncherPacksRouter = router({
       modpacks: await launcherPackService.listCandidates(),
     })),
 
-  add: ownerProcedure
+  add: launcherOwnerProcedure
     .meta({
       description:
         "Offer a modpack to the launcher under a new slug; a pack served from CurseForge gets its recorded releases prepared right away",
@@ -103,7 +105,7 @@ export const ownerLauncherPacksRouter = router({
       }
     }),
 
-  setEnabled: ownerProcedure
+  setEnabled: launcherOwnerProcedure
     .meta({
       description:
         "Show or hide a pack in the launcher's list; its releases keep being prepared either way",
@@ -127,7 +129,7 @@ export const ownerLauncherPacksRouter = router({
       }
     }),
 
-  reorder: ownerProcedure
+  reorder: launcherOwnerProcedure
     .meta({
       description:
         "Put the packs in this order in the launcher's list; names every pack exactly once",
@@ -148,7 +150,7 @@ export const ownerLauncherPacksRouter = router({
       }
     }),
 
-  remove: ownerProcedure
+  remove: launcherOwnerProcedure
     .meta({
       description:
         "Stop offering a pack; launchers that stored its slug lose it",

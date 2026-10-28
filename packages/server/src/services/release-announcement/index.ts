@@ -22,7 +22,7 @@ const RELEASE_VERSION = /^\d+\.\d+\.\d+$/;
 export class ReleaseAnnouncementService {
   /** Announce the running version unless it was announced already; never throws. */
   async announceIfNew(): Promise<void> {
-    if (!config.envMode.isProd || config.envMode.isDevDeployment) return;
+    if (!config.envMode.isProductionDeployment) return;
 
     const version = config.app.version;
     if (!RELEASE_VERSION.test(version)) return;

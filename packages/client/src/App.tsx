@@ -9,6 +9,7 @@ import { ServerDataProvider } from "./contexts/server-data";
 import { PlayerDataProvider } from "./contexts/player-data";
 import { ProtectedRoute } from "./components/protected-route";
 import { OwnerRoute } from "./components/owner-route";
+import { LAUNCHER_ENABLED } from "./lib/launcher";
 import { Home } from "./pages/Home/Home";
 import { NotFound } from "./pages/not-found";
 import { ErrorBoundary } from "./components/error-boundary";
@@ -197,10 +198,9 @@ const AdminDashboard = lazyNamed(
   () => import("./features/admin/AdminDashboard"),
   "AdminDashboard",
 );
-const AdminLauncher = lazyNamed(
-  () => import("./features/admin/AdminLauncher"),
-  "AdminLauncher",
-);
+const AdminLauncher = LAUNCHER_ENABLED
+  ? lazyNamed(() => import("./features/admin/AdminLauncher"), "AdminLauncher")
+  : null;
 const Changelog = lazyNamed(
   () => import("./features/admin/Changelog"),
   "Changelog",
@@ -227,14 +227,18 @@ const StructurePackDetail = lazyNamed(
     import("./features/admin/structure-packs/structure-pack-detail/StructurePackDetail"),
   "StructurePackDetail",
 );
-const OwnerLauncherReleases = lazyNamed(
-  () => import("./features/admin/owner/OwnerLauncherReleases"),
-  "OwnerLauncherReleases",
-);
-const OwnerLauncherPacks = lazyNamed(
-  () => import("./features/admin/owner/OwnerLauncherPacks"),
-  "OwnerLauncherPacks",
-);
+const OwnerLauncherReleases = LAUNCHER_ENABLED
+  ? lazyNamed(
+      () => import("./features/admin/owner/OwnerLauncherReleases"),
+      "OwnerLauncherReleases",
+    )
+  : null;
+const OwnerLauncherPacks = LAUNCHER_ENABLED
+  ? lazyNamed(
+      () => import("./features/admin/owner/OwnerLauncherPacks"),
+      "OwnerLauncherPacks",
+    )
+  : null;
 const OwnerDonations = lazyNamed(
   () => import("./features/admin/owner/OwnerDonations"),
   "OwnerDonations",
@@ -505,7 +509,9 @@ function AppContent() {
                         path="tools/chat-history/:sessionId"
                         element={<ChatHistoryDetail />}
                       />
-                      <Route path="launcher" element={<AdminLauncher />} />
+                      {AdminLauncher && (
+                        <Route path="launcher" element={<AdminLauncher />} />
+                      )}
                       <Route path="changelog" element={<Changelog />} />
                       <Route path="logs" element={<AdminLogs />} />
                     </Routes>
@@ -524,14 +530,18 @@ function AppContent() {
                   <Routes>
                     <Route path="admins" element={<OwnerAdmins />} />
                     <Route path="donations" element={<OwnerDonations />} />
-                    <Route
-                      path="launcher-releases"
-                      element={<OwnerLauncherReleases />}
-                    />
-                    <Route
-                      path="launcher-packs"
-                      element={<OwnerLauncherPacks />}
-                    />
+                    {OwnerLauncherReleases && (
+                      <Route
+                        path="launcher-releases"
+                        element={<OwnerLauncherReleases />}
+                      />
+                    )}
+                    {OwnerLauncherPacks && (
+                      <Route
+                        path="launcher-packs"
+                        element={<OwnerLauncherPacks />}
+                      />
+                    )}
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </ErrorBoundary>

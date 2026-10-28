@@ -1,5 +1,10 @@
 import { z } from "zod";
-import { router, adminProcedure, sandboxServiceProcedure } from "@/trpc/trpc";
+import {
+  router,
+  adminProcedure,
+  sandboxServiceProcedure,
+  launcherAvailable,
+} from "@/trpc/trpc";
 import { id, rethrowTrpc } from "@/trpc/utils";
 import { modpackService } from "@/services/modpack";
 import type { ModpackModListItem } from "@/services/modpack";
@@ -137,6 +142,7 @@ export const sandboxModpacksRouter = router({
     }),
 
   recordSnapshot: sandboxServiceProcedure
+    .use(launcherAvailable)
     .meta({
       description:
         "Reports a snapshot of a pack whose releases the sandbox provides (a launcher pack with source sandbox, named by its slug): the client pack zip the sandbox keeps under the snapshot id at GET /api/pack/files/snapshot/:id, with its SHA-1 and size, the Minecraft version and mod loader of its manifest, and every client file of the manifest as CurseForge project and file ids. The main app reads the zip back through its internal sandbox address and refuses the report when the bytes do not match; it then records the snapshot as a release keyed by the snapshot id, resolves the files for the launcher, and offers the snapshot as the pack's latest release while retiring every older snapshot. ready says whether the launcher can install it now; when it cannot, error says why and the report can be resent once the cause is fixed. Optional notes (max 10k chars) become the release's changelog notes; omitting them keeps stored ones, an empty string clears them. Idempotent per snapshot id. Authenticates with the shared SANDBOX_SERVICE_TOKEN, not a user JWT.",

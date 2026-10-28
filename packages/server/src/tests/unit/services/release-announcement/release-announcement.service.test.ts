@@ -27,6 +27,9 @@ vi.mock("@/config", async (importOriginal) => {
         get isDevDeployment() {
           return state.isDevDeployment;
         },
+        get isProductionDeployment() {
+          return state.isProd && !state.isDevDeployment;
+        },
       },
       app: {
         ...actual.app,

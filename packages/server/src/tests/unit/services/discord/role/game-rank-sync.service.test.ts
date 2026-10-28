@@ -1,6 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const env = vi.hoisted(() => ({ isProd: true, isDevDeployment: false }));
+const env = vi.hoisted(() => ({
+  isProd: true,
+  isDevDeployment: false,
+  get isProductionDeployment() {
+    return this.isProd && !this.isDevDeployment;
+  },
+}));
 let players: Array<{ discordId: string; minecraftUsername: string }>;
 
 vi.mock("@/config", () => ({
