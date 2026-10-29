@@ -99,7 +99,11 @@ afterAll(async () => {
 
 beforeEach(() => {
   vi.resetAllMocks();
-  mocks.findPlayer.mockResolvedValue({ minecraftUuid: UUID });
+  mocks.findPlayer.mockImplementation(
+    async (identifier: { minecraftUuid?: string }) => ({
+      minecraftUuid: identifier.minecraftUuid ?? UUID,
+    }),
+  );
   mocks.avatar.mockResolvedValue(PNG);
 });
 
@@ -125,6 +129,19 @@ describe("GET /api/skin/:uuid/avatar", () => {
     expect(mocks.avatar).toHaveBeenCalledWith({
       source: { uuid: OTHER_UUID },
       options: { size: 128 },
+    });
+  });
+
+  it("accepts a username and renders the registered player's uuid", async () => {
+    const res = await avatar("Steve", "?size=16");
+
+    expect(res.status).toBe(200);
+    expect(mocks.findPlayer).toHaveBeenCalledWith({
+      minecraftUsername: "Steve",
+    });
+    expect(mocks.avatar).toHaveBeenCalledWith({
+      source: { uuid: UUID },
+      options: { size: 16 },
     });
   });
 
@@ -159,8 +176,9 @@ describe("GET /api/skin/:uuid/avatar", () => {
     expect(mocks.avatar).not.toHaveBeenCalled();
   });
 
-  it("rejects a malformed uuid and an out-of-range size", async () => {
+  it("rejects an identifier that is neither uuid nor username and an out-of-range size", async () => {
     expect((await avatar("not-a-uuid")).status).toBe(400);
+    expect((await avatar("123456789012345678")).status).toBe(400);
     expect((await avatar(UUID, "?size=4")).status).toBe(400);
     expect((await avatar(UUID, "?size=huge")).status).toBe(400);
     expect(mocks.avatar).not.toHaveBeenCalled();

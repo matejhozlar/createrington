@@ -5,6 +5,7 @@ import type { Request, Response } from "express";
 import { route } from "@/app/middleware/compose";
 import { BadRequestError, NotFoundError } from "@/app/middleware/error-handler";
 import { skinPoseLimiter } from "@/app/middleware/rate-limit.middleware";
+import { idToObject } from "@/app/utils/helpers";
 import { Q } from "@/db";
 import {
   AVATAR_DEFAULT_SIZE,
@@ -38,19 +39,21 @@ const router = Router();
  */
 
 async function registeredUuid(req: Request): Promise<string> {
-  const uuid = (req.params.uuid as string).toLowerCase();
-  if (!MC_UUID_REGEX.test(uuid)) {
-    throw new BadRequestError("Invalid UUID format");
+  const id = req.params.player as string;
+  const identifier = idToObject(MC_UUID_REGEX.test(id) ? id.toLowerCase() : id);
+  if (!identifier || "discordId" in identifier) {
+    throw new BadRequestError("Expected a Minecraft UUID or username");
   }
-  if (!(await Q.player.find({ minecraftUuid: uuid }))) {
+  const player = await Q.player.find(identifier);
+  if (!player) {
     throw new NotFoundError("Player not found");
   }
-  return uuid;
+  return player.minecraftUuid;
 }
 
-// GET /api/skin/:uuid/avatar?size= - Flat 2D head of a registered player
+// GET /api/skin/:player/avatar?size= - Flat 2D head of a registered player, by UUID or username
 router.get(
-  "/:uuid/avatar",
+  "/:player/avatar",
   ...route("public", async (req: Request, res: Response) => {
     const uuid = await registeredUuid(req);
     const parsedSize = avatarSizeSchema.safeParse(req.query.size);
@@ -78,9 +81,9 @@ router.get(
   }),
 );
 
-// GET /api/skin/:uuid/pose/:pose - Posed figure of a registered player
+// GET /api/skin/:player/pose/:pose - Posed figure of a registered player, by UUID or username
 router.get(
-  "/:uuid/pose/:pose",
+  "/:player/pose/:pose",
   skinPoseLimiter,
   ...route("public", async (req: Request, res: Response) => {
     const pose = req.params.pose as string;
