@@ -8,11 +8,11 @@ import { GalleryTile } from "./components/GalleryTile";
 import { GalleryLightbox } from "./components/GalleryLightbox";
 import { GalleryGridSkeleton } from "./components/GalleryGridSkeleton";
 import { GalleryEmpty } from "./components/GalleryEmpty";
+import { useGalleryLightbox } from "./hooks/use-gallery-lightbox";
 import { GALLERY_PAGE_SIZE } from "./format";
 
 export function Gallery() {
   const [page, setPage] = useState(0);
-  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   const enabledQuery = trpc.public.gallery.isEnabled.useQuery();
   const enabled = enabledQuery.data?.enabled ?? false;
@@ -22,6 +22,19 @@ export function Gallery() {
     { enabled },
   );
 
+  const items = listQuery.data?.items ?? [];
+  const pagination = listQuery.data?.pagination;
+
+  const lightbox = useGalleryLightbox({
+    items,
+    page,
+    pagination,
+    onPageChange: (next) => {
+      setPage(next);
+      window.scrollTo({ top: 0 });
+    },
+  });
+
   if (enabledQuery.isLoading) {
     return <LoadingScreen text="Loading gallery..." />;
   }
@@ -30,13 +43,11 @@ export function Gallery() {
     return <NotFound />;
   }
 
-  const items = listQuery.data?.items ?? [];
-  const pagination = listQuery.data?.pagination;
   const strandedPage = items.length === 0 && (pagination?.total ?? 0) > 0;
 
   const changePage = (next: number) => {
     setPage(next);
-    setLightboxIndex(null);
+    lightbox.close();
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -66,7 +77,7 @@ export function Gallery() {
                 <GalleryTile
                   key={item.id}
                   item={item}
-                  onOpen={() => setLightboxIndex(index)}
+                  onOpen={() => lightbox.open(index)}
                 />
               ))}
             </div>
@@ -86,9 +97,14 @@ export function Gallery() {
       </section>
 
       <GalleryLightbox
-        items={items}
-        index={lightboxIndex}
-        onIndexChange={setLightboxIndex}
+        item={lightbox.item}
+        position={lightbox.position}
+        total={lightbox.total}
+        hasPrevious={lightbox.hasPrevious}
+        hasNext={lightbox.hasNext}
+        turning={lightbox.turning}
+        onStep={lightbox.step}
+        onClose={lightbox.close}
       />
     </div>
   );
