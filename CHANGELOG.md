@@ -1,3 +1,13 @@
+## v1.70.0 (2026-10-29)
+
+### @createrington/server (1.69.0 → 1.70.0)
+- [refactor] Switch player registration from playerdb.co to skin-api's internal listener for Minecraft account resolution, using the `resolve` method from `createrington-skin-api` 2.16.0 with proper `SkinApiError` handling for 404s
+- [refactor] Remove `SKIN_API_KEY` env var and API key authentication for skin-api, since the internal listener uses loopback-only access as its security boundary
+- [chore] Bump `createrington-skin-api` from 2.15.0 to 2.16.0
+
+### @createrington/client (0.2.87 → 0.2.88)
+- [chore] Bump `createrington-skin-api` from 2.15.0 to 2.16.0
+
 ## v1.69.0 (2026-10-29)
 
 ### @createrington/server (1.68.0 → 1.69.0)
