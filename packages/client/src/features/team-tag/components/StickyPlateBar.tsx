@@ -14,7 +14,7 @@ export function StickyPlateBar({
   assets,
   name,
   nameColor,
-  skin,
+  head,
   canCopy,
   onCopy,
 }: {
@@ -22,7 +22,7 @@ export function StickyPlateBar({
   assets: PlateAssets | null;
   name: string;
   nameColor: number;
-  skin: Bitmap | undefined;
+  head: Bitmap | undefined;
   canCopy: boolean;
   onCopy: () => void;
 }) {
@@ -73,7 +73,7 @@ export function StickyPlateBar({
               zoom={BAR_ZOOM}
               name={name}
               nameColor={nameColor}
-              skin={skin ?? assets.steve}
+              head={head ?? assets.steveHead}
               bare
             />
           )}

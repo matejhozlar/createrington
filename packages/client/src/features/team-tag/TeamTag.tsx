@@ -9,7 +9,7 @@ import { designCode, type PlateDesign } from "@createrington/shared/team-tag";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/auth";
 import { useToastActions } from "@/hooks/use-toast";
-import { mcHeadsSkin } from "@/lib/external-urls";
+import { playerAvatarUrl } from "@/lib/player-images";
 import { cn } from "@/lib/utils";
 import { ColoursStep } from "./components/ColoursStep";
 import { HeroBackdrop } from "./components/HeroBackdrop";
@@ -33,7 +33,7 @@ import {
 } from "./hooks/use-plate-draft";
 import { usePreviewSettings } from "./hooks/use-preview-settings";
 import { shareLink, useSharedDesign } from "./hooks/use-shared-design";
-import { bitmapOf, type Bitmap } from "./render/assets";
+import { bitmapOf, HEAD_SIZE, type Bitmap } from "./render/assets";
 
 const WIDE_LAYOUT = 1024;
 const HEADER_OVERLAYS = [
@@ -44,7 +44,7 @@ const ZOOMS = {
   narrow: { plate: 7, line: 2 },
 } as const;
 
-function readSkin(image: HTMLImageElement | null): Bitmap | undefined {
+function readHead(image: HTMLImageElement | null): Bitmap | undefined {
   if (!image) return undefined;
   try {
     return bitmapOf(image);
@@ -59,10 +59,10 @@ export function TeamTag() {
   const { assets, failed } = usePlateAssets();
   const { draft, update, load } = usePlateDraft();
   const { settings, update: updateSettings } = usePreviewSettings();
-  const skinImage = useLoadedImage(
-    user?.minecraftUuid ? mcHeadsSkin(user.minecraftUuid) : null,
+  const headImage = useLoadedImage(
+    user?.minecraftUuid ? playerAvatarUrl(user.minecraftUuid, HEAD_SIZE) : null,
   );
-  const skin = useMemo(() => readSkin(skinImage), [skinImage]);
+  const head = useMemo(() => readHead(headImage), [headImage]);
   const { ref: rootRef, width } = useElementWidth<HTMLDivElement>();
   const wide = width >= WIDE_LAYOUT;
   const zooms = wide ? ZOOMS.wide : ZOOMS.narrow;
@@ -158,7 +158,7 @@ export function TeamTag() {
                 assets={assets}
                 name={name}
                 nameColor={RANKS[settings.rank].color}
-                skin={skin}
+                head={head}
                 plateZoom={zooms.plate}
                 lineZoom={zooms.line}
               />
@@ -172,7 +172,7 @@ export function TeamTag() {
               assets={assets}
               name={name}
               rank={settings.rank}
-              skin={skin}
+              head={head}
               guiScale={settings.guiScale}
               backdrop={settings.backdrop}
               logo={wide}
@@ -204,7 +204,7 @@ export function TeamTag() {
                 assets={assets}
                 name={name}
                 nameColor={RANKS[settings.rank].color}
-                skin={skin}
+                head={head}
                 canCopy={complete}
                 onCopy={copyCode}
               />
