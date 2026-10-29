@@ -1,6 +1,6 @@
 import { formatPlaytime } from "@createrington/shared/format";
 import { LoadingScreen } from "@/components/loading-spinner";
-import { mcHeadsAvatar } from "@/lib/external-urls";
+import { playerAvatarUrl } from "@/lib/player-images";
 import { RenderUnavailable } from "./components/RenderUnavailable";
 import {
   buildHeatmapGrid,
@@ -52,7 +52,7 @@ export function ActivityRender() {
   if (unavailable) return <RenderUnavailable reason={unavailable} />;
   if (!data) return <LoadingScreen />;
 
-  const avatarSrc = mcHeadsAvatar(data.uuid);
+  const avatarSrc = playerAvatarUrl(data.uuid);
   const { weeks, monthLabels } = buildHeatmapGrid(data.days, NUM_WEEKS);
   const cellSpacing = (900 - 64 - 36) / NUM_WEEKS;
 

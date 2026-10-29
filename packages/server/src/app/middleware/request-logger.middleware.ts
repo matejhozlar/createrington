@@ -4,6 +4,7 @@ import { httpLogger, colorDuration } from "@/http-logger";
 const SKIP_PREFIXES = [
   "/api/health",
   "/api/modpacks/",
+  "/api/skin/",
   "/assets/",
   "/favicon",
   "/trpc",

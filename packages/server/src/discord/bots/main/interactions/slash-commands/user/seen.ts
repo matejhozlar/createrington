@@ -3,6 +3,7 @@ import { EmbedPresets } from "@/discord/embeds";
 import { replyError } from "@/discord/utils/interaction-reply";
 import { CooldownType } from "@/discord/utils/cooldown";
 import { discordTimestamp } from "@/utils/format";
+import { playerAvatarUrl } from "@/services/skin-api/urls";
 import { ChatInputCommandInteraction, SlashCommandBuilder } from "discord.js";
 
 /**
@@ -50,7 +51,7 @@ export async function execute(
     const player = await Q.player.get({ discordId: targetUser.id });
 
     const embed = EmbedPresets.info(`${player.minecraftUsername}'s Status`)
-      .thumbnail(`https://mc-heads.net/avatar/${player.minecraftUuid}`)
+      .thumbnail(playerAvatarUrl(player.minecraftUuid))
       .field("Status", player.online ? "🟢 Online" : "🔴 Offline", true);
 
     if (player.online && player.currentServerId) {

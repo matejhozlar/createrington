@@ -4,7 +4,7 @@ import { CellText } from "@/components/cell-text";
 import { Edit, Trash2, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { RouterOutput } from "@/lib/trpc";
-import { mcBodyFront } from "@/lib/external-urls";
+import { playerPoseUrl } from "@/lib/player-images";
 import { formatDimension, tpCommand } from "@/lib/minecraft";
 
 type PlayerDetail =
@@ -34,7 +34,7 @@ export function PlayerHeader({
         <div className="relative hidden w-36 shrink-0 items-center justify-center border-r border-border py-4 sm:flex">
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-sidebar-primary/8 via-transparent to-transparent" />
           <img
-            src={mcBodyFront(player.minecraftUuid)}
+            src={playerPoseUrl(player.minecraftUuid, "idle")}
             alt={player.minecraftUsername}
             className="relative z-10 h-32 object-contain drop-shadow-md"
           />

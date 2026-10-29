@@ -38,10 +38,6 @@ export function stagePoses(
   return [first, pick(keys[1], rest)];
 }
 
-export function poseSrc(minecraftUuid: string, pose: KnownPose): string {
-  return `/api/skin/${minecraftUuid}/pose/${pose}`;
-}
-
 export function compareHref(first: string, second?: string | null): string {
   const params = new URLSearchParams({ a: first });
   if (second) params.set("b", second);

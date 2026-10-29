@@ -1,7 +1,7 @@
 import { memo, useState } from "react";
 import { Check, Copy } from "lucide-react";
 import { useAuth } from "@/contexts/auth";
-import { mcHeadsAvatar } from "@/lib/external-urls";
+import { playerAvatarUrl } from "@/lib/player-images";
 import { cn } from "@/lib/utils";
 import { coerceAction, parseActionsFromMessage } from "../actions";
 import { ActionCard } from "./ActionCard";
@@ -92,7 +92,9 @@ export const MessageRow = memo(function MessageRow({
         {showAvatar ? (
           isUser ? (
             <img
-              src={user?.minecraftUuid ? mcHeadsAvatar(user.minecraftUuid) : ""}
+              src={
+                user?.minecraftUuid ? playerAvatarUrl(user.minecraftUuid) : ""
+              }
               alt={user?.minecraftUsername ?? "You"}
               className="size-6 shrink-0 rounded bg-muted object-cover"
               loading="lazy"

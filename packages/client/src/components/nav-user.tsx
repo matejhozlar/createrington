@@ -11,7 +11,7 @@ import {
   SquarePenIcon,
   useAnimatedHover,
 } from "@createrington/icons";
-import { mcHeadsAvatar } from "@/lib/external-urls";
+import { playerAvatarUrl } from "@/lib/player-images";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -87,7 +87,7 @@ export function NavUser({ user }: { user: User }) {
   };
 
   const avatarUrl = user.minecraftUuid
-    ? mcHeadsAvatar(user.minecraftUuid)
+    ? playerAvatarUrl(user.minecraftUuid)
     : undefined;
 
   // Prefer the Minecraft username for the fallback initial; fall back to Discord username

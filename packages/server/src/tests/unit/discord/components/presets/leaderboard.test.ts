@@ -2,6 +2,9 @@ import { describe, it, expect, vi } from "vitest";
 import { ComponentType, MessageFlags } from "discord.js";
 
 vi.mock("@/db", () => ({ Q: {} }));
+vi.mock("@/services/skin-api/urls", () => ({
+  playerAvatarUrl: (uuid: string) => `https://app.test/api/skin/${uuid}/avatar`,
+}));
 
 import { LeaderboardComponentPresets } from "@/discord/components/presets/leaderboard";
 import {
@@ -127,7 +130,7 @@ describe("LeaderboardComponentPresets.display", () => {
     const { entrySections } = render(LeaderboardType.PLAYTIME, 1);
     expect(entrySections[0].accessory).toMatchObject({
       type: ComponentType.Thumbnail,
-      media: { url: "https://mc-heads.net/avatar/uuid-1" },
+      media: { url: "https://app.test/api/skin/uuid-1/avatar" },
     });
   });
 

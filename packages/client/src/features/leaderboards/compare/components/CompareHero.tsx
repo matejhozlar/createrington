@@ -13,13 +13,9 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { PopoverAnchor } from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/spinner";
+import { playerPoseUrl } from "@/lib/player-images";
 import { HERO_BACKDROP } from "../../top-roles";
-import {
-  poseSrc,
-  RANK_LABELS,
-  SIDE_COLORS,
-  type ComparedPlayer,
-} from "../headToHead";
+import { RANK_LABELS, SIDE_COLORS, type ComparedPlayer } from "../headToHead";
 import type { Side } from "../hooks/use-compare-params";
 import { PlayerPicker } from "./PlayerPicker";
 
@@ -323,7 +319,7 @@ export function CompareHero({
                 {player ? (
                   <StageFigure
                     key={`${player.minecraftUuid}-${poses[side]}`}
-                    src={poseSrc(player.minecraftUuid, poses[side])}
+                    src={playerPoseUrl(player.minecraftUuid, poses[side])}
                     alt={player.minecraftUsername}
                   />
                 ) : loading[side] ? (

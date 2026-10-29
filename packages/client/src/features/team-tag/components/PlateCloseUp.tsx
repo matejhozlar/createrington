@@ -7,7 +7,7 @@ export function PlateCloseUp({
   assets,
   name,
   nameColor,
-  skin,
+  head,
   plateZoom,
   lineZoom,
 }: {
@@ -15,7 +15,7 @@ export function PlateCloseUp({
   assets: PlateAssets;
   name: string;
   nameColor: number;
-  skin: Bitmap | undefined;
+  head: Bitmap | undefined;
   plateZoom: number;
   lineZoom: number;
 }) {
@@ -57,7 +57,7 @@ export function PlateCloseUp({
         zoom={lineZoom}
         name={name}
         nameColor={nameColor}
-        skin={skin ?? assets.steve}
+        head={head ?? assets.steveHead}
         bare
         className="mt-4"
       />

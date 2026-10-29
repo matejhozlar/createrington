@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { bitmapOf, type Bitmap } from "../render/assets";
+import { bitmapOf, headOf, type Bitmap } from "../render/assets";
 import { cachedImage } from "./use-loaded-image";
 
-export function useSkinBitmaps(urls: readonly string[]): Map<string, Bitmap> {
-  const [skins, setSkins] = useState<Map<string, Bitmap>>(() => new Map());
+export function useHeadBitmaps(urls: readonly string[]): Map<string, Bitmap> {
+  const [heads, setHeads] = useState<Map<string, Bitmap>>(() => new Map());
   const key = urls.join("\n");
 
   useEffect(() => {
@@ -11,11 +11,11 @@ export function useSkinBitmaps(urls: readonly string[]): Map<string, Bitmap> {
     Promise.allSettled(
       key.split("\n").map(async (url) => {
         const image = await cachedImage(url);
-        return [url, bitmapOf(image)] as const;
+        return [url, headOf(bitmapOf(image))] as const;
       }),
     ).then((results) => {
       if (cancelled) return;
-      setSkins(
+      setHeads(
         new Map(
           results.flatMap((result) =>
             result.status === "fulfilled" ? [result.value] : [],
@@ -28,5 +28,5 @@ export function useSkinBitmaps(urls: readonly string[]): Map<string, Bitmap> {
     };
   }, [key]);
 
-  return skins;
+  return heads;
 }

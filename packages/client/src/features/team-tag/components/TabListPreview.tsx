@@ -2,7 +2,6 @@ import { memo, useEffect, useMemo, useRef, useState } from "react";
 import type { PlateDesign } from "@createrington/shared/team-tag";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PODIUM } from "@/features/team/data";
-import { mcHeadsSkin } from "@/lib/external-urls";
 import { cn } from "@/lib/utils";
 import {
   BACKDROPS,
@@ -14,7 +13,7 @@ import {
 import type { Bitmap, PlateAssets } from "../render/assets";
 import { renderTabList, type TabRow } from "../render/tab-list";
 import { useLoadedImage } from "../hooks/use-loaded-image";
-import { useSkinBitmaps } from "../hooks/use-skin-bitmaps";
+import { useHeadBitmaps } from "../hooks/use-head-bitmaps";
 
 type BoardParty = { tag: string; preset: number };
 
@@ -35,7 +34,7 @@ const TEAM_PINGS = [30, 54, 112, 78, 41, 96, 64];
 
 const BOARD_PLAYERS: {
   name: string;
-  skinUrl: string;
+  skinUrl: string | null;
   nameColor: number;
   pingMs: number;
   party: BoardParty | null;
@@ -49,14 +48,16 @@ const BOARD_PLAYERS: {
   })),
   {
     name: "VoidVersa",
-    skinUrl: mcHeadsSkin("VoidVersa"),
+    skinUrl: null,
     nameColor: RANKS[RANKS.length - 1].color,
     pingMs: 88,
     party: { tag: "VOID", preset: 7 },
   },
 ];
 
-const BOARD_SKIN_URLS = BOARD_PLAYERS.map((player) => player.skinUrl);
+const BOARD_SKIN_URLS = BOARD_PLAYERS.flatMap((player) =>
+  player.skinUrl ? [player.skinUrl] : [],
+);
 
 function partyDesign(tag: string, preset: number): PlateDesign {
   return {
@@ -74,7 +75,7 @@ export const TabListPreview = memo(function TabListPreview({
   assets,
   name,
   rank,
-  skin,
+  head,
   guiScale,
   backdrop,
   logo,
@@ -85,7 +86,7 @@ export const TabListPreview = memo(function TabListPreview({
   assets: PlateAssets | null;
   name: string;
   rank: number;
-  skin: Bitmap | undefined;
+  head: Bitmap | undefined;
   guiScale: GuiScale;
   backdrop: Backdrop;
   logo: boolean;
@@ -112,7 +113,7 @@ export const TabListPreview = memo(function TabListPreview({
     BACKDROPS.find((option) => option.value === backdrop)!.src,
   );
 
-  const boardSkins = useSkinBitmaps(BOARD_SKIN_URLS);
+  const boardHeads = useHeadBitmaps(BOARD_SKIN_URLS);
 
   const rows = useMemo<TabRow[] | null>(() => {
     if (!assets) return null;
@@ -121,7 +122,9 @@ export const TabListPreview = memo(function TabListPreview({
     ).map((player) => ({
       name: player.name,
       nameColor: player.nameColor,
-      skin: boardSkins.get(player.skinUrl) ?? assets.steve,
+      head:
+        (player.skinUrl ? boardHeads.get(player.skinUrl) : undefined) ??
+        assets.steveHead,
       pingMs: player.pingMs,
       design: player.party
         ? partyDesign(player.party.tag, player.party.preset)
@@ -130,7 +133,7 @@ export const TabListPreview = memo(function TabListPreview({
     const you: TabRow = {
       name,
       nameColor: RANKS[rank].color,
-      skin: skin ?? assets.steve,
+      head: head ?? assets.steveHead,
       pingMs: 30,
       design,
     };
@@ -142,7 +145,7 @@ export const TabListPreview = memo(function TabListPreview({
         return x < y ? -1 : x > y ? 1 : 0;
       }),
     ];
-  }, [assets, boardSkins, design, name, rank, skin]);
+  }, [assets, boardHeads, design, name, rank, head]);
 
   useEffect(() => {
     if (!canvasRef.current || !assets || !rows || !frame.width) return;
