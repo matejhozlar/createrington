@@ -12,6 +12,7 @@ import {
   ThumbnailBuilder,
 } from "discord.js";
 import { appEmoji } from "@/discord/emojis";
+import { playerAvatarUrl } from "@/services/skin-api/urls";
 import type {
   LeaderboardConfig,
   LeaderboardEntry,
@@ -20,10 +21,6 @@ import type {
 import type { TopLevelComponent } from "../../component-builder";
 
 const MEDALS = ["🥇", "🥈", "🥉"];
-
-function headUrl(uuid: string): string {
-  return `https://mc-heads.net/avatar/${uuid}`;
-}
 
 function divider(): SeparatorBuilder {
   return new SeparatorBuilder()
@@ -45,7 +42,7 @@ function entrySection(entry: LeaderboardEntry): SectionBuilder {
     )
     .setThumbnailAccessory(
       new ThumbnailBuilder()
-        .setURL(headUrl(entry.playerUuid))
+        .setURL(playerAvatarUrl(entry.playerUuid))
         .setDescription(`${entry.playerName}'s head`),
     );
 }

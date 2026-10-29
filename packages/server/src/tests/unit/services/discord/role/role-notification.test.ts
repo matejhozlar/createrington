@@ -21,6 +21,10 @@ vi.mock("@/services/skin-api", async () => {
   };
 });
 
+vi.mock("@/services/skin-api/urls", () => ({
+  playerAvatarUrl: (uuid: string) => `https://app.test/api/skin/${uuid}/avatar`,
+}));
+
 vi.mock("@/discord/utils/pose-thumbnail", () => ({
   squarePoseThumbnail: async (png: Uint8Array) => Buffer.from(png),
 }));
@@ -224,13 +228,15 @@ describe("RoleNotificationService.sendNotification", () => {
     );
   });
 
-  it("falls back to the square mc-heads head when the render fails", async () => {
+  it("falls back to the player's head from the app when the render fails", async () => {
     skinApi.render.mockRejectedValue(new Error("skin-api down"));
 
     await roleNotificationService.sendNotification(notification());
     const message = lastMessage();
 
-    expect(message.accessoryUrl).toBe("https://mc-heads.net/avatar/uuid-1");
+    expect(message.accessoryUrl).toBe(
+      "https://app.test/api/skin/uuid-1/avatar",
+    );
     expect(message.files).toBeUndefined();
   });
 

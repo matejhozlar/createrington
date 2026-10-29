@@ -3,24 +3,23 @@ import {
   randomPose,
   type KnownPose,
 } from "createrington-skin-api";
-import { mcHeadsBody } from "@/lib/external-urls";
 
 export { KNOWN_POSES, randomPose };
 export type { KnownPose };
 
-export function skinApiUrl(uuid: string, pose: KnownPose): string {
+function skinApiUrl(uuid: string, pose: KnownPose): string {
   const url = new URL("/api/render/skin", window.location.origin);
   url.searchParams.set("uuid", uuid);
   url.searchParams.set("pose", pose);
   return url.toString();
 }
 
-/** Try to load a skin-api render, fall back to mc-heads on failure. */
 export function loadSkin(uuid: string, pose: KnownPose): Promise<string> {
+  const src = skinApiUrl(uuid, pose);
   return new Promise((resolve) => {
     const img = new Image();
-    img.onload = () => resolve(img.src);
-    img.onerror = () => resolve(mcHeadsBody(uuid));
-    img.src = skinApiUrl(uuid, pose);
+    img.onload = () => resolve(src);
+    img.onerror = () => resolve(src);
+    img.src = src;
   });
 }

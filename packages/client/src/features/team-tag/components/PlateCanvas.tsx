@@ -10,7 +10,7 @@ export function PlateCanvas({
   zoom,
   name,
   nameColor,
-  skin,
+  head,
   bare,
   label,
   className,
@@ -20,7 +20,7 @@ export function PlateCanvas({
   zoom: number;
   name?: string;
   nameColor?: number;
-  skin?: Bitmap;
+  head?: Bitmap;
   bare?: boolean;
   label?: string;
   className?: string;
@@ -35,10 +35,10 @@ export function PlateCanvas({
       zoom,
       name,
       nameColor,
-      skin,
+      head,
       bare,
     });
-  }, [design, assets, zoom, name, nameColor, skin, bare]);
+  }, [design, assets, zoom, name, nameColor, head, bare]);
 
   return (
     <canvas

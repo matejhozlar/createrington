@@ -2,6 +2,8 @@ import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import type { Request, Response } from "express";
 import { createRateLimitStore } from "@/services/rate-limit";
 
+const AVATAR_PATH = /^\/api\/skin\/[^/]+\/avatar$/;
+
 /** Shared handler for rate limit violations, logs the offending IP and returns 429 */
 function rateLimitHandler(req: Request, res: Response) {
   logger.warn(`[RateLimit] IP ${req.ip} exceeded rate limit on ${req.path}`);
@@ -30,7 +32,8 @@ export const globalLimiter = rateLimit({
   skip: (req) =>
     req.path === "/api/claude-chat/stream" ||
     req.path === "/api/health" ||
-    req.path.startsWith("/api/modpacks/"),
+    req.path.startsWith("/api/modpacks/") ||
+    AVATAR_PATH.test(req.path),
 });
 
 /** Changelog card limiter: 3000 requests per 15-minute window per IP, sized for one row image request per changelog entry */

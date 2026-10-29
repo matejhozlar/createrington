@@ -16,6 +16,7 @@ import {
   MAX_QUALITY_RENDER,
   POSE_RENDER_STYLE,
 } from "@/services/skin-api";
+import { mcHeadsBodyUrl } from "@/services/skin-api/urls";
 import { computeBBox, fitFontSize } from "@/utils/canvas";
 
 const W = 1600;
@@ -36,7 +37,6 @@ const FIGURE_MAX_WIDTH = 500;
 const FIGURE_CENTER_X = 1220;
 const FIGURE_GROUND_Y = 800;
 
-const MC_HEADS_BODY_URL = "https://mc-heads.net/body";
 const FETCH_TIMEOUT_MS = 5000;
 
 const ASSETS_DIR = join(
@@ -113,7 +113,7 @@ async function fetchFigure(minecraftUuid: string): Promise<Image | null> {
     );
   }
   try {
-    const res = await fetch(`${MC_HEADS_BODY_URL}/${minecraftUuid}/600`, {
+    const res = await fetch(mcHeadsBodyUrl(minecraftUuid), {
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
     if (!res.ok) throw new Error(`status ${res.status}`);

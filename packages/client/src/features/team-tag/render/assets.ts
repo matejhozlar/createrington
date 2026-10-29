@@ -18,7 +18,7 @@ export type PlateAssets = {
   plateColumns: Record<PlateColumn, Glyph>;
   plateLetters: Map<string, Glyph>;
   pings: Bitmap[];
-  steve: Bitmap;
+  steveHead: Bitmap;
   logo: HTMLImageElement;
   logoShadow: HTMLCanvasElement;
 };
@@ -28,6 +28,9 @@ const PLATE_LETTER_ROWS = ["ABCDEFGHIJKLMNOPQR", "STUVWXYZ0123456789"];
 const PLATE_COLUMNS: PlateColumn[] = ["edge", "rivet", "fill"];
 const VANILLA_SPACE_ADVANCE = 4;
 const PING_LEVELS = 5;
+export const HEAD_SIZE = 8;
+const SKIN_FACE = { x: 8, y: 8 };
+const SKIN_HAT = { x: 40, y: 8 };
 export const SHADOW_DIM = 0.25;
 
 export function bitmapOf(
@@ -56,6 +59,28 @@ export function cropBitmap(
     data.set(source.data.subarray(from, from + width * 4), row * width * 4);
   }
   return { width, height, data };
+}
+
+export function headOf(source: Bitmap): Bitmap {
+  if (source.width === HEAD_SIZE && source.height === HEAD_SIZE) return source;
+  const head = cropBitmap(
+    source,
+    SKIN_FACE.x,
+    SKIN_FACE.y,
+    HEAD_SIZE,
+    HEAD_SIZE,
+  );
+  const hat = cropBitmap(source, SKIN_HAT.x, SKIN_HAT.y, HEAD_SIZE, HEAD_SIZE);
+  for (let i = 0; i < head.data.length; i += 4) {
+    const alpha = hat.data[i + 3] / 255;
+    if (alpha === 0) continue;
+    for (let c = 0; c < 3; c++) {
+      head.data[i + c] =
+        hat.data[i + c] * alpha + head.data[i + c] * (1 - alpha);
+    }
+    head.data[i + 3] = Math.max(head.data[i + 3], hat.data[i + 3]);
+  }
+  return head;
 }
 
 function glyphWidth(bitmap: Bitmap): number {
@@ -167,7 +192,7 @@ export async function loadPlateAssets(): Promise<PlateAssets> {
       letters.height / PLATE_LETTER_ROWS.length,
     ),
     pings: pings.map(bitmapOf),
-    steve: bitmapOf(steve),
+    steveHead: headOf(bitmapOf(steve)),
     logo,
     logoShadow: shadowCanvas(logo),
   };

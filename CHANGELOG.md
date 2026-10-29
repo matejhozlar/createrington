@@ -1,3 +1,21 @@
+## v1.71.0 (2026-10-29)
+
+### @createrington/server (1.70.0 → 1.71.0)
+- [add] Add a player avatar route (`GET /api/skin/:player/avatar`) that serves flat 2D player heads as cacheable PNGs through the skin-api, with ETag-based 304 responses, configurable size, and mc-heads fallback on failure
+- [add] Accept a Minecraft username (in addition to UUID) on the skin avatar and pose routes, resolving the username to a registered player's UUID before rendering
+- [add] Add a username resolver backed by skin-api's `resolve` endpoint with a TTL-based LRU cache (hits cached 24h, misses 1h), replacing the removed Mojang API integration
+- [refactor] Extract a generic `RenderMemo` class from the pose render cache and reuse it for both avatar and pose caching, deduplicating concurrent requests and evicting stale entries
+- [refactor] Centralize mc-heads and player image URL builders into `skin-api/urls.ts`, replacing scattered inline URL strings across Discord commands, embeds, leaderboard cards, welcome cards, and role notifications
+- [refactor] Point Discord embed thumbnails (activity, profile, seen, leaderboard, role notifications) at the app's own avatar route instead of mc-heads.net directly
+- [refactor] Always render a posed figure for `/skin` command (defaulting to idle), removing the mc-heads body fallback path that skipped skin-api entirely
+- [remove] Remove the `mojang-profile.ts` utility and its direct Mojang API calls, replaced by the skin-api username resolver
+- [chore] Skip request logging and global rate limiting for the high-traffic `/api/skin/` prefix
+
+### @createrington/client (0.2.88 → 0.2.89)
+- [refactor] Replace all mc-heads.net and mineatar.io image URLs with the app's own `/api/skin` avatar and pose routes, served through the new `playerAvatarUrl` and `playerPoseUrl` helpers in `player-images.ts`
+- [refactor] Rework the team tag renderer to accept pre-cropped 8x8 head bitmaps instead of full skin textures, extracting the face and hat overlay compositing into a new `headOf` function in the asset pipeline
+- [remove] Remove the mc-heads avatar, body, and skin URL helpers from `external-urls.ts` (only the raw skin URL for the team tag editor remains)
+
 ## v1.70.0 (2026-10-29)
 
 ### @createrington/server (1.69.0 → 1.70.0)

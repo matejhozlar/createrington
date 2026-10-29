@@ -6,7 +6,7 @@ import { tabNameLine } from "./text";
 export type TabRow = {
   name: string;
   nameColor: number;
-  skin: Bitmap;
+  head: Bitmap;
   pingMs: number;
   design: PlateDesign | null;
 };
@@ -37,9 +37,8 @@ function pingLevel(ms: number): number {
   return 0;
 }
 
-function drawHead(fb: Framebuffer, skin: Bitmap, x: number, y: number) {
-  fb.blit(skin, 8, 8, 8, 8, x, y);
-  fb.blit(skin, 40, 8, 8, 8, x, y);
+function drawHead(fb: Framebuffer, head: Bitmap, x: number, y: number) {
+  fb.blit(head, 0, 0, head.width, head.height, x, y);
 }
 
 const backdropCache = new WeakMap<
@@ -181,7 +180,7 @@ export function renderTabList(
   rows.forEach((row, i) => {
     const y = rowsTop + i * ROW_STEP;
     fb.fill(rowX, y, rowX + rowWidth, y + ROW_HEIGHT, ROW_BACKGROUND);
-    drawHead(fb, row.skin, rowX, y);
+    drawHead(fb, row.head, rowX, y);
     fb.text(lines[i].ops, rowX + HEAD_ADVANCE, y);
     fb.blit(
       assets.pings[pingLevel(row.pingMs)],
@@ -231,7 +230,7 @@ export function renderPlateStrip(
     design,
     name,
     nameColor,
-    skin,
+    head,
     zoom,
     assets,
     bare = false,
@@ -239,24 +238,24 @@ export function renderPlateStrip(
     design: PlateDesign;
     name?: string;
     nameColor?: number;
-    skin?: Bitmap;
+    head?: Bitmap;
     zoom: number;
     assets: PlateAssets;
     bare?: boolean;
   },
 ) {
   const pad = bare ? 0 : 2;
-  const head = skin ? HEAD_ADVANCE : 0;
+  const headAdvance = head ? HEAD_ADVANCE : 0;
   const line = tabNameLine(name ?? "", nameColor ?? 0xffffff, design, assets);
-  const width = pad * 2 + head + (name ? line.width : PLATE_WIDTH + 1);
+  const width = pad * 2 + headAdvance + (name ? line.width : PLATE_WIDTH + 1);
   const height = pad * 2 + ROW_HEIGHT + 1;
   const fb = new Framebuffer(width, height);
   if (!bare) {
     fb.fill(0, 0, width, height, 0xff1b1a1f);
     fb.fill(0, pad, width, pad + ROW_HEIGHT, ROW_BACKGROUND);
   }
-  if (skin) drawHead(fb, skin, pad, pad);
-  fb.text(line.ops, pad + head, pad);
+  if (head) drawHead(fb, head, pad, pad);
+  fb.text(line.ops, pad + headAdvance, pad);
 
   const dpr = window.devicePixelRatio || 1;
   const pixels = Math.max(1, Math.round(zoom * dpr));

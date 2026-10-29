@@ -4,6 +4,7 @@ import { replyError } from "@/discord/utils/interaction-reply";
 import { CooldownType } from "@/discord/utils/cooldown";
 import { formatPlaytime } from "@createrington/shared/format";
 import { renderScreenshot } from "@/discord/utils/render-screenshot";
+import { playerAvatarUrl } from "@/services/skin-api/urls";
 import {
   AttachmentBuilder,
   ChatInputCommandInteraction,
@@ -71,9 +72,7 @@ export async function execute(
       const sessions = details.playtime.totalSessions.toLocaleString();
 
       const embed = EmbedPresets.info(`${username}'s Activity`)
-        .thumbnail(
-          `https://mc-heads.net/avatar/${details.player.minecraftUuid}`,
-        )
+        .thumbnail(playerAvatarUrl(details.player.minecraftUuid))
         .field("Total Playtime", pt, true)
         .field("Sessions", sessions, true);
 

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Users, X } from "lucide-react";
-import { mcHeadsAvatar } from "@/lib/external-urls";
+import { playerAvatarUrl } from "@/lib/player-images";
 import { usePlayerData } from "@/contexts/player-data";
 import { useSidebar } from "@/components/ui/sidebar";
 import {
@@ -31,7 +31,7 @@ function PlayerRow({
   /** True when the sidebar is in icon-collapsed mode */
   isCollapsed: boolean;
 }) {
-  const avatarUrl = mcHeadsAvatar(uuid);
+  const avatarUrl = playerAvatarUrl(uuid);
   const [broken, setBroken] = useState(false);
 
   const start =
