@@ -1,3 +1,25 @@
+## v1.69.0 (2026-10-29)
+
+### @createrington/server (1.68.0 → 1.69.0)
+- [add] Add FTB Teams party sync endpoint (`POST /api/parties/sync`) that receives full-state party snapshots from core, upserts parties by team ID, replaces member and ally sets, parses team tag design codes, and removes parties missing from the snapshot, all in one transaction
+- [add] Add `server_party`, `server_party_member`, and `server_party_ally` tables with the `party_member_rank` enum, replacing the OPAC-based forceload and ally tables with a unified party model that tracks members with ranks, allies, OPAC claim/forceload counters per member, and team tags
+- [add] Add admin party tRPC procedures (`stats`, `list`, `members`, `playerStatus`) serving the synced parties to the admin pages and the player detail party tab, with a single query that reads a player's party and rank together
+- [add] Add party query classes with `getOverview`, `getStats`, `getForMember`, `getForAlly`, `searchByName`, and member/ally queries joined with player names
+- [refactor] Retire the OPAC ally, chunk, and forceload sync endpoints (`/api/allies/sync`, `/api/chunks/sync`, `/api/forceloads/sync`) and all their controllers, services, schemas, query classes, and database tables
+- [refactor] Rename the admin parties totals procedure from `kpis` to `stats` to match the convention of other admin routers
+- [chore] Drop the sync schema helpers (`chunkCoordinate`, `epochMillis`, `MAX_SYNC_CHUNKS`) that only the removed OPAC syncs used
+- [chore] Seed FTB Teams parties in the test data instead of the dropped OPAC tables
+
+### @createrington/client (0.2.86 → 0.2.87)
+- [add] Add page turning from the gallery lightbox navigation: stepping past the last (or first) item on a page fetches the adjacent page from the cache or the server, with a loading spinner on the chevron, keyboard arrow support, and prefetching of the next page as the user approaches the boundary
+- [add] Rebuild the admin parties page on the synced FTB Teams parties with a searchable, sortable table showing party name, team tag plate, owner, member/ally/claim counts, and an expandable members panel with rank badges
+- [add] Rebuild the player detail party tab to show the player's party membership with rank, team tag, color swatch, description, member list, and the parties they are an ally of
+- [add] Add a reusable `TeamTagPlate` component that parses a design code and renders the tag plate with click-to-copy
+- [fix] Turn the gallery page synchronously from the cache and keep the lightbox chevrons focusable while a page turn is in progress
+
+### @createrington/shared (1.17.0 → 1.18.0)
+- [add] Add `PARTY_MEMBER_RANKS` constant and `PartyMemberRank` type for the FTB Teams party member rank enum (`owner`, `officer`, `member`)
+
 ## v1.68.0 (2026-10-28)
 
 ### @createrington/server (1.67.4 → 1.68.0)

@@ -103,7 +103,7 @@ const TOOL_SECTIONS: ToolSection[] = [
       {
         title: "Parties",
         description:
-          "Forceload chunks, ally status, members, and qualified players in one place.",
+          "Every party on the server with its members, allies, claimed chunks and team tag.",
         icon: Users,
         href: "/admin/tools/parties",
       },

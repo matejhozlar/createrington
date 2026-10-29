@@ -1,175 +1,101 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { keepPreviousData } from "@tanstack/react-query";
-import { RefreshCw } from "lucide-react";
+import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
-import { trpc } from "@/lib/trpc";
 import { Loading } from "@/components/loading-spinner";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
-import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { useToastActions } from "@/hooks/use-toast";
+import { FilterBar } from "@/features/admin/components/FilterBar";
 import { formatRelativeDateSafe } from "@/features/admin/format";
-import { ChunkTablesCard } from "./components/ChunkTablesCard";
-import { PartiesEmptyState } from "./components/PartiesEmptyState";
-import { PartiesFiltersBar } from "./components/PartiesFiltersBar";
-import { PartiesKpiCards } from "./components/PartiesKpiCards";
-import type {
-  SoloSortKey,
-  SoloSortState,
-} from "./components/ChunkSoloPlayersSection";
-import type { PartyFilters } from "./types";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { trpc } from "@/lib/trpc";
+import { PartiesStatsCards } from "./components/PartiesStatsCards";
+import {
+  PartiesTable,
+  type PartyRow,
+  type PartySort,
+  type PartySortKey,
+} from "./components/PartiesTable";
 
-// TODO: restore server selector when multi-server support returns
 const SERVER_ID = 1;
-const POST_RESYNC_REFETCH_MS = 2000;
-const SOLO_PLAYERS_PER_PAGE = 50;
 
-const DEFAULT_FILTERS: PartyFilters = {
-  search: "",
-  dimension: "all",
-  allied: "all",
-  activeForceloadsOnly: false,
-  optedIn: "all",
-};
+const PAGE_COPY = {
+  title: "Parties",
+  description:
+    "Every FTB Teams party on the server as core last reported it: members and their ranks, allies, claimed chunks and team tags.",
+  search: "Search by party, tag or owner...",
+  table: "Click a party to see its members and allies.",
+  empty: "No party has been synced from the server yet.",
+  noMatch: "No party matches the search.",
+} as const;
+
+const DEFAULT_SORT: PartySort = { key: "name", dir: "asc" };
+const NO_PARTIES: PartyRow[] = [];
+
+function compareParties(a: PartyRow, b: PartyRow, sort: PartySort): number {
+  const direction = sort.dir === "asc" ? 1 : -1;
+  switch (sort.key) {
+    case "name":
+      return direction * a.name.localeCompare(b.name);
+    case "memberCount":
+      return direction * (a.memberCount - b.memberCount);
+    case "claimCount":
+      if (a.claimCount === null || b.claimCount === null) {
+        return (
+          (a.claimCount === null ? 1 : 0) - (b.claimCount === null ? 1 : 0)
+        );
+      }
+      return direction * (a.claimCount - b.claimCount);
+    case "syncedAt":
+      return (
+        direction *
+        (new Date(a.syncedAt).getTime() - new Date(b.syncedAt).getTime())
+      );
+  }
+}
+
+function matchesSearch(party: PartyRow, needle: string): boolean {
+  return (
+    party.name.toLowerCase().includes(needle) ||
+    (party.tag?.toLowerCase().includes(needle) ?? false) ||
+    (party.ownerName?.toLowerCase().includes(needle) ?? false)
+  );
+}
 
 export function AdminParties() {
-  const toast = useToastActions();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [initialExpandedPartyId] = useState(() => searchParams.get("partyId"));
-
-  useEffect(() => {
-    if (searchParams.has("partyId")) {
-      const next = new URLSearchParams(searchParams);
-      next.delete("partyId");
-      setSearchParams(next, { replace: true });
-    }
-    // Only run once on mount: the URL param is consumed into a ref so a
-    // subsequent param-clear doesn't re-trigger.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const [filters, setFilters] = useState<PartyFilters>(DEFAULT_FILTERS);
-  const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null);
-  // Solo players are only meaningful when party-scoped filters are inactive.
-  const soloPlayersEnabled =
-    filters.allied !== "allied" && filters.optedIn === "all";
-
-  // Reset solo page on any filter change that affects the result set
-  // (the "store information from previous render" pattern from React docs).
-  const soloFiltersKey = `${filters.search}|${filters.dimension}|${filters.activeForceloadsOnly}|${soloPlayersEnabled}`;
-  const [soloPage, setSoloPage] = useState(0);
-  const [prevSoloFiltersKey, setPrevSoloFiltersKey] = useState(soloFiltersKey);
-  if (prevSoloFiltersKey !== soloFiltersKey) {
-    setPrevSoloFiltersKey(soloFiltersKey);
-    setSoloPage(0);
-  }
-
-  const [soloSort, setSoloSort] = useState<SoloSortState>(null);
-
-  const handleSoloSortChange = useCallback((key: SoloSortKey) => {
-    setSoloSort((prev) =>
-      prev?.key === key
-        ? { key, dir: prev.dir === "asc" ? "desc" : "asc" }
-        : { key, dir: "asc" },
-    );
-    setSoloPage(0);
-  }, []);
-
-  const kpisQuery = trpc.admin.parties.kpis.useQuery({ serverId: SERVER_ID });
-  const chunkKpisQuery = trpc.admin.parties.chunkKpis.useQuery({
-    serverId: SERVER_ID,
-  });
-  const dimensionInput =
-    filters.dimension === "all" ? undefined : filters.dimension;
-  const chunkPartiesQuery = trpc.admin.parties.chunkParties.useQuery({
-    serverId: SERVER_ID,
-    dimension: dimensionInput,
-  });
-  const chunkDimensionsQuery = trpc.admin.parties.chunkDimensions.useQuery({
-    serverId: SERVER_ID,
-  });
-  const chunkSoloPlayersQuery = trpc.admin.parties.chunkSoloPlayers.useQuery(
-    {
-      serverId: SERVER_ID,
-      page: soloPage,
-      limit: SOLO_PLAYERS_PER_PAGE,
-      search: filters.search.trim() || undefined,
-      dimension: dimensionInput,
-      activeOnly: filters.activeForceloadsOnly || undefined,
-      sortBy: soloSort?.key,
-      sortDir: soloSort?.dir,
-    },
-    { enabled: soloPlayersEnabled, placeholderData: keepPreviousData },
+  const [searchParams] = useSearchParams();
+  const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<PartySort>(DEFAULT_SORT);
+  const [expandedId, setExpandedId] = useState<number | null>(
+    () => Number(searchParams.get("party")) || null,
   );
-  const fakePartyQuery = trpc.admin.parties.fakeParty.useQuery({
-    serverId: SERVER_ID,
-  });
-  const resyncMutation = trpc.admin.parties.resync.useMutation();
+  const needle = useDebouncedValue(search, 300).trim().toLowerCase();
 
-  const isRefreshing =
-    kpisQuery.isFetching ||
-    chunkKpisQuery.isFetching ||
-    chunkPartiesQuery.isFetching ||
-    chunkSoloPlayersQuery.isFetching ||
-    fakePartyQuery.isFetching ||
-    resyncMutation.isPending;
+  const statsQuery = trpc.admin.parties.stats.useQuery({ serverId: SERVER_ID });
+  const listQuery = trpc.admin.parties.list.useQuery({ serverId: SERVER_ID });
+  const parties = listQuery.data ?? NO_PARTIES;
 
-  const refetchAll = () => {
-    kpisQuery.refetch();
-    chunkKpisQuery.refetch();
-    chunkPartiesQuery.refetch();
-    chunkSoloPlayersQuery.refetch();
-    fakePartyQuery.refetch();
-    setLastRefreshedAt(new Date());
-  };
+  const shown = useMemo(
+    () =>
+      parties
+        .filter((party) => !needle || matchesSearch(party, needle))
+        .sort((a, b) => compareParties(a, b, sort)),
+    [parties, needle, sort],
+  );
 
-  const handleResync = async () => {
-    try {
-      await resyncMutation.mutateAsync({ serverId: SERVER_ID });
-      toast.success("Sync dispatched — new data inbound...", "Resync");
-      setTimeout(refetchAll, POST_RESYNC_REFETCH_MS);
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Unknown error",
-        "Resync failed",
-      );
-      refetchAll();
-    }
-  };
+  const toggleSort = (key: PartySortKey) =>
+    setSort((prev) =>
+      prev.key === key
+        ? { key, dir: prev.dir === "asc" ? "desc" : "asc" }
+        : { key, dir: key === "name" ? "asc" : "desc" },
+    );
 
-  const loaded =
-    !kpisQuery.isLoading &&
-    !chunkKpisQuery.isLoading &&
-    !chunkPartiesQuery.isLoading &&
-    !fakePartyQuery.isLoading;
-
-  const hasAnyData =
-    (chunkPartiesQuery.data?.length ?? 0) > 0 ||
-    (chunkKpisQuery.data?.totalChunks ?? 0) > 0 ||
-    !!fakePartyQuery.data;
-
-  // Filter parties client-side (moved here so the tab trigger can show counts)
-  const allParties = chunkPartiesQuery.data;
-  const filteredParties = useMemo(() => {
-    const needle = filters.search.trim().toLowerCase();
-    return (allParties ?? []).filter((p) => {
-      if (filters.allied === "allied" && !p.isAllied) return false;
-      if (filters.allied === "notAllied" && p.isAllied) return false;
-      if (filters.activeForceloadsOnly && p.activeChunks === 0) return false;
-      if (filters.optedIn === "optedIn" && p.partyOptedIn !== true)
-        return false;
-      if (filters.optedIn === "optedOut" && p.partyOptedIn !== false)
-        return false;
-      if (needle && !p.partyName.toLowerCase().includes(needle)) return false;
-      return true;
-    });
-  }, [allParties, filters]);
-  const totalParties = allParties?.length ?? 0;
+  const lastSyncedAt = statsQuery.data?.lastSyncedAt ?? null;
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -177,92 +103,73 @@ export function AdminParties() {
         trail={[
           { label: "Admin", href: "/admin/dashboard" },
           { label: "Tools", href: "/admin/tools" },
-          { label: "Parties" },
+          { label: PAGE_COPY.title },
         ]}
-      >
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-8"
-              onClick={handleResync}
-              disabled={isRefreshing}
-              aria-label="Resync party data"
-            >
-              <RefreshCw
-                className={`size-4 ${isRefreshing ? "animate-spin" : ""}`}
-              />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            Dispatch /opac-fp sync and reload data
-          </TooltipContent>
-        </Tooltip>
-      </AdminPageHeader>
+      />
 
       <div className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-4 px-4 pb-4">
         <AdminPageTitle
-          title="Parties"
+          title={PAGE_COPY.title}
           description={
             <>
-              <p>
-                Claimed chunks, forceload status, ally status, and members for
-                every party on the server.
-              </p>
-              {lastRefreshedAt && (
+              <p>{PAGE_COPY.description}</p>
+              {lastSyncedAt && (
                 <p className="text-xs">
-                  Last refreshed {formatRelativeDateSafe(lastRefreshedAt)}
+                  Last synced {formatRelativeDateSafe(lastSyncedAt)}
                 </p>
               )}
             </>
           }
         />
 
-        {kpisQuery.isLoading || chunkKpisQuery.isLoading ? (
-          <Loading size="medium" text="Loading KPIs..." />
-        ) : kpisQuery.data && chunkKpisQuery.data ? (
-          <PartiesKpiCards
-            kpis={kpisQuery.data}
-            chunkKpis={chunkKpisQuery.data}
-            fakeParty={fakePartyQuery.data ?? null}
-          />
+        {statsQuery.isLoading ? (
+          <Loading size="medium" text="Loading party totals..." />
+        ) : statsQuery.data ? (
+          <PartiesStatsCards stats={statsQuery.data} />
         ) : null}
 
-        {!loaded ? (
-          <Loading size="medium" text="Loading party data..." />
-        ) : !hasAnyData ? (
-          <PartiesEmptyState
-            onResync={handleResync}
-            isResyncing={isRefreshing}
-          />
-        ) : (
-          <>
-            <PartiesFiltersBar
-              filters={filters}
-              onChange={setFilters}
-              dimensions={chunkDimensionsQuery.data ?? []}
-            />
+        <FilterBar
+          search={search}
+          onSearchChange={setSearch}
+          placeholder={PAGE_COPY.search}
+          activeCount={search ? 1 : 0}
+        />
 
-            <ChunkTablesCard
-              serverId={SERVER_ID}
-              filteredParties={filteredParties}
-              totalParties={totalParties}
-              filters={filters}
-              soloPlayersEnabled={soloPlayersEnabled}
-              soloPage={soloPage}
-              soloData={chunkSoloPlayersQuery.data}
-              soloIsLoading={
-                chunkSoloPlayersQuery.isLoading ||
-                chunkSoloPlayersQuery.isPlaceholderData
-              }
-              onSoloPageChange={setSoloPage}
-              soloSort={soloSort}
-              onSoloSortChange={handleSoloSortChange}
-              initialExpandedPartyId={initialExpandedPartyId}
-            />
-          </>
-        )}
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              {PAGE_COPY.title}
+              {!listQuery.isLoading && ` (${shown.length})`}
+            </CardTitle>
+            <CardDescription>{PAGE_COPY.table}</CardDescription>
+          </CardHeader>
+          <CardContent className="p-0">
+            {listQuery.isError ? (
+              <p className="py-8 text-center text-destructive">
+                Failed to load the parties: {listQuery.error.message}
+              </p>
+            ) : !listQuery.isLoading && parties.length === 0 ? (
+              <p className="px-6 py-8 text-center text-muted-foreground">
+                {PAGE_COPY.empty}
+              </p>
+            ) : !listQuery.isLoading && shown.length === 0 ? (
+              <p className="px-6 py-8 text-center text-muted-foreground">
+                {PAGE_COPY.noMatch}
+              </p>
+            ) : (
+              <PartiesTable
+                parties={shown}
+                loading={listQuery.isLoading}
+                sort={sort}
+                onSort={toggleSort}
+                expandedId={expandedId}
+                onToggle={(id) =>
+                  setExpandedId((prev) => (prev === id ? null : id))
+                }
+              />
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

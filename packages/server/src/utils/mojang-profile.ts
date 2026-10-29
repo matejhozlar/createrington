@@ -49,8 +49,8 @@ function cacheSet(uuid: string, username: string | null): void {
 
 /**
  * Resolves a Minecraft UUID to its current username via Mojang. Returns null
- * if Mojang has no profile for the UUID (e.g. opac-fakeplayer's all-zero
- * sentinel, or any UUID never tied to a real account).
+ * if Mojang has no profile for the UUID (any UUID never tied to a real
+ * account).
  *
  * Throws on network failure; callers should treat that as transient.
  */

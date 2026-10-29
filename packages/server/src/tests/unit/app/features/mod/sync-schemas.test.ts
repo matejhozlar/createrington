@@ -1,7 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { AllySyncBodySchema } from "@/app/features/mod/allies/allies.schemas";
-import { ChunkSyncBodySchema } from "@/app/features/mod/chunks/chunks.schemas";
-import { ForceloadSyncBodySchema } from "@/app/features/mod/forceloads/forceloads.schemas";
+import { PartySyncBodySchema } from "@/app/features/mod/parties/parties.schemas";
 import {
   HeartbeatBodySchema,
   PresenceBodySchema,
@@ -9,8 +7,6 @@ import {
 
 const UUID = "11111111-2222-3333-4444-555555555555";
 const LONG = "x".repeat(256);
-
-const chunk = { dimension: "minecraft:overworld", x: 0, z: 0, active: true };
 
 function repeat<T>(item: T, count: number): T[] {
   return Array.from({ length: count }, () => item);
@@ -75,154 +71,83 @@ describe("HeartbeatBodySchema", () => {
   });
 });
 
-describe("AllySyncBodySchema", () => {
-  const body = {
-    fakePlayerParty: {
-      partyId: UUID,
-      ownerUuid: UUID,
-      ownerName: "steve",
-      members: [{ uuid: UUID }],
-    },
-    allies: [{ partyId: UUID, alliedAt: 1 }],
-    qualified: [{ uuid: UUID, qualifiedAt: 1 }],
-    pending: [],
+describe("PartySyncBodySchema", () => {
+  const OTHER = "11111111-2222-3333-4444-666666666666";
+  const owner = { uuid: UUID, rank: "owner", claims: 3, forceloads: 0 };
+  const party = {
+    teamId: UUID,
+    name: "Alpha",
+    description: "",
+    color: 0xff8800,
+    freeToJoin: false,
+    members: [
+      owner,
+      { uuid: OTHER, rank: "member", claims: null, forceloads: null },
+    ],
+    allies: [OTHER],
+    tagCode: null,
   };
 
-  it("accepts a full ally state", () => {
-    expect(AllySyncBodySchema.safeParse(body).success).toBe(true);
+  it("accepts a snapshot with null chunk counters and a tag code", () => {
+    expect(
+      PartySyncBodySchema.safeParse({
+        parties: [{ ...party, tagCode: "CRP1:R:ALPH:FF8800:FFFFFF" }],
+      }).success,
+    ).toBe(true);
+    expect(PartySyncBodySchema.safeParse({ parties: [] }).success).toBe(true);
   });
 
-  it("rejects an overlong owner name", () => {
+  it("rejects a party without exactly one owner", () => {
     expect(
-      AllySyncBodySchema.safeParse({
-        ...body,
-        fakePlayerParty: { ...body.fakePlayerParty, ownerName: LONG },
+      PartySyncBodySchema.safeParse({
+        parties: [{ ...party, members: [{ ...owner, rank: "officer" }] }],
+      }).success,
+    ).toBe(false);
+    expect(
+      PartySyncBodySchema.safeParse({
+        parties: [{ ...party, members: [owner, { ...owner, uuid: OTHER }] }],
       }).success,
     ).toBe(false);
   });
 
-  it("rejects a timestamp that is not valid epoch millis", () => {
-    for (const qualifiedAt of [1e20, -1, 1.5]) {
-      expect(
-        AllySyncBodySchema.safeParse({
-          ...body,
-          qualified: [{ uuid: UUID, qualifiedAt }],
-        }).success,
-      ).toBe(false);
-    }
+  it("rejects an unknown rank or a negative chunk counter", () => {
     expect(
-      AllySyncBodySchema.safeParse({
-        ...body,
-        allies: [{ partyId: UUID, alliedAt: 1e20 }],
-      }).success,
-    ).toBe(false);
-  });
-
-  it("rejects a list longer than the cap", () => {
-    expect(
-      AllySyncBodySchema.safeParse({
-        ...body,
-        pending: repeat({ uuid: UUID, qualifiedAt: 1 }, 10_001),
-      }).success,
-    ).toBe(false);
-  });
-});
-
-describe("ChunkSyncBodySchema", () => {
-  const claimed = { ...chunk, forceloadable: false };
-
-  it("fills missing party fields with null", () => {
-    const parsed = ChunkSyncBodySchema.parse({
-      players: [{ playerUuid: UUID, chunks: [claimed] }],
-    });
-
-    expect(parsed.players[0]).toMatchObject({
-      partyId: null,
-      partyName: null,
-      partyOptedIn: null,
-    });
-  });
-
-  it("rejects an overlong dimension or party name", () => {
-    expect(
-      ChunkSyncBodySchema.safeParse({
-        players: [
-          { playerUuid: UUID, chunks: [{ ...claimed, dimension: LONG }] },
+      PartySyncBodySchema.safeParse({
+        parties: [
+          {
+            ...party,
+            members: [owner, { ...owner, uuid: OTHER, rank: "ally" }],
+          },
         ],
       }).success,
     ).toBe(false);
     expect(
-      ChunkSyncBodySchema.safeParse({
-        players: [{ playerUuid: UUID, partyName: LONG, chunks: [claimed] }],
+      PartySyncBodySchema.safeParse({
+        parties: [{ ...party, members: [{ ...owner, claims: -1 }] }],
       }).success,
     ).toBe(false);
   });
 
-  it("rejects a chunk coordinate outside int4", () => {
-    expect(
-      ChunkSyncBodySchema.safeParse({
-        players: [{ playerUuid: UUID, chunks: [{ ...claimed, x: 3e9 }] }],
-      }).success,
-    ).toBe(false);
+  it("rejects an overlong name, description or tag code", () => {
+    for (const bad of [
+      { name: LONG },
+      { description: "x".repeat(1_001) },
+      { tagCode: LONG },
+    ]) {
+      expect(
+        PartySyncBodySchema.safeParse({ parties: [{ ...party, ...bad }] })
+          .success,
+      ).toBe(false);
+    }
   });
 
-  it("rejects more chunks in total than the cap", () => {
-    const player = { playerUuid: UUID, chunks: repeat(claimed, 25_001) };
-
+  it("rejects lists longer than the caps", () => {
     expect(
-      ChunkSyncBodySchema.safeParse({ players: [player, player] }).success,
-    ).toBe(false);
-  });
-});
-
-describe("ForceloadSyncBodySchema", () => {
-  const party = {
-    partyId: UUID,
-    partyName: "Builders",
-    memberCount: 1,
-    optedIn: true,
-    members: [{ uuid: UUID }],
-    chunks: [chunk],
-  };
-
-  it("accepts a full forceload state", () => {
-    expect(
-      ForceloadSyncBodySchema.safeParse({
-        players: [{ uuid: UUID, chunks: [chunk] }],
-        parties: [party],
-      }).success,
-    ).toBe(true);
-  });
-
-  it("rejects a member count or coordinate outside int4", () => {
-    expect(
-      ForceloadSyncBodySchema.safeParse({
-        players: [],
-        parties: [{ ...party, memberCount: 2 ** 31 }],
-      }).success,
+      PartySyncBodySchema.safeParse({ parties: repeat(party, 2_001) }).success,
     ).toBe(false);
     expect(
-      ForceloadSyncBodySchema.safeParse({
-        players: [{ uuid: UUID, chunks: [{ ...chunk, z: -(2 ** 31) - 1 }] }],
-        parties: [],
-      }).success,
-    ).toBe(false);
-  });
-
-  it("rejects an overlong party name", () => {
-    expect(
-      ForceloadSyncBodySchema.safeParse({
-        players: [],
-        parties: [{ ...party, partyName: LONG }],
-      }).success,
-    ).toBe(false);
-  });
-
-  it("rejects more chunks in total than the cap", () => {
-    expect(
-      ForceloadSyncBodySchema.safeParse({
-        players: [{ uuid: UUID, chunks: repeat(chunk, 25_001) }],
-        parties: [{ ...party, chunks: repeat(chunk, 25_001) }],
+      PartySyncBodySchema.safeParse({
+        parties: [{ ...party, allies: repeat(OTHER, 201) }],
       }).success,
     ).toBe(false);
   });
