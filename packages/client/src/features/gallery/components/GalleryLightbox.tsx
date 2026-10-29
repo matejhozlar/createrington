@@ -11,35 +11,38 @@ import { PlayerLabel } from "@/components/player-label";
 import { Button } from "@/components/ui/button";
 import { formatRelativeDate } from "@/lib/format";
 import { aspectRatio, altText, creditName, type GalleryItem } from "../format";
+import type { LightboxDirection } from "../hooks/use-gallery-lightbox";
 
 interface GalleryLightboxProps {
-  items: GalleryItem[];
-  index: number | null;
-  onIndexChange: (index: number | null) => void;
+  item: GalleryItem | null;
+  position: number;
+  total: number;
+  hasPrevious: boolean;
+  hasNext: boolean;
+  turning: LightboxDirection | null;
+  onStep: (direction: LightboxDirection) => void;
+  onClose: () => void;
 }
 
 export function GalleryLightbox({
-  items,
-  index,
-  onIndexChange,
+  item,
+  position,
+  total,
+  hasPrevious,
+  hasNext,
+  turning,
+  onStep,
+  onClose,
 }: GalleryLightboxProps) {
-  const item = index === null ? undefined : items[index];
-  if (index === null || !item) return null;
-
-  const close = () => onIndexChange(null);
-
-  const step = (delta: number) => {
-    const next = index + delta;
-    if (next >= 0 && next < items.length) onIndexChange(next);
-  };
+  if (!item) return null;
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key === "ArrowLeft") step(-1);
-    if (event.key === "ArrowRight") step(1);
+    if (event.key === "ArrowLeft") onStep(-1);
+    if (event.key === "ArrowRight") onStep(1);
   };
 
   const handleStageClick = (event: MouseEvent<HTMLDivElement>) => {
-    if (event.target === event.currentTarget) close();
+    if (event.target === event.currentTarget) onClose();
   };
 
   const ratio = aspectRatio(item);
@@ -47,7 +50,7 @@ export function GalleryLightbox({
   if (item.width) widthLimits.push(`${item.width}px`);
 
   return (
-    <Dialog open onOpenChange={(open) => !open && close()}>
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent
         onKeyDown={handleKeyDown}
         showCloseButton={false}
@@ -55,7 +58,7 @@ export function GalleryLightbox({
       >
         <DialogTitle className="sr-only">{altText(item)}</DialogTitle>
         <DialogDescription className="sr-only">
-          Screenshot {index + 1} of {items.length}
+          Screenshot {position} of {total}
         </DialogDescription>
 
         <div
@@ -131,13 +134,15 @@ export function GalleryLightbox({
               <div className="grid shrink-0 grid-cols-2 gap-2 sm:flex">
                 <NavButton
                   side="left"
-                  disabled={index === 0}
-                  onClick={() => step(-1)}
+                  disabled={!hasPrevious || turning !== null}
+                  loading={turning === -1}
+                  onClick={() => onStep(-1)}
                 />
                 <NavButton
                   side="right"
-                  disabled={index === items.length - 1}
-                  onClick={() => step(1)}
+                  disabled={!hasNext || turning !== null}
+                  loading={turning === 1}
+                  onClick={() => onStep(1)}
                 />
               </div>
             </div>
@@ -151,10 +156,11 @@ export function GalleryLightbox({
 interface NavButtonProps {
   side: "left" | "right";
   disabled: boolean;
+  loading: boolean;
   onClick: () => void;
 }
 
-function NavButton({ side, disabled, onClick }: NavButtonProps) {
+function NavButton({ side, disabled, loading, onClick }: NavButtonProps) {
   const Icon = side === "left" ? ChevronLeft : ChevronRight;
 
   return (
@@ -163,6 +169,7 @@ function NavButton({ side, disabled, onClick }: NavButtonProps) {
       variant="secondary"
       size="icon"
       disabled={disabled}
+      loading={loading}
       onClick={onClick}
       aria-label={side === "left" ? "Previous screenshot" : "Next screenshot"}
       className="h-11 w-full sm:size-9"
