@@ -75,6 +75,18 @@ export function useGalleryLightbox({
     const targetPage = page + direction;
     if (targetPage < 0 || targetPage >= totalPages) return;
 
+    const turnTo = (count: number) => {
+      onPageChange(targetPage);
+      setIndex(direction > 0 ? 0 : count - 1);
+    };
+
+    const cached = utils.public.gallery.list.getData(listInput(targetPage));
+    if (cached && cached.items.length > 0) {
+      requestRef.current += 1;
+      turnTo(cached.items.length);
+      return;
+    }
+
     const request = ++requestRef.current;
     setTurning(direction);
     try {
@@ -84,8 +96,7 @@ export function useGalleryLightbox({
         await utils.public.gallery.list.invalidate();
         return;
       }
-      onPageChange(targetPage);
-      setIndex(direction > 0 ? 0 : data.items.length - 1);
+      turnTo(data.items.length);
     } catch {
       if (request !== requestRef.current) return;
       toast.error(

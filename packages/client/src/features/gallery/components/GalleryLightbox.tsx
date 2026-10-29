@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { PlayerLabel } from "@/components/player-label";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { formatRelativeDate } from "@/lib/format";
 import { aspectRatio, altText, creditName, type GalleryItem } from "../format";
 import type { LightboxDirection } from "../hooks/use-gallery-lightbox";
@@ -134,13 +135,13 @@ export function GalleryLightbox({
               <div className="grid shrink-0 grid-cols-2 gap-2 sm:flex">
                 <NavButton
                   side="left"
-                  disabled={!hasPrevious || turning !== null}
+                  disabled={!hasPrevious}
                   loading={turning === -1}
                   onClick={() => onStep(-1)}
                 />
                 <NavButton
                   side="right"
-                  disabled={!hasNext || turning !== null}
+                  disabled={!hasNext}
                   loading={turning === 1}
                   onClick={() => onStep(1)}
                 />
@@ -169,12 +170,12 @@ function NavButton({ side, disabled, loading, onClick }: NavButtonProps) {
       variant="secondary"
       size="icon"
       disabled={disabled}
-      loading={loading}
+      aria-busy={loading || undefined}
       onClick={onClick}
       aria-label={side === "left" ? "Previous screenshot" : "Next screenshot"}
       className="h-11 w-full sm:size-9"
     >
-      <Icon className="size-5" />
+      {loading ? <Spinner className="size-5" /> : <Icon className="size-5" />}
     </Button>
   );
 }
