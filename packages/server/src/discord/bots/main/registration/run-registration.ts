@@ -12,7 +12,9 @@ import {
 } from "@/discord/bots/main/registration-cleanup";
 import { RoleManager } from "@/discord/utils/roles/role-manager";
 import { minecraftRcon, WhitelistAction } from "@/utils/rcon";
+import { getSkinApiClient } from "@/services/skin-api";
 import { BadRequestError } from "@/app/middleware/error-handler";
+import { SkinApiError, type ResolvedPlayer } from "createrington-skin-api";
 import type { GuildMember, GuildTextBasedChannel } from "discord.js";
 import type { WaitlistEntry } from "@createrington/shared/db";
 import { postRegistrationWelcomeCard } from "./post-welcome-card";
@@ -101,8 +103,7 @@ export async function runRegistration(params: {
   );
 
   // Minecraft usernames are 3-16 chars of [a-zA-Z0-9_]. Reject anything else
-  // up-front so we don't issue malformed URLs to playerdb.co or leak arbitrary
-  // input into downstream services.
+  // up-front so we don't leak arbitrary input into downstream services.
   if (!/^[a-zA-Z0-9_]{3,16}$/.test(mcName)) {
     await render(
       RegistrationComponentPresets.idle({
@@ -149,22 +150,20 @@ export async function runRegistration(params: {
 
     await randomDelay();
 
-    const response = await fetch(
-      `https://playerdb.co/api/player/minecraft/${mcName}`,
-    );
-    const result = (await response.json()) as {
-      success: boolean;
-      data: { player?: { id: string; username: string } };
-    };
-
-    if (!response.ok || !result.success || !result.data.player?.id) {
-      throw new RegistrationError(
-        `No Minecraft account found with the name \`${mcName}\``,
-      );
+    let profile: ResolvedPlayer;
+    try {
+      profile = await getSkinApiClient().resolve({ username: mcName });
+    } catch (error) {
+      if (error instanceof SkinApiError && error.status === 404) {
+        throw new RegistrationError(
+          `No Minecraft account found with the name \`${mcName}\``,
+        );
+      }
+      throw error;
     }
 
-    const uuid = result.data.player.id;
-    const correctName = result.data.player.username;
+    const uuid = profile.uuid;
+    const correctName = profile.username ?? mcName;
 
     steps[currentStep].completed = true;
     currentStep++;
