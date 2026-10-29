@@ -9,7 +9,6 @@ export function getSkinApiClient(): SkinApi {
   if (!client) {
     client = new SkinApi({
       baseUrl: config.skinApi.baseUrl,
-      apiKey: config.skinApi.apiKey,
       userAgent: "createrington-app/1.0",
     });
   }

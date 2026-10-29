@@ -367,8 +367,7 @@ const config = {
   },
 
   skinApi: {
-    baseUrl: env.SKIN_API_URL ?? "http://127.0.0.1:8787",
-    apiKey: env.SKIN_API_KEY ?? "",
+    baseUrl: env.SKIN_API_URL ?? "http://127.0.0.1:8788/internal",
   },
 
   stripe: {

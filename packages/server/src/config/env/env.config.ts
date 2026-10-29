@@ -220,11 +220,10 @@ const envSchema = z
     PUPPETEER_EXECUTABLE_PATH: z.string().min(1).optional(),
     PUPPETEER_BASE_URL: z.string().url().optional(),
 
+    // skin-api's loopback-only internal listener; no key, reachability is the
+    // guard. Point it at the public API only with a key-bearing client of
+    // your own, the app never sends one.
     SKIN_API_URL: z.string().url("Skin API URL must be a valid URL").optional(),
-    SKIN_API_KEY: z
-      .string()
-      .min(32, "Skin API key must be at least 32 characters")
-      .optional(),
 
     // Playtime sync (cross-environment forwarding)
     PLAYTIME_SYNC_TARGET_URL: z.string().url().optional(),
@@ -359,7 +358,6 @@ const envSchema = z
       ],
       ["RAILS_N_SAILS_RCON_PASSWORD", "RCON password is required"],
       ["PUPPETEER_SECRET", "Puppeteer secret is required"],
-      ["SKIN_API_KEY", "Skin API key is required"],
       ["RESEND_API_KEY", "Resend API key is required"],
     ];
 
