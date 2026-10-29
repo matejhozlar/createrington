@@ -9,8 +9,8 @@ import {
   SLOT_ORDER,
   type CardSlot,
 } from "./og-card.paint";
+import { mcHeadsBodyUrl } from "@/services/skin-api/urls";
 
-const MC_HEADS_BODY_URL = "https://mc-heads.net/body";
 const FETCH_TIMEOUT_MS = 5000;
 const DEGRADED_RETRY_MS = 5 * 60 * 1000;
 
@@ -129,10 +129,9 @@ export class LeaderboardOgCardService {
     storedUrl: string | null,
     minecraftUuid: string,
   ): Promise<{ image: Image; url: string } | null> {
-    const sources = [
-      storedUrl,
-      `${MC_HEADS_BODY_URL}/${minecraftUuid}/600`,
-    ].filter((url): url is string => !!url);
+    const sources = [storedUrl, mcHeadsBodyUrl(minecraftUuid)].filter(
+      (url): url is string => !!url,
+    );
 
     for (const url of sources) {
       try {

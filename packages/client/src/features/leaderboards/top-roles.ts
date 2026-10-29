@@ -1,6 +1,6 @@
 import { Coins, Crown, MoonStar, type LucideIcon } from "lucide-react";
 import { formatCompactMoney, formatMoney } from "@createrington/shared/format";
-import { mcHeadsBody } from "@/lib/external-urls";
+import { playerPoseUrl } from "@/lib/player-images";
 import type { Board } from "./hooks/use-board-params";
 
 export type TopRoleMetric = "playtime" | "balance" | "records";
@@ -104,5 +104,5 @@ export function figureSrc(holder: {
   imageUrl: string | null;
   minecraftUuid: string;
 }): string {
-  return holder.imageUrl ?? mcHeadsBody(holder.minecraftUuid);
+  return holder.imageUrl ?? playerPoseUrl(holder.minecraftUuid, "idle");
 }

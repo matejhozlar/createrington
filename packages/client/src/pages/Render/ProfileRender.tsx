@@ -2,10 +2,9 @@ import { useEffect, useState } from "react";
 import { formatDate } from "@createrington/shared/format";
 import { LoadingScreen } from "@/components/loading-spinner";
 import { formatMoney } from "@/lib/format";
-import { mcHeadsBody } from "@/lib/external-urls";
 import { RenderUnavailable } from "./components/RenderUnavailable";
 import { useRenderData } from "./hooks/use-render-data";
-import { randomPose, skinApiUrl } from "./skin-utils";
+import { loadSkin, randomPose } from "./skin-utils";
 
 interface ProfileData {
   username: string;
@@ -54,11 +53,7 @@ export function ProfileRender() {
 
   useEffect(() => {
     if (!data) return;
-
-    const img = new Image();
-    img.onload = () => setSkinSrc(img.src);
-    img.onerror = () => setSkinSrc(mcHeadsBody(data.uuid));
-    img.src = skinApiUrl(data.uuid, pose);
+    loadSkin(data.uuid, pose).then(setSkinSrc);
   }, [data, pose]);
 
   if (unavailable) return <RenderUnavailable reason={unavailable} />;

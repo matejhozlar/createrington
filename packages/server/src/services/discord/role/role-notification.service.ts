@@ -7,6 +7,7 @@ import { Discord } from "@/discord/constants";
 import { appEmoji } from "@/discord/emojis";
 import { squarePoseThumbnail } from "@/discord/utils/pose-thumbnail";
 import { getSkinApiClient, POSE_RENDER_STYLE } from "@/services/skin-api";
+import { playerAvatarUrl } from "@/services/skin-api/urls";
 import { getNotificationConfig } from "./config";
 import { RoleConditionType, type RoleAssignmentNotification } from "./types";
 
@@ -16,7 +17,6 @@ const POSE_RENDER = {
   height: 768,
   style: POSE_RENDER_STYLE,
 } as const;
-const MC_HEADS_AVATAR_URL = "https://mc-heads.net/avatar";
 
 interface PoseFigure {
   poseUrl?: string;
@@ -55,8 +55,8 @@ function isCompetitive(notification: RoleAssignmentNotification): boolean {
  * or left stripeless when the role has none, and a config `emoji` leads the
  * heading with that application emoji. The player's skin is rendered in
  * the role's pose and squared off so Discord's thumbnail crop keeps the whole
- * figure, then attached to the message; it falls back to the player's mc-heads
- * head when the render fails and to no figure at all for members without a
+ * figure, then attached to the message; it falls back to the player's head
+ * from the app's avatar route when the render fails and to no figure at all for members without a
  * registered Minecraft account. Send failures are logged and swallowed
  * (notifications are fire-and-forget, never block role assignment).
  */
@@ -144,10 +144,10 @@ export class RoleNotificationService {
       };
     } catch (error) {
       logger.warn(
-        `Skin-api render failed for pose "${pose}" (${minecraftUuid}), falling back to mc-heads:`,
+        `Skin-api render failed for pose "${pose}" (${minecraftUuid}), falling back to the player's head:`,
         error,
       );
-      return { poseUrl: `${MC_HEADS_AVATAR_URL}/${minecraftUuid}` };
+      return { poseUrl: playerAvatarUrl(minecraftUuid) };
     }
   }
 }

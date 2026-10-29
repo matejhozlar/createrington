@@ -22,7 +22,7 @@ const RENDER_STYLES = [
 
 const KNOWN_POSE_SET = new Set<string>(KNOWN_POSES);
 const RENDER_STYLE_SET = new Set<string>(RENDER_STYLES);
-const STYLED_FALLBACK_POSE: KnownPose = "idle";
+const DEFAULT_POSE: KnownPose = "idle";
 
 const STYLE_LABELS: Record<RenderStyle, string> = {
   default: "Default",
@@ -54,9 +54,7 @@ export const data = new SlashCommandBuilder()
   .addStringOption((opt) =>
     opt
       .setName("style")
-      .setDescription(
-        "Render style (renders the idle pose when no pose is picked)",
-      )
+      .setDescription("Render style")
       .setRequired(false)
       .addChoices(...STYLE_CHOICES),
   );
@@ -107,9 +105,7 @@ export async function execute(
     styleInput && RENDER_STYLE_SET.has(styleInput)
       ? (styleInput as RenderStyle)
       : "default";
-  const pose =
-    (poseInput as KnownPose | undefined) ??
-    (style === "default" ? undefined : STYLED_FALLBACK_POSE);
+  const pose = (poseInput as KnownPose | undefined) ?? DEFAULT_POSE;
 
   let player: Awaited<ReturnType<typeof Q.player.get>>;
   try {
@@ -121,14 +117,6 @@ export async function execute(
       `Could not find player data for ${targetUser.displayName}. They may not be registered.`,
       { ephemeral: false },
     );
-    return;
-  }
-
-  if (!pose) {
-    const embed = EmbedPresets.info(`${player.minecraftUsername}'s Skin`)
-      .image(`https://mc-heads.net/body/${player.minecraftUuid}`)
-      .build();
-    await interaction.reply({ embeds: [embed] });
     return;
   }
 

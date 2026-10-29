@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Loading } from "@/components/loading-spinner";
-import { mcHeadsAvatar } from "@/lib/external-urls";
+import { playerAvatarUrl } from "@/lib/player-images";
 import { PackStrip } from "./components/PackStrip";
 import { ProjectThumb } from "./components/ProjectThumb";
 import { QueryErrorState } from "./components/QueryErrorState";
@@ -141,7 +141,7 @@ function ActiveWorkshopCard({ workshop }: { workshop: WorkshopListItem }) {
                     {summary.participantSample.map((player) => (
                       <img
                         key={player.minecraftUuid}
-                        src={mcHeadsAvatar(player.minecraftUuid, 24)}
+                        src={playerAvatarUrl(player.minecraftUuid)}
                         alt={player.minecraftUsername}
                         width={24}
                         height={24}

@@ -136,23 +136,31 @@ describe("/skin style option", () => {
     );
   });
 
-  it("shows the plain skin without rendering when neither is chosen", async () => {
-    const { fake, raw } = interactionWith({});
+  it("renders the idle pose in the default style when neither is chosen", async () => {
+    const { fake, raw, sent } = interactionWith({});
 
     await execute(fake);
 
-    expect(sdkRender).not.toHaveBeenCalled();
-    expect(raw.deferReply).not.toHaveBeenCalled();
-    expect(raw.reply).toHaveBeenCalledOnce();
+    expect(sdkRender).toHaveBeenCalledWith({
+      pose: "idle",
+      source: { uuid: "uuid-1" },
+      options: { ...MAX_QUALITY_RENDER, style: "default" },
+    });
+    expect(raw.deferReply).toHaveBeenCalledOnce();
+    expect(sent).toEqual([expect.objectContaining({ title: "Steve — Idle" })]);
   });
 
   it("treats an explicit default style exactly like no style", async () => {
-    const { fake, raw } = interactionWith({ style: "default" });
+    const { fake } = interactionWith({ style: "default" });
 
     await execute(fake);
 
-    expect(sdkRender).not.toHaveBeenCalled();
-    expect(raw.reply).toHaveBeenCalledOnce();
+    expect(sdkRender).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pose: "idle",
+        options: expect.objectContaining({ style: "default" }),
+      }),
+    );
   });
 
   it("resolves the deferred reply with an error embed when the styled render fails", async () => {

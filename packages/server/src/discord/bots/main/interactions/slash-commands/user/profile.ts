@@ -6,6 +6,7 @@ import { CooldownType } from "@/discord/utils/cooldown";
 import { formatPlaytime } from "@createrington/shared/format";
 import { discordTimestamp } from "@/utils/format";
 import { renderScreenshot } from "@/discord/utils/render-screenshot";
+import { playerAvatarUrl } from "@/services/skin-api/urls";
 import {
   AttachmentBuilder,
   ChatInputCommandInteraction,
@@ -88,9 +89,7 @@ export async function execute(
       const statusStr = details.player.online ? "🟢 Online" : "🔴 Offline";
 
       const embed = EmbedPresets.info(`${username}'s Profile`)
-        .thumbnail(
-          `https://mc-heads.net/avatar/${details.player.minecraftUuid}`,
-        )
+        .thumbnail(playerAvatarUrl(details.player.minecraftUuid))
         .field("Status", statusStr, true)
         .field("Networth", `$${networthStr}`, true)
         .field("\u200b", "\u200b")

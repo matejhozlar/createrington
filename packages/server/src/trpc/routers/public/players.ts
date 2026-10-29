@@ -10,7 +10,7 @@ import {
   findOrThrow,
   trpcError,
 } from "@/trpc/utils";
-import { getMojangUsername } from "@/utils/mojang-profile";
+import { resolveUsername } from "@/services/skin-api/username-resolver";
 import { mcUuid } from "@/utils/zod-schemas";
 import { createRateLimit } from "@/trpc/middleware/rate-limit";
 import type { Player, PlayerFilters } from "@createrington/shared/db";
@@ -74,7 +74,7 @@ export const playersRouter = router({
       if (local?.minecraftUsername) {
         return { username: local.minecraftUsername };
       }
-      const username = await getMojangUsername(input.uuid);
+      const username = await resolveUsername(input.uuid);
       return { username };
     }),
 

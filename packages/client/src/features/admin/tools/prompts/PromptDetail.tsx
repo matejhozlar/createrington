@@ -6,7 +6,7 @@ import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MessageSquare, Lock, RefreshCw, Trash2 } from "lucide-react";
-import { mcHeadsAvatar } from "@/lib/external-urls";
+import { playerAvatarUrl } from "@/lib/player-images";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { describeEntryRules } from "./format";
@@ -193,7 +193,7 @@ export function PromptDetail() {
               >
                 {group.minecraftUuid ? (
                   <img
-                    src={mcHeadsAvatar(group.minecraftUuid)}
+                    src={playerAvatarUrl(group.minecraftUuid)}
                     alt={group.minecraftUsername ?? "player"}
                     className="size-10 shrink-0 rounded bg-muted object-cover"
                     loading="lazy"
