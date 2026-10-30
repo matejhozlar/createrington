@@ -108,19 +108,23 @@ export const verifyServerIP = (
   }
 };
 
+function inspectPeer(req: Request) {
+  const peer = normalizeIp(req.socket.remoteAddress ?? "");
+  // Reject anything that traversed a reverse proxy: nginx always shows as
+  // 127.0.0.1 to Node, so the X-Forwarded-For header is the only signal
+  // that distinguishes a public hit from an in-process loopback caller.
+  const proxied = req.headers["x-forwarded-for"] !== undefined;
+  const isLoopback = (peer === "127.0.0.1" || peer === "::1") && !proxied;
+  return { peer, proxied, isLoopback };
+}
+
 /**
  * True when the request comes from an in-process caller (PuppeteerService)
  * over loopback, not through the reverse proxy. Ignores forwarded-for
  * headers on purpose.
  */
 export function isLoopbackRequest(req: Request): boolean {
-  const peer = normalizeIp(req.socket.remoteAddress ?? "");
-  const isLoopback = peer === "127.0.0.1" || peer === "::1";
-  // Reject anything that traversed a reverse proxy: nginx always shows as
-  // 127.0.0.1 to Node, so the X-Forwarded-For header is the only signal
-  // that distinguishes a public hit from an in-process loopback caller.
-  const proxied = req.headers["x-forwarded-for"] !== undefined;
-  return isLoopback && !proxied;
+  return inspectPeer(req).isLoopback;
 }
 
 /**
@@ -134,12 +138,13 @@ export const requireLoopback = (
   _res: Response,
   next: NextFunction,
 ): void => {
-  if (isLoopbackRequest(req)) {
+  const { peer, proxied, isLoopback } = inspectPeer(req);
+  if (isLoopback) {
     next();
     return;
   }
   logger.warn(
-    `Rejected non-loopback request to ${req.originalUrl} (peer=${req.socket.remoteAddress}, proxied=${req.headers["x-forwarded-for"] !== undefined})`,
+    `Rejected non-loopback request to ${req.originalUrl} (peer=${peer}, proxied=${proxied})`,
   );
   next(new ForbiddenError("Loopback only"));
 };
