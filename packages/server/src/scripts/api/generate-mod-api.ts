@@ -64,7 +64,7 @@ function resolveJavaType(type: FieldType, nullable: boolean): string {
     return mapped;
   }
   if (type.type === "array") {
-    const inner = resolveJavaType(type.items, false);
+    const inner = resolveJavaType(type.items, true);
     return `List<${inner}>`;
   }
   if (type.type === "object") {

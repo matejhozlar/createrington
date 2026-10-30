@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { Q } from "@/db";
 import { adminProcedure, router } from "@/trpc/trpc";
-import { id } from "@/trpc/utils";
+import { findOrThrow, id } from "@/trpc/utils";
 import { mcUuid } from "@/utils/zod-schemas";
 
 export const adminPartiesRouter = router({
@@ -27,6 +27,30 @@ export const adminPartiesRouter = router({
         Q.server.party.ally.getWithPlayers(input.partyId),
       ]);
       return { members, allies };
+    }),
+
+  claims: adminProcedure
+    .meta({
+      description:
+        "Claimed and forceloaded chunk counts of a party per dimension, null while the server has not synced claims",
+    })
+    .input(z.object({ partyId: id() }))
+    .query(async ({ input }) => {
+      const party = await findOrThrow(
+        Q.server.party.find({ id: input.partyId }),
+        "Party not found",
+      );
+      const sync = await Q.server.party.claim.sync.find({
+        serverId: party.serverId,
+      });
+      if (!sync) return null;
+      return {
+        syncedAt: sync.syncedAt,
+        dimensions: await Q.server.party.claim.getDimensionTotals(
+          party.serverId,
+          party.ownerUuid,
+        ),
+      };
     }),
 
   playerStatus: adminProcedure

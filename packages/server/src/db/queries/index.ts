@@ -66,6 +66,8 @@ export { ServerMaintenanceScheduleQueries } from "./server/maintenance/schedule"
 export { ServerMaintenanceSettingQueries } from "./server/maintenance/setting";
 export { ServerPartyQueries } from "./server/party";
 export { ServerPartyAllyQueries } from "./server/party/ally";
+export { ServerPartyClaimQueries } from "./server/party/claim";
+export { ServerPartyClaimSyncQueries } from "./server/party/claim/sync";
 export { ServerPartyMemberQueries } from "./server/party/member";
 export { StructurePackQueries } from "./structure/pack";
 export { StructurePackBoostQueries } from "./structure/pack/boost";
