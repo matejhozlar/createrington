@@ -9,10 +9,11 @@ const MAX_CACHED_RENDERS = 64;
 
 /**
  * Renders posed player figures for web pages (the leaderboards compare stage
- * and the render pages behind the Discord cards) at a web-sized resolution. Renders are memoised per player and pose
- * for a few hours, keeping the most recent MAX_CACHED_RENDERS, and concurrent
- * requests for the same figure share one skin-api call. A failed render is
- * dropped from the cache so the next request retries it.
+ * and the render pages behind the Discord cards) at a web-sized resolution.
+ * Renders are memoised per player and pose for a few hours, keeping the most
+ * recent MAX_CACHED_RENDERS, and concurrent requests for the same figure share
+ * one skin-api call. A failed render is dropped from the cache so the next
+ * request retries it.
  */
 export class PoseRenderService {
   private readonly memo = new RenderMemo<Buffer>(
