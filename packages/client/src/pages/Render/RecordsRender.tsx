@@ -3,7 +3,7 @@ import { PodiumCard, type PodiumPlayer } from "./components/PodiumCard";
 import { RenderUnavailable } from "./components/RenderUnavailable";
 import { usePodiumSkins } from "./hooks/use-podium-skins";
 import { useRenderData } from "./hooks/use-render-data";
-import { useRenderPlates } from "./hooks/use-render-plates";
+import { useRenderPlatesReady } from "./hooks/use-render-plates";
 
 interface RecordsData {
   contestedKeys: number;
@@ -23,10 +23,10 @@ function formatValue(value: number): string {
 export function RecordsRender() {
   const { data, unavailable } = useRenderData<RecordsData>("records");
   const skins = usePodiumSkins(data?.players ?? null);
-  const plates = useRenderPlates();
+  const platesReady = useRenderPlatesReady();
 
   if (unavailable) return <RenderUnavailable reason={unavailable} />;
-  if (!data || !skins || plates.pending) return <LoadingScreen />;
+  if (!data || !skins || !platesReady) return <LoadingScreen />;
 
   return (
     <PodiumCard
@@ -36,7 +36,6 @@ export function RecordsRender() {
       subtitle={`Across ${data.contestedKeys.toLocaleString()} contested stats`}
       players={data.players}
       skins={skins}
-      plates={plates.assets}
       emptyText="No contested stats yet"
       formatValue={formatValue}
     />

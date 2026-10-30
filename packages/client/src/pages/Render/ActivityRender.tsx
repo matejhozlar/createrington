@@ -10,7 +10,7 @@ import {
   heatmapLevel,
 } from "@/lib/activityHeatmap";
 import { useRenderData } from "./hooks/use-render-data";
-import { useRenderPlates } from "./hooks/use-render-plates";
+import { useRenderPlatesReady } from "./hooks/use-render-plates";
 
 interface ActivityData {
   username: string;
@@ -52,10 +52,10 @@ export function ActivityRender() {
     "player",
   ]);
 
-  const plates = useRenderPlates();
+  const platesReady = useRenderPlatesReady();
 
   if (unavailable) return <RenderUnavailable reason={unavailable} />;
-  if (!data || plates.pending) return <LoadingScreen />;
+  if (!data || !platesReady) return <LoadingScreen />;
 
   const avatarSrc = playerAvatarUrl(data.uuid);
   const { weeks, monthLabels } = buildHeatmapGrid(data.days, NUM_WEEKS);
@@ -92,12 +92,7 @@ export function ActivityRender() {
         <div className="flex flex-col gap-2.5">
           <div className="flex items-center gap-3">
             <div className="flex items-baseline gap-3">
-              <RenderTeamTag
-                code={data.tagCode}
-                assets={plates.assets}
-                height={27}
-                inline
-              />
+              <RenderTeamTag code={data.tagCode} height={27} inline />
               <h2 className="text-3xl font-bold tracking-wide text-foreground">
                 {data.username}
               </h2>

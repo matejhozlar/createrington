@@ -5,7 +5,7 @@ import { formatMoney } from "@/lib/format";
 import { RenderTeamTag } from "./components/RenderTeamTag";
 import { RenderUnavailable } from "./components/RenderUnavailable";
 import { useRenderData } from "./hooks/use-render-data";
-import { useRenderPlates } from "./hooks/use-render-plates";
+import { useRenderPlatesReady } from "./hooks/use-render-plates";
 import { loadSkin, randomPose } from "./skin-utils";
 
 interface PlayerData {
@@ -74,7 +74,7 @@ export function CompareRender() {
   const [skinRight, setSkinRight] = useState<string | null>(null);
   const [poseLeft] = useState(randomPose);
   const [poseRight] = useState(randomPose);
-  const plates = useRenderPlates();
+  const platesReady = useRenderPlatesReady();
 
   useEffect(() => {
     if (!data) return;
@@ -83,7 +83,7 @@ export function CompareRender() {
   }, [data, poseLeft, poseRight]);
 
   if (unavailable) return <RenderUnavailable reason={unavailable} />;
-  if (!data || !skinLeft || !skinRight || plates.pending) {
+  if (!data || !skinLeft || !skinRight || !platesReady) {
     return <LoadingScreen />;
   }
 
@@ -137,11 +137,7 @@ export function CompareRender() {
             />
           </div>
           <div className="mt-2 flex flex-col items-center gap-1.5">
-            <RenderTeamTag
-              code={left.tagCode}
-              assets={plates.assets}
-              height={18}
-            />
+            <RenderTeamTag code={left.tagCode} height={18} />
             <span className="text-xl font-bold tracking-wide text-chart-1">
               {left.username}
             </span>
@@ -192,11 +188,7 @@ export function CompareRender() {
             />
           </div>
           <div className="mt-2 flex flex-col items-center gap-1.5">
-            <RenderTeamTag
-              code={right.tagCode}
-              assets={plates.assets}
-              height={18}
-            />
+            <RenderTeamTag code={right.tagCode} height={18} />
             <span className="text-xl font-bold tracking-wide text-chart-5">
               {right.username}
             </span>

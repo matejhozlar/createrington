@@ -5,7 +5,7 @@ import { formatMoney } from "@/lib/format";
 import { RenderTeamTag } from "./components/RenderTeamTag";
 import { RenderUnavailable } from "./components/RenderUnavailable";
 import { useRenderData } from "./hooks/use-render-data";
-import { useRenderPlates } from "./hooks/use-render-plates";
+import { useRenderPlatesReady } from "./hooks/use-render-plates";
 import { loadSkin, randomPose } from "./skin-utils";
 
 interface ProfileData {
@@ -53,7 +53,7 @@ export function ProfileRender() {
   ]);
   const [skinSrc, setSkinSrc] = useState<string | null>(null);
   const [pose] = useState(randomPose);
-  const plates = useRenderPlates();
+  const platesReady = useRenderPlatesReady();
 
   useEffect(() => {
     if (!data) return;
@@ -61,7 +61,7 @@ export function ProfileRender() {
   }, [data, pose]);
 
   if (unavailable) return <RenderUnavailable reason={unavailable} />;
-  if (!data || !skinSrc || plates.pending) return <LoadingScreen />;
+  if (!data || !skinSrc || !platesReady) return <LoadingScreen />;
 
   return (
     <div
@@ -105,12 +105,7 @@ export function ProfileRender() {
           {/* Username + Status */}
           <div className="flex items-center gap-3">
             <div className="flex items-baseline gap-3">
-              <RenderTeamTag
-                code={data.tagCode}
-                assets={plates.assets}
-                height={22}
-                inline
-              />
+              <RenderTeamTag code={data.tagCode} height={22} inline />
               <h2 className="text-2xl font-bold tracking-wide text-foreground">
                 {data.username}
               </h2>

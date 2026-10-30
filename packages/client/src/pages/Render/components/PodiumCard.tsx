@@ -1,4 +1,3 @@
-import type { PlateAssets } from "@/features/team-tag/render/assets";
 import { RenderTeamTag } from "./RenderTeamTag";
 
 export interface PodiumPlayer {
@@ -15,7 +14,6 @@ interface PodiumCardProps {
   subtitle?: string;
   players: PodiumPlayer[];
   skins: string[];
-  plates: PlateAssets | null;
   emptyText: string;
   formatValue: (value: number) => string;
 }
@@ -46,13 +44,11 @@ const PODIUM_ORDER = [1, 0, 2];
 function PodiumEntry({
   player,
   skinSrc,
-  plates,
   rank,
   valueLabel,
 }: {
   player: PodiumPlayer;
   skinSrc: string;
-  plates: PlateAssets | null;
   rank: number;
   valueLabel: string;
 }) {
@@ -76,7 +72,7 @@ function PodiumEntry({
         />
       </div>
       <div className="mt-2 flex flex-col items-center gap-1">
-        <RenderTeamTag code={player.tagCode} assets={plates} height={18} />
+        <RenderTeamTag code={player.tagCode} height={18} />
         <span className={`text-[15px] font-bold tracking-wide ${style.text}`}>
           {player.username}
         </span>
@@ -95,7 +91,6 @@ export function PodiumCard({
   subtitle,
   players,
   skins,
-  plates,
   emptyText,
   formatValue,
 }: PodiumCardProps) {
@@ -144,7 +139,6 @@ export function PodiumCard({
                 key={rank}
                 player={player}
                 skinSrc={skinSrc}
-                plates={plates}
                 rank={rank}
                 valueLabel={formatValue(player.value)}
               />
