@@ -22,8 +22,7 @@ export function PartyMembersPanel({ partyId }: { partyId: number }) {
   const members = query.data?.members ?? [];
   const allies = query.data?.allies ?? [];
   const claims = claimsQuery.data ?? null;
-  const claimTotal =
-    claims?.dimensions.reduce((sum, d) => sum + d.claimCount, 0) ?? 0;
+  const claimTotal = claims?.reduce((sum, d) => sum + d.claimCount, 0) ?? 0;
 
   return (
     <div
@@ -79,13 +78,13 @@ export function PartyMembersPanel({ partyId }: { partyId: number }) {
           <h4 className={SECTION_LABEL}>
             Territory · {claimTotal} chunk{claimTotal === 1 ? "" : "s"}
           </h4>
-          {claims.dimensions.length === 0 ? (
+          {claims.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               This party has not claimed any chunk.
             </p>
           ) : (
             <ul className={LIST_CLASS}>
-              {claims.dimensions.map((entry) => (
+              {claims.map((entry) => (
                 <li
                   key={entry.dimension}
                   className="flex items-center gap-3 px-3 py-2"

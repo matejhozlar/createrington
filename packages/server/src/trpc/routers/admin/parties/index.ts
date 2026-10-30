@@ -44,13 +44,10 @@ export const adminPartiesRouter = router({
         serverId: party.serverId,
       });
       if (!sync) return null;
-      return {
-        syncedAt: sync.syncedAt,
-        dimensions: await Q.server.party.claim.getDimensionTotals(
-          party.serverId,
-          party.ownerUuid,
-        ),
-      };
+      return Q.server.party.claim.getDimensionTotals(
+        party.serverId,
+        party.ownerUuid,
+      );
     }),
 
   playerStatus: adminProcedure
