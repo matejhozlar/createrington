@@ -1,3 +1,16 @@
+## v1.72.0 (2026-10-30)
+
+### @createrington/server (1.71.0 → 1.72.0)
+- [add] Add party team tag codes to all Discord render card endpoints (profile, compare, activity, top, records) by querying each player's tagged party membership and including `tagCode` in the JSON response
+- [add] Add `getMemberTagCodes` query to `ServerPartyQueries` that batch-fetches design codes for tagged parties the given players belong to
+
+### @createrington/client (0.2.90 → 0.2.91)
+- [add] Add `RenderTeamTag` component that draws party team tag plates on canvas at arbitrary pixel heights for the Discord render cards, with integer-upscale-then-downscale rendering for crisp pixel art
+- [add] Show party team tags next to player usernames on all render pages (profile, activity, compare) and above names on podium cards (top, records)
+- [fix] Hand already-loaded plate textures to every plate component on first render by caching the resolved assets at module scope in `usePlateAssets`, fixing plates that appeared blank until a re-render
+- [refactor] Extract shared plate code parser (`parsePlateCode`) and strip dimensions (`PLATE_STRIP_WIDTH`, `PLATE_STRIP_HEIGHT`) into `features/team-tag/plate.ts`, removing duplicate logic from `team-tag-plate.tsx`
+- [refactor] Gate all render pages on plate asset readiness via `useRenderPlatesReady` hook so Puppeteer does not screenshot before team tags have loaded
+
 ## v1.71.1 (2026-10-30)
 
 ### @createrington/client (0.2.89 → 0.2.90)
