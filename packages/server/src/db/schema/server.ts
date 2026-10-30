@@ -210,3 +210,59 @@ export const serverPartyAlly = pgTable(
     index("idx_server_party_ally_player").on(table.minecraftUuid),
   ],
 );
+
+// --- server_party_claim ---
+// Every OPAC claimed chunk of a server as core reports it (party_sync with
+// syncClaims). owner_uuid is the UUID OPAC files the chunk under: with
+// party-owned claims (the server's setting) a party's chunks sit under its
+// owner's UUID, which joins server_party.owner_uuid at read time; OPAC's server
+// UUID is stored like any owner. forceloaded chunks are claimed as well. The
+// whole set of a server is replaced in one transaction whenever the snapshot
+// hash changed.
+
+export const serverPartyClaim = pgTable(
+  "server_party_claim",
+  {
+    id: serial("id").primaryKey(),
+    serverId: integer("server_id")
+      .notNull()
+      .references(() => server.id, { onDelete: "cascade" }),
+    dimension: varchar("dimension", { length: 255 }).notNull(),
+    chunkX: integer("chunk_x").notNull(),
+    chunkZ: integer("chunk_z").notNull(),
+    ownerUuid: uuid("owner_uuid").notNull(),
+    forceloaded: boolean("forceloaded").notNull().default(false),
+  },
+  (table) => [
+    uniqueIndex("idx_server_party_claim_unique").on(
+      table.serverId,
+      table.dimension,
+      table.chunkX,
+      table.chunkZ,
+    ),
+    index("idx_server_party_claim_owner").on(table.serverId, table.ownerUuid),
+  ],
+);
+
+// --- server_party_claim_sync ---
+// Last claim snapshot a server sent: the content hash core computed, so a
+// resend with the same hash only moves synced_at, and the chunk count stored
+// with it. One row per server, created on the first snapshot.
+
+export const serverPartyClaimSync = pgTable(
+  "server_party_claim_sync",
+  {
+    id: serial("id").primaryKey(),
+    serverId: integer("server_id")
+      .notNull()
+      .references(() => server.id, { onDelete: "cascade" }),
+    hash: varchar("hash", { length: 64 }).notNull(),
+    chunkCount: integer("chunk_count").notNull(),
+    syncedAt: timestamp("synced_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("idx_server_party_claim_sync_server").on(table.serverId),
+  ],
+);

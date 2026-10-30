@@ -96,6 +96,7 @@ export function AdminParties() {
     );
 
   const lastSyncedAt = statsQuery.data?.lastSyncedAt ?? null;
+  const claimsSyncedAt = statsQuery.data?.claimsSyncedAt ?? null;
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -116,6 +117,8 @@ export function AdminParties() {
               {lastSyncedAt && (
                 <p className="text-xs">
                   Last synced {formatRelativeDateSafe(lastSyncedAt)}
+                  {claimsSyncedAt &&
+                    ` · Claims synced ${formatRelativeDateSafe(claimsSyncedAt)}`}
                 </p>
               )}
             </>
