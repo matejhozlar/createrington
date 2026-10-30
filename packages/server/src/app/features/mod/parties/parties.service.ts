@@ -1,4 +1,4 @@
-import { db, Q } from "@/db";
+import { db } from "@/db";
 import type { PartyMemberRank } from "@createrington/shared/party";
 import {
   DesignCodeError,
@@ -95,10 +95,12 @@ function flattenClaims(
 }
 
 /**
- * Stores the claim snapshot core sent for a server. A snapshot whose hash
- * equals the last stored one only moves synced_at; otherwise the server's
- * chunk rows are replaced and the new hash stored, all in one transaction.
- * Returns the chunk count now stored and whether the rows changed.
+ * Stores the claim snapshot core sent for a server. Snapshot writes of a
+ * server are serialized with an advisory lock, so overlapping sends apply
+ * one after the other. A snapshot whose hash equals the last stored one only
+ * moves synced_at; otherwise the server's chunk rows are replaced and the
+ * new hash stored, all in one transaction. Returns the chunk count now
+ * stored and whether the rows changed.
  */
 export async function replacePartyClaims(
   payload: PartyClaimsPayload,
@@ -106,15 +108,16 @@ export async function replacePartyClaims(
   const { serverId, hash, dimensions } = payload;
   const syncedAt = new Date();
 
-  const last = await Q.server.party.claim.sync.find({ serverId });
-  if (last && last.hash === hash) {
-    await Q.server.party.claim.sync.update({ id: last.id }, { syncedAt });
-    return { stored: last.chunkCount, changed: false };
-  }
+  return db.inTransaction(async (tx) => {
+    await tx.server.party.claim.sync.lockServer(serverId);
 
-  const rows = flattenClaims(serverId, dimensions);
+    const last = await tx.server.party.claim.sync.find({ serverId });
+    if (last && last.hash === hash) {
+      await tx.server.party.claim.sync.update({ id: last.id }, { syncedAt });
+      return { stored: last.chunkCount, changed: false };
+    }
 
-  await db.inTransaction(async (tx) => {
+    const rows = flattenClaims(serverId, dimensions);
     await tx.server.party.claim.deleteAll({ serverId });
     await tx.server.party.claim.createMany(rows);
     await tx.server.party.claim.sync.upsert(
@@ -122,9 +125,8 @@ export async function replacePartyClaims(
       "serverId",
       ["hash", "chunkCount", "syncedAt"],
     );
+    return { stored: rows.length, changed: true };
   });
-
-  return { stored: rows.length, changed: true };
 }
 
 function resolveTag(

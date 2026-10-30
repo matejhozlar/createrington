@@ -224,6 +224,40 @@ describe("replacePartyClaims", () => {
     });
   });
 
+  it("applies overlapping snapshots of one server one after the other", async () => {
+    const results = await Promise.all(
+      ["f6", "g7", "h8"].map((hash, i) =>
+        replacePartyClaims({
+          serverId,
+          hash,
+          dimensions: [
+            {
+              dimension: OVERWORLD,
+              owners: [
+                {
+                  owner: OWNER,
+                  claims: [
+                    [i, 0],
+                    [i, 1],
+                  ],
+                  forceloads: [],
+                },
+              ],
+            },
+          ],
+        }),
+      ),
+    );
+
+    expect(results.map((r) => r.changed)).toEqual([true, true, true]);
+    const rows = await claimRows();
+    expect(rows).toHaveLength(2);
+    expect(new Set(rows.map((r) => r.chunkX)).size).toBe(1);
+    const sync = await Q.server.party.claim.sync.get({ serverId });
+    expect(["f6", "g7", "h8"]).toContain(sync.hash);
+    expect(sync.chunkCount).toBe(2);
+  });
+
   it("clears every chunk of the server on an empty snapshot", async () => {
     const result = await replacePartyClaims({
       serverId,
