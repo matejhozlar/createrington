@@ -1,24 +1,13 @@
 import { useMemo } from "react";
-import {
-  parseDesignCode,
-  PLATE_WIDTH,
-  type PlateDesign,
-} from "@createrington/shared/team-tag";
 import { PlateCanvas } from "@/features/team-tag/components/PlateCanvas";
 import { usePlateAssets } from "@/features/team-tag/hooks/use-plate-assets";
+import {
+  parsePlateCode,
+  PLATE_STRIP_HEIGHT,
+  PLATE_STRIP_WIDTH,
+} from "@/features/team-tag/plate";
 import { useToastActions } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-
-const PLATE_HEIGHT = 9;
-
-function parsePlate(code: string | null): PlateDesign | null {
-  if (!code) return null;
-  try {
-    return parseDesignCode(code);
-  } catch {
-    return null;
-  }
-}
 
 export function TeamTagPlate({
   code,
@@ -29,7 +18,7 @@ export function TeamTagPlate({
   zoom?: number;
   className?: string;
 }) {
-  const design = useMemo(() => parsePlate(code), [code]);
+  const design = useMemo(() => parsePlateCode(code), [code]);
   const { assets } = usePlateAssets();
   const toast = useToastActions();
 
@@ -39,7 +28,10 @@ export function TeamTagPlate({
       <div
         aria-hidden
         className={cn("bg-muted", className)}
-        style={{ width: (PLATE_WIDTH + 1) * zoom, height: PLATE_HEIGHT * zoom }}
+        style={{
+          width: PLATE_STRIP_WIDTH * zoom,
+          height: PLATE_STRIP_HEIGHT * zoom,
+        }}
       />
     );
   }
