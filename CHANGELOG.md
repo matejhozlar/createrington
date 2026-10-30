@@ -1,3 +1,8 @@
+## v1.71.1 (2026-10-30)
+
+### @createrington/client (0.2.89 → 0.2.90)
+- [fix] Fix shuffled team tag plates caused by concurrent renders sharing a single module-level scratch canvas, by creating a fresh canvas per `toCanvas()` call instead
+
 ## v1.71.0 (2026-10-29)
 
 ### @createrington/server (1.70.0 → 1.71.0)
