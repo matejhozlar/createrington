@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useRef } from "react";
-import {
-  parseDesignCode,
-  PLATE_WIDTH,
-  type PlateDesign,
-} from "@createrington/shared/team-tag";
+import { useLayoutEffect, useMemo, useRef } from "react";
+import type { PlateDesign } from "@createrington/shared/team-tag";
 import { usePlateAssets } from "@/features/team-tag/hooks/use-plate-assets";
+import {
+  parsePlateCode,
+  PLATE_STRIP_HEIGHT,
+  PLATE_STRIP_WIDTH,
+} from "@/features/team-tag/plate";
 import type { PlateAssets } from "@/features/team-tag/render/assets";
 import {
   Framebuffer,
@@ -12,18 +13,7 @@ import {
 } from "@/features/team-tag/render/framebuffer";
 import { plateOps } from "@/features/team-tag/render/text";
 
-const PLATE_COLUMNS = PLATE_WIDTH + 1;
-const PLATE_ROWS = 9;
 const ROWS_BELOW_BASELINE = 2;
-
-function parsePlate(code: string | null): PlateDesign | null {
-  if (!code) return null;
-  try {
-    return parseDesignCode(code);
-  } catch {
-    return null;
-  }
-}
 
 function drawPlate(
   canvas: HTMLCanvasElement,
@@ -31,22 +21,22 @@ function drawPlate(
   assets: PlateAssets,
   height: number,
 ) {
-  const fb = new Framebuffer(PLATE_COLUMNS, PLATE_ROWS);
+  const fb = new Framebuffer(PLATE_STRIP_WIDTH, PLATE_STRIP_HEIGHT);
   fb.text(plateOps(design, assets), 0, 0);
 
   const dpr = window.devicePixelRatio || 1;
   const ctx = sizeCanvas(
     canvas,
-    (height * PLATE_COLUMNS) / PLATE_ROWS,
+    (height * PLATE_STRIP_WIDTH) / PLATE_STRIP_HEIGHT,
     height,
     dpr,
   );
   if (!ctx) return;
 
-  const zoom = Math.ceil((height * dpr) / PLATE_ROWS);
+  const zoom = Math.ceil((height * dpr) / PLATE_STRIP_HEIGHT);
   const crisp = document.createElement("canvas");
-  crisp.width = PLATE_COLUMNS * zoom;
-  crisp.height = PLATE_ROWS * zoom;
+  crisp.width = PLATE_STRIP_WIDTH * zoom;
+  crisp.height = PLATE_STRIP_HEIGHT * zoom;
   const crispCtx = crisp.getContext("2d");
   if (!crispCtx) return;
   crispCtx.imageSmoothingEnabled = false;
@@ -66,11 +56,11 @@ export function RenderTeamTag({
   height: number;
   inline?: boolean;
 }) {
-  const design = useMemo(() => parsePlate(code), [code]);
+  const design = useMemo(() => parsePlateCode(code), [code]);
   const { assets } = usePlateAssets();
   const ref = useRef<HTMLCanvasElement>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (ref.current && design && assets) {
       drawPlate(ref.current, design, assets, height);
     }
@@ -85,7 +75,9 @@ export function RenderTeamTag({
       ref={ref}
       aria-hidden
       className="relative block shrink-0"
-      style={{ top: inline ? (height * ROWS_BELOW_BASELINE) / PLATE_ROWS : 0 }}
+      style={{
+        top: inline ? (height * ROWS_BELOW_BASELINE) / PLATE_STRIP_HEIGHT : 0,
+      }}
     />
   );
 }
