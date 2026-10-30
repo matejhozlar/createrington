@@ -29,6 +29,16 @@ import { MC_UUID_REGEX } from "@/utils/zod-schemas";
 const SKIN_RENDER_CACHE_SECONDS = 24 * 60 * 60;
 const KNOWN_POSE_SET: ReadonlySet<KnownPose> = new Set(KNOWN_POSES);
 
+async function partyTagCodes(
+  minecraftUuids: string[],
+): Promise<Map<string, string>> {
+  const rows = await Q.server.party.getMemberTagCodes(
+    config.servers.rails.id,
+    minecraftUuids,
+  );
+  return new Map(rows.map((row) => [row.minecraftUuid, row.tagCode]));
+}
+
 const router = Router();
 
 // PuppeteerService runs in-process and connects via loopback. Reject any
@@ -94,6 +104,10 @@ router.get(
       playerRepo.getDetailed({ discordId: player1 }),
       playerRepo.getDetailed({ discordId: player2 }),
     ]);
+    const tags = await partyTagCodes([
+      details1.player.minecraftUuid,
+      details2.player.minecraftUuid,
+    ]);
 
     const mapPlayer = (details: typeof details1) => {
       const networth = details.balance
@@ -108,6 +122,7 @@ router.get(
         playtimeSeconds: details.playtime.totalSeconds,
         sessions: details.playtime.totalSessions,
         memberSince: details.player.createdAt.toISOString(),
+        tagCode: tags.get(details.player.minecraftUuid) ?? null,
       };
     };
 
@@ -143,10 +158,13 @@ router.get(
 
     const fmt = (n: number) => n.toFixed(3).replace(/\.?0+$/, "") || "0";
 
-    const { blocksMined, mobsKilled, deaths, distanceCm } =
-      await Q.player.minecraft.stat.total.getProfileHighlights(
-        details.player.minecraftUuid,
-      );
+    const [{ blocksMined, mobsKilled, deaths, distanceCm }, tags] =
+      await Promise.all([
+        Q.player.minecraft.stat.total.getProfileHighlights(
+          details.player.minecraftUuid,
+        ),
+        partyTagCodes([details.player.minecraftUuid]),
+      ]);
     const distanceKm = Math.round(distanceCm / 100_000);
 
     res.json({
@@ -162,6 +180,7 @@ router.get(
       mobsKilled,
       deaths,
       distanceKm,
+      tagCode: tags.get(details.player.minecraftUuid) ?? null,
     });
   }),
 );
@@ -184,13 +203,17 @@ router.get(
     }
 
     const target = await Q.player.get({ discordId: player });
-    const activity = await playtimeRepo.getPlayerActivity(target);
+    const [activity, tags] = await Promise.all([
+      playtimeRepo.getPlayerActivity(target),
+      partyTagCodes([target.minecraftUuid]),
+    ]);
 
     res.json({
       ...activity,
       username: target.minecraftUsername,
       uuid: target.minecraftUuid,
       mostActiveDay: activity.mostActiveDay ?? "N/A",
+      tagCode: tags.get(target.minecraftUuid) ?? null,
     });
   }),
 );
@@ -230,6 +253,8 @@ router.get(
       { limit: 3 },
     );
 
+    const tags = await partyTagCodes(results.map((r) => r.minecraftUuid));
+
     const itemName = formatStatItem(category, item);
     const displayTitle =
       category === "minecraft:custom"
@@ -244,6 +269,7 @@ router.get(
         username: r.minecraftUsername,
         uuid: r.minecraftUuid,
         value: r.values[0] ?? 0,
+        tagCode: tags.get(r.minecraftUuid) ?? null,
       })),
     });
   }),
@@ -255,6 +281,7 @@ router.get(
   asyncHandler(async (_req: Request, res: Response) => {
     const { rows, contestedKeys } =
       await Q.player.minecraft.stat.total.getRecordLeaderboard(3);
+    const tags = await partyTagCodes(rows.map((row) => row.minecraftUuid));
 
     res.json({
       contestedKeys,
@@ -262,6 +289,7 @@ router.get(
         username: row.minecraftUsername,
         uuid: row.minecraftUuid,
         value: row.records,
+        tagCode: tags.get(row.minecraftUuid) ?? null,
       })),
     });
   }),

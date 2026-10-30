@@ -26,6 +26,11 @@ export interface PartyMembership extends PartyOverview {
   rank: PartyMemberRank;
 }
 
+export interface MemberTagCode {
+  minecraftUuid: string;
+  tagCode: string;
+}
+
 export interface PartyStats {
   parties: number;
   taggedParties: number;
@@ -179,6 +184,26 @@ export class ServerPartyQueries extends ServerPartyBaseQueries {
       ORDER BY LOWER(p.name) ASC
       LIMIT $4`,
       [serverId, trimmed, `%${escapeLike(trimmed)}%`, limit],
+    );
+    return result.rows;
+  }
+
+  /** Design codes of the tagged parties the given players are members of, one row per tagged player. */
+  async getMemberTagCodes(
+    serverId: number,
+    minecraftUuids: string[],
+  ): Promise<MemberTagCode[]> {
+    if (minecraftUuids.length === 0) return [];
+    const result = await this.db.query<MemberTagCode>(
+      `SELECT
+        pm.minecraft_uuid AS "minecraftUuid",
+        p.tag_code AS "tagCode"
+      FROM server_party_member pm
+      JOIN server_party p ON p.id = pm.party_id
+      WHERE p.server_id = $1
+        AND p.tag_code IS NOT NULL
+        AND pm.minecraft_uuid = ANY($2::uuid[])`,
+      [serverId, minecraftUuids],
     );
     return result.rows;
   }
