@@ -6,8 +6,8 @@ import { ForbiddenError } from "./error-handler";
  * Allowed Minecraft server IPs
  */
 const ALLOWED_IPS = {
-  development: ["127.0.0.1", "::1", "localhost"],
-  production: [config.servers.rails.ip],
+  development: () => ["127.0.0.1", "::1", "localhost"],
+  production: () => [config.servers.rails.ip],
 };
 
 /**
@@ -78,7 +78,7 @@ export const verifyServerIP = (
     const normalizedIp = normalizeIp(clientIp);
 
     const environment = config.envMode.isProd ? "production" : "development";
-    const allowedIps = ALLOWED_IPS[environment];
+    const allowedIps = ALLOWED_IPS[environment]();
 
     const isAllowed = allowedIps.some(
       (allowedIp) => normalizeIp(allowedIp) === normalizedIp,
@@ -109,29 +109,37 @@ export const verifyServerIP = (
 };
 
 /**
- * Reject any request whose TCP peer is not a loopback address. Used by
- * in-process internal routes (e.g. /api/render/*) whose only legitimate
- * caller runs in the same Node process, so off-host traffic should never
- * reach them even if the shared secret leaks. Ignores forwarded-for
+ * True when the request comes from an in-process caller (PuppeteerService)
+ * over loopback, not through the reverse proxy. Ignores forwarded-for
  * headers on purpose.
  */
-export const requireLoopback = (
-  req: Request,
-  _res: Response,
-  next: NextFunction,
-): void => {
+export function isLoopbackRequest(req: Request): boolean {
   const peer = normalizeIp(req.socket.remoteAddress ?? "");
   const isLoopback = peer === "127.0.0.1" || peer === "::1";
   // Reject anything that traversed a reverse proxy: nginx always shows as
   // 127.0.0.1 to Node, so the X-Forwarded-For header is the only signal
   // that distinguishes a public hit from an in-process loopback caller.
   const proxied = req.headers["x-forwarded-for"] !== undefined;
-  if (isLoopback && !proxied) {
+  return isLoopback && !proxied;
+}
+
+/**
+ * Reject any request whose TCP peer is not a loopback address. Used by
+ * in-process internal routes (e.g. /api/render/*) whose only legitimate
+ * caller runs in the same Node process, so off-host traffic should never
+ * reach them even if the shared secret leaks.
+ */
+export const requireLoopback = (
+  req: Request,
+  _res: Response,
+  next: NextFunction,
+): void => {
+  if (isLoopbackRequest(req)) {
     next();
     return;
   }
   logger.warn(
-    `Rejected non-loopback request to ${req.originalUrl} (peer=${peer}, proxied=${proxied})`,
+    `Rejected non-loopback request to ${req.originalUrl} (peer=${req.socket.remoteAddress}, proxied=${req.headers["x-forwarded-for"] !== undefined})`,
   );
   next(new ForbiddenError("Loopback only"));
 };

@@ -10,10 +10,12 @@ import express from "express";
 import {
   launcherPackLimiter,
   messageSendLimiter,
+  skinPoseLimiter,
 } from "@/app/middleware/rate-limit.middleware";
 
 const uploadStandIn = vi.fn((_req, res) => res.status(201).end());
 const packStandIn = vi.fn((_req, res) => res.status(200).end());
+const poseStandIn = vi.fn((_req, res) => res.status(200).end());
 
 let server: Server;
 let baseUrl: string;
@@ -41,6 +43,7 @@ beforeAll(async () => {
     launcherPackLimiter,
     packStandIn,
   );
+  app.get("/api/skin/:player/pose/:pose", skinPoseLimiter, poseStandIn);
   server = app.listen(0);
   await new Promise((resolve) => server.once("listening", resolve));
   baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
@@ -61,6 +64,10 @@ function askPacks(player?: string): Promise<Response> {
   return fetch(`${baseUrl}/api/launcher/packs`, {
     headers: player ? { "x-player": player } : {},
   });
+}
+
+function askPose(headers: Record<string, string> = {}): Promise<Response> {
+  return fetch(`${baseUrl}/api/skin/Steve/pose/idle`, { headers });
 }
 
 describe("messageSendLimiter", () => {
@@ -91,5 +98,20 @@ describe("launcherPackLimiter", () => {
     expect(packStandIn).toHaveBeenCalledTimes(120);
     expect((await askPacks(bob)).status).toBe(200);
     expect((await askPacks()).status).toBe(200);
+  });
+});
+
+describe("skinPoseLimiter", () => {
+  it("caps proxied visitors at 120 figures per window and never limits the in-process render pages", async () => {
+    const proxied = { "x-forwarded-for": "203.0.113.7" };
+    for (let i = 0; i < 120; i++) {
+      expect((await askPose(proxied)).status).toBe(200);
+    }
+
+    expect((await askPose(proxied)).status).toBe(429);
+    for (let i = 0; i < 5; i++) {
+      expect((await askPose()).status).toBe(200);
+    }
+    expect(poseStandIn).toHaveBeenCalledTimes(125);
   });
 });

@@ -71,11 +71,6 @@ async function main() {
   console.log(`Base URL: ${baseUrl}`);
   console.log(`Poses: ${KNOWN_POSES.length}\n`);
 
-  // UUID is extracted from the first rendered skin <img> src (filled in
-  // during the first iteration). The page already knows it via its data
-  // fetch, so the script doesn't need to call the data API directly.
-  let uuid: string | null = null;
-
   const browser = await puppeteer.launch({
     headless: true,
     executablePath,
@@ -107,49 +102,20 @@ async function main() {
 
         await waitForImagesToLoad(page);
 
-        if (!uuid) {
-          uuid = await page.evaluate(() => {
-            const imgs = Array.from(
-              document.querySelectorAll<HTMLImageElement>(
-                "#profile-container img",
-              ),
-            );
-            const skinImg = imgs.find(
-              (img) =>
-                img.src.includes("/api/render/skin") ||
-                img.src.includes("mc-heads.net/body"),
-            );
-            if (!skinImg) return null;
-            try {
-              const parsed = new URL(skinImg.src);
-              const queryUuid = parsed.searchParams.get("uuid");
-              if (queryUuid) return queryUuid;
-              const parts = parsed.pathname.split("/").filter(Boolean);
-              return parts[parts.length - 1] ?? null;
-            } catch {
-              return null;
-            }
-          });
-          if (!uuid) throw new Error("Could not extract uuid from skin img");
-          console.log(`(Detected UUID: ${uuid})\n`);
-        }
-
-        const newSrc = `/api/render/skin?uuid=${encodeURIComponent(
-          uuid,
-        )}&pose=${encodeURIComponent(pose)}`;
-        await page.evaluate((src) => {
-          const imgs = Array.from(
+        const swapped = await page.evaluate((poseName) => {
+          const skinImg = Array.from(
             document.querySelectorAll<HTMLImageElement>(
               "#profile-container img",
             ),
+          ).find((img) => img.src.includes("/api/skin/"));
+          if (!skinImg) return false;
+          skinImg.src = skinImg.src.replace(
+            /\/pose\/[^/?#]+/,
+            `/pose/${poseName}`,
           );
-          const skinImg = imgs.find(
-            (img) =>
-              img.src.includes("/api/render/skin") ||
-              img.src.includes("mc-heads.net/body"),
-          );
-          if (skinImg) skinImg.src = src;
-        }, newSrc);
+          return true;
+        }, pose);
+        if (!swapped) throw new Error("Could not find the skin img");
 
         await waitForImagesToLoad(page);
 
