@@ -2,8 +2,10 @@ import { useEffect, useState } from "react";
 import { formatDate } from "@createrington/shared/format";
 import { LoadingScreen } from "@/components/loading-spinner";
 import { formatMoney } from "@/lib/format";
+import { RenderTeamTag } from "./components/RenderTeamTag";
 import { RenderUnavailable } from "./components/RenderUnavailable";
 import { useRenderData } from "./hooks/use-render-data";
+import { useRenderPlates } from "./hooks/use-render-plates";
 import { loadSkin, randomPose } from "./skin-utils";
 
 interface ProfileData {
@@ -19,6 +21,7 @@ interface ProfileData {
   mobsKilled: number;
   deaths: number;
   distanceKm: number;
+  tagCode: string | null;
 }
 
 function StatPill({
@@ -50,6 +53,7 @@ export function ProfileRender() {
   ]);
   const [skinSrc, setSkinSrc] = useState<string | null>(null);
   const [pose] = useState(randomPose);
+  const plates = useRenderPlates();
 
   useEffect(() => {
     if (!data) return;
@@ -57,7 +61,7 @@ export function ProfileRender() {
   }, [data, pose]);
 
   if (unavailable) return <RenderUnavailable reason={unavailable} />;
-  if (!data || !skinSrc) return <LoadingScreen />;
+  if (!data || !skinSrc || plates.pending) return <LoadingScreen />;
 
   return (
     <div
@@ -100,9 +104,17 @@ export function ProfileRender() {
         <div className="flex-1 flex flex-col gap-2.5 pl-2 pr-4">
           {/* Username + Status */}
           <div className="flex items-center gap-3">
-            <h2 className="text-2xl font-bold tracking-wide text-foreground">
-              {data.username}
-            </h2>
+            <div className="flex items-baseline gap-3">
+              <RenderTeamTag
+                code={data.tagCode}
+                assets={plates.assets}
+                height={22}
+                inline
+              />
+              <h2 className="text-2xl font-bold tracking-wide text-foreground">
+                {data.username}
+              </h2>
+            </div>
             <div className="flex items-center gap-1.5 ml-auto">
               <div
                 className={`w-2 h-2 rounded-full ${data.online ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.6)]" : "bg-muted-foreground/40"}`}

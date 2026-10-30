@@ -4,6 +4,7 @@ import { PodiumCard, type PodiumPlayer } from "./components/PodiumCard";
 import { RenderUnavailable } from "./components/RenderUnavailable";
 import { usePodiumSkins } from "./hooks/use-podium-skins";
 import { useRenderData } from "./hooks/use-render-data";
+import { useRenderPlates } from "./hooks/use-render-plates";
 
 interface TopData {
   category: string;
@@ -20,9 +21,10 @@ export function TopRender() {
     "item",
   ]);
   const skins = usePodiumSkins(data?.players ?? null);
+  const plates = useRenderPlates();
 
   if (unavailable) return <RenderUnavailable reason={unavailable} />;
-  if (!data || !skins) return <LoadingScreen />;
+  if (!data || !skins || plates.pending) return <LoadingScreen />;
 
   return (
     <PodiumCard
@@ -31,6 +33,7 @@ export function TopRender() {
       title={data.displayTitle}
       players={data.players}
       skins={skins}
+      plates={plates.assets}
       emptyText="No players found for this stat"
       formatValue={(value) => formatStatValue(data.category, data.item, value)}
     />

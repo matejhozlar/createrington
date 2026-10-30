@@ -1,6 +1,7 @@
 import { formatPlaytime } from "@createrington/shared/format";
 import { LoadingScreen } from "@/components/loading-spinner";
 import { playerAvatarUrl } from "@/lib/player-images";
+import { RenderTeamTag } from "./components/RenderTeamTag";
 import { RenderUnavailable } from "./components/RenderUnavailable";
 import {
   buildHeatmapGrid,
@@ -9,6 +10,7 @@ import {
   heatmapLevel,
 } from "@/lib/activityHeatmap";
 import { useRenderData } from "./hooks/use-render-data";
+import { useRenderPlates } from "./hooks/use-render-plates";
 
 interface ActivityData {
   username: string;
@@ -19,6 +21,7 @@ interface ActivityData {
   currentStreak: number;
   mostActiveDay: string;
   days: Record<string, number>;
+  tagCode: string | null;
 }
 
 const NUM_WEEKS = 26;
@@ -49,8 +52,10 @@ export function ActivityRender() {
     "player",
   ]);
 
+  const plates = useRenderPlates();
+
   if (unavailable) return <RenderUnavailable reason={unavailable} />;
-  if (!data) return <LoadingScreen />;
+  if (!data || plates.pending) return <LoadingScreen />;
 
   const avatarSrc = playerAvatarUrl(data.uuid);
   const { weeks, monthLabels } = buildHeatmapGrid(data.days, NUM_WEEKS);
@@ -86,9 +91,17 @@ export function ActivityRender() {
         />
         <div className="flex flex-col gap-2.5">
           <div className="flex items-center gap-3">
-            <h2 className="text-3xl font-bold tracking-wide text-foreground">
-              {data.username}
-            </h2>
+            <div className="flex items-baseline gap-3">
+              <RenderTeamTag
+                code={data.tagCode}
+                assets={plates.assets}
+                height={27}
+                inline
+              />
+              <h2 className="text-3xl font-bold tracking-wide text-foreground">
+                {data.username}
+              </h2>
+            </div>
             <div className="flex items-center gap-1.5">
               <div
                 className={`w-2.5 h-2.5 rounded-full ${data.online ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.6)]" : "bg-muted-foreground/40"}`}

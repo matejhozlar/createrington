@@ -2,8 +2,10 @@ import { useEffect, useState } from "react";
 import { formatDate } from "@createrington/shared/format";
 import { LoadingScreen } from "@/components/loading-spinner";
 import { formatMoney } from "@/lib/format";
+import { RenderTeamTag } from "./components/RenderTeamTag";
 import { RenderUnavailable } from "./components/RenderUnavailable";
 import { useRenderData } from "./hooks/use-render-data";
+import { useRenderPlates } from "./hooks/use-render-plates";
 import { loadSkin, randomPose } from "./skin-utils";
 
 interface PlayerData {
@@ -14,6 +16,7 @@ interface PlayerData {
   playtimeSeconds: number;
   sessions: number;
   memberSince: string;
+  tagCode: string | null;
 }
 
 interface CompareData {
@@ -71,6 +74,7 @@ export function CompareRender() {
   const [skinRight, setSkinRight] = useState<string | null>(null);
   const [poseLeft] = useState(randomPose);
   const [poseRight] = useState(randomPose);
+  const plates = useRenderPlates();
 
   useEffect(() => {
     if (!data) return;
@@ -79,7 +83,9 @@ export function CompareRender() {
   }, [data, poseLeft, poseRight]);
 
   if (unavailable) return <RenderUnavailable reason={unavailable} />;
-  if (!data || !skinLeft || !skinRight) return <LoadingScreen />;
+  if (!data || !skinLeft || !skinRight || plates.pending) {
+    return <LoadingScreen />;
+  }
 
   const left = data.player1;
   const right = data.player2;
@@ -130,9 +136,16 @@ export function CompareRender() {
               className="relative h-[280px] drop-shadow-[0_4px_24px_rgba(0,0,0,0.6)]"
             />
           </div>
-          <span className="mt-2 text-xl font-bold tracking-wide text-chart-1">
-            {left.username}
-          </span>
+          <div className="mt-2 flex flex-col items-center gap-1.5">
+            <RenderTeamTag
+              code={left.tagCode}
+              assets={plates.assets}
+              height={18}
+            />
+            <span className="text-xl font-bold tracking-wide text-chart-1">
+              {left.username}
+            </span>
+          </div>
         </div>
 
         {/* Stats center */}
@@ -178,9 +191,16 @@ export function CompareRender() {
               className="relative h-[280px] -scale-x-100 drop-shadow-[0_4px_24px_rgba(0,0,0,0.6)]"
             />
           </div>
-          <span className="mt-2 text-xl font-bold tracking-wide text-chart-5">
-            {right.username}
-          </span>
+          <div className="mt-2 flex flex-col items-center gap-1.5">
+            <RenderTeamTag
+              code={right.tagCode}
+              assets={plates.assets}
+              height={18}
+            />
+            <span className="text-xl font-bold tracking-wide text-chart-5">
+              {right.username}
+            </span>
+          </div>
         </div>
       </div>
 
