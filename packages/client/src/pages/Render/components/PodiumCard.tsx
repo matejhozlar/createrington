@@ -1,7 +1,10 @@
+import { RenderTeamTag } from "./RenderTeamTag";
+
 export interface PodiumPlayer {
   username: string;
   uuid: string;
   value: number;
+  tagCode: string | null;
 }
 
 interface PodiumCardProps {
@@ -68,11 +71,12 @@ function PodiumEntry({
           className={`relative ${style.height} drop-shadow-[0_4px_20px_rgba(0,0,0,0.6)]`}
         />
       </div>
-      <span
-        className={`text-[15px] font-bold tracking-wide mt-2 ${style.text}`}
-      >
-        {player.username}
-      </span>
+      <div className="mt-2 flex flex-col items-center gap-1">
+        <RenderTeamTag code={player.tagCode} height={18} />
+        <span className={`text-[15px] font-bold tracking-wide ${style.text}`}>
+          {player.username}
+        </span>
+      </div>
       <span className="text-[13px] font-semibold text-muted-foreground tabular-nums">
         {valueLabel}
       </span>

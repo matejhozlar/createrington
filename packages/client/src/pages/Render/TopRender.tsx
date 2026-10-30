@@ -4,6 +4,7 @@ import { PodiumCard, type PodiumPlayer } from "./components/PodiumCard";
 import { RenderUnavailable } from "./components/RenderUnavailable";
 import { usePodiumSkins } from "./hooks/use-podium-skins";
 import { useRenderData } from "./hooks/use-render-data";
+import { useRenderPlatesReady } from "./hooks/use-render-plates";
 
 interface TopData {
   category: string;
@@ -20,9 +21,10 @@ export function TopRender() {
     "item",
   ]);
   const skins = usePodiumSkins(data?.players ?? null);
+  const platesReady = useRenderPlatesReady();
 
   if (unavailable) return <RenderUnavailable reason={unavailable} />;
-  if (!data || !skins) return <LoadingScreen />;
+  if (!data || !skins || !platesReady) return <LoadingScreen />;
 
   return (
     <PodiumCard
