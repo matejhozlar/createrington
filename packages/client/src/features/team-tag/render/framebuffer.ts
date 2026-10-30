@@ -93,18 +93,15 @@ export class Framebuffer {
   }
 
   toCanvas(): HTMLCanvasElement {
-    if (scratch.width !== this.width || scratch.height !== this.height) {
-      scratch.width = this.width;
-      scratch.height = this.height;
-    }
-    scratch
+    const canvas = document.createElement("canvas");
+    canvas.width = this.width;
+    canvas.height = this.height;
+    canvas
       .getContext("2d")
       ?.putImageData(new ImageData(this.data, this.width, this.height), 0, 0);
-    return scratch;
+    return canvas;
   }
 }
-
-const scratch = document.createElement("canvas");
 
 export function sizeCanvas(
   canvas: HTMLCanvasElement,
