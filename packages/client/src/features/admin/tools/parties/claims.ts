@@ -6,7 +6,8 @@ export type ClaimBlocksResult = NonNullable<
 export type ClaimBlock = ClaimBlocksResult["blocks"][number];
 
 export function blockKey(block: ClaimBlock): string {
-  return `${block.dimension}:${block.ownerUuid}:${block.minX}:${block.minZ}`;
+  const first = block.chunks[0];
+  return `${block.dimension}:${block.ownerUuid}:${first.x}:${first.z}`;
 }
 
 export function parseCoordinateSearch(
