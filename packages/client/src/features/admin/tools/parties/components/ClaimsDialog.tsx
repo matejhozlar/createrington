@@ -14,6 +14,11 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -51,9 +56,8 @@ const COPY = {
   empty: "No claimed chunk has been synced from the server yet.",
   noMatch: "No block matches the filters.",
   coordinateHint: "Showing the block that contains this position.",
-  gridHint:
-    "Click a chunk on the grid to open it on BlueMap, click a coordinate to copy a teleport command.",
   openMap: "Open on BlueMap",
+  copyTeleport: "Copy teleport command",
   copied: "Teleport command copied",
 } as const;
 
@@ -113,7 +117,7 @@ export function ClaimsDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[88vh] flex-col gap-4 sm:max-w-4xl">
+      <DialogContent className="flex h-[88dvh] flex-col gap-4 sm:max-w-4xl">
         <DialogHeader>
           <DialogTitle>{COPY.title}</DialogTitle>
           <DialogDescription>{COPY.description}</DialogDescription>
@@ -177,12 +181,16 @@ function ClaimsBrowser({
   const shownChunks = shown.reduce((sum, block) => sum + block.chunkCount, 0);
 
   if (query.isLoading) {
-    return <Loading size="small" text={COPY.loading} />;
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <Loading size="small" text={COPY.loading} />
+      </div>
+    );
   }
 
   if (query.isError) {
     return (
-      <p className="py-8 text-center text-destructive">
+      <p className="flex flex-1 items-center justify-center text-center text-destructive">
         Failed to load the claimed chunks: {query.error.message}
       </p>
     );
@@ -190,7 +198,9 @@ function ClaimsBrowser({
 
   if (!query.data || blocks.length === 0) {
     return (
-      <p className="py-8 text-center text-muted-foreground">{COPY.empty}</p>
+      <p className="flex flex-1 items-center justify-center text-center text-muted-foreground">
+        {COPY.empty}
+      </p>
     );
   }
 
@@ -198,7 +208,7 @@ function ClaimsBrowser({
     <>
       <div className="flex flex-col gap-2">
         <div className="flex flex-wrap gap-2">
-          <div className="relative min-w-[240px] flex-1">
+          <div className="relative min-w-0 flex-1 basis-[240px]">
             <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="text"
@@ -209,7 +219,7 @@ function ClaimsBrowser({
             />
           </div>
           <Select value={partyId} onValueChange={setPartyId}>
-            <SelectTrigger className="min-w-[180px]">
+            <SelectTrigger className="min-w-0 flex-1 basis-[180px] sm:flex-none">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -223,17 +233,19 @@ function ClaimsBrowser({
           </Select>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <ChoiceField
-            value={dimension}
-            onChange={setDimension}
-            options={[
-              { value: ALL, label: COPY.allDimensions },
-              ...dimensions.map((id) => ({
-                value: id,
-                label: formatDimension(id),
-              })),
-            ]}
-          />
+          <div className="min-w-0 max-w-full">
+            <ChoiceField
+              value={dimension}
+              onChange={setDimension}
+              options={[
+                { value: ALL, label: COPY.allDimensions },
+                ...dimensions.map((id) => ({
+                  value: id,
+                  label: formatDimension(id),
+                })),
+              ]}
+            />
+          </div>
           <p className="text-xs text-muted-foreground">
             {coordinates
               ? COPY.coordinateHint
@@ -242,7 +254,7 @@ function ClaimsBrowser({
         </div>
       </div>
 
-      <div className="min-h-0 overflow-y-auto rounded-md border border-border bg-card">
+      <div className="min-h-0 flex-1 overflow-y-auto rounded-md border border-border bg-card">
         {shown.length === 0 ? (
           <p className="px-6 py-8 text-center text-muted-foreground">
             {COPY.noMatch}
@@ -321,8 +333,13 @@ function ClaimBlockRow({
               {formatDimension(block.dimension)} · around{" "}
               {blockCenterLabel(block)}
             </p>
+            <p className="truncate text-xs text-muted-foreground tabular-nums sm:hidden">
+              {formatCount(block.chunkCount, "chunk")} · {blockSizeLabel(block)}
+              {block.forceloadCount > 0 &&
+                ` · ${block.forceloadCount} forceloaded`}
+            </p>
           </div>
-          <div className="flex flex-col items-end tabular-nums">
+          <div className="hidden flex-col items-end tabular-nums sm:flex">
             <span className="text-sm">
               {formatCount(block.chunkCount, "chunk")}
             </span>
@@ -346,7 +363,7 @@ function ClaimBlockRow({
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-xs text-muted-foreground">
               Chunks x {block.minX} to {block.maxX}, z {block.minZ} to{" "}
-              {block.maxZ}. {COPY.gridHint}
+              {block.maxZ}
             </p>
             <Button asChild size="sm" variant="outline">
               <a href={blockMapUrl(block)} target="_blank" rel="noreferrer">
@@ -362,18 +379,22 @@ function ClaimBlockRow({
                 highlight?.chunkX === chunk.x && highlight?.chunkZ === chunk.z;
               return (
                 <li key={`${chunk.x},${chunk.z}`}>
-                  <button
-                    type="button"
-                    onClick={() => copyTeleport(chunk.x, chunk.z)}
-                    title={`Copy /tp to chunk ${chunk.x}, ${chunk.z}`}
-                    className={cn(
-                      "cursor-pointer rounded border border-border bg-card px-1.5 py-0.5 font-mono text-xs tabular-nums transition-colors hover:border-primary/40",
-                      chunk.forceloaded && "border-dashed",
-                      highlighted && "border-primary bg-primary/10",
-                    )}
-                  >
-                    {chunk.x}, {chunk.z}
-                  </button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={() => copyTeleport(chunk.x, chunk.z)}
+                        className={cn(
+                          "cursor-pointer rounded border border-border bg-card px-1.5 py-0.5 font-mono text-xs tabular-nums transition-colors hover:border-primary/40",
+                          chunk.forceloaded && "border-dashed",
+                          highlighted && "border-primary bg-primary/10",
+                        )}
+                      >
+                        {chunk.x}, {chunk.z}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>{COPY.copyTeleport}</TooltipContent>
+                  </Tooltip>
                 </li>
               );
             })}
