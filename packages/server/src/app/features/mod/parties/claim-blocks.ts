@@ -48,11 +48,6 @@ function compareBlocks(a: ClaimBlock, b: ClaimBlock): number {
   );
 }
 
-/**
- * Groups claimed chunks into blocks of edge-adjacent chunks sharing an owner
- * and a dimension. Blocks come back largest first; chunks inside a block are
- * ordered by z then x so a grid can be drawn row by row.
- */
 export function groupClaimBlocks(chunks: ClaimChunk[]): ClaimBlock[] {
   const groups = new Map<string, Map<string, ClaimChunk>>();
   for (const chunk of chunks) {
