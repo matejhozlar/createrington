@@ -14,6 +14,7 @@ import { FilterBar } from "@/features/admin/components/FilterBar";
 import { formatRelativeDateSafe } from "@/features/admin/format";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { trpc } from "@/lib/trpc";
+import { ClaimsDialog } from "./components/ClaimsDialog";
 import { PartiesStatsCards } from "./components/PartiesStatsCards";
 import {
   PartiesTable,
@@ -74,6 +75,9 @@ export function AdminParties() {
   const [expandedId, setExpandedId] = useState<number | null>(
     () => Number(searchParams.get("party")) || null,
   );
+  const [claimsDialog, setClaimsDialog] = useState<{
+    partyId: number | null;
+  } | null>(null);
   const needle = useDebouncedValue(search, 300).trim().toLowerCase();
 
   const statsQuery = trpc.admin.parties.stats.useQuery({ serverId: SERVER_ID });
@@ -128,7 +132,10 @@ export function AdminParties() {
         {statsQuery.isLoading ? (
           <Loading size="medium" text="Loading party totals..." />
         ) : statsQuery.data ? (
-          <PartiesStatsCards stats={statsQuery.data} />
+          <PartiesStatsCards
+            stats={statsQuery.data}
+            onBrowseClaims={() => setClaimsDialog({ partyId: null })}
+          />
         ) : null}
 
         <FilterBar
@@ -169,11 +176,21 @@ export function AdminParties() {
                 onToggle={(id) =>
                   setExpandedId((prev) => (prev === id ? null : id))
                 }
+                onShowClaims={(partyId) => setClaimsDialog({ partyId })}
               />
             )}
           </CardContent>
         </Card>
       </div>
+
+      <ClaimsDialog
+        open={claimsDialog !== null}
+        onOpenChange={(open) => {
+          if (!open) setClaimsDialog(null);
+        }}
+        serverId={SERVER_ID}
+        initialPartyId={claimsDialog?.partyId ?? null}
+      />
     </div>
   );
 }

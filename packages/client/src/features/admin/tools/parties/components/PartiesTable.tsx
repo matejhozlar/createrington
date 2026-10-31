@@ -22,6 +22,7 @@ export function PartiesTable({
   onSort,
   expandedId,
   onToggle,
+  onShowClaims,
 }: {
   parties: PartyRow[];
   loading: boolean;
@@ -29,6 +30,7 @@ export function PartiesTable({
   onSort: (key: PartySortKey) => void;
   expandedId: number | null;
   onToggle: (id: number) => void;
+  onShowClaims: (partyId: number) => void;
 }) {
   const sortable = (key: PartySortKey) => ({
     sorted: sort.key === key ? sort.dir : (false as const),
@@ -155,7 +157,12 @@ export function PartiesTable({
         party.id === expandedId ? "bg-muted/30" : undefined
       }
       expandedKey={expandedId}
-      renderExpanded={(party) => <PartyMembersPanel partyId={party.id} />}
+      renderExpanded={(party) => (
+        <PartyMembersPanel
+          partyId={party.id}
+          onShowClaims={() => onShowClaims(party.id)}
+        />
+      )}
     />
   );
 }

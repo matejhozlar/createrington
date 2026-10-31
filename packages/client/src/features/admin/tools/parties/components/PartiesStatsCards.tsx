@@ -1,4 +1,5 @@
 import { Grid3X3, Tag, UserRound, Users, type LucideIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -17,6 +18,7 @@ const CARDS: {
   iconColor: string;
   value: (stats: Stats) => string;
   detail: (stats: Stats) => string;
+  action?: { label: string; enabled: (stats: Stats) => boolean };
 }[] = [
   {
     key: "parties",
@@ -52,6 +54,10 @@ const CARDS: {
       stats.claimCount === null
         ? "Needs OPAC on the server"
         : `${stats.forceloadCount ?? 0} forceloaded`,
+    action: {
+      label: "Browse chunks",
+      enabled: (stats) => (stats.claimCount ?? 0) > 0,
+    },
   },
   {
     key: "tags",
@@ -67,25 +73,54 @@ const CARDS: {
   },
 ];
 
-export function PartiesStatsCards({ stats }: { stats: Stats }) {
+export function PartiesStatsCards({
+  stats,
+  onBrowseClaims,
+}: {
+  stats: Stats;
+  onBrowseClaims: () => void;
+}) {
+  const actions: Record<string, () => void> = { claims: onBrowseClaims };
+
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       {CARDS.map(
-        ({ key, label, icon: Icon, iconBg, iconColor, value, detail }) => (
+        ({
+          key,
+          label,
+          icon: Icon,
+          iconBg,
+          iconColor,
+          value,
+          detail,
+          action,
+        }) => (
           <Card key={key}>
-            <CardContent className="flex items-start justify-between">
-              <div>
-                <CardDescription>{label}</CardDescription>
-                <CardTitle className="text-2xl">{value(stats)}</CardTitle>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  {detail(stats)}
-                </p>
+            <CardContent className="flex flex-col gap-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <CardDescription>{label}</CardDescription>
+                  <CardTitle className="text-2xl">{value(stats)}</CardTitle>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {detail(stats)}
+                  </p>
+                </div>
+                <div
+                  className={`flex size-12 items-center justify-center rounded-full ${iconBg}`}
+                >
+                  <Icon className={`size-6 ${iconColor}`} />
+                </div>
               </div>
-              <div
-                className={`flex size-12 items-center justify-center rounded-full ${iconBg}`}
-              >
-                <Icon className={`size-6 ${iconColor}`} />
-              </div>
+              {action && action.enabled(stats) && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full"
+                  onClick={actions[key]}
+                >
+                  {action.label}
+                </Button>
+              )}
             </CardContent>
           </Card>
         ),
