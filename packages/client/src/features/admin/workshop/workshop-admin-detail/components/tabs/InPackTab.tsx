@@ -10,7 +10,6 @@ import {
 } from "@createrington/shared/workshop";
 import { Paginator } from "@/components/paginator";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { useStickyValue } from "@/hooks/use-sticky-value";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -149,7 +148,6 @@ export function InPackTab({
   const manifestInputRef = useRef<HTMLInputElement>(null);
   const [pendingManifest, setPendingManifest] =
     useState<ModpackManifestUpload | null>(null);
-  const displayManifest = useStickyValue(pendingManifest);
 
   const isCurrent = selected === "current";
   const releaseId = isCurrent ? null : Number(selected);
@@ -547,11 +545,11 @@ export function InPackTab({
           <>
             This pack already has {rows.length.toLocaleString()} members.
             Importing{" "}
-            {displayManifest?.version
-              ? `manifest "${displayManifest.version}"`
+            {pendingManifest?.version
+              ? `manifest "${pendingManifest.version}"`
               : "this manifest"}{" "}
             syncs them against its{" "}
-            {(displayManifest?.files.length ?? 0).toLocaleString()} mods:
+            {(pendingManifest?.files.length ?? 0).toLocaleString()} mods:
             members missing from the manifest are dropped, and their suggestions
             move back to Coming next update.
           </>

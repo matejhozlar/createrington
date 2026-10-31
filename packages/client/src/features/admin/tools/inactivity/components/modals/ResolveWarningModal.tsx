@@ -1,5 +1,4 @@
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { useStickyValue } from "@/hooks/use-sticky-value";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 
@@ -25,11 +24,9 @@ export function ResolveWarningModal({
       },
     }),
   );
-  const displayWarning = useStickyValue(warning);
 
-  const displayName = displayWarning
-    ? (displayWarning.minecraftUsername ??
-      `UUID ${displayWarning.playerMinecraftUuid}`)
+  const displayName = warning
+    ? (warning.minecraftUsername ?? `UUID ${warning.playerMinecraftUuid}`)
     : "";
 
   return (
@@ -40,7 +37,7 @@ export function ResolveWarningModal({
       }}
       title="Resolve Inactivity Warning"
       description={
-        displayWarning && (
+        warning && (
           <>
             Mark{" "}
             <span className="font-semibold">&quot;{displayName}&quot;</span> as
@@ -54,7 +51,7 @@ export function ResolveWarningModal({
         warning ? resolveWarning.mutateAsync({ id: warning.id }) : undefined
       }
     >
-      {displayWarning && (
+      {warning && (
         <div className="rounded-lg border border-border bg-muted/50 p-4">
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
@@ -64,14 +61,14 @@ export function ResolveWarningModal({
             <div className="flex justify-between">
               <span className="text-muted-foreground">Warned:</span>
               <span className="font-medium">
-                {new Date(displayWarning.warnedAt).toLocaleDateString()}
+                {new Date(warning.warnedAt).toLocaleDateString()}
               </span>
             </div>
-            {displayWarning.lastSeen && (
+            {warning.lastSeen && (
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Last seen:</span>
                 <span className="font-medium">
-                  {new Date(displayWarning.lastSeen).toLocaleDateString()}
+                  {new Date(warning.lastSeen).toLocaleDateString()}
                 </span>
               </div>
             )}

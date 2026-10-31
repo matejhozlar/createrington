@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useStickyValue } from "@/hooks/use-sticky-value";
 import {
   ChevronLeft,
   ChevronRight,
@@ -111,8 +110,6 @@ export function PresetSidebar({
     id: number;
     name: string;
   } | null>(null);
-  const displayDeleteTarget = useStickyValue(deleteTarget);
-  const displayRenameTarget = useStickyValue(renameTarget);
   const [renameName, setRenameName] = useState("");
   const [showNewCategory, setShowNewCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
@@ -392,19 +389,18 @@ export function PresetSidebar({
         <AlertDialogContent size="sm">
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Delete{" "}
-              {displayDeleteTarget?.type === "category" ? "category" : "preset"}
+              Delete {deleteTarget?.type === "category" ? "category" : "preset"}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {displayDeleteTarget?.type === "category" ? (
+              {deleteTarget?.type === "category" ? (
                 <>
-                  Delete the category &ldquo;{displayDeleteTarget?.name}&rdquo;?
+                  Delete the category &ldquo;{deleteTarget?.name}&rdquo;?
                   Presets in this category will become uncategorized.
                 </>
               ) : (
                 <>
-                  Delete &ldquo;{displayDeleteTarget?.name}&rdquo;? This action
-                  cannot be undone.
+                  Delete &ldquo;{deleteTarget?.name}&rdquo;? This action cannot
+                  be undone.
                 </>
               )}
             </AlertDialogDescription>
@@ -440,7 +436,7 @@ export function PresetSidebar({
           <AlertDialogHeader>
             <AlertDialogTitle>Rename category</AlertDialogTitle>
             <AlertDialogDescription>
-              Enter a new name for &ldquo;{displayRenameTarget?.name}&rdquo;.
+              Enter a new name for &ldquo;{renameTarget?.name}&rdquo;.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="px-6 pb-2">
@@ -462,8 +458,7 @@ export function PresetSidebar({
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               disabled={
-                !renameName.trim() ||
-                renameName.trim() === displayRenameTarget?.name
+                !renameName.trim() || renameName.trim() === renameTarget?.name
               }
               onClick={() => {
                 if (renameTarget && renameName.trim()) {

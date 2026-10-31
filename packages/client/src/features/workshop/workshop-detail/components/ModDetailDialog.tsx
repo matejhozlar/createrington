@@ -9,7 +9,6 @@ import {
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { REQUIRED_DEPENDENCY } from "@createrington/shared/workshop";
-import { useStickyValue } from "@/hooks/use-sticky-value";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -65,13 +64,12 @@ export function ModDetailDialog({
   admin?: boolean;
 }) {
   const open = workshopModId !== null;
-  const displayId = useStickyValue(workshopModId);
   const userQuery = trpc.user.workshops.getMod.useQuery(
-    { workshopModId: displayId! },
+    { workshopModId: workshopModId ?? 0 },
     { enabled: open && !admin },
   );
   const adminQuery = trpc.admin.workshops.getMod.useQuery(
-    { workshopModId: displayId! },
+    { workshopModId: workshopModId ?? 0 },
     { enabled: open && admin },
   );
   const detailQuery = admin ? adminQuery : userQuery;
