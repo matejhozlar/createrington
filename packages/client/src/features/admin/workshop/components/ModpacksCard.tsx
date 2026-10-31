@@ -19,7 +19,6 @@ import {
   TwoLineCellSkeleton,
   type DataTableColumn,
 } from "@/components/data-table";
-import { useStickyValue } from "@/hooks/use-sticky-value";
 import { CreateModpackDialog } from "./CreateModpackDialog";
 import { ModpackSettingsDialog } from "./ModpackSettingsDialog";
 
@@ -130,7 +129,6 @@ export function ModpacksCard() {
   const [deleteTarget, setDeleteTarget] = useState<AdminModpackRow | null>(
     null,
   );
-  const displayDeleteTarget = useStickyValue(deleteTarget);
 
   const deleteMutation = trpc.admin.modpacks.delete.useMutation(
     useMutationToast({
@@ -237,7 +235,7 @@ export function ModpacksCard() {
         onOpenChange={(open) => {
           if (!open) setDeleteTarget(null);
         }}
-        title={<>Delete &quot;{displayDeleteTarget?.name}&quot;?</>}
+        title={<>Delete &quot;{deleteTarget?.name}&quot;?</>}
         description="This permanently removes the modpack, its member list, and its recorded release history. This cannot be undone."
         confirmLabel="Delete"
         variant="destructive"

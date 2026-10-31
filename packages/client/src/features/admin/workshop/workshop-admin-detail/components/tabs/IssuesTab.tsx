@@ -2,7 +2,6 @@ import { useState } from "react";
 import { CircleCheck, ExternalLink, Eye, PackageMinus } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
-import { useStickyValue } from "@/hooks/use-sticky-value";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CellDate, CellText } from "@/components/cell-text";
@@ -88,7 +87,6 @@ export function IssuesTab({
   onSetEnvironment: (projectId: number, environment: ModEnvironment) => void;
 }) {
   const [removeTarget, setRemoveTarget] = useState<DroppedItem | null>(null);
-  const displayTarget = useStickyValue(removeTarget);
 
   const removeMutation = trpc.admin.workshops.removeDroppedMember.useMutation(
     useMutationToast({
@@ -222,10 +220,10 @@ export function IssuesTab({
         onOpenChange={(open) => {
           if (!open) setRemoveTarget(null);
         }}
-        title={`Remove ${displayTarget?.name ?? "this mod"} from the pack?`}
+        title={`Remove ${removeTarget?.name ?? "this mod"} from the pack?`}
         description={[
           REMOVE_COPY.common,
-          displayTarget && displayTarget.workshopModId !== null
+          removeTarget && removeTarget.workshopModId !== null
             ? REMOVE_COPY.suggestion
             : null,
           REMOVE_COPY.returning,

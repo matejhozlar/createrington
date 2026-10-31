@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { useStickyValue } from "@/hooks/use-sticky-value";
 import { useNavigate } from "react-router";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
@@ -73,7 +72,6 @@ export function AdminStructurePacks() {
     id: number;
     name: string;
   } | null>(null);
-  const displayDeleteTarget = useStickyValue(deleteTarget);
 
   const filteredPacks = useMemo(() => {
     let result = packs;
@@ -407,7 +405,7 @@ export function AdminStructurePacks() {
         onOpenChange={(open) => {
           if (!open) setDeleteTarget(null);
         }}
-        title={<>Delete &quot;{displayDeleteTarget?.name}&quot;?</>}
+        title={<>Delete &quot;{deleteTarget?.name}&quot;?</>}
         description="This will remove the pack from the rotation pool. Historical data will be preserved."
         confirmLabel="Delete"
         variant="destructive"
