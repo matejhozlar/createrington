@@ -111,7 +111,7 @@ export function PartiesStatsCards({
                   <Icon className={`size-6 ${iconColor}`} />
                 </div>
               </div>
-              {action && action.enabled(stats) && (
+              {action && actions[key] && action.enabled(stats) && (
                 <Button
                   size="sm"
                   variant="outline"
