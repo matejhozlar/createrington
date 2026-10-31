@@ -57,7 +57,7 @@ export function ClaimBlockGrid({
             </TooltipTrigger>
             <TooltipContent>
               Chunk {chunk.x}, {chunk.z}
-              {chunk.forceloaded && " · forceloaded"} · Open on BlueMap
+              {chunk.forceloaded && " · forceloaded"}
             </TooltipContent>
           </Tooltip>
         );
