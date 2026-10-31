@@ -59,6 +59,7 @@ const COPY = {
   openMap: "Open on BlueMap",
   copyTeleport: "Copy teleport command",
   copied: "Teleport command copied",
+  copyFailed: "Failed to copy to clipboard",
 } as const;
 
 const ALL = "all";
@@ -298,9 +299,15 @@ function ClaimBlockRow({
     ? `#${colorHex(block.party.color)}`
     : NO_PARTY_SWATCH;
 
-  const copyTeleport = (x: number, z: number) => {
-    navigator.clipboard.writeText(chunkTpCommand(block.dimension, x, z));
-    toast.success(COPY.copied);
+  const copyTeleport = async (x: number, z: number) => {
+    try {
+      await navigator.clipboard.writeText(
+        chunkTpCommand(block.dimension, x, z),
+      );
+      toast.success(COPY.copied);
+    } catch {
+      toast.error(COPY.copyFailed);
+    }
   };
 
   return (
