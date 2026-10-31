@@ -39,8 +39,6 @@ export function RejectModDialog({
 }) {
   const [reason, setReason] = useState<RejectReason | "">("");
   const [note, setNote] = useState("");
-  // Held so the mod's name survives the close animation, since the parent
-  // clears the target the moment the reject succeeds
 
   return (
     <Dialog open={target !== null} onOpenChange={onOpenChange}>
