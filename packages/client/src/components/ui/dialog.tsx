@@ -5,11 +5,19 @@ import { Dialog as DialogPrimitive } from "radix-ui";
 import { focusTextFieldOnOpen } from "@/lib/dialogFocus";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import {
+  DialogOpenContext,
+  useChildrenFrozenWhileClosing,
+} from "@/components/ui/dialog-open-context";
 
 function Dialog({
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Root>) {
-  return <DialogPrimitive.Root data-slot="dialog" {...props} />;
+  return (
+    <DialogOpenContext.Provider value={props.open}>
+      <DialogPrimitive.Root data-slot="dialog" {...props} />
+    </DialogOpenContext.Provider>
+  );
 }
 
 function DialogTrigger({
@@ -55,6 +63,8 @@ function DialogContent({
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean;
 }) {
+  const content = useChildrenFrozenWhileClosing(children);
+
   return (
     <DialogPortal data-slot="dialog-portal">
       <DialogOverlay />
@@ -70,7 +80,7 @@ function DialogContent({
           focusTextFieldOnOpen(event);
         }}
       >
-        {children}
+        {content}
         {showCloseButton && (
           <DialogPrimitive.Close
             data-slot="dialog-close"

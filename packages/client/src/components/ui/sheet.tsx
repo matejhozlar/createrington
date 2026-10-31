@@ -6,9 +6,17 @@ import { XIcon } from "lucide-react";
 
 import { focusTextFieldOnOpen } from "@/lib/dialogFocus";
 import { cn } from "@/lib/utils";
+import {
+  DialogOpenContext,
+  useChildrenFrozenWhileClosing,
+} from "@/components/ui/dialog-open-context";
 
 function Sheet({ ...props }: React.ComponentProps<typeof SheetPrimitive.Root>) {
-  return <SheetPrimitive.Root data-slot="sheet" {...props} />;
+  return (
+    <DialogOpenContext.Provider value={props.open}>
+      <SheetPrimitive.Root data-slot="sheet" {...props} />
+    </DialogOpenContext.Provider>
+  );
 }
 
 function SheetTrigger({
@@ -56,6 +64,8 @@ function SheetContent({
   side?: "top" | "right" | "bottom" | "left";
   showCloseButton?: boolean;
 }) {
+  const content = useChildrenFrozenWhileClosing(children);
+
   return (
     <SheetPortal>
       <SheetOverlay />
@@ -79,7 +89,7 @@ function SheetContent({
           focusTextFieldOnOpen(event);
         }}
       >
-        {children}
+        {content}
         {showCloseButton && (
           <SheetPrimitive.Close className="group ring-offset-background focus:ring-ring data-[state=open]:bg-secondary text-foreground/70 hover:text-foreground absolute top-4 right-4 rounded-xs transition-colors focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none">
             <XIcon className="close-turn size-4 group-hover:[--close-turn:90deg]" />

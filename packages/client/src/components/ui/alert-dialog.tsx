@@ -4,11 +4,19 @@ import { AlertDialog as AlertDialogPrimitive } from "radix-ui";
 import { focusTextFieldOnOpen } from "@/lib/dialogFocus";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import {
+  DialogOpenContext,
+  useChildrenFrozenWhileClosing,
+} from "@/components/ui/dialog-open-context";
 
 function AlertDialog({
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Root>) {
-  return <AlertDialogPrimitive.Root data-slot="alert-dialog" {...props} />;
+  return (
+    <DialogOpenContext.Provider value={props.open}>
+      <AlertDialogPrimitive.Root data-slot="alert-dialog" {...props} />
+    </DialogOpenContext.Provider>
+  );
 }
 
 function AlertDialogTrigger({
@@ -47,10 +55,13 @@ function AlertDialogContent({
   className,
   size = "default",
   onOpenAutoFocus,
+  children,
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Content> & {
   size?: "default" | "sm";
 }) {
+  const content = useChildrenFrozenWhileClosing(children);
+
   return (
     <AlertDialogPortal>
       <AlertDialogOverlay />
@@ -66,7 +77,9 @@ function AlertDialogContent({
           onOpenAutoFocus?.(event);
           focusTextFieldOnOpen(event);
         }}
-      />
+      >
+        {content}
+      </AlertDialogPrimitive.Content>
     </AlertDialogPortal>
   );
 }
