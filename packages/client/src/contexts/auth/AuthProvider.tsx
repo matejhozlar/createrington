@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback } from "react";
 import type { User, AuthContextType } from "./types";
 import { AuthContext } from "./context";
 import {
+  getAccessToken,
   setAccessToken,
   refreshAccessToken,
 } from "@/services/auth/token-manager";
@@ -131,7 +132,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const logoutAll = useCallback(async () => {
     try {
-      const { getAccessToken } = await import("@/services/auth/token-manager");
       const token = getAccessToken();
 
       await fetch("/api/auth/logout-all", {
