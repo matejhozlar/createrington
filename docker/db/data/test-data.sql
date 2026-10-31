@@ -896,11 +896,11 @@ INSERT INTO server_party (server_id, team_id, name, description, color, free_to_
 
 INSERT INTO server_party_member (party_id, minecraft_uuid, rank, claim_count, forceload_count) VALUES
   -- Hermitcraft Friends: Mumbo owns, Grian officer, Scar member
-  (1, '550e8400-e29b-41d4-a716-446655440009'::uuid, 'owner',    18,  2),
+  (1, '550e8400-e29b-41d4-a716-446655440009'::uuid, 'owner',    31,  2),
   (1, '550e8400-e29b-41d4-a716-446655440010'::uuid, 'officer',   0,  0),
   (1, '550e8400-e29b-41d4-a716-446655440011'::uuid, 'member',    0,  0),
   -- Dream SMP Alliance: Dream owns, Notch member
-  (2, '550e8400-e29b-41d4-a716-446655440006'::uuid, 'owner',     9,  1),
+  (2, '550e8400-e29b-41d4-a716-446655440006'::uuid, 'owner',    45,  3),
   (2, '550e8400-e29b-41d4-a716-446655440003'::uuid, 'member',    0,  0),
   -- Lone Wolves: Herobrine alone, no OPAC counters
   (3, '550e8400-e29b-41d4-a716-446655440004'::uuid, 'owner',  NULL, NULL);
@@ -914,20 +914,40 @@ INSERT INTO server_party_ally (party_id, minecraft_uuid) VALUES
 
 -- OPAC claimed chunks as core reports them with party-owned claims: a party's
 -- chunks sit under its owner's UUID. Hermitcraft Friends holds a 4x4 base in
--- the overworld (two chunks forceloaded) plus a nether hub, Dream SMP Alliance
--- a 3x3 base; Lone Wolves has no claims.
+-- the overworld (two chunks forceloaded), an L-shaped outpost, one chunk that
+-- only touches the base at a corner, a nether hub and two End chunks. Dream
+-- SMP Alliance holds a 3x3 base with a long rail line attached to it. The
+-- OPAC server UUID owns the spawn area, which belongs to no party. Lone
+-- Wolves has no claims.
 INSERT INTO server_party_claim (server_id, dimension, chunk_x, chunk_z, owner_uuid, forceloaded)
 SELECT 1, 'minecraft:overworld', x, z, '550e8400-e29b-41d4-a716-446655440009'::uuid, (x = 12 AND z IN (-5, -4))
 FROM generate_series(10, 13) AS x, generate_series(-6, -3) AS z;
 INSERT INTO server_party_claim (server_id, dimension, chunk_x, chunk_z, owner_uuid, forceloaded)
+SELECT 1, 'minecraft:overworld', x, 10, '550e8400-e29b-41d4-a716-446655440009'::uuid, false
+FROM generate_series(40, 45) AS x;
+INSERT INTO server_party_claim (server_id, dimension, chunk_x, chunk_z, owner_uuid, forceloaded)
+SELECT 1, 'minecraft:overworld', 40, z, '550e8400-e29b-41d4-a716-446655440009'::uuid, false
+FROM generate_series(11, 14) AS z;
+INSERT INTO server_party_claim (server_id, dimension, chunk_x, chunk_z, owner_uuid, forceloaded) VALUES
+  (1, 'minecraft:overworld', 14, -2, '550e8400-e29b-41d4-a716-446655440009'::uuid, false);
+INSERT INTO server_party_claim (server_id, dimension, chunk_x, chunk_z, owner_uuid, forceloaded)
 SELECT 1, 'minecraft:the_nether', x, z, '550e8400-e29b-41d4-a716-446655440009'::uuid, false
 FROM generate_series(1, 2) AS x, generate_series(0, 0) AS z;
 INSERT INTO server_party_claim (server_id, dimension, chunk_x, chunk_z, owner_uuid, forceloaded)
+SELECT 1, 'minecraft:the_end', x, 0, '550e8400-e29b-41d4-a716-446655440009'::uuid, false
+FROM generate_series(0, 1) AS x;
+INSERT INTO server_party_claim (server_id, dimension, chunk_x, chunk_z, owner_uuid, forceloaded)
 SELECT 1, 'minecraft:overworld', x, z, '550e8400-e29b-41d4-a716-446655440006'::uuid, (x = -21 AND z = 30)
 FROM generate_series(-22, -20) AS x, generate_series(29, 31) AS z;
+INSERT INTO server_party_claim (server_id, dimension, chunk_x, chunk_z, owner_uuid, forceloaded)
+SELECT 1, 'minecraft:overworld', x, 32, '550e8400-e29b-41d4-a716-446655440006'::uuid, x IN (0, 8)
+FROM generate_series(-20, 15) AS x;
+INSERT INTO server_party_claim (server_id, dimension, chunk_x, chunk_z, owner_uuid, forceloaded)
+SELECT 1, 'minecraft:overworld', x, z, '00000000-0000-0000-0000-000000000000'::uuid, (x = 0 AND z = 0)
+FROM generate_series(-2, 2) AS x, generate_series(-2, 2) AS z;
 
 INSERT INTO server_party_claim_sync (server_id, hash, chunk_count, synced_at) VALUES
-  (1, 'seed', 27, NOW() - INTERVAL '5 minutes');
+  (1, 'seed', 101, NOW() - INTERVAL '5 minutes');
 
 -- ============================================================================
 -- VOTING SYSTEM

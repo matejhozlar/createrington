@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { groupClaimBlocks } from "@/app/features/mod/parties/claim-blocks";
 import { Q } from "@/db";
 import { adminProcedure, router } from "@/trpc/trpc";
 import { findOrThrow, id } from "@/trpc/utils";
@@ -48,6 +49,43 @@ export const adminPartiesRouter = router({
         party.serverId,
         party.ownerUuid,
       );
+    }),
+
+  claimBlocks: adminProcedure
+    .meta({
+      description:
+        "Every claimed chunk of a server grouped into blocks of touching chunks with the owning party, null while the server has not synced claims",
+    })
+    .input(z.object({ serverId: id() }))
+    .query(async ({ input }) => {
+      const sync = await Q.server.party.claim.sync.find({
+        serverId: input.serverId,
+      });
+      if (!sync) return null;
+      const [chunks, parties] = await Promise.all([
+        Q.server.party.claim.findAll({ serverId: input.serverId }),
+        Q.server.party.getOverview(input.serverId),
+      ]);
+      const partiesByOwner = new Map(
+        parties.map((party) => [party.ownerUuid.toLowerCase(), party]),
+      );
+      const blocks = groupClaimBlocks(chunks).map((block) => {
+        const party = partiesByOwner.get(block.ownerUuid.toLowerCase());
+        return {
+          ...block,
+          party: party
+            ? {
+                id: party.id,
+                name: party.name,
+                tag: party.tag,
+                tagCode: party.tagCode,
+                color: party.color,
+                ownerName: party.ownerName,
+              }
+            : null,
+        };
+      });
+      return { syncedAt: sync.syncedAt, blocks };
     }),
 
   playerStatus: adminProcedure

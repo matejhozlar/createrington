@@ -1,5 +1,6 @@
 import { Loading } from "@/components/loading-spinner";
 import { PlayerLabel } from "@/components/player-label";
+import { Button } from "@/components/ui/button";
 import { formatDimension } from "@/lib/minecraft";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
@@ -11,7 +12,13 @@ const SECTION_LABEL =
 const LIST_CLASS =
   "divide-y divide-border rounded-md border border-border bg-card";
 
-export function PartyMembersPanel({ partyId }: { partyId: number }) {
+export function PartyMembersPanel({
+  partyId,
+  onShowClaims,
+}: {
+  partyId: number;
+  onShowClaims?: () => void;
+}) {
   const query = trpc.admin.parties.members.useQuery({ partyId });
   const claimsQuery = trpc.admin.parties.claims.useQuery({ partyId });
 
@@ -75,9 +82,21 @@ export function PartyMembersPanel({ partyId }: { partyId: number }) {
 
       {claims && (
         <section className="flex flex-col gap-2">
-          <h4 className={SECTION_LABEL}>
-            Territory · {claimTotal} chunk{claimTotal === 1 ? "" : "s"}
-          </h4>
+          <div className="flex items-center justify-between gap-2">
+            <h4 className={SECTION_LABEL}>
+              Territory · {claimTotal} chunk{claimTotal === 1 ? "" : "s"}
+            </h4>
+            {onShowClaims && claimTotal > 0 && (
+              <Button
+                size="sm"
+                variant="link"
+                className="h-auto p-0 text-xs"
+                onClick={onShowClaims}
+              >
+                Browse chunks
+              </Button>
+            )}
+          </div>
           {claims.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               This party has not claimed any chunk.
