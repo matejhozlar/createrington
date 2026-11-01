@@ -4,19 +4,23 @@ import type { DiscordMessageService } from "@/services/discord/message/message.s
 import { MINECRAFT_USERNAME } from "@/utils/rcon";
 import type { VotifierVote } from "./protocol";
 
+export type MessageServiceProvider = () => DiscordMessageService | null;
+
 /**
  * Vote Intake
  *
  * Turns a verified Votifier vote into a `player_vote` row and a shout-out in
  * the server chat channel. The username is matched to a registered player
  * case-insensitively; votes for unknown usernames are stored unlinked (and
- * linked once that player registers) but announced only for registered
- * players, so the chat cannot be used as a billboard through the vote site.
- * A redelivery of a stored vote is dropped quietly.
+ * linked by registration) but announced only for registered players, so the
+ * chat cannot be used as a billboard through the vote site. A redelivery of a
+ * stored vote is dropped quietly. The message service is looked up per vote
+ * and may be absent while the Discord bot is not logged in: the vote is then
+ * stored without the shout-out, because storing it is what must not fail.
  */
 export class VoteIntake {
   constructor(
-    private readonly messageService: DiscordMessageService,
+    private readonly messageService: MessageServiceProvider,
     private readonly channelId: string,
   ) {}
 
@@ -62,7 +66,14 @@ export class VoteIntake {
     minecraftUsername: string,
     serviceName: string,
   ): Promise<void> {
-    const result = await this.messageService.send({
+    const messageService = this.messageService();
+    if (!messageService) {
+      logger.warn(
+        `Votifier: the vote of ${minecraftUsername} was not announced, the Discord bot is not ready`,
+      );
+      return;
+    }
+    const result = await messageService.send({
       channelId: this.channelId,
       content: `**${minecraftUsername}** voted for the server on ${serviceName}!`,
     });

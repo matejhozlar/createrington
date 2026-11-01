@@ -21,7 +21,10 @@ vi.mock("@/db", () => ({
   },
 }));
 
-import { VoteIntake } from "@/services/votifier/vote-intake";
+import {
+  VoteIntake,
+  type MessageServiceProvider,
+} from "@/services/votifier/vote-intake";
 import type { DiscordMessageService } from "@/services/discord/message/message.service";
 
 const CHANNEL = "123456789012345678";
@@ -31,11 +34,12 @@ const PLAYER = {
 };
 const VOTED_AT = new Date("2026-10-20T10:00:00Z");
 
-function intake(): VoteIntake {
-  return new VoteIntake(
-    { send: mocks.send } as unknown as DiscordMessageService,
-    CHANNEL,
-  );
+const messageService = { send: mocks.send } as unknown as DiscordMessageService;
+
+function intake(
+  provider: MessageServiceProvider = () => messageService,
+): VoteIntake {
+  return new VoteIntake(provider, CHANNEL);
 }
 
 beforeEach(() => {
@@ -152,5 +156,20 @@ describe("VoteIntake.accept", () => {
     ).resolves.toBeUndefined();
 
     expect(mocks.recordVote).toHaveBeenCalledTimes(1);
+  });
+
+  it("stores the vote without a shout-out while the Discord bot is not ready", async () => {
+    mocks.findPlayers.mockResolvedValue([PLAYER]);
+
+    await expect(
+      intake(() => null).accept({
+        serviceName: "createmodservers.com",
+        username: "Agent772",
+        timestamp: VOTED_AT,
+      }),
+    ).resolves.toBeUndefined();
+
+    expect(mocks.recordVote).toHaveBeenCalledTimes(1);
+    expect(mocks.send).not.toHaveBeenCalled();
   });
 });

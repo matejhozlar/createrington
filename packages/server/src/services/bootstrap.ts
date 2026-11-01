@@ -523,9 +523,11 @@ export function registerServices(): void {
     container.register(
       Services.VOTIFIER_SERVICE,
       async (c) => {
-        const messageService = await c.get(Services.MESSAGE_SERVICE);
         const intake = new VoteIntake(
-          messageService,
+          () =>
+            c.getState(Services.MESSAGE_SERVICE) === "ready"
+              ? c.getSync(Services.MESSAGE_SERVICE)
+              : null,
           Discord.Channels.railsNSails.MINECRAFT_CHAT,
         );
         const service = new VotifierService(votifierConfig, (vote) =>
@@ -534,7 +536,7 @@ export function registerServices(): void {
         await service.initialize();
         return service;
       },
-      { dependencies: [Services.DATABASE, Services.MESSAGE_SERVICE] },
+      { dependencies: [Services.DATABASE] },
     );
   } else {
     logger.info(
