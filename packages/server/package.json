@@ -1,6 +1,6 @@
 {
   "name": "@createrington/server",
-  "version": "1.73.0",
+  "version": "1.74.0",
   "description": "",
   "private": true,
   "license": "UNLICENSED",
@@ -39,6 +39,7 @@
     "util:scrape-discord": "tsx src/scripts/discord/scrape-entities.ts",
     "util:sync-nicknames": "tsx src/scripts/discord/sync-nicknames.ts",
     "util:sync-emojis": "tsx src/scripts/discord/sync-emojis.ts",
+    "util:import-pending-votes": "tsx src/scripts/votes/import-pending-votes.ts",
     "util:render-emojis": "tsx src/scripts/render/render-emojis.ts",
     "util:mint-session": "infisical run --env=dev -- tsx src/scripts/auth/mint-session.ts",
     "util:render-profile-poses": "infisical run --env=dev -- tsx src/scripts/render/render-profile-poses.ts",

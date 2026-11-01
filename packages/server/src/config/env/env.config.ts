@@ -202,6 +202,16 @@ const envSchema = z
       .max(100, "RCON password is too long")
       .optional(),
 
+    // Votifier (server-list votes). The listener only starts when both the
+    // port and the token are set; the token is the HMAC secret the server
+    // list signs v2 votes with.
+    VOTIFIER_HOST: z.string().default("0.0.0.0"),
+    VOTIFIER_PORT: port("Votifier port").optional(),
+    VOTIFIER_TOKEN: z
+      .string()
+      .min(16, "Votifier token must be at least 16 characters")
+      .optional(),
+
     // URLs
     WEBSITE_URL: z.string().url("Website URL must be a valid URL"),
     ADMIN_PANEL_URL: z.string().url("Admin panel URL must be a valid URL"),

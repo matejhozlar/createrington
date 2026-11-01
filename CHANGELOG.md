@@ -1,3 +1,16 @@
+## v1.74.0 (2026-11-01)
+
+### @createrington/server (1.73.0 → 1.74.0)
+- [add] Add server-list vote receiving over NuVotifier protocol v2: a TCP listener authenticates incoming votes with HMAC-SHA256, stores them in the new `player_vote` table (deduplicated by service, username, and timestamp), announces registered voters in the Minecraft chat Discord channel, and stores unlinked votes for usernames that have not registered yet
+- [add] Add in-game vote reward payouts over RCON: pending votes are paid (a $10 bill and 500 XP per vote, with a private thank-you message) on the player's next join to a reward server, with a periodic sweep catching players whose join event was missed; each vote is claimed before its reward to prevent double payouts, and a failed bill reverts the claim so the vote stays in the queue
+- [add] Add `player_vote` table tracking every received vote with voter username, service name, vote timestamp, player link (nullable until registration), reward status, and a unique index on (service, username, voted_at) for redelivery deduplication
+- [add] Add vote query class with idempotent `record`, pending vote reads, `linkUsername` for attaching unlinked votes on registration, and `getTopVoters` ranking for leaderboard use
+- [add] Add `onServiceCreated` hook to `PlaytimeManagerService` that fires for every existing and future playtime service, used by the vote reward service to subscribe to session starts on reward servers as they come up
+- [add] Add a pending votes import script that reads the Votifier mod's `pending_votes.json` (or its `config.json`) and records every vote in `player_vote`, linking to registered players where possible, for cutover from the mod-based reward system
+- [add] Add `VOTIFIER_HOST`, `VOTIFIER_PORT`, and `VOTIFIER_TOKEN` env vars; the listener and reward service only start when port and token are configured
+- [fix] Fix votes for a username that registers later never being linked: registration now calls `linkUsername` in its transaction, attaching all prior unlinked votes to the new player
+- [refactor] Share the Votifier timestamp parser (seconds vs. milliseconds detection) between the live listener and the import script
+
 ## v1.73.0 (2026-11-01)
 
 ### @createrington/server (1.72.0 → 1.73.0)

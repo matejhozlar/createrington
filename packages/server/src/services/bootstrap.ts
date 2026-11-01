@@ -45,6 +45,7 @@ import { structurePackService } from "./structure-pack";
 import { StructurePackRotationService } from "./structure-pack/rotation";
 import { PlayerPromptService } from "./player-prompt";
 import { redisService } from "./redis";
+import { VoteIntake, VoteRewardService, VotifierService } from "./votifier";
 
 /**
  * Registers all application services with the shared container
@@ -516,6 +517,47 @@ export function registerServices(): void {
     },
     { dependencies: [Services.DATABASE] },
   );
+
+  if (config.votifier) {
+    const votifierConfig = config.votifier;
+    container.register(
+      Services.VOTIFIER_SERVICE,
+      async (c) => {
+        const intake = new VoteIntake(
+          () =>
+            c.getState(Services.MESSAGE_SERVICE) === "ready"
+              ? c.getSync(Services.MESSAGE_SERVICE)
+              : null,
+          Discord.Channels.railsNSails.MINECRAFT_CHAT,
+        );
+        const service = new VotifierService(votifierConfig, (vote) =>
+          intake.accept(vote),
+        );
+        await service.initialize();
+        return service;
+      },
+      { dependencies: [Services.DATABASE] },
+    );
+
+    container.register(
+      Services.VOTE_REWARD_SERVICE,
+      async (c) => {
+        const playtimeManager = await c.get(Services.PLAYTIME_MANAGER_SERVICE);
+        const service = new VoteRewardService(playtimeManager, undefined, {
+          rewardServerIds: [config.servers.rails.id],
+        });
+        await service.initialize();
+        return service;
+      },
+      {
+        dependencies: [Services.DATABASE, Services.PLAYTIME_MANAGER_SERVICE],
+      },
+    );
+  } else {
+    logger.info(
+      "Votifier not configured, server-list votes are not received or rewarded by the app",
+    );
+  }
 
   container.on("serviceReady", async (serviceName) => {
     // Wire message cache into playtime manager for server shutdown detection
