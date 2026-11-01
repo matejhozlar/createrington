@@ -26,8 +26,8 @@ interface UseAdminChatSessionResult {
   sessionActive: boolean;
   /**
    * The model the active (or last) session is pinned to. `null` for legacy
-   * sessions created before the picker landed: those run on whatever the
-   * worker default is (Sonnet) but we don't surface that as an explicit value.
+   * sessions pinned to a model the picker no longer offers, or created before
+   * the picker landed; we don't surface those as an explicit value.
    */
   activeModel: AdminChatModel | null;
   messages: ChatMessage[];
