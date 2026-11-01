@@ -1,3 +1,27 @@
+## v1.73.0 (2026-11-01)
+
+### @createrington/server (1.72.0 → 1.73.0)
+- [add] Add OPAC claimed chunk sync endpoint (`POST /api/parties/claims`) that receives full-state snapshots of every claimed and forceloaded chunk per dimension and owner, replaces the server's stored chunks in one advisory-lock-serialized transaction when the content hash differs, and skips the write (moving only synced_at) when the hash matches
+- [add] Add `server_party_claim` and `server_party_claim_sync` tables storing per-chunk claim data and per-server sync metadata, with a unique index on (server, dimension, x, z) and an owner index for fast party lookups
+- [add] Add claim block grouping utility that flood-fills touching chunks of the same owner and dimension into contiguous blocks with bounding boxes, chunk counts, and forceload counts, used by the admin tRPC procedures
+- [add] Add admin tRPC procedures `claims` (per-dimension chunk totals for a party) and `claimBlocks` (all chunks grouped into touching blocks with owning party metadata) for the parties tool
+- [add] Add parties claims API spec for the Java mod library generator, bumping `createrington-api` to 2.1.0
+- [refactor] Serve render page figures from the public pose route instead of the loopback-only `/api/render/skin` endpoint, simplifying the render script to swap pose names in the existing public URL rather than extracting UUIDs from img sources
+- [remove] Remove the `/api/render/skin` route, replaced by the public `/api/skin/:player/pose/:pose` route which the render pages now use directly
+- [refactor] Extract `isLoopbackRequest` from `requireLoopback` middleware and use it to skip the pose rate limiter for in-process render page requests, and convert `ALLOWED_IPS` from eagerly evaluated arrays to lazy getters
+- [refactor] Log the normalized peer address and proxy status when a non-loopback request is rejected by the server IP middleware
+- [fix] Fix Java mod library generator producing non-nullable inner types for array items, causing null list elements to fail deserialization
+- [fix] Offer only Opus 5.5 in the admin chat model allowlist, dropping the previous Sonnet 4.6 and Opus 4.8 entries
+- [chore] Bump follow-redirects to 1.16.2, qs to 6.16.1+, glob to 14.x, and minimatch to 11.x via pnpm overrides to clear all audit advisories
+
+### @createrington/client (0.2.91 → 0.2.92)
+- [add] Add a claimed chunks dialog to the admin parties tool showing all chunks on the server grouped into contiguous blocks with owning party, dimension totals, chunk/forceload counts, bounding box, and a visual chunk grid with forceload markers and click-to-copy teleport commands
+- [add] Show claim snapshot sync timestamp on the parties page alongside the existing party sync time
+- [refactor] Centralize dialog close-animation content freezing into the Dialog, AlertDialog, and Sheet primitives via a shared `DialogOpenContext` and `useChildrenFrozenWhileClosing` hook, replacing per-dialog `useStickyValue` guards across 15+ consuming components
+- [remove] Remove the `useStickyValue` hook, fully replaced by the primitive-level content freezing
+- [fix] Offer only Opus 5.5 in the admin chat model picker, and make the picker non-interactive when only one model is available
+- [chore] Import `getAccessToken` statically in the auth provider instead of dynamically importing it in the logout-all callback
+
 ## v1.72.0 (2026-10-30)
 
 ### @createrington/server (1.71.0 → 1.72.0)
