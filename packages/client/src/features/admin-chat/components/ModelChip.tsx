@@ -42,7 +42,8 @@ export function ModelChip({
 }: ModelChipProps): React.JSX.Element {
   const [open, setOpen] = useState(false);
   const label = ADMIN_CHAT_MODEL_LABELS[value];
-  const isInteractive = !readOnly && onChange !== undefined;
+  const isInteractive =
+    !readOnly && onChange !== undefined && ADMIN_CHAT_MODELS.length > 1;
 
   const triggerClass = cn(
     "h-6 gap-1 rounded-full border border-border/60 bg-muted/40 px-2 text-[0.6875rem] font-medium text-muted-foreground shadow-none transition-colors inline-flex items-center",
@@ -52,7 +53,7 @@ export function ModelChip({
     className,
   );
 
-  if (readOnly || onChange === undefined) {
+  if (!isInteractive) {
     return (
       <Tooltip>
         <TooltipTrigger asChild>
