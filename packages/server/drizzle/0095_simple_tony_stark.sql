@@ -3,7 +3,6 @@ CREATE TABLE "player_vote" (
 	"player_minecraft_uuid" uuid,
 	"username" text NOT NULL,
 	"service_name" text NOT NULL,
-	"address" text,
 	"voted_at" timestamp with time zone NOT NULL,
 	"received_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"rewarded_at" timestamp with time zone,

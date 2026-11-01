@@ -1,5 +1,5 @@
 {
-  "id": "aa4665e7-ea5c-401c-8a61-82d0d13e5555",
+  "id": "e1b1943e-bd31-4744-abd2-4a42ee6de645",
   "prevId": "2eca2c62-ecbc-47a4-82a3-ce80a025111c",
   "version": "7",
   "dialect": "postgresql",
@@ -5692,12 +5692,6 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
-        },
-        "address": {
-          "name": "address",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
         },
         "voted_at": {
           "name": "voted_at",

@@ -624,8 +624,6 @@ export const playerVote = pgTable(
     // Username exactly as the server list sent it
     username: text("username").notNull(),
     serviceName: text("service_name").notNull(),
-    // Voter IP as reported by the server list, when it sent one
-    address: text("address"),
     votedAt: timestamp("voted_at", { withTimezone: true }).notNull(),
     receivedAt: timestamp("received_at", { withTimezone: true })
       .notNull()
