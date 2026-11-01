@@ -16,6 +16,7 @@ import "@/logger.global";
 import fs from "node:fs";
 import { Q } from "@/db";
 import { escapeLike } from "@/db/utils";
+import { parseTimestamp } from "@/services/votifier/protocol";
 
 interface ModVote {
   serviceName: string;
@@ -32,12 +33,6 @@ function readPendingVotes(file: string): ModVote[] {
     "pendingVotes" in parsed ? parsed.pendingVotes : parsed
   ) as Record<string, ModVote[]>;
   return Object.values(map).flat();
-}
-
-function toDate(timestamp: ModVote["timestamp"]): Date | null {
-  const numeric = Number(timestamp);
-  if (!Number.isFinite(numeric) || numeric <= 0) return null;
-  return new Date(numeric < 100_000_000_000 ? numeric * 1000 : numeric);
 }
 
 async function main(): Promise<void> {
@@ -57,7 +52,7 @@ async function main(): Promise<void> {
   let skipped = 0;
   let invalid = 0;
   for (const vote of votes) {
-    const votedAt = toDate(vote.timestamp);
+    const votedAt = parseTimestamp(vote.timestamp);
     if (!votedAt) {
       invalid++;
       console.warn(

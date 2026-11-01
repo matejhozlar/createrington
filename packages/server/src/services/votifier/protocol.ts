@@ -124,7 +124,7 @@ function signatureMatches(
   return given.length === expected.length && timingSafeEqual(given, expected);
 }
 
-function parseTimestamp(value: unknown): Date | null {
+export function parseTimestamp(value: unknown): Date | null {
   const numeric =
     typeof value === "number"
       ? value
