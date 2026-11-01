@@ -1,5 +1,4 @@
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { useStickyValue } from "@/hooks/use-sticky-value";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 
@@ -25,7 +24,6 @@ export function DeleteFaqModal({
       },
     }),
   );
-  const displayEntry = useStickyValue(entry);
 
   return (
     <ConfirmDialog
@@ -35,11 +33,11 @@ export function DeleteFaqModal({
       }}
       title="Delete FAQ Entry"
       description={
-        displayEntry && (
+        entry && (
           <>
             Are you sure you want to delete{" "}
-            <span className="font-semibold">"{displayEntry.title}"</span>? This
-            action cannot be undone.
+            <span className="font-semibold">"{entry.title}"</span>? This action
+            cannot be undone.
           </>
         )
       }
@@ -49,20 +47,20 @@ export function DeleteFaqModal({
         entry ? deleteEntry.mutateAsync({ id: entry.id }) : undefined
       }
     >
-      {displayEntry && (
+      {entry && (
         <div className="rounded-lg border border-border bg-muted/50 p-4">
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Title:</span>
-              <span className="font-medium">{displayEntry.title}</span>
+              <span className="font-medium">{entry.title}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Pattern:</span>
-              <span className="font-mono text-xs">{displayEntry.pattern}</span>
+              <span className="font-mono text-xs">{entry.pattern}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Priority:</span>
-              <span className="font-medium">{displayEntry.priority}</span>
+              <span className="font-medium">{entry.priority}</span>
             </div>
           </div>
         </div>

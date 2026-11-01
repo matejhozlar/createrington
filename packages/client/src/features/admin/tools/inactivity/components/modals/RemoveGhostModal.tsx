@@ -1,7 +1,6 @@
 import { useEffect } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { CheckCircle2, Loader2, XCircle } from "lucide-react";
-import { useStickyValue } from "@/hooks/use-sticky-value";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 
@@ -29,7 +28,6 @@ export function RemoveGhostModal({
       onSuccess,
     }),
   );
-  const displayGhost = useStickyValue(ghost);
 
   const discordId = ghost?.discordId ?? null;
 
@@ -55,11 +53,11 @@ export function RemoveGhostModal({
       }}
       title={<span className="text-destructive">Remove Ghost Player</span>}
       description={
-        displayGhost && (
+        ghost && (
           <>
             This will remove{" "}
             <span className="font-semibold">
-              &quot;{displayGhost.minecraftUsername}&quot;
+              &quot;{ghost.minecraftUsername}&quot;
             </span>{" "}
             from all Minecraft server whitelists and delete their player record.
             This action cannot be undone.
@@ -124,25 +122,21 @@ export function RemoveGhostModal({
         </div>
       ) : null}
 
-      {displayGhost && (
+      {ghost && (
         <div className="rounded-lg border border-border bg-muted/50 p-4">
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Username:</span>
-              <span className="font-medium">
-                {displayGhost.minecraftUsername}
-              </span>
+              <span className="font-medium">{ghost.minecraftUsername}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Discord ID:</span>
-              <span className="font-mono text-xs">
-                {displayGhost.discordId}
-              </span>
+              <span className="font-mono text-xs">{ghost.discordId}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Last seen:</span>
               <span className="font-medium">
-                {new Date(displayGhost.playerLastSeen).toLocaleDateString()}
+                {new Date(ghost.playerLastSeen).toLocaleDateString()}
               </span>
             </div>
           </div>

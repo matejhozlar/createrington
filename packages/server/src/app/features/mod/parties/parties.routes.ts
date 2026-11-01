@@ -6,7 +6,7 @@ import {
 } from "@/app/middleware";
 import { Router } from "express";
 import { PartiesController } from "./parties.controller";
-import { PartySyncBodySchema } from "./parties.schemas";
+import { PartyClaimsBodySchema, PartySyncBodySchema } from "./parties.schemas";
 
 const router = Router();
 
@@ -15,6 +15,14 @@ router.post(
   ...customRoute(
     [verifyServerIP, verifyModJWT, validate({ body: PartySyncBodySchema })],
     PartiesController.sync,
+  ),
+);
+
+router.post(
+  "/claims",
+  ...customRoute(
+    [verifyServerIP, verifyModJWT, validate({ body: PartyClaimsBodySchema })],
+    PartiesController.claims,
   ),
 );
 

@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useStickyValue } from "@/hooks/use-sticky-value";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -40,15 +39,12 @@ export function RejectModDialog({
 }) {
   const [reason, setReason] = useState<RejectReason | "">("");
   const [note, setNote] = useState("");
-  // Held so the mod's name survives the close animation, since the parent
-  // clears the target the moment the reject succeeds
-  const displayTarget = useStickyValue(target);
 
   return (
     <Dialog open={target !== null} onOpenChange={onOpenChange}>
       <DialogContent onOpenAutoFocus={(event) => event.preventDefault()}>
         <DialogHeader>
-          <DialogTitle>Reject {displayTarget?.name}?</DialogTitle>
+          <DialogTitle>Reject {target?.name}?</DialogTitle>
           <DialogDescription>
             Rejecting rules this mod out of this workshop. The entry stays
             visible with the reason, and you can re-review it later.
@@ -90,10 +86,10 @@ export function RejectModDialog({
             disabled={!reason}
             loading={pending}
             onClick={() =>
-              displayTarget &&
+              target &&
               reason !== "" &&
               onReject({
-                workshopModId: displayTarget.workshopModId,
+                workshopModId: target.workshopModId,
                 reason,
                 note: note.trim() || undefined,
               })

@@ -15,7 +15,6 @@ import {
   type DataTableColumn,
 } from "@/components/data-table";
 import { LabeledSwitch } from "@/components/labeled-switch";
-import { useStickyValue } from "@/hooks/use-sticky-value";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { WORKSHOP_STATUS_STYLES, loaderName } from "@/features/workshop/format";
@@ -74,7 +73,6 @@ export function AdminWorkshop() {
   const [deleteTarget, setDeleteTarget] = useState<AdminWorkshopRow | null>(
     null,
   );
-  const displayDeleteTarget = useStickyValue(deleteTarget);
 
   const deleteMutation = trpc.admin.workshops.delete.useMutation(
     useMutationToast({
@@ -274,7 +272,7 @@ export function AdminWorkshop() {
         onOpenChange={(open) => {
           if (!open) setDeleteTarget(null);
         }}
-        title={<>Delete &quot;{displayDeleteTarget?.name}&quot;?</>}
+        title={<>Delete &quot;{deleteTarget?.name}&quot;?</>}
         description="This permanently removes the workshop with its suggestions, votes, polls, and history. Mods it placed in the pack stay, but lose their suggestion credit and can no longer be reviewed. Discord discussion threads are left in place. This cannot be undone."
         confirmLabel="Delete"
         variant="destructive"

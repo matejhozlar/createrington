@@ -1,5 +1,4 @@
 import { useCallback, useState } from "react";
-import { useStickyValue } from "@/hooks/use-sticky-value";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import {
   Card,
@@ -72,7 +71,6 @@ export function AdminLogs() {
   const [metadataAction, setMetadataAction] = useState<
     (typeof actions)[number] | null
   >(null);
-  const displayMetadataAction = useStickyValue(metadataAction);
 
   const [orderBy, setOrderBy] = useState<SortField>("performedAt");
   const [orderDirection, setOrderDirection] = useState<"asc" | "desc">("desc");
@@ -350,7 +348,7 @@ export function AdminLogs() {
             <DialogTitle>Entry Metadata</DialogTitle>
             <DialogDescription>
               {getDescription(
-                displayMetadataAction ?? {
+                metadataAction ?? {
                   description: null,
                   targetPlayerName: null,
                   tableName: null,
@@ -360,7 +358,7 @@ export function AdminLogs() {
             </DialogDescription>
           </DialogHeader>
           <pre className="max-h-[400px] overflow-auto rounded-md bg-muted p-4 text-xs">
-            {JSON.stringify(displayMetadataAction?.metadata, null, 2)}
+            {JSON.stringify(metadataAction?.metadata, null, 2)}
           </pre>
           <DialogFooter showCloseButton />
         </DialogContent>

@@ -121,5 +121,98 @@ export default defineApiSpec({
         fields: [{ name: "success", type: "boolean" }],
       },
     },
+    {
+      method: "POST",
+      path: "/claims",
+      name: "PartyClaims",
+      description:
+        "Full snapshot of every OPAC claimed and forceloaded chunk on the server, grouped by dimension and owner UUID. When the hash equals the last stored one only the sync time moves; otherwise the server's stored chunks are replaced in one transaction. Sent when the claims changed (debounced on the server) and as a periodic resend.",
+      request: {
+        name: "PartyClaimsRequest",
+        fields: [
+          {
+            name: "serverId",
+            type: "int",
+            description:
+              "Server identifier; must match the server derived from the caller IP",
+          },
+          {
+            name: "hash",
+            type: "string",
+            description:
+              "Content hash of the sorted snapshot (hex, at most 64 characters); the app compares it with the last one stored",
+          },
+          {
+            name: "dimensions",
+            description: "One entry per dimension that has claims; at most 100",
+            type: {
+              type: "array",
+              items: {
+                type: "object",
+                name: "PartyClaimDimensionData",
+                fields: [
+                  {
+                    name: "dimension",
+                    type: "string",
+                    description:
+                      'Dimension id, for example "minecraft:overworld"; at most 255 characters',
+                  },
+                  {
+                    name: "owners",
+                    description:
+                      "Owners holding chunks in this dimension; at most 10,000 entries",
+                    type: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        name: "PartyClaimOwnerData",
+                        fields: [
+                          {
+                            name: "owner",
+                            type: "string",
+                            description:
+                              "UUID OPAC files the chunks under: a party owner with party-owned claims, a player, or OPAC's server UUID",
+                          },
+                          {
+                            name: "claims",
+                            description:
+                              "Claimed chunks as [x, z] chunk coordinates, forceloaded chunks excluded; at most 100,000 entries",
+                            type: {
+                              type: "array",
+                              items: { type: "array", items: "int" },
+                            },
+                          },
+                          {
+                            name: "forceloads",
+                            description:
+                              "Forceloaded chunks as [x, z] chunk coordinates (claimed as well, not repeated in claims); at most 100,000 entries",
+                            type: {
+                              type: "array",
+                              items: { type: "array", items: "int" },
+                            },
+                          },
+                        ],
+                      },
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        ],
+      },
+      response: {
+        name: "PartyClaimsResponse",
+        fields: [
+          { name: "success", type: "boolean" },
+          {
+            name: "stored",
+            type: "int",
+            description:
+              "Chunks stored for the server after this request, for drift checks against the sender's copy",
+          },
+        ],
+      },
+    },
   ],
 });

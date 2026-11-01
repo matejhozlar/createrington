@@ -38,6 +38,7 @@ export interface PartyStats {
   claimCount: number | null;
   forceloadCount: number | null;
   lastSyncedAt: Date | null;
+  claimsSyncedAt: Date | null;
 }
 
 const OVERVIEW_COLUMNS = `
@@ -53,14 +54,15 @@ const OVERVIEW_COLUMNS = `
         p.tag,
         COALESCE(m.member_count, 0)::int AS "memberCount",
         COALESCE(a.ally_count, 0)::int AS "allyCount",
-        m.claim_count::int AS "claimCount",
-        m.forceload_count::int AS "forceloadCount",
+        CASE WHEN cs.id IS NULL THEN m.claim_count ELSE c.claim_count END::int AS "claimCount",
+        CASE WHEN cs.id IS NULL THEN m.forceload_count ELSE c.forceload_count END::int AS "forceloadCount",
         p.first_seen_at AS "firstSeenAt",
         p.synced_at AS "syncedAt"`;
 
 const OVERVIEW_JOINS = `
       FROM server_party p
       LEFT JOIN player o ON o.minecraft_uuid = p.owner_uuid
+      LEFT JOIN server_party_claim_sync cs ON cs.server_id = p.server_id
       LEFT JOIN LATERAL (
         SELECT
           COUNT(*) AS member_count,
@@ -69,6 +71,13 @@ const OVERVIEW_JOINS = `
         FROM server_party_member
         WHERE party_id = p.id
       ) m ON true
+      LEFT JOIN LATERAL (
+        SELECT
+          COUNT(*) AS claim_count,
+          COUNT(*) FILTER (WHERE forceloaded) AS forceload_count
+        FROM server_party_claim
+        WHERE server_id = p.server_id AND owner_uuid = p.owner_uuid
+      ) c ON true
       LEFT JOIN LATERAL (
         SELECT COUNT(*) AS ally_count
         FROM server_party_ally
@@ -146,15 +155,25 @@ export class ServerPartyQueries extends ServerPartyBaseQueries {
           FROM server_party_member m
           JOIN server_party mp ON mp.id = m.party_id
           WHERE mp.server_id = $1) AS "players",
-        (SELECT SUM(m.claim_count)::int
-          FROM server_party_member m
-          JOIN server_party mp ON mp.id = m.party_id
-          WHERE mp.server_id = $1) AS "claimCount",
-        (SELECT SUM(m.forceload_count)::int
-          FROM server_party_member m
-          JOIN server_party mp ON mp.id = m.party_id
-          WHERE mp.server_id = $1) AS "forceloadCount",
-        MAX(p.synced_at) AS "lastSyncedAt"
+        CASE WHEN EXISTS (SELECT 1 FROM server_party_claim_sync cs WHERE cs.server_id = $1) THEN
+          (SELECT COUNT(*)::int FROM server_party_claim c WHERE c.server_id = $1)
+        ELSE
+          (SELECT SUM(m.claim_count)::int
+            FROM server_party_member m
+            JOIN server_party mp ON mp.id = m.party_id
+            WHERE mp.server_id = $1)
+        END AS "claimCount",
+        CASE WHEN EXISTS (SELECT 1 FROM server_party_claim_sync cs WHERE cs.server_id = $1) THEN
+          (SELECT COUNT(*)::int FROM server_party_claim c
+            WHERE c.server_id = $1 AND c.forceloaded)
+        ELSE
+          (SELECT SUM(m.forceload_count)::int
+            FROM server_party_member m
+            JOIN server_party mp ON mp.id = m.party_id
+            WHERE mp.server_id = $1)
+        END AS "forceloadCount",
+        MAX(p.synced_at) AS "lastSyncedAt",
+        (SELECT cs.synced_at FROM server_party_claim_sync cs WHERE cs.server_id = $1) AS "claimsSyncedAt"
       FROM server_party p
       WHERE p.server_id = $1`,
       [serverId],

@@ -35,7 +35,6 @@ import {
 } from "@/components/data-table";
 import { LabeledSwitch } from "@/components/labeled-switch";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
-import { useStickyValue } from "@/hooks/use-sticky-value";
 import { cn } from "@/lib/utils";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 
@@ -244,7 +243,6 @@ export function OwnerLauncherReleases() {
   const [platform, setPlatform] = useState<LauncherPlatform>(
     LAUNCHER_PLATFORMS[0],
   );
-  const display = useStickyValue(action);
 
   const utils = trpc.useUtils();
   const releasesQuery = trpc.owner.launcherReleases.list.useQuery();
@@ -378,7 +376,7 @@ export function OwnerLauncherReleases() {
     }
   };
 
-  const copy = display ? CONFIRM_COPY[display.kind] : null;
+  const copy = action ? CONFIRM_COPY[action.kind] : null;
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -456,10 +454,10 @@ export function OwnerLauncherReleases() {
           if (!open) setAction(null);
         }}
         title={
-          copy && display
+          copy && action
             ? copy.title(
-                display.release.version,
-                launcherPlatformLabel(display.release.platform),
+                action.release.version,
+                launcherPlatformLabel(action.release.platform),
               )
             : ""
         }
@@ -468,7 +466,7 @@ export function OwnerLauncherReleases() {
         variant={copy?.variant}
         onConfirm={confirm}
       >
-        {display?.kind === "release" && (
+        {action?.kind === "release" && (
           <div className="flex items-start gap-2">
             <Checkbox
               id={REQUIRED_CHECKBOX.id}

@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useStickyValue } from "@/hooks/use-sticky-value";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -111,15 +110,14 @@ export function ConfirmActionDialog({
   onConfirm: (target: ConfirmActionTarget, skipSession: boolean) => void;
 }) {
   const [dontAskAgain, setDontAskAgain] = useState(false);
-  const displayTarget = useStickyValue(target);
-  const copy = displayTarget ? copyFor(displayTarget) : null;
+  const copy = target ? copyFor(target) : null;
 
   return (
     <AlertDialog open={target !== null} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>
-            {displayTarget && copy ? copy.title(displayTarget.name) : ""}
+            {target && copy ? copy.title(target.name) : ""}
           </AlertDialogTitle>
           <AlertDialogDescription>{copy?.description}</AlertDialogDescription>
         </AlertDialogHeader>

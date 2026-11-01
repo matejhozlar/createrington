@@ -28,6 +28,107 @@ export interface PartySyncPayload {
   parties: PartyPayload[];
 }
 
+export type ChunkPos = [number, number];
+
+export interface PartyClaimOwnerPayload {
+  owner: string;
+  claims: ChunkPos[];
+  forceloads: ChunkPos[];
+}
+
+export interface PartyClaimDimensionPayload {
+  dimension: string;
+  owners: PartyClaimOwnerPayload[];
+}
+
+export interface PartyClaimsPayload {
+  serverId: number;
+  hash: string;
+  dimensions: PartyClaimDimensionPayload[];
+}
+
+export interface PartyClaimsResult {
+  stored: number;
+  changed: boolean;
+}
+
+interface ClaimRow {
+  serverId: number;
+  dimension: string;
+  chunkX: number;
+  chunkZ: number;
+  ownerUuid: string;
+  forceloaded: boolean;
+}
+
+function flattenClaims(
+  serverId: number,
+  dimensions: PartyClaimDimensionPayload[],
+): ClaimRow[] {
+  const rows = new Map<string, ClaimRow>();
+  const put = (
+    dimension: string,
+    ownerUuid: string,
+    [chunkX, chunkZ]: ChunkPos,
+    forceloaded: boolean,
+  ) => {
+    const key = `${dimension}|${chunkX}|${chunkZ}`;
+    const previous = rows.get(key);
+    rows.set(key, {
+      serverId,
+      dimension,
+      chunkX,
+      chunkZ,
+      ownerUuid,
+      forceloaded: forceloaded || (previous?.forceloaded ?? false),
+    });
+  };
+
+  for (const { dimension, owners } of dimensions) {
+    for (const { owner, claims, forceloads } of owners) {
+      const ownerUuid = owner.toLowerCase();
+      for (const pos of claims) put(dimension, ownerUuid, pos, false);
+      for (const pos of forceloads) put(dimension, ownerUuid, pos, true);
+    }
+  }
+  return [...rows.values()];
+}
+
+/**
+ * Stores the claim snapshot core sent for a server. Snapshot writes of a
+ * server are serialized with an advisory lock, so overlapping sends apply
+ * one after the other. A snapshot whose hash equals the last stored one only
+ * moves synced_at; otherwise the server's chunk rows are replaced and the
+ * new hash stored, all in one transaction. Returns the chunk count now
+ * stored and whether the rows changed.
+ */
+export async function replacePartyClaims(
+  payload: PartyClaimsPayload,
+): Promise<PartyClaimsResult> {
+  const { serverId, hash, dimensions } = payload;
+  const syncedAt = new Date();
+
+  return db.inTransaction(async (tx) => {
+    await tx.server.party.claim.sync.lockServer(serverId);
+
+    const last = await tx.server.party.claim.sync.find({ serverId });
+    if (last && last.hash === hash) {
+      await tx.server.party.claim.sync.update({ id: last.id }, { syncedAt });
+      return { stored: last.chunkCount, changed: false };
+    }
+
+    const rows = flattenClaims(serverId, dimensions);
+    await tx.server.party.claim.deleteAll({ serverId });
+    await tx.server.party.claim.createMany(rows);
+    await tx.server.party.claim.sync.upsert(
+      { serverId, hash, chunkCount: rows.length, syncedAt },
+      "serverId",
+      ["hash", "chunkCount", "syncedAt"],
+    );
+    return { stored: rows.length, changed: true };
+  });
+}
+
 function resolveTag(
   serverId: number,
   party: PartyPayload,

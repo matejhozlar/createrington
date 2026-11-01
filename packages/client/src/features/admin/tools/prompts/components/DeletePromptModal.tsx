@@ -1,5 +1,4 @@
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { useStickyValue } from "@/hooks/use-sticky-value";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { trpc } from "@/lib/trpc";
 
@@ -32,8 +31,6 @@ export function DeletePromptModal({
       },
     }),
   );
-  const displayPrompt = useStickyValue(prompt);
-  const displayCount = useStickyValue(prompt !== null ? entryCount : null);
 
   return (
     <ConfirmDialog
@@ -43,12 +40,11 @@ export function DeletePromptModal({
       }}
       title="Delete Prompt"
       description={
-        displayPrompt && (
+        prompt && (
           <>
             Are you sure you want to delete{" "}
-            <span className="font-semibold">"{displayPrompt.question}"</span>?
-            Its Discord announcement is removed too. This action cannot be
-            undone.
+            <span className="font-semibold">"{prompt.question}"</span>? Its
+            Discord announcement is removed too. This action cannot be undone.
           </>
         )
       }
@@ -58,21 +54,21 @@ export function DeletePromptModal({
         prompt ? deletePrompt.mutateAsync({ id: prompt.id }) : undefined
       }
     >
-      {displayPrompt && (
+      {prompt && (
         <div className="rounded-lg border border-border bg-muted/50 p-4">
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Status:</span>
               <span className="font-medium">
-                {displayPrompt.status === "active" ? "Active" : "Closed"}
+                {prompt.status === "active" ? "Active" : "Closed"}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Entries deleted:</span>
-              <span className="font-medium">{displayCount ?? 0}</span>
+              <span className="font-medium">{entryCount ?? 0}</span>
             </div>
           </div>
-          {displayPrompt.status === "active" && (
+          {prompt.status === "active" && (
             <p className="mt-3 text-xs text-muted-foreground">
               This prompt is still accepting responses. Close it instead if you
               only want to stop new entries.

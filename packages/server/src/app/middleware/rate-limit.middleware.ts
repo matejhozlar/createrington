@@ -1,6 +1,7 @@
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import type { Request, Response } from "express";
 import { createRateLimitStore } from "@/services/rate-limit";
+import { isLoopbackRequest } from "./server-ip.middleware";
 
 const AVATAR_PATH = /^\/api\/skin\/[^/]+\/avatar$/;
 
@@ -45,12 +46,14 @@ export const modpacksLimiter = rateLimit({
   handler: rateLimitHandler,
 });
 
+/** Posed figure limiter: 120 requests per 15-minute window per IP, skipped for the in-process render pages */
 export const skinPoseLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 120,
   standardHeaders: "draft-7",
   legacyHeaders: false,
   handler: rateLimitHandler,
+  skip: isLoopbackRequest,
 });
 
 /** Auth-specific rate limiter: 20 requests per 15-minute window per IP */

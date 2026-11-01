@@ -3,7 +3,6 @@ import { X } from "lucide-react";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { useStickyValue } from "@/hooks/use-sticky-value";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,7 +29,6 @@ export function ActiveSlots({
   const utils = trpc.useUtils();
 
   const [confirmMod, setConfirmMod] = useState<Suggestion | null>(null);
-  const displayMod = useStickyValue(confirmMod);
 
   const pending = suggestions.filter((m) => m.status === "pending");
   const emptySlots = Math.max(0, workshop.maxModsPerUser - pending.length);
@@ -133,7 +131,7 @@ export function ActiveSlots({
         title="Remove suggestion?"
         description={
           <>
-            &ldquo;{displayMod?.project.name}&rdquo; will be removed from review
+            &ldquo;{confirmMod?.project.name}&rdquo; will be removed from review
             and its upvotes will be lost. This frees the slot back up.
           </>
         }

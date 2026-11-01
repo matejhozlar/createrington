@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { useStickyValue } from "@/hooks/use-sticky-value";
 import { AlertTriangle, CheckCircle2, Loader2, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -40,8 +39,6 @@ export function RemoveModDialog({
   const [removeDepOverrides, setRemoveDepOverrides] =
     useState<Set<number> | null>(null);
   const [removingBatch, setRemovingBatch] = useState(false);
-
-  const displayTarget = useStickyValue(target);
 
   const checkRemoveDepsQuery =
     trpc.admin.structurePacks.checkRemoveDeps.useQuery(
@@ -127,11 +124,9 @@ export function RemoveModDialog({
           <div className="flex items-center gap-3 rounded-md border border-destructive/50 bg-destructive/5 p-3 text-sm">
             <Trash2 className="size-4 shrink-0 text-destructive" />
             <div className="min-w-0 flex-1">
-              <div className="truncate font-medium">
-                {displayTarget?.modName}
-              </div>
+              <div className="truncate font-medium">{target?.modName}</div>
               <div className="truncate text-xs text-muted-foreground">
-                {displayTarget?.fileName}
+                {target?.fileName}
               </div>
             </div>
           </div>

@@ -21,7 +21,6 @@ import {
   type DataTableColumn,
 } from "@/components/data-table";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
-import { useStickyValue } from "@/hooks/use-sticky-value";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { AddLauncherPackDialog } from "./components/AddLauncherPackDialog";
 
@@ -58,7 +57,6 @@ const REMOVE_COPY = {
 export function OwnerLauncherPacks() {
   const [adding, setAdding] = useState(false);
   const [removing, setRemoving] = useState<PackRow | null>(null);
-  const shownRemoving = useStickyValue(removing);
 
   const utils = trpc.useUtils();
   const packsQuery = trpc.owner.launcherPacks.list.useQuery();
@@ -272,7 +270,7 @@ export function OwnerLauncherPacks() {
         onOpenChange={(open) => {
           if (!open) setRemoving(null);
         }}
-        title={shownRemoving ? REMOVE_COPY.title(shownRemoving.slug) : ""}
+        title={removing ? REMOVE_COPY.title(removing.slug) : ""}
         description={REMOVE_COPY.description}
         confirmLabel={REMOVE_COPY.confirmLabel}
         variant="destructive"

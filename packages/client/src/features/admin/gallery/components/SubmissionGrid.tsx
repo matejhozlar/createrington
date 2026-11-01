@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Coins, ExternalLink, ImageOff, Trash2 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
-import { useStickyValue } from "@/hooks/use-sticky-value";
 import { formatMoney, formatRelativeDate } from "@/lib/format";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Paginator } from "@/components/paginator";
@@ -36,7 +35,6 @@ export function SubmissionGrid({ status }: SubmissionGridProps) {
   const [page, setPage] = useState(0);
   const [removeTarget, setRemoveTarget] =
     useState<GallerySubmissionItem | null>(null);
-  const displayRemoveTarget = useStickyValue(removeTarget);
 
   const listQuery = trpc.admin.gallery.list.useQuery({
     status,
@@ -133,15 +131,15 @@ export function SubmissionGrid({ status }: SubmissionGridProps) {
         }}
         title="Remove from the gallery?"
         description={
-          displayRemoveTarget
-            ? `The screenshot by ${displayRemoveTarget.author.minecraftUsername} disappears from the website and its announcement is deleted. The reward already paid is kept.`
+          removeTarget
+            ? `The screenshot by ${removeTarget.author.minecraftUsername} disappears from the website and its announcement is deleted. The reward already paid is kept.`
             : undefined
         }
         confirmLabel="Remove"
         variant="destructive"
         onConfirm={() =>
-          displayRemoveTarget
-            ? removeMutation.mutateAsync({ id: displayRemoveTarget.id })
+          removeTarget
+            ? removeMutation.mutateAsync({ id: removeTarget.id })
             : undefined
         }
       />
