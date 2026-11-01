@@ -213,6 +213,7 @@ export async function runRegistration(params: {
       await tx.player.balance.create({
         minecraftUuid: uuid,
       });
+      await tx.player.vote.linkUsername(correctName, uuid);
       await tx.waitlist.entry.update(
         { id: entryId },
         { status: "registered", registeredAt: new Date() },
