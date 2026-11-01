@@ -28,22 +28,24 @@ vi.mock("@/db", () => ({
 }));
 
 import { VoteRewardService } from "@/services/votifier/vote-reward.service";
-import type { PlaytimeManagerService } from "@/services/playtime/playtime-manager.service";
+import type {
+  PlaytimeManagerService,
+  ServiceListener,
+} from "@/services/playtime/playtime-manager.service";
 import type { PlayerVote } from "@createrington/shared/db";
 
 const ALICE = "aaaa0000-0000-4000-8000-000000000041";
 const SERVER = 1;
+const TEST_SERVER = 2;
+const GIVE = "give Alice createringtoncurrency:bill_10 1";
+const XP = "xp add Alice 500 points";
 
-function vote(
-  id: number,
-  votedAt: string,
-  serviceName = "createmodservers.com",
-): PlayerVote {
+function vote(id: number, votedAt: string): PlayerVote {
   return {
     id,
     playerMinecraftUuid: ALICE,
     username: "Alice",
-    serviceName,
+    serviceName: "createmodservers.com",
     votedAt: new Date(votedAt),
     receivedAt: new Date(votedAt),
     rewardedAt: null,
@@ -57,7 +59,20 @@ function okReply(command: string): string {
   return "";
 }
 
+function sessionStart(serverId: number) {
+  return {
+    uuid: ALICE,
+    username: "Alice",
+    serverId,
+    sessionStart: new Date(),
+  };
+}
+
+const STAMPED = { rewardedAt: expect.any(Date), rewardError: null };
+
 let playtime: EventEmitter;
+let testPlaytime: EventEmitter;
+let listeners: ServiceListener[];
 let send: ReturnType<
   typeof vi.fn<(serverId: number, command: string) => Promise<string>>
 >;
@@ -66,13 +81,22 @@ let service: VoteRewardService;
 beforeEach(async () => {
   vi.clearAllMocks();
   playtime = new EventEmitter();
+  testPlaytime = new EventEmitter();
+  listeners = [];
   send = vi.fn(async (_serverId: number, command: string) => okReply(command));
   mocks.updateVote.mockResolvedValue(undefined);
   mocks.getPendingPlayerUuids.mockResolvedValue([]);
   const manager = {
-    getAllServices: () => new Map([[SERVER, playtime]]),
+    onServiceCreated: (listener: ServiceListener) => {
+      listeners.push(listener);
+      listener(SERVER, playtime as never);
+      listener(TEST_SERVER, testPlaytime as never);
+    },
   } as unknown as PlaytimeManagerService;
-  service = new VoteRewardService(manager, send, { sweepIntervalMs: 60_000 });
+  service = new VoteRewardService(manager, send, {
+    rewardServerIds: [SERVER],
+    sweepIntervalMs: 60_000,
+  });
   await service.initialize();
 });
 
@@ -86,8 +110,12 @@ function updatedWith(id: number) {
     .map(([, data]) => data);
 }
 
+function gives() {
+  return send.mock.calls.filter(([, command]) => command === GIVE);
+}
+
 describe("VoteRewardService.payout", () => {
-  it("gives the bill and the xp per vote, thanks once, and stamps each vote", async () => {
+  it("claims each vote, gives the bill and the xp, and thanks once", async () => {
     mocks.getPending.mockResolvedValue([
       vote(1, "2026-10-01T10:00:00Z"),
       vote(2, "2026-10-02T10:00:00Z"),
@@ -96,21 +124,33 @@ describe("VoteRewardService.payout", () => {
     await service.payout(ALICE, "Alice", SERVER);
 
     expect(send.mock.calls.map(([, command]) => command)).toEqual([
-      "give Alice createringtoncurrency:bill_10 1",
-      "xp add Alice 500 points",
-      "give Alice createringtoncurrency:bill_10 1",
-      "xp add Alice 500 points",
+      GIVE,
+      XP,
+      GIVE,
+      XP,
       'tellraw Alice {"text":"Thanks for voting 2 times! Your rewards are in your inventory.","color":"gold"}',
     ]);
     expect(send.mock.calls.every(([serverId]) => serverId === SERVER)).toBe(
       true,
     );
-    expect(updatedWith(1)).toEqual([
-      { rewardedAt: expect.any(Date), rewardError: null },
-    ]);
-    expect(updatedWith(2)).toEqual([
-      { rewardedAt: expect.any(Date), rewardError: null },
-    ]);
+    expect(updatedWith(1)).toEqual([STAMPED]);
+    expect(updatedWith(2)).toEqual([STAMPED]);
+  });
+
+  it("claims the vote before giving the bill", async () => {
+    mocks.getPending.mockResolvedValue([vote(1, "2026-10-01T10:00:00Z")]);
+    const order: string[] = [];
+    mocks.updateVote.mockImplementation(async () => {
+      order.push("stamp");
+    });
+    send.mockImplementation(async (_serverId, command) => {
+      order.push(command);
+      return okReply(command);
+    });
+
+    await service.payout(ALICE, "Alice", SERVER);
+
+    expect(order.slice(0, 2)).toEqual(["stamp", GIVE]);
   });
 
   it("does nothing when the player has no pending votes", async () => {
@@ -122,7 +162,7 @@ describe("VoteRewardService.payout", () => {
     expect(mocks.updateVote).not.toHaveBeenCalled();
   });
 
-  it("keeps the vote pending with the error and stops when a command fails", async () => {
+  it("reverts the claim, keeps the error and stops when the bill fails", async () => {
     mocks.getPending.mockResolvedValue([
       vote(1, "2026-10-01T10:00:00Z"),
       vote(2, "2026-10-02T10:00:00Z"),
@@ -133,29 +173,65 @@ describe("VoteRewardService.payout", () => {
 
     expect(send).toHaveBeenCalledTimes(1);
     expect(updatedWith(1)).toEqual([
-      {
-        rewardError:
-          "give Alice createringtoncurrency:bill_10 1: No player was found",
-      },
+      STAMPED,
+      { rewardedAt: null, rewardError: `${GIVE}: No player was found` },
     ]);
     expect(updatedWith(2)).toEqual([]);
   });
 
-  it("keeps the vote pending when RCON is unreachable", async () => {
+  it("reverts the claim when RCON is unreachable", async () => {
     mocks.getPending.mockResolvedValue([vote(1, "2026-10-01T10:00:00Z")]);
     send.mockRejectedValueOnce(new Error("connect ECONNREFUSED"));
 
     await service.payout(ALICE, "Alice", SERVER);
 
     expect(updatedWith(1)).toEqual([
-      {
-        rewardError:
-          "give Alice createringtoncurrency:bill_10 1: connect ECONNREFUSED",
-      },
+      STAMPED,
+      { rewardedAt: null, rewardError: `${GIVE}: connect ECONNREFUSED` },
     ]);
   });
 
-  it("still stamps the votes when only the thank-you fails", async () => {
+  it("leaves the vote claimed and survives when the revert itself fails", async () => {
+    mocks.getPending.mockResolvedValue([vote(1, "2026-10-01T10:00:00Z")]);
+    send.mockRejectedValueOnce(new Error("connect ECONNREFUSED"));
+    mocks.updateVote
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error("pool exhausted"));
+
+    await expect(
+      service.payout(ALICE, "Alice", SERVER),
+    ).resolves.toBeUndefined();
+
+    expect(updatedWith(1)).toHaveLength(2);
+    expect(send).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the stamp and notes a failed xp, and never repeats the bill", async () => {
+    mocks.getPending
+      .mockResolvedValueOnce([
+        vote(1, "2026-10-01T10:00:00Z"),
+        vote(2, "2026-10-02T10:00:00Z"),
+      ])
+      .mockResolvedValue([vote(2, "2026-10-02T10:00:00Z")]);
+    send.mockImplementationOnce(async (_s, c) => okReply(c));
+    send.mockImplementationOnce(async () => "No player was found");
+
+    await service.payout(ALICE, "Alice", SERVER);
+
+    expect(updatedWith(1)).toEqual([
+      STAMPED,
+      { rewardError: `${XP}: No player was found` },
+    ]);
+    expect(updatedWith(2)).toEqual([]);
+
+    await service.payout(ALICE, "Alice", SERVER);
+
+    expect(gives()).toHaveLength(2);
+    expect(updatedWith(1)).toHaveLength(2);
+    expect(updatedWith(2)).toEqual([STAMPED]);
+  });
+
+  it("still counts the votes as paid when only the thank-you fails", async () => {
     mocks.getPending.mockResolvedValue([vote(1, "2026-10-01T10:00:00Z")]);
     send.mockImplementation(async (_serverId, command) => {
       if (command.startsWith("tellraw")) throw new Error("gone");
@@ -164,9 +240,7 @@ describe("VoteRewardService.payout", () => {
 
     await service.payout(ALICE, "Alice", SERVER);
 
-    expect(updatedWith(1)).toEqual([
-      { rewardedAt: expect.any(Date), rewardError: null },
-    ]);
+    expect(updatedWith(1)).toEqual([STAMPED]);
   });
 
   it("does not run two payouts for the same player at once", async () => {
@@ -182,67 +256,74 @@ describe("VoteRewardService.payout", () => {
     await Promise.all([first, second]);
 
     expect(mocks.getPending).toHaveBeenCalledTimes(1);
-    expect(
-      send.mock.calls.filter(([, c]) => c.startsWith("give")),
-    ).toHaveLength(1);
+    expect(gives()).toHaveLength(1);
   });
-  it("stamps the vote once the bill is given, so a failed xp never repeats the bill", async () => {
-    mocks.getPending
-      .mockResolvedValueOnce([
-        vote(1, "2026-10-01T10:00:00Z"),
-        vote(2, "2026-10-02T10:00:00Z"),
-      ])
-      .mockResolvedValue([vote(2, "2026-10-02T10:00:00Z")]);
-    send.mockImplementationOnce(async (_s, c) => okReply(c));
-    send.mockImplementationOnce(async () => "No player was found");
 
-    await service.payout(ALICE, "Alice", SERVER);
+  it("pays nothing on a server that is not a reward server", async () => {
+    mocks.getPending.mockResolvedValue([vote(1, "2026-10-01T10:00:00Z")]);
 
-    expect(updatedWith(1)).toEqual([
-      { rewardedAt: expect.any(Date), rewardError: null },
-      { rewardError: "xp add Alice 500 points: No player was found" },
-    ]);
-    expect(updatedWith(2)).toEqual([]);
+    await service.payout(ALICE, "Alice", TEST_SERVER);
 
-    await service.payout(ALICE, "Alice", SERVER);
-
-    const gives = send.mock.calls.filter(([, c]) => c.startsWith("give"));
-    expect(gives).toHaveLength(2);
-    expect(updatedWith(1)).toHaveLength(2);
-    expect(updatedWith(2)).toEqual([
-      { rewardedAt: expect.any(Date), rewardError: null },
-    ]);
+    expect(mocks.getPending).not.toHaveBeenCalled();
+    expect(send).not.toHaveBeenCalled();
   });
 });
 
 describe("VoteRewardService on a session start", () => {
-  it("pays the joining player on the server they joined", async () => {
+  it("pays the joining player on the reward server they joined", async () => {
     mocks.getPending.mockResolvedValue([vote(1, "2026-10-01T10:00:00Z")]);
 
-    playtime.emit("sessionStart", {
-      uuid: ALICE,
-      username: "Alice",
-      serverId: SERVER,
-      sessionStart: new Date(),
-    });
+    playtime.emit("sessionStart", sessionStart(SERVER));
     await vi.waitFor(() => expect(updatedWith(1)).toHaveLength(1));
 
-    expect(send).toHaveBeenCalledWith(
-      SERVER,
-      "give Alice createringtoncurrency:bill_10 1",
-    );
+    expect(send).toHaveBeenCalledWith(SERVER, GIVE);
+  });
+
+  it("ignores sessions on other servers", async () => {
+    mocks.getPending.mockResolvedValue([vote(1, "2026-10-01T10:00:00Z")]);
+
+    testPlaytime.emit("sessionStart", sessionStart(TEST_SERVER));
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    expect(mocks.getPending).not.toHaveBeenCalled();
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it("covers a reward server brought up after initialization", async () => {
+    mocks.getPending.mockResolvedValue([vote(1, "2026-10-01T10:00:00Z")]);
+    const late = new EventEmitter();
+    for (const listener of listeners) {
+      listener(SERVER, late as never);
+    }
+
+    late.emit("sessionStart", sessionStart(SERVER));
+    await vi.waitFor(() => expect(updatedWith(1)).toHaveLength(1));
+
+    expect(send).toHaveBeenCalledWith(SERVER, GIVE);
   });
 });
 
 describe("VoteRewardService.sweep", () => {
-  it("pays online players with pending votes on their current server", async () => {
-    mocks.getPendingPlayerUuids.mockResolvedValue([ALICE, "offline-uuid"]);
+  it("pays players online on a reward server and skips the others", async () => {
+    mocks.getPendingPlayerUuids.mockResolvedValue([ALICE, "bob", "carol"]);
     mocks.findPlayers.mockResolvedValue([
       {
         minecraftUuid: ALICE,
         minecraftUsername: "Alice",
         online: true,
-        currentServerId: 7,
+        currentServerId: SERVER,
+      },
+      {
+        minecraftUuid: "bob",
+        minecraftUsername: "Bob",
+        online: true,
+        currentServerId: TEST_SERVER,
+      },
+      {
+        minecraftUuid: "carol",
+        minecraftUsername: "Carol",
+        online: true,
+        currentServerId: null,
       },
     ]);
     mocks.getPending.mockResolvedValue([vote(1, "2026-10-01T10:00:00Z")]);
@@ -250,13 +331,12 @@ describe("VoteRewardService.sweep", () => {
     await service.sweep();
 
     expect(mocks.findPlayers).toHaveBeenCalledWith({
-      minecraftUuid: { $in: [ALICE, "offline-uuid"] },
+      minecraftUuid: { $in: [ALICE, "bob", "carol"] },
       online: true,
     });
-    expect(send).toHaveBeenCalledWith(
-      7,
-      "give Alice createringtoncurrency:bill_10 1",
-    );
+    expect(mocks.getPending).toHaveBeenCalledTimes(1);
+    expect(mocks.getPending).toHaveBeenCalledWith(ALICE);
+    expect(send).toHaveBeenCalledWith(SERVER, GIVE);
   });
 
   it("logs and survives a failing query", async () => {

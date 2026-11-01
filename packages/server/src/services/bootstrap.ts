@@ -543,7 +543,9 @@ export function registerServices(): void {
       Services.VOTE_REWARD_SERVICE,
       async (c) => {
         const playtimeManager = await c.get(Services.PLAYTIME_MANAGER_SERVICE);
-        const service = new VoteRewardService(playtimeManager);
+        const service = new VoteRewardService(playtimeManager, undefined, {
+          rewardServerIds: [config.servers.rails.id],
+        });
         await service.initialize();
         return service;
       },
