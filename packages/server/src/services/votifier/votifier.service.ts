@@ -13,11 +13,13 @@ export interface VotifierServiceOptions {
   port: number;
   token: string;
   connectionTimeoutMs?: number;
+  maxConnections?: number;
 }
 
 export type VoteListener = (vote: VotifierVote) => Promise<void>;
 
-const DEFAULT_CONNECTION_TIMEOUT_MS = 10_000;
+const DEFAULT_CONNECTION_TIMEOUT_MS = 5_000;
+const DEFAULT_MAX_CONNECTIONS = 32;
 
 /**
  * Votifier Service
@@ -27,9 +29,12 @@ const DEFAULT_CONNECTION_TIMEOUT_MS = 10_000;
  * JSON frame, checks the HMAC-SHA256 signature against the shared token and
  * the challenge, hands the vote to the listener and answers with the v2
  * status line. Connections that open with anything but the v2 magic (the
- * RSA-encrypted v1 block among them) are closed without a reply. Only runs
- * when a port and token are configured; the listener's failures are reported
- * to the sender as an error status so the vote is not acknowledged.
+ * RSA-encrypted v1 block among them) are closed without a reply. Concurrent
+ * connections are capped (32 by default, real traffic is a handful) and an
+ * idle connection is dropped after a few seconds, so a connect flood cannot
+ * pile up sockets in the web process. Only runs when a port and token are
+ * configured; the listener's failures are reported to the sender as an error
+ * status so the vote is not acknowledged.
  */
 export class VotifierService {
   private server: net.Server | null = null;
@@ -43,6 +48,8 @@ export class VotifierService {
   /** Binds the listener; resolves once the port is open. */
   async initialize(): Promise<void> {
     const server = net.createServer((socket) => this.handleConnection(socket));
+    server.maxConnections =
+      this.options.maxConnections ?? DEFAULT_MAX_CONNECTIONS;
     await new Promise<void>((resolve, reject) => {
       server.once("error", reject);
       server.listen(this.options.port, this.options.host, () => {

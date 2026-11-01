@@ -162,4 +162,32 @@ describe("VotifierService", () => {
     await expect(talk(port, () => null)).rejects.toThrow();
     expect(service.port).toBe(0);
   });
+
+  it("refuses connections beyond the configured cap", async () => {
+    const capped = new VotifierService(
+      {
+        host: "127.0.0.1",
+        port: 0,
+        token: TOKEN,
+        connectionTimeoutMs: 500,
+        maxConnections: 1,
+      },
+      onVote,
+    );
+    await capped.initialize();
+    try {
+      const held = net.connect({ host: "127.0.0.1", port: capped.port });
+      await new Promise<void>((resolve) => held.once("data", () => resolve()));
+
+      const refused = await talk(capped.port, () => null).catch(() => ({
+        greeting: "",
+        response: "",
+      }));
+
+      expect(refused.greeting).toBe("");
+      held.destroy();
+    } finally {
+      await capped.shutdown();
+    }
+  });
 });
