@@ -53,6 +53,17 @@ export class PlayerVoteQueries extends PlayerVoteBaseQueries {
     );
   }
 
+  /** Players with at least one vote that has not been rewarded yet. */
+  async getPendingPlayerUuids(): Promise<string[]> {
+    const result = await this.runQuery<{ player_minecraft_uuid: string }>(
+      "get players with pending votes",
+      `SELECT DISTINCT player_minecraft_uuid
+       FROM ${this.table}
+       WHERE player_minecraft_uuid IS NOT NULL AND rewarded_at IS NULL`,
+    );
+    return result.rows.map((row) => row.player_minecraft_uuid);
+  }
+
   /**
    * Attaches every unlinked vote cast under `username` to the player and
    * returns how many rows were linked.

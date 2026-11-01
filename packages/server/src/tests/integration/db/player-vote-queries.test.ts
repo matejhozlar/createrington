@@ -42,6 +42,7 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
+  await truncateTable("player_vote");
   await Q.player.deleteAll({ minecraftUuid: { $in: UUIDS } });
   await cleanupTestPool();
 });
@@ -103,6 +104,18 @@ describe("Q.player.vote.getPending", () => {
 
     const remaining = await votes.getPending(ALICE);
     expect(remaining.map((v) => v.votedAt)).toEqual([LATE]);
+  });
+});
+
+describe("Q.player.vote.getPendingPlayerUuids", () => {
+  it("lists each player with an unrewarded linked vote once", async () => {
+    await vote("Alice", EARLY, ALICE);
+    await vote("Alice", LATE, ALICE);
+    const paid = await vote("Bob", MID, BOB);
+    await vote("Unknown", MID);
+    await votes.update({ id: paid!.id }, { rewardedAt: new Date() });
+
+    expect(await votes.getPendingPlayerUuids()).toEqual([ALICE]);
   });
 });
 
