@@ -313,6 +313,16 @@ const config = {
     url: env.REDIS_URL ?? null,
   },
 
+  // null disables the server-list vote listener (services/votifier)
+  votifier:
+    env.VOTIFIER_PORT && env.VOTIFIER_TOKEN
+      ? {
+          host: env.VOTIFIER_HOST,
+          port: env.VOTIFIER_PORT,
+          token: env.VOTIFIER_TOKEN,
+        }
+      : null,
+
   curseforge: {
     apiKey: env.CURSEFORGE_API_KEY,
     apiBaseUrl: "https://api.curseforge.com",
