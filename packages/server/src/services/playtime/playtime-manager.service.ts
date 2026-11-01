@@ -27,10 +27,16 @@ interface BringUpOptions {
  * `initialize()` to enable server start/shutdown detection from the Discord
  * relay.
  */
+export type ServiceListener = (
+  serverId: number,
+  service: PlaytimeService,
+) => void;
+
 export class PlaytimeManagerService {
   private playtimeServices: Map<number, PlaytimeService> = new Map();
   private pendingServices: Map<number, Promise<PlaytimeService>> = new Map();
   private messageCacheService?: MessageCacheService;
+  private serviceListeners: ServiceListener[] = [];
   private stopped = false;
 
   /** Brings up a PlaytimeService for each entry in MINECRAFT_SERVERS in parallel. Throws if none succeed. */
@@ -107,6 +113,9 @@ export class PlaytimeManagerService {
             );
           }
           this.playtimeServices.set(serverId, service);
+          for (const listener of this.serviceListeners) {
+            listener(serverId, service);
+          }
           return service;
         })
         .finally(() => {
@@ -160,6 +169,14 @@ export class PlaytimeManagerService {
     this.playtimeServices.clear();
     await playtimeRepo.flush(SHUTDOWN_FLUSH_TIMEOUT_MS);
     logger.info("All PlaytimeServices shut down");
+  }
+
+  /** Calls `listener` for every PlaytimeService already up and for each one brought up later. */
+  onServiceCreated(listener: ServiceListener): void {
+    this.serviceListeners.push(listener);
+    for (const [serverId, service] of this.playtimeServices) {
+      listener(serverId, service);
+    }
   }
 
   /** Returns the PlaytimeService for `serverId`, or undefined if not initialized. */
