@@ -34,6 +34,7 @@ TRUNCATE TABLE server_party_ally CASCADE;
 TRUNCATE TABLE server_party_member CASCADE;
 TRUNCATE TABLE server_party CASCADE;
 TRUNCATE TABLE playtime_archive CASCADE;
+TRUNCATE TABLE player_vote CASCADE;
 
 -- Reset sequences
 ALTER SEQUENCE server_id_seq RESTART WITH 1;
@@ -52,6 +53,7 @@ ALTER SEQUENCE discord_sticky_message_id_seq RESTART WITH 1;
 ALTER SEQUENCE leaderboard_message_id_seq RESTART WITH 1;
 ALTER SEQUENCE player_balance_transaction_id_seq RESTART WITH 1;
 ALTER SEQUENCE reward_claim_id_seq RESTART WITH 1;
+ALTER SEQUENCE player_vote_id_seq RESTART WITH 1;
 ALTER SEQUENCE server_party_id_seq RESTART WITH 1;
 ALTER SEQUENCE server_party_member_id_seq RESTART WITH 1;
 ALTER SEQUENCE server_party_ally_id_seq RESTART WITH 1;

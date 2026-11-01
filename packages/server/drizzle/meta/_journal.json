@@ -666,6 +666,13 @@
       "when": 1793398407435,
       "tag": "0094_furry_fixer",
       "breakpoints": true
+    },
+    {
+      "idx": 95,
+      "version": "7",
+      "when": 1793568875583,
+      "tag": "0095_exotic_mephistopheles",
+      "breakpoints": true
     }
   ]
 }

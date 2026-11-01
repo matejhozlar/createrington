@@ -58,6 +58,7 @@ export { PlayerPromptQueries } from "./player/prompt";
 export { PlayerPromptResponseQueries } from "./player/prompt/response";
 export { PlayerSessionQueries } from "./player/session";
 export { PlayerStrikeQueries } from "./player/strike";
+export { PlayerVoteQueries } from "./player/vote";
 export { PlaytimeArchiveQueries } from "./playtime/archive";
 export { RewardClaimQueries } from "./reward/claim";
 export { ServerQueries } from "./server";

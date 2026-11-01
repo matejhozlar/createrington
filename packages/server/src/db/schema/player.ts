@@ -606,6 +606,51 @@ export const rewardClaim = pgTable(
   ],
 );
 
+// --- player_vote ---
+// One row per server-list vote the Votifier listener received, append-only.
+// player_minecraft_uuid stays null while the voted username matches no
+// registered player and is linked once one registers. rewarded_at is set when
+// the in-game rewards were paid out on the player's next join, so the rows
+// where it is still null are the payout queue.
+
+export const playerVote = pgTable(
+  "player_vote",
+  {
+    id: serial("id").primaryKey(),
+    playerMinecraftUuid: uuid("player_minecraft_uuid").references(
+      () => player.minecraftUuid,
+      { onUpdate: "cascade", onDelete: "set null" },
+    ),
+    // Username exactly as the server list sent it
+    username: text("username").notNull(),
+    serviceName: text("service_name").notNull(),
+    // Voter IP as reported by the server list, when it sent one
+    address: text("address"),
+    votedAt: timestamp("voted_at", { withTimezone: true }).notNull(),
+    receivedAt: timestamp("received_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    rewardedAt: timestamp("rewarded_at", { withTimezone: true }),
+    rewardError: text("reward_error"),
+  },
+  (table) => [
+    // A server list that retries a delivery must not create a second vote
+    uniqueIndex("player_vote_service_username_voted_at").on(
+      table.serviceName,
+      sql`lower(${table.username})`,
+      table.votedAt,
+    ),
+    index("idx_player_vote_player_voted_at").on(
+      table.playerMinecraftUuid,
+      table.votedAt,
+    ),
+    index("idx_player_vote_username_lower").on(sql`lower(${table.username})`),
+    index("idx_player_vote_pending")
+      .on(table.playerMinecraftUuid)
+      .where(sql`rewarded_at IS NULL`),
+  ],
+);
+
 // --- playtime_archive ---
 // Retired playtime that belongs to no living player: the totals a season leaves
 // behind once its per-player rows are cleared. Kept so all-time showcase figures
