@@ -42,6 +42,36 @@ afterEach(async () => {
   await manager.shutdown();
 });
 
+describe("PlaytimeManagerService.onServiceCreated", () => {
+  it("replays the services already up and reports each one brought up later", async () => {
+    const existing = await manager.ensureService(SERVER_ID);
+    const seen: Array<[number, PlaytimeService]> = [];
+
+    manager.onServiceCreated((serverId, service) =>
+      seen.push([serverId, service]),
+    );
+    const later = await manager.ensureService(SERVER_ID + 1);
+
+    expect(seen).toEqual([
+      [SERVER_ID, existing],
+      [SERVER_ID + 1, later],
+    ]);
+  });
+
+  it("does not report a server twice when its bring-up is shared", async () => {
+    const seen: number[] = [];
+    manager.onServiceCreated((serverId) => seen.push(serverId));
+
+    await Promise.all([
+      manager.ensureService(SERVER_ID),
+      manager.ensureService(SERVER_ID),
+    ]);
+    await manager.ensureService(SERVER_ID);
+
+    expect(seen).toEqual([SERVER_ID]);
+  });
+});
+
 describe("PlaytimeManagerService.ensureService", () => {
   it("creates, wires and starts a service for a server outside the static config", async () => {
     const service = await manager.ensureService(SERVER_ID);

@@ -45,7 +45,7 @@ import { structurePackService } from "./structure-pack";
 import { StructurePackRotationService } from "./structure-pack/rotation";
 import { PlayerPromptService } from "./player-prompt";
 import { redisService } from "./redis";
-import { VoteIntake, VotifierService } from "./votifier";
+import { VoteIntake, VoteRewardService, VotifierService } from "./votifier";
 
 /**
  * Registers all application services with the shared container
@@ -538,9 +538,24 @@ export function registerServices(): void {
       },
       { dependencies: [Services.DATABASE] },
     );
+
+    container.register(
+      Services.VOTE_REWARD_SERVICE,
+      async (c) => {
+        const playtimeManager = await c.get(Services.PLAYTIME_MANAGER_SERVICE);
+        const service = new VoteRewardService(playtimeManager, undefined, {
+          rewardServerIds: [config.servers.rails.id],
+        });
+        await service.initialize();
+        return service;
+      },
+      {
+        dependencies: [Services.DATABASE, Services.PLAYTIME_MANAGER_SERVICE],
+      },
+    );
   } else {
     logger.info(
-      "Votifier not configured, server-list votes are not received by the app",
+      "Votifier not configured, server-list votes are not received or rewarded by the app",
     );
   }
 
