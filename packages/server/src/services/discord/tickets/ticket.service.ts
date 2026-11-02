@@ -234,10 +234,14 @@ export class TicketService {
       await this.bot.guilds.fetch(config.discord.guild.id);
       const textChannel = channel as TextChannel;
 
-      await textChannel.permissionOverwrites.edit(creatorId, {
-        ViewChannel: false,
-        SendMessages: false,
-      });
+      await textChannel.permissionOverwrites.edit(
+        creatorId,
+        {
+          ViewChannel: false,
+          SendMessages: false,
+        },
+        { type: OverwriteType.Member },
+      );
 
       const participants = textChannel.permissionOverwrites.cache.filter(
         (overwrite) =>
