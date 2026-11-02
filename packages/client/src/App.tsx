@@ -259,6 +259,10 @@ const AdminParties = lazyNamed(
   () => import("./features/admin/tools/parties/AdminParties"),
   "AdminParties",
 );
+const AdminVotes = lazyNamed(
+  () => import("./features/admin/tools/votes/AdminVotes"),
+  "AdminVotes",
+);
 const AdminPrompts = lazyNamed(
   () => import("./features/admin/tools/prompts/AdminPrompts"),
   "AdminPrompts",
@@ -496,6 +500,7 @@ function AppContent() {
                         element={<TitleGenerator />}
                       />
                       <Route path="tools/parties" element={<AdminParties />} />
+                      <Route path="tools/votes" element={<AdminVotes />} />
                       <Route path="tools/prompts" element={<AdminPrompts />} />
                       <Route
                         path="tools/prompts/:id"
