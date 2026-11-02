@@ -188,6 +188,26 @@ describe("VoteRewardService.payout", () => {
     expect(updatedWith(2)).toEqual([]);
   });
 
+  it("reverts the claim when the first command finds no entity", async () => {
+    commands = {
+      perVote: ["effect give {player} minecraft:speed 30"],
+      afterPayout: [],
+    };
+    mocks.getPending.mockResolvedValue([vote(1, "2026-10-01T10:00:00Z")]);
+    send.mockResolvedValueOnce("No entity was found");
+
+    await service.payout(ALICE, "Alice", SERVER);
+
+    expect(updatedWith(1)).toEqual([
+      STAMPED,
+      {
+        rewardedAt: null,
+        rewardError:
+          "effect give Alice minecraft:speed 30: No entity was found",
+      },
+    ]);
+  });
+
   it("reverts the claim when RCON is unreachable", async () => {
     mocks.getPending.mockResolvedValue([vote(1, "2026-10-01T10:00:00Z")]);
     send.mockRejectedValueOnce(new Error("connect ECONNREFUSED"));

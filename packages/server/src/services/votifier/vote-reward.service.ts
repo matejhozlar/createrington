@@ -17,7 +17,7 @@ export interface VoteRewardServiceOptions {
 
 const DEFAULT_SWEEP_INTERVAL_MS = 5 * 60 * 1000;
 const COMMAND_FAILED =
-  /no player was found|player does not exist|unknown item|cannot give/i;
+  /no player was found|no entity was found|no targets|player does not exist|unknown item|cannot give/i;
 
 function fill(
   template: string,
