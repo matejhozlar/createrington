@@ -11,6 +11,30 @@ export const galleryWeeklyRewardCapSchema = z.number().int().min(0).max(100);
 export const announcedAppVersionSchema = z.string().min(1).max(64);
 export const launcherPacksSeededSchema = z.boolean();
 
+const rewardCommandSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(256)
+  .regex(/^[^\r\n]*$/, "A command must be a single line");
+
+export const voteRewardCommandsSchema = z.object({
+  perVote: z.array(rewardCommandSchema).min(1).max(10),
+  afterPayout: z.array(rewardCommandSchema).max(10),
+});
+
+export type VoteRewardCommands = z.infer<typeof voteRewardCommandsSchema>;
+
+export const VOTE_REWARD_COMMANDS_DEFAULT: VoteRewardCommands = {
+  perVote: [
+    "give {player} createringtoncurrency:bill_10 1",
+    "xp add {player} 500 points",
+  ],
+  afterPayout: [
+    'tellraw {player} {"text":"Thanks for voting! Your rewards are in your inventory.","color":"gold"}',
+  ],
+};
+
 export const GALLERY_REWARD_AMOUNT_DEFAULT = 50;
 export const GALLERY_WEEKLY_REWARD_CAP_DEFAULT = 3;
 
@@ -21,6 +45,7 @@ const SettingKeys = {
   galleryWeeklyRewardCap: "gallery_weekly_reward_cap",
   announcedAppVersion: "announced_app_version",
   launcherPacksSeeded: "launcher_packs_seeded",
+  voteRewardCommands: "vote_reward_commands",
 } as const;
 
 const CACHE_TTL_MS = 10_000;
@@ -160,6 +185,27 @@ export class SettingsService {
     await this.write(
       SettingKeys.galleryWeeklyRewardCap,
       galleryWeeklyRewardCapSchema.parse(value),
+      updatedBy,
+    );
+  }
+
+  /** Console commands the vote payout runs: `perVote` once per vote, `afterPayout` once per payout batch. */
+  async getVoteRewardCommands(): Promise<VoteRewardCommands> {
+    return this.read(
+      SettingKeys.voteRewardCommands,
+      voteRewardCommandsSchema,
+      VOTE_REWARD_COMMANDS_DEFAULT,
+    );
+  }
+
+  /** Replace the vote reward commands; the next payout uses them. */
+  async setVoteRewardCommands(
+    value: VoteRewardCommands,
+    updatedBy: string,
+  ): Promise<void> {
+    await this.write(
+      SettingKeys.voteRewardCommands,
+      voteRewardCommandsSchema.parse(value),
       updatedBy,
     );
   }
