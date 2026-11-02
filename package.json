@@ -27,6 +27,7 @@
     "format": "prettier --write ./packages",
     "format:check": "prettier --check ./packages",
     "prepare": "husky",
+    "branch:done": "node scripts/finish-branch.js",
     "lint": "pnpm -r lint",
     "lint:server": "pnpm --filter @createrington/server lint",
     "lint:client": "pnpm --filter @createrington/client lint",
