@@ -51,8 +51,8 @@ const CARDS: {
     value: (stats) => stats.voters,
     detail: (stats) =>
       stats.unlinked === 0
-        ? "Every vote belongs to a player"
-        : `${plural(stats.unlinked, "vote")} from unregistered names`,
+        ? "No vote is waiting for a registration"
+        : `${plural(stats.unlinked, "vote")} waiting for the name to register`,
   },
   {
     key: "pending",

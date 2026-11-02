@@ -59,6 +59,7 @@ export const adminVotesRouter = router({
       }
       if (input.status === "unlinked") {
         filters.playerMinecraftUuid = { $exists: false };
+        filters.rewardedAt = { $exists: false };
       }
 
       const { rows: votes, pagination } = await paginateQuery(

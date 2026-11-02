@@ -159,7 +159,7 @@ export class PlayerVoteQueries extends PlayerVoteBaseQueries {
          COUNT(*) FILTER (WHERE voted_at >= NOW() - INTERVAL '30 days')::integer AS last_30_days,
          COUNT(*) FILTER (WHERE voted_at >= NOW() - INTERVAL '24 hours')::integer AS last_24_hours,
          COUNT(DISTINCT player_minecraft_uuid)::integer AS voters,
-         COUNT(*) FILTER (WHERE player_minecraft_uuid IS NULL)::integer AS unlinked,
+         COUNT(*) FILTER (WHERE player_minecraft_uuid IS NULL AND rewarded_at IS NULL)::integer AS unlinked,
          COUNT(*) FILTER (WHERE rewarded_at IS NULL AND player_minecraft_uuid IS NOT NULL)::integer AS pending,
          COUNT(DISTINCT player_minecraft_uuid) FILTER (WHERE rewarded_at IS NULL)::integer AS pending_players,
          MIN(voted_at) AS first_voted_at,

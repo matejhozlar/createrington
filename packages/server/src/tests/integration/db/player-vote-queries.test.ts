@@ -189,12 +189,14 @@ describe("Q.player.vote.getStats", () => {
     const paid = await vote("Alice", recent, ALICE);
     await vote("Bob", MID, BOB);
     await vote("Stranger", MID);
+    const settled = await vote("Departed", MID);
     await votes.update({ id: paid!.id }, { rewardedAt: new Date() });
+    await votes.update({ id: settled!.id }, { rewardedAt: new Date() });
 
     const stats = await votes.getStats();
 
     expect(stats).toMatchObject({
-      total: 4,
+      total: 5,
       last24Hours: 1,
       voters: 2,
       unlinked: 1,
