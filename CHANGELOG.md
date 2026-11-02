@@ -1,3 +1,14 @@
+## v1.75.0 (2026-11-02)
+
+### @createrington/server (1.74.0 → 1.75.0)
+- [add] Add admin votes tool backend with stats query (total, 30-day, 24-hour counts, unique voters, unlinked votes, and pending rewards), top voters ranking with Minecraft usernames, and paginated vote list with username search and paid/pending/unlinked status filtering
+- [add] Add owner-editable vote reward commands stored in the app settings table, replacing hardcoded give/xp/tellraw with configurable per-vote and after-payout command templates that support {player} and {count} placeholders, read fresh on every payout
+- [fix] Treat "No entity was found" and "No targets" RCON responses as failed reward commands so the vote claim reverts and the reward retries on the voter's next join
+- [fix] Restrict the {count} placeholder to after-payout commands only, since the count is not known during per-vote execution, and name the failure reply messages for easier log reading
+
+### @createrington/client (0.2.92 → 0.2.93)
+- [add] Add admin votes tool page with stat cards (total votes, 30-day activity, unique voters, pending rewards), a top voters ranking table with all-time and 30-day tabs, a paginated vote history with status badges, reward error tooltips, username search and status filter, and an owner-editable reward commands card with per-vote and after-payout command lists
+
 ## v1.74.0 (2026-11-01)
 
 ### @createrington/server (1.73.0 → 1.74.0)

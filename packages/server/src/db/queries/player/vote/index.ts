@@ -8,8 +8,21 @@ import type {
 
 export interface TopVoter {
   playerMinecraftUuid: string;
+  minecraftUsername: string;
   votes: number;
   lastVotedAt: Date;
+}
+
+export interface VoteStats {
+  total: number;
+  last30Days: number;
+  last24Hours: number;
+  voters: number;
+  unlinked: number;
+  pending: number;
+  pendingPlayers: number;
+  firstVotedAt: Date | null;
+  lastVotedAt: Date | null;
 }
 
 /**
@@ -19,6 +32,7 @@ export interface TopVoter {
  * - Payout queue reads for a player (votes not yet rewarded)
  * - Linking unresolved votes to a player once the username registers
  * - Top voters ranking for the leaderboard and the top role
+ * - Totals for the admin votes page
  */
 export class PlayerVoteQueries extends PlayerVoteBaseQueries {
   constructor(db: Pool | PoolClient) {
@@ -92,33 +106,77 @@ export class PlayerVoteQueries extends PlayerVoteBaseQueries {
     since?: Date;
   }): Promise<TopVoter[]> {
     const params: unknown[] = [options.limit];
-    let where = "player_minecraft_uuid IS NOT NULL";
+    let where = "v.player_minecraft_uuid IS NOT NULL";
     if (options.since) {
       params.push(options.since);
-      where += ` AND voted_at >= $${params.length}`;
+      where += ` AND v.voted_at >= $${params.length}`;
     }
 
     const result = await this.runQuery<{
       player_minecraft_uuid: string;
+      minecraft_username: string;
       votes: number;
       last_voted_at: Date;
     }>(
       "get top voters",
       `SELECT
-         player_minecraft_uuid,
+         v.player_minecraft_uuid,
+         p.minecraft_username,
          COUNT(*)::integer AS votes,
-         MAX(voted_at) AS last_voted_at
-       FROM ${this.table}
+         MAX(v.voted_at) AS last_voted_at
+       FROM ${this.table} v
+       JOIN player p ON p.minecraft_uuid = v.player_minecraft_uuid
        WHERE ${where}
-       GROUP BY player_minecraft_uuid
+       GROUP BY v.player_minecraft_uuid, p.minecraft_username
        ORDER BY votes DESC, last_voted_at ASC
        LIMIT $1`,
       params,
     );
     return result.rows.map((row) => ({
       playerMinecraftUuid: row.player_minecraft_uuid,
+      minecraftUsername: row.minecraft_username,
       votes: row.votes,
       lastVotedAt: row.last_voted_at,
     }));
+  }
+
+  /** Vote totals across the whole table. */
+  async getStats(): Promise<VoteStats> {
+    const result = await this.runQuery<{
+      total: number;
+      last_30_days: number;
+      last_24_hours: number;
+      voters: number;
+      unlinked: number;
+      pending: number;
+      pending_players: number;
+      first_voted_at: Date | null;
+      last_voted_at: Date | null;
+    }>(
+      "get vote stats",
+      `SELECT
+         COUNT(*)::integer AS total,
+         COUNT(*) FILTER (WHERE voted_at >= NOW() - INTERVAL '30 days')::integer AS last_30_days,
+         COUNT(*) FILTER (WHERE voted_at >= NOW() - INTERVAL '24 hours')::integer AS last_24_hours,
+         COUNT(DISTINCT player_minecraft_uuid)::integer AS voters,
+         COUNT(*) FILTER (WHERE player_minecraft_uuid IS NULL AND rewarded_at IS NULL)::integer AS unlinked,
+         COUNT(*) FILTER (WHERE rewarded_at IS NULL AND player_minecraft_uuid IS NOT NULL)::integer AS pending,
+         COUNT(DISTINCT player_minecraft_uuid) FILTER (WHERE rewarded_at IS NULL)::integer AS pending_players,
+         MIN(voted_at) AS first_voted_at,
+         MAX(voted_at) AS last_voted_at
+       FROM ${this.table}`,
+    );
+    const row = result.rows[0];
+    return {
+      total: row.total,
+      last30Days: row.last_30_days,
+      last24Hours: row.last_24_hours,
+      voters: row.voters,
+      unlinked: row.unlinked,
+      pending: row.pending,
+      pendingPlayers: row.pending_players,
+      firstVotedAt: row.first_voted_at,
+      lastVotedAt: row.last_voted_at,
+    };
   }
 }
