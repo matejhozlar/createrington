@@ -29,7 +29,7 @@ const LISTS: {
   {
     key: "perVote",
     label: "For each vote",
-    hint: "Runs once per paid vote. The first command decides whether a vote counts as paid: if it fails, the vote is retried on the next join.",
+    hint: 'Runs once per paid vote. The first command decides whether a vote counts as paid: if the server answers with an unknown command, "No player was found", "No entity was found", "No targets" or an unknown item, the vote is retried on the next join. Put a command first that gives one of those answers when it cannot do its job, such as give.',
     min: 1,
   },
   {
@@ -43,7 +43,7 @@ const LISTS: {
 const COPY = {
   title: "Reward commands",
   description:
-    "Console commands sent over RCON when a voter is next online on the server. {player} is the voter's name, {count} is the number of votes just paid.",
+    "Console commands sent over RCON when a voter is next online on the server. {player} is the voter's name everywhere. {count}, the number of votes just paid, only works after the payout.",
   ownerOnly: "Only the owner can change these commands.",
   add: "Add command",
   save: "Save commands",
@@ -51,14 +51,16 @@ const COPY = {
 } as const;
 
 function isValid(commands: Commands): boolean {
-  return LISTS.every(({ key, min }) => {
-    const list = commands[key];
-    return (
-      list.length >= min &&
-      list.length <= MAX_COMMANDS &&
-      list.every((command) => command.trim().length > 0)
-    );
-  });
+  return (
+    LISTS.every(({ key, min }) => {
+      const list = commands[key];
+      return (
+        list.length >= min &&
+        list.length <= MAX_COMMANDS &&
+        list.every((command) => command.trim().length > 0)
+      );
+    }) && commands.perVote.every((command) => !command.includes("{count}"))
+  );
 }
 
 export function RewardCommandsCard() {

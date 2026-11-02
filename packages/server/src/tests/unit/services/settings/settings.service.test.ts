@@ -182,4 +182,24 @@ describe("SettingsService", () => {
       svc.setVoteRewardCommands({ perVote: [], afterPayout: [] }, "owner-1"),
     ).rejects.toThrow();
   });
+
+  it("allows {count} only in the after-payout commands", async () => {
+    const svc = new SettingsService();
+
+    await expect(
+      svc.setVoteRewardCommands(
+        { perVote: ["say {player} voted {count} times"], afterPayout: [] },
+        "owner-1",
+      ),
+    ).rejects.toThrow("{count} only works in the after-payout commands");
+    await expect(
+      svc.setVoteRewardCommands(
+        {
+          perVote: ["give {player} dirt 1"],
+          afterPayout: ["say {player} voted {count} times"],
+        },
+        "owner-1",
+      ),
+    ).resolves.toBeUndefined();
+  });
 });

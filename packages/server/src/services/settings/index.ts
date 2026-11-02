@@ -19,7 +19,14 @@ const rewardCommandSchema = z
   .regex(/^[^\r\n]*$/, "A command must be a single line");
 
 export const voteRewardCommandsSchema = z.object({
-  perVote: z.array(rewardCommandSchema).min(1).max(10),
+  perVote: z
+    .array(
+      rewardCommandSchema.refine((command) => !command.includes("{count}"), {
+        message: "{count} only works in the after-payout commands",
+      }),
+    )
+    .min(1)
+    .max(10),
   afterPayout: z.array(rewardCommandSchema).max(10),
 });
 
