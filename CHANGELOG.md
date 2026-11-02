@@ -1,3 +1,9 @@
+## v1.75.1 (2026-11-02)
+
+### @createrington/server (1.75.0 → 1.75.1)
+- [fix] Fix ticket channel lock failing for creators not in Discord's permission cache by explicitly passing the member overwrite type, so the bot no longer needs a cached user object to revoke access on close
+- [chore] Add a `branch:done` script that checks out `dev`, fetches and fast-forwards (or merge-updates) from origin, and deletes the finished feature branch
+
 ## v1.75.0 (2026-11-02)
 
 ### @createrington/server (1.74.0 → 1.75.0)

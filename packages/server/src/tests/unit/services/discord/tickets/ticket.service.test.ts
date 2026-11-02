@@ -168,10 +168,11 @@ describe("TicketService.closeTicket", () => {
 
     await service.closeTicket(7, "admin-1");
 
-    expect(permissionOverwrites.edit).toHaveBeenCalledWith("owner-1", {
-      ViewChannel: false,
-      SendMessages: false,
-    });
+    expect(permissionOverwrites.edit).toHaveBeenCalledWith(
+      "owner-1",
+      { ViewChannel: false, SendMessages: false },
+      { type: OverwriteType.Member },
+    );
     expect([...cache.keys()]).toEqual(["guild-1", "admin-role", "owner-1"]);
   });
 
