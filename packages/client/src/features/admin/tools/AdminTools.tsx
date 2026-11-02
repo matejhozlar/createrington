@@ -32,6 +32,7 @@ import {
   Timer,
   Type,
   Users,
+  Vote,
   Hammer as WorkshopIcon,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
@@ -118,6 +119,13 @@ const TOOL_SECTIONS: ToolSection[] = [
           "Review screenshots posted in Discord and publish them to the website gallery.",
         icon: Images,
         href: "/admin/tools/gallery",
+      },
+      {
+        title: "Votes",
+        description:
+          "Server-list votes with totals, top voters, the full vote history and the in-game reward commands.",
+        icon: Vote,
+        href: "/admin/tools/votes",
       },
       {
         title: "Title Generator",

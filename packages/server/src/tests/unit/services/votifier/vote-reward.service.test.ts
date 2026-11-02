@@ -28,6 +28,10 @@ vi.mock("@/db", () => ({
 }));
 
 import { VoteRewardService } from "@/services/votifier/vote-reward.service";
+import {
+  VOTE_REWARD_COMMANDS_DEFAULT,
+  type VoteRewardCommands,
+} from "@/services/settings";
 import type {
   PlaytimeManagerService,
   ServiceListener,
@@ -39,6 +43,8 @@ const SERVER = 1;
 const TEST_SERVER = 2;
 const GIVE = "give Alice createringtoncurrency:bill_10 1";
 const XP = "xp add Alice 500 points";
+const THANKS =
+  'tellraw Alice {"text":"Thanks for voting! Your rewards are in your inventory.","color":"gold"}';
 
 function vote(id: number, votedAt: string): PlayerVote {
   return {
@@ -77,12 +83,14 @@ let send: ReturnType<
   typeof vi.fn<(serverId: number, command: string) => Promise<string>>
 >;
 let service: VoteRewardService;
+let commands: VoteRewardCommands;
 
 beforeEach(async () => {
   vi.clearAllMocks();
   playtime = new EventEmitter();
   testPlaytime = new EventEmitter();
   listeners = [];
+  commands = VOTE_REWARD_COMMANDS_DEFAULT;
   send = vi.fn(async (_serverId: number, command: string) => okReply(command));
   mocks.updateVote.mockResolvedValue(undefined);
   mocks.getPendingPlayerUuids.mockResolvedValue([]);
@@ -96,6 +104,7 @@ beforeEach(async () => {
   service = new VoteRewardService(manager, send, {
     rewardServerIds: [SERVER],
     sweepIntervalMs: 60_000,
+    commands: async () => commands,
   });
   await service.initialize();
 });
@@ -128,7 +137,7 @@ describe("VoteRewardService.payout", () => {
       XP,
       GIVE,
       XP,
-      'tellraw Alice {"text":"Thanks for voting 2 times! Your rewards are in your inventory.","color":"gold"}',
+      THANKS,
     ]);
     expect(send.mock.calls.every(([serverId]) => serverId === SERVER)).toBe(
       true,
@@ -177,6 +186,26 @@ describe("VoteRewardService.payout", () => {
       { rewardedAt: null, rewardError: `${GIVE}: No player was found` },
     ]);
     expect(updatedWith(2)).toEqual([]);
+  });
+
+  it("reverts the claim when the first command finds no entity", async () => {
+    commands = {
+      perVote: ["effect give {player} minecraft:speed 30"],
+      afterPayout: [],
+    };
+    mocks.getPending.mockResolvedValue([vote(1, "2026-10-01T10:00:00Z")]);
+    send.mockResolvedValueOnce("No entity was found");
+
+    await service.payout(ALICE, "Alice", SERVER);
+
+    expect(updatedWith(1)).toEqual([
+      STAMPED,
+      {
+        rewardedAt: null,
+        rewardError:
+          "effect give Alice minecraft:speed 30: No entity was found",
+      },
+    ]);
   });
 
   it("reverts the claim when RCON is unreachable", async () => {
@@ -266,6 +295,67 @@ describe("VoteRewardService.payout", () => {
 
     expect(mocks.getPending).not.toHaveBeenCalled();
     expect(send).not.toHaveBeenCalled();
+  });
+});
+
+describe("VoteRewardService with configured commands", () => {
+  it("fills in the player, drops a leading slash and passes the batch count after the payout", async () => {
+    commands = {
+      perVote: ["/eco give {player} 25", "say {player} voted"],
+      afterPayout: ['tellraw {player} "{count} vote(s), thanks {player}!"'],
+    };
+    mocks.getPending.mockResolvedValue([
+      vote(1, "2026-10-01T10:00:00Z"),
+      vote(2, "2026-10-02T10:00:00Z"),
+    ]);
+
+    await service.payout(ALICE, "Alice", SERVER);
+
+    expect(send.mock.calls.map(([, command]) => command)).toEqual([
+      "eco give Alice 25",
+      "say Alice voted",
+      "eco give Alice 25",
+      "say Alice voted",
+      'tellraw Alice "2 vote(s), thanks Alice!"',
+    ]);
+    expect(updatedWith(1)).toEqual([STAMPED]);
+    expect(updatedWith(2)).toEqual([STAMPED]);
+  });
+
+  it("reads the commands again on every payout", async () => {
+    mocks.getPending.mockResolvedValue([vote(1, "2026-10-01T10:00:00Z")]);
+    await service.payout(ALICE, "Alice", SERVER);
+
+    commands = { perVote: ["eco give {player} 5"], afterPayout: [] };
+    mocks.getPending.mockResolvedValue([vote(2, "2026-10-02T10:00:00Z")]);
+    send.mockClear();
+    await service.payout(ALICE, "Alice", SERVER);
+
+    expect(send.mock.calls.map(([, command]) => command)).toEqual([
+      "eco give Alice 5",
+    ]);
+  });
+
+  it("keeps a vote stamped and stops when a later per-vote command fails", async () => {
+    commands = {
+      perVote: ["eco give {player} 25", "xp add {player} 1 points"],
+      afterPayout: [],
+    };
+    mocks.getPending.mockResolvedValue([
+      vote(1, "2026-10-01T10:00:00Z"),
+      vote(2, "2026-10-02T10:00:00Z"),
+    ]);
+    send.mockImplementation(async (_s, command) =>
+      command.startsWith("xp") ? "Unknown or incomplete command" : "ok",
+    );
+
+    await service.payout(ALICE, "Alice", SERVER);
+
+    expect(updatedWith(1)).toEqual([
+      STAMPED,
+      { rewardError: "xp add Alice 1 points: Unknown or incomplete command" },
+    ]);
+    expect(updatedWith(2)).toEqual([]);
   });
 });
 

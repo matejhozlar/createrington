@@ -1,5 +1,6 @@
 import { Q } from "@/db";
 import type { PlaytimeManagerService } from "@/services/playtime/playtime-manager.service";
+import { settings, type VoteRewardCommands } from "@/services/settings";
 import {
   defaultRconSend,
   isUnknownCommand,
@@ -11,26 +12,22 @@ import {
 export interface VoteRewardServiceOptions {
   rewardServerIds?: number[];
   sweepIntervalMs?: number;
+  commands?: () => Promise<VoteRewardCommands>;
 }
 
 const DEFAULT_SWEEP_INTERVAL_MS = 5 * 60 * 1000;
 const COMMAND_FAILED =
-  /no player was found|player does not exist|unknown item|cannot give/i;
+  /no player was found|no entity was found|no targets|player does not exist|unknown item|cannot give/i;
 
-function billCommand(username: string): string {
-  return `give ${username} createringtoncurrency:bill_10 1`;
-}
-
-function xpCommand(username: string): string {
-  return `xp add ${username} 500 points`;
-}
-
-function thanksCommand(username: string, count: number): string {
-  const text =
-    count === 1
-      ? "Thanks for voting! Your reward is in your inventory."
-      : `Thanks for voting ${count} times! Your rewards are in your inventory.`;
-  return `tellraw ${username} ${JSON.stringify({ text, color: "gold" })}`;
+function fill(
+  template: string,
+  values: Record<string, string | number>,
+): string {
+  let command = template.trim().replace(/^\//, "");
+  for (const [name, value] of Object.entries(values)) {
+    command = command.split(`{${name}}`).join(String(value));
+  }
+  return command;
 }
 
 /**
@@ -41,19 +38,22 @@ function thanksCommand(username: string, count: number): string {
  * reward server (present and brought up later) triggers a payout for that
  * player, and a periodic sweep pays online players whose votes are still
  * pending (a join the app missed, RCON down at the time). Sessions on other
- * servers, such as a synced test server, pay nothing. Every vote gives the
- * same bill and XP the Votifier mod used to give, followed by one private
- * thank-you per batch. The vote is claimed (`rewarded_at` set) before the
- * bill is given and the claim is reverted when the bill fails, so the
- * service fails toward a vote that is stamped but unpaid, which is visible
- * in `reward_error` and the log, never toward a second bill. A failed XP
- * command after the bill is noted in `reward_error` and not retried.
- * Payouts for one player never run concurrently.
+ * servers, such as a synced test server, pay nothing. The commands come from
+ * the `vote_reward_commands` setting, read at the start of every payout:
+ * the `perVote` list runs once per vote and the `afterPayout` list once per
+ * batch, with `{player}` (and `{count}` after the payout) filled in. The
+ * first per-vote command is the commit point: the vote is claimed
+ * (`rewarded_at` set) before it runs and the claim is reverted when it
+ * fails, so the service fails toward a vote that is stamped but unpaid,
+ * which is visible in `reward_error` and the log, never toward a repeated
+ * reward. A later per-vote command that fails is noted in `reward_error`
+ * and not retried. Payouts for one player never run concurrently.
  */
 export class VoteRewardService {
   private sweepTimer: NodeJS.Timeout | null = null;
   private readonly inFlight = new Set<string>();
   private readonly rewardServerIds: Set<number>;
+  private readonly commands: () => Promise<VoteRewardCommands>;
 
   constructor(
     private readonly playtimeManager: PlaytimeManagerService,
@@ -61,6 +61,8 @@ export class VoteRewardService {
     private readonly options: VoteRewardServiceOptions = {},
   ) {
     this.rewardServerIds = new Set(options.rewardServerIds ?? []);
+    this.commands =
+      options.commands ?? (() => settings.getVoteRewardCommands());
   }
 
   /** Subscribes to session starts on every reward server and starts the sweep. */
@@ -137,40 +139,49 @@ export class VoteRewardService {
     const pending = await Q.player.vote.getPending(playerMinecraftUuid);
     if (pending.length === 0) return;
 
-    const username = requireUsername(rawUsername);
+    const player = requireUsername(rawUsername);
+    const { perVote, afterPayout } = await this.commands();
+    const [commit, ...rest] = perVote.map((template) =>
+      fill(template, { player }),
+    );
     let paid = 0;
 
-    for (const vote of pending) {
+    votes: for (const vote of pending) {
       await Q.player.vote.update(
         { id: vote.id },
         { rewardedAt: new Date(), rewardError: null },
       );
 
-      const billFailure = await this.run(serverId, billCommand(username));
-      if (billFailure) {
-        await this.revertClaim(vote.id, username, billFailure);
+      const commitFailure = await this.run(serverId, commit);
+      if (commitFailure) {
+        await this.revertClaim(vote.id, player, commitFailure);
         break;
       }
       paid++;
 
-      const xpFailure = await this.run(serverId, xpCommand(username));
-      if (xpFailure) {
-        await Q.player.vote.update({ id: vote.id }, { rewardError: xpFailure });
-        logger.warn(
-          `Vote #${vote.id} for ${username} was paid without its XP: ${xpFailure}`,
-        );
-        break;
+      for (const command of rest) {
+        const failure = await this.run(serverId, command);
+        if (failure) {
+          await Q.player.vote.update({ id: vote.id }, { rewardError: failure });
+          logger.warn(
+            `Vote #${vote.id} for ${player} was paid without all its rewards: ${failure}`,
+          );
+          break votes;
+        }
       }
     }
 
     if (paid === 0) return;
     logger.info(
-      `Paid ${paid} vote reward(s) to ${username} on server ${serverId}`,
+      `Paid ${paid} vote reward(s) to ${player} on server ${serverId}`,
     );
-    try {
-      await this.send(serverId, thanksCommand(username, paid));
-    } catch (error) {
-      logger.warn(`Could not thank ${username} for voting: ${error}`);
+    for (const template of afterPayout) {
+      const command = fill(template, { player, count: paid });
+      try {
+        await this.send(serverId, command);
+      } catch (error) {
+        logger.warn(`After-payout command for ${player} failed: ${error}`);
+      }
     }
   }
 
@@ -187,7 +198,7 @@ export class VoteRewardService {
       logger.warn(`Vote #${voteId} for ${username} stays pending: ${failure}`);
     } catch (error) {
       logger.error(
-        `Vote #${voteId} for ${username} is stamped as paid but its bill was not given (${failure}) and the stamp could not be reverted:`,
+        `Vote #${voteId} for ${username} is stamped as paid but its first reward was not given (${failure}) and the stamp could not be reverted:`,
         error,
       );
     }

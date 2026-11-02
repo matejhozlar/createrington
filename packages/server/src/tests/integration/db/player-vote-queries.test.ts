@@ -131,8 +131,18 @@ describe("Q.player.vote.getTopVoters", () => {
     const top = await votes.getTopVoters({ limit: 5 });
 
     expect(top).toEqual([
-      { playerMinecraftUuid: ALICE, votes: 2, lastVotedAt: LATE },
-      { playerMinecraftUuid: BOB, votes: 1, lastVotedAt: MID },
+      {
+        playerMinecraftUuid: ALICE,
+        minecraftUsername: "voter_0",
+        votes: 2,
+        lastVotedAt: LATE,
+      },
+      {
+        playerMinecraftUuid: BOB,
+        minecraftUsername: "voter_1",
+        votes: 1,
+        lastVotedAt: MID,
+      },
     ]);
   });
 
@@ -155,5 +165,46 @@ describe("Q.player.vote.getTopVoters", () => {
 
   it("honours the limit", async () => {
     expect(await votes.getTopVoters({ limit: 1 })).toHaveLength(1);
+  });
+});
+
+describe("Q.player.vote.getStats", () => {
+  it("is all zeros on an empty table", async () => {
+    expect(await votes.getStats()).toEqual({
+      total: 0,
+      last30Days: 0,
+      last24Hours: 0,
+      voters: 0,
+      unlinked: 0,
+      pending: 0,
+      pendingPlayers: 0,
+      firstVotedAt: null,
+      lastVotedAt: null,
+    });
+  });
+
+  it("counts votes, voters, unlinked and pending rows", async () => {
+    const recent = new Date(Date.now() - 60 * 60 * 1000);
+    await vote("Alice", EARLY, ALICE);
+    const paid = await vote("Alice", recent, ALICE);
+    await vote("Bob", MID, BOB);
+    await vote("Stranger", MID);
+    const settled = await vote("Departed", MID);
+    await votes.update({ id: paid!.id }, { rewardedAt: new Date() });
+    await votes.update({ id: settled!.id }, { rewardedAt: new Date() });
+
+    const stats = await votes.getStats();
+
+    expect(stats).toMatchObject({
+      total: 5,
+      last24Hours: 1,
+      voters: 2,
+      unlinked: 1,
+      pending: 2,
+      pendingPlayers: 2,
+      firstVotedAt: EARLY,
+      lastVotedAt: recent,
+    });
+    expect(stats.last30Days).toBeGreaterThanOrEqual(1);
   });
 });

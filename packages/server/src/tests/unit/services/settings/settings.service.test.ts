@@ -35,7 +35,10 @@ vi.mock("@/config", () => ({
   default: { servers: { playerLimit: 100 } },
 }));
 
-import { SettingsService } from "@/services/settings";
+import {
+  SettingsService,
+  VOTE_REWARD_COMMANDS_DEFAULT,
+} from "@/services/settings";
 
 function seed(key: string, value: unknown): void {
   state.store.set(key, {
@@ -145,5 +148,58 @@ describe("SettingsService", () => {
     await expect(svc.getAnnouncedAppVersion()).rejects.toThrow(
       "connection refused",
     );
+  });
+
+  it("falls back to the default vote reward commands and stores replacements", async () => {
+    const svc = new SettingsService();
+    expect(await svc.getVoteRewardCommands()).toEqual(
+      VOTE_REWARD_COMMANDS_DEFAULT,
+    );
+
+    const next = {
+      perVote: ["eco give {player} 25"],
+      afterPayout: ['tellraw {player} "thanks"'],
+    };
+    await svc.setVoteRewardCommands(next, "owner-1");
+
+    expect(await svc.getVoteRewardCommands()).toEqual(next);
+    expect(state.store.get("vote_reward_commands")?.updatedBy).toBe("owner-1");
+  });
+
+  it("rejects vote reward commands that span lines or leave nothing to pay", async () => {
+    const svc = new SettingsService();
+
+    await expect(
+      svc.setVoteRewardCommands(
+        {
+          perVote: ["give {player} dirt 1" + String.fromCharCode(10) + "op x"],
+          afterPayout: [],
+        },
+        "owner-1",
+      ),
+    ).rejects.toThrow();
+    await expect(
+      svc.setVoteRewardCommands({ perVote: [], afterPayout: [] }, "owner-1"),
+    ).rejects.toThrow();
+  });
+
+  it("allows {count} only in the after-payout commands", async () => {
+    const svc = new SettingsService();
+
+    await expect(
+      svc.setVoteRewardCommands(
+        { perVote: ["say {player} voted {count} times"], afterPayout: [] },
+        "owner-1",
+      ),
+    ).rejects.toThrow("{count} only works in the after-payout commands");
+    await expect(
+      svc.setVoteRewardCommands(
+        {
+          perVote: ["give {player} dirt 1"],
+          afterPayout: ["say {player} voted {count} times"],
+        },
+        "owner-1",
+      ),
+    ).resolves.toBeUndefined();
   });
 });
