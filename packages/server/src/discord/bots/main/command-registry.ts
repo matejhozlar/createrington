@@ -28,6 +28,7 @@ export const commandRegistry: Record<string, CommandEnv> = {
   activity: "prod",
   top: "prod",
   records: "prod",
+  tag: "prod",
   suggest: "prod",
   vote: "prod",
   map: "prod",

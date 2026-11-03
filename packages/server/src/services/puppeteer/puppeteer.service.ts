@@ -38,6 +38,8 @@ export interface ScreenshotOptions {
   format?: "png" | "jpeg" | "webp";
   /** JPEG/WebP quality 0-100 (ignored for png) */
   quality?: number;
+  /** Capture with a transparent background where the page paints none (png/webp only) */
+  omitBackground?: boolean;
 }
 
 export interface ScreenshotResult {
@@ -130,6 +132,7 @@ export class PuppeteerService {
       viewportHeight = 720,
       format = "png",
       quality,
+      omitBackground = false,
     } = options;
 
     const browser = await this.getBrowser();
@@ -195,6 +198,7 @@ export class PuppeteerService {
 
       const screenshotOpts: Parameters<Page["screenshot"]>[0] = {
         type: format,
+        omitBackground,
         ...(format !== "png" && quality != null ? { quality } : {}),
       };
 

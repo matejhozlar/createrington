@@ -41,6 +41,10 @@ const TopRender = lazyNamed(
   () => import("./pages/Render/TopRender"),
   "TopRender",
 );
+const TagRender = lazyNamed(
+  () => import("./pages/Render/TagRender"),
+  "TagRender",
+);
 const RecordsRender = lazyNamed(
   () => import("./pages/Render/RecordsRender"),
   "RecordsRender",
@@ -354,6 +358,7 @@ function AppContent() {
         <Route path="/render/activity" element={<ActivityRender />} />
         <Route path="/render/top" element={<TopRender />} />
         <Route path="/render/records" element={<RecordsRender />} />
+        <Route path="/render/tag" element={<TagRender />} />
 
         <Route element={<AppLayout />}>
           <Route path="/" element={<Home />} />
