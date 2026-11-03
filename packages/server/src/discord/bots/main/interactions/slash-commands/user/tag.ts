@@ -110,22 +110,29 @@ function lookupCode(input: string): TagLookup {
   }
 }
 
-async function findParty(value: string) {
+async function findParties(value: string) {
   const serverId = config.servers.rails.id;
   if (MC_UUID_REGEX.test(value)) {
-    return Q.server.party.find({ serverId, teamId: value });
+    const party = await Q.server.party.find({ serverId, teamId: value });
+    return party ? [party] : [];
   }
-  const [party] = await Q.server.party.findAll(
+  return Q.server.party.findAll(
     { serverId, tag: value.toUpperCase() },
-    { limit: 1 },
+    { limit: 2 },
   );
-  return party ?? null;
 }
 
 async function lookupTeam(input: string): Promise<TagLookup> {
   const value = input.trim();
-  const party = await findParty(value);
+  const [party, ...others] = await findParties(value);
 
+  if (others.length > 0) {
+    return {
+      ok: false,
+      title: "Ambiguous Tag",
+      message: `Several teams use \`${value.toUpperCase()}\`. Pick one from the suggestions.`,
+    };
+  }
   if (!party) {
     return {
       ok: false,
