@@ -18,6 +18,7 @@ import {
   ButtonBuilder,
   ChatInputCommandInteraction,
   SlashCommandBuilder,
+  escapeMarkdown,
   type User,
 } from "discord.js";
 
@@ -137,14 +138,14 @@ async function lookupTeam(input: string): Promise<TagLookup> {
     return {
       ok: false,
       title: "Unknown Team",
-      message: `No team matches \`${value}\`. Pick one from the suggestions.`,
+      message: `No team matches **${escapeMarkdown(value)}**. Pick one from the suggestions.`,
     };
   }
   if (!party.tagCode) {
     return {
       ok: false,
       title: "No Team Tag",
-      message: `**${party.name}** has no team tag yet.`,
+      message: `**${escapeMarkdown(party.name)}** has no team tag yet.`,
     };
   }
 
@@ -166,11 +167,12 @@ async function lookupPlayer(user: User): Promise<TagLookup> {
     return {
       ok: false,
       title: "Not Registered",
-      message: `${user.displayName} is not registered.`,
+      message: `${escapeMarkdown(user.displayName)} is not registered.`,
     };
   }
 
   const username = player.minecraftUsername;
+  const name = escapeMarkdown(username);
   const party = await Q.server.party.getForMember(
     config.servers.rails.id,
     player.minecraftUuid,
@@ -179,14 +181,14 @@ async function lookupPlayer(user: User): Promise<TagLookup> {
     return {
       ok: false,
       title: "No Team",
-      message: `${username} is not in a team.`,
+      message: `${name} is not in a team.`,
     };
   }
   if (!party.tagCode) {
     return {
       ok: false,
       title: "No Team Tag",
-      message: `${username}'s team **${party.name}** has no team tag yet.`,
+      message: `${name}'s team **${escapeMarkdown(party.name)}** has no team tag yet.`,
     };
   }
 
@@ -195,7 +197,7 @@ async function lookupPlayer(user: User): Promise<TagLookup> {
     card: {
       code: party.tagCode,
       title: `${username}'s Team Tag`,
-      description: `**${party.name}**`,
+      description: `**${escapeMarkdown(party.name)}**`,
       color: party.color,
     },
   };
