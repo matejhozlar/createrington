@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router";
 
-type RenderPage = "activity" | "compare" | "profile" | "records" | "top";
+type RenderPage =
+  "activity" | "compare" | "profile" | "records" | "tag" | "top";
 
 export type RenderUnavailableReason = "rejected" | "failed";
 

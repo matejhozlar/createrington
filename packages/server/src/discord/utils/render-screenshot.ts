@@ -6,6 +6,7 @@ type RenderParams = {
   compare: { player1: string; player2: string };
   profile: { player: string };
   records: Record<string, never>;
+  tag: { design: string };
   top: { category: string; item: string };
 };
 
@@ -23,6 +24,7 @@ const RENDER_VIEWPORT_HEIGHT = 500;
 const RENDER_CACHE_TTL_MS: Partial<Record<RenderPage, number>> = {
   records: 60_000,
 };
+const TRANSPARENT_PAGES: ReadonlySet<RenderPage> = new Set(["tag"]);
 
 const renderCache = new Map<string, CachedRender>();
 
@@ -82,6 +84,7 @@ async function capture(
       timeout: RENDER_TIMEOUT_MS,
       viewportWidth: RENDER_VIEWPORT_WIDTH,
       viewportHeight: RENDER_VIEWPORT_HEIGHT,
+      omitBackground: TRANSPARENT_PAGES.has(page),
     });
 
     return result.buffer;

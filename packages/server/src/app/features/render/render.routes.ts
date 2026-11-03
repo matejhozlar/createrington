@@ -10,6 +10,11 @@ import {
   formatStatCategory,
   formatStatItem,
 } from "@createrington/shared/minecraft-stats";
+import {
+  DesignCodeError,
+  designCode,
+  parseDesignCode,
+} from "@createrington/shared/team-tag";
 import { UnauthorizedError } from "@/app/middleware";
 import { requireLoopback } from "@/app/middleware/server-ip.middleware";
 import { timingSafeEqualStrings } from "@/utils/timing-safe-equal";
@@ -257,6 +262,26 @@ router.get(
         tagCode: tags.get(r.minecraftUuid) ?? null,
       })),
     });
+  }),
+);
+
+router.get(
+  "/tag",
+  asyncHandler(requirePuppeteerSecret),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { design } = req.query;
+
+    if (!design || typeof design !== "string") {
+      res.status(400).json({ error: "design query param required" });
+      return;
+    }
+
+    try {
+      res.json({ tagCode: designCode(parseDesignCode(design)) });
+    } catch (error) {
+      if (!(error instanceof DesignCodeError)) throw error;
+      res.status(400).json({ error: error.message });
+    }
   }),
 );
 
