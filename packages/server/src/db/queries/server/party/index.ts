@@ -207,6 +207,33 @@ export class ServerPartyQueries extends ServerPartyBaseQueries {
     return result.rows;
   }
 
+  /** Tagged parties whose name or tag contains the query, for autocompletes. */
+  async searchTagged(
+    serverId: number,
+    query: string,
+    limit = 25,
+  ): Promise<{ teamId: string; name: string; tag: string }[]> {
+    const trimmed = query.trim();
+    const result = await this.db.query<{
+      teamId: string;
+      name: string;
+      tag: string;
+    }>(
+      `SELECT
+        p.team_id AS "teamId",
+        p.name,
+        p.tag
+      FROM server_party p
+      WHERE p.server_id = $1
+        AND p.tag_code IS NOT NULL
+        AND ($2 = '' OR p.name ILIKE $3 OR p.tag ILIKE $3)
+      ORDER BY LOWER(p.name) ASC
+      LIMIT $4`,
+      [serverId, trimmed, `%${escapeLike(trimmed)}%`, limit],
+    );
+    return result.rows;
+  }
+
   /** Design codes of the tagged parties the given players are members of, one row per tagged player. */
   async getMemberTagCodes(
     serverId: number,

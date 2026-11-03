@@ -61,6 +61,18 @@ export const ButtonPresets = {
     },
 
     /**
+     * Website team tag editor opened on a design code
+     */
+    teamTag(code: string): ButtonBuilder {
+      const url = new URL(`${cfg.website.replace(/\/+$/, "")}/team-tag`);
+      url.searchParams.set("design", code);
+      return new ButtonBuilder()
+        .setLabel("Open in the editor")
+        .setStyle(ButtonStyle.Link)
+        .setURL(url.toString());
+    },
+
+    /**
      * Server-list vote page, prefilled with the player's Minecraft username
      */
     vote(minecraftUsername: string): ButtonBuilder {
