@@ -1,3 +1,16 @@
+## v1.76.0 (2026-11-03)
+
+### @createrington/server (1.75.1 → 1.76.0)
+- [add] Add `/tag` Discord slash command with three subcommands: `/tag code` renders a team tag from a design code, `/tag team` looks up a team by name or tag with autocomplete, and `/tag player` renders the tag of a player's (or your own) team, each replying with a Puppeteer-captured transparent screenshot, the design code, and an "Open in the editor" button linking to the website
+- [add] Add `searchTagged` query to `ServerPartyQueries` for autocomplete in `/tag team`, returning parties with a tag code whose name or tag matches the input
+- [add] Add `/render/tag` route that validates and normalizes a design code for the client-side tag render page
+- [add] Add transparent background support to the Puppeteer screenshot service via an `omitBackground` option, used by the tag render to produce PNG screenshots without a background
+- [fix] Escape markdown in team names, player names, and user input that `/tag` echoes back in error and success embeds, preventing formatting injection
+- [fix] Refuse ambiguous tag lookups in `/tag team` when multiple teams share the same tag, prompting the user to pick from the autocomplete suggestions instead of rendering an arbitrary match
+
+### @createrington/client (0.2.93 → 0.2.94)
+- [add] Add `/render/tag` page that renders a team tag at 12x zoom on a transparent background for Puppeteer screenshot capture, gated on plate asset readiness
+
 ## v1.75.1 (2026-11-02)
 
 ### @createrington/server (1.75.0 → 1.75.1)
