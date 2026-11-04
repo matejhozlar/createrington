@@ -27,10 +27,17 @@ jobs:
       DEPLOY_OWNER: ${{ vars.DEPLOY_OWNER }}
       MAVEN_REPO: ${{ vars.MAVEN_REPO }}
       NPM_REGISTRY: ${{ vars.NPM_REGISTRY }}
+      API_URL: ${{ vars.DEV_API_URL }}
+      BLUEMAP_URL: ${{ vars.DEV_BLUEMAP_URL }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Validate deploy variables
+        run: |
+          : "${INFISICAL_PROJECT_ID:?}" "${APP_DIR:?}" "${WWW_DIR:?}" "${DEPLOY_OWNER:?}"
+          : "${MAVEN_REPO:?}" "${NPM_REGISTRY:?}" "${API_URL:?}" "${BLUEMAP_URL:?}"
 
       - name: Install pnpm
         run: npm install -g pnpm
@@ -127,8 +134,8 @@ jobs:
       - name: Build
         env:
           VITE_APP_VERSION: ${{ env.APP_VERSION }}
-          VITE_API_URL: ${{ vars.DEV_API_URL }}
-          VITE_BLUEMAP_URL: ${{ vars.DEV_BLUEMAP_URL }}
+          VITE_API_URL: ${{ env.API_URL }}
+          VITE_BLUEMAP_URL: ${{ env.BLUEMAP_URL }}
           VITE_LAUNCHER_ENABLED: "true"
         run: pnpm build
 
