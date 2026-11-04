@@ -11,11 +11,21 @@ jobs:
     runs-on: hetzner
     env:
       INFISICAL_API_URL: ${{ secrets.INFISICAL_API_URL }}
-      INFISICAL_PROJECT_ID: a1cc35ab-a36c-49c3-985f-9ffaef91dfb7
+      INFISICAL_PROJECT_ID: ${{ vars.INFISICAL_PROJECT_ID }}
+      APP_DIR: ${{ vars.PROD_APP_DIR }}
+      WWW_DIR: ${{ vars.PROD_WWW_DIR }}
+      DEPLOY_OWNER: ${{ vars.DEPLOY_OWNER }}
+      API_URL: ${{ vars.PROD_API_URL }}
+      BLUEMAP_URL: ${{ vars.PROD_BLUEMAP_URL }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Validate deploy variables
+        run: |
+          : "${INFISICAL_PROJECT_ID:?}" "${APP_DIR:?}" "${WWW_DIR:?}" "${DEPLOY_OWNER:?}"
+          : "${API_URL:?}" "${BLUEMAP_URL:?}"
 
       - name: Detect scope of change
         id: scope
@@ -86,25 +96,29 @@ jobs:
           echo "APP_VERSION=$VERSION" >> "$GITHUB_ENV"
 
       - name: Build
-        run: VITE_APP_VERSION="$APP_VERSION" VITE_API_URL=https://createrington.com VITE_BLUEMAP_URL=https://createrington.com/bluemap pnpm build
+        env:
+          VITE_APP_VERSION: ${{ env.APP_VERSION }}
+          VITE_API_URL: ${{ env.API_URL }}
+          VITE_BLUEMAP_URL: ${{ env.BLUEMAP_URL }}
+        run: pnpm build
 
       - name: Deploy frontend
         run: |
-          rm -rf /var/www/createrington/*
-          cp -r dist/public/* /var/www/createrington/
+          rm -rf "${WWW_DIR:?}"/*
+          cp -r dist/public/* "$WWW_DIR/"
 
       - name: Deploy backend
         run: |
-          rm -rf /opt/createrington/dist
-          cp -r dist /opt/createrington/dist
-          cp package.json /opt/createrington/package.json
-          rm -rf /opt/createrington/node_modules
-          cp -r node_modules /opt/createrington/node_modules
-          mkdir -p /opt/createrington/packages/server
-          rm -rf /opt/createrington/packages/server/node_modules
-          cp -r packages/server/node_modules /opt/createrington/packages/server/node_modules
-          mkdir -p /opt/createrington/docker/db
-          cp docker/db/claude-readonly-role.sql docker/db/sync-readonly-grants.sh /opt/createrington/docker/db/
+          rm -rf "${APP_DIR:?}/dist"
+          cp -r dist "$APP_DIR/dist"
+          cp package.json "$APP_DIR/package.json"
+          rm -rf "${APP_DIR:?}/node_modules"
+          cp -r node_modules "$APP_DIR/node_modules"
+          mkdir -p "$APP_DIR/packages/server"
+          rm -rf "${APP_DIR:?}/packages/server/node_modules"
+          cp -r packages/server/node_modules "$APP_DIR/packages/server/node_modules"
+          mkdir -p "$APP_DIR/docker/db"
+          cp docker/db/claude-readonly-role.sql docker/db/sync-readonly-grants.sh "$APP_DIR/docker/db/"
 
       - name: Migrate database
         if: steps.scope.outputs.client_only != 'true'
@@ -130,17 +144,17 @@ jobs:
 
       - name: Sync runtime .env from Infisical
         run: |
-          pnpm exec infisical export --projectId="$INFISICAL_PROJECT_ID" --env=prod --format=dotenv > /opt/createrington/.env
-          echo "APP_VERSION=$APP_VERSION" >> /opt/createrington/.env
-          chmod 600 /opt/createrington/.env
+          pnpm exec infisical export --projectId="$INFISICAL_PROJECT_ID" --env=prod --format=dotenv > "$APP_DIR/.env"
+          echo "APP_VERSION=$APP_VERSION" >> "$APP_DIR/.env"
+          chmod 600 "$APP_DIR/.env"
 
       - name: Fix permissions and trigger restart
         run: |
-          rm -f /opt/createrington/.maintenance
-          chown -R 1000:988 /opt/createrington
-          chown -R 1000:988 /var/www/createrington
+          rm -f "$APP_DIR/.maintenance"
+          chown -R "$DEPLOY_OWNER" "$APP_DIR"
+          chown -R "$DEPLOY_OWNER" "$WWW_DIR"
           if [ '${{ steps.scope.outputs.client_only }}' = 'true' ]; then
             echo "Client-only deploy - skipping restart trigger."
           else
-            touch /opt/createrington/.restart-trigger
+            touch "$APP_DIR/.restart-trigger"
           fi
