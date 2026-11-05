@@ -1,3 +1,9 @@
+## v1.77.0 (2026-11-05)
+
+### @createrington/server (1.76.0 → 1.77.0)
+- [add] Pay vote rewards immediately when the voter is online — a vote received over Votifier for a registered player who is currently on a server now triggers the reward payout right away (in the background, so the vote site's acknowledgement is not delayed by RCON), instead of waiting for the player's next join or the periodic sweep; offline voters and votes arriving before the reward service is ready still fall back to the join/sweep path
+- [chore] Move deploy paths, file owner, public URLs, Maven repo, npm registry, and Infisical project ID out of the dev and prod deploy workflows into Gitea variables, and fail the deploy jobs up front when any of those variables is empty
+
 ## v1.76.0 (2026-11-03)
 
 ### @createrington/server (1.75.1 → 1.76.0)
