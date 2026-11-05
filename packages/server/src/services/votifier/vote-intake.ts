@@ -3,8 +3,10 @@ import { escapeLike } from "@/db/utils";
 import type { DiscordMessageService } from "@/services/discord/message/message.service";
 import { MINECRAFT_USERNAME } from "@/utils/rcon";
 import type { VotifierVote } from "./protocol";
+import type { VoteRewardService } from "./vote-reward.service";
 
 export type MessageServiceProvider = () => DiscordMessageService | null;
+export type VoteRewardServiceProvider = () => VoteRewardService | null;
 
 /**
  * Vote Intake
@@ -17,14 +19,19 @@ export type MessageServiceProvider = () => DiscordMessageService | null;
  * stored vote is dropped quietly. The message service is looked up per vote
  * and may be absent while the Discord bot is not logged in: the vote is then
  * stored without the shout-out, because storing it is what must not fail.
+ * A voter who is online at that moment is paid right away through the
+ * reward service (looked up the same way, and absent until it is ready), in
+ * the background so the vote site gets its acknowledgement without waiting
+ * for RCON; everyone else is paid on their next join or by the sweep.
  */
 export class VoteIntake {
   constructor(
     private readonly messageService: MessageServiceProvider,
     private readonly channelId: string,
+    private readonly rewardService: VoteRewardServiceProvider = () => null,
   ) {}
 
-  /** Stores the vote and announces it when the voter is a registered player. */
+  /** Stores the vote, announces it when the voter is a registered player and pays an online voter at once. */
   async accept(vote: VotifierVote): Promise<void> {
     const username = vote.username.trim();
     if (!MINECRAFT_USERNAME.test(username)) {
@@ -57,8 +64,14 @@ export class VoteIntake {
         (player ? "" : " (no registered player yet)"),
     );
 
-    if (player) {
-      await this.announce(player.minecraftUsername, vote.serviceName);
+    if (!player) return;
+    await this.announce(player.minecraftUsername, vote.serviceName);
+    if (player.online && player.currentServerId !== null) {
+      void this.rewardService()?.payout(
+        player.minecraftUuid,
+        player.minecraftUsername,
+        player.currentServerId,
+      );
     }
   }
 
