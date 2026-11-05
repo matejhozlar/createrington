@@ -35,7 +35,7 @@ export default defineConfig(async () => ({
       onwarn(warning: Rollup.RollupLog, warn: Rollup.LoggingFunction) {
         if (
           warning.code === "INVALID_ANNOTATION" &&
-          warning.id?.includes("/zod/")
+          warning.id?.includes("/node_modules/zod/")
         ) {
           return;
         }
