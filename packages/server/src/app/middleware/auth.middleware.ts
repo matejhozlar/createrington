@@ -145,30 +145,6 @@ export const requireUser = (
   next();
 };
 
-/**
- * Requires user to match specific role(s)
- *
- * @param allowedRoles - Array of roles that can access the endpoint
- */
-export const requireRole = (...allowedRoles: AuthRole[]) => {
-  return (req: Request, res: Response, next: NextFunction): void => {
-    if (!req.user) {
-      throw new UnauthorizedError("Authentication required");
-    }
-
-    if (!allowedRoles.includes(req.user.role)) {
-      logger.warn(
-        `User ${req.user.minecraftUsername} with role ${
-          req.user.role
-        } attempted to access endpoint requiring ${allowedRoles.join(" or ")}`,
-      );
-      throw new ForbiddenError(`Required role: ${allowedRoles.join(" or ")}`);
-    }
-
-    next();
-  };
-};
-
 // Parse an origin URL safely; returns only the `scheme://host[:port]` portion.
 function safeOrigin(raw: string | undefined): string | undefined {
   if (!raw) return undefined;

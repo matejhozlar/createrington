@@ -5,9 +5,6 @@ export const GALLERY_SUBMISSION_STATUSES = [
   "withdrawn",
 ] as const;
 
-export type GallerySubmissionStatus =
-  (typeof GALLERY_SUBMISSION_STATUSES)[number];
-
 export const GALLERY_IMAGE_CONTENT_TYPES = [
   "image/png",
   "image/jpeg",

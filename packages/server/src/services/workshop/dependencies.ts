@@ -4,12 +4,11 @@ import { getFilesDependencies, getModpackModIds } from "@/services/curseforge";
 import { refreshProjects } from "@/services/curseforge/ingest";
 
 import {
-  OPTIONAL_DEPENDENCY,
   REQUIRED_DEPENDENCY,
   type DependencyCoverage,
 } from "@createrington/shared/workshop";
 
-export { OPTIONAL_DEPENDENCY, REQUIRED_DEPENDENCY, type DependencyCoverage };
+export { REQUIRED_DEPENDENCY, type DependencyCoverage };
 
 export interface DependencySubject {
   curseforgeProjectId: number;

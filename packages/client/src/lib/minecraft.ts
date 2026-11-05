@@ -23,10 +23,6 @@ export function chunkCenterToBlock(chunk: number): number {
   return chunk * 16 + 8;
 }
 
-export function regionFileName(chunkX: number, chunkZ: number): string {
-  return `r.${chunkX >> 5}.${chunkZ >> 5}.mca`;
-}
-
 export function tpCommand(
   dimension: string,
   x: number,

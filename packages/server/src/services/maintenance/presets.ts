@@ -7,8 +7,6 @@ export const MAINTENANCE_MESSAGE_PRESET =
   "&7{server} is currently down for maintenance.\n" +
   "&7Expected downtime: {eta}. Check Discord for updates.";
 
-export const MAINTENANCE_TEMPLATE_TOKENS = ["{server}", "{eta}"] as const;
-
 export interface MaintenanceTemplateContext {
   server: string;
   estimatedMinutes: number | null;

@@ -196,5 +196,3 @@ function ShareRow({ icon: Icon, label }: { icon: typeof User; label: string }) {
     </li>
   );
 }
-
-export default Authorize;

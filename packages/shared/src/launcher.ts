@@ -442,17 +442,3 @@ export interface LauncherLogoutResponse {
   success: true;
   message: string;
 }
-
-export interface LauncherErrorResponse {
-  success: false;
-  message: string;
-  playerMessage?: string;
-  error: {
-    message: string;
-    statusCode: number;
-    code?:
-      LauncherAuthErrorCode | LauncherPackErrorCode | LauncherContentErrorCode;
-    details?: unknown;
-    stack?: string;
-  };
-}

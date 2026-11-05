@@ -409,6 +409,4 @@ const config = {
   },
 } as const;
 
-export type Config = typeof config;
-
 export default config;

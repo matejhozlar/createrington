@@ -82,19 +82,6 @@ export function Loading({
 }
 
 /**
- * Simple spinner for inline use
- */
-export function LoadingSpinner({
-  size = "small",
-  className,
-}: {
-  size?: "small" | "medium" | "large";
-  className?: string;
-}) {
-  return <Loading mode="inline" size={size} text="" className={className} />;
-}
-
-/**
  * Fullscreen loading overlay
  */
 export function LoadingScreen({

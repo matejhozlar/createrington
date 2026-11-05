@@ -356,29 +356,6 @@ export async function announcePackDropOut(mod: WorkshopMod): Promise<void> {
   });
 }
 
-/** Note the auto-pulled required dependencies in the promoted mod's thread. */
-export async function announcePulledDependencies(
-  mod: WorkshopMod,
-  names: string[],
-): Promise<void> {
-  if (names.length === 0) return;
-  try {
-    const fresh = await Q.workshop.mod.find({ id: mod.id });
-    const threadId = fresh?.discordThreadId ?? mod.discordThreadId;
-    if (!threadId) return;
-    const lookup = await fetchThread(threadId);
-    if (lookup.state !== "found") return;
-    await lookup.thread.send({
-      content: `📦 Pulls in required dependencies: ${names.join(", ")}`,
-      allowedMentions: { parse: [] },
-    });
-  } catch (error) {
-    logger.warn(
-      `Failed to note pulled dependencies for mod #${mod.id}: ${error}`,
-    );
-  }
-}
-
 /** Delete the withdrawn suggestion's thread. */
 export async function announceRemoval(mod: WorkshopMod): Promise<void> {
   if (!mod.discordThreadId) return;

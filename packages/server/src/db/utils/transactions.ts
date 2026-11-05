@@ -1,68 +1,6 @@
 import type { Pool, PoolClient } from "pg";
 
 /**
- * Transaction class for manual transaction control
- */
-export class Transaction {
-  private commited = false;
-  private rolledBack = false;
-
-  constructor(private client: PoolClient) {}
-
-  /**
-   * Commits the transaction and releases the client
-   */
-  async commit(): Promise<void> {
-    if (this.rolledBack) {
-      throw new Error("Transaction already rolled back");
-    }
-    if (this.commited) {
-      throw new Error("Transaction already commited");
-    }
-
-    try {
-      await this.client.query("COMMIT");
-      this.commited = true;
-    } finally {
-      this.client.release();
-    }
-  }
-
-  /**
-   * Rolls back the transaction and releases the client
-   */
-  async rollback(): Promise<void> {
-    if (this.commited) {
-      throw new Error("Transaction already committed");
-    }
-    if (this.rolledBack) {
-      return;
-    }
-
-    try {
-      await this.client.query("ROLLBACK");
-      this.rolledBack = true;
-    } finally {
-      this.client.release();
-    }
-  }
-
-  /**
-   * Gets the underlying client for use in queries
-   */
-  getClient(): PoolClient {
-    return this.client;
-  }
-
-  /**
-   * Check if a transaction is still active
-   */
-  isActive(): boolean {
-    return !this.commited && !this.rolledBack;
-  }
-}
-
-/**
  * Executes a callback within a database transaction
  * Automatically commits on success or rolls back on error
  *
