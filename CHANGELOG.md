@@ -1,3 +1,16 @@
+## v1.78.0 (2026-11-05)
+
+### @createrington/server (1.77.0 → 1.78.0)
+- [refactor] Route every CurseForge and Modrinth call through the content-gateway service — workshop search, modpack manifests, launcher content lookups, pack file resolution, and structure packs now call the gateway via `@createrington/content-gateway-client` with the app's consumer token instead of holding a CurseForge API key; launcher lookups draw from the gateway's `launcher` pool and everything else from `app`, and the gateway now owns the per-minute budget, 429 holds, call counting, and response caching for every process on the box
+- [refactor] Resolve blocked pack and launcher content files through the gateway's resolve endpoint (Modrinth by SHA-1, then the built CurseForge CDN address while `launcher_curseforge_cdn` is on); a blocked pack file the gateway could not check against every source is no longer stored and fails the lookup so it is retried next time, instead of being persisted as manual
+- [refactor] Read a Minecraft version's required Java major version from the gateway's Mojang version lookup instead of calling Mojang's manifest directly
+- [add] Add `owner.contentGateway.budget.get` procedure returning the gateway's CurseForge and Modrinth budgets: this minute's calls per pool across every process, active 429 holds, and up to 90 days of per-pool daily counts
+- [remove] Remove the app's own CurseForge budget, daily call counter, launcher content caches, Modrinth client, and CDN lookup, along with the `owner.curseforgeCalls.list` and `owner.curseforgeBudget.get` procedures
+- [chore] Replace `CURSEFORGE_API_KEY` and `CURSEFORGE_LAUNCHER_CALLS_PER_MINUTE` with `CONTENT_GATEWAY_URL` and `CONTENT_GATEWAY_TOKEN`; every CurseForge and Modrinth feature is disabled while either is unset, so both must be configured before deploy
+
+### @createrington/client (0.2.94 → 0.2.95)
+- [refactor] Replace the CurseForge card on the owner launcher releases page with a Content gateway card — CurseForge and Modrinth tabs each show this minute's calls, withheld calls and hold against the shared budget, plus a per-day table with cached, withheld, forbidden and throttled counts and a breakdown of calls by consumer pool
+
 ## v1.77.0 (2026-11-05)
 
 ### @createrington/server (1.76.0 → 1.77.0)
