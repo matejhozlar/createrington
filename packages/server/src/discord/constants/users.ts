@@ -260,9 +260,3 @@ export const DiscordUsers = {
     return user?.createdAt ?? null;
   },
 };
-
-/**
- * Type representing DiscordUsers utility object
- * Useful for dependency injection and testing
- */
-export type DiscordUsersUtility = typeof DiscordUsers;

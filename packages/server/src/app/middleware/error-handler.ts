@@ -95,19 +95,6 @@ export class InternalServerError extends AppError {
   }
 }
 
-/**
- * Validation error from Zod with field-level details
- */
-export class ValidationError extends BadRequestError {
-  constructor(
-    message: string,
-    public fieldErrors: Array<{ field: string; message: string }>,
-  ) {
-    super(message, fieldErrors);
-    this.name = "ValidationError";
-  }
-}
-
 interface RequestBodyError extends Error {
   status: number;
   type: string;

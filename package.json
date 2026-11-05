@@ -31,6 +31,7 @@
     "lint": "pnpm -r lint",
     "lint:server": "pnpm --filter @createrington/server lint",
     "lint:client": "pnpm --filter @createrington/client lint",
+    "knip": "knip --no-gitignore",
     "test": "pnpm --filter @createrington/server test",
     "test:unit": "pnpm --filter @createrington/server test:unit",
     "test:types": "pnpm --filter @createrington/server test:types",
@@ -83,6 +84,7 @@
     "@infisical/cli": "^0.43.84",
     "concurrently": "^9.2.1",
     "husky": "^9.1.7",
+    "knip": "^6.44.1",
     "lint-staged": "^16.4.0",
     "prettier": "^3.8.1",
     "typescript": "^5.9.3"

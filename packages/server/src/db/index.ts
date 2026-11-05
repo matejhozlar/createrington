@@ -9,11 +9,7 @@
 
 import pg from "pg";
 import config from "@/config";
-import {
-  DatabaseQueries,
-  createQueryInstances,
-  createQueries,
-} from "@/generated/db";
+import { DatabaseQueries, createQueryInstances } from "@/generated/db";
 import * as repositories from "./repositories";
 import { registerPgTypeParsers } from "./utils/pg-types";
 
@@ -70,8 +66,6 @@ export const {
   faq,
 } = Q;
 
-export { createQueries };
-
 export * from "./queries";
 
 export const waitlistRepo = new repositories.WaitlistRepository();
@@ -109,4 +103,3 @@ export const R = {
 };
 
 export default pool;
-export { transaction, Transaction } from "./utils/transactions";

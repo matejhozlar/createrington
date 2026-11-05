@@ -6,13 +6,6 @@ export type GallerySubmissionDetail = RouterOutput["admin"]["gallery"]["get"];
 export type GalleryStatus = GallerySubmissionItem["status"];
 export type GalleryCredit = GallerySubmissionItem["credits"][number];
 
-export const GALLERY_STATUSES: GalleryStatus[] = [
-  "pending",
-  "approved",
-  "rejected",
-  "withdrawn",
-];
-
 export const GALLERY_STATUS_STYLES: Record<
   GalleryStatus,
   { label: string; className: string }

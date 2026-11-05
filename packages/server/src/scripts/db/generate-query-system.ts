@@ -439,14 +439,6 @@ function generateSharedFiles(
 }
 
 /**
- * CLI entry point - exports main generation function
- *
- * Allows this module to be imported as a library or executed directly
- * as a CLI tool with formatted output and error handling.
- */
-export default generate;
-
-/**
  * Auto-execute when run directly (not imported)
  *
  * Detects if this file is being executed directly (vs imported) and
