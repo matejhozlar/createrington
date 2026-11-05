@@ -22,7 +22,7 @@
         "src/tests/**/*.test-d.ts"
       ],
       "project": ["src/**/*.{ts,js}", "scripts/**/*.mjs"],
-      "ignoreDependencies": ["@iconify-json/*", "fast-glob"]
+      "ignoreDependencies": ["@iconify-json/*"]
     },
     "packages/client": {
       "entry": ["src/components/ui/*.tsx"],
