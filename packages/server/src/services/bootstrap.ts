@@ -529,6 +529,10 @@ export function registerServices(): void {
               ? c.getSync(Services.MESSAGE_SERVICE)
               : null,
           Discord.Channels.railsNSails.MINECRAFT_CHAT,
+          () =>
+            c.getState(Services.VOTE_REWARD_SERVICE) === "ready"
+              ? c.getSync(Services.VOTE_REWARD_SERVICE)
+              : null,
         );
         const service = new VotifierService(votifierConfig, (vote) =>
           intake.accept(vote),
