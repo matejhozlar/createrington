@@ -1,3 +1,21 @@
+## v1.78.1 (2026-11-05)
+
+### @createrington/server (1.78.0 → 1.78.1)
+- [security] Stop sending the helmet Content-Security-Policy header: the site's HTML is served by nginx, so the helmet policy only ever reached JSON responses and had drifted from the real one (no GitHub or jsDelivr in `connect-src`, no `frame-src`); nginx is now the single source of the CSP, so it must send the policy on every environment before deploy
+- [chore] Remove dead code found by knip: the unused `transaction`/`Transaction` helpers, `createQueries` re-export, `requireRole` middleware, `ValidationError`, the wide maintenance and RCON barrel re-exports, and other unused constants and types
+- [chore] Drop unused dependencies (`resend`, `sanitize-html`, `chalk`, `ora`, `@types/sanitize-html`, `@types/socket.io`), declare `fast-glob` for the import-find script, and point `main` at `src/server.ts`
+
+### @createrington/client (0.2.95 → 0.2.96)
+- [refactor] Rebuild the team page idle animations on key poses with blended envelopes: idle gestures (look around, weight shift, head scratch, stretch, nodding off, jumping jacks, peek, sneeze, trip) are now weighted picks layered over a gentle arm sway and body yaw, members glance at their neighbours and a glanced-at neighbour may notice and look back, and the idle no longer depends on a member's position on the podium
+- [fix] Fix scroll-blocking listener warnings on the team page: the skin viewer canvas now registers its wheel and touch listeners as passive and disposes the unused orbit controls, so scrolling over team cards is no longer held up
+- [security] Remove the `<meta>` Content-Security-Policy from `index.html` now that nginx sends the policy as a response header; the stale `map.createrington.com` `frame-src` entry goes with it
+- [refactor] Load icon animations lazily by upgrading to `@createrington/icons` 0.6.0 and wrapping the app in `AnimatedIconProvider`
+- [remove] Remove the legacy `auth_token` localStorage cleanup on login and logout; the access token has lived in memory since the refresh-cookie migration
+- [chore] Silence zod's comment-annotation warnings in the Vite build, drop unused dependencies (`react-hook-form`, `@hookform/resolvers`, `lightweight-charts`) and dead exports, and fix the `index.html` entry script path to `main.tsx`
+
+### @createrington/shared (1.18.0 → 1.18.1)
+- [remove] Remove unused exports found by knip: the `template-schemas` and `template.types` example files, `GallerySubmissionStatus`, and `LauncherErrorResponse`
+
 ## v1.78.0 (2026-11-05)
 
 ### @createrington/server (1.77.0 → 1.78.0)
