@@ -33,7 +33,7 @@ vi.mock("@/services/launcher/pack/sandbox-files", async (importOriginal) => ({
   findSandboxSnapshotUrl: vi.fn(async () => null),
   openSandboxFile: vi.fn(async () => null),
 }));
-vi.mock("@/utils/mojang-java-version", () => ({
+vi.mock("@/services/content-gateway/minecraft", () => ({
   getMinecraftJavaMajorVersion: vi.fn(async () => 21),
 }));
 
@@ -67,7 +67,7 @@ import {
 } from "@/services/launcher/pack/sandbox-files";
 import { settings } from "@/services/settings";
 import { NotFoundError } from "@/db/utils";
-import { getMinecraftJavaMajorVersion } from "@/utils/mojang-java-version";
+import { getMinecraftJavaMajorVersion } from "@/services/content-gateway/minecraft";
 import type {
   CurseforgeProjectCreate,
   Modpack,

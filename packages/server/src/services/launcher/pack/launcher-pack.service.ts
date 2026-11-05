@@ -33,8 +33,8 @@ import {
   toLauncherProject,
 } from "@/services/launcher/content/curseforge-content";
 import { getReleaseChangelogs } from "@/services/modpack/release-changelog";
+import { getMinecraftJavaMajorVersion } from "@/services/content-gateway/minecraft";
 import { settings } from "@/services/settings";
-import { getMinecraftJavaMajorVersion } from "@/utils/mojang-java-version";
 import type {
   LauncherPack,
   LauncherPackSource,
