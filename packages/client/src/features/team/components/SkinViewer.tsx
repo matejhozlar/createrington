@@ -41,6 +41,31 @@ type Controller = {
 const IDLE_BLEND_SECONDS = 0.4;
 const EFFECT_BLEND_SECONDS = 0.2;
 const GUEST_BLEND_SECONDS = 0.18;
+const SCROLL_BLOCKING_EVENTS = new Set([
+  "wheel",
+  "mousewheel",
+  "touchstart",
+  "touchmove",
+]);
+
+function createPassiveCanvas(): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  const addEventListener = canvas.addEventListener.bind(canvas);
+  canvas.addEventListener = (
+    type: string,
+    listener: EventListenerOrEventListenerObject,
+    options?: boolean | AddEventListenerOptions,
+  ) => {
+    if (!SCROLL_BLOCKING_EVENTS.has(type)) {
+      addEventListener(type, listener, options);
+      return;
+    }
+    const base =
+      typeof options === "object" ? options : { capture: options === true };
+    addEventListener(type, listener, { ...base, passive: true });
+  };
+  return canvas;
+}
 
 export const SkinViewer = forwardRef<SkinViewerHandle, SkinViewerProps>(
   (
@@ -81,11 +106,13 @@ export const SkinViewer = forwardRef<SkinViewerHandle, SkinViewerProps>(
 
       const slot = { width, height };
       const viewer = new SkinViewerLib({
+        canvas: createPassiveCanvas(),
         width,
         height,
         enableControls: false,
       });
       const player = viewer.playerObject;
+      viewer.controls.dispose();
       viewer.autoRotate = false;
       viewer.canvas.style.position = "absolute";
       viewer.canvas.style.pointerEvents = "none";
