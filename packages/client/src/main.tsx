@@ -1,5 +1,6 @@
 import { createRoot } from "react-dom/client";
 import { z } from "zod";
+import { AnimatedIconProvider } from "@createrington/icons";
 import App from "./App.tsx";
 import "./index.css";
 
@@ -7,4 +8,8 @@ import "./index.css";
 // strict CSP without `unsafe-eval`.
 z.config({ jitless: true });
 
-createRoot(document.getElementById("root")!).render(<App />);
+createRoot(document.getElementById("root")!).render(
+  <AnimatedIconProvider>
+    <App />
+  </AnimatedIconProvider>,
+);
