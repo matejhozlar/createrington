@@ -100,9 +100,6 @@ export const PODIUM = {
   right: [diablothe2nd, cailin05],
 } as const;
 
-export const TEAM_SIZE =
-  PODIUM.left.length + PODIUM.center.length + PODIUM.right.length;
-
 export const TIER_CONFIG = {
   owner: {
     size: {
