@@ -41,11 +41,15 @@ import { trpc, type RouterOutput } from "@/lib/trpc";
 type ReleaseRow =
   RouterOutput["owner"]["launcherReleases"]["list"]["releases"][number];
 
-type CallDay = RouterOutput["owner"]["curseforgeCalls"]["list"]["days"][number];
+type BudgetSnapshot = RouterOutput["owner"]["contentGateway"]["budget"];
 
-type CallCount = Exclude<keyof CallDay, "date">;
+type UpstreamBudget = BudgetSnapshot["curseforge"];
 
-type BudgetState = RouterOutput["owner"]["curseforgeBudget"]["get"];
+type BudgetDay = UpstreamBudget["days"][number];
+
+type DayPool = BudgetDay["pools"][number];
+
+type DayCount = Exclude<keyof DayPool, "consumer" | "pool">;
 
 type PendingAction = { kind: "release" | "withdraw"; release: ReleaseRow };
 
@@ -111,18 +115,25 @@ const CDN_SWITCH = {
   label: "CurseForge CDN fallback",
 } as const;
 
+const UPSTREAMS: { key: "curseforge" | "modrinth"; label: string }[] = [
+  { key: "curseforge", label: "CurseForge" },
+  { key: "modrinth", label: "Modrinth" },
+];
+
 const CALL_WEEK_DAYS = 7;
 
-const CALLS_UNAVAILABLE_MESSAGE =
-  "The stored counts cannot be read right now. Calls are still being counted and show up here once the store is back.";
+const BUDGET_REFRESH_MS = 15_000;
 
-const CALLS_IN_MEMORY_NOTE =
-  "The counts are not stored on this environment. This shows only the calls since the server last started.";
+const BUDGET_UNAVAILABLE_MESSAGE =
+  "The gateway cannot read its stored counts right now. Calls are still being counted and show up here once its store is back.";
+
+const BUDGET_IN_MEMORY_NOTE =
+  "The gateway keeps its counts in memory on this environment. This shows only the calls since it last started.";
 
 const CALL_SUMMARY: {
   label: string;
   hint: string;
-  count: CallCount;
+  count: DayCount;
   days?: number;
   alert?: boolean;
 }[] = [
@@ -136,7 +147,7 @@ const CALL_SUMMARY: {
   {
     label: "Refused",
     hint: "Answered 403 in the days below",
-    count: "refused",
+    count: "forbidden",
     alert: true,
   },
   {
@@ -147,28 +158,23 @@ const CALL_SUMMARY: {
   },
 ];
 
-const BUDGET_REFRESH_MS = 15_000;
-
-const BUDGET_IN_MEMORY_NOTE =
-  "The budget is not shared on this environment. This shows only this server process's own count.";
-
-const BUDGET_SUMMARY: {
+const MINUTE_SUMMARY: {
   label: string;
   hint: string;
-  value: (budget: BudgetState) => string;
-  alert?: (budget: BudgetState) => boolean;
+  value: (budget: UpstreamBudget) => string;
+  alert?: (budget: UpstreamBudget) => boolean;
 }[] = [
   {
     label: "This minute",
-    hint: "Launcher lookups on the key, of the budget per minute",
+    hint: "Calls let through, of the budget per minute over every process",
     value: (budget) =>
       `${formatCount(budget.used)} / ${formatCount(budget.limitPerMinute)}`,
   },
   {
-    label: "Refused",
-    hint: "Answered 503 this minute, budget spent",
-    value: (budget) => formatCount(budget.refused),
-    alert: (budget) => budget.refused > 0,
+    label: "Withheld",
+    hint: "Refused this minute, budget spent or hold on",
+    value: (budget) => formatCount(budget.withheld),
+    alert: (budget) => budget.withheld > 0,
   },
   {
     label: "Resets at",
@@ -176,15 +182,15 @@ const BUDGET_SUMMARY: {
     value: (budget) => formatTime(budget.resetsAt),
   },
   {
-    label: "CurseForge hold",
+    label: "Hold",
     hint: "No call goes out until then after a 429",
     value: (budget) =>
       budget.heldUntil ? `Until ${formatTime(budget.heldUntil)}` : "None",
-    alert: (budget) => budget.heldUntil !== null,
+    alert: (budget) => Boolean(budget.heldUntil),
   },
 ];
 
-const CALL_COLUMNS: DataTableColumn<CallDay>[] = [
+const DAY_COLUMNS: DataTableColumn<BudgetDay>[] = [
   {
     key: "date",
     header: "Day (UTC)",
@@ -194,30 +200,55 @@ const CALL_COLUMNS: DataTableColumn<CallDay>[] = [
   {
     key: "calls",
     header: "Calls",
-    width: 110,
+    width: 100,
     align: "right",
-    render: (day) => <CallCountCell value={day.calls} />,
+    render: (day) => <CallCountCell value={sumPools(day.pools, "calls")} />,
   },
   {
-    key: "refused",
-    header: "Refused",
-    width: 110,
+    key: "hits",
+    header: "Cached",
+    width: 100,
     align: "right",
-    render: (day) => <CallCountCell value={day.refused} alert />,
-  },
-  {
-    key: "throttled",
-    header: "Throttled",
-    width: 110,
-    align: "right",
-    render: (day) => <CallCountCell value={day.throttled} alert />,
+    render: (day) => <CallCountCell value={sumPools(day.pools, "hits")} />,
   },
   {
     key: "withheld",
     header: "Withheld",
-    width: 110,
+    width: 100,
     align: "right",
-    render: (day) => <CallCountCell value={day.withheld} alert />,
+    render: (day) => (
+      <CallCountCell value={sumPools(day.pools, "withheld")} alert />
+    ),
+  },
+  {
+    key: "forbidden",
+    header: "Refused",
+    width: 100,
+    align: "right",
+    render: (day) => (
+      <CallCountCell value={sumPools(day.pools, "forbidden")} alert />
+    ),
+  },
+  {
+    key: "throttled",
+    header: "Throttled",
+    width: 100,
+    align: "right",
+    render: (day) => (
+      <CallCountCell value={sumPools(day.pools, "throttled")} alert />
+    ),
+  },
+  {
+    key: "pools",
+    header: "Calls by pool",
+    minWidth: 220,
+    render: (day) => (
+      <span className="text-xs text-muted-foreground">
+        {day.pools
+          .map((pool) => `${poolLabel(pool)} ${formatCount(pool.calls)}`)
+          .join(" · ")}
+      </span>
+    ),
   },
 ];
 
@@ -233,8 +264,25 @@ function formatTime(value: string): string {
   });
 }
 
-function sumCalls(days: CallDay[], count: CallCount, limit?: number): number {
-  return days.slice(0, limit).reduce((total, day) => total + day[count], 0);
+function poolLabel(pool: { consumer: string; pool: string }): string {
+  return `${pool.consumer} / ${pool.pool}`;
+}
+
+function sumPools(pools: DayPool[], count: DayCount): number {
+  return pools.reduce((total, pool) => total + pool[count], 0);
+}
+
+function utcDay(daysAgo: number): string {
+  const day = new Date();
+  day.setUTCDate(day.getUTCDate() - daysAgo);
+  return day.toISOString().slice(0, 10);
+}
+
+function sumDays(days: BudgetDay[], count: DayCount, limit?: number): number {
+  const since = limit === undefined ? null : utcDay(limit - 1);
+  return days
+    .filter((day) => since === null || day.date >= since)
+    .reduce((total, day) => total + sumPools(day.pools, count), 0);
 }
 
 export function OwnerLauncherReleases() {
@@ -445,7 +493,7 @@ export function OwnerLauncherReleases() {
           </CardContent>
         </Card>
 
-        <CurseforgeCard />
+        <ContentGatewayCard />
       </div>
 
       <ConfirmDialog
@@ -492,10 +540,9 @@ export function OwnerLauncherReleases() {
   );
 }
 
-function CurseforgeCard() {
+function ContentGatewayCard() {
   const utils = trpc.useUtils();
-  const callsQuery = trpc.owner.curseforgeCalls.list.useQuery();
-  const budgetQuery = trpc.owner.curseforgeBudget.get.useQuery(undefined, {
+  const budgetQuery = trpc.owner.contentGateway.budget.useQuery(undefined, {
     refetchInterval: BUDGET_REFRESH_MS,
   });
   const cdnQuery = trpc.owner.curseforgeCdn.get.useQuery();
@@ -508,17 +555,16 @@ function CurseforgeCard() {
     }),
   );
 
-  const source = callsQuery.data?.source;
-  const days = callsQuery.data?.days ?? [];
-  const budget = budgetQuery.data;
+  const snapshot = budgetQuery.data;
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>CurseForge</CardTitle>
+        <CardTitle>Content gateway</CardTitle>
         <CardDescription className="max-sm:col-start-1">
-          Requests this server sent to the CurseForge API with its key, per day,
-          and the launcher's budget of calls on it this minute.
+          Calls every Createrington process makes on the CurseForge key and to
+          Modrinth through the gateway, per day and this minute against the
+          budget.
         </CardDescription>
         <CardAction className="max-sm:col-span-full max-sm:row-start-3 max-sm:mt-2 max-sm:justify-self-stretch">
           <LabeledSwitch
@@ -532,94 +578,124 @@ function CurseforgeCard() {
           />
         </CardAction>
       </CardHeader>
-      {callsQuery.isError ? (
+      {budgetQuery.isError ? (
         <CardError
-          message={`Failed to load the CurseForge calls: ${callsQuery.error.message}`}
-          onRetry={() => void callsQuery.refetch()}
+          message={`Failed to load the gateway's budget: ${budgetQuery.error.message}`}
+          onRetry={() => void budgetQuery.refetch()}
         />
-      ) : source === "unavailable" ? (
+      ) : snapshot?.source === "unavailable" ? (
         <CardError
-          message={CALLS_UNAVAILABLE_MESSAGE}
-          onRetry={() => void callsQuery.refetch()}
+          message={BUDGET_UNAVAILABLE_MESSAGE}
+          onRetry={() => void budgetQuery.refetch()}
         />
       ) : (
         <CardContent className="flex flex-col gap-4">
-          {source === "memory" && (
+          {snapshot?.source === "memory" && (
             <p className="text-sm text-muted-foreground">
-              {CALLS_IN_MEMORY_NOTE}
+              {BUDGET_IN_MEMORY_NOTE}
             </p>
           )}
-          <dl className="m-0 grid grid-cols-2 gap-4 lg:grid-cols-4">
-            {CALL_SUMMARY.map(({ label, hint, count, days: limit, alert }) => {
-              const value = sumCalls(days, count, limit);
-              return (
-                <div key={label} className="flex flex-col gap-1">
-                  <dt className="text-sm text-muted-foreground">{label}</dt>
-                  <dd
-                    className={cn(
-                      "m-0 text-2xl font-semibold leading-none",
-                      alert && value > 0 && "text-destructive",
-                    )}
-                  >
-                    {callsQuery.isLoading ? (
-                      <Skeleton className="h-6 w-16" />
-                    ) : (
-                      formatCount(value)
-                    )}
-                  </dd>
-                  <dd className="m-0 text-xs text-muted-foreground">{hint}</dd>
-                </div>
-              );
-            })}
-          </dl>
-          <div className="flex flex-col gap-4 border-t pt-4">
-            <h3 className="m-0 text-sm font-medium">Launcher budget</h3>
-            {budgetQuery.isError ? (
-              <p className="text-sm text-destructive">
-                Failed to load the budget: {budgetQuery.error.message}
-              </p>
-            ) : (
-              <>
-                {budget?.source === "memory" && (
-                  <p className="text-sm text-muted-foreground">
-                    {BUDGET_IN_MEMORY_NOTE}
-                  </p>
-                )}
-                <dl className="m-0 grid grid-cols-2 gap-4 lg:grid-cols-4">
-                  {BUDGET_SUMMARY.map(({ label, hint, value, alert }) => (
-                    <div key={label} className="flex flex-col gap-1">
-                      <dt className="text-sm text-muted-foreground">{label}</dt>
-                      <dd
-                        className={cn(
-                          "m-0 text-2xl font-semibold leading-none",
-                          budget && alert?.(budget) && "text-destructive",
-                        )}
-                      >
-                        {budget ? (
-                          value(budget)
-                        ) : (
-                          <Skeleton className="h-6 w-16" />
-                        )}
-                      </dd>
-                      <dd className="m-0 text-xs text-muted-foreground">
-                        {hint}
-                      </dd>
-                    </div>
-                  ))}
-                </dl>
-              </>
-            )}
-          </div>
-          <DataTable
-            columns={CALL_COLUMNS}
-            rows={days}
-            loading={callsQuery.isLoading}
-            loadingRows={CALL_WEEK_DAYS}
-            rowKey={(day) => day.date}
-          />
+          <Tabs defaultValue={UPSTREAMS[0].key}>
+            <TabsList>
+              {UPSTREAMS.map(({ key, label }) => (
+                <TabsTrigger key={key} value={key}>
+                  {label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+            {UPSTREAMS.map(({ key }) => (
+              <TabsContent
+                key={key}
+                value={key}
+                className="flex flex-col gap-4"
+              >
+                <UpstreamBudgetPanel
+                  budget={snapshot?.[key]}
+                  loading={budgetQuery.isLoading}
+                />
+              </TabsContent>
+            ))}
+          </Tabs>
         </CardContent>
       )}
     </Card>
+  );
+}
+
+function UpstreamBudgetPanel({
+  budget,
+  loading,
+}: {
+  budget: UpstreamBudget | undefined;
+  loading: boolean;
+}) {
+  const days = budget?.days ?? [];
+
+  return (
+    <>
+      <dl className="m-0 grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {CALL_SUMMARY.map(({ label, hint, count, days: limit, alert }) => {
+          const value = sumDays(days, count, limit);
+          return (
+            <div key={label} className="flex flex-col gap-1">
+              <dt className="text-sm text-muted-foreground">{label}</dt>
+              <dd
+                className={cn(
+                  "m-0 text-2xl font-semibold leading-none",
+                  alert && value > 0 && "text-destructive",
+                )}
+              >
+                {loading ? (
+                  <Skeleton className="h-6 w-16" />
+                ) : (
+                  formatCount(value)
+                )}
+              </dd>
+              <dd className="m-0 text-xs text-muted-foreground">{hint}</dd>
+            </div>
+          );
+        })}
+      </dl>
+      <div className="flex flex-col gap-4 border-t pt-4">
+        <h3 className="m-0 text-sm font-medium">This minute</h3>
+        <dl className="m-0 grid grid-cols-2 gap-4 lg:grid-cols-4">
+          {MINUTE_SUMMARY.map(({ label, hint, value, alert }) => (
+            <div key={label} className="flex flex-col gap-1">
+              <dt className="text-sm text-muted-foreground">{label}</dt>
+              <dd
+                className={cn(
+                  "m-0 text-2xl font-semibold leading-none",
+                  budget && alert?.(budget) && "text-destructive",
+                )}
+              >
+                {budget ? value(budget) : <Skeleton className="h-6 w-16" />}
+              </dd>
+              <dd className="m-0 text-xs text-muted-foreground">{hint}</dd>
+            </div>
+          ))}
+        </dl>
+        {budget && budget.pools.length > 0 && (
+          <p className="m-0 text-xs text-muted-foreground">
+            {budget.pools
+              .map(
+                (pool) =>
+                  `${poolLabel(pool)} ${formatCount(pool.used)}` +
+                  (pool.withheld > 0
+                    ? ` (${formatCount(pool.withheld)} withheld)`
+                    : ""),
+              )
+              .join(" · ")}
+          </p>
+        )}
+      </div>
+      <DataTable
+        columns={DAY_COLUMNS}
+        rows={days}
+        loading={loading}
+        loadingRows={CALL_WEEK_DAYS}
+        rowKey={(day) => day.date}
+      />
+    </>
   );
 }
 

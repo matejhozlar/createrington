@@ -4,49 +4,49 @@ import { pipeline } from "node:stream/promises";
 import path from "node:path";
 import JSZip from "jszip";
 import { z } from "zod";
+import {
+  CURSEFORGE_MINECRAFT_GAME_ID,
+  CurseForgeHashAlgo,
+  CurseForgeModLoaderType,
+  CurseForgeRelationType,
+  CurseForgeSortField as CurseForgeSortFields,
+  curseforgeCategorySchema,
+  curseforgeData,
+  curseforgeFileIndexSchema,
+  curseforgeFileSchema,
+  curseforgeFingerprintMatchesSchema,
+  curseforgeList,
+  curseforgeLogoSchema,
+  curseforgeMinecraftVersionSchema,
+  curseforgeModSchema,
+  curseforgePage,
+  type CurseForgeAnswer,
+  type CurseForgeRequest,
+  type FileSource,
+} from "@createrington/content-gateway-client";
 import config from "@/config";
-import { countCurseForgeCall, countCurseForgeWithheld } from "./call-counter";
-import { curseforgeBudget } from "./budget";
+import { contentGateway, currentContentPool } from "@/services/content-gateway";
 import { CURSEFORGE_CLASSES } from "@createrington/shared/workshop";
-
-// CurseForge API vocabulary
-export const CURSEFORGE_MINECRAFT_GAME_ID = 432;
 
 export const CurseForgeClass = CURSEFORGE_CLASSES;
 
 export const CurseForgeLoader = {
-  forge: 1,
-  fabric: 4,
-  quilt: 5,
-  neoforge: 6,
+  forge: CurseForgeModLoaderType.forge,
+  fabric: CurseForgeModLoaderType.fabric,
+  quilt: CurseForgeModLoaderType.quilt,
+  neoforge: CurseForgeModLoaderType.neoForge,
 } as const;
 
 export const CurseForgeSortField = {
-  popularity: 2,
-  lastUpdated: 3,
-  totalDownloads: 6,
-  releasedDate: 11,
+  popularity: CurseForgeSortFields.popularity,
+  lastUpdated: CurseForgeSortFields.lastUpdated,
+  totalDownloads: CurseForgeSortFields.totalDownloads,
+  releasedDate: CurseForgeSortFields.releasedDate,
 } as const;
 
-const CURSEFORGE_API = config.curseforge.apiBaseUrl;
-// CloudFront has been seen holding requests ~90s before returning a 504;
-// without timeouts those calls stack up behind a single stuck mutation
-const CF_FETCH_TIMEOUT_MS = 15_000;
 const CF_DOWNLOAD_TIMEOUT_MS = 120_000;
-// The batch endpoints reject oversized id lists in the request body
-export const CURSEFORGE_BATCH_SIZE = 100;
 
-function toBatches<T>(items: T[]): T[][] {
-  const batches: T[][] = [];
-  for (let i = 0; i < items.length; i += CURSEFORGE_BATCH_SIZE) {
-    batches.push(items.slice(i, i + CURSEFORGE_BATCH_SIZE));
-  }
-  return batches;
-}
-
-// Responses are validated before their values are persisted or mapped, so a
-// shape change upstream fails loudly instead of writing NaN / Invalid Date
-function parseCfResponse<T extends z.ZodTypeAny>(
+function parseCfResponse<T extends z.ZodType>(
   schema: T,
   body: unknown,
   endpoint: string,
@@ -61,172 +61,53 @@ function parseCfResponse<T extends z.ZodTypeAny>(
   return parsed.data;
 }
 
-const rawFileIndexSchema = z.object({
-  gameVersion: z.string(),
-  fileId: z.number(),
-  filename: z.string(),
-  releaseType: z.number(),
-  modLoader: z.number().nullish(),
-});
-
-const rawLogoSchema = z
-  .object({ thumbnailUrl: z.string(), url: z.string().nullish() })
-  .nullish();
-
-const rawModSchema = z.object({
-  id: z.number(),
-  classId: z.number(),
-  slug: z.string(),
-  name: z.string(),
-  summary: z.string(),
-  links: z.object({
-    websiteUrl: z.string(),
-    wikiUrl: z.string().nullish(),
-    issuesUrl: z.string().nullish(),
-    sourceUrl: z.string().nullish(),
-  }),
-  logo: rawLogoSchema,
-  authors: z.array(
-    z.object({
-      id: z.number(),
-      name: z.string(),
-      url: z.string(),
-      avatarUrl: z.string().nullish(),
-    }),
-  ),
-  categories: z.array(
-    z.object({
-      id: z.number(),
-      name: z.string(),
-      slug: z.string(),
-      iconUrl: z.string().optional(),
-    }),
-  ),
-  screenshots: z
-    .array(
-      z.object({
-        title: z.string(),
-        thumbnailUrl: z.string(),
-        url: z.string(),
-      }),
-    )
-    .nullish(),
-  downloadCount: z.number(),
-  isAvailable: z.boolean(),
-  allowModDistribution: z.boolean().nullish(),
-  dateCreated: z.string().nullish(),
-  dateModified: z.string(),
-  dateReleased: z.string(),
-  latestFiles: z
-    .array(z.object({ gameVersions: z.array(z.string()).nullish() }))
-    .nullish(),
-  latestFilesIndexes: z.array(rawFileIndexSchema).nullish(),
-});
-
-const rawSearchResultSchema = z.object({
+const searchHitSchema = z.looseObject({
   id: z.number(),
   name: z.string(),
   slug: z.string(),
   summary: z.string().nullish(),
-  authors: z.array(z.object({ name: z.string() })).nullish(),
+  authors: z.array(z.looseObject({ name: z.string() })).nullish(),
   downloadCount: z.number().nullish(),
-  links: z.object({ websiteUrl: z.string() }),
-  logo: rawLogoSchema,
+  links: z.looseObject({ websiteUrl: z.string() }),
+  logo: curseforgeLogoSchema.nullish(),
 });
 
-const rawModFileSchema = z.object({
-  id: z.number(),
+const modFileSchema = curseforgeFileSchema.extend({
   displayName: z.string(),
   fileName: z.string(),
-  downloadUrl: z.string().nullable(),
   fileDate: z.string(),
   fileLength: z.number(),
   releaseType: z.number(),
   gameVersions: z.array(z.string()),
-  hashes: z.array(z.object({ value: z.string(), algo: z.number() })).nullish(),
-  dependencies: z
-    .array(z.object({ modId: z.number(), relationType: z.number() }))
-    .nullish(),
 });
 
-const rawFileDependenciesSchema = z.object({
-  id: z.number(),
-  modId: z.number(),
-  dependencies: z
-    .array(z.object({ modId: z.number(), relationType: z.number() }))
-    .nullish(),
-});
-
-const rawFileHashesSchema = z
-  .array(z.object({ value: z.string(), algo: z.number() }))
-  .nullish();
-
-const rawFileDetailSchema = z.object({
-  id: z.number(),
-  gameId: z.number().nullish(),
-  modId: z.number(),
-  displayName: z.string().nullish(),
-  fileName: z.string().nullish(),
-  fileDate: z.string().nullish(),
-  releaseType: z.number().nullish(),
-  downloadUrl: z.string().nullish(),
-  fileLength: z.number().nullish(),
-  hashes: rawFileHashesSchema,
-  isAvailable: z.boolean().nullish(),
-});
-
-const rawContentFileSchema = rawFileDetailSchema.extend({
-  gameVersions: z.array(z.string()).nullish(),
-  dependencies: z
-    .array(z.object({ modId: z.number(), relationType: z.number() }))
-    .nullish(),
-});
-
-const rawFingerprintMatchesSchema = z.object({
-  exactMatches: z
-    .array(
-      z.object({
-        file: rawContentFileSchema.extend({ fileFingerprint: z.number() }),
-      }),
-    )
-    .nullish(),
-});
-
-const rawPaginationSchema = z.object({ totalCount: z.number() });
-
-const rawModpackFileSchema = z.object({
-  id: z.number(),
-  modId: z.number(),
-  displayName: z.string().nullish(),
-  fileName: z.string().nullish(),
-  fileDate: z.string().nullish(),
-  downloadUrl: z.string().nullish(),
-  fileLength: z.number().nullish(),
-  hashes: rawFileHashesSchema,
-  fileStatus: z.number().nullish(),
-  isAvailable: z.boolean().nullish(),
-  serverPackFileId: z.number().nullish(),
-  alternateFileId: z.number().nullish(),
-  parentProjectFileId: z.number().nullish(),
-  isServerPack: z.boolean().nullish(),
-});
-
-const rawDependencyModSchema = z.object({
+const dependencyModSchema = z.looseObject({
   id: z.number(),
   name: z.string(),
-  links: z.object({ websiteUrl: z.string() }),
-  logo: rawLogoSchema,
-  latestFilesIndexes: z.array(rawFileIndexSchema).nullish(),
+  links: z.looseObject({ websiteUrl: z.string() }),
+  logo: curseforgeLogoSchema.nullish(),
+  latestFilesIndexes: z.array(curseforgeFileIndexSchema).nullish(),
 });
-const CF_HASH_ALGO_SHA1 = 1;
 
-function logoUrlOf(logo: z.infer<typeof rawLogoSchema>): string | null {
+type RawLogo = z.infer<typeof curseforgeLogoSchema> | null | undefined;
+type RawHashes = z.infer<typeof curseforgeFileSchema>["hashes"];
+
+function logoUrlOf(logo: RawLogo): string | null {
   return logo?.thumbnailUrl || logo?.url || null;
 }
 
-function sha1Of(hashes: z.infer<typeof rawFileHashesSchema>): string | null {
-  const sha1 = hashes?.find((hash) => hash.algo === CF_HASH_ALGO_SHA1)?.value;
+function sha1Of(hashes: RawHashes): string | null {
+  const sha1 = hashes?.find(
+    (hash) => hash.algo === CurseForgeHashAlgo.sha1,
+  )?.value;
   return sha1 ? sha1.toLowerCase() : null;
+}
+
+function isDependency(dependency: { relationType: number }): boolean {
+  return (
+    dependency.relationType === CurseForgeRelationType.optionalDependency ||
+    dependency.relationType === CurseForgeRelationType.requiredDependency
+  );
 }
 
 const MINECRAFT_GAME_ID = CURSEFORGE_MINECRAFT_GAME_ID;
@@ -238,104 +119,66 @@ const MODPACK_CACHE_TTL = config.curseforge.modpackCacheTtlMs;
 const MODPACK_INCOMPLETE_CACHE_TTL =
   config.curseforge.modpackIncompleteCacheTtlMs;
 
-/** Returns the auth and accept headers required for every CurseForge API request */
-function cfHeaders(): Record<string, string> {
-  return {
-    "x-api-key": config.curseforge.apiKey!,
-    Accept: "application/json",
-  };
-}
-
-/** Throws if the CurseForge API key is missing from config */
-function ensureApiKey(): void {
-  if (!config.curseforge.apiKey) {
-    throw new Error("CurseForge API key not configured");
-  }
-}
-
 /**
- * Sends one request to the CurseForge API with the key and the request
- * timeout, and counts it. Every call to the API goes through here, so the
- * count is all this app asks of the key, and the budget admits every call
- * first: one it refuses is counted as withheld and throws its
- * `CurseForgeBudgetError` without a request. A 429 answer holds every later
- * call off as its `Retry-After` asks. File downloads from the CDN are not
- * calls to the API and do not come through here.
+ * Sends one request to the CurseForge API through the content gateway, which
+ * holds the key, counts the call against the pool the caller is in and
+ * answers from its cache while it can, and returns what CurseForge answered.
+ * The gateway's own refusals (the budget of the minute spent, CurseForge
+ * holding the key off after a 429, a timeout upstream) throw as
+ * `ContentGatewayError`. File downloads from the CDN are not calls to the API
+ * and do not come through here.
  */
 async function cfFetch(
-  url: string,
-  init: {
-    method?: string;
-    headers?: Record<string, string>;
-    body?: string;
-  } = {},
-): Promise<Response> {
-  await curseforgeBudget.admit().catch((error: unknown) => {
-    countCurseForgeWithheld();
-    throw error;
+  path: string,
+  request: CurseForgeRequest = {},
+): Promise<CurseForgeAnswer> {
+  return contentGateway().curseforge(path, {
+    pool: currentContentPool(),
+    ...request,
   });
-
-  let res: Response;
-  try {
-    res = await fetch(url, {
-      ...init,
-      headers: { ...cfHeaders(), ...init.headers },
-      signal: AbortSignal.timeout(CF_FETCH_TIMEOUT_MS),
-    });
-  } catch (error) {
-    countCurseForgeCall(null);
-    throw error;
-  }
-  countCurseForgeCall(res.status);
-  if (res.status === 429) curseforgeBudget.hold(res.headers.get("retry-after"));
-  return res;
 }
 
-const ID_BATCH_ENDPOINTS = {
-  mods: { path: "/v1/mods", idsKey: "modIds" },
-  files: { path: "/v1/mods/files", idsKey: "fileIds" },
+function answerText(answer: CurseForgeAnswer): string {
+  if (answer.body === null) return "";
+  return typeof answer.body === "string"
+    ? answer.body
+    : JSON.stringify(answer.body);
+}
+
+const ID_ENDPOINTS = {
+  mods: { path: "mods", idsKey: "modIds" },
+  files: { path: "mods/files", idsKey: "fileIds" },
 } as const;
 
 /**
- * Posts ids to one of the batch endpoints, 100 per request, and returns every
- * row CurseForge answers. CurseForge answers a batch of which it knows no id
- * with a 404 and no body, not with an empty list, so that batch counts as no
- * rows; any other failure throws `<failure> (<status>)`.
+ * Posts ids to one of the batch endpoints and returns every row CurseForge
+ * answers; the gateway splits the ids CurseForge has to be asked about into
+ * calls of 100. CurseForge answers a request of which it knows no id with a
+ * 404 and no body, not with an empty list, so that counts as no rows; any
+ * other failure throws `<failure> (<status>)`.
  */
-async function postIdBatches<T extends z.ZodTypeAny>(request: {
-  of: keyof typeof ID_BATCH_ENDPOINTS;
+async function postIds<T extends z.ZodType>(request: {
+  of: keyof typeof ID_ENDPOINTS;
   ids: number[];
   row: T;
   endpoint: string;
   failure: string;
 }): Promise<z.infer<T>[]> {
-  ensureApiKey();
-  const { path, idsKey } = ID_BATCH_ENDPOINTS[request.of];
+  if (request.ids.length === 0) return [];
+  const { path, idsKey } = ID_ENDPOINTS[request.of];
 
-  const rows: z.infer<T>[] = [];
-  for (const batch of toBatches(request.ids)) {
-    const res = await cfFetch(`${CURSEFORGE_API}${path}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ [idsKey]: batch }),
-    });
-    if (res.status === 404) {
-      await res.body?.cancel();
-      continue;
-    }
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      throw new Error(`${request.failure} (${res.status}): ${text}`);
-    }
-
-    const body = parseCfResponse(
-      z.object({ data: z.array(request.row) }),
-      await res.json(),
-      request.endpoint,
+  const answer = await cfFetch(path, { body: { [idsKey]: request.ids } });
+  if (answer.status === 404) return [];
+  if (!answer.ok) {
+    throw new Error(
+      `${request.failure} (${answer.status}): ${answerText(answer)}`,
     );
-    rows.push(...body.data);
   }
-  return rows;
+  return parseCfResponse(
+    curseforgeList(request.row),
+    answer.body,
+    request.endpoint,
+  ).data;
 }
 
 export interface CurseForgeTarget {
@@ -439,8 +282,6 @@ export async function searchMods(
   pageSize = 50,
   options: CurseForgeSearchOptions = {},
 ): Promise<CurseForgeSearchResult[]> {
-  ensureApiKey();
-
   const {
     gameVersion = DEFAULT_GAME_VERSION,
     modLoaderType = NEOFORGE_LOADER_TYPE,
@@ -448,27 +289,27 @@ export async function searchMods(
     packProjectId = MODPACK_PROJECT_ID,
   } = options;
 
-  const url = new URL(`${CURSEFORGE_API}/v1/mods/search`);
-  url.searchParams.set("gameId", String(MINECRAFT_GAME_ID));
-  url.searchParams.set("searchFilter", query);
-  url.searchParams.set("pageSize", String(pageSize));
-  url.searchParams.set("sortField", "2"); // popularity
-  url.searchParams.set("sortOrder", "desc");
-  url.searchParams.set("classId", String(classId));
-  if (modLoaderType !== null) {
-    url.searchParams.set("modLoaderType", String(modLoaderType));
-  }
-  url.searchParams.set("gameVersion", gameVersion);
-
-  const res = await cfFetch(url.toString());
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`CurseForge search failed (${res.status}): ${text}`);
+  const answer = await cfFetch("mods/search", {
+    query: {
+      gameId: MINECRAFT_GAME_ID,
+      searchFilter: query,
+      pageSize,
+      sortField: CurseForgeSortField.popularity,
+      sortOrder: "desc",
+      classId,
+      modLoaderType,
+      gameVersion,
+    },
+  });
+  if (!answer.ok) {
+    throw new Error(
+      `CurseForge search failed (${answer.status}): ${answerText(answer)}`,
+    );
   }
 
   const body = parseCfResponse(
-    z.object({ data: z.array(rawSearchResultSchema) }),
-    await res.json(),
+    curseforgeList(searchHitSchema),
+    answer.body,
     "search",
   );
 
@@ -507,24 +348,18 @@ export async function findModBySlug(
   slug: string,
   classId: number = MOD_CLASS_ID,
 ): Promise<{ id: number; name: string } | null> {
-  ensureApiKey();
-
-  const url = new URL(`${CURSEFORGE_API}/v1/mods/search`);
-  url.searchParams.set("gameId", String(MINECRAFT_GAME_ID));
-  url.searchParams.set("classId", String(classId));
-  url.searchParams.set("slug", slug);
-
-  const res = await cfFetch(url.toString());
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`CurseForge slug lookup failed (${res.status}): ${text}`);
+  const answer = await cfFetch("mods/search", {
+    query: { gameId: MINECRAFT_GAME_ID, classId, slug },
+  });
+  if (!answer.ok) {
+    throw new Error(
+      `CurseForge slug lookup failed (${answer.status}): ${answerText(answer)}`,
+    );
   }
 
   const body = parseCfResponse(
-    z.object({
-      data: z.array(z.object({ id: z.number(), name: z.string() })),
-    }),
-    await res.json(),
+    curseforgeList(z.looseObject({ id: z.number(), name: z.string() })),
+    answer.body,
     "slug lookup",
   );
 
@@ -535,7 +370,8 @@ export async function findModBySlug(
     return null;
   }
 
-  return body.data[0] ?? null;
+  const found = body.data[0];
+  return found ? { id: found.id, name: found.name } : null;
 }
 
 /**
@@ -548,21 +384,18 @@ export async function getModFiles(
   gameVersion = DEFAULT_GAME_VERSION,
   modLoaderType = NEOFORGE_LOADER_TYPE,
 ): Promise<CurseForgeModFile[]> {
-  ensureApiKey();
-
-  const url = new URL(`${CURSEFORGE_API}/v1/mods/${modId}/files`);
-  url.searchParams.set("gameVersion", gameVersion);
-  url.searchParams.set("modLoaderType", String(modLoaderType));
-
-  const res = await cfFetch(url.toString());
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`CurseForge getModFiles failed (${res.status}): ${text}`);
+  const answer = await cfFetch(`mods/${modId}/files`, {
+    query: { gameVersion, modLoaderType },
+  });
+  if (!answer.ok) {
+    throw new Error(
+      `CurseForge getModFiles failed (${answer.status}): ${answerText(answer)}`,
+    );
   }
 
   const body = parseCfResponse(
-    z.object({ data: z.array(rawModFileSchema) }),
-    await res.json(),
+    curseforgeList(modFileSchema),
+    answer.body,
     "getModFiles",
   );
 
@@ -570,19 +403,22 @@ export async function getModFiles(
     id: f.id,
     displayName: f.displayName,
     fileName: f.fileName,
-    downloadUrl: f.downloadUrl,
+    downloadUrl: f.downloadUrl ?? null,
     fileDate: f.fileDate,
     fileLength: f.fileLength,
     releaseType: f.releaseType,
     gameVersions: f.gameVersions,
-    hashes: f.hashes ?? [],
-    dependencies: (f.dependencies ?? []).filter(
-      (d) => d.relationType === 2 || d.relationType === 3,
-    ),
+    hashes: (f.hashes ?? []).map((hash) => ({
+      value: hash.value,
+      algo: hash.algo,
+    })),
+    dependencies: (f.dependencies ?? [])
+      .filter(isDependency)
+      .map((d) => ({ modId: d.modId, relationType: d.relationType })),
   }));
 }
 
-type RawCurseForgeMod = z.infer<typeof rawModSchema>;
+type RawCurseForgeMod = z.infer<typeof curseforgeModSchema>;
 
 // CurseForge surfaces the author-assigned environment checkboxes as plain
 // "Client" / "Server" entries mixed into each file's gameVersions array
@@ -632,9 +468,23 @@ function mapProject(raw: RawCurseForgeMod): CurseForgeProjectData {
     issuesUrl: raw.links.issuesUrl || null,
     sourceUrl: raw.links.sourceUrl || null,
     thumbnailUrl: logoUrlOf(raw.logo),
-    authors: raw.authors,
-    categories: raw.categories,
-    screenshots: raw.screenshots ?? [],
+    authors: raw.authors.map((author) => ({
+      id: author.id,
+      name: author.name,
+      url: author.url,
+      avatarUrl: author.avatarUrl,
+    })),
+    categories: raw.categories.map((category) => ({
+      id: category.id,
+      name: category.name,
+      slug: category.slug,
+      iconUrl: category.iconUrl ?? undefined,
+    })),
+    screenshots: (raw.screenshots ?? []).map((screenshot) => ({
+      title: screenshot.title,
+      thumbnailUrl: screenshot.thumbnailUrl,
+      url: screenshot.url,
+    })),
     downloadCount: raw.downloadCount,
     isAvailable: raw.isAvailable,
     allowModDistribution: raw.allowModDistribution ?? null,
@@ -659,42 +509,37 @@ function mapProject(raw: RawCurseForgeMod): CurseForgeProjectData {
 export async function getMod(
   projectId: number,
 ): Promise<CurseForgeProjectData> {
-  ensureApiKey();
-
-  const res = await cfFetch(`${CURSEFORGE_API}/v1/mods/${projectId}`);
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`CurseForge getMod failed (${res.status}): ${text}`);
+  const answer = await cfFetch(`mods/${projectId}`);
+  if (!answer.ok) {
+    throw new Error(
+      `CurseForge getMod failed (${answer.status}): ${answerText(answer)}`,
+    );
   }
 
   const body = parseCfResponse(
-    z.object({ data: rawModSchema }),
-    await res.json(),
+    curseforgeData(curseforgeModSchema),
+    answer.body,
     "getMod",
   );
   return mapProject(body.data);
 }
 
 /**
- * Fetch full metadata for multiple CurseForge projects in batched requests,
+ * Fetch full metadata for multiple CurseForge projects in one request,
  * returning data for every ID the API resolved
  */
 export async function getMods(
   projectIds: number[],
 ): Promise<CurseForgeProjectData[]> {
-  const mods = await postIdBatches({
+  const mods = await postIds({
     of: "mods",
     ids: projectIds,
-    row: rawModSchema,
+    row: curseforgeModSchema,
     endpoint: "getMods",
     failure: "CurseForge getMods failed",
   });
   return mods.map(mapProject);
 }
-
-let minecraftVersionsCache: { versions: string[]; fetchedAt: number } | null =
-  null;
-const MINECRAFT_VERSIONS_TTL = 60 * 60 * 1000;
 
 function compareVersionsDesc(a: string, b: string): number {
   const pa = a.split(".").map((part) => parseInt(part, 10));
@@ -706,34 +551,23 @@ function compareVersionsDesc(a: string, b: string): number {
   return 0;
 }
 
-/** Fetch all released Minecraft versions, newest first (cached for an hour) */
+/** Fetch all released Minecraft versions, newest first (the gateway keeps the list for a day) */
 export async function getMinecraftVersions(): Promise<string[]> {
-  if (
-    minecraftVersionsCache &&
-    Date.now() - minecraftVersionsCache.fetchedAt < MINECRAFT_VERSIONS_TTL
-  ) {
-    return minecraftVersionsCache.versions;
-  }
-  ensureApiKey();
-
-  const res = await cfFetch(`${CURSEFORGE_API}/v1/minecraft/version`);
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
+  const answer = await cfFetch("minecraft/version");
+  if (!answer.ok) {
     throw new Error(
-      `CurseForge getMinecraftVersions failed (${res.status}): ${text}`,
+      `CurseForge getMinecraftVersions failed (${answer.status}): ${answerText(answer)}`,
     );
   }
 
   const body = parseCfResponse(
-    z.object({ data: z.array(z.object({ versionString: z.string() })) }),
-    await res.json(),
+    curseforgeList(curseforgeMinecraftVersionSchema),
+    answer.body,
     "getMinecraftVersions",
   );
-  const versions = body.data
+  return body.data
     .map((entry) => entry.versionString)
     .sort(compareVersionsDesc);
-  minecraftVersionsCache = { versions, fetchedAt: Date.now() };
-  return versions;
 }
 
 /** Fetch the direct download URL for a specific mod file */
@@ -741,25 +575,23 @@ export async function getModFileDownloadUrl(
   modId: number,
   fileId: number,
 ): Promise<string> {
-  ensureApiKey();
-
-  const res = await cfFetch(
-    `${CURSEFORGE_API}/v1/mods/${modId}/files/${fileId}/download-url`,
-  );
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
+  const answer = await cfFetch(`mods/${modId}/files/${fileId}/download-url`);
+  if (!answer.ok) {
     throw new Error(
-      `CurseForge getDownloadUrl failed (${res.status}): ${text}`,
+      `CurseForge getDownloadUrl failed (${answer.status}): ${answerText(answer)}`,
     );
   }
 
-  const body = (await res.json()) as { data: string };
-  return body.data;
+  return parseCfResponse(
+    curseforgeData(z.string()),
+    answer.body,
+    "getDownloadUrl",
+  ).data;
 }
 
 /**
  * Resolve a list of dependency mod IDs to their display info and best
- * compatible file in batched requests
+ * compatible file in one request
  *
  * Checks whether each dependency is already present in the given pack mod set.
  * Best file selection prefers the target loader + game version, falling back to
@@ -770,7 +602,6 @@ export async function resolveDependencies(
   packModIds: Set<number>,
   target: CurseForgeTarget = {},
 ): Promise<ResolvedDependency[]> {
-  ensureApiKey();
   if (modIds.length === 0) return [];
 
   const {
@@ -778,10 +609,10 @@ export async function resolveDependencies(
     modLoaderType = NEOFORGE_LOADER_TYPE,
   } = target;
 
-  const mods = await postIdBatches({
+  const mods = await postIds({
     of: "mods",
     ids: modIds,
-    row: rawDependencyModSchema,
+    row: dependencyModSchema,
     endpoint: "resolveDependencies",
     failure: "Failed to resolve dependencies",
   });
@@ -823,23 +654,23 @@ export interface CurseForgeFileDetail {
   sha1: string | null;
 }
 
-async function fetchFileDetails(
-  fileIds: number[],
-): Promise<z.infer<typeof rawFileDetailSchema>[]> {
-  return postIdBatches({
+type RawFile = z.infer<typeof curseforgeFileSchema>;
+
+async function fetchFiles(fileIds: number[]): Promise<RawFile[]> {
+  return postIds({
     of: "files",
     ids: fileIds,
-    row: rawFileDetailSchema,
+    row: curseforgeFileSchema,
     endpoint: "getFilesDetails",
     failure: "Failed to fetch file details",
   });
 }
 
-/** Identity and download facts of specific mod files, batched. Unknown ids are simply absent. */
+/** Identity and download facts of specific mod files, in one request. Unknown ids are simply absent. */
 export async function getFilesDetails(
   fileIds: number[],
 ): Promise<CurseForgeFileDetail[]> {
-  return (await fetchFileDetails(fileIds)).map((f) => ({
+  return (await fetchFiles(fileIds)).map((f) => ({
     fileId: f.id,
     projectId: f.modId,
     displayName: f.displayName ?? null,
@@ -855,22 +686,22 @@ export async function getFilesDetails(
 
 /**
  * Of the given file ids (mod files or pack files), the ones CurseForge still
- * serves, batched. An archived file stays known to the API and keeps its
- * download link, it only reads as not available, so that flag decides; an id
- * CurseForge does not know is left out as well.
+ * serves, in one request. An archived file stays known to the API and keeps
+ * its download link, it only reads as not available, so that flag decides; an
+ * id CurseForge does not know is left out as well.
  */
 export async function getServedFileIds(
   fileIds: number[],
 ): Promise<Set<number>> {
   return new Set(
-    (await fetchFileDetails(fileIds))
+    (await fetchFiles(fileIds))
       .filter((f) => f.isAvailable !== false)
       .map((f) => f.id),
   );
 }
 
 /**
- * Fetch per-file dependency info for multiple mod files in batched requests
+ * Fetch per-file dependency info for multiple mod files in one request
  *
  * Only optional (relationType 2) and required (relationType 3) dependencies are returned.
  */
@@ -881,19 +712,19 @@ export async function getFilesDependencies(fileIds: number[]): Promise<
     dependencies: Array<{ modId: number; relationType: number }>;
   }>
 > {
-  const files = await postIdBatches({
+  const files = await postIds({
     of: "files",
     ids: fileIds,
-    row: rawFileDependenciesSchema,
+    row: curseforgeFileSchema,
     endpoint: "getFilesDependencies",
     failure: "Failed to fetch file dependencies",
   });
   return files.map((f) => ({
     fileId: f.id,
     modId: f.modId,
-    dependencies: (f.dependencies ?? []).filter(
-      (d) => d.relationType === 2 || d.relationType === 3,
-    ),
+    dependencies: (f.dependencies ?? [])
+      .filter(isDependency)
+      .map((d) => ({ modId: d.modId, relationType: d.relationType })),
   }));
 }
 
@@ -931,12 +762,7 @@ export interface CurseForgeContentFile {
   dependencies: Array<{ projectId: number; required: boolean }>;
 }
 
-const CF_RELATION_OPTIONAL = 2;
-const CF_RELATION_REQUIRED = 3;
-
-function toContentFile(
-  raw: z.infer<typeof rawContentFileSchema>,
-): CurseForgeContentFile {
+function toContentFile(raw: RawFile): CurseForgeContentFile {
   return {
     id: raw.id,
     projectId: raw.modId,
@@ -950,14 +776,11 @@ function toContentFile(
     sha1: sha1Of(raw.hashes),
     gameVersions: raw.gameVersions ?? [],
     dependencies: (raw.dependencies ?? [])
-      .filter(
-        (dependency) =>
-          dependency.relationType === CF_RELATION_OPTIONAL ||
-          dependency.relationType === CF_RELATION_REQUIRED,
-      )
+      .filter(isDependency)
       .map((dependency) => ({
         projectId: dependency.modId,
-        required: dependency.relationType === CF_RELATION_REQUIRED,
+        required:
+          dependency.relationType === CurseForgeRelationType.requiredDependency,
       })),
   };
 }
@@ -979,41 +802,31 @@ export async function searchProjects(
     sortField?: number;
   } & CurseForgePage,
 ): Promise<{ projects: CurseForgeProjectHit[]; total: number }> {
-  ensureApiKey();
-
-  const url = new URL(`${CURSEFORGE_API}/v1/mods/search`);
-  url.searchParams.set("gameId", String(MINECRAFT_GAME_ID));
-  url.searchParams.set("classId", String(options.classId));
-  url.searchParams.set(
-    "sortField",
-    String(options.sortField ?? CurseForgeSortField.popularity),
-  );
-  url.searchParams.set("sortOrder", "desc");
-  url.searchParams.set("index", String(options.index));
-  url.searchParams.set("pageSize", String(options.pageSize));
-  if (options.query) url.searchParams.set("searchFilter", options.query);
-  if (options.categoryIds?.length) {
-    url.searchParams.set("categoryIds", JSON.stringify(options.categoryIds));
-  }
-  if (options.gameVersion) {
-    url.searchParams.set("gameVersion", options.gameVersion);
-  }
-  if (options.modLoaderType != null) {
-    url.searchParams.set("modLoaderType", String(options.modLoaderType));
-  }
-
-  const res = await cfFetch(url.toString());
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`CurseForge search failed (${res.status}): ${text}`);
+  const answer = await cfFetch("mods/search", {
+    query: {
+      gameId: MINECRAFT_GAME_ID,
+      classId: options.classId,
+      sortField: options.sortField ?? CurseForgeSortField.popularity,
+      sortOrder: "desc",
+      index: options.index,
+      pageSize: options.pageSize,
+      searchFilter: options.query || undefined,
+      categoryIds: options.categoryIds?.length
+        ? JSON.stringify(options.categoryIds)
+        : undefined,
+      gameVersion: options.gameVersion || undefined,
+      modLoaderType: options.modLoaderType,
+    },
+  });
+  if (!answer.ok) {
+    throw new Error(
+      `CurseForge search failed (${answer.status}): ${answerText(answer)}`,
+    );
   }
 
   const body = parseCfResponse(
-    z.object({
-      data: z.array(rawSearchResultSchema),
-      pagination: rawPaginationSchema,
-    }),
-    await res.json(),
+    curseforgePage(searchHitSchema),
+    answer.body,
     "search",
   );
 
@@ -1048,32 +861,18 @@ export interface CurseForgeCategory {
 export async function listCategories(
   classId: number,
 ): Promise<CurseForgeCategory[]> {
-  ensureApiKey();
-
-  const url = new URL(`${CURSEFORGE_API}/v1/categories`);
-  url.searchParams.set("gameId", String(MINECRAFT_GAME_ID));
-  url.searchParams.set("classId", String(classId));
-
-  const res = await cfFetch(url.toString());
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`CurseForge categories failed (${res.status}): ${text}`);
+  const answer = await cfFetch("categories", {
+    query: { gameId: MINECRAFT_GAME_ID, classId },
+  });
+  if (!answer.ok) {
+    throw new Error(
+      `CurseForge categories failed (${answer.status}): ${answerText(answer)}`,
+    );
   }
 
   const body = parseCfResponse(
-    z.object({
-      data: z.array(
-        z.object({
-          id: z.number(),
-          name: z.string(),
-          slug: z.string(),
-          iconUrl: z.string().nullish(),
-          isClass: z.boolean().nullish(),
-          parentCategoryId: z.number().nullish(),
-        }),
-      ),
-    }),
-    await res.json(),
+    curseforgeList(curseforgeCategorySchema),
+    answer.body,
     "categories",
   );
 
@@ -1100,32 +899,23 @@ export async function listProjectFiles(
     modLoaderType?: number | null;
   } & CurseForgePage,
 ): Promise<{ files: CurseForgeContentFile[]; total: number }> {
-  ensureApiKey();
-
-  const url = new URL(`${CURSEFORGE_API}/v1/mods/${projectId}/files`);
-  url.searchParams.set("index", String(options.index));
-  url.searchParams.set("pageSize", String(options.pageSize));
-  if (options.gameVersion) {
-    url.searchParams.set("gameVersion", options.gameVersion);
-  }
-  if (options.modLoaderType != null) {
-    url.searchParams.set("modLoaderType", String(options.modLoaderType));
-  }
-
-  const res = await cfFetch(url.toString());
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
+  const answer = await cfFetch(`mods/${projectId}/files`, {
+    query: {
+      index: options.index,
+      pageSize: options.pageSize,
+      gameVersion: options.gameVersion || undefined,
+      modLoaderType: options.modLoaderType,
+    },
+  });
+  if (!answer.ok) {
     throw new Error(
-      `CurseForge listProjectFiles failed (${res.status}): ${text}`,
+      `CurseForge listProjectFiles failed (${answer.status}): ${answerText(answer)}`,
     );
   }
 
   const body = parseCfResponse(
-    z.object({
-      data: z.array(rawContentFileSchema),
-      pagination: rawPaginationSchema,
-    }),
-    await res.json(),
+    curseforgePage(curseforgeFileSchema),
+    answer.body,
     "listProjectFiles",
   );
 
@@ -1135,14 +925,14 @@ export async function listProjectFiles(
   };
 }
 
-/** Files by id with their game versions and dependencies, batched. Unknown ids are simply absent. */
+/** Files by id with their game versions and dependencies, in one request. Unknown ids are simply absent. */
 export async function getContentFiles(
   fileIds: number[],
 ): Promise<CurseForgeContentFile[]> {
-  const files = await postIdBatches({
+  const files = await postIds({
     of: "files",
     ids: fileIds,
-    row: rawContentFileSchema,
+    row: curseforgeFileSchema,
     endpoint: "getContentFiles",
     failure: "CurseForge getContentFiles failed",
   });
@@ -1154,21 +944,17 @@ export async function getContentFiles(
  * CurseForge holds none there. Null when CurseForge answers 404.
  */
 async function getHtml(path: string, endpoint: string): Promise<string | null> {
-  ensureApiKey();
-
-  const res = await cfFetch(`${CURSEFORGE_API}${path}`);
-  if (res.status === 404) {
-    await res.body?.cancel();
-    return null;
-  }
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`CurseForge ${endpoint} failed (${res.status}): ${text}`);
+  const answer = await cfFetch(path);
+  if (answer.status === 404) return null;
+  if (!answer.ok) {
+    throw new Error(
+      `CurseForge ${endpoint} failed (${answer.status}): ${answerText(answer)}`,
+    );
   }
 
   const body = parseCfResponse(
-    z.object({ data: z.string().nullish() }),
-    await res.json(),
+    curseforgeData(z.string().nullish()),
+    answer.body,
     endpoint,
   );
   return body.data ?? "";
@@ -1181,7 +967,7 @@ async function getHtml(path: string, endpoint: string): Promise<string | null> {
 export async function getProjectDescription(
   projectId: number,
 ): Promise<string | null> {
-  return getHtml(`/v1/mods/${projectId}/description`, "getProjectDescription");
+  return getHtml(`mods/${projectId}/description`, "getProjectDescription");
 }
 
 /**
@@ -1194,7 +980,7 @@ export async function getFileChangelog(
   fileId: number,
 ): Promise<string | null> {
   return getHtml(
-    `/v1/mods/${projectId}/files/${fileId}/changelog`,
+    `mods/${projectId}/files/${fileId}/changelog`,
     "getFileChangelog",
   );
 }
@@ -1213,26 +999,18 @@ export interface CurseForgeFingerprintMatch {
 export async function matchFingerprints(
   fingerprints: number[],
 ): Promise<CurseForgeFingerprintMatch[]> {
-  ensureApiKey();
-
-  const res = await cfFetch(
-    `${CURSEFORGE_API}/v1/fingerprints/${MINECRAFT_GAME_ID}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ fingerprints }),
-    },
-  );
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
+  const answer = await cfFetch(`fingerprints/${MINECRAFT_GAME_ID}`, {
+    body: { fingerprints },
+  });
+  if (!answer.ok) {
     throw new Error(
-      `CurseForge matchFingerprints failed (${res.status}): ${text}`,
+      `CurseForge matchFingerprints failed (${answer.status}): ${answerText(answer)}`,
     );
   }
 
   const body = parseCfResponse(
-    z.object({ data: rawFingerprintMatchesSchema }),
-    await res.json(),
+    curseforgeData(curseforgeFingerprintMatchesSchema),
+    answer.body,
     "matchFingerprints",
   );
 
@@ -1240,6 +1018,45 @@ export async function matchFingerprints(
     fingerprint: file.fileFingerprint,
     file: toContentFile(file),
   }));
+}
+
+/** Where a file can be downloaded from, as the gateway resolved it. */
+export interface CurseForgeFileDownload {
+  /** CurseForge's own link, Modrinth's copy, the built CDN address, or null when no source has the file. */
+  source: FileSource | null;
+  url: string | null;
+  /** True when a source could not be asked this time, so a null `source` is worth asking again rather than remembering. */
+  retry: boolean;
+}
+
+/**
+ * A download address per CurseForge file id, from the gateway's resolve:
+ * CurseForge's own link, else Modrinth's copy of the file found by SHA-1,
+ * else, when `cdn` is on, the file's built address on CurseForge's CDN when
+ * it answers there with the file's size. A file CurseForge does not know
+ * comes back with no source. Throws when the gateway refuses the call or
+ * CurseForge cannot be asked.
+ */
+export async function resolveFileDownloads(
+  fileIds: number[],
+  options: { cdn: boolean; timeoutMs?: number },
+): Promise<Map<number, CurseForgeFileDownload>> {
+  if (fileIds.length === 0) return new Map();
+  const { files } = await contentGateway().resolve(fileIds, {
+    cdn: options.cdn,
+    pool: currentContentPool(),
+    timeoutMs: options.timeoutMs,
+  });
+  return new Map(
+    files.map((file) => [
+      file.fileId,
+      {
+        source: file.source ?? null,
+        url: file.url ?? null,
+        retry: file.retry,
+      },
+    ]),
+  );
 }
 
 /** Which of a release's manifests listed an entry. */
@@ -1356,7 +1173,7 @@ export interface ModpackReleaseResolution {
   complete: boolean;
 }
 
-function toModpackFile(raw: z.infer<typeof rawModpackFileSchema>): ModpackFile {
+function toModpackFile(raw: RawFile): ModpackFile {
   return {
     id: raw.id,
     projectId: raw.modId,
@@ -1378,23 +1195,26 @@ function toModpackFile(raw: z.infer<typeof rawModpackFileSchema>): ModpackFile {
 /**
  * One file of a modpack project by id. Unlike the files listing this also
  * serves server packs and additional files. Null when CurseForge does not
- * serve the file (unknown, not approved yet, or archived).
+ * serve the file (unknown, not approved yet, or archived). `fresh` asks
+ * CurseForge again instead of the gateway's cache.
  */
 export async function getModpackFile(
   packProjectId: number,
   fileId: number,
+  options: { fresh?: boolean } = {},
 ): Promise<ModpackFile | null> {
-  ensureApiKey();
-  const res = await cfFetch(
-    `${CURSEFORGE_API}/v1/mods/${packProjectId}/files/${fileId}`,
-  );
-  if (res.status === 404) return null;
-  if (!res.ok) {
-    throw new Error(`Failed to fetch modpack file ${fileId} (${res.status})`);
+  const answer = await cfFetch(`mods/${packProjectId}/files/${fileId}`, {
+    fresh: options.fresh,
+  });
+  if (answer.status === 404) return null;
+  if (!answer.ok) {
+    throw new Error(
+      `Failed to fetch modpack file ${fileId} (${answer.status})`,
+    );
   }
   const body = parseCfResponse(
-    z.object({ data: rawModpackFileSchema }),
-    await res.json(),
+    curseforgeData(curseforgeFileSchema),
+    answer.body,
     "getModpackFile",
   );
   return toModpackFile(body.data);
@@ -1402,16 +1222,18 @@ export async function getModpackFile(
 
 async function getLatestListedModpackFile(
   packProjectId: number,
+  fresh: boolean,
 ): Promise<ModpackFile | null> {
-  const res = await cfFetch(
-    `${CURSEFORGE_API}/v1/mods/${packProjectId}/files?pageSize=1`,
-  );
-  if (!res.ok) {
-    throw new Error(`Failed to fetch modpack files (${res.status})`);
+  const answer = await cfFetch(`mods/${packProjectId}/files`, {
+    query: { pageSize: 1 },
+    fresh,
+  });
+  if (!answer.ok) {
+    throw new Error(`Failed to fetch modpack files (${answer.status})`);
   }
   const body = parseCfResponse(
-    z.object({ data: z.array(rawModpackFileSchema) }),
-    await res.json(),
+    curseforgeList(curseforgeFileSchema),
+    answer.body,
     "getModpackFiles",
   );
   const latest = body.data[0];
@@ -1526,7 +1348,8 @@ const FORCE_MIN_INTERVAL_MS = 10_000;
  * instead when the pack ships a server pack and none was found, so the
  * next check re-reads). Concurrent cache misses share a single download,
  * and a failed fetch backs off for a minute before retrying. force skips
- * the cache and the backoff and waits out a read that started before the
+ * the cache and the backoff, asks CurseForge for the files again instead
+ * of the gateway's cache, and waits out a read that started before the
  * call (its context predates whatever the caller just wrote) instead of
  * joining it; forced reads less than ten seconds apart share the first
  * one, which bounds what a looping caller can download.
@@ -1568,7 +1391,7 @@ export async function getModpackManifest(
 
   const entry = {
     seq: ++readSeq,
-    promise: fetchModpackManifest(packProjectId)
+    promise: fetchModpackManifest(packProjectId, force)
       .then((manifest) => {
         manifestFailures.delete(packProjectId);
         return manifest;
@@ -1589,15 +1412,14 @@ export async function getModpackManifest(
 
 async function fetchModpackManifest(
   packProjectId: number,
+  fresh: boolean,
 ): Promise<ModpackManifest> {
-  ensureApiKey();
-
   const context = await loadModpackReadContext(packProjectId);
-  const listed = await getLatestListedModpackFile(packProjectId);
+  const listed = await getLatestListedModpackFile(packProjectId, fresh);
   const { file, serverPackFileId, complete } = await resolveModpackRelease(
     listed,
     context,
-    (fileId) => getModpackFile(packProjectId, fileId),
+    (fileId) => getModpackFile(packProjectId, fileId, { fresh }),
   );
 
   // Sequential so only one zip is ever buffered at a time
@@ -1671,15 +1493,7 @@ const packManifestSchema = z.object({
 });
 
 async function downloadPackManifest(packProjectId: number, fileId: number) {
-  const dlRes = await cfFetch(
-    `${CURSEFORGE_API}/v1/mods/${packProjectId}/files/${fileId}/download-url`,
-  );
-  if (!dlRes.ok) {
-    throw new Error(
-      `Failed to get modpack file ${fileId} download URL (${dlRes.status})`,
-    );
-  }
-  const { data: downloadUrl } = (await dlRes.json()) as { data: string };
+  const downloadUrl = await getModFileDownloadUrl(packProjectId, fileId);
 
   const zipRes = await fetch(downloadUrl, {
     signal: AbortSignal.timeout(CF_DOWNLOAD_TIMEOUT_MS),

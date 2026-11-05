@@ -13,11 +13,12 @@ import type {
 } from "@/discord/components/presets/modpack-changelog";
 import { Discord } from "@/discord/constants";
 import { EmbedColors, EmbedPresets } from "@/discord/embeds";
+import { CURSEFORGE_MINECRAFT_GAME_ID } from "@createrington/content-gateway-client";
 import {
-  CURSEFORGE_MINECRAFT_GAME_ID,
   getFilesDetails,
   getModpackFile,
   getServedFileIds,
+  resolveFileDownloads,
   type ModpackManifest,
 } from "@/services/curseforge";
 import {
@@ -33,7 +34,6 @@ import {
 } from "@/services/launcher/content/curseforge-content";
 import { getReleaseChangelogs } from "@/services/modpack/release-changelog";
 import { settings } from "@/services/settings";
-import { findModrinthFilesBySha1 } from "@/services/modrinth";
 import { getMinecraftJavaMajorVersion } from "@/utils/mojang-java-version";
 import type {
   LauncherPack,
@@ -55,7 +55,6 @@ import {
   type LauncherPackRelease,
   type LauncherPackSummary,
 } from "@createrington/shared/launcher";
-import { findCurseforgeCdnUrls } from "./curseforge-cdn";
 import {
   packFolderForClass,
   parseModLoader,
@@ -255,10 +254,13 @@ function toPackChangelog(changelog: ChangelogInput): LauncherPackChangelog {
  * is not served until it is. A pack whose releases come from the sandbox is
  * described by its modpack row instead (name, description, icon), and its
  * releases are the snapshots `prepareSnapshot` readied, the newest one only.
- * Files are resolved once and stored (the link CurseForge gives, else a
- * byte-identical file on Modrinth, else the file's built address on
- * CurseForge's CDN when it answers, else a verified copy the sandbox keeps,
- * else manual), so requests read the database. The built address is unofficial and only used while the
+ * Files are resolved once and stored (the link CurseForge gives, else what
+ * the content gateway resolves for a blocked file: a byte-identical file on
+ * Modrinth, else the file's built address on CurseForge's CDN when it
+ * answers; else a verified copy the sandbox keeps, else manual), so requests
+ * read the database. A blocked file the gateway could not ask every source
+ * about is not stored and the lookup fails, so it is asked again next time.
+ * The built address is unofficial and only used while the
  * `launcher_curseforge_cdn` feature flag is on; once the flag is off, a file
  * stored with it turns manual and is resolved again. While the flag cannot be
  * read, no address is built and stored ones are left as they are. A manual
@@ -1247,26 +1249,22 @@ class LauncherPackService {
     if (servable.length === 0) return;
 
     const blocked = servable.filter((detail) => detail.downloadUrl === null);
-    const modrinth = await findModrinthFilesBySha1(
-      blocked.map((detail) => detail.sha1),
+    const resolved = await resolveFileDownloads(
+      blocked.map((detail) => detail.fileId),
+      { cdn: useCdn },
     );
 
-    const notOnModrinth = blocked.filter(
-      (detail) => !modrinth.has(detail.sha1),
+    const unsourced = blocked.filter(
+      (detail) => !resolved.get(detail.fileId)?.source,
     );
-    const cdn = useCdn
-      ? await findCurseforgeCdnUrls(
-          notOnModrinth.map((detail) => ({
-            fileId: detail.fileId,
-            fileName: detail.fileName,
-            size: detail.fileLength,
-          })),
-        )
-      : new Map<number, string>();
-
+    const pending = new Set(
+      unsourced
+        .filter((detail) => resolved.get(detail.fileId)?.retry)
+        .map((detail) => detail.fileId),
+    );
     const sandbox = await findSandboxFileUrls(
-      notOnModrinth
-        .filter((detail) => !cdn.has(detail.fileId))
+      unsourced
+        .filter((detail) => !pending.has(detail.fileId))
         .map((detail) => ({
           fileId: detail.fileId,
           sha1: detail.sha1,
@@ -1275,20 +1273,27 @@ class LauncherPackService {
     );
 
     await Q.curseforge.file.upsertMany(
-      servable.map((detail) => ({
-        id: detail.fileId,
-        curseforgeProjectId: detail.projectId,
-        fileName: detail.fileName,
-        fileSize: detail.fileLength,
-        sha1: detail.sha1,
-        ...pickFileSource({
-          curseforge: detail.downloadUrl,
-          modrinth: modrinth.get(detail.sha1)?.url ?? null,
-          curseforgeCdn: cdn.get(detail.fileId) ?? null,
-          storage: sandbox.get(detail.fileId) ?? null,
-        }),
-      })),
+      servable
+        .filter((detail) => !pending.has(detail.fileId))
+        .map((detail) => ({
+          id: detail.fileId,
+          curseforgeProjectId: detail.projectId,
+          fileName: detail.fileName,
+          fileSize: detail.fileLength,
+          sha1: detail.sha1,
+          ...pickFileSource({
+            curseforge: detail.downloadUrl,
+            resolved: resolved.get(detail.fileId) ?? null,
+            storage: sandbox.get(detail.fileId) ?? null,
+          }),
+        })),
     );
+
+    if (pending.size > 0) {
+      throw new Error(
+        `${pending.size} file(s) could not be resolved because a source could not be asked (file ids ${[...pending].slice(0, NOTICE_MAX_FILES).join(", ")})`,
+      );
+    }
   }
 
   private async loadProjectClasses(

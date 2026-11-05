@@ -18,17 +18,12 @@ vi.mock("@/services/curseforge", async (importOriginal) => {
     getFilesDetails: vi.fn(async () => []),
     getModpackFile: vi.fn(async () => null),
     getServedFileIds: vi.fn(async (fileIds: number[]) => new Set(fileIds)),
+    resolveFileDownloads: vi.fn(async () => new Map()),
   };
 });
 vi.mock("@/services/curseforge/ingest", () => ({
   ingestProjectsWhere: vi.fn(async () => 0),
   refreshProjects: vi.fn(async () => 0),
-}));
-vi.mock("@/services/modrinth", () => ({
-  findModrinthFilesBySha1: vi.fn(async () => new Map()),
-}));
-vi.mock("@/services/launcher/pack/curseforge-cdn", () => ({
-  findCurseforgeCdnUrls: vi.fn(async () => new Map()),
 }));
 vi.mock("@/services/launcher/pack/sandbox-files", async (importOriginal) => ({
   ...(await importOriginal<
@@ -53,6 +48,7 @@ import {
   getFilesDetails,
   getModpackFile,
   getServedFileIds,
+  resolveFileDownloads,
   type CurseForgeFileDetail,
   type ModpackFile,
   type ModpackManifest,
@@ -63,14 +59,12 @@ import {
   refreshProjects,
 } from "@/services/curseforge/ingest";
 import { featureFlagService, FeatureFlags } from "@/services/feature-flag";
-import { findCurseforgeCdnUrls } from "@/services/launcher/pack/curseforge-cdn";
 import { launcherPackService } from "@/services/launcher/pack/launcher-pack.service";
 import {
   findSandboxFileUrls,
   openSandboxFile,
   SandboxUnavailableError,
 } from "@/services/launcher/pack/sandbox-files";
-import { findModrinthFilesBySha1 } from "@/services/modrinth";
 import { settings } from "@/services/settings";
 import { NotFoundError } from "@/db/utils";
 import { getMinecraftJavaMajorVersion } from "@/utils/mojang-java-version";
@@ -185,33 +179,51 @@ function serveFromCurseForge(files: SeededFile[]): void {
   );
 }
 
-function serveFromModrinth(files: SeededFile[]): void {
-  const hosted = new Map(
-    files.map((file) => [sha1Of(file.fileId), modrinthUrl(file.fileId)]),
+const hostedOnModrinth = new Set<number>();
+const answeringOnCdn = new Set<number>();
+
+function resolveThroughGateway(): void {
+  hostedOnModrinth.clear();
+  answeringOnCdn.clear();
+  vi.mocked(resolveFileDownloads).mockImplementation(
+    async (fileIds, options) =>
+      new Map(
+        fileIds.map((fileId) => [
+          fileId,
+          hostedOnModrinth.has(fileId)
+            ? { source: "modrinth", url: modrinthUrl(fileId), retry: false }
+            : options.cdn && answeringOnCdn.has(fileId)
+              ? {
+                  source: "curseforge-cdn",
+                  url: builtCdnUrl(fileId),
+                  retry: false,
+                }
+              : { source: null, url: null, retry: false },
+        ]),
+      ),
   );
-  vi.mocked(findModrinthFilesBySha1).mockImplementation(async (hashes) => {
-    return new Map(
-      hashes.flatMap((sha1) => {
-        const url = hosted.get(sha1);
-        return url
-          ? [[sha1, { sha1, url, fileName: "mod.jar", size: 1 }] as const]
-          : [];
-      }),
-    );
-  });
+}
+
+function serveFromModrinth(files: SeededFile[]): void {
+  hostedOnModrinth.clear();
+  for (const file of files) hostedOnModrinth.add(file.fileId);
 }
 
 function serveFromBuiltCdnAddress(files: SeededFile[]): void {
-  const answering = new Set(files.map((file) => file.fileId));
-  vi.mocked(findCurseforgeCdnUrls).mockImplementation(async (queries) => {
-    return new Map(
-      queries.flatMap((query) =>
-        answering.has(query.fileId)
-          ? [[query.fileId, builtCdnUrl(query.fileId)] as const]
-          : [],
+  answeringOnCdn.clear();
+  for (const file of files) answeringOnCdn.add(file.fileId);
+}
+
+function sourcesCannotBeAsked(): void {
+  vi.mocked(resolveFileDownloads).mockImplementation(
+    async (fileIds) =>
+      new Map(
+        fileIds.map((fileId) => [
+          fileId,
+          { source: null, url: null, retry: true },
+        ]),
       ),
-    );
-  });
+  );
 }
 
 function serveFromSandbox(files: SeededFile[]): void {
@@ -433,8 +445,7 @@ beforeEach(() => {
   archivedOnCurseForge([]);
   vi.mocked(ingestProjectsWhere).mockResolvedValue(0);
   vi.mocked(refreshProjects).mockResolvedValue(0);
-  vi.mocked(findModrinthFilesBySha1).mockResolvedValue(new Map());
-  vi.mocked(findCurseforgeCdnUrls).mockResolvedValue(new Map());
+  resolveThroughGateway();
   vi.mocked(findSandboxFileUrls).mockResolvedValue(new Map());
   vi.mocked(getMinecraftJavaMajorVersion).mockResolvedValue(21);
   sendMock.mockResolvedValue({ success: true });
@@ -595,7 +606,7 @@ describe("LauncherPackService.prepareRelease", () => {
     ]);
   });
 
-  it("only asks Modrinth about files CurseForge blocks", async () => {
+  it("only asks the gateway to resolve files CurseForge blocks", async () => {
     const modpack = await seedPack();
     const served = await seedFile();
     const blocked = await seedFile({ blocked: true });
@@ -607,9 +618,10 @@ describe("LauncherPackService.prepareRelease", () => {
 
     await launcherPackService.prepareRelease(modpack, release.id, manifest);
 
-    expect(findModrinthFilesBySha1).toHaveBeenCalledWith([
-      sha1Of(blocked.fileId),
-    ]);
+    expect(resolveFileDownloads).toHaveBeenCalledTimes(1);
+    expect(resolveFileDownloads).toHaveBeenCalledWith([blocked.fileId], {
+      cdn: false,
+    });
   });
 
   it("tells the owner when a client file has no download source", async () => {
@@ -702,19 +714,11 @@ describe("LauncherPackService.prepareRelease", () => {
 
     await launcherPackService.prepareRelease(modpack, release.id, manifest);
 
-    expect(findCurseforgeCdnUrls).toHaveBeenCalledTimes(1);
-    expect(findCurseforgeCdnUrls).toHaveBeenCalledWith([
-      {
-        fileId: onCdn.fileId,
-        fileName: `mod-${onCdn.fileId}.jar`,
-        size: onCdn.detail.fileLength,
-      },
-      {
-        fileId: onSandbox.fileId,
-        fileName: `mod-${onSandbox.fileId}.jar`,
-        size: onSandbox.detail.fileLength,
-      },
-    ]);
+    expect(resolveFileDownloads).toHaveBeenCalledTimes(1);
+    expect(resolveFileDownloads).toHaveBeenCalledWith(
+      [onModrinth.fileId, onCdn.fileId, onSandbox.fileId],
+      { cdn: true },
+    );
     expect(findSandboxFileUrls).toHaveBeenCalledWith([
       expect.objectContaining({ fileId: onSandbox.fileId }),
     ]);
@@ -749,7 +753,9 @@ describe("LauncherPackService.prepareRelease", () => {
 
     await launcherPackService.prepareRelease(modpack, release.id, manifest);
 
-    expect(findCurseforgeCdnUrls).toHaveBeenCalledTimes(1);
+    expect(resolveFileDownloads).toHaveBeenCalledWith([blocked.fileId], {
+      cdn: true,
+    });
     expect(await isReady(release.id)).toBe(true);
     expect(sendMock).toHaveBeenCalledTimes(1);
     expect(sendMock.mock.calls[0][0].embeds.data.description).toContain(
@@ -776,7 +782,9 @@ describe("LauncherPackService.prepareRelease", () => {
 
     await launcherPackService.prepareRelease(modpack, release.id, manifest);
 
-    expect(findCurseforgeCdnUrls).not.toHaveBeenCalled();
+    expect(resolveFileDownloads).toHaveBeenCalledWith([blocked.fileId], {
+      cdn: false,
+    });
     const resolved = await launcherPackService.resolveFiles([blocked.fileId]);
     expect(resolved.files[0].source).toBe("manual");
   });
@@ -871,23 +879,27 @@ describe("LauncherPackService.prepareRelease", () => {
     expect(await isReady(release.id)).toBe(true);
   });
 
-  it("does not store a blocked file as manual while Modrinth cannot be asked", async () => {
+  it("does not store a blocked file as manual while a source could not be asked about it", async () => {
     const modpack = await seedPack();
+    const served = await seedFile();
     const blocked = await seedFile({ blocked: true });
-    serveFromCurseForge([blocked]);
-    vi.mocked(findModrinthFilesBySha1).mockRejectedValue(
-      new Error("Modrinth version_files failed (503)"),
-    );
+    serveFromCurseForge([served, blocked]);
+    sourcesCannotBeAsked();
     const { release, manifest } = await seedRelease(modpack, "1.0.0", [
+      served,
       blocked,
     ]);
 
     await expect(
       launcherPackService.prepareRelease(modpack, release.id, manifest),
-    ).rejects.toThrow(/503/);
+    ).rejects.toThrow(/could not be asked/);
 
     expect(await isReady(release.id)).toBe(false);
     expect(await Q.curseforge.file.find({ id: blocked.fileId })).toBeNull();
+    expect(await Q.curseforge.file.find({ id: served.fileId })).toMatchObject({
+      source: "curseforge",
+    });
+    expect(findSandboxFileUrls).toHaveBeenCalledWith([]);
     expect(sendMock).not.toHaveBeenCalled();
   });
 
@@ -896,8 +908,8 @@ describe("LauncherPackService.prepareRelease", () => {
     const blocked = await seedFile({ blocked: true });
     serveFromCurseForge([blocked]);
     await launcherPackService.resolveFiles([blocked.fileId]);
-    vi.mocked(findModrinthFilesBySha1).mockRejectedValue(
-      new Error("Modrinth version_files failed (503)"),
+    vi.mocked(resolveFileDownloads).mockRejectedValue(
+      new Error("the gateway answered 503"),
     );
     const { release, manifest } = await seedRelease(modpack, "1.0.0", [
       blocked,
@@ -2404,7 +2416,7 @@ describe("LauncherPackService.resolveFiles", () => {
     serveFromSandbox([file]);
     await ageStoredFile(file.fileId, 2 * HOUR_MS);
     vi.mocked(getFilesDetails).mockClear();
-    vi.mocked(findModrinthFilesBySha1).mockClear();
+    vi.mocked(resolveFileDownloads).mockClear();
     vi.mocked(findSandboxFileUrls).mockClear();
 
     const resolved = await launcherPackService.resolveFiles([file.fileId]);
@@ -2413,8 +2425,7 @@ describe("LauncherPackService.resolveFiles", () => {
       expect.objectContaining({ source: "manual", url: null }),
     );
     expect(getFilesDetails).not.toHaveBeenCalled();
-    expect(findModrinthFilesBySha1).not.toHaveBeenCalled();
-    expect(findCurseforgeCdnUrls).not.toHaveBeenCalled();
+    expect(resolveFileDownloads).not.toHaveBeenCalled();
     expect(findSandboxFileUrls).not.toHaveBeenCalled();
   });
 
@@ -2451,7 +2462,14 @@ describe("LauncherPackService.resolveFiles", () => {
       late.fileId,
     ]);
 
-    expect(findCurseforgeCdnUrls).toHaveBeenCalledTimes(1);
+    expect(
+      vi
+        .mocked(resolveFileDownloads)
+        .mock.calls.map(([fileIds, options]) => [fileIds, options.cdn]),
+    ).toEqual([
+      [[file.fileId], true],
+      [[late.fileId], false],
+    ]);
     expect(resolved.files).toEqual([
       expect.objectContaining({
         fileId: file.fileId,
@@ -2549,7 +2567,7 @@ describe("LauncherPackService.recheckStaleFiles", () => {
 
     await launcherPackService.recheckStaleFiles();
 
-    expect(findCurseforgeCdnUrls).toHaveBeenCalledTimes(2);
+    expect(resolveFileDownloads).toHaveBeenCalledTimes(2);
     expect(await storedSource(file.fileId)).toEqual(
       expect.objectContaining({
         source: "curseforge-cdn",
@@ -2571,7 +2589,9 @@ describe("LauncherPackService.recheckStaleFiles", () => {
     const whileOff = await storedSource(file.fileId);
 
     expect(whileOn.source).toBe("curseforge-cdn");
-    expect(findCurseforgeCdnUrls).toHaveBeenCalledTimes(1);
+    expect(
+      vi.mocked(resolveFileDownloads).mock.calls.map(([, options]) => options),
+    ).toEqual([{ cdn: true }, { cdn: false }]);
     expect(whileOff).toEqual(
       expect.objectContaining({
         source: "storage",
@@ -2597,7 +2617,7 @@ describe("LauncherPackService.recheckStaleFiles", () => {
     );
     await launcherPackService.recheckStaleFiles();
 
-    expect(findCurseforgeCdnUrls).toHaveBeenCalledTimes(1);
+    expect(resolveFileDownloads).toHaveBeenCalledTimes(1);
     expect(await storedSource(file.fileId)).toEqual(
       expect.objectContaining({
         source: "curseforge-cdn",

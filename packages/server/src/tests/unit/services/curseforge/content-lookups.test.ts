@@ -20,14 +20,22 @@ import {
 } from "@/services/curseforge";
 
 const fetchMock = vi.fn<typeof fetch>();
-const originalApiKey = config.curseforge.apiKey;
+const GATEWAY = { url: "http://gateway.test:5005", token: "t".repeat(32) };
+const originalGateway = config.contentGateway;
 
 function answer(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), { status });
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "content-type": "application/json", "x-cache": "miss" },
+  });
 }
 
 function requestedUrl(call = 0): URL {
   return new URL(String(fetchMock.mock.calls[call]?.[0]));
+}
+
+function requestedHeaders(call = 0): Headers {
+  return new Headers(fetchMock.mock.calls[call]?.[1]?.headers);
 }
 
 const RAW_FILE = {
@@ -54,18 +62,59 @@ const RAW_FILE = {
   ],
 };
 
+type GatewayConfig = { contentGateway: typeof config.contentGateway };
+
 beforeAll(() => {
-  (config.curseforge as { apiKey?: string }).apiKey = "test-key";
+  (config as GatewayConfig).contentGateway = GATEWAY;
   vi.stubGlobal("fetch", fetchMock);
 });
 
 afterAll(() => {
-  (config.curseforge as { apiKey?: string }).apiKey = originalApiKey;
+  (config as GatewayConfig).contentGateway = originalGateway;
   vi.unstubAllGlobals();
 });
 
 beforeEach(() => {
   fetchMock.mockReset();
+});
+
+describe("asking CurseForge through the content gateway", () => {
+  it("sends every request to the gateway with the token and the app's pool", async () => {
+    fetchMock.mockResolvedValue(answer({ data: [] }));
+
+    await listCategories(6);
+
+    expect(requestedUrl().origin).toBe("http://gateway.test:5005");
+    expect(requestedHeaders().get("authorization")).toBe(
+      `Bearer ${GATEWAY.token}`,
+    );
+    expect(requestedHeaders().get("x-budget-pool")).toBe("app");
+  });
+
+  it("throws the gateway's refusal as it is, with when to try again", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          code: "BUDGET_SPENT",
+          message: "the minute's budget is spent",
+          pool: "app",
+          retryAfterMs: 12_500,
+        }),
+        {
+          status: 503,
+          headers: { "content-type": "application/json", "retry-after": "13" },
+        },
+      ),
+    );
+
+    await expect(listCategories(6)).rejects.toMatchObject({
+      name: "ContentGatewayError",
+      code: "BUDGET_SPENT",
+      status: 503,
+      retryAfterMs: 12_500,
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("searchProjects", () => {
@@ -97,7 +146,7 @@ describe("searchProjects", () => {
     });
 
     const url = requestedUrl();
-    expect(url.pathname).toMatch(/\/v1\/mods\/search$/);
+    expect(url.pathname).toBe("/v1/curseforge/mods/search");
     expect(Object.fromEntries(url.searchParams)).toEqual({
       gameId: "432",
       classId: "6",
@@ -290,7 +339,7 @@ describe("listCategories", () => {
     const categories = await listCategories(6);
 
     const url = requestedUrl();
-    expect(url.pathname).toMatch(/\/v1\/categories$/);
+    expect(url.pathname).toBe("/v1/curseforge/categories");
     expect(Object.fromEntries(url.searchParams)).toEqual({
       gameId: "432",
       classId: "6",
@@ -336,7 +385,7 @@ describe("listProjectFiles", () => {
     });
 
     const url = requestedUrl();
-    expect(url.pathname).toMatch(/\/v1\/mods\/439890\/files$/);
+    expect(url.pathname).toBe("/v1/curseforge/mods/439890/files");
     expect(Object.fromEntries(url.searchParams)).toEqual({
       index: "20",
       pageSize: "10",
@@ -386,19 +435,28 @@ describe("getContentFiles", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("reads the files CurseForge knows", async () => {
+  it("asks for every id in one request and reads the files CurseForge knows", async () => {
     fetchMock.mockResolvedValue(answer({ data: [RAW_FILE] }));
+    const ids = [
+      7000001,
+      ...Array.from({ length: 150 }, (_, i) => 990000000 + i),
+    ];
 
-    const files = await getContentFiles([7000001, 999999999]);
+    const files = await getContentFiles(ids);
 
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(requestedUrl().pathname).toBe("/v1/curseforge/mods/files");
+    expect(fetchMock.mock.calls[0]?.[1]?.method).toBe("POST");
     expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({
-      fileIds: [7000001, 999999999],
+      fileIds: ids,
     });
     expect(files.map((file) => file.id)).toEqual([7000001]);
   });
 
   it("finds nothing when CurseForge knows none of the ids", async () => {
-    fetchMock.mockResolvedValue(answer({}, 404));
+    fetchMock.mockResolvedValue(
+      new Response(null, { status: 404, headers: { "x-cache": "miss" } }),
+    );
 
     expect(await getContentFiles([999999999])).toEqual([]);
   });
@@ -438,7 +496,7 @@ describe("matchFingerprints", () => {
 
     const found = await matchFingerprints([522093599, 1]);
 
-    expect(requestedUrl().pathname).toMatch(/\/v1\/fingerprints\/432$/);
+    expect(requestedUrl().pathname).toBe("/v1/curseforge/fingerprints/432");
     expect(fetchMock.mock.calls[0]?.[1]?.method).toBe("POST");
     expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({
       fingerprints: [522093599, 1],
@@ -498,7 +556,9 @@ describe("getProjectDescription", () => {
 
     const description = await getProjectDescription(328085);
 
-    expect(requestedUrl().pathname).toMatch(/\/v1\/mods\/328085\/description$/);
+    expect(requestedUrl().pathname).toBe(
+      "/v1/curseforge/mods/328085/description",
+    );
     expect(description).toBe(html);
   });
 
@@ -536,8 +596,8 @@ describe("getFileChangelog", () => {
 
     const changelog = await getFileChangelog(439890, 7000001);
 
-    expect(requestedUrl().pathname).toMatch(
-      /\/v1\/mods\/439890\/files\/7000001\/changelog$/,
+    expect(requestedUrl().pathname).toBe(
+      "/v1/curseforge/mods/439890/files/7000001/changelog",
     );
     expect(changelog).toBe(html);
   });

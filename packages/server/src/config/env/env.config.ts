@@ -260,21 +260,18 @@ const envSchema = z
       )
       .optional(),
 
+    // Content gateway: the loopback service that holds the CurseForge API key
+    // and fronts CurseForge and Modrinth for every process on the box. Every
+    // CurseForge and Modrinth feature is disabled while either is unset.
+    CONTENT_GATEWAY_URL: z.string().url().optional(),
+    CONTENT_GATEWAY_TOKEN: z.string().min(32).optional(),
+
     // CurseForge
-    CURSEFORGE_API_KEY: z.string().min(1).optional(),
     CURSEFORGE_MODPACK_PROJECT_ID: z.coerce
       .number()
       .int()
       .positive()
       .default(1660984),
-    // How many calls a minute the launcher's content lookups (search, files,
-    // changelogs, fingerprints) may make on the key, app-wide; the rest are
-    // answered 503 with a Retry-After until the next minute
-    CURSEFORGE_LAUNCHER_CALLS_PER_MINUTE: z.coerce
-      .number()
-      .int()
-      .min(1)
-      .default(300),
 
     // Sandbox: shared secret the sandbox presents as a bearer token when it
     // reports a publish from a background job (no user session to forward)

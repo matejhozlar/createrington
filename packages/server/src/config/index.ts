@@ -323,12 +323,15 @@ const config = {
         }
       : null,
 
+  // null disables every CurseForge and Modrinth feature (services/content-gateway)
+  contentGateway:
+    env.CONTENT_GATEWAY_URL && env.CONTENT_GATEWAY_TOKEN
+      ? { url: env.CONTENT_GATEWAY_URL, token: env.CONTENT_GATEWAY_TOKEN }
+      : null,
+
   curseforge: {
-    apiKey: env.CURSEFORGE_API_KEY,
-    apiBaseUrl: "https://api.curseforge.com",
     defaultGameVersion: "1.21.1",
     modpackProjectId: env.CURSEFORGE_MODPACK_PROJECT_ID,
-    launcherCallsPerMinute: env.CURSEFORGE_LAUNCHER_CALLS_PER_MINUTE,
     modpackCacheTtlMs: 60 * 60 * 1000,
     modpackIncompleteCacheTtlMs: 60 * 1000,
   },

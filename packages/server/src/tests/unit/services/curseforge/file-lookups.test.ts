@@ -16,10 +16,14 @@ import {
 } from "@/services/curseforge";
 
 const fetchMock = vi.fn<typeof fetch>();
-const originalApiKey = config.curseforge.apiKey;
+const GATEWAY = { url: "http://gateway.test:5005", token: "t".repeat(32) };
+const originalGateway = config.contentGateway;
 
 function answer(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), { status });
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "content-type": "application/json", "x-cache": "miss" },
+  });
 }
 
 function rawFile(id: number, overrides: Record<string, unknown> = {}) {
@@ -46,13 +50,15 @@ function rawFile(id: number, overrides: Record<string, unknown> = {}) {
 const idsOf = (count: number, from: number) =>
   Array.from({ length: count }, (_, index) => from + index);
 
+type GatewayConfig = { contentGateway: typeof config.contentGateway };
+
 beforeAll(() => {
-  (config.curseforge as { apiKey?: string }).apiKey = "test-key";
+  (config as GatewayConfig).contentGateway = GATEWAY;
   vi.stubGlobal("fetch", fetchMock);
 });
 
 afterAll(() => {
-  (config.curseforge as { apiKey?: string }).apiKey = originalApiKey;
+  (config as GatewayConfig).contentGateway = originalGateway;
   vi.unstubAllGlobals();
 });
 
@@ -88,15 +94,22 @@ describe("getFilesDetails", () => {
     expect(await getFilesDetails([999999999])).toEqual([]);
   });
 
-  it("keeps the files of the other batches when one batch is unknown as a whole", async () => {
-    fetchMock
-      .mockResolvedValueOnce(answer({}, 404))
-      .mockResolvedValueOnce(answer({ data: [rawFile(7000001)] }));
+  it("asks for every id in one request, whatever their number", async () => {
+    fetchMock.mockResolvedValue(answer({ data: [rawFile(7000001)] }));
+    const ids = [...idsOf(150, 990000000), 7000001];
 
-    const details = await getFilesDetails([...idsOf(100, 990000000), 7000001]);
+    const details = await getFilesDetails(ids);
 
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({
+      fileIds: ids,
+    });
     expect(details.map((detail) => detail.fileId)).toEqual([7000001]);
+  });
+
+  it("asks for nothing without ids", async () => {
+    expect(await getFilesDetails([])).toEqual([]);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("still throws when CurseForge fails", async () => {
@@ -147,26 +160,6 @@ describe("getFilesDependencies", () => {
     expect(await getFilesDependencies([999999999])).toEqual([]);
   });
 
-  it("keeps the files of the other batches when one batch is unknown as a whole", async () => {
-    fetchMock
-      .mockResolvedValueOnce(answer({}, 404))
-      .mockResolvedValueOnce(answer({ data: [rawFile(7000001)] }));
-
-    const files = await getFilesDependencies([
-      ...idsOf(100, 990000000),
-      7000001,
-    ]);
-
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(files).toEqual([
-      {
-        fileId: 7000001,
-        modId: 328085,
-        dependencies: [{ modId: 238222, relationType: 2 }],
-      },
-    ]);
-  });
-
   it("still throws when CurseForge fails", async () => {
     fetchMock.mockResolvedValue(answer({}, 503));
 
@@ -208,11 +201,9 @@ describe("resolveDependencies", () => {
       TARGET,
     );
 
-    expect(
-      new URL(String(fetchMock.mock.calls[0]?.[0])).pathname.endsWith(
-        "/v1/mods",
-      ),
-    ).toBe(true);
+    expect(new URL(String(fetchMock.mock.calls[0]?.[0])).pathname).toBe(
+      "/v1/curseforge/mods",
+    );
     expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({
       modIds: [238222, 999999999],
     });
@@ -234,21 +225,6 @@ describe("resolveDependencies", () => {
     expect(await resolveDependencies([999999999], new Set(), TARGET)).toEqual(
       [],
     );
-  });
-
-  it("keeps the projects of the other batches when one batch is unknown as a whole", async () => {
-    fetchMock
-      .mockResolvedValueOnce(answer({}, 404))
-      .mockResolvedValueOnce(answer({ data: [rawMod(238222)] }));
-
-    const resolved = await resolveDependencies(
-      [...idsOf(100, 990000000), 238222],
-      new Set(),
-      TARGET,
-    );
-
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(resolved.map((dependency) => dependency.modId)).toEqual([238222]);
   });
 
   it("still throws when CurseForge fails", async () => {
