@@ -97,8 +97,8 @@ importers:
   packages/client:
     dependencies:
       '@createrington/icons':
-        specifier: 0.5.0
-        version: 0.5.0(motion@12.42.2(@emotion/is-prop-valid@1.4.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        specifier: 0.6.0
+        version: 0.6.0(motion@12.42.2(@emotion/is-prop-valid@1.4.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@dnd-kit/core':
         specifier: ^6.3.1
         version: 6.3.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -648,8 +648,9 @@ packages:
     peerDependencies:
       zod: ^4.6.6
 
-  '@createrington/icons@0.5.0':
-    resolution: {integrity: sha512-lqAeeiTMDmr+sNEoeqG8X5lYis+3vz/czc+krExWx42mu4R8Mk7XkDnViVgQEE2Cmt/nVrsYuPOhT1nRMse5Lg==, tarball: https://gitea.matejhoz.com/api/packages/Createrington/npm/%40createrington%2Ficons/-/0.5.0/icons-0.5.0.tgz}
+  '@createrington/icons@0.6.0':
+    resolution: {integrity: sha512-LDyp3yWq0H4JsQNKtnEr6hjzGGwuYeFVasJHo6+gsqwNcUDLQAjW5HdSYRqn75kOJKcxuZNJAHhp9vfH3aKYtQ==, tarball: https://gitea.matejhoz.com/api/packages/Createrington/npm/%40createrington%2Ficons/-/0.6.0/icons-0.6.0.tgz}
+    engines: {node: '>=20'}
     peerDependencies:
       motion: '>=11'
       react: '>=18'
@@ -6266,7 +6267,7 @@ snapshots:
     dependencies:
       zod: 4.6.7
 
-  '@createrington/icons@0.5.0(motion@12.42.2(@emotion/is-prop-valid@1.4.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
+  '@createrington/icons@0.6.0(motion@12.42.2(@emotion/is-prop-valid@1.4.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
     dependencies:
       clsx: 2.1.1
       motion: 12.42.2(@emotion/is-prop-valid@1.4.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
