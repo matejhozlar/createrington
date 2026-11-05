@@ -16,6 +16,7 @@ import {
   lerp,
   prefersReducedMotion,
   rand,
+  shortestAngle,
   span,
 } from "./core/math";
 import {
@@ -571,8 +572,11 @@ function trip(host: IdleHost): Gesture {
 
       const leftWheel = easeInOutSine(span(time, 0.2, 0.8));
       const rightWheel = easeInOutSine(span(time, 0.26, 0.86));
-      if (leftWheel < 1) pose.leftArmX -= Math.PI * 2 * leftWheel;
-      if (rightWheel < 1) pose.rightArmX -= Math.PI * 2 * rightWheel;
+      pose.leftArmX = shortestAngle(0, pose.leftArmX - Math.PI * 2 * leftWheel);
+      pose.rightArmX = shortestAngle(
+        0,
+        pose.rightArmX - Math.PI * 2 * rightWheel,
+      );
       pose.headY += keyed(
         TRIP_LOOK_KEYS,
         span(time, TRIP_LOOK_AT, recover + 0.4),
