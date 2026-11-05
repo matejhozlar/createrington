@@ -41,7 +41,7 @@ import { trpc, type RouterOutput } from "@/lib/trpc";
 type ReleaseRow =
   RouterOutput["owner"]["launcherReleases"]["list"]["releases"][number];
 
-type BudgetSnapshot = RouterOutput["owner"]["contentGateway"]["budget"];
+type BudgetSnapshot = RouterOutput["owner"]["contentGateway"]["budget"]["get"];
 
 type UpstreamBudget = BudgetSnapshot["curseforge"];
 
@@ -542,7 +542,7 @@ export function OwnerLauncherReleases() {
 
 function ContentGatewayCard() {
   const utils = trpc.useUtils();
-  const budgetQuery = trpc.owner.contentGateway.budget.useQuery(undefined, {
+  const budgetQuery = trpc.owner.contentGateway.budget.get.useQuery(undefined, {
     refetchInterval: BUDGET_REFRESH_MS,
   });
   const cdnQuery = trpc.owner.curseforgeCdn.get.useQuery();
