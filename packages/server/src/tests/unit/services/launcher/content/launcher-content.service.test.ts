@@ -1,14 +1,4 @@
-import { describe, it, expect, afterAll, beforeEach, vi } from "vitest";
-import type { KeyValueStore } from "@/services/key-value-store";
-
-const { stores } = vi.hoisted(() => ({
-  stores: {
-    current: null as unknown as KeyValueStore,
-    create: (): KeyValueStore => {
-      throw new Error("not ready");
-    },
-  },
-}));
+import { describe, it, expect, beforeEach, vi } from "vitest";
 
 vi.mock("@/services/curseforge", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/services/curseforge")>();
@@ -22,30 +12,16 @@ vi.mock("@/services/curseforge", async (importOriginal) => {
     getContentFiles: vi.fn(),
     getFileChangelog: vi.fn(),
     matchFingerprints: vi.fn(),
+    resolveFileDownloads: vi.fn(),
   };
 });
 vi.mock("@/services/feature-flag", () => ({
   FeatureFlags: { launcherCurseforgeCdn: "launcher_curseforge_cdn" },
   featureFlagService: { isEnabled: vi.fn() },
 }));
-vi.mock("@/services/launcher/pack/curseforge-cdn", () => ({
-  resolveCurseforgeCdnUrls: vi.fn(),
-}));
-vi.mock("@/services/key-value-store", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@/services/key-value-store")>();
-  stores.create = () => new actual.MemoryKeyValueStore();
-  return {
-    ...actual,
-    createKeyValueStore: (): KeyValueStore => ({
-      get: (key: string) => stores.current.get(key),
-      getMany: (keys: string[]) => stores.current.getMany(keys),
-      set: (key: string, value: string, ttlMs: number) =>
-        stores.current.set(key, value, ttlMs),
-    }),
-  };
-});
 
+import { ContentGatewayError } from "@createrington/content-gateway-client";
+import { currentContentPool } from "@/services/content-gateway";
 import {
   getContentFiles,
   getFileChangelog,
@@ -54,19 +30,15 @@ import {
   listCategories,
   listProjectFiles,
   matchFingerprints,
+  resolveFileDownloads,
   searchProjects,
   type CurseForgeContentFile,
+  type CurseForgeFileDownload,
   type CurseForgeProjectData,
   type CurseForgeProjectHit,
 } from "@/services/curseforge";
-import config from "@/config";
-import {
-  CurseForgeBudgetError,
-  curseforgeBudget,
-} from "@/services/curseforge/budget";
 import { featureFlagService } from "@/services/feature-flag";
 import { launcherContentService } from "@/services/launcher/content/launcher-content.service";
-import { resolveCurseforgeCdnUrls } from "@/services/launcher/pack/curseforge-cdn";
 
 const CREATE_PAGE = "https://www.curseforge.com/minecraft/mc-mods/create";
 
@@ -196,6 +168,8 @@ function packZip(overrides: Partial<CurseForgeContentFile> = {}) {
 
 const BLOCKED_CDN_URL =
   "https://mediafilez.forgecdn.net/files/7000/1/create-1.21.1-6.0.10.jar";
+const MODRINTH_URL =
+  "https://cdn.modrinth.com/data/LNytGWDc/versions/abc/create-1.21.1-6.0.10.jar";
 
 function switchCdn(enabled: boolean) {
   vi.mocked(featureFlagService.isEnabled).mockImplementation(
@@ -203,9 +177,36 @@ function switchCdn(enabled: boolean) {
   );
 }
 
+function resolveDownloads(
+  downloads: Record<number, Partial<CurseForgeFileDownload>>,
+) {
+  vi.mocked(resolveFileDownloads).mockImplementation(
+    async (fileIds) =>
+      new Map(
+        fileIds.map((fileId) => [
+          fileId,
+          { source: null, url: null, retry: false, ...downloads[fileId] },
+        ]),
+      ),
+  );
+}
+
+function refusal(retryAfterMs: number | null): ContentGatewayError {
+  return new ContentGatewayError(
+    503,
+    {
+      code: retryAfterMs === null ? "UPSTREAM_TIMEOUT" : "BUDGET_SPENT",
+      message: "the gateway refused the call",
+      pool: "launcher",
+      retryAfterMs,
+    },
+    "refused",
+  );
+}
+
 beforeEach(() => {
   vi.resetAllMocks();
-  stores.current = stores.create();
+  resolveDownloads({});
 });
 
 describe("LauncherContentService.search", () => {
@@ -253,40 +254,20 @@ describe("LauncherContentService.search", () => {
     });
   });
 
-  it("asks CurseForge once for the same search, whatever the case of the text", async () => {
-    vi.mocked(searchProjects).mockResolvedValue({
-      projects: [makeHit()],
-      total: 1,
-    });
-    const search = { kind: "mod", ...FIRST_PAGE } as const;
-
-    const first = await launcherContentService.search({
-      query: "create",
-      ...search,
-    });
-    const second = await launcherContentService.search({
-      query: "Create",
-      ...search,
+  it("asks CurseForge in the launcher's pool", async () => {
+    let pool: string | null = null;
+    vi.mocked(searchProjects).mockImplementation(async () => {
+      pool = currentContentPool();
+      return { projects: [], total: 0 };
     });
 
-    expect(second).toEqual(first);
-    expect(searchProjects).toHaveBeenCalledTimes(1);
-  });
-
-  it("asks again for another page, kind, version or loader", async () => {
-    vi.mocked(searchProjects).mockResolvedValue({ projects: [], total: 0 });
-    const search = { query: "create", kind: "mod", ...FIRST_PAGE } as const;
-
-    await launcherContentService.search(search);
-    await launcherContentService.search({ ...search, page: 1 });
-    await launcherContentService.search({ ...search, kind: "shader" });
     await launcherContentService.search({
-      ...search,
-      minecraftVersion: "1.21.1",
+      query: "create",
+      kind: "mod",
+      ...FIRST_PAGE,
     });
-    await launcherContentService.search({ ...search, loader: "fabric" });
 
-    expect(searchProjects).toHaveBeenCalledTimes(5);
+    expect(pool).toBe("launcher");
   });
 
   it.each(["shader", "resourcepack"] as const)(
@@ -307,7 +288,7 @@ describe("LauncherContentService.search", () => {
     },
   );
 
-  it("asks CurseForge for the categories and the sort order it is given", async () => {
+  it("asks CurseForge for the categories, each once and in order, and the sort order it is given", async () => {
     vi.mocked(searchProjects).mockResolvedValue({ projects: [], total: 0 });
 
     await launcherContentService.search({
@@ -332,40 +313,6 @@ describe("LauncherContentService.search", () => {
     });
   });
 
-  it("asks again for another category or sort order", async () => {
-    vi.mocked(searchProjects).mockResolvedValue({ projects: [], total: 0 });
-    const search = { query: "create", kind: "mod", ...FIRST_PAGE } as const;
-
-    await launcherContentService.search(search);
-    await launcherContentService.search({ ...search, categoryIds: [412] });
-    await launcherContentService.search({ ...search, categoryIds: [420] });
-    await launcherContentService.search({
-      ...search,
-      categoryIds: [412, 420],
-    });
-    await launcherContentService.search({ ...search, sort: "downloads" });
-    await launcherContentService.search({ ...search, sort: "updated" });
-
-    expect(searchProjects).toHaveBeenCalledTimes(6);
-  });
-
-  it("asks CurseForge once for the same categories in another order, and for relevance as for no sort order", async () => {
-    vi.mocked(searchProjects).mockResolvedValue({ projects: [], total: 0 });
-    const search = { query: "create", kind: "mod", ...FIRST_PAGE } as const;
-
-    await launcherContentService.search({
-      ...search,
-      categoryIds: [412, 420],
-    });
-    await launcherContentService.search({
-      ...search,
-      categoryIds: [420, 412],
-      sort: "relevance",
-    });
-
-    expect(searchProjects).toHaveBeenCalledTimes(1);
-  });
-
   it("never counts more results than a search can page through", async () => {
     vi.mocked(searchProjects).mockResolvedValue({
       projects: [],
@@ -381,19 +328,21 @@ describe("LauncherContentService.search", () => {
     expect(found.total).toBe(10_000);
   });
 
-  it("answers 503 when CurseForge fails, and asks again next time", async () => {
-    vi.mocked(searchProjects)
-      .mockRejectedValueOnce(new Error("CurseForge search failed (500)"))
-      .mockResolvedValueOnce({ projects: [makeHit()], total: 1 });
-    const search = { query: "create", kind: "mod", ...FIRST_PAGE } as const;
+  it("answers 503 when CurseForge fails", async () => {
+    vi.mocked(searchProjects).mockRejectedValue(
+      new Error("CurseForge search failed (500)"),
+    );
 
-    await expect(launcherContentService.search(search)).rejects.toMatchObject({
+    await expect(
+      launcherContentService.search({
+        query: "create",
+        kind: "mod",
+        ...FIRST_PAGE,
+      }),
+    ).rejects.toMatchObject({
       statusCode: 503,
       code: "CONTENT_UNAVAILABLE",
     });
-    expect((await launcherContentService.search(search)).projects).toHaveLength(
-      1,
-    );
   });
 });
 
@@ -437,23 +386,10 @@ describe("LauncherContentService.listCategories", () => {
     ]);
   });
 
-  it("asks CurseForge once per kind", async () => {
-    vi.mocked(listCategories).mockResolvedValue([technology]);
-
-    await launcherContentService.listCategories("mod");
-    await launcherContentService.listCategories("mod");
-    await launcherContentService.listCategories("shader");
-    await launcherContentService.listCategories("resourcepack");
-
-    expect(
-      vi.mocked(listCategories).mock.calls.map(([classId]) => classId),
-    ).toEqual([6, 6552, 12]);
-  });
-
-  it("answers 503 when CurseForge fails, and asks again next time", async () => {
-    vi.mocked(listCategories)
-      .mockRejectedValueOnce(new Error("CurseForge categories failed (500)"))
-      .mockResolvedValueOnce([technology]);
+  it("answers 503 when CurseForge fails", async () => {
+    vi.mocked(listCategories).mockRejectedValue(
+      new Error("CurseForge categories failed (500)"),
+    );
 
     await expect(
       launcherContentService.listCategories("mod"),
@@ -461,13 +397,10 @@ describe("LauncherContentService.listCategories", () => {
       statusCode: 503,
       code: "CONTENT_UNAVAILABLE",
     });
-    expect(await launcherContentService.listCategories("mod")).toHaveLength(1);
   });
 
-  it("answers 503 when CurseForge lists no categories, and asks again next time", async () => {
-    vi.mocked(listCategories)
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([technology]);
+  it("answers 503 when CurseForge lists no categories", async () => {
+    vi.mocked(listCategories).mockResolvedValue([]);
 
     await expect(
       launcherContentService.listCategories("mod"),
@@ -475,8 +408,6 @@ describe("LauncherContentService.listCategories", () => {
       statusCode: 503,
       code: "CONTENT_UNAVAILABLE",
     });
-    expect(await launcherContentService.listCategories("mod")).toHaveLength(1);
-    expect(listCategories).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -514,11 +445,9 @@ describe("LauncherContentService.getProjects", () => {
       makeProjectData(328085, { latestFilesIndexes: CREATE_LATEST_FILES }),
     ]);
 
-    const first = await launcherContentService.getProjects([328085]);
-    const second = await launcherContentService.getProjects([328085]);
+    const answer = await launcherContentService.getProjects([328085]);
 
-    expect(getMods).toHaveBeenCalledTimes(1);
-    expect(first.projects[0].latestFiles).toEqual([
+    expect(answer.projects[0].latestFiles).toEqual([
       {
         fileId: "7000001",
         fileName: "create-1.21.1-6.0.10.jar",
@@ -534,26 +463,13 @@ describe("LauncherContentService.getProjects", () => {
         releaseType: "beta",
       },
     ]);
-    expect(second).toEqual(first);
   });
 
-  it("only asks CurseForge about projects it has not just looked up", async () => {
-    vi.mocked(getMods)
-      .mockResolvedValueOnce([createProject()])
-      .mockResolvedValueOnce([makeProjectData(238222)]);
+  it("asks CurseForge nothing without ids", async () => {
+    const answer = await launcherContentService.getProjects([]);
 
-    await launcherContentService.getProjects([328085, 999999999]);
-    const answer = await launcherContentService.getProjects([
-      328085, 999999999, 238222,
-    ]);
-
-    expect(getMods).toHaveBeenCalledTimes(2);
-    expect(getMods).toHaveBeenLastCalledWith([238222]);
-    expect(answer.projects.map((project) => project.id)).toEqual([
-      "328085",
-      "238222",
-    ]);
-    expect(answer.unknownProjectIds).toEqual(["999999999"]);
+    expect(answer).toEqual({ projects: [], unknownProjectIds: [] });
+    expect(getMods).not.toHaveBeenCalled();
   });
 
   it("answers 503 when CurseForge fails", async () => {
@@ -645,32 +561,6 @@ describe("LauncherContentService.getProjectDetails", () => {
     },
   );
 
-  it("asks CurseForge once for the same project", async () => {
-    vi.mocked(getMods).mockResolvedValue([createProject()]);
-    vi.mocked(getProjectDescription).mockResolvedValue("<p>Rotate!</p>");
-
-    const first = await launcherContentService.getProjectDetails(328085);
-    const second = await launcherContentService.getProjectDetails(328085);
-
-    expect(second).toEqual(first);
-    expect(getMods).toHaveBeenCalledTimes(1);
-    expect(getProjectDescription).toHaveBeenCalledTimes(1);
-  });
-
-  it("shares one lookup between players who open the same project at the same time", async () => {
-    vi.mocked(getMods).mockResolvedValue([createProject()]);
-    vi.mocked(getProjectDescription).mockResolvedValue("<p>Rotate!</p>");
-
-    const [first, second] = await Promise.all([
-      launcherContentService.getProjectDetails(328085),
-      launcherContentService.getProjectDetails(328085),
-    ]);
-
-    expect(second).toEqual(first);
-    expect(getMods).toHaveBeenCalledTimes(1);
-    expect(getProjectDescription).toHaveBeenCalledTimes(1);
-  });
-
   it.each([
     ["CurseForge does not know", () => []],
     [
@@ -686,65 +576,28 @@ describe("LauncherContentService.getProjectDetails", () => {
     ).rejects.toMatchObject({ statusCode: 404, code: "PROJECT_NOT_FOUND" });
   });
 
-  it("forgets an unknown project sooner than a known one", async () => {
-    vi.useFakeTimers();
-    try {
-      vi.mocked(getMods).mockImplementation(async ([id]) =>
-        id === 328085 ? [createProject()] : [],
-      );
-      vi.mocked(getProjectDescription).mockResolvedValue(null);
-      const unknown = () =>
-        launcherContentService.getProjectDetails(999999999).catch(() => null);
-
-      await launcherContentService.getProjectDetails(328085);
-      await unknown();
-      await unknown();
-      expect(getMods).toHaveBeenCalledTimes(2);
-
-      vi.advanceTimersByTime(5 * 60_000);
-      await launcherContentService.getProjectDetails(328085);
-      await unknown();
-
-      expect(vi.mocked(getMods).mock.calls).toEqual([
-        [[328085]],
-        [[999999999]],
-        [[999999999]],
-      ]);
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
   it.each([
     [
       "the project lookup",
-      () => vi.mocked(getMods).mockRejectedValueOnce(new Error("down")),
+      () => vi.mocked(getMods).mockRejectedValue(new Error("down")),
     ],
     [
       "the description lookup",
       () =>
-        vi
-          .mocked(getProjectDescription)
-          .mockRejectedValueOnce(new Error("down")),
+        vi.mocked(getProjectDescription).mockRejectedValue(new Error("down")),
     ],
-  ])(
-    "answers 503 when %s fails, and asks again next time",
-    async (_label, fail) => {
-      vi.mocked(getMods).mockResolvedValue([createProject()]);
-      vi.mocked(getProjectDescription).mockResolvedValue("<p>Rotate!</p>");
-      fail();
+  ])("answers 503 when %s fails", async (_label, fail) => {
+    vi.mocked(getMods).mockResolvedValue([createProject()]);
+    vi.mocked(getProjectDescription).mockResolvedValue("<p>Rotate!</p>");
+    fail();
 
-      await expect(
-        launcherContentService.getProjectDetails(328085),
-      ).rejects.toMatchObject({
-        statusCode: 503,
-        code: "CONTENT_UNAVAILABLE",
-      });
-      expect(
-        (await launcherContentService.getProjectDetails(328085)).description,
-      ).toBe("<p>Rotate!</p>");
-    },
-  );
+    await expect(
+      launcherContentService.getProjectDetails(328085),
+    ).rejects.toMatchObject({
+      statusCode: 503,
+      code: "CONTENT_UNAVAILABLE",
+    });
+  });
 });
 
 describe("LauncherContentService.listFiles", () => {
@@ -779,20 +632,7 @@ describe("LauncherContentService.listFiles", () => {
       gameVersions: ["1.21.1"],
       loaders: ["neoforge"],
     });
-  });
-
-  it("asks CurseForge once for the same page", async () => {
-    vi.mocked(getMods).mockResolvedValue([createProject()]);
-    vi.mocked(listProjectFiles).mockResolvedValue({
-      files: [makeContentFile()],
-      total: 1,
-    });
-
-    await launcherContentService.listFiles(328085, FIRST_PAGE);
-    await launcherContentService.listFiles(328085, FIRST_PAGE);
-
-    expect(listProjectFiles).toHaveBeenCalledTimes(1);
-    expect(getMods).toHaveBeenCalledTimes(1);
+    expect(resolveFileDownloads).not.toHaveBeenCalled();
   });
 
   it("does not filter the files of a shader by loader", async () => {
@@ -823,7 +663,7 @@ describe("LauncherContentService.listFiles", () => {
     expect(listProjectFiles).not.toHaveBeenCalled();
   });
 
-  it("answers the blocked files with their CDN address while the flag is on", async () => {
+  it("resolves the blocked files in one lookup and answers what another source has for them", async () => {
     switchCdn(true);
     vi.mocked(getMods).mockResolvedValue([createProject()]);
     vi.mocked(listProjectFiles).mockResolvedValue({
@@ -831,32 +671,21 @@ describe("LauncherContentService.listFiles", () => {
         makeContentFile({ downloadUrl: null }),
         makeContentFile({ id: 7000002 }),
         makeContentFile({ id: 7000003, downloadUrl: null }),
+        makeContentFile({ id: 7000004, downloadUrl: null }),
       ],
-      total: 3,
+      total: 4,
     });
-    vi.mocked(resolveCurseforgeCdnUrls).mockResolvedValue(
-      new Map([
-        [7000001, BLOCKED_CDN_URL],
-        [7000003, null],
-      ]),
-    );
+    resolveDownloads({
+      7000001: { source: "curseforge-cdn", url: BLOCKED_CDN_URL },
+      7000004: { source: "modrinth", url: MODRINTH_URL },
+    });
 
     const listed = await launcherContentService.listFiles(328085, FIRST_PAGE);
 
-    expect(resolveCurseforgeCdnUrls).toHaveBeenCalledWith(
-      [
-        {
-          fileId: 7000001,
-          fileName: "create-1.21.1-6.0.10.jar",
-          size: 19123767,
-        },
-        {
-          fileId: 7000003,
-          fileName: "create-1.21.1-6.0.10.jar",
-          size: 19123767,
-        },
-      ],
-      5000,
+    expect(resolveFileDownloads).toHaveBeenCalledTimes(1);
+    expect(resolveFileDownloads).toHaveBeenCalledWith(
+      [7000001, 7000003, 7000004],
+      { cdn: true, timeoutMs: 15_000 },
     );
     expect(listed.files.map((file) => file.download)).toEqual([
       { servedBy: "curseforge-cdn", url: BLOCKED_CDN_URL },
@@ -865,10 +694,11 @@ describe("LauncherContentService.listFiles", () => {
         url: "https://edge.forgecdn.net/files/7000/1/create-1.21.1-6.0.10.jar",
       },
       { servedBy: "manual", url: null },
+      { servedBy: "modrinth", url: MODRINTH_URL },
     ]);
   });
 
-  it("answers the blocked files as manual while the flag is off", async () => {
+  it("resolves the blocked files without the built CDN address while the flag is off", async () => {
     switchCdn(false);
     vi.mocked(getMods).mockResolvedValue([createProject()]);
     vi.mocked(listProjectFiles).mockResolvedValue({
@@ -878,11 +708,14 @@ describe("LauncherContentService.listFiles", () => {
 
     const listed = await launcherContentService.listFiles(328085, FIRST_PAGE);
 
+    expect(resolveFileDownloads).toHaveBeenCalledWith([7000001], {
+      cdn: false,
+      timeoutMs: 15_000,
+    });
     expect(listed.files[0]?.download).toEqual({
       servedBy: "manual",
       url: null,
     });
-    expect(resolveCurseforgeCdnUrls).not.toHaveBeenCalled();
   });
 });
 
@@ -898,6 +731,7 @@ describe("LauncherContentService.getFile", () => {
     const file = await launcherContentService.getFile(7000001);
 
     expect(getContentFiles).toHaveBeenCalledWith([7000001]);
+    expect(getMods).toHaveBeenCalledWith([328085]);
     expect(file).toMatchObject({
       id: "7000001",
       sha1: "0e97e49837bed766e6f28a4c95b04885d6acc353",
@@ -918,100 +752,20 @@ describe("LauncherContentService.getFile", () => {
         makeContentFile({ downloadUrl: null }),
       ]);
       vi.mocked(getMods).mockResolvedValue([createProject()]);
-      vi.mocked(resolveCurseforgeCdnUrls).mockResolvedValue(
-        new Map([[7000001, BLOCKED_CDN_URL]]),
-      );
     });
 
-    it("answers manual while the flag is off, without asking the CDN", async () => {
-      switchCdn(false);
-
-      const file = await launcherContentService.getFile(7000001);
-
-      expect(file.download).toEqual({ servedBy: "manual", url: null });
-      expect(resolveCurseforgeCdnUrls).not.toHaveBeenCalled();
-    });
-
-    it("answers its CDN address while the flag is on, and asks the CDN once", async () => {
+    it("answers the address the gateway resolves, in the launcher's pool", async () => {
       switchCdn(true);
-
-      const first = await launcherContentService.getFile(7000001);
-      const second = await launcherContentService.getFile(7000001);
-
-      expect(first.download).toEqual({
-        servedBy: "curseforge-cdn",
-        url: BLOCKED_CDN_URL,
+      let pool: string | null = null;
+      vi.mocked(resolveFileDownloads).mockImplementation(async () => {
+        pool = currentContentPool();
+        return new Map([
+          [
+            7000001,
+            { source: "curseforge-cdn", url: BLOCKED_CDN_URL, retry: false },
+          ],
+        ]);
       });
-      expect(second).toEqual(first);
-      expect(resolveCurseforgeCdnUrls).toHaveBeenCalledTimes(1);
-    });
-
-    it("answers manual when the CDN does not have it, and asks again after 10 minutes", async () => {
-      vi.useFakeTimers();
-      try {
-        switchCdn(true);
-        vi.mocked(resolveCurseforgeCdnUrls).mockResolvedValue(
-          new Map([[7000001, null]]),
-        );
-
-        const first = await launcherContentService.getFile(7000001);
-        await launcherContentService.getFile(7000001);
-
-        expect(first.download).toEqual({ servedBy: "manual", url: null });
-        expect(resolveCurseforgeCdnUrls).toHaveBeenCalledTimes(1);
-
-        vi.advanceTimersByTime(10 * 60_000 + 1);
-        await launcherContentService.getFile(7000001);
-
-        expect(resolveCurseforgeCdnUrls).toHaveBeenCalledTimes(2);
-      } finally {
-        vi.useRealTimers();
-      }
-    });
-
-    it("answers manual when the CDN gave no answer, and asks again next time", async () => {
-      switchCdn(true);
-      vi.mocked(resolveCurseforgeCdnUrls).mockResolvedValueOnce(new Map());
-
-      const first = await launcherContentService.getFile(7000001);
-      const second = await launcherContentService.getFile(7000001);
-
-      expect(first.download).toEqual({ servedBy: "manual", url: null });
-      expect(second.download).toEqual({
-        servedBy: "curseforge-cdn",
-        url: BLOCKED_CDN_URL,
-      });
-      expect(resolveCurseforgeCdnUrls).toHaveBeenCalledTimes(2);
-    });
-
-    it("asks the CDN once for callers that ask at the same time", async () => {
-      switchCdn(true);
-      const files = await Promise.all([
-        launcherContentService.getFile(7000001),
-        launcherContentService.getFile(7000001),
-      ]);
-
-      expect(files.map((file) => file.download.url)).toEqual([
-        BLOCKED_CDN_URL,
-        BLOCKED_CDN_URL,
-      ]);
-      expect(resolveCurseforgeCdnUrls).toHaveBeenCalledTimes(1);
-    });
-
-    it("answers manual again as soon as the flag is switched off", async () => {
-      switchCdn(true);
-      await launcherContentService.getFile(7000001);
-      switchCdn(false);
-
-      const file = await launcherContentService.getFile(7000001);
-
-      expect(file.download).toEqual({ servedBy: "manual", url: null });
-    });
-
-    it("hands out its CDN address as soon as the flag is switched on", async () => {
-      switchCdn(false);
-      await launcherContentService.getFile(7000001);
-      switchCdn(true);
 
       const file = await launcherContentService.getFile(7000001);
 
@@ -1019,17 +773,41 @@ describe("LauncherContentService.getFile", () => {
         servedBy: "curseforge-cdn",
         url: BLOCKED_CDN_URL,
       });
+      expect(pool).toBe("launcher");
     });
-  });
 
-  it("asks CurseForge once for the same file", async () => {
-    vi.mocked(getContentFiles).mockResolvedValue([makeContentFile()]);
-    vi.mocked(getMods).mockResolvedValue([createProject()]);
+    it("answers manual when no source has it", async () => {
+      switchCdn(true);
 
-    await launcherContentService.getFile(7000001);
-    await launcherContentService.getFile(7000001);
+      const file = await launcherContentService.getFile(7000001);
 
-    expect(getContentFiles).toHaveBeenCalledTimes(1);
+      expect(file.download).toEqual({ servedBy: "manual", url: null });
+    });
+
+    it("answers manual when the gateway cannot resolve it, without failing", async () => {
+      switchCdn(true);
+      vi.mocked(resolveFileDownloads).mockRejectedValue(refusal(12_500));
+
+      const file = await launcherContentService.getFile(7000001);
+
+      expect(file.download).toEqual({ servedBy: "manual", url: null });
+    });
+
+    it("reads the flag on every answer", async () => {
+      switchCdn(false);
+      await launcherContentService.getFile(7000001);
+      switchCdn(true);
+      await launcherContentService.getFile(7000001);
+
+      expect(
+        vi
+          .mocked(resolveFileDownloads)
+          .mock.calls.map(([, options]) => options),
+      ).toEqual([
+        { cdn: false, timeoutMs: 15_000 },
+        { cdn: true, timeoutMs: 15_000 },
+      ]);
+    });
   });
 
   it.each([
@@ -1220,6 +998,7 @@ describe("LauncherContentService.getFiles", () => {
       7000002, 7000003, 7000001, 7000004, 7000005, 7999999,
     ]);
     expect(getMods).toHaveBeenCalledTimes(1);
+    expect(getMods).toHaveBeenCalledWith([328085, 486392, 6945001]);
     expect(answer.files.map((file) => file.id)).toEqual(["7000002", "7000001"]);
     expect(answer.files[0]).toMatchObject({
       projectId: "486392",
@@ -1241,23 +1020,11 @@ describe("LauncherContentService.getFiles", () => {
     serveProjects([createProject()]);
 
     const { files } = await launcherContentService.getFiles([7000001]);
-    stores.current = stores.create();
 
     expect(files).toEqual([await launcherContentService.getFile(7000001)]);
   });
 
-  it("answers a blocked file as manual while the flag is off, without asking the CDN", async () => {
-    switchCdn(false);
-    serveFiles([makeContentFile({ downloadUrl: null })]);
-    serveProjects([createProject()]);
-
-    const { files } = await launcherContentService.getFiles([7000001]);
-
-    expect(files[0].download).toEqual({ servedBy: "manual", url: null });
-    expect(resolveCurseforgeCdnUrls).not.toHaveBeenCalled();
-  });
-
-  it("answers a blocked file with its CDN address while the flag is on, in one CDN lookup", async () => {
+  it("resolves the blocked files in one lookup", async () => {
     switchCdn(true);
     serveFiles([
       makeContentFile({ downloadUrl: null }),
@@ -1265,12 +1032,9 @@ describe("LauncherContentService.getFiles", () => {
       makeContentFile({ id: 7000003, downloadUrl: null }),
     ]);
     serveProjects([createProject()]);
-    vi.mocked(resolveCurseforgeCdnUrls).mockResolvedValue(
-      new Map([
-        [7000001, BLOCKED_CDN_URL],
-        [7000003, null],
-      ]),
-    );
+    resolveDownloads({
+      7000001: { source: "curseforge-cdn", url: BLOCKED_CDN_URL },
+    });
 
     const { files } = await launcherContentService.getFiles([
       7000001, 7000002, 7000003,
@@ -1284,143 +1048,29 @@ describe("LauncherContentService.getFiles", () => {
       },
       { servedBy: "manual", url: null },
     ]);
-    expect(resolveCurseforgeCdnUrls).toHaveBeenCalledTimes(1);
-    expect(
-      vi
-        .mocked(resolveCurseforgeCdnUrls)
-        .mock.calls[0][0].map((file) => file.fileId),
-    ).toEqual([7000001, 7000003]);
-  });
-
-  it("only asks CurseForge about files it has not just looked up", async () => {
-    serveFiles([makeContentFile(), makeContentFile({ id: 7000002 })]);
-    serveProjects([createProject()]);
-
-    await launcherContentService.getFile(7000001);
-    await launcherContentService.getFiles([7000001, 7000002, 7999999]);
-    await launcherContentService.getFiles([7000002, 7999999]);
-    await launcherContentService.getFile(7000002);
-
-    expect(vi.mocked(getContentFiles).mock.calls).toEqual([
-      [[7000001]],
-      [[7000002, 7999999]],
-    ]);
-    expect(getMods).toHaveBeenCalledTimes(1);
-  });
-
-  it("shares one CurseForge call with a lookup of the same file running at the same time", async () => {
-    serveFiles([makeContentFile(), makeContentFile({ id: 7000002 })]);
-    serveProjects([createProject()]);
-
-    const [file, batch] = await Promise.all([
-      launcherContentService.getFile(7000001),
-      launcherContentService.getFiles([7000001, 7000002]),
-    ]);
-
-    expect(batch.files[0]).toEqual(file);
-    expect(vi.mocked(getContentFiles).mock.calls).toEqual([
-      [[7000001]],
-      [[7000002]],
+    expect(resolveFileDownloads).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(resolveFileDownloads).mock.calls[0][0]).toEqual([
+      7000001, 7000003,
     ]);
   });
 
-  it("asks CurseForge for the files it has not just looked up in batches of 100", async () => {
+  it("asks for the projects of the files it knows only", async () => {
     serveFiles([]);
-    const ids = (from: number, count: number) =>
-      Array.from({ length: count }, (_, index) => from + index);
 
-    await launcherContentService.getFiles(ids(7000001, 20));
-    await launcherContentService.getFiles(ids(7000001, 250));
+    const answer = await launcherContentService.getFiles([7999999]);
 
-    expect(
-      vi.mocked(getContentFiles).mock.calls.map(([asked]) => asked),
-    ).toEqual([
-      ids(7000001, 20),
-      ids(7000021, 100),
-      ids(7000121, 100),
-      ids(7000221, 30),
-    ]);
+    expect(answer).toEqual({ files: [], unknownFileIds: ["7999999"] });
+    expect(getMods).not.toHaveBeenCalled();
   });
 
-  it("keeps the batches that came back when another one fails, and asks again only for the one that failed", async () => {
-    const ids = Array.from({ length: 150 }, (_, index) => 7000001 + index);
-    const files = ids.map((id) => makeContentFile({ id }));
-    let failing = true;
-    vi.mocked(getContentFiles).mockImplementation(async (asked) => {
-      if (failing && asked.includes(7000150)) {
-        throw new Error("CurseForge getContentFiles failed (503)");
-      }
-      return files.filter((file) => asked.includes(file.id));
-    });
-    serveProjects([createProject()]);
-
-    await expect(launcherContentService.getFiles(ids)).rejects.toMatchObject({
-      statusCode: 503,
-      code: "CONTENT_UNAVAILABLE",
-    });
-    failing = false;
-    vi.mocked(getContentFiles).mockClear();
-    const answer = await launcherContentService.getFiles(ids);
-
-    expect(answer.files).toHaveLength(150);
-    expect(
-      vi.mocked(getContentFiles).mock.calls.map(([asked]) => asked),
-    ).toEqual([ids.slice(100)]);
-  });
-
-  it("answers a lookup that waits on a batch that came back, while another batch fails", async () => {
-    const ids = Array.from({ length: 150 }, (_, index) => 7000001 + index);
-    vi.mocked(getContentFiles).mockImplementation(async (asked) => {
-      if (asked.includes(7000150)) {
-        throw new Error("CurseForge getContentFiles failed (503)");
-      }
-      return asked.map((id) => makeContentFile({ id }));
-    });
-    serveProjects([createProject()]);
-
-    const [batch, single] = await Promise.allSettled([
-      launcherContentService.getFiles(ids),
-      launcherContentService.getFile(7000001),
-    ]);
-
-    expect(batch.status).toBe("rejected");
-    expect(single).toMatchObject({
-      status: "fulfilled",
-      value: { id: "7000001" },
-    });
-    expect(getContentFiles).toHaveBeenCalledTimes(2);
-  });
-
-  it("asks again about an unknown file after 10 minutes", async () => {
-    vi.useFakeTimers();
-    try {
-      serveFiles([]);
-
-      await launcherContentService.getFiles([7999999]);
-      await launcherContentService.getFiles([7999999]);
-      expect(getContentFiles).toHaveBeenCalledTimes(1);
-
-      vi.advanceTimersByTime(10 * 60_000 + 1);
-      await launcherContentService.getFiles([7999999]);
-
-      expect(getContentFiles).toHaveBeenCalledTimes(2);
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
-  it("answers 503 when CurseForge fails, and asks again next time", async () => {
-    vi.mocked(getContentFiles)
-      .mockRejectedValueOnce(new Error("CurseForge getContentFiles failed"))
-      .mockResolvedValueOnce([makeContentFile()]);
-    serveProjects([createProject()]);
+  it("answers 503 when CurseForge fails", async () => {
+    vi.mocked(getContentFiles).mockRejectedValue(
+      new Error("CurseForge getContentFiles failed"),
+    );
 
     await expect(
       launcherContentService.getFiles([7000001]),
     ).rejects.toMatchObject({ statusCode: 503, code: "CONTENT_UNAVAILABLE" });
-    expect(
-      (await launcherContentService.getFiles([7000001])).files,
-    ).toHaveLength(1);
   });
 });
 
@@ -1444,16 +1094,11 @@ describe("LauncherContentService.getFileChangelog", () => {
   it.each([
     ["empty", ""],
     ["nothing but whitespace", " \n"],
-  ])(
-    "answers null for a file whose changelog is %s, and does not ask again",
-    async (_label, html) => {
-      vi.mocked(getFileChangelog).mockResolvedValue(html);
+  ])("answers null for a file whose changelog is %s", async (_label, html) => {
+    vi.mocked(getFileChangelog).mockResolvedValue(html);
 
-      expect(await launcherContentService.getFileChangelog(7000001)).toBeNull();
-      expect(await launcherContentService.getFileChangelog(7000001)).toBeNull();
-      expect(getFileChangelog).toHaveBeenCalledTimes(1);
-    },
-  );
+    expect(await launcherContentService.getFileChangelog(7000001)).toBeNull();
+  });
 
   it("asks under the project the caller names, without looking the file up", async () => {
     const changelog = await launcherContentService.getFileChangelog(
@@ -1462,22 +1107,12 @@ describe("LauncherContentService.getFileChangelog", () => {
     );
 
     expect(changelog).toBe(CHANGELOG);
+    expect(getMods).toHaveBeenCalledWith([328085]);
     expect(getFileChangelog).toHaveBeenCalledWith(328085, 7000001);
     expect(getContentFiles).not.toHaveBeenCalled();
   });
 
-  it("asks CurseForge for the changelog alone when the project named was just looked up", async () => {
-    await launcherContentService.getProjects([328085]);
-    vi.mocked(getMods).mockClear();
-
-    await launcherContentService.getFileChangelog(7000001, 328085);
-
-    expect(getMods).not.toHaveBeenCalled();
-    expect(getContentFiles).not.toHaveBeenCalled();
-    expect(getFileChangelog).toHaveBeenCalledTimes(1);
-  });
-
-  it("answers 404 for a file that is no file of the project named, and keeps nothing", async () => {
+  it("answers 404 for a file that is no file of the project named", async () => {
     vi.mocked(getMods).mockImplementation(async (ids) =>
       ids.map((id) => makeProjectData(id)),
     );
@@ -1491,10 +1126,6 @@ describe("LauncherContentService.getFileChangelog", () => {
     expect(await launcherContentService.getFileChangelog(7000001, 328085)).toBe(
       CHANGELOG,
     );
-    expect(await launcherContentService.getFileChangelog(7000001)).toBe(
-      CHANGELOG,
-    );
-    expect(getFileChangelog).toHaveBeenCalledTimes(2);
   });
 
   it.each([
@@ -1529,10 +1160,6 @@ describe("LauncherContentService.getFileChangelog", () => {
     expect(await launcherContentService.getFileChangelog(7000001, 328085)).toBe(
       CHANGELOG,
     );
-    expect(await launcherContentService.getFileChangelog(7000001)).toBe(
-      CHANGELOG,
-    );
-    expect(getFileChangelog).toHaveBeenCalledTimes(1);
   });
 
   it("answers 404 when the file is gone by the time its changelog is asked for", async () => {
@@ -1541,38 +1168,6 @@ describe("LauncherContentService.getFileChangelog", () => {
     await expect(
       launcherContentService.getFileChangelog(7000001),
     ).rejects.toMatchObject({ statusCode: 404, code: "FILE_NOT_FOUND" });
-  });
-
-  it("asks CurseForge once for the same changelog, also after the file itself was forgotten", async () => {
-    vi.useFakeTimers();
-    try {
-      await launcherContentService.getFileChangelog(7000001);
-      vi.advanceTimersByTime(60 * 60_000);
-      const again = await launcherContentService.getFileChangelog(7000001);
-
-      expect(again).toBe(CHANGELOG);
-      expect(getFileChangelog).toHaveBeenCalledTimes(1);
-      expect(getContentFiles).toHaveBeenCalledTimes(1);
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
-  it("shares one lookup between players who open the same changelog at the same time", async () => {
-    const [first, second] = await Promise.all([
-      launcherContentService.getFileChangelog(7000001),
-      launcherContentService.getFileChangelog(7000001),
-    ]);
-
-    expect([first, second]).toEqual([CHANGELOG, CHANGELOG]);
-    expect(getFileChangelog).toHaveBeenCalledTimes(1);
-  });
-
-  it("does not look up a file again that was just answered", async () => {
-    await launcherContentService.getFile(7000001);
-    await launcherContentService.getFileChangelog(7000001);
-
-    expect(getContentFiles).toHaveBeenCalledTimes(1);
   });
 
   it("asks for no changelog when only the file is asked for", async () => {
@@ -1597,17 +1192,12 @@ describe("LauncherContentService.getFileChangelog", () => {
     },
   );
 
-  it("answers 503 when CurseForge fails, and asks again next time", async () => {
-    vi.mocked(getFileChangelog)
-      .mockRejectedValueOnce(new Error("down"))
-      .mockResolvedValueOnce(CHANGELOG);
+  it("answers 503 when CurseForge fails", async () => {
+    vi.mocked(getFileChangelog).mockRejectedValue(new Error("down"));
 
     await expect(
       launcherContentService.getFileChangelog(7000001),
     ).rejects.toMatchObject({ statusCode: 503, code: "CONTENT_UNAVAILABLE" });
-    expect(await launcherContentService.getFileChangelog(7000001)).toBe(
-      CHANGELOG,
-    );
   });
 });
 
@@ -1693,6 +1283,13 @@ describe("LauncherContentService.identifyFingerprints", () => {
     expect(getMods).not.toHaveBeenCalled();
   });
 
+  it("asks CurseForge nothing without fingerprints", async () => {
+    const answer = await launcherContentService.identifyFingerprints([]);
+
+    expect(answer).toEqual({ matches: [], unmatchedFingerprints: [] });
+    expect(matchFingerprints).not.toHaveBeenCalled();
+  });
+
   it.each([
     ["has no SHA-1", makeContentFile({ sha1: null }), createProject()],
     [
@@ -1722,258 +1319,20 @@ describe("LauncherContentService.identifyFingerprints", () => {
     expect(answer.matches.map((match) => match.file.id)).toEqual(["7000003"]);
   });
 
-  it("only asks CurseForge about fingerprints it has not just looked up", async () => {
-    vi.mocked(matchFingerprints)
-      .mockResolvedValueOnce([
-        { fingerprint: 10, file: makeContentFile({ id: 7000010 }) },
-      ])
-      .mockResolvedValueOnce([]);
-    vi.mocked(getMods).mockResolvedValue([createProject()]);
-
-    await launcherContentService.identifyFingerprints([10, 20]);
-    const answer = await launcherContentService.identifyFingerprints([
-      10, 20, 30,
-    ]);
-
-    expect(matchFingerprints).toHaveBeenCalledTimes(2);
-    expect(matchFingerprints).toHaveBeenLastCalledWith([30]);
-    expect(getMods).toHaveBeenCalledTimes(1);
-    expect(answer.matches.map((match) => match.fingerprint)).toEqual([10]);
-    expect(answer.unmatchedFingerprints).toEqual([20, 30]);
-  });
-
-  it("asks CurseForge nothing when every fingerprint was just looked up", async () => {
-    vi.mocked(matchFingerprints).mockResolvedValue([
-      { fingerprint: 10, file: makeContentFile() },
-    ]);
-    vi.mocked(getMods).mockResolvedValue([createProject()]);
-
-    const first = await launcherContentService.identifyFingerprints([10, 20]);
-    const second = await launcherContentService.identifyFingerprints([10, 20]);
-
-    expect(second).toEqual(first);
-    expect(matchFingerprints).toHaveBeenCalledTimes(1);
-  });
-
-  it("answers an identified file by its id without asking CurseForge again", async () => {
-    vi.mocked(matchFingerprints).mockResolvedValue([
-      { fingerprint: 10, file: makeContentFile() },
-    ]);
-    vi.mocked(getMods).mockResolvedValue([createProject()]);
-
-    const answer = await launcherContentService.identifyFingerprints([10]);
-    const file = await launcherContentService.getFile(7000001);
-
-    expect(file).toEqual(answer.matches[0]?.file);
-    expect(getContentFiles).not.toHaveBeenCalled();
-  });
-
-  it("answers 503 when CurseForge fails, and asks again next time", async () => {
-    vi.mocked(matchFingerprints)
-      .mockRejectedValueOnce(new Error("down"))
-      .mockResolvedValueOnce([{ fingerprint: 10, file: makeContentFile() }]);
-    vi.mocked(getMods).mockResolvedValue([createProject()]);
+  it("answers 503 when CurseForge fails", async () => {
+    vi.mocked(matchFingerprints).mockRejectedValue(new Error("down"));
 
     await expect(
       launcherContentService.identifyFingerprints([10]),
     ).rejects.toMatchObject({ statusCode: 503, code: "CONTENT_UNAVAILABLE" });
-    expect(
-      (await launcherContentService.identifyFingerprints([10])).matches,
-    ).toHaveLength(1);
   });
 });
 
-describe("LauncherContentService caching", () => {
-  it("asks CurseForge once for a shader search whatever loader is named", async () => {
-    vi.mocked(searchProjects).mockResolvedValue({ projects: [], total: 0 });
-    const search = { query: "bsl", kind: "shader", ...FIRST_PAGE } as const;
-
-    await launcherContentService.search({ ...search, loader: "neoforge" });
-    await launcherContentService.search({ ...search, loader: "fabric" });
-    await launcherContentService.search(search);
-
-    expect(searchProjects).toHaveBeenCalledTimes(1);
-  });
-
-  it("asks CurseForge once for a shader's files whatever loader is named", async () => {
-    vi.mocked(getMods).mockResolvedValue([
-      makeProjectData(6552001, { classId: 6552 }),
-    ]);
-    vi.mocked(listProjectFiles).mockResolvedValue({ files: [], total: 0 });
-
-    await launcherContentService.listFiles(6552001, {
-      loader: "neoforge",
-      ...FIRST_PAGE,
-    });
-    await launcherContentService.listFiles(6552001, {
-      loader: "fabric",
-      ...FIRST_PAGE,
-    });
-
-    expect(listProjectFiles).toHaveBeenCalledTimes(1);
-  });
-
-  it("still asks per loader for a mod", async () => {
-    vi.mocked(searchProjects).mockResolvedValue({ projects: [], total: 0 });
-    const search = { query: "create", kind: "mod", ...FIRST_PAGE } as const;
-
-    await launcherContentService.search({ ...search, loader: "neoforge" });
-    await launcherContentService.search({ ...search, loader: "fabric" });
-
-    expect(searchProjects).toHaveBeenCalledTimes(2);
-  });
-
-  it("shares one CurseForge call between lookups of the same project at the same time", async () => {
-    vi.mocked(getMods).mockImplementation(async (ids) =>
-      ids.map((id) => makeProjectData(id)),
-    );
-
-    const [first, second] = await Promise.all([
-      launcherContentService.getProjects([328085]),
-      launcherContentService.getProjects([328085, 238222]),
-    ]);
-
-    expect(vi.mocked(getMods).mock.calls).toEqual([[[328085]], [[238222]]]);
-    expect(first.projects.map((project) => project.id)).toEqual(["328085"]);
-    expect(second.projects.map((project) => project.id)).toEqual([
-      "328085",
-      "238222",
-    ]);
-  });
-
-  it("fails every lookup that shared a failed call, and asks again next time", async () => {
-    vi.mocked(getMods)
-      .mockRejectedValueOnce(new Error("down"))
-      .mockResolvedValue([createProject()]);
-
-    const results = await Promise.allSettled([
-      launcherContentService.getProjects([328085]),
-      launcherContentService.getProjects([328085]),
-    ]);
-
-    expect(results.map((result) => result.status)).toEqual([
-      "rejected",
-      "rejected",
-    ]);
-    expect(getMods).toHaveBeenCalledTimes(1);
-    expect(
-      (await launcherContentService.getProjects([328085])).projects,
-    ).toHaveLength(1);
-  });
-});
-
-describe("LauncherContentService with a store that fails", () => {
-  beforeEach(() => {
-    stores.current = {
-      get: async () => {
-        throw new Error("store down");
-      },
-      getMany: async () => {
-        throw new Error("store down");
-      },
-      set: async () => {
-        throw new Error("store down");
-      },
-    };
-  });
-
-  it("still answers a search, from CurseForge every time", async () => {
-    vi.mocked(searchProjects).mockResolvedValue({
-      projects: [makeHit()],
-      total: 1,
-    });
-    const search = { query: "create", kind: "mod", ...FIRST_PAGE } as const;
-
-    expect((await launcherContentService.search(search)).projects).toHaveLength(
-      1,
-    );
-    expect((await launcherContentService.search(search)).projects).toHaveLength(
-      1,
-    );
-    expect(searchProjects).toHaveBeenCalledTimes(2);
-  });
-
-  it("still answers one project in full", async () => {
-    vi.mocked(getMods).mockResolvedValue([createProject()]);
-    vi.mocked(getProjectDescription).mockResolvedValue("<p>Rotate!</p>");
-
-    expect(
-      (await launcherContentService.getProjectDetails(328085)).description,
-    ).toBe("<p>Rotate!</p>");
-  });
-
-  it("still answers the changelog of a file", async () => {
-    vi.mocked(getContentFiles).mockResolvedValue([makeContentFile()]);
-    vi.mocked(getMods).mockResolvedValue([createProject()]);
-    vi.mocked(getFileChangelog).mockResolvedValue("<p>Fixed the crash</p>");
-
-    expect(await launcherContentService.getFileChangelog(7000001)).toBe(
-      "<p>Fixed the crash</p>",
-    );
-  });
-
-  it("still answers projects, files and a single file", async () => {
-    vi.mocked(getMods).mockResolvedValue([createProject()]);
-    vi.mocked(listProjectFiles).mockResolvedValue({
-      files: [makeContentFile()],
-      total: 1,
-    });
-    vi.mocked(getContentFiles).mockResolvedValue([makeContentFile()]);
-
-    expect(
-      (await launcherContentService.getProjects([328085])).projects,
-    ).toHaveLength(1);
-    expect(
-      (await launcherContentService.listFiles(328085, FIRST_PAGE)).files,
-    ).toHaveLength(1);
-    expect((await launcherContentService.getFile(7000001)).id).toBe("7000001");
-  });
-
-  it("still answers files by id, with one call for the files and one for the projects", async () => {
-    vi.mocked(getContentFiles).mockResolvedValue([makeContentFile()]);
-    vi.mocked(getMods).mockResolvedValue([createProject()]);
-
-    const answer = await launcherContentService.getFiles([7000001, 7999999]);
-
-    expect(answer.files.map((file) => file.id)).toEqual(["7000001"]);
-    expect(answer.unknownFileIds).toEqual(["7999999"]);
-    expect(getContentFiles).toHaveBeenCalledTimes(1);
-    expect(getMods).toHaveBeenCalledTimes(1);
-  });
-
-  it("still identifies fingerprints, with one call for the files and one for the projects", async () => {
-    vi.mocked(matchFingerprints).mockResolvedValue([
-      { fingerprint: 10, file: makeContentFile() },
-    ]);
-    vi.mocked(getMods).mockResolvedValue([createProject()]);
-
-    const answer = await launcherContentService.identifyFingerprints([10, 20]);
-
-    expect(answer.matches.map((match) => match.fingerprint)).toEqual([10]);
-    expect(answer.unmatchedFingerprints).toEqual([20]);
-    expect(matchFingerprints).toHaveBeenCalledTimes(1);
-    expect(getMods).toHaveBeenCalledTimes(1);
-  });
-});
-
-describe("LauncherContentService under the CurseForge budget", () => {
-  const originalLimit = config.curseforge.launcherCallsPerMinute;
+describe("LauncherContentService when the gateway refuses a call", () => {
   const search = { query: "create", kind: "mod", ...FIRST_PAGE } as const;
 
-  beforeEach(() => {
-    curseforgeBudget.forget();
-  });
-
-  afterAll(() => {
-    (
-      config.curseforge as { launcherCallsPerMinute: number }
-    ).launcherCallsPerMinute = originalLimit;
-  });
-
-  it("answers 503 with a Retry-After when the budget refuses the call", async () => {
-    vi.mocked(searchProjects).mockRejectedValue(
-      new CurseForgeBudgetError("budget", 12_500),
-    );
+  it("answers 503 with a Retry-After when the budget of the minute is spent", async () => {
+    vi.mocked(searchProjects).mockRejectedValue(refusal(12_500));
 
     await expect(launcherContentService.search(search)).rejects.toMatchObject({
       statusCode: 503,
@@ -1982,10 +1341,8 @@ describe("LauncherContentService under the CurseForge budget", () => {
     });
   });
 
-  it("answers 503 with a Retry-After while CurseForge is holding the key off", async () => {
-    vi.mocked(searchProjects).mockRejectedValue(
-      new CurseForgeBudgetError("hold", 400),
-    );
+  it("answers a Retry-After of at least a second", async () => {
+    vi.mocked(searchProjects).mockRejectedValue(refusal(400));
 
     await expect(launcherContentService.search(search)).rejects.toMatchObject({
       statusCode: 503,
@@ -1994,19 +1351,15 @@ describe("LauncherContentService under the CurseForge budget", () => {
     });
   });
 
-  it("makes its CurseForge calls inside the budget", async () => {
-    (
-      config.curseforge as { launcherCallsPerMinute: number }
-    ).launcherCallsPerMinute = 1;
-    vi.mocked(searchProjects).mockImplementation(async () => {
-      await curseforgeBudget.admit();
-      await curseforgeBudget.admit();
-      return { projects: [makeHit()], total: 1 };
-    });
+  it("answers 503 without a Retry-After when the gateway could not ask CurseForge", async () => {
+    vi.mocked(searchProjects).mockRejectedValue(refusal(null));
 
-    await expect(launcherContentService.search(search)).rejects.toMatchObject({
+    const error = await launcherContentService.search(search).catch((e) => e);
+
+    expect(error).toMatchObject({
       statusCode: 503,
-      headers: { "Retry-After": expect.stringMatching(/^\d+$/) },
+      code: "CONTENT_UNAVAILABLE",
     });
+    expect(error.headers).toBeUndefined();
   });
 });

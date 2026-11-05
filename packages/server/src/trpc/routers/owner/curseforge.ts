@@ -2,51 +2,10 @@ import { z } from "zod";
 import { router, ownerProcedure } from "@/trpc/trpc";
 import { auditActor, rethrowTrpc } from "@/trpc/utils";
 import { Q } from "@/db";
-import {
-  CURSEFORGE_CALL_COUNTS,
-  curseforgeCallCounter,
-} from "@/services/curseforge/call-counter";
-import { curseforgeBudget } from "@/services/curseforge/budget";
 import { featureFlagService, FeatureFlags } from "@/services/feature-flag";
 
-const DEFAULT_DAYS = 14;
-const MAX_DAYS = 90;
 const CDN_FLAG_DESCRIPTION =
   "Serve pack files and files a player adds that CurseForge gives no link for from their built address on CurseForge's CDN";
-
-export const ownerCurseforgeCallsRouter = router({
-  list: ownerProcedure
-    .meta({
-      description:
-        "List the calls this app made to the CurseForge API per UTC day, today first",
-    })
-    .input(
-      z
-        .object({
-          days: z.number().int().min(1).max(MAX_DAYS).default(DEFAULT_DAYS),
-        })
-        .default({ days: DEFAULT_DAYS }),
-    )
-    .query(async ({ input }) => {
-      const { source, days } = await curseforgeCallCounter.read(
-        CURSEFORGE_CALL_COUNTS,
-        input.days,
-      );
-      return {
-        source,
-        days: days.map(({ date, counts }) => ({ date, ...counts })),
-      };
-    }),
-});
-
-export const ownerCurseforgeBudgetRouter = router({
-  get: ownerProcedure
-    .meta({
-      description:
-        "The launcher content lookups' budget of calls on the CurseForge key this minute, and until when CurseForge is holding the key off after a 429",
-    })
-    .query(() => curseforgeBudget.read()),
-});
 
 export const ownerCurseforgeCdnRouter = router({
   get: ownerProcedure
