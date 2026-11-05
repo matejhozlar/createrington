@@ -21,11 +21,23 @@ jobs:
     runs-on: hetzner
     env:
       INFISICAL_API_URL: ${{ secrets.INFISICAL_API_URL }}
-      INFISICAL_PROJECT_ID: a1cc35ab-a36c-49c3-985f-9ffaef91dfb7
+      INFISICAL_PROJECT_ID: ${{ vars.INFISICAL_PROJECT_ID }}
+      APP_DIR: ${{ vars.DEV_APP_DIR }}
+      WWW_DIR: ${{ vars.DEV_WWW_DIR }}
+      DEPLOY_OWNER: ${{ vars.DEPLOY_OWNER }}
+      MAVEN_REPO: ${{ vars.MAVEN_REPO }}
+      NPM_REGISTRY: ${{ vars.NPM_REGISTRY }}
+      API_URL: ${{ vars.DEV_API_URL }}
+      BLUEMAP_URL: ${{ vars.DEV_BLUEMAP_URL }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Validate deploy variables
+        run: |
+          : "${INFISICAL_PROJECT_ID:?}" "${APP_DIR:?}" "${WWW_DIR:?}" "${DEPLOY_OWNER:?}"
+          : "${MAVEN_REPO:?}" "${NPM_REGISTRY:?}" "${API_URL:?}" "${BLUEMAP_URL:?}"
 
       - name: Install pnpm
         run: npm install -g pnpm
@@ -61,7 +73,7 @@ jobs:
         run: |
           changed=false
           VERSION=$(grep '^version=' mod-api/gradle.properties | cut -d'=' -f2)
-          JAR_URL="https://raw.githubusercontent.com/matejhozlar/maven/main/com/saunhardy/createrington-api/${VERSION}/createrington-api-${VERSION}.jar"
+          JAR_URL="https://raw.githubusercontent.com/${MAVEN_REPO}/main/com/saunhardy/createrington-api/${VERSION}/createrington-api-${VERSION}.jar"
           if curl --silent --head --fail "$JAR_URL" > /dev/null 2>&1; then
             echo "createrington-api:${VERSION} is already published."
           else
@@ -94,6 +106,7 @@ jobs:
         env:
           VERSION: ${{ steps.spec-check.outputs.version }}
           JAR_URL: ${{ steps.spec-check.outputs.jar_url }}
+          MAVEN_REPO_TOKEN: ${{ secrets.MAVEN_REPO_TOKEN }}
         run: |
           pnpm generate-mod-api
           cd mod-api
@@ -103,7 +116,7 @@ jobs:
           fi
           gradle publish
           cd ..
-          git clone https://x-access-token:${{ secrets.MAVEN_REPO_TOKEN }}@github.com/matejhozlar/maven.git maven-repo
+          git clone "https://x-access-token:${MAVEN_REPO_TOKEN}@github.com/${MAVEN_REPO}.git" maven-repo
           cp -r mod-api/build/maven-publish/. maven-repo/
           cd maven-repo
           git config user.email "ci@create-rington.com"
@@ -119,30 +132,30 @@ jobs:
           echo "APP_VERSION=$VERSION-dev.$SHA" >> "$GITHUB_ENV"
 
       - name: Build
-        run: |
-          VITE_APP_VERSION="$APP_VERSION" \
-          VITE_API_URL=https://dev.createrington.com \
-          VITE_BLUEMAP_URL=https://map-test.createrington.com \
-          VITE_LAUNCHER_ENABLED=true \
-          pnpm build
+        env:
+          VITE_APP_VERSION: ${{ env.APP_VERSION }}
+          VITE_API_URL: ${{ env.API_URL }}
+          VITE_BLUEMAP_URL: ${{ env.BLUEMAP_URL }}
+          VITE_LAUNCHER_ENABLED: "true"
+        run: pnpm build
 
       - name: Deploy frontend
         run: |
-          rm -rf /var/www/createrington-dev/*
-          cp -r dist/public/* /var/www/createrington-dev/
+          rm -rf "${WWW_DIR:?}"/*
+          cp -r dist/public/* "$WWW_DIR/"
 
       - name: Deploy backend
         run: |
-          rm -rf /opt/createrington-dev/dist
-          cp -r dist /opt/createrington-dev/dist
-          cp package.json /opt/createrington-dev/package.json
-          rm -rf /opt/createrington-dev/node_modules
-          cp -r node_modules /opt/createrington-dev/node_modules
-          mkdir -p /opt/createrington-dev/packages/server
-          rm -rf /opt/createrington-dev/packages/server/node_modules
-          cp -r packages/server/node_modules /opt/createrington-dev/packages/server/node_modules
-          mkdir -p /opt/createrington-dev/docker/db
-          cp docker/db/claude-readonly-role.sql docker/db/sync-readonly-grants.sh /opt/createrington-dev/docker/db/
+          rm -rf "${APP_DIR:?}/dist"
+          cp -r dist "$APP_DIR/dist"
+          cp package.json "$APP_DIR/package.json"
+          rm -rf "${APP_DIR:?}/node_modules"
+          cp -r node_modules "$APP_DIR/node_modules"
+          mkdir -p "$APP_DIR/packages/server"
+          rm -rf "${APP_DIR:?}/packages/server/node_modules"
+          cp -r packages/server/node_modules "$APP_DIR/packages/server/node_modules"
+          mkdir -p "$APP_DIR/docker/db"
+          cp docker/db/claude-readonly-role.sql docker/db/sync-readonly-grants.sh "$APP_DIR/docker/db/"
 
       - name: Migrate database
         if: ${{ github.event.inputs.reset_db != 'true' }}
@@ -182,21 +195,21 @@ jobs:
 
       - name: Sync runtime .env from Infisical
         run: |
-          pnpm exec infisical export --projectId="$INFISICAL_PROJECT_ID" --env=staging --format=dotenv > /opt/createrington-dev/.env
-          echo "APP_VERSION=$APP_VERSION" >> /opt/createrington-dev/.env
-          chmod 600 /opt/createrington-dev/.env
+          pnpm exec infisical export --projectId="$INFISICAL_PROJECT_ID" --env=staging --format=dotenv > "$APP_DIR/.env"
+          echo "APP_VERSION=$APP_VERSION" >> "$APP_DIR/.env"
+          chmod 600 "$APP_DIR/.env"
 
       - name: Fix permissions and trigger restart
         run: |
-          rm -f /opt/createrington-dev/.maintenance
-          chown -R 1000:988 /opt/createrington-dev
-          chown -R 1000:988 /var/www/createrington-dev
-          touch /opt/createrington-dev/.restart-trigger
+          rm -f "$APP_DIR/.maintenance"
+          chown -R "$DEPLOY_OWNER" "$APP_DIR"
+          chown -R "$DEPLOY_OWNER" "$WWW_DIR"
+          touch "$APP_DIR/.restart-trigger"
 
       - name: Check if @createrington/api-types version changed
         id: api-types-check
         run: |
-          REGISTRY="https://gitea.matejhoz.com/api/packages/createrington/npm/"
+          REGISTRY="$NPM_REGISTRY"
           CURRENT=$(node -p "require('./packages/api-types/package.json').version")
           PUBLISHED=$(npm view @createrington/api-types@$CURRENT version --registry=$REGISTRY 2>/dev/null || echo "")
           if [ -n "$PUBLISHED" ]; then
@@ -227,7 +240,7 @@ jobs:
         env:
           PACKAGES_TOKEN: ${{ secrets.PACKAGES_TOKEN }}
         run: |
-          echo "//gitea.matejhoz.com/api/packages/createrington/npm/:_authToken=$PACKAGES_TOKEN" >> .npmrc
+          echo "${NPM_REGISTRY#https:}:_authToken=$PACKAGES_TOKEN" >> .npmrc
           pnpm --filter @createrington/api-types build
           pnpm --filter @createrington/api-types publish --no-git-checks
           echo "Published @createrington/api-types@${{ steps.api-types-check.outputs.version }}"
