@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig, type Rollup } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "node:path";
 import { readFileSync } from "node:fs";
@@ -31,6 +31,17 @@ export default defineConfig(async () => ({
   build: {
     // Flags the eager entry chunk (~890 kB); the heaviest lazy route sits ~560 kB.
     chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      onwarn(warning: Rollup.RollupLog, warn: Rollup.LoggingFunction) {
+        if (
+          warning.code === "INVALID_ANNOTATION" &&
+          warning.id?.includes("/zod/")
+        ) {
+          return;
+        }
+        warn(warning);
+      },
+    },
   },
   resolve: {
     alias: {
