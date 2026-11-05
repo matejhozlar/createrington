@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { cn } from "@/lib/utils";
 import { TeamMemberCard } from "./TeamMemberCard";
-import { PODIUM, TEAM_SIZE } from "../data";
+import { PODIUM } from "../data";
 import { fx } from "../effects/core/fx-layer";
 import { stage } from "../effects/core/stage";
 import { preloadEffectSkins } from "../effects/registry";
@@ -101,7 +101,6 @@ export function TeamPodium() {
                   key={member.uuid}
                   member={member}
                   index={group.offset + position}
-                  total={TEAM_SIZE}
                   compact={layout === "compact"}
                 />
               ))}

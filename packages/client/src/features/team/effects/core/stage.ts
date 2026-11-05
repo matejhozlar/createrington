@@ -19,6 +19,7 @@ export type StageMember = {
   card: HTMLElement | null;
   isBusy(): boolean;
   playGuest(create: GuestFactory): GuestHandle | null;
+  notice(point: Point): void;
 };
 
 type Attention = { source: string; getPoint: () => Point | null };
