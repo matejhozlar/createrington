@@ -34,28 +34,7 @@ export function createApp(): Express {
   // Stripe webhook requires raw body for signature verification, mount before express.json()
   app.use("/api/donations/webhook", express.raw({ type: "application/json" }));
 
-  app.use(
-    helmet({
-      contentSecurityPolicy: {
-        useDefaults: true,
-        directives: {
-          "script-src": ["'self'", "https://static.cloudflareinsights.com"],
-          "connect-src": [
-            "'self'",
-            "https://cloudflareinsights.com",
-            "wss:",
-            ...(config.envMode.isProd ? [] : ["ws:"]),
-          ],
-          "img-src": [
-            "'self'",
-            "data:",
-            "https://mc-heads.net",
-            "https://cdn.discordapp.com",
-          ],
-        },
-      },
-    }),
-  );
+  app.use(helmet({ contentSecurityPolicy: false }));
   app.use(express.json({ limit: "1mb" }));
   app.use(express.urlencoded({ extended: true, limit: "1mb" }));
   app.use(cookieParser());
