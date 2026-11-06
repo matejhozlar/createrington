@@ -112,7 +112,7 @@ function collectFiles(dir: string): string[] {
 function getCategory(filePath: string): string {
   const relative = path.relative(COMMANDS_PATH, filePath);
   const parts = relative.split(path.sep);
-  return parts.length > 1 ? parts[0] : "uncategorized";
+  return parts.length > 1 ? (parts[0] ?? "uncategorized") : "uncategorized";
 }
 
 /** Format the permission level for display */

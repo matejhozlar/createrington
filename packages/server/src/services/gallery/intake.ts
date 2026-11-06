@@ -45,7 +45,7 @@ export function toIntakeMessage(message: Message): IntakeMessage {
 }
 
 export function isImageAttachment(attachment: IntakeAttachment): boolean {
-  const type = attachment.contentType?.split(";")[0].trim().toLowerCase();
+  const type = attachment.contentType?.split(";")[0]?.trim().toLowerCase();
   if (!type) return false;
 
   return (

@@ -290,5 +290,5 @@ function generateChildProperties(structure: TableStructure): string {
  */
 function getChildPropertyName(parentName: string, childName: string): string {
   // Remove parent prefix and underscore, then take first remaining segment
-  return childName.replace(parentName + "_", "").split("_")[0];
+  return childName.replace(parentName + "_", "").split("_")[0] ?? childName;
 }

@@ -33,7 +33,7 @@ export class DonationQueries extends DonationBaseQueries {
     donorCount: number;
     donationCount: number;
   }> {
-    const result = await this.runQuery<{
+    const row = await this.runQueryForRow<{
       total_raised_cents: string;
       donor_count: number;
       donation_count: number;
@@ -45,7 +45,6 @@ export class DonationQueries extends DonationBaseQueries {
       FROM donation
       WHERE status = 'completed'`,
     );
-    const row = result.rows[0];
     return {
       totalRaisedCents: Number(row.total_raised_cents),
       donorCount: row.donor_count,

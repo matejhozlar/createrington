@@ -47,7 +47,7 @@ describe("groupClaimBlocks", () => {
       minZ: 0,
       maxZ: 2,
     });
-    expect(blocks[0].chunks).toEqual([
+    expect(blocks[0]!.chunks).toEqual([
       { x: 0, z: 0, forceloaded: false },
       { x: 1, z: 0, forceloaded: false },
       { x: 1, z: 1, forceloaded: true },
@@ -74,7 +74,7 @@ describe("groupClaimBlocks", () => {
       chunk(1, 0, { ownerUuid: OWNER.toUpperCase() }),
     ]);
     expect(blocks).toHaveLength(1);
-    expect(blocks[0].chunkCount).toBe(2);
+    expect(blocks[0]!.chunkCount).toBe(2);
   });
 
   it("keeps the same coordinates in different dimensions apart", () => {

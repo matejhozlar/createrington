@@ -38,13 +38,12 @@ export class TicketQueries extends TicketBaseQueries {
         )::float AS avg_resolution_seconds
       FROM ${this.table}`;
 
-    const result = await this.runQuery<{
+    const row = await this.runQueryForRow<{
       total: number;
       open: number;
       closed: number;
       avg_resolution_seconds: number;
     }>("get ticket overview", query);
-    const row = result.rows[0];
     return {
       total: row.total,
       open: row.open,
@@ -113,11 +112,11 @@ export class TicketQueries extends TicketBaseQueries {
   async allocateNumber(): Promise<number> {
     const query = `SELECT nextval('ticket_number_seq')::int AS ticket_number`;
 
-    const result = await this.runQuery<{ ticket_number: number }>(
+    const row = await this.runQueryForRow<{ ticket_number: number }>(
       "allocate ticket number",
       query,
     );
-    return result.rows[0].ticket_number;
+    return row.ticket_number;
   }
 
   /**
@@ -128,10 +127,10 @@ export class TicketQueries extends TicketBaseQueries {
   async getCurrent(): Promise<number> {
     const query = `SELECT COALESCE(MAX(ticket_number), 0) AS ticket_number FROM ${this.table}`;
 
-    const result = await this.runQuery<{ ticket_number: string }>(
+    const row = await this.runQueryForRow<{ ticket_number: string }>(
       "get current ticket number",
       query,
     );
-    return parseInt(result.rows[0].ticket_number, 10);
+    return parseInt(row.ticket_number, 10);
   }
 }

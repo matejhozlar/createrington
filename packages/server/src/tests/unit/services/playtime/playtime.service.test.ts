@@ -81,7 +81,7 @@ describe("PlaytimeService join / heartbeat / leave", () => {
     service.reconcileWithHeartbeat([
       { uuid: STEVE, username: "steve", playTimeTicks: ticks(1050) },
     ]);
-    expect(progress[1].credit.seconds).toBe(0);
+    expect(progress[1]!.credit.seconds).toBe(0);
     expect(service.getSession(STEVE)?.lastSeenAt).toEqual(
       new Date(T0.getTime() + seconds(120)),
     );
@@ -111,11 +111,11 @@ describe("PlaytimeService join / heartbeat / leave", () => {
 
     vi.setSystemTime(new Date(T0.getTime() + seconds(90)));
     service.reconcileWithHeartbeat([{ uuid: STEVE, username: "steve" }]);
-    expect(progress[0].credit.seconds).toBe(90);
+    expect(progress[0]!.credit.seconds).toBe(90);
 
     vi.setSystemTime(new Date(T0.getTime() + seconds(100)));
     service.handlePlayerLeaveFromMod({ uuid: STEVE, username: "steve" });
-    expect(ends[0].secondsPlayed).toBe(100);
+    expect(ends[0]!.secondsPlayed).toBe(100);
   });
 
   it("confirms presence but credits nothing until the session row exists", () => {
@@ -142,7 +142,7 @@ describe("PlaytimeService join / heartbeat / leave", () => {
     service.reconcileWithHeartbeat([
       { uuid: STEVE, username: "steve", playTimeTicks: ticks(120) },
     ]);
-    expect(progress[0].credit).toEqual({
+    expect(progress[0]!.credit).toEqual({
       periodStart: T0,
       periodEnd: new Date(T0.getTime() + seconds(120)),
       seconds: 120,
@@ -165,27 +165,27 @@ describe("PlaytimeService join / heartbeat / leave", () => {
     service.reconcileWithHeartbeat([
       { uuid: STEVE, username: "steve", playTimeTicks: ticks(1060) },
     ]);
-    expect(service.revertProgress(progress[0])).toBe(true);
+    expect(service.revertProgress(progress[0]!)).toBe(true);
 
     vi.setSystemTime(new Date(T0.getTime() + seconds(120)));
     service.reconcileWithHeartbeat([
       { uuid: STEVE, username: "steve", playTimeTicks: ticks(1120) },
     ]);
-    expect(progress[1].credit).toEqual({
+    expect(progress[1]!.credit).toEqual({
       periodStart: T0,
       periodEnd: new Date(T0.getTime() + seconds(120)),
       seconds: 120,
       playTimeTicks: ticks(1120),
     });
-    expect(service.revertProgress(progress[0])).toBe(false);
+    expect(service.revertProgress(progress[0]!)).toBe(false);
 
     service.handlePlayerLeaveFromMod({
       uuid: STEVE,
       username: "steve",
       playTimeTicks: ticks(1120),
     });
-    expect(ends[0].secondsPlayed).toBe(120);
-    expect(service.revertProgress(progress[1])).toBe(false);
+    expect(ends[0]!.secondsPlayed).toBe(120);
+    expect(service.revertProgress(progress[1]!)).toBe(false);
   });
 
   it("closes at the session start when the mod reports a leave timestamp before it", () => {
@@ -275,7 +275,7 @@ describe("PlaytimeService join / heartbeat / leave", () => {
       playTimeTicks: ticks(10),
       secondsPlayed: 0,
     });
-    expect(ends[0].credit).toBeUndefined();
+    expect(ends[0]!.credit).toBeUndefined();
   });
 
   it("closes the stale session first when a tracked player joins again", () => {

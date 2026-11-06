@@ -40,7 +40,7 @@ function input(
 
 function root(message: ComponentsData): ComponentContainer {
   const [node] = message.components;
-  if (node.type !== "container") throw new Error("expected a container");
+  if (node?.type !== "container") throw new Error("expected a container");
   return node;
 }
 

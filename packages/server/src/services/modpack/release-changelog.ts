@@ -59,7 +59,7 @@ function sameFiles(a: ReleaseModRow[], b: ReleaseModRow[]): boolean {
     a.length === b.length &&
     a.every(
       (row, index) =>
-        row.fileId === b[index].fileId && row.required === b[index].required,
+        row.fileId === b[index]?.fileId && row.required === b[index]?.required,
     )
   );
 }
@@ -155,6 +155,7 @@ export async function getReleaseDiff(
 ): Promise<ModpackReleaseDiff> {
   const release = await Q.modpack.release.get({ id: releaseId });
   const [diff] = await getReleaseDiffs([release]);
+  if (!diff) throw new Error(`No diff came back for release #${releaseId}`);
   return diff;
 }
 
@@ -195,7 +196,10 @@ export async function getReleaseChangelogs(
   let next = 0;
   return releases.map((_, index) => {
     const held = stored[index];
-    return held === undefined ? inputs[next++] : revive(held);
+    if (held !== undefined) return revive(held);
+    const input = inputs[next++];
+    if (!input) throw new Error("Fewer changelogs came back than releases");
+    return input;
   });
 }
 
@@ -205,5 +209,8 @@ export async function getReleaseChangelog(
   release: ModpackRelease,
 ): Promise<ChangelogInput> {
   const [changelog] = await getReleaseChangelogs(modpack, [release]);
+  if (!changelog) {
+    throw new Error(`No changelog came back for release #${release.id}`);
+  }
   return changelog;
 }

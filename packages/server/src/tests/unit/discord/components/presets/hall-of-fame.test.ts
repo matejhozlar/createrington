@@ -33,7 +33,7 @@ function input(
 
 function only(data: ComponentsData): ComponentContainer {
   const [node] = data.components;
-  if (node.type !== "container") throw new Error("expected a container");
+  if (node?.type !== "container") throw new Error("expected a container");
   return node;
 }
 
@@ -43,7 +43,7 @@ function body(data: ComponentsData): ComponentContainer["components"] {
 
 function texts(data: ComponentsData): string[] {
   const [child] = body(data);
-  if (child.type === "section") return child.components.map((t) => t.content);
+  if (child?.type === "section") return child.components.map((t) => t.content);
   return body(data).flatMap((c) => (c.type === "text" ? [c.content] : []));
 }
 
@@ -89,8 +89,8 @@ describe("HallOfFameComponentPresets.rankUp", () => {
   it("puts the pose render beside the text", () => {
     const [child] = body(HallOfFameComponentPresets.rankUp(input()));
 
-    expect(child.type).toBe("section");
-    if (child.type !== "section") return;
+    expect(child?.type).toBe("section");
+    if (child?.type !== "section") return;
     expect(child.accessory).toMatchObject({
       type: "thumbnail",
       url: POSE_URL,

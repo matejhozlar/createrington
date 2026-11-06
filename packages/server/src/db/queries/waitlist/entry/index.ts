@@ -77,7 +77,7 @@ export class WaitlistEntryQueries extends WaitlistEntryBaseQueries {
         COUNT(*) FILTER (WHERE created_at >= $3)::integer AS signups_this_month
       FROM ${this.table}`;
 
-    const result = await this.runQuery<{
+    const row = await this.runQueryForRow<{
       total: number;
       queued: number;
       promoted: number;
@@ -92,7 +92,6 @@ export class WaitlistEntryQueries extends WaitlistEntryBaseQueries {
       windows.weekAgo,
       windows.monthAgo,
     ]);
-    const row = result.rows[0];
     return {
       total: row.total,
       queued: row.queued,

@@ -142,7 +142,7 @@ export class PlayerVoteQueries extends PlayerVoteBaseQueries {
 
   /** Vote totals across the whole table. */
   async getStats(): Promise<VoteStats> {
-    const result = await this.runQuery<{
+    const row = await this.runQueryForRow<{
       total: number;
       last_30_days: number;
       last_24_hours: number;
@@ -166,7 +166,6 @@ export class PlayerVoteQueries extends PlayerVoteBaseQueries {
          MAX(voted_at) AS last_voted_at
        FROM ${this.table}`,
     );
-    const row = result.rows[0];
     return {
       total: row.total,
       last30Days: row.last_30_days,

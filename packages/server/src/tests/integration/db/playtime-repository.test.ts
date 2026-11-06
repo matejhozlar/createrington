@@ -576,7 +576,7 @@ describe("PlaytimeRepository (integration)", () => {
         new Date(2026, 8, 11),
         1,
       );
-      expect(winner.minecraftUsername).toBe("alex");
+      expect(winner!.minecraftUsername).toBe("alex");
       expect(rest).toEqual([]);
     });
   });

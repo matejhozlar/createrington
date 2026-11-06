@@ -19,11 +19,11 @@ export class PlaytimeArchiveQueries extends PlaytimeArchiveBaseQueries {
       SELECT FLOOR(COALESCE(SUM(total_seconds), 0) / 3600) AS total_hours
       FROM ${this.table}`;
 
-    const result = await this.runQuery<{ total_hours: string }>(
+    const row = await this.runQueryForRow<{ total_hours: string }>(
       "get archive total hours",
       query,
     );
 
-    return Number(result.rows[0].total_hours);
+    return Number(row.total_hours);
   }
 }

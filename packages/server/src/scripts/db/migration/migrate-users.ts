@@ -156,14 +156,15 @@ function parseCsv(csvText: string): Array<Record<string, string>> {
 
   if (rows.length === 0) return [];
   const header = rows[0];
+  if (!header) return [];
   const data = rows.slice(1);
 
   return data
     .filter((r) => r.length > 1 || (r.length === 1 && r[0] !== "")) // drop empty last line
     .map((r) => {
       const obj: Record<string, string> = {};
-      for (let c = 0; c < header.length; c++) {
-        obj[header[c]] = r[c] ?? "";
+      for (const [c, key] of header.entries()) {
+        obj[key] = r[c] ?? "";
       }
       return obj;
     });
@@ -184,6 +185,7 @@ function extractTargetColumns(schemaSql: string, tableName: string): string[] {
   if (!m) return [];
 
   const inside = m[1];
+  if (inside === undefined) return [];
 
   // Split by lines, grab first token for lines that look like column definitions:
   // e.g. "minecraft_uuid uuid NOT NULL,"
@@ -200,7 +202,7 @@ function extractTargetColumns(schemaSql: string, tableName: string): string[] {
     if (!colMatch) continue;
 
     const col = colMatch[1];
-    cols.push(col);
+    if (col !== undefined) cols.push(col);
   }
 
   return cols;
@@ -245,7 +247,7 @@ function balanceToBigint3dp(balanceText: string): bigint | null {
   if (negative) s = s.slice(1);
 
   const [intPartRaw, fracRaw = ""] = s.split(".");
-  const intPart = intPartRaw.replace(/^0+(?=\d)/, "") || "0";
+  const intPart = (intPartRaw ?? "").replace(/^0+(?=\d)/, "") || "0";
 
   // We need thousandths, so 3 digits, but for rounding look at 4th digit.
   const frac = (fracRaw + "0000").slice(0, 4); // at least 4 digits
@@ -325,7 +327,7 @@ async function main(): Promise<void> {
   // Map: uuid -> fund row
   const fundsByUuid = new Map<string, Record<string, string>>();
   for (const f of funds) {
-    fundsByUuid.set(f.uuid, f);
+    if (f.uuid !== undefined) fundsByUuid.set(f.uuid, f);
   }
 
   // Desired columns for player in our inserts (we will intersect with actual target columns)
@@ -377,6 +379,7 @@ async function main(): Promise<void> {
 
   for (const u of users) {
     const uuid = u.uuid;
+    if (uuid === undefined) continue;
     const username = u.name;
     const discordId = (u.discord_id ?? "").trim();
 
@@ -387,7 +390,7 @@ async function main(): Promise<void> {
       continue;
     }
 
-    emittedPlayerUuids.add(u.uuid);
+    emittedPlayerUuids.add(uuid);
 
     // last_seen in old is timestamp (no tz); target is timestamptz.
     // We'll just insert the string; PG will cast if it's parseable.
@@ -446,13 +449,14 @@ async function main(): Promise<void> {
 
   for (const u of users) {
     const uuid = u.uuid;
+    if (uuid === undefined) continue;
 
     if (!emittedPlayerUuids.has(uuid)) continue;
 
     const f = fundsByUuid.get(uuid);
     if (!f) continue;
 
-    const bal = balanceToBigint3dp(f.balance);
+    const bal = balanceToBigint3dp(f.balance ?? "");
     if (bal === null) continue;
 
     // Target has chk_balance_non_negative, so skip negatives.

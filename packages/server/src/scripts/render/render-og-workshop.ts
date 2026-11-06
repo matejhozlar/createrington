@@ -208,8 +208,9 @@ function drawPixelMap(
   cellH = TEXEL,
 ): void {
   for (let r = 0; r < map.length; r++) {
-    for (let c = 0; c < map[r].length; c++) {
-      const color = CHEST_PALETTE[map[r][c]];
+    const line = map[r] ?? "";
+    for (let c = 0; c < line.length; c++) {
+      const color = CHEST_PALETTE[line.charAt(c)];
       if (!color) continue;
       ctx.fillStyle = color;
       ctx.fillRect(x + c * cellW, y + r * cellH, cellW, cellH);

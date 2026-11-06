@@ -38,7 +38,7 @@ function connectFakeSocket(service: WebSocketService) {
       io: { listeners(event: string): Handler[] };
     }
   ).io;
-  const onConnection = io.listeners(SocketEvent.CONNECTION)[0];
+  const onConnection = io.listeners(SocketEvent.CONNECTION)[0]!;
   const handlers = new Map<string, Handler>();
   const socket: FakeSocket = {
     id: "fake-socket",
@@ -96,7 +96,7 @@ describe("WebSocketService inbound event handling", () => {
       await settle();
 
       expect(ack).toHaveBeenCalledTimes(1);
-      expect(ack.mock.calls[0][0]).toMatchObject({
+      expect(ack.mock.calls[0]![0]).toMatchObject({
         success: false,
         error: "Invalid subscription request",
       });
@@ -129,8 +129,8 @@ describe("WebSocketService inbound event handling", () => {
     await settle();
 
     expect(ack).toHaveBeenCalledTimes(2);
-    expect(ack.mock.calls[0][0]).toMatchObject({ success: false });
-    expect(ack.mock.calls[1][0]).toMatchObject({ success: false });
+    expect(ack.mock.calls[0]![0]).toMatchObject({ success: false });
+    expect(ack.mock.calls[1]![0]).toMatchObject({ success: false });
     expect(socket.leave).not.toHaveBeenCalled();
     expect(unhandled).not.toHaveBeenCalled();
   });
@@ -153,8 +153,8 @@ describe("WebSocketService inbound event handling", () => {
 
     expect(ack).not.toHaveBeenCalled();
     expect(socket.emit).toHaveBeenCalledTimes(2);
-    expect(socket.emit.mock.calls[0][0]).toBe(SocketEvent.ERROR);
-    expect(socket.emit.mock.calls[0][1]).toMatchObject({
+    expect(socket.emit.mock.calls[0]![0]).toBe(SocketEvent.ERROR);
+    expect(socket.emit.mock.calls[0]![1]).toMatchObject({
       message: "Invalid initial data request",
     });
     expect(unhandled).not.toHaveBeenCalled();
@@ -192,7 +192,7 @@ describe("WebSocketService inbound event handling", () => {
 
     expect(socket.join).toHaveBeenCalledWith(`${SubscriptionType.PLAYERS}:1`);
     expect(ack).toHaveBeenCalledTimes(1);
-    expect(ack.mock.calls[0][0]).toMatchObject({
+    expect(ack.mock.calls[0]![0]).toMatchObject({
       success: true,
       type: SubscriptionType.PLAYERS,
       serverId: 1,
@@ -213,7 +213,7 @@ describe("WebSocketService inbound event handling", () => {
 
     expect(socket.join).not.toHaveBeenCalled();
     expect(ack).toHaveBeenCalledTimes(1);
-    expect(ack.mock.calls[0][0]).toMatchObject({
+    expect(ack.mock.calls[0]![0]).toMatchObject({
       success: false,
       type: SubscriptionType.PLAYERS,
       error: "Unknown server",
@@ -232,7 +232,7 @@ describe("WebSocketService inbound event handling", () => {
     await settle();
 
     expect(ack).toHaveBeenCalledTimes(1);
-    expect(ack.mock.calls[0][0]).toMatchObject({
+    expect(ack.mock.calls[0]![0]).toMatchObject({
       success: false,
       error: "Rate limited",
     });

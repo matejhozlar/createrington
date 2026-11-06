@@ -37,9 +37,9 @@ export function parseStatus(response: string): boolean | null {
 }
 
 function matchList(text: string, pattern: RegExp): string[] {
-  const match = text.match(pattern);
-  if (!match) return [];
-  return match[1]
+  const list = text.match(pattern)?.[1];
+  if (list === undefined) return [];
+  return list
     .split(",")
     .map((name) => name.trim())
     .filter(Boolean);

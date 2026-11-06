@@ -59,8 +59,8 @@ export class StructurePackQueries extends StructurePackBaseQueries {
       GROUP BY p.id`,
       [id],
     );
-    if (result.rows.length === 0) return null;
-    const row = result.rows[0];
+    const [row] = result.rows;
+    if (!row) return null;
     return {
       ...this.mapRowToEntity(row),
       mods: row.mods,
@@ -76,8 +76,8 @@ export class StructurePackQueries extends StructurePackBaseQueries {
       GROUP BY p.id
       LIMIT 1`,
     );
-    if (result.rows.length === 0) return null;
-    const row = result.rows[0];
+    const [row] = result.rows;
+    if (!row) return null;
     return {
       ...this.mapRowToEntity(row),
       mods: row.mods,

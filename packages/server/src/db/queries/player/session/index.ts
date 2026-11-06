@@ -189,12 +189,12 @@ export class PlayerSessionQueries extends PlayerSessionBaseQueries {
       FROM ${this.table}
       WHERE ${conditions.join(" AND ")}`;
 
-    const result = await this.runQuery<{ avg_seconds: number }>(
+    const row = await this.runQueryForRow<{ avg_seconds: number }>(
       "get average session length",
       query,
       params,
     );
-    return result.rows[0].avg_seconds;
+    return row.avg_seconds;
   }
 
   /**

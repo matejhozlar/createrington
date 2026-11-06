@@ -118,7 +118,7 @@ function normalizeReturnTo(value: string): string {
   if (value.startsWith("/") && !value.startsWith("//")) return value;
   // MSYS-converted: take the last path segment chain after the install dir
   const msys = value.match(/^[A-Za-z]:[\\/]Program Files[\\/]Git[\\/](.*)$/);
-  if (msys) return "/" + msys[1].replace(/\\/g, "/");
+  if (msys?.[1] !== undefined) return "/" + msys[1].replace(/\\/g, "/");
   // Bare path (`profile` -> `/profile`)
   if (!value.startsWith("/")) return "/" + value;
   return "/";

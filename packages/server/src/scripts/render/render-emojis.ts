@@ -42,6 +42,9 @@ function loadIconSet(set: string): IconSet {
 
 function buildSvg(key: AppEmojiKey, spec: IconEmojiSpec): string {
   const [set, name] = spec.icon.split(":");
+  if (!set || !name) {
+    throw new Error(`Icon "${spec.icon}" (emoji "${key}") is not set:name`);
+  }
   const data = getIconData(loadIconSet(set), name);
   if (!data) {
     throw new Error(`Icon "${spec.icon}" (emoji "${key}") does not exist`);

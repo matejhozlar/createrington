@@ -92,7 +92,7 @@ function mockManager(
 }
 
 function responseBody(res: MockRes): ServerStatusResponse {
-  return res.json.mock.calls[0][0] as ServerStatusResponse;
+  return res.json.mock.calls[0]![0] as ServerStatusResponse;
 }
 
 beforeEach(() => {
@@ -225,8 +225,8 @@ describe("ServersController.getStatus", () => {
     await ServersController.getStatus(makeReq(), res);
 
     const body = responseBody(res);
-    expect(body.servers[0].maintenance).toBe(true);
-    expect(body.servers[1].maintenance).toBe(false);
+    expect(body.servers[0]!.maintenance).toBe(true);
+    expect(body.servers[1]!.maintenance).toBe(false);
   });
 
   it("rejects a malformed server slug before touching the playtime manager", async () => {

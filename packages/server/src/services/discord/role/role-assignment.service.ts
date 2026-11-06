@@ -161,7 +161,7 @@ export class RoleAssignmentService {
   ): RoleAssignmentResult {
     return {
       success: false,
-      rule: rules[0],
+      rule: rules[0] ?? null,
       discordId,
       assigned: false,
       error: error instanceof Error ? error.message : "Unknown error",
@@ -197,7 +197,7 @@ export class RoleAssignmentService {
 
         return {
           success: true,
-          rule: rules[0],
+          rule: rules[0] ?? null,
           discordId,
           assigned: false,
           removedRoles: removedRoles.length > 0 ? removedRoles : undefined,

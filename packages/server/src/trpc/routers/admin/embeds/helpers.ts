@@ -118,8 +118,7 @@ export function buildButtons(
 
   // Action buttons (require a preset to reference)
   if (hasActionButtons && presetId) {
-    for (let i = 0; i < data.actionButtons.length; i++) {
-      const btn = data.actionButtons[i];
+    for (const [i, btn] of data.actionButtons.entries()) {
       const button = new ButtonBuilder()
         .setLabel(btn.label)
         .setCustomId(`embed-action:${presetId}:${i}`)

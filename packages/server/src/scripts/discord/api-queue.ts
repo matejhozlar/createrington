@@ -57,6 +57,7 @@ export class DiscordApiQueue {
 
     for (let i = 0; i < total; i++) {
       const task = this.tasks[i];
+      if (!task) continue;
       const progress = `[${i + 1}/${total}]`;
 
       try {
