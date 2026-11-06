@@ -96,7 +96,7 @@ export function FormPanel({
   }
 
   function set(updates: Partial<EmbedData>) {
-    onChange({ ...data, ...updates } as EmbedData);
+    onChange({ ...data, ...updates });
   }
 
   const fieldsCount = data.fields.length;
@@ -406,9 +406,7 @@ function FieldsTab({ data, set, focused, setFocused }: TabProps) {
 
   function update(i: number, updates: Partial<EmbedField>) {
     set({
-      fields: fields.map((f, j) =>
-        j === i ? ({ ...f, ...updates } as EmbedField) : f,
-      ),
+      fields: fields.map((f, j) => (j === i ? { ...f, ...updates } : f)),
     });
   }
   function remove(i: number) {
@@ -672,15 +670,13 @@ function ButtonsTab({ data, set, focused, setFocused }: TabProps) {
 
   function setLink(i: number, updates: Partial<EmbedLinkButton>) {
     set({
-      buttons: links.map((b, j) =>
-        j === i ? ({ ...b, ...updates } as EmbedLinkButton) : b,
-      ),
+      buttons: links.map((b, j) => (j === i ? { ...b, ...updates } : b)),
     });
   }
   function setAction(i: number, updates: Partial<EmbedActionButton>) {
     set({
       actionButtons: actions.map((b, j) =>
-        j === i ? ({ ...b, ...updates } as EmbedActionButton) : b,
+        j === i ? { ...b, ...updates } : b,
       ),
     });
   }
@@ -692,7 +688,7 @@ function ButtonsTab({ data, set, focused, setFocused }: TabProps) {
   }
   function addLink() {
     if (total >= 5) return;
-    set({ buttons: [...links, { label: "", url: "" } as EmbedLinkButton] });
+    set({ buttons: [...links, { label: "", url: "" }] });
     setFocused?.(`button:link:${links.length}` as FocusTarget);
   }
   function addAction() {
@@ -706,7 +702,7 @@ function ButtonsTab({ data, set, focused, setFocused }: TabProps) {
           channelId: "",
           threadName: "{username}'s thread",
           threadMessage: "Hey {user}, this thread was created for you!",
-        } as EmbedActionButton,
+        },
       ],
     });
     setFocused?.(`button:action:${actions.length}` as FocusTarget);

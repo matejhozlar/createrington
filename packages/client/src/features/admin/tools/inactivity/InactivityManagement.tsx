@@ -133,8 +133,8 @@ export function InactivityManagement() {
   }, []);
 
   const refreshWarnings = useCallback(() => {
-    refetchList();
-    refetchStats();
+    void refetchList();
+    void refetchStats();
   }, [refetchList, refetchStats]);
 
   const handleSuccess = useCallback(() => {
@@ -147,8 +147,8 @@ export function InactivityManagement() {
     try {
       await triggerCleanup.mutateAsync();
       toast.success("Cleanup cycle completed");
-      refetchList();
-      refetchStats();
+      void refetchList();
+      void refetchStats();
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Failed to run cleanup cycle",
@@ -160,8 +160,8 @@ export function InactivityManagement() {
     try {
       await triggerResolveRemove.mutateAsync();
       toast.success("Overdue warnings processed");
-      refetchList();
-      refetchStats();
+      void refetchList();
+      void refetchStats();
     } catch (error) {
       toast.error(
         error instanceof Error

@@ -146,7 +146,7 @@ export function LinkedMessages({ builder }: LinkedMessagesProps) {
             <AlertDialogAction
               variant="destructive"
               onClick={() => {
-                if (unlinkTarget) handleUnlink(unlinkTarget.id);
+                if (unlinkTarget) void handleUnlink(unlinkTarget.id);
                 setUnlinkTarget(null);
               }}
             >

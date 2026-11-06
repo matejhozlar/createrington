@@ -82,8 +82,8 @@ export function BalanceAdjustModal({
         return config.successMessage(formatMoney(variables.amount), playerName);
       },
       onSuccess: () => {
-        utils.admin.players.transactions.list.invalidate({ id: playerId });
-        utils.admin.players.audit.list.invalidate();
+        void utils.admin.players.transactions.list.invalidate({ id: playerId });
+        void utils.admin.players.audit.list.invalidate();
         onClose();
         onSuccess();
       },

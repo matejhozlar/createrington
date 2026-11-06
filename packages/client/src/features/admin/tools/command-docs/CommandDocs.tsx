@@ -14,9 +14,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { trpc, type RouterOutput } from "@/lib/trpc";
-
-type CommandsPayload = RouterOutput["admin"]["discordCommands"]["list"];
+import { trpc } from "@/lib/trpc";
 
 interface CommandOption {
   type: number;
@@ -244,12 +242,12 @@ function CommandCard({ command }: { command: CommandData }) {
 }
 
 export function CommandDocs() {
-  const { data, isLoading } = trpc.admin.discordCommands.list.useQuery();
+  const { data: payload, isLoading } =
+    trpc.admin.discordCommands.list.useQuery();
 
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
 
-  const payload = data as CommandsPayload | undefined;
   const allCommands = (payload?.commands ?? []) as CommandData[];
 
   const filtered = allCommands.filter((cmd) => {

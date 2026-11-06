@@ -89,9 +89,9 @@ export function MaintenanceToggle({
   );
 
   const invalidate = () => {
-    utils.admin.servers.get.invalidate({ id: serverId });
-    utils.admin.servers.list.invalidate();
-    utils.admin.servers.maintenanceStatus.invalidate({ serverId });
+    void utils.admin.servers.get.invalidate({ id: serverId });
+    void utils.admin.servers.list.invalidate();
+    void utils.admin.servers.maintenanceStatus.invalidate({ serverId });
   };
 
   const toggleMutation = trpc.admin.servers.toggleMaintenance.useMutation({

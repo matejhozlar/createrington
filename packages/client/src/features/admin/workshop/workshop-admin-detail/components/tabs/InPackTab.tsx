@@ -170,7 +170,7 @@ export function InPackTab({
       success: "Checked against the published pack",
       onSuccess: () => {
         onReconciled();
-        utils.admin.modpacks.listReleases.invalidate({ modpackId });
+        void utils.admin.modpacks.listReleases.invalidate({ modpackId });
       },
     }),
   );
@@ -192,7 +192,7 @@ export function InPackTab({
           );
         }
         onReconciled();
-        utils.admin.modpacks.list.invalidate();
+        void utils.admin.modpacks.list.invalidate();
       },
     }),
   );

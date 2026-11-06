@@ -8,7 +8,7 @@ export function useHeadBitmaps(urls: readonly string[]): Map<string, Bitmap> {
 
   useEffect(() => {
     let cancelled = false;
-    Promise.allSettled(
+    void Promise.allSettled(
       key.split("\n").map(async (url) => {
         const image = await cachedImage(url);
         return [url, headOf(bitmapOf(image))] as const;

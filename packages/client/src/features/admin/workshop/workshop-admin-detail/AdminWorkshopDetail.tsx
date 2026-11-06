@@ -188,12 +188,12 @@ export function AdminWorkshopDetail() {
       },
       onSuccess: () => {
         setRejectTarget(null);
-        invalidate();
+        void invalidate();
       },
       // A refused review means the grid allowed a click the server would not,
       // so refetch to bring the stale rows up to date
       onError: () => {
-        invalidate();
+        void invalidate();
       },
     }),
   );
@@ -202,7 +202,7 @@ export function AdminWorkshopDetail() {
     useMutationToast({
       success: "Added to the workshop as approved",
       onSuccess: () => {
-        invalidate();
+        void invalidate();
       },
     }),
   );
@@ -255,9 +255,9 @@ export function AdminWorkshopDetail() {
     useMutationToast({
       success: "Workshop updated",
       onSuccess: () => {
-        utils.admin.workshops.list.invalidate();
-        utils.user.workshops.list.invalidate();
-        utils.user.workshops.get.invalidate();
+        void utils.admin.workshops.list.invalidate();
+        void utils.user.workshops.list.invalidate();
+        void utils.user.workshops.get.invalidate();
       },
     }),
   );
@@ -340,7 +340,7 @@ export function AdminWorkshopDetail() {
             row.curseforgeProjectId === projectId,
         );
         return item
-          ? [...current, { item, environment: "unspecified" as ModEnvironment }]
+          ? [...current, { item, environment: "unspecified" }]
           : current;
       });
     }

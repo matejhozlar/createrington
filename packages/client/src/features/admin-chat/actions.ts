@@ -202,6 +202,6 @@ export function describeAction(action: AdminChatAction): string {
     const count = action.components.length;
     return `Insert components message (${count} component${count === 1 ? "" : "s"})`;
   }
-  const title = (action.embed.title as string | undefined) ?? "untitled";
+  const title = action.embed.title ?? "untitled";
   return `Insert embed: ${title}`;
 }

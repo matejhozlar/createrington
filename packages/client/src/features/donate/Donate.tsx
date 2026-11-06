@@ -98,7 +98,7 @@ export function Donate() {
         description: err.message,
       }),
       onSuccess: () => {
-        subscription.refetch();
+        void subscription.refetch();
       },
     }),
   );
@@ -115,7 +115,7 @@ export function Donate() {
           description: err.message,
         }),
         onSuccess: () => {
-          subscription.refetch();
+          void subscription.refetch();
         },
       }),
     );

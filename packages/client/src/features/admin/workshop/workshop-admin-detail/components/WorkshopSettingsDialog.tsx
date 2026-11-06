@@ -171,12 +171,12 @@ function SettingsForm({
     }
 
     toast.success("Workshop settings saved");
-    utils.admin.workshops.list.invalidate();
-    utils.admin.modpacks.list.invalidate();
-    utils.admin.workshops.listPackMods.invalidate();
-    utils.admin.workshops.getAttention.invalidate();
-    utils.user.workshops.list.invalidate();
-    utils.user.workshops.get.invalidate();
+    void utils.admin.workshops.list.invalidate();
+    void utils.admin.modpacks.list.invalidate();
+    void utils.admin.workshops.listPackMods.invalidate();
+    void utils.admin.workshops.getAttention.invalidate();
+    void utils.user.workshops.list.invalidate();
+    void utils.user.workshops.get.invalidate();
     onOpenChange(false);
   };
 

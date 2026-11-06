@@ -55,7 +55,7 @@ export function AdminChatProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!isAdmin) return;
     let cancelled = false;
-    fetchEnabled().then((value) => {
+    void fetchEnabled().then((value) => {
       if (!cancelled) setEnabledFromServer(value);
     });
     return () => {

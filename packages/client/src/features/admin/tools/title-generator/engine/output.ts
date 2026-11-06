@@ -102,10 +102,10 @@ function minecraftFrame(
   return frame;
 }
 
-async function layoutFrame(
+function layoutFrame(
   image: HTMLCanvasElement,
   settings: OutputSettings,
-): Promise<Frame> {
+): Frame {
   if (settings.mode === "square") {
     const max = Math.max(image.width, image.height);
     const frame = createFrame(max, max);
@@ -147,11 +147,11 @@ async function layoutFrame(
   return frame;
 }
 
-export async function composeOutput(
+export function composeOutput(
   image: HTMLCanvasElement,
   settings: OutputSettings,
-): Promise<HTMLCanvasElement> {
-  const layout = await layoutFrame(image, settings);
+): HTMLCanvasElement {
+  const layout = layoutFrame(image, settings);
   const fixedLayout = hasFixedLayout(settings.mode);
   const padding = fixedLayout ? 0 : settings.padding;
   const out = createFrame(

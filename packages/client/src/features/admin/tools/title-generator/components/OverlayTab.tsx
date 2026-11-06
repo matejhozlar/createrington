@@ -76,7 +76,7 @@ export function OverlayTab({ layer, onChange }: LayerTabProps) {
             accept="image/png"
             className="hidden"
             onChange={(event) => {
-              uploadOverlay(event.target.files?.[0]);
+              void uploadOverlay(event.target.files?.[0]);
               event.target.value = "";
             }}
           />

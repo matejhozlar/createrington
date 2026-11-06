@@ -44,7 +44,7 @@ export function Authorize() {
   // consent. Skip the round-trip when there's no state: the request is already
   // invalid, so logging in would only land them on the error card.
   useEffect(() => {
-    if (!loading && !user && state) login();
+    if (!loading && !user && state) void login();
   }, [loading, user, login, state]);
 
   useEffect(() => {

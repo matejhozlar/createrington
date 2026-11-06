@@ -78,8 +78,8 @@ export function CompareRender() {
 
   useEffect(() => {
     if (!data) return;
-    loadSkin(data.player1.uuid, poseLeft).then(setSkinLeft);
-    loadSkin(data.player2.uuid, poseRight).then(setSkinRight);
+    void loadSkin(data.player1.uuid, poseLeft).then(setSkinLeft);
+    void loadSkin(data.player2.uuid, poseRight).then(setSkinRight);
   }, [data, poseLeft, poseRight]);
 
   if (unavailable) return <RenderUnavailable reason={unavailable} />;

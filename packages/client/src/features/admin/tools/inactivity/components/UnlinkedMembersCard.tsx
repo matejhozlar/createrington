@@ -70,7 +70,7 @@ export function UnlinkedMembersCard() {
     try {
       const result = await refreshMembers.mutateAsync();
       toast.success(`Cache refreshed: ${result.count} member(s)`);
-      refetchList();
+      void refetchList();
     } catch (error) {
       toast.error(
         error instanceof Error

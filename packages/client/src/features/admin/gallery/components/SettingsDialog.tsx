@@ -82,8 +82,8 @@ function SettingsForm({
     useMutationToast({
       success: "Gallery rewards saved",
       onSuccess: () => {
-        utils.admin.gallery.settings.get.invalidate();
-        utils.admin.gallery.get.invalidate();
+        void utils.admin.gallery.settings.get.invalidate();
+        void utils.admin.gallery.get.invalidate();
         onClose();
       },
     }),

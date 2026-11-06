@@ -115,7 +115,7 @@ function UnresolvedUuid({ uuid }: { uuid: string }) {
       type="button"
       onClick={() => {
         if (clicked && isError) {
-          query.refetch();
+          void query.refetch();
         } else {
           setClicked(true);
         }

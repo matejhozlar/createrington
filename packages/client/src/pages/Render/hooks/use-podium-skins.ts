@@ -10,7 +10,7 @@ export function usePodiumSkins(
 
   useEffect(() => {
     if (!players) return;
-    Promise.all(
+    void Promise.all(
       players.map((player, index) => loadSkin(player.uuid, poses[index])),
     ).then(setSkins);
   }, [players, poses]);

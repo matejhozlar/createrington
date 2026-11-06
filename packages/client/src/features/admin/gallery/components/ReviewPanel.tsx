@@ -56,8 +56,8 @@ export function ReviewPanel({
   const [rejectKey, setRejectKey] = useState(0);
 
   const invalidate = () => {
-    utils.admin.gallery.list.invalidate();
-    utils.admin.gallery.get.invalidate({ id: item.id });
+    void utils.admin.gallery.list.invalidate();
+    void utils.admin.gallery.get.invalidate({ id: item.id });
   };
 
   const approveMutation = trpc.admin.gallery.approve.useMutation(

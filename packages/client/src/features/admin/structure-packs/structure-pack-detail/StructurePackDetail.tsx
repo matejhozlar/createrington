@@ -32,8 +32,8 @@ export function StructurePackDetail() {
     useMutationToast({
       success: "Pack deleted",
       onSuccess: () => {
-        utils.admin.structurePacks.list.invalidate();
-        navigate("/admin/tools/structure-packs");
+        void utils.admin.structurePacks.list.invalidate();
+        void navigate("/admin/tools/structure-packs");
       },
     }),
   );
@@ -42,8 +42,8 @@ export function StructurePackDetail() {
     trpc.admin.structurePacks.toggleEnabled.useMutation(
       useMutationToast({
         onSuccess: () => {
-          utils.admin.structurePacks.get.invalidate({ id: packId });
-          utils.admin.structurePacks.list.invalidate();
+          void utils.admin.structurePacks.get.invalidate({ id: packId });
+          void utils.admin.structurePacks.list.invalidate();
         },
       }),
     );

@@ -1,6 +1,7 @@
 import { useRef, useCallback } from "react";
 import { toPng } from "html-to-image";
 import { Download } from "lucide-react";
+import { useToastActions } from "@/hooks/use-toast";
 
 const features = [
   {
@@ -23,21 +24,28 @@ const features = [
 
 export function Advertisement() {
   const adRef = useRef<HTMLDivElement>(null);
+  const toast = useToastActions();
 
   const handleDownload = useCallback(async () => {
     if (!adRef.current) return;
 
-    const dataUrl = await toPng(adRef.current, {
-      width: 1080,
-      height: 1080,
-      pixelRatio: 1,
-    });
+    let dataUrl: string;
+    try {
+      dataUrl = await toPng(adRef.current, {
+        width: 1080,
+        height: 1080,
+        pixelRatio: 1,
+      });
+    } catch {
+      toast.error("Could not render the image");
+      return;
+    }
 
     const link = document.createElement("a");
     link.download = "createrington-ad.png";
     link.href = dataUrl;
     link.click();
-  }, []);
+  }, [toast]);
 
   return (
     <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-6 p-8">

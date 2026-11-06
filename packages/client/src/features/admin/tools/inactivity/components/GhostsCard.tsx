@@ -82,8 +82,8 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
     try {
       const result = await refreshGhosts.mutateAsync();
       toast.success(`Cache refreshed: ${result.count} ghost(s)`);
-      refetchList();
-      refetchCapabilities();
+      void refetchList();
+      void refetchCapabilities();
     } catch (error) {
       toast.error(
         error instanceof Error
@@ -95,15 +95,15 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
 
   const handleRemoveSuccess = useCallback(() => {
     setRemoveTarget(null);
-    refetchList();
-    refetchCapabilities();
+    void refetchList();
+    void refetchCapabilities();
   }, [refetchList, refetchCapabilities]);
 
   const handleRemoveClose = useCallback(() => {
     setRemoveTarget(null);
     // Always refetch on close: if verify evicted the user mid-dialog,
     // they should disappear from the table immediately.
-    refetchList();
+    void refetchList();
   }, [refetchList]);
 
   const columns: DataTableColumn<GhostMember>[] = [

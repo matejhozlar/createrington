@@ -174,10 +174,10 @@ export function ServerChat() {
       setLoading(false);
     }
 
-    init();
+    void init();
     return () => {
       cancelled = true;
-      unsubscribe(SubscriptionType.MESSAGES, serverId);
+      void unsubscribe(SubscriptionType.MESSAGES, serverId);
     };
   }, [isConnected, serverId, requestInitialData, subscribe, unsubscribe]);
 

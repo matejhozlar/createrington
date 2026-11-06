@@ -17,8 +17,8 @@ export function WhitelistResync({ serverId }: WhitelistResyncProps) {
     useMutationToast({
       success: ({ count }) => `Whitelist resynced (${count} players)`,
       onSuccess: () => {
-        utils.admin.servers.get.invalidate({ id: serverId });
-        utils.admin.servers.list.invalidate();
+        void utils.admin.servers.get.invalidate({ id: serverId });
+        void utils.admin.servers.list.invalidate();
       },
     }),
   );

@@ -178,7 +178,7 @@ function MaintenanceSettingsForm({
           ? "Maintenance messages saved and pushed to the server"
           : "Maintenance messages saved; the server is unreachable and will receive them when it's back",
       onSuccess: () => {
-        invalidateSettings();
+        void invalidateSettings();
       },
     }),
   );
@@ -192,7 +192,7 @@ function MaintenanceSettingsForm({
             : `${username} added; the server is unreachable and will be synced when it's back`,
         onSuccess: () => {
           setQuery("");
-          invalidateSettings();
+          void invalidateSettings();
         },
       }),
     );
@@ -202,7 +202,7 @@ function MaintenanceSettingsForm({
       useMutationToast({
         success: ({ username }) => `${username} removed from the allow list`,
         onSuccess: () => {
-          invalidateSettings();
+          void invalidateSettings();
         },
       }),
     );
@@ -212,7 +212,7 @@ function MaintenanceSettingsForm({
       success: ({ added, removed }) =>
         `Settings pushed to the server (+${added.length} / -${removed.length} allowed players)`,
       onSuccess: () => {
-        utils.admin.servers.maintenanceStatus.invalidate({ serverId });
+        void utils.admin.servers.maintenanceStatus.invalidate({ serverId });
       },
     }),
   );

@@ -61,7 +61,7 @@ class ApiClient {
 
             if (response?.body) {
               try {
-                const errorBody = (await response.json()) as ApiErrorResponse;
+                const errorBody = await response.json<ApiErrorResponse>();
                 error.message = errorBody.message || error.message;
                 (error as Error & { code?: string }).code = errorBody.code;
               } catch {

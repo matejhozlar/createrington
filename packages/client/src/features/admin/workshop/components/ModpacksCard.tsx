@@ -134,7 +134,7 @@ export function ModpacksCard() {
     useMutationToast({
       success: "Modpack deleted",
       onSuccess: () => {
-        utils.admin.modpacks.list.invalidate();
+        void utils.admin.modpacks.list.invalidate();
         setDeleteTarget(null);
       },
     }),

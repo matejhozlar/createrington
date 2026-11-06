@@ -64,7 +64,13 @@ export function PresetImportDialog({
           onChange={async (event) => {
             const file = event.target.files?.[0];
             event.target.value = "";
-            if (file) setText(await file.text());
+            if (!file) return;
+            try {
+              setText(await file.text());
+              setError(null);
+            } catch {
+              setError("Could not read the file");
+            }
           }}
         />
         <textarea
