@@ -57,10 +57,10 @@ export function CreateWorkshopDialog({
     useMutationToast({
       success: (workshop) => `Workshop "${workshop.name}" created as draft`,
       onSuccess: (workshop) => {
-        utils.admin.workshops.list.invalidate();
-        utils.admin.modpacks.list.invalidate();
+        void utils.admin.workshops.list.invalidate();
+        void utils.admin.modpacks.list.invalidate();
         onOpenChange(false);
-        navigate(`/admin/tools/workshop/${workshop.slug}`);
+        void navigate(`/admin/tools/workshop/${workshop.slug}`);
       },
     }),
   );

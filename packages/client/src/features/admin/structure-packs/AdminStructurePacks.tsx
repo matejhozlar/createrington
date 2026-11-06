@@ -111,7 +111,7 @@ export function AdminStructurePacks() {
         return parts.join(". ") || "Nothing to import";
       },
       onSuccess: () => {
-        utils.admin.structurePacks.list.invalidate();
+        void utils.admin.structurePacks.list.invalidate();
       },
     }),
   );
@@ -134,8 +134,10 @@ export function AdminStructurePacks() {
         },
       ],
     };
-    navigator.clipboard.writeText(JSON.stringify(exported, null, 2));
-    toast.success("Copied to clipboard");
+    navigator.clipboard.writeText(JSON.stringify(exported, null, 2)).then(
+      () => toast.success("Copied to clipboard"),
+      () => toast.error("Failed to copy to clipboard"),
+    );
   }
 
   async function handleImport() {
@@ -152,11 +154,11 @@ export function AdminStructurePacks() {
     useMutationToast({
       success: "Structure pack created",
       onSuccess: (pack) => {
-        utils.admin.structurePacks.list.invalidate();
+        void utils.admin.structurePacks.list.invalidate();
         setCreateOpen(false);
         setName("");
         setDescription("");
-        navigate(`/admin/tools/structure-packs/${pack.id}`);
+        void navigate(`/admin/tools/structure-packs/${pack.id}`);
       },
     }),
   );
@@ -167,7 +169,7 @@ export function AdminStructurePacks() {
         success: (_data, variables) =>
           variables.enabled ? "Pack enabled" : "Pack disabled",
         onSuccess: () => {
-          utils.admin.structurePacks.list.invalidate();
+          void utils.admin.structurePacks.list.invalidate();
         },
       }),
     );
@@ -176,7 +178,7 @@ export function AdminStructurePacks() {
     useMutationToast({
       success: "Pack deleted",
       onSuccess: () => {
-        utils.admin.structurePacks.list.invalidate();
+        void utils.admin.structurePacks.list.invalidate();
         setDeleteTarget(null);
       },
     }),

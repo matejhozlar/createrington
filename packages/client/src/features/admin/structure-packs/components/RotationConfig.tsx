@@ -82,7 +82,7 @@ export function RotationConfig() {
       useMutationToast({
         success: "Rotation config updated",
         onSuccess: () => {
-          utils.admin.structurePacks.rotationConfig.get.invalidate();
+          void utils.admin.structurePacks.rotationConfig.get.invalidate();
         },
       }),
     );
@@ -92,8 +92,8 @@ export function RotationConfig() {
       useMutationToast({
         success: "Rotation triggered",
         onSuccess: () => {
-          utils.admin.structurePacks.list.invalidate();
-          utils.admin.structurePacks.rotationConfig.get.invalidate();
+          void utils.admin.structurePacks.list.invalidate();
+          void utils.admin.structurePacks.rotationConfig.get.invalidate();
         },
       }),
     );
@@ -103,8 +103,8 @@ export function RotationConfig() {
       useMutationToast({
         success: "Rotation cleared — no active structure pack",
         onSuccess: () => {
-          utils.admin.structurePacks.list.invalidate();
-          utils.admin.structurePacks.rotationConfig.get.invalidate();
+          void utils.admin.structurePacks.list.invalidate();
+          void utils.admin.structurePacks.rotationConfig.get.invalidate();
         },
       }),
     );

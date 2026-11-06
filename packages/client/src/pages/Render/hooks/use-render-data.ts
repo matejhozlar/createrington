@@ -30,7 +30,7 @@ export function useRenderData<T>(
     if (hasMissingParams) return;
     let active = true;
 
-    fetch(request)
+    void fetch(request)
       .then(async (res): Promise<RenderResult<T>> => {
         if (GATE_REJECTION_STATUSES.includes(res.status)) {
           return { request, data: null, unavailable: "rejected" };

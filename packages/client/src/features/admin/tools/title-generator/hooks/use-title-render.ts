@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Catalog } from "../engine/assets";
 import { composeOutput } from "../engine/output";
 import { prepareLayers } from "../engine/pipeline";
@@ -24,17 +24,11 @@ export function useTitleRender(
 ) {
   const [state, setState] = useState<RenderState>({ image: null, error: null });
   const [rendering, setRendering] = useState(false);
-  const [composed, setComposed] = useState<{
-    source: HTMLCanvasElement;
-    settings: OutputSettings;
-    canvas: HTMLCanvasElement | null;
-    error: string | null;
-  } | null>(null);
 
   useEffect(() => {
     if (!catalog) return;
     let cancelled = false;
-    const handle = window.setTimeout(async () => {
+    const run = async () => {
       setRendering(true);
       try {
         const prepared = await prepareLayers(layers, catalog, render.view);
@@ -49,48 +43,31 @@ export function useTitleRender(
       } finally {
         if (!cancelled) setRendering(false);
       }
-    }, RENDER_DEBOUNCE_MS);
+    };
+    const handle = window.setTimeout(() => void run(), RENDER_DEBOUNCE_MS);
     return () => {
       cancelled = true;
       window.clearTimeout(handle);
     };
   }, [layers, render, catalog]);
 
-  useEffect(() => {
-    const source = state.image;
-    if (!source) return;
-    let cancelled = false;
-    composeOutput(source, output)
-      .then((canvas) => {
-        if (!cancelled) {
-          setComposed({ source, settings: output, canvas, error: null });
-        }
-      })
-      .catch((error: unknown) => {
-        if (!cancelled) {
-          setComposed({
-            source,
-            settings: output,
-            canvas: null,
-            error: error instanceof Error ? error.message : "Export failed",
-          });
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
+  const composed = useMemo(() => {
+    if (!state.image) return null;
+    try {
+      return { canvas: composeOutput(state.image, output), error: null };
+    } catch (error) {
+      return {
+        canvas: null,
+        error: error instanceof Error ? error.message : "Export failed",
+      };
+    }
   }, [state.image, output]);
-
-  const current =
-    !!state.image &&
-    composed?.source === state.image &&
-    composed.settings === output;
 
   return {
     image: state.image,
-    output: state.image ? (composed?.canvas ?? null) : null,
-    current,
-    error: state.error ?? (current ? composed.error : null),
+    output: composed?.canvas ?? null,
+    current: composed !== null,
+    error: state.error ?? composed?.error ?? null,
     rendering,
   };
 }

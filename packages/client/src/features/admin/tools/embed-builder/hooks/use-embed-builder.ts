@@ -199,12 +199,12 @@ function normalizeLoadedEmbed(loaded: Partial<EmbedData>): EmbedDataInternal {
   const footer =
     raw.footer && typeof raw.footer === "object" && "text" in raw.footer
       ? (raw.footer as { text: string }).text
-      : (loaded.footer as string | undefined);
+      : loaded.footer;
 
   const author =
     raw.author && typeof raw.author === "object" && "name" in raw.author
       ? (raw.author as { name: string }).name
-      : (loaded.author as string | undefined);
+      : loaded.author;
 
   const authorUrl =
     raw.author && typeof raw.author === "object" && "url" in raw.author
@@ -479,7 +479,7 @@ export function useEmbedBuilder() {
           bot,
           ...currentPayload,
         });
-        if (activePreset && shouldLink) linksQuery.refetch();
+        if (activePreset && shouldLink) void linksQuery.refetch();
         toast.success(
           `${kind === "components" ? "Message" : "Embed"} sent${result.messageId ? ` (${result.messageId})` : ""}`,
         );
@@ -544,7 +544,7 @@ export function useEmbedBuilder() {
               categoryId: activePreset.categoryId,
             });
           }
-          utils.admin.embeds.presets.list.invalidate();
+          void utils.admin.embeds.presets.list.invalidate();
           toast.success(
             `Preset "${updates.name ?? activePreset.name}" updated`,
           );
@@ -571,8 +571,8 @@ export function useEmbedBuilder() {
           });
           setLastSavedSnapshot(serializedData);
           clearDraft();
-          utils.admin.embeds.presets.list.invalidate();
-          utils.admin.embeds.presets.categories.list.invalidate();
+          void utils.admin.embeds.presets.list.invalidate();
+          void utils.admin.embeds.presets.categories.list.invalidate();
           setActivePreset({
             id: created.id,
             name: created.name,
@@ -766,7 +766,7 @@ export function useEmbedBuilder() {
     async (linkId: number) => {
       try {
         await unlinkMutation.mutateAsync({ id: linkId });
-        linksQuery.refetch();
+        void linksQuery.refetch();
         toast.success("Message unlinked");
       } catch {
         toast.error("Failed to unlink message");
@@ -822,8 +822,8 @@ export function useEmbedBuilder() {
           categoryId: preset.categoryId ?? null,
           ...payload,
         });
-        utils.admin.embeds.presets.list.invalidate();
-        utils.admin.embeds.presets.categories.list.invalidate();
+        void utils.admin.embeds.presets.list.invalidate();
+        void utils.admin.embeds.presets.categories.list.invalidate();
         toast.success(`Duplicated as "${copyName}"`);
       } catch (error) {
         toast.error(
@@ -842,8 +842,8 @@ export function useEmbedBuilder() {
         if (activePreset?.id === id) {
           handleNewEmbed();
         }
-        utils.admin.embeds.presets.list.invalidate();
-        utils.admin.embeds.presets.categories.list.invalidate();
+        void utils.admin.embeds.presets.list.invalidate();
+        void utils.admin.embeds.presets.categories.list.invalidate();
       } catch {
         toast.error("Failed to delete preset");
       }
@@ -855,7 +855,7 @@ export function useEmbedBuilder() {
     async (name: string) => {
       try {
         const created = await createCategoryMutation.mutateAsync({ name });
-        utils.admin.embeds.presets.categories.list.invalidate();
+        void utils.admin.embeds.presets.categories.list.invalidate();
         toast.success(`Category "${name}" created`);
         return created;
       } catch (error) {
@@ -872,7 +872,7 @@ export function useEmbedBuilder() {
     async (id: number, updates: { name?: string; sortOrder?: number }) => {
       try {
         await updateCategoryMutation.mutateAsync({ id, ...updates });
-        utils.admin.embeds.presets.categories.list.invalidate();
+        void utils.admin.embeds.presets.categories.list.invalidate();
         toast.success("Category updated");
       } catch (error) {
         toast.error(
@@ -887,8 +887,8 @@ export function useEmbedBuilder() {
     async (id: number, name: string) => {
       try {
         await deleteCategoryMutation.mutateAsync({ id });
-        utils.admin.embeds.presets.categories.list.invalidate();
-        utils.admin.embeds.presets.list.invalidate();
+        void utils.admin.embeds.presets.categories.list.invalidate();
+        void utils.admin.embeds.presets.list.invalidate();
         if (activePreset?.categoryId === id) {
           setActivePreset({ ...activePreset, categoryId: null });
           setSelectedCategoryId(null);
@@ -905,8 +905,8 @@ export function useEmbedBuilder() {
     async (presetId: number, categoryId: number | null) => {
       try {
         await setCategoryMutation.mutateAsync({ presetId, categoryId });
-        utils.admin.embeds.presets.list.invalidate();
-        utils.admin.embeds.presets.categories.list.invalidate();
+        void utils.admin.embeds.presets.list.invalidate();
+        void utils.admin.embeds.presets.categories.list.invalidate();
         if (activePreset?.id === presetId) {
           setActivePreset({ ...activePreset, categoryId });
           setSelectedCategoryId(categoryId);

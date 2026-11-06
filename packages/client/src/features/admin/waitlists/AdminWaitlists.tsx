@@ -138,14 +138,14 @@ export function AdminWaitlists() {
 
   const handlePromoteSuccess = useCallback(() => {
     setPromoteModal({ open: false, entry: null });
-    entriesQuery.refetch();
-    statsQuery.refetch();
+    void entriesQuery.refetch();
+    void statsQuery.refetch();
   }, [entriesQuery, statsQuery]);
 
   const handleDeleteSuccess = useCallback(() => {
     setDeleteTarget(null);
-    entriesQuery.refetch();
-    statsQuery.refetch();
+    void entriesQuery.refetch();
+    void statsQuery.refetch();
   }, [entriesQuery, statsQuery]);
 
   const getStatusBadgeStyle = useCallback((status: WaitlistStatus) => {

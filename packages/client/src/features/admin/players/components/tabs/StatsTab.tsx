@@ -113,9 +113,7 @@ export function StatsTab({ playerId, getServerName }: StatsTabProps) {
         for (const [category, items] of Object.entries(stats)) {
           if (!items || typeof items !== "object") continue;
           if (!merged[category]) merged[category] = {};
-          for (const [key, value] of Object.entries(
-            items as Record<string, number>,
-          )) {
+          for (const [key, value] of Object.entries(items)) {
             merged[category][key] = (merged[category][key] ?? 0) + (value ?? 0);
           }
         }

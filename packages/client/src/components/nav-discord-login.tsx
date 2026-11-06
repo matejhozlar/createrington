@@ -17,7 +17,7 @@ export function NavDiscordLogin() {
   const { login, loading } = useAuth();
 
   const handleLogin = () => {
-    login();
+    void login();
   };
 
   return (

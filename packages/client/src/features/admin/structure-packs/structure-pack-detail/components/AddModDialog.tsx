@@ -92,8 +92,8 @@ export function AddModDialog({
   const addModMutation = trpc.admin.structurePacks.addMod.useMutation(
     useMutationToast({
       onSuccess: () => {
-        utils.admin.structurePacks.get.invalidate({ id: packId });
-        utils.admin.structurePacks.list.invalidate();
+        void utils.admin.structurePacks.get.invalidate({ id: packId });
+        void utils.admin.structurePacks.list.invalidate();
       },
     }),
   );

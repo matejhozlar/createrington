@@ -99,8 +99,8 @@ export function ModDetailDialog({
             <Button
               variant="outline"
               onClick={() => {
-                if (admin) adminQuery.refetch();
-                else userQuery.refetch();
+                if (admin) void adminQuery.refetch();
+                else void userQuery.refetch();
               }}
             >
               Try Again

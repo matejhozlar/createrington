@@ -57,7 +57,7 @@ export function ProfileRender() {
 
   useEffect(() => {
     if (!data) return;
-    loadSkin(data.uuid, pose).then(setSkinSrc);
+    void loadSkin(data.uuid, pose).then(setSkinSrc);
   }, [data, pose]);
 
   if (unavailable) return <RenderUnavailable reason={unavailable} />;

@@ -58,8 +58,8 @@ export function AdminWorkshop() {
         return `${label} ${flag.enabled ? "enabled" : "disabled"}`;
       },
       onSuccess: () => {
-        utils.admin.features.list.invalidate();
-        utils.user.workshops.isEnabled.invalidate();
+        void utils.admin.features.list.invalidate();
+        void utils.user.workshops.isEnabled.invalidate();
       },
     }),
   );
@@ -78,8 +78,8 @@ export function AdminWorkshop() {
     useMutationToast({
       success: "Workshop deleted",
       onSuccess: () => {
-        utils.admin.workshops.list.invalidate();
-        utils.admin.modpacks.list.invalidate();
+        void utils.admin.workshops.list.invalidate();
+        void utils.admin.modpacks.list.invalidate();
         setDeleteTarget(null);
       },
     }),

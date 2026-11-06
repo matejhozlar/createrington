@@ -56,7 +56,7 @@ export function AutoMessages() {
       onSuccess: (_data, variables) => {
         if (expandedId === variables.id) setExpandedId(null);
         setDeleteConfigTarget(null);
-        configsQuery.refetch();
+        void configsQuery.refetch();
       },
     }),
   );
@@ -67,8 +67,8 @@ export function AutoMessages() {
         error: "Failed to delete message",
         onSuccess: () => {
           setDeleteMessageId(null);
-          detailQuery.refetch();
-          configsQuery.refetch();
+          void detailQuery.refetch();
+          void configsQuery.refetch();
         },
       }),
     );
@@ -84,14 +84,14 @@ export function AutoMessages() {
 
   const handleConfigSuccess = useCallback(() => {
     setConfigDialog({ open: false, config: null });
-    configsQuery.refetch();
-    if (expandedId !== null) detailQuery.refetch();
+    void configsQuery.refetch();
+    if (expandedId !== null) void detailQuery.refetch();
   }, [configsQuery, detailQuery, expandedId]);
 
   const handleMessageSuccess = useCallback(() => {
     setMessageDialog({ open: false, configId: 0, message: null });
-    detailQuery.refetch();
-    configsQuery.refetch();
+    void detailQuery.refetch();
+    void configsQuery.refetch();
   }, [detailQuery, configsQuery]);
 
   return (

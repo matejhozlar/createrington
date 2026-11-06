@@ -51,8 +51,8 @@ export function WorkshopSuggest() {
             <QueryErrorState
               message={pageError.message}
               onRetry={() => {
-                if (workshopQuery.error) workshopQuery.refetch();
-                if (suggestionsQuery.error) suggestionsQuery.refetch();
+                if (workshopQuery.error) void workshopQuery.refetch();
+                if (suggestionsQuery.error) void suggestionsQuery.refetch();
               }}
             />
           )}

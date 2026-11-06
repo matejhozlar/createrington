@@ -45,14 +45,20 @@ export function AnnouncementTable() {
   };
 
   const handleCopy = async () => {
-    const blob = await renderBlob();
-    if (!blob) return toast.error("Could not render the image");
-    await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
-    toast.success("Image copied, paste it into Discord");
+    try {
+      const blob = await renderBlob();
+      if (!blob) return toast.error("Could not render the image");
+      await navigator.clipboard.write([
+        new ClipboardItem({ [blob.type]: blob }),
+      ]);
+      toast.success("Image copied, paste it into Discord");
+    } catch {
+      toast.error("Could not copy the image");
+    }
   };
 
   const handleDownload = async () => {
-    const blob = await renderBlob();
+    const blob = await renderBlob().catch(() => null);
     if (!blob) return toast.error("Could not render the image");
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");

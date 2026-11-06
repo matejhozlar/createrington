@@ -37,14 +37,16 @@ export function ActiveSlots({
     useMutationToast({
       success: "Suggestion removed",
       onSuccess: () => {
-        utils.user.workshops.mySuggestions.invalidate({
+        void utils.user.workshops.mySuggestions.invalidate({
           workshopId: workshop.id,
         });
-        utils.user.workshops.mySuggestionHistory.invalidate();
-        utils.user.workshops.searchProjects.invalidate();
-        utils.user.workshops.get.invalidate();
-        utils.user.workshops.list.invalidate();
-        utils.user.workshops.myUpvotes.invalidate({ workshopId: workshop.id });
+        void utils.user.workshops.mySuggestionHistory.invalidate();
+        void utils.user.workshops.searchProjects.invalidate();
+        void utils.user.workshops.get.invalidate();
+        void utils.user.workshops.list.invalidate();
+        void utils.user.workshops.myUpvotes.invalidate({
+          workshopId: workshop.id,
+        });
       },
     }),
   );

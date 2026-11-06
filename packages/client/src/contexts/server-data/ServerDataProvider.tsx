@@ -227,10 +227,10 @@ export function ServerDataProvider({
 
   useEffect(() => {
     if (isConnected) {
-      loadInitialData();
+      void loadInitialData();
 
       if (autoSubscribe) {
-        subscribeToUpdates();
+        void subscribeToUpdates();
       }
     }
   }, [isConnected, loadInitialData, autoSubscribe, subscribeToUpdates]);
@@ -250,7 +250,7 @@ export function ServerDataProvider({
   useEffect(() => {
     return () => {
       if (isSubscribed) {
-        unsubscribeFromUpdates();
+        void unsubscribeFromUpdates();
       }
     };
   }, [isSubscribed, unsubscribeFromUpdates]);

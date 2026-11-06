@@ -119,7 +119,7 @@ export function AdminFaq() {
     setCreateModal(false);
     setEditModal({ open: false, entry: null });
     setDeleteTarget(null);
-    entriesQuery.refetch();
+    void entriesQuery.refetch();
   }, [entriesQuery]);
 
   const handleRepostWelcome = useCallback(async () => {

@@ -86,7 +86,7 @@ export function AdminPlayerDetail() {
   const error = playerQuery.error?.message ?? null;
 
   const refetchPlayer = () => {
-    playerQuery.refetch();
+    void playerQuery.refetch();
   };
 
   if (loading) {

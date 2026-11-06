@@ -83,7 +83,7 @@ export function NavUser({ user }: { user: User }) {
   const [logoutHoverRef, logoutHoverHandlers] = useAnimatedHover();
 
   const handleLogout = () => {
-    logout();
+    void logout();
   };
 
   const avatarUrl = user.minecraftUuid

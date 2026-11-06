@@ -46,7 +46,7 @@ export function SubmissionGrid({ status }: SubmissionGridProps) {
     useMutationToast({
       success: "Screenshot removed from the gallery",
       onSuccess: () => {
-        utils.admin.gallery.list.invalidate();
+        void utils.admin.gallery.list.invalidate();
         setRemoveTarget(null);
       },
     }),

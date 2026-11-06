@@ -262,7 +262,7 @@ export function PresetSidebar({
             onSubmit={(e) => {
               e.preventDefault();
               if (newCategoryName.trim()) {
-                handleCreateCategory(newCategoryName.trim());
+                void handleCreateCategory(newCategoryName.trim());
                 setShowNewCategory(false);
                 setNewCategoryName("");
               }
@@ -412,9 +412,12 @@ export function PresetSidebar({
               onClick={() => {
                 if (deleteTarget) {
                   if (deleteTarget.type === "category") {
-                    handleDeleteCategory(deleteTarget.id, deleteTarget.name);
+                    void handleDeleteCategory(
+                      deleteTarget.id,
+                      deleteTarget.name,
+                    );
                   } else {
-                    handleDeletePreset(deleteTarget.id, deleteTarget.name);
+                    void handleDeletePreset(deleteTarget.id, deleteTarget.name);
                   }
                 }
                 setDeleteTarget(null);
@@ -446,7 +449,7 @@ export function PresetSidebar({
               onChange={(e) => setRenameName(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && renameName.trim() && renameTarget) {
-                  handleUpdateCategory(renameTarget.id, {
+                  void handleUpdateCategory(renameTarget.id, {
                     name: renameName.trim(),
                   });
                   setRenameTarget(null);
@@ -462,7 +465,7 @@ export function PresetSidebar({
               }
               onClick={() => {
                 if (renameTarget && renameName.trim()) {
-                  handleUpdateCategory(renameTarget.id, {
+                  void handleUpdateCategory(renameTarget.id, {
                     name: renameName.trim(),
                   });
                 }

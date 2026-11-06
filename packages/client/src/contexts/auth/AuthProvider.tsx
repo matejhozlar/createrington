@@ -205,7 +205,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     if (code) {
       handleCallback(code, state || undefined);
     } else {
-      silentRefresh().finally(() => setLoading(false));
+      void silentRefresh().finally(() => setLoading(false));
     }
   }, [handleCallback, silentRefresh]);
 
@@ -215,7 +215,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     const refreshInterval = setInterval(
       () => {
-        silentRefresh();
+        void silentRefresh();
       },
       13 * 60 * 1000, // 13 minutes
     );

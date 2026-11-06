@@ -58,9 +58,14 @@ export function PreviewCard({
     target.height = output.height;
     target.getContext("2d")?.drawImage(output, 0, 0);
     let cancelled = false;
-    toBlob(output).then((next) => {
-      if (!cancelled) setBlob({ source: output, blob: next });
-    });
+    toBlob(output).then(
+      (next) => {
+        if (!cancelled) setBlob({ source: output, blob: next });
+      },
+      () => {
+        if (!cancelled) setBlob(null);
+      },
+    );
     return () => {
       cancelled = true;
     };

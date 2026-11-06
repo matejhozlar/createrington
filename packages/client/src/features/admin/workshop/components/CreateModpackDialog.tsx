@@ -32,7 +32,7 @@ export function CreateModpackDialog({
     useMutationToast({
       success: (modpack) => `Modpack "${modpack.name}" created`,
       onSuccess: () => {
-        utils.admin.modpacks.list.invalidate();
+        void utils.admin.modpacks.list.invalidate();
         onOpenChange(false);
       },
     }),

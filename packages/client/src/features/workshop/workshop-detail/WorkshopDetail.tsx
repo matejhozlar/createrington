@@ -154,11 +154,11 @@ export function WorkshopDetail() {
       toast.error(error.message);
     },
     onSettled: () => {
-      if (slug) utils.user.workshops.get.invalidate({ slug });
+      if (slug) void utils.user.workshops.get.invalidate({ slug });
       if (workshopId !== undefined) {
-        utils.user.workshops.myUpvotes.invalidate({ workshopId });
+        void utils.user.workshops.myUpvotes.invalidate({ workshopId });
       }
-      utils.user.workshops.list.invalidate();
+      void utils.user.workshops.list.invalidate();
     },
   });
 
@@ -502,7 +502,7 @@ export function WorkshopDetail() {
           if (open) return;
           if (pushedModRef.current) {
             pushedModRef.current = false;
-            navigate(-1);
+            void navigate(-1);
           } else {
             setParam("mod", "");
           }

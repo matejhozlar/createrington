@@ -54,9 +54,9 @@ export function BoostDialog({
     useMutationToast({
       success: `Boosted "${packName}" with ${units} unit${units > 1 ? "s" : ""}`,
       onSuccess: () => {
-        utils.public.structurePacks.pool.invalidate();
-        utils.user.structurePacks.myBoosts.invalidate();
-        utils.user.account.balance.invalidate();
+        void utils.public.structurePacks.pool.invalidate();
+        void utils.user.structurePacks.myBoosts.invalidate();
+        void utils.user.account.balance.invalidate();
         onOpenChange(false);
         setUnits(1);
       },

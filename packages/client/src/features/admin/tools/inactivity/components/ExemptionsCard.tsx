@@ -67,7 +67,7 @@ export function ExemptionsCard({
         setPlayerInput("");
         setReasonInput("");
         setPage(0);
-        refetchList();
+        void refetchList();
         if (data.resolvedWarnings > 0) onWarningsChanged();
       },
     }),
@@ -100,7 +100,7 @@ export function ExemptionsCard({
 
   const handleRemoveSuccess = useCallback(() => {
     setRemoveTarget(null);
-    refetchList();
+    void refetchList();
   }, [refetchList]);
 
   const columns: DataTableColumn<Exemption>[] = [
