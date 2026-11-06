@@ -84,7 +84,7 @@ describe("renderScreenshot", () => {
   it("captures /tag with a transparent background and the design in the URL", async () => {
     await renderScreenshot("tag", { design: "CRP1:R:CRTN:D9A441:3B230E" });
 
-    const [options] = screenshotMock.mock.calls[0];
+    const [options] = screenshotMock.mock.calls[0]!;
     expect(options.omitBackground).toBe(true);
     expect(new URL(options.url).searchParams.get("design")).toBe(
       "CRP1:R:CRTN:D9A441:3B230E",
@@ -94,6 +94,6 @@ describe("renderScreenshot", () => {
   it("keeps the background on card renders", async () => {
     await renderScreenshot("profile", { player: "Steve" });
 
-    expect(screenshotMock.mock.calls[0][0].omitBackground).toBe(false);
+    expect(screenshotMock.mock.calls[0]![0].omitBackground).toBe(false);
   });
 });

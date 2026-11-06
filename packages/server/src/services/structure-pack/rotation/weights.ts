@@ -61,6 +61,7 @@ export function selectWeightedRandom(weights: WeightEntry[]): number {
     if (random <= 0) return entry.packId;
   }
 
-  // Fallback (shouldn't happen)
-  return weights[weights.length - 1].packId;
+  const last = weights.at(-1);
+  if (!last) throw new Error("Cannot pick a pack from an empty weight list");
+  return last.packId;
 }

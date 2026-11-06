@@ -14,12 +14,14 @@ export class StructurePackRotationConfigQueries extends StructurePackRotationCon
     const existing = await this.db.query<StructurePackRotationConfigRow>(
       `SELECT * FROM structure_pack_rotation_config ORDER BY id LIMIT 1`,
     );
-    if (existing.rows.length > 0) {
-      return this.mapRowToEntity(existing.rows[0]);
+    const [row] = existing.rows;
+    if (row) {
+      return this.mapRowToEntity(row);
     }
-    const result = await this.db.query<StructurePackRotationConfigRow>(
+    const created = await this.runQueryForRow<StructurePackRotationConfigRow>(
+      "create default structure pack rotation config",
       `INSERT INTO structure_pack_rotation_config DEFAULT VALUES RETURNING *`,
     );
-    return this.mapRowToEntity(result.rows[0]);
+    return this.mapRowToEntity(created);
   }
 }

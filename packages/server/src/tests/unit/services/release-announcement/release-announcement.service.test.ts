@@ -106,12 +106,12 @@ interface SentNode {
 }
 
 function lastMessage() {
-  const options = sent[sent.length - 1];
+  const options = sent[sent.length - 1]!;
   const container = (
     options.components as unknown as Array<{
       toJSON: () => { components: SentNode[] };
     }>
-  )[0].toJSON();
+  )[0]!.toJSON();
 
   const lines = container.components
     .filter((node) => node.type === 10)

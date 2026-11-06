@@ -68,8 +68,9 @@ export class DiscordGuildMemberJoinQueries extends DiscordGuildMemberJoinBaseQue
       [userId, username],
     );
 
-    if (result.rows.length > 0) {
-      return result.rows[0].join_number;
+    const [inserted] = result.rows;
+    if (inserted) {
+      return inserted.join_number;
     }
 
     const existing = await this.find({ userId });

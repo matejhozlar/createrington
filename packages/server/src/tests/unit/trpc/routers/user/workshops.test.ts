@@ -98,11 +98,11 @@ describe("user.workshops mod redaction", () => {
   });
 
   it.each([
-    ["get", async () => (await caller.get({ slug: "pack" })).mods[0]],
+    ["get", async () => (await caller.get({ slug: "pack" })).mods[0]!],
     ["getMod", async () => (await caller.getMod({ workshopModId: 1 })).mod],
     [
       "listRejected",
-      async () => (await caller.listRejected({ workshopId: 1 }))[0],
+      async () => (await caller.listRejected({ workshopId: 1 }))[0]!,
     ],
   ])("%s leaves out Discord ids and reviewer fields", async (_name, load) => {
     const mod = await load();

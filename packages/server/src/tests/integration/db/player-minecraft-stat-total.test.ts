@@ -54,8 +54,8 @@ async function totalOf(
 }
 
 beforeAll(async () => {
-  serverA = await ensureServer(SERVER_IDENTIFIERS[0]);
-  serverB = await ensureServer(SERVER_IDENTIFIERS[1]);
+  serverA = await ensureServer(SERVER_IDENTIFIERS[0]!);
+  serverB = await ensureServer(SERVER_IDENTIFIERS[1]!);
 });
 
 beforeEach(async () => {
@@ -64,7 +64,7 @@ beforeEach(async () => {
     await Q.player.create({
       minecraftUuid,
       minecraftUsername: `stat_total_${index}`,
-      discordId: DISCORD_IDS[index],
+      discordId: DISCORD_IDS[index]!,
     });
   }
 });

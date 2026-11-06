@@ -48,7 +48,7 @@ function makeRes(): Response {
 }
 
 function sentContent(): string | undefined {
-  return sendMock.mock.calls[0][0].content;
+  return sendMock.mock.calls[0]![0].content;
 }
 
 describe("MessageController.sendMessage", () => {
@@ -73,7 +73,7 @@ describe("MessageController.sendMessage", () => {
     );
 
     expect(sentContent()).toBe("**<Steve>**:");
-    expect(sendMock.mock.calls[0][0].files).toHaveLength(1);
+    expect(sendMock.mock.calls[0]![0].files).toHaveLength(1);
   });
 
   it("falls back to Web User when the account has no Minecraft username", async () => {

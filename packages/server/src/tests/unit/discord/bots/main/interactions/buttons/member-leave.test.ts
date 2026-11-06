@@ -59,7 +59,7 @@ function actorOf(call: unknown[]) {
 }
 
 function deletedByField(edit: ReturnType<typeof vi.fn>) {
-  const embed = edit.mock.calls[0][0].embeds[0];
+  const embed = edit.mock.calls[0]![0].embeds[0];
   return embed.data.fields.find(
     (f: { name: string }) => f.name === "Deleted By",
   ) as { value: string };
@@ -84,7 +84,7 @@ describe("departed:delete-now button", () => {
 
     await execute(interaction);
 
-    expect(actorOf(deletePlayer.mock.calls[0])).toMatchObject({
+    expect(actorOf(deletePlayer.mock.calls[0]!)).toMatchObject({
       discordId: ADMIN_DISCORD_ID,
       username: "saunhardy",
     });
@@ -99,7 +99,7 @@ describe("departed:delete-now button", () => {
 
     await execute(interaction);
 
-    expect(actorOf(deletePlayer.mock.calls[0]).username).toBe("Unknown");
+    expect(actorOf(deletePlayer.mock.calls[0]!).username).toBe("Unknown");
   });
 
   it("keeps the actor identifiable in the embed when the admin has no player row", async () => {

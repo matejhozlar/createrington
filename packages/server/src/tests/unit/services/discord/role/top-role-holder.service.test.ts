@@ -110,7 +110,7 @@ vi.mock("@napi-rs/canvas", () => ({
       getContext: () => ({
         drawImage: (image: FakeImage, ...args: number[]) =>
           entry.draws.push({ image, args }),
-        getImageData: () => entry.draws[0].image,
+        getImageData: () => entry.draws[0]!.image,
       }),
       toBuffer: canvas.toBuffer,
     };
@@ -243,9 +243,9 @@ describe("TopRoleHolderService.record", () => {
       ),
     );
     expect(outlineImageKey).toBe(imageKey.replace(/\.webp$/, "-outline.webp"));
-    expect(storage.put.mock.calls[0][0].contentType).toBe("image/webp");
+    expect(storage.put.mock.calls[0]![0].contentType).toBe("image/webp");
 
-    const [row, conflict] = db.upsert.mock.calls[0];
+    const [row, conflict] = db.upsert.mock.calls[0]!;
     expect(conflict).toBe("roleKey");
     expect(row).toMatchObject({
       roleKey: "the_unrivaled",
@@ -267,14 +267,16 @@ describe("TopRoleHolderService.record", () => {
     const outputs = canvas.created.filter(
       (entry) => entry.draws[0]?.args.length === 4,
     );
-    const plainOutput = outputs.find((entry) => entry.draws[0].image === PLAIN);
+    const plainOutput = outputs.find(
+      (entry) => entry.draws[0]!.image === PLAIN,
+    );
     const outlineOutput = outputs.find(
-      (entry) => entry.draws[0].image === OUTLINED,
+      (entry) => entry.draws[0]!.image === OUTLINED,
     );
     expect(plainOutput).toMatchObject({ width: 14, height: 20 });
-    expect(plainOutput?.draws[0].args).toEqual([2, 4, 10, 16]);
+    expect(plainOutput?.draws[0]!.args).toEqual([2, 4, 10, 16]);
     expect(outlineOutput).toMatchObject({ width: 14, height: 20 });
-    expect(outlineOutput?.draws[0].args).toEqual([0, 0, 14, 20]);
+    expect(outlineOutput?.draws[0]!.args).toEqual([0, 0, 14, 20]);
   });
 
   it("keeps the tenure start and the existing figures for a returning holder", async () => {
@@ -283,7 +285,7 @@ describe("TopRoleHolderService.record", () => {
     await new TopRoleHolderService().record(RECORDS_RULE, ALICE);
 
     expect(skinApi.render).not.toHaveBeenCalled();
-    expect(db.upsert.mock.calls[0][0]).toMatchObject({
+    expect(db.upsert.mock.calls[0]![0]).toMatchObject({
       heldSince: HELD_SINCE,
       imageKey: ALICE_IMAGE,
       outlineImageKey: ALICE_OUTLINE,
@@ -300,7 +302,7 @@ describe("TopRoleHolderService.record", () => {
     await new TopRoleHolderService().record(RECORDS_RULE, ALICE);
 
     expect(skinApi.render).toHaveBeenCalledTimes(2);
-    expect(db.upsert.mock.calls[0][0]).toMatchObject({
+    expect(db.upsert.mock.calls[0]![0]).toMatchObject({
       heldSince: HELD_SINCE,
       imageKey: expect.stringMatching(/^top-roles\/the_unrivaled\//),
     });
@@ -312,7 +314,7 @@ describe("TopRoleHolderService.record", () => {
     await new TopRoleHolderService().record(RECORDS_RULE, ALICE);
 
     expect(skinApi.render).not.toHaveBeenCalled();
-    expect(db.upsert.mock.calls[0][0]).toMatchObject({
+    expect(db.upsert.mock.calls[0]![0]).toMatchObject({
       heldSince: HELD_SINCE,
       imageKey: ALICE_IMAGE,
       outlineImageKey: null,
@@ -332,7 +334,7 @@ describe("TopRoleHolderService.record", () => {
     await new TopRoleHolderService().record(RECORDS_RULE, ALICE);
 
     expect(storedKeys()).toHaveLength(1);
-    expect(db.upsert.mock.calls[0][0]).toMatchObject({
+    expect(db.upsert.mock.calls[0]![0]).toMatchObject({
       imageKey: storedKeys()[0],
       outlineImageKey: null,
     });
@@ -345,7 +347,7 @@ describe("TopRoleHolderService.record", () => {
     await new TopRoleHolderService().record(RECORDS_RULE, ALICE);
 
     expect(storedKeys()).toHaveLength(1);
-    expect(db.upsert.mock.calls[0][0].outlineImageKey).toBeNull();
+    expect(db.upsert.mock.calls[0]![0].outlineImageKey).toBeNull();
   });
 
   it("swaps the holder, resets the tenure and removes both old figures", async () => {
@@ -353,7 +355,7 @@ describe("TopRoleHolderService.record", () => {
 
     await new TopRoleHolderService().record(RECORDS_RULE, BOB);
 
-    const row = db.upsert.mock.calls[0][0];
+    const row = db.upsert.mock.calls[0]![0];
     expect(row.discordId).toBe(BOB.discordId);
     expect(row.heldSince.getTime()).toBeGreaterThan(HELD_SINCE.getTime());
     expect(row.imageKey).toMatch(
@@ -369,7 +371,7 @@ describe("TopRoleHolderService.record", () => {
     await new TopRoleHolderService().record(RECORDS_RULE, ALICE);
 
     expect(storage.put).not.toHaveBeenCalled();
-    expect(db.upsert.mock.calls[0][0]).toMatchObject({
+    expect(db.upsert.mock.calls[0]![0]).toMatchObject({
       imageKey: null,
       outlineImageKey: null,
     });
@@ -382,7 +384,7 @@ describe("TopRoleHolderService.record", () => {
     await new TopRoleHolderService().record(RECORDS_RULE, ALICE);
 
     expect(skinApi.render).not.toHaveBeenCalled();
-    expect(db.upsert.mock.calls[0][0]).toMatchObject({ imageKey: null });
+    expect(db.upsert.mock.calls[0]![0]).toMatchObject({ imageKey: null });
   });
 
   it("downscales tall renders to the hero height but never upscales small crops", async () => {
@@ -411,7 +413,7 @@ describe("TopRoleHolderService.record reigns", () => {
 
     await new TopRoleHolderService().record(RECORDS_RULE, ALICE);
 
-    const heldSince = db.upsert.mock.calls[0][0].heldSince;
+    const heldSince = db.upsert.mock.calls[0]![0].heldSince;
     expect(db.reignFindOpen).toHaveBeenCalledWith("the_unrivaled");
     expect(db.reignUpdate).not.toHaveBeenCalled();
     expect(db.reignCreate).toHaveBeenCalledWith({
@@ -443,7 +445,7 @@ describe("TopRoleHolderService.record reigns", () => {
 
     await new TopRoleHolderService().record(RECORDS_RULE, BOB);
 
-    const heldSince = db.upsert.mock.calls[0][0].heldSince;
+    const heldSince = db.upsert.mock.calls[0]![0].heldSince;
     expect(db.reignUpdate).toHaveBeenCalledWith(
       { id: 7 },
       { endedAt: heldSince },
@@ -523,8 +525,8 @@ describe("TopRoleHolderService.list", () => {
 
     const [records] = await new TopRoleHolderService().list();
 
-    expect(records.holder?.imageUrl).toBeNull();
-    expect(records.holder?.outlineImageUrl).toBeNull();
+    expect(records?.holder?.imageUrl).toBeNull();
+    expect(records?.holder?.outlineImageUrl).toBeNull();
   });
 
   it("keeps holder Discord IDs out of the public view", async () => {
@@ -535,7 +537,7 @@ describe("TopRoleHolderService.list", () => {
 
     const [records] = await new TopRoleHolderService().list();
 
-    expect(Object.keys(records.holder ?? {}).sort()).toEqual([
+    expect(Object.keys(records?.holder ?? {}).sort()).toEqual([
       "heldSince",
       "imageUrl",
       "minecraftUsername",

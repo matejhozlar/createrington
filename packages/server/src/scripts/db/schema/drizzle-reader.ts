@@ -116,7 +116,8 @@ function extractTables(schemaModule: SchemaModule): TableInfo[] {
     const seenCompositeKeys = new Set<string>();
     const addUniqueGroup = (groupColumns: string[]) => {
       if (groupColumns.length === 1) {
-        uniqueColumnNames.add(groupColumns[0]);
+        const [only] = groupColumns;
+        if (only !== undefined) uniqueColumnNames.add(only);
         return;
       }
       if (groupColumns.length === 0) return;

@@ -38,11 +38,10 @@ export class PlayerBalanceQueries extends PlayerBalanceBaseQueries {
         COUNT(*)::integer AS player_count
       FROM ${this.table}`;
 
-    const result = await this.runQuery<{
+    const row = await this.runQueryForRow<{
       total_balance: bigint;
       player_count: number;
     }>("get total in circulation", query);
-    const row = result.rows[0];
     return {
       totalBalance: BalanceUtils.fromStorage(row.total_balance),
       playerCount: row.player_count,
@@ -97,12 +96,11 @@ export class PlayerBalanceQueries extends PlayerBalanceBaseQueries {
         COALESCE(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY balance), 0)::bigint AS median
       FROM ${this.table}`;
 
-    const result = await this.runQuery<{
+    const row = await this.runQueryForRow<{
       total: bigint;
       average: bigint;
       median: bigint;
     }>("get balance aggregate stats", query);
-    const row = result.rows[0];
     return {
       total: BigInt(row.total),
       average: BigInt(row.average),

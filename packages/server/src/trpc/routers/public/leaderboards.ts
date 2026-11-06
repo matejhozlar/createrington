@@ -69,13 +69,16 @@ function focusOf(rows: BoardRow[], minecraftUuid: string | undefined) {
   if (index === -1) return null;
 
   const row = rows[index];
+  if (!row) return null;
   let ahead: BoardRow | undefined;
   for (let i = index - 1; i >= 0 && !ahead; i--) {
-    if (rows[i].value > row.value) ahead = rows[i];
+    const other = rows[i];
+    if (other && other.value > row.value) ahead = other;
   }
   let behind: BoardRow | undefined;
   for (let i = index + 1; i < rows.length && !behind; i++) {
-    if (rows[i].value < row.value) behind = rows[i];
+    const other = rows[i];
+    if (other && other.value < row.value) behind = other;
   }
 
   return { row, ahead: neighbour(ahead), behind: neighbour(behind) };

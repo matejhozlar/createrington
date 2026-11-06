@@ -28,7 +28,7 @@ export function redactUrl(url: string): string {
     .slice(queryStart + 1)
     .split("&")
     .map((pair) => {
-      const rawKey = pair.split("=", 1)[0];
+      const [rawKey = ""] = pair.split("=", 1);
       return REDACTED_QUERY_KEYS.has(decodeKey(rawKey))
         ? `${rawKey}=[REDACTED]`
         : pair;

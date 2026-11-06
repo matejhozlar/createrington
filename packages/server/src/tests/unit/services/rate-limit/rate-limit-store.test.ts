@@ -93,7 +93,7 @@ describe("FallbackRateLimitStore", () => {
   it("builds the remote store anew once it is back", async () => {
     const remotes = [fakeRemote(), fakeRemote()];
     const createRemote = vi.fn(
-      () => remotes[createRemote.mock.calls.length - 1],
+      () => remotes[createRemote.mock.calls.length - 1]!,
     );
     let up = true;
     const store = openStore(() => up, createRemote);
@@ -105,9 +105,9 @@ describe("FallbackRateLimitStore", () => {
     await store.increment("player");
 
     expect(createRemote).toHaveBeenCalledTimes(2);
-    expect(remotes[0].hits.get("player")).toBe(1);
-    expect(remotes[1].hits.get("player")).toBe(1);
-    expect(remotes[1].init).toHaveBeenCalledWith(OPTIONS);
+    expect(remotes[0]!.hits.get("player")).toBe(1);
+    expect(remotes[1]!.hits.get("player")).toBe(1);
+    expect(remotes[1]!.init).toHaveBeenCalledWith(OPTIONS);
   });
 
   it("takes a hit back in the store in use", async () => {

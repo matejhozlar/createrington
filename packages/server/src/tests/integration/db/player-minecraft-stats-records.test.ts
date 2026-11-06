@@ -56,8 +56,8 @@ async function recordsOf(): Promise<Record<string, number>> {
 }
 
 beforeAll(async () => {
-  serverA = await ensureServer(SERVER_IDENTIFIERS[0]);
-  serverB = await ensureServer(SERVER_IDENTIFIERS[1]);
+  serverA = await ensureServer(SERVER_IDENTIFIERS[0]!);
+  serverB = await ensureServer(SERVER_IDENTIFIERS[1]!);
 });
 
 beforeEach(async () => {
@@ -66,8 +66,8 @@ beforeEach(async () => {
   for (const [index, minecraftUuid] of UUIDS.entries()) {
     await Q.player.create({
       minecraftUuid,
-      minecraftUsername: names[index],
-      discordId: DISCORD_IDS[index],
+      minecraftUsername: names[index]!,
+      discordId: DISCORD_IDS[index]!,
     });
   }
 });
@@ -182,7 +182,7 @@ describe("PlayerMinecraftStatsQueries.getRecordLeaderboard (integration)", () =>
       ["records_alice", 2],
       ["records_bob", 1],
     ]);
-    expect(ours[0].discordId).toBe(DISCORD_IDS[0]);
+    expect(ours[0]!.discordId).toBe(DISCORD_IDS[0]);
 
     const limited = await Q.player.minecraft.stat.total.getRecordLeaderboard(1);
     expect(limited.rows).toHaveLength(1);

@@ -53,7 +53,7 @@ describe("DiscordEmbedBuilder", () => {
 
     it("field() respects an explicit inline=true", () => {
       const data = createEmbed().field("Name", "Value", true).build().data;
-      expect(data.fields?.[0].inline).toBe(true);
+      expect(data.fields?.[0]!.inline).toBe(true);
     });
 
     it("fields() appends multiple fields and preserves order", () => {

@@ -275,9 +275,8 @@ export class RoleManagementService {
   private async findTopPlaytimeHolder(): Promise<TopHolder | null> {
     const leaderboard = await Q.player.playtime.summary.getGlobalLeaderboard(1);
 
-    if (leaderboard.length === 0) return null;
-
-    const topPlayer = leaderboard[0];
+    const [topPlayer] = leaderboard;
+    if (!topPlayer) return null;
 
     return {
       discordId: topPlayer.discordId,
@@ -294,9 +293,9 @@ export class RoleManagementService {
       await Q.player.balance.getNetWorthRanking(1),
     );
 
-    if (leaderboard.length === 0) return null;
+    const [topEntry] = leaderboard;
+    if (!topEntry) return null;
 
-    const topEntry = leaderboard[0];
     const topPlayer = await Q.player.find({
       minecraftUuid: topEntry.playerUuid,
     });
@@ -323,10 +322,9 @@ export class RoleManagementService {
   ): Promise<TopHolder | null> {
     const leaders = await Q.player.minecraft.stat.total.getRecordLeaders();
 
-    if (leaders.length === 0) return null;
-
     const topPlayer =
       leaders.find((row) => holders.has(row.discordId)) ?? leaders[0];
+    if (!topPlayer) return null;
 
     return {
       discordId: topPlayer.discordId,

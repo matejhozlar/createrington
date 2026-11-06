@@ -81,6 +81,6 @@ describe("DiscordTopRoleReignQueries (integration)", () => {
       (row) => row.roleKey === ROLE_A,
     );
 
-    expect(longest.minecraftUuid).toBe(ALICE);
+    expect(longest!.minecraftUuid).toBe(ALICE);
   });
 });

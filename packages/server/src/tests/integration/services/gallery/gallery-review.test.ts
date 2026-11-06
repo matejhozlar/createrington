@@ -129,7 +129,7 @@ function message(overrides: Partial<IntakeMessage> = {}): IntakeMessage {
 async function submit() {
   const { created } = await service.ingest(message());
   expect(created).toHaveLength(1);
-  return created[0];
+  return created[0]!;
 }
 
 async function fileExists(filePath: string): Promise<boolean> {
@@ -358,7 +358,7 @@ describe("GalleryService.approve", () => {
     const rejected = results.filter((r) => r.status === "rejected");
     expect(fulfilled).toHaveLength(1);
     expect(rejected).toHaveLength(1);
-    expect(rejected[0].reason).toBeInstanceOf(ConflictError);
+    expect(rejected[0]!.reason).toBeInstanceOf(ConflictError);
 
     const ledger = await Q.player.balance.transaction
       .where({ idempotencyKey: `gallery-reward:${pending.id}` })
@@ -368,7 +368,7 @@ describe("GalleryService.approve", () => {
       balanceBefore + 120,
     );
 
-    const winner = fulfilled[0].value.submission;
+    const winner = fulfilled[0]!.value.submission;
     expect(storage.objects.has(winner.fullKey!)).toBe(true);
     const orphans = [...storage.objects.keys()].filter(
       (key) =>

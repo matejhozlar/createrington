@@ -55,7 +55,8 @@ export function route(
   ...args: RequestHandler[]
 ): RequestHandler[] {
   const middleware = args.slice(0, -1);
-  const handler = args[args.length - 1];
+  const handler = args.at(-1);
+  if (!handler) throw new Error("route() needs a handler");
 
   return [
     ...authMiddleware[auth],

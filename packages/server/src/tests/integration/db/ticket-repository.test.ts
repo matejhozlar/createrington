@@ -41,7 +41,7 @@ describe("TicketRepository ticket numbers", () => {
     const ticket = await createTicket(ticketNumber, "a");
 
     expect(ticket.ticketNumber).toBe(ticketNumber);
-    const [action] = await Q.ticket.action.findAll({ ticketId: ticket.id });
+    const action = (await Q.ticket.action.findAll({ ticketId: ticket.id }))[0]!;
     expect(action.actionType).toBe(TicketUserAction.CREATED);
     expect(action.metadata).toMatchObject({ ticketNumber });
   });

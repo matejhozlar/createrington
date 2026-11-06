@@ -175,7 +175,7 @@ describe("runIdempotent (integration)", () => {
 
     const ledger = await withdrawLedger();
     expect(ledger).toHaveLength(1);
-    expect(ledger[0].idempotencyKey).toBe(KEY);
+    expect(ledger[0]!.idempotencyKey).toBe(KEY);
   });
 
   it("collapses concurrent identical requests into a single ledger entry", async () => {
@@ -188,7 +188,7 @@ describe("runIdempotent (integration)", () => {
     expect(outcomes.filter((o) => !o.replayed)).toHaveLength(1);
     for (const outcome of outcomes) {
       expect(outcome.statusCode).toBe(200);
-      expect(outcome.body).toEqual(outcomes[0].body);
+      expect(outcome.body).toEqual(outcomes[0]!.body);
     }
 
     expect(await R.balanceRepo.getRaw(ALICE)).toBe(90_000n);

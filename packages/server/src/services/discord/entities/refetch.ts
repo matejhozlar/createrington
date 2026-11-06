@@ -24,7 +24,8 @@ function toCamelCase(str: string): string {
 /** Strips dynamic content from serverStats channel names */
 function cleanChannelName(name: string, categoryKey: string): string {
   if (categoryKey === "serverStats") {
-    return name.split(":")[0].replace(/\d+/g, "").trim();
+    const [label = ""] = name.split(":");
+    return label.replace(/\d+/g, "").trim();
   }
   return name;
 }

@@ -207,9 +207,9 @@ function encodeBmp24(canvas: Canvas, background: string): Buffer {
     const row = 54 + (h - 1 - y) * rowSize;
     for (let x = 0; x < w; x++) {
       const i = (y * w + x) * 4;
-      buf[row + x * 3] = data[i + 2];
-      buf[row + x * 3 + 1] = data[i + 1];
-      buf[row + x * 3 + 2] = data[i];
+      buf[row + x * 3] = data[i + 2] ?? 0;
+      buf[row + x * 3 + 1] = data[i + 1] ?? 0;
+      buf[row + x * 3 + 2] = data[i] ?? 0;
     }
   }
   return buf;
@@ -232,10 +232,10 @@ function encodeIconDib(canvas: Canvas): Buffer {
     const row = 40 + (h - 1 - y) * w * 4;
     for (let x = 0; x < w; x++) {
       const i = (y * w + x) * 4;
-      buf[row + x * 4] = data[i + 2];
-      buf[row + x * 4 + 1] = data[i + 1];
-      buf[row + x * 4 + 2] = data[i];
-      buf[row + x * 4 + 3] = data[i + 3];
+      buf[row + x * 4] = data[i + 2] ?? 0;
+      buf[row + x * 4 + 1] = data[i + 1] ?? 0;
+      buf[row + x * 4 + 2] = data[i] ?? 0;
+      buf[row + x * 4 + 3] = data[i + 3] ?? 0;
     }
   }
   return buf;
@@ -259,9 +259,11 @@ function encodeIco(frames: Canvas[]): Buffer {
     header.writeUInt8(0, entry + 3);
     header.writeUInt16LE(1, entry + 4);
     header.writeUInt16LE(32, entry + 6);
-    header.writeUInt32LE(images[i].length, entry + 8);
+    const image = images[i];
+    if (!image) throw new Error(`No encoded image for ICO frame ${i}`);
+    header.writeUInt32LE(image.length, entry + 8);
     header.writeUInt32LE(offset, entry + 12);
-    offset += images[i].length;
+    offset += image.length;
   });
   return Buffer.concat([header, ...images]);
 }

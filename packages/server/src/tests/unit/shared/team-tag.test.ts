@@ -145,7 +145,7 @@ describe("plate layout", () => {
       .ensureAlpha()
       .raw()
       .toBuffer({ resolveWithObject: true });
-    const cellWidth = info.width / LETTER_ROWS[0].length;
+    const cellWidth = info.width / LETTER_ROWS[0]!.length;
     const cellHeight = info.height / LETTER_ROWS.length;
     LETTER_ROWS.forEach((chars, row) => {
       [...chars].forEach((char, col) => {

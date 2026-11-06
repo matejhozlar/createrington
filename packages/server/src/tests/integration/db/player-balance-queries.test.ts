@@ -120,7 +120,7 @@ describe("Q.player.balance (hierarchical singleton)", () => {
       playerMinecraftUuid: ALICE,
     });
     expect(rows).toHaveLength(1);
-    expect(rows[0].amount).toBe(5_000n);
-    expect(rows[0].balanceAfter).toBe(5_000n);
+    expect(rows[0]!.amount).toBe(5_000n);
+    expect(rows[0]!.balanceAfter).toBe(5_000n);
   });
 });

@@ -108,11 +108,12 @@ export abstract class BaseReward {
       },
     );
 
-    if (claims.length === 0) return null;
+    const [latest] = claims;
+    if (!latest) return null;
 
     return {
-      claimedAt: claims[0].claimedAt,
-      amount: BalanceUtils.fromStorage(claims[0].amount),
+      claimedAt: latest.claimedAt,
+      amount: BalanceUtils.fromStorage(latest.amount),
     };
   }
 

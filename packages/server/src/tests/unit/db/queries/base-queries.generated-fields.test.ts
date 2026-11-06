@@ -75,7 +75,7 @@ describe("GENERATED_FIELDS", () => {
       ["totalSeconds", "avgSessionSeconds"],
     );
 
-    const sql = query.mock.calls[0][0] as string;
+    const sql = query.mock.calls[0]![0] as string;
     expect(sql).toMatch(
       /DO UPDATE SET total_seconds = EXCLUDED\.total_seconds\s+RETURNING \*/,
     );

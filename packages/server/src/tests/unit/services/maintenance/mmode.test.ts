@@ -28,7 +28,7 @@ function clientWith(responses: Record<string, string>) {
       command.startsWith(prefix),
     );
     if (!key) throw new Error(`Unexpected command: ${command}`);
-    return responses[key];
+    return responses[key]!;
   });
   return { client, sent };
 }

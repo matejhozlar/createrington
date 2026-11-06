@@ -49,7 +49,7 @@ export function summarizeRelease(
       if (summary) break;
       if (heading[1] === version) {
         summary = {
-          date: heading[2],
+          date: heading[2] ?? "",
           counts: {
             add: 0,
             fix: 0,

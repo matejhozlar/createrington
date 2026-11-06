@@ -53,12 +53,12 @@ interface SentText {
 }
 
 function lastMessage() {
-  const options = sent[sent.length - 1];
+  const options = sent[sent.length - 1]!;
   const container = (
     options.components as unknown as Array<{
       toJSON: () => { accent_color?: number; components: SentText[] };
     }>
-  )[0].toJSON();
+  )[0]!.toJSON();
 
   const texts: string[] = [];
   let accessoryUrl: string | undefined;
@@ -254,7 +254,7 @@ describe("RoleNotificationService.sendNotification", () => {
   it("pings only the player who ranked up", async () => {
     await roleNotificationService.sendNotification(notification());
 
-    expect(sent[0].allowedMentions).toEqual({
+    expect(sent[0]!.allowedMentions).toEqual({
       users: ["211712133550473217"],
     });
   });

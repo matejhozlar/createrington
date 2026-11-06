@@ -106,6 +106,7 @@ async function serialize(rows: GallerySubmission[]) {
 
 async function serializeOne(row: GallerySubmission) {
   const [item] = await serialize([row]);
+  if (!item) throw new Error(`Gallery submission #${row.id} did not serialize`);
   return item;
 }
 

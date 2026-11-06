@@ -203,13 +203,11 @@ export class PlayerPromptResponseQueries extends PlayerPromptResponseBaseQueries
       FROM ${this.table}
       WHERE prompt_id = $1 AND discord_id = $2`;
 
-    const result = await this.runQuery<{
+    const row = await this.runQueryForRow<{
       entry_count: number;
       last_entry_number: number;
       last_submitted_at: Date | null;
     }>("get prompt entry stats", query, [promptId, discordId]);
-
-    const row = result.rows[0];
     return {
       entryCount: row.entry_count,
       lastEntryNumber: row.last_entry_number,
@@ -226,14 +224,14 @@ export class PlayerPromptResponseQueries extends PlayerPromptResponseBaseQueries
       FROM ${this.table}
       WHERE prompt_id = $1`;
 
-    const result = await this.runQuery<{
+    const row = await this.runQueryForRow<{
       entry_count: number;
       responder_count: number;
     }>("count prompt responses", query, [promptId]);
 
     return {
-      entryCount: result.rows[0].entry_count,
-      responderCount: result.rows[0].responder_count,
+      entryCount: row.entry_count,
+      responderCount: row.responder_count,
     };
   }
 }

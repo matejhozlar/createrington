@@ -36,7 +36,7 @@ const revokedTables = new Set(
     const match = /^REVOKE SELECT ON (\w+) FROM claude_readonly$/.exec(
       statement,
     );
-    return match ? [match[1]] : [];
+    return match ? [match[1]!] : [];
   }),
 );
 
@@ -46,7 +46,7 @@ const columnGrants = new Map(
       statement,
     );
     return match
-      ? [[match[2], match[1].split(",").map((column) => column.trim())]]
+      ? [[match[2]!, match[1]!.split(",").map((column) => column.trim())]]
       : [];
   }),
 );

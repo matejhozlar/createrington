@@ -127,7 +127,7 @@ export class AuthSessionQueries extends AuthSessionBaseQueries {
    * @param data - Session data including token hash, user info, and expiry
    * @returns The created session row (includes generated id and family_id)
    */
-  async insertSession(data: {
+  insertSession(data: {
     discordId: string;
     discordUsername: string | null;
     discordAvatar: string | null;
@@ -137,7 +137,8 @@ export class AuthSessionQueries extends AuthSessionBaseQueries {
     userAgent: string | null;
     expiresAt: Date;
   }): Promise<AuthSessionRow> {
-    const result = await this.db.query<AuthSessionRow>(
+    return this.runQueryForRow<AuthSessionRow>(
+      "create auth session",
       `INSERT INTO auth_session
          (discord_id, discord_username, discord_avatar, token_hash, family_id, ip_address, user_agent, expires_at)
        VALUES
@@ -154,6 +155,5 @@ export class AuthSessionQueries extends AuthSessionBaseQueries {
         data.expiresAt,
       ],
     );
-    return result.rows[0];
   }
 }

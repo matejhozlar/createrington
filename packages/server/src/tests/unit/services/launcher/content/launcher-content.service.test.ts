@@ -447,7 +447,7 @@ describe("LauncherContentService.getProjects", () => {
 
     const answer = await launcherContentService.getProjects([328085]);
 
-    expect(answer.projects[0].latestFiles).toEqual([
+    expect(answer.projects[0]!.latestFiles).toEqual([
       {
         fileId: "7000001",
         fileName: "create-1.21.1-6.0.10.jar",
@@ -1049,7 +1049,7 @@ describe("LauncherContentService.getFiles", () => {
       { servedBy: "manual", url: null },
     ]);
     expect(resolveFileDownloads).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(resolveFileDownloads).mock.calls[0][0]).toEqual([
+    expect(vi.mocked(resolveFileDownloads).mock.calls[0]![0]).toEqual([
       7000001, 7000003,
     ]);
   });
@@ -1246,7 +1246,7 @@ describe("LauncherContentService.identifyFingerprints", () => {
       522093599,
     ]);
 
-    expect(answer.matches[0].project).toEqual({
+    expect(answer.matches[0]!.project).toEqual({
       source: "curseforge",
       id: "328085",
       slug: "create",
