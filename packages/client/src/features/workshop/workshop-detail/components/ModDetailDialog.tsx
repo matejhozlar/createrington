@@ -294,7 +294,7 @@ export function ModDetailDialog({
               </div>
             )}
 
-            {screenshots.length === 1 && (
+            {screenshots.length === 1 && screenshots[0] && (
               <img
                 src={screenshots[0].url}
                 alt={screenshots[0].title}

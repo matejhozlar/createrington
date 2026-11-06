@@ -197,9 +197,10 @@ export class HulkEffect extends TeamEffect {
     }
     burst = Math.min(burst, 1);
 
-    while (
-      this.surgesFired < SURGES.length &&
-      time >= SURGES[this.surgesFired].at
+    for (
+      let next = SURGES[this.surgesFired];
+      next && time >= next.at;
+      next = SURGES[this.surgesFired]
     ) {
       this.surge(this.surgesFired++);
     }

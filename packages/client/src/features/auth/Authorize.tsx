@@ -142,15 +142,16 @@ export function Authorize() {
                 This will share
               </div>
               <ul className="space-y-3 text-sm">
-                {consent.scopes
-                  .filter((scope) => scope in SCOPE_LABELS)
-                  .map((scope) => (
+                {consent.scopes.map((scope) => {
+                  const share = SCOPE_LABELS[scope];
+                  return share ? (
                     <ShareRow
                       key={scope}
-                      icon={SCOPE_LABELS[scope].icon}
-                      label={SCOPE_LABELS[scope].label}
+                      icon={share.icon}
+                      label={share.label}
                     />
-                  ))}
+                  ) : null;
+                })}
               </ul>
             </div>
 

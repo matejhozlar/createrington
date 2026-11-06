@@ -3,7 +3,12 @@ import { ImageUp, RotateCcw, Search, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToastActions } from "@/hooks/use-toast";
-import { assetUrl, thumbnailPath, tileablePath } from "../engine/assets";
+import {
+  assetUrl,
+  getFont,
+  thumbnailPath,
+  tileablePath,
+} from "../engine/assets";
 import { loadImage, readFileAsDataUrl } from "../engine/canvas";
 import { getLayerTexture } from "../engine/pipeline";
 import { DEFAULT_GRADIENT, styleDefaults } from "../engine/settings";
@@ -81,7 +86,7 @@ function gradientPreview(layer: TitleLayer) {
   const config =
     STOP_CONFIGS[
       (Number(enabled[0]) << 2) | (Number(enabled[1]) << 1) | Number(enabled[2])
-    ];
+    ] ?? [];
   const stops: string[] = [];
   let prev = 0;
   for (let i = 0, j = 0; i < 5; i++) {
@@ -124,7 +129,7 @@ export function TextureTab({ layer, catalog, onChange }: LayerTabProps) {
   const textures = useFontTextures(layer.font);
   const [query, setQuery] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
-  const font = catalog.fonts[layer.font];
+  const font = getFont(catalog, layer.font);
 
   const setSource = (textureSource: TextureSource) =>
     onChange({

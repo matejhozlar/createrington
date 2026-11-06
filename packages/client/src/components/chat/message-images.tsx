@@ -48,16 +48,17 @@ export function MessageImageGrid({
   onFullscreen: (url: string, alt: string) => void;
 }) {
   const count = attachments.length;
+  const [first, ...rest] = attachments;
+  if (!first) return null;
 
   if (count === 1) {
-    const img = attachments[0];
     return (
       <div className="mt-2 max-w-sm">
         <ImageTile
-          url={img.url}
-          alt={img.filename}
+          url={first.url}
+          alt={first.filename}
           onLoad={onLoad}
-          onFullscreen={() => onFullscreen(img.url, img.filename)}
+          onFullscreen={() => onFullscreen(first.url, first.filename)}
           className="max-h-64 w-full"
         />
       </div>
@@ -81,7 +82,6 @@ export function MessageImageGrid({
     );
   }
 
-  const [first, ...rest] = attachments;
   return (
     <div className="mt-2 grid h-72 max-w-sm grid-cols-2 grid-rows-2 gap-1.5">
       <ImageTile

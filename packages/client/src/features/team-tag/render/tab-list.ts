@@ -178,19 +178,14 @@ export function renderTabList(
 
   const rowX = centre - Math.floor(rowWidth / 2);
   rows.forEach((row, i) => {
+    const line = lines[i];
+    const ping = assets.pings[pingLevel(row.pingMs)];
+    if (!line || !ping) return;
     const y = rowsTop + i * ROW_STEP;
     fb.fill(rowX, y, rowX + rowWidth, y + ROW_HEIGHT, ROW_BACKGROUND);
     drawHead(fb, row.head, rowX, y);
-    fb.text(lines[i].ops, rowX + HEAD_ADVANCE, y);
-    fb.blit(
-      assets.pings[pingLevel(row.pingMs)],
-      0,
-      0,
-      PING_WIDTH,
-      PING_HEIGHT,
-      rowX + rowWidth - 11,
-      y,
-    );
+    fb.text(line.ops, rowX + HEAD_ADVANCE, y);
+    fb.blit(ping, 0, 0, PING_WIDTH, PING_HEIGHT, rowX + rowWidth - 11, y);
   });
 
   const ctx = sizeCanvas(

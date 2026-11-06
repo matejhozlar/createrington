@@ -14,7 +14,7 @@ interface AuthProviderProps {
   children: React.ReactNode;
 }
 
-const AUTH_ERROR_MESSAGES: Record<string, string> = {
+const AUTH_ERROR_MESSAGES: Record<string, string> & { auth_failed: string } = {
   auth_failed: "Login failed. Please try again.",
   unverified: "You need to apply to join before logging in.",
   state_mismatch: "Login session expired. Please try again.",

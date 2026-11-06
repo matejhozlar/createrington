@@ -60,12 +60,13 @@ void main() {
 }`;
 
 function cubeCorners(cube: TitleCube): { f: Vec3; t: Vec3 } {
-  const f: Vec3 = [...cube.from];
-  const t: Vec3 = [...cube.to];
-  for (let axis = 0; axis < 3; axis++) {
-    if (f[axis] === t[axis]) t[axis] += 0.001;
-  }
-  return { f, t };
+  const [f0, f1, f2] = cube.from;
+  const [t0, t1, t2] = cube.to;
+  const widen = (from: number, to: number) => (from === to ? to + 0.001 : to);
+  return {
+    f: [f0, f1, f2],
+    t: [widen(f0, t0), widen(f1, t1), widen(f2, t2)],
+  };
 }
 
 function facePositions({ f, t }: { f: Vec3; t: Vec3 }): number[][] {
@@ -89,7 +90,7 @@ function buildGeometry(mesh: TitleMesh) {
       const uv = cube.faces[direction];
       if (!uv) return;
       const base = positions.length / 3;
-      positions.push(...faces[faceIndex]);
+      positions.push(...(faces[faceIndex] ?? []));
       const [u0, v0, u1, v1] = uv;
       uvs.push(u0, 1 - v0, u1, 1 - v0, u0, 1 - v1, u1, 1 - v1);
       indices.push(base, base + 2, base + 1, base + 2, base + 3, base + 1);
@@ -154,7 +155,7 @@ function projectBounds(
     for (const cube of mesh.cubes) {
       for (const face of facePositions(cubeCorners(cube))) {
         for (let i = 0; i < 12; i += 3) {
-          vertex.set(face[i], face[i + 1], face[i + 2]);
+          vertex.set(face[i] ?? 0, face[i + 1] ?? 0, face[i + 2] ?? 0);
           const toVertex = vertex.clone().sub(position).normalize();
           if (direction.dot(toVertex) <= 0) continue;
           vertex.applyMatrix4(rotation).project(camera);
@@ -196,6 +197,7 @@ function cleanEdges(frame: Frame) {
     frame.canvas.height,
   );
   const data = imageData.data;
+  const at = (index: number) => data[index] ?? 0;
   const width = frame.canvas.width;
   const height = frame.canvas.height;
   const width1 = width - 1;
@@ -219,31 +221,31 @@ function cleanEdges(frame: Frame) {
         let sa = 0;
         if (x !== 0) {
           count++;
-          sr += data[i - 4];
-          sg += data[i - 3];
-          sb += data[i - 2];
-          sa += data[i - 1];
+          sr += at(i - 4);
+          sg += at(i - 3);
+          sb += at(i - 2);
+          sa += at(i - 1);
         }
         if (x !== width1) {
           count++;
-          sr += data[i + 4];
-          sg += data[i + 5];
-          sb += data[i + 6];
-          sa += data[i + 7];
+          sr += at(i + 4);
+          sg += at(i + 5);
+          sb += at(i + 6);
+          sa += at(i + 7);
         }
         if (y !== 0) {
           count++;
-          sr += data[i - row];
-          sg += data[i - row + 1];
-          sb += data[i - row + 2];
-          sa += data[i - row + 3];
+          sr += at(i - row);
+          sg += at(i - row + 1);
+          sb += at(i - row + 2);
+          sa += at(i - row + 3);
         }
         if (y !== height1) {
           count++;
-          sr += data[i + row];
-          sg += data[i + row + 1];
-          sb += data[i + row + 2];
-          sa += data[i + row + 3];
+          sr += at(i + row);
+          sg += at(i + row + 1);
+          sb += at(i + row + 2);
+          sa += at(i + row + 3);
         }
         data[i] = sr / count;
         data[i + 1] = sg / count;
@@ -281,31 +283,31 @@ function cleanEdges(frame: Frame) {
           let sa = 0;
           if (jx !== 0 && data[j - 1] !== 0) {
             count++;
-            sr += data[j - 4];
-            sg += data[j - 3];
-            sb += data[j - 2];
-            sa += data[j - 1];
+            sr += at(j - 4);
+            sg += at(j - 3);
+            sb += at(j - 2);
+            sa += at(j - 1);
           }
           if (jx !== width1 && data[j + 7] !== 0) {
             count++;
-            sr += data[j + 4];
-            sg += data[j + 5];
-            sb += data[j + 6];
-            sa += data[j + 7];
+            sr += at(j + 4);
+            sg += at(j + 5);
+            sb += at(j + 6);
+            sa += at(j + 7);
           }
           if (jy !== 0 && data[j - row + 3] !== 0) {
             count++;
-            sr += data[j - row];
-            sg += data[j - row + 1];
-            sb += data[j - row + 2];
-            sa += data[j - row + 3];
+            sr += at(j - row);
+            sg += at(j - row + 1);
+            sb += at(j - row + 2);
+            sa += at(j - row + 3);
           }
           if (jy !== height1 && data[j + row + 3] !== 0) {
             count++;
-            sr += data[j + row];
-            sg += data[j + row + 1];
-            sb += data[j + row + 2];
-            sa += data[j + row + 3];
+            sr += at(j + row);
+            sg += at(j + row + 1);
+            sb += at(j + row + 2);
+            sa += at(j + row + 3);
           }
           data[j] = sr / count;
           data[j + 1] = sg / count;

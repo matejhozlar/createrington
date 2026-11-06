@@ -42,6 +42,10 @@ type InlineToken =
   | { type: "custom_emoji"; name: string; id: string; animated: boolean }
   | { type: "timestamp"; unix: number; format: string };
 
+function group(match: RegExpMatchArray, index: number): string {
+  return match[index] ?? "";
+}
+
 const INLINE_RULES: Array<{
   pattern: RegExp;
   parse: (match: RegExpMatchArray) => InlineToken;
@@ -52,7 +56,7 @@ const INLINE_RULES: Array<{
     pattern: /^<t:(\d+)(?::([tTdDfFR]))?>/,
     parse: (m) => ({
       type: "timestamp",
-      unix: Number(m[1]),
+      unix: Number(group(m, 1)),
       format: m[2] ?? "f",
     }),
   },
@@ -60,55 +64,55 @@ const INLINE_RULES: Array<{
     pattern: new RegExp(`^${CUSTOM_EMOJI_SOURCE}`),
     parse: (m) => ({
       type: "custom_emoji",
-      name: m[2],
-      id: m[3],
+      name: group(m, 2),
+      id: group(m, 3),
       animated: m[1] === "a",
     }),
   },
   // Discord mentions: <#channelId>, <@&roleId>
   {
     pattern: /^<#(\d+)>/,
-    parse: (m) => ({ type: "channel_mention", id: m[1] }),
+    parse: (m) => ({ type: "channel_mention", id: group(m, 1) }),
   },
   {
     pattern: /^<@&(\d+)>/,
-    parse: (m) => ({ type: "role_mention", id: m[1] }),
+    parse: (m) => ({ type: "role_mention", id: group(m, 1) }),
   },
   {
     pattern: /^`([^`]+?)`/,
-    parse: (m) => ({ type: "code", content: m[1] }),
+    parse: (m) => ({ type: "code", content: group(m, 1) }),
   },
   {
     pattern: /^\[([^\]]+?)\]\((https?:\/\/[^)]+?)\)/,
-    parse: (m) => ({ type: "link", text: m[1], url: m[2] }),
+    parse: (m) => ({ type: "link", text: group(m, 1), url: group(m, 2) }),
   },
   {
     pattern: /^\*\*\*(.+?)\*\*\*/s,
-    parse: (m) => ({ type: "bold_italic", content: m[1] }),
+    parse: (m) => ({ type: "bold_italic", content: group(m, 1) }),
   },
   {
     pattern: /^\*\*(.+?)\*\*/s,
-    parse: (m) => ({ type: "bold", content: m[1] }),
+    parse: (m) => ({ type: "bold", content: group(m, 1) }),
   },
   {
     pattern: /^__(.+?)__/s,
-    parse: (m) => ({ type: "underline", content: m[1] }),
+    parse: (m) => ({ type: "underline", content: group(m, 1) }),
   },
   {
     pattern: /^\*(.+?)\*/s,
-    parse: (m) => ({ type: "italic", content: m[1] }),
+    parse: (m) => ({ type: "italic", content: group(m, 1) }),
   },
   {
     pattern: /^_(.+?)_/s,
-    parse: (m) => ({ type: "italic", content: m[1] }),
+    parse: (m) => ({ type: "italic", content: group(m, 1) }),
   },
   {
     pattern: /^~~(.+?)~~/s,
-    parse: (m) => ({ type: "strikethrough", content: m[1] }),
+    parse: (m) => ({ type: "strikethrough", content: group(m, 1) }),
   },
   {
     pattern: /^\|\|(.+?)\|\|/s,
-    parse: (m) => ({ type: "spoiler", content: m[1] }),
+    parse: (m) => ({ type: "spoiler", content: group(m, 1) }),
   },
 ];
 
@@ -199,9 +203,9 @@ function tokeniseInline(text: string): InlineToken[] {
       // Consume one character as plain text
       const last = tokens[tokens.length - 1];
       if (last?.type === "text") {
-        last.content += remaining[0];
+        last.content += remaining.charAt(0);
       } else {
-        tokens.push({ type: "text", content: remaining[0] });
+        tokens.push({ type: "text", content: remaining.charAt(0) });
       }
       remaining = remaining.slice(1);
     }
@@ -333,18 +337,19 @@ export function DiscordMarkdown({
   mentionResolver,
 }: DiscordMarkdownProps) {
   const lines = text.split("\n");
+  const lineAt = (index: number) => lines[index] ?? "";
   const blocks: ReactNode[] = [];
   let i = 0;
 
   while (i < lines.length) {
-    const line = lines[i];
+    const line = lineAt(i);
 
     // Code block: ```lang\n...\n```
     if (line.startsWith("```")) {
       const codeLines: string[] = [];
       i++; // skip opening ```
-      while (i < lines.length && !lines[i].startsWith("```")) {
-        codeLines.push(lines[i]);
+      while (i < lines.length && !lineAt(i).startsWith("```")) {
+        codeLines.push(lineAt(i));
         i++;
       }
       i++; // skip closing ```
@@ -363,8 +368,8 @@ export function DiscordMarkdown({
     // Heading: # / ## / ###
     const headingMatch = line.match(/^(#{1,3})\s+(.+)$/);
     if (headingMatch) {
-      const level = headingMatch[1].length;
-      const content = headingMatch[2];
+      const [, hashes = "", content = ""] = headingMatch;
+      const level = hashes.length;
       const sizes = [
         "text-xl font-bold",
         "text-lg font-bold",
@@ -387,9 +392,9 @@ export function DiscordMarkdown({
       const quoteLines: string[] = [];
       while (
         i < lines.length &&
-        (lines[i].startsWith("> ") || lines[i] === ">")
+        (lineAt(i).startsWith("> ") || lineAt(i) === ">")
       ) {
-        quoteLines.push(lines[i].slice(2));
+        quoteLines.push(lineAt(i).slice(2));
         i++;
       }
       blocks.push(
@@ -412,16 +417,15 @@ export function DiscordMarkdown({
     if (/^[-*]\s+/.test(line)) {
       const items: { text: string; subItems: string[] }[] = [];
       while (i < lines.length) {
-        if (/^[-*]\s+/.test(lines[i])) {
-          items.push({
-            text: lines[i].replace(/^[-*]\s+/, ""),
-            subItems: [],
-          });
+        if (/^[-*]\s+/.test(lineAt(i))) {
+          const item = {
+            text: lineAt(i).replace(/^[-*]\s+/, ""),
+            subItems: [] as string[],
+          };
+          items.push(item);
           i++;
-          while (i < lines.length && /^\s{2,}[-*]\s+/.test(lines[i])) {
-            items[items.length - 1].subItems.push(
-              lines[i].replace(/^\s{2,}[-*]\s+/, ""),
-            );
+          while (i < lines.length && /^\s{2,}[-*]\s+/.test(lineAt(i))) {
+            item.subItems.push(lineAt(i).replace(/^\s{2,}[-*]\s+/, ""));
             i++;
           }
         } else {
@@ -451,16 +455,15 @@ export function DiscordMarkdown({
     if (/^\d+\.\s+/.test(line)) {
       const items: { text: string; subItems: string[] }[] = [];
       while (i < lines.length) {
-        if (/^\d+\.\s+/.test(lines[i])) {
-          items.push({
-            text: lines[i].replace(/^\d+\.\s+/, ""),
-            subItems: [],
-          });
+        if (/^\d+\.\s+/.test(lineAt(i))) {
+          const item = {
+            text: lineAt(i).replace(/^\d+\.\s+/, ""),
+            subItems: [] as string[],
+          };
+          items.push(item);
           i++;
-          while (i < lines.length && /^\s{2,}[-*]\s+/.test(lines[i])) {
-            items[items.length - 1].subItems.push(
-              lines[i].replace(/^\s{2,}[-*]\s+/, ""),
-            );
+          while (i < lines.length && /^\s{2,}[-*]\s+/.test(lineAt(i))) {
+            item.subItems.push(lineAt(i).replace(/^\s{2,}[-*]\s+/, ""));
             i++;
           }
         } else {

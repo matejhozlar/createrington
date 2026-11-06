@@ -44,7 +44,7 @@ function toDateStr(d: Date): string {
 }
 
 export function parseHeatmapDate(date: string): Date {
-  const [year, month, day] = date.split("-").map(Number);
+  const [year = 0, month = 1, day = 1] = date.split("-").map(Number);
   return new Date(year, month - 1, day);
 }
 
@@ -78,7 +78,7 @@ export function buildHeatmapGrid(
       if (row === 0) {
         const month = cursor.getMonth();
         if (month !== lastMonth) {
-          monthLabels.push({ label: MONTH_LABELS[month], col });
+          monthLabels.push({ label: MONTH_LABELS[month] ?? "", col });
           lastMonth = month;
         }
       }

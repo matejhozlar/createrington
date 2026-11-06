@@ -25,14 +25,18 @@ export type TextureEntry = {
   variants?: Record<string, TextureVariant>;
 };
 
+export type FontFace = [number, number, number?, number?];
+
+export type FontEnds = [number, number, number, number];
+
 export type TitleFont = {
   id: string;
   name: string;
   author?: string;
   description?: string;
   preview?: string;
-  faces: number[][];
-  ends: number[][];
+  faces: FontFace[];
+  ends: FontEnds[];
   height: number;
   border: number;
   textureWidth: number;

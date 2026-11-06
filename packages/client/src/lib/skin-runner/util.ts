@@ -1,8 +1,9 @@
 export type Rgb = readonly [number, number, number];
 
 export function mix(a: Rgb, b: Rgb, t: number): string {
-  const channel = (i: number) => Math.round(a[i] + (b[i] - a[i]) * t);
-  return `rgb(${channel(0)}, ${channel(1)}, ${channel(2)})`;
+  const channel = (from: number, to: number) =>
+    Math.round(from + (to - from) * t);
+  return `rgb(${channel(a[0], b[0])}, ${channel(a[1], b[1])}, ${channel(a[2], b[2])})`;
 }
 
 export function rgb([r, g, b]: Rgb): string {

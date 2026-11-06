@@ -22,7 +22,7 @@ export function MatchupBar({
             key={player.minecraftUuid}
             className={cn(
               "flex min-w-0 items-center gap-2 md:gap-3",
-              SIDES[index].row,
+              SIDES[index]?.row,
               index === 1 && "col-start-3",
             )}
           >
@@ -35,7 +35,7 @@ export function MatchupBar({
             <span
               className={cn(
                 "truncate text-sm font-bold md:text-base",
-                SIDES[index].text,
+                SIDES[index]?.text,
               )}
             >
               {player.minecraftUsername}

@@ -21,7 +21,10 @@ export const DEFAULT_FONT = "minecraft-ten";
 const DEFAULT_TEXTURE_WIDTH = 1000;
 const DEFAULT_TEXTURE_HEIGHT = 320;
 
-const MINECRAFT_TEN_METRICS = {
+const MINECRAFT_TEN_METRICS: Pick<
+  TitleFont,
+  "faces" | "ends" | "height" | "border"
+> = {
   faces: [
     [22, 62],
     [108, 148],
@@ -178,8 +181,9 @@ export async function loadCatalog(): Promise<Catalog> {
       delete merged.variants;
       if (variant.shifts === "inherit") merged.shifts = raw.shifts;
       else if (variant.shifts) merged.shifts = variant.shifts;
-      fonts[variant.id] = toFont(merged, raw.id, []);
-      fonts[variant.id].name = variant.name ?? titleCase(variant.id);
+      const variantFont = toFont(merged, raw.id, []);
+      variantFont.name = variant.name ?? titleCase(variant.id);
+      fonts[variant.id] = variantFont;
     }
   }
 
@@ -292,4 +296,10 @@ export function tileablePath(tileable: Tileable, variant: string | null) {
     ? (tileable.variants?.[variant]?.path ?? tileable.path)
     : tileable.path;
   return `tileables/${path ? `${path}/` : ""}${variant ?? tileable.id}.png`;
+}
+
+export function getFont(catalog: Catalog, id: string): TitleFont {
+  const font = catalog.fonts[id];
+  if (!font) throw new Error(`Unknown font ${id}`);
+  return font;
 }

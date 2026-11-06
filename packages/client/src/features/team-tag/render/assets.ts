@@ -24,8 +24,19 @@ export type PlateAssets = {
 };
 
 const ROOT = "/assets/team-tag";
-const PLATE_LETTER_ROWS = ["ABCDEFGHIJKLMNOPQR", "STUVWXYZ0123456789"];
-const PLATE_COLUMNS: PlateColumn[] = ["edge", "rivet", "fill"];
+const PLATE_LETTER_ROWS: [string, string] = [
+  "ABCDEFGHIJKLMNOPQR",
+  "STUVWXYZ0123456789",
+];
+const PLATE_COLUMNS: [PlateColumn, string][] = [
+  ["edge", "a"],
+  ["rivet", "b"],
+  ["fill", "c"],
+];
+
+export function byteAt(data: Uint8ClampedArray, index: number): number {
+  return data[index] ?? 0;
+}
 const VANILLA_SPACE_ADVANCE = 4;
 const PING_LEVELS = 5;
 export const HEAD_SIZE = 8;
@@ -72,13 +83,15 @@ export function headOf(source: Bitmap): Bitmap {
   );
   const hat = cropBitmap(source, SKIN_HAT.x, SKIN_HAT.y, HEAD_SIZE, HEAD_SIZE);
   for (let i = 0; i < head.data.length; i += 4) {
-    const alpha = hat.data[i + 3] / 255;
+    const hatAlpha = byteAt(hat.data, i + 3);
+    const alpha = hatAlpha / 255;
     if (alpha === 0) continue;
     for (let c = 0; c < 3; c++) {
       head.data[i + c] =
-        hat.data[i + c] * alpha + head.data[i + c] * (1 - alpha);
+        byteAt(hat.data, i + c) * alpha +
+        byteAt(head.data, i + c) * (1 - alpha);
     }
-    head.data[i + 3] = Math.max(head.data[i + 3], hat.data[i + 3]);
+    head.data[i + 3] = Math.max(byteAt(head.data, i + 3), hatAlpha);
   }
   return head;
 }
@@ -87,7 +100,9 @@ function glyphWidth(bitmap: Bitmap): number {
   let width = 0;
   for (let x = 0; x < bitmap.width; x++) {
     for (let y = 0; y < bitmap.height; y++) {
-      if (bitmap.data[(y * bitmap.width + x) * 4 + 3] !== 0) width = x + 1;
+      if (byteAt(bitmap.data, (y * bitmap.width + x) * 4 + 3) !== 0) {
+        width = x + 1;
+      }
     }
   }
   return width;
@@ -138,9 +153,9 @@ function vanillaGlyphs(sheet: Bitmap): Map<string, Glyph> {
 function shadowCanvas(image: HTMLImageElement): HTMLCanvasElement {
   const bitmap = bitmapOf(image);
   for (let i = 0; i < bitmap.data.length; i += 4) {
-    bitmap.data[i] *= SHADOW_DIM;
-    bitmap.data[i + 1] *= SHADOW_DIM;
-    bitmap.data[i + 2] *= SHADOW_DIM;
+    bitmap.data[i] = byteAt(bitmap.data, i) * SHADOW_DIM;
+    bitmap.data[i + 1] = byteAt(bitmap.data, i + 1) * SHADOW_DIM;
+    bitmap.data[i + 2] = byteAt(bitmap.data, i + 2) * SHADOW_DIM;
   }
   return bitmapCanvas(bitmap);
 }
@@ -179,7 +194,7 @@ export async function loadPlateAssets(): Promise<PlateAssets> {
 
   const columnSheet = glyphSheet(bitmapOf(riveted), ["abc"], 1, riveted.height);
   const plateColumns = Object.fromEntries(
-    PLATE_COLUMNS.map((column, i) => [column, columnSheet.get("abc"[i])!]),
+    PLATE_COLUMNS.map(([column, key]) => [column, columnSheet.get(key)!]),
   ) as Record<PlateColumn, Glyph>;
 
   return {

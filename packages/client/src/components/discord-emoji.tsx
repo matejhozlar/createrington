@@ -10,7 +10,7 @@ export function DiscordEmoji({ value, className }: DiscordEmojiProps) {
   const match = value.match(CUSTOM_EMOJI_PATTERN);
   if (!match) return <span className={className}>{value}</span>;
 
-  const [, animated, name, id] = match;
+  const [, animated, name = "", id = ""] = match;
   return (
     <img
       src={customEmojiUrl(id, animated === "a")}

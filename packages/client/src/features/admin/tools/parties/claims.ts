@@ -7,6 +7,7 @@ export type ClaimBlock = ClaimBlocksResult["blocks"][number];
 
 export function blockKey(block: ClaimBlock): string {
   const first = block.chunks[0];
+  if (!first) return `${block.dimension}:${block.ownerUuid}`;
   return `${block.dimension}:${block.ownerUuid}:${first.x}:${first.z}`;
 }
 

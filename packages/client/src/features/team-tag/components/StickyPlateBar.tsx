@@ -37,11 +37,13 @@ export function StickyPlateBar({
     if (!sentinel || !bar) return;
     const top = parseFloat(getComputedStyle(bar).top) || 0;
     const observer = new IntersectionObserver(
-      ([entry]) =>
+      ([entry]) => {
+        if (!entry) return;
         setStuck(
           !entry.isIntersecting &&
             entry.boundingClientRect.top < (entry.rootBounds?.top ?? 0),
-        ),
+        );
+      },
       { rootMargin: `-${top + 1}px 0px 0px 0px` },
     );
     observer.observe(sentinel);

@@ -229,6 +229,7 @@ function RowActionGroup({
     0,
   );
   const primary = actions[primaryIndex];
+  if (!primary) return null;
   const rest = actions.filter((_, index) => index !== primaryIndex);
 
   return (
@@ -464,7 +465,7 @@ export function DataTable<T>({
                   {rowActions && (
                     <TableCell className="px-4">
                       <RowActionGroup
-                        actions={rowActions[index]}
+                        actions={rowActions[index] ?? []}
                         busy={isRowBusy?.(row) ?? false}
                         menuOnly={actionSlots === 0}
                       />

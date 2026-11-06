@@ -172,8 +172,7 @@ export function StatsTab({ playerId, getServerName }: StatsTabProps) {
   const groupedStats = useMemo(() => {
     const groups: Record<string, FlatStat[]> = {};
     for (const stat of filteredStats) {
-      if (!groups[stat.category]) groups[stat.category] = [];
-      groups[stat.category].push(stat);
+      (groups[stat.category] ??= []).push(stat);
     }
     return groups;
   }, [filteredStats]);

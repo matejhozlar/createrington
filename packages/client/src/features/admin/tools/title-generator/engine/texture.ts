@@ -20,6 +20,12 @@ const STOP_CONFIGS = [
   [0.2, 0.4, 0.6, 0.8],
 ];
 
+function lastEnd(font: TitleFont) {
+  const end = font.ends[font.ends.length - 1];
+  if (!end) throw new Error(`Font ${font.id} has no ends`);
+  return end;
+}
+
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
 const fract = (n: number) => n - Math.floor(n);
@@ -120,60 +126,61 @@ async function paintTileable(
     for (const cube of character) {
       for (const uv of Object.values(cube.faces)) {
         if (!uv) continue;
-        const mapped = uv.map((e, index) =>
-          Math.round(index % 2 ? e * uvScaleH : e * uvScaleW),
-        );
+        const [u0, v0, u1, v1] = uv;
+        const x0 = Math.round(u0 * uvScaleW);
+        const y0 = Math.round(v0 * uvScaleH);
+        const x1 = Math.round(u1 * uvScaleW);
+        const y1 = Math.round(v1 * uvScaleH);
         const middle = font.faces.find(
           (e) =>
-            within(mapped[1], e[0], e[e.length - 1]) &&
-            within(mapped[3], e[0], e[e.length - 1]),
+            within(y0, e[0], e[3] ?? e[1]) && within(y1, e[0], e[3] ?? e[1]),
         );
         if (middle) {
           if (!faceUV) {
             faceUV = [
-              Math.min(mapped[0], mapped[2]),
+              Math.min(x0, x1),
               middle[0] * res,
-              Math.max(mapped[0], mapped[2]),
-              middle[middle.length - 1] * res,
+              Math.max(x0, x1),
+              (middle[3] ?? middle[1]) * res,
               middle.length === 4 ? (middle[1] - middle[0]) * res : null,
             ];
           } else {
-            faceUV[0] = Math.min(faceUV[0], mapped[0], mapped[2]);
-            faceUV[2] = Math.max(faceUV[2], mapped[0], mapped[2]);
+            faceUV[0] = Math.min(faceUV[0], x0, x1);
+            faceUV[2] = Math.max(faceUV[2], x0, x1);
           }
           continue;
         }
         const top = font.ends.find(
-          (e) => within(mapped[1], e[0], e[1]) && within(mapped[3], e[0], e[1]),
+          (e) => within(y0, e[0], e[1]) && within(y1, e[0], e[1]),
         );
         if (top) {
           if (!topUV) {
             topUV = [
-              Math.min(mapped[0], mapped[2]),
+              Math.min(x0, x1),
               top[0] * res,
-              Math.max(mapped[0], mapped[2]),
+              Math.max(x0, x1),
               top[1] * res,
             ];
           } else {
-            topUV[0] = Math.min(topUV[0], mapped[0], mapped[2]);
-            topUV[2] = Math.max(topUV[2], mapped[0], mapped[2]);
+            topUV[0] = Math.min(topUV[0], x0, x1);
+            topUV[2] = Math.max(topUV[2], x0, x1);
           }
           continue;
         }
         const bottom = font.ends.find(
-          (e) => within(mapped[1], e[2], e[3]) && within(mapped[3], e[2], e[3]),
+          (e) => within(y0, e[2], e[3]) && within(y1, e[2], e[3]),
         );
         if (bottom) {
           if (!bottomUV) {
             bottomUV = [
-              Math.min(mapped[0], mapped[2]),
+              Math.min(x0, x1),
               bottom[2] * res,
-              Math.max(mapped[0], mapped[2]),
+              Math.max(x0, x1),
               bottom[3] * res,
             ];
           } else {
-            bottomUV[0] = Math.min(bottomUV[0], mapped[0], mapped[2]);
-            bottomUV[2] = Math.max(bottomUV[2], mapped[0], mapped[2]);
+            bottomUV[0] = Math.min(bottomUV[0], x0, x1);
+            bottomUV[2] = Math.max(bottomUV[2], x0, x1);
           }
         }
       }
@@ -298,7 +305,7 @@ function paintGradient(
       enabled[2] ? [colours[3], 0.75] : null,
       [colours[4], 1],
     ].filter((stop): stop is [string, number] => stop !== null);
-    const height = font.ends[font.ends.length - 1][3];
+    const height = lastEnd(font)[3];
     if (canvas.width < font.textureWidth * 4) {
       ({ canvas, ctx } = upscaleFrame(
         { canvas, ctx },
@@ -309,24 +316,25 @@ function paintGradient(
     }
     ctx.globalCompositeOperation = "source-atop";
     const gradient = ctx.createLinearGradient(0, 0, 0, height * m);
-    for (let i = 0; i < font.faces.length; i++) {
-      const face = font.faces[i];
+    for (const [i, face] of font.faces.entries()) {
       const end = font.ends[i];
+      if (!end) continue;
+      const [f0, f1, f2, f3] = face;
       gradient.addColorStop(end[0] / height, colours[0]);
-      if (face.length === 2) {
-        gradient.addColorStop(face[0] / height, colours[0]);
+      if (f2 === undefined || f3 === undefined) {
+        gradient.addColorStop(f0 / height, colours[0]);
         for (const [colour, t] of stops) {
-          gradient.addColorStop(lerp(face[0], face[1], t) / height, colour);
+          gradient.addColorStop(lerp(f0, f1, t) / height, colour);
         }
-        gradient.addColorStop(face[1] / height, colours[4]);
+        gradient.addColorStop(f1 / height, colours[4]);
       } else {
-        gradient.addColorStop(face[0] / height, colours[0]);
-        gradient.addColorStop(face[1] / height, colours[0]);
+        gradient.addColorStop(f0 / height, colours[0]);
+        gradient.addColorStop(f1 / height, colours[0]);
         for (const [colour, t] of stops) {
-          gradient.addColorStop(lerp(face[1], face[2], t) / height, colour);
+          gradient.addColorStop(lerp(f1, f2, t) / height, colour);
         }
-        gradient.addColorStop(face[2] / height, colours[4]);
-        gradient.addColorStop(face[3] / height, colours[4]);
+        gradient.addColorStop(f2 / height, colours[4]);
+        gradient.addColorStop(f3 / height, colours[4]);
       }
       gradient.addColorStop(end[3] / height, colours[4]);
     }
@@ -334,22 +342,26 @@ function paintGradient(
     ctx.fillRect(0, 0, canvas.width * m, height * m);
   } else {
     const first = font.faces[0];
-    const charHeight = first[3] ? first[2] - first[1] : first[1] - first[0];
+    if (!first) throw new Error(`Font ${font.id} has no faces`);
+    const charHeight = first[3]
+      ? (first[2] ?? 0) - first[1]
+      : first[1] - first[0];
     const stops =
       STOP_CONFIGS[
         (Number(enabled[0]) << 2) |
           (Number(enabled[1]) << 1) |
           Number(enabled[2])
-      ];
-    for (let i = 0; i < font.faces.length; i++) {
-      const face = font.faces[i];
+      ] ?? [];
+    for (const [i, face] of font.faces.entries()) {
       const end = font.ends[i];
+      if (!end) continue;
       const offset = face[3] ? face[1] : face[0];
       let prev = 0;
-      for (let k = 0, j = 0; k < 5; k++) {
+      let j = 0;
+      for (const [k, colour] of colours.entries()) {
         if (!(enabled[k - 1] ?? true)) continue;
         const stopEnd = Math.floor((stops[j] ?? 1) * charHeight);
-        ctx.fillStyle = colours[k];
+        ctx.fillStyle = colour;
         ctx.fillRect(0, offset + prev, canvas.width, stopEnd - prev);
         prev = stopEnd;
         j++;
@@ -489,8 +501,13 @@ export async function makeTexture(
       m = canvas.width / font.textureWidth;
     }
     ctx.globalCompositeOperation = "source-atop";
-    const height = font.ends[font.ends.length - 1][3];
-    const [r, g, b] = ctx.getImageData(0, font.border * m, 1, 1).data;
+    const height = lastEnd(font)[3];
+    const [r = 0, g = 0, b = 0] = ctx.getImageData(
+      0,
+      font.border * m,
+      1,
+      1,
+    ).data;
     const gradient = ctx.createLinearGradient(0, 0, 0, height * m);
     for (const stop of font.ends) {
       gradient.addColorStop(stop[0] / height, `rgb(${r},${g},${b})`);

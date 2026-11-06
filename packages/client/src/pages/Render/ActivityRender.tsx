@@ -148,6 +148,7 @@ export function ActivityRender() {
             </div>
             {weeks.map((week, col) => {
               const day = week[row];
+              if (!day) return null;
               return (
                 <div
                   key={col}

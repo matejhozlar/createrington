@@ -75,7 +75,9 @@ export function PortalTile({ width, height, tileSize = 96 }: PortalTileProps) {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const observer = new IntersectionObserver(
-      ([entry]) => setVisible(entry.isIntersecting),
+      ([entry]) => {
+        if (entry) setVisible(entry.isIntersecting);
+      },
       { threshold: 0 },
     );
     observer.observe(canvas);

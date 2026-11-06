@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { useToastActions } from "@/hooks/use-toast";
-import { assetUrl, thumbnailPath } from "../engine/assets";
+import { assetUrl, getFont, thumbnailPath } from "../engine/assets";
 import { normalizeTitleText } from "../engine/geometry";
 import { fontSwitchPatch } from "../engine/settings";
 import type { TextType } from "../engine/types";
@@ -42,13 +42,16 @@ export function TextTab({ layer, catalog, onChange }: LayerTabProps) {
     }
   };
 
-  const fontOptions = catalog.baseFonts.map((id) => ({
-    id,
-    name: catalog.fonts[id].name,
-    author: catalog.fonts[id].author,
-    image: assetUrl(thumbnailPath(id, "flat")),
-    hasVariants: catalog.fonts[id].variants.length > 0,
-  }));
+  const fontOptions = catalog.baseFonts.map((id) => {
+    const font = getFont(catalog, id);
+    return {
+      id,
+      name: font.name,
+      author: font.author,
+      image: assetUrl(thumbnailPath(id, "flat")),
+      hasVariants: font.variants.length > 0,
+    };
+  });
 
   const variantOptions = baseFont?.variants.length
     ? [
@@ -57,12 +60,15 @@ export function TextTab({ layer, catalog, onChange }: LayerTabProps) {
           name: "Default",
           image: assetUrl(thumbnailPath(baseFont.id, "flat")),
         },
-        ...baseFont.variants.map((id) => ({
-          id,
-          name: catalog.fonts[id].name,
-          author: catalog.fonts[id].author,
-          image: assetUrl(thumbnailPath(id, "flat")),
-        })),
+        ...baseFont.variants.map((id) => {
+          const font = getFont(catalog, id);
+          return {
+            id,
+            name: font.name,
+            author: font.author,
+            image: assetUrl(thumbnailPath(id, "flat")),
+          };
+        }),
       ]
     : [];
 

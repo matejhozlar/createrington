@@ -131,9 +131,9 @@ export function ChatPanel({
     const focusable = Array.from(
       e.currentTarget.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
     );
-    if (focusable.length === 0) return;
     const first = focusable[0];
     const last = focusable[focusable.length - 1];
+    if (!first || !last) return;
     if (e.shiftKey && document.activeElement === first) {
       e.preventDefault();
       last.focus();

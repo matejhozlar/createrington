@@ -82,7 +82,7 @@ function classifyByVerb(text: string): Kind {
 function classifyEntry(raw: string): ClassifiedEntry {
   const m = raw.match(TAG_PREFIX);
   if (m) {
-    const tag = m[1].toLowerCase();
+    const tag = (m[1] ?? "").toLowerCase();
     const stripped = raw.replace(TAG_PREFIX, "");
     if (tag in TAG_META) {
       return { kind: tag as Kind, text: stripped };
@@ -142,9 +142,10 @@ function parseChangelog(raw: string): ChangelogSection[] {
   for (const line of raw.split("\n")) {
     const headingMatch = line.match(/^## (v[\d.]+)\s+\((.+)\)$/);
     if (headingMatch) {
+      const [, version = "", date = ""] = headingMatch;
       current = {
-        version: headingMatch[1],
-        date: headingMatch[2],
+        version,
+        date,
         entries: [],
       };
       sections.push(current);
@@ -154,18 +155,19 @@ function parseChangelog(raw: string): ChangelogSection[] {
 
     const pkgMatch = line.match(/^### (.+?)(?:\s+\((.+)\))?$/);
     if (pkgMatch && current) {
+      const [, name = "", versionRange = ""] = pkgMatch;
       currentPkg = {
-        name: pkgMatch[1],
-        versionRange: pkgMatch[2] ?? "",
+        name,
+        versionRange,
         items: [],
       };
       current.entries.push(currentPkg);
       continue;
     }
 
-    const itemMatch = line.match(/^- (.+)$/);
-    if (itemMatch && currentPkg) {
-      currentPkg.items.push(itemMatch[1]);
+    const item = line.match(/^- (.+)$/)?.[1];
+    if (item !== undefined && currentPkg) {
+      currentPkg.items.push(item);
     }
   }
 
@@ -227,7 +229,7 @@ export function Changelog() {
           visible.sort(
             (a, b) => a.boundingClientRect.top - b.boundingClientRect.top,
           );
-          const v = visible[0].target.getAttribute("data-version");
+          const v = visible[0]?.target.getAttribute("data-version");
           if (v) setActiveVersion(v);
         }
       },
@@ -301,6 +303,7 @@ export function Changelog() {
     );
   }
 
+  const [latest] = sections;
   const filtersActive =
     !!search.trim() || packageFilter !== "all" || bumpFilter !== "all";
 
@@ -317,7 +320,7 @@ export function Changelog() {
           />
 
           <section className="min-w-0">
-            {sections.length > 0 && <Hero latest={sections[0]} stats={stats} />}
+            {latest && <Hero latest={latest} stats={stats} />}
 
             <Toolbar
               search={search}

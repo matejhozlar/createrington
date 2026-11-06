@@ -116,10 +116,10 @@ const CDN_SWITCH = {
   label: "CurseForge CDN fallback",
 } as const;
 
-const UPSTREAMS: { key: "curseforge" | "modrinth"; label: string }[] = [
+const UPSTREAMS = [
   { key: "curseforge", label: "CurseForge" },
   { key: "modrinth", label: "Modrinth" },
-];
+] as const;
 
 const CALL_WEEK_DAYS = 7;
 

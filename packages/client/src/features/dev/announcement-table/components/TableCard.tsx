@@ -29,7 +29,7 @@ function Cell({ segments }: { segments: CellSegment[] }) {
 }
 
 function isContinuation(row: CellSegment[][]) {
-  return row[0].every((segment) => !segment.text.trim());
+  return row[0]?.every((segment) => !segment.text.trim()) ?? false;
 }
 
 export const TableCard = forwardRef<HTMLDivElement, { table: ParsedTable }>(
@@ -76,7 +76,7 @@ export const TableCard = forwardRef<HTMLDivElement, { table: ParsedTable }>(
                         key={index}
                         className={cn(
                           "whitespace-nowrap px-6 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground",
-                          ALIGN_CLASS[table.aligns[index]],
+                          ALIGN_CLASS[table.aligns[index] ?? "left"],
                         )}
                       >
                         <Cell segments={column} />
@@ -101,7 +101,7 @@ export const TableCard = forwardRef<HTMLDivElement, { table: ParsedTable }>(
                           className={cn(
                             "whitespace-nowrap px-6 py-3.5 text-lg",
                             cellIndex === 0 && "font-medium",
-                            ALIGN_CLASS[table.aligns[cellIndex]],
+                            ALIGN_CLASS[table.aligns[cellIndex] ?? "left"],
                           )}
                         >
                           <Cell segments={cell} />

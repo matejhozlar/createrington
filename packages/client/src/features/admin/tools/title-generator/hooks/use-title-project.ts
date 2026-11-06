@@ -31,7 +31,7 @@ function wordmarkProject(): Project {
   const layers = WORDMARK_LAYERS();
   return {
     layers,
-    selectedId: layers[0].id,
+    selectedId: layers[0]?.id ?? "",
     render: DEFAULT_RENDER,
     output: DEFAULT_OUTPUT,
   };
@@ -61,7 +61,7 @@ function loadProject(): Project {
       layers,
       selectedId: layers.some((layer) => layer.id === stored.selectedId)
         ? stored.selectedId!
-        : layers[0].id,
+        : (layers[0]?.id ?? ""),
       render,
       output,
     };
@@ -147,7 +147,7 @@ export function useTitleProject() {
       const layers = current.layers.filter((layer) => layer.id !== id);
       const selectedId =
         current.selectedId === id
-          ? layers[Math.max(0, index - 1)].id
+          ? (layers[Math.max(0, index - 1)]?.id ?? current.selectedId)
           : current.selectedId;
       return { ...current, layers, selectedId };
     });
@@ -161,7 +161,11 @@ export function useTitleProject() {
         return current;
       }
       const layers = [...current.layers];
-      [layers[index], layers[target]] = [layers[target], layers[index]];
+      const moved = layers[index];
+      const displaced = layers[target];
+      if (!moved || !displaced) return current;
+      layers[index] = displaced;
+      layers[target] = moved;
       return { ...current, layers };
     });
   }, []);
@@ -190,7 +194,8 @@ export function useTitleProject() {
     revision,
     selectedLayer:
       project.layers.find((layer) => layer.id === project.selectedId) ??
-      project.layers[0],
+      project.layers[0] ??
+      createLayer({}),
     updateLayer,
     selectLayer,
     addLayer,

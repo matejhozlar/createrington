@@ -54,9 +54,9 @@ function getActiveTrigger(
   triggers: TriggerChar[],
 ): ActiveTrigger | null {
   for (let i = cursorPos - 1; i >= 0; i--) {
-    const ch = value[i];
+    const ch = value.charAt(i);
     if (isTrigger(ch, triggers)) {
-      const prev = i === 0 ? "" : value[i - 1];
+      const prev = value.charAt(i - 1);
       if (i !== 0 && !/\s/.test(prev)) return null;
       const query = value.slice(i + 1, cursorPos);
       if (/\s/.test(query)) return null;

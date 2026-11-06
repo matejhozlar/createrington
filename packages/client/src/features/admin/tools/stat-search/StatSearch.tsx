@@ -110,7 +110,7 @@ export function StatSearch() {
   const categoryLabels = categories.map(formatStatCategory);
   const nameCategory = selectedCategories.has("minecraft:custom")
     ? "minecraft:custom"
-    : categories[0];
+    : (categories[0] ?? "");
 
   type StatResult = (typeof results)[number];
 
@@ -144,13 +144,13 @@ export function StatSearch() {
         </div>
       ),
     },
-    ...categoryLabels.map((label, i): DataTableColumn<StatResult> => ({
-      key: categories[i],
-      header: label,
+    ...categories.map((category, i): DataTableColumn<StatResult> => ({
+      key: category,
+      header: formatStatCategory(category),
       width: 130,
       align: "right",
       render: (result) => {
-        const value = result.values[i];
+        const value = result.values[i] ?? 0;
         const suspicious = isSuspicious(result);
         const total = result.values.reduce((a, b) => a + b, 0);
         const max = Math.max(...result.values);
@@ -165,7 +165,7 @@ export function StatSearch() {
                 "font-bold text-yellow-500",
             )}
           >
-            {formatStatValue(categories[i], selectedItem, value)}
+            {formatStatValue(category, selectedItem, value)}
           </span>
         );
       },

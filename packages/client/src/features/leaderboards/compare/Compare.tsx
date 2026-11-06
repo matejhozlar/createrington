@@ -176,12 +176,12 @@ export function Compare() {
   );
   const score = players ? scoreOf(players, now) : null;
   const missing = sides.filter(
-    (username, index) => !!username && contenders[index].isError,
+    (username, index) => !!username && contenders[index]?.isError,
   );
   const failed = compareQuery.isError || missing.length > 0;
   const loading = sides.map(
     (username, index) =>
-      !!username && !stageSides[index] && !contenders[index].isError,
+      !!username && !stageSides[index] && !contenders[index]?.isError,
   ) as [boolean, boolean];
 
   const run = (action: HeroAction, at: number) => {

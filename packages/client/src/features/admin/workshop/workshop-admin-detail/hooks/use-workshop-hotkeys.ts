@@ -11,6 +11,14 @@ import {
 const BLOCKING_SELECTOR =
   "input, textarea, select, [contenteditable=true], [role=dialog], [role=listbox], [role=menu], [role=combobox]";
 
+function stepThrough<T>(
+  list: readonly [T, ...T[]],
+  index: number,
+  delta: number,
+): T {
+  return list[(index + delta + list.length) % list.length] ?? list[0];
+}
+
 export function useWorkshopHotkeys(input: {
   activeTab: WorkshopTabId;
   onTabChange: (tab: WorkshopTabId) => void;
@@ -37,26 +45,26 @@ export function useWorkshopHotkeys(input: {
         const delta = event.key === "ArrowRight" ? 1 : -1;
         const active = latest.current.activeTab;
         if (isModTab(active)) {
-          const index = MOD_TAB_IDS.indexOf(active);
-          const count = MOD_TAB_IDS.length;
           latest.current.onTabChange(
-            MOD_TAB_IDS[(index + delta + count) % count],
+            stepThrough(MOD_TAB_IDS, MOD_TAB_IDS.indexOf(active), delta),
           );
         } else {
-          const index = TOP_TAB_IDS.indexOf(tabGroup(active));
-          const count = TOP_TAB_IDS.length;
           latest.current.onOpenGroup(
-            TOP_TAB_IDS[(index + delta + count) % count],
+            stepThrough(
+              TOP_TAB_IDS,
+              TOP_TAB_IDS.indexOf(tabGroup(active)),
+              delta,
+            ),
           );
         }
         return;
       }
 
       if (/^[1-9]$/.test(event.key)) {
-        const digit = Number(event.key);
-        if (digit <= TOP_TAB_IDS.length) {
+        const group = TOP_TAB_IDS[Number(event.key) - 1];
+        if (group) {
           event.preventDefault();
-          latest.current.onOpenGroup(TOP_TAB_IDS[digit - 1]);
+          latest.current.onOpenGroup(group);
         }
         return;
       }

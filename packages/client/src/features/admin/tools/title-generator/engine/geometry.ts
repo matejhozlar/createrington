@@ -71,7 +71,7 @@ function makeCharacter(char: string, offset: number, args: WordArgs) {
   let maxZ = -Infinity;
   const cubes: TitleCube[] = [];
 
-  for (const element of args.characters[char]) {
+  for (const element of args.characters[char] ?? []) {
     const cube: TitleCube = {
       from: [...element.from],
       to: [...element.to],
@@ -160,9 +160,10 @@ function makeWord(text: string, offset: number, args: WordArgs) {
     const min: Vec3 = [Infinity, Infinity, Infinity];
     const max: Vec3 = [-Infinity, -Infinity, -Infinity];
     for (const cube of word) {
-      for (let axis = 0; axis < 3; axis++) {
-        min[axis] = Math.min(min[axis], cube.from[axis], cube.to[axis]);
-        max[axis] = Math.max(max[axis], cube.from[axis], cube.to[axis]);
+      for (const [axis, from] of cube.from.entries()) {
+        const to = cube.to[axis] ?? from;
+        min[axis] = Math.min(min[axis] ?? Infinity, from, to);
+        max[axis] = Math.max(max[axis] ?? -Infinity, from, to);
       }
     }
     const size =

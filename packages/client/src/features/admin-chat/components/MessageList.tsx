@@ -113,6 +113,7 @@ export const MessageList = memo(function MessageList({
     if (!el) return;
     let last: { width: number; height: number } | null = null;
     const observer = new ResizeObserver(([entry]) => {
+      if (!entry) return;
       const { width, height } = entry.contentRect;
       const changed =
         last !== null && (last.width !== width || last.height !== height);

@@ -398,7 +398,7 @@ export function AdminDashboard() {
                 <div className="space-y-3">
                   {commandStatsQuery.data.topCommands.map((cmd) => {
                     const maxCount =
-                      commandStatsQuery.data.topCommands[0].count;
+                      commandStatsQuery.data.topCommands[0]?.count ?? 0;
                     const pct = maxCount > 0 ? (cmd.count / maxCount) * 100 : 0;
                     return (
                       <div key={cmd.commandName} className="space-y-1">

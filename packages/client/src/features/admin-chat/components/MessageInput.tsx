@@ -55,7 +55,8 @@ export function MessageInput({
       }
       if (e.key === "Enter" || e.key === "Tab") {
         e.preventDefault();
-        acceptMention(mentions.matches[mentions.index]);
+        const match = mentions.matches[mentions.index];
+        if (match) acceptMention(match);
         return;
       }
       if (e.key === "Escape") {

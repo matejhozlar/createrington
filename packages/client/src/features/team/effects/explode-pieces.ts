@@ -136,7 +136,9 @@ const scratch = new Vector3();
 export function createPieces(skin: SkinObject): Piece[] {
   return PIECES.map((spec) => {
     const part = skin[spec.name];
-    const offset = part.children[0].position.clone();
+    const pivot = part.children[0];
+    if (!pivot) throw new Error(`Skin part ${spec.name} has no pivot`);
+    const offset = pivot.position.clone();
     const slimArm = skin.modelType === "slim" && spec.name.endsWith("Arm");
     const homeQuat = new Quaternion().setFromEuler(
       new Euler(0, 0, spec.restRoll),
@@ -220,9 +222,9 @@ export function nearestTurn(angle: number, turn: number, phase = 0): number {
 export function floorExtent(piece: Piece): number {
   const elements = matrix.makeRotationFromEuler(piece.spin).elements;
   return (
-    Math.abs(elements[1]) * piece.half.x +
-    Math.abs(elements[5]) * piece.half.y +
-    Math.abs(elements[9]) * piece.half.z
+    Math.abs(elements[1] ?? 0) * piece.half.x +
+    Math.abs(elements[5] ?? 0) * piece.half.y +
+    Math.abs(elements[9] ?? 0) * piece.half.z
   );
 }
 

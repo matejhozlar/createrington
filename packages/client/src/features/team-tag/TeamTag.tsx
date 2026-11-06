@@ -22,7 +22,7 @@ import { StepHeader, type Step } from "./components/StepHeader";
 import { StickyPlateBar } from "./components/StickyPlateBar";
 import { TabListPreview } from "./components/TabListPreview";
 import { TagStep } from "./components/TagStep";
-import { RANKS } from "./presets";
+import { rankAt } from "./presets";
 import { useElementWidth } from "./hooks/use-element-width";
 import { useLoadedImage } from "./hooks/use-loaded-image";
 import { usePlateAssets } from "./hooks/use-plate-assets";
@@ -157,7 +157,7 @@ export function TeamTag() {
                 design={design}
                 assets={assets}
                 name={name}
-                nameColor={RANKS[settings.rank].color}
+                nameColor={rankAt(settings.rank).color}
                 head={head}
                 plateZoom={zooms.plate}
                 lineZoom={zooms.line}
@@ -203,7 +203,7 @@ export function TeamTag() {
                 design={design}
                 assets={assets}
                 name={name}
-                nameColor={RANKS[settings.rank].color}
+                nameColor={rankAt(settings.rank).color}
                 head={head}
                 canCopy={complete}
                 onCopy={copyCode}

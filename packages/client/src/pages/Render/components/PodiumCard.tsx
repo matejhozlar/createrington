@@ -7,6 +7,13 @@ export interface PodiumPlayer {
   tagCode: string | null;
 }
 
+interface MedalStyle {
+  glow: string;
+  text: string;
+  height: string;
+  rank: string;
+}
+
 interface PodiumCardProps {
   containerId: string;
   banner: { src: string; alt: string };
@@ -18,7 +25,7 @@ interface PodiumCardProps {
   formatValue: (value: number) => string;
 }
 
-const MEDAL_STYLES = [
+const MEDAL_STYLES: [MedalStyle, MedalStyle, MedalStyle] = [
   {
     glow: "bg-amber-400",
     text: "text-amber-400",
@@ -39,7 +46,7 @@ const MEDAL_STYLES = [
   },
 ];
 
-const PODIUM_ORDER = [1, 0, 2];
+const PODIUM_ORDER = [1, 0, 2] as const;
 
 function PodiumEntry({
   player,
@@ -49,7 +56,7 @@ function PodiumEntry({
 }: {
   player: PodiumPlayer;
   skinSrc: string;
-  rank: number;
+  rank: 0 | 1 | 2;
   valueLabel: string;
 }) {
   const style = MEDAL_STYLES[rank];

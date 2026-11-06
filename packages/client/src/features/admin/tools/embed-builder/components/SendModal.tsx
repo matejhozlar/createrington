@@ -61,7 +61,8 @@ export function SendModal({ open, onOpenChange, builder }: SendModalProps) {
     for (const match of payload.matchAll(
       new RegExp(CUSTOM_EMOJI_SOURCE, "g"),
     )) {
-      if (ids.has(match[3])) count++;
+      const id = match[3];
+      if (id !== undefined && ids.has(id)) count++;
     }
     return count;
   }, [bot, emojisQuery.data, kind, components, externalData]);

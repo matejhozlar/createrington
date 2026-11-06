@@ -96,8 +96,7 @@ export function MessageDialog({
       return;
     }
 
-    for (let i = 0; i < followups.length; i++) {
-      const f = followups[i];
+    for (const [i, f] of followups.entries()) {
       if (!f.content.trim()) {
         toast.error(`Follow-up #${i + 1} content is required`);
         return;

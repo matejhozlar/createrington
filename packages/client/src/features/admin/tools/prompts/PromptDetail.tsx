@@ -224,10 +224,10 @@ export function PromptDetail() {
                     <span className="text-xs text-muted-foreground">
                       {group.entries.length > 1
                         ? `${group.entries.length} entries`
-                        : formatEntryTime(group.entries[0])}
+                        : group.entries[0] && formatEntryTime(group.entries[0])}
                     </span>
                   </div>
-                  {group.entries.length === 1 ? (
+                  {group.entries.length === 1 && group.entries[0] ? (
                     <p className="mt-1 whitespace-pre-wrap text-sm text-foreground">
                       {group.entries[0].responseText}
                     </p>

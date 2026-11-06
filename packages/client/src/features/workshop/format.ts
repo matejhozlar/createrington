@@ -180,10 +180,10 @@ export function dependencyIsCovered(coverage: string): boolean {
   return coverage === "published" || coverage === "staged";
 }
 
-export const WORKSHOP_STATUS_STYLES: Record<
-  string,
-  { label: string; className: string }
-> = {
+type WorkshopStatusStyle = { label: string; className: string };
+
+export const WORKSHOP_STATUS_STYLES: Record<string, WorkshopStatusStyle> &
+  Record<"draft" | "open" | "closed" | "archived", WorkshopStatusStyle> = {
   draft: {
     label: "Draft",
     className: "border-yellow-500/20 bg-yellow-500/10 text-yellow-400",

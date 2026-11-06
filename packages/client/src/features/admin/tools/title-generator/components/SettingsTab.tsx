@@ -1,3 +1,4 @@
+import { getFont } from "../engine/assets";
 import { Section, SliderField, ToggleField } from "./fields";
 import type { LayerTabProps } from "./types";
 
@@ -8,7 +9,7 @@ const SCALE_AXES = [
 ] as const;
 
 export function SettingsTab({ layer, catalog, onChange }: LayerTabProps) {
-  const font = catalog.fonts[layer.font];
+  const font = getFont(catalog, layer.font);
 
   return (
     <div className="flex flex-col gap-6">

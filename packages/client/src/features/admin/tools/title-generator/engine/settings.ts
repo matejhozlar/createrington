@@ -1,5 +1,6 @@
 import {
   DEFAULT_FONT,
+  getFont,
   loadAssetImage,
   loadFontTextures,
   tileablePath,
@@ -180,7 +181,7 @@ export async function fontSwitchPatch(
   fontId: string,
   catalog: Catalog,
 ): Promise<Partial<TitleLayer>> {
-  const font = catalog.fonts[fontId];
+  const font = getFont(catalog, fontId);
   const textures = await loadFontTextures(fontId);
   return {
     font: fontId,
@@ -450,7 +451,7 @@ export async function applyPreset(
   const baseFont = stringOrEmpty(preset.baseFont);
   const fontVariant = stringOrEmpty(preset.fontVariant);
   let fontId = catalog.fonts[baseFont] ? baseFont : DEFAULT_FONT;
-  if (catalog.fonts[fontId].variants.includes(fontVariant))
+  if (getFont(catalog, fontId).variants.includes(fontVariant))
     fontId = fontVariant;
   next = {
     ...next,

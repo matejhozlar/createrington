@@ -48,7 +48,10 @@ export function GuideDetail() {
     return <Navigate to="/guides" replace />;
   }
 
-  const step = guide.steps[currentStep];
+  const step = guide.steps[currentStep] ?? guide.steps[0];
+  if (!step) {
+    return <Navigate to="/guides" replace />;
+  }
 
   const handleFinish = () => {
     void navigate("/guides");

@@ -27,7 +27,7 @@ const VIEW_OPTIONS = RENDER_VIEWS.map((value) => ({
 
 const PRESET_RESOLUTIONS = [480, 720, 1024, 2048, 4096] as const;
 
-const RESOLUTION_LABELS: Record<number, string> = {
+const RESOLUTION_LABELS: Record<(typeof PRESET_RESOLUTIONS)[number], string> = {
   480: "480",
   720: "720",
   1024: "1K",

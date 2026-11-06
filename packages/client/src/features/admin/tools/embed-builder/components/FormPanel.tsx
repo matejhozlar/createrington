@@ -49,6 +49,7 @@ import {
 import { InsertMenu } from "@/features/admin/components/InsertMenu";
 import { MentionAutocomplete } from "./MentionAutocomplete";
 import type { FocusTarget } from "../focus";
+import { moveItem } from "../components-v2/defaults";
 
 const TAB_DEFS = [
   { id: "content", label: "Content" },
@@ -59,6 +60,10 @@ const TAB_DEFS = [
 ] as const;
 
 export type TabId = (typeof TAB_DEFS)[number]["id"];
+
+const fieldId = (index: number) => `f-${index}`;
+const linkId = (index: number) => `bl-${index}`;
+const actionId = (index: number) => `ba-${index}`;
 
 function tabForFocus(focus: FocusTarget): TabId | null {
   if (focus === "content" || focus === "title" || focus === "description")
@@ -418,16 +423,14 @@ function FieldsTab({ data, set, focused, setFocused }: TabProps) {
     setFocused?.(`field:${fields.length}` as FocusTarget);
   }
   function move(i: number, dir: -1 | 1) {
-    const next = [...fields];
-    const j = i + dir;
-    if (j < 0 || j >= next.length) return;
-    [next[i], next[j]] = [next[j], next[i]];
-    set({ fields: next });
+    const next = moveItem(fields, i, dir);
+    if (next !== fields) set({ fields: next });
   }
   function duplicate(i: number) {
-    if (fields.length >= 25) return;
+    const field = fields[i];
+    if (fields.length >= 25 || !field) return;
     const next = [...fields];
-    next.splice(i + 1, 0, { ...fields[i] });
+    next.splice(i + 1, 0, { ...field });
     set({ fields: next });
   }
   function onDragEnd(event: DragEndEvent) {
@@ -439,7 +442,7 @@ function FieldsTab({ data, set, focused, setFocused }: TabProps) {
     set({ fields: arrayMove(fields, from, to) });
   }
 
-  const ids = fields.map((_, i) => `f-${i}`);
+  const ids = fields.map((_, i) => fieldId(i));
 
   return (
     <>
@@ -482,8 +485,8 @@ function FieldsTab({ data, set, focused, setFocused }: TabProps) {
           <div className="space-y-2">
             {fields.map((f, i) => (
               <FieldRow
-                key={ids[i]}
-                id={ids[i]}
+                key={fieldId(i)}
+                id={fieldId(i)}
                 field={f}
                 index={i}
                 count={fields.length}
@@ -751,8 +754,8 @@ function ButtonsTab({ data, set, focused, setFocused }: TabProps) {
     }
   }
 
-  const linkIds = links.map((_, i) => `bl-${i}`);
-  const actionIds = actions.map((_, i) => `ba-${i}`);
+  const linkIds = links.map((_, i) => linkId(i));
+  const actionIds = actions.map((_, i) => actionId(i));
 
   return (
     <>
@@ -820,8 +823,8 @@ function ButtonsTab({ data, set, focused, setFocused }: TabProps) {
           >
             {links.map((b, i) => (
               <ButtonRow
-                key={linkIds[i]}
-                id={linkIds[i]}
+                key={linkId(i)}
+                id={linkId(i)}
                 item={{ kind: "link", btn: b, idx: i }}
                 focused={focused === `button:link:${i}`}
                 onChangeLink={(u) => setLink(i, u)}
@@ -839,8 +842,8 @@ function ButtonsTab({ data, set, focused, setFocused }: TabProps) {
           >
             {actions.map((b, i) => (
               <ButtonRow
-                key={actionIds[i]}
-                id={actionIds[i]}
+                key={actionId(i)}
+                id={actionId(i)}
                 item={{ kind: "action", btn: b, idx: i }}
                 focused={focused === `button:action:${i}`}
                 onChangeLink={() => undefined}

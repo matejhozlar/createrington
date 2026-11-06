@@ -1,4 +1,4 @@
-import { loadCharacters, type Catalog } from "./assets";
+import { getFont, loadCharacters, type Catalog } from "./assets";
 import { buildTitleMesh, clearSmallRows, normalizeTitleText } from "./geometry";
 import type { PreparedLayer } from "./render";
 import { geometryOptions, resolveTextureArgs } from "./settings";
@@ -32,7 +32,11 @@ function cachedTexture(layer: TitleLayer, catalog: Catalog) {
   if (pending) {
     textureCache.delete(key);
   } else {
-    pending = makeTexture(args, catalog.fonts[layer.font], catalog.tileables);
+    pending = makeTexture(
+      args,
+      getFont(catalog, layer.font),
+      catalog.tileables,
+    );
     pending.catch(() => textureCache.delete(key));
   }
   textureCache.set(key, pending);

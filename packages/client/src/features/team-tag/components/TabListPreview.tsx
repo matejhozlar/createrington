@@ -5,8 +5,9 @@ import { PODIUM } from "@/features/team/data";
 import { cn } from "@/lib/utils";
 import {
   BACKDROPS,
-  PLATE_PRESETS,
   RANKS,
+  presetAt,
+  rankAt,
   type Backdrop,
   type GuiScale,
 } from "../presets";
@@ -43,13 +44,13 @@ const BOARD_PLAYERS: {
     name: member.username,
     skinUrl: member.skin,
     nameColor: member.tier === "owner" ? BOSS_COLOR : ADMIN_COLOR,
-    pingMs: TEAM_PINGS[i % TEAM_PINGS.length],
+    pingMs: TEAM_PINGS[i % TEAM_PINGS.length] ?? 30,
     party: TEAM_PARTIES[member.username] ?? null,
   })),
   {
     name: "VoidVersa",
     skinUrl: null,
-    nameColor: RANKS[RANKS.length - 1].color,
+    nameColor: rankAt(RANKS.length - 1).color,
     pingMs: 88,
     party: { tag: "VOID", preset: 7 },
   },
@@ -63,8 +64,8 @@ function partyDesign(tag: string, preset: number): PlateDesign {
   return {
     style: "riveted",
     tag,
-    plate: PLATE_PRESETS[preset].plate,
-    letters: PLATE_PRESETS[preset].letters,
+    plate: presetAt(preset).plate,
+    letters: presetAt(preset).letters,
     plateFade: null,
     letterFade: null,
   };
@@ -100,12 +101,13 @@ export const TabListPreview = memo(function TabListPreview({
   useEffect(() => {
     const element = frameRef.current;
     if (!element) return;
-    const observer = new ResizeObserver(([entry]) =>
+    const observer = new ResizeObserver(([entry]) => {
+      if (!entry) return;
       setFrame({
         width: entry.contentRect.width,
         height: entry.contentRect.height,
-      }),
-    );
+      });
+    });
     observer.observe(element);
     return () => observer.disconnect();
   }, []);
@@ -132,7 +134,7 @@ export const TabListPreview = memo(function TabListPreview({
     }));
     const you: TabRow = {
       name,
-      nameColor: RANKS[rank].color,
+      nameColor: rankAt(rank).color,
       head: head ?? assets.steveHead,
       pingMs: 30,
       design,

@@ -43,21 +43,21 @@ export function mixFromPose(
   let cursor = 0;
   for (const name of PART_NAMES) {
     const rotation = player.skin[name].rotation;
-    rotation.x = lerp(from[cursor++], rotation.x, weight);
-    rotation.y = lerp(from[cursor++], rotation.y, weight);
-    rotation.z = lerp(from[cursor++], rotation.z, weight);
+    rotation.x = lerp(from[cursor++] ?? 0, rotation.x, weight);
+    rotation.y = lerp(from[cursor++] ?? 0, rotation.y, weight);
+    rotation.z = lerp(from[cursor++] ?? 0, rotation.z, weight);
   }
-  player.position.x = lerp(from[cursor++], player.position.x, weight);
-  player.position.y = lerp(from[cursor++], player.position.y, weight);
-  player.position.z = lerp(from[cursor++], player.position.z, weight);
+  player.position.x = lerp(from[cursor++] ?? 0, player.position.x, weight);
+  player.position.y = lerp(from[cursor++] ?? 0, player.position.y, weight);
+  player.position.z = lerp(from[cursor++] ?? 0, player.position.z, weight);
   for (const axis of ["x", "y", "z"] as const) {
-    const start = from[cursor++];
+    const start = from[cursor++] ?? 0;
     const arc = shortestAngle(start, player.rotation[axis]);
     player.rotation[axis] = start + arc * weight;
   }
-  player.scale.x = lerp(from[cursor++], player.scale.x, weight);
-  player.scale.y = lerp(from[cursor++], player.scale.y, weight);
-  player.scale.z = lerp(from[cursor++], player.scale.z, weight);
+  player.scale.x = lerp(from[cursor++] ?? 0, player.scale.x, weight);
+  player.scale.y = lerp(from[cursor++] ?? 0, player.scale.y, weight);
+  player.scale.z = lerp(from[cursor++] ?? 0, player.scale.z, weight);
 }
 
 function restPose(player: PlayerObject): void {

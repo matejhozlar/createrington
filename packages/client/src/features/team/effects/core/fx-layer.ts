@@ -187,6 +187,8 @@ class FxLayer {
         Math.floor(t * particle.colors.length),
         particle.colors.length - 1,
       );
+      const color = particle.colors[colorIndex];
+      if (color === undefined) continue;
       const fade =
         t < particle.fadeFrom
           ? 1
@@ -196,7 +198,7 @@ class FxLayer {
         1 / this.ratio,
       );
       ctx.globalAlpha = clamp(particle.alpha * fade, 0, 1);
-      ctx.fillStyle = particle.colors[colorIndex];
+      ctx.fillStyle = color;
       ctx.fillRect(
         this.snap(particle.x - size / 2),
         this.snap(particle.y - size / 2),

@@ -4,7 +4,7 @@ export type PlatePreset = {
   letters: number;
 };
 
-export const PLATE_PRESETS: PlatePreset[] = [
+export const PLATE_PRESETS: [PlatePreset, ...PlatePreset[]] = [
   { name: "Brass", plate: 0xd9a441, letters: 0x3b230e },
   { name: "Copper", plate: 0xc96a3d, letters: 0xfff0dc },
   { name: "Andesite", plate: 0x9a9c97, letters: 0x222421 },
@@ -23,7 +23,7 @@ export type Rank = {
 
 const RANK_ICONS = "/assets/team-tag/ranks";
 
-export const RANKS: Rank[] = [
+export const RANKS: [Rank, ...Rank[]] = [
   { label: "Shaft Scraper", color: 0x7b5733, icon: `${RANK_ICONS}/wood.png` },
   { label: "Cog Carrier", color: 0xb0b0b0, icon: `${RANK_ICONS}/stone.png` },
   {
@@ -77,3 +77,11 @@ export const BACKDROPS = [
   { value: "sky", label: "Sky", src: "/assets/hero/space-station.webp" },
 ] as const;
 export type Backdrop = (typeof BACKDROPS)[number]["value"];
+
+export function presetAt(index: number): PlatePreset {
+  return PLATE_PRESETS[index] ?? PLATE_PRESETS[0];
+}
+
+export function rankAt(index: number): Rank {
+  return RANKS[index] ?? RANKS[0];
+}

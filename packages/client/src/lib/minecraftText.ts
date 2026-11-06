@@ -49,9 +49,9 @@ export function parseMinecraftText(text: string): MinecraftTextSegment[][] {
       if (before) segments.push({ text: before, ...style });
       last = match.index + match[0].length;
 
-      const code = match[1].toLowerCase();
+      const code = (match[1] ?? "").toLowerCase();
       if (code in MINECRAFT_COLORS) {
-        style = { ...RESET, color: MINECRAFT_COLORS[code] };
+        style = { ...RESET, color: MINECRAFT_COLORS[code] ?? null };
       } else if (code === "r") {
         style = { ...RESET };
       } else {

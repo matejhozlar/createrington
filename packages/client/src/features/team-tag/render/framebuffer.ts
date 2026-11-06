@@ -1,4 +1,4 @@
-import { SHADOW_DIM, type Bitmap, type Glyph } from "./assets";
+import { SHADOW_DIM, byteAt, type Bitmap, type Glyph } from "./assets";
 
 export type GlyphOp = {
   glyph: Glyph;
@@ -22,11 +22,11 @@ export class Framebuffer {
     }
     const i = (y * this.width + x) * 4;
     const d = this.data;
-    const below = (d[i + 3] / 255) * (1 - a);
+    const below = (byteAt(d, i + 3) / 255) * (1 - a);
     const out = a + below;
-    d[i] = (r * a + d[i] * below) / out;
-    d[i + 1] = (g * a + d[i + 1] * below) / out;
-    d[i + 2] = (b * a + d[i + 2] * below) / out;
+    d[i] = (r * a + byteAt(d, i) * below) / out;
+    d[i + 1] = (g * a + byteAt(d, i + 1) * below) / out;
+    d[i + 2] = (b * a + byteAt(d, i + 2) * below) / out;
     d[i + 3] = out * 255;
   }
 
@@ -59,7 +59,14 @@ export class Framebuffer {
       for (let x = 0; x < w; x++) {
         const i = ((sy + y) * bitmap.width + sx + x) * 4;
         const d = bitmap.data;
-        this.blend(dx + x, dy + y, d[i], d[i + 1], d[i + 2], d[i + 3] / 255);
+        this.blend(
+          dx + x,
+          dy + y,
+          byteAt(d, i),
+          byteAt(d, i + 1),
+          byteAt(d, i + 2),
+          byteAt(d, i + 3) / 255,
+        );
       }
     }
   }
@@ -76,14 +83,14 @@ export class Framebuffer {
         for (let py = 0; py < bitmap.height; py++) {
           for (let px = 0; px < bitmap.width; px++) {
             const i = (py * bitmap.width + px) * 4;
-            const alpha = bitmap.data[i + 3];
+            const alpha = byteAt(bitmap.data, i + 3);
             if (!alpha) continue;
             this.blend(
               x + op.x + px + offset,
               y + py + offset,
-              (bitmap.data[i] * r) / 255,
-              (bitmap.data[i + 1] * g) / 255,
-              (bitmap.data[i + 2] * b) / 255,
+              (byteAt(bitmap.data, i) * r) / 255,
+              (byteAt(bitmap.data, i + 1) * g) / 255,
+              (byteAt(bitmap.data, i + 2) * b) / 255,
               alpha / 255,
             );
           }

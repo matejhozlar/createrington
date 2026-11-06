@@ -23,11 +23,11 @@ type RandomColors = Pick<
 >;
 
 function randomUnit(): number {
-  return crypto.getRandomValues(new Uint32Array(1))[0] / 2 ** 32;
+  return (crypto.getRandomValues(new Uint32Array(1))[0] ?? 0) / 2 ** 32;
 }
 
 function randomColor(): number {
-  return crypto.getRandomValues(new Uint32Array(1))[0] & 0xffffff;
+  return (crypto.getRandomValues(new Uint32Array(1))[0] ?? 0) & 0xffffff;
 }
 
 function channel(value: number): number {
@@ -44,8 +44,9 @@ function luminance(rgb: number): number {
 }
 
 function contrast(a: number, b: number): number {
-  const [light, dark] = [luminance(a), luminance(b)].sort((x, y) => y - x);
-  return (light + 0.05) / (dark + 0.05);
+  const la = luminance(a);
+  const lb = luminance(b);
+  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
 }
 
 export function readsClearly(plate: number, letters: number): boolean {

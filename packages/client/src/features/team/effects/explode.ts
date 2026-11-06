@@ -485,7 +485,7 @@ export class ExplodeEffect extends TeamEffect {
   private carry(pickup: Pickup, delta: number): void {
     const { member, piece } = pickup;
     const arm = member.viewer.playerObject.skin[WAVING_ARM];
-    const pivotX = arm.children[0].position.x;
+    const pivotX = arm.children[0]?.position.x ?? 0;
     const grip = toViewport(member.viewer, arm, pivotX, HAND_Y, 0);
     const shoulder = toViewport(member.viewer, arm, pivotX, 0, 0);
     const viewer = this.viewer;

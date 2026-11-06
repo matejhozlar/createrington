@@ -1,3 +1,4 @@
+import { getFont } from "../engine/assets";
 import { tileableSource, useImageSize } from "../hooks/use-title-assets";
 import {
   BlendField,
@@ -16,7 +17,7 @@ const FILTERS = [
 ] as const;
 
 export function StyleTab({ layer, catalog, onChange }: LayerTabProps) {
-  const font = catalog.fonts[layer.font];
+  const font = getFont(catalog, layer.font);
   const customTileable =
     layer.textureSource === "file" &&
     !!layer.customTexture &&

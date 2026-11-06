@@ -30,7 +30,7 @@ export function stagePoses(
   seed: string,
 ): [KnownPose, KnownPose] {
   const pick = (key: string, poses: readonly KnownPose[]) =>
-    poses[hash(`${key}:${seed}`) % poses.length];
+    poses[hash(`${key}:${seed}`) % poses.length] ?? "idle";
   const first = pick(keys[0], STAGE_POSES);
   const second = pick(keys[1], STAGE_POSES);
   if (second !== first) return [first, second];

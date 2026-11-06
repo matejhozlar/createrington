@@ -57,12 +57,12 @@ const GROUNDING = {
 function slotStyle(index: number, color: string): CSSProperties {
   return {
     "--role": color,
-    "--enter-delay": SLOTS[index].enterDelay,
+    "--enter-delay": (SLOTS[index] ?? SLOTS[0]).enterDelay,
   } as CSSProperties;
 }
 
 function HeroFigure({ role, index }: { role: TopRole; index: number }) {
-  const slot = SLOTS[index];
+  const slot = SLOTS[index] ?? SLOTS[0];
   const style = topRoleStyle(role.roleKey);
   const holder = role.holder;
   const src = holder ? figureSrc(holder) : null;
@@ -164,7 +164,7 @@ function HeroCaption({
   index: number;
   now: number;
 }) {
-  const slot = SLOTS[index];
+  const slot = SLOTS[index] ?? SLOTS[0];
   const style = topRoleStyle(role.roleKey);
   const Icon = style.icon;
   const holder = role.holder;

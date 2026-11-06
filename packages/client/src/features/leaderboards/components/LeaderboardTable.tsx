@@ -33,9 +33,10 @@ type BoardPage = RouterOutput["public"]["leaderboards"]["list"];
 type BoardRow = BoardPage["rows"][number];
 type BoardFocus = NonNullable<BoardPage["focus"]>;
 type TopRole = RouterOutput["public"]["leaderboards"]["hero"][number];
-type BoardEntry = (typeof BOARDS)[number];
 
-const BOARDS: { board: Board; roleKey: string; metric: TopRoleMetric }[] = [
+type BoardEntry = { board: Board; roleKey: string; metric: TopRoleMetric };
+
+const BOARDS: [BoardEntry, ...BoardEntry[]] = [
   { board: "playtime", roleKey: "the_sleepless", metric: "playtime" },
   { board: "records", roleKey: "the_unrivaled", metric: "records" },
   { board: "balance", roleKey: "capitalist", metric: "balance" },

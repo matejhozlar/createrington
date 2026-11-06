@@ -42,7 +42,7 @@ export function StepHeader({
   locked: boolean;
   onStepChange: (step: Step) => void;
 }) {
-  const current = STEPS[step - 1];
+  const current = STEPS[step - 1] ?? STEPS[0];
 
   return (
     <div className="flex flex-col gap-3.5">

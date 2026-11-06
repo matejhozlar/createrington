@@ -226,7 +226,7 @@ const TRIP_STEADY = {
   rightArmZ: -0.36,
 };
 
-const GESTURES: readonly GestureEntry[] = [
+const GESTURES: readonly [GestureEntry, ...GestureEntry[]] = [
   { weight: 0.38, calm: true, create: lookAround },
   { weight: 0.17, calm: true, create: shiftWeight },
   { weight: 0.08, calm: true, create: scratchHead },
@@ -239,10 +239,14 @@ const GESTURES: readonly GestureEntry[] = [
 ];
 
 function keyed(keys: readonly Key[], time: number): number {
-  let [fromAt, from] = keys[0];
+  const first = keys[0];
+  if (!first) return 0;
+  let [fromAt, from] = first;
   if (time <= fromAt) return from;
   for (let i = 1; i < keys.length; i++) {
-    const [at, value, ease = easeInOutSine] = keys[i];
+    const key = keys[i];
+    if (!key) break;
+    const [at, value, ease = easeInOutSine] = key;
     if (time < at) return lerp(from, value, ease(span(time, fromAt, at)));
     fromAt = at;
     from = value;
@@ -255,7 +259,9 @@ function side(): -1 | 1 {
 }
 
 function pick<T>(items: readonly T[]): T {
-  return items[Math.floor(Math.random() * items.length)];
+  const item = items[Math.floor(Math.random() * items.length)];
+  if (item === undefined) throw new Error("Cannot pick from an empty list");
+  return item;
 }
 
 function randomLook(): Look {
@@ -280,7 +286,7 @@ function glance(
   let from = CENTER;
   looks.forEach((look, index) => {
     segments.push({ start: time, end: time + turn, from, to: look });
-    time += turn + holds[index];
+    time += turn + (holds[index] ?? 0);
     from = look;
   });
   segments.push({ start: time, end: time + turn, from, to: CENTER });
@@ -587,7 +593,7 @@ function trip(host: IdleHost): Gesture {
 }
 
 function pickGesture(host: IdleHost): Gesture {
-  const pool = prefersReducedMotion()
+  const pool: readonly GestureEntry[] = prefersReducedMotion()
     ? GESTURES.filter((entry) => entry.calm)
     : GESTURES;
   let roll = Math.random() * pool.reduce((sum, entry) => sum + entry.weight, 0);
@@ -595,7 +601,7 @@ function pickGesture(host: IdleHost): Gesture {
     roll -= entry.weight;
     if (roll <= 0) return entry.create(host);
   }
-  return pool[0].create(host);
+  return (pool[0] ?? GESTURES[0]).create(host);
 }
 
 export class LookAroundIdleAnimation extends PlayerAnimation {

@@ -354,7 +354,7 @@ export function ServerChat() {
                       ? onlineUsernames.has(group.displayName.toLowerCase())
                       : undefined;
 
-                  const isHighlighted = groupHighlights[idx];
+                  const isHighlighted = groupHighlights[idx] ?? false;
                   const prevGroup =
                     idx > 0 ? messageGroups[idx - 1] : undefined;
 

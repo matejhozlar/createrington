@@ -122,14 +122,14 @@ export class SkinDissolve {
 
     for (let pixel = 0; pixel < PIXEL_COUNT; pixel++) {
       const index = pixel * 4;
-      const order = this.order[pixel];
+      const order = this.order[pixel] ?? 0;
       const replaced = order < cut || step === STEPS;
       const pixels = replaced ? target : source;
       const lit =
         showEdge &&
         !replaced &&
         order < cut + EDGE_WIDTH &&
-        (source[index + 3] > 0 || target[index + 3] > 0);
+        ((source[index + 3] ?? 0) > 0 || (target[index + 3] ?? 0) > 0);
 
       if (lit) {
         out[index] = edgeR;
@@ -137,10 +137,10 @@ export class SkinDissolve {
         out[index + 2] = edgeB;
         out[index + 3] = 255;
       } else {
-        out[index] = pixels[index];
-        out[index + 1] = pixels[index + 1];
-        out[index + 2] = pixels[index + 2];
-        out[index + 3] = pixels[index + 3];
+        out[index] = pixels[index] ?? 0;
+        out[index + 1] = pixels[index + 1] ?? 0;
+        out[index + 2] = pixels[index + 2] ?? 0;
+        out[index + 3] = pixels[index + 3] ?? 0;
       }
     }
 

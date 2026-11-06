@@ -20,7 +20,7 @@ interface ActivityChartProps {
 }
 
 function formatDay(day: string): string {
-  const [year, month, date] = day.split("-").map(Number);
+  const [year = 0, month = 1, date = 1] = day.split("-").map(Number);
   return new Date(year, month - 1, date).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
