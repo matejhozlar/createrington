@@ -37,6 +37,9 @@ jobs:
       - name: Generate code
         run: pnpm generate:ci
 
+      - name: Build server types
+        run: pnpm --filter @createrington/server build:types
+
       - name: Lint
         run: pnpm lint
 
