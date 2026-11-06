@@ -37,6 +37,13 @@ export default defineConfig([
           caughtErrorsIgnorePattern: "^_",
         },
       ],
+      "no-console": "error",
+    },
+  },
+  {
+    files: ["src/config/env/env.config.ts", "src/config/index.ts"],
+    rules: {
+      "no-console": "off",
     },
   },
 ]);
