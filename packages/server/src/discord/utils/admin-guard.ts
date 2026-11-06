@@ -86,20 +86,3 @@ export async function requireOwner(
 
   return true;
 }
-
-/**
- * Throws an error if user is not an admin
- * Used for error handling to catch it
- *
- * @param interaction - The command interaction
- * @throws Error if user is not an admin
- */
-export async function assertAdmin(
-  interaction: ChatInputCommandInteraction,
-): Promise<void> {
-  const member = resolveGuildMember(interaction);
-
-  if (!member || !(await isAdmin(member))) {
-    throw new Error("User is not an admin");
-  }
-}

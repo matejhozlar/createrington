@@ -51,6 +51,20 @@ jobs:
       - name: Type check
         run: pnpm typecheck
 
+  unused:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup
+        uses: ./.gitea/actions/setup
+
+      - name: Generate code
+        run: pnpm generate:ci
+
+      - name: Find unused files, exports and dependencies
+        run: pnpm knip
+
   build:
     runs-on: ubuntu-latest
     steps:

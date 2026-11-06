@@ -32,15 +32,6 @@ export interface WebSocketServiceConfig {
 }
 
 /**
- * Client socket with metadata
- */
-export interface ClientSocket {
-  id: string;
-  subscriptions: Set<string>; // room names
-  connectedAt: Date;
-}
-
-/**
  * Service statistics
  */
 export interface WebSocketStats {

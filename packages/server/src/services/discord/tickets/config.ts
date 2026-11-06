@@ -74,13 +74,3 @@ export function getTicketTypeConfig(type: TicketType): TicketTypeConfig {
 export function getAllTicketTypes(): TicketTypeConfig[] {
   return Object.values(TICKET_TYPE_CONFIGS);
 }
-
-/**
- * Type guard to check if a string is a valid ticket type
- *
- * @param type - The string to check
- * @returns True if the string is a registered ticket type
- */
-export function isValidTicketType(type: string): type is TicketType {
-  return type in TICKET_TYPE_CONFIGS;
-}

@@ -1,4 +1,3 @@
-export { ComponentColors } from "./colors";
 export { ComponentPresets } from "./presets";
 export {
   actionRow,
@@ -7,7 +6,6 @@ export {
   container,
   fullWidthSpacer,
   linkButton,
-  measureComponentsV2,
   mediaGallery,
   section,
   separator,

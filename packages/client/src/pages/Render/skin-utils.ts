@@ -1,11 +1,7 @@
-import {
-  KNOWN_POSES,
-  randomPose,
-  type KnownPose,
-} from "createrington-skin-api";
+import { randomPose, type KnownPose } from "createrington-skin-api";
 import { playerPoseUrl } from "@/lib/player-images";
 
-export { KNOWN_POSES, randomPose };
+export { randomPose };
 export type { KnownPose };
 
 export function loadSkin(uuid: string, pose: KnownPose): Promise<string> {

@@ -41,7 +41,6 @@ export const PartySyncBodySchema = z.object({
 });
 
 export type PartySyncBody = z.infer<typeof PartySyncBodySchema>;
-export type PartySyncParty = PartySyncBody["parties"][number];
 
 const chunkPos = z.tuple([z.int32(), z.int32()]);
 

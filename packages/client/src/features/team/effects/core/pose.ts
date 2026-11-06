@@ -204,6 +204,18 @@ export function mixJoints(from: Joints, to: Joints, weight: number): Joints {
   return mixed;
 }
 
+export function layerJoints(
+  base: Joints,
+  layer: Joints,
+  weight: number,
+): Joints {
+  const layered = { ...base };
+  for (const key of JOINT_KEYS) {
+    layered[key] += (layer[key] - REST_JOINTS[key]) * weight;
+  }
+  return layered;
+}
+
 export function applyJoints(player: PlayerObject, pose: Joints): void {
   const skin = player.skin;
   skin.head.rotation.set(pose.headX, pose.headY, pose.headZ);

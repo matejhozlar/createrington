@@ -50,13 +50,3 @@ export function getEnabledServers(): ServerConfig[] {
 export function getServerConfig(serverId: number): ServerConfig | undefined {
   return SERVER_CONFIGS.find((server) => server.id === serverId);
 }
-
-/**
- * Gets the Discord role ID for a server
- *
- * @param serverId - The internal server ID
- * @returns The Discord role ID, or undefined if not found
- */
-export function getServerRoleId(serverId: number): string | undefined {
-  return getServerConfig(serverId)?.roleId;
-}

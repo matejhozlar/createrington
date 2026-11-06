@@ -9,7 +9,6 @@ import { TIER_CONFIG } from "../data";
 type TeamMemberCardProps = {
   member: TeamMember;
   index: number;
-  total: number;
   compact: boolean;
 };
 
@@ -18,7 +17,6 @@ const AUTO_RESET_MS = 6000;
 export function TeamMemberCard({
   member,
   index,
-  total,
   compact,
 }: TeamMemberCardProps) {
   const isMobile = useIsMobile();
@@ -75,8 +73,6 @@ export function TeamMemberCard({
         height={size.height}
         hoverAnimation={member.hoverAnimation}
         enableHover={!isMobile}
-        index={index}
-        total={total}
       />
 
       <div className="flex flex-col items-center gap-1">

@@ -13,7 +13,10 @@ import type { TeamEffect } from "../effects/core/effect";
 import { BlendedAnimation, capturePose, type Pose } from "../effects/core/pose";
 import { stage, type GuestAnimation } from "../effects/core/stage";
 import { BASE_BLEED, frameViewer } from "../effects/core/view";
-import { createIdleAnimation } from "../effects/idle";
+import {
+  createIdleAnimation,
+  type LookAroundIdleAnimation,
+} from "../effects/idle";
 import { createEffect } from "../effects/registry";
 
 export type SkinViewerHandle = {
@@ -28,8 +31,6 @@ type SkinViewerProps = {
   height: number;
   hoverAnimation?: HoverAnimation | undefined;
   enableHover?: boolean;
-  index: number;
-  total: number;
   className?: string;
 };
 
@@ -41,6 +42,31 @@ type Controller = {
 const IDLE_BLEND_SECONDS = 0.4;
 const EFFECT_BLEND_SECONDS = 0.2;
 const GUEST_BLEND_SECONDS = 0.18;
+const SCROLL_BLOCKING_EVENTS = new Set([
+  "wheel",
+  "mousewheel",
+  "touchstart",
+  "touchmove",
+]);
+
+function createPassiveCanvas(): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  const addEventListener = canvas.addEventListener.bind(canvas);
+  canvas.addEventListener = (
+    type: string,
+    listener: EventListenerOrEventListenerObject,
+    options?: boolean | AddEventListenerOptions,
+  ) => {
+    if (!SCROLL_BLOCKING_EVENTS.has(type)) {
+      addEventListener(type, listener, options);
+      return;
+    }
+    const base =
+      typeof options === "object" ? options : { capture: options === true };
+    addEventListener(type, listener, { ...base, passive: true });
+  };
+  return canvas;
+}
 
 export const SkinViewer = forwardRef<SkinViewerHandle, SkinViewerProps>(
   (
@@ -51,8 +77,6 @@ export const SkinViewer = forwardRef<SkinViewerHandle, SkinViewerProps>(
       height,
       hoverAnimation,
       enableHover = true,
-      index,
-      total,
       className,
     },
     ref,
@@ -62,7 +86,7 @@ export const SkinViewer = forwardRef<SkinViewerHandle, SkinViewerProps>(
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
 
-    const depsKey = `${username}-${width}-${height}-${index}-${total}`;
+    const depsKey = `${username}-${width}-${height}`;
     const [prevDepsKey, setPrevDepsKey] = useState(depsKey);
     if (prevDepsKey !== depsKey) {
       setPrevDepsKey(depsKey);
@@ -78,14 +102,17 @@ export const SkinViewer = forwardRef<SkinViewerHandle, SkinViewerProps>(
       let skinReady = false;
       let effect: TeamEffect | null = null;
       let guest: GuestAnimation | null = null;
+      let idle: LookAroundIdleAnimation | null = null;
 
       const slot = { width, height };
       const viewer = new SkinViewerLib({
+        canvas: createPassiveCanvas(),
         width,
         height,
         enableControls: false,
       });
       const player = viewer.playerObject;
+      viewer.controls.dispose();
       viewer.autoRotate = false;
       viewer.canvas.style.position = "absolute";
       viewer.canvas.style.pointerEvents = "none";
@@ -103,7 +130,7 @@ export const SkinViewer = forwardRef<SkinViewerHandle, SkinViewerProps>(
       };
 
       const startIdle = (from?: Pose) => {
-        const idle = createIdleAnimation(viewer, username, index, total);
+        idle = createIdleAnimation(viewer, username);
         if (from) show(idle, from, IDLE_BLEND_SECONDS);
         else viewer.animation = idle;
       };
@@ -130,6 +157,7 @@ export const SkinViewer = forwardRef<SkinViewerHandle, SkinViewerProps>(
           effect?.dispose();
           guest?.dispose?.();
           guest = null;
+          idle = null;
           const pose = capturePose(player);
           effect = createEffect(hoverAnimation, {
             viewer,
@@ -158,12 +186,16 @@ export const SkinViewer = forwardRef<SkinViewerHandle, SkinViewerProps>(
             if (guest === next) endGuest();
           });
           guest = next;
+          idle = null;
           show(next, pose, GUEST_BLEND_SECONDS);
           return {
             cancel: () => {
               if (guest === next) endGuest();
             },
           };
+        },
+        notice: (point) => {
+          if (skinReady) idle?.notice(point);
         },
       });
 
@@ -199,7 +231,7 @@ export const SkinViewer = forwardRef<SkinViewerHandle, SkinViewerProps>(
         viewer.dispose();
         viewer.canvas.remove();
       };
-    }, [skin, username, width, height, index, total, hoverAnimation]);
+    }, [skin, username, width, height, hoverAnimation]);
 
     const handleMouseEnter = () => controllerRef.current?.play();
     const handleMouseLeave = () => controllerRef.current?.stop();

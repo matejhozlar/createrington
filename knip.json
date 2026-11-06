@@ -1,0 +1,40 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "ignoreExportsUsedInFile": true,
+  "ignoreBinaries": ["docker-compose", "psql"],
+  "rules": {
+    "enumMembers": "off"
+  },
+  "workspaces": {
+    ".": {
+      "entry": ["scripts/*.js"],
+      "project": ["scripts/**/*.js"]
+    },
+    "packages/server": {
+      "entry": [
+        "scripts/*.mjs",
+        "src/scripts/**/*.{ts,js}",
+        "src/generated/**/*.ts",
+        "src/db/queries/index.ts",
+        "src/discord/bots/*/events/**/*.ts",
+        "src/discord/bots/*/interactions/**/*.ts",
+        "src/trpc/routers/consumers/*/index.ts",
+        "src/tests/**/*.test-d.ts"
+      ],
+      "project": ["src/**/*.{ts,js}", "scripts/**/*.mjs"],
+      "ignoreDependencies": ["@iconify-json/*"]
+    },
+    "packages/client": {
+      "entry": ["src/components/ui/*.tsx"],
+      "project": ["src/**/*.{ts,tsx,css,scss,sass}"]
+    },
+    "packages/shared": {
+      "entry": ["src/index.ts", "src/db/**/*.ts"],
+      "project": ["src/**/*.ts"]
+    },
+    "packages/api-types": {
+      "project": ["src/**/*.ts"],
+      "ignoreDependencies": ["@trpc/server"]
+    }
+  }
+}

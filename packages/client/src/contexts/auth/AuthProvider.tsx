@@ -91,9 +91,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
           const redirectPath = sessionStorage.getItem("oauth_redirect") || "/";
           sessionStorage.removeItem("oauth_redirect");
 
-          // Clean up pre-refresh-cookie migration: old auth_token in localStorage.
-          localStorage.removeItem("auth_token");
-
           window.location.href = redirectPath;
           return;
         }
@@ -123,7 +120,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (import.meta.env.DEV) console.error("Logout error:", error);
     } finally {
       setAccessToken(null);
-      localStorage.removeItem("auth_token"); // clean up legacy
       writePlayerHint(null);
       setUser(null);
       setError(null);
