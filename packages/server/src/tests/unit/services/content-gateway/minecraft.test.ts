@@ -9,13 +9,10 @@ import {
 } from "vitest";
 import config from "@/config";
 import { getMinecraftJavaMajorVersion } from "@/services/content-gateway/minecraft";
+import { requestedUrl } from "@/tests/helpers/fetch";
 
 const fetchMock = vi.fn<typeof fetch>();
 
-function requestedUrl(call = 0): URL {
-  const input = fetchMock.mock.calls[call]?.[0];
-  return new URL(input instanceof Request ? input.url : String(input));
-}
 const GATEWAY = { url: "http://gateway.test:5005", token: "t".repeat(32) };
 const originalGateway = config.contentGateway;
 
@@ -54,7 +51,9 @@ describe("getMinecraftJavaMajorVersion", () => {
     );
 
     expect(await getMinecraftJavaMajorVersion("1.21.1")).toBe(21);
-    expect(requestedUrl().pathname).toBe("/v1/minecraft/versions/1.21.1");
+    expect(requestedUrl(fetchMock).pathname).toBe(
+      "/v1/minecraft/versions/1.21.1",
+    );
   });
 
   it("answers null when Mojang names no Java for the version", async () => {
