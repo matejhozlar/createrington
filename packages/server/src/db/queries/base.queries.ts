@@ -12,15 +12,6 @@ import {
 } from "./query-builder";
 
 const MAX_QUERY_PARAMS = 65_535;
-
-function requireRow<R extends QueryResultRow>(
-  result: QueryResult<R>,
-  query: string,
-): R {
-  const [row] = result.rows;
-  if (!row) throw new QueryError("Query returned no row", query);
-  return row;
-}
 const CONFLICT_IGNORE = " ON CONFLICT DO NOTHING";
 
 type KeysOfUnion<T> = T extends unknown ? keyof T : never;
@@ -54,6 +45,15 @@ export type IdentifierArg<
           ]: "is not an identifier field of this table";
         }
   : never;
+
+function requireRow<R extends QueryResultRow>(
+  result: QueryResult<R>,
+  query: string,
+): R {
+  const [row] = result.rows;
+  if (!row) throw new QueryError("Query returned no row", query);
+  return row;
+}
 
 /**
  * Base class for database query operations
