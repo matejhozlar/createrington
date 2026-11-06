@@ -424,10 +424,7 @@ const isValidateOnly = process.argv.includes("--validate-only");
  * @throws Exits process with code 1 if validation fails
  */
 function validateEnv(): Env {
-  console.log("Validating environment...");
-
   if (process.env.VALIDATION_MODE === "generation") {
-    console.log("Generation mode: Skipping full validation (DB vars only)");
     return process.env as unknown as Env;
   }
 
