@@ -1326,10 +1326,49 @@ export async function resolveModpackRelease(
   };
 }
 
-type StoredModpackManifest = Omit<
-  ModpackManifest,
-  "modIds" | "disabledModIds"
-> & { modIds: number[]; disabledModIds: number[] };
+const storedModpackManifestSchema = z.object({
+  fileId: z.number(),
+  serverPackFileId: z.number().nullable(),
+  displayName: z.string().nullable(),
+  version: z.string().nullable(),
+  minecraftVersion: z.string().nullable(),
+  modLoader: z.string().nullable(),
+  publishedAt: z.string().nullable(),
+  entries: z.array(
+    z.object({
+      projectId: z.number(),
+      fileId: z.number(),
+      required: z.boolean(),
+      sides: z.enum(["client", "server", "both"]),
+    }),
+  ),
+  modIds: z.array(z.number()),
+  disabledModIds: z.array(z.number()),
+});
+
+type StoredModpackManifest = z.infer<typeof storedModpackManifestSchema>;
+
+export function toStoredModpackManifest(
+  manifest: ModpackManifest,
+): StoredModpackManifest {
+  return {
+    ...manifest,
+    modIds: [...manifest.modIds],
+    disabledModIds: [...manifest.disabledModIds],
+  };
+}
+
+export function fromStoredModpackManifest(
+  value: unknown,
+): ModpackManifest | undefined {
+  const parsed = storedModpackManifestSchema.safeParse(value);
+  if (!parsed.success) return undefined;
+  return {
+    ...parsed.data,
+    modIds: new Set(parsed.data.modIds),
+    disabledModIds: new Set(parsed.data.disabledModIds),
+  };
+}
 
 const manifestStore = createKeyValueStore(16);
 
@@ -1340,16 +1379,11 @@ function manifestKey(packProjectId: number): string {
 async function readStoredManifest(
   packProjectId: number,
 ): Promise<ModpackManifest | undefined> {
-  const stored = await readStored<StoredModpackManifest>(
+  const stored = await readStored<unknown>(
     manifestStore,
     manifestKey(packProjectId),
   );
-  if (!stored) return undefined;
-  return {
-    ...stored,
-    modIds: new Set(stored.modIds),
-    disabledModIds: new Set(stored.disabledModIds),
-  };
+  return stored === undefined ? undefined : fromStoredModpackManifest(stored);
 }
 
 function storeManifest(
@@ -1357,12 +1391,12 @@ function storeManifest(
   manifest: ModpackManifest,
   ttlMs: number,
 ): Promise<void> {
-  const stored: StoredModpackManifest = {
-    ...manifest,
-    modIds: [...manifest.modIds],
-    disabledModIds: [...manifest.disabledModIds],
-  };
-  return writeStored(manifestStore, manifestKey(packProjectId), stored, ttlMs);
+  return writeStored(
+    manifestStore,
+    manifestKey(packProjectId),
+    toStoredModpackManifest(manifest),
+    ttlMs,
+  );
 }
 
 const inFlightManifests = new Map<
