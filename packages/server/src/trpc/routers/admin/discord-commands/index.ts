@@ -14,13 +14,18 @@ const JSON_PATH = path.join(
   "discord-commands.json",
 );
 
+export interface DiscordCommandsDocument {
+  generatedAt: string | null;
+  commands: unknown[];
+}
+
 /** Admin Discord commands router: serves auto-generated slash command documentation. */
 export const discordCommandsRouter = router({
   list: adminProcedure
     .meta({
       description: "Get all Discord slash commands with their metadata.",
     })
-    .query(() => {
+    .query((): DiscordCommandsDocument => {
       if (!fs.existsSync(JSON_PATH)) {
         return { generatedAt: null, commands: [] };
       }
