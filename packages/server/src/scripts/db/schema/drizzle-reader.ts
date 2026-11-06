@@ -5,8 +5,15 @@ import type {
   EnumTypeInfo,
 } from "../types";
 import * as schema from "@/db/schema";
-import { getTableConfig } from "drizzle-orm/pg-core";
-import { PgTable } from "drizzle-orm/pg-core";
+import {
+  getTableConfig,
+  isPgEnum,
+  PgEnumColumn,
+  PgNumeric,
+  PgTable,
+  PgTimestamp,
+  type PgColumn,
+} from "drizzle-orm/pg-core";
 import { is } from "drizzle-orm";
 
 // ============================================================================
@@ -77,17 +84,8 @@ function extractEnums(schemaModule: SchemaModule): EnumTypeInfo[] {
   const enums: EnumTypeInfo[] = [];
 
   for (const value of Object.values(schemaModule)) {
-    // pgEnum returns a function with enumName and enumValues properties
-    if (
-      value &&
-      typeof value === "function" &&
-      "enumName" in value &&
-      "enumValues" in value
-    ) {
-      enums.push({
-        typeName: (value as any).enumName as string,
-        values: [...((value as any).enumValues as readonly string[])],
-      });
+    if (isPgEnum(value)) {
+      enums.push({ typeName: value.enumName, values: [...value.enumValues] });
     }
   }
 
@@ -104,7 +102,7 @@ function extractTables(schemaModule: SchemaModule): TableInfo[] {
   for (const value of Object.values(schemaModule)) {
     if (!is(value, PgTable)) continue;
 
-    const config = getTableConfig(value as any);
+    const config = getTableConfig(value);
     const columns: ColumnInfo[] = [];
 
     // Build sets of PK and unique columns from table-level constraints
@@ -147,8 +145,8 @@ function extractTables(schemaModule: SchemaModule): TableInfo[] {
 
     // Unique indexes from uniqueIndex() calls
     for (const idx of config.indexes) {
-      const idxConfig = (idx as any).config;
-      if (!idxConfig?.unique) continue;
+      const idxConfig = idx.config;
+      if (!idxConfig.unique) continue;
 
       // Partial unique indexes only enforce uniqueness on a row subset,
       // so their columns cannot identify arbitrary rows
@@ -157,7 +155,9 @@ function extractTables(schemaModule: SchemaModule): TableInfo[] {
       const idxColumns = idxConfig.columns;
       if (!Array.isArray(idxColumns)) continue;
 
-      const names = idxColumns.map((col: any) => col?.name);
+      const names = idxColumns.map((col) =>
+        "name" in col ? col.name : undefined,
+      );
       // Indexes over SQL expressions have no plain column set to identify by
       if (names.some((name: unknown) => typeof name !== "string")) continue;
 
@@ -181,27 +181,26 @@ function extractTables(schemaModule: SchemaModule): TableInfo[] {
 // ============================================================================
 
 function mapColumn(
-  col: any,
+  col: PgColumn,
   pkColumnNames: Set<string>,
   uniqueColumnNames: Set<string>,
 ): ColumnInfo {
-  const columnType: string = col.columnType;
-  const columnName: string = col.name;
+  const columnType = col.columnType;
+  const columnName = col.name;
 
   // Determine dataType and udtName
   let dataType: string;
   let udtName: string;
 
-  if (columnType === "PgTimestamp") {
-    const withTimezone = col.withTimezone ?? false;
+  if (is(col, PgTimestamp)) {
+    const withTimezone = col.withTimezone;
     dataType = withTimezone
       ? "timestamp with time zone"
       : "timestamp without time zone";
     udtName = withTimezone ? "timestamptz" : "timestamp";
-  } else if (columnType === "PgEnumColumn") {
+  } else if (is(col, PgEnumColumn)) {
     dataType = "USER-DEFINED";
-    // Access the enum name through the column's enum reference
-    udtName = col.enum?.enumName ?? "unknown";
+    udtName = col.enum.enumName;
   } else {
     const mappedDataType = COLUMN_TYPE_TO_DATA_TYPE[columnType];
     const mappedUdt = COLUMN_TYPE_TO_UDT[columnType];
@@ -235,7 +234,7 @@ function mapColumn(
   // Numeric precision/scale (for numeric type columns)
   let numericPrecision: number | null = null;
   let numericScale: number | null = null;
-  if (columnType === "PgNumeric") {
+  if (is(col, PgNumeric)) {
     numericPrecision = col.precision ?? null;
     numericScale = col.scale ?? null;
   }

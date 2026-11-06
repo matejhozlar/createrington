@@ -388,7 +388,7 @@ export async function generate(
  * ```
  */
 function generateSharedFiles(
-  tables: any[],
+  tables: TableInfo[],
   enums: EnumTypeInfo[],
   hierarchy: TableStructure[],
   context: GenerationContext,
