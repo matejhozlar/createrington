@@ -18,6 +18,7 @@ import {
   type EnvironmentDisplay,
 } from "@/features/workshop/components/EnvironmentCell";
 import type { AttentionItem } from "../../types";
+import { useMutation } from "@tanstack/react-query";
 
 type DependencyGap = Extract<
   AttentionItem["type"],
@@ -88,16 +89,18 @@ export function IssuesTab({
 }) {
   const [removeTarget, setRemoveTarget] = useState<DroppedItem | null>(null);
 
-  const removeMutation = trpc.admin.workshops.removeDroppedMember.useMutation(
-    useMutationToast({
-      success: "Removed from the pack",
-      onSuccess: () => {
-        onResolved();
-      },
-      onError: () => {
-        onResolved();
-      },
-    }),
+  const removeMutation = useMutation(
+    trpc.admin.workshops.removeDroppedMember.mutationOptions(
+      useMutationToast({
+        success: "Removed from the pack",
+        onSuccess: () => {
+          onResolved();
+        },
+        onError: () => {
+          onResolved();
+        },
+      }),
+    ),
   );
 
   const columns: DataTableColumn<AttentionItem>[] = [

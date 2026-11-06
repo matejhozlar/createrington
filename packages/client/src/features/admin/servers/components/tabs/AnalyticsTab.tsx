@@ -17,6 +17,7 @@ import { Loading } from "@/components/loading-spinner";
 import { trpc } from "@/lib/trpc";
 import { ActivityChart } from "../charts/ActivityChart";
 import { HeatmapChart } from "../charts/HeatmapChart";
+import { useQuery } from "@tanstack/react-query";
 
 interface AnalyticsTabProps {
   serverId: number;
@@ -33,15 +34,19 @@ const TIME_RANGES = [
 export function AnalyticsTab({ serverId }: AnalyticsTabProps) {
   const [days, setDays] = useState(30);
 
-  const activityQuery = trpc.admin.servers.activity.useQuery({
-    serverId,
-    days,
-  });
+  const activityQuery = useQuery(
+    trpc.admin.servers.activity.queryOptions({
+      serverId,
+      days,
+    }),
+  );
 
-  const heatmapQuery = trpc.admin.servers.heatmap.useQuery({
-    serverId,
-    days,
-  });
+  const heatmapQuery = useQuery(
+    trpc.admin.servers.heatmap.queryOptions({
+      serverId,
+      days,
+    }),
+  );
 
   const activity = activityQuery.data?.activity ?? [];
   const summary = activityQuery.data?.summary;

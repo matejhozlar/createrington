@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Ticket } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
+import { useQuery } from "@tanstack/react-query";
 
 interface TicketsTabProps {
   playerId: string; // minecraftUuid (route param)
@@ -15,11 +16,13 @@ export function TicketsTab({ playerId }: TicketsTabProps) {
   const [page, setPage] = useState(0);
   const [limit] = useState(10);
 
-  const ticketsQuery = trpc.admin.players.tickets.list.useQuery({
-    id: playerId,
-    page,
-    limit,
-  });
+  const ticketsQuery = useQuery(
+    trpc.admin.players.tickets.list.queryOptions({
+      id: playerId,
+      page,
+      limit,
+    }),
+  );
 
   const tickets = ticketsQuery.data?.tickets ?? [];
   const total = ticketsQuery.data?.pagination.total ?? 0;

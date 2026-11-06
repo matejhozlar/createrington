@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { trpc } from "@/lib/trpc";
+import { trpc, queryClient } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { modpackFormError } from "../validation";
+import { useMutation } from "@tanstack/react-query";
 
 interface ModpackSettings {
   id: number;
@@ -35,7 +36,6 @@ export function ModpackSettingsDialog({
   modpack: ModpackSettings;
 }) {
   const toast = useToastActions();
-  const utils = trpc.useUtils();
 
   const [name, setName] = useState(modpack.name);
   const [description, setDescription] = useState(modpack.description ?? "");
@@ -50,18 +50,30 @@ export function ModpackSettingsDialog({
   );
   const [iconUrl, setIconUrl] = useState(modpack.iconUrl ?? "");
 
-  const updateMutation = trpc.admin.modpacks.update.useMutation(
-    useMutationToast({
-      success: "Modpack settings saved",
-      onSuccess: () => {
-        void utils.admin.modpacks.list.invalidate();
-        void utils.admin.workshops.listPackMods.invalidate();
-        void utils.admin.workshops.getAttention.invalidate();
-        void utils.user.workshops.list.invalidate();
-        void utils.user.workshops.get.invalidate();
-        onOpenChange(false);
-      },
-    }),
+  const updateMutation = useMutation(
+    trpc.admin.modpacks.update.mutationOptions(
+      useMutationToast({
+        success: "Modpack settings saved",
+        onSuccess: () => {
+          void queryClient.invalidateQueries(
+            trpc.admin.modpacks.list.pathFilter(),
+          );
+          void queryClient.invalidateQueries(
+            trpc.admin.workshops.listPackMods.pathFilter(),
+          );
+          void queryClient.invalidateQueries(
+            trpc.admin.workshops.getAttention.pathFilter(),
+          );
+          void queryClient.invalidateQueries(
+            trpc.user.workshops.list.pathFilter(),
+          );
+          void queryClient.invalidateQueries(
+            trpc.user.workshops.get.pathFilter(),
+          );
+          onOpenChange(false);
+        },
+      }),
+    ),
   );
 
   const handleSave = () => {

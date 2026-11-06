@@ -12,6 +12,7 @@ import { useToastActions } from "@/hooks/use-toast";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { AdminActionModal } from "./AdminActionModal";
+import { useMutation } from "@tanstack/react-query";
 
 type PlayerDetailed = RouterOutput["admin"]["players"]["players"]["get"];
 
@@ -29,10 +30,12 @@ export function EditPlayerModal({
   onSuccess,
 }: EditPlayerModalProps) {
   const toast = useToastActions();
-  const updatePlayer = trpc.admin.players.players.update.useMutation(
-    useMutationToast({
-      error: (err) => err.message || "Failed to update player",
-    }),
+  const updatePlayer = useMutation(
+    trpc.admin.players.players.update.mutationOptions(
+      useMutationToast({
+        error: (err) => err.message || "Failed to update player",
+      }),
+    ),
   );
 
   const [minecraftUsername, setMinecraftUsername] = useState(

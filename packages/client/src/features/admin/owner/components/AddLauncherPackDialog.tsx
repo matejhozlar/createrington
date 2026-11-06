@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/select";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { trpc, type RouterOutput } from "@/lib/trpc";
+import { useQuery, useMutation } from "@tanstack/react-query";
 
 type Candidate =
   RouterOutput["owner"]["launcherPacks"]["candidates"]["modpacks"][number];
@@ -78,9 +79,11 @@ export function AddLauncherPackDialog({
   const [slugTouched, setSlugTouched] = useState(false);
   const [source, setSource] = useState<LauncherPackSource>("curseforge");
 
-  const candidatesQuery = trpc.owner.launcherPacks.candidates.useQuery(
-    undefined,
-    { enabled: open, staleTime: 0 },
+  const candidatesQuery = useQuery(
+    trpc.owner.launcherPacks.candidates.queryOptions(undefined, {
+      enabled: open,
+      staleTime: 0,
+    }),
   );
   const candidates = candidatesQuery.data?.modpacks ?? [];
   const modpack =
@@ -94,14 +97,16 @@ export function AddLauncherPackDialog({
     onClose();
   };
 
-  const addMutation = trpc.owner.launcherPacks.add.useMutation(
-    useMutationToast({
-      success: (pack) => `Offering "${pack.slug}" to the launcher`,
-      onSuccess: () => {
-        onAdded();
-        close();
-      },
-    }),
+  const addMutation = useMutation(
+    trpc.owner.launcherPacks.add.mutationOptions(
+      useMutationToast({
+        success: (pack) => `Offering "${pack.slug}" to the launcher`,
+        onSuccess: () => {
+          onAdded();
+          close();
+        },
+      }),
+    ),
   );
 
   const pickModpack = (value: string) => {

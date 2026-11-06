@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Package, Pencil, Plus, Trash2 } from "lucide-react";
-import { trpc, type RouterOutput } from "@/lib/trpc";
+import { trpc, type RouterOutput, queryClient } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +21,7 @@ import {
 } from "@/components/data-table";
 import { CreateModpackDialog } from "./CreateModpackDialog";
 import { ModpackSettingsDialog } from "./ModpackSettingsDialog";
+import { useQuery, useMutation } from "@tanstack/react-query";
 
 type AdminModpackRow = RouterOutput["admin"]["modpacks"]["list"][number];
 
@@ -116,9 +117,7 @@ function deleteLabel(modpack: AdminModpackRow): string {
 }
 
 export function ModpacksCard() {
-  const utils = trpc.useUtils();
-
-  const modpacksQuery = trpc.admin.modpacks.list.useQuery();
+  const modpacksQuery = useQuery(trpc.admin.modpacks.list.queryOptions());
 
   const [createOpen, setCreateOpen] = useState(false);
   const [createKey, setCreateKey] = useState(0);
@@ -130,14 +129,18 @@ export function ModpacksCard() {
     null,
   );
 
-  const deleteMutation = trpc.admin.modpacks.delete.useMutation(
-    useMutationToast({
-      success: "Modpack deleted",
-      onSuccess: () => {
-        void utils.admin.modpacks.list.invalidate();
-        setDeleteTarget(null);
-      },
-    }),
+  const deleteMutation = useMutation(
+    trpc.admin.modpacks.delete.mutationOptions(
+      useMutationToast({
+        success: "Modpack deleted",
+        onSuccess: () => {
+          void queryClient.invalidateQueries(
+            trpc.admin.modpacks.list.pathFilter(),
+          );
+          setDeleteTarget(null);
+        },
+      }),
+    ),
   );
 
   const openCreate = () => {

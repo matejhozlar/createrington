@@ -22,6 +22,7 @@ import { formatFullDate, formatRelativeDate } from "@/features/admin/format";
 import { PromoteDialog } from "./components/PromoteDialog";
 import { DemoteDialog } from "./components/DemoteDialog";
 import { AuditFeed } from "./components/AuditFeed";
+import { useQuery } from "@tanstack/react-query";
 
 type AdminRow = {
   discordId: string;
@@ -36,8 +37,10 @@ export function OwnerAdmins() {
   const [promoteOpen, setPromoteOpen] = useState(false);
   const [demoteTarget, setDemoteTarget] = useState<AdminRow | null>(null);
 
-  const adminsQuery = trpc.owner.admins.list.useQuery();
-  const auditQuery = trpc.owner.admins.auditLog.useQuery({ limit: 20 });
+  const adminsQuery = useQuery(trpc.owner.admins.list.queryOptions());
+  const auditQuery = useQuery(
+    trpc.owner.admins.auditLog.queryOptions({ limit: 20 }),
+  );
 
   const admins = adminsQuery.data?.admins ?? [];
 

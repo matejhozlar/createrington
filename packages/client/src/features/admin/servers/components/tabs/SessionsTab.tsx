@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { keepPreviousData } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Link } from "react-router";
 import { formatCompactDuration } from "@createrington/shared/format";
 import { Badge } from "@/components/ui/badge";
@@ -84,13 +84,15 @@ export function SessionsTab({ serverId }: SessionsTabProps) {
   const [page, setPage] = useState(0);
   const limit = 20;
 
-  const sessionsQuery = trpc.admin.servers.sessions.useQuery(
-    {
-      serverId,
-      page,
-      limit,
-    },
-    { placeholderData: keepPreviousData },
+  const sessionsQuery = useQuery(
+    trpc.admin.servers.sessions.queryOptions(
+      {
+        serverId,
+        page,
+        limit,
+      },
+      { placeholderData: keepPreviousData },
+    ),
   );
 
   const sessions = sessionsQuery.data?.sessions ?? [];

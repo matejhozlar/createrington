@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
 
 const OPEN_STEPS = [
   "Join our Discord server using the invite link.",
@@ -72,7 +73,7 @@ const POLICY_LINKS = [
 ];
 
 export function ApplyToJoin() {
-  const statusQuery = trpc.public.waitlists.status.useQuery();
+  const statusQuery = useQuery(trpc.public.waitlists.status.queryOptions());
 
   const mode = statusQuery.data?.mode;
   const isWaitlistMode = mode === "waitlist";

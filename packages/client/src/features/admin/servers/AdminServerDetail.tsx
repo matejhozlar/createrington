@@ -12,6 +12,7 @@ import { SessionsTab } from "./components/tabs/SessionsTab";
 import { AnalyticsTab } from "./components/tabs/AnalyticsTab";
 import { MaintenanceToggle } from "./components/MaintenanceToggle";
 import { ServerManagement } from "./components/ServerManagement";
+import { useQuery } from "@tanstack/react-query";
 
 export function AdminServerDetail() {
   const { id } = useParams<{ id: string }>();
@@ -20,9 +21,11 @@ export function AdminServerDetail() {
 
   const [activeTab, setActiveTab] = useState<ServerTabType>("overview");
 
-  const serverQuery = trpc.admin.servers.get.useQuery(
-    { id: serverId },
-    { enabled: serverId > 0 },
+  const serverQuery = useQuery(
+    trpc.admin.servers.get.queryOptions(
+      { id: serverId },
+      { enabled: serverId > 0 },
+    ),
   );
 
   const serverData = serverQuery.data;

@@ -43,6 +43,7 @@ import {
   type ClaimBlock,
 } from "../claims";
 import { ClaimBlockGrid } from "./ClaimBlockGrid";
+import { useQuery } from "@tanstack/react-query";
 
 const COPY = {
   title: "Claimed chunks",
@@ -147,7 +148,9 @@ function ClaimsBrowser({
   );
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
 
-  const query = trpc.admin.parties.claimBlocks.useQuery({ serverId });
+  const query = useQuery(
+    trpc.admin.parties.claimBlocks.queryOptions({ serverId }),
+  );
   const blocks = useMemo(() => query.data?.blocks ?? [], [query.data]);
 
   const dimensions = useMemo(

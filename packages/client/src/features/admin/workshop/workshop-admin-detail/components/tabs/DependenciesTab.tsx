@@ -26,6 +26,7 @@ import {
 } from "@/features/workshop/format";
 import type { WorkshopDependency } from "../../types";
 import { ModCell, ModCellSkeleton } from "../ModCell";
+import { useQuery } from "@tanstack/react-query";
 
 const DEPS_PER_PAGE = 10;
 
@@ -46,9 +47,11 @@ export function DependenciesTab({
   onAddProject: (projectId: number, name: string) => void;
   busyProjectId: number | null;
 }) {
-  const depsQuery = trpc.admin.workshops.listDependencies.useQuery({
-    workshopId,
-  });
+  const depsQuery = useQuery(
+    trpc.admin.workshops.listDependencies.queryOptions({
+      workshopId,
+    }),
+  );
   const [requestedPage, setRequestedPage] = useState(0);
 
   const rows = useMemo(() => depsQuery.data ?? [], [depsQuery.data]);

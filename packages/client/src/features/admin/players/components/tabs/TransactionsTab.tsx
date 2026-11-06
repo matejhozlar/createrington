@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { keepPreviousData } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { formatMoney } from "@/lib/format";
@@ -26,15 +26,16 @@ export function TransactionsTab({ playerId }: TransactionsTabProps) {
   const [page, setPage] = useState(0);
   const limit = 20;
 
-  const { data, isLoading, isPlaceholderData, error, refetch } =
-    trpc.admin.players.transactions.list.useQuery(
+  const { data, isLoading, isPlaceholderData, error, refetch } = useQuery(
+    trpc.admin.players.transactions.list.queryOptions(
       {
         id: playerId,
         page,
         limit,
       },
       { placeholderData: keepPreviousData },
-    );
+    ),
+  );
 
   const items = data?.items ?? [];
   const total = data?.pagination.total ?? 0;

@@ -4,6 +4,7 @@ import { Field, FieldLabel } from "@/components/ui/field";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { AdminActionModal } from "./AdminActionModal";
+import { useMutation } from "@tanstack/react-query";
 
 interface UnbanModalProps {
   open: boolean;
@@ -19,7 +20,9 @@ export function UnbanModal({
   onSuccess,
 }: UnbanModalProps) {
   const toast = useToastActions();
-  const unbanPlayer = trpc.admin.players.bans.unban.useMutation();
+  const unbanPlayer = useMutation(
+    trpc.admin.players.bans.unban.mutationOptions(),
+  );
 
   const [reason, setReason] = useState("");
 

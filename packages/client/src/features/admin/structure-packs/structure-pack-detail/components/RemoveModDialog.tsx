@@ -13,8 +13,9 @@ import {
 } from "@/components/ui/dialog";
 import { useToastActions } from "@/hooks/use-toast";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
-import { trpc } from "@/lib/trpc";
+import { trpc, queryClient } from "@/lib/trpc";
 import type { RemoveTarget } from "../types";
+import { useQuery, useMutation } from "@tanstack/react-query";
 
 interface PackMod {
   id: number;
@@ -34,17 +35,17 @@ export function RemoveModDialog({
   packMods: PackMod[];
 }) {
   const toast = useToastActions();
-  const utils = trpc.useUtils();
 
   const [removeDepOverrides, setRemoveDepOverrides] =
     useState<Set<number> | null>(null);
   const [removingBatch, setRemovingBatch] = useState(false);
 
-  const checkRemoveDepsQuery =
-    trpc.admin.structurePacks.checkRemoveDeps.useQuery(
+  const checkRemoveDepsQuery = useQuery(
+    trpc.admin.structurePacks.checkRemoveDeps.queryOptions(
       { packId, modId: target?.modId ?? 0 },
       { enabled: target !== null },
-    );
+    ),
+  );
 
   const defaultRemoveSelection = useMemo(() => {
     if (!checkRemoveDepsQuery.data) return new Set<number>();
@@ -56,13 +57,19 @@ export function RemoveModDialog({
 
   const selectedRemoveDeps = removeDepOverrides ?? defaultRemoveSelection;
 
-  const removeModMutation = trpc.admin.structurePacks.removeMod.useMutation(
-    useMutationToast({
-      onSuccess: () => {
-        void utils.admin.structurePacks.get.invalidate({ id: packId });
-        void utils.admin.structurePacks.list.invalidate();
-      },
-    }),
+  const removeModMutation = useMutation(
+    trpc.admin.structurePacks.removeMod.mutationOptions(
+      useMutationToast({
+        onSuccess: () => {
+          void queryClient.invalidateQueries(
+            trpc.admin.structurePacks.get.queryFilter({ id: packId }),
+          );
+          void queryClient.invalidateQueries(
+            trpc.admin.structurePacks.list.pathFilter(),
+          );
+        },
+      }),
+    ),
   );
 
   const handleDialogOpenChange = (next: boolean) => {

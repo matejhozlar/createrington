@@ -36,7 +36,8 @@ import {
 import { LabeledSwitch } from "@/components/labeled-switch";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { cn } from "@/lib/utils";
-import { trpc, type RouterOutput } from "@/lib/trpc";
+import { trpc, type RouterOutput, queryClient } from "@/lib/trpc";
+import { useQuery, useMutation } from "@tanstack/react-query";
 
 type ReleaseRow =
   RouterOutput["owner"]["launcherReleases"]["list"]["releases"][number];
@@ -292,24 +293,32 @@ export function OwnerLauncherReleases() {
     LAUNCHER_PLATFORMS[0],
   );
 
-  const utils = trpc.useUtils();
-  const releasesQuery = trpc.owner.launcherReleases.list.useQuery();
-
-  const refresh = () => void utils.owner.launcherReleases.list.invalidate();
-
-  const releaseMutation = trpc.owner.launcherReleases.release.useMutation(
-    useMutationToast({
-      success: (release) =>
-        `Released ${release.version} for ${launcherPlatformLabel(release.platform)}${release.required ? " as required" : ""}`,
-      onSuccess: refresh,
-    }),
+  const releasesQuery = useQuery(
+    trpc.owner.launcherReleases.list.queryOptions(),
   );
-  const withdrawMutation = trpc.owner.launcherReleases.withdraw.useMutation(
-    useMutationToast({
-      success: (release) =>
-        `Withdrew ${release.version} for ${launcherPlatformLabel(release.platform)}`,
-      onSuccess: refresh,
-    }),
+
+  const refresh = () =>
+    void queryClient.invalidateQueries(
+      trpc.owner.launcherReleases.list.pathFilter(),
+    );
+
+  const releaseMutation = useMutation(
+    trpc.owner.launcherReleases.release.mutationOptions(
+      useMutationToast({
+        success: (release) =>
+          `Released ${release.version} for ${launcherPlatformLabel(release.platform)}${release.required ? " as required" : ""}`,
+        onSuccess: refresh,
+      }),
+    ),
+  );
+  const withdrawMutation = useMutation(
+    trpc.owner.launcherReleases.withdraw.mutationOptions(
+      useMutationToast({
+        success: (release) =>
+          `Withdrew ${release.version} for ${launcherPlatformLabel(release.platform)}`,
+        onSuccess: refresh,
+      }),
+    ),
   );
 
   const releases = releasesQuery.data?.releases ?? [];
@@ -541,18 +550,24 @@ export function OwnerLauncherReleases() {
 }
 
 function ContentGatewayCard() {
-  const utils = trpc.useUtils();
-  const budgetQuery = trpc.owner.contentGateway.budget.get.useQuery(undefined, {
-    refetchInterval: BUDGET_REFRESH_MS,
-  });
-  const cdnQuery = trpc.owner.curseforgeCdn.get.useQuery();
-
-  const cdnMutation = trpc.owner.curseforgeCdn.update.useMutation(
-    useMutationToast({
-      success: (cdn) =>
-        `${CDN_SWITCH.label} ${cdn.enabled ? "enabled" : "disabled"}`,
-      onSuccess: () => utils.owner.curseforgeCdn.get.invalidate(),
+  const budgetQuery = useQuery(
+    trpc.owner.contentGateway.budget.get.queryOptions(undefined, {
+      refetchInterval: BUDGET_REFRESH_MS,
     }),
+  );
+  const cdnQuery = useQuery(trpc.owner.curseforgeCdn.get.queryOptions());
+
+  const cdnMutation = useMutation(
+    trpc.owner.curseforgeCdn.update.mutationOptions(
+      useMutationToast({
+        success: (cdn) =>
+          `${CDN_SWITCH.label} ${cdn.enabled ? "enabled" : "disabled"}`,
+        onSuccess: () =>
+          queryClient.invalidateQueries(
+            trpc.owner.curseforgeCdn.get.pathFilter(),
+          ),
+      }),
+    ),
   );
 
   const snapshot = budgetQuery.data;

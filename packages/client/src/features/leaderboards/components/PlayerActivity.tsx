@@ -10,6 +10,7 @@ import {
   parseHeatmapDate,
   type HeatmapDay,
 } from "@/lib/activityHeatmap";
+import { useQuery } from "@tanstack/react-query";
 
 const NUM_WEEKS = 52;
 const CELL_PITCH = 14;
@@ -64,9 +65,11 @@ function ActivitySkeleton() {
 }
 
 export function PlayerActivity({ minecraftUuid }: { minecraftUuid: string }) {
-  const activityQuery = trpc.public.leaderboards.activity.useQuery(
-    { minecraftUuid },
-    { staleTime: 60 * 1000 },
+  const activityQuery = useQuery(
+    trpc.public.leaderboards.activity.queryOptions(
+      { minecraftUuid },
+      { staleTime: 60 * 1000 },
+    ),
   );
   const [hovered, setHovered] = useState<HeatmapDay | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);

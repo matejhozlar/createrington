@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { keepPreviousData } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { History, TriangleAlert } from "lucide-react";
 import { CellText } from "@/components/cell-text";
 import {
@@ -137,14 +137,16 @@ export function VotesListCard() {
   const [page, setPage] = useState(0);
   const needle = useDebouncedValue(search, 300).trim();
 
-  const query = trpc.admin.votes.list.useQuery(
-    {
-      search: needle || undefined,
-      status,
-      page,
-      limit: PAGE_SIZE,
-    },
-    { placeholderData: keepPreviousData },
+  const query = useQuery(
+    trpc.admin.votes.list.queryOptions(
+      {
+        search: needle || undefined,
+        status,
+        page,
+        limit: PAGE_SIZE,
+      },
+      { placeholderData: keepPreviousData },
+    ),
   );
 
   const votes = query.data?.votes ?? [];

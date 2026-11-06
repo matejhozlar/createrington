@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select";
 import { useToastActions } from "@/hooks/use-toast";
 import { trpc, type RouterOutput } from "@/lib/trpc";
+import { useMutation } from "@tanstack/react-query";
 
 type Config = RouterOutput["admin"]["autoMessages"]["configs"]["list"][number];
 type ChannelGroup = RouterOutput["admin"]["autoMessages"]["channels"][number];
@@ -41,8 +42,12 @@ export function UpsertConfigDialog({
   const toast = useToastActions();
   const isEdit = !!config;
 
-  const createMutation = trpc.admin.autoMessages.configs.create.useMutation();
-  const updateMutation = trpc.admin.autoMessages.configs.update.useMutation();
+  const createMutation = useMutation(
+    trpc.admin.autoMessages.configs.create.mutationOptions(),
+  );
+  const updateMutation = useMutation(
+    trpc.admin.autoMessages.configs.update.mutationOptions(),
+  );
 
   const [name, setName] = useState(config?.name ?? "");
   const [channelId, setChannelId] = useState(config?.channelId ?? "");

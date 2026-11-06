@@ -15,8 +15,9 @@ import { Input } from "@/components/ui/input";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useToastActions } from "@/hooks/use-toast";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
-import { trpc } from "@/lib/trpc";
+import { trpc, queryClient } from "@/lib/trpc";
 import { REQUIRED_DEPENDENCY } from "@createrington/shared/workshop";
+import { useQuery, useMutation } from "@tanstack/react-query";
 
 interface PackMod {
   curseforgeModId: number;
@@ -41,7 +42,6 @@ export function AddModDialog({
   packMods: PackMod[];
 }) {
   const toast = useToastActions();
-  const utils = trpc.useUtils();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedModId, setSelectedModId] = useState<number | null>(null);
@@ -51,23 +51,29 @@ export function AddModDialog({
 
   const debouncedSearch = useDebouncedValue(searchQuery, 400);
 
-  const searchModsQuery = trpc.admin.structurePacks.searchMods.useQuery(
-    { query: debouncedSearch },
-    { enabled: debouncedSearch.length >= 2 },
+  const searchModsQuery = useQuery(
+    trpc.admin.structurePacks.searchMods.queryOptions(
+      { query: debouncedSearch },
+      { enabled: debouncedSearch.length >= 2 },
+    ),
   );
 
-  const modFilesQuery = trpc.admin.structurePacks.getModFiles.useQuery(
-    { modId: selectedModId! },
-    { enabled: selectedModId !== null },
+  const modFilesQuery = useQuery(
+    trpc.admin.structurePacks.getModFiles.queryOptions(
+      { modId: selectedModId! },
+      { enabled: selectedModId !== null },
+    ),
   );
 
   const addDepModIds = useMemo(
     () => (selectedFile?.dependencies ?? []).map((d) => d.modId),
     [selectedFile],
   );
-  const depsQuery = trpc.admin.structurePacks.resolveDeps.useQuery(
-    { packId, modIds: addDepModIds },
-    { enabled: addDepModIds.length > 0 && selectedFile !== null },
+  const depsQuery = useQuery(
+    trpc.admin.structurePacks.resolveDeps.queryOptions(
+      { packId, modIds: addDepModIds },
+      { enabled: addDepModIds.length > 0 && selectedFile !== null },
+    ),
   );
 
   // Default selection: required deps not yet in pack
@@ -89,13 +95,19 @@ export function AddModDialog({
 
   const selectedDeps = depOverrides ?? defaultDepSelection;
 
-  const addModMutation = trpc.admin.structurePacks.addMod.useMutation(
-    useMutationToast({
-      onSuccess: () => {
-        void utils.admin.structurePacks.get.invalidate({ id: packId });
-        void utils.admin.structurePacks.list.invalidate();
-      },
-    }),
+  const addModMutation = useMutation(
+    trpc.admin.structurePacks.addMod.mutationOptions(
+      useMutationToast({
+        onSuccess: () => {
+          void queryClient.invalidateQueries(
+            trpc.admin.structurePacks.get.queryFilter({ id: packId }),
+          );
+          void queryClient.invalidateQueries(
+            trpc.admin.structurePacks.list.pathFilter(),
+          );
+        },
+      }),
+    ),
   );
 
   const handleDialogOpenChange = (next: boolean) => {

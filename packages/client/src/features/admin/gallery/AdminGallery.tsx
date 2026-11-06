@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Settings2, Sparkles } from "lucide-react";
-import { trpc } from "@/lib/trpc";
+import { trpc, queryClient } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { LabeledSwitch } from "@/components/labeled-switch";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import { ReviewPanel } from "./components/ReviewPanel";
 import { SettingsDialog } from "./components/SettingsDialog";
 import { SubmissionGrid } from "./components/SubmissionGrid";
 import { GALLERY_STATUS_STYLES, type GalleryStatus } from "./format";
+import { useQuery, useMutation } from "@tanstack/react-query";
 
 const QUEUE_LIMIT = 50;
 
@@ -36,38 +37,44 @@ const GRID_TABS = TABS.filter(
 );
 
 export function AdminGallery() {
-  const utils = trpc.useUtils();
   const [tab, setTab] = useState<GalleryStatus>("pending");
   const [cursor, setCursor] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-  const flagsQuery = trpc.admin.features.list.useQuery();
+  const flagsQuery = useQuery(trpc.admin.features.list.queryOptions());
   const intakeEnabled =
     flagsQuery.data?.find((flag) => flag.name === INTAKE_FLAG.name)?.enabled ??
     false;
 
-  const setFlagMutation = trpc.admin.features.set.useMutation(
-    useMutationToast({
-      success: (flag) =>
-        `${INTAKE_FLAG.label} ${flag.enabled ? "enabled" : "disabled"}`,
-      onSuccess: () => utils.admin.features.list.invalidate(),
-    }),
+  const setFlagMutation = useMutation(
+    trpc.admin.features.set.mutationOptions(
+      useMutationToast({
+        success: (flag) =>
+          `${INTAKE_FLAG.label} ${flag.enabled ? "enabled" : "disabled"}`,
+        onSuccess: () =>
+          queryClient.invalidateQueries(trpc.admin.features.list.pathFilter()),
+      }),
+    ),
   );
 
-  const queueQuery = trpc.admin.gallery.list.useQuery({
-    status: "pending",
-    page: 0,
-    limit: QUEUE_LIMIT,
-  });
+  const queueQuery = useQuery(
+    trpc.admin.gallery.list.queryOptions({
+      status: "pending",
+      page: 0,
+      limit: QUEUE_LIMIT,
+    }),
+  );
   const queue = queueQuery.data?.items ?? [];
   const counts = queueQuery.data?.counts;
   const total = queueQuery.data?.pagination.total ?? 0;
   const index = queue.length === 0 ? 0 : Math.min(cursor, queue.length - 1);
   const current = queue[index];
 
-  const detailQuery = trpc.admin.gallery.get.useQuery(
-    { id: current?.id ?? 0 },
-    { enabled: current !== undefined },
+  const detailQuery = useQuery(
+    trpc.admin.gallery.get.queryOptions(
+      { id: current?.id ?? 0 },
+      { enabled: current !== undefined },
+    ),
   );
   const detail =
     current && detailQuery.data?.id === current.id ? detailQuery.data : null;

@@ -3,6 +3,7 @@ import { Coins, Clock, AlertTriangle, Ticket, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatMoney } from "@/lib/format";
 import { trpc, type RouterOutput } from "@/lib/trpc";
+import { useQuery } from "@tanstack/react-query";
 
 type PlayerDetailed = RouterOutput["admin"]["players"]["players"]["get"];
 
@@ -26,10 +27,12 @@ export function PlayerStatsCards({
   const totalStrikes = player.strikes.totalCount;
   const totalBans = player.bans.totalCount;
 
-  const partyQuery = trpc.admin.parties.playerStatus.useQuery({
-    serverId: SERVER_ID,
-    playerUuid,
-  });
+  const partyQuery = useQuery(
+    trpc.admin.parties.playerStatus.queryOptions({
+      serverId: SERVER_ID,
+      playerUuid,
+    }),
+  );
 
   const party = partyQuery.data?.party ?? null;
   const allyOfCount = partyQuery.data?.allyOf.length ?? 0;

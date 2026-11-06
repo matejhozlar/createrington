@@ -18,7 +18,7 @@ import {
 } from "@/components/data-table";
 import { RefreshCw, Search, UserSearch } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { keepPreviousData } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useMutation } from "@tanstack/react-query";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useToastActions } from "@/hooks/use-toast";
 import { CellText } from "@/components/cell-text";
@@ -37,16 +37,20 @@ export function UnlinkedMembersCard() {
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearch = useDebouncedValue(searchQuery, 500);
 
-  const listQuery = trpc.admin.inactivity.unlinked.list.useQuery(
-    {
-      search: debouncedSearch.trim() || undefined,
-      page,
-      limit,
-    },
-    { placeholderData: keepPreviousData },
+  const listQuery = useQuery(
+    trpc.admin.inactivity.unlinked.list.queryOptions(
+      {
+        search: debouncedSearch.trim() || undefined,
+        page,
+        limit,
+      },
+      { placeholderData: keepPreviousData },
+    ),
   );
 
-  const refreshMembers = trpc.admin.inactivity.unlinked.refresh.useMutation();
+  const refreshMembers = useMutation(
+    trpc.admin.inactivity.unlinked.refresh.mutationOptions(),
+  );
 
   const { refetch: refetchList } = listQuery;
 

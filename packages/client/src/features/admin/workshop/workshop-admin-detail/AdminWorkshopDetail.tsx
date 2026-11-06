@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import { PackagePlus, Settings2 } from "lucide-react";
-import { trpc } from "@/lib/trpc";
+import { trpc, queryClient } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -52,6 +52,7 @@ import { InPackTab } from "./components/tabs/InPackTab";
 import { IssuesTab } from "./components/tabs/IssuesTab";
 import { ReleasesTab } from "./components/tabs/ReleasesTab";
 import { StageTab } from "./components/tabs/StageTab";
+import { useQuery, useMutation } from "@tanstack/react-query";
 
 const REVIEW_TOASTS: Partial<Record<WorkshopModStatus, string>> = {
   approved: "Mod approved",
@@ -70,24 +71,20 @@ const SKIP_CONFIRM_SESSION_KEY = "workshop-admin-skip-confirms";
 export function AdminWorkshopDetail() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
-  const utils = trpc.useUtils();
 
-  const workshopsQuery = trpc.admin.workshops.list.useQuery();
+  const workshopsQuery = useQuery(trpc.admin.workshops.list.queryOptions());
   const workshop = workshopsQuery.data?.find((row) => row.slug === slug);
 
   const workshopId = workshop?.id ?? 0;
   const enabled = workshopId > 0;
-  const modsQuery = trpc.admin.workshops.listMods.useQuery(
-    { workshopId },
-    { enabled },
+  const modsQuery = useQuery(
+    trpc.admin.workshops.listMods.queryOptions({ workshopId }, { enabled }),
   );
-  const packModsQuery = trpc.admin.workshops.listPackMods.useQuery(
-    { workshopId },
-    { enabled },
+  const packModsQuery = useQuery(
+    trpc.admin.workshops.listPackMods.queryOptions({ workshopId }, { enabled }),
   );
-  const attentionQuery = trpc.admin.workshops.getAttention.useQuery(
-    { workshopId },
-    { enabled },
+  const attentionQuery = useQuery(
+    trpc.admin.workshops.getAttention.queryOptions({ workshopId }, { enabled }),
   );
 
   const [searchParams, setSearchParams] = useSearchParams();
@@ -166,45 +163,65 @@ export function AdminWorkshopDetail() {
 
   const invalidate = () =>
     Promise.all([
-      utils.admin.workshops.listMods.invalidate({ workshopId }),
-      utils.admin.workshops.getMod.invalidate(),
-      utils.admin.workshops.searchProjects.invalidate({ workshopId }),
-      utils.admin.workshops.listPackMods.invalidate({ workshopId }),
-      utils.admin.workshops.getAttention.invalidate({ workshopId }),
-      utils.admin.workshops.listDependencies.invalidate({ workshopId }),
-      utils.admin.workshops.listEvents.invalidate({ workshopId }),
-      utils.user.workshops.list.invalidate(),
-      utils.user.workshops.get.invalidate(),
-      utils.user.workshops.listRejected.invalidate({ workshopId }),
-      utils.user.workshops.getPack.invalidate({ workshopId }),
+      queryClient.invalidateQueries(
+        trpc.admin.workshops.listMods.queryFilter({ workshopId }),
+      ),
+      queryClient.invalidateQueries(trpc.admin.workshops.getMod.pathFilter()),
+      queryClient.invalidateQueries(
+        trpc.admin.workshops.searchProjects.queryFilter({ workshopId }),
+      ),
+      queryClient.invalidateQueries(
+        trpc.admin.workshops.listPackMods.queryFilter({ workshopId }),
+      ),
+      queryClient.invalidateQueries(
+        trpc.admin.workshops.getAttention.queryFilter({ workshopId }),
+      ),
+      queryClient.invalidateQueries(
+        trpc.admin.workshops.listDependencies.queryFilter({ workshopId }),
+      ),
+      queryClient.invalidateQueries(
+        trpc.admin.workshops.listEvents.queryFilter({ workshopId }),
+      ),
+      queryClient.invalidateQueries(trpc.user.workshops.list.pathFilter()),
+      queryClient.invalidateQueries(trpc.user.workshops.get.pathFilter()),
+      queryClient.invalidateQueries(
+        trpc.user.workshops.listRejected.queryFilter({ workshopId }),
+      ),
+      queryClient.invalidateQueries(
+        trpc.user.workshops.getPack.queryFilter({ workshopId }),
+      ),
     ]);
 
-  const reviewMutation = trpc.admin.workshops.reviewMod.useMutation(
-    useMutationToast({
-      success: (mod, variables) => {
-        const toasts =
-          variables.action === "send_back" ? SEND_BACK_TOASTS : REVIEW_TOASTS;
-        return toasts[mod.status] ?? "Mod updated";
-      },
-      onSuccess: () => {
-        setRejectTarget(null);
-        void invalidate();
-      },
-      // A refused review means the grid allowed a click the server would not,
-      // so refetch to bring the stale rows up to date
-      onError: () => {
-        void invalidate();
-      },
-    }),
+  const reviewMutation = useMutation(
+    trpc.admin.workshops.reviewMod.mutationOptions(
+      useMutationToast({
+        success: (mod, variables) => {
+          const toasts =
+            variables.action === "send_back" ? SEND_BACK_TOASTS : REVIEW_TOASTS;
+          return toasts[mod.status] ?? "Mod updated";
+        },
+        onSuccess: () => {
+          setRejectTarget(null);
+          void invalidate();
+        },
+        // A refused review means the grid allowed a click the server would not,
+        // so refetch to bring the stale rows up to date
+        onError: () => {
+          void invalidate();
+        },
+      }),
+    ),
   );
 
-  const addProjectMutation = trpc.admin.workshops.addMods.useMutation(
-    useMutationToast({
-      success: "Added to the workshop as approved",
-      onSuccess: () => {
-        void invalidate();
-      },
-    }),
+  const addProjectMutation = useMutation(
+    trpc.admin.workshops.addMods.mutationOptions(
+      useMutationToast({
+        success: "Added to the workshop as approved",
+        onSuccess: () => {
+          void invalidate();
+        },
+      }),
+    ),
   );
 
   const clearEnvPending = (projectId: number, environment: ModEnvironment) => {
@@ -216,8 +233,8 @@ export function AdminWorkshopDetail() {
     });
   };
 
-  const environmentMutation =
-    trpc.admin.workshops.setProjectEnvironment.useMutation(
+  const environmentMutation = useMutation(
+    trpc.admin.workshops.setProjectEnvironment.mutationOptions(
       useMutationToast({
         success: (project) =>
           project.environment === "unspecified"
@@ -249,17 +266,26 @@ export function AdminWorkshopDetail() {
           );
         },
       }),
-    );
+    ),
+  );
 
-  const updateWorkshopMutation = trpc.admin.workshops.update.useMutation(
-    useMutationToast({
-      success: "Workshop updated",
-      onSuccess: () => {
-        void utils.admin.workshops.list.invalidate();
-        void utils.user.workshops.list.invalidate();
-        void utils.user.workshops.get.invalidate();
-      },
-    }),
+  const updateWorkshopMutation = useMutation(
+    trpc.admin.workshops.update.mutationOptions(
+      useMutationToast({
+        success: "Workshop updated",
+        onSuccess: () => {
+          void queryClient.invalidateQueries(
+            trpc.admin.workshops.list.pathFilter(),
+          );
+          void queryClient.invalidateQueries(
+            trpc.user.workshops.list.pathFilter(),
+          );
+          void queryClient.invalidateQueries(
+            trpc.user.workshops.get.pathFilter(),
+          );
+        },
+      }),
+    ),
   );
 
   const mods = useMemo(() => modsQuery.data ?? [], [modsQuery.data]);

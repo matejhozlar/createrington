@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Coins, ExternalLink, ImageOff, Trash2 } from "lucide-react";
-import { trpc } from "@/lib/trpc";
+import { trpc, queryClient } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { formatMoney, formatRelativeDate } from "@/lib/format";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -15,6 +15,7 @@ import {
   type GalleryStatus,
   type GallerySubmissionItem,
 } from "../format";
+import { useQuery, useMutation } from "@tanstack/react-query";
 
 const PAGE_SIZE = 24;
 const SKELETON_COUNT = 6;
@@ -31,25 +32,30 @@ interface SubmissionGridProps {
 }
 
 export function SubmissionGrid({ status }: SubmissionGridProps) {
-  const utils = trpc.useUtils();
   const [page, setPage] = useState(0);
   const [removeTarget, setRemoveTarget] =
     useState<GallerySubmissionItem | null>(null);
 
-  const listQuery = trpc.admin.gallery.list.useQuery({
-    status,
-    page,
-    limit: PAGE_SIZE,
-  });
-
-  const removeMutation = trpc.admin.gallery.remove.useMutation(
-    useMutationToast({
-      success: "Screenshot removed from the gallery",
-      onSuccess: () => {
-        void utils.admin.gallery.list.invalidate();
-        setRemoveTarget(null);
-      },
+  const listQuery = useQuery(
+    trpc.admin.gallery.list.queryOptions({
+      status,
+      page,
+      limit: PAGE_SIZE,
     }),
+  );
+
+  const removeMutation = useMutation(
+    trpc.admin.gallery.remove.mutationOptions(
+      useMutationToast({
+        success: "Screenshot removed from the gallery",
+        onSuccess: () => {
+          void queryClient.invalidateQueries(
+            trpc.admin.gallery.list.pathFilter(),
+          );
+          setRemoveTarget(null);
+        },
+      }),
+    ),
   );
 
   if (listQuery.error) {

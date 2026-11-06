@@ -16,6 +16,7 @@ import { CUSTOM_EMOJI_SOURCE } from "@/lib/discord-emoji";
 import { ChannelSelector } from "./ChannelSelector";
 import { BotSelector } from "./BotSelector";
 import type { UseEmbedBuilder } from "../hooks/use-embed-builder";
+import { useQuery } from "@tanstack/react-query";
 
 interface SendModalProps {
   open: boolean;
@@ -45,9 +46,11 @@ export function SendModal({ open, onOpenChange, builder }: SendModalProps) {
   const [linkToPreset, setLinkToPreset] = useState(true);
   const hasLinks = (linksQuery.data?.links.length ?? 0) > 0;
 
-  const emojisQuery = trpc.admin.embeds.emojis.useQuery(undefined, {
-    enabled: open && bot !== "main",
-  });
+  const emojisQuery = useQuery(
+    trpc.admin.embeds.emojis.queryOptions(undefined, {
+      enabled: open && bot !== "main",
+    }),
+  );
   const appEmojiCount = useMemo(() => {
     if (bot === "main" || !emojisQuery.data) return 0;
     const ids = new Set(emojisQuery.data.map((emoji) => emoji.id));

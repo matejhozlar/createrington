@@ -41,7 +41,7 @@ import {
 import { cn } from "@/lib/utils";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { keepPreviousData } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { formatMoney } from "@/lib/format";
 import { formatRelativeDate, formatFullDate, toIso } from "./format";
@@ -101,23 +101,25 @@ export function AdminPlayers() {
     [debouncedSearch],
   );
 
-  const statsQuery = trpc.admin.players.players.stats.useQuery();
+  const statsQuery = useQuery(trpc.admin.players.players.stats.queryOptions());
 
-  const playersQuery = trpc.admin.players.players.list.useQuery(
-    {
-      page,
-      limit,
-      orderBy,
-      orderDirection,
-      ...searchFilters,
-      online: onlineFilter,
-      hasStrikes: violationFilter === "strikes" ? true : undefined,
-      hasBans: violationFilter === "bans" ? true : undefined,
-      hasViolations: violationFilter === "any" ? true : undefined,
-      includeStrikeCounts: true,
-      includeBanCounts: true,
-    },
-    { placeholderData: keepPreviousData },
+  const playersQuery = useQuery(
+    trpc.admin.players.players.list.queryOptions(
+      {
+        page,
+        limit,
+        orderBy,
+        orderDirection,
+        ...searchFilters,
+        online: onlineFilter,
+        hasStrikes: violationFilter === "strikes" ? true : undefined,
+        hasBans: violationFilter === "bans" ? true : undefined,
+        hasViolations: violationFilter === "any" ? true : undefined,
+        includeStrikeCounts: true,
+        includeBanCounts: true,
+      },
+      { placeholderData: keepPreviousData },
+    ),
   );
 
   const stats = statsQuery.data;

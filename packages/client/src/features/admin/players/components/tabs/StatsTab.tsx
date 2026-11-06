@@ -28,6 +28,7 @@ import {
   formatStatValue,
   statModName,
 } from "@createrington/shared/minecraft-stats";
+import { useQuery } from "@tanstack/react-query";
 
 interface StatsTabProps {
   playerId: string;
@@ -83,9 +84,11 @@ export function StatsTab({ playerId, getServerName }: StatsTabProps) {
 
   const debouncedSearch = useDebouncedValue(search, 300);
 
-  const statsQuery = trpc.admin.players.minecraftStats.list.useQuery({
-    id: playerId,
-  });
+  const statsQuery = useQuery(
+    trpc.admin.players.minecraftStats.list.queryOptions({
+      id: playerId,
+    }),
+  );
 
   const statsEntries = useMemo(
     () => statsQuery.data?.stats ?? [],

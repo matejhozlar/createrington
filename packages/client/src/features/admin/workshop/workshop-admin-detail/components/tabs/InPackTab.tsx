@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { FileUp, Package, RefreshCw, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { trpc } from "@/lib/trpc";
+import { trpc, queryClient } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import {
@@ -48,6 +48,7 @@ import {
 } from "@/features/workshop/components/EnvironmentCell";
 import type { PackMod, ReleaseMod } from "../../types";
 import { ModCell, ModCellSkeleton } from "../ModCell";
+import { useQuery, useMutation } from "@tanstack/react-query";
 
 const MODS_PER_PAGE = 10;
 
@@ -142,7 +143,6 @@ export function InPackTab({
   onSetEnvironment: (projectId: number, environment: ModEnvironment) => void;
 }) {
   const toast = useToastActions();
-  const utils = trpc.useUtils();
   const [selected, setSelected] = useState("current");
   const [requestedPage, setRequestedPage] = useState(0);
   const manifestInputRef = useRef<HTMLInputElement>(null);
@@ -152,49 +152,61 @@ export function InPackTab({
   const isCurrent = selected === "current";
   const releaseId = isCurrent ? null : Number(selected);
 
-  const modpacksQuery = trpc.admin.modpacks.list.useQuery();
+  const modpacksQuery = useQuery(trpc.admin.modpacks.list.queryOptions());
   const modpack = modpacksQuery.data?.find((row) => row.id === modpackId);
   const unlinked =
     modpack !== undefined && modpack.curseforgeProjectId === null;
 
-  const releasesQuery = trpc.admin.modpacks.listReleases.useQuery({
-    modpackId,
-  });
-  const releaseModsQuery = trpc.admin.modpacks.listReleaseMods.useQuery(
-    { releaseId: releaseId ?? 0 },
-    { enabled: releaseId !== null },
-  );
-
-  const reconcileMutation = trpc.admin.modpacks.reconcile.useMutation(
-    useMutationToast({
-      success: "Checked against the published pack",
-      onSuccess: () => {
-        onReconciled();
-        void utils.admin.modpacks.listReleases.invalidate({ modpackId });
-      },
+  const releasesQuery = useQuery(
+    trpc.admin.modpacks.listReleases.queryOptions({
+      modpackId,
     }),
   );
+  const releaseModsQuery = useQuery(
+    trpc.admin.modpacks.listReleaseMods.queryOptions(
+      { releaseId: releaseId ?? 0 },
+      { enabled: releaseId !== null },
+    ),
+  );
 
-  const seedMutation = trpc.admin.modpacks.seedFromManifest.useMutation(
-    useMutationToast({
-      onSuccess: (result) => {
-        if (result.unresolvedProjectIds.length > 0) {
-          toast.warning(
-            `Imported ${result.memberCount} mods, ${result.unresolvedProjectIds.length} could not be resolved on CurseForge`,
+  const reconcileMutation = useMutation(
+    trpc.admin.modpacks.reconcile.mutationOptions(
+      useMutationToast({
+        success: "Checked against the published pack",
+        onSuccess: () => {
+          onReconciled();
+          void queryClient.invalidateQueries(
+            trpc.admin.modpacks.listReleases.queryFilter({ modpackId }),
           );
-        } else if (result.duplicateProjectIds.length > 0) {
-          toast.warning(
-            `Imported ${result.memberCount} mods, ${result.duplicateProjectIds.length} listed more than once in the manifest and were merged`,
+        },
+      }),
+    ),
+  );
+
+  const seedMutation = useMutation(
+    trpc.admin.modpacks.seedFromManifest.mutationOptions(
+      useMutationToast({
+        onSuccess: (result) => {
+          if (result.unresolvedProjectIds.length > 0) {
+            toast.warning(
+              `Imported ${result.memberCount} mods, ${result.unresolvedProjectIds.length} could not be resolved on CurseForge`,
+            );
+          } else if (result.duplicateProjectIds.length > 0) {
+            toast.warning(
+              `Imported ${result.memberCount} mods, ${result.duplicateProjectIds.length} listed more than once in the manifest and were merged`,
+            );
+          } else {
+            toast.success(
+              `Imported ${result.memberCount} mods from the manifest`,
+            );
+          }
+          onReconciled();
+          void queryClient.invalidateQueries(
+            trpc.admin.modpacks.list.pathFilter(),
           );
-        } else {
-          toast.success(
-            `Imported ${result.memberCount} mods from the manifest`,
-          );
-        }
-        onReconciled();
-        void utils.admin.modpacks.list.invalidate();
-      },
-    }),
+        },
+      }),
+    ),
   );
 
   const handleManifestFile = async (file: File) => {

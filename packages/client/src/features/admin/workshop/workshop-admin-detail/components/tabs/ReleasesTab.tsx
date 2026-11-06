@@ -30,6 +30,7 @@ import {
   PROJECT_KIND_BADGE_CLASS,
   projectKindLabel,
 } from "@/features/workshop/format";
+import { useQuery } from "@tanstack/react-query";
 
 type Release = RouterOutput["admin"]["modpacks"]["listReleases"][number];
 type Diff = RouterOutput["admin"]["modpacks"]["getReleaseDiff"];
@@ -153,7 +154,9 @@ function ChangeRow({
 }
 
 function ReleaseDiff({ releaseId }: { releaseId: number }) {
-  const diffQuery = trpc.admin.modpacks.getReleaseDiff.useQuery({ releaseId });
+  const diffQuery = useQuery(
+    trpc.admin.modpacks.getReleaseDiff.queryOptions({ releaseId }),
+  );
 
   if (diffQuery.isLoading) {
     return (
@@ -221,9 +224,11 @@ function ReleaseDiff({ releaseId }: { releaseId: number }) {
 }
 
 export function ReleasesTab({ modpackId }: { modpackId: number }) {
-  const releasesQuery = trpc.admin.modpacks.listReleases.useQuery({
-    modpackId,
-  });
+  const releasesQuery = useQuery(
+    trpc.admin.modpacks.listReleases.queryOptions({
+      modpackId,
+    }),
+  );
   const [openId, setOpenId] = useState<number | null>(null);
 
   const releases = releasesQuery.data ?? [];

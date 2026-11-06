@@ -2,8 +2,9 @@ import { useState } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { ListChecks, RefreshCw } from "lucide-react";
-import { trpc } from "@/lib/trpc";
+import { trpc, queryClient } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
+import { useMutation } from "@tanstack/react-query";
 
 interface WhitelistResyncProps {
   serverId: number;
@@ -11,16 +12,21 @@ interface WhitelistResyncProps {
 
 export function WhitelistResync({ serverId }: WhitelistResyncProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
-  const utils = trpc.useUtils();
 
-  const resyncMutation = trpc.admin.servers.resyncWhitelist.useMutation(
-    useMutationToast({
-      success: ({ count }) => `Whitelist resynced (${count} players)`,
-      onSuccess: () => {
-        void utils.admin.servers.get.invalidate({ id: serverId });
-        void utils.admin.servers.list.invalidate();
-      },
-    }),
+  const resyncMutation = useMutation(
+    trpc.admin.servers.resyncWhitelist.mutationOptions(
+      useMutationToast({
+        success: ({ count }) => `Whitelist resynced (${count} players)`,
+        onSuccess: () => {
+          void queryClient.invalidateQueries(
+            trpc.admin.servers.get.queryFilter({ id: serverId }),
+          );
+          void queryClient.invalidateQueries(
+            trpc.admin.servers.list.pathFilter(),
+          );
+        },
+      }),
+    ),
   );
 
   return (

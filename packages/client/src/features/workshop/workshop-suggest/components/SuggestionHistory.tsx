@@ -24,6 +24,7 @@ import {
   formatDate,
   liveTitle,
 } from "../../format";
+import { useQuery } from "@tanstack/react-query";
 
 type HistoryItem =
   RouterOutput["user"]["workshops"]["mySuggestionHistory"][number];
@@ -74,7 +75,9 @@ export function SuggestionHistory() {
   const [shownCount, setShownCount] = useState(PAGE_SIZE);
   const [view, changeView] = useViewMode("workshop-suggest-history-view");
 
-  const historyQuery = trpc.user.workshops.mySuggestionHistory.useQuery();
+  const historyQuery = useQuery(
+    trpc.user.workshops.mySuggestionHistory.queryOptions(),
+  );
 
   const history = historyQuery.data ?? [];
   let visible =

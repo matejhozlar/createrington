@@ -27,6 +27,7 @@ import {
   formatStatItem,
   formatStatValue,
 } from "@createrington/shared/minecraft-stats";
+import { useQuery } from "@tanstack/react-query";
 
 const CATEGORY_KEYS = [
   "minecraft:picked_up",
@@ -55,9 +56,11 @@ export function StatSearch() {
     new Set(["minecraft:picked_up", "minecraft:crafted"]),
   );
 
-  const itemsQuery = trpc.admin.players.minecraftStats.searchItems.useQuery(
-    { query: debouncedItemInput },
-    { enabled: debouncedItemInput.length >= 2 },
+  const itemsQuery = useQuery(
+    trpc.admin.players.minecraftStats.searchItems.queryOptions(
+      { query: debouncedItemInput },
+      { enabled: debouncedItemInput.length >= 2 },
+    ),
   );
 
   const categories = useMemo(
@@ -65,9 +68,11 @@ export function StatSearch() {
     [selectedCategories],
   );
 
-  const compareQuery = trpc.admin.players.minecraftStats.compare.useQuery(
-    { item: selectedItem, categories, limit: 200 },
-    { enabled: !!selectedItem && categories.length > 0 },
+  const compareQuery = useQuery(
+    trpc.admin.players.minecraftStats.compare.queryOptions(
+      { item: selectedItem, categories, limit: 200 },
+      { enabled: !!selectedItem && categories.length > 0 },
+    ),
   );
 
   const toggleCategory = (key: string) => {

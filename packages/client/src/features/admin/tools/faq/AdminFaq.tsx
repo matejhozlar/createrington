@@ -38,7 +38,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { keepPreviousData } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery } from "@tanstack/react-query";
 import { CreateFaqModal } from "./components/modals/CreateFaqModal";
 import { EditFaqModal } from "./components/modals/EditFaqModal";
 import { DeleteFaqModal } from "./components/modals/DeleteFaqModal";
@@ -71,23 +71,27 @@ export function AdminFaq() {
 
   const debouncedSearch = useDebouncedValue(searchQuery, 1000);
 
-  const repostWelcome = trpc.admin.faq.repostWelcome.useMutation();
+  const repostWelcome = useMutation(
+    trpc.admin.faq.repostWelcome.mutationOptions(),
+  );
 
-  const entriesQuery = trpc.admin.faq.list.useQuery(
-    {
-      page,
-      limit,
-      orderBy,
-      orderDirection,
-      search: debouncedSearch.trim() || undefined,
-      enabled:
-        enabledFilter === "enabled"
-          ? true
-          : enabledFilter === "disabled"
-            ? false
-            : undefined,
-    },
-    { placeholderData: keepPreviousData },
+  const entriesQuery = useQuery(
+    trpc.admin.faq.list.queryOptions(
+      {
+        page,
+        limit,
+        orderBy,
+        orderDirection,
+        search: debouncedSearch.trim() || undefined,
+        enabled:
+          enabledFilter === "enabled"
+            ? true
+            : enabledFilter === "disabled"
+              ? false
+              : undefined,
+      },
+      { placeholderData: keepPreviousData },
+    ),
   );
 
   const entries = entriesQuery.data?.entries ?? [];

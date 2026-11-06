@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Check, X } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
+import { useQuery, useMutation } from "@tanstack/react-query";
 
 interface DemoteDialogProps {
   admin: {
@@ -32,11 +33,15 @@ export function DemoteDialog({ admin, onClose, onSuccess }: DemoteDialogProps) {
   const toast = useToastActions();
   const [reason, setReason] = useState("");
 
-  const previewQuery = trpc.owner.admins.previewDemote.useQuery(
-    { discordId: admin?.discordId ?? "" },
-    { enabled: !!admin },
+  const previewQuery = useQuery(
+    trpc.owner.admins.previewDemote.queryOptions(
+      { discordId: admin?.discordId ?? "" },
+      { enabled: !!admin },
+    ),
   );
-  const demoteMutation = trpc.owner.admins.demote.useMutation();
+  const demoteMutation = useMutation(
+    trpc.owner.admins.demote.mutationOptions(),
+  );
 
   const preview = previewQuery.data;
   const displayName = admin?.minecraftUsername ?? admin?.discordId ?? "";

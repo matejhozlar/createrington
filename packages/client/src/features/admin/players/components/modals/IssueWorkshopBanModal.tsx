@@ -10,6 +10,7 @@ import {
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { AdminActionModal } from "./AdminActionModal";
+import { useMutation, useQuery } from "@tanstack/react-query";
 
 const DURATIONS = [1, 3, 7, 14, 30, 60, 90];
 
@@ -33,10 +34,14 @@ export function IssueWorkshopBanModal({
   onSuccess,
 }: IssueWorkshopBanModalProps) {
   const toast = useToastActions();
-  const issueBan = trpc.admin.workshops.bans.issue.useMutation();
-  const workshops = trpc.admin.workshops.list.useQuery(undefined, {
-    enabled: open,
-  });
+  const issueBan = useMutation(
+    trpc.admin.workshops.bans.issue.mutationOptions(),
+  );
+  const workshops = useQuery(
+    trpc.admin.workshops.list.queryOptions(undefined, {
+      enabled: open,
+    }),
+  );
 
   const [scope, setScope] = useState<string>(GLOBAL_SCOPE);
   const [banType, setBanType] = useState<BanType>("temporary");

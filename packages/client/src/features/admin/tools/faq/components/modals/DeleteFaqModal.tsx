@@ -1,6 +1,7 @@
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { trpc, type RouterOutput } from "@/lib/trpc";
+import { useMutation } from "@tanstack/react-query";
 
 type FaqEntry = RouterOutput["admin"]["faq"]["list"]["entries"][number];
 
@@ -15,14 +16,16 @@ export function DeleteFaqModal({
   onClose,
   onSuccess,
 }: DeleteFaqModalProps) {
-  const deleteEntry = trpc.admin.faq.delete.useMutation(
-    useMutationToast({
-      success: "FAQ entry deleted",
-      error: "Failed to delete FAQ entry",
-      onSuccess: () => {
-        onSuccess();
-      },
-    }),
+  const deleteEntry = useMutation(
+    trpc.admin.faq.delete.mutationOptions(
+      useMutationToast({
+        success: "FAQ entry deleted",
+        error: "Failed to delete FAQ entry",
+        onSuccess: () => {
+          onSuccess();
+        },
+      }),
+    ),
   );
 
   return (

@@ -35,26 +35,37 @@ import {
 import { formatDate } from "@createrington/shared/format";
 
 import { formatFullDate, formatRelativeDate } from "./format";
+import { useQuery } from "@tanstack/react-query";
 
 export function AdminDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const profileQuery = trpc.admin.dashboard.profile.useQuery();
-  const playerStatsQuery = trpc.admin.players.players.stats.useQuery();
-  const serversQuery = trpc.admin.servers.list.useQuery();
-  const waitlistStatsQuery = trpc.admin.waitlists.stats.useQuery();
-  const recentBansQuery = trpc.admin.players.bans.getRecent.useQuery({
-    limit: 5,
-    activeOnly: false,
-  });
-  const recentLogsQuery = trpc.admin.logs.list.useQuery({
-    page: 0,
-    limit: 8,
-    orderBy: "performedAt",
-    orderDirection: "desc",
-  });
-  const commandStatsQuery = trpc.admin.dashboard.commandStats.useQuery();
+  const profileQuery = useQuery(trpc.admin.dashboard.profile.queryOptions());
+  const playerStatsQuery = useQuery(
+    trpc.admin.players.players.stats.queryOptions(),
+  );
+  const serversQuery = useQuery(trpc.admin.servers.list.queryOptions());
+  const waitlistStatsQuery = useQuery(
+    trpc.admin.waitlists.stats.queryOptions(),
+  );
+  const recentBansQuery = useQuery(
+    trpc.admin.players.bans.getRecent.queryOptions({
+      limit: 5,
+      activeOnly: false,
+    }),
+  );
+  const recentLogsQuery = useQuery(
+    trpc.admin.logs.list.queryOptions({
+      page: 0,
+      limit: 8,
+      orderBy: "performedAt",
+      orderDirection: "desc",
+    }),
+  );
+  const commandStatsQuery = useQuery(
+    trpc.admin.dashboard.commandStats.queryOptions(),
+  );
 
   const isLoading =
     profileQuery.isLoading ||

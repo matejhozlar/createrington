@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loading } from "@/components/loading-spinner";
 import { trpc, type RouterOutput } from "@/lib/trpc";
+import { useQuery } from "@tanstack/react-query";
 
 type Release =
   RouterOutput["admin"]["launcherReleases"]["list"]["releases"][number];
@@ -60,7 +61,9 @@ function changeTag(type: string): { label: string; color: string } {
 }
 
 export function AdminLauncher() {
-  const releasesQuery = trpc.admin.launcherReleases.list.useQuery();
+  const releasesQuery = useQuery(
+    trpc.admin.launcherReleases.list.queryOptions(),
+  );
 
   const channel = releasesQuery.data?.channel;
   const [latest, ...earlier] = releasesQuery.data?.releases ?? [];

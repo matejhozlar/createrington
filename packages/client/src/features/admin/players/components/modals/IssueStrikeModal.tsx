@@ -13,6 +13,7 @@ import type { StrikeClassification } from "@createrington/shared/db";
 import { useToastActions } from "@/hooks/use-toast";
 import { trpc } from "@/lib/trpc";
 import { AdminActionModal } from "./AdminActionModal";
+import { useMutation } from "@tanstack/react-query";
 
 interface IssueStrikeModalProps {
   open: boolean;
@@ -28,7 +29,9 @@ export function IssueStrikeModal({
   onSuccess,
 }: IssueStrikeModalProps) {
   const toast = useToastActions();
-  const issueStrike = trpc.admin.players.strikes.issue.useMutation();
+  const issueStrike = useMutation(
+    trpc.admin.players.strikes.issue.mutationOptions(),
+  );
 
   const [classification, setClassification] =
     useState<StrikeClassification>("rule_violation");

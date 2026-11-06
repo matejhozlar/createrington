@@ -5,6 +5,7 @@ import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import { useAuth } from "@/contexts/auth";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
+import { useQuery } from "@tanstack/react-query";
 
 interface PlayerLabelProps {
   uuid?: string | null;
@@ -88,9 +89,11 @@ export function PlayerLabel({
 
 function UnresolvedUuid({ uuid }: { uuid: string }) {
   const [clicked, setClicked] = useState(false);
-  const query = trpc.public.players.resolveUsername.useQuery(
-    { uuid },
-    { enabled: clicked, staleTime: Infinity },
+  const query = useQuery(
+    trpc.public.players.resolveUsername.queryOptions(
+      { uuid },
+      { enabled: clicked, staleTime: Infinity },
+    ),
   );
 
   if (query.data?.username) {

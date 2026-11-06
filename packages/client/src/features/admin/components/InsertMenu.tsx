@@ -17,6 +17,7 @@ import { useMemo, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { formatConfigKey as formatName } from "@/features/admin/format";
+import { useQuery } from "@tanstack/react-query";
 
 type Tab = "mentions" | "timestamp";
 
@@ -60,8 +61,8 @@ export function InsertMenu({
     toLocalDatetimeString(new Date()),
   );
 
-  const channelsQuery = trpc.admin.embeds.channels.useQuery();
-  const rolesQuery = trpc.admin.embeds.roles.useQuery();
+  const channelsQuery = useQuery(trpc.admin.embeds.channels.queryOptions());
+  const rolesQuery = useQuery(trpc.admin.embeds.roles.queryOptions());
 
   const query = mentionSearch.toLowerCase();
 

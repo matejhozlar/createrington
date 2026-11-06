@@ -6,6 +6,7 @@ import { Loading } from "@/components/loading-spinner";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { IssueWorkshopBanModal } from "./modals/IssueWorkshopBanModal";
 import { LiftWorkshopBanModal } from "./modals/LiftWorkshopBanModal";
+import { useQuery } from "@tanstack/react-query";
 
 type WorkshopBan =
   RouterOutput["admin"]["workshops"]["bans"]["listForUser"][number];
@@ -27,10 +28,12 @@ export function WorkshopBansSection({
   const [issueOpen, setIssueOpen] = useState(false);
   const [liftBanId, setLiftBanId] = useState<number | null>(null);
 
-  const bans = trpc.admin.workshops.bans.listForUser.useQuery({
-    discordId,
-    includeInactive: true,
-  });
+  const bans = useQuery(
+    trpc.admin.workshops.bans.listForUser.queryOptions({
+      discordId,
+      includeInactive: true,
+    }),
+  );
 
   const rows = bans.data ?? [];
   const active = rows.filter(isActive);

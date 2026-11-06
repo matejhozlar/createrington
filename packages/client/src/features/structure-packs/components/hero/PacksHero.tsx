@@ -14,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { FloatingDust } from "../FloatingDust";
 import { PortalFrame } from "./PortalFrame";
+import { useQuery } from "@tanstack/react-query";
 
 const HERO_IMAGE = "/assets/hero/dark-warehouse.webp";
 const PARTICLE_COUNT = 30;
@@ -38,11 +39,13 @@ export const PacksHero = forwardRef<PacksHeroHandle, PacksHeroProps>(
     const mobileAmbientRef = useRef<HTMLDivElement | null>(null);
     const idleGlow = !portalHidden;
 
-    const { data: pool, isLoading: poolLoading } =
-      trpc.public.structurePacks.pool.useQuery();
+    const { data: pool, isLoading: poolLoading } = useQuery(
+      trpc.public.structurePacks.pool.queryOptions(),
+    );
 
-    const { data: rotationInfo } =
-      trpc.public.structurePacks.rotationInfo.useQuery();
+    const { data: rotationInfo } = useQuery(
+      trpc.public.structurePacks.rotationInfo.queryOptions(),
+    );
 
     const countdown =
       useCountdown(rotationInfo?.nextRotationAt ?? null) ??

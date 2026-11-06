@@ -18,7 +18,7 @@ import {
 } from "@/components/data-table";
 import { CellText } from "@/components/cell-text";
 import { Plus, Search, ShieldCheck, ShieldOff } from "lucide-react";
-import { keepPreviousData } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useMutation } from "@tanstack/react-query";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import {
@@ -46,31 +46,35 @@ export function ExemptionsCard({
   const [reasonInput, setReasonInput] = useState("");
   const [removeTarget, setRemoveTarget] = useState<Exemption | null>(null);
 
-  const listQuery = trpc.admin.inactivity.exemptions.list.useQuery(
-    {
-      search: debouncedSearch.trim() || undefined,
-      page,
-      limit,
-    },
-    { placeholderData: keepPreviousData },
+  const listQuery = useQuery(
+    trpc.admin.inactivity.exemptions.list.queryOptions(
+      {
+        search: debouncedSearch.trim() || undefined,
+        page,
+        limit,
+      },
+      { placeholderData: keepPreviousData },
+    ),
   );
 
   const { refetch: refetchList } = listQuery;
 
-  const addExemption = trpc.admin.inactivity.exemptions.add.useMutation(
-    useMutationToast({
-      success: (data) =>
-        data.resolvedWarnings > 0
-          ? `${data.minecraftUsername} exempted, ${data.resolvedWarnings} active warning(s) resolved`
-          : `${data.minecraftUsername} exempted`,
-      onSuccess: (data) => {
-        setPlayerInput("");
-        setReasonInput("");
-        setPage(0);
-        void refetchList();
-        if (data.resolvedWarnings > 0) onWarningsChanged();
-      },
-    }),
+  const addExemption = useMutation(
+    trpc.admin.inactivity.exemptions.add.mutationOptions(
+      useMutationToast({
+        success: (data) =>
+          data.resolvedWarnings > 0
+            ? `${data.minecraftUsername} exempted, ${data.resolvedWarnings} active warning(s) resolved`
+            : `${data.minecraftUsername} exempted`,
+        onSuccess: (data) => {
+          setPlayerInput("");
+          setReasonInput("");
+          setPage(0);
+          void refetchList();
+          if (data.resolvedWarnings > 0) onWarningsChanged();
+        },
+      }),
+    ),
   );
 
   const exemptions = listQuery.data?.exemptions ?? [];

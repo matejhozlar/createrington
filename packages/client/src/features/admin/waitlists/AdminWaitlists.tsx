@@ -40,7 +40,7 @@ import {
 } from "lucide-react";
 import type { WaitlistStatus } from "@createrington/shared/db";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { keepPreviousData } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { PromoteWaitlistModal } from "./components/modals/PromoteWaitlistModal";
 import { DeleteWaitlistModal } from "./components/modals/DeleteWaitlistModal";
 import { IntakeSettingsCard } from "./components/IntakeSettingsCard";
@@ -83,24 +83,26 @@ export function AdminWaitlists() {
 
   const debouncedSearch = useDebouncedValue(searchQuery, 1000);
 
-  const statsQuery = trpc.admin.waitlists.stats.useQuery();
+  const statsQuery = useQuery(trpc.admin.waitlists.stats.queryOptions());
   const stats = statsQuery.data ?? null;
   const statsLoading = statsQuery.isLoading;
 
   const search = debouncedSearch.trim();
   const searchIsId = /^\d{15,21}$/.test(search);
 
-  const entriesQuery = trpc.admin.waitlists.list.useQuery(
-    {
-      page,
-      limit,
-      orderBy,
-      orderDirection,
-      discordUsername: search && !searchIsId ? search : undefined,
-      discordId: searchIsId ? search : undefined,
-      status: statusFilter !== "all" ? statusFilter : undefined,
-    },
-    { placeholderData: keepPreviousData },
+  const entriesQuery = useQuery(
+    trpc.admin.waitlists.list.queryOptions(
+      {
+        page,
+        limit,
+        orderBy,
+        orderDirection,
+        discordUsername: search && !searchIsId ? search : undefined,
+        discordId: searchIsId ? search : undefined,
+        status: statusFilter !== "all" ? statusFilter : undefined,
+      },
+      { placeholderData: keepPreviousData },
+    ),
   );
 
   const entries = entriesQuery.data?.entries ?? [];

@@ -26,6 +26,7 @@ import { ViewToggle } from "../components/ViewToggle";
 import { WorkshopDisabledState } from "../components/WorkshopEmptyState";
 import { WorkshopHero } from "../components/WorkshopHero";
 import { PackList } from "./components/PackList";
+import { useQuery } from "@tanstack/react-query";
 
 const FALLBACK_DESCRIPTION =
   "Everything running on the server right now: the base pack plus every mod players have voted in.";
@@ -56,15 +57,19 @@ export function WorkshopPack() {
     `${query}:${source}:${category}`,
   );
 
-  const workshopQuery = trpc.user.workshops.get.useQuery(
-    { slug: slug! },
-    { enabled: !!slug, retry: false },
+  const workshopQuery = useQuery(
+    trpc.user.workshops.get.queryOptions(
+      { slug: slug! },
+      { enabled: !!slug, retry: false },
+    ),
   );
   const workshopId = workshopQuery.data?.workshop.id;
 
-  const packQuery = trpc.user.workshops.getPack.useQuery(
-    { workshopId: workshopId! },
-    { enabled: workshopId !== undefined },
+  const packQuery = useQuery(
+    trpc.user.workshops.getPack.queryOptions(
+      { workshopId: workshopId! },
+      { enabled: workshopId !== undefined },
+    ),
   );
 
   if (workshopQuery.error?.data?.code === "NOT_FOUND") {
