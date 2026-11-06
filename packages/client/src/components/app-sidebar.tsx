@@ -1,5 +1,4 @@
 "use client";
-
 import * as React from "react";
 import { X } from "lucide-react";
 import {
@@ -47,6 +46,7 @@ import { NavAdmin } from "./nav-admin";
 import { NavOwner } from "./nav-owner";
 import { trpc } from "@/lib/trpc";
 import { LAUNCHER_ENABLED } from "@/lib/launcher";
+import { useQuery } from "@tanstack/react-query";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user } = useAuth();
@@ -58,22 +58,25 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   // Fire for any authenticated user so the owner can recover their own
   // panel even if they're momentarily not in the admin table (SQL reset,
   // bootstrap, etc.).
-  const accountQuery = trpc.user.account.me.useQuery(undefined, {
-    enabled: !!user,
-  });
+  const accountQuery = useQuery(
+    trpc.user.account.me.queryOptions(undefined, {
+      enabled: !!user,
+    }),
+  );
   // Gate on `user` as well: React Query keeps the previous result in the
   // cache after the query is disabled on logout, which would otherwise
   // leave the owner nav visible until the cache is cleared.
   const isOwner = !!user && (accountQuery.data?.isOwner ?? false);
 
-  const workshopEnabledQuery = trpc.user.workshops.isEnabled.useQuery(
-    undefined,
-    { enabled: !!user },
+  const workshopEnabledQuery = useQuery(
+    trpc.user.workshops.isEnabled.queryOptions(undefined, { enabled: !!user }),
   );
   const workshopEnabled =
     !!user && (workshopEnabledQuery.data?.enabled ?? false);
 
-  const galleryEnabledQuery = trpc.public.gallery.isEnabled.useQuery();
+  const galleryEnabledQuery = useQuery(
+    trpc.public.gallery.isEnabled.queryOptions(),
+  );
   const galleryEnabled = galleryEnabledQuery.data?.enabled ?? false;
 
   const data = {

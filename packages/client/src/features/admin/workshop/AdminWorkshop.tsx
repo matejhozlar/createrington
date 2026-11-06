@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { Hammer, Pencil, Plus, Trash2 } from "lucide-react";
-import { trpc, type RouterOutput } from "@/lib/trpc";
+import { trpc, type RouterOutput, queryClient } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +21,7 @@ import { WORKSHOP_STATUS_STYLES, loaderName } from "@/features/workshop/format";
 import { CreateWorkshopDialog } from "./components/CreateWorkshopDialog";
 import { ModpacksCard } from "./components/ModpacksCard";
 import { WorkshopSettingsDialog } from "./workshop-admin-detail/components/WorkshopSettingsDialog";
+import { useQuery, useMutation } from "@tanstack/react-query";
 
 type AdminWorkshopRow = RouterOutput["admin"]["workshops"]["list"][number];
 
@@ -43,25 +44,30 @@ type FlagName = (typeof FLAGS)[number]["name"];
 
 export function AdminWorkshop() {
   const navigate = useNavigate();
-  const utils = trpc.useUtils();
 
-  const workshopsQuery = trpc.admin.workshops.list.useQuery();
-  const flagsQuery = trpc.admin.features.list.useQuery();
+  const workshopsQuery = useQuery(trpc.admin.workshops.list.queryOptions());
+  const flagsQuery = useQuery(trpc.admin.features.list.queryOptions());
   const flagEnabled = (name: FlagName) =>
     flagsQuery.data?.find((f) => f.name === name)?.enabled ?? false;
 
-  const setFlagMutation = trpc.admin.features.set.useMutation(
-    useMutationToast({
-      success: (flag) => {
-        const label =
-          FLAGS.find((f) => f.name === flag.name)?.label ?? flag.name;
-        return `${label} ${flag.enabled ? "enabled" : "disabled"}`;
-      },
-      onSuccess: () => {
-        void utils.admin.features.list.invalidate();
-        void utils.user.workshops.isEnabled.invalidate();
-      },
-    }),
+  const setFlagMutation = useMutation(
+    trpc.admin.features.set.mutationOptions(
+      useMutationToast({
+        success: (flag) => {
+          const label =
+            FLAGS.find((f) => f.name === flag.name)?.label ?? flag.name;
+          return `${label} ${flag.enabled ? "enabled" : "disabled"}`;
+        },
+        onSuccess: () => {
+          void queryClient.invalidateQueries(
+            trpc.admin.features.list.pathFilter(),
+          );
+          void queryClient.invalidateQueries(
+            trpc.user.workshops.isEnabled.pathFilter(),
+          );
+        },
+      }),
+    ),
   );
 
   const [createOpen, setCreateOpen] = useState(false);
@@ -74,15 +80,21 @@ export function AdminWorkshop() {
     null,
   );
 
-  const deleteMutation = trpc.admin.workshops.delete.useMutation(
-    useMutationToast({
-      success: "Workshop deleted",
-      onSuccess: () => {
-        void utils.admin.workshops.list.invalidate();
-        void utils.admin.modpacks.list.invalidate();
-        setDeleteTarget(null);
-      },
-    }),
+  const deleteMutation = useMutation(
+    trpc.admin.workshops.delete.mutationOptions(
+      useMutationToast({
+        success: "Workshop deleted",
+        onSuccess: () => {
+          void queryClient.invalidateQueries(
+            trpc.admin.workshops.list.pathFilter(),
+          );
+          void queryClient.invalidateQueries(
+            trpc.admin.modpacks.list.pathFilter(),
+          );
+          setDeleteTarget(null);
+        },
+      }),
+    ),
   );
 
   const openCreate = () => {

@@ -25,6 +25,7 @@ import { DeletePlayerModal } from "./components/modals/DeletePlayerModal";
 import { EditPlayerModal } from "./components/modals/EditPlayerModal";
 import { RemoveStrikeModal } from "./components/modals/RemoveStrikeModal";
 import { trpc } from "@/lib/trpc";
+import { useQuery } from "@tanstack/react-query";
 
 type TabType =
   | "overview"
@@ -76,9 +77,8 @@ export function AdminPlayerDetail() {
     setSelectedBanId(null);
   };
 
-  const playerQuery = trpc.admin.players.players.get.useQuery(
-    { id: id! },
-    { enabled: !!id },
+  const playerQuery = useQuery(
+    trpc.admin.players.players.get.queryOptions({ id: id! }, { enabled: !!id }),
   );
 
   const player = playerQuery.data;

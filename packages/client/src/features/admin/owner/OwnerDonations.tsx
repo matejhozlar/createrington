@@ -36,7 +36,7 @@ import {
   CalendarX,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { keepPreviousData } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { Loading } from "@/components/loading-spinner";
@@ -136,17 +136,21 @@ export function OwnerDonations() {
   const [typeFilter, setTypeFilter] = useState<DonationType | "all">("all");
   const debouncedDiscordId = useDebouncedValue(discordIdInput, 1000);
 
-  const statsQuery = trpc.owner.donations.stats.useQuery();
-  const subStatsQuery = trpc.owner.donations.subscriptionStats.useQuery();
-  const listQuery = trpc.owner.donations.list.useQuery(
-    {
-      page,
-      limit,
-      discordId: debouncedDiscordId || undefined,
-      status: statusFilter !== "all" ? statusFilter : undefined,
-      type: typeFilter !== "all" ? typeFilter : undefined,
-    },
-    { placeholderData: keepPreviousData },
+  const statsQuery = useQuery(trpc.owner.donations.stats.queryOptions());
+  const subStatsQuery = useQuery(
+    trpc.owner.donations.subscriptionStats.queryOptions(),
+  );
+  const listQuery = useQuery(
+    trpc.owner.donations.list.queryOptions(
+      {
+        page,
+        limit,
+        discordId: debouncedDiscordId || undefined,
+        status: statusFilter !== "all" ? statusFilter : undefined,
+        type: typeFilter !== "all" ? typeFilter : undefined,
+      },
+      { placeholderData: keepPreviousData },
+    ),
   );
 
   const stats = statsQuery.data;

@@ -7,6 +7,7 @@ import { RewardCommandsCard } from "./components/RewardCommandsCard";
 import { TopVotersCard } from "./components/TopVotersCard";
 import { VoteStatsCards } from "./components/VoteStatsCards";
 import { VotesListCard } from "./components/VotesListCard";
+import { useQuery } from "@tanstack/react-query";
 
 const PAGE_COPY = {
   title: "Votes",
@@ -15,7 +16,7 @@ const PAGE_COPY = {
 } as const;
 
 export function AdminVotes() {
-  const statsQuery = trpc.admin.votes.stats.useQuery();
+  const statsQuery = useQuery(trpc.admin.votes.stats.queryOptions());
   const lastVotedAt = statsQuery.data?.lastVotedAt ?? null;
 
   return (

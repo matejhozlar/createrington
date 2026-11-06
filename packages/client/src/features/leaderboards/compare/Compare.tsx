@@ -20,6 +20,7 @@ import {
 import { TugRow } from "./components/TugRow";
 import { MatchupBar } from "./components/MatchupBar";
 import { EveryStat } from "./components/EveryStat";
+import { useQuery } from "@tanstack/react-query";
 
 const REROLL_COOLDOWN_MS = 3000;
 
@@ -89,14 +90,16 @@ function HeadlineStats({
 }
 
 function useContender(username: string | null, enabled: boolean) {
-  return trpc.public.leaderboards.contender.useQuery(
-    { username: username ?? "" },
-    {
-      enabled: !!username && enabled,
-      staleTime: 60 * 1000,
-      retry: false,
-      placeholderData: (previous) => previous,
-    },
+  return useQuery(
+    trpc.public.leaderboards.contender.queryOptions(
+      { username: username ?? "" },
+      {
+        enabled: !!username && enabled,
+        staleTime: 60 * 1000,
+        retry: false,
+        placeholderData: (previous) => previous,
+      },
+    ),
   );
 }
 
@@ -130,14 +133,16 @@ export function Compare() {
     };
   }, []);
 
-  const compareQuery = trpc.public.leaderboards.compare.useQuery(
-    { first: first ?? "", second: second ?? "" },
-    {
-      enabled: both,
-      staleTime: 60 * 1000,
-      retry: false,
-      placeholderData: (previous) => previous,
-    },
+  const compareQuery = useQuery(
+    trpc.public.leaderboards.compare.queryOptions(
+      { first: first ?? "", second: second ?? "" },
+      {
+        enabled: both,
+        staleTime: 60 * 1000,
+        retry: false,
+        placeholderData: (previous) => previous,
+      },
+    ),
   );
   const onStageAlone = !both || compareQuery.isError;
   const contenders = [

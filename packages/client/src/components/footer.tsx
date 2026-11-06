@@ -9,6 +9,7 @@ import {
   DISCORD_INVITE_URL,
   SKIN_API_URL,
 } from "@/lib/external-urls";
+import { useQuery } from "@tanstack/react-query";
 
 const SOCIAL_LINKS = [
   {
@@ -32,7 +33,7 @@ const SOCIAL_LINKS = [
 ] as const;
 
 export const Footer = () => {
-  const galleryQuery = trpc.public.gallery.isEnabled.useQuery();
+  const galleryQuery = useQuery(trpc.public.gallery.isEnabled.queryOptions());
 
   return (
     <footer className="@container w-full border-t bg-background px-5 md:px-8 py-12">

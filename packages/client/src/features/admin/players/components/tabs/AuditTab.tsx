@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FileText } from "lucide-react";
 import { trpc } from "@/lib/trpc";
+import { useQuery } from "@tanstack/react-query";
 
 interface AuditTabProps {
   playerId: string; // minecraftUuid (route param)
@@ -19,11 +20,13 @@ export function AuditTab({ playerId }: AuditTabProps) {
   const [page, setPage] = useState(0);
   const [limit] = useState(10);
 
-  const auditQuery = trpc.admin.players.audit.list.useQuery({
-    id: playerId,
-    page,
-    limit,
-  });
+  const auditQuery = useQuery(
+    trpc.admin.players.audit.list.queryOptions({
+      id: playerId,
+      page,
+      limit,
+    }),
+  );
 
   const actions = auditQuery.data?.actions ?? [];
   const total = auditQuery.data?.pagination.total ?? 0;

@@ -15,6 +15,7 @@ import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import { trpc } from "@/lib/trpc";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useToastActions } from "@/hooks/use-toast";
+import { useQuery, useMutation } from "@tanstack/react-query";
 
 interface PromoteDialogProps {
   open: boolean;
@@ -40,12 +41,16 @@ export function PromoteDialog({
   } | null>(null);
 
   const debouncedQuery = useDebouncedValue(query, 300);
-  const searchQuery = trpc.owner.admins.searchPlayers.useQuery(
-    { query: debouncedQuery },
-    { enabled: debouncedQuery.length > 0 && !selected },
+  const searchQuery = useQuery(
+    trpc.owner.admins.searchPlayers.queryOptions(
+      { query: debouncedQuery },
+      { enabled: debouncedQuery.length > 0 && !selected },
+    ),
   );
 
-  const promoteMutation = trpc.owner.admins.promote.useMutation();
+  const promoteMutation = useMutation(
+    trpc.owner.admins.promote.mutationOptions(),
+  );
 
   const handleClose = () => {
     setQuery("");

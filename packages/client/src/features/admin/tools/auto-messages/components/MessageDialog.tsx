@@ -17,6 +17,7 @@ import { InsertMenu } from "@/features/admin/components/InsertMenu";
 import { CharCount } from "@/features/admin/components/CharCount";
 import { useMentionResolver } from "@/features/admin/hooks/use-mention-resolver";
 import { DiscordMarkdown } from "@/features/admin/tools/embed-builder/components/DiscordMarkdown";
+import { useMutation } from "@tanstack/react-query";
 
 type Message =
   RouterOutput["admin"]["autoMessages"]["configs"]["get"]["messages"][number];
@@ -48,8 +49,12 @@ export function MessageDialog({
   const toast = useToastActions();
   const isEdit = !!message;
 
-  const createMutation = trpc.admin.autoMessages.messages.create.useMutation();
-  const updateMutation = trpc.admin.autoMessages.messages.update.useMutation();
+  const createMutation = useMutation(
+    trpc.admin.autoMessages.messages.create.mutationOptions(),
+  );
+  const updateMutation = useMutation(
+    trpc.admin.autoMessages.messages.update.mutationOptions(),
+  );
 
   const mentionResolver = useMentionResolver();
   const contentRef = useRef<HTMLTextAreaElement>(null);

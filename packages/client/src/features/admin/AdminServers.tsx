@@ -14,12 +14,13 @@ import { Server, Users, Clock, Activity } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { useServerData } from "@/contexts/server-data";
+import { useQuery } from "@tanstack/react-query";
 
 export function AdminServers() {
   const navigate = useNavigate();
   const { getServer } = useServerData();
 
-  const listQuery = trpc.admin.servers.list.useQuery();
+  const listQuery = useQuery(trpc.admin.servers.list.queryOptions());
   const servers = listQuery.data?.servers ?? [];
   const totals = listQuery.data?.totals;
   const loading = listQuery.isLoading;

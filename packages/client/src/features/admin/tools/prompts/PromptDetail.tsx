@@ -11,6 +11,7 @@ import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { describeEntryRules } from "./format";
 import { DeletePromptModal } from "./components/DeletePromptModal";
+import { useQuery, useMutation } from "@tanstack/react-query";
 
 type ResponseRow = RouterOutput["admin"]["prompts"]["get"]["responses"][number];
 
@@ -63,18 +64,22 @@ export function PromptDetail() {
   const navigate = useNavigate();
   const [deleteOpen, setDeleteOpen] = useState(false);
 
-  const detailQuery = trpc.admin.prompts.get.useQuery(
-    { id: promptId },
-    { enabled: Number.isFinite(promptId) },
+  const detailQuery = useQuery(
+    trpc.admin.prompts.get.queryOptions(
+      { id: promptId },
+      { enabled: Number.isFinite(promptId) },
+    ),
   );
 
-  const closeMutation = trpc.admin.prompts.close.useMutation(
-    useMutationToast({
-      success: "Prompt closed",
-      onSuccess: () => {
-        void detailQuery.refetch();
-      },
-    }),
+  const closeMutation = useMutation(
+    trpc.admin.prompts.close.mutationOptions(
+      useMutationToast({
+        success: "Prompt closed",
+        onSuccess: () => {
+          void detailQuery.refetch();
+        },
+      }),
+    ),
   );
 
   if (!Number.isFinite(promptId)) {

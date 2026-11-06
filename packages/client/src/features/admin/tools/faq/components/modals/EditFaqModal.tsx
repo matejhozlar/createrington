@@ -16,6 +16,7 @@ import { InsertMenu } from "@/features/admin/components/InsertMenu";
 import { CharCount } from "@/features/admin/components/CharCount";
 import { useMentionResolver } from "@/features/admin/hooks/use-mention-resolver";
 import { DiscordMarkdown } from "@/features/admin/tools/embed-builder/components/DiscordMarkdown";
+import { useMutation } from "@tanstack/react-query";
 
 type FaqEntry = RouterOutput["admin"]["faq"]["list"]["entries"][number];
 type MatchMode = "keywords" | "regex";
@@ -34,7 +35,7 @@ export function EditFaqModal({
   onSuccess,
 }: EditFaqModalProps) {
   const toast = useToastActions();
-  const updateEntry = trpc.admin.faq.update.useMutation();
+  const updateEntry = useMutation(trpc.admin.faq.update.mutationOptions());
 
   const mentionResolver = useMentionResolver();
   const responseRef = useRef<HTMLTextAreaElement>(null);

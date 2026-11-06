@@ -3,6 +3,7 @@ import { Field, FieldLabel } from "@/components/ui/field";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { AdminActionModal } from "./AdminActionModal";
+import { useMutation } from "@tanstack/react-query";
 
 interface LiftWorkshopBanModalProps {
   open: boolean;
@@ -18,7 +19,7 @@ export function LiftWorkshopBanModal({
   onSuccess,
 }: LiftWorkshopBanModalProps) {
   const toast = useToastActions();
-  const liftBan = trpc.admin.workshops.bans.lift.useMutation();
+  const liftBan = useMutation(trpc.admin.workshops.bans.lift.mutationOptions());
 
   const [reason, setReason] = useState("");
 

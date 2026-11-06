@@ -21,6 +21,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/spinner";
+import { useQuery } from "@tanstack/react-query";
 
 export interface Stat {
   category: string;
@@ -40,13 +41,15 @@ function StatResults({ onPick }: { onPick: (stat: Stat) => void }) {
   const debounced = useDebouncedValue(query.trim(), 200);
   const searching = debounced.length >= 2;
 
-  const searchQuery = trpc.public.leaderboards.searchStats.useQuery(
-    { query: debounced },
-    {
-      enabled: searching,
-      staleTime: 60 * 1000,
-      placeholderData: (previous) => previous,
-    },
+  const searchQuery = useQuery(
+    trpc.public.leaderboards.searchStats.queryOptions(
+      { query: debounced },
+      {
+        enabled: searching,
+        staleTime: 60 * 1000,
+        placeholderData: (previous) => previous,
+      },
+    ),
   );
   const results = searching ? (searchQuery.data ?? []) : [];
 

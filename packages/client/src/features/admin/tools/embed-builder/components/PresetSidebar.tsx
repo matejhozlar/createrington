@@ -48,6 +48,7 @@ import {
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import type { UseEmbedBuilder } from "../hooks/use-embed-builder";
+import { useQuery } from "@tanstack/react-query";
 
 const RAIL_COLLAPSED_KEY = "embed-builder.rail-collapsed";
 
@@ -129,9 +130,11 @@ export function PresetSidebar({
     onNavigate?.();
   }
 
-  const uncategorizedQuery = trpc.admin.embeds.presets.list.useQuery(
-    { categoryId: "uncategorized", limit: 1 },
-    { enabled: !isSearching },
+  const uncategorizedQuery = useQuery(
+    trpc.admin.embeds.presets.list.queryOptions(
+      { categoryId: "uncategorized", limit: 1 },
+      { enabled: !isSearching },
+    ),
   );
   const uncategorizedTotal = uncategorizedQuery.data?.pagination.total ?? 0;
 
@@ -541,7 +544,9 @@ function CollapsedPresetList({
     categoryId?: number | null;
   }) => void;
 }) {
-  const recentQuery = trpc.admin.embeds.presets.list.useQuery({ limit: 6 });
+  const recentQuery = useQuery(
+    trpc.admin.embeds.presets.list.queryOptions({ limit: 6 }),
+  );
   const recent = recentQuery.data?.presets ?? [];
   return (
     <div className="flex flex-col gap-1">
@@ -731,9 +736,11 @@ function CategorySection({
   const [isOpen, setIsOpen] = useState(false);
   const isUncategorized = categoryId === "uncategorized";
 
-  const presetsQuery = trpc.admin.embeds.presets.list.useQuery(
-    { categoryId, limit: 50 },
-    { enabled: isOpen },
+  const presetsQuery = useQuery(
+    trpc.admin.embeds.presets.list.queryOptions(
+      { categoryId, limit: 50 },
+      { enabled: isOpen },
+    ),
   );
   const presets = presetsQuery.data?.presets ?? [];
 

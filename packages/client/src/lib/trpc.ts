@@ -1,8 +1,5 @@
-import {
-  TRPCClientError,
-  createTRPCReact,
-  httpBatchLink,
-} from "@trpc/react-query";
+import { TRPCClientError, createTRPCClient, httpBatchLink } from "@trpc/client";
+import { createTRPCOptionsProxy } from "@trpc/tanstack-react-query";
 import { QueryClient } from "@tanstack/react-query";
 import type { AppRouter } from "@createrington/server/trpc";
 import type { inferRouterOutputs } from "@trpc/server";
@@ -13,8 +10,6 @@ import {
 } from "@/services/auth/token-manager";
 
 export type RouterOutput = inferRouterOutputs<AppRouter>;
-
-export const trpc = createTRPCReact<AppRouter>();
 
 const MAX_QUERY_RETRIES = 3;
 
@@ -39,7 +34,7 @@ export const queryClient = new QueryClient({
   },
 });
 
-export const trpcClient = trpc.createClient({
+const trpcClient = createTRPCClient<AppRouter>({
   links: [
     httpBatchLink({
       url: "/trpc",
@@ -73,4 +68,9 @@ export const trpcClient = trpc.createClient({
       },
     }),
   ],
+});
+
+export const trpc = createTRPCOptionsProxy<AppRouter>({
+  client: trpcClient,
+  queryClient,
 });

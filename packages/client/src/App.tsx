@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, type ReactNode } from "react";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { trpc, trpcClient, queryClient } from "./lib/trpc";
+import { queryClient } from "./lib/trpc";
 import { lazyNamed } from "./lib/lazy";
 import { AuthProvider, useAuth } from "./contexts/auth";
 import { WebSocketProvider } from "./contexts/websocket";
@@ -571,34 +571,32 @@ function AppContent() {
  * Root application component.
  *
  * Establishes the full provider hierarchy required across the app:
- * tRPC → QueryClient → Auth → WebSocket → ServerData → PlayerData → Toast → Router
+ * QueryClient → Auth → WebSocket → ServerData → PlayerData → Toast → Router
  */
 function App() {
   return (
-    <trpc.Provider client={trpcClient} queryClient={queryClient}>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <WebSocketProvider>
-            <ServerDataProvider autoSubscribe>
-              <PlayerDataProvider autoSubscribe>
-                <ToastProvider>
-                  <BrowserRouter>
-                    <ScrollToTop />
-                    <AdminChatBoundary>
-                      <ErrorBoundary>
-                        <SidebarProvider>
-                          <AppContent />
-                        </SidebarProvider>
-                      </ErrorBoundary>
-                    </AdminChatBoundary>
-                  </BrowserRouter>
-                </ToastProvider>
-              </PlayerDataProvider>
-            </ServerDataProvider>
-          </WebSocketProvider>
-        </AuthProvider>
-      </QueryClientProvider>
-    </trpc.Provider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <WebSocketProvider>
+          <ServerDataProvider autoSubscribe>
+            <PlayerDataProvider autoSubscribe>
+              <ToastProvider>
+                <BrowserRouter>
+                  <ScrollToTop />
+                  <AdminChatBoundary>
+                    <ErrorBoundary>
+                      <SidebarProvider>
+                        <AppContent />
+                      </SidebarProvider>
+                    </ErrorBoundary>
+                  </AdminChatBoundary>
+                </BrowserRouter>
+              </ToastProvider>
+            </PlayerDataProvider>
+          </ServerDataProvider>
+        </WebSocketProvider>
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }
 

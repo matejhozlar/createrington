@@ -18,7 +18,7 @@ import {
 } from "@/components/data-table";
 import { Ghost, RefreshCw, Search, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { keepPreviousData } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useMutation } from "@tanstack/react-query";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useToastActions } from "@/hooks/use-toast";
 import { CellText } from "@/components/cell-text";
@@ -43,18 +43,23 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
 
   const [removeTarget, setRemoveTarget] = useState<GhostMember | null>(null);
 
-  const capabilitiesQuery =
-    trpc.admin.inactivity.ghosts.capabilities.useQuery();
-  const listQuery = trpc.admin.inactivity.ghosts.list.useQuery(
-    {
-      search: debouncedSearch.trim() || undefined,
-      page,
-      limit,
-    },
-    { placeholderData: keepPreviousData },
+  const capabilitiesQuery = useQuery(
+    trpc.admin.inactivity.ghosts.capabilities.queryOptions(),
+  );
+  const listQuery = useQuery(
+    trpc.admin.inactivity.ghosts.list.queryOptions(
+      {
+        search: debouncedSearch.trim() || undefined,
+        page,
+        limit,
+      },
+      { placeholderData: keepPreviousData },
+    ),
   );
 
-  const refreshGhosts = trpc.admin.inactivity.ghosts.refresh.useMutation();
+  const refreshGhosts = useMutation(
+    trpc.admin.inactivity.ghosts.refresh.mutationOptions(),
+  );
 
   const { refetch: refetchList } = listQuery;
   const { refetch: refetchCapabilities } = capabilitiesQuery;

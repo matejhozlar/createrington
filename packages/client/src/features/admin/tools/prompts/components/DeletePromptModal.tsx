@@ -1,6 +1,7 @@
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
-import { trpc } from "@/lib/trpc";
+import { trpc, queryClient } from "@/lib/trpc";
+import { useMutation } from "@tanstack/react-query";
 
 interface DeletePromptModalProps {
   prompt: {
@@ -19,17 +20,22 @@ export function DeletePromptModal({
   onClose,
   onSuccess,
 }: DeletePromptModalProps) {
-  const utils = trpc.useUtils();
-  const deletePrompt = trpc.admin.prompts.delete.useMutation(
-    useMutationToast({
-      success: "Prompt deleted",
-      error: (error) => error.message || "Failed to delete prompt",
-      onSuccess: async (_data, variables) => {
-        await utils.admin.prompts.list.invalidate();
-        void utils.admin.prompts.get.reset({ id: variables.id });
-        onSuccess();
-      },
-    }),
+  const deletePrompt = useMutation(
+    trpc.admin.prompts.delete.mutationOptions(
+      useMutationToast({
+        success: "Prompt deleted",
+        error: (error) => error.message || "Failed to delete prompt",
+        onSuccess: async (_data, variables) => {
+          await queryClient.invalidateQueries(
+            trpc.admin.prompts.list.pathFilter(),
+          );
+          void queryClient.resetQueries(
+            trpc.admin.prompts.get.queryFilter({ id: variables.id }),
+          );
+          onSuccess();
+        },
+      }),
+    ),
   );
 
   return (

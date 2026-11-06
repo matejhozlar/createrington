@@ -30,6 +30,7 @@ import {
   DURATION_OPTIONS,
   ENTRY_MODE_OPTIONS,
 } from "../format";
+import { useMutation, useQuery } from "@tanstack/react-query";
 
 // Format a camelCase config key ("serverAnnouncements") into the label
 // we show in a picker ("Server Announcements"). Same transform the
@@ -57,12 +58,14 @@ const DEFAULT_CHANNEL = "__default__";
 
 export function CreatePromptModal({ open, onClose, onSuccess }: Props) {
   const toast = useToastActions();
-  const createMutation = trpc.admin.prompts.create.useMutation();
+  const createMutation = useMutation(
+    trpc.admin.prompts.create.mutationOptions(),
+  );
 
   // Reuse the embed-builder endpoints: they already walk config.discord
   // and expose channels grouped by category plus a flat role list.
-  const channelsQuery = trpc.admin.embeds.channels.useQuery();
-  const rolesQuery = trpc.admin.embeds.roles.useQuery();
+  const channelsQuery = useQuery(trpc.admin.embeds.channels.queryOptions());
+  const rolesQuery = useQuery(trpc.admin.embeds.roles.queryOptions());
 
   const [question, setQuestion] = useState("");
   const [description, setDescription] = useState("");

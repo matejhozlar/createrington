@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import type { MentionResolver } from "@/features/admin/tools/embed-builder/components/DiscordMarkdown";
+import { useQuery } from "@tanstack/react-query";
 
 function formatName(key: string): string {
   return key
@@ -10,8 +11,8 @@ function formatName(key: string): string {
 }
 
 export function useMentionResolver(): MentionResolver {
-  const channelsQuery = trpc.admin.embeds.channels.useQuery();
-  const rolesQuery = trpc.admin.embeds.roles.useQuery();
+  const channelsQuery = useQuery(trpc.admin.embeds.channels.queryOptions());
+  const rolesQuery = useQuery(trpc.admin.embeds.roles.queryOptions());
 
   return useMemo(() => {
     const channels = new Map<string, string>();

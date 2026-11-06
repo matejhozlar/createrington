@@ -5,6 +5,7 @@ import { formatDimension } from "@/lib/minecraft";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { PartyRankBadge } from "./PartyRankBadge";
+import { useQuery } from "@tanstack/react-query";
 
 const SECTION_LABEL =
   "text-xs font-semibold uppercase tracking-wider text-muted-foreground";
@@ -19,8 +20,10 @@ export function PartyMembersPanel({
   partyId: number;
   onShowClaims?: () => void;
 }) {
-  const query = trpc.admin.parties.members.useQuery({ partyId });
-  const claimsQuery = trpc.admin.parties.claims.useQuery({ partyId });
+  const query = useQuery(trpc.admin.parties.members.queryOptions({ partyId }));
+  const claimsQuery = useQuery(
+    trpc.admin.parties.claims.queryOptions({ partyId }),
+  );
 
   if (query.isLoading || claimsQuery.isLoading) {
     return <Loading size="small" />;

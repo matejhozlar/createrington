@@ -14,6 +14,7 @@ import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { AdminActionModal } from "./AdminActionModal";
+import { useMutation } from "@tanstack/react-query";
 
 interface IssueBanModalProps {
   open: boolean;
@@ -33,21 +34,25 @@ export function IssueBanModal({
   onSuccess,
 }: IssueBanModalProps) {
   const toast = useToastActions();
-  const issueTemporaryBan = trpc.admin.players.bans.issueTemporary.useMutation(
-    useMutationToast({
-      error: (err) => ({
-        title: "Failed to issue ban",
-        description: err.message,
+  const issueTemporaryBan = useMutation(
+    trpc.admin.players.bans.issueTemporary.mutationOptions(
+      useMutationToast({
+        error: (err) => ({
+          title: "Failed to issue ban",
+          description: err.message,
+        }),
       }),
-    }),
+    ),
   );
-  const issuePermanentBan = trpc.admin.players.bans.issuePermanent.useMutation(
-    useMutationToast({
-      error: (err) => ({
-        title: "Failed to issue ban",
-        description: err.message,
+  const issuePermanentBan = useMutation(
+    trpc.admin.players.bans.issuePermanent.mutationOptions(
+      useMutationToast({
+        error: (err) => ({
+          title: "Failed to issue ban",
+          description: err.message,
+        }),
       }),
-    }),
+    ),
   );
 
   const [banType, setBanType] = useState<BanType>("temporary");

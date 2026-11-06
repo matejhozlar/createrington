@@ -36,6 +36,7 @@ import { CURSEFORGE_MODPACK_URL } from "@/lib/external-urls";
 import { trpc } from "@/lib/trpc";
 import { Loading } from "@/components/loading-spinner";
 import { SkinApiPromo } from "@/components/skin-api-promo";
+import { useQuery } from "@tanstack/react-query";
 
 export function Home() {
   const { user } = useAuth();
@@ -51,11 +52,13 @@ export function Home() {
   const { servers } = useServerData();
   const server = servers.find((s) => s.serverId === serverId);
 
-  const { data: playerCount, isLoading: isLoadingPlayers } =
-    trpc.public.players.count.useQuery({});
+  const { data: playerCount, isLoading: isLoadingPlayers } = useQuery(
+    trpc.public.players.count.queryOptions({}),
+  );
 
-  const { data: playtimeData, isLoading: isLoadingPlaytime } =
-    trpc.public.metrics.playtime.getTotalHours.useQuery({});
+  const { data: playtimeData, isLoading: isLoadingPlaytime } = useQuery(
+    trpc.public.metrics.playtime.getTotalHours.queryOptions({}),
+  );
 
   const heroImages = [
     "/assets/hero/gondola-station.webp",

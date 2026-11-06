@@ -4,6 +4,7 @@ import { Field, FieldLabel } from "@/components/ui/field";
 import { useToastActions } from "@/hooks/use-toast";
 import { trpc } from "@/lib/trpc";
 import { AdminActionModal } from "./AdminActionModal";
+import { useMutation } from "@tanstack/react-query";
 
 interface RemoveStrikeModalProps {
   open: boolean;
@@ -21,7 +22,9 @@ export function RemoveStrikeModal({
   onSuccess,
 }: RemoveStrikeModalProps) {
   const toast = useToastActions();
-  const removeStrike = trpc.admin.players.strikes.remove.useMutation();
+  const removeStrike = useMutation(
+    trpc.admin.players.strikes.remove.mutationOptions(),
+  );
 
   const [reason, setReason] = useState("");
 

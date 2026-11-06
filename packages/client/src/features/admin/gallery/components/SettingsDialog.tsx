@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { trpc } from "@/lib/trpc";
+import { trpc, queryClient } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,6 +13,7 @@ import {
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useQuery, useMutation } from "@tanstack/react-query";
 
 const REWARD_MAX = 1_000_000;
 const CAP_MAX = 100;
@@ -28,9 +29,11 @@ interface SettingsDialogProps {
 }
 
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
-  const settingsQuery = trpc.admin.gallery.settings.get.useQuery(undefined, {
-    enabled: open,
-  });
+  const settingsQuery = useQuery(
+    trpc.admin.gallery.settings.get.queryOptions(undefined, {
+      enabled: open,
+    }),
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -70,7 +73,6 @@ function SettingsForm({
   settings: GallerySettings;
   onClose: () => void;
 }) {
-  const utils = trpc.useUtils();
   const [rewardAmount, setRewardAmount] = useState(
     String(settings.rewardAmount),
   );
@@ -78,15 +80,21 @@ function SettingsForm({
     String(settings.weeklyRewardCap),
   );
 
-  const updateMutation = trpc.admin.gallery.settings.update.useMutation(
-    useMutationToast({
-      success: "Gallery rewards saved",
-      onSuccess: () => {
-        void utils.admin.gallery.settings.get.invalidate();
-        void utils.admin.gallery.get.invalidate();
-        onClose();
-      },
-    }),
+  const updateMutation = useMutation(
+    trpc.admin.gallery.settings.update.mutationOptions(
+      useMutationToast({
+        success: "Gallery rewards saved",
+        onSuccess: () => {
+          void queryClient.invalidateQueries(
+            trpc.admin.gallery.settings.get.pathFilter(),
+          );
+          void queryClient.invalidateQueries(
+            trpc.admin.gallery.get.pathFilter(),
+          );
+          onClose();
+        },
+      }),
+    ),
   );
 
   const parsedReward = Number.parseInt(rewardAmount, 10);

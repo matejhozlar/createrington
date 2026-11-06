@@ -36,7 +36,7 @@ import {
 } from "@/components/ui/select";
 import { Search, Filter, FileText, Info } from "lucide-react";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { keepPreviousData } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { trpc } from "@/lib/trpc";
 
 type SortField = "performedAt" | "actionType" | "adminUsername";
@@ -77,19 +77,21 @@ export function AdminLogs() {
 
   const debouncedSearch = useDebouncedValue(searchQuery, 1000);
 
-  const adminsQuery = trpc.admin.logs.admins.useQuery();
+  const adminsQuery = useQuery(trpc.admin.logs.admins.queryOptions());
   const adminList = adminsQuery.data ?? [];
 
-  const logsQuery = trpc.admin.logs.list.useQuery(
-    {
-      page,
-      limit,
-      orderBy,
-      orderDirection,
-      search: debouncedSearch.trim() || undefined,
-      adminUsername: adminFilter,
-    },
-    { placeholderData: keepPreviousData },
+  const logsQuery = useQuery(
+    trpc.admin.logs.list.queryOptions(
+      {
+        page,
+        limit,
+        orderBy,
+        orderDirection,
+        search: debouncedSearch.trim() || undefined,
+        adminUsername: adminFilter,
+      },
+      { placeholderData: keepPreviousData },
+    ),
   );
 
   const actions = logsQuery.data?.actions ?? [];

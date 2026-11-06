@@ -1,6 +1,7 @@
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { trpc, type RouterOutput } from "@/lib/trpc";
+import { useMutation } from "@tanstack/react-query";
 
 type Exemption =
   RouterOutput["admin"]["inactivity"]["exemptions"]["list"]["exemptions"][number];
@@ -16,8 +17,10 @@ export function RemoveExemptionModal({
   onClose,
   onSuccess,
 }: RemoveExemptionModalProps) {
-  const removeExemption = trpc.admin.inactivity.exemptions.remove.useMutation(
-    useMutationToast({ success: "Exemption removed", onSuccess }),
+  const removeExemption = useMutation(
+    trpc.admin.inactivity.exemptions.remove.mutationOptions(
+      useMutationToast({ success: "Exemption removed", onSuccess }),
+    ),
   );
 
   return (

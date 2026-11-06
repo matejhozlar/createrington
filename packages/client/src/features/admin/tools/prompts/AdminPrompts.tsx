@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/select";
 import { MessageSquare, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { formatFullDate } from "@/features/admin/format";
-import { keepPreviousData } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { CreatePromptModal } from "./components/CreatePromptModal";
 import { DeletePromptModal } from "./components/DeletePromptModal";
@@ -52,13 +52,15 @@ export function AdminPrompts() {
   const [createOpen, setCreateOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<PromptRow | null>(null);
 
-  const listQuery = trpc.admin.prompts.list.useQuery(
-    {
-      page,
-      limit,
-      status: statusFilter === "all" ? undefined : statusFilter,
-    },
-    { placeholderData: keepPreviousData },
+  const listQuery = useQuery(
+    trpc.admin.prompts.list.queryOptions(
+      {
+        page,
+        limit,
+        status: statusFilter === "all" ? undefined : statusFilter,
+      },
+      { placeholderData: keepPreviousData },
+    ),
   );
 
   const items = listQuery.data?.items ?? [];

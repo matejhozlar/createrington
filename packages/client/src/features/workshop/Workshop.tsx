@@ -16,6 +16,7 @@ import {
 } from "./components/WorkshopEmptyState";
 import { WorkshopHero } from "./components/WorkshopHero";
 import { WORKSHOP_STATUS_STYLES, formatDate, loaderName } from "./format";
+import { useQuery } from "@tanstack/react-query";
 
 const STAT_LABEL_CLASS =
   "text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground";
@@ -23,7 +24,7 @@ const STAT_LABEL_CLASS =
 type WorkshopListItem = RouterOutput["user"]["workshops"]["list"][number];
 
 export function Workshop() {
-  const workshopsQuery = trpc.user.workshops.list.useQuery();
+  const workshopsQuery = useQuery(trpc.user.workshops.list.queryOptions());
   const workshops = workshopsQuery.data ?? [];
   const openWorkshops = workshops.filter(
     (workshop) => workshop.status === "open",

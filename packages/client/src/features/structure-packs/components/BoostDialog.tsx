@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { formatMoney } from "@/lib/format";
-import { trpc } from "@/lib/trpc";
+import { trpc, queryClient } from "@/lib/trpc";
 import { useAuth } from "@/contexts/auth";
 import {
   Dialog,
@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { useToastActions } from "@/hooks/use-toast";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { Minus, Plus } from "lucide-react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 
 interface BoostDialogProps {
   open: boolean;
@@ -35,32 +36,41 @@ export function BoostDialog({
   const { user } = useAuth();
   const toast = useToastActions();
   const [units, setUnits] = useState(1);
-  const utils = trpc.useUtils();
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (nextOpen) setUnits(1);
     onOpenChange(nextOpen);
   };
 
-  const { data: balanceData } = trpc.user.account.balance.useQuery(undefined, {
-    enabled: !!user && open,
-  });
+  const { data: balanceData } = useQuery(
+    trpc.user.account.balance.queryOptions(undefined, {
+      enabled: !!user && open,
+    }),
+  );
 
   const balance = Number(balanceData?.balance ?? 0);
   const totalCost = units * boostUnitPrice;
   const canAfford = balance >= totalCost;
 
-  const boostMutation = trpc.user.structurePacks.boost.useMutation(
-    useMutationToast({
-      success: `Boosted "${packName}" with ${units} unit${units > 1 ? "s" : ""}`,
-      onSuccess: () => {
-        void utils.public.structurePacks.pool.invalidate();
-        void utils.user.structurePacks.myBoosts.invalidate();
-        void utils.user.account.balance.invalidate();
-        onOpenChange(false);
-        setUnits(1);
-      },
-    }),
+  const boostMutation = useMutation(
+    trpc.user.structurePacks.boost.mutationOptions(
+      useMutationToast({
+        success: `Boosted "${packName}" with ${units} unit${units > 1 ? "s" : ""}`,
+        onSuccess: () => {
+          void queryClient.invalidateQueries(
+            trpc.public.structurePacks.pool.pathFilter(),
+          );
+          void queryClient.invalidateQueries(
+            trpc.user.structurePacks.myBoosts.pathFilter(),
+          );
+          void queryClient.invalidateQueries(
+            trpc.user.account.balance.pathFilter(),
+          );
+          onOpenChange(false);
+          setUnits(1);
+        },
+      }),
+    ),
   );
 
   const handleConfirm = () => {

@@ -16,6 +16,7 @@ import { InsertMenu } from "@/features/admin/components/InsertMenu";
 import { CharCount } from "@/features/admin/components/CharCount";
 import { useMentionResolver } from "@/features/admin/hooks/use-mention-resolver";
 import { DiscordMarkdown } from "@/features/admin/tools/embed-builder/components/DiscordMarkdown";
+import { useMutation } from "@tanstack/react-query";
 
 type MatchMode = "keywords" | "regex";
 
@@ -31,7 +32,7 @@ export function CreateFaqModal({
   onSuccess,
 }: CreateFaqModalProps) {
   const toast = useToastActions();
-  const createEntry = trpc.admin.faq.create.useMutation();
+  const createEntry = useMutation(trpc.admin.faq.create.mutationOptions());
 
   const mentionResolver = useMentionResolver();
   const responseRef = useRef<HTMLTextAreaElement>(null);

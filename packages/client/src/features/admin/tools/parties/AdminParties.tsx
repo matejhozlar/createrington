@@ -22,6 +22,7 @@ import {
   type PartySort,
   type PartySortKey,
 } from "./components/PartiesTable";
+import { useQuery } from "@tanstack/react-query";
 
 const SERVER_ID = 1;
 
@@ -80,8 +81,12 @@ export function AdminParties() {
   } | null>(null);
   const needle = useDebouncedValue(search, 300).trim().toLowerCase();
 
-  const statsQuery = trpc.admin.parties.stats.useQuery({ serverId: SERVER_ID });
-  const listQuery = trpc.admin.parties.list.useQuery({ serverId: SERVER_ID });
+  const statsQuery = useQuery(
+    trpc.admin.parties.stats.queryOptions({ serverId: SERVER_ID }),
+  );
+  const listQuery = useQuery(
+    trpc.admin.parties.list.queryOptions({ serverId: SERVER_ID }),
+  );
   const parties = listQuery.data ?? NO_PARTIES;
 
   const shown = useMemo(

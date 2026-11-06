@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
+import { useQuery } from "@tanstack/react-query";
 
 interface CommandOption {
   type: number;
@@ -242,8 +243,9 @@ function CommandCard({ command }: { command: CommandData }) {
 }
 
 export function CommandDocs() {
-  const { data: payload, isLoading } =
-    trpc.admin.discordCommands.list.useQuery();
+  const { data: payload, isLoading } = useQuery(
+    trpc.admin.discordCommands.list.queryOptions(),
+  );
 
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);

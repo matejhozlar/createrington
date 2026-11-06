@@ -28,6 +28,7 @@ import {
   PROJECT_KIND_BADGE_CLASS,
   projectKindLabel,
 } from "@/features/workshop/format";
+import { useQuery, useMutation } from "@tanstack/react-query";
 
 interface SelectedProject {
   id: number;
@@ -67,24 +68,28 @@ export function AddModsDialog({
         ]
       : [workshopClassId];
 
-  const searchResults = trpc.admin.workshops.searchProjects.useQuery(
-    { workshopId, query: debouncedSearch, classId },
-    { enabled: open && debouncedSearch.length >= 2 },
+  const searchResults = useQuery(
+    trpc.admin.workshops.searchProjects.queryOptions(
+      { workshopId, query: debouncedSearch, classId },
+      { enabled: open && debouncedSearch.length >= 2 },
+    ),
   );
 
-  const addMutation = trpc.admin.workshops.addMods.useMutation(
-    useMutationToast({
-      success: (mods) =>
-        `Added ${mods.length} project${mods.length !== 1 ? "s" : ""} as approved`,
-      onSuccess: () => {
-        onAdded();
-        setSelected([]);
-        setNote("");
-        setSearchQuery("");
-        setClassId(workshopClassId);
-        onOpenChange(false);
-      },
-    }),
+  const addMutation = useMutation(
+    trpc.admin.workshops.addMods.mutationOptions(
+      useMutationToast({
+        success: (mods) =>
+          `Added ${mods.length} project${mods.length !== 1 ? "s" : ""} as approved`,
+        onSuccess: () => {
+          onAdded();
+          setSelected([]);
+          setNote("");
+          setSearchQuery("");
+          setClassId(workshopClassId);
+          onOpenChange(false);
+        },
+      }),
+    ),
   );
 
   const handleClose = (next: boolean) => {

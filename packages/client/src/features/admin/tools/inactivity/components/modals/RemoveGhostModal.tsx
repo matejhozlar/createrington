@@ -3,6 +3,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { trpc, type RouterOutput } from "@/lib/trpc";
+import { useMutation } from "@tanstack/react-query";
 
 type Ghost =
   RouterOutput["admin"]["inactivity"]["ghosts"]["list"]["items"][number];
@@ -20,13 +21,17 @@ export function RemoveGhostModal({
   canMutate,
   onSuccess,
 }: RemoveGhostModalProps) {
-  const verifyGhost = trpc.admin.inactivity.ghosts.verify.useMutation();
-  const removeGhost = trpc.admin.inactivity.ghosts.remove.useMutation(
-    useMutationToast({
-      success: "Ghost member removed",
-      error: (error) => error.message || "Failed to remove ghost",
-      onSuccess,
-    }),
+  const verifyGhost = useMutation(
+    trpc.admin.inactivity.ghosts.verify.mutationOptions(),
+  );
+  const removeGhost = useMutation(
+    trpc.admin.inactivity.ghosts.remove.mutationOptions(
+      useMutationToast({
+        success: "Ghost member removed",
+        error: (error) => error.message || "Failed to remove ghost",
+        onSuccess,
+      }),
+    ),
   );
 
   const discordId = ghost?.discordId ?? null;

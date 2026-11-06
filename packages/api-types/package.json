@@ -30,7 +30,7 @@
   "devDependencies": {
     "@createrington/server": "workspace:*",
     "@rollup/plugin-node-resolve": "^16.0.0",
-    "@trpc/server": "^11.1.0",
+    "@trpc/server": "^11.24.0",
     "rimraf": "^5.0.0",
     "rollup": "^4.24.0",
     "rollup-plugin-dts": "^6.1.1",

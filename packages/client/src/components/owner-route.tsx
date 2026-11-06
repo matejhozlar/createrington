@@ -3,6 +3,7 @@ import { useAuth } from "@/contexts/auth/";
 import { Loading } from "./loading-spinner";
 import { NotFound } from "@/pages/not-found";
 import { trpc } from "@/lib/trpc";
+import { useQuery } from "@tanstack/react-query";
 
 interface OwnerRouteProps {
   children: React.ReactNode;
@@ -16,9 +17,11 @@ interface OwnerRouteProps {
  */
 export function OwnerRoute({ children }: OwnerRouteProps) {
   const { user, loading: authLoading } = useAuth();
-  const accountQuery = trpc.user.account.me.useQuery(undefined, {
-    enabled: !!user,
-  });
+  const accountQuery = useQuery(
+    trpc.user.account.me.queryOptions(undefined, {
+      enabled: !!user,
+    }),
+  );
 
   if (authLoading || (user && accountQuery.isLoading)) {
     return <Loading mode="fullscreen" size="large" text="Loading..." />;

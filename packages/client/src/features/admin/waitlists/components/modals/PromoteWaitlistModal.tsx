@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { useToastActions } from "@/hooks/use-toast";
 import { trpc, type RouterOutput } from "@/lib/trpc";
+import { useMutation } from "@tanstack/react-query";
 
 type WaitlistEntry =
   RouterOutput["admin"]["waitlists"]["list"]["entries"][number];
@@ -27,7 +28,9 @@ export function PromoteWaitlistModal({
   onSuccess,
 }: PromoteWaitlistModalProps) {
   const toast = useToastActions();
-  const promoteEntry = trpc.admin.waitlists.promote.useMutation();
+  const promoteEntry = useMutation(
+    trpc.admin.waitlists.promote.mutationOptions(),
+  );
 
   const handleSubmit = async () => {
     try {

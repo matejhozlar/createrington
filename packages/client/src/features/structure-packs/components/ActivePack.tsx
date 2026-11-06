@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { CURSEFORGE_MODPACK_URL } from "@/lib/external-urls";
 import { FloatingDust } from "./FloatingDust";
+import { useQuery } from "@tanstack/react-query";
 
 const HERO_IMAGE = "/assets/hero/space-station.webp";
 const DUST_COUNT = 22;
@@ -56,11 +57,13 @@ interface ActivePackProps {
 }
 
 export function ActivePack({ onOpenPortal }: ActivePackProps) {
-  const { data: activePack, isLoading } =
-    trpc.public.structurePacks.current.useQuery();
+  const { data: activePack, isLoading } = useQuery(
+    trpc.public.structurePacks.current.queryOptions(),
+  );
 
-  const { data: rotationInfo } =
-    trpc.public.structurePacks.rotationInfo.useQuery();
+  const { data: rotationInfo } = useQuery(
+    trpc.public.structurePacks.rotationInfo.queryOptions(),
+  );
 
   const countdown = useCountdown(rotationInfo?.nextRotationAt ?? null);
   const now = useMinuteTick();

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { Loading } from "@/components/loading-spinner";
-import { trpc } from "@/lib/trpc";
+import { trpc, queryClient } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { PackHeader } from "./components/PackHeader";
@@ -10,17 +10,19 @@ import { EditPackDialog } from "./components/EditPackDialog";
 import { AddModDialog } from "./components/AddModDialog";
 import { RemoveModDialog } from "./components/RemoveModDialog";
 import type { RemoveTarget } from "./types";
+import { useQuery, useMutation } from "@tanstack/react-query";
 
 /** Detail view for a single structure pack: displays pack metadata, mod list, and dialogs for adding/removing mods with dependency resolution */
 export function StructurePackDetail() {
   const { id } = useParams<{ id: string }>();
   const packId = parseInt(id ?? "0", 10);
   const navigate = useNavigate();
-  const utils = trpc.useUtils();
 
-  const packQuery = trpc.admin.structurePacks.get.useQuery(
-    { id: packId },
-    { enabled: packId > 0 },
+  const packQuery = useQuery(
+    trpc.admin.structurePacks.get.queryOptions(
+      { id: packId },
+      { enabled: packId > 0 },
+    ),
   );
   const pack = packQuery.data;
 
@@ -28,25 +30,34 @@ export function StructurePackDetail() {
   const [addModOpen, setAddModOpen] = useState(false);
   const [removeTarget, setRemoveTarget] = useState<RemoveTarget | null>(null);
 
-  const deleteMutation = trpc.admin.structurePacks.delete.useMutation(
-    useMutationToast({
-      success: "Pack deleted",
-      onSuccess: () => {
-        void utils.admin.structurePacks.list.invalidate();
-        void navigate("/admin/tools/structure-packs");
-      },
-    }),
-  );
-
-  const toggleEnabledMutation =
-    trpc.admin.structurePacks.toggleEnabled.useMutation(
+  const deleteMutation = useMutation(
+    trpc.admin.structurePacks.delete.mutationOptions(
       useMutationToast({
+        success: "Pack deleted",
         onSuccess: () => {
-          void utils.admin.structurePacks.get.invalidate({ id: packId });
-          void utils.admin.structurePacks.list.invalidate();
+          void queryClient.invalidateQueries(
+            trpc.admin.structurePacks.list.pathFilter(),
+          );
+          void navigate("/admin/tools/structure-packs");
         },
       }),
-    );
+    ),
+  );
+
+  const toggleEnabledMutation = useMutation(
+    trpc.admin.structurePacks.toggleEnabled.mutationOptions(
+      useMutationToast({
+        onSuccess: () => {
+          void queryClient.invalidateQueries(
+            trpc.admin.structurePacks.get.queryFilter({ id: packId }),
+          );
+          void queryClient.invalidateQueries(
+            trpc.admin.structurePacks.list.pathFilter(),
+          );
+        },
+      }),
+    ),
+  );
 
   if (packQuery.isLoading) {
     return (

@@ -10,6 +10,7 @@ import { AtSign, Hash } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { formatConfigKey as formatName } from "@/features/admin/format";
+import { useQuery } from "@tanstack/react-query";
 
 type TriggerChar = "@" | "#" | ":";
 
@@ -99,15 +100,21 @@ export function MentionAutocomplete({
     return t;
   }, [value, cursor, dismissed, triggers]);
 
-  const channelsQuery = trpc.admin.embeds.channels.useQuery(undefined, {
-    enabled: active?.trigger === "#",
-  });
-  const rolesQuery = trpc.admin.embeds.roles.useQuery(undefined, {
-    enabled: active?.trigger === "@",
-  });
-  const emojisQuery = trpc.admin.embeds.emojis.useQuery(undefined, {
-    enabled: active?.trigger === ":",
-  });
+  const channelsQuery = useQuery(
+    trpc.admin.embeds.channels.queryOptions(undefined, {
+      enabled: active?.trigger === "#",
+    }),
+  );
+  const rolesQuery = useQuery(
+    trpc.admin.embeds.roles.queryOptions(undefined, {
+      enabled: active?.trigger === "@",
+    }),
+  );
+  const emojisQuery = useQuery(
+    trpc.admin.embeds.emojis.queryOptions(undefined, {
+      enabled: active?.trigger === ":",
+    }),
+  );
 
   const suggestions = useMemo<Suggestion[]>(() => {
     if (!active) return [];

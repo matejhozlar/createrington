@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { keepPreviousData } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { History, CheckCircle2, XCircle } from "lucide-react";
 import { Paginator } from "@/components/paginator";
@@ -20,12 +20,14 @@ export function RotationHistory() {
   const [page, setPage] = useState(0);
   const limit = 10;
 
-  const historyQuery = trpc.admin.structurePacks.rotationHistory.useQuery(
-    {
-      page,
-      limit,
-    },
-    { placeholderData: keepPreviousData },
+  const historyQuery = useQuery(
+    trpc.admin.structurePacks.rotationHistory.queryOptions(
+      {
+        page,
+        limit,
+      },
+      { placeholderData: keepPreviousData },
+    ),
   );
   const data = historyQuery.data;
   const total = data?.pagination.total ?? 0;
@@ -33,7 +35,7 @@ export function RotationHistory() {
   const loading = historyQuery.isLoading || historyQuery.isPlaceholderData;
   const loadingRows = loadingRowCount(page, limit, total);
 
-  const packsQuery = trpc.admin.structurePacks.list.useQuery();
+  const packsQuery = useQuery(trpc.admin.structurePacks.list.queryOptions());
   const packMap = new Map((packsQuery.data ?? []).map((p) => [p.id, p.name]));
 
   const columns: DataTableColumn<Rotation>[] = [

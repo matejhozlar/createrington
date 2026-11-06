@@ -17,9 +17,10 @@ import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import { MinecraftText } from "@/components/minecraft-text";
 import { PlayerLabel } from "@/components/player-label";
 import { RefreshCw, RotateCcw, Search, X } from "lucide-react";
-import { trpc, type RouterOutput } from "@/lib/trpc";
+import { trpc, type RouterOutput, queryClient } from "@/lib/trpc";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
+import { useQuery, useMutation } from "@tanstack/react-query";
 
 interface MaintenanceSettingsDialogProps {
   serverId: number;
@@ -109,9 +110,11 @@ export function MaintenanceSettingsDialog({
   open,
   onOpenChange,
 }: MaintenanceSettingsDialogProps) {
-  const settingsQuery = trpc.admin.servers.maintenanceSettings.useQuery(
-    { serverId },
-    { enabled: open },
+  const settingsQuery = useQuery(
+    trpc.admin.servers.maintenanceSettings.queryOptions(
+      { serverId },
+      { enabled: open },
+    ),
   );
   const settings = settingsQuery.data;
 
@@ -154,8 +157,6 @@ function MaintenanceSettingsForm({
   settings,
   onClose,
 }: MaintenanceSettingsFormProps) {
-  const utils = trpc.useUtils();
-
   const [motd, setMotd] = useState(settings.motd ?? settings.presets.motd);
   const [message, setMessage] = useState(
     settings.message ?? settings.presets.message,
@@ -163,28 +164,34 @@ function MaintenanceSettingsForm({
 
   const [query, setQuery] = useState("");
   const debouncedQuery = useDebouncedValue(query, 300);
-  const searchQuery = trpc.public.players.list.useQuery(
-    { minecraftUsername: debouncedQuery, limit: 8, page: 0 },
-    { enabled: debouncedQuery.trim().length > 0 },
+  const searchQuery = useQuery(
+    trpc.public.players.list.queryOptions(
+      { minecraftUsername: debouncedQuery, limit: 8, page: 0 },
+      { enabled: debouncedQuery.trim().length > 0 },
+    ),
   );
 
   const invalidateSettings = () =>
-    utils.admin.servers.maintenanceSettings.invalidate({ serverId });
+    queryClient.invalidateQueries(
+      trpc.admin.servers.maintenanceSettings.queryFilter({ serverId }),
+    );
 
-  const saveMutation = trpc.admin.servers.updateMaintenanceSettings.useMutation(
-    useMutationToast({
-      success: ({ pushed }) =>
-        pushed
-          ? "Maintenance messages saved and pushed to the server"
-          : "Maintenance messages saved; the server is unreachable and will receive them when it's back",
-      onSuccess: () => {
-        void invalidateSettings();
-      },
-    }),
+  const saveMutation = useMutation(
+    trpc.admin.servers.updateMaintenanceSettings.mutationOptions(
+      useMutationToast({
+        success: ({ pushed }) =>
+          pushed
+            ? "Maintenance messages saved and pushed to the server"
+            : "Maintenance messages saved; the server is unreachable and will receive them when it's back",
+        onSuccess: () => {
+          void invalidateSettings();
+        },
+      }),
+    ),
   );
 
-  const addMutation =
-    trpc.admin.servers.addMaintenanceAllowedPlayer.useMutation(
+  const addMutation = useMutation(
+    trpc.admin.servers.addMaintenanceAllowedPlayer.mutationOptions(
       useMutationToast({
         success: ({ username, pushed }) =>
           pushed
@@ -195,26 +202,32 @@ function MaintenanceSettingsForm({
           void invalidateSettings();
         },
       }),
-    );
+    ),
+  );
 
-  const removeMutation =
-    trpc.admin.servers.removeMaintenanceAllowedPlayer.useMutation(
+  const removeMutation = useMutation(
+    trpc.admin.servers.removeMaintenanceAllowedPlayer.mutationOptions(
       useMutationToast({
         success: ({ username }) => `${username} removed from the allow list`,
         onSuccess: () => {
           void invalidateSettings();
         },
       }),
-    );
+    ),
+  );
 
-  const pushMutation = trpc.admin.servers.pushMaintenanceSettings.useMutation(
-    useMutationToast({
-      success: ({ added, removed }) =>
-        `Settings pushed to the server (+${added.length} / -${removed.length} allowed players)`,
-      onSuccess: () => {
-        void utils.admin.servers.maintenanceStatus.invalidate({ serverId });
-      },
-    }),
+  const pushMutation = useMutation(
+    trpc.admin.servers.pushMaintenanceSettings.mutationOptions(
+      useMutationToast({
+        success: ({ added, removed }) =>
+          `Settings pushed to the server (+${added.length} / -${removed.length} allowed players)`,
+        onSuccess: () => {
+          void queryClient.invalidateQueries(
+            trpc.admin.servers.maintenanceStatus.queryFilter({ serverId }),
+          );
+        },
+      }),
+    ),
   );
 
   const allowedUuids = new Set(settings.allowedPlayers.map((p) => p.uuid));

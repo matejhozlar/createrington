@@ -13,8 +13,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToastActions } from "@/hooks/use-toast";
-import { trpc } from "@/lib/trpc";
+import { trpc, queryClient } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
+import { useQuery, useMutation } from "@tanstack/react-query";
 
 type IntakeMode = "auto" | "closed";
 
@@ -25,9 +26,10 @@ const INTAKE_MODE_OPTIONS: { value: IntakeMode; label: string }[] = [
 
 export function IntakeSettingsCard() {
   const toast = useToastActions();
-  const utils = trpc.useUtils();
-  const settingsQuery = trpc.admin.settings.get.useQuery();
-  const updateSettings = trpc.admin.settings.update.useMutation();
+  const settingsQuery = useQuery(trpc.admin.settings.get.queryOptions());
+  const updateSettings = useMutation(
+    trpc.admin.settings.update.mutationOptions(),
+  );
 
   const [limitDraft, setLimitDraft] = useState<string | null>(null);
 
@@ -58,8 +60,8 @@ export function IntakeSettingsCard() {
       await updateSettings.mutateAsync({ playerLimit: parsed });
       setLimitDraft(null);
       await Promise.all([
-        utils.admin.settings.get.invalidate(),
-        utils.admin.waitlists.invalidate(),
+        queryClient.invalidateQueries(trpc.admin.settings.get.pathFilter()),
+        queryClient.invalidateQueries(trpc.admin.waitlists.pathFilter()),
       ]);
       toast.success("Player limit updated");
     } catch {
@@ -71,8 +73,8 @@ export function IntakeSettingsCard() {
     try {
       await updateSettings.mutateAsync({ intakeMode: mode });
       await Promise.all([
-        utils.admin.settings.get.invalidate(),
-        utils.admin.waitlists.invalidate(),
+        queryClient.invalidateQueries(trpc.admin.settings.get.pathFilter()),
+        queryClient.invalidateQueries(trpc.admin.waitlists.pathFilter()),
       ]);
       toast.success(mode === "closed" ? "Intake closed" : "Intake set to auto");
     } catch {

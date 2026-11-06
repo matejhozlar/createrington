@@ -44,7 +44,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { keepPreviousData } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useMutation } from "@tanstack/react-query";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import {
@@ -84,21 +84,28 @@ export function InactivityManagement() {
 
   const debouncedSearch = useDebouncedValue(searchQuery, 500);
 
-  const capabilitiesQuery = trpc.admin.inactivity.capabilities.useQuery();
-  const statsQuery = trpc.admin.inactivity.stats.useQuery();
-  const listQuery = trpc.admin.inactivity.list.useQuery(
-    {
-      status: statusFilter,
-      search: debouncedSearch.trim() || undefined,
-      page,
-      limit,
-    },
-    { placeholderData: keepPreviousData },
+  const capabilitiesQuery = useQuery(
+    trpc.admin.inactivity.capabilities.queryOptions(),
+  );
+  const statsQuery = useQuery(trpc.admin.inactivity.stats.queryOptions());
+  const listQuery = useQuery(
+    trpc.admin.inactivity.list.queryOptions(
+      {
+        status: statusFilter,
+        search: debouncedSearch.trim() || undefined,
+        page,
+        limit,
+      },
+      { placeholderData: keepPreviousData },
+    ),
   );
 
-  const triggerCleanup = trpc.admin.inactivity.triggerCleanup.useMutation();
-  const triggerResolveRemove =
-    trpc.admin.inactivity.triggerResolveRemove.useMutation();
+  const triggerCleanup = useMutation(
+    trpc.admin.inactivity.triggerCleanup.mutationOptions(),
+  );
+  const triggerResolveRemove = useMutation(
+    trpc.admin.inactivity.triggerResolveRemove.mutationOptions(),
+  );
 
   // Destructure refetch so the callbacks below have stable deps: the
   // full query object is a new reference on every render.

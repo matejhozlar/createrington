@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Info, Loader2, Search } from "lucide-react";
-import { trpc, type RouterOutput } from "@/lib/trpc";
+import { trpc, type RouterOutput, queryClient } from "@/lib/trpc";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { ClearButton } from "../../components/ClearButton";
 import { ProjectThumb } from "../../components/ProjectThumb";
 import { formatDownloads } from "../../format";
+import { useQuery, useMutation } from "@tanstack/react-query";
 
 type Suggestion = RouterOutput["user"]["workshops"]["mySuggestions"][number];
 type SearchResult = RouterOutput["user"]["workshops"]["searchProjects"][number];
@@ -23,7 +24,6 @@ export function ModSearch({
   packProjectIds: Set<number>;
   initialQuery: string;
 }) {
-  const utils = trpc.useUtils();
   const containerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState(initialQuery);
@@ -43,9 +43,11 @@ export function ModSearch({
   const searching = !isFull && debouncedSearch.length >= 2;
   const dropdownOpen = searching && !dismissed;
 
-  const searchResults = trpc.user.workshops.searchProjects.useQuery(
-    { workshopId: workshop.id, query: debouncedSearch },
-    { enabled: searching },
+  const searchResults = useQuery(
+    trpc.user.workshops.searchProjects.queryOptions(
+      { workshopId: workshop.id, query: debouncedSearch },
+      { enabled: searching },
+    ),
   );
 
   useEffect(() => {
@@ -60,24 +62,38 @@ export function ModSearch({
     return () => document.removeEventListener("pointerdown", onPointerDown);
   }, [dropdownOpen]);
 
-  const suggestMutation = trpc.user.workshops.suggestMod.useMutation(
-    useMutationToast({
-      success: (mod) => `"${mod.project.name}" suggested, awaiting review`,
-      onSuccess: () => {
-        setNoteFor(null);
-        setNote("");
-        void utils.user.workshops.mySuggestions.invalidate({
-          workshopId: workshop.id,
-        });
-        void utils.user.workshops.mySuggestionHistory.invalidate();
-        void utils.user.workshops.searchProjects.invalidate();
-        void utils.user.workshops.get.invalidate();
-        void utils.user.workshops.list.invalidate();
-        void utils.user.workshops.myUpvotes.invalidate({
-          workshopId: workshop.id,
-        });
-      },
-    }),
+  const suggestMutation = useMutation(
+    trpc.user.workshops.suggestMod.mutationOptions(
+      useMutationToast({
+        success: (mod) => `"${mod.project.name}" suggested, awaiting review`,
+        onSuccess: () => {
+          setNoteFor(null);
+          setNote("");
+          void queryClient.invalidateQueries(
+            trpc.user.workshops.mySuggestions.queryFilter({
+              workshopId: workshop.id,
+            }),
+          );
+          void queryClient.invalidateQueries(
+            trpc.user.workshops.mySuggestionHistory.pathFilter(),
+          );
+          void queryClient.invalidateQueries(
+            trpc.user.workshops.searchProjects.pathFilter(),
+          );
+          void queryClient.invalidateQueries(
+            trpc.user.workshops.get.pathFilter(),
+          );
+          void queryClient.invalidateQueries(
+            trpc.user.workshops.list.pathFilter(),
+          );
+          void queryClient.invalidateQueries(
+            trpc.user.workshops.myUpvotes.queryFilter({
+              workshopId: workshop.id,
+            }),
+          );
+        },
+      }),
+    ),
   );
 
   const noteReady = note.trim().length >= 10;

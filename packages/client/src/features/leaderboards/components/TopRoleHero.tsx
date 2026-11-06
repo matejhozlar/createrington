@@ -14,6 +14,7 @@ import {
   HERO_ORDER,
   topRoleStyle,
 } from "../top-roles";
+import { useSuspenseQuery } from "@tanstack/react-query";
 
 type TopRole = RouterOutput["public"]["leaderboards"]["hero"][number];
 
@@ -205,9 +206,11 @@ function HeroCaption({
 
 export function TopRoleHero() {
   const [now] = useState(Date.now);
-  const [roles] = trpc.public.leaderboards.hero.useSuspenseQuery(undefined, {
-    staleTime: 5 * 60 * 1000,
-  });
+  const { data: roles } = useSuspenseQuery(
+    trpc.public.leaderboards.hero.queryOptions(undefined, {
+      staleTime: 5 * 60 * 1000,
+    }),
+  );
   const ordered = HERO_ORDER.map((key) =>
     roles.find((role) => role.roleKey === key),
   );

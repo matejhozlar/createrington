@@ -19,6 +19,7 @@ import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { UpsertConfigDialog } from "./components/UpsertConfigDialog";
 import { MessageDialog } from "./components/MessageDialog";
+import { useQuery, useMutation } from "@tanstack/react-query";
 
 type Config = RouterOutput["admin"]["autoMessages"]["configs"]["list"][number];
 type ConfigDetail = RouterOutput["admin"]["autoMessages"]["configs"]["get"];
@@ -43,25 +44,33 @@ export function AutoMessages() {
 
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
-  const configsQuery = trpc.admin.autoMessages.configs.list.useQuery();
-  const channelsQuery = trpc.admin.autoMessages.channels.useQuery();
-  const detailQuery = trpc.admin.autoMessages.configs.get.useQuery(
-    { id: expandedId! },
-    { enabled: expandedId !== null },
+  const configsQuery = useQuery(
+    trpc.admin.autoMessages.configs.list.queryOptions(),
   );
-  const deleteMutation = trpc.admin.autoMessages.configs.delete.useMutation(
-    useMutationToast({
-      success: "Config deleted",
-      error: "Failed to delete config",
-      onSuccess: (_data, variables) => {
-        if (expandedId === variables.id) setExpandedId(null);
-        setDeleteConfigTarget(null);
-        void configsQuery.refetch();
-      },
-    }),
+  const channelsQuery = useQuery(
+    trpc.admin.autoMessages.channels.queryOptions(),
   );
-  const deleteMessageMutation =
-    trpc.admin.autoMessages.messages.delete.useMutation(
+  const detailQuery = useQuery(
+    trpc.admin.autoMessages.configs.get.queryOptions(
+      { id: expandedId! },
+      { enabled: expandedId !== null },
+    ),
+  );
+  const deleteMutation = useMutation(
+    trpc.admin.autoMessages.configs.delete.mutationOptions(
+      useMutationToast({
+        success: "Config deleted",
+        error: "Failed to delete config",
+        onSuccess: (_data, variables) => {
+          if (expandedId === variables.id) setExpandedId(null);
+          setDeleteConfigTarget(null);
+          void configsQuery.refetch();
+        },
+      }),
+    ),
+  );
+  const deleteMessageMutation = useMutation(
+    trpc.admin.autoMessages.messages.delete.mutationOptions(
       useMutationToast({
         success: "Message deleted",
         error: "Failed to delete message",
@@ -71,7 +80,8 @@ export function AutoMessages() {
           void configsQuery.refetch();
         },
       }),
-    );
+    ),
+  );
 
   const configs = configsQuery.data ?? [];
   const channels = channelsQuery.data ?? [];

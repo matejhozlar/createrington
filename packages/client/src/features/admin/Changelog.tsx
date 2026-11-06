@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { useQuery } from "@tanstack/react-query";
 
 type Kind =
   | "add"
@@ -201,7 +202,7 @@ const HEADER = (
 );
 
 export function Changelog() {
-  const { data, isLoading } = trpc.admin.changelog.get.useQuery();
+  const { data, isLoading } = useQuery(trpc.admin.changelog.get.queryOptions());
   const content = data?.content;
   const sections = useMemo(
     () => (content ? parseChangelog(content) : []),
