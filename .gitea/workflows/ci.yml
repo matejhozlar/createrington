@@ -34,6 +34,9 @@ jobs:
       - name: Setup
         uses: ./.gitea/actions/setup
 
+      - name: Generate code
+        run: pnpm generate:ci
+
       - name: Lint
         run: pnpm lint
 
