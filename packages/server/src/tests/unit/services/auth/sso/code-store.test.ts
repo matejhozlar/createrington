@@ -17,40 +17,40 @@ afterEach(() => {
 });
 
 describe("sso code-store", () => {
-  it("redeems a freshly issued code for its payload", () => {
-    const code = issueSsoCode(payload);
-    expect(consumeSsoCode(code)).toEqual(payload);
+  it("redeems a freshly issued code for its payload", async () => {
+    const code = (await issueSsoCode(payload))!;
+    expect(await consumeSsoCode(code)).toEqual(payload);
   });
 
-  it("is single-use: a second redemption misses", () => {
-    const code = issueSsoCode(payload);
-    expect(consumeSsoCode(code)).toEqual(payload);
-    expect(consumeSsoCode(code)).toBeNull();
+  it("is single-use: a second redemption misses", async () => {
+    const code = (await issueSsoCode(payload))!;
+    expect(await consumeSsoCode(code)).toEqual(payload);
+    expect(await consumeSsoCode(code)).toBeNull();
   });
 
-  it("returns null for an unknown code", () => {
-    expect(consumeSsoCode("deadbeef")).toBeNull();
+  it("returns null for an unknown code", async () => {
+    expect(await consumeSsoCode("deadbeef")).toBeNull();
   });
 
-  it("expires codes after the 60s TTL", () => {
+  it("expires codes after the 60s TTL", async () => {
     vi.useFakeTimers();
-    const code = issueSsoCode(payload);
+    const code = (await issueSsoCode(payload))!;
     vi.advanceTimersByTime(60_001);
-    expect(consumeSsoCode(code)).toBeNull();
+    expect(await consumeSsoCode(code)).toBeNull();
   });
 
-  it("still redeems just before the TTL elapses", () => {
+  it("still redeems just before the TTL elapses", async () => {
     vi.useFakeTimers();
-    const code = issueSsoCode(payload);
+    const code = (await issueSsoCode(payload))!;
     vi.advanceTimersByTime(59_000);
-    expect(consumeSsoCode(code)).toEqual(payload);
+    expect(await consumeSsoCode(code)).toEqual(payload);
   });
 
-  it("issues distinct codes for separate payloads", () => {
-    const a = issueSsoCode({ ...payload, minecraftUsername: "Alex" });
-    const b = issueSsoCode({ ...payload, minecraftUsername: "Notch" });
+  it("issues distinct codes for separate payloads", async () => {
+    const a = (await issueSsoCode({ ...payload, minecraftUsername: "Alex" }))!;
+    const b = (await issueSsoCode({ ...payload, minecraftUsername: "Notch" }))!;
     expect(a).not.toBe(b);
-    expect(consumeSsoCode(a)?.minecraftUsername).toBe("Alex");
-    expect(consumeSsoCode(b)?.minecraftUsername).toBe("Notch");
+    expect((await consumeSsoCode(a))?.minecraftUsername).toBe("Alex");
+    expect((await consumeSsoCode(b))?.minecraftUsername).toBe("Notch");
   });
 });

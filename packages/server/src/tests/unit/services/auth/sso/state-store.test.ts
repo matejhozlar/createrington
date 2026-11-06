@@ -12,48 +12,47 @@ afterEach(() => {
 });
 
 describe("sso state-store", () => {
-  it("peeks a freshly issued state without consuming it", () => {
-    const state = issueSsoState(returnTo);
-    expect(peekSsoState(state)).toEqual({ returnTo });
-    // Still readable: peek must not consume.
-    expect(peekSsoState(state)).toEqual({ returnTo });
+  it("peeks a freshly issued state without consuming it", async () => {
+    const state = (await issueSsoState(returnTo))!;
+    expect(await peekSsoState(state)).toEqual({ returnTo });
+    expect(await peekSsoState(state)).toEqual({ returnTo });
   });
 
-  it("consumes a state once, then misses", () => {
-    const state = issueSsoState(returnTo);
-    expect(consumeSsoState(state)).toEqual({ returnTo });
-    expect(consumeSsoState(state)).toBeNull();
-    expect(peekSsoState(state)).toBeNull();
+  it("consumes a state once, then misses", async () => {
+    const state = (await issueSsoState(returnTo))!;
+    expect(await consumeSsoState(state)).toEqual({ returnTo });
+    expect(await consumeSsoState(state)).toBeNull();
+    expect(await peekSsoState(state)).toBeNull();
   });
 
-  it("returns null for an unknown state", () => {
-    expect(peekSsoState("deadbeef")).toBeNull();
-    expect(consumeSsoState("deadbeef")).toBeNull();
+  it("returns null for an unknown state", async () => {
+    expect(await peekSsoState("deadbeef")).toBeNull();
+    expect(await consumeSsoState("deadbeef")).toBeNull();
   });
 
-  it("expires a state after the 15m TTL", () => {
+  it("expires a state after the 15m TTL", async () => {
     vi.useFakeTimers();
-    const state = issueSsoState(returnTo);
+    const state = (await issueSsoState(returnTo))!;
     vi.advanceTimersByTime(15 * 60 * 1000 + 1);
-    expect(peekSsoState(state)).toBeNull();
-    expect(consumeSsoState(state)).toBeNull();
+    expect(await peekSsoState(state)).toBeNull();
+    expect(await consumeSsoState(state)).toBeNull();
   });
 
-  it("still resolves just before the TTL elapses", () => {
+  it("still resolves just before the TTL elapses", async () => {
     vi.useFakeTimers();
-    const state = issueSsoState(returnTo);
+    const state = (await issueSsoState(returnTo))!;
     vi.advanceTimersByTime(14 * 60 * 1000);
-    expect(peekSsoState(state)).toEqual({ returnTo });
+    expect(await peekSsoState(state)).toEqual({ returnTo });
   });
 
-  it("issues distinct states for separate flows", () => {
-    const a = issueSsoState("https://sandbox.createrington.com/a");
-    const b = issueSsoState("https://panel.createrington.com/b");
+  it("issues distinct states for separate flows", async () => {
+    const a = (await issueSsoState("https://sandbox.createrington.com/a"))!;
+    const b = (await issueSsoState("https://panel.createrington.com/b"))!;
     expect(a).not.toBe(b);
-    expect(consumeSsoState(a)?.returnTo).toBe(
+    expect((await consumeSsoState(a))?.returnTo).toBe(
       "https://sandbox.createrington.com/a",
     );
-    expect(consumeSsoState(b)?.returnTo).toBe(
+    expect((await consumeSsoState(b))?.returnTo).toBe(
       "https://panel.createrington.com/b",
     );
   });
