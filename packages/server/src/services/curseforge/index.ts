@@ -26,6 +26,11 @@ import {
 } from "@createrington/content-gateway-client";
 import config from "@/config";
 import { contentGateway, currentContentPool } from "@/services/content-gateway";
+import {
+  createKeyValueStore,
+  readStored,
+  writeStored,
+} from "@/services/key-value-store";
 import { CURSEFORGE_CLASSES } from "@createrington/shared/workshop";
 
 export const CurseForgeClass = CURSEFORGE_CLASSES;
@@ -1321,10 +1326,44 @@ export async function resolveModpackRelease(
   };
 }
 
-const modpackCache = new Map<
-  number,
-  { manifest: ModpackManifest; fetchedAt: number; ttlMs: number }
->();
+type StoredModpackManifest = Omit<
+  ModpackManifest,
+  "modIds" | "disabledModIds"
+> & { modIds: number[]; disabledModIds: number[] };
+
+const manifestStore = createKeyValueStore(16);
+
+function manifestKey(packProjectId: number): string {
+  return `modpack:manifest:${packProjectId}`;
+}
+
+async function readStoredManifest(
+  packProjectId: number,
+): Promise<ModpackManifest | undefined> {
+  const stored = await readStored<StoredModpackManifest>(
+    manifestStore,
+    manifestKey(packProjectId),
+  );
+  if (!stored) return undefined;
+  return {
+    ...stored,
+    modIds: new Set(stored.modIds),
+    disabledModIds: new Set(stored.disabledModIds),
+  };
+}
+
+function storeManifest(
+  packProjectId: number,
+  manifest: ModpackManifest,
+  ttlMs: number,
+): Promise<void> {
+  const stored: StoredModpackManifest = {
+    ...manifest,
+    modIds: [...manifest.modIds],
+    disabledModIds: [...manifest.disabledModIds],
+  };
+  return writeStored(manifestStore, manifestKey(packProjectId), stored, ttlMs);
+}
 
 const inFlightManifests = new Map<
   number,
@@ -1366,9 +1405,9 @@ export async function getModpackManifest(
   if (force) lastForcedReads.set(packProjectId, Date.now());
   const callSeq = readSeq;
 
-  const cached = modpackCache.get(packProjectId);
-  if (!force && cached && Date.now() - cached.fetchedAt < cached.ttlMs) {
-    return cached.manifest;
+  if (!force) {
+    const stored = await readStoredManifest(packProjectId);
+    if (stored) return stored;
   }
 
   let inFlight = inFlightManifests.get(packProjectId);
@@ -1454,11 +1493,11 @@ async function fetchModpackManifest(
     modIds: new Set(files.map((f) => f.projectId)),
     disabledModIds: manifestDisabledModIds(files),
   };
-  modpackCache.set(packProjectId, {
-    manifest: result,
-    fetchedAt: Date.now(),
-    ttlMs: complete ? MODPACK_CACHE_TTL : MODPACK_INCOMPLETE_CACHE_TTL,
-  });
+  await storeManifest(
+    packProjectId,
+    result,
+    complete ? MODPACK_CACHE_TTL : MODPACK_INCOMPLETE_CACHE_TTL,
+  );
 
   logger.info(
     `Cached modpack mod list: ${result.modIds.size} mods from file ${file.id}` +
