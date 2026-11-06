@@ -95,7 +95,7 @@ async function syncNicknames(): Promise<void> {
       }
     }
   } finally {
-    client.destroy();
+    await client.destroy();
     process.exit(0);
   }
 }

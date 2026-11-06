@@ -19,7 +19,7 @@ interface DiscordEntities {
 async function ensureDir(dirPath: string): Promise<void> {
   try {
     await fs.access(dirPath);
-  } catch (error) {
+  } catch {
     await fs.mkdir(dirPath, { recursive: true });
     console.log(`Created directory: ${dirPath}`);
   }
@@ -262,8 +262,8 @@ async function scrapeDiscordEntities(): Promise<void> {
     console.error(error);
     process.exit(1);
   } finally {
-    client.destroy();
+    await client.destroy();
   }
 }
 
-scrapeDiscordEntities();
+void scrapeDiscordEntities();

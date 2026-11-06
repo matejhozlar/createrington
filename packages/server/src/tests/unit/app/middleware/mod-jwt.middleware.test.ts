@@ -195,7 +195,7 @@ describe("requireKnownPlayer", () => {
 
     await (requireKnownPlayer as (...a: unknown[]) => Promise<void>)(
       req,
-      {} as Response,
+      {},
       next,
     );
 
@@ -211,7 +211,7 @@ describe("requireKnownPlayer", () => {
       const { next, errors } = collectNext();
       await (requireKnownPlayer as (...a: unknown[]) => Promise<void>)(
         reqWithUuid("u1"),
-        {} as Response,
+        {},
         next,
       );
       return errors;
@@ -231,7 +231,7 @@ describe("requireKnownPlayer", () => {
       const { next, errors } = collectNext();
       await (requireKnownPlayer as (...a: unknown[]) => Promise<void>)(
         reqWithUuid("u-missing"),
-        {} as Response,
+        {},
         next,
       );
       return errors;
@@ -252,7 +252,7 @@ describe("requireKnownPlayer", () => {
         const { next, errors } = collectNext();
         await (requireKnownPlayer as (...a: unknown[]) => Promise<void>)(
           reqWithUuid("u1"),
-          {} as Response,
+          {},
           next,
         );
         return errors;
@@ -275,7 +275,7 @@ describe("requireKnownPlayer", () => {
 
     await (requireKnownPlayer as (...a: unknown[]) => Promise<void>)(
       reqWithUuid(undefined),
-      {} as Response,
+      {},
       next,
     );
 

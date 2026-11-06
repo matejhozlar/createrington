@@ -16,6 +16,17 @@ import {
 } from "@/services/curseforge";
 
 const fetchMock = vi.fn<typeof fetch>();
+
+function requestedUrl(call = 0): URL {
+  const input = fetchMock.mock.calls[call]?.[0];
+  return new URL(input instanceof Request ? input.url : String(input));
+}
+
+function sentJson(call = 0): unknown {
+  const body = fetchMock.mock.calls[call]?.[1]?.body;
+  if (typeof body !== "string") throw new Error("Expected a JSON string body");
+  return JSON.parse(body);
+}
 const GATEWAY = { url: "http://gateway.test:5005", token: "t".repeat(32) };
 const originalGateway = config.contentGateway;
 
@@ -101,7 +112,7 @@ describe("getFilesDetails", () => {
     const details = await getFilesDetails(ids);
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({
+    expect(sentJson()).toEqual({
       fileIds: ids,
     });
     expect(details.map((detail) => detail.fileId)).toEqual([7000001]);
@@ -201,10 +212,8 @@ describe("resolveDependencies", () => {
       TARGET,
     );
 
-    expect(new URL(String(fetchMock.mock.calls[0]?.[0])).pathname).toBe(
-      "/v1/curseforge/mods",
-    );
-    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({
+    expect(requestedUrl().pathname).toBe("/v1/curseforge/mods");
+    expect(sentJson()).toEqual({
       modIds: [238222, 999999999],
     });
     expect(resolved).toEqual([

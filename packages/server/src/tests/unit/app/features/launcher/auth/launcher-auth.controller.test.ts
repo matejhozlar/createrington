@@ -402,7 +402,7 @@ describe("LauncherAuthController", () => {
   });
 
   describe("me", () => {
-    it("returns only the player identity from the token", async () => {
+    it("returns only the player identity from the token", () => {
       const { res, json } = makeRes();
       const req = makeReq({
         launcherAuth: {

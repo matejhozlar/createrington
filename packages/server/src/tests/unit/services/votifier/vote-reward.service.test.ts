@@ -85,7 +85,7 @@ let send: ReturnType<
 let service: VoteRewardService;
 let commands: VoteRewardCommands;
 
-beforeEach(async () => {
+beforeEach(() => {
   vi.clearAllMocks();
   playtime = new EventEmitter();
   testPlaytime = new EventEmitter();
@@ -109,7 +109,7 @@ beforeEach(async () => {
   service.initialize();
 });
 
-afterEach(async () => {
+afterEach(() => {
   service.shutdown();
 });
 

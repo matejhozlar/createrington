@@ -10,11 +10,17 @@ import {
 } from "vitest";
 import { ComponentType } from "discord.js";
 
+type SendResult = {
+  success: boolean;
+  messageId: string | undefined;
+  error: string | undefined;
+};
+
 const sendMock = vi.hoisted(() =>
-  vi.fn(async (_options: unknown) => ({
-    success: true as boolean,
-    messageId: "message-1" as string | undefined,
-    error: undefined as string | undefined,
+  vi.fn(async (_options: unknown): Promise<SendResult> => ({
+    success: true,
+    messageId: "message-1",
+    error: undefined,
   })),
 );
 

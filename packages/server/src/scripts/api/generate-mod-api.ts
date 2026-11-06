@@ -16,7 +16,6 @@ import type {
   EndpointSpec,
   FieldSpec,
   FieldType,
-  RecordSpec,
 } from "./spec-types";
 
 // ---------------------------------------------------------------------------

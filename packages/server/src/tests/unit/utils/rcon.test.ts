@@ -19,11 +19,7 @@ vi.mock("@/config", () => ({
   },
 }));
 
-import {
-  MinecraftRconManager,
-  WhitelistAction,
-  type ServerId,
-} from "@/utils/rcon";
+import { MinecraftRconManager, WhitelistAction } from "@/utils/rcon";
 
 describe("MinecraftRconManager", () => {
   let rconManager: MinecraftRconManager;
@@ -58,7 +54,7 @@ describe("MinecraftRconManager", () => {
     });
 
     it("throws ServerNotFoundError for an unknown server", async () => {
-      await expect(rconManager.send(0 as ServerId, "list")).rejects.toThrow(
+      await expect(rconManager.send(0, "list")).rejects.toThrow(
         "Server with ID 0 not found in configuration",
       );
     });

@@ -39,7 +39,7 @@ async function waitForImagesToLoad(
     await Promise.all(
       imgs.map((img) =>
         img.complete
-          ? null
+          ? Promise.resolve()
           : new Promise<void>((resolve) => {
               img.addEventListener("load", () => resolve(), { once: true });
               img.addEventListener("error", () => resolve(), { once: true });

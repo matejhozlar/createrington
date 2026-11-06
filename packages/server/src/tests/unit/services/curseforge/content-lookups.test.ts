@@ -31,7 +31,14 @@ function answer(body: unknown, status = 200): Response {
 }
 
 function requestedUrl(call = 0): URL {
-  return new URL(String(fetchMock.mock.calls[call]?.[0]));
+  const input = fetchMock.mock.calls[call]?.[0];
+  return new URL(input instanceof Request ? input.url : String(input));
+}
+
+function sentJson(call = 0): unknown {
+  const body = fetchMock.mock.calls[call]?.[1]?.body;
+  if (typeof body !== "string") throw new Error("Expected a JSON string body");
+  return JSON.parse(body);
 }
 
 function requestedHeaders(call = 0): Headers {
@@ -447,7 +454,7 @@ describe("getContentFiles", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(requestedUrl().pathname).toBe("/v1/curseforge/mods/files");
     expect(fetchMock.mock.calls[0]?.[1]?.method).toBe("POST");
-    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({
+    expect(sentJson()).toEqual({
       fileIds: ids,
     });
     expect(files.map((file) => file.id)).toEqual([7000001]);
@@ -498,7 +505,7 @@ describe("matchFingerprints", () => {
 
     expect(requestedUrl().pathname).toBe("/v1/curseforge/fingerprints/432");
     expect(fetchMock.mock.calls[0]?.[1]?.method).toBe("POST");
-    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({
+    expect(sentJson()).toEqual({
       fingerprints: [522093599, 1],
     });
     expect(found).toHaveLength(1);
@@ -660,7 +667,7 @@ describe("getMods", () => {
 
     const [mod] = await getMods([328085]);
 
-    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({
+    expect(sentJson()).toEqual({
       modIds: [328085],
     });
     expect(mod).toMatchObject({

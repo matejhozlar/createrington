@@ -32,7 +32,7 @@ describe("BaseQueries select projection types", () => {
     );
     expectTypeOf(filtered).toEqualTypeOf<Projected[]>();
     // @ts-expect-error discordId was not selected
-    filtered[0]!.discordId;
+    filtered[0].discordId;
 
     const unfiltered = await Q.player.findAll(undefined, {
       select: ["minecraftUuid", "minecraftUsername"],
@@ -48,7 +48,7 @@ describe("BaseQueries select projection types", () => {
     });
     expectTypeOf(all).toEqualTypeOf<Projected[]>();
     // @ts-expect-error discordId was not selected
-    all[0]!.discordId;
+    all[0].discordId;
   });
 
   it("returns the full entity when select is omitted", async () => {
@@ -107,7 +107,7 @@ describe("BaseQueries select projection types", () => {
       await Q.player.where({}).select(FIELDS).first(),
     ).toEqualTypeOf<Projected | null>();
     // @ts-expect-error discordId was not selected
-    (await Q.player.getAll({ select: FIELDS }))[0]!.discordId;
+    (await Q.player.getAll({ select: FIELDS }))[0].discordId;
   });
 
   it("rejects keys that are not columns", () => {
@@ -130,7 +130,7 @@ describe("BaseQueries select projection types", () => {
       .all();
     expectTypeOf(rows).toEqualTypeOf<Projected[]>();
     // @ts-expect-error discordId was not selected
-    rows[0]!.discordId;
+    rows[0].discordId;
 
     const first = await Q.player
       .selectFields(["minecraftUuid"])

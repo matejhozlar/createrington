@@ -21,7 +21,7 @@ const ZERO_STATS: FunnelStats = {
 };
 
 const state = vi.hoisted(() => ({
-  intakeMode: "auto" as "auto" | "closed",
+  intakeMode: "auto",
   playerLimit: 10,
   playerCount: 0,
   promotedCount: 0,

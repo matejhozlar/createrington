@@ -1,5 +1,4 @@
 export { WhitelistAction } from "./enums";
-export type { ServerId } from "./types";
 export { MinecraftRconManager, minecraftRcon } from "./manager";
 export {
   MINECRAFT_USERNAME,
