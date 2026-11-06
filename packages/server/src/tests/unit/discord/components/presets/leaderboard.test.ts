@@ -61,7 +61,7 @@ function renderConfig(config: LeaderboardConfig, count: number) {
     at,
   );
   const [container] = result.components.map((c) => c.toJSON());
-  if (container?.type !== ComponentType.Container) {
+  if (container.type !== ComponentType.Container) {
     throw new Error("expected a container");
   }
   const children = container.components as ChildView[];
@@ -87,8 +87,8 @@ describe("LeaderboardComponentPresets.display", () => {
 
   it("leads with the title banner", () => {
     const { children } = render(LeaderboardType.PLAYTIME, 8);
-    expect(children[0]!.type).toBe(ComponentType.MediaGallery);
-    expect(children[0]!.items?.[0]?.media?.url).toContain("playtime.png");
+    expect(children[0].type).toBe(ComponentType.MediaGallery);
+    expect(children[0].items?.[0]?.media?.url).toContain("playtime.png");
   });
 
   it("renders one entry section per player with a separator between each", () => {
@@ -120,7 +120,7 @@ describe("LeaderboardComponentPresets.display", () => {
 
   it("renders names and values as headings with a subtitle line", () => {
     const { entrySections } = render(LeaderboardType.PLAYTIME, 1);
-    const content = entrySections[0]!.components?.[0]?.content ?? "";
+    const content = entrySections[0].components?.[0]?.content ?? "";
     expect(content).toContain("## 🥇 Player1");
     expect(content).toContain("## 100 pts");
     expect(content).toContain("-# 1 sessions");
@@ -128,7 +128,7 @@ describe("LeaderboardComponentPresets.display", () => {
 
   it("puts each player's head as the section thumbnail accessory", () => {
     const { entrySections } = render(LeaderboardType.PLAYTIME, 1);
-    expect(entrySections[0]!.accessory).toMatchObject({
+    expect(entrySections[0].accessory).toMatchObject({
       type: ComponentType.Thumbnail,
       media: { url: "https://app.test/api/skin/uuid-1/avatar" },
     });

@@ -65,7 +65,6 @@ export class RotatingStatusService {
 
   private async rotateStatus(): Promise<void> {
     const statusConfig = this.statuses[this.currentIndex];
-    if (!statusConfig) return;
     this.currentIndex = (this.currentIndex + 1) % this.statuses.length;
 
     try {

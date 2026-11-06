@@ -249,8 +249,6 @@ class LauncherContentService {
   /** One file with its address, hash and dependencies, a blocked file with the address another source has for it. Throws `FILE_NOT_FOUND` (404) when CurseForge does not know it, publishes no SHA-1 for it, or it belongs to no mod, resource pack, shader or modpack of Minecraft. */
   async getFile(fileId: number): Promise<LauncherContentFileDetails> {
     const [file] = await this.withDownloads([await this.loadFile(fileId)]);
-    if (!file)
-      throw new Error(`No download details came back for file ${fileId}`);
     return file;
   }
 

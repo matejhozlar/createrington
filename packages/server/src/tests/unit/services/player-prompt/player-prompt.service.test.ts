@@ -290,7 +290,7 @@ describe("PlayerPromptService.submitResponse", () => {
     });
 
     expect(upsertCalls).toHaveLength(0);
-    expect(appendCalls[0]!.maxEntries).toBe(3);
+    expect(appendCalls[0].maxEntries).toBe(3);
     expect(message).toContain("Entry #2 recorded.");
     expect(message).toContain("You have 1 entry left.");
   });
@@ -360,7 +360,7 @@ describe("PlayerPromptService.submitResponse", () => {
       responseText: "first",
     });
 
-    expect(appendCalls[0]!.cooldownSeconds).toBe(600);
+    expect(appendCalls[0].cooldownSeconds).toBe(600);
   });
 
   it("reports the cooldown when a concurrent entry lands first", async () => {

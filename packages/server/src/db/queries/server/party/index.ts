@@ -146,9 +146,8 @@ export class ServerPartyQueries extends ServerPartyBaseQueries {
   }
 
   /** Server-wide totals for the admin Parties page. */
-  getStats(serverId: number): Promise<PartyStats> {
-    return this.runQueryForRow<PartyStats>(
-      "get party stats",
+  async getStats(serverId: number): Promise<PartyStats> {
+    const result = await this.db.query<PartyStats>(
       `SELECT
         COUNT(*)::int AS "parties",
         COUNT(*) FILTER (WHERE p.tag IS NOT NULL)::int AS "taggedParties",
@@ -179,6 +178,7 @@ export class ServerPartyQueries extends ServerPartyBaseQueries {
       WHERE p.server_id = $1`,
       [serverId],
     );
+    return result.rows[0];
   }
 
   /** Parties whose name contains the query, for autocompletes. */

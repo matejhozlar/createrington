@@ -204,8 +204,8 @@ describe("StructurePackRotationService", () => {
   it("still runs a manual rotation while disabled", async () => {
     rotationConfig.enabled = false;
     packs = [makePack(1, { isActive: true }), makePack(2)];
-    activePack = packs[0]!;
-    eligiblePacks = [packs[1]!];
+    activePack = packs[0];
+    eligiblePacks = [packs[1]];
     const service = makeService();
 
     await service.executeRotation(true);

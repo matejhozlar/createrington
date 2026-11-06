@@ -45,7 +45,7 @@ describe("WaitlistEntryQueries.getFunnelStats", () => {
 
     await queries.getFunnelStats(WINDOWS);
 
-    const sql = query.mock.calls[0]![0] as string;
+    const sql = query.mock.calls[0][0] as string;
     expect(sql.match(/created_at >= \$\d+/g)).toHaveLength(3);
     expect(sql).not.toContain("queued_at");
   });
@@ -55,7 +55,7 @@ describe("WaitlistEntryQueries.getFunnelStats", () => {
 
     await queries.getFunnelStats(WINDOWS);
 
-    expect(query.mock.calls[0]![1]).toEqual([
+    expect(query.mock.calls[0][1]).toEqual([
       WINDOWS.today,
       WINDOWS.weekAgo,
       WINDOWS.monthAgo,
@@ -84,7 +84,7 @@ describe("WaitlistEntryQueries.getFunnelStats", () => {
     await queries.getFunnelStats();
 
     const { today, weekAgo, monthAgo } = signupWindows();
-    expect(query.mock.calls[0]![1]).toEqual([today, weekAgo, monthAgo]);
+    expect(query.mock.calls[0][1]).toEqual([today, weekAgo, monthAgo]);
   });
 });
 

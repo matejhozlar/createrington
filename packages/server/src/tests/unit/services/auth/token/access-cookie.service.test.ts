@@ -49,14 +49,14 @@ describe("AccessCookieService", () => {
     it("sets the cookie with the configured name and value", () => {
       accessCookieService.setCookie(res, "the-token");
       expect(cookieCalls).toHaveLength(1);
-      const [name, value] = cookieCalls[0]!;
+      const [name, value] = cookieCalls[0];
       expect(name).toBe("crt_access");
       expect(value).toBe("the-token");
     });
 
     it("uses httpOnly + sameSite=lax + secure (in prod) + path=/", () => {
       accessCookieService.setCookie(res, "x");
-      const opts = cookieCalls[0]![2];
+      const opts = cookieCalls[0][2];
       expect(opts.httpOnly).toBe(true);
       expect(opts.sameSite).toBe("lax");
       expect(opts.secure).toBe(true);
@@ -65,7 +65,7 @@ describe("AccessCookieService", () => {
 
     it("scopes the cookie to the configured domain", () => {
       accessCookieService.setCookie(res, "x");
-      expect(cookieCalls[0]![2].domain).toBe(".createrington.com");
+      expect(cookieCalls[0][2].domain).toBe(".createrington.com");
     });
 
     it("uses maxAge matching the refresh token expiry, not the JWT expiry", () => {
@@ -73,7 +73,7 @@ describe("AccessCookieService", () => {
       // returns 401 and the client refreshes, which requires the cookie to
       // still be present in the browser.
       accessCookieService.setCookie(res, "x");
-      expect(cookieCalls[0]![2].maxAge).toBe(30 * 86_400_000);
+      expect(cookieCalls[0][2].maxAge).toBe(30 * 86_400_000);
     });
   });
 
@@ -85,12 +85,12 @@ describe("AccessCookieService", () => {
       accessCookieService.clearCookie(res);
       expect(clearCalls).toHaveLength(2);
 
-      const [hostOnlyName, hostOnlyOpts] = clearCalls[0]!;
+      const [hostOnlyName, hostOnlyOpts] = clearCalls[0];
       expect(hostOnlyName).toBe("crt_access");
       expect(hostOnlyOpts.domain).toBeUndefined();
       expect(hostOnlyOpts.path).toBe("/");
 
-      const [domainName, domainOpts] = clearCalls[1]!;
+      const [domainName, domainOpts] = clearCalls[1];
       expect(domainName).toBe("crt_access");
       expect(domainOpts.domain).toBe(".createrington.com");
       expect(domainOpts.path).toBe("/");
@@ -104,9 +104,9 @@ describe("AccessCookieService", () => {
       accessCookieService.setCookie(res, "fresh-token");
       // Exactly one clear (host-only) and one set (domain-scoped)
       expect(clearCalls).toHaveLength(1);
-      expect(clearCalls[0]![1].domain).toBeUndefined();
+      expect(clearCalls[0][1].domain).toBeUndefined();
       expect(cookieCalls).toHaveLength(1);
-      expect(cookieCalls[0]![2].domain).toBe(".createrington.com");
+      expect(cookieCalls[0][2].domain).toBe(".createrington.com");
     });
   });
 

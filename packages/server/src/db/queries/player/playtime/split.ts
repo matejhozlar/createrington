@@ -66,14 +66,14 @@ export function splitPeriod(
   const buckets: PeriodBucket[] = [];
   let assigned = 0;
 
-  for (const [i, window] of windows.entries()) {
+  for (let i = 0; i < windows.length; i++) {
     const isLast = i === windows.length - 1;
     const share = isLast
       ? seconds - assigned
-      : Math.floor((seconds * window.ms) / wallclockMs);
+      : Math.floor((seconds * windows[i].ms) / wallclockMs);
     assigned += share;
     if (share > 0) {
-      buckets.push({ bucket: window.bucket, seconds: share });
+      buckets.push({ bucket: windows[i].bucket, seconds: share });
     }
   }
 

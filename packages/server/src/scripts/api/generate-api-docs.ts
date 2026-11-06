@@ -147,9 +147,10 @@ function parseRouteFile(source: string, prefix: string): ParsedRoute[] {
 
   for (let i = 0; i < lines.length; i++) {
     // Match: router.get( , router.post( , etc.
-    const line = lines[i] ?? "";
-    const methodMatch = line.match(/router\.(get|post|put|patch|delete)\(\s*$/);
-    const inlineMatch = line.match(
+    const methodMatch = lines[i].match(
+      /router\.(get|post|put|patch|delete)\(\s*$/,
+    );
+    const inlineMatch = lines[i].match(
       /router\.(get|post|put|patch|delete)\(\s*"([^"]+)"/,
     );
 
@@ -160,12 +161,12 @@ function parseRouteFile(source: string, prefix: string): ParsedRoute[] {
     // Extract path: may be on the same line or the next
     let routePath: string;
     if (inlineMatch) {
-      routePath = inlineMatch[2] ?? "/";
+      routePath = inlineMatch[2];
     } else {
       // Path is on the next non-empty line
       const nextLine = lines[i + 1]?.trim() ?? "";
       const pathMatch = nextLine.match(/^"([^"]+)"/);
-      routePath = pathMatch?.[1] ?? "/";
+      routePath = pathMatch ? pathMatch[1] : "/";
     }
 
     const fullPath = prefix + (routePath === "/" ? "" : routePath);
@@ -178,9 +179,7 @@ function parseRouteFile(source: string, prefix: string): ParsedRoute[] {
     const handlerMatch = block.match(
       /(\w+Controller\.\w+|(\w+Controller)\.\w+)/,
     );
-    const handlerMethod = handlerMatch
-      ? (handlerMatch[0].split(".")[1] ?? null)
-      : null;
+    const handlerMethod = handlerMatch ? handlerMatch[0].split(".")[1] : null;
 
     // Collect preceding comment block
     const routeComment = collectPrecedingComment(lines, i);
@@ -197,7 +196,7 @@ function parseRouteFile(source: string, prefix: string): ParsedRoute[] {
 function resolveAuth(block: string): string {
   // Pattern 1: ...route("public"|"user"|"admin", ...)
   const routeMatch = block.match(/\.\.\.route\(\s*"(public|user|admin)"/);
-  if (routeMatch?.[1]) return routeMatch[1];
+  if (routeMatch) return routeMatch[1];
 
   // Pattern 2: ...customRoute([middleware...], ...)
   if (block.includes("customRoute")) {
@@ -229,16 +228,15 @@ function collectPrecedingComment(lines: string[], index: number): string {
   let j = index - 1;
 
   // Skip blank lines
-  while (j >= 0 && (lines[j] ?? "").trim() === "") j--;
+  while (j >= 0 && lines[j].trim() === "") j--;
 
   if (j < 0) return "";
 
   // Check for JSDoc block (ends with */)
-  if ((lines[j] ?? "").trim().endsWith("*/")) {
+  if (lines[j].trim().endsWith("*/")) {
     while (j >= 0) {
-      const current = lines[j] ?? "";
-      commentLines.unshift(current);
-      if (current.trim().startsWith("/**") || current.trim().startsWith("/*"))
+      commentLines.unshift(lines[j]);
+      if (lines[j].trim().startsWith("/**") || lines[j].trim().startsWith("/*"))
         break;
       j--;
     }
@@ -246,8 +244,8 @@ function collectPrecedingComment(lines: string[], index: number): string {
   }
 
   // Check for single-line comments
-  while (j >= 0 && (lines[j] ?? "").trim().startsWith("//")) {
-    commentLines.unshift((lines[j] ?? "").trim().replace(/^\/\/\s?/, ""));
+  while (j >= 0 && lines[j].trim().startsWith("//")) {
+    commentLines.unshift(lines[j].trim().replace(/^\/\/\s?/, ""));
     j--;
   }
 
@@ -281,15 +279,16 @@ function parseControllerFile(source: string): Map<string, ControllerDoc> {
 
   for (let i = 0; i < lines.length; i++) {
     // Match: static async methodName(
-    const methodMatch = (lines[i] ?? "").match(/static\s+async\s+(\w+)\s*\(/);
-    const methodName = methodMatch?.[1];
-    if (!methodName) continue;
+    const methodMatch = lines[i].match(/static\s+async\s+(\w+)\s*\(/);
+    if (!methodMatch) continue;
+
+    const methodName = methodMatch[1];
 
     // Walk backwards to find the JSDoc block
     let j = i - 1;
-    while (j >= 0 && (lines[j] ?? "").trim() === "") j--;
+    while (j >= 0 && lines[j].trim() === "") j--;
 
-    if (j < 0 || !(lines[j] ?? "").trim().endsWith("*/")) {
+    if (j < 0 || !lines[j].trim().endsWith("*/")) {
       docs.set(methodName, { description: "", body: null });
       continue;
     }
@@ -297,9 +296,8 @@ function parseControllerFile(source: string): Map<string, ControllerDoc> {
     // Collect the full JSDoc block
     const commentLines: string[] = [];
     while (j >= 0) {
-      const current = lines[j] ?? "";
-      commentLines.unshift(current);
-      if (current.trim().startsWith("/**") || current.trim().startsWith("/*"))
+      commentLines.unshift(lines[j]);
+      if (lines[j].trim().startsWith("/**") || lines[j].trim().startsWith("/*"))
         break;
       j--;
     }
@@ -337,7 +335,7 @@ function parseControllerJsDoc(text: string): ControllerDoc {
     // Body annotation: "Body: { ... }" or "@body {{ ... }}"
     const bodyMatch = trimmed.match(/^(?:Body:|@body)\s*(\{.+\})\s*$/i);
     if (bodyMatch) {
-      body = bodyMatch[1] ?? null;
+      body = bodyMatch[1];
       continue;
     }
 

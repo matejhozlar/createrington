@@ -637,7 +637,7 @@ describe("LauncherPackService.prepareRelease", () => {
 
     expect(await isReady(release.id)).toBe(true);
     expect(sendMock).toHaveBeenCalledTimes(1);
-    const notice = sendMock.mock.calls[0]![0];
+    const notice = sendMock.mock.calls[0][0];
     expect(notice.channelId).toBe(
       Discord.Channels.administration.NOTIFICATIONS,
     );
@@ -758,7 +758,7 @@ describe("LauncherPackService.prepareRelease", () => {
     });
     expect(await isReady(release.id)).toBe(true);
     expect(sendMock).toHaveBeenCalledTimes(1);
-    expect(sendMock.mock.calls[0]![0].embeds.data.description).toContain(
+    expect(sendMock.mock.calls[0][0].embeds.data.description).toContain(
       `mod-${blocked.fileId}.jar`,
     );
     const resolved = await launcherPackService.resolveFiles([blocked.fileId]);
@@ -786,7 +786,7 @@ describe("LauncherPackService.prepareRelease", () => {
       cdn: false,
     });
     const resolved = await launcherPackService.resolveFiles([blocked.fileId]);
-    expect(resolved.files[0]!.source).toBe("manual");
+    expect(resolved.files[0].source).toBe("manual");
   });
 
   it("checks a stored built address again when a release is prepared", async () => {
@@ -860,7 +860,7 @@ describe("LauncherPackService.prepareRelease", () => {
       "1.0.0",
     );
     expect(sendMock).toHaveBeenCalledTimes(1);
-    expect(sendMock.mock.calls[0]![0].embeds.data.description).toContain(
+    expect(sendMock.mock.calls[0][0].embeds.data.description).toContain(
       String(unknown.fileId),
     );
   });
@@ -936,7 +936,7 @@ describe("LauncherPackService.prepareRelease", () => {
     expect(await isReady(release.id)).toBe(false);
     expect(getFilesDetails).not.toHaveBeenCalled();
     expect(sendMock).toHaveBeenCalledTimes(1);
-    expect(sendMock.mock.calls[0]![0].embeds.data.description).toContain(
+    expect(sendMock.mock.calls[0][0].embeds.data.description).toContain(
       "server pack",
     );
   });
@@ -1142,7 +1142,7 @@ describe("LauncherPackService.getLatestPack for a pack the launcher is not offer
       "vitest-test",
       FIRST_PAGE,
     );
-    const summary = (await launcherPackService.listPacks())[0]!;
+    const [summary] = await launcherPackService.listPacks();
 
     expect(latest.code).toBe("PACK_UNAVAILABLE");
     expect(listed).toEqual({ releases: [], total: 0 });
@@ -1281,7 +1281,7 @@ describe("LauncherPackService.prepareSnapshot", () => {
         servedBy: "storage",
       },
     });
-    const summary = (await launcherPackService.listPacks())[0]!;
+    const [summary] = await launcherPackService.listPacks();
     expect(summary.latest).toEqual(latest);
     expect(getFilesDetails).toHaveBeenCalledWith([file.fileId]);
   });
@@ -1441,7 +1441,7 @@ describe("LauncherPackService.prepareSnapshot", () => {
     });
     expect(await isReady(release.id)).toBe(false);
     expect(sendMock).toHaveBeenCalledTimes(1);
-    expect(JSON.stringify(sendMock.mock.calls[0]![0])).toContain(
+    expect(JSON.stringify(sendMock.mock.calls[0][0])).toContain(
       "report the snapshot again",
     );
     const error = await refusal(
@@ -1522,10 +1522,10 @@ describe("LauncherPackService.listPacks", () => {
       iconUrl: PACK_ON_CURSEFORGE.thumbnailUrl,
       server: null,
     });
-    expect(packs[1]!.latest).toEqual(
+    expect(packs[1].latest).toEqual(
       await launcherPackService.getLatestPack(PACK_SLUG),
     );
-    expect(packs[1]!.latest?.version).toBe("1.1.0");
+    expect(packs[1].latest?.version).toBe("1.1.0");
   });
 
   it("describes a CurseForge pack from its modpack row while its project cannot be served, without a release", async () => {
@@ -1553,7 +1553,7 @@ describe("LauncherPackService.listPacks", () => {
   it("lists a pack without a release with latest null", async () => {
     await seedPack();
 
-    const pack = (await launcherPackService.listPacks())[0]!;
+    const [pack] = await launcherPackService.listPacks();
 
     expect(pack.name).toBe(PACK_ON_CURSEFORGE.name);
     expect(pack.latest).toBeNull();
@@ -1665,7 +1665,7 @@ describe("LauncherPackService.seedDefaultPack", () => {
 
     const packs = await Q.launcher.pack.getAll();
     expect(packs.map((p) => p.slug)).toEqual(["vitest-other"]);
-    expect(packs[0]!.modpackId).not.toBe(modpack.id);
+    expect(packs[0].modpackId).not.toBe(modpack.id);
     expect(await settings.getLauncherPacksSeeded()).toBe(true);
   });
 });
@@ -1710,8 +1710,8 @@ describe("LauncherPackService owner methods", () => {
       enabled: true,
     });
     expect(packs.map((pack) => pack.slug)).toEqual([PACK_SLUG, "vitest-test"]);
-    expect(packs[1]!.position).toBeGreaterThan(packs[0]!.position);
-    expect(packs[0]!.modpack).toEqual({
+    expect(packs[1].position).toBeGreaterThan(packs[0].position);
+    expect(packs[0].modpack).toEqual({
       id: first.id,
       name: first.name,
       curseforgeProjectId: PACK_PROJECT_ID,
@@ -1780,7 +1780,7 @@ describe("LauncherPackService owner methods", () => {
     const file = await seedFile();
     serveFromCurseForge([file]);
     await seedReadyRelease(modpack, "1.0.0", [file]);
-    const pack = (await owned())[0]!;
+    const [pack] = await owned();
 
     const hidden = await launcherPackService.setPackEnabled(pack.id, false);
     const listedWhileHidden = await launcherPackService.listPacks();
@@ -1789,7 +1789,7 @@ describe("LauncherPackService owner methods", () => {
     expect(hidden.enabled).toBe(false);
     expect(listedWhileHidden.map((p) => p.slug)).not.toContain(PACK_SLUG);
     expect(shown.enabled).toBe(true);
-    expect((await owned())[0]!.latestVersion).toBe("1.0.0");
+    expect((await owned())[0].latestVersion).toBe("1.0.0");
   });
 
   it("refuses to hide a pack that does not exist", async () => {
@@ -1821,9 +1821,9 @@ describe("LauncherPackService owner methods", () => {
 
     await launcherPackService.reorderPacks([
       ...others,
-      before[2]!.id,
-      before[0]!.id,
-      before[1]!.id,
+      before[2].id,
+      before[0].id,
+      before[1].id,
     ]);
 
     expect((await owned()).map((pack) => pack.slug)).toEqual([
@@ -1840,7 +1840,7 @@ describe("LauncherPackService owner methods", () => {
 
   it("refuses an order that does not name every pack exactly once", async () => {
     await seedPack();
-    const pack = (await owned())[0]!;
+    const [pack] = await owned();
     const all = await Q.launcher.pack.findAll({});
 
     await expect(
@@ -1861,7 +1861,7 @@ describe("LauncherPackService owner methods", () => {
     const file = await seedFile();
     serveFromCurseForge([file]);
     const { release } = await seedReadyRelease(modpack, "1.0.0", [file]);
-    const pack = (await owned())[0]!;
+    const [pack] = await owned();
 
     const removed = await launcherPackService.removePack(pack.id);
     const latest = await refusal(launcherPackService.getLatestPack(PACK_SLUG));
@@ -2064,7 +2064,7 @@ describe("LauncherPackService.listReleases", () => {
       FIRST_PAGE,
     );
 
-    expect(releases[0]!.changelog).toEqual({
+    expect(releases[0].changelog).toEqual({
       previousVersion: "1.0.0",
       added: [
         {
@@ -2093,7 +2093,7 @@ describe("LauncherPackService.listReleases", () => {
       ],
       notes: null,
     });
-    expect(releases[1]!.changelog).toEqual({
+    expect(releases[1].changelog).toEqual({
       previousVersion: null,
       added: [],
       updated: [],
@@ -2118,7 +2118,7 @@ describe("LauncherPackService.listReleases", () => {
       FIRST_PAGE,
     );
 
-    expect(releases[0]!.changelog.notes).toBe(
+    expect(releases[0].changelog.notes).toBe(
       "Trains are faster now.\nThe nether was reset.",
     );
   });
@@ -2139,7 +2139,7 @@ describe("LauncherPackService.listReleases", () => {
     );
 
     expect(releases.map((release) => release.version)).toEqual(["1.1.0"]);
-    expect(releases[0]!.changelog).toEqual(
+    expect(releases[0].changelog).toEqual(
       expect.objectContaining({
         previousVersion: "1.0.0",
         added: [expect.objectContaining({ projectId: fresh.projectId })],
@@ -2201,7 +2201,7 @@ describe("LauncherPackService.checkReleases", () => {
     await launcherPackService.checkReleases(modpack);
 
     expect(getServedFileIds).toHaveBeenCalledTimes(1);
-    const asked = vi.mocked(getServedFileIds).mock.calls[0]![0];
+    const asked = vi.mocked(getServedFileIds).mock.calls[0][0];
     expect([...asked].sort()).toEqual(
       [
         old.manifest.fileId,
@@ -2487,7 +2487,7 @@ describe("LauncherPackService.resolveFiles", () => {
 
 describe("LauncherPackService.recheckStaleFiles", () => {
   const storedSource = async (fileId: number) =>
-    (await launcherPackService.resolveFiles([fileId])).files[0]!;
+    (await launcherPackService.resolveFiles([fileId])).files[0];
 
   it("looks a manual file up again after an hour and picks up a new source", async () => {
     const file = await seedFile({ blocked: true });
@@ -2681,7 +2681,7 @@ describe("LauncherPackService.recheckStaleFiles", () => {
     expect(getFilesDetails).toHaveBeenCalledTimes(2);
     const asked = vi.mocked(getFilesDetails).mock.calls.flatMap(([ids]) => ids);
     expect(asked).toEqual(expect.arrayContaining(fileIds));
-    expect(vi.mocked(getFilesDetails).mock.calls[0]![0]).toHaveLength(50);
+    expect(vi.mocked(getFilesDetails).mock.calls[0][0]).toHaveLength(50);
     const resolved = await launcherPackService.resolveFiles(fileIds);
     expect(resolved.files.every((file) => file.source === "modrinth")).toBe(
       true,

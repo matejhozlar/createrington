@@ -102,27 +102,25 @@ export class AutoMessageService {
       .orderBy("sortOrder", "asc")
       .all();
 
-    const [firstMessage] = messages;
-    if (!firstMessage) {
+    if (messages.length === 0) {
       logger.debug(
         `No enabled messages for auto-message config ${configId}, skipping`,
       );
       return;
     }
 
-    let message = firstMessage;
+    let message: (typeof messages)[0];
 
     if (config.rotationMode === "sequential") {
       const index = config.currentIndex % messages.length;
-      message = messages[index] ?? firstMessage;
+      message = messages[index];
 
       await Q.discord.auto.message.config.update(
         { id: configId },
         { currentIndex: (index + 1) % messages.length },
       );
     } else {
-      message =
-        messages[Math.floor(Math.random() * messages.length)] ?? firstMessage;
+      message = messages[Math.floor(Math.random() * messages.length)];
     }
 
     const resolvedContent = await this.resolveTemplateVariables(

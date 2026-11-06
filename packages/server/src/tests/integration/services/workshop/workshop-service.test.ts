@@ -850,7 +850,7 @@ describe("workshop suggestion bans", () => {
     );
 
     expect(rows).toHaveLength(1);
-    expect(rows[0]!.status).toBe("approved");
+    expect(rows[0].status).toBe("approved");
   });
 
   it("rejects a duplicate in the same scope but allows global alongside scoped", async () => {
@@ -1002,15 +1002,15 @@ describe("WorkshopService.addModsAsAdmin", () => {
       ADMIN,
     );
 
-    await workshopService.reviewMod(added!.id, "start_testing", ADMIN);
+    await workshopService.reviewMod(added.id, "start_testing", ADMIN);
     await expect(
-      workshopService.reviewMod(added!.id, "send_back", ADMIN),
+      workshopService.reviewMod(added.id, "send_back", ADMIN),
     ).resolves.toMatchObject({ status: "approved" });
 
-    await workshopService.reviewMod(added!.id, "start_testing", ADMIN);
+    await workshopService.reviewMod(added.id, "start_testing", ADMIN);
     await workshopService.setProjectEnvironment(projectId, "server");
     await expect(
-      workshopService.reviewMod(added!.id, "approve", ADMIN),
+      workshopService.reviewMod(added.id, "approve", ADMIN),
     ).resolves.toMatchObject({ status: "next_update" });
   });
 
@@ -1070,7 +1070,7 @@ describe("WorkshopService.addModsAsAdmin", () => {
       fileId: projectId + 1,
       fileName: `vitest-project-${projectId}.zip`,
     });
-    expect(added!.project.classId).toBe(CurseForgeClass.resourcePacks);
+    expect(added.project.classId).toBe(CurseForgeClass.resourcePacks);
   });
 
   it("rejects a project class the workshop cannot take", async () => {
@@ -1192,8 +1192,8 @@ describe("WorkshopService.getRejectedMods", () => {
     const rows = await workshopService.getRejectedMods(workshop.id);
 
     expect(rows).toHaveLength(1);
-    expect(rows[0]!.id).toBe(rejected.id);
-    expect(rows[0]!.rejectReason).toBe("covered_by_other_mod");
+    expect(rows[0].id).toBe(rejected.id);
+    expect(rows[0].rejectReason).toBe("covered_by_other_mod");
   });
 
   it("throws NotFoundError for a draft workshop", async () => {
@@ -1278,7 +1278,7 @@ describe("WorkshopService.getPack", () => {
       curseforgeUrl: null,
     });
     expect(pack.mods.map((row) => row.id)).toEqual([member.id]);
-    expect(pack.mods[0]!.project.id).toBe(member.curseforgeProjectId);
+    expect(pack.mods[0].project.id).toBe(member.curseforgeProjectId);
   });
 
   it("resolves the pack's CurseForge url from the cached project", async () => {
@@ -1472,9 +1472,9 @@ describe("WorkshopService timeline events", () => {
     );
 
     await vi.waitFor(async () => {
-      expect(await modEvents(item!.id)).toHaveLength(1);
+      expect(await modEvents(item.id)).toHaveLength(1);
     });
-    expect((await modEvents(item!.id))[0]).toMatchObject({
+    expect((await modEvents(item.id))[0]).toMatchObject({
       eventType: "suggested",
       actorDiscordId: ADMIN,
       fromStatus: null,
@@ -2277,16 +2277,16 @@ describe("WorkshopService.listVisibleWorkshops", () => {
     for (let i = 0; i < 4; i++) {
       mods.push(await seedMod(ctx, workshop, { status: "pending" }));
     }
-    await upvoteMod(mods[1]!.id, [USER_A]);
+    await upvoteMod(mods[1].id, [USER_A]);
 
     const listed = (await workshopService.listVisibleWorkshops()).find(
       (row) => row.id === workshop.id,
     );
 
     expect(listed?.summary?.topMods.map((row) => row.workshopModId)).toEqual([
-      mods[1]!.id,
-      mods[3]!.id,
-      mods[2]!.id,
+      mods[1].id,
+      mods[3].id,
+      mods[2].id,
     ]);
   });
 

@@ -72,8 +72,8 @@ export class DiscordGuildMemberLeaveQueries extends DiscordGuildMemberLeaveBaseQ
         notification_message_id: string | null;
         departed_at: Date;
       }>(query, [discordId]);
-      const [row] = result.rows;
-      if (!row) return null;
+      if (result.rows.length === 0) return null;
+      const row = result.rows[0];
       return {
         id: row.id,
         discordId: row.discord_id,

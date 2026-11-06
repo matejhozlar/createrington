@@ -21,12 +21,10 @@ function parseCustomId(customId: string): {
   buttonIndex: number;
 } | null {
   const parts = customId.split(":");
-  const [, presetPart, indexPart] = parts;
-  if (parts.length !== 3 || presetPart === undefined || indexPart === undefined)
-    return null;
+  if (parts.length !== 3) return null;
 
-  const presetId = parseInt(presetPart, 10);
-  const buttonIndex = parseInt(indexPart, 10);
+  const presetId = parseInt(parts[1], 10);
+  const buttonIndex = parseInt(parts[2], 10);
 
   if (isNaN(presetId) || isNaN(buttonIndex)) return null;
   return { presetId, buttonIndex };

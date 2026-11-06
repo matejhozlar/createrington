@@ -91,7 +91,7 @@ function sentMessages(): Array<{
     }
     const root = nodes[rootIndex];
     const lead = nodes.slice(0, rootIndex).map((node) => node.content ?? "");
-    const texts = root!.components.flatMap((child) => {
+    const texts = root.components.flatMap((child) => {
       if (child.type === ComponentType.TextDisplay)
         return [child.content ?? ""];
       if (child.type === ComponentType.Section) {
@@ -103,7 +103,7 @@ function sentMessages(): Array<{
       channelId,
       lead,
       texts,
-      types: root!.components.map((child) => child.type),
+      types: root.components.map((child) => child.type),
       allowedMentions,
     };
   });
@@ -253,9 +253,7 @@ afterAll(async () => {
 describe("announceReleaseChangelog", () => {
   it("posts a release once, saved as a linked preset in the Changelogs category", async () => {
     const modpack = await seedPack();
-    const projects = await seedProjects(2);
-    const kept = projects[0]!;
-    const added = projects[1]!;
+    const [kept, added] = await seedProjects(2);
     await seedRelease(modpack, "1.0.0", [fileRow(kept, "1.0.0")]);
     const release = await seedRelease(modpack, "1.1.0", [
       fileRow(kept, "1.1.0"),
@@ -266,17 +264,17 @@ describe("announceReleaseChangelog", () => {
 
     expect(sendMock).toHaveBeenCalledTimes(1);
     const [message] = sentMessages();
-    expect(message!.channelId).toBe(CHANNEL_ID);
-    expect(message!.lead).toEqual([`||<@&${Discord.Roles.UPDATE}>||`]);
-    expect(message!.allowedMentions).toEqual({
+    expect(message.channelId).toBe(CHANNEL_ID);
+    expect(message.lead).toEqual([`||<@&${Discord.Roles.UPDATE}>||`]);
+    expect(message.allowedMentions).toEqual({
       roles: [Discord.Roles.UPDATE],
     });
-    expect(message!.texts[0]).toContain("## Vitest Pack 1.1.0");
-    expect(message!.texts[0]).toContain("NeoForge 21.1.172");
-    expect(message!.texts[0]).toContain("Changes since 1.0.0");
-    expect(message!.texts).toContain("### Added (1)");
-    expect(message!.texts).toContain("### Updated (1)");
-    expect(message!.texts.join("\n")).toContain(
+    expect(message.texts[0]).toContain("## Vitest Pack 1.1.0");
+    expect(message.texts[0]).toContain("NeoForge 21.1.172");
+    expect(message.texts[0]).toContain("Changes since 1.0.0");
+    expect(message.texts).toContain("### Added (1)");
+    expect(message.texts).toContain("### Updated (1)");
+    expect(message.texts.join("\n")).toContain(
       "`Vitest Mod " + kept + " 1.0.0` → `Vitest Mod " + kept + " 1.1.0`",
     );
 
@@ -290,9 +288,9 @@ describe("announceReleaseChangelog", () => {
       channelId: CHANNEL_ID,
       messageId: "message-1",
     });
-    expect(rows[0]!.sentAt).not.toBeNull();
+    expect(rows[0].sentAt).not.toBeNull();
 
-    const preset = await Q.discord.embed.preset.get({ id: rows[0]!.presetId! });
+    const preset = await Q.discord.embed.preset.get({ id: rows[0].presetId! });
     expect(preset).toMatchObject({
       name: "Changelog 1.1.0",
       kind: "components",
@@ -306,7 +304,7 @@ describe("announceReleaseChangelog", () => {
       await Q.discord.embed.preset.message.findAll({ presetId: preset.id }),
     ).toMatchObject([{ channelId: CHANNEL_ID, messageId: "message-1" }]);
 
-    const listed = (await modpackService.listReleases(modpack.id))[0]!;
+    const [listed] = await modpackService.listReleases(modpack.id);
     expect(listed.announcement).toEqual({
       parts: 1,
       sent: 1,
@@ -320,7 +318,7 @@ describe("announceReleaseChangelog", () => {
 
   it("appends the sandbox's publish notes under their own heading", async () => {
     const modpack = await seedPack();
-    const kept = (await seedProjects(1))[0]!;
+    const [kept] = await seedProjects(1);
     await seedRelease(modpack, "1.0.0", [fileRow(kept, "1.0.0")]);
     const release = await seedRelease(modpack, "1.1.0", [
       fileRow(kept, "1.1.0"),
@@ -336,8 +334,8 @@ describe("announceReleaseChangelog", () => {
 
     expect(sendMock).toHaveBeenCalledTimes(1);
     const [message] = sentMessages();
-    expect(message!.texts).toContain("### Additional notes");
-    expect(message!.texts).toContain(
+    expect(message.texts).toContain("### Additional notes");
+    expect(message.texts).toContain(
       "Rebalanced ore generation.\nDelete your old configs.",
     );
   });
@@ -371,7 +369,7 @@ describe("announceReleaseChangelog", () => {
       { orderBy: "part", orderDirection: "asc" },
     );
     expect(rows.length).toBeGreaterThan(2);
-    expect(rows[0]!.messageId).toBe("first");
+    expect(rows[0].messageId).toBe("first");
     expect(rows.slice(1).every((row) => row.messageId === null)).toBe(true);
     expect(sendMock).toHaveBeenCalledTimes(2);
     expect(rows.map((row) => row.partCount)).toEqual(
@@ -385,9 +383,9 @@ describe("announceReleaseChangelog", () => {
       rows.map((row) => `Changelog 2.1.0 (${row.part}/${rows.length})`).sort(),
     );
     const [first] = sentMessages();
-    expect(first!.types[0]).toBe(ComponentType.TextDisplay);
-    expect(first!.texts[0]).toContain("## Vitest Pack 2.1.0");
-    expect(first!.allowedMentions).toEqual({ roles: [Discord.Roles.UPDATE] });
+    expect(first.types[0]).toBe(ComponentType.TextDisplay);
+    expect(first.texts[0]).toContain("## Vitest Pack 2.1.0");
+    expect(first.allowedMentions).toEqual({ roles: [Discord.Roles.UPDATE] });
 
     sendMock.mockClear();
     await announce(modpack, release, false);
@@ -418,7 +416,7 @@ describe("announceReleaseChangelog", () => {
 
   it("posts the first part again silently when saving its message id failed", async () => {
     const modpack = await seedPack();
-    const project = (await seedProjects(1))[0]!;
+    const [project] = await seedProjects(1);
     await seedRelease(modpack, "2.5.0", []);
     const release = await seedRelease(modpack, "2.6.0", [
       fileRow(project, "1.0.0"),
@@ -443,19 +441,19 @@ describe("announceReleaseChangelog", () => {
 
     const [pinged, silent] = sentMessages();
     expect(sendMock).toHaveBeenCalledTimes(2);
-    expect(pinged!.allowedMentions).toEqual({ roles: [Discord.Roles.UPDATE] });
-    expect(silent!.allowedMentions).toBeUndefined();
-    expect(silent!.lead).toEqual(pinged!.lead);
+    expect(pinged.allowedMentions).toEqual({ roles: [Discord.Roles.UPDATE] });
+    expect(silent.allowedMentions).toBeUndefined();
+    expect(silent.lead).toEqual(pinged.lead);
 
     const [row] = await Q.modpack.release.announcement.findAll({
       releaseId: release.id,
     });
-    expect(row!.messageId).not.toBeNull();
+    expect(row.messageId).not.toBeNull();
   });
 
   it("sends an admin-edited preset instead of the generated part", async () => {
     const modpack = await seedPack();
-    const project = (await seedProjects(1))[0]!;
+    const [project] = await seedProjects(1);
     await seedRelease(modpack, "3.0.0", []);
     const release = await seedRelease(modpack, "3.1.0", [
       fileRow(project, "1.0.0"),
@@ -469,10 +467,10 @@ describe("announceReleaseChangelog", () => {
     const [row] = await Q.modpack.release.announcement.findAll({
       releaseId: release.id,
     });
-    expect(row!.messageId).toBeNull();
+    expect(row.messageId).toBeNull();
 
     await Q.discord.embed.preset.update(
-      { id: row!.presetId! },
+      { id: row.presetId! },
       {
         data: {
           components: [
@@ -489,7 +487,7 @@ describe("announceReleaseChangelog", () => {
     sendMock.mockClear();
     await announce(modpack, release, false);
     expect(sendMock).toHaveBeenCalledTimes(1);
-    expect(sentMessages()[0]!.texts).toEqual(["Edited by an admin"]);
+    expect(sentMessages()[0].texts).toEqual(["Edited by an admin"]);
   });
 
   it("never starts an announcement while only resuming", async () => {
@@ -524,7 +522,7 @@ describe("announceReleaseChangelog", () => {
 
   it("skips the first recorded release of a modpack", async () => {
     const modpack = await seedPack();
-    const project = (await seedProjects(1))[0]!;
+    const [project] = await seedProjects(1);
     const release = await seedRelease(modpack, "6.0.0", [
       fileRow(project, "1.0.0"),
     ]);
@@ -585,7 +583,7 @@ describe("announceReleaseChangelog", () => {
 
     expect(sendMock).toHaveBeenCalledTimes(1);
     const [message] = sentMessages();
-    const body = message!.texts.find((t) => t.includes("Broken Links"));
+    const body = message.texts.find((t) => t.includes("Broken Links"));
     expect(body).toBeDefined();
     expect(body).toMatch(
       /^\*\*\[Broken Links\]\(https:\/\/www\.curseforge\.com\/minecraft\/mc-mods\//,
@@ -601,7 +599,7 @@ describe("announceReleaseChangelog", () => {
   it("opens with the pack's title image when one is set", async () => {
     const banner = "https://assets.createrington.com/titles/vitest-pack.png";
     const modpack = await seedPack({ titleImageUrl: banner });
-    const project = (await seedProjects(1))[0]!;
+    const [project] = await seedProjects(1);
     await seedRelease(modpack, "9.0.0", []);
     const release = await seedRelease(modpack, "9.1.0", [
       fileRow(project, "1.0.0"),
@@ -610,10 +608,10 @@ describe("announceReleaseChangelog", () => {
     await announce(modpack, release, true);
 
     const [message] = sentMessages();
-    expect(message!.types[0]).toBe(ComponentType.MediaGallery);
-    expect(
-      message!.texts[0]!.startsWith("**9.1.0**\n-# Minecraft 1.21.1"),
-    ).toBe(true);
-    expect(message!.texts[0]).not.toContain("## ");
+    expect(message.types[0]).toBe(ComponentType.MediaGallery);
+    expect(message.texts[0].startsWith("**9.1.0**\n-# Minecraft 1.21.1")).toBe(
+      true,
+    );
+    expect(message.texts[0]).not.toContain("## ");
   });
 });

@@ -519,9 +519,6 @@ export class WorkshopService {
     await this.assertSuggestionSlot(Q, workshop, discordId);
 
     const [prepared] = await this.prepareEntries(workshop, [entry]);
-    if (!prepared) {
-      throw new Error(`Preparing project ${entry.projectId} gave nothing back`);
-    }
 
     let created: WorkshopMod;
     try {

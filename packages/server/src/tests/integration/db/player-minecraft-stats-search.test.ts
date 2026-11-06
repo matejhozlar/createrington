@@ -52,8 +52,8 @@ beforeEach(async () => {
   for (const [index, minecraftUuid] of UUIDS.entries()) {
     await Q.player.create({
       minecraftUuid,
-      minecraftUsername: names[index]!,
-      discordId: DISCORD_IDS[index]!,
+      minecraftUsername: names[index],
+      discordId: DISCORD_IDS[index],
     });
   }
 });

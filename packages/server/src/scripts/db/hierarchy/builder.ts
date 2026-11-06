@@ -173,8 +173,8 @@ function addTableToHierarchy(
   // Build the chain of parent namespaces (all parts except the last)
   for (let i = 0; i < parts.length - 1; i++) {
     currentParentName = currentParentName
-      ? `${currentParentName}_${parts[i] ?? ""}`
-      : (parts[i] ?? "");
+      ? `${currentParentName}_${parts[i]}`
+      : parts[i];
 
     // Check if this level exists as an actual database table
     if (tableMap.has(currentParentName)) {

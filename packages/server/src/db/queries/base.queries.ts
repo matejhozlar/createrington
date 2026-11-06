@@ -1,7 +1,7 @@
 import type { Pool, PoolClient, QueryResult, QueryResultRow } from "pg";
 import logger from "@/logger.global";
 import { createNotFoundError } from "../utils/query-helpers";
-import { QueryError, translateDbError } from "../utils/errors";
+import { translateDbError } from "../utils/errors";
 import { isJsonColumn } from "../utils/jsonb-columns";
 import type { FilterValue } from "@createrington/shared/db/base.types";
 import {
@@ -45,15 +45,6 @@ export type IdentifierArg<
           ]: "is not an identifier field of this table";
         }
   : never;
-
-function requireRow<R extends QueryResultRow>(
-  result: QueryResult<R>,
-  query: string,
-): R {
-  const [row] = result.rows;
-  if (!row) throw new QueryError("Query returned no row", query);
-  return row;
-}
 
 /**
  * Base class for database query operations
@@ -723,7 +714,7 @@ export abstract class BaseQueries<
     try {
       const result = await this.db.query<{ exists: boolean }>(query, values);
 
-      return Boolean(result.rows[0]?.exists);
+      return Boolean(result.rows[0].exists);
     } catch (error) {
       logger.error(`Failed to check ${this.table} existence:`, error);
       throw error;
@@ -833,12 +824,11 @@ export abstract class BaseQueries<
     try {
       const result = await this.db.query<TConfig["DbEntity"]>(query, params);
 
-      const [row] = result.rows;
-      if (!row) {
+      if (result.rowCount === 0) {
         throw createNotFoundError(this.table, extracted);
       }
 
-      return this.mapRowToEntity(row);
+      return this.mapRowToEntity(result.rows[0]);
     } catch (error) {
       logger.error(`Failed to update ${this.table}:`, error);
       throw translateDbError(error);
@@ -1445,7 +1435,7 @@ export abstract class BaseQueries<
     try {
       const result = await this.db.query<TConfig["DbEntity"]>(query, values);
 
-      return this.mapRowToEntity(requireRow(result, query));
+      return this.mapRowToEntity(result.rows[0]);
     } catch (error) {
       logger.error(`Failed to create ${this.table}:`, error);
       throw translateDbError(error);
@@ -1639,7 +1629,7 @@ export abstract class BaseQueries<
     try {
       const result = await this.db.query<TConfig["DbEntity"]>(query, values);
 
-      return this.mapRowToEntity(requireRow(result, query));
+      return this.mapRowToEntity(result.rows[0]);
     } catch (error) {
       logger.error(`Failed to upsert ${this.table}:`, error);
       throw translateDbError(error);
@@ -1667,7 +1657,7 @@ export abstract class BaseQueries<
         params,
       );
 
-      const count = result.rows[0]?.count;
+      const count = result.rows[0].count;
       return typeof count === "bigint" ? Number(count) : Number(count ?? 0);
     } catch (error) {
       logger.error(`Failed to count ${this.table}:`, error);
@@ -1725,15 +1715,6 @@ export abstract class BaseQueries<
       logger.error(`Failed to ${label}:`, error);
       throw error;
     }
-  }
-
-  /** Runs a parameterized query that always yields a row (an aggregate, or a write with RETURNING) and answers that row. */
-  protected async runQueryForRow<R extends QueryResultRow>(
-    label: string,
-    query: string,
-    params?: unknown[],
-  ): Promise<R> {
-    return requireRow(await this.runQuery<R>(label, query, params), query);
   }
 
   /**

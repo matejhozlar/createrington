@@ -31,12 +31,12 @@ describe("Semaphore", () => {
     await flush();
     expect(started).toEqual([0, 1]);
 
-    gates[0]!.resolve();
+    gates[0].resolve();
     await flush();
     expect(started).toEqual([0, 1, 2]);
 
-    gates[1]!.resolve();
-    gates[2]!.resolve();
+    gates[1].resolve();
+    gates[2].resolve();
     await Promise.all(runs);
   });
 

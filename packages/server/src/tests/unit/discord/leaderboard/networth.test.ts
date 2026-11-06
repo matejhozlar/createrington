@@ -13,6 +13,6 @@ describe("toNetWorthEntries", () => {
     expect(result.map((e) => e.rank)).toEqual([1, 2, 3]);
     expect(result[0]).toMatchObject({ playerUuid: "uuid-c", value: "300.00" });
     expect(result[2]).toMatchObject({ playerName: "Alice", value: "125.00" });
-    expect(result[0]!.formattedValue).toBeTruthy();
+    expect(result[0].formattedValue).toBeTruthy();
   });
 });

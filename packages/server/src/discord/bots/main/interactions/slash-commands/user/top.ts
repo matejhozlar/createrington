@@ -142,7 +142,7 @@ export async function execute(
       const leaderboard = results
         .map(
           (r, i) =>
-            `${medals[i]} **${r.minecraftUsername}** - ${formatStatValue(category, item, r.values[0] ?? 0)}`,
+            `${medals[i]} **${r.minecraftUsername}** - ${formatStatValue(category, item, r.values[0])}`,
         )
         .join("\n");
 

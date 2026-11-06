@@ -229,11 +229,11 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
       return;
     }
 
-    const [embed] = message.embeds;
-    if (!embed) {
+    if (message.embeds.length === 0) {
       return;
     }
 
+    const embed = message.embeds[0];
     const description = embed.description?.toLowerCase() || "";
     const title = embed.title?.toLowerCase() || "";
     const combinedText = `${title} ${description}`;
@@ -344,11 +344,11 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
   }
 
   private parseSystemData(message: Message): SystemMessageData | undefined {
-    const [embed] = message.embeds;
-    if (!embed) {
+    if (message.embeds.length === 0) {
       return undefined;
     }
 
+    const embed = message.embeds[0];
     return {
       title: embed.title || undefined,
       description: embed.description || undefined,
@@ -626,8 +626,9 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
 
       stats[serverId] = {
         messageCount: cache.length,
-        oldestMessage: cache[0]?.createdAt,
-        newestMessage: cache.at(-1)?.createdAt,
+        oldestMessage: cache.length > 0 ? cache[0].createdAt : undefined,
+        newestMessage:
+          cache.length > 0 ? cache[cache.length - 1].createdAt : undefined,
         bySource,
       };
     }

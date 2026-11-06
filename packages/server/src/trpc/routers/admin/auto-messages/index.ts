@@ -243,7 +243,8 @@ export const autoMessagesRouter = router({
             enabled: input.enabled,
           });
 
-          for (const [i, f] of input.followups.entries()) {
+          for (let i = 0; i < input.followups.length; i++) {
+            const f = input.followups[i];
             await tx.discord.auto.message.followup.create({
               messageId: created.id,
               content: f.content,
@@ -289,7 +290,8 @@ export const autoMessagesRouter = router({
               messageId: id,
             });
 
-            for (const [i, f] of followups.entries()) {
+            for (let i = 0; i < followups.length; i++) {
+              const f = followups[i];
               await tx.discord.auto.message.followup.create({
                 messageId: id,
                 content: f.content,

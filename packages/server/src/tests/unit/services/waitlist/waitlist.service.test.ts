@@ -358,7 +358,7 @@ describe("WaitlistService.reserveForDirectRegistration", () => {
     await expect(
       svc.reserveForDirectRegistration("u1", "user1", null),
     ).rejects.toThrow("Queued members are promoted in order");
-    expect(state.entries[0]!.status).toBe("queued");
+    expect(state.entries[0].status).toBe("queued");
   });
 
   it("reports reserved=false for a member who already holds a promotion", async () => {

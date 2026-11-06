@@ -98,9 +98,9 @@ describe("BaseQueries (server table)", () => {
         "survival",
         "creative",
       ]);
-      expect(rows[0]!.createdAt).toEqual(createdAt);
-      expect(rows[1]!.createdAt).toBeInstanceOf(Date);
-      expect(rows[1]!.createdAt).not.toEqual(createdAt);
+      expect(rows[0].createdAt).toEqual(createdAt);
+      expect(rows[1].createdAt).toBeInstanceOf(Date);
+      expect(rows[1].createdAt).not.toEqual(createdAt);
     });
 
     it("should do nothing for an empty batch", async () => {
@@ -335,7 +335,7 @@ describe("BaseQueries (server table)", () => {
     it("should filter with findAll()", async () => {
       const results = await Q.server.findAll({ name: "Alpha" });
       expect(results).toHaveLength(1);
-      expect(results[0]!.identifier).toBe("alpha");
+      expect(results[0].identifier).toBe("alpha");
     });
 
     it("should support orderBy", async () => {
@@ -344,8 +344,8 @@ describe("BaseQueries (server table)", () => {
         orderDirection: "desc",
       });
 
-      expect(results[0]!.name).toBe("Gamma");
-      expect(results[2]!.name).toBe("Alpha");
+      expect(results[0].name).toBe("Gamma");
+      expect(results[2].name).toBe("Alpha");
     });
 
     it("should support limit", async () => {
@@ -382,7 +382,7 @@ describe("BaseQueries (server table)", () => {
         offset: 1,
       });
       expect(results).toHaveLength(1);
-      expect(results[0]!.name).toBe("Beta");
+      expect(results[0].name).toBe("Beta");
     });
 
     it("should support select projection", async () => {
@@ -659,8 +659,8 @@ describe("BaseQueries (server table)", () => {
         { name: "Alpha", identifier: "alpha" },
         { name: "Beta", identifier: "beta" },
       ]);
-      serverId = alpha!.id;
-      otherServerId = beta!.id;
+      serverId = alpha.id;
+      otherServerId = beta.id;
 
       await Q.server.maintenance.schedule.createMany([
         {

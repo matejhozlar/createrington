@@ -32,12 +32,12 @@ export const embedPresetCategoriesRouter = router({
         throw trpcError.conflict("A category with that name already exists");
       }
 
-      const [highest] = await Q.discord.embed.preset.category.getAll({
+      const maxSort = await Q.discord.embed.preset.category.getAll({
         orderBy: "sortOrder",
         orderDirection: "desc",
         limit: 1,
       });
-      const nextSort = highest ? highest.sortOrder + 1 : 0;
+      const nextSort = maxSort.length > 0 ? maxSort[0].sortOrder + 1 : 0;
 
       const created = await Q.discord.embed.preset.category.createAndReturn({
         name: input.name,

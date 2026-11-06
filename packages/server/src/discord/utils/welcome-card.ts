@@ -80,7 +80,6 @@ async function fetchBackground(): Promise<Image | null> {
   const urls: readonly string[] = welcomeConfig.backgroundImageUrls;
   if (urls.length === 0) return null;
   const url = urls[Math.floor(Math.random() * urls.length)];
-  if (url === undefined) return null;
   try {
     let buffer = backgroundCache.get(url);
     if (!buffer) {

@@ -518,8 +518,8 @@ export class PlayerInactivityWarningQueries extends PlayerInactivityWarningBaseQ
         last_seen: Date | null;
       }>(query, [id]);
 
-      const [row] = result.rows;
-      if (!row) return null;
+      if (result.rows.length === 0) return null;
+      const row = result.rows[0];
       return {
         id: row.id,
         playerMinecraftUuid: row.player_minecraft_uuid,

@@ -61,23 +61,23 @@ function currentStreak(days: Record<string, number>): number {
 }
 
 function mostActiveWeekday(days: Record<string, number>): string | null {
-  const weekdays = WEEKDAY_NAMES.map((name) => ({ name, total: 0, count: 0 }));
+  const totals = [0, 0, 0, 0, 0, 0, 0];
+  const counts = [0, 0, 0, 0, 0, 0, 0];
   for (const [date, seconds] of Object.entries(days)) {
-    const weekday = weekdays[new Date(date).getUTCDay()];
-    if (!weekday) continue;
-    weekday.total += seconds;
-    weekday.count++;
+    const weekday = new Date(date).getUTCDay();
+    totals[weekday] += seconds;
+    counts[weekday]++;
   }
-  let best: string | null = null;
+  let best: number | null = null;
   let bestAverage = 0;
-  for (const { name, total, count } of weekdays) {
-    const average = count > 0 ? total / count : 0;
+  for (let weekday = 0; weekday < 7; weekday++) {
+    const average = counts[weekday] > 0 ? totals[weekday] / counts[weekday] : 0;
     if (average > bestAverage) {
       bestAverage = average;
-      best = name;
+      best = weekday;
     }
   }
-  return best;
+  return best === null ? null : WEEKDAY_NAMES[best];
 }
 
 export interface PlayerActivity {
