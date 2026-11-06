@@ -255,15 +255,15 @@ describe("GalleryService.withdrawByMessage", () => {
     const msg = message();
     const { created } = await service.ingest(msg);
     await Q.gallery.submission.update(
-      { id: created[0]!.id },
+      { id: created[0].id },
       { status: "approved" },
     );
 
     expect(await service.withdrawByMessage(msg.id)).toBe(0);
-    const row = await Q.gallery.submission.find({ id: created[0]!.id });
+    const row = await Q.gallery.submission.find({ id: created[0].id });
     expect(row?.status).toBe("approved");
     await expect(
-      fs.access(service.originalFilePath(created[0]!)),
+      fs.access(service.originalFilePath(created[0])),
     ).resolves.toBeUndefined();
   });
 });
@@ -273,14 +273,14 @@ describe("GalleryService.updateCaption", () => {
     const msg = message({ attachments: [attachment(), attachment()] });
     const { created } = await service.ingest(msg);
     await Q.gallery.submission.update(
-      { id: created[1]!.id },
+      { id: created[1].id },
       { status: "rejected" },
     );
 
     expect(await service.updateCaption(msg.id, "  renamed  ")).toBe(1);
 
-    const first = await Q.gallery.submission.find({ id: created[0]!.id });
-    const second = await Q.gallery.submission.find({ id: created[1]!.id });
+    const first = await Q.gallery.submission.find({ id: created[0].id });
+    const second = await Q.gallery.submission.find({ id: created[1].id });
     expect(first?.caption).toBe("renamed");
     expect(second?.caption).toBe("my new station");
   });
@@ -291,7 +291,7 @@ describe("GalleryService.updateCaption", () => {
 
     await service.updateCaption(msg.id, "   ");
 
-    const row = await Q.gallery.submission.find({ id: created[0]!.id });
+    const row = await Q.gallery.submission.find({ id: created[0].id });
     expect(row?.caption).toBeNull();
   });
 });

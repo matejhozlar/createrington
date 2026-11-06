@@ -19,17 +19,17 @@ describe("Q.discord.auto.message.reorder", () => {
     ]);
 
     const matched = await Q.discord.auto.message.reorder([
-      { id: first!.id, sortOrder: 1 },
-      { id: second!.id, sortOrder: 0 },
+      { id: first.id, sortOrder: 1 },
+      { id: second.id, sortOrder: 0 },
       { id: 2_147_000_000, sortOrder: 2 },
     ]);
 
     expect(matched).toBe(2);
+    expect((await Q.discord.auto.message.get({ id: first.id })).sortOrder).toBe(
+      1,
+    );
     expect(
-      (await Q.discord.auto.message.get({ id: first!.id })).sortOrder,
-    ).toBe(1);
-    expect(
-      (await Q.discord.auto.message.get({ id: second!.id })).sortOrder,
+      (await Q.discord.auto.message.get({ id: second.id })).sortOrder,
     ).toBe(0);
     expect(await Q.discord.auto.message.reorder([])).toBe(0);
   });

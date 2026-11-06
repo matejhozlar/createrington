@@ -274,7 +274,7 @@ describe("ModpackService.getWorkshopAttention", () => {
       curseforgeProjectId: depProjectId,
     });
     expect(
-      rejected[0]!.requiredBy.map((entry) => entry.curseforgeProjectId).sort(),
+      rejected[0].requiredBy.map((entry) => entry.curseforgeProjectId).sort(),
     ).toEqual(
       [approved.curseforgeProjectId, inTesting.curseforgeProjectId].sort(),
     );
@@ -992,7 +992,7 @@ describe("ModpackService.reconcile", () => {
       project: { classId: CurseForgeClass.shaders },
     });
 
-    const release = (await modpackService.listReleases(modpack.id))[0]!;
+    const [release] = await modpackService.listReleases(modpack.id);
     const frozen = await modpackService.getReleaseMods(release.id);
     expect(frozen).toHaveLength(1);
     expect(frozen[0]).toMatchObject({
@@ -1020,7 +1020,7 @@ describe("ModpackService.reconcile", () => {
     const members = await modpackService.getPackMods(modpack.id);
     expect(requiredOf(members, disabledId)).toBe(false);
     expect(requiredOf(members, activeId)).toBe(true);
-    const first = (await modpackService.listReleases(modpack.id))[0]!;
+    const [first] = await modpackService.listReleases(modpack.id);
     const frozen = await modpackService.getReleaseMods(first.id);
     expect(requiredOf(frozen, disabledId)).toBe(false);
     expect(requiredOf(frozen, activeId)).toBe(true);
@@ -1967,7 +1967,7 @@ describe("ModpackService release history", () => {
 
     await modpackService.reconcile(modpack.id);
 
-    const release = (await modpackService.listReleases(modpack.id))[0]!;
+    const [release] = await modpackService.listReleases(modpack.id);
     expect(release).toMatchObject({
       version: "1.0.0",
       minecraftVersion: "1.21.1",
@@ -1994,7 +1994,7 @@ describe("ModpackService release history", () => {
     vi.mocked(getModpackManifest).mockResolvedValue(read);
 
     await modpackService.reconcile(modpack.id);
-    const release = (await modpackService.listReleases(modpack.id))[0]!;
+    const [release] = await modpackService.listReleases(modpack.id);
     await modpackService.reconcile(modpack.id);
 
     expect(launcherPackService.prepareRelease).toHaveBeenCalledTimes(2);
@@ -2031,7 +2031,7 @@ describe("ModpackService release history", () => {
 
     await modpackService.reconcile(modpack.id);
 
-    const release = (await modpackService.listReleases(modpack.id))[0]!;
+    const [release] = await modpackService.listReleases(modpack.id);
     const clientFiles = await Q.modpack.release.mod.getClientFileIds([
       release.id,
     ]);
@@ -2090,7 +2090,7 @@ describe("ModpackService release history", () => {
       }),
     );
     await modpackService.reconcile(modpack.id);
-    const release = (await modpackService.listReleases(modpack.id))[0]!;
+    const [release] = await modpackService.listReleases(modpack.id);
 
     const rows = await modpackService.getReleaseMods(release.id);
 
@@ -2150,7 +2150,7 @@ describe("ModpackService release history", () => {
 
     const releases = await modpackService.listReleases(modpack.id);
     expect(releases).toHaveLength(1);
-    expect(releases[0]!.curseforgeFileId).toBe(9100);
+    expect(releases[0].curseforgeFileId).toBe(9100);
   });
 
   it("keeps an older release readable after a newer one lands", async () => {
@@ -2187,7 +2187,7 @@ describe("ModpackService release history", () => {
     expect(releases.map((r) => r.version)).toEqual(["1.1.0", "1.0.0"]);
 
     const old = releases[1];
-    const oldRows = await Q.modpack.release.mod.listForReleases([old!.id]);
+    const oldRows = await Q.modpack.release.mod.listForReleases([old.id]);
     expect(oldRows.map((row) => row.curseforgeProjectId).sort()).toEqual(
       [kept.curseforgeProjectId, dropped.curseforgeProjectId].sort(),
     );
@@ -2238,7 +2238,7 @@ describe("ModpackService release history", () => {
     );
     await modpackService.reconcile(modpack.id);
 
-    const latest = (await modpackService.listReleases(modpack.id))[0]!;
+    const [latest] = await modpackService.listReleases(modpack.id);
     const diff = await modpackService.getReleaseDiff(latest.id);
 
     expect(diff.previous?.version).toBe("1.0.0");
@@ -2246,7 +2246,7 @@ describe("ModpackService release history", () => {
     expect(diff.updated.map((e) => e.curseforgeProjectId)).toEqual([
       bumped.curseforgeProjectId,
     ]);
-    expect(diff.updated[0]!.previousFile?.fileId).toBe(
+    expect(diff.updated[0].previousFile?.fileId).toBe(
       fileIdFor(bumped.curseforgeProjectId),
     );
     expect(diff.removed.map((e) => e.curseforgeProjectId)).toEqual([
@@ -2267,7 +2267,7 @@ describe("ModpackService release history", () => {
     );
     await modpackService.reconcile(modpack.id);
 
-    const release = (await modpackService.listReleases(modpack.id))[0]!;
+    const [release] = await modpackService.listReleases(modpack.id);
     const diff = await modpackService.getReleaseDiff(release.id);
 
     expect(diff.previous).toBeNull();
@@ -2336,7 +2336,7 @@ describe("ModpackService release diff with multi-file mods", () => {
     );
     await modpackService.reconcile(modpack.id);
 
-    const first = (await modpackService.listReleases(modpack.id))[0]!;
+    const [first] = await modpackService.listReleases(modpack.id);
     expect(first.modCount).toBe(2);
     expect(
       await Q.modpack.release.mod.listForReleases([first.id]),
@@ -2354,7 +2354,7 @@ describe("ModpackService release diff with multi-file mods", () => {
     );
     await modpackService.reconcile(modpack.id);
 
-    const latest = (await modpackService.listReleases(modpack.id))[0]!;
+    const [latest] = await modpackService.listReleases(modpack.id);
     const diff = await modpackService.getReleaseDiff(latest.id);
 
     expect(diff.updated.map((e) => e.curseforgeProjectId)).toEqual([
@@ -2406,7 +2406,7 @@ describe("ModpackService.recordRelease durability", () => {
 
     await modpackService.reconcile(modpack.id);
 
-    const release = (await modpackService.listReleases(modpack.id))[0]!;
+    const [release] = await modpackService.listReleases(modpack.id);
     expect(release.modCount).toBe(1);
     expect(
       await Q.modpack.release.mod.listForReleases([release.id]),
@@ -2713,7 +2713,7 @@ describe("ModpackService.recordPublish", () => {
       workshopModId: serverOnly.id,
       liveInVersion: "0.6.3",
     });
-    const release = (await modpackService.listReleases(modpack.id))[0]!;
+    const [release] = await modpackService.listReleases(modpack.id);
     expect(release).toMatchObject({
       curseforgeFileId: CLIENT,
       serverPackFileId: SERVER,
@@ -3146,7 +3146,7 @@ describe("ModpackService.recordRelease upgrade", () => {
     vi.mocked(getModpackManifest).mockResolvedValue(clientOnly);
 
     await modpackService.reconcile(modpack.id);
-    const frozen = (await modpackService.listReleases(modpack.id))[0]!;
+    const [frozen] = await modpackService.listReleases(modpack.id);
     expect(frozen).toMatchObject({ modCount: 1, serverPackFileId: null });
 
     vi.mocked(getModpackManifest).mockResolvedValue({
@@ -3193,7 +3193,7 @@ describe("ModpackService release changelog announcements", () => {
     );
 
     await modpackService.reconcile(modpack.id);
-    const release = (await modpackService.listReleases(modpack.id))[0]!;
+    const [release] = await modpackService.listReleases(modpack.id);
     expect(release.announcement).toBeNull();
     expect(announceReleaseChangelog).toHaveBeenCalledTimes(1);
     expect(announceReleaseChangelog).toHaveBeenLastCalledWith(
@@ -3229,7 +3229,7 @@ describe("ModpackService release changelog announcements", () => {
     });
     await modpackService.reconcile(modpack.id);
 
-    const release = (await modpackService.listReleases(modpack.id))[0]!;
+    const [release] = await modpackService.listReleases(modpack.id);
     expect(release.serverPackFileId).not.toBeNull();
     expect(announceReleaseChangelog).toHaveBeenCalledTimes(1);
     expect(announceReleaseChangelog).toHaveBeenLastCalledWith(

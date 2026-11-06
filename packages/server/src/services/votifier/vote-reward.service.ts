@@ -144,9 +144,6 @@ export class VoteRewardService {
     const [commit, ...rest] = perVote.map((template) =>
       fill(template, { player }),
     );
-    if (commit === undefined) {
-      throw new Error("Vote rewards have no per-vote command set");
-    }
     let paid = 0;
 
     votes: for (const vote of pending) {

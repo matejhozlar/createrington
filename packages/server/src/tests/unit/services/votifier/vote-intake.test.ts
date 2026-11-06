@@ -166,7 +166,7 @@ describe("VoteIntake.accept", () => {
       timestamp: null,
     });
 
-    const votedAt: Date = mocks.recordVote.mock.calls[0]![0].votedAt;
+    const votedAt: Date = mocks.recordVote.mock.calls[0][0].votedAt;
     expect(votedAt.getTime()).toBeGreaterThanOrEqual(before);
   });
 

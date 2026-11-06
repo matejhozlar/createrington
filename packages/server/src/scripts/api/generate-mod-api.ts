@@ -59,9 +59,7 @@ function javaType(field: FieldSpec): string {
 function resolveJavaType(type: FieldType, nullable: boolean): string {
   if (typeof type === "string") {
     const mapped = PRIMITIVE_MAP[type];
-    const boxed = BOXED_MAP[type];
-    if (nullable && boxed) return boxed;
-    if (mapped === undefined) throw new Error(`Unknown field type: ${type}`);
+    if (nullable && BOXED_MAP[type]) return BOXED_MAP[type];
     return mapped;
   }
   if (type.type === "array") {
@@ -197,7 +195,6 @@ function generateRecordFile(
 
   for (let i = 0; i < fields.length; i++) {
     const field = fields[i];
-    if (!field) continue;
     const parts: string[] = [];
 
     // @SerializedName annotation
@@ -212,7 +209,7 @@ function generateRecordFile(
 
     if (field.jsonName) {
       // Annotation on its own line, field on next line
-      lines.push(...parts);
+      lines.push(parts[0]);
       lines.push(`    ${prefix}${typeName} ${field.name}${suffix}`);
     } else {
       lines.push(`    ${prefix}${typeName} ${field.name}${suffix}`);

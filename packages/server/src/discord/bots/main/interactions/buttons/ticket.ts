@@ -241,14 +241,16 @@ async function handleCreate(
   const hasOpen = await ticketService.hasOpenTicket(interaction.user.id);
 
   if (hasOpen) {
-    const [existingTicket] = await Q.ticket.findAll(
+    const existingTicket = await Q.ticket.findAll(
       { creatorDiscordId: interaction.user.id, status: TicketStatus.OPEN },
       { limit: 1 },
     );
     await replyError(
       interaction,
       "Ticket Already Open",
-      `You already have an open ticket${existingTicket ? ` ${Discord.Channels.mention(existingTicket.channelId)}` : ""}. Please close it before creating a new one.`,
+      `You already have an open ticket ${Discord.Channels.mention(
+        existingTicket[0].channelId,
+      )}. Please close it before creating a new one.`,
     );
     return;
   }

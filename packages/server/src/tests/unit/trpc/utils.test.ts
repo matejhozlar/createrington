@@ -63,8 +63,8 @@ describe("paginateQuery", () => {
 
     await paginateQuery(source, filters, { page: 2, limit: 20 });
 
-    expect(source.findAll.mock.calls[0]![0]).toBe(filters);
-    expect(source.count.mock.calls[0]![0]).toBe(filters);
+    expect(source.findAll.mock.calls[0][0]).toBe(filters);
+    expect(source.count.mock.calls[0][0]).toBe(filters);
   });
 
   it("leaves the order keys off the options when no order is given", async () => {
@@ -72,7 +72,7 @@ describe("paginateQuery", () => {
 
     await paginateQuery(source, {}, { page: 2, limit: 20 });
 
-    const [, options] = source.findAll.mock.calls[0]!;
+    const [, options] = source.findAll.mock.calls[0];
     expect(options).toEqual({ limit: 20, offset: 40 });
     expect(options).not.toHaveProperty("orderBy");
     expect(options).not.toHaveProperty("orderDirection");

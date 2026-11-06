@@ -161,7 +161,7 @@ describe("/tag team", () => {
 
     await execute(fake);
 
-    expect(sent[0]!.description).toBe(
+    expect(sent[0].description).toBe(
       "No team matches **foo\\`bar\\***. Pick one from the suggestions.",
     );
   });
@@ -172,7 +172,7 @@ describe("/tag team", () => {
 
     await execute(fake);
 
-    expect(sent[0]!.description).toBe(
+    expect(sent[0].description).toBe(
       "**Crafting\\_Town** has no team tag yet.",
     );
   });

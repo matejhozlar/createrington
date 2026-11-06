@@ -59,7 +59,7 @@ describe("registration close button", () => {
     await execute(interaction);
 
     expect(update).toHaveBeenCalledTimes(1);
-    const payload = update.mock.calls[0]![0];
+    const payload = update.mock.calls[0][0];
     expect(payload.flags).toBe(MessageFlags.IsComponentsV2);
     expect(payload.components.length).toBeGreaterThan(0);
     // Discord rejects an edit that sets IS_COMPONENTS_V2 while content or

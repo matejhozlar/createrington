@@ -59,10 +59,10 @@ describe("BalanceRepository (integration)", () => {
 
       const history = await R.balanceRepo.getHistory(ALICE);
       expect(history).toHaveLength(2); // initial grant + this add
-      expect(history[0]!.amount).toBe(5_500n);
-      expect(history[0]!.balanceBefore).toBe(10_000n);
-      expect(history[0]!.balanceAfter).toBe(15_500n);
-      expect(history[0]!.transactionType).toBe(BalanceTransactionType.REWARD);
+      expect(history[0].amount).toBe(5_500n);
+      expect(history[0].balanceBefore).toBe(10_000n);
+      expect(history[0].balanceAfter).toBe(15_500n);
+      expect(history[0].transactionType).toBe(BalanceTransactionType.REWARD);
     });
 
     it("rejects non-positive amounts", async () => {
@@ -92,8 +92,8 @@ describe("BalanceRepository (integration)", () => {
       expect(await R.balanceRepo.getRaw(ALICE)).toBe(12_750n);
 
       const history = await R.balanceRepo.getHistory(ALICE);
-      expect(history[0]!.amount).toBe(-7_250n);
-      expect(history[0]!.balanceAfter).toBe(12_750n);
+      expect(history[0].amount).toBe(-7_250n);
+      expect(history[0].balanceAfter).toBe(12_750n);
     });
 
     it("throws on insufficient funds and leaves the balance untouched", async () => {
@@ -125,17 +125,17 @@ describe("BalanceRepository (integration)", () => {
       expect(await R.balanceRepo.getRaw(BOB)).toBe(40_000n);
 
       const senderHistory = await R.balanceRepo.getHistory(ALICE);
-      expect(senderHistory[0]!.transactionType).toBe(
+      expect(senderHistory[0].transactionType).toBe(
         BalanceTransactionType.TRANSFER_SEND,
       );
-      expect(senderHistory[0]!.amount).toBe(-40_000n);
-      expect(senderHistory[0]!.relatedPlayerUuid).toBe(BOB);
+      expect(senderHistory[0].amount).toBe(-40_000n);
+      expect(senderHistory[0].relatedPlayerUuid).toBe(BOB);
 
       const recipientHistory = await R.balanceRepo.getHistory(BOB);
-      expect(recipientHistory[0]!.transactionType).toBe(
+      expect(recipientHistory[0].transactionType).toBe(
         BalanceTransactionType.TRANSFER_RECEIVE,
       );
-      expect(recipientHistory[0]!.amount).toBe(40_000n);
+      expect(recipientHistory[0].amount).toBe(40_000n);
     });
 
     it("rolls back entirely when the sender has insufficient funds", async () => {
@@ -216,9 +216,9 @@ describe("BalanceRepository (integration)", () => {
         actionType: "balance_grant",
         targetPlayerUuid: ALICE,
       });
-      expect(log!.oldValue).toBe(BalanceUtils.format(10_000n));
-      expect(log!.newValue).toBe(BalanceUtils.format(25_000n));
-      expect(log!.targetPlayerName).toBe("alice");
+      expect(log.oldValue).toBe(BalanceUtils.format(10_000n));
+      expect(log.newValue).toBe(BalanceUtils.format(25_000n));
+      expect(log.targetPlayerName).toBe("alice");
     });
 
     it("writes neither a ledger row nor an audit entry when the deduct fails", async () => {
@@ -231,7 +231,7 @@ describe("BalanceRepository (integration)", () => {
       expect(await R.balanceRepo.getRaw(ALICE)).toBe(10_000n);
       const history = await R.balanceRepo.getHistory(ALICE);
       expect(history).toHaveLength(1);
-      expect(history[0]!.transactionType).toBe(
+      expect(history[0].transactionType).toBe(
         BalanceTransactionType.ADMIN_GRANT,
       );
       expect(
@@ -259,11 +259,11 @@ describe("BalanceRepository (integration)", () => {
       const ordered = [...logs].sort(
         (a, b) => Number(a.newValue) - Number(b.newValue),
       );
-      expect(ordered[0]!.oldValue).toBe(BalanceUtils.format(0n));
+      expect(ordered[0].oldValue).toBe(BalanceUtils.format(0n));
       for (let i = 1; i < ordered.length; i++) {
-        expect(ordered[i]!.oldValue).toBe(ordered[i - 1]!.newValue);
+        expect(ordered[i].oldValue).toBe(ordered[i - 1].newValue);
       }
-      expect(ordered[ordered.length - 1]!.newValue).toBe(
+      expect(ordered[ordered.length - 1].newValue).toBe(
         BalanceUtils.format(6_000n),
       );
     });
@@ -284,13 +284,11 @@ describe("BalanceRepository (integration)", () => {
       expect(await R.balanceRepo.getRaw(ALICE)).toBe(4_000n);
 
       const history = await R.balanceRepo.getHistory(ALICE);
-      expect(history[0]!.transactionType).toBe(
-        BalanceTransactionType.ADMIN_SET,
-      );
-      expect(history[0]!.amount).toBe(-6_000n);
-      expect(history[0]!.balanceBefore).toBe(10_000n);
-      expect(history[0]!.balanceAfter).toBe(4_000n);
-      expect(history[0]!.metadata).toMatchObject({
+      expect(history[0].transactionType).toBe(BalanceTransactionType.ADMIN_SET);
+      expect(history[0].amount).toBe(-6_000n);
+      expect(history[0].balanceBefore).toBe(10_000n);
+      expect(history[0].balanceAfter).toBe(4_000n);
+      expect(history[0].metadata).toMatchObject({
         adminDiscordId: "999",
         adminUsername: "adminUser",
       });
@@ -299,9 +297,9 @@ describe("BalanceRepository (integration)", () => {
         actionType: "balance_set",
         targetPlayerUuid: ALICE,
       });
-      expect(log!.oldValue).toBe(BalanceUtils.format(10_000n));
-      expect(log!.newValue).toBe(BalanceUtils.format(4_000n));
-      expect(log!.reason).toBe("correction");
+      expect(log.oldValue).toBe(BalanceUtils.format(10_000n));
+      expect(log.newValue).toBe(BalanceUtils.format(4_000n));
+      expect(log.reason).toBe("correction");
     });
 
     it("rejects a negative target balance", async () => {
@@ -327,11 +325,11 @@ describe("BalanceRepository (integration)", () => {
 
       const history = await R.balanceRepo.getHistory(BOB);
       expect(history).toHaveLength(1);
-      expect(history[0]!.transactionType).toBe(
+      expect(history[0].transactionType).toBe(
         BalanceTransactionType.ADMIN_GRANT,
       );
-      expect(history[0]!.balanceBefore).toBe(0n);
-      expect(history[0]!.balanceAfter).toBe(2_500n);
+      expect(history[0].balanceBefore).toBe(0n);
+      expect(history[0].balanceAfter).toBe(2_500n);
     });
 
     it("writes no ledger row for a zero seed", async () => {
@@ -407,8 +405,8 @@ describe("BalanceRepository (integration)", () => {
 
       const oldestFirst = [...history].reverse();
       for (let i = 1; i < oldestFirst.length; i++) {
-        expect(oldestFirst[i]!.balanceBefore).toBe(
-          oldestFirst[i - 1]!.balanceAfter,
+        expect(oldestFirst[i].balanceBefore).toBe(
+          oldestFirst[i - 1].balanceAfter,
         );
       }
     });
@@ -480,8 +478,8 @@ describe("BalanceRepository (integration)", () => {
       );
 
       const history = await R.balanceRepo.getHistory(ALICE);
-      expect(history[0]!.idempotencyKey).toBeNull();
-      expect(history[1]!.idempotencyKey).toBe("attempt-1");
+      expect(history[0].idempotencyKey).toBeNull();
+      expect(history[1].idempotencyKey).toBe("attempt-1");
     });
   });
 

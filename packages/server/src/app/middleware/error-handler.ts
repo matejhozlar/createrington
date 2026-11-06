@@ -149,10 +149,9 @@ export function formatZodError(error: ZodError<unknown>): {
     message: issue.message,
   }));
 
-  const [first] = fieldErrors;
   const message =
-    first && fieldErrors.length === 1
-      ? first.message
+    fieldErrors.length === 1
+      ? fieldErrors[0].message
       : `Validation failed: ${fieldErrors.map((fe) => fe.field).join(", ")}`;
 
   return { message, fieldErrors };

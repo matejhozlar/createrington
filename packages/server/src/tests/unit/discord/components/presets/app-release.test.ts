@@ -44,13 +44,13 @@ function input(overrides: Partial<AppReleaseNotice> = {}): AppReleaseNotice {
 
 function only(data: ComponentsData): ComponentContainer {
   const [node] = data.components;
-  if (node?.type !== "container") throw new Error("expected a container");
+  if (node.type !== "container") throw new Error("expected a container");
   return node;
 }
 
 function lines(data: ComponentsData): string[] {
   const [child] = only(data).components;
-  if (child?.type !== "text") throw new Error("expected a text block first");
+  if (child.type !== "text") throw new Error("expected a text block first");
   return child.content.split("\n");
 }
 
@@ -113,13 +113,13 @@ describe("AppReleaseComponentPresets.live", () => {
     const { components } = buildComponentsMessage(
       AppReleaseComponentPresets.live(input()),
     );
-    const container = components[0]!.toJSON() as {
+    const container = components[0].toJSON() as {
       components: Array<{
         type: number;
         components?: Array<{ style: number; url: string; label: string }>;
       }>;
     };
-    const row = container.components[container.components.length - 1]!;
+    const row = container.components[container.components.length - 1];
 
     expect(row.type).toBe(ComponentType.ActionRow);
     expect(row.components).toEqual([

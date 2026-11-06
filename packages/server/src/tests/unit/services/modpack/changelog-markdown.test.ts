@@ -151,7 +151,7 @@ describe("renderChangelogMarkdown", () => {
       section("1.1.0", { previousVersion: "1.0.0", added: [entry(9)] }, 300),
     );
 
-    const [newest = "", installed = ""] = markdown.split("\n---\n");
+    const [newest, installed] = markdown.split("\n---\n");
     expect(newest.split("\n").slice(0, 3)).toEqual([
       "## What's new in 1.3.0",
       "%#FFAA00%You're on 1.1.0. Update the pack to get these changes.%#%",
@@ -201,10 +201,10 @@ describe("renderChangelogMarkdown", () => {
       }),
     );
 
-    const added = markdown.split("### Updated")[0]!;
+    const added = markdown.split("### Updated")[0];
     expect(rowLines(added)).toHaveLength(CHANGELOG_ROWS_PER_GROUP_MAX);
     expect(added).toContain("%#AAAAAA%…and 5 more%#%");
-    expect(rowLines(markdown.split("### Updated")[1]!)).toHaveLength(3);
+    expect(rowLines(markdown.split("### Updated")[1])).toHaveLength(3);
     expect(markdown).toContain("[![](");
   });
 
@@ -241,8 +241,8 @@ describe("renderChangelogMarkdown", () => {
     expect(markdown).toContain("### Added (400)");
     expect(markdown).toContain("## Your version: 1.1.0");
     expect(markdown).toContain("### Removed (400)");
-    const [top = "", bottom = ""] = markdown.split("\n---\n");
-    const shownAdded = rowLines(top.split("### Updated")[0]!).length;
+    const [top, bottom] = markdown.split("\n---\n");
+    const shownAdded = rowLines(top.split("### Updated")[0]).length;
     expect(shownAdded).toBeGreaterThan(0);
     expect(shownAdded).toBeLessThan(CHANGELOG_ROWS_PER_GROUP_MAX);
     expect(rowLines(bottom)).toHaveLength(shownAdded);
@@ -288,7 +288,7 @@ describe("renderChangelogMarkdown", () => {
 
   it("never cuts a label in half of a surrogate pair", () => {
     const label = `${"a".repeat(58)}😀bb`;
-    const heading = render(section(label)).split("\n")[0]!;
+    const heading = render(section(label)).split("\n")[0];
 
     expect(heading).toBe(`## What's new in ${"a".repeat(58)}😀…`);
     const lone = Array.from(heading).filter((char) => {

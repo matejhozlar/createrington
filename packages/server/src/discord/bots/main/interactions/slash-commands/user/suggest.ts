@@ -65,8 +65,7 @@ export async function execute(
   }
 
   const open = await listOpenWorkshops();
-  const [firstOpen] = open;
-  if (!firstOpen) {
+  if (open.length === 0) {
     await replyError(
       interaction,
       "No Open Workshop",
@@ -76,7 +75,7 @@ export async function execute(
   }
 
   const optionValue = interaction.options.getString("workshop");
-  let workshop = firstOpen;
+  let workshop = open[0];
 
   if (optionValue) {
     const selected = open.find((w) => String(w.id) === optionValue);
@@ -97,8 +96,7 @@ export async function execute(
     );
     const suggestable = open.filter((_, index) => !bans[index]);
 
-    const [onlySuggestable, ...otherSuggestable] = suggestable;
-    if (!onlySuggestable) {
+    if (suggestable.length === 0) {
       await replyError(
         interaction,
         "Suggestions Blocked",
@@ -107,12 +105,12 @@ export async function execute(
       return;
     }
 
-    if (otherSuggestable.length > 0) {
+    if (suggestable.length > 1) {
       await interaction.showModal(buildWorkshopPickerSuggestModal(suggestable));
       return;
     }
 
-    workshop = onlySuggestable;
+    workshop = suggestable[0];
   }
 
   const ban = await findSuggestBan(interaction.user.id, workshop.id);

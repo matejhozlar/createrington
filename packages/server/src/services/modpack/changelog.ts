@@ -119,10 +119,9 @@ async function run({
     await toChangelogInput(modpack, diff),
     { mentionRoleId: MENTION_ROLE_ID },
   );
-  const [announced] = existing;
-  if (announced && parts.length !== announced.partCount) {
+  if (existing.length > 0 && parts.length !== existing[0].partCount) {
     logger.warn(
-      `Changelog ${label} re-rendered into ${parts.length} parts but the announcement has ${announced.partCount}, stored presets are sent as saved`,
+      `Changelog ${label} re-rendered into ${parts.length} parts but the announcement has ${existing[0].partCount}, stored presets are sent as saved`,
     );
   }
   const rows =
@@ -202,10 +201,8 @@ async function createParts(
     return await db.inTransaction(async (tx) => {
       const rows: ModpackReleaseAnnouncement[] = [];
       for (const [index, part] of parts.entries()) {
-        const name = names[index];
-        if (name === undefined) throw new Error("Ran out of preset names");
         const preset = await tx.discord.embed.preset.createAndReturn({
-          name,
+          name: names[index],
           kind: "components",
           data: part,
           createdBy: PRESET_AUTHOR,
@@ -290,13 +287,12 @@ async function presetNames(
     base,
     `${base} #${release.id}`,
     `${base} #${release.id}-${Date.now()}`,
-  ] as const;
+  ];
   return Array.from({ length: count }, (_, index) => {
     const suffix = count > 1 ? ` (${index + 1}/${count})` : "";
     const candidates = stems.map((stem) => presetName(stem, suffix));
     const name =
-      candidates.find((candidate) => !taken.has(candidate)) ??
-      presetName(stems[2], suffix);
+      candidates.find((candidate) => !taken.has(candidate)) ?? candidates[2];
     taken.add(name);
     return name;
   });
@@ -328,7 +324,7 @@ function releaseLabel(release: ModpackRelease): string {
 
 function loaderLabel(loader: string | null): string | null {
   if (!loader) return null;
-  const [name = "", ...rest] = loader.split("-");
+  const [name, ...rest] = loader.split("-");
   const pretty = LOADER_NAMES[name.toLowerCase()] ?? name;
   return rest.length > 0 ? `${pretty} ${rest.join("-")}` : pretty;
 }
@@ -434,8 +430,5 @@ export async function toChangelogInput(
   diff: ModpackReleaseDiff,
 ): Promise<ChangelogInput> {
   const [input] = await toChangelogInputs(modpack, [diff]);
-  if (!input) {
-    throw new Error(`No changelog came back for release #${diff.release.id}`);
-  }
   return input;
 }

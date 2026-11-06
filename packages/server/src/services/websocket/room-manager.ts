@@ -107,14 +107,14 @@ export class RoomManager {
       return { type: SubscriptionType.ALL };
     }
 
-    const [type = "", serverPart] = room.split(":");
-    if (serverPart === undefined) {
-      return { type };
+    const parts = room.split(":");
+    if (parts.length === 1) {
+      return { type: parts[0] };
     }
 
-    const serverId = parseInt(serverPart);
+    const serverId = parseInt(parts[1]);
     return {
-      type,
+      type: parts[0],
       serverId: isNaN(serverId) ? undefined : serverId,
     };
   }
@@ -142,7 +142,7 @@ export class RoomManager {
   static getRoomsForSubscription(
     type: SubscriptionType,
     serverId?: number,
-  ): [string, ...string[]] {
+  ): string[] {
     if (type === SubscriptionType.ALL) {
       if (serverId !== undefined) {
         return [

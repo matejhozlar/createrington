@@ -118,9 +118,7 @@ function paintSlotGlows(ctx: SKRSContext2D, slots: (CardSlot | null)[]): void {
   slots.forEach((slot, index) => {
     if (!slot) return;
     const rgb = ROLE_RGB[slot.roleKey] ?? FALLBACK_RGB;
-    const layout = SLOTS[index];
-    if (!layout) return;
-    const { centerX, height } = layout;
+    const { centerX, height } = SLOTS[index];
     paintEllipseGradient(
       ctx,
       centerX,
@@ -149,9 +147,7 @@ function paintFigures(ctx: SKRSContext2D, slots: (CardSlot | null)[]): void {
     const figure = slot.holder?.figure;
     if (!figure) return;
     const rgb = ROLE_RGB[slot.roleKey] ?? FALLBACK_RGB;
-    const layout = SLOTS[index];
-    if (!layout) return;
-    const { centerX, height, maxWidth } = layout;
+    const { centerX, height, maxWidth } = SLOTS[index];
     paintFigure(
       ctx,
       figure,
@@ -202,9 +198,7 @@ function paintCaptions(ctx: SKRSContext2D, slots: (CardSlot | null)[]): void {
   slots.forEach((slot, index) => {
     if (!slot) return;
     const rgb = ROLE_RGB[slot.roleKey] ?? FALLBACK_RGB;
-    const layout = SLOTS[index];
-    if (!layout) return;
-    const { centerX, nameSizes, nameWidth } = layout;
+    const { centerX, nameSizes, nameWidth } = SLOTS[index];
     const pillY = GROUND_Y + 24;
     paintPill(ctx, slot.label.toUpperCase(), rgb, centerX, pillY);
 

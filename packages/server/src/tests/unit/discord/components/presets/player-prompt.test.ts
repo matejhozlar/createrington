@@ -66,8 +66,8 @@ describe("PlayerPromptComponentPresets.active", () => {
     const { children } = view(
       PlayerPromptComponentPresets.active(promptWith()),
     );
-    expect(children[0]!.type).toBe(ComponentType.MediaGallery);
-    expect(children[0]!.items?.[0]?.media?.url).toContain(
+    expect(children[0].type).toBe(ComponentType.MediaGallery);
+    expect(children[0].items?.[0]?.media?.url).toContain(
       "createrington-woodmark.png",
     );
   });

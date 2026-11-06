@@ -73,10 +73,6 @@ export async function runRegistration(params: {
 
   const steps = STEPS.map((s) => ({ ...s }));
   let currentStep = 0;
-  const completeCurrentStep = () => {
-    const step = steps[currentStep];
-    if (step) step.completed = true;
-  };
 
   if (
     !member ||
@@ -145,7 +141,7 @@ export async function runRegistration(params: {
     entry = reservation.entry;
     reservedHere = reservation.reserved;
 
-    completeCurrentStep();
+    steps[currentStep].completed = true;
     currentStep++;
 
     await render(
@@ -169,7 +165,7 @@ export async function runRegistration(params: {
     const uuid = profile.uuid;
     const correctName = profile.username ?? mcName;
 
-    completeCurrentStep();
+    steps[currentStep].completed = true;
     currentStep++;
 
     await render(
@@ -185,7 +181,7 @@ export async function runRegistration(params: {
       );
     }
 
-    completeCurrentStep();
+    steps[currentStep].completed = true;
     currentStep++;
 
     await render(
@@ -199,7 +195,7 @@ export async function runRegistration(params: {
       throw new Error(`Failed to whitelist ${correctName}: ${error}`);
     }
 
-    completeCurrentStep();
+    steps[currentStep].completed = true;
     currentStep++;
 
     await render(
@@ -227,7 +223,7 @@ export async function runRegistration(params: {
 
     await waitlistRepo.updateProgressEmbed(entryId);
 
-    completeCurrentStep();
+    steps[currentStep].completed = true;
     currentStep++;
 
     await render(
@@ -247,7 +243,7 @@ export async function runRegistration(params: {
       );
     }
 
-    completeCurrentStep();
+    steps[currentStep].completed = true;
 
     await render(
       RegistrationComponentPresets.progress(correctName, steps, currentStep),

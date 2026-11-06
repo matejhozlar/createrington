@@ -67,7 +67,7 @@ describe("JWTService", () => {
     it("uses HS256 (does not accept tampered tokens)", () => {
       const token = service.generate(baseUser);
       // Flip a character in the signature segment to invalidate it
-      const [header, payload, signature = ""] = token.split(".");
+      const [header, payload, signature] = token.split(".");
       const tampered = `${header}.${payload}.${signature.slice(0, -1)}${
         signature.slice(-1) === "A" ? "B" : "A"
       }`;

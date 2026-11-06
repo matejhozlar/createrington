@@ -609,7 +609,7 @@ describe("toLauncherProjectLatestFiles", () => {
           releaseType: 9,
           modLoader: 6,
         },
-      ])[0]!.releaseType,
+      ])[0].releaseType,
     ).toBe("release");
   });
 

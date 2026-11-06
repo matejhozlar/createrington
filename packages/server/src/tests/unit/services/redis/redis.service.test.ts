@@ -42,7 +42,7 @@ const URL = "redis://localhost:6380";
 function connected() {
   const service = new RedisService(URL);
   service.initialize();
-  const client = clients[0]!;
+  const client = clients[0];
   client.isReady = true;
   client.emit("ready");
   return { service, client };
@@ -100,7 +100,7 @@ describe("RedisService", () => {
     await expect(service.sendCommand(["GET", "key"])).rejects.toThrow(
       "Redis is not connected",
     );
-    expect(clients[0]!.sendCommand).not.toHaveBeenCalled();
+    expect(clients[0].sendCommand).not.toHaveBeenCalled();
   });
 
   it("sends a command and answers its reply once connected", async () => {

@@ -538,13 +538,10 @@ class LauncherPackService {
       modpack,
       servable.map(({ row }) => row),
     );
-    const releases = servable.map(({ data }, index): LauncherPackRelease => {
-      const changelog = changelogs[index];
-      if (!changelog) {
-        throw new Error("Fewer changelogs came back than releases");
-      }
-      return { ...data, changelog: toPackChangelog(changelog) };
-    });
+    const releases = servable.map(({ data }, index): LauncherPackRelease => ({
+      ...data,
+      changelog: toPackChangelog(changelogs[index]),
+    }));
     return { releases, total };
   }
 

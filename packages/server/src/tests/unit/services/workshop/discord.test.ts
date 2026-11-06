@@ -120,15 +120,15 @@ describe("announceReview", () => {
       "send",
       "setArchived",
     ]);
-    expect(state.calls[0]![1]).toEqual({
+    expect(state.calls[0][1]).toEqual({
       archived: false,
       appliedTags: ["tag-approved"],
       reason: "Workshop suggestion #42: Approved",
     });
-    expect(state.calls[1]![1]).toMatchObject({
+    expect(state.calls[1][1]).toMatchObject({
       content: expect.stringContaining("Approved"),
     });
-    expect(state.calls[2]![1]).toEqual({
+    expect(state.calls[2][1]).toEqual({
       archived: true,
       reason: "Workshop suggestion #42: Approved",
     });
@@ -155,7 +155,7 @@ describe("announceReview", () => {
 
     await announceReview(fakeMod({ status: "in_pack" }), "in_pack");
 
-    expect(state.calls[0]![1]).toMatchObject({
+    expect(state.calls[0][1]).toMatchObject({
       appliedTags: ["tag-in-pack", "tag-custom"],
     });
   });
@@ -177,14 +177,14 @@ describe("announceReview", () => {
       "send",
       "setArchived",
     ]);
-    expect(state.calls[0]![1]).toMatchObject({
+    expect(state.calls[0][1]).toMatchObject({
       archived: false,
       appliedTags: ["tag-incompatible"],
     });
-    expect(state.calls[1]![1]).toMatchObject({
+    expect(state.calls[1][1]).toMatchObject({
       content: expect.stringContaining("Crashes on load"),
     });
-    expect(state.calls[2]![1]).toEqual({
+    expect(state.calls[2][1]).toEqual({
       archived: true,
       reason: "Workshop suggestion #42: Ruled out",
     });
@@ -203,11 +203,11 @@ describe("announceReview", () => {
       "send",
       "setArchived",
     ]);
-    expect(state.calls[0]![1]).toMatchObject({
+    expect(state.calls[0][1]).toMatchObject({
       archived: false,
       appliedTags: ["tag-custom"],
     });
-    expect(state.calls[1]![1]).toMatchObject({
+    expect(state.calls[1][1]).toMatchObject({
       content: "🚫 **Rejected.**",
     });
   });
@@ -217,14 +217,14 @@ describe("announceReview", () => {
 
     await announcePackDropOut(fakeMod({ status: "next_update" }));
 
-    expect(state.calls[0]![1]).toMatchObject({
+    expect(state.calls[0][1]).toMatchObject({
       appliedTags: ["tag-next-update"],
       reason: "Workshop suggestion #42: dropped from the pack update",
     });
-    expect(state.calls[1]![1]).toMatchObject({
+    expect(state.calls[1][1]).toMatchObject({
       content: expect.stringContaining("Dropped from the latest pack update"),
     });
-    expect(state.calls[2]![1]).toEqual({
+    expect(state.calls[2][1]).toEqual({
       archived: true,
       reason: "Workshop suggestion #42: dropped from the pack update",
     });

@@ -116,7 +116,7 @@ describe("CurrencyController.deposit", () => {
         makeRes(),
       );
 
-      const [operation] = runIdempotentMock.mock.calls[0]!;
+      const [operation] = runIdempotentMock.mock.calls[0];
       expect(operation.requestHash).toBe(
         hashRequest("deposit", { amount: 5, description: expectedDescription }),
       );

@@ -97,9 +97,7 @@ describe("findSandboxFileUrls", () => {
 
     const urls = await findSandboxFileUrls([KEPT.query]);
 
-    expect(fetchMock.mock.calls[0]![0]).toBe(
-      `${INTERNAL}/${KEPT.query.fileId}`,
-    );
+    expect(fetchMock.mock.calls[0][0]).toBe(`${INTERNAL}/${KEPT.query.fileId}`);
     expect([...urls]).toEqual([
       [KEPT.query.fileId, `${STORAGE}/${KEPT.query.fileId}`],
     ]);
@@ -117,7 +115,7 @@ describe("findSandboxFileUrls", () => {
 
   it("refuses a copy whose bytes differ from the CurseForge file", async () => {
     const tampered = Buffer.from(KEPT.bytes);
-    tampered[0]! ^= 1;
+    tampered[0] ^= 1;
     stubSandbox(
       new Map([[KEPT.query.fileId, { status: 200, body: tampered }]]),
     );
@@ -237,7 +235,7 @@ describe("findSandboxSnapshotUrl", () => {
 
     const url = await findSandboxSnapshotUrl(query);
 
-    expect(fetchMock.mock.calls[0]![0]).toBe(`${INTERNAL}/snapshot/7`);
+    expect(fetchMock.mock.calls[0][0]).toBe(`${INTERNAL}/snapshot/7`);
     expect(url).toBe(`${STORAGE}/snapshot/7`);
   });
 
@@ -268,10 +266,8 @@ describe("openSandboxFile", () => {
       new AbortController().signal,
     );
 
-    expect(fetchMock.mock.calls[0]![0]).toBe(
-      `${INTERNAL}/${KEPT.query.fileId}`,
-    );
-    expect(fetchMock.mock.calls[0]![1]).toMatchObject({ redirect: "manual" });
+    expect(fetchMock.mock.calls[0][0]).toBe(`${INTERNAL}/${KEPT.query.fileId}`);
+    expect(fetchMock.mock.calls[0][1]).toMatchObject({ redirect: "manual" });
     expect(download?.size).toBe(KEPT.query.size);
     expect(
       Buffer.from(await new Response(download?.body).arrayBuffer()),

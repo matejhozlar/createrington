@@ -37,7 +37,7 @@ describe("Filter operators (server table)", () => {
   it("$eq should match exact value", async () => {
     const results = await Q.server.findAll({ name: { $eq: "Alpha" } as any });
     expect(results).toHaveLength(1);
-    expect(results[0]!.name).toBe("Alpha");
+    expect(results[0].name).toBe("Alpha");
   });
 
   it("$ne should exclude matching value", async () => {
@@ -115,7 +115,7 @@ describe("Filter operators (server table)", () => {
       name: { $like: "Al%" } as any,
     });
     expect(results).toHaveLength(1);
-    expect(results[0]!.name).toBe("Alpha");
+    expect(results[0].name).toBe("Alpha");
   });
 
   it("$ilike should match with case-insensitive pattern", async () => {
@@ -123,7 +123,7 @@ describe("Filter operators (server table)", () => {
       name: { $ilike: "al%" } as any,
     });
     expect(results).toHaveLength(1);
-    expect(results[0]!.name).toBe("Alpha");
+    expect(results[0].name).toBe("Alpha");
   });
 
   // ==========================================================================

@@ -81,7 +81,7 @@ function registerFonts(): void {
   for (const [file, family] of [
     ["minecraft-regular.woff2", FONT_FAMILY],
     ["outfit-latin-400.woff2", FALLBACK_FAMILY],
-  ] as const) {
+  ]) {
     const path = join(ASSETS_DIR, "fonts", file);
     if (!GlobalFonts.registerFromPath(path, family)) {
       logger.warn(`Failed to register changelog row font: ${path}`);
@@ -96,7 +96,7 @@ export function versionChange(previous: string, current: string): string {
   const shortest = Math.min(previous.length, current.length);
   let start = 0;
   for (let i = 0; i < shortest && previous[i] === current[i]; i++) {
-    if (VERSION_BOUNDARY_RE.test(previous.charAt(i))) start = i + 1;
+    if (VERSION_BOUNDARY_RE.test(previous[i])) start = i + 1;
   }
   let end = 0;
   for (
@@ -105,7 +105,7 @@ export function versionChange(previous: string, current: string): string {
     previous[previous.length - i] === current[current.length - i];
     i++
   ) {
-    if (VERSION_BOUNDARY_RE.test(previous.charAt(previous.length - i))) end = i;
+    if (VERSION_BOUNDARY_RE.test(previous[previous.length - i])) end = i;
   }
   const before = previous.slice(start, previous.length - end);
   const after = current.slice(start, current.length - end);

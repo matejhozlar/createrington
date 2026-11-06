@@ -53,13 +53,13 @@ describe("buildComponentsV2", () => {
   it("maps each top-level node to the matching discord.js component type", () => {
     const json = buildComponentsV2(sampleTree).map((c) => c.toJSON());
 
-    expect(json[0]!.type).toBe(ComponentType.Container);
-    expect(json[1]!.type).toBe(ComponentType.TextDisplay);
+    expect(json[0].type).toBe(ComponentType.Container);
+    expect(json[1].type).toBe(ComponentType.TextDisplay);
   });
 
   it("sets the container accent color and nests its children in order", () => {
     const [container] = buildComponentsV2(sampleTree).map((c) => c.toJSON());
-    if (container?.type !== ComponentType.Container) {
+    if (container.type !== ComponentType.Container) {
       throw new Error("expected a container");
     }
 
@@ -75,7 +75,7 @@ describe("buildComponentsV2", () => {
 
   it("maps separator spacing to the discord.js enum", () => {
     const [container] = buildComponentsV2(sampleTree).map((c) => c.toJSON());
-    if (container?.type !== ComponentType.Container) {
+    if (container.type !== ComponentType.Container) {
       throw new Error("expected a container");
     }
     const separator = container.components.find(
@@ -86,7 +86,7 @@ describe("buildComponentsV2", () => {
 
   it("builds a section with a thumbnail accessory", () => {
     const [container] = buildComponentsV2(sampleTree).map((c) => c.toJSON());
-    if (container?.type !== ComponentType.Container) {
+    if (container.type !== ComponentType.Container) {
       throw new Error("expected a container");
     }
     const section = container.components.find(
@@ -211,7 +211,7 @@ describe("buildComponentsMessage", () => {
 
     expect(result.flags).toBe(MessageFlags.IsComponentsV2);
     expect(result.components).toHaveLength(1);
-    expect(result.components[0]!.toJSON().type).toBe(ComponentType.Container);
+    expect(result.components[0].toJSON().type).toBe(ComponentType.Container);
   });
 
   it("throws when the tree exceeds the aggregate limits", () => {

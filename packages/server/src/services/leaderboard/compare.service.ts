@@ -44,13 +44,13 @@ export class LeaderboardCompareService {
   }
 
   private async boards(): Promise<Map<LeaderboardBoard, BoardSnapshot>> {
-    return new Map(
-      await Promise.all(
-        LEADERBOARD_BOARDS.map(
-          async (board) =>
-            [board, await leaderboardBoardService.getBoard(board)] as const,
-        ),
+    const snapshots = await Promise.all(
+      LEADERBOARD_BOARDS.map((board) =>
+        leaderboardBoardService.getBoard(board),
       ),
+    );
+    return new Map(
+      LEADERBOARD_BOARDS.map((board, index) => [board, snapshots[index]]),
     );
   }
 

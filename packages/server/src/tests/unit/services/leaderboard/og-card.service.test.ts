@@ -163,7 +163,7 @@ describe("LeaderboardOgCardService", () => {
     const card = await service.render();
 
     expect(card.degraded).toBe(true);
-    const slots = mocks.paintLeaderboardsCard.mock.calls[0]![1];
+    const slots = mocks.paintLeaderboardsCard.mock.calls[0][1];
     expect(slots[0].holder.figure).toBeNull();
   });
 
@@ -186,7 +186,7 @@ describe("LeaderboardOgCardService", () => {
 
     await service.render();
 
-    const slots = mocks.paintLeaderboardsCard.mock.calls[0]![1];
+    const slots = mocks.paintLeaderboardsCard.mock.calls[0][1];
     expect(
       slots.map((slot: { roleKey: string } | null) => slot?.roleKey),
     ).toEqual(["the_sleepless", undefined, "capitalist"]);

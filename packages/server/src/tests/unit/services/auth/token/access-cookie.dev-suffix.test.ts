@@ -49,14 +49,14 @@ describe("AccessCookieService (dev-deployment suffixed name)", () => {
   it("setCookie uses the dev-suffixed name", () => {
     accessCookieService.setCookie(res, "the-token");
     expect(cookieCalls).toHaveLength(1);
-    expect(cookieCalls[0]![0]).toBe("crt_access_dev");
+    expect(cookieCalls[0][0]).toBe("crt_access_dev");
   });
 
   it("clearCookie targets the dev-suffixed name on both host-only and domain variants", () => {
     accessCookieService.clearCookie(res);
     expect(clearCalls).toHaveLength(2);
-    expect(clearCalls[0]![0]).toBe("crt_access_dev");
-    expect(clearCalls[1]![0]).toBe("crt_access_dev");
+    expect(clearCalls[0][0]).toBe("crt_access_dev");
+    expect(clearCalls[1][0]).toBe("crt_access_dev");
   });
 
   it("extractFromRequest reads the dev-suffixed cookie", () => {

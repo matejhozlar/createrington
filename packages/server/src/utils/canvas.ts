@@ -23,7 +23,7 @@ export function computeBBox(img: Image): BBox | null {
   let maxY = 0;
   for (let y = 0, alpha = 3; y < height; y++) {
     for (let x = 0; x < width; x++, alpha += 4) {
-      if ((data[alpha] ?? 0) > 16) {
+      if (data[alpha] > 16) {
         if (x < minX) minX = x;
         if (x > maxX) maxX = x;
         if (y < minY) minY = y;
@@ -39,12 +39,12 @@ export function fitFontSize(
   ctx: SKRSContext2D,
   text: string,
   font: (size: number) => string,
-  sizes: readonly [number, ...number[]],
+  sizes: readonly number[],
   maxWidth: number,
 ): number {
   for (const size of sizes) {
     ctx.font = font(size);
     if (ctx.measureText(text).width <= maxWidth) return size;
   }
-  return sizes.at(-1) ?? sizes[0];
+  return sizes[sizes.length - 1];
 }

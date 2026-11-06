@@ -59,7 +59,7 @@ describe("replacePartyState", () => {
   it("stores parties with their members, allies and the tag taken from the design code", async () => {
     await replacePartyState({ serverId, parties: [party(ALPHA)] });
 
-    const alpha = (await partyRows())[0]!;
+    const [alpha] = await partyRows();
     expect(alpha).toMatchObject({
       teamId: ALPHA.toLowerCase(),
       name: "Alpha",
@@ -94,7 +94,7 @@ describe("replacePartyState", () => {
   });
 
   it("keeps the party row across syncs while replacing its members and allies", async () => {
-    const before = (await partyRows())[0]!;
+    const [before] = await partyRows();
 
     await replacePartyState({
       serverId,
@@ -110,7 +110,7 @@ describe("replacePartyState", () => {
       ],
     });
 
-    const after = (await partyRows())[0]!;
+    const [after] = await partyRows();
     expect(after.id).toBe(before.id);
     expect(after.firstSeenAt).toEqual(before.firstSeenAt);
     expect(after.syncedAt.getTime()).toBeGreaterThan(before.syncedAt.getTime());
@@ -148,7 +148,7 @@ describe("replacePartyState", () => {
       tagCode: null,
       tag: null,
     });
-    expect(await Q.server.party.ally.count({ partyId: rows[0]!.id })).toBe(1);
+    expect(await Q.server.party.ally.count({ partyId: rows[0].id })).toBe(1);
   });
 
   it("keeps one row per player when a member or ally is listed twice", async () => {
@@ -171,7 +171,7 @@ describe("replacePartyState", () => {
       ],
     });
 
-    const beta = (await partyRows())[0]!;
+    const [beta] = await partyRows();
     const members = await Q.server.party.member.findAll(
       { partyId: beta.id },
       { orderBy: "minecraftUuid" },

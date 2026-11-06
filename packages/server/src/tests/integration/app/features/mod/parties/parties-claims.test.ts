@@ -103,7 +103,7 @@ describe("replacePartyClaims", () => {
 
   it("only moves synced_at when the hash matches the stored one", async () => {
     const before = await Q.server.party.claim.sync.get({ serverId });
-    const firstRow = (await claimRows())[0]!;
+    const [firstRow] = await claimRows();
 
     const result = await replacePartyClaims({
       serverId,
@@ -116,7 +116,7 @@ describe("replacePartyClaims", () => {
     expect(after.syncedAt.getTime()).toBeGreaterThan(before.syncedAt.getTime());
     const rows = await claimRows();
     expect(rows).toHaveLength(6);
-    expect(rows[0]!.id).toBe(firstRow.id);
+    expect(rows[0].id).toBe(firstRow.id);
   });
 
   it("replaces the server's chunks when the hash changed", async () => {

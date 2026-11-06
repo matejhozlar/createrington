@@ -36,7 +36,7 @@ describe("QueryBuilder (server table)", () => {
   it("should filter with a single where()", async () => {
     const results = await Q.server.where({ name: "Alpha" }).all();
     expect(results).toHaveLength(1);
-    expect(results[0]!.identifier).toBe("alpha");
+    expect(results[0].identifier).toBe("alpha");
   });
 
   it("should merge chained where() calls (AND)", async () => {
@@ -53,7 +53,7 @@ describe("QueryBuilder (server table)", () => {
       .where({ name: "Beta" })
       .all();
     expect(results).toHaveLength(1);
-    expect(results[0]!.name).toBe("Beta");
+    expect(results[0].name).toBe("Beta");
   });
 
   it("should return empty array when where() matches nothing", async () => {
@@ -82,7 +82,7 @@ describe("QueryBuilder (server table)", () => {
   it("should apply limit", async () => {
     const results = await Q.server.orderBy("name", "asc").limit(2).all();
     expect(results).toHaveLength(2);
-    expect(results[0]!.name).toBe("Alpha");
+    expect(results[0].name).toBe("Alpha");
   });
 
   it("should apply offset", async () => {
@@ -92,17 +92,17 @@ describe("QueryBuilder (server table)", () => {
       .offset(1)
       .all();
     expect(results).toHaveLength(1);
-    expect(results[0]!.name).toBe("Beta");
+    expect(results[0].name).toBe("Beta");
   });
 
   it("should paginate correctly", async () => {
     const page0 = await Q.server.orderBy("name", "asc").paginate(0, 2).all();
     expect(page0).toHaveLength(2);
-    expect(page0[0]!.name).toBe("Alpha");
+    expect(page0[0].name).toBe("Alpha");
 
     const page1 = await Q.server.orderBy("name", "asc").paginate(1, 2).all();
     expect(page1).toHaveLength(1);
-    expect(page1[0]!.name).toBe("Gamma");
+    expect(page1[0].name).toBe("Gamma");
   });
 
   // ==========================================================================
@@ -183,7 +183,7 @@ describe("QueryBuilder (server table)", () => {
       .all();
 
     expect(results).toHaveLength(2);
-    expect(results[0]!.name).toBe("Beta");
-    expect(results[1]!.name).toBe("Delta");
+    expect(results[0].name).toBe("Beta");
+    expect(results[1].name).toBe("Delta");
   });
 });

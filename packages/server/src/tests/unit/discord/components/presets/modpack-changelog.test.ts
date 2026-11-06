@@ -58,7 +58,7 @@ function input(overrides: Partial<ChangelogInput> = {}): ChangelogInput {
 
 function children(message: ComponentsData): Child[] {
   const [root] = message.components;
-  if (root?.type !== "container") throw new Error("expected a container");
+  if (root.type !== "container") throw new Error("expected a container");
   return root.components;
 }
 
@@ -101,9 +101,9 @@ describe("ModpackChangelogComponentPresets.release", () => {
     );
 
     expect(messages).toHaveLength(1);
-    expect(validateComponentsV2(messages[0]!)).toBeNull();
+    expect(validateComponentsV2(messages[0])).toBeNull();
 
-    const nodes = children(messages[0]!);
+    const nodes = children(messages[0]);
     const [header] = texts(nodes);
     expect(header).toContain("## Rails n Sails 1.3.0");
     expect(header).toContain("Minecraft 1.21.1");
@@ -124,14 +124,14 @@ describe("ModpackChangelogComponentPresets.release", () => {
 
     const entrySections = sections(nodes);
     expect(entrySections).toHaveLength(4);
-    expect(entrySections[0]!.accessory.type).toBe("thumbnail");
-    expect(entrySections[0]!.components[0]!.content).toBe(
+    expect(entrySections[0].accessory.type).toBe("thumbnail");
+    expect(entrySections[0].components[0].content).toBe(
       "**[Mod 1](https://www.curseforge.com/minecraft/mc-mods/mod-1)**\n`mod-1-1.0.1`",
     );
-    expect(entrySections[2]!.components[0]!.content).toContain(
+    expect(entrySections[2].components[0].content).toContain(
       "`mod-3-1.0.0` → `mod-3-2.0.0`",
     );
-    expect(entrySections[3]!.accessory).toMatchObject({
+    expect(entrySections[3].accessory).toMatchObject({
       type: "button",
       label: "CurseForge",
     });
@@ -185,12 +185,12 @@ describe("ModpackChangelogComponentPresets.release", () => {
     );
 
     expect(messages.length).toBeGreaterThan(1);
-    expect(messages[0]!.components).toHaveLength(2);
-    expect(messages[0]!.components[0]).toEqual({
+    expect(messages[0].components).toHaveLength(2);
+    expect(messages[0].components[0]).toEqual({
       type: "text",
       content: "||<@&123456789012345678>||",
     });
-    expect(messages[0]!.components[1]!.type).toBe("container");
+    expect(messages[0].components[1].type).toBe("container");
     for (const message of messages.slice(1)) {
       expect(message.components).toHaveLength(1);
       expect(children(message)[0]).toEqual(SPACER);
@@ -225,11 +225,11 @@ describe("ModpackChangelogComponentPresets.release", () => {
   it("renders an empty diff as a single message without groups", () => {
     const messages = ModpackChangelogComponentPresets.release(input());
     expect(messages).toHaveLength(1);
-    const nodes = children(messages[0]!);
+    const nodes = children(messages[0]);
     expect(headings(nodes)).toEqual([]);
     expect(texts(nodes)).toContain("No mod changes in this release.");
     expect(hasDownloadRow(nodes)).toBe(true);
-    expect(validateComponentsV2(messages[0]!)).toBeNull();
+    expect(validateComponentsV2(messages[0])).toBeNull();
   });
 
   it("omits the download row and the previous version when unknown", () => {
@@ -249,7 +249,7 @@ describe("ModpackChangelogComponentPresets.release", () => {
         added: [entry(1, { thumbnailUrl: null, url: null })],
       }),
     );
-    const nodes = children(messages[0]!);
+    const nodes = children(messages[0]);
     const [header] = texts(nodes);
     expect(header).toBe(
       "## Rails n Sails\n-# 1 mod\n**1 added** · **0 updated** · **0 removed** · 200 unchanged",
@@ -275,8 +275,8 @@ describe("ModpackChangelogComponentPresets.release", () => {
         ],
       }),
     );
-    const bodies = sections(children(messages[0]!)).map(
-      (section) => section.components[0]!.content,
+    const bodies = sections(children(messages[0])).map(
+      (section) => section.components[0].content,
     );
     expect(bodies[0]).toContain("Complementary \\*Shaders\\*");
     expect(bodies[0]).toContain("· Shader");
@@ -294,8 +294,8 @@ describe("ModpackChangelogComponentPresets.release", () => {
         ],
       }),
     );
-    const [body] = sections(children(messages[0]!)).map(
-      (section) => section.components[0]!.content,
+    const [body] = sections(children(messages[0])).map(
+      (section) => section.components[0].content,
     );
     expect(body).toContain(
       "**[Mod 1](https://www.curseforge.com/minecraft/mc-mods/mod-(1%29)**",
@@ -312,14 +312,14 @@ describe("ModpackChangelogComponentPresets.release", () => {
     });
 
     expect(messages.length).toBeGreaterThan(1);
-    const [gallery, header] = children(messages[0]!);
+    const [gallery, header] = children(messages[0]);
     expect(gallery).toEqual({
       type: "media_gallery",
       items: [
         { url: banner, description: "Rails n Sails 1.3.0", spoiler: false },
       ],
     });
-    if (header?.type !== "text") throw new Error("expected the header text");
+    if (header.type !== "text") throw new Error("expected the header text");
     expect(header.content.startsWith("**1.3.0**\n-# ")).toBe(true);
     expect(header.content).not.toContain("## ");
     for (const message of messages.slice(1)) {
@@ -345,12 +345,11 @@ describe("ModpackChangelogComponentPresets.release", () => {
       added: entries(1),
     });
     expect(messages).toHaveLength(1);
-    expect(validateComponentsV2(messages[0]!)).toBeNull();
-    const [gallery, header] = children(messages[0]!);
-    if (gallery?.type !== "media_gallery")
-      throw new Error("expected a gallery");
-    expect(gallery.items[0]!.description!.length).toBeLessThanOrEqual(1024);
-    if (header?.type !== "text") throw new Error("expected the header text");
+    expect(validateComponentsV2(messages[0])).toBeNull();
+    const [gallery, header] = children(messages[0]);
+    if (gallery.type !== "media_gallery") throw new Error("expected a gallery");
+    expect(gallery.items[0].description!.length).toBeLessThanOrEqual(1024);
+    if (header.type !== "text") throw new Error("expected the header text");
     expect(header.content.length).toBeLessThan(600);
     expect(header.content).toContain("…");
   });
@@ -362,7 +361,7 @@ describe("ModpackChangelogComponentPresets.release", () => {
         notes: "Rebalanced ore generation.\nSee the pinned post.",
       }),
     );
-    const nodes = children(message!);
+    const nodes = children(message);
     expect(headings(nodes)).toEqual(["### Added (2)", "### Additional notes"]);
     const content = texts(nodes);
     expect(content[content.length - 1]).toBe(
@@ -376,7 +375,7 @@ describe("ModpackChangelogComponentPresets.release", () => {
       input({ notes: "Maintenance release." }),
     );
     expect(messages).toHaveLength(1);
-    const content = texts(children(messages[0]!));
+    const content = texts(children(messages[0]));
     expect(content).toContain("No mod changes in this release.");
     expect(content).toContain("### Additional notes");
     expect(content[content.length - 1]).toBe("Maintenance release.");
@@ -397,7 +396,7 @@ describe("ModpackChangelogComponentPresets.release", () => {
     const all = messages.flatMap((m) => texts(children(m))).join("\n");
     expect(all).toContain("Line 1:");
     expect(all).toContain("Line 120:");
-    expect(hasDownloadRow(children(messages[messages.length - 1]!))).toBe(true);
+    expect(hasDownloadRow(children(messages[messages.length - 1]))).toBe(true);
   });
 
   it("hard-splits a single line longer than a message and stays valid", () => {

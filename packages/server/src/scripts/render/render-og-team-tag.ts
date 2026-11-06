@@ -239,7 +239,7 @@ function glyphWidth(bitmap: Bitmap): number {
 
 function plateGlyphs(design: PlateDesign, sheets: PlateSheets): Glyph[] {
   const { riveted, letters } = sheets;
-  const cellW = letters.width / (PLATE_LETTER_ROWS[0]?.length ?? 1);
+  const cellW = letters.width / PLATE_LETTER_ROWS[0].length;
   const cellH = letters.height / PLATE_LETTER_ROWS.length;
 
   const glyphs: Glyph[] = [];
@@ -255,9 +255,7 @@ function plateGlyphs(design: PlateDesign, sheets: PlateSheets): Glyph[] {
   let x = plateLetterStart(design.tag);
   [...design.tag].forEach((char, i) => {
     const row = PLATE_LETTER_ROWS.findIndex((chars) => chars.includes(char));
-    const rowChars = PLATE_LETTER_ROWS[row];
-    if (!rowChars) throw new Error(`No plate glyph for "${char}"`);
-    const col = rowChars.indexOf(char);
+    const col = PLATE_LETTER_ROWS[row].indexOf(char);
     const bitmap = cropBitmap(letters, col * cellW, row * cellH, cellW, cellH);
     glyphs.push({ bitmap, x, color: plateLetterColor(design, i) });
     x += glyphWidth(bitmap) + 1;
@@ -273,11 +271,11 @@ function blend(
   b: number,
   a: number,
 ): void {
-  const below = ((out[i + 3] ?? 0) / 255) * (1 - a);
+  const below = (out[i + 3] / 255) * (1 - a);
   const total = a + below;
-  out[i] = (r * a + (out[i] ?? 0) * below) / total;
-  out[i + 1] = (g * a + (out[i + 1] ?? 0) * below) / total;
-  out[i + 2] = (b * a + (out[i + 2] ?? 0) * below) / total;
+  out[i] = (r * a + out[i] * below) / total;
+  out[i + 1] = (g * a + out[i + 1] * below) / total;
+  out[i + 2] = (b * a + out[i + 2] * below) / total;
   out[i + 3] = total * 255;
 }
 
@@ -312,9 +310,9 @@ function plateCanvas(
           blend(
             out,
             (dy * width + dx) * 4,
-            ((bitmap.data[src] ?? 0) * r) / 255,
-            ((bitmap.data[src + 1] ?? 0) * g) / 255,
-            ((bitmap.data[src + 2] ?? 0) * b) / 255,
+            (bitmap.data[src] * r) / 255,
+            (bitmap.data[src + 1] * g) / 255,
+            (bitmap.data[src + 2] * b) / 255,
             alpha / 255,
           );
         }

@@ -148,8 +148,8 @@ export interface RoleEligibilityResult {
 export interface RoleAssignmentResult {
   /** Whether the assignment was successful */
   success: boolean;
-  /** The rule that was processed, or null when the hierarchy had none */
-  rule: AnyRoleRule | null;
+  /** The rule that was processed */
+  rule: AnyRoleRule;
   /** Discord ID of the player */
   discordId: string;
   /** Whether the role was assigned (true) or removed (false) */

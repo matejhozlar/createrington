@@ -14,7 +14,7 @@ import type { RotationPeriod } from "./types";
 export function computeNextRotationTime(
   cfg: StructurePackRotationConfig,
 ): Date {
-  const [hours = 0, minutes = 0] = cfg.time.split(":").map(Number);
+  const [hours, minutes] = cfg.time.split(":").map(Number);
   const now = new Date();
   const period = cfg.period as RotationPeriod;
 
@@ -134,7 +134,7 @@ export function computeNextRotationTime(
  * @returns UTC Date representing the start of the active cycle
  */
 export function computeCycleStart(cfg: StructurePackRotationConfig): Date {
-  const [hours = 0, minutes = 0] = cfg.time.split(":").map(Number);
+  const [hours, minutes] = cfg.time.split(":").map(Number);
   const now = new Date();
   const period = cfg.period as RotationPeriod;
 

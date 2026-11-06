@@ -78,7 +78,7 @@ async function seedPack(): Promise<Modpack> {
 
 async function seedHistory() {
   const modpack = await seedPack();
-  const projectIds = await Promise.all(
+  const [kept, laterAdded, earlyAdded] = await Promise.all(
     [0, 1, 2].map((i) =>
       seedProject(ctx, `Changelog Mod ${i}`, {
         thumbnailUrl: `https://media.forgecdn.net/avatars/thumbnails/1/${i}/256/256/icon.png`,
@@ -86,9 +86,6 @@ async function seedHistory() {
       }),
     ),
   );
-  const kept = projectIds[0]!;
-  const laterAdded = projectIds[1]!;
-  const earlyAdded = projectIds[2]!;
   const first = await seedRelease(modpack, "1.0.0", [fileRow(kept, "1.0.0")]);
   const middle = await seedRelease(modpack, "1.1.0", [
     fileRow(kept, "1.0.0"),

@@ -67,7 +67,7 @@ function cleanChannelName(name: string, categoryKey: string): string {
   // For serverStats category, strip everything after colon or numbers
   if (categoryKey === "serverStats") {
     return name
-      .split(":")[0]! // Remove everything after colon
+      .split(":")[0] // Remove everything after colon
       .replace(/\d+/g, "") // Remove any numbers
       .trim();
   }
@@ -206,8 +206,7 @@ async function scrapeDiscordEntities(): Promise<void> {
         categoryKey = category ? toCamelCase(category.name) : "unknown";
       }
 
-      const categoryChannels: Record<string, string> = {};
-      entities.channels[categoryKey] = categoryChannels;
+      entities.channels[categoryKey] = {};
 
       for (const channel of channels) {
         // Clean the channel name (especially for serverStats)
@@ -216,7 +215,7 @@ async function scrapeDiscordEntities(): Promise<void> {
         const channelType =
           channel.type === 2 ? "voice" : channel.type === 15 ? "forum" : "text";
 
-        categoryChannels[channelKey] = channel.id;
+        entities.channels[categoryKey][channelKey] = channel.id;
 
         // Show what was cleaned if applicable
         const cleanedIndicator =
