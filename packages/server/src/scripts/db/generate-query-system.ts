@@ -30,7 +30,7 @@ import {
 } from "./schema/drizzle-reader";
 
 // Hierarchy
-import { buildTableHierarchy, collectAllStructures } from "./hierarchy/builder";
+import { buildTableHierarchy } from "./hierarchy/builder";
 
 // Generators
 import { generateTypes } from "./generators/types";
@@ -388,7 +388,7 @@ export async function generate(
  * ```
  */
 function generateSharedFiles(
-  tables: any[],
+  tables: TableInfo[],
   enums: EnumTypeInfo[],
   hierarchy: TableStructure[],
   context: GenerationContext,

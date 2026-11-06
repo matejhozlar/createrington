@@ -21,7 +21,11 @@ type Handler = (...args: unknown[]) => void;
 interface FakeSocket {
   id: string;
   data: Record<string, unknown>;
-  handshake: { address: string; headers: Record<string, string>; auth: {} };
+  handshake: {
+    address: string;
+    headers: Record<string, string>;
+    auth: Record<string, unknown>;
+  };
   on: ReturnType<typeof vi.fn>;
   join: ReturnType<typeof vi.fn>;
   leave: ReturnType<typeof vi.fn>;

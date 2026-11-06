@@ -1,13 +1,23 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const state = vi.hoisted(() => ({
+type State = {
+  isProd: boolean;
+  isDevDeployment: boolean;
+  version: string;
+  announced: string | null;
+  failRead: boolean;
+  failWrite: boolean;
+  changelog: string | null;
+};
+
+const state = vi.hoisted((): State => ({
   isProd: true,
   isDevDeployment: false,
   version: "1.66.0",
-  announced: null as string | null,
+  announced: null,
   failRead: false,
   failWrite: false,
-  changelog: "" as string | null,
+  changelog: "",
 }));
 
 vi.mock("@/db", () => ({ Q: {} }));

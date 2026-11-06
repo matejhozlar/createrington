@@ -33,7 +33,7 @@ type ButtonData = {
   url?: string;
   disabled?: boolean;
 };
-const json = (b: ButtonBuilder): ButtonData => b.toJSON() as ButtonData;
+const json = (b: ButtonBuilder): ButtonData => b.toJSON();
 
 describe("ButtonPresets.links", () => {
   it("each link button uses the Link style and a url", () => {

@@ -12,10 +12,10 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 // synchronous SlashCommandBuilder), so a broken DB pool is harmless here.
 const realExit = process.exit.bind(process);
 let exitIntercepted = false;
-process.exit = ((code?: number) => {
+process.exit = (code?: number) => {
   if (exitIntercepted) return undefined as never;
   return realExit(code);
-}) as typeof process.exit;
+};
 
 // CLI flags: --json (JSON only), --md (markdown only), default = both
 const args = process.argv.slice(2);
@@ -285,7 +285,7 @@ async function main(): Promise<void> {
         name: json.name,
         description: json.description,
         category,
-        options: (json.options ?? []) as CommandOption[],
+        options: json.options ?? [],
         defaultMemberPermissions: json.default_member_permissions ?? null,
         permissions: mod.permissions
           ? {

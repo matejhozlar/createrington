@@ -77,34 +77,34 @@ describe("authenticate", () => {
     extractFromRequestMock.mockClear();
   });
 
-  it("uses the Bearer header when present", async () => {
+  it("uses the Bearer header when present", () => {
     const req = makeReq({ header: "Bearer good" });
     authenticate(req, {} as Response, next);
     expect(nextErrors).toHaveLength(0);
     expect(req.user?.username).toBe("alice");
   });
 
-  it("falls back to the access cookie when no header is present", async () => {
+  it("falls back to the access cookie when no header is present", () => {
     const req = makeReq({ cookie: "good" });
     authenticate(req, {} as Response, next);
     expect(nextErrors).toHaveLength(0);
     expect(req.user?.username).toBe("alice");
   });
 
-  it("prefers the header over the cookie when both are present", async () => {
+  it("prefers the header over the cookie when both are present", () => {
     const req = makeReq({ header: "Bearer good", cookie: "ignored" });
     authenticate(req, {} as Response, next);
     expect(nextErrors).toHaveLength(0);
     expect(req.user).toBeDefined();
   });
 
-  it("rejects when neither header nor cookie is present", async () => {
+  it("rejects when neither header nor cookie is present", () => {
     authenticate(makeReq({}), {} as Response, next);
     expect(nextErrors).toHaveLength(1);
     expect((nextErrors[0] as Error).message).toMatch(/Authentication required/);
   });
 
-  it("rejects an invalid token", async () => {
+  it("rejects an invalid token", () => {
     authenticate(makeReq({ header: "Bearer bad" }), {} as Response, next);
     expect(nextErrors).toHaveLength(1);
     expect((nextErrors[0] as Error).message).toMatch(
@@ -117,7 +117,7 @@ describe("authenticate", () => {
       isEnabledMock.mockReturnValue(false);
     });
 
-    it("does not consult the cookie even when one is present", async () => {
+    it("does not consult the cookie even when one is present", () => {
       authenticate(makeReq({ cookie: "good" }), {} as Response, next);
       expect(extractFromRequestMock).not.toHaveBeenCalled();
       // No header, cookie ignored → unauthorized
@@ -127,7 +127,7 @@ describe("authenticate", () => {
       );
     });
 
-    it("still accepts the Bearer header", async () => {
+    it("still accepts the Bearer header", () => {
       const req = makeReq({ header: "Bearer good" });
       authenticate(req, {} as Response, next);
       expect(nextErrors).toHaveLength(0);
@@ -145,27 +145,27 @@ describe("optionalAuth", () => {
     extractFromRequestMock.mockClear();
   });
 
-  it("attaches user when a valid header token is present", async () => {
+  it("attaches user when a valid header token is present", () => {
     const req = makeReq({ header: "Bearer good" });
     optionalAuth(req, {} as Response, next);
     expect(req.user?.username).toBe("alice");
     expect(next).toHaveBeenCalledWith();
   });
 
-  it("attaches user when a valid cookie token is present", async () => {
+  it("attaches user when a valid cookie token is present", () => {
     const req = makeReq({ cookie: "good" });
     optionalAuth(req, {} as Response, next);
     expect(req.user?.username).toBe("alice");
   });
 
-  it("does not throw when no token is present", async () => {
+  it("does not throw when no token is present", () => {
     const req = makeReq({});
     optionalAuth(req, {} as Response, next);
     expect(req.user).toBeUndefined();
     expect(next).toHaveBeenCalledWith();
   });
 
-  it("silently skips when the token is invalid", async () => {
+  it("silently skips when the token is invalid", () => {
     const req = makeReq({ cookie: "bad" });
     optionalAuth(req, {} as Response, next);
     expect(req.user).toBeUndefined();

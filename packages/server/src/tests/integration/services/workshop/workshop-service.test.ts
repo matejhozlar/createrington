@@ -850,7 +850,7 @@ describe("workshop suggestion bans", () => {
     );
 
     expect(rows).toHaveLength(1);
-    expect(rows[0]!.status).toBe("approved");
+    expect(rows[0].status).toBe("approved");
   });
 
   it("rejects a duplicate in the same scope but allows global alongside scoped", async () => {
@@ -1002,15 +1002,15 @@ describe("WorkshopService.addModsAsAdmin", () => {
       ADMIN,
     );
 
-    await workshopService.reviewMod(added!.id, "start_testing", ADMIN);
+    await workshopService.reviewMod(added.id, "start_testing", ADMIN);
     await expect(
-      workshopService.reviewMod(added!.id, "send_back", ADMIN),
+      workshopService.reviewMod(added.id, "send_back", ADMIN),
     ).resolves.toMatchObject({ status: "approved" });
 
-    await workshopService.reviewMod(added!.id, "start_testing", ADMIN);
+    await workshopService.reviewMod(added.id, "start_testing", ADMIN);
     await workshopService.setProjectEnvironment(projectId, "server");
     await expect(
-      workshopService.reviewMod(added!.id, "approve", ADMIN),
+      workshopService.reviewMod(added.id, "approve", ADMIN),
     ).resolves.toMatchObject({ status: "next_update" });
   });
 
@@ -1070,7 +1070,7 @@ describe("WorkshopService.addModsAsAdmin", () => {
       fileId: projectId + 1,
       fileName: `vitest-project-${projectId}.zip`,
     });
-    expect(added!.project.classId).toBe(CurseForgeClass.resourcePacks);
+    expect(added.project.classId).toBe(CurseForgeClass.resourcePacks);
   });
 
   it("rejects a project class the workshop cannot take", async () => {

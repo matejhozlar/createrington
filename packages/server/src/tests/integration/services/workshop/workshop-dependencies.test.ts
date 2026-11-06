@@ -61,7 +61,6 @@ import {
   seedMod,
   seedPackMod,
   seedRequiredDependency,
-  makeProjectData,
 } from "@/tests/helpers/workshop";
 
 const ADMIN = "999900000000000001";

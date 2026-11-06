@@ -22,8 +22,8 @@ function fakeRedis() {
       if (redis.failing) throw new Error("Redis is not connected");
       const [command, key] = args;
       if (command === "SET") {
-        entries.set(key!, {
-          value: args[2]!,
+        entries.set(key, {
+          value: args[2],
           expiresAt: Date.now() + Number(args[4]),
         });
         if (redis.unansweredWrites) {
@@ -31,10 +31,10 @@ function fakeRedis() {
         }
         return "OK";
       }
-      if (command === "GET") return live(key!);
+      if (command === "GET") return live(key);
       if (command === "GETDEL") {
-        const value = live(key!);
-        entries.delete(key!);
+        const value = live(key);
+        entries.delete(key);
         return value;
       }
       throw new Error(`unexpected command ${command}`);
@@ -70,12 +70,11 @@ describe("one-time store with Redis", () => {
     const token = (await makeStore(redis).issue(payload))!;
 
     expect(token).toMatch(/^[0-9a-f]{40}$/);
-    const [command, key, value, unit, ttl] =
-      redis.sendCommand.mock.calls[0]![0];
+    const [command, key, value, unit, ttl] = redis.sendCommand.mock.calls[0][0];
     expect(command).toBe("SET");
     expect(key).toMatch(/^test:token:[0-9a-f]{64}$/);
     expect(key).not.toContain(token);
-    expect(JSON.parse(value!)).toEqual(payload);
+    expect(JSON.parse(value)).toEqual(payload);
     expect([unit, ttl]).toEqual(["PX", "60000"]);
   });
 
@@ -172,7 +171,7 @@ describe("one-time store with Redis", () => {
     const store = makeStore(redis);
     const token = (await store.issue(payload))!;
     const [key] = [...redis.entries.keys()];
-    redis.entries.get(key!)!.value = "{not json";
+    redis.entries.get(key)!.value = "{not json";
 
     expect(await store.consume(token)).toBeNull();
   });

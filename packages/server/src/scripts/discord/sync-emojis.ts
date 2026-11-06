@@ -55,4 +55,4 @@ async function syncEmojis(): Promise<void> {
   }
 }
 
-syncEmojis();
+void syncEmojis();

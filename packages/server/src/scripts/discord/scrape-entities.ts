@@ -1,5 +1,5 @@
 import "@/logger.global";
-import { Client, GatewayIntentBits } from "discord.js";
+import { Client, GatewayIntentBits, type GuildBasedChannel } from "discord.js";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -19,7 +19,7 @@ interface DiscordEntities {
 async function ensureDir(dirPath: string): Promise<void> {
   try {
     await fs.access(dirPath);
-  } catch (error) {
+  } catch {
     await fs.mkdir(dirPath, { recursive: true });
     console.log(`Created directory: ${dirPath}`);
   }
@@ -176,7 +176,7 @@ async function scrapeDiscordEntities(): Promise<void> {
     console.log("\nScraping channels...");
 
     // Group channels by category
-    const channelsByCategory = new Map<string, any[]>();
+    const channelsByCategory = new Map<string, GuildBasedChannel[]>();
 
     // Include text (0), voice (2), announcement (5), and forum (15) channels
     const channels = guild.channels.cache.filter(
@@ -262,8 +262,8 @@ async function scrapeDiscordEntities(): Promise<void> {
     console.error(error);
     process.exit(1);
   } finally {
-    client.destroy();
+    await client.destroy();
   }
 }
 
-scrapeDiscordEntities();
+void scrapeDiscordEntities();

@@ -74,7 +74,7 @@ function playtimeRule(
     conditionType: RoleConditionType.PLAYTIME,
     requiredSeconds: hours * HOUR,
     serverId,
-  } as AnyRoleRule;
+  };
 }
 
 function serverAgeRule(roleId: string, days: number): AnyRoleRule {
@@ -84,7 +84,7 @@ function serverAgeRule(roleId: string, days: number): AnyRoleRule {
     checkInterval: RoleCheckInterval.DAILY,
     conditionType: RoleConditionType.SERVER_AGE,
     requiredDays: days,
-  } as AnyRoleRule;
+  };
 }
 
 const PLAYTIME_TIERS = [

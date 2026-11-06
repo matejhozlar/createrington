@@ -47,7 +47,7 @@ afterEach(() => {
 });
 
 describe("PlaytimeService join / heartbeat / leave", () => {
-  it("credits playtime from tick deltas across heartbeats and the leave", async () => {
+  it("credits playtime from tick deltas across heartbeats and the leave", () => {
     const { service, starts, progress, ends } = makeService();
     service.initialize();
 
@@ -102,7 +102,7 @@ describe("PlaytimeService join / heartbeat / leave", () => {
     expect(service.isPlayerOnline(STEVE)).toBe(false);
   });
 
-  it("falls back to wall-clock when the mod never reports ticks", async () => {
+  it("falls back to wall-clock when the mod never reports ticks", () => {
     const { service, progress, ends } = makeService();
     service.initialize();
 
@@ -118,7 +118,7 @@ describe("PlaytimeService join / heartbeat / leave", () => {
     expect(ends[0].secondsPlayed).toBe(100);
   });
 
-  it("confirms presence but credits nothing until the session row exists", async () => {
+  it("confirms presence but credits nothing until the session row exists", () => {
     const { service, progress } = makeService();
     service.initialize();
 
@@ -150,7 +150,7 @@ describe("PlaytimeService join / heartbeat / leave", () => {
     });
   });
 
-  it("re-credits a reverted slice on the next heartbeat", async () => {
+  it("re-credits a reverted slice on the next heartbeat", () => {
     const { service, progress, ends } = makeService();
     service.initialize();
 
@@ -188,7 +188,7 @@ describe("PlaytimeService join / heartbeat / leave", () => {
     expect(service.revertProgress(progress[1])).toBe(false);
   });
 
-  it("closes at the session start when the mod reports a leave timestamp before it", async () => {
+  it("closes at the session start when the mod reports a leave timestamp before it", () => {
     const { service, ends } = makeService();
     service.initialize();
 
@@ -215,7 +215,7 @@ describe("PlaytimeService join / heartbeat / leave", () => {
     });
   });
 
-  it("closes a session missing from the heartbeat at its last-seen instant with no extra credit", async () => {
+  it("closes a session missing from the heartbeat at its last-seen instant with no extra credit", () => {
     const { service, ends } = makeService();
     service.initialize();
 
@@ -259,7 +259,7 @@ describe("PlaytimeService join / heartbeat / leave", () => {
     expect(service.getServerState()).toBe(ServerState.ONLINE);
   });
 
-  it("emits an orphaned end for a leave with no tracked session", async () => {
+  it("emits an orphaned end for a leave with no tracked session", () => {
     const { service, ends } = makeService();
     service.initialize();
 
@@ -278,7 +278,7 @@ describe("PlaytimeService join / heartbeat / leave", () => {
     expect(ends[0].credit).toBeUndefined();
   });
 
-  it("closes the stale session first when a tracked player joins again", async () => {
+  it("closes the stale session first when a tracked player joins again", () => {
     const { service, starts, ends } = makeService();
     service.initialize();
 
@@ -355,7 +355,7 @@ describe("PlaytimeService restart persistence", () => {
     expect(service.getSession(STEVE)?.activeSeconds).toBe(2800);
   });
 
-  it("leaves sessions open on stop", async () => {
+  it("leaves sessions open on stop", () => {
     const { service, ends } = makeService();
     service.initialize();
     service.handlePlayerJoinFromMod({ uuid: STEVE, username: "steve" });
@@ -423,7 +423,7 @@ describe("PlaytimeService watchdog", () => {
 });
 
 describe("PlaytimeService relay shutdown", () => {
-  it("ends every session now, crediting nothing for the unobserved tail of tick-tracked sessions", async () => {
+  it("ends every session now, crediting nothing for the unobserved tail of tick-tracked sessions", () => {
     const { service, ends } = makeService();
     service.initialize();
 

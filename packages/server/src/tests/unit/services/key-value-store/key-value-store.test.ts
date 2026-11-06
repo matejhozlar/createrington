@@ -313,7 +313,7 @@ describe("readThrough", () => {
   it("keeps a value for the time picked by what was loaded", async () => {
     const store = new MemoryKeyValueStore();
     const ttlMs = (value: string | null) => (value ? 5000 : 1000);
-    const known = vi.fn(async () => "value" as string | null);
+    const known = vi.fn(async () => "value");
     const unknown = vi.fn(async () => null as string | null);
 
     await readThrough(store, "known", ttlMs, known);
