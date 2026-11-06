@@ -42,11 +42,9 @@ export function fitFontSize(
   sizes: readonly [number, ...number[]],
   maxWidth: number,
 ): number {
-  let smallest = sizes[0];
   for (const size of sizes) {
-    smallest = size;
     ctx.font = font(size);
     if (ctx.measureText(text).width <= maxWidth) return size;
   }
-  return smallest;
+  return sizes.at(-1) ?? sizes[0];
 }
