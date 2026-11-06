@@ -1,9 +1,12 @@
 import { describe, it, expect, vi } from "vitest";
 import {
+  fromStoredModpackManifest,
   manifestDisabledModIds,
   mergeManifestFiles,
   resolveModpackRelease,
+  toStoredModpackManifest,
   type ModpackFile,
+  type ModpackManifest,
   type ModpackReadContext,
 } from "@/services/curseforge";
 
@@ -250,5 +253,75 @@ describe("manifestDisabledModIds", () => {
     expect(
       manifestDisabledModIds([{ projectId: 1, required: true }]).size,
     ).toBe(0);
+  });
+});
+
+describe("stored modpack manifest", () => {
+  const manifest: ModpackManifest = {
+    fileId: 100,
+    serverPackFileId: 101,
+    displayName: "Createrington 3.2.0",
+    version: "3.2.0",
+    minecraftVersion: "1.21.1",
+    modLoader: "neoforge-21.1.77",
+    publishedAt: "2026-11-01T12:00:00Z",
+    entries: [
+      { projectId: 1, fileId: 11, required: true, sides: "both" },
+      { projectId: 2, fileId: 22, required: false, sides: "client" },
+      { projectId: 3, fileId: 33, required: true, sides: "server" },
+    ],
+    modIds: new Set([1, 2, 3]),
+    disabledModIds: new Set([2]),
+  };
+
+  function throughJson(value: unknown): unknown {
+    return JSON.parse(JSON.stringify(value));
+  }
+
+  it("reads back what was stored as JSON, with the sets rebuilt", () => {
+    const read = fromStoredModpackManifest(
+      throughJson(toStoredModpackManifest(manifest)),
+    );
+
+    expect(read).toEqual(manifest);
+    expect(read?.modIds).toBeInstanceOf(Set);
+    expect(read?.disabledModIds).toBeInstanceOf(Set);
+  });
+
+  it("keeps a release without a server pack or metadata", () => {
+    const bare: ModpackManifest = {
+      ...manifest,
+      serverPackFileId: null,
+      displayName: null,
+      version: null,
+      minecraftVersion: null,
+      modLoader: null,
+      publishedAt: null,
+    };
+
+    expect(
+      fromStoredModpackManifest(throughJson(toStoredModpackManifest(bare))),
+    ).toEqual(bare);
+  });
+
+  it("treats a value stored in an older shape as missing", () => {
+    const { disabledModIds: _, ...withoutDisabled } =
+      toStoredModpackManifest(manifest);
+    const withoutRequired = {
+      ...toStoredModpackManifest(manifest),
+      entries: manifest.entries.map(({ required: _, ...entry }) => entry),
+    };
+
+    expect(
+      fromStoredModpackManifest(throughJson(withoutDisabled)),
+    ).toBeUndefined();
+    expect(
+      fromStoredModpackManifest(throughJson(withoutRequired)),
+    ).toBeUndefined();
+  });
+
+  it("treats a value that is not a manifest as missing", () => {
+    expect(fromStoredModpackManifest(null)).toBeUndefined();
+    expect(fromStoredModpackManifest("manifest")).toBeUndefined();
   });
 });

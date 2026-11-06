@@ -17,7 +17,7 @@ export class InternalSsoExchangeController {
       throw new BadRequestError("code is required");
     }
 
-    const payload = consumeSsoCode(code);
+    const payload = await consumeSsoCode(code);
     if (!payload) {
       throw new NotFoundError("Unknown, expired, or already-consumed code");
     }

@@ -1,4 +1,5 @@
-import crypto from "node:crypto";
+import { redisService } from "@/services/redis";
+import { OneTimeStore } from "@/services/auth/one-time-store";
 
 /**
  * Identity payload carried by a one-time SSO code. Mirrors what main app knows
@@ -13,42 +14,19 @@ export interface SsoCodePayload {
   isOwner: boolean;
 }
 
-const CODE_TTL_MS = 60 * 1000;
+const codes = new OneTimeStore<SsoCodePayload>(redisService, {
+  keyPrefix: "auth:sso:code",
+  ttlMs: 60 * 1000,
+  tokenBytes: 32,
+  maxMemoryEntries: 10_000,
+});
 
-/**
- * In-memory store keyed by sha256(code). Single main-app process, 60s TTL,
- * tiny payloads, so a Map matches the existing OAuth-state precedent in
- * auth.controller.ts. If main app ever goes multi-instance, migrate this
- * alongside the other OAuth-state Maps.
- */
-const store = new Map<string, { expiry: number; payload: SsoCodePayload }>();
-
-function hashCode(code: string): string {
-  return crypto.createHash("sha256").update(code).digest("hex");
+/** Mint a single-use code for the payload, valid for 60s. Null when too many are open in memory. */
+export function issueSsoCode(payload: SsoCodePayload): Promise<string | null> {
+  return codes.issue(payload);
 }
 
-function pruneExpired(): void {
-  const now = Date.now();
-  for (const [key, entry] of store) {
-    if (entry.expiry < now) store.delete(key);
-  }
-}
-
-/** Mint a single-use code for the payload and store its hash with a 60s TTL. */
-export function issueSsoCode(payload: SsoCodePayload): string {
-  const code = crypto.randomBytes(32).toString("hex");
-  store.set(hashCode(code), { expiry: Date.now() + CODE_TTL_MS, payload });
-  pruneExpired();
-  return code;
-}
-
-/** Redeem a code: returns the payload once, then deletes it. Null if unknown or expired. */
-export function consumeSsoCode(code: string): SsoCodePayload | null {
-  pruneExpired();
-  const hash = hashCode(code);
-  const entry = store.get(hash);
-  if (!entry) return null;
-  store.delete(hash);
-  if (entry.expiry < Date.now()) return null;
-  return entry.payload;
+/** Redeem a code: returns the payload once. Null if unknown, expired or already redeemed. */
+export function consumeSsoCode(code: string): Promise<SsoCodePayload | null> {
+  return codes.consume(code);
 }

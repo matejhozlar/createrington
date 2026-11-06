@@ -4,7 +4,11 @@ import {
   UnverifiedUserError,
 } from "@/services/discord/oauth/oauth.service";
 import type { Request, Response } from "express";
-import { BadRequestError, UnauthorizedError } from "@/app/middleware";
+import {
+  BadRequestError,
+  TooManyRequestsError,
+  UnauthorizedError,
+} from "@/app/middleware";
 import { jwtService } from "@/services/auth/jwt/jwt.service";
 import { refreshTokenService } from "@/services/auth/token/refresh-token.service";
 import { accessCookieService } from "@/services/auth/token/access-cookie.service";
@@ -21,20 +25,20 @@ import {
   isCodeExchangeReturnTo,
   resolveConsumerName,
 } from "@/services/auth/sso/consumer";
+import {
+  OAUTH_STATE_TTL_MS,
+  consumeOAuthState,
+  issueOAuthState,
+} from "@/services/auth/oauth/state-store";
 import { verifyDevLoginToken } from "@/services/auth/dev-login/hmac";
 import config from "@/config";
 import { Q } from "@/db";
 import type { JWTPayload } from "@createrington/shared/auth";
-import crypto from "node:crypto";
 
 function deriveRole(currentRole: AuthRole, isAdmin: boolean): AuthRole {
   if (currentRole === AuthRole.UNVERIFIED) return AuthRole.UNVERIFIED;
   return isAdmin ? AuthRole.ADMIN : AuthRole.USER;
 }
-
-/** In-memory store for OAuth state tokens (state → expiry timestamp) */
-const pendingStates = new Map<string, number>();
-const STATE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 const STATE_COOKIE_NAME = "oauth_state";
 const stateCookieOptions = {
@@ -69,20 +73,16 @@ export class AuthController {
    * Returns Discord OAuth authorization URL
    */
   static async getAuthUrl(_req: Request, res: Response): Promise<void> {
-    const state = crypto.randomBytes(32).toString("hex");
-
-    pendingStates.set(state, Date.now() + STATE_TTL_MS);
-
-    // Cleanup expired states
-    for (const [key, expiry] of pendingStates) {
-      if (expiry < Date.now()) pendingStates.delete(key);
+    const state = await issueOAuthState();
+    if (!state) {
+      throw new TooManyRequestsError("Too many pending sign-in attempts");
     }
 
     const authUrl = discordOAuth.generateAuthUrl(state);
 
     res.cookie(STATE_COOKIE_NAME, state, {
       ...stateCookieOptions,
-      maxAge: STATE_TTL_MS,
+      maxAge: OAUTH_STATE_TTL_MS,
     });
 
     res.json({
@@ -115,15 +115,10 @@ export class AuthController {
       throw new BadRequestError("Invalid or expired state parameter");
     }
 
-    if (!pendingStates.has(state)) {
+    if (!(await consumeOAuthState(state))) {
       throw new BadRequestError("Invalid or expired state parameter");
     }
-    const expiry = pendingStates.get(state)!;
-    pendingStates.delete(state); // One-time use
     res.clearCookie(STATE_COOKIE_NAME, stateCookieOptions);
-    if (expiry < Date.now()) {
-      throw new BadRequestError("Invalid or expired state parameter");
-    }
 
     try {
       const user = await discordOAuth.authenticate(code);
@@ -375,7 +370,10 @@ export class AuthController {
       );
     }
 
-    const state = issueSsoState(returnTo);
+    const state = await issueSsoState(returnTo);
+    if (!state) {
+      throw new TooManyRequestsError("Too many pending sign-in attempts");
+    }
 
     const consentUrl = new URL("/authorize", config.meta.links.website);
     consentUrl.searchParams.set("state", state);
@@ -403,7 +401,7 @@ export class AuthController {
       throw new BadRequestError("Missing state");
     }
 
-    const entry = peekSsoState(state);
+    const entry = await peekSsoState(state);
     if (!entry) {
       throw new BadRequestError("Invalid or expired state parameter");
     }
@@ -445,7 +443,7 @@ export class AuthController {
       throw new BadRequestError("Invalid action");
     }
 
-    const entry = consumeSsoState(state);
+    const entry = await consumeSsoState(state);
     if (!entry) {
       throw new BadRequestError("Invalid or expired state parameter");
     }
@@ -463,12 +461,15 @@ export class AuthController {
     }
 
     if (isCodeExchangeReturnTo(returnTo)) {
-      const ssoCode = issueSsoCode({
+      const ssoCode = await issueSsoCode({
         playerId: req.user.minecraftUuid,
         minecraftUsername: req.user.minecraftUsername,
         isMember: req.user.role !== AuthRole.UNVERIFIED,
         isOwner: req.user.discordId === config.app.auth.owner.discordId,
       });
+      if (!ssoCode) {
+        throw new TooManyRequestsError("Too many pending sign-in attempts");
+      }
 
       logger.info(
         `User ${req.user.discordId} authorized code-exchange SSO to ${returnTo}`,
@@ -522,7 +523,7 @@ export class AuthController {
       throw new BadRequestError("Missing code or state");
     }
 
-    const entry = consumeSsoState(state);
+    const entry = await consumeSsoState(state);
     if (!entry) {
       throw new BadRequestError("Invalid or expired state parameter");
     }
@@ -532,13 +533,16 @@ export class AuthController {
 
       // Code-exchange consumers (skin-api) get a one-time code instead of cookies.
       if (isCodeExchangeReturnTo(entry.returnTo)) {
-        const ssoCode = issueSsoCode({
+        const ssoCode = await issueSsoCode({
           playerId: user.minecraftUuid,
           minecraftUsername: user.minecraftUsername,
           // authenticate() requires a player record, so SSO success implies member.
           isMember: true,
           isOwner: user.discordId === config.app.auth.owner.discordId,
         });
+        if (!ssoCode) {
+          throw new TooManyRequestsError("Too many pending sign-in attempts");
+        }
 
         logger.info(
           `User ${user.discordId} completed code-exchange SSO to ${entry.returnTo}`,
