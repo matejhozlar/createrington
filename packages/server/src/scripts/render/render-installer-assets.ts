@@ -260,7 +260,7 @@ function encodeIco(frames: Canvas[]): Buffer {
     header.writeUInt16LE(1, entry + 4);
     header.writeUInt16LE(32, entry + 6);
     const image = images[i];
-    if (!image) return;
+    if (!image) throw new Error(`No encoded image for ICO frame ${i}`);
     header.writeUInt32LE(image.length, entry + 8);
     header.writeUInt32LE(offset, entry + 12);
     offset += image.length;
