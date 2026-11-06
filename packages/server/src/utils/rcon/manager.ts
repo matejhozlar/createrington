@@ -141,7 +141,7 @@ export class MinecraftRconManager {
     if (time instanceof MinecraftCustomTime) {
       return time.toString();
     }
-    return time as string;
+    return time;
   }
 
   /**
@@ -242,7 +242,7 @@ export class MinecraftRconManager {
           logger.debug(
             `[Server ${serverId}] Closing idle RCON connection (${idleSeconds}s idle)`,
           );
-          connection.disconnect();
+          void connection.disconnect();
           this.connections.delete(serverId);
         }
       }

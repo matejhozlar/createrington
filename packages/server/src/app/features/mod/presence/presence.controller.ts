@@ -74,7 +74,7 @@ export class PresenceController {
           playTimeTicks,
         };
 
-        await playtimeService.handlePlayerJoinFromMod(joinData);
+        playtimeService.handlePlayerJoinFromMod(joinData);
 
         logger.info(
           `Player ${minecraftUsername} (${uuid}) joined server ${targetServerId}`,
@@ -89,7 +89,7 @@ export class PresenceController {
           position: body.position,
         };
 
-        await playtimeService.handlePlayerLeaveFromMod(leaveData);
+        playtimeService.handlePlayerLeaveFromMod(leaveData);
 
         logger.info(
           `Player ${minecraftUsername} (${uuid}) left server ${targetServerId}`,

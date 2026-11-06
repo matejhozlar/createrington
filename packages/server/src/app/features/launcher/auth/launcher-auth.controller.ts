@@ -190,7 +190,7 @@ export class LauncherAuthController {
     res.json(response);
   }
 
-  static async me(req: Request, res: Response): Promise<void> {
+  static me(req: Request, res: Response): void {
     if (!req.launcherAuth) {
       throw new UnauthorizedError("Launcher authentication required", {
         code: LauncherAuthErrorCode.AUTH_REQUIRED,

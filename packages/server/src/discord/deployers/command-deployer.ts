@@ -172,4 +172,4 @@ export async function registerCommands(): Promise<void> {
   }
 }
 
-registerCommands();
+void registerCommands();

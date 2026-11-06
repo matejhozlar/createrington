@@ -53,11 +53,11 @@ export class DonationController {
           break;
 
         case "customer.subscription.updated":
-          await donationService.handleSubscriptionUpdated(event.data.object);
+          donationService.handleSubscriptionUpdated(event.data.object);
           break;
 
         case "customer.subscription.deleted":
-          await donationService.handleSubscriptionDeleted(event.data.object);
+          donationService.handleSubscriptionDeleted(event.data.object);
           break;
 
         default:

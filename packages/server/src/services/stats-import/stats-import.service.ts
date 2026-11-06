@@ -43,7 +43,7 @@ export class StatsImportService {
    * import in the background. Returns as soon as wiring is done; the first import
    * runs detached so a slow SFTP host cannot delay server boot.
    */
-  async initialize(): Promise<void> {
+  initialize(): void {
     logger.info(
       `Initializing StatsImportService for ${this.configs.length} server(s)...`,
     );
@@ -77,7 +77,7 @@ export class StatsImportService {
   }
 
   /** Cancels any pending debounced imports; in-flight imports are not interrupted. */
-  async shutdown(): Promise<void> {
+  shutdown(): void {
     for (const [serverId, timer] of this.debounceTimers) {
       clearTimeout(timer);
       logger.debug(`Cleared debounce timer for server ${serverId}`);
@@ -173,6 +173,9 @@ export class StatsImportService {
 
         try {
           const content = await sftp.get(`${cfg.sftp.statsPath}/${file.name}`);
+          if (typeof content !== "string" && !Buffer.isBuffer(content)) {
+            throw new Error(`SFTP returned a stream for ${file.name}`);
+          }
           const parsed = JSON.parse(content.toString());
           const stats = parsed.stats ?? parsed;
 

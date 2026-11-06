@@ -47,7 +47,7 @@ export class TicketService {
     private readonly repository: TicketRepository = new TicketRepository(),
   ) {
     this.transcriptDir = path.join(config.storage.path, "transcripts");
-    this.ensureTranscriptDir();
+    void this.ensureTranscriptDir();
   }
 
   private async ensureTranscriptDir(): Promise<void> {
@@ -137,7 +137,7 @@ export class TicketService {
       permissionOverwrites,
     });
 
-    return channel as TextChannel;
+    return channel;
   }
 
   private async sendWelcomeMessage(
@@ -409,7 +409,7 @@ export class TicketService {
         }
         return results;
       }
-      textChannel = channel as TextChannel;
+      textChannel = channel;
     } catch (error) {
       logger.error(`Failed to resolve ticket channel ${channelId}:`, error);
       for (const id of discordIds) {
@@ -477,7 +477,7 @@ export class TicketService {
         return { removed: false, reason: "channel-error" };
       }
 
-      const textChannel = channel as TextChannel;
+      const textChannel = channel;
       if (!textChannel.permissionOverwrites.cache.has(discordId)) {
         return { removed: false, reason: "not-participant" };
       }

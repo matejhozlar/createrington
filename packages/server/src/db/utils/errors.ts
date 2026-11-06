@@ -47,12 +47,8 @@ export class ConstraintViolationError extends DatabaseError {
     super(message, cause);
     this.name = "ConstraintViolationError";
     if (typeof cause === "object" && cause !== null) {
-      if ("code" in cause)
-        this.code = String((cause as { code: unknown }).code);
-      if (
-        "column" in cause &&
-        typeof (cause as { column: unknown }).column === "string"
-      ) {
+      if ("code" in cause) this.code = String(cause.code);
+      if ("column" in cause && typeof cause.column === "string") {
         this.column = (cause as { column: string }).column;
       }
     }
@@ -112,9 +108,7 @@ export function translateDbError(error: unknown): unknown {
   if (typeof error !== "object" || error === null || !("code" in error)) {
     return error;
   }
-  const Violation = VIOLATION_CLASSES.get(
-    String((error as { code: unknown }).code),
-  );
+  const Violation = VIOLATION_CLASSES.get(String(error.code));
   if (!Violation) return error;
   const pgError = error as { message?: string; constraint?: string };
   return new Violation(

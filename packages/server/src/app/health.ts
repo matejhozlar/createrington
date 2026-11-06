@@ -79,10 +79,10 @@ function checkDiscordBot(
   }
 }
 
-async function checkWebsocket(): Promise<WebsocketComponent> {
+function checkWebsocket(): WebsocketComponent {
   try {
     const ws = getServiceSync(Services.WEBSOCKET_SERVICE);
-    const stats = await ws.getStats();
+    const stats = ws.getStats();
     return {
       status: "up",
       connectedClients: stats.connectedClients,
@@ -135,10 +135,8 @@ export function rollupStatus(
 }
 
 async function buildHealthSnapshot(): Promise<HealthResponse> {
-  const [database, websocket] = await Promise.all([
-    checkDatabase(),
-    checkWebsocket(),
-  ]);
+  const database = await checkDatabase();
+  const websocket = checkWebsocket();
   const components = {
     database,
     mainBot: checkDiscordBot(Services.DISCORD_MAIN_BOT),

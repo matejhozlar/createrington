@@ -55,7 +55,7 @@ export interface DeletePlayerOptions {
 export class PlayerDeletionService {
   private readonly hooks: PostDeletionHook[] = [];
 
-  async initialize(): Promise<void> {
+  initialize(): void {
     logger.info("PlayerDeletionService initialized");
   }
 

@@ -37,7 +37,7 @@ export class ServerStatsService {
   }
 
   /** Stop the refresh interval. Safe to call multiple times. */
-  async shutdown(): Promise<void> {
+  shutdown(): void {
     if (this.refreshTimer) {
       clearInterval(this.refreshTimer);
       this.refreshTimer = null;

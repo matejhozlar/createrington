@@ -159,7 +159,7 @@ describe("WebSocketService inbound event handling", () => {
   it("answers a payload-less initial data request with the default snapshot", async () => {
     const { socket, send } = connectFakeSocket(service);
     const snapshot = { servers: [], messages: {} };
-    const getInitialData = vi.fn(async () => snapshot);
+    const getInitialData = vi.fn(() => snapshot);
     (service as unknown as { dataProvider: unknown }).dataProvider = {
       getInitialData,
       getServerInitialData: vi.fn(),

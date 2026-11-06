@@ -27,7 +27,7 @@ export class WorkshopProjectRefreshService {
   private readonly REFRESH_INTERVAL = 24 * 60 * 60 * 1000;
 
   /** Runs an immediate refresh and schedules the daily interval. */
-  async initialize(): Promise<void> {
+  initialize(): void {
     this.refresh().catch((error) => {
       logger.error("Initial workshop project refresh failed:", error);
     });
@@ -101,7 +101,7 @@ export class WorkshopProjectRefreshService {
   }
 
   /** Cancels the schedule; an in-flight refresh is allowed to finish. */
-  async shutdown(): Promise<void> {
+  shutdown(): void {
     if (this.intervalId) {
       clearInterval(this.intervalId);
       this.intervalId = undefined;

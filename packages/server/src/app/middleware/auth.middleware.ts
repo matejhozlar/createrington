@@ -34,11 +34,11 @@ function extractAccessToken(req: Request): string | undefined {
  *
  * @throws UnauthorizedError if token is missing or invalid
  */
-export const authenticate = async (
+export const authenticate = (
   req: Request,
   res: Response,
   next: NextFunction,
-): Promise<void> => {
+): void => {
   try {
     const token = extractAccessToken(req);
 
@@ -63,11 +63,11 @@ export const authenticate = async (
  * Optional authentication - doesn't fail if no token present
  * Useful for endpoints that behave differently for authenticated users
  */
-export const optionalAuth = async (
+export const optionalAuth = (
   req: Request,
   res: Response,
   next: NextFunction,
-): Promise<void> => {
+): void => {
   try {
     const token = extractAccessToken(req);
 
@@ -179,8 +179,7 @@ export const requireTrustedOrigin = (
   next: NextFunction,
 ): void => {
   const origin =
-    safeOrigin(req.headers.origin as string | undefined) ??
-    safeOrigin(req.headers.referer as string | undefined);
+    safeOrigin(req.headers.origin) ?? safeOrigin(req.headers.referer);
 
   if (!origin) {
     logger.warn(

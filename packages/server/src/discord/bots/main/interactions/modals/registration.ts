@@ -1,4 +1,4 @@
-import type { GuildTextBasedChannel, ModalSubmitInteraction } from "discord.js";
+import type { ModalSubmitInteraction } from "discord.js";
 import { runRegistration } from "@/discord/bots/main/registration/run-registration";
 import {
   REGISTER_MODAL_ID,
@@ -31,7 +31,7 @@ export async function execute(
   // this, `editReply()` continues to edit that same message.
   await interaction.deferUpdate();
 
-  const channel = (interaction.channel ?? null) as GuildTextBasedChannel | null;
+  const channel = interaction.channel ?? null;
 
   await runRegistration({
     member,

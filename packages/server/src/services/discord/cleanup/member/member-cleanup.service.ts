@@ -17,7 +17,7 @@ export class MemberCleanupService {
   private readonly CHECK_INTERVAL = 6 * 60 * 60 * 1000; // 6 hours
 
   /** Run an immediate cleanup pass and arm the 6-hour interval. */
-  async initialize(): Promise<void> {
+  initialize(): void {
     logger.info("Initializing MemberCleanupService...");
 
     this.cleanup().catch((error) => {
@@ -34,7 +34,7 @@ export class MemberCleanupService {
   }
 
   /** Clear the scheduled interval. Safe to call multiple times. */
-  async shutdown(): Promise<void> {
+  shutdown(): void {
     if (this.intervalId) {
       clearInterval(this.intervalId);
       this.intervalId = undefined;

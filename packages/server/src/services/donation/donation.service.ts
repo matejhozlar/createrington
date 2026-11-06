@@ -9,6 +9,11 @@ import type { Donation, DonationType } from "@createrington/shared/db";
 
 const SESSION_ID_CONSTRAINT = "donation_stripe_session_id_unique";
 
+function customerId(subscription: Stripe.Subscription): string {
+  const { customer } = subscription;
+  return typeof customer === "string" ? customer : customer.id;
+}
+
 /**
  * Stripe-backed donation flow: creates checkout sessions for one-time and monthly
  * support tiers, processes webhook events into donation records, and manages active
@@ -250,12 +255,10 @@ export class DonationService {
   }
 
   /** Webhook: logs `cancel_at_period_end` transitions for audit; no state mutation. */
-  async handleSubscriptionUpdated(
-    subscription: Stripe.Subscription,
-  ): Promise<void> {
+  handleSubscriptionUpdated(subscription: Stripe.Subscription): void {
     if (subscription.cancel_at_period_end) {
       logger.info(
-        `Stripe subscription ${subscription.id} set to cancel at period end (customer: ${subscription.customer})`,
+        `Stripe subscription ${subscription.id} set to cancel at period end (customer: ${customerId(subscription)})`,
       );
     }
   }
@@ -264,11 +267,9 @@ export class DonationService {
    * Webhook: log-only. The supporter role is intentionally retained after cancellation
    * as a thank-you for past support, so this method does not mutate Discord state.
    */
-  async handleSubscriptionDeleted(
-    subscription: Stripe.Subscription,
-  ): Promise<void> {
+  handleSubscriptionDeleted(subscription: Stripe.Subscription): void {
     logger.info(
-      `Stripe subscription cancelled: ${subscription.id} (customer: ${subscription.customer})`,
+      `Stripe subscription cancelled: ${subscription.id} (customer: ${customerId(subscription)})`,
     );
   }
 

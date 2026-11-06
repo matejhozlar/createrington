@@ -413,7 +413,7 @@ describe("LauncherAuthController", () => {
         },
       });
 
-      await LauncherAuthController.me(req, res);
+      LauncherAuthController.me(req, res);
 
       expect(json).toHaveBeenCalledWith({
         success: true,

@@ -27,9 +27,7 @@ function isSandboxServiceToken(token: string): boolean {
  * so adding cookie auth would need a matching CSRF guard (see
  * `requireTrustedOrigin` in auth.middleware) before it's safe.
  */
-export async function createContext({
-  req,
-}: CreateExpressContextOptions): Promise<Context> {
+export function createContext({ req }: CreateExpressContextOptions): Context {
   const token = extractBearerToken(req);
 
   let user: JWTPayload | null = null;

@@ -95,7 +95,7 @@ export class InternalPresenceController {
       const { serverId, service } = await testServerPlaytime();
 
       if (state === "joined") {
-        await service.handlePlayerJoinFromMod({
+        service.handlePlayerJoinFromMod({
           uuid,
           username,
           timestamp: eventTimestamp,
@@ -106,7 +106,7 @@ export class InternalPresenceController {
           `[sync] Session started for ${username} (${uuid}) on test server`,
         );
       } else {
-        await service.handlePlayerLeaveFromMod({
+        service.handlePlayerLeaveFromMod({
           uuid,
           username,
           timestamp: eventTimestamp,

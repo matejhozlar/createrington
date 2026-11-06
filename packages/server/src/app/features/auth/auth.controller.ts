@@ -587,7 +587,7 @@ export class AuthController {
    * redirects to an internal path so the AuthProvider picks it up. Route is
    * only mounted when NODE_ENV === "development" so this never ships to prod.
    */
-  static async devSetRefresh(req: Request, res: Response): Promise<void> {
+  static devSetRefresh(req: Request, res: Response): void {
     if (!config.envMode.isDev) {
       throw new BadRequestError("Not available outside development");
     }

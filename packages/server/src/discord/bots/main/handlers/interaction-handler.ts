@@ -391,37 +391,49 @@ export function registerInteractionHandler(
   commandHandlers: Collection<string, CommandModule>,
   buttonHandlers: Collection<string, ButtonModule>,
 ): void {
-  discordClient.on("interactionCreate", async (interaction: Interaction) => {
-    if (interaction.isChatInputCommand()) {
-      await handleChatCommands(interaction, commandHandlers);
-      return;
-    }
-
-    if (interaction.isAutocomplete()) {
-      const command = commandHandlers.get(interaction.commandName);
-      if (command?.autocomplete) {
-        try {
-          await command.autocomplete(interaction);
-        } catch (error) {
-          logger.error(
-            `Autocomplete error for /${interaction.commandName}:`,
-            error,
-          );
-        }
-      }
-      return;
-    }
-
-    if (interaction.isButton()) {
-      await handleButtonInteractions(interaction, buttonHandlers);
-      return;
-    }
-
-    if (interaction.isModalSubmit()) {
-      await handleModalSubmit(interaction);
-      return;
-    }
+  discordClient.on("interactionCreate", (interaction: Interaction) => {
+    routeInteraction(interaction, commandHandlers, buttonHandlers).catch(
+      (error: unknown) => {
+        logger.error("Unhandled error while routing an interaction:", error);
+      },
+    );
   });
+}
+
+async function routeInteraction(
+  interaction: Interaction,
+  commandHandlers: Collection<string, CommandModule>,
+  buttonHandlers: Collection<string, ButtonModule>,
+): Promise<void> {
+  if (interaction.isChatInputCommand()) {
+    await handleChatCommands(interaction, commandHandlers);
+    return;
+  }
+
+  if (interaction.isAutocomplete()) {
+    const command = commandHandlers.get(interaction.commandName);
+    if (command?.autocomplete) {
+      try {
+        await command.autocomplete(interaction);
+      } catch (error) {
+        logger.error(
+          `Autocomplete error for /${interaction.commandName}:`,
+          error,
+        );
+      }
+    }
+    return;
+  }
+
+  if (interaction.isButton()) {
+    await handleButtonInteractions(interaction, buttonHandlers);
+    return;
+  }
+
+  if (interaction.isModalSubmit()) {
+    await handleModalSubmit(interaction);
+    return;
+  }
 }
 
 /**

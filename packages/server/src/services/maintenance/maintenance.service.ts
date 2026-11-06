@@ -642,7 +642,7 @@ export class MaintenanceService {
   private async broadcast(serverId: number): Promise<void> {
     try {
       const ws = await getService(Services.WEBSOCKET_SERVICE);
-      await ws.triggerServerStatusUpdate(serverId);
+      ws.triggerServerStatusUpdate(serverId);
     } catch {
       return;
     }

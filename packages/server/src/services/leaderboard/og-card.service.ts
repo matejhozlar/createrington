@@ -89,7 +89,7 @@ export class LeaderboardOgCardService {
     const painted = await Promise.all(
       SLOT_ORDER.map((key) => {
         const role = byKey.get(key);
-        return role ? this.slot(role) : null;
+        return role ? this.slot(role) : Promise.resolve(null);
       }),
     );
     const png = await renderCard((ctx) =>

@@ -45,7 +45,7 @@ describe("PlaytimeRepository.connectToService", () => {
     repo.connectToService(service, SERVER_ID);
     service.initialize();
 
-    await service.handlePlayerJoinFromMod({
+    service.handlePlayerJoinFromMod({
       uuid: STEVE,
       username: "steve",
       playTimeTicks: ticks(1000),

@@ -66,7 +66,7 @@ export class VoteRewardService {
   }
 
   /** Subscribes to session starts on every reward server and starts the sweep. */
-  async initialize(): Promise<void> {
+  initialize(): void {
     this.playtimeManager.onServiceCreated((serverId, service) => {
       if (!this.rewardServerIds.has(serverId)) return;
       service.on("sessionStart", (event) => {
@@ -83,7 +83,7 @@ export class VoteRewardService {
   }
 
   /** Stops the sweep; a payout in progress finishes on its own. */
-  async shutdown(): Promise<void> {
+  shutdown(): void {
     if (this.sweepTimer) {
       clearInterval(this.sweepTimer);
       this.sweepTimer = null;

@@ -283,7 +283,7 @@ const config = {
     available: !envMode.isProductionDeployment,
     channel: (envMode.isDevDeployment
       ? "staging"
-      : "production") satisfies LauncherChannel as LauncherChannel,
+      : "production") satisfies LauncherChannel,
     publishTokenHash: env.LAUNCHER_PUBLISH_TOKEN_HASH ?? "",
     downloadHosts: (env.LAUNCHER_DOWNLOAD_HOSTS ?? "")
       .split(",")

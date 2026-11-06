@@ -77,7 +77,7 @@ export class PuppeteerService {
   private readonly pages = new Semaphore(MAX_CONCURRENT_PAGES);
 
   /** No-op aside from logging; the browser launches lazily on the first `screenshot()` or `withPage()` call. */
-  async initialize(): Promise<void> {
+  initialize(): void {
     logger.info(
       "PuppeteerService initialized (browser will launch on first use)",
     );
@@ -174,7 +174,7 @@ export class PuppeteerService {
           await Promise.all(
             Array.from(document.images).map((img) =>
               img.complete
-                ? null
+                ? Promise.resolve()
                 : new Promise<void>((resolve) => {
                     img.addEventListener("load", () => resolve(), {
                       once: true,
