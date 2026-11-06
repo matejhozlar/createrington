@@ -242,12 +242,12 @@ function CommandCard({ command }: { command: CommandData }) {
 }
 
 export function CommandDocs() {
-  const { data, isLoading } = trpc.admin.discordCommands.list.useQuery();
+  const { data: payload, isLoading } =
+    trpc.admin.discordCommands.list.useQuery();
 
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
 
-  const payload = data;
   const allCommands = (payload?.commands ?? []) as CommandData[];
 
   const filtered = allCommands.filter((cmd) => {
