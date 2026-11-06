@@ -268,7 +268,7 @@ router.get(
 router.get(
   "/tag",
   asyncHandler(requirePuppeteerSecret),
-  asyncHandler(async (req: Request, res: Response) => {
+  asyncHandler((req: Request, res: Response) => {
     const { design } = req.query;
 
     if (!design || typeof design !== "string") {

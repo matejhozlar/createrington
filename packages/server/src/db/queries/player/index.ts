@@ -51,7 +51,7 @@ export class PlayerQueries extends PlayerBaseQueries {
   ): Promise<{ rows: Player[]; total: number }> {
     const { whereClause, params } = this.buildFilterClause(filters);
     const where = `${whereClause} AND ${VIOLATION_CONDITIONS[violation]}`;
-    const orderColumn = this.getColumnName(options.orderBy as string);
+    const orderColumn = this.getColumnName(options.orderBy);
     const direction = options.orderDirection === "desc" ? "DESC" : "ASC";
 
     const [rows, count] = await Promise.all([

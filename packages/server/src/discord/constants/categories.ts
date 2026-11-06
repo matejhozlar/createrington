@@ -86,7 +86,7 @@ export const DiscordCategoriesNamespace = {
    * }
    */
   isValidCategory(id: string): id is DiscordCategoryId {
-    return Object.values(DiscordCategories).includes(id as DiscordCategoryId);
+    return Object.values(DiscordCategories).includes(id);
   },
 
   /**

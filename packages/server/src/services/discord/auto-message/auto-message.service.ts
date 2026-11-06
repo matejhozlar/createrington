@@ -25,7 +25,7 @@ export class AutoMessageService {
   }
 
   /** Stops all active timers and clears internal state */
-  async shutdown(): Promise<void> {
+  shutdown(): void {
     for (const [configId, timer] of this.timers) {
       clearInterval(timer);
       logger.debug(`Stopped auto-message timer for config ${configId}`);

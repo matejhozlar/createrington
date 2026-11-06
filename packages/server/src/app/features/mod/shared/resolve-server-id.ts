@@ -24,7 +24,9 @@ export function resolveServerId(req: Request, context: string): number {
     const parsed =
       typeof bodyServerId === "number"
         ? bodyServerId
-        : parseInt(String(bodyServerId), 10);
+        : typeof bodyServerId === "string"
+          ? parseInt(bodyServerId, 10)
+          : NaN;
     if (!Number.isInteger(parsed)) {
       throw new BadRequestError("Invalid serverId format");
     }

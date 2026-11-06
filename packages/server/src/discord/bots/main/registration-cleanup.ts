@@ -26,29 +26,39 @@ export function scheduleChannelClose(
 ): void {
   const effectiveDelay = Math.max(delayMs, 0);
 
-  setTimeout(async () => {
-    try {
-      const closing = RegistrationComponentPresets.closing();
-      await channel.send({
-        components: closing.components,
-        flags: closing.flags,
-      });
-    } catch {
-      // Channel may already be gone, proceed to delete
-    }
+  setTimeout(() => void announceAndDelete(channel, reason), effectiveDelay);
+}
 
-    setTimeout(async () => {
-      try {
-        await channel.delete(reason);
-        logger.info(`Deleted registration channel ${channel.id}: ${reason}`);
-      } catch (error) {
-        logger.error(
-          `Failed to delete registration channel ${channel.id}:`,
-          error,
-        );
-      }
-    }, CLOSE_GRACE_MS);
-  }, effectiveDelay);
+async function announceAndDelete(
+  channel: GuildTextBasedChannel,
+  reason: string,
+): Promise<void> {
+  try {
+    const closing = RegistrationComponentPresets.closing();
+    await channel.send({
+      components: closing.components,
+      flags: closing.flags,
+    });
+  } catch {
+    // Channel may already be gone, proceed to delete
+  }
+
+  setTimeout(
+    () => void deleteRegistrationChannel(channel, reason),
+    CLOSE_GRACE_MS,
+  );
+}
+
+async function deleteRegistrationChannel(
+  channel: GuildTextBasedChannel,
+  reason: string,
+): Promise<void> {
+  try {
+    await channel.delete(reason);
+    logger.info(`Deleted registration channel ${channel.id}: ${reason}`);
+  } catch (error) {
+    logger.error(`Failed to delete registration channel ${channel.id}:`, error);
+  }
 }
 
 /**
@@ -92,7 +102,7 @@ export async function sweepRegistrationChannels(bot: Client): Promise<void> {
 
       if (isVerified) {
         scheduleChannelClose(
-          channel as GuildTextBasedChannel,
+          channel,
           0,
           `Registration completed - auto-closed on startup (${member.user.tag})`,
         );
@@ -101,7 +111,7 @@ export async function sweepRegistrationChannels(bot: Client): Promise<void> {
     } catch {
       // Member may have left the server, clean up the orphaned channel
       scheduleChannelClose(
-        channel as GuildTextBasedChannel,
+        channel,
         0,
         "Registration channel cleanup - member no longer in server",
       );

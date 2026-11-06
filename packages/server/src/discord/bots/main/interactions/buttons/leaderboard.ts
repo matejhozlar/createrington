@@ -32,7 +32,7 @@ function parseCustomId(customId: string): {
     return null;
   }
 
-  return { action, type: type as LeaderboardType };
+  return { action, type };
 }
 
 /**

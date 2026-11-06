@@ -127,7 +127,7 @@ export async function listForumChannels(): Promise<
   const channels = await guild.channels.fetch();
   return [...channels.values()]
     .filter((channel) => channel?.type === ChannelType.GuildForum)
-    .map((channel) => ({ id: channel!.id, name: channel!.name }))
+    .map((channel) => ({ id: channel.id, name: channel.name }))
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 

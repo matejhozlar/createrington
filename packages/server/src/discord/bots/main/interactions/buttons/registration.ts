@@ -99,17 +99,19 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
         await interaction.deferUpdate().catch(() => {});
       }
 
-      setTimeout(async () => {
-        try {
-          await channel.delete(
-            `Registration completed - closed by ${interaction.user.tag}`,
+      setTimeout(() => {
+        channel
+          .delete(`Registration completed - closed by ${interaction.user.tag}`)
+          .then(
+            () => {
+              logger.info(
+                `Deleted registration channel ${channelName} - closed by ${interaction.user.tag}`,
+              );
+            },
+            (error: unknown) => {
+              logger.error("Failed to delete registration channel:", error);
+            },
           );
-          logger.info(
-            `Deleted registration channel ${channelName} - closed by ${interaction.user.tag}`,
-          );
-        } catch (error) {
-          logger.error("Failed to delete registration channel:", error);
-        }
       }, CLOSE_GRACE_MS);
     } catch (error) {
       logger.error("Failed to handle registration close button:", error);

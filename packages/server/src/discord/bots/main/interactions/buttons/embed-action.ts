@@ -1,11 +1,5 @@
 import { Q } from "@/db";
-import {
-  ChannelType,
-  type ButtonInteraction,
-  type TextChannel,
-  type NewsChannel,
-  MessageFlags,
-} from "discord.js";
+import { ChannelType, type ButtonInteraction, MessageFlags } from "discord.js";
 import type { EmbedActionButton } from "@createrington/shared/api/embed";
 
 /**
@@ -146,7 +140,7 @@ async function handleCreateThread(
       targetChannel.type === ChannelType.GuildText ||
       targetChannel.type === ChannelType.GuildAnnouncement
     ) {
-      const textChannel = targetChannel as TextChannel | NewsChannel;
+      const textChannel = targetChannel;
       const thread = await textChannel.threads.create({
         name: threadName,
         reason: `Created by embed action button (user: ${interaction.user.tag})`,

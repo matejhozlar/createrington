@@ -626,9 +626,9 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
 
       stats[serverId] = {
         messageCount: cache.length,
-        oldestMessage: cache.length > 0 ? cache[0]!.createdAt : undefined,
+        oldestMessage: cache.length > 0 ? cache[0].createdAt : undefined,
         newestMessage:
-          cache.length > 0 ? cache[cache.length - 1]!.createdAt : undefined,
+          cache.length > 0 ? cache[cache.length - 1].createdAt : undefined,
         bySource,
       };
     }

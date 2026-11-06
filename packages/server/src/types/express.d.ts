@@ -5,7 +5,7 @@
  * authentication and validation middleware.
  */
 
-import type { JWTPayload } from "@/services/auth/jwt";
+import type { JWTPayload } from "@createrington/shared/auth";
 import type { LauncherJwtPayload } from "@/services/auth/launcher/launcher-jwt.service";
 import type { ValidatedData } from "@/app/middleware/validation.middleware";
 

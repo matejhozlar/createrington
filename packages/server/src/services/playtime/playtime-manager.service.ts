@@ -228,16 +228,10 @@ export class PlaytimeManagerService {
     );
 
     for (const [serverId, service] of this.playtimeServices) {
-      service
-        .detectServerState(messageCacheService)
-        .then(() => {
-          logger.info(
-            `Server ${serverId} state detected: ${service.getServerState()}`,
-          );
-        })
-        .catch((error) => {
-          logger.error(`Failed to detect state for server ${serverId}:`, error);
-        });
+      service.detectServerState(messageCacheService);
+      logger.info(
+        `Server ${serverId} state detected: ${service.getServerState()}`,
+      );
     }
 
     messageCacheService.on("serverClosed", (serverId: number) => {

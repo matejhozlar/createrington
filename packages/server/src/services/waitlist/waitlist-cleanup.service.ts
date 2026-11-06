@@ -14,7 +14,7 @@ export class WaitlistCleanupService {
   private readonly CHECK_INTERVAL = 60 * 60 * 1000; // 1 hour
 
   /** Runs an immediate maintenance pass and schedules the hourly interval. */
-  async initialize(): Promise<void> {
+  initialize(): void {
     logger.info("Initializing WaitlistCleanupService...");
 
     // Run once on startup to clear anything stale from downtime.
@@ -34,7 +34,7 @@ export class WaitlistCleanupService {
   }
 
   /** Cancels the scheduled maintenance; an in-flight pass is allowed to finish. */
-  async shutdown(): Promise<void> {
+  shutdown(): void {
     if (this.intervalId) {
       clearInterval(this.intervalId);
       this.intervalId = undefined;

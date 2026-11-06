@@ -17,13 +17,16 @@ export default defineConfig([
     files: ["**/*.ts"],
     extends: [
       js.configs.recommended,
-      tseslint.configs.recommended,
+      tseslint.configs.recommendedTypeChecked,
       prettierPlugin,
     ],
     languageOptions: {
       ecmaVersion: 2022,
       globals: globals.node,
       parserOptions: {
+        projectService: {
+          allowDefaultProject: ["drizzle.config.ts", "vitest.config.ts"],
+        },
         tsconfigRootDir: import.meta.dirname,
       },
     },
@@ -38,6 +41,14 @@ export default defineConfig([
         },
       ],
       "no-console": "error",
+      "@typescript-eslint/no-unsafe-argument": "off",
+      "@typescript-eslint/no-unsafe-assignment": "off",
+      "@typescript-eslint/no-unsafe-call": "off",
+      "@typescript-eslint/no-unsafe-enum-comparison": "off",
+      "@typescript-eslint/no-unsafe-member-access": "off",
+      "@typescript-eslint/no-unsafe-return": "off",
+      "@typescript-eslint/restrict-template-expressions": "off",
+      "@typescript-eslint/unbound-method": "off",
     },
   },
   {

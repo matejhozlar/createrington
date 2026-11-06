@@ -53,7 +53,7 @@ export class InactivityCleanupService {
    * Kick off a resolve+remove sweep, then arm the weekly cycle. Startup
    * skips the warn phase so frequent deploys don't double-announce.
    */
-  async initialize(): Promise<void> {
+  initialize(): void {
     logger.info("Initializing InactivityCleanupService...");
 
     // Run resolve/remove on startup (safe and idempotent), but skip
@@ -74,7 +74,7 @@ export class InactivityCleanupService {
   }
 
   /** Stop the weekly cycle. Safe to call multiple times. */
-  async shutdown(): Promise<void> {
+  shutdown(): void {
     if (this.intervalId) {
       clearInterval(this.intervalId);
       this.intervalId = undefined;

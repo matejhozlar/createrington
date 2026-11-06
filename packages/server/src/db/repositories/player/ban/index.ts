@@ -50,7 +50,7 @@ export class PlayerBanRepository extends BasePlayerRepository {
     return await db.inTransaction(async (tx) => {
       const ban = await tx.player.ban.createAndReturn({
         playerMinecraftUuid: uuid,
-        banType: "temporary" as BanType,
+        banType: "temporary",
         reason: data.reason,
         bannedByDiscordId: adminDiscordId,
         bannedByUsername: adminUsername,
@@ -118,7 +118,7 @@ export class PlayerBanRepository extends BasePlayerRepository {
 
     const ban = await tx.player.ban.createAndReturn({
       playerMinecraftUuid: player.minecraftUuid,
-      banType: "permanent" as BanType,
+      banType: "permanent",
       reason: data.reason,
       bannedByDiscordId: adminDiscordId,
       bannedByUsername: adminUsername,

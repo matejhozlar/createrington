@@ -1,6 +1,6 @@
 import type { Client, Collection, Guild, GuildMember } from "discord.js";
 import { RoleAssignmentService } from "./role-assignment.service";
-import type { PlaytimeService } from "@/services/playtime";
+import type { PlaytimeService, SessionEndEvent } from "@/services/playtime";
 import { Q } from "@/db";
 import {
   getDailyRoleRules,
@@ -86,7 +86,7 @@ export class RoleManagementService {
   }
 
   /** Starts the daily role-check scheduler. Realtime hooks are wired separately via `setupRealtimeRoleChecking`. */
-  async initialize(): Promise<void> {
+  initialize(): void {
     logger.info("Initializing RoleManagementService");
 
     this.startDailyScheduler();
@@ -95,7 +95,7 @@ export class RoleManagementService {
   }
 
   /** Cancels the daily scheduler (both the initial timeout and the recurring interval). Realtime listeners stay bound to the underlying `PlaytimeService`. */
-  async shutdown(): Promise<void> {
+  shutdown(): void {
     this.stopDailyScheduler();
     logger.info("RoleManagementService stopped");
   }
@@ -110,30 +110,34 @@ export class RoleManagementService {
     serverId: number,
     playtimeService: PlaytimeService,
   ): void {
-    playtimeService.on("sessionAggregated", async (event) => {
-      logger.debug(
-        `Session aggregated for ${event.username}, checking role eligibility`,
-      );
-
-      try {
-        const player = await Q.player.find({ minecraftUuid: event.uuid });
-
-        if (!player) {
-          logger.warn(`No player found with UUID ${event.uuid} for role check`);
-          return;
-        }
-
-        const rules = getRealtimeRoleRules();
-        await this.roleAssignmentService.processRoleHierarchy(player, rules);
-      } catch (error) {
-        logger.error(
-          `Failed to process realtime role check for ${event.username}:`,
-          error,
-        );
-      }
+    playtimeService.on("sessionAggregated", (event) => {
+      void this.checkRealtimeRoles(event);
     });
 
     logger.info(`Realtime role checking setup for server ${serverId}`);
+  }
+
+  private async checkRealtimeRoles(event: SessionEndEvent): Promise<void> {
+    logger.debug(
+      `Session aggregated for ${event.username}, checking role eligibility`,
+    );
+
+    try {
+      const player = await Q.player.find({ minecraftUuid: event.uuid });
+
+      if (!player) {
+        logger.warn(`No player found with UUID ${event.uuid} for role check`);
+        return;
+      }
+
+      const rules = getRealtimeRoleRules();
+      await this.roleAssignmentService.processRoleHierarchy(player, rules);
+    } catch (error) {
+      logger.error(
+        `Failed to process realtime role check for ${event.username}:`,
+        error,
+      );
+    }
   }
 
   private startDailyScheduler(): void {
@@ -157,10 +161,10 @@ export class RoleManagementService {
     );
 
     this.dailyCheckTimeoutId = setTimeout(() => {
-      this.runDailyCheck();
+      void this.runDailyCheck();
 
       this.dailyCheckIntervalId = setInterval(
-        () => this.runDailyCheck(),
+        () => void this.runDailyCheck(),
         24 * 60 * 60 * 1000, // 24 hours
       );
     }, msUntilNextCheck);

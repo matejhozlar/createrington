@@ -74,7 +74,7 @@ export const embedCrudProcedures = {
     .query(() => {
       return Object.entries(colors).map(([name, value]) => ({
         name,
-        value: value as number,
+        value,
         hex: `#${(value as number).toString(16).padStart(6, "0")}`,
       }));
     }),

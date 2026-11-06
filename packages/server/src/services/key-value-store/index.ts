@@ -32,14 +32,14 @@ export class MemoryKeyValueStore implements KeyValueStore {
   constructor(private readonly maxEntries = DEFAULT_MAX_ENTRIES) {}
 
   /** The value under the key, or `null` when there is none or its time is up. */
-  async get(key: string): Promise<string | null> {
+  get(key: string): Promise<string | null> {
     const entry = this.entries.get(key);
-    if (!entry) return null;
+    if (!entry) return Promise.resolve(null);
     if (entry.expiresAt <= Date.now()) {
       this.entries.delete(key);
-      return null;
+      return Promise.resolve(null);
     }
-    return entry.value;
+    return Promise.resolve(entry.value);
   }
 
   /** The values under the keys in the order asked, `null` where there is none or its time is up. */
@@ -48,10 +48,11 @@ export class MemoryKeyValueStore implements KeyValueStore {
   }
 
   /** Writes the value under the key for `ttlMs` milliseconds, replacing what was there. */
-  async set(key: string, value: string, ttlMs: number): Promise<void> {
+  set(key: string, value: string, ttlMs: number): Promise<void> {
     this.entries.delete(key);
     if (this.entries.size >= this.maxEntries) this.makeRoom();
     this.entries.set(key, { value, expiresAt: Date.now() + ttlMs });
+    return Promise.resolve();
   }
 
   private makeRoom(): void {

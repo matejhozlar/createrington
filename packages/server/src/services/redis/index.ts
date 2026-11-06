@@ -127,7 +127,7 @@ export class RedisService {
         },
         (error: unknown) => {
           clearTimeout(timer);
-          reject(error);
+          reject(error instanceof Error ? error : new Error(String(error)));
         },
       );
     });

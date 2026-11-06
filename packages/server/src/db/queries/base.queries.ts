@@ -275,7 +275,7 @@ export abstract class BaseQueries<
       }
       const result: Record<string, unknown> = {};
       for (const key of availableKeys) result[key] = obj[key];
-      return result as NonNullable<TConfig["Identifier"]>;
+      return result;
     }
 
     // Filter early so an unspread user object can't smuggle arbitrary keys
@@ -317,7 +317,7 @@ export abstract class BaseQueries<
 
     const result: Record<string, unknown> = {};
     for (const key of validKeys) result[key] = obj[key];
-    return result as NonNullable<TConfig["Identifier"]>;
+    return result;
   }
 
   private isFullEntity(obj: Record<string, unknown>): boolean {
@@ -933,7 +933,7 @@ export abstract class BaseQueries<
   readonly select = new Proxy({} as Record<string, any>, {
     get: (_, field: string) => {
       return async (identifier: Record<string, unknown>) => {
-        return this.pluckField(identifier, field as keyof TConfig["Entity"]);
+        return this.pluckField(identifier, field);
       };
     },
   }) as {

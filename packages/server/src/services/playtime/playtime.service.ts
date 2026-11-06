@@ -127,9 +127,7 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
    * instant right away instead of waiting for the watchdog. Errors fall back
    * to ONLINE so a cache lookup failure doesn't mask a live server.
    */
-  public async detectServerState(
-    messageCacheService: MessageCacheService,
-  ): Promise<void> {
+  public detectServerState(messageCacheService: MessageCacheService): void {
     try {
       logger.info(
         `Detecting initial server state for server ${this.config.serverId}...`,
@@ -179,7 +177,7 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
    * session already tracked for the same UUID means its leave was missed:
    * it is closed at its last-seen instant before the new one opens.
    */
-  public async handlePlayerJoinFromMod(data: ModPlayerJoinData): Promise<void> {
+  public handlePlayerJoinFromMod(data: ModPlayerJoinData): void {
     if (data.uuid === NIL_UUID) {
       logger.debug(
         `Ignoring join for nil UUID (fakeplayer or placeholder): ${data.username}`,
@@ -241,9 +239,7 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
    * tracked (or its DB id was never set) emits an orphaned event with
    * sessionId 0 so the repository can close and credit the row itself.
    */
-  public async handlePlayerLeaveFromMod(
-    data: ModPlayerLeaveData,
-  ): Promise<void> {
+  public handlePlayerLeaveFromMod(data: ModPlayerLeaveData): void {
     if (data.uuid === NIL_UUID) {
       logger.debug(
         `Ignoring leave for nil UUID (fakeplayer or placeholder): ${data.username}`,

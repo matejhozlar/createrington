@@ -16,7 +16,7 @@ export class LauncherPackFileRefreshService {
   private running = false;
 
   /** Schedules the hourly recheck, the first one a minute from now. */
-  async initialize(): Promise<void> {
+  initialize(): void {
     this.firstRunId = setTimeout(() => {
       this.firstRunId = undefined;
       void this.refresh();
@@ -51,7 +51,7 @@ export class LauncherPackFileRefreshService {
   }
 
   /** Cancels the schedule; an in-flight recheck is allowed to finish. */
-  async shutdown(): Promise<void> {
+  shutdown(): void {
     if (this.firstRunId) {
       clearTimeout(this.firstRunId);
       this.firstRunId = undefined;

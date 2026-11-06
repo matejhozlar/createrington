@@ -26,7 +26,7 @@ function requireServer(serverId: number) {
 async function broadcastStatus(serverId: number) {
   try {
     const ws = await getService(Services.WEBSOCKET_SERVICE);
-    await ws.triggerServerStatusUpdate(serverId);
+    ws.triggerServerStatusUpdate(serverId);
   } catch {
     return;
   }

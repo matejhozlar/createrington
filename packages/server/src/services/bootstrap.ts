@@ -67,14 +67,14 @@ export function registerServices(): void {
     return pool;
   });
 
-  container.register(Services.HTTP_SERVER, async () => {
+  container.register(Services.HTTP_SERVER, () => {
     logger.debug("Creating HTTP server...");
     const app = createApp();
     return http.createServer(app);
   });
 
   if (redisService.enabled) {
-    container.register(Services.REDIS, async () => {
+    container.register(Services.REDIS, () => {
       redisService.initialize();
       return redisService;
     });
@@ -84,9 +84,9 @@ export function registerServices(): void {
     );
   }
 
-  container.register(Services.PUPPETEER_SERVICE, async () => {
+  container.register(Services.PUPPETEER_SERVICE, () => {
     const service = new PuppeteerService();
-    await service.initialize();
+    service.initialize();
     return service;
   });
 
@@ -210,9 +210,9 @@ export function registerServices(): void {
 
   container.register(
     Services.MEMBER_CLEANUP_SERVICE,
-    async () => {
+    () => {
       const service = new MemberCleanupService();
-      await service.initialize();
+      service.initialize();
       return service;
     },
     { dependencies: [Services.DISCORD_MAIN_BOT] },
@@ -220,13 +220,13 @@ export function registerServices(): void {
 
   container.register(
     Services.GHOST_MEMBER_SERVICE,
-    async () => new GhostMemberService(),
+    () => new GhostMemberService(),
     { dependencies: [Services.DISCORD_MAIN_BOT, Services.DATABASE] },
   );
 
   container.register(
     Services.UNLINKED_MEMBER_SERVICE,
-    async () => new UnlinkedMemberService(),
+    () => new UnlinkedMemberService(),
     { dependencies: [Services.DISCORD_MAIN_BOT, Services.DATABASE] },
   );
 
@@ -234,9 +234,9 @@ export function registerServices(): void {
   if (config.envMode.isProductionDeployment) {
     container.register(
       Services.INACTIVITY_CLEANUP_SERVICE,
-      async () => {
+      () => {
         const service = new InactivityCleanupService();
-        await service.initialize();
+        service.initialize();
         return service;
       },
       {
@@ -252,9 +252,9 @@ export function registerServices(): void {
   if (config.launcher.available) {
     container.register(
       Services.LAUNCHER_PACK_FILE_REFRESH,
-      async () => {
+      () => {
         const service = new LauncherPackFileRefreshService();
-        await service.initialize();
+        service.initialize();
         return service;
       },
       { dependencies: [Services.DATABASE] },
@@ -263,9 +263,9 @@ export function registerServices(): void {
 
   container.register(
     Services.WORKSHOP_PROJECT_REFRESH,
-    async () => {
+    () => {
       const service = new WorkshopProjectRefreshService();
-      await service.initialize();
+      service.initialize();
       return service;
     },
     { dependencies: [Services.DATABASE, Services.DISCORD_MAIN_BOT] },
@@ -274,9 +274,9 @@ export function registerServices(): void {
   if (!config.envMode.isDev) {
     container.register(
       Services.WAITLIST_CLEANUP_SERVICE,
-      async () => {
+      () => {
         const service = new WaitlistCleanupService();
-        await service.initialize();
+        service.initialize();
         return service;
       },
       { dependencies: [Services.DATABASE, Services.DISCORD_MAIN_BOT] },
@@ -364,8 +364,8 @@ export function registerServices(): void {
 
   container.register(
     Services.PLAYER_DELETION_SERVICE,
-    async () => {
-      await playerDeletionService.initialize();
+    () => {
+      playerDeletionService.initialize();
       playerDeletionService.onDeleted(async (player) => {
         try {
           await waitlistService.expireForPlayerDeletion(player.discordId);
@@ -401,7 +401,7 @@ export function registerServices(): void {
           playtimeManager,
           STATS_IMPORT_SERVERS,
         );
-        await service.initialize();
+        service.initialize();
         return service;
       },
       {
@@ -417,7 +417,7 @@ export function registerServices(): void {
     async (c) => {
       const mainBot = await c.get(Services.DISCORD_MAIN_BOT);
       const service = new RoleManagementService(mainBot, 0);
-      await service.initialize();
+      service.initialize();
       return service;
     },
     { dependencies: [Services.DISCORD_MAIN_BOT] },
@@ -458,10 +458,7 @@ export function registerServices(): void {
         maxInitialMessages: 100,
       });
 
-      await websocketService.initialize(
-        messageCacheService,
-        playtimeManagerService,
-      );
+      websocketService.initialize(messageCacheService, playtimeManagerService);
 
       return websocketService;
     },
@@ -550,7 +547,7 @@ export function registerServices(): void {
         const service = new VoteRewardService(playtimeManager, undefined, {
           rewardServerIds: [config.servers.rails.id],
         });
-        await service.initialize();
+        service.initialize();
         return service;
       },
       {
@@ -563,34 +560,43 @@ export function registerServices(): void {
     );
   }
 
-  container.on("serviceReady", async (serviceName) => {
-    // Wire message cache into playtime manager for server shutdown detection
-    if (serviceName === Services.MESSAGE_CACHE) {
-      const playtimeManager = await container.get(
-        Services.PLAYTIME_MANAGER_SERVICE,
+  container.on("serviceReady", (serviceName) => {
+    wireReadyService(serviceName).catch((error: unknown) => {
+      logger.error(
+        `Failed to wire ${serviceName} after it became ready:`,
+        error,
       );
-      const messageCache = await container.get(Services.MESSAGE_CACHE);
-
-      playtimeManager.setupMessageCacheIntegration(messageCache);
-    }
-
-    // Wire real-time role checks to playtime events on each server
-    if (serviceName === Services.PLAYTIME_MANAGER_SERVICE) {
-      const playtimeManager = await container.get(
-        Services.PLAYTIME_MANAGER_SERVICE,
-      );
-      const roleService = await container.get(Services.ROLE_MANAGEMENT_SERVICE);
-
-      for (const [
-        serverId,
-        playtimeService,
-      ] of playtimeManager.getAllServices()) {
-        roleService.setupRealtimeRoleChecking(serverId, playtimeService);
-      }
-    }
+    });
   });
 
   logger.info(`Registered ${container.size} services`);
+}
+
+async function wireReadyService(serviceName: string): Promise<void> {
+  // Wire message cache into playtime manager for server shutdown detection
+  if (serviceName === Services.MESSAGE_CACHE) {
+    const playtimeManager = await container.get(
+      Services.PLAYTIME_MANAGER_SERVICE,
+    );
+    const messageCache = await container.get(Services.MESSAGE_CACHE);
+
+    playtimeManager.setupMessageCacheIntegration(messageCache);
+  }
+
+  // Wire real-time role checks to playtime events on each server
+  if (serviceName === Services.PLAYTIME_MANAGER_SERVICE) {
+    const playtimeManager = await container.get(
+      Services.PLAYTIME_MANAGER_SERVICE,
+    );
+    const roleService = await container.get(Services.ROLE_MANAGEMENT_SERVICE);
+
+    for (const [
+      serverId,
+      playtimeService,
+    ] of playtimeManager.getAllServices()) {
+      roleService.setupRealtimeRoleChecking(serverId, playtimeService);
+    }
+  }
 }
 
 /**
