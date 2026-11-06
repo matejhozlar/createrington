@@ -106,11 +106,11 @@ beforeEach(async () => {
     sweepIntervalMs: 60_000,
     commands: async () => commands,
   });
-  await service.initialize();
+  service.initialize();
 });
 
 afterEach(async () => {
-  await service.shutdown();
+  service.shutdown();
 });
 
 function updatedWith(id: number) {

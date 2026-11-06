@@ -51,7 +51,7 @@ describe("PlaytimeService join / heartbeat / leave", () => {
     const { service, starts, progress, ends } = makeService();
     service.initialize();
 
-    await service.handlePlayerJoinFromMod({
+    service.handlePlayerJoinFromMod({
       uuid: STEVE,
       username: "steve",
       playTimeTicks: ticks(1000),
@@ -87,7 +87,7 @@ describe("PlaytimeService join / heartbeat / leave", () => {
     );
 
     vi.setSystemTime(new Date(T0.getTime() + seconds(150)));
-    await service.handlePlayerLeaveFromMod({
+    service.handlePlayerLeaveFromMod({
       uuid: STEVE,
       username: "steve",
       playTimeTicks: ticks(1070),
@@ -106,7 +106,7 @@ describe("PlaytimeService join / heartbeat / leave", () => {
     const { service, progress, ends } = makeService();
     service.initialize();
 
-    await service.handlePlayerJoinFromMod({ uuid: STEVE, username: "steve" });
+    service.handlePlayerJoinFromMod({ uuid: STEVE, username: "steve" });
     service.setSessionId(STEVE, 1);
 
     vi.setSystemTime(new Date(T0.getTime() + seconds(90)));
@@ -114,7 +114,7 @@ describe("PlaytimeService join / heartbeat / leave", () => {
     expect(progress[0].credit.seconds).toBe(90);
 
     vi.setSystemTime(new Date(T0.getTime() + seconds(100)));
-    await service.handlePlayerLeaveFromMod({ uuid: STEVE, username: "steve" });
+    service.handlePlayerLeaveFromMod({ uuid: STEVE, username: "steve" });
     expect(ends[0].secondsPlayed).toBe(100);
   });
 
@@ -122,7 +122,7 @@ describe("PlaytimeService join / heartbeat / leave", () => {
     const { service, progress } = makeService();
     service.initialize();
 
-    await service.handlePlayerJoinFromMod({
+    service.handlePlayerJoinFromMod({
       uuid: STEVE,
       username: "steve",
       playTimeTicks: 0,
@@ -154,7 +154,7 @@ describe("PlaytimeService join / heartbeat / leave", () => {
     const { service, progress, ends } = makeService();
     service.initialize();
 
-    await service.handlePlayerJoinFromMod({
+    service.handlePlayerJoinFromMod({
       uuid: STEVE,
       username: "steve",
       playTimeTicks: ticks(1000),
@@ -179,7 +179,7 @@ describe("PlaytimeService join / heartbeat / leave", () => {
     });
     expect(service.revertProgress(progress[0])).toBe(false);
 
-    await service.handlePlayerLeaveFromMod({
+    service.handlePlayerLeaveFromMod({
       uuid: STEVE,
       username: "steve",
       playTimeTicks: ticks(1120),
@@ -192,7 +192,7 @@ describe("PlaytimeService join / heartbeat / leave", () => {
     const { service, ends } = makeService();
     service.initialize();
 
-    await service.handlePlayerJoinFromMod({
+    service.handlePlayerJoinFromMod({
       uuid: STEVE,
       username: "steve",
       timestamp: T0,
@@ -200,7 +200,7 @@ describe("PlaytimeService join / heartbeat / leave", () => {
     });
     service.setSessionId(STEVE, 1);
 
-    await service.handlePlayerLeaveFromMod({
+    service.handlePlayerLeaveFromMod({
       uuid: STEVE,
       username: "steve",
       timestamp: new Date(T0.getTime() - seconds(10)),
@@ -219,7 +219,7 @@ describe("PlaytimeService join / heartbeat / leave", () => {
     const { service, ends } = makeService();
     service.initialize();
 
-    await service.handlePlayerJoinFromMod({
+    service.handlePlayerJoinFromMod({
       uuid: STEVE,
       username: "steve",
       playTimeTicks: 0,
@@ -263,7 +263,7 @@ describe("PlaytimeService join / heartbeat / leave", () => {
     const { service, ends } = makeService();
     service.initialize();
 
-    await service.handlePlayerLeaveFromMod({
+    service.handlePlayerLeaveFromMod({
       uuid: STEVE,
       username: "steve",
       playTimeTicks: ticks(10),
@@ -282,7 +282,7 @@ describe("PlaytimeService join / heartbeat / leave", () => {
     const { service, starts, ends } = makeService();
     service.initialize();
 
-    await service.handlePlayerJoinFromMod({
+    service.handlePlayerJoinFromMod({
       uuid: STEVE,
       username: "steve",
       playTimeTicks: 0,
@@ -290,7 +290,7 @@ describe("PlaytimeService join / heartbeat / leave", () => {
     service.setSessionId(STEVE, 1);
 
     vi.setSystemTime(new Date(T0.getTime() + seconds(300)));
-    await service.handlePlayerJoinFromMod({
+    service.handlePlayerJoinFromMod({
       uuid: STEVE,
       username: "steve",
       playTimeTicks: ticks(200),
@@ -358,7 +358,7 @@ describe("PlaytimeService restart persistence", () => {
   it("leaves sessions open on stop", async () => {
     const { service, ends } = makeService();
     service.initialize();
-    await service.handlePlayerJoinFromMod({ uuid: STEVE, username: "steve" });
+    service.handlePlayerJoinFromMod({ uuid: STEVE, username: "steve" });
 
     service.stop();
 
@@ -415,7 +415,7 @@ describe("PlaytimeService watchdog", () => {
     const staleAfterMs = 5 * 60 * 1000;
     const { service } = makeService({ staleAfterMs });
     service.initialize();
-    await service.handlePlayerJoinFromMod({ uuid: STEVE, username: "steve" });
+    service.handlePlayerJoinFromMod({ uuid: STEVE, username: "steve" });
 
     await vi.advanceTimersByTimeAsync(6 * 60 * 1000);
     expect(service.getServerState()).toBe(ServerState.ONLINE);
@@ -427,12 +427,12 @@ describe("PlaytimeService relay shutdown", () => {
     const { service, ends } = makeService();
     service.initialize();
 
-    await service.handlePlayerJoinFromMod({
+    service.handlePlayerJoinFromMod({
       uuid: STEVE,
       username: "steve",
       playTimeTicks: 0,
     });
-    await service.handlePlayerJoinFromMod({ uuid: ALEX, username: "alex" });
+    service.handlePlayerJoinFromMod({ uuid: ALEX, username: "alex" });
     service.setSessionId(STEVE, 1);
     service.setSessionId(ALEX, 2);
 
