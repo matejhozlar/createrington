@@ -118,6 +118,7 @@ export const balanceRouter = router({
         amount: z.number().int().min(-1_000_000_000).max(1_000_000_000),
         reason: z
           .string()
+          .trim()
           .min(1, "Reason is required")
           .max(ADMIN_REASON_MAX_LENGTH),
       }),
