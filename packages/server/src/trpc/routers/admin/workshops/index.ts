@@ -10,7 +10,11 @@ import {
   rethrowTrpc,
 } from "@/trpc/utils";
 import { createRateLimit } from "@/trpc/middleware/rate-limit";
-import { workshopService } from "@/services/workshop";
+import { workshopService } from "@/services/workshop/workshop.service";
+import { workshopAdminService } from "@/services/workshop/admin.service";
+import { workshopModService } from "@/services/workshop/mods.service";
+import { workshopSuggestionService } from "@/services/workshop/suggestion.service";
+import { workshopReviewService } from "@/services/workshop/review.service";
 import { modpackAttentionService } from "@/services/modpack/attention.service";
 import { getMinecraftVersions } from "@/services/curseforge/mods";
 import { listForumChannels } from "@/services/workshop/discord";
@@ -82,7 +86,7 @@ export const adminWorkshopsRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       try {
-        const workshop = await workshopService.createWorkshop(
+        const workshop = await workshopAdminService.createWorkshop(
           input,
           ctx.user.discordId,
         );
@@ -109,7 +113,7 @@ export const adminWorkshopsRouter = router({
     .mutation(async ({ ctx, input }) => {
       assertPatchNotEmpty(input.patch);
       try {
-        const workshop = await workshopService.updateWorkshop(
+        const workshop = await workshopAdminService.updateWorkshop(
           input.workshopId,
           input.patch,
         );
@@ -133,7 +137,9 @@ export const adminWorkshopsRouter = router({
     .input(z.object({ workshopId: id() }))
     .mutation(async ({ ctx, input }) => {
       try {
-        const workshop = await workshopService.deleteWorkshop(input.workshopId);
+        const workshop = await workshopAdminService.deleteWorkshop(
+          input.workshopId,
+        );
         await Q.admin.log.action.logAction({
           ...auditActor(ctx),
           actionType: "workshop_delete",
@@ -151,7 +157,7 @@ export const adminWorkshopsRouter = router({
     .input(z.object({ workshopId: id() }))
     .query(async ({ input }) => {
       try {
-        return await workshopService.getWorkshopMods(input.workshopId, {
+        return await workshopModService.getWorkshopMods(input.workshopId, {
           includeHidden: true,
         });
       } catch (error) {
@@ -164,7 +170,7 @@ export const adminWorkshopsRouter = router({
     .input(z.object({ workshopModId: id() }))
     .query(async ({ input }) => {
       try {
-        return await workshopService.getModDetail(input.workshopModId, {
+        return await workshopModService.getModDetail(input.workshopModId, {
           includeHidden: true,
         });
       } catch (error) {
@@ -187,7 +193,7 @@ export const adminWorkshopsRouter = router({
     )
     .query(async ({ input }) => {
       try {
-        return await workshopService.searchProjects(
+        return await workshopSuggestionService.searchProjects(
           input.workshopId,
           input.query,
           { classId: input.classId },
@@ -222,7 +228,7 @@ export const adminWorkshopsRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       try {
-        const mod = await workshopService.reviewMod(
+        const mod = await workshopReviewService.reviewMod(
           input.workshopModId,
           input.action,
           ctx.user.discordId,
@@ -248,7 +254,7 @@ export const adminWorkshopsRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       try {
-        const project = await workshopService.setProjectEnvironment(
+        const project = await workshopReviewService.setProjectEnvironment(
           input.curseforgeProjectId,
           input.environment,
         );
@@ -277,7 +283,7 @@ export const adminWorkshopsRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       try {
-        const mods = await workshopService.addModsAsAdmin(
+        const mods = await workshopReviewService.addModsAsAdmin(
           input.workshopId,
           input.projectIds,
           ctx.user.discordId,
@@ -378,7 +384,9 @@ export const adminWorkshopsRouter = router({
     .input(z.object({ workshopId: id() }))
     .query(async ({ input }) => {
       try {
-        return await workshopService.getWorkshopDependencies(input.workshopId);
+        return await workshopModService.getWorkshopDependencies(
+          input.workshopId,
+        );
       } catch (error) {
         rethrowTrpc(error);
       }

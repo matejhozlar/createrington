@@ -100,7 +100,7 @@ vi.mock("@/services/launcher/pack/sandbox-files", async (importOriginal) => ({
 import pool, { Q } from "@/db";
 import { ConflictError, NotFoundError } from "@/app/middleware/error-handler";
 import { modpackAdminService } from "@/services/modpack/admin.service";
-import { workshopService } from "@/services/workshop";
+import { workshopAdminService } from "@/services/workshop/admin.service";
 import {
   createWorkshopTestContext,
   cleanupWorkshopTestContext,
@@ -172,7 +172,7 @@ describe("ModpackAdminService.deleteModpack", () => {
       modCount: 1,
     });
 
-    await workshopService.deleteWorkshop(workshop.id);
+    await workshopAdminService.deleteWorkshop(workshop.id);
     await modpackAdminService.deleteModpack(workshop.modpackId);
 
     expect(await Q.modpack.find({ id: workshop.modpackId })).toBeNull();
