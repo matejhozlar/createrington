@@ -26,7 +26,10 @@ import type {
   ModpackReleaseAnnouncement,
 } from "@createrington/shared/db";
 import type { ReleaseModRow } from "@/db/queries/modpack/release/mod";
-import type { ModpackReleaseDiff, ModpackReleaseDiffEntry } from "./index";
+import type {
+  ModpackReleaseDiff,
+  ModpackReleaseDiffEntry,
+} from "./release-changelog";
 
 export const CHANGELOG_PRESET_CATEGORY = "Changelogs";
 const PRESET_AUTHOR = "system";

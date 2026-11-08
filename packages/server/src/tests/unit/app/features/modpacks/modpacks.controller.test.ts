@@ -11,8 +11,8 @@ const { getChangelogMarkdownMock, getChangelogRowMock, getVersionStatusMock } =
     getVersionStatusMock: vi.fn(),
   }));
 
-vi.mock("@/services/modpack", () => ({
-  modpackService: {
+vi.mock("@/services/modpack/release.service", () => ({
+  modpackReleaseService: {
     getChangelogMarkdown: getChangelogMarkdownMock,
     getChangelogRow: getChangelogRowMock,
     getVersionStatus: getVersionStatusMock,

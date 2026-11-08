@@ -39,8 +39,8 @@ import {
 } from "@/services/curseforge/files";
 import { getModpackModIds } from "@/services/curseforge/modpack-manifest";
 import { ingestProjects } from "@/services/curseforge/ingest";
-import { modpackService } from "@/services/modpack";
-import type { ModpackModListItem } from "@/services/modpack";
+import { modpackService } from "@/services/modpack/modpack.service";
+import type { ModpackModListItem } from "@/services/modpack/modpack.service";
 import { assertCanSuggest } from "./bans";
 import {
   announceRemoval,

@@ -6,7 +6,7 @@ import {
   launcherPackService,
   type OwnedLauncherPack,
 } from "@/services/launcher/pack/launcher-pack.service";
-import { modpackService } from "@/services/modpack";
+import { modpackSyncService } from "@/services/modpack/sync.service";
 import type { LauncherPack } from "@createrington/shared/db";
 import {
   LAUNCHER_PACK_RESERVED_SLUGS,
@@ -91,7 +91,7 @@ export const ownerLauncherPacksRouter = router({
       try {
         const pack = await launcherPackService.addPack(input);
         if (pack.source === "curseforge") {
-          void modpackService.tryReconcile(pack.modpackId);
+          void modpackSyncService.tryReconcile(pack.modpackId);
         }
         await Q.admin.log.action.logAction({
           ...auditActor(ctx),
