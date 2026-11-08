@@ -64,17 +64,29 @@ function user(overrides: Partial<JWTPayload>): JWTPayload {
 }
 
 const CALLERS = [
-  { who: "a signed-out visitor", user: null, code: "UNAUTHORIZED" },
+  {
+    who: "a signed-out visitor",
+    user: null,
+    code: "UNAUTHORIZED",
+    message: "Authentication required",
+  },
   {
     who: "an unverified account",
     user: user({ role: AuthRole.UNVERIFIED }),
     code: "FORBIDDEN",
+    message: "Account verification required",
   },
-  { who: "a verified player", user: user({}), code: "FORBIDDEN" },
+  {
+    who: "a verified player",
+    user: user({}),
+    code: "FORBIDDEN",
+    message: "Admin access required",
+  },
   {
     who: "a former admin whose JWT still says admin",
     user: user({ role: AuthRole.ADMIN, isAdmin: true }),
     code: "FORBIDDEN",
+    message: "Admin access required",
   },
 ] as const;
 
@@ -116,12 +128,12 @@ it("walks the whole admin router", () => {
   );
 });
 
-describe.each(CALLERS)("as $who", ({ user, code }) => {
+describe.each(CALLERS)("as $who", ({ user, code, message }) => {
   it.each(PROCEDURE_PATHS)("admin.%s is refused", async (path) => {
     const error = await rejection(procedureAt(user, path)(undefined));
 
     expect(error).toBeInstanceOf(TRPCError);
-    expect((error as TRPCError).code).toBe(code);
+    expect(error).toMatchObject({ code, message });
   });
 });
 
