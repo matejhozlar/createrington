@@ -3,6 +3,7 @@ import type { RewardClaimResult, RewardEligibilityResult } from "../types";
 import { BaseReward } from "./base.reward";
 import { balanceRepo, db } from "@/db";
 import { BalanceTransactionType } from "@/db/repositories/balance";
+import { UniqueViolationError } from "@/db/utils/errors";
 
 /**
  * Daily reward implementation with time-based reset logic
@@ -19,15 +20,6 @@ import { BalanceTransactionType } from "@/db/repositories/balance";
  *      - Claim at 11 PM UTC -> can claim at midnight UTC (1 hour later)
  *      - Claim at 1 AM UTC -> can claim again tomorrow at midnight UTC (23 hours later)
  */
-function isUniqueViolation(err: unknown): boolean {
-  return (
-    typeof err === "object" &&
-    err !== null &&
-    "code" in err &&
-    err.code === "23505"
-  );
-}
-
 export class DailyReward extends BaseReward {
   /**
    * Checks if a player is eligible to claim the daily reward
@@ -141,7 +133,7 @@ export class DailyReward extends BaseReward {
         nextClaimTime,
       };
     } catch (error) {
-      if (isUniqueViolation(error)) {
+      if (error instanceof UniqueViolationError) {
         // Concurrent claim already won the race for this period.
         const eligibility = await this.checkEligibility(identifier);
         return {
