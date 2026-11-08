@@ -9,7 +9,7 @@ export const serverWhitelistProcedures = {
   resyncWhitelist: adminProcedure
     .meta({
       description:
-        "Delete and regenerate the server whitelist from registered players, then reload it via RCON",
+        "Regenerate the server whitelist from registered players, then reload it via RCON",
     })
     .input(z.object({ serverId: z.coerce.number().int().positive() }))
     .mutation(async ({ input, ctx }) => {
