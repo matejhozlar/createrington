@@ -12,10 +12,11 @@ import type {
 import { getValidated } from "@/app/middleware/validation.middleware";
 import { sendCachedJson } from "@/app/utils/cached-json";
 import { createKeyValueStore } from "@/services/key-value-store";
+import { launcherPackService } from "@/services/launcher/pack/launcher-pack.service";
 import {
-  launcherPackService,
+  launcherPackFileService,
   type StorageDownload,
-} from "@/services/launcher/pack/launcher-pack.service";
+} from "@/services/launcher/pack/pack-files.service";
 import { buildPagination } from "@/trpc/utils";
 import type {
   ListReleasesQuery,
@@ -151,7 +152,7 @@ export class LauncherPackController {
 
     const response: LauncherSuccessResponse<LauncherPackFilesData> = {
       success: true,
-      data: await launcherPackService.resolveFiles(body.fileIds),
+      data: await launcherPackFileService.resolveFiles(body.fileIds),
     };
     res.json(response);
   }
@@ -159,14 +160,14 @@ export class LauncherPackController {
   static async storageFile(req: Request, res: Response): Promise<void> {
     const { params } = getValidated<{ params: StorageFileParams }>(res);
     await streamStorage(req, res, (signal) =>
-      launcherPackService.openStorageFile(params.fileId, signal),
+      launcherPackFileService.openStorageFile(params.fileId, signal),
     );
   }
 
   static async storageSnapshot(req: Request, res: Response): Promise<void> {
     const { params } = getValidated<{ params: StorageSnapshotParams }>(res);
     await streamStorage(req, res, (signal) =>
-      launcherPackService.openStorageSnapshot(params.id, signal),
+      launcherPackFileService.openStorageSnapshot(params.id, signal),
     );
   }
 }

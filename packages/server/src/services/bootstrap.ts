@@ -38,7 +38,7 @@ import { AutoMessageService } from "./discord/auto-message";
 import { maintenanceService } from "./maintenance";
 import { MaintenanceScheduler } from "./maintenance/scheduler";
 import { releaseAnnouncementService } from "./release-announcement";
-import { launcherPackService } from "./launcher/pack/launcher-pack.service";
+import { launcherPackAdminService } from "./launcher/pack/pack-admin.service";
 import { LauncherPackFileRefreshService } from "./launcher/pack/file-refresh.service";
 import { DonationService } from "./donation/donation.service";
 import { structurePackService } from "./structure-pack";
@@ -625,7 +625,7 @@ export async function initializeServices(): Promise<void> {
 
   void releaseAnnouncementService.announceIfNew();
   if (config.launcher.available) {
-    launcherPackService
+    launcherPackAdminService
       .seedDefaultPack()
       .catch((error) => logger.warn("Launcher pack seed failed:", error));
   }

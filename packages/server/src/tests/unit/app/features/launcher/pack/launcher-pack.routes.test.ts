@@ -75,6 +75,10 @@ vi.mock("@/services/launcher/pack/launcher-pack.service", () => ({
     listPacks: mocks.listPacks,
     getLatestPack: mocks.getLatestPack,
     listReleases: mocks.listReleases,
+  },
+}));
+vi.mock("@/services/launcher/pack/pack-files.service", () => ({
+  launcherPackFileService: {
     resolveFiles: mocks.resolveFiles,
     openStorageFile: mocks.openStorageFile,
     openStorageSnapshot: mocks.openStorageSnapshot,
