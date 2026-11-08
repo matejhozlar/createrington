@@ -11,7 +11,7 @@ import {
 } from "@/trpc/utils";
 import { createRateLimit } from "@/trpc/middleware/rate-limit";
 import { workshopService } from "@/services/workshop";
-import { modpackService } from "@/services/modpack";
+import { modpackAttentionService } from "@/services/modpack/attention.service";
 import { getMinecraftVersions } from "@/services/curseforge/mods";
 import { listForumChannels } from "@/services/workshop/discord";
 import { logModReview, logProjectEnvironment } from "@/services/workshop/audit";
@@ -332,7 +332,7 @@ export const adminWorkshopsRouter = router({
     .query(async ({ input }) => {
       try {
         const workshop = await workshopService.getWorkshop(input.workshopId);
-        return await modpackService.getWorkshopAttention(workshop);
+        return await modpackAttentionService.getWorkshopAttention(workshop);
       } catch (error) {
         rethrowTrpc(error);
       }
@@ -347,7 +347,7 @@ export const adminWorkshopsRouter = router({
     .mutation(async ({ ctx, input }) => {
       try {
         const workshop = await workshopService.getWorkshop(input.workshopId);
-        const result = await modpackService.removeDroppedMember(
+        const result = await modpackAttentionService.removeDroppedMember(
           workshop,
           input.modpackModId,
           ctx.user.discordId,

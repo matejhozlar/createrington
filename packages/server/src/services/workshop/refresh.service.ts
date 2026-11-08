@@ -1,7 +1,7 @@
 import { Q } from "@/db";
 import { refreshProjects } from "@/services/curseforge/ingest";
 import { FeatureFlags, featureFlagService } from "@/services/feature-flag";
-import { modpackService } from "@/services/modpack";
+import { modpackSyncService } from "@/services/modpack/sync.service";
 import {
   pruneStaleDependencyEdges,
   tryResolveProjectDependencies,
@@ -88,7 +88,7 @@ export class WorkshopProjectRefreshService {
 
       const modpacks = await Q.modpack.findAll({});
       for (const modpack of modpacks) {
-        await modpackService.tryReconcile(modpack.id);
+        await modpackSyncService.tryReconcile(modpack.id);
       }
 
       if (refreshed > 0) {

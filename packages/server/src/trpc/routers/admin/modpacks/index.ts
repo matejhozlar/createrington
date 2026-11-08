@@ -2,7 +2,10 @@ import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
 import { auditActor, rethrowTrpc, id, assertPatchNotEmpty } from "@/trpc/utils";
-import { modpackService } from "@/services/modpack";
+import { modpackService } from "@/services/modpack/modpack.service";
+import { modpackAdminService } from "@/services/modpack/admin.service";
+import { modpackSyncService } from "@/services/modpack/sync.service";
+import { modpackReleaseService } from "@/services/modpack/release.service";
 import { modpackManifestUploadSchema } from "@createrington/shared/workshop";
 import { httpUrlSchema } from "@createrington/shared/api/embed";
 
@@ -23,7 +26,7 @@ export const adminModpacksRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       try {
-        const modpack = await modpackService.createModpack(
+        const modpack = await modpackAdminService.createModpack(
           input,
           ctx.user.discordId,
         );
@@ -61,7 +64,7 @@ export const adminModpacksRouter = router({
     .mutation(async ({ ctx, input }) => {
       assertPatchNotEmpty(input.patch);
       try {
-        const modpack = await modpackService.updateModpack(
+        const modpack = await modpackAdminService.updateModpack(
           input.modpackId,
           input.patch,
         );
@@ -86,7 +89,7 @@ export const adminModpacksRouter = router({
     .mutation(async ({ ctx, input }) => {
       try {
         const { modpack, modCount, releaseCount } =
-          await modpackService.deleteModpack(input.modpackId);
+          await modpackAdminService.deleteModpack(input.modpackId);
         await Q.admin.log.action.logAction({
           ...auditActor(ctx),
           actionType: "modpack_delete",
@@ -115,7 +118,7 @@ export const adminModpacksRouter = router({
     .input(z.object({ modpackId: id() }))
     .query(async ({ input }) => {
       try {
-        return await modpackService.listReleases(input.modpackId);
+        return await modpackReleaseService.listReleases(input.modpackId);
       } catch (error) {
         rethrowTrpc(error);
       }
@@ -126,7 +129,7 @@ export const adminModpacksRouter = router({
     .input(z.object({ releaseId: id() }))
     .query(async ({ input }) => {
       try {
-        return await modpackService.getReleaseDiff(input.releaseId);
+        return await modpackReleaseService.getReleaseDiff(input.releaseId);
       } catch (error) {
         rethrowTrpc(error);
       }
@@ -137,7 +140,7 @@ export const adminModpacksRouter = router({
     .input(z.object({ releaseId: id() }))
     .query(async ({ input }) => {
       try {
-        return await modpackService.getReleaseMods(input.releaseId);
+        return await modpackReleaseService.getReleaseMods(input.releaseId);
       } catch (error) {
         rethrowTrpc(error);
       }
@@ -151,7 +154,7 @@ export const adminModpacksRouter = router({
     .input(z.object({ modpackId: id() }))
     .mutation(async ({ input }) => {
       try {
-        await modpackService.reconcile(input.modpackId, { force: true });
+        await modpackSyncService.reconcile(input.modpackId, { force: true });
         return { reconciled: true };
       } catch (error) {
         rethrowTrpc(error);
@@ -168,17 +171,20 @@ export const adminModpacksRouter = router({
       try {
         const { version, minecraft, files } = input.manifest;
         const loaders = minecraft?.modLoaders ?? [];
-        const result = await modpackService.seedFromManifest(input.modpackId, {
-          version: version ?? null,
-          minecraftVersion: minecraft?.version ?? null,
-          modLoader:
-            (loaders.find((loader) => loader.primary) ?? loaders[0])?.id ??
-            null,
-          files: files.map((file) => ({
-            projectId: file.projectID,
-            required: file.required,
-          })),
-        });
+        const result = await modpackSyncService.seedFromManifest(
+          input.modpackId,
+          {
+            version: version ?? null,
+            minecraftVersion: minecraft?.version ?? null,
+            modLoader:
+              (loaders.find((loader) => loader.primary) ?? loaders[0])?.id ??
+              null,
+            files: files.map((file) => ({
+              projectId: file.projectID,
+              required: file.required,
+            })),
+          },
+        );
         await Q.admin.log.action.logAction({
           ...auditActor(ctx),
           actionType: "modpack_seed_manifest",
