@@ -242,6 +242,20 @@ describe("admin.players.balance.bulkAdjust", () => {
     expect(result.summary).toEqual({ total: 2, successful: 1, failed: 1 });
   });
 
+  it("trims the reason before it is recorded", async () => {
+    bulkAdjust.mockResolvedValue([]);
+
+    await caller.bulkAdjust({ ...input, reason: "  duplication exploit  " });
+
+    expect(bulkAdjust).toHaveBeenCalledWith(
+      input.playerUuids,
+      -25,
+      ADMIN.discordId,
+      ADMIN.minecraftUsername,
+      "duplication exploit",
+    );
+  });
+
   it("refuses a zero adjustment", async () => {
     const error = await rejection(caller.bulkAdjust({ ...input, amount: 0 }));
 
@@ -260,6 +274,7 @@ describe("admin.players.balance.bulkAdjust", () => {
       { playerUuids: Array.from({ length: 101 }, () => PLAYER_UUID) },
     ],
     ["an empty reason", { reason: "" }],
+    ["a whitespace-only reason", { reason: "   " }],
   ])("rejects %s", async (_label, overrides) => {
     const error = await rejection(
       caller.bulkAdjust({ ...input, ...overrides }),
