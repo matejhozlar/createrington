@@ -23,14 +23,39 @@ vi.mock("@/services/workshop/discord", () => ({
   healThreads: vi.fn(async () => undefined),
 }));
 
-vi.mock("@/services/curseforge", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/services/curseforge")>();
+vi.mock("@/services/curseforge/mods", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/services/curseforge/mods")>();
   return {
     ...actual,
     getMod: vi.fn(async () => {
       throw new Error("getMod must not be called in this suite");
     }),
     getMods: vi.fn(async () => []),
+    searchMods: vi.fn(async () => []),
+  };
+});
+vi.mock("@/services/curseforge/files", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/services/curseforge/files")>();
+  return {
+    ...actual,
+    getFilesDependencies: vi.fn(async () => []),
+    getFilesDetails: vi.fn(async () => []),
+  };
+});
+vi.mock("@/services/curseforge/modpack", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/services/curseforge/modpack")>();
+  return { ...actual, getModpackFile: vi.fn(async () => null) };
+});
+vi.mock("@/services/curseforge/modpack-manifest", async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import("@/services/curseforge/modpack-manifest")
+    >();
+  return {
+    ...actual,
     getModpackManifest: vi.fn(async () => ({
       fileId: 1,
       serverPackFileId: null,
@@ -44,10 +69,6 @@ vi.mock("@/services/curseforge", async (importOriginal) => {
       disabledModIds: new Set<number>(),
     })),
     getModpackModIds: vi.fn(async () => new Set<number>()),
-    getModpackFile: vi.fn(async () => null),
-    searchMods: vi.fn(async () => []),
-    getFilesDependencies: vi.fn(async () => []),
-    getFilesDetails: vi.fn(async () => []),
   };
 });
 
@@ -85,15 +106,15 @@ import {
 } from "@/app/middleware/error-handler";
 import { modpackService } from "@/services/modpack";
 import { workshopService } from "@/services/workshop";
+import { CurseForgeClass } from "@/services/curseforge/client";
+import { getFilesDetails } from "@/services/curseforge/files";
 import {
-  CurseForgeClass,
-  getFilesDetails,
   getModpackFile,
-  getModpackManifest,
   type ModpackFile,
   type ModpackManifest,
   type ModpackManifestSides,
-} from "@/services/curseforge";
+} from "@/services/curseforge/modpack";
+import { getModpackManifest } from "@/services/curseforge/modpack-manifest";
 import {
   announcePackDropOut,
   announceReview,

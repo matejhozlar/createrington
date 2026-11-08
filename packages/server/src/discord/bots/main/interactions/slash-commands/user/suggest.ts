@@ -10,7 +10,7 @@ import {
 } from "@/discord/bots/main/interactions/modals/workshop-suggest";
 import { CooldownType } from "@/discord/utils/cooldown";
 import { replyError } from "@/discord/utils/interaction-reply";
-import { CurseForgeClass } from "@/services/curseforge";
+import { CurseForgeClass } from "@/services/curseforge/client";
 import { featureFlagService, FeatureFlags } from "@/services/feature-flag";
 import { banNotice, findSuggestBan } from "@/services/workshop/bans";
 import { discordTimestamp } from "@/utils/format";

@@ -21,18 +21,35 @@ vi.mock("@/services/workshop/discord", () => ({
   healThreads: vi.fn(async () => undefined),
 }));
 
-vi.mock("@/services/curseforge", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/services/curseforge")>();
+vi.mock("@/services/curseforge/mods", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/services/curseforge/mods")>();
   return {
     ...actual,
     getMod: vi.fn(async () => {
       throw new Error("getMod must not be called in this suite");
     }),
     getMods: vi.fn(async () => []),
-    getModpackModIds: vi.fn(async () => new Set<number>()),
     searchMods: vi.fn(async () => []),
+  };
+});
+vi.mock("@/services/curseforge/files", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/services/curseforge/files")>();
+  return {
+    ...actual,
     getFilesDependencies: vi.fn(async () => []),
     getFilesDetails: vi.fn(async () => []),
+  };
+});
+vi.mock("@/services/curseforge/modpack-manifest", async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import("@/services/curseforge/modpack-manifest")
+    >();
+  return {
+    ...actual,
+    getModpackModIds: vi.fn(async () => new Set<number>()),
   };
 });
 
@@ -51,12 +68,12 @@ import {
 } from "@/app/middleware/error-handler";
 import { workshopService } from "@/services/workshop";
 import { issueBan, liftBan } from "@/services/workshop/bans";
+import { CurseForgeClass } from "@/services/curseforge/client";
+import { searchMods } from "@/services/curseforge/mods";
 import {
-  CurseForgeClass,
   getFilesDependencies,
   getFilesDetails,
-  searchMods,
-} from "@/services/curseforge";
+} from "@/services/curseforge/files";
 import type { WorkshopModStatus } from "@createrington/shared/db";
 import { ingestProject, ingestProjects } from "@/services/curseforge/ingest";
 import {

@@ -26,16 +26,18 @@ import {
   WORKSHOP_STATUS_TRANSITIONS,
   type WorkshopModReviewAction,
 } from "@createrington/shared/workshop";
+import { CurseForgeClass } from "@/services/curseforge/client";
 import {
-  CurseForgeClass,
-  getFilesDetails,
   getMod,
-  getModpackModIds,
   LOADERLESS_CLASSES,
   searchMods,
-  type CurseForgeFileDetail,
   type CurseForgeProjectData,
-} from "@/services/curseforge";
+} from "@/services/curseforge/mods";
+import {
+  getFilesDetails,
+  type CurseForgeFileDetail,
+} from "@/services/curseforge/files";
+import { getModpackModIds } from "@/services/curseforge/modpack-manifest";
 import { ingestProjects } from "@/services/curseforge/ingest";
 import { modpackService } from "@/services/modpack";
 import type { ModpackModListItem } from "@/services/modpack";

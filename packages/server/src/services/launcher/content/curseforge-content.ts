@@ -5,10 +5,12 @@ import type {
 import {
   CurseForgeLoader,
   CurseForgeSortField,
-  type CurseForgeCategory,
-  type CurseForgeContentFile,
-  type CurseForgeProjectData,
-} from "@/services/curseforge";
+} from "@/services/curseforge/client";
+import type { CurseForgeProjectData } from "@/services/curseforge/mods";
+import type {
+  CurseForgeCategory,
+  CurseForgeContentFile,
+} from "@/services/curseforge/content";
 import {
   LAUNCHER_CONTENT_LOADERS,
   LAUNCHER_MODPACK_KIND,

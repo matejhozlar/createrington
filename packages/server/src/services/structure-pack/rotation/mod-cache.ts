@@ -1,6 +1,6 @@
 import path from "node:path";
 import fs from "node:fs/promises";
-import { downloadModFile as cfDownload } from "@/services/curseforge";
+import { downloadModFile as cfDownload } from "@/services/curseforge/downloads";
 import { getLocalPath } from "@/services/mc-server/file-ops";
 import type { StructurePackMod } from "@createrington/shared/db";
 import { CACHE_DIR } from "./constants";

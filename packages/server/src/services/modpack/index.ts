@@ -25,15 +25,16 @@ import type {
 import {
   CurseForgeClass,
   CurseForgeLoader,
-  getMod,
-  getFilesDetails,
+} from "@/services/curseforge/client";
+import { getMod, type CurseForgeProjectData } from "@/services/curseforge/mods";
+import { getFilesDetails } from "@/services/curseforge/files";
+import {
   getModpackFile,
-  getModpackManifest,
   manifestDisabledModIds,
-  type CurseForgeProjectData,
   type ModpackManifest,
   type ModpackManifestEntry,
-} from "@/services/curseforge";
+} from "@/services/curseforge/modpack";
+import { getModpackManifest } from "@/services/curseforge/modpack-manifest";
 import { refreshProjects } from "@/services/curseforge/ingest";
 import { launcherPackService } from "@/services/launcher/pack/launcher-pack.service";
 import { findSandboxSnapshotUrl } from "@/services/launcher/pack/sandbox-files";

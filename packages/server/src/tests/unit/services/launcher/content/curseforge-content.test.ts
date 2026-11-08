@@ -3,10 +3,8 @@ import type {
   CurseforgeFileProject,
   CurseforgeFileWithProject,
 } from "@/db/queries/curseforge/file";
-import type {
-  CurseForgeContentFile,
-  CurseForgeProjectData,
-} from "@/services/curseforge";
+import type { CurseForgeProjectData } from "@/services/curseforge/mods";
+import type { CurseForgeContentFile } from "@/services/curseforge/content";
 import {
   classForProjectKind,
   contentKindForClass,

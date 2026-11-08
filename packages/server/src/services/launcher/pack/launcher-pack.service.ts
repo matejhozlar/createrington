@@ -14,13 +14,12 @@ import type {
 import { Discord } from "@/discord/constants";
 import { EmbedColors, EmbedPresets } from "@/discord/embeds";
 import { CURSEFORGE_MINECRAFT_GAME_ID } from "@createrington/content-gateway-client";
+import { getFilesDetails, getServedFileIds } from "@/services/curseforge/files";
+import { resolveFileDownloads } from "@/services/curseforge/downloads";
 import {
-  getFilesDetails,
   getModpackFile,
-  getServedFileIds,
-  resolveFileDownloads,
   type ModpackManifest,
-} from "@/services/curseforge";
+} from "@/services/curseforge/modpack";
 import {
   ingestProjectsWhere,
   refreshProjects,

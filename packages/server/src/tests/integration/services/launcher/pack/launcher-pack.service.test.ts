@@ -11,15 +11,24 @@ import {
 
 const { sendMock } = vi.hoisted(() => ({ sendMock: vi.fn() }));
 
-vi.mock("@/services/curseforge", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/services/curseforge")>();
+vi.mock("@/services/curseforge/files", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/services/curseforge/files")>();
   return {
     ...actual,
     getFilesDetails: vi.fn(async () => []),
-    getModpackFile: vi.fn(async () => null),
     getServedFileIds: vi.fn(async (fileIds: number[]) => new Set(fileIds)),
-    resolveFileDownloads: vi.fn(async () => new Map()),
   };
+});
+vi.mock("@/services/curseforge/modpack", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/services/curseforge/modpack")>();
+  return { ...actual, getModpackFile: vi.fn(async () => null) };
+});
+vi.mock("@/services/curseforge/downloads", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/services/curseforge/downloads")>();
+  return { ...actual, resolveFileDownloads: vi.fn(async () => new Map()) };
 });
 vi.mock("@/services/curseforge/ingest", () => ({
   ingestProjectsWhere: vi.fn(async () => 0),
@@ -46,14 +55,16 @@ import type {
 import { Discord } from "@/discord/constants";
 import {
   getFilesDetails,
-  getModpackFile,
   getServedFileIds,
-  resolveFileDownloads,
   type CurseForgeFileDetail,
+} from "@/services/curseforge/files";
+import { resolveFileDownloads } from "@/services/curseforge/downloads";
+import {
+  getModpackFile,
   type ModpackFile,
   type ModpackManifest,
   type ModpackManifestSides,
-} from "@/services/curseforge";
+} from "@/services/curseforge/modpack";
 import {
   ingestProjectsWhere,
   refreshProjects,
