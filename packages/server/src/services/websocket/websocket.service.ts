@@ -1,5 +1,9 @@
 import type { Server as HttpServer } from "node:http";
-import { Server as SocketIOServer, Socket } from "socket.io";
+import {
+  Server as SocketIOServer,
+  type DefaultEventsMap,
+  type Socket as SocketIOSocket,
+} from "socket.io";
 import type {
   InitialDataPayload,
   InitialDataRequest,
@@ -28,6 +32,20 @@ import type { CachedMessage } from "../discord/message/cache";
 import type { SessionEndEvent, SessionStartEvent } from "../playtime";
 import { jwtService } from "@/services/auth/jwt";
 import type { JWTPayload } from "@createrington/shared/auth";
+
+type SocketData = { user?: JWTPayload };
+type SocketServer = SocketIOServer<
+  DefaultEventsMap,
+  DefaultEventsMap,
+  DefaultEventsMap,
+  SocketData
+>;
+type Socket = SocketIOSocket<
+  DefaultEventsMap,
+  DefaultEventsMap,
+  DefaultEventsMap,
+  SocketData
+>;
 
 const MAX_CONNECTIONS_PER_IP = 20;
 const EVENTS_PER_SOCKET_PER_MIN = 60;
@@ -61,7 +79,7 @@ function getSocketClientIp(socket: Socket): string {
  * services before event-driven broadcasting will fire.
  */
 export class WebSocketService {
-  private io: SocketIOServer;
+  private io: SocketServer;
   private dataProvider!: WebSocketDataProvider;
   private isInitialized = false;
   private startTime: Date;
@@ -108,7 +126,7 @@ export class WebSocketService {
           : undefined;
       if (token) {
         try {
-          socket.data.user = jwtService.verify(token) satisfies JWTPayload;
+          socket.data.user = jwtService.verify(token);
         } catch {
           // Invalid/expired token: treat as unauthenticated, don't reject.
         }
@@ -161,7 +179,7 @@ export class WebSocketService {
 
       this.clientSockets.set(socket.id, new Set());
 
-      const user: JWTPayload | undefined = socket.data.user;
+      const { user } = socket.data;
       if (user?.minecraftUuid) {
         void socket.join(RoomManager.getUserRoom(user.minecraftUuid));
       }

@@ -5,7 +5,7 @@ import config from "@/config";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const levels = config.envMode.isProd ? 4 : 5;
-const ROOT = path.resolve(__dirname, ...Array(levels).fill(".."));
+const ROOT = path.resolve(__dirname, ...Array<string>(levels).fill(".."));
 const CHANGELOG_PATH = path.join(ROOT, "CHANGELOG.md");
 
 export const CHANGE_KINDS = [

@@ -71,17 +71,19 @@ type TransformChannels<T> = {
  * DiscordChannels.administration.ADMIN_CHAT // "123456"
  */
 const DiscordChannels = Object.fromEntries(
-  Object.entries(channelsConfig).map(([category, channels]) => [
-    category,
-    typeof channels === "string"
-      ? channels
-      : Object.fromEntries(
-          Object.entries(channels).map(([key, value]) => [
-            toScreamingSnakeCase(key),
-            value,
-          ]),
-        ),
-  ]),
+  Object.entries(channelsConfig).map(
+    ([category, channels]: [string, string | Record<string, string>]) => [
+      category,
+      typeof channels === "string"
+        ? channels
+        : Object.fromEntries(
+            Object.entries(channels).map(([key, value]) => [
+              toScreamingSnakeCase(key),
+              value,
+            ]),
+          ),
+    ],
+  ),
 ) as TransformChannels<typeof channelsConfig>;
 
 /**

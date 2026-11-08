@@ -13,9 +13,6 @@ vi.mock("@/http-logger", () => ({
   httpLogger: { info: vi.fn() },
   colorDuration: (ms: number) => `${ms}ms`,
 }));
-vi.mock("@/services/discord/oauth/oauth.service", () => ({
-  AuthRole: { ADMIN: "admin", USER: "user", UNVERIFIED: "unverified" },
-}));
 vi.mock("@/services/auth/admin-status/admin-status.service", () => ({
   adminStatusService: { isAdmin: vi.fn() },
 }));

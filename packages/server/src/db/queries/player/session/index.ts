@@ -229,21 +229,19 @@ export class PlayerSessionQueries extends PlayerSessionBaseQueries {
 
     try {
       const [dataResult, countResult] = await Promise.all([
-        this.db.query(dataQuery, [serverId, limit, offset]),
-        this.db.query(countQuery, [serverId]),
+        this.db.query<ServerSessionRow>(dataQuery, [serverId, limit, offset]),
+        this.db.query<{ total: string }>(countQuery, [serverId]),
       ]);
 
-      const sessions: ServerSessionEntry[] = dataResult.rows.map(
-        (row: ServerSessionRow) => ({
-          id: row.id,
-          playerMinecraftUuid: row.player_minecraft_uuid,
-          serverId: row.server_id,
-          sessionStart: row.session_start,
-          sessionEnd: row.session_end,
-          secondsPlayed: row.seconds_played ? Number(row.seconds_played) : null,
-          minecraftUsername: row.minecraft_username,
-        }),
-      );
+      const sessions: ServerSessionEntry[] = dataResult.rows.map((row) => ({
+        id: row.id,
+        playerMinecraftUuid: row.player_minecraft_uuid,
+        serverId: row.server_id,
+        sessionStart: row.session_start,
+        sessionEnd: row.session_end,
+        secondsPlayed: row.seconds_played ? Number(row.seconds_played) : null,
+        minecraftUsername: row.minecraft_username,
+      }));
 
       return {
         sessions,

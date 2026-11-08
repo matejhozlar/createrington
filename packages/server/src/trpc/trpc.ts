@@ -13,7 +13,7 @@
 import { initTRPC } from "@trpc/server";
 import type { Context } from "./context";
 import { trpcError } from "@/trpc/utils";
-import { AuthRole } from "@/services/discord/oauth/oauth.service";
+import { AuthRole } from "@createrington/shared/auth";
 import { adminStatusService } from "@/services/auth/admin-status/admin-status.service";
 import { httpLogger, colorDuration } from "@/http-logger";
 import config from "@/config";

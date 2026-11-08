@@ -64,14 +64,15 @@ export async function loadEventHandlers(
 
   for (const filePath of eventFiles) {
     try {
-      const eventModule = await import(pathToFileURL(filePath).href);
+      const eventModule = (await import(
+        pathToFileURL(filePath).href
+      )) as Record<string, unknown>;
 
-      const event: EventModule | undefined =
-        "default" in eventModule && isEventModule(eventModule.default)
-          ? eventModule.default
-          : isEventModule(eventModule)
-            ? eventModule
-            : undefined;
+      const event: EventModule | undefined = isEventModule(eventModule.default)
+        ? eventModule.default
+        : isEventModule(eventModule)
+          ? eventModule
+          : undefined;
 
       if (!event) {
         logger.warn(

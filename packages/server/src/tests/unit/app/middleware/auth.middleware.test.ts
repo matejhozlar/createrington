@@ -1,20 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// The middleware pulls in `@/db` transitively via two paths:
-//   1. error-handler imports DatabaseError from @/db/utils → @/db
-//   2. AuthRole comes from oauth.service, which also imports @/db
-// @/db calls `await pool.query("SELECT 1")` at module load and
-// process.exit(1)s on failure: fine locally, lethal in CI where there's
-// no Postgres. Mock both at the boundary so the test never reaches the DB.
+// The middleware pulls in `@/db` transitively: error-handler imports
+// DatabaseError from @/db/utils → @/db. @/db calls
+// `await pool.query("SELECT 1")` at module load and process.exit(1)s on
+// failure: fine locally, lethal in CI where there's no Postgres. Mock it at
+// the boundary so the test never reaches the DB.
 vi.mock("@/db", () => ({}));
 vi.mock("@/db/utils", () => ({
   DatabaseError: class DatabaseError extends Error {},
   NotFoundError: class NotFoundError extends Error {},
   ConstraintViolationError: class ConstraintViolationError extends Error {},
   QueryError: class QueryError extends Error {},
-}));
-vi.mock("@/services/discord/oauth/oauth.service", () => ({
-  AuthRole: { ADMIN: "admin", USER: "user", UNVERIFIED: "unverified" },
 }));
 
 // jwtService.verify is the only thing we need from the JWT service.

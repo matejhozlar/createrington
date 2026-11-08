@@ -7,7 +7,7 @@ function buildJsonColumnMap(): Map<string, Set<string>> {
   for (const exported of Object.values(schema)) {
     if (!is(exported, PgTable)) continue;
     const columns = new Set<string>();
-    for (const column of Object.values(getTableColumns(exported))) {
+    for (const column of Object.values(getTableColumns<PgTable>(exported))) {
       const sqlType = column.getSQLType();
       if (sqlType === "json" || sqlType === "jsonb") columns.add(column.name);
     }

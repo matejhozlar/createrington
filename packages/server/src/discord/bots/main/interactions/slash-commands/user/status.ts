@@ -3,6 +3,7 @@ import { replyError } from "@/discord/utils/interaction-reply";
 import { CooldownType } from "@/discord/utils/cooldown";
 import { getService, Services } from "@/services";
 import { getAllServerIds, getServerById } from "@/services/playtime/config";
+import { ServerState } from "@/services/playtime/types";
 import { ChatInputCommandInteraction, SlashCommandBuilder } from "discord.js";
 
 /**
@@ -56,9 +57,9 @@ export async function execute(
       const onlineCount = playtimeService.getOnlineCount();
       totalOnline += onlineCount;
 
-      const statusIcon = state === "online" ? "🟢" : "🔴";
+      const statusIcon = state === ServerState.ONLINE ? "🟢" : "🔴";
       const playerText =
-        state === "online"
+        state === ServerState.ONLINE
           ? `${onlineCount}/${serverConfig.maxPlayers} players`
           : "Offline";
 

@@ -21,6 +21,8 @@ interface GeneratorResult {
   error?: Error;
 }
 
+type GeneratorFn = () => Promise<{ files?: string[] } | undefined>;
+
 const GENERATORS: GeneratorConfig[] = [
   {
     name: "Database Query System",
@@ -39,7 +41,10 @@ async function executeGenerator(
     const absolutePath = path.resolve(__dirname, config.scriptPath);
     const fileUrl = pathToFileURL(absolutePath).href;
 
-    const module = await import(fileUrl);
+    const module = (await import(fileUrl)) as {
+      default?: GeneratorFn;
+      generate?: GeneratorFn;
+    };
 
     let result;
     if (typeof module.default === "function") {

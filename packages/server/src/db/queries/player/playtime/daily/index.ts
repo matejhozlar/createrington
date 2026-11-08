@@ -99,11 +99,11 @@ export class PlayerPlaytimeDailyQueries extends PlayerPlaytimeDailyBaseQueries {
     GROUP BY play_date
     ORDER BY play_date ASC`;
 
-    const result = await this.runQuery("get server daily activity", query, [
-      serverId,
-      startDay,
-      endDay,
-    ]);
+    const result = await this.runQuery<ServerActivityRow>(
+      "get server daily activity",
+      query,
+      [serverId, startDay, endDay],
+    );
 
     return this.mapRowsToEntities<ServerActivityRow, ServerActivity>(
       result.rows,
@@ -151,12 +151,11 @@ export class PlayerPlaytimeDailyQueries extends PlayerPlaytimeDailyBaseQueries {
     ORDER BY total_seconds DESC, d.player_minecraft_uuid
     LIMIT $4`;
 
-    const result = await this.runQuery("get top players in range", query, [
-      serverId,
-      startDay,
-      endDay,
-      limit,
-    ]);
+    const result = await this.runQuery<TopPlayerRow>(
+      "get top players in range",
+      query,
+      [serverId, startDay, endDay, limit],
+    );
 
     return this.mapRowsToEntities<TopPlayerRow, TopPlayerInRange>(result.rows);
   }

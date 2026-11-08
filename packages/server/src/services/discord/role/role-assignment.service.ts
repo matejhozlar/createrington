@@ -84,7 +84,8 @@ export class RoleAssignmentService {
       discordId: player.discordId,
       createdAt: player.createdAt,
       playtimeByServer:
-        groupPlaytime(summaries).get(player.minecraftUuid) ?? new Map(),
+        groupPlaytime(summaries).get(player.minecraftUuid) ??
+        new Map<number, number>(),
     };
   }
 
@@ -143,7 +144,8 @@ export class RoleAssignmentService {
       const context: RoleConditionContext = {
         discordId: player.discordId,
         createdAt: player.createdAt,
-        playtimeByServer: playtime.get(player.minecraftUuid) ?? new Map(),
+        playtimeByServer:
+          playtime.get(player.minecraftUuid) ?? new Map<number, number>(),
       };
 
       for (const rules of hierarchies) {

@@ -45,9 +45,6 @@ vi.mock("@/db/utils", () => ({
   QueryError: class QueryError extends Error {},
 }));
 vi.mock("@/db", () => ({ Q: { player: { find: vi.fn() } } }));
-vi.mock("@/services/discord/oauth/oauth.service", () => ({
-  AuthRole: { ADMIN: "admin", USER: "user", UNVERIFIED: "unverified" },
-}));
 vi.mock("@/services/auth/token/access-cookie.service", () => ({
   accessCookieService: {
     isEnabled: () => false,

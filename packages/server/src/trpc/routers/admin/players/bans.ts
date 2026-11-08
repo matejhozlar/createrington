@@ -332,8 +332,11 @@ export const bansRouter = router({
           minecraftUsername = player.minecraftUsername;
         }
       } catch {
+        const storedName: unknown = existingBan.metadata?.minecraftUsername;
         minecraftUsername =
-          existingBan.metadata?.minecraftUsername || "Unknown (Deleted)";
+          typeof storedName === "string" && storedName
+            ? storedName
+            : "Unknown (Deleted)";
         wasDeleted = true;
       }
 

@@ -105,12 +105,7 @@ export async function refetchDiscordEntities(): Promise<{
     }
   }
 
-  // Update config in-place (readonly at type level but mutable at runtime)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const guild_ = config.discord.guild as any;
-  guild_.roles = roles;
-  guild_.channels = channels;
-  guild_.categories = categories;
+  Object.assign(config.discord.guild, { roles, channels, categories });
 
   logger.info(
     `Refetched Discord entities: ${Object.keys(roles).length} roles, ${channelCount} channels, ${Object.keys(categories).length} categories`,

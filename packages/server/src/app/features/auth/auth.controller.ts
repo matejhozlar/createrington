@@ -1,5 +1,4 @@
 import {
-  AuthRole,
   discordOAuth,
   UnverifiedUserError,
 } from "@/services/discord/oauth/oauth.service";
@@ -33,7 +32,7 @@ import {
 import { verifyDevLoginToken } from "@/services/auth/dev-login/hmac";
 import config from "@/config";
 import { Q } from "@/db";
-import type { JWTPayload } from "@createrington/shared/auth";
+import { AuthRole, type JWTPayload } from "@createrington/shared/auth";
 
 function deriveRole(currentRole: AuthRole, isAdmin: boolean): AuthRole {
   if (currentRole === AuthRole.UNVERIFIED) return AuthRole.UNVERIFIED;
@@ -105,13 +104,17 @@ export class AuthController {
     req: Request,
     res: Response,
   ): Promise<void> {
-    const { code, state } = req.body;
+    const { code, state } = req.body as { code?: unknown; state?: unknown };
 
-    if (!code) {
+    if (typeof code !== "string" || !code) {
       throw new BadRequestError("Authorization code is required");
     }
 
-    if (!state || req.cookies?.[STATE_COOKIE_NAME] !== state) {
+    if (
+      typeof state !== "string" ||
+      !state ||
+      req.cookies?.[STATE_COOKIE_NAME] !== state
+    ) {
       throw new BadRequestError("Invalid or expired state parameter");
     }
 
@@ -435,7 +438,10 @@ export class AuthController {
       throw new UnauthorizedError("Authentication required");
     }
 
-    const { state, action } = req.body ?? {};
+    const { state, action } = (req.body ?? {}) as {
+      state?: unknown;
+      action?: unknown;
+    };
     if (typeof state !== "string" || !state) {
       throw new BadRequestError("Missing state");
     }
