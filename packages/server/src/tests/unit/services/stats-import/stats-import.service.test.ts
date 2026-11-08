@@ -231,12 +231,28 @@ describe("StatsImportService playtime reconcile", () => {
   ])(
     "leaves out %s play time but still imports the stats",
     async (_label, playTime) => {
-      sftp.get.mockResolvedValue(Buffer.from(statsFile(playTime)));
+      sftp.get.mockImplementation((path: string) =>
+        Promise.resolve(
+          Buffer.from(
+            path.endsWith(`${STEVE}.json`)
+              ? statsFile(playTime)
+              : statsFile(500),
+          ),
+        ),
+      );
 
       await runInitialImport();
+      await vi.waitFor(() => expect(reconcile).toHaveBeenCalled());
 
-      expect(batchUpsert).toHaveBeenCalled();
-      expect(reconcile).not.toHaveBeenCalled();
+      expect(batchUpsert).toHaveBeenCalledWith(SERVER_ID, [
+        expect.objectContaining({ minecraftUuid: STEVE }),
+        expect.objectContaining({ minecraftUuid: ALEX }),
+      ]);
+      expect(reconcile).toHaveBeenCalledWith(
+        SERVER_ID,
+        [{ minecraftUuid: ALEX, playTimeTicks: 500 }],
+        { apply: false },
+      );
     },
   );
 });

@@ -175,6 +175,12 @@ describe("owner.admins.promote", () => {
     );
   });
 
+  it("leaves the in-game op to the owner", async () => {
+    await owner.promote({ discordId: TARGET_ID });
+
+    expect(sendAll).not.toHaveBeenCalled();
+  });
+
   it("refuses someone who is already an admin", async () => {
     Q.admin.find.mockResolvedValue({ discordId: TARGET_ID });
 
