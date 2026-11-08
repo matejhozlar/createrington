@@ -1,19 +1,28 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 
-vi.mock("@/services/curseforge", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/services/curseforge")>();
+vi.mock("@/services/curseforge/content", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/services/curseforge/content")>();
   return {
     ...actual,
     searchProjects: vi.fn(),
-    getMods: vi.fn(),
     getProjectDescription: vi.fn(),
     listCategories: vi.fn(),
     listProjectFiles: vi.fn(),
     getContentFiles: vi.fn(),
     getFileChangelog: vi.fn(),
     matchFingerprints: vi.fn(),
-    resolveFileDownloads: vi.fn(),
   };
+});
+vi.mock("@/services/curseforge/mods", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/services/curseforge/mods")>();
+  return { ...actual, getMods: vi.fn() };
+});
+vi.mock("@/services/curseforge/downloads", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/services/curseforge/downloads")>();
+  return { ...actual, resolveFileDownloads: vi.fn() };
 });
 vi.mock("@/services/feature-flag", () => ({
   FeatureFlags: { launcherCurseforgeCdn: "launcher_curseforge_cdn" },
@@ -23,20 +32,24 @@ vi.mock("@/services/feature-flag", () => ({
 import { ContentGatewayError } from "@createrington/content-gateway-client";
 import { currentContentPool } from "@/services/content-gateway";
 import {
+  getMods,
+  type CurseForgeProjectData,
+} from "@/services/curseforge/mods";
+import {
   getContentFiles,
   getFileChangelog,
-  getMods,
   getProjectDescription,
   listCategories,
   listProjectFiles,
   matchFingerprints,
-  resolveFileDownloads,
   searchProjects,
   type CurseForgeContentFile,
-  type CurseForgeFileDownload,
-  type CurseForgeProjectData,
   type CurseForgeProjectHit,
-} from "@/services/curseforge";
+} from "@/services/curseforge/content";
+import {
+  resolveFileDownloads,
+  type CurseForgeFileDownload,
+} from "@/services/curseforge/downloads";
 import { featureFlagService } from "@/services/feature-flag";
 import { launcherContentService } from "@/services/launcher/content/launcher-content.service";
 

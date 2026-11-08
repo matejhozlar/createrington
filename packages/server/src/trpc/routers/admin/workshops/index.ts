@@ -12,7 +12,7 @@ import {
 import { createRateLimit } from "@/trpc/middleware/rate-limit";
 import { workshopService } from "@/services/workshop";
 import { modpackService } from "@/services/modpack";
-import { getMinecraftVersions } from "@/services/curseforge";
+import { getMinecraftVersions } from "@/services/curseforge/mods";
 import { listForumChannels } from "@/services/workshop/discord";
 import { logModReview, logProjectEnvironment } from "@/services/workshop/audit";
 import { adminWorkshopBansRouter } from "./bans";

@@ -8,12 +8,12 @@ import {
   vi,
 } from "vitest";
 import config from "@/config";
+import { resolveDependencies } from "@/services/curseforge/mods";
 import {
   getFilesDependencies,
   getFilesDetails,
   getServedFileIds,
-  resolveDependencies,
-} from "@/services/curseforge";
+} from "@/services/curseforge/files";
 import { requestedUrl, sentJson } from "@/tests/helpers/fetch";
 
 const fetchMock = vi.fn<typeof fetch>();

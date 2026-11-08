@@ -35,7 +35,7 @@ vi.mock("@/services/mc-server/file-ops", () => ({
   fileExists: async () => false,
 }));
 
-vi.mock("@/services/curseforge", () => ({
+vi.mock("@/services/curseforge/downloads", () => ({
   getModFileDownloadUrl: async () => null,
 }));
 

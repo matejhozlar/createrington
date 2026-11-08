@@ -8,8 +8,9 @@ import {
   vi,
 } from "vitest";
 
-vi.mock("@/services/curseforge", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/services/curseforge")>();
+vi.mock("@/services/curseforge/mods", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/services/curseforge/mods")>();
   return {
     ...actual,
     getMod: vi.fn(),
@@ -18,13 +19,13 @@ vi.mock("@/services/curseforge", async (importOriginal) => {
 });
 
 import pool, { Q } from "@/db";
+import { CurseForgeClass } from "@/services/curseforge/client";
 import {
   classEnvironmentHint,
-  CurseForgeClass,
   deriveEnvironmentHint,
   getMod,
   getMods,
-} from "@/services/curseforge";
+} from "@/services/curseforge/mods";
 import {
   ingestProject,
   ingestProjects,

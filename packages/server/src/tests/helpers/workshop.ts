@@ -1,5 +1,5 @@
 import { Q } from "@/db";
-import type { CurseForgeProjectData } from "@/services/curseforge";
+import type { CurseForgeProjectData } from "@/services/curseforge/mods";
 import type {
   CurseforgeProjectCreate,
   Modpack,

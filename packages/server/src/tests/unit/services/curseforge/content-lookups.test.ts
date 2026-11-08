@@ -8,16 +8,16 @@ import {
   vi,
 } from "vitest";
 import config from "@/config";
+import { getMods } from "@/services/curseforge/mods";
 import {
   getContentFiles,
   getFileChangelog,
-  getMods,
   getProjectDescription,
   listCategories,
   listProjectFiles,
   matchFingerprints,
   searchProjects,
-} from "@/services/curseforge";
+} from "@/services/curseforge/content";
 import { requestedUrl, sentJson } from "@/tests/helpers/fetch";
 
 const fetchMock = vi.fn<typeof fetch>();

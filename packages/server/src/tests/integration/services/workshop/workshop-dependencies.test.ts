@@ -21,22 +21,36 @@ vi.mock("@/services/workshop/discord", () => ({
   healThreads: vi.fn(async () => undefined),
 }));
 
-vi.mock("@/services/curseforge", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/services/curseforge")>();
+vi.mock("@/services/curseforge/mods", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/services/curseforge/mods")>();
   return {
     ...actual,
     getMod: vi.fn(async () => {
       throw new Error("getMod must not be called in this suite");
     }),
     getMods: vi.fn(async () => []),
+    searchMods: vi.fn(async () => []),
+  };
+});
+vi.mock("@/services/curseforge/files", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/services/curseforge/files")>();
+  return { ...actual, getFilesDependencies: vi.fn(async () => []) };
+});
+vi.mock("@/services/curseforge/modpack-manifest", async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import("@/services/curseforge/modpack-manifest")
+    >();
+  return {
+    ...actual,
     getModpackManifest: vi.fn(async () => ({
       version: null,
       modIds: new Set<number>(),
       disabledModIds: new Set<number>(),
     })),
     getModpackModIds: vi.fn(async () => new Set<number>()),
-    searchMods: vi.fn(async () => []),
-    getFilesDependencies: vi.fn(async () => []),
   };
 });
 

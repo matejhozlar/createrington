@@ -7,8 +7,8 @@ import {
   searchMods,
   getModFiles,
   resolveDependencies,
-  getFilesDependencies,
-} from "@/services/curseforge";
+} from "@/services/curseforge/mods";
+import { getFilesDependencies } from "@/services/curseforge/files";
 import { auditActor } from "@/trpc/utils";
 import { modFileName, getRotationService } from "./helpers";
 

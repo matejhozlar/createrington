@@ -14,7 +14,7 @@ import { player, Q } from "@/db";
 import { AppError } from "@/app/middleware/error-handler";
 import { EmbedPresets } from "@/discord/embeds";
 import { replyError } from "@/discord/utils/interaction-reply";
-import { findModBySlug } from "@/services/curseforge";
+import { findModBySlug } from "@/services/curseforge/mods";
 import {
   parseModUrl,
   type ModUrlErrorReason,

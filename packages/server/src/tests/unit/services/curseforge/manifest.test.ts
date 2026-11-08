@@ -1,14 +1,16 @@
 import { describe, it, expect, vi } from "vitest";
 import {
-  fromStoredModpackManifest,
   manifestDisabledModIds,
   mergeManifestFiles,
   resolveModpackRelease,
-  toStoredModpackManifest,
   type ModpackFile,
   type ModpackManifest,
   type ModpackReadContext,
-} from "@/services/curseforge";
+} from "@/services/curseforge/modpack";
+import {
+  fromStoredModpackManifest,
+  toStoredModpackManifest,
+} from "@/services/curseforge/modpack-manifest";
 
 function file(overrides: Partial<ModpackFile> & { id: number }): ModpackFile {
   return {
