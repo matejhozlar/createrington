@@ -59,13 +59,14 @@ export class LauncherPackReleaseService {
 
   /**
    * Asks CurseForge again about every release that is ready for the launcher
-   * and takes a release out of `listReleases` while its pack zip or one of its
-   * client files is archived there, or puts it back once all of them are
-   * served again. For a release recorded before the side of its files was
-   * stored only the pack zip decides. `getLatestPack` is not affected. Stores
-   * the pack's CurseForge project again first, so the name, icon, summary and
-   * page the launcher is given follow CurseForge. No-op for a modpack no pack
-   * serves from CurseForge and while another call checks the same pack.
+   * and takes a release out of `launcherPackService.listReleases` while its
+   * pack zip or one of its client files is archived there, or puts it back
+   * once all of them are served again. For a release recorded before the side
+   * of its files was stored only the pack zip decides.
+   * `launcherPackService.getLatestPack` is not affected. Stores the pack's
+   * CurseForge project again first, so the name, icon, summary and page the
+   * launcher is given follow CurseForge. No-op for a modpack no pack serves
+   * from CurseForge and while another call checks the same pack.
    * Throws when CurseForge cannot be asked; no release is changed then.
    */
   async checkReleases(modpack: Modpack): Promise<void> {

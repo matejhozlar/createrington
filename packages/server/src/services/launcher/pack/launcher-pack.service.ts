@@ -175,16 +175,16 @@ export class LauncherPackService {
   /**
    * Every release of the pack the launcher can install, newest first: ready
    * for the launcher and not found archived on CurseForge by the last
-   * `checkReleases`. Each comes with its changelog: the mods it added, updated
-   * and removed against the release recorded before it (listed or not), and
-   * the publish notes. Paged, `page` counts from 0, with `total` counting
-   * every listed release. With `version` only the installable release of
-   * that version is listed, so the launcher finds a kept release in one
-   * request. Reads the database only, unless the pack's project is not
-   * stored yet. Throws `PACK_NOT_FOUND` (404) for a slug no enabled pack
-   * carries. Empty when there is no release, when the page is past the end,
-   * when no installable release carries the version, and while the pack's
-   * project cannot be served.
+   * `launcherPackReleaseService.checkReleases`. Each comes with its changelog:
+   * the mods it added, updated and removed against the release recorded before
+   * it (listed or not), and the publish notes. Paged, `page` counts from 0,
+   * with `total` counting every listed release. With `version` only the
+   * installable release of that version is listed, so the launcher finds a
+   * kept release in one request. Reads the database only, unless the pack's
+   * project is not stored yet. Throws `PACK_NOT_FOUND` (404) for a slug no
+   * enabled pack carries. Empty when there is no release, when the page is
+   * past the end, when no installable release carries the version, and while
+   * the pack's project cannot be served.
    */
   async listReleases(
     slug: string,
