@@ -7,7 +7,7 @@ import {
   intakeModeSchema,
   playerLimitSchema,
 } from "@/services/settings";
-import { waitlistService } from "@/services/waitlist/waitlist.service";
+import { waitlistPromotionService } from "@/services/waitlist/promotion.service";
 
 export const adminSettingsRouter = router({
   get: adminProcedure
@@ -76,7 +76,7 @@ export const adminSettingsRouter = router({
         }
 
         if (changed) {
-          void waitlistService.promoteEligible().catch((error) => {
+          void waitlistPromotionService.promoteEligible().catch((error) => {
             logger.error("Promotion pass after settings update failed:", error);
           });
         }

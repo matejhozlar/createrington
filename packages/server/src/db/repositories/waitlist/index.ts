@@ -54,7 +54,7 @@ export class WaitlistRepository {
    * Unreserved free slots: player limit minus current players minus
    * outstanding promotions. Zero while intake is closed. This is an
    * advisory snapshot for display and gating; slot-taking writes re-read it
-   * inside WaitlistService's slot lock, which serializes them per process.
+   * inside the waitlist slot lock, which serializes them per process.
    */
   async getFreeSlots(): Promise<number> {
     const intakeMode = await settings.getIntakeMode();

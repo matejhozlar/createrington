@@ -17,6 +17,7 @@ import { InactivityCleanupService } from "./discord/cleanup/inactivity/inactivit
 import { GhostMemberService } from "./discord/cleanup/ghost/ghost-member.service";
 import { UnlinkedMemberService } from "./discord/cleanup/unlinked/unlinked-member.service";
 import { WaitlistCleanupService } from "./waitlist/waitlist-cleanup.service";
+import { waitlistPromotionService } from "./waitlist/promotion.service";
 import { waitlistService } from "./waitlist/waitlist.service";
 import { WorkshopProjectRefreshService } from "./workshop/refresh.service";
 import { MemberCleanupService } from "./discord/cleanup/member/member-cleanup.service";
@@ -375,7 +376,7 @@ export function registerServices(): void {
             error,
           );
         }
-        await waitlistService.promoteEligible();
+        await waitlistPromotionService.promoteEligible();
       });
       return playerDeletionService;
     },

@@ -2,7 +2,7 @@ import { z } from "zod";
 import { ADMIN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q, waitlistRepo } from "@/db";
-import { waitlistService } from "@/services/waitlist/waitlist.service";
+import { waitlistPromotionService } from "@/services/waitlist/promotion.service";
 import { ilikeContains } from "@/db/utils";
 import {
   paginationInput,
@@ -79,7 +79,10 @@ export const waitlistsRouter = router({
     .input(z.object({ id: z.number().int().positive() }))
     .mutation(async ({ input, ctx }) => {
       try {
-        return await waitlistService.promote(input.id, ctx.user.discordId);
+        return await waitlistPromotionService.promote(
+          input.id,
+          ctx.user.discordId,
+        );
       } catch (error) {
         rethrowTrpc(error);
       }
@@ -104,7 +107,7 @@ export const waitlistsRouter = router({
         input.reason,
       );
 
-      void waitlistService.promoteEligible().catch((error) => {
+      void waitlistPromotionService.promoteEligible().catch((error) => {
         logger.error("Promotion pass after waitlist delete failed:", error);
       });
 
