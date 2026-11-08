@@ -12,7 +12,7 @@ import {
   type ModpackManifestEntry,
 } from "@/services/curseforge/modpack";
 import { getModpackManifest } from "@/services/curseforge/modpack-manifest";
-import { launcherPackService } from "@/services/launcher/pack/launcher-pack.service";
+import { launcherPackReleaseService } from "@/services/launcher/pack/pack-release.service";
 import { findSandboxSnapshotUrl } from "@/services/launcher/pack/sandbox-files";
 import { modpackService } from "./modpack.service";
 import { buildReleaseRows } from "./release-record";
@@ -205,7 +205,7 @@ export class ModpackPublishService {
 
     let error: string | null = null;
     try {
-      const outcome = await launcherPackService.prepareSnapshot(
+      const outcome = await launcherPackReleaseService.prepareSnapshot(
         modpack,
         release.id,
         {

@@ -81,8 +81,8 @@ vi.mock("@/services/modpack/changelog", () => ({
   announceReleaseChangelog: vi.fn(async () => undefined),
 }));
 
-vi.mock("@/services/launcher/pack/launcher-pack.service", () => ({
-  launcherPackService: {
+vi.mock("@/services/launcher/pack/pack-release.service", () => ({
+  launcherPackReleaseService: {
     prepareRelease: vi.fn(async () => undefined),
     prepareSnapshot: vi.fn(async () => undefined),
     checkReleases: vi.fn(async () => undefined),
@@ -102,7 +102,7 @@ import { modpackSyncService } from "@/services/modpack/sync.service";
 import { modpackReleaseService } from "@/services/modpack/release.service";
 import { getFilesDetails } from "@/services/curseforge/files";
 import { getModpackManifest } from "@/services/curseforge/modpack-manifest";
-import { launcherPackService } from "@/services/launcher/pack/launcher-pack.service";
+import { launcherPackReleaseService } from "@/services/launcher/pack/pack-release.service";
 import {
   createWorkshopTestContext,
   cleanupWorkshopTestContext,
@@ -190,8 +190,8 @@ describe("ModpackReleaseService release history", () => {
     const [release] = await modpackReleaseService.listReleases(modpack.id);
     await modpackSyncService.reconcile(modpack.id);
 
-    expect(launcherPackService.prepareRelease).toHaveBeenCalledTimes(2);
-    expect(launcherPackService.prepareRelease).toHaveBeenLastCalledWith(
+    expect(launcherPackReleaseService.prepareRelease).toHaveBeenCalledTimes(2);
+    expect(launcherPackReleaseService.prepareRelease).toHaveBeenLastCalledWith(
       expect.objectContaining({ id: modpack.id }),
       release.id,
       read,
@@ -203,7 +203,7 @@ describe("ModpackReleaseService release history", () => {
     );
     await modpackSyncService.reconcile(modpack.id);
 
-    expect(launcherPackService.prepareRelease).toHaveBeenCalledTimes(2);
+    expect(launcherPackReleaseService.prepareRelease).toHaveBeenCalledTimes(2);
   });
 
   it("records for every file of a release whether the client pack ships it", async () => {
@@ -247,13 +247,13 @@ describe("ModpackReleaseService release history", () => {
         modIds: new Set([member.curseforgeProjectId]),
       }),
     );
-    vi.mocked(launcherPackService.checkReleases).mockClear();
+    vi.mocked(launcherPackReleaseService.checkReleases).mockClear();
 
     await modpackSyncService.reconcile(modpack.id);
     await modpackSyncService.reconcile(modpack.id);
 
-    expect(launcherPackService.checkReleases).toHaveBeenCalledTimes(2);
-    expect(launcherPackService.checkReleases).toHaveBeenLastCalledWith(
+    expect(launcherPackReleaseService.checkReleases).toHaveBeenCalledTimes(2);
+    expect(launcherPackReleaseService.checkReleases).toHaveBeenLastCalledWith(
       expect.objectContaining({ id: modpack.id }),
     );
   });

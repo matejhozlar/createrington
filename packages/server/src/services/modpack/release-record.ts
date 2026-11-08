@@ -4,7 +4,7 @@ import type { Modpack, ModpackRelease } from "@createrington/shared/db";
 import type { ReleaseModInsert } from "@/db/queries/modpack/release/mod";
 import { getFilesDetails } from "@/services/curseforge/files";
 import type { ModpackManifest } from "@/services/curseforge/modpack";
-import { launcherPackService } from "@/services/launcher/pack/launcher-pack.service";
+import { launcherPackReleaseService } from "@/services/launcher/pack/pack-release.service";
 import { announceReleaseChangelog } from "./changelog";
 import { getReleaseDiff } from "./release-changelog";
 import config from "@/config";
@@ -204,7 +204,7 @@ function prepareForLauncher(
   manifest: ModpackManifest,
 ): void {
   if (!config.launcher.available) return;
-  void launcherPackService
+  void launcherPackReleaseService
     .prepareRelease(modpack, releaseId, manifest)
     .catch((error) => {
       logger.warn(
@@ -216,7 +216,7 @@ function prepareForLauncher(
 
 export function checkLauncherReleases(modpack: Modpack): void {
   if (!config.launcher.available) return;
-  void launcherPackService.checkReleases(modpack).catch((error) => {
+  void launcherPackReleaseService.checkReleases(modpack).catch((error) => {
     logger.warn(
       `Modpack #${modpack.id} releases could not be checked for the launcher:`,
       error,

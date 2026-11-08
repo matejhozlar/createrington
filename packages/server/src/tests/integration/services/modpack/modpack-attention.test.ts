@@ -81,8 +81,8 @@ vi.mock("@/services/modpack/changelog", () => ({
   announceReleaseChangelog: vi.fn(async () => undefined),
 }));
 
-vi.mock("@/services/launcher/pack/launcher-pack.service", () => ({
-  launcherPackService: {
+vi.mock("@/services/launcher/pack/pack-release.service", () => ({
+  launcherPackReleaseService: {
     prepareRelease: vi.fn(async () => undefined),
     prepareSnapshot: vi.fn(async () => undefined),
     checkReleases: vi.fn(async () => undefined),
