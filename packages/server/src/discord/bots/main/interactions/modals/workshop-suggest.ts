@@ -20,7 +20,7 @@ import {
   type ModUrlErrorReason,
 } from "@/services/curseforge/mod-url";
 import { featureFlagService, FeatureFlags } from "@/services/feature-flag";
-import { workshopService } from "@/services/workshop";
+import { workshopSuggestionService } from "@/services/workshop/suggestion.service";
 import { banNotice, findSuggestBan } from "@/services/workshop/bans";
 import { discordTimestamp } from "@/utils/format";
 
@@ -218,10 +218,14 @@ export async function execute(
   }
 
   try {
-    await workshopService.suggestMod(workshopId, interaction.user.id, {
-      projectId: project.id,
-      note,
-    });
+    await workshopSuggestionService.suggestMod(
+      workshopId,
+      interaction.user.id,
+      {
+        projectId: project.id,
+        note,
+      },
+    );
 
     const forumLine = workshop.discordForumChannelId
       ? `\nA discussion thread will appear in <#${workshop.discordForumChannelId}> shortly.`

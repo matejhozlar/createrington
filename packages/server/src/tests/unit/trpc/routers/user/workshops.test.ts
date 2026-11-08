@@ -1,16 +1,24 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { workshopServiceMock } = vi.hoisted(() => ({
+const { workshopServiceMock, workshopModServiceMock } = vi.hoisted(() => ({
   workshopServiceMock: {
     getVisibleWorkshopBySlug: vi.fn(),
+  },
+  workshopModServiceMock: {
     getWorkshopMods: vi.fn(),
     getModDetail: vi.fn(),
     getRejectedMods: vi.fn(),
   },
 }));
 
-vi.mock("@/services/workshop", () => ({
+vi.mock("@/services/workshop/workshop.service", () => ({
   workshopService: workshopServiceMock,
+}));
+vi.mock("@/services/workshop/mods.service", () => ({
+  workshopModService: workshopModServiceMock,
+}));
+vi.mock("@/services/workshop/suggestion.service", () => ({
+  workshopSuggestionService: {},
 }));
 
 vi.mock("@/db", () => ({}));
@@ -66,16 +74,16 @@ beforeEach(() => {
     createdBy: OTHER_ID,
     discordForumChannelId: null,
   });
-  workshopServiceMock.getWorkshopMods.mockResolvedValue([
+  workshopModServiceMock.getWorkshopMods.mockResolvedValue([
     makeMod(VIEWER_ID),
     makeMod(OTHER_ID),
   ]);
-  workshopServiceMock.getModDetail.mockResolvedValue({
+  workshopModServiceMock.getModDetail.mockResolvedValue({
     mod: makeMod(OTHER_ID),
     project: {},
     upvoteCount: 0,
   });
-  workshopServiceMock.getRejectedMods.mockResolvedValue([makeMod(OTHER_ID)]);
+  workshopModServiceMock.getRejectedMods.mockResolvedValue([makeMod(OTHER_ID)]);
 });
 
 describe("user.workshops mod redaction", () => {

@@ -1,4 +1,6 @@
+import { vi } from "vitest";
 import { Q } from "@/db";
+import { ingestProjects } from "@/services/curseforge/ingest";
 import type { CurseForgeProjectData } from "@/services/curseforge/mods";
 import type {
   CurseforgeProjectCreate,
@@ -187,4 +189,27 @@ export function makeProjectData(
     environmentHint: null,
     ...overrides,
   };
+}
+
+export function mockNextIngestAs(classId: number): void {
+  vi.mocked(ingestProjects).mockImplementationOnce(
+    async (projectIds: number[]) =>
+      new Map(
+        projectIds.map((id) => [
+          id,
+          makeProjectData(id, {
+            classId,
+            latestFilesIndexes: [
+              {
+                gameVersion: GAME_VERSION,
+                fileId: id + 1,
+                filename: `vitest-project-${id}.zip`,
+                releaseType: 1,
+                modLoader: null,
+              },
+            ],
+          }),
+        ]),
+      ),
+  );
 }

@@ -103,7 +103,7 @@ import { modpackService } from "@/services/modpack/modpack.service";
 import { modpackSyncService } from "@/services/modpack/sync.service";
 import { modpackReleaseService } from "@/services/modpack/release.service";
 import { modpackAttentionService } from "@/services/modpack/attention.service";
-import { workshopService } from "@/services/workshop";
+import { workshopReviewService } from "@/services/workshop/review.service";
 import { CurseForgeClass } from "@/services/curseforge/client";
 import { getFilesDetails } from "@/services/curseforge/files";
 import { getModpackManifest } from "@/services/curseforge/modpack-manifest";
@@ -894,7 +894,7 @@ describe("ModpackSyncService.reconcile across the client file and server pack", 
     );
     await modpackSyncService.reconcile(modpack.id);
 
-    await workshopService.setProjectEnvironment(projectId, "unspecified");
+    await workshopReviewService.setProjectEnvironment(projectId, "unspecified");
     await modpackSyncService.reconcile(modpack.id);
 
     expect(await Q.curseforge.project.get({ id: projectId })).toMatchObject({

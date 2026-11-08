@@ -1,8 +1,9 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { auditActor, id, rethrowTrpc } from "@/trpc/utils";
-import { workshopService } from "@/services/workshop";
-import type { WorkshopModListItem } from "@/services/workshop";
+import { workshopModService } from "@/services/workshop/mods.service";
+import { workshopReviewService } from "@/services/workshop/review.service";
+import type { WorkshopModListItem } from "@/services/workshop/mods.service";
 import {
   logModFile,
   logModRequired,
@@ -130,9 +131,12 @@ export const sandboxModsRouter = router({
     .input(z.object({ workshopId: id() }))
     .query(async ({ input }) => {
       try {
-        const items = await workshopService.getWorkshopMods(input.workshopId, {
-          statuses: [...SANDBOX_MOD_STATUSES],
-        });
+        const items = await workshopModService.getWorkshopMods(
+          input.workshopId,
+          {
+            statuses: [...SANDBOX_MOD_STATUSES],
+          },
+        );
         return { mods: items.map(toSandboxMod) };
       } catch (error) {
         rethrowTrpc(error);
@@ -152,7 +156,7 @@ export const sandboxModsRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       try {
-        const mod = await workshopService.reviewMod(
+        const mod = await workshopReviewService.reviewMod(
           input.workshopModId,
           input.action,
           ctx.user.discordId,
@@ -163,7 +167,7 @@ export const sandboxModsRouter = router({
           input,
           mod,
         );
-        const item = await workshopService.getWorkshopModListItem(mod.id);
+        const item = await workshopModService.getWorkshopModListItem(mod.id);
         return { mod: toSandboxMod(item) };
       } catch (error) {
         rethrowTrpc(error);
@@ -183,7 +187,7 @@ export const sandboxModsRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       try {
-        const project = await workshopService.setProjectEnvironment(
+        const project = await workshopReviewService.setProjectEnvironment(
           input.curseforgeProjectId,
           input.environment,
         );
@@ -212,11 +216,11 @@ export const sandboxModsRouter = router({
     .input(z.object({ workshopModId: id(), required: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
       try {
-        const { mod, changed } = await workshopService.setModRequired(
+        const { mod, changed } = await workshopReviewService.setModRequired(
           input.workshopModId,
           input.required,
         );
-        const item = await workshopService.getWorkshopModListItem(mod.id);
+        const item = await workshopModService.getWorkshopModListItem(mod.id);
         if (changed) {
           await logModRequired(
             { ...auditActor(ctx), source: "sandbox" },
@@ -238,11 +242,11 @@ export const sandboxModsRouter = router({
     .input(z.object({ workshopModId: id(), fileId: id().nullable() }))
     .mutation(async ({ ctx, input }) => {
       try {
-        const { mod, changed } = await workshopService.setModFile(
+        const { mod, changed } = await workshopReviewService.setModFile(
           input.workshopModId,
           input.fileId,
         );
-        const item = await workshopService.getWorkshopModListItem(mod.id);
+        const item = await workshopModService.getWorkshopModListItem(mod.id);
         if (changed) {
           await logModFile(
             { ...auditActor(ctx), source: "sandbox" },
