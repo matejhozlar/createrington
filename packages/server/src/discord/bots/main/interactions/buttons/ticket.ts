@@ -8,7 +8,6 @@ import {
 } from "discord.js";
 import {
   parseTicketButtonId,
-  TicketStatus,
   type TicketType,
 } from "@/services/discord/tickets";
 import { EmbedColors, EmbedPresets } from "@/discord/embeds";
@@ -242,7 +241,7 @@ async function handleCreate(
 
   if (hasOpen) {
     const existingTicket = await Q.ticket.findAll(
-      { creatorDiscordId: interaction.user.id, status: TicketStatus.OPEN },
+      { creatorDiscordId: interaction.user.id, status: "open" },
       { limit: 1 },
     );
     await replyError(

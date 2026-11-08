@@ -1,4 +1,4 @@
-import { TicketStatus, TicketUserAction } from "@/services/discord/tickets";
+import { TicketUserAction } from "@/services/discord/tickets";
 import type {
   Ticket,
   TicketAction,
@@ -32,7 +32,7 @@ export class TicketRepository {
         type: data.type,
         creatorDiscordId: data.creatorDiscordId,
         channelId: data.channelId,
-        status: TicketStatus.OPEN,
+        status: "open",
         metadata: data.metadata || {},
       });
 
@@ -61,14 +61,14 @@ export class TicketRepository {
   async close(ticketId: number, data: TicketCloseData): Promise<Ticket> {
     const ticket = await Q.ticket.get({ id: ticketId });
 
-    if (ticket.status === TicketStatus.CLOSED) {
+    if (ticket.status === "closed") {
       throw new Error(`Ticket #${ticket.ticketNumber} is already closed`);
     }
 
     const updatedTicket = await Q.ticket.updateAndReturn(
       { id: ticketId },
       {
-        status: TicketStatus.CLOSED,
+        status: "closed",
         closedAt: new Date(),
         closedByDiscordId: data.closedByDiscordId,
         metadata: {
@@ -98,7 +98,7 @@ export class TicketRepository {
   async reopen(ticketId: number, reopenedBy: string): Promise<Ticket> {
     const ticket = await Q.ticket.get({ id: ticketId });
 
-    if (ticket.status !== TicketStatus.CLOSED) {
+    if (ticket.status !== "closed") {
       throw new Error(`Ticket #${ticket.ticketNumber} is not closed`);
     }
 
@@ -107,7 +107,7 @@ export class TicketRepository {
         id: ticketId,
       },
       {
-        status: TicketStatus.OPEN,
+        status: "open",
         closedAt: null,
         closedByDiscordId: null,
       },
@@ -142,7 +142,7 @@ export class TicketRepository {
     const updatedTicket = await Q.ticket.updateAndReturn(
       { id: ticketId },
       {
-        status: TicketStatus.DELETED,
+        status: "deleted",
         deletedAt: new Date(),
       },
     );
@@ -181,7 +181,7 @@ export class TicketRepository {
   async hasOpen(discordId: string): Promise<boolean> {
     const count = await Q.ticket.count({
       creatorDiscordId: discordId,
-      status: TicketStatus.OPEN,
+      status: "open",
     });
 
     return count > 0;

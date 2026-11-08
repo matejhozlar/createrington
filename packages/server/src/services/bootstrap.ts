@@ -1,4 +1,4 @@
-import { container, Services } from "./container";
+import { container, Services, ServiceState } from "./container";
 import { createApp } from "@/app";
 import http from "node:http";
 import pool from "@/db";
@@ -522,12 +522,12 @@ export function registerServices(): void {
       async (c) => {
         const intake = new VoteIntake(
           () =>
-            c.getState(Services.MESSAGE_SERVICE) === "ready"
+            c.getState(Services.MESSAGE_SERVICE) === ServiceState.READY
               ? c.getSync(Services.MESSAGE_SERVICE)
               : null,
           Discord.Channels.railsNSails.MINECRAFT_CHAT,
           () =>
-            c.getState(Services.VOTE_REWARD_SERVICE) === "ready"
+            c.getState(Services.VOTE_REWARD_SERVICE) === ServiceState.READY
               ? c.getSync(Services.VOTE_REWARD_SERVICE)
               : null,
         );
@@ -616,7 +616,9 @@ export async function initializeServices(): Promise<void> {
   await container.initializeAll();
 
   const states = container.getAllStates();
-  const ready = Object.values(states).filter((s) => s === "ready").length;
+  const ready = Object.values(states).filter(
+    (s) => s === ServiceState.READY,
+  ).length;
   const total = Object.keys(states).length;
 
   logger.info(`✓ Service initialization complete: ${ready}/${total} ready`);

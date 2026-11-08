@@ -68,7 +68,7 @@ export class AdminLogActionQueries extends AdminLogActionBaseQueries {
         `SELECT * FROM admin_log_action ${where} ORDER BY ${sortCol} ${dir} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
         [...params, opts.limit, opts.offset],
       ),
-      this.db.query(
+      this.db.query<{ count: number }>(
         `SELECT COUNT(*)::int AS count FROM admin_log_action ${where}`,
         params,
       ),

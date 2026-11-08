@@ -12,7 +12,7 @@ import {
 } from "discord.js";
 import { TicketRepository } from "@/db/repositories/ticket";
 import type { Ticket, TicketIdentifier } from "@/generated/db";
-import { TicketStatus, type CreateTicketOptions, TicketUserAction } from "./";
+import { type CreateTicketOptions, TicketUserAction } from "./";
 import { getTicketTypeConfig, TicketSystemIds } from "./";
 import { Discord } from "@/discord/constants";
 import { Q } from "@/db";
@@ -189,7 +189,7 @@ export class TicketService {
   ): Promise<Ticket> {
     const ticket = await Q.ticket.get({ id: ticketId });
 
-    if (ticket.status === TicketStatus.CLOSED) {
+    if (ticket.status === "closed") {
       throw new Error(`Ticket #${ticket.ticketNumber} is already closed`);
     }
 
@@ -319,8 +319,8 @@ export class TicketService {
   async reopenTicket(ticketId: number, reopenedBy: string): Promise<Ticket> {
     const ticket = await this.repository.reopen(ticketId, reopenedBy);
 
-    const closeMessageId = ticket.metadata?.closeMessageId;
-    if (closeMessageId) {
+    const closeMessageId: unknown = ticket.metadata?.closeMessageId;
+    if (typeof closeMessageId === "string" && closeMessageId) {
       try {
         await Discord.Messages.delete({
           channelId: ticket.channelId,

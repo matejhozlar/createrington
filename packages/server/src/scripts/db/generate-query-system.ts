@@ -499,8 +499,11 @@ if (
         );
       }
     })
-    .catch((error) => {
-      console.error("[generate] Error:", error.message);
+    .catch((error: unknown) => {
+      console.error(
+        "[generate] Error:",
+        error instanceof Error ? error.message : error,
+      );
       console.error(error);
       process.exit(1);
     });

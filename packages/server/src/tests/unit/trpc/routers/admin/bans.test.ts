@@ -35,13 +35,6 @@ vi.mock("@/services/auth/session/session.service", () => ({
 vi.mock("@/services/auth/launcher/launcher-session.service", () => ({
   launcherSessionService: { revokeAllForPlayer },
 }));
-vi.mock("@/services/discord/oauth/oauth.service", async () => ({
-  AuthRole: (
-    await vi.importActual<typeof import("@createrington/shared/auth")>(
-      "@createrington/shared/auth",
-    )
-  ).AuthRole,
-}));
 vi.mock("@/services/auth/admin-status/admin-status.service", () => ({
   adminStatusService: { isAdmin: vi.fn().mockResolvedValue(true) },
 }));

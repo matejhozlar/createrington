@@ -103,14 +103,6 @@ const { sessionRow, transactionRow, banRow, strikeRow, ticketRow, Q } =
 
 vi.mock("@/db", () => ({ Q }));
 
-vi.mock("@/services/discord/oauth/oauth.service", async () => ({
-  AuthRole: (
-    await vi.importActual<typeof import("@createrington/shared/auth")>(
-      "@createrington/shared/auth",
-    )
-  ).AuthRole,
-}));
-
 vi.mock("@/services/auth/admin-status/admin-status.service", () => ({
   adminStatusService: { isAdmin: vi.fn() },
 }));
@@ -139,6 +131,7 @@ function callerFor(discordId: string) {
 describe("user.account.exportData", () => {
   it("exports sessions, transactions, bans, strikes and tickets without secrets, staff identities or internal metadata", async () => {
     const data = await callerFor("100000000000000001").exportData();
+    const moderation = data.moderation as { bans: unknown; strikes: unknown };
 
     expect(data.sessions).toEqual([
       {
@@ -163,7 +156,7 @@ describe("user.account.exportData", () => {
       },
     ]);
 
-    expect(data.moderation.bans).toEqual([
+    expect(moderation.bans).toEqual([
       {
         id: banRow.id,
         reason: banRow.reason,
@@ -174,7 +167,7 @@ describe("user.account.exportData", () => {
         unbanReason: banRow.unbanReason,
       },
     ]);
-    expect(data.moderation.strikes).toEqual([
+    expect(moderation.strikes).toEqual([
       {
         id: strikeRow.id,
         description: strikeRow.description,

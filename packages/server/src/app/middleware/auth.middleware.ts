@@ -3,7 +3,7 @@ import { ForbiddenError, UnauthorizedError } from "./error-handler";
 import { jwtService } from "@/services/auth/jwt";
 import { accessCookieService } from "@/services/auth/token/access-cookie.service";
 import { adminStatusService } from "@/services/auth/admin-status/admin-status.service";
-import { AuthRole } from "@/services/discord/oauth/oauth.service";
+import { AuthRole } from "@createrington/shared/auth";
 import config from "@/config";
 import { extractBearerToken } from "@/utils/bearer-token";
 

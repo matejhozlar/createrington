@@ -176,7 +176,10 @@ export class StatsImportService {
           if (typeof content !== "string" && !Buffer.isBuffer(content)) {
             throw new Error(`SFTP returned a stream for ${file.name}`);
           }
-          const parsed = JSON.parse(content.toString());
+          const parsed = JSON.parse(content.toString()) as {
+            stats?: Record<string, unknown>;
+            DataVersion?: number;
+          };
           const stats = parsed.stats ?? parsed;
 
           statsToUpsert.push({

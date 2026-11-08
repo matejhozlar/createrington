@@ -15,14 +15,6 @@ vi.mock("@/services/workshop", () => ({
 
 vi.mock("@/db", () => ({}));
 
-vi.mock("@/services/discord/oauth/oauth.service", async () => ({
-  AuthRole: (
-    await vi.importActual<typeof import("@createrington/shared/auth")>(
-      "@createrington/shared/auth",
-    )
-  ).AuthRole,
-}));
-
 vi.mock("@/services/auth/admin-status/admin-status.service", () => ({
   adminStatusService: { isAdmin: vi.fn() },
 }));

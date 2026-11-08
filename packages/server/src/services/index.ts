@@ -44,5 +44,5 @@ export function getServiceSync<K extends ServiceKey>(
  * Check if a service is ready
  */
 export function isServiceReady(key: ServiceKey): boolean {
-  return container.getState(key) === "ready";
+  return container.getState(key) === ServiceState.READY;
 }

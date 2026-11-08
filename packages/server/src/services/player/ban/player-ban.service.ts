@@ -70,8 +70,11 @@ export class PlayerBanService {
         minecraftUsername = player.minecraftUsername;
       }
     } catch {
+      const storedName: unknown = ban.metadata?.minecraftUsername;
       minecraftUsername =
-        ban.metadata?.minecraftUsername || "Unknown (Deleted)";
+        typeof storedName === "string" && storedName
+          ? storedName
+          : "Unknown (Deleted)";
       wasDeleted = true;
     }
 

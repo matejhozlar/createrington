@@ -195,10 +195,10 @@ export const accountRouter = router({
 
       // BigInt values can't be JSON-serialized, convert them to strings
       return JSON.parse(
-        JSON.stringify(data, (_key, value) =>
+        JSON.stringify(data, (_key, value: unknown) =>
           typeof value === "bigint" ? value.toString() : value,
         ),
-      );
+      ) as Record<string, unknown>;
     }),
 
   deleteAccount: userProcedure

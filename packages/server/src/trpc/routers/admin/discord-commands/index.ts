@@ -25,6 +25,8 @@ export const discordCommandsRouter = router({
       if (!fs.existsSync(JSON_PATH)) {
         return { generatedAt: null, commands: [] };
       }
-      return JSON.parse(fs.readFileSync(JSON_PATH, "utf-8"));
+      return JSON.parse(
+        fs.readFileSync(JSON_PATH, "utf-8"),
+      ) as DiscordCommandsDocument;
     }),
 });

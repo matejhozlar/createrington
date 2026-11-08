@@ -1,4 +1,5 @@
 import appConfig from "@/config";
+import { AuthRole } from "@createrington/shared/auth";
 import { Q } from "@/db";
 import { safeAxiosError } from "@/utils/axios-error";
 import axios from "axios";
@@ -18,12 +19,6 @@ export interface DiscordUser {
   avatar: string | null;
   verified?: boolean;
   global_name?: string;
-}
-
-export enum AuthRole {
-  ADMIN = "admin",
-  USER = "user",
-  UNVERIFIED = "unverified",
 }
 
 export interface AuthenticatedUser {
