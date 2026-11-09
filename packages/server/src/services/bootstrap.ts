@@ -380,8 +380,8 @@ export function registerServices(): void {
         await waitlistPromotionService.promoteEligible();
       });
       if (isPartyPurgeAllowed()) {
-        playerDeletionService.onDeleted((player) =>
-          partyPurgeService.removePlayer(player),
+        playerDeletionService.onDeleted((player, actor) =>
+          partyPurgeService.removePlayer(player, actor),
         );
       }
       return playerDeletionService;
