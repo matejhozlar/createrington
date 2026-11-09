@@ -89,10 +89,19 @@ describe("PartyMembersClient", () => {
 
   it("raises not_reporting while party sync is off", async () => {
     const { client } = clientWith(
-      "Party sync is disabled. See /createrington features.",
+      "Party members are not managed: party_sync is off.",
     );
     await expect(client.remove(1, UUID)).rejects.toMatchObject({
       reason: "not_reporting",
+    });
+  });
+
+  it("raises unexpected_reply when FTB Teams refuses the kick", async () => {
+    const { client } = clientWith(
+      `Could not remove ${UUID} from their party: Player is not in a party!`,
+    );
+    await expect(client.remove(1, UUID)).rejects.toMatchObject({
+      reason: "unexpected_reply",
     });
   });
 

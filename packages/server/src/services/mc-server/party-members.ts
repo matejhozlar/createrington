@@ -27,7 +27,7 @@ export type PartyRemoval =
   | { outcome: "not_in_party"; playerName: string };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const NOT_REPORTING = /party sync is disabled|parties are not being reported/i;
+const NOT_REPORTING = /party_sync is off/i;
 const SYNC_STARTED = /^Sending the parties to the app/;
 
 function requireUuid(uuid: string): string {
