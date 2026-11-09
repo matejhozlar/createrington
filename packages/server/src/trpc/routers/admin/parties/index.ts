@@ -1,8 +1,9 @@
 import { z } from "zod";
 import { groupClaimBlocks } from "@/app/features/mod/parties/claim-blocks";
 import { Q } from "@/db";
+import { isPartyPurgeAllowed, partyPurgeService } from "@/services/party";
 import { adminProcedure, router } from "@/trpc/trpc";
-import { findOrThrow, id } from "@/trpc/utils";
+import { findOrThrow, id, rethrowTrpc, trpcError } from "@/trpc/utils";
 import { mcUuid } from "@/utils/zod-schemas";
 
 export const adminPartiesRouter = router({
@@ -100,5 +101,27 @@ export const adminPartiesRouter = router({
         Q.server.party.getForAlly(input.serverId, input.playerUuid),
       ]);
       return { party, allyOf };
+    }),
+
+  purge: adminProcedure
+    .meta({
+      description:
+        "Syncs a server's parties from core, then removes every member who left the server from their party in game; owners are never removed",
+    })
+    .input(z.object({ serverId: id() }))
+    .mutation(async ({ input, ctx }) => {
+      if (!isPartyPurgeAllowed()) {
+        throw trpcError.preconditionFailed(
+          "Purging parties only runs on the production deployment, which owns the Minecraft server",
+        );
+      }
+      try {
+        return await partyPurgeService.purge(input.serverId, {
+          discordId: ctx.user.discordId,
+          username: ctx.user.minecraftUsername,
+        });
+      } catch (error) {
+        rethrowTrpc(error);
+      }
     }),
 });
