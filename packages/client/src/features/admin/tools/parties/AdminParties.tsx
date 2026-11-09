@@ -17,7 +17,7 @@ import { FilterBar } from "@/features/admin/components/FilterBar";
 import { formatRelativeDateSafe } from "@/features/admin/format";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
-import { queryClient, trpc } from "@/lib/trpc";
+import { queryClient, trpc, type RouterOutput } from "@/lib/trpc";
 import { ClaimsDialog } from "./components/ClaimsDialog";
 import { PartiesStatsCards } from "./components/PartiesStatsCards";
 import {
@@ -48,10 +48,7 @@ const PURGE_COPY = {
   confirm: "Purge",
 } as const;
 
-interface PurgeResult {
-  removed: unknown[];
-  failed: number;
-}
+type PurgeResult = RouterOutput["admin"]["parties"]["purge"];
 
 function purgeMessage({ removed, failed }: PurgeResult): string {
   const removedText =

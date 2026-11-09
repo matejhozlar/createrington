@@ -30,6 +30,10 @@ vi.mock("@/generated/db", () => ({
   DatabaseTable: { SERVER_PARTY_MEMBER: { TABLE: "server_party_member" } },
 }));
 
+vi.mock("@/services/auth/launcher/launcher-session.service", () => ({
+  launcherSessionService: { revokeAllForPlayer: vi.fn() },
+}));
+
 vi.mock("@/app/features/mod/parties/parties.service", () => ({
   waitForPartySync: mocks.waitForPartySync,
 }));
@@ -61,6 +65,8 @@ function fakeClient() {
 function serviceWith(client: ReturnType<typeof fakeClient>) {
   return new PartyPurgeService(client as unknown as PartyMembersClient);
 }
+
+const SYSTEM = { type: "system" } as const;
 
 const deleted = {
   minecraftUuid: STEVE,
@@ -183,7 +189,7 @@ describe("PartyPurgeService.removePlayer", () => {
     const client = fakeClient();
     mocks.getForMember.mockResolvedValue({ name: "Crew", rank: "member" });
 
-    await serviceWith(client).removePlayer(deleted);
+    await serviceWith(client).removePlayer(deleted, SYSTEM);
 
     expect(client.remove).toHaveBeenCalledWith(1, STEVE);
     expect(mocks.createAudit.mock.calls[0][0]).toMatchObject({
@@ -192,11 +198,28 @@ describe("PartyPurgeService.removePlayer", () => {
     });
   });
 
+  it("credits the removal to the admin who deleted the player", async () => {
+    const client = fakeClient();
+    mocks.getForMember.mockResolvedValue({ name: "Crew", rank: "member" });
+
+    await serviceWith(client).removePlayer(deleted, {
+      type: "admin",
+      discordId: "42",
+      username: "Admin",
+    });
+
+    expect(mocks.createAudit.mock.calls[0][0]).toMatchObject({
+      adminDiscordId: "42",
+      adminUsername: "Admin",
+      metadata: { trigger: "deletion" },
+    });
+  });
+
   it("leaves a deleted owner in their party", async () => {
     const client = fakeClient();
     mocks.getForMember.mockResolvedValue({ name: "Crew", rank: "owner" });
 
-    await serviceWith(client).removePlayer(deleted);
+    await serviceWith(client).removePlayer(deleted, SYSTEM);
 
     expect(client.remove).not.toHaveBeenCalled();
   });
@@ -205,7 +228,7 @@ describe("PartyPurgeService.removePlayer", () => {
     const client = fakeClient();
     mocks.getForMember.mockResolvedValue(null);
 
-    await serviceWith(client).removePlayer(deleted);
+    await serviceWith(client).removePlayer(deleted, SYSTEM);
 
     expect(client.remove).not.toHaveBeenCalled();
   });
@@ -216,7 +239,7 @@ describe("PartyPurgeService.removePlayer", () => {
     client.remove.mockRejectedValue(new Error("rcon down"));
 
     await expect(
-      serviceWith(client).removePlayer(deleted),
+      serviceWith(client).removePlayer(deleted, SYSTEM),
     ).resolves.toBeUndefined();
   });
 });

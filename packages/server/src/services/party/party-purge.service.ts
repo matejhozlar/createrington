@@ -7,7 +7,11 @@ import {
   PartyMembersClient,
   type PartyRemoval,
 } from "@/services/mc-server/party-members";
-import type { DeletedPlayer } from "@/services/player/deletion";
+import {
+  deletionAuditIdentity,
+  type DeletedPlayer,
+  type DeletionActor,
+} from "@/services/player/deletion";
 import { AdminEdit } from "@/types";
 import { minecraftRcon } from "@/utils/rcon";
 
@@ -75,8 +79,11 @@ export class PartyPurgeService {
     }
   }
 
-  /** Removes a just-deleted player from their party on every server where they are a non-owner member. Never throws. */
-  async removePlayer(player: DeletedPlayer): Promise<void> {
+  /** Removes a just-deleted player from their party on every server where they are a non-owner member, audited as whoever ran the deletion. Never throws. */
+  async removePlayer(
+    player: DeletedPlayer,
+    actor: DeletionActor,
+  ): Promise<void> {
     for (const serverId of minecraftRcon.getServerIds()) {
       try {
         const membership = await Q.server.party.getForMember(
@@ -93,7 +100,7 @@ export class PartyPurgeService {
         await this.removeMember(
           serverId,
           player.minecraftUuid,
-          null,
+          deletionAuditIdentity(actor),
           "deletion",
         );
       } catch (error) {

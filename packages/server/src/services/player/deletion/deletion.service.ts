@@ -11,6 +11,16 @@ export type DeletionActor =
   | { type: "admin" | "user"; discordId: string; username: string }
   | { type: "system"; username?: string };
 
+/** The admin_log_action identity of a deletion actor; automated cleanup is "system" under its name, or "System". */
+export function deletionAuditIdentity(actor: DeletionActor): {
+  discordId: string;
+  username: string;
+} {
+  return actor.type === "system"
+    ? { discordId: "system", username: actor.username ?? "System" }
+    : { discordId: actor.discordId, username: actor.username };
+}
+
 /** Snapshot of the removed player, captured before the row is deleted. */
 export interface DeletedPlayer {
   minecraftUuid: string;
@@ -20,10 +30,13 @@ export interface DeletedPlayer {
 
 /**
  * Fire-and-forget side effect run after a successful deletion (e.g. the
- * waitlist promotion pass). Hooks must not throw; failures are logged and
- * never block the deletion.
+ * waitlist promotion pass), told who triggered the deletion. Hooks must not
+ * throw; failures are logged and never block the deletion.
  */
-export type PostDeletionHook = (player: DeletedPlayer) => void | Promise<void>;
+export type PostDeletionHook = (
+  player: DeletedPlayer,
+  actor: DeletionActor,
+) => void | Promise<void>;
 
 export interface DeletePlayerOptions {
   actor: DeletionActor;
@@ -104,12 +117,10 @@ export class PlayerDeletionService {
       }
 
       if (writeAudit) {
+        const identity = deletionAuditIdentity(actor);
         await tx.admin.log.action.create({
-          adminDiscordId: actor.type === "system" ? "system" : actor.discordId,
-          adminUsername:
-            actor.type === "system"
-              ? (actor.username ?? "System")
-              : actor.username,
+          adminDiscordId: identity.discordId,
+          adminUsername: identity.username,
           actionType: AdminEdit.DELETE_PLAYER,
           targetPlayerUuid: snapshot.minecraftUuid,
           targetPlayerName: snapshot.minecraftUsername,
@@ -157,15 +168,18 @@ export class PlayerDeletionService {
       }
     }
 
-    void this.runHooks(snapshot);
+    void this.runHooks(snapshot, actor);
 
     return snapshot;
   }
 
-  private async runHooks(player: DeletedPlayer): Promise<void> {
+  private async runHooks(
+    player: DeletedPlayer,
+    actor: DeletionActor,
+  ): Promise<void> {
     for (const hook of this.hooks) {
       try {
-        await hook(player);
+        await hook(player, actor);
       } catch (error) {
         logger.warn(
           `Post-deletion hook failed for ${player.minecraftUsername}:`,
