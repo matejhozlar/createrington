@@ -8,4 +8,5 @@ export enum AdminEdit {
   UNBAN_PLAYER = "unban_player",
   BAN_WORKSHOP_SUGGEST = "ban_workshop_suggest",
   UNBAN_WORKSHOP_SUGGEST = "unban_workshop_suggest",
+  REMOVE_PARTY_MEMBER = "remove_party_member",
 }

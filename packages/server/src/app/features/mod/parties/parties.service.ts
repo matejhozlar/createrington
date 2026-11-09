@@ -1,9 +1,31 @@
+import { EventEmitter } from "node:events";
 import { db } from "@/db";
 import type { PartyMemberRank } from "@createrington/shared/party";
 import {
   DesignCodeError,
   parseDesignCode,
 } from "@createrington/shared/team-tag";
+
+const partySyncs = new EventEmitter();
+
+export function waitForPartySync(
+  serverId: number,
+  timeoutMs: number,
+): Promise<boolean> {
+  return new Promise((resolve) => {
+    let timer: NodeJS.Timeout | undefined = undefined;
+    const onSync = (syncedServerId: number) => {
+      if (syncedServerId === serverId) finish(true);
+    };
+    const finish = (synced: boolean) => {
+      clearTimeout(timer);
+      partySyncs.off("synced", onSync);
+      resolve(synced);
+    };
+    partySyncs.on("synced", onSync);
+    timer = setTimeout(() => finish(false), timeoutMs);
+  });
+}
 
 export interface PartyMemberPayload {
   uuid: string;
@@ -237,4 +259,6 @@ export async function replacePartyState(
       }),
     );
   });
+
+  partySyncs.emit("synced", serverId);
 }

@@ -29,6 +29,7 @@ import { RoleManagementService } from "./discord/role/role-management.service";
 import { WebSocketService } from "./websocket";
 import { PlayerBanService } from "./player/ban";
 import { playerDeletionService } from "./player/deletion";
+import { isPartyPurgeAllowed, partyPurgeService } from "./party";
 import { StatsImportService, STATS_IMPORT_SERVERS } from "./stats-import";
 import { FaqService } from "./discord/faq";
 import { DiscordStickyMessageService } from "./discord/sticky-message";
@@ -378,10 +379,26 @@ export function registerServices(): void {
         }
         await waitlistPromotionService.promoteEligible();
       });
+      if (isPartyPurgeAllowed()) {
+        playerDeletionService.onDeleted((player) =>
+          partyPurgeService.removePlayer(player),
+        );
+      }
       return playerDeletionService;
     },
     { dependencies: [Services.DATABASE] },
   );
+
+  if (isPartyPurgeAllowed()) {
+    container.register(
+      Services.PARTY_PURGE_SERVICE,
+      () => {
+        partyPurgeService.initialize();
+        return partyPurgeService;
+      },
+      { dependencies: [Services.DATABASE, Services.HTTP_SERVER] },
+    );
+  }
 
   container.register(
     Services.PLAYTIME_MANAGER_SERVICE,
