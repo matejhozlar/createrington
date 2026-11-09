@@ -7,7 +7,11 @@ import {
   PartyMembersClient,
   type PartyRemoval,
 } from "@/services/mc-server/party-members";
-import type { DeletedPlayer, DeletionActor } from "@/services/player/deletion";
+import {
+  deletionAuditIdentity,
+  type DeletedPlayer,
+  type DeletionActor,
+} from "@/services/player/deletion";
 import { AdminEdit } from "@/types";
 import { minecraftRcon } from "@/utils/rcon";
 
@@ -34,12 +38,6 @@ export interface PartyPurgeResult {
   removed: RemovedPartyMember[];
   skipped: number;
   failed: number;
-}
-
-function auditActor(actor: DeletionActor): PartyPurgeActor {
-  return actor.type === "system"
-    ? { discordId: "system", username: actor.username ?? "System" }
-    : { discordId: actor.discordId, username: actor.username };
 }
 
 export function isPartyPurgeAllowed(): boolean {
@@ -102,7 +100,7 @@ export class PartyPurgeService {
         await this.removeMember(
           serverId,
           player.minecraftUuid,
-          auditActor(actor),
+          deletionAuditIdentity(actor),
           "deletion",
         );
       } catch (error) {

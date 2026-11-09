@@ -30,6 +30,10 @@ vi.mock("@/generated/db", () => ({
   DatabaseTable: { SERVER_PARTY_MEMBER: { TABLE: "server_party_member" } },
 }));
 
+vi.mock("@/services/auth/launcher/launcher-session.service", () => ({
+  launcherSessionService: { revokeAllForPlayer: vi.fn() },
+}));
+
 vi.mock("@/app/features/mod/parties/parties.service", () => ({
   waitForPartySync: mocks.waitForPartySync,
 }));

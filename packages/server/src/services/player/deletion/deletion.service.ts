@@ -11,6 +11,16 @@ export type DeletionActor =
   | { type: "admin" | "user"; discordId: string; username: string }
   | { type: "system"; username?: string };
 
+/** The admin_log_action identity of a deletion actor; automated cleanup is "system" under its name, or "System". */
+export function deletionAuditIdentity(actor: DeletionActor): {
+  discordId: string;
+  username: string;
+} {
+  return actor.type === "system"
+    ? { discordId: "system", username: actor.username ?? "System" }
+    : { discordId: actor.discordId, username: actor.username };
+}
+
 /** Snapshot of the removed player, captured before the row is deleted. */
 export interface DeletedPlayer {
   minecraftUuid: string;
@@ -107,12 +117,10 @@ export class PlayerDeletionService {
       }
 
       if (writeAudit) {
+        const identity = deletionAuditIdentity(actor);
         await tx.admin.log.action.create({
-          adminDiscordId: actor.type === "system" ? "system" : actor.discordId,
-          adminUsername:
-            actor.type === "system"
-              ? (actor.username ?? "System")
-              : actor.username,
+          adminDiscordId: identity.discordId,
+          adminUsername: identity.username,
           actionType: AdminEdit.DELETE_PLAYER,
           targetPlayerUuid: snapshot.minecraftUuid,
           targetPlayerName: snapshot.minecraftUsername,
