@@ -420,7 +420,7 @@ export const Services = {
   WEBSOCKET_SERVICE: "http.webSocketService",
   PLAYER_BAN_SERVICE: "player.banService",
   PLAYER_DELETION_SERVICE: "player.deletionService",
-  PARTY_PURGE_SERVICE: "player.partyPurgeService",
+  PARTY_PURGE_SERVICE: "minecraft.partyPurgeService",
   STATS_IMPORT_SERVICE: "minecraft.statsImportService",
   FAQ_SERVICE: "discord.faqService",
   PUPPETEER_SERVICE: "infra.puppeteerService",
