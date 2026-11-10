@@ -21,6 +21,7 @@ import { trpc, type RouterOutput, queryClient } from "@/lib/trpc";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { Textarea } from "@/components/ui/textarea";
 
 interface MaintenanceSettingsDialogProps {
   serverId: number;
@@ -32,9 +33,6 @@ const MOTD_MAX_LENGTH = 300;
 const MESSAGE_MAX_LENGTH = 600;
 
 const PREVIEW_SAMPLE = { server: "Rails 'n Sails", eta: "~30 min" };
-
-const TEXTAREA_CLASS =
-  "w-full rounded-md border border-border bg-background px-3 py-2 font-mono text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 function previewText(template: string): string {
   return template
@@ -80,13 +78,13 @@ function TemplateField({
           Reset to preset
         </Button>
       </div>
-      <textarea
+      <Textarea
         id={id}
         value={value}
         rows={rows}
         maxLength={maxLength}
         onChange={(e) => onChange(e.target.value)}
-        className={TEXTAREA_CLASS}
+        className="font-mono text-xs md:text-xs"
       />
       <div className="flex items-start justify-between gap-4">
         <p className="text-xs text-muted-foreground">{hint}</p>

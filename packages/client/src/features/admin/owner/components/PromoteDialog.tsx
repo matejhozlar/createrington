@@ -16,6 +16,7 @@ import { trpc, queryClient } from "@/lib/trpc";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useToastActions } from "@/hooks/use-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { Textarea } from "@/components/ui/textarea";
 
 interface PromoteDialogProps {
   open: boolean;
@@ -184,14 +185,13 @@ export function PromoteDialog({
 
           <Field>
             <FieldLabel htmlFor="promote-reason">Reason (optional)</FieldLabel>
-            <textarea
+            <Textarea
               id="promote-reason"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               placeholder="e.g. Trusted moderator, handles Discord tickets"
               maxLength={500}
               rows={3}
-              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
           </Field>
         </div>

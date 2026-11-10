@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 import { InsertMenu } from "@/features/admin/components/InsertMenu";
 import { MentionAutocomplete } from "./MentionAutocomplete";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { Textarea } from "@/components/ui/textarea";
 
 interface InsertableInputHandle {
   focus: () => void;
@@ -279,7 +280,7 @@ export function TextField({
     >
       <div className="relative">
         {multiline ? (
-          <textarea
+          <Textarea
             ref={(el) => {
               elRef.current = el;
             }}
@@ -289,7 +290,7 @@ export function TextField({
             maxLength={max}
             placeholder={placeholder}
             onChange={onIn}
-            className="w-full resize-y rounded-md border border-input bg-transparent px-3 py-2 text-[13px] shadow-xs outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+            className="resize-y text-[13px] md:text-[13px]"
           />
         ) : (
           <Input

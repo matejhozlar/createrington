@@ -49,6 +49,7 @@ import {
 import { InsertMenu } from "@/features/admin/components/InsertMenu";
 import { MentionAutocomplete } from "./MentionAutocomplete";
 import type { FocusTarget } from "../focus";
+import { Textarea } from "@/components/ui/textarea";
 
 const TAB_DEFS = [
   { id: "content", label: "Content" },
@@ -612,14 +613,14 @@ function FieldRow({
             Inline
           </label>
         </div>
-        <textarea
+        <Textarea
           ref={valueRef}
           value={field.value}
           placeholder="Supports markdown and mentions"
           rows={6}
           maxLength={1024}
           onChange={(e) => onChange({ value: e.target.value })}
-          className="w-full resize-y rounded-md border border-input bg-transparent px-2.5 py-1.5 text-[13px] outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+          className="resize-y px-2.5 py-1.5 text-[13px] md:text-[13px]"
         />
       </div>
       <div className="flex shrink-0 flex-col gap-0.5">
@@ -983,7 +984,7 @@ function ButtonRow({
               onChange={(e) => onChangeAction({ threadName: e.target.value })}
               className="h-8 text-[13px]"
             />
-            <textarea
+            <Textarea
               value={item.btn.threadMessage}
               placeholder="Welcome message"
               rows={2}
@@ -991,7 +992,7 @@ function ButtonRow({
               onChange={(e) =>
                 onChangeAction({ threadMessage: e.target.value })
               }
-              className="w-full resize-y rounded-md border border-input bg-transparent px-2.5 py-1.5 text-[13px] outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              className="resize-y px-2.5 py-1.5 text-[13px] md:text-[13px]"
             />
           </div>
         )}

@@ -18,6 +18,7 @@ import { CharCount } from "@/features/admin/components/CharCount";
 import { useMentionResolver } from "@/features/admin/hooks/use-mention-resolver";
 import { DiscordMarkdown } from "@/features/admin/tools/embed-builder/components/DiscordMarkdown";
 import { useMutation } from "@tanstack/react-query";
+import { Textarea } from "@/components/ui/textarea";
 
 type Message =
   RouterOutput["admin"]["autoMessages"]["configs"]["get"]["messages"][number];
@@ -181,7 +182,7 @@ export function MessageDialog({
                 }}
               />
             </div>
-            <textarea
+            <Textarea
               ref={contentRef}
               id="msg-content"
               value={content}
@@ -189,7 +190,6 @@ export function MessageDialog({
               placeholder="The message the bot will send..."
               rows={4}
               maxLength={2000}
-              className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex w-full rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
             />
             <div className="flex items-center justify-between">
               <FieldDescription>
@@ -300,13 +300,12 @@ function FollowupRow({
       </div>
 
       <div className="space-y-2">
-        <textarea
+        <Textarea
           value={followup.content}
           onChange={(e) => onChange({ content: e.target.value })}
           placeholder={`Follow-up message content...`}
           rows={2}
           maxLength={2000}
-          className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex w-full rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
         />
         <div className="flex justify-end">
           <CharCount value={followup.content} max={2000} />
