@@ -88,19 +88,46 @@ function resolveChannel(
   return channel;
 }
 
+interface MessageSelection {
+  messages: Message[];
+  keep: "newest" | "oldest";
+  hasMore: boolean;
+}
+
 async function readMessages(
   interaction: ChatInputCommandInteraction,
   channel: GuildTextBasedChannel,
-): Promise<Message[] | null> {
+): Promise<MessageSelection | null> {
   const from = interaction.options.getString("from");
   if (!from) {
     const count =
       interaction.options.getInteger("messages") ?? DEFAULT_MESSAGE_COUNT;
-    return fetchRecentMessages(channel, count);
+    const messages = await fetchRecentMessages(channel, count);
+    return { messages, keep: "newest", hasMore: false };
   }
   const startId = parseMessageReference(from, channel.id);
   if (!startId) return null;
-  return fetchMessagesSince(channel, startId, TRANSCRIPT_MAX_MESSAGES);
+  const { messages, hasMore } = await fetchMessagesSince(
+    channel,
+    startId,
+    TRANSCRIPT_MAX_MESSAGES,
+  );
+  return { messages, keep: "oldest", hasMore };
+}
+
+function readingSummary(
+  selection: MessageSelection,
+  messageCount: number,
+): string {
+  const leftOut = selection.messages.length - messageCount;
+  const skipped =
+    leftOut > 0
+      ? ` (${leftOut} ${selection.keep === "newest" ? "older" : "newer"} or empty ones left out)`
+      : "";
+  const capped = selection.hasMore
+    ? ` Only the first ${TRANSCRIPT_MAX_MESSAGES} messages after the link were read.`
+    : "";
+  return `Claude is reading ${messageCount} messages${skipped}.${capped} This usually takes a minute or two.`;
 }
 
 function outcomeEmbed(outcome: IssueTriageStatus | null) {
@@ -165,11 +192,23 @@ export async function execute(
     return;
   }
 
+  if (
+    interaction.options.getString("from") &&
+    interaction.options.getInteger("messages") !== null
+  ) {
+    await replyError(
+      interaction,
+      "Pick one option",
+      "Use `messages` to read the latest messages, or `from` to read from a linked message up to now.",
+    );
+    return;
+  }
+
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-  let messages: Message[] | null;
+  let selection: MessageSelection | null;
   try {
-    messages = await readMessages(interaction, channel);
+    selection = await readMessages(interaction, channel);
   } catch (error) {
     logger.error("/issue could not read messages:", error);
     await replyError(
@@ -179,7 +218,7 @@ export async function execute(
     );
     return;
   }
-  if (!messages) {
+  if (!selection) {
     await replyError(
       interaction,
       "Invalid message link",
@@ -188,7 +227,9 @@ export async function execute(
     return;
   }
 
-  const transcript = buildChannelTranscript(messages);
+  const transcript = buildChannelTranscript(selection.messages, {
+    keep: selection.keep,
+  });
   if (transcript.messageCount === 0) {
     await replyError(
       interaction,
@@ -221,15 +262,11 @@ export async function execute(
     return;
   }
 
-  const trimmed =
-    transcript.messageCount < messages.length
-      ? ` (${messages.length - transcript.messageCount} older or empty ones left out)`
-      : "";
   await interaction.editReply({
     embeds: [
       EmbedPresets.info(
         "Triaging",
-        `Claude is reading ${transcript.messageCount} messages${trimmed}. This usually takes a minute or two.`,
+        readingSummary(selection, transcript.messageCount),
       ).build(),
     ],
   });

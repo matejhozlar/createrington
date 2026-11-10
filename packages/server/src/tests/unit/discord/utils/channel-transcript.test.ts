@@ -132,23 +132,51 @@ describe("fetchMessagesSince", () => {
     const all = Array.from({ length: 250 }, (_, i) => fakeMessage(i));
     const { channel } = fakeChannel(all);
 
-    const result = await fetchMessagesSince(channel, all[40].id, 500);
+    const { messages, hasMore } = await fetchMessagesSince(
+      channel,
+      all[40].id,
+      500,
+    );
 
-    expect(result).toHaveLength(210);
-    expect(result[0].id).toBe(all[40].id);
-    expect(result.at(-1)!.id).toBe(all[249].id);
+    expect(messages).toHaveLength(210);
+    expect(messages[0].id).toBe(all[40].id);
+    expect(messages.at(-1)!.id).toBe(all[249].id);
+    expect(hasMore).toBe(false);
   });
 
-  it("stops at the cap", async () => {
+  it("stops at the cap and reports that more messages follow", async () => {
     const all = Array.from({ length: 250 }, (_, i) => fakeMessage(i));
     const { channel } = fakeChannel(all);
 
-    const result = await fetchMessagesSince(channel, all[0].id, 120);
+    const { messages, hasMore } = await fetchMessagesSince(
+      channel,
+      all[0].id,
+      120,
+    );
 
-    expect(result).toHaveLength(120);
-    expect(result.at(-1)!.id).toBe(all[119].id);
+    expect(messages).toHaveLength(120);
+    expect(messages.at(-1)!.id).toBe(all[119].id);
+    expect(hasMore).toBe(true);
+  });
+
+  it("does not report more messages when the cap is met exactly", async () => {
+    const all = Array.from({ length: 120 }, (_, i) => fakeMessage(i));
+    const { channel } = fakeChannel(all);
+
+    const { messages, hasMore } = await fetchMessagesSince(
+      channel,
+      all[0].id,
+      120,
+    );
+
+    expect(messages).toHaveLength(120);
+    expect(hasMore).toBe(false);
   });
 });
+
+function encodedSize(text: string): number {
+  return Buffer.byteLength(JSON.stringify(text), "utf8");
+}
 
 describe("buildChannelTranscript", () => {
   it("names authors, marks bots and resolves replies within the transcript", () => {
@@ -184,15 +212,50 @@ describe("buildChannelTranscript", () => {
     expect(transcript.messageCount).toBe(1);
   });
 
-  it("drops the oldest messages first when the transcript is too long", () => {
+  it("drops the oldest messages first by default when the transcript is too long", () => {
     const messages = Array.from({ length: 10 }, (_, i) =>
       fakeMessage(i, { content: "x".repeat(50) }),
     );
-    const lineLength = buildChannelTranscript([messages[0]]).text.length + 1;
+    const lineSize = encodedSize(buildChannelTranscript([messages[0]]).text);
 
-    const transcript = buildChannelTranscript(messages, lineLength * 4);
+    const transcript = buildChannelTranscript(messages, {
+      maxBytes: lineSize * 4,
+    });
 
     expect(transcript.messageCount).toBe(4);
     expect(transcript.firstMessageUrl).toBe(messages[6].url);
+  });
+
+  it("keeps the first message and drops the newest when asked to keep the oldest", () => {
+    const messages = Array.from({ length: 10 }, (_, i) =>
+      fakeMessage(i, { content: "x".repeat(50) }),
+    );
+    const lineSize = encodedSize(buildChannelTranscript([messages[0]]).text);
+
+    const transcript = buildChannelTranscript(messages, {
+      keep: "oldest",
+      maxBytes: lineSize * 4,
+    });
+
+    expect(transcript.messageCount).toBe(4);
+    expect(transcript.firstMessageUrl).toBe(messages[0].url);
+    expect(transcript.text.split("\n").at(-1)).toContain("player3");
+  });
+
+  it("measures the cap in JSON-encoded bytes, not characters", () => {
+    const messages = Array.from({ length: 10 }, (_, i) =>
+      fakeMessage(i, { content: 'řeč "🙂"\n'.repeat(20) }),
+    );
+    const maxBytes = 3000;
+
+    const transcript = buildChannelTranscript(messages, { maxBytes });
+
+    expect(transcript.messageCount).toBeGreaterThan(0);
+    expect(transcript.text.length).toBeLessThan(maxBytes);
+    expect(encodedSize(transcript.text)).toBeLessThanOrEqual(maxBytes);
+    const oneMore = buildChannelTranscript(
+      messages.slice(-(transcript.messageCount + 1)),
+    );
+    expect(encodedSize(oneMore.text)).toBeGreaterThan(maxBytes);
   });
 });

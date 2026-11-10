@@ -6,8 +6,9 @@ const MESSAGE_LINK_PATTERN =
   /^https:\/\/(?:(?:canary|ptb)\.)?discord(?:app)?\.com\/channels\/(\d+|@me)\/(\d+)\/(\d+)$/;
 const SNOWFLAKE_PATTERN = /^\d{17,20}$/;
 
+const TRANSCRIPT_MAX_BYTES = 88_000;
+
 export const TRANSCRIPT_MAX_MESSAGES = 500;
-export const TRANSCRIPT_MAX_CHARS = 88_000;
 
 export interface ChannelTranscript {
   text: string;
@@ -61,18 +62,20 @@ export async function fetchMessagesSince(
   channel: GuildTextBasedChannel,
   startId: string,
   cap: number,
-): Promise<Message[]> {
+): Promise<{ messages: Message[]; hasMore: boolean }> {
   const start = await channel.messages.fetch(startId);
   const messages: Message[] = [start];
+  const target = cap + 1;
   let after = start.id;
-  while (messages.length < cap) {
-    const limit = Math.min(PAGE_SIZE, cap - messages.length);
+  while (messages.length < target) {
+    const limit = Math.min(PAGE_SIZE, target - messages.length);
     const batch = await channel.messages.fetch({ limit, after });
     messages.push(...batch.values());
     if (batch.size < limit) break;
     after = newestId(batch);
   }
-  return messages.sort(byAge);
+  messages.sort(byAge);
+  return { messages: messages.slice(0, cap), hasMore: messages.length > cap };
 }
 
 function authorName(message: Message): string {
@@ -123,21 +126,29 @@ function hasContent(message: Message): boolean {
   );
 }
 
+function encodedSize(line: string): number {
+  return Buffer.byteLength(JSON.stringify(line), "utf8");
+}
+
 export function buildChannelTranscript(
   messages: Message[],
-  maxChars = TRANSCRIPT_MAX_CHARS,
+  options: { keep?: "newest" | "oldest"; maxBytes?: number } = {},
 ): ChannelTranscript {
+  const keep = options.keep ?? "newest";
+  const maxBytes = options.maxBytes ?? TRANSCRIPT_MAX_BYTES;
   const relevant = messages.filter(hasContent);
   const byId = new Map(relevant.map((message) => [message.id, message]));
+  const ordered = keep === "newest" ? [...relevant].reverse() : relevant;
   const kept: { line: string; message: Message }[] = [];
-  let length = 0;
-  for (const message of [...relevant].reverse()) {
+  let size = 0;
+  for (const message of ordered) {
     const line = formatMessage(message, byId);
-    if (length + line.length + 1 > maxChars) break;
+    const lineSize = encodedSize(line);
+    if (size + lineSize > maxBytes) break;
     kept.push({ line, message });
-    length += line.length + 1;
+    size += lineSize;
   }
-  kept.reverse();
+  if (keep === "newest") kept.reverse();
   return {
     text: kept.map(({ line }) => line).join("\n"),
     messageCount: kept.length,
