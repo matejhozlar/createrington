@@ -40,6 +40,7 @@ export const commandRegistry: Record<string, CommandEnv> = {
   cooldown: "prod",
   purge: "prod",
   message: "prod",
+  issue: "prod",
 
   // Owner
   "notification-panel": "prod",
