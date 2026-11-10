@@ -42,7 +42,8 @@ const FAILURE_REASONS: Record<string, string> = {
   timeout: "Claude ran out of time before finishing.",
   invalid_result: "Claude did not produce a usable issue.",
   auth_error: "Claude automation could not authenticate.",
-  orphaned: "Claude automation restarted while this was running.",
+  orphaned: "Claude automation lost track of this session.",
+  closed: "The session was stopped before it finished.",
 };
 
 export const data = new SlashCommandBuilder()

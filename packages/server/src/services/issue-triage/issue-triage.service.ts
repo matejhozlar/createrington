@@ -1,5 +1,6 @@
 import axios, { AxiosError } from "axios";
 import { env } from "@/config/env/env.config";
+import { safeAxiosError } from "@/utils/axios-error";
 
 const REQUEST_TIMEOUT_MS = 15_000;
 const POLL_INTERVAL_MS = 5_000;
@@ -79,12 +80,17 @@ export class IssueTriageService {
     return response.data;
   }
 
-  /** Polls until the session settles; resolves null if it is still running after `maxWaitMs`. */
+  /**
+   * Polls until the session settles. A session claude-automation no longer
+   * knows settles as failed with result "orphaned"; resolves null if it is
+   * still running after `maxWaitMs`.
+   */
   async waitForOutcome(
     sessionId: number,
     maxWaitMs = DEFAULT_WAIT_MS,
   ): Promise<IssueTriageStatus | null> {
     const deadline = Date.now() + maxWaitMs;
+    let pollErrorLogged = false;
     while (Date.now() < deadline) {
       await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
       try {
@@ -94,7 +100,19 @@ export class IssueTriageService {
         }
       } catch (error) {
         if (error instanceof AxiosError && error.response?.status === 404) {
-          return null;
+          return {
+            status: "failed",
+            result: "orphaned",
+            issue: null,
+            reason: null,
+          };
+        }
+        if (!pollErrorLogged) {
+          pollErrorLogged = true;
+          logger.warn(
+            `Issue triage session #${sessionId} status poll failed:`,
+            safeAxiosError(error),
+          );
         }
       }
     }
