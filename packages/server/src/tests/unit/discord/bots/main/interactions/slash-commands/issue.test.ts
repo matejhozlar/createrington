@@ -127,7 +127,58 @@ describe("/issue", () => {
         embeds: [expect.objectContaining({ title: "Issue filed" })],
       }),
     );
-    await vi.waitFor(() => expect(warn).toHaveBeenCalled());
+    await vi.waitFor(() =>
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining("could not post to admin notifications"),
+        "Channel not found or not sendable",
+      ),
+    );
     warn.mockRestore();
+  });
+
+  it("still posts to admin notifications when the private reply cannot be edited", async () => {
+    const warn = vi.spyOn(logger, "warn").mockImplementation(() => logger);
+    messages.send.mockResolvedValue({ success: true, messageId: "1" });
+    const { interaction, editReply } = fakeInteraction();
+    const editFailure = new Error("Unknown Webhook");
+    editReply
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(editFailure);
+
+    await execute(interaction);
+
+    await vi.waitFor(() =>
+      expect(messages.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          embeds: expect.objectContaining({ title: "Issue filed" }),
+        }),
+      ),
+    );
+    await vi.waitFor(() =>
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining("could not update its reply"),
+        editFailure,
+      ),
+    );
+    warn.mockRestore();
+  });
+
+  it("posts the still-working notice when the session outlasts the wait", async () => {
+    triage.waitForOutcome.mockResolvedValue(null);
+    messages.send.mockResolvedValue({ success: true, messageId: "1" });
+    const { interaction } = fakeInteraction();
+
+    await execute(interaction);
+
+    await vi.waitFor(() =>
+      expect(messages.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          embeds: expect.objectContaining({
+            kind: "info",
+            title: "Still working",
+          }),
+        }),
+      ),
+    );
   });
 });
