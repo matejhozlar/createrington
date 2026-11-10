@@ -1,3 +1,27 @@
+## v1.79.0 (2026-11-10)
+
+### @createrington/server (1.78.1 → 1.79.0)
+- [add] Add a party purge that removes players who left the server from their FTB Teams party in game: the player deletion hook removes the deleted player immediately (audited as whoever deleted them), a daily purge and the new `admin.parties.purge` procedure first request a fresh party snapshot from core and then remove every non-owner member without a player row over RCON; party owners are never removed, every removal writes a `REMOVE_PARTY_MEMBER` audit row, only one purge runs at a time, and it runs on the production deployment only
+- [add] Add the admin-only `/issue` Discord command: it reads the last N messages of the channel (default 50, up to 500) or everything from a linked message onward, trims the transcript to the triage request size (oldest messages first, always keeping the linked message), and hands it to a claude-automation triage session; the ephemeral reply is edited with the filed issue, an existing duplicate, or the reason nothing was filed, and a lost session is reported as failed. Uses the existing `CLAUDE_API_URL` and `ADMIN_CHAT_SECRET`
+- [add] Keep the OAuth login state, SSO state and code stores, and launcher login challenges in Redis so pending logins survive a restart; tokens are stored under their SHA-256 hash, are single-use, and fall back to a bounded in-memory store while Redis is unavailable
+- [add] Keep the parsed modpack manifest in Redis across restarts; a stored manifest of an older shape is treated as a cache miss and fetched again
+- [fix] Fix a whitelist resync that could leave the server with an empty whitelist: `whitelist.json` is now overwritten in place instead of deleted first, so a failed write no longer removes the file before the next restart
+- [fix] Refuse a whitespace-only reason for a bulk balance adjustment
+- [chore] Pin `discord-html-transcripts` to exactly 3.2.0 instead of `^3.2.0`
+- [refactor] Split the large curseforge, modpack, workshop, launcher pack and waitlist services into focused modules (API client, reads, admin, sync, publish, release, files, queue, promotion, ...); no behaviour change
+- [refactor] Type `any` at its source across the server (raw SQL row generics, request bodies and cookies read as `unknown`, typed socket data) and use the shared `AuthRole` and generated `TicketStatus` instead of server copies
+- [chore] Bump tRPC to 11.24 (and `@createrington/api-types` to 0.12.1 to match)
+- [chore] Lint the server, its tests and scripts with type-aware typescript-eslint rules, turn on the `no-unsafe-*` rules outside tests, forbid `console` outside config, and generate the DB and server types before linting in CI
+- [chore] Add unit tests for daily rewards, the service container, admin procedure access, balance adjustments, admin promotions, the stats import, feature flags and the whitelist resync
+
+### @createrington/client (0.2.96 → 0.2.97)
+- [refactor] Move the client to tRPC's TanStack React Query integration (`@trpc/tanstack-react-query`, TanStack Query 5.106): components call `useQuery`/`useMutation` with tRPC query options, and admin and donation mutations now invalidate the affected queries instead of refetching a single query handle, so related lists and stats refresh together
+- [fix] Fix the admin player list staying stale after an inactivity cleanup or resolve-and-remove run
+- [add] Add a Purge action with a confirmation dialog to the admin Parties page that runs the party purge for the selected server and reports how many members were removed or failed
+- [add] Serve a static Steve head at `/assets/skin/steve-head.png` as the default player avatar
+- [refactor] Share one stat card, one set of loading, error and empty states, one spinner, one loading ring, a textarea primitive, and shared Minecraft avatars across the client in place of per-page copies
+- [chore] Lint the client with type-aware typescript-eslint rules
+
 ## v1.78.1 (2026-11-05)
 
 ### @createrington/server (1.78.0 → 1.78.1)
