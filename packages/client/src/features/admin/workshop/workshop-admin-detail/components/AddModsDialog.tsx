@@ -113,7 +113,7 @@ export function AddModsDialog({
       confirmLabel={`Add ${selected.length > 0 ? `${selected.length} ` : ""}as Approved`}
       disabled={selected.length === 0 || noteTooShort}
       loading={addMutation.isPending}
-      contentClassName="max-h-[85vh] max-w-2xl overflow-y-auto sm:max-w-lg"
+      contentClassName="max-h-[85vh] overflow-y-auto sm:max-w-lg"
     >
       {selected.length > 0 && (
         <div className="flex flex-wrap gap-2">
