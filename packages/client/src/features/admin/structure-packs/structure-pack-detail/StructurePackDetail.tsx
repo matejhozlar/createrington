@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import { Loading } from "@/components/loading-spinner";
+import { LoadingState } from "@/components/query-states";
 import { trpc, queryClient } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
@@ -61,9 +61,11 @@ export function StructurePackDetail() {
 
   if (packQuery.isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <Loading size="large" text="Loading pack..." />
-      </div>
+      <LoadingState
+        size="large"
+        text="Loading pack..."
+        className="h-screen flex-none py-0"
+      />
     );
   }
 

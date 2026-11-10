@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Info, Loader2, Search } from "lucide-react";
+import { Info, Search } from "lucide-react";
 import { trpc, type RouterOutput, queryClient } from "@/lib/trpc";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
@@ -9,6 +9,7 @@ import { ClearButton } from "../../components/ClearButton";
 import { ProjectThumb } from "../../components/ProjectThumb";
 import { formatDownloads } from "../../format";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { Spinner } from "@/components/ui/spinner";
 
 type Suggestion = RouterOutput["user"]["workshops"]["mySuggestions"][number];
 type SearchResult = RouterOutput["user"]["workshops"]["searchProjects"][number];
@@ -245,7 +246,7 @@ export function ModSearch({
                           onClick={() => confirmSuggest(result.id)}
                         >
                           {suggesting ? (
-                            <Loader2 className="size-3.5 animate-spin" />
+                            <Spinner className="size-3.5" />
                           ) : (
                             "Suggest"
                           )}

@@ -2,7 +2,7 @@ import { Link, useParams, useSearchParams } from "react-router";
 import { ArrowLeft } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { Badge } from "@/components/ui/badge";
-import { Loading } from "@/components/loading-spinner";
+import { LoadingState } from "@/components/query-states";
 import { NotFound } from "@/pages/not-found";
 import { loaderName } from "../format";
 import { PackStrip } from "../components/PackStrip";
@@ -77,7 +77,11 @@ export function WorkshopSuggest() {
     suggestBanQuery.isLoading
   ) {
     return (
-      <Loading size="large" className="py-32" text="Loading workshop..." />
+      <LoadingState
+        size="large"
+        text="Loading workshop..."
+        className="flex-none px-0 py-32"
+      />
     );
   }
 

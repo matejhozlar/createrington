@@ -3,7 +3,7 @@ import { trpc } from "@/lib/trpc";
 import { PageHeader } from "@/components/page-header";
 import { Paginator } from "@/components/paginator";
 import { NotFound } from "@/pages/not-found";
-import { LoadingScreen } from "@/components/loading-spinner";
+import { LoadingScreen } from "@/components/query-states";
 import { GalleryTile } from "./components/GalleryTile";
 import { GalleryLightbox } from "./components/GalleryLightbox";
 import { GalleryGridSkeleton } from "./components/GalleryGridSkeleton";

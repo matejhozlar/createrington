@@ -1,9 +1,9 @@
-import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ModelChip } from "./ModelChip";
 import { readingColumnClass, type ChatLayout } from "../layout";
 import type { AdminChatModel } from "../types";
+import { Spinner } from "@/components/ui/spinner";
 
 const QUICK_PROMPTS: string[] = [
   "Find a player by Minecraft username",
@@ -57,7 +57,7 @@ export function EmptyState({
           disabled={starting}
           className="min-w-32"
         >
-          {starting && <Loader2 size={14} className="animate-spin" />}
+          {starting && <Spinner className="size-3.5" />}
           Start chat
         </Button>
         <ModelChip

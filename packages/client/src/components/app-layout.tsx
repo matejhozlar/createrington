@@ -5,7 +5,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { Logo } from "@/components/logo";
 import { Footer } from "@/components/footer";
-import { Loading, LoadingScreen } from "@/components/loading-spinner";
+import { LoadingScreen, LoadingState } from "@/components/query-states";
 
 export function AppLayout({ children }: { children?: ReactNode }) {
   const { loading } = useAuth();
@@ -30,13 +30,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
           <Logo />
         </div>
         <div className="flex flex-1 flex-col gap-4">
-          <Suspense
-            fallback={
-              <div className="flex flex-1 items-center justify-center p-10">
-                <Loading mode="inline" size="large" />
-              </div>
-            }
-          >
+          <Suspense fallback={<LoadingState size="large" className="p-10" />}>
             {children ?? <Outlet />}
           </Suspense>
         </div>

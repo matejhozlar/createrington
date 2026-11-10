@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import { Loading } from "@/components/loading-spinner";
+import { LoadingState } from "@/components/query-states";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
@@ -73,9 +73,7 @@ export function ChatHistoryDetail() {
         </div>
 
         {loading && !invalidId ? (
-          <div className="flex items-center justify-center py-10">
-            <Loading mode="inline" size="medium" />
-          </div>
+          <LoadingState className="flex-none py-10" />
         ) : shownError ? (
           <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card py-16 text-center">
             <p className="text-destructive">{shownError}</p>

@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/auth/";
 import { api } from "@/services/api/client";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loading } from "@/components/loading-spinner";
+import { LoadingScreen } from "@/components/query-states";
 import { toast } from "sonner";
 import { ShieldCheck, User, Hash, BadgeCheck } from "lucide-react";
 
@@ -92,7 +92,7 @@ export function Authorize() {
   const showError = !state || status === "error";
 
   if (!showError && (loading || !user || status === "loading")) {
-    return <Loading mode="fullscreen" size="large" text="Loading..." />;
+    return <LoadingScreen progress={false} />;
   }
 
   return (

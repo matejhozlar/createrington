@@ -1,4 +1,4 @@
-import { Loading } from "@/components/loading-spinner";
+import { LoadingState } from "@/components/query-states";
 import { PlayerLabel } from "@/components/player-label";
 import { Button } from "@/components/ui/button";
 import { formatDimension } from "@/lib/minecraft";
@@ -26,7 +26,7 @@ export function PartyMembersPanel({
   );
 
   if (query.isLoading || claimsQuery.isLoading) {
-    return <Loading size="small" />;
+    return <LoadingState size="small" className="flex-none p-0" />;
   }
 
   const members = query.data?.members ?? [];

@@ -1,6 +1,5 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
 import {
   BadgeCheckIcon,
   ChevronsUpDownIcon,
@@ -31,6 +30,7 @@ import {
 } from "@/components/ui/sidebar";
 import { useAuth, type User } from "@/contexts/auth";
 import { NavLink } from "react-router";
+import { Spinner } from "@/components/ui/spinner";
 
 function TriggerSummary({
   avatarUrl,
@@ -229,7 +229,7 @@ export function NavUser({ user }: { user: User }) {
               className="cursor-pointer"
             >
               {loading ? (
-                <Loader2 className="animate-spin" />
+                <Spinner />
               ) : (
                 <LogoutIcon
                   ref={logoutHoverRef}

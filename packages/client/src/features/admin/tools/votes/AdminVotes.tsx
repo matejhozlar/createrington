@@ -1,4 +1,4 @@
-import { Loading } from "@/components/loading-spinner";
+import { LoadingState } from "@/components/query-states";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { formatRelativeDateSafe } from "@/features/admin/format";
@@ -45,7 +45,10 @@ export function AdminVotes() {
         />
 
         {statsQuery.isLoading ? (
-          <Loading size="medium" text="Loading vote totals..." />
+          <LoadingState
+            text="Loading vote totals..."
+            className="flex-none p-0"
+          />
         ) : statsQuery.isError ? (
           <p className="text-sm text-destructive">
             Failed to load the vote totals: {statsQuery.error.message}

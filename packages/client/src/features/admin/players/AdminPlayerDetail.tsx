@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router";
-import { Loading } from "@/components/loading-spinner";
+import { LoadingState } from "@/components/query-states";
 import { Button } from "@/components/ui/button";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { ArrowLeft } from "lucide-react";
@@ -87,9 +87,11 @@ export function AdminPlayerDetail() {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <Loading size="large" text="Loading player data..." />
-      </div>
+      <LoadingState
+        size="large"
+        text="Loading player data..."
+        className="h-screen flex-none py-0"
+      />
     );
   }
 

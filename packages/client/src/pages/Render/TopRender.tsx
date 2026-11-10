@@ -1,5 +1,5 @@
 import { formatStatValue } from "@createrington/shared/minecraft-stats";
-import { LoadingScreen } from "@/components/loading-spinner";
+import { LoadingScreen } from "@/components/query-states";
 import { PodiumCard, type PodiumPlayer } from "./components/PodiumCard";
 import { RenderUnavailable } from "./components/RenderUnavailable";
 import { usePodiumSkins } from "./hooks/use-podium-skins";

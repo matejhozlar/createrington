@@ -34,7 +34,7 @@ import {
 import { useServerData } from "@/contexts/server-data";
 import { CURSEFORGE_MODPACK_URL } from "@/lib/external-urls";
 import { trpc } from "@/lib/trpc";
-import { Loading } from "@/components/loading-spinner";
+import { Spinner } from "@/components/ui/spinner";
 import { SkinApiPromo } from "@/components/skin-api-promo";
 import { useQuery } from "@tanstack/react-query";
 
@@ -115,7 +115,7 @@ export function Home() {
     {
       icon: Clock,
       value: isLoadingPlaytime ? (
-        <Loading />
+        <Spinner className="mx-auto size-10 text-primary" />
       ) : (
         (playtimeData?.totalHours ?? "N/A")
       ),

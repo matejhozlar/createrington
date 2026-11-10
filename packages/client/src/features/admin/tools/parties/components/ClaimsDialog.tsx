@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { colorHex } from "@createrington/shared/team-tag";
 import { ChevronDown, Map as MapIcon, Search } from "lucide-react";
 import { ChoiceField } from "@/components/choice-field";
-import { Loading } from "@/components/loading-spinner";
+import { LoadingState } from "@/components/query-states";
 import { TeamTagPlate } from "@/components/team-tag-plate";
 import { Button } from "@/components/ui/button";
 import {
@@ -185,11 +185,7 @@ function ClaimsBrowser({
   const shownChunks = shown.reduce((sum, block) => sum + block.chunkCount, 0);
 
   if (query.isLoading) {
-    return (
-      <div className="flex flex-1 items-center justify-center">
-        <Loading size="small" text={COPY.loading} />
-      </div>
-    );
+    return <LoadingState size="small" text={COPY.loading} className="p-0" />;
   }
 
   if (query.isError) {

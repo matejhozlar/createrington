@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { formatDate } from "@createrington/shared/format";
-import { LoadingScreen } from "@/components/loading-spinner";
+import { LoadingScreen } from "@/components/query-states";
 import { formatMoney } from "@/lib/format";
 import { RenderTeamTag } from "./components/RenderTeamTag";
 import { RenderUnavailable } from "./components/RenderUnavailable";

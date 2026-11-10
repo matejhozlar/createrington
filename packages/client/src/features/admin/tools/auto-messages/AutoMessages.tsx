@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Loading } from "@/components/loading-spinner";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -226,9 +225,11 @@ export function AutoMessages() {
                       </div>
 
                       {detailQuery.isLoading ? (
-                        <div className="flex items-center justify-center py-8">
-                          <Loading size="small" text="Loading messages..." />
-                        </div>
+                        <LoadingState
+                          size="small"
+                          text="Loading messages..."
+                          className="flex-none py-8"
+                        />
                       ) : (detailQuery.data?.messages.length ?? 0) === 0 ? (
                         <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
                           <MessageSquare className="mr-2 size-4" />

@@ -5,8 +5,8 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Loading } from "@/components/loading-spinner";
-import { playerAvatarUrl } from "@/lib/player-images";
+import { LoadingState } from "@/components/query-states";
+import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import { PackStrip } from "./components/PackStrip";
 import { ProjectThumb } from "./components/ProjectThumb";
 import { QueryErrorState } from "./components/QueryErrorState";
@@ -56,10 +56,10 @@ export function Workshop() {
               Active workshop
             </h2>
             {workshopsQuery.isLoading ? (
-              <Loading
+              <LoadingState
                 size="large"
-                className="py-24"
                 text="Loading workshops..."
+                className="flex-none px-0 py-24"
               />
             ) : workshopsQuery.error?.data?.code === "FORBIDDEN" ? (
               <WorkshopDisabledState />
@@ -140,13 +140,12 @@ function ActiveWorkshopCard({ workshop }: { workshop: WorkshopListItem }) {
                 {summary.participantSample.length > 0 && (
                   <span className="inline-flex pl-1.5">
                     {summary.participantSample.map((player) => (
-                      <img
+                      <MinecraftAvatar
                         key={player.minecraftUuid}
-                        src={playerAvatarUrl(player.minecraftUuid)}
-                        alt={player.minecraftUsername}
-                        width={24}
-                        height={24}
-                        className="-ml-1.5 rounded-xs outline-2 outline-card [image-rendering:pixelated]"
+                        uuid={player.minecraftUuid}
+                        username={player.minecraftUsername}
+                        size={24}
+                        className="-ml-1.5 outline-2 outline-card [image-rendering:pixelated]"
                       />
                     ))}
                   </span>

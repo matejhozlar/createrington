@@ -1,7 +1,77 @@
 import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Loading } from "@/components/loading-spinner";
 import { cn } from "@/lib/utils";
+
+const RING_SIZES = {
+  small: "size-6 border-2",
+  medium: "size-10 border-3",
+  large: "size-16 border-4",
+};
+
+type RingSize = keyof typeof RING_SIZES;
+
+function LoadingRing({
+  size,
+  text,
+  subtext,
+  progress,
+  className,
+}: {
+  size: RingSize;
+  text: string;
+  subtext?: string;
+  progress?: boolean;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn("flex flex-col items-center gap-4", className)}
+      role="status"
+      aria-live="polite"
+      aria-label={text}
+    >
+      <div
+        className={cn(
+          "animate-spin rounded-full border-primary border-t-transparent",
+          RING_SIZES[size],
+        )}
+      />
+      <div className="text-center">
+        <div className="font-medium text-foreground">{text}</div>
+        {subtext && (
+          <div className="mt-1 text-sm text-muted-foreground">{subtext}</div>
+        )}
+      </div>
+      {progress && (
+        <div className="h-1 w-48 overflow-hidden rounded-full bg-muted">
+          <div className="h-full animate-pulse bg-primary" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function LoadingScreen({
+  text = "Loading...",
+  subtext,
+  progress = true,
+}: {
+  text?: string;
+  subtext?: string;
+  progress?: boolean;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
+      <LoadingRing
+        size="large"
+        text={text}
+        subtext={subtext}
+        progress={progress}
+        className="p-8"
+      />
+    </div>
+  );
+}
 
 function StateFrame({
   className,
@@ -23,15 +93,17 @@ function StateFrame({
 }
 
 export function LoadingState({
-  text,
+  text = "Loading...",
+  size = "medium",
   className,
 }: {
-  text: string;
+  text?: string;
+  size?: RingSize;
   className?: string;
 }) {
   return (
     <StateFrame className={className}>
-      <Loading size="medium" text={text} />
+      <LoadingRing size={size} text={text} />
     </StateFrame>
   );
 }
