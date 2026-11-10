@@ -133,8 +133,7 @@ export function AdminWorkshop() {
       skeleton: () => <BadgeCellSkeleton />,
       render: (workshop) => (
         <Badge
-          variant="outline"
-          className={WORKSHOP_STATUS_STYLES[workshop.status]?.className}
+          tone={WORKSHOP_STATUS_STYLES[workshop.status]?.tone ?? "neutral"}
         >
           {WORKSHOP_STATUS_STYLES[workshop.status]?.label ?? workshop.status}
         </Badge>

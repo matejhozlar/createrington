@@ -27,20 +27,49 @@ const badgeVariants = cva(
   },
 );
 
+const badgeToneVariants = cva("", {
+  variants: {
+    tone: {
+      primary: "border-primary/20 bg-primary/10 text-primary",
+      success: "border-tone-success/20 bg-tone-success/10 text-tone-success",
+      warning: "border-tone-warning/20 bg-tone-warning/10 text-tone-warning",
+      info: "border-tone-info/20 bg-tone-info/10 text-tone-info",
+      danger: "border-destructive/20 bg-destructive/10 text-destructive",
+      neutral: "border-tone-neutral/20 bg-tone-neutral/10 text-tone-neutral",
+      violet: "border-violet-500/20 bg-violet-500/10 text-violet-400",
+      orange: "border-orange-500/20 bg-orange-500/10 text-orange-400",
+      rose: "border-rose-500/20 bg-rose-500/10 text-rose-400",
+      teal: "border-teal-500/20 bg-teal-500/10 text-teal-400",
+      fuchsia: "border-fuchsia-500/20 bg-fuchsia-500/10 text-fuchsia-400",
+    },
+  },
+});
+
+type BadgeTone = NonNullable<VariantProps<typeof badgeToneVariants>["tone"]>;
+
 function Badge({
   className,
   variant = "default",
+  tone,
   asChild = false,
   ...props
 }: React.ComponentProps<"span"> &
-  VariantProps<typeof badgeVariants> & { asChild?: boolean }) {
+  VariantProps<typeof badgeVariants> & {
+    tone?: BadgeTone;
+    asChild?: boolean;
+  }) {
   const Comp = asChild ? Slot : "span";
 
   return (
     <Comp
       data-slot="badge"
-      data-variant={variant}
-      className={cn(badgeVariants({ variant }), className)}
+      data-variant={tone ? undefined : variant}
+      data-tone={tone}
+      className={cn(
+        tone ? badgeVariants({ variant: null }) : badgeVariants({ variant }),
+        tone && badgeToneVariants({ tone }),
+        className,
+      )}
       {...props}
     />
   );
@@ -95,4 +124,4 @@ function IconBadge({
   );
 }
 
-export { Badge, badgeVariants, IconBadge, iconBadgeVariants };
+export { Badge, badgeVariants, type BadgeTone, IconBadge, iconBadgeVariants };

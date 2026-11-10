@@ -1,6 +1,5 @@
 import { useMemo, useRef, useState } from "react";
 import { FileUp, Package, RefreshCw, Search } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { trpc, queryClient } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
@@ -10,7 +9,7 @@ import {
 } from "@createrington/shared/workshop";
 import { Paginator } from "@/components/paginator";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { Badge } from "@/components/ui/badge";
+import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -61,17 +60,17 @@ const ORIGIN_LABELS: Record<PackMod["origin"], string> = {
 const PUBLISH_STATES = {
   live: {
     label: "Live",
-    className: "border-green-500/20 bg-green-500/10 text-green-400",
+    tone: "success",
   },
   dropped: {
     label: "Dropped",
-    className: "border-amber-500/20 bg-amber-500/10 text-amber-400",
+    tone: "warning",
   },
   awaiting: {
     label: "Awaiting",
-    className: "border-zinc-500/20 bg-zinc-500/10 text-zinc-400",
+    tone: "neutral",
   },
-};
+} satisfies Record<string, { label: string; tone: BadgeTone }>;
 
 function publishState(row: PackMod) {
   if (row.liveAt) {
@@ -340,11 +339,7 @@ export function InPackTab({
       render: (row) => {
         const state = publishState(row);
         return (
-          <Badge
-            variant="outline"
-            className={cn("text-xs", state.className)}
-            title={state.title}
-          >
+          <Badge tone={state.tone} className="text-xs" title={state.title}>
             {state.label}
           </Badge>
         );

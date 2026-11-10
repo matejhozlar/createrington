@@ -16,14 +16,13 @@ import {
   Undo2,
   type LucideIcon,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import {
   formatFullDateSafe,
   formatRelativeDate,
 } from "@/features/admin/format";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { Badge } from "@/components/ui/badge";
+import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
@@ -64,39 +63,39 @@ const EVENTS_PER_PAGE = 25;
 
 const EVENT_STYLES: Record<
   WorkshopModEventType,
-  { icon: LucideIcon; className: string }
+  { icon: LucideIcon; tone: BadgeTone }
 > = {
   suggested: {
     icon: Lightbulb,
-    className: "border-primary/20 bg-primary/10 text-primary",
+    tone: "primary",
   },
   withdrawn: {
     icon: Undo2,
-    className: "border-zinc-500/20 bg-zinc-500/10 text-zinc-400",
+    tone: "neutral",
   },
   approved: {
     icon: Check,
-    className: "border-sky-500/20 bg-sky-500/10 text-sky-400",
+    tone: "info",
   },
   testing_started: {
     icon: FlaskConical,
-    className: "border-amber-500/20 bg-amber-500/10 text-amber-400",
+    tone: "warning",
   },
   sent_back: {
     icon: RotateCcw,
-    className: "border-orange-500/20 bg-orange-500/10 text-orange-400",
+    tone: "orange",
   },
   rejected: {
     icon: Ban,
-    className: "border-red-500/20 bg-red-500/10 text-red-400",
+    tone: "danger",
   },
   shipped: {
     icon: PackageCheck,
-    className: "border-green-500/20 bg-green-500/10 text-green-400",
+    tone: "success",
   },
   dropped: {
     icon: PackageMinus,
-    className: "border-rose-500/20 bg-rose-500/10 text-rose-400",
+    tone: "rose",
   },
 };
 
@@ -136,9 +135,9 @@ function eventContext(event: WorkshopEvent): string | null {
 }
 
 function EventBadge({ type }: { type: WorkshopModEventType }) {
-  const { icon: Icon, className } = EVENT_STYLES[type];
+  const { icon: Icon, tone } = EVENT_STYLES[type];
   return (
-    <Badge variant="outline" className={cn("gap-1 text-xs", className)}>
+    <Badge tone={tone} className="gap-1 text-xs">
       <Icon className="size-3" />
       {WORKSHOP_MOD_EVENT_TYPE_LABELS[type]}
     </Badge>

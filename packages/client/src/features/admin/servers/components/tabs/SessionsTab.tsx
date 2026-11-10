@@ -62,9 +62,7 @@ const COLUMNS: DataTableColumn<ServerSession>[] = [
       session.sessionEnd ? (
         <CellDate value={session.sessionEnd} />
       ) : (
-        <Badge variant="default" className="bg-green-500/20 text-green-500">
-          Active
-        </Badge>
+        <Badge tone="success">Active</Badge>
       ),
   },
   {

@@ -18,7 +18,7 @@ import { SocialLinks } from "../../components/SocialLinks";
 import {
   MOD_STATUS_STYLES,
   liveTitle,
-  PROJECT_KIND_BADGE_CLASS,
+  COMPACT_BADGE_CLASS,
   projectCategories,
   projectKindLabel,
   REJECT_REASON_LABELS,
@@ -174,7 +174,7 @@ function RaceRow({ item, onOpen, onUpvote }: RaceItemProps) {
             {mod.project.name}
           </span>
           {kind && (
-            <Badge variant="outline" className={PROJECT_KIND_BADGE_CLASS}>
+            <Badge tone="fuchsia" className={COMPACT_BADGE_CLASS}>
               {kind}
             </Badge>
           )}
@@ -233,7 +233,7 @@ function RaceCard({ item, onOpen, onUpvote }: RaceItemProps) {
               {mod.project.name}
             </span>
             {kind && (
-              <Badge variant="outline" className={PROJECT_KIND_BADGE_CLASS}>
+              <Badge tone="fuchsia" className={COMPACT_BADGE_CLASS}>
                 {kind}
               </Badge>
             )}
@@ -317,11 +317,8 @@ function HeartOrBadge({
   if (mod.status === "rejected") {
     return (
       <Badge
-        variant="outline"
-        className={cn(
-          "relative shrink-0",
-          MOD_STATUS_STYLES.rejected.className,
-        )}
+        tone={MOD_STATUS_STYLES.rejected.tone}
+        className="relative shrink-0"
       >
         {mod.rejectReason
           ? REJECT_REASON_LABELS[mod.rejectReason]
@@ -333,8 +330,8 @@ function HeartOrBadge({
     const style = MOD_STATUS_STYLES[mod.status];
     return (
       <Badge
-        variant="outline"
-        className={cn("relative shrink-0", style.className)}
+        tone={style.tone}
+        className="relative shrink-0"
         title={liveTitle(mod)}
       >
         {style.label}

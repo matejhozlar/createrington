@@ -26,6 +26,7 @@ import {
 } from "@/components/data-table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { PresenceBadge } from "@/components/presence-badge";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -237,17 +238,7 @@ export function AdminPlayers() {
       skeleton: () => <BadgeCellSkeleton />,
       render: (player) => {
         const isOnline = isPlayerOnline(player.minecraftUuid);
-        return (
-          <Badge
-            variant={isOnline ? "default" : "outline"}
-            className={cn(
-              isOnline &&
-                "bg-green-500/20 text-green-500 hover:bg-green-500/30",
-            )}
-          >
-            {isOnline ? "Online" : "Offline"}
-          </Badge>
-        );
+        return <PresenceBadge status={isOnline ? "online" : "offline"} />;
       },
     },
     {

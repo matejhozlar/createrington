@@ -207,7 +207,7 @@ export function AdminStructurePacks() {
           <div className="flex min-w-0 items-center gap-2">
             <CellText value={pack.name} className="font-medium" />
             {pack.isActive && (
-              <Badge className="shrink-0 bg-green-500/20 text-green-500 hover:bg-green-500/30">
+              <Badge tone="success" className="shrink-0">
                 Active
               </Badge>
             )}

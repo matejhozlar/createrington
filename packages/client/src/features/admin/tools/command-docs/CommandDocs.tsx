@@ -68,10 +68,7 @@ function getDisplayCategory(cmd: CommandData): string {
 function PermissionBadge({ command }: { command: CommandData }) {
   if (command.permissions?.requireOwner) {
     return (
-      <Badge
-        variant="outline"
-        className="gap-1 border-amber-500/30 text-amber-400"
-      >
+      <Badge tone="warning">
         <Crown className="size-3" />
         Owner
       </Badge>
@@ -79,7 +76,7 @@ function PermissionBadge({ command }: { command: CommandData }) {
   }
   if (command.permissions?.requireAdmin) {
     return (
-      <Badge variant="outline" className="gap-1 border-red-500/30 text-red-400">
+      <Badge tone="danger">
         <ShieldAlert className="size-3" />
         Admin
       </Badge>

@@ -8,7 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Paginator } from "@/components/paginator";
-import { Badge } from "@/components/ui/badge";
+import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -33,7 +33,6 @@ import {
   Repeat,
   CalendarX,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
@@ -48,11 +47,11 @@ type Donation = RouterOutput["owner"]["donations"]["list"]["donations"][number];
 type DonationStatus = "pending" | "completed" | "refunded" | "cancelled";
 type DonationType = "one_time" | "monthly";
 
-const STATUS_STYLES: Record<string, string> = {
-  completed: "bg-green-500/10 text-green-500 border-green-500/20",
-  pending: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
-  refunded: "bg-blue-500/10 text-blue-500 border-blue-500/20",
-  cancelled: "bg-muted text-muted-foreground border-border",
+const STATUS_TONES: Record<string, BadgeTone> = {
+  completed: "success",
+  pending: "warning",
+  refunded: "info",
+  cancelled: "neutral",
 };
 
 const TYPE_LABELS: Record<string, string> = {
@@ -111,14 +110,12 @@ const DONATION_COLUMNS: DataTableColumn<Donation>[] = [
     width: 120,
     skeleton: () => <BadgeCellSkeleton />,
     render: (d) => (
-      <span
-        className={cn(
-          "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium capitalize",
-          STATUS_STYLES[d.status] ?? STATUS_STYLES.pending,
-        )}
+      <Badge
+        tone={STATUS_TONES[d.status] ?? STATUS_TONES.pending}
+        className="capitalize"
       >
         {d.status}
-      </span>
+      </Badge>
     ),
   },
   {

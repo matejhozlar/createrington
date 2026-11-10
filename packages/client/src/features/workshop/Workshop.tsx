@@ -1,7 +1,6 @@
 import { Link } from "react-router";
 import { ChevronRight, Heart } from "lucide-react";
 import { trpc, type RouterOutput } from "@/lib/trpc";
-import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -264,14 +263,9 @@ function EarlierWorkshops({ workshops }: { workshops: WorkshopListItem[] }) {
           >
             <Card className="flex-row items-center gap-4 px-6 py-[18px] transition-colors hover:border-primary/40">
               <span className="text-[15px] font-semibold">{workshop.name}</span>
-              <span
-                className={cn(
-                  "rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap",
-                  WORKSHOP_STATUS_STYLES.closed.className,
-                )}
-              >
+              <Badge tone={WORKSHOP_STATUS_STYLES.closed.tone}>
                 {WORKSHOP_STATUS_STYLES.closed.label}
-              </span>
+              </Badge>
               <span className="flex-1" />
               <span className="text-[13px] text-muted-foreground">
                 {workshop.gameVersion} · {loaderName(workshop.modLoaderType)} ·

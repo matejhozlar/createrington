@@ -81,7 +81,7 @@ export function RotationHistory() {
       skeleton: () => <BadgeCellSkeleton />,
       render: (rotation) =>
         rotation.success ? (
-          <Badge className="bg-green-500/20 text-green-500 hover:bg-green-500/30">
+          <Badge tone="success">
             <CheckCircle2 className="mr-1 size-3" />
             OK
           </Badge>

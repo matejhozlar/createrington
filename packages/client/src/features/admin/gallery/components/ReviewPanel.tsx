@@ -19,7 +19,7 @@ import { Input } from "@/components/ui/input";
 import {
   formatBytes,
   formatDimensions,
-  GALLERY_STATUS_STYLES,
+  GALLERY_STATUS,
   type GalleryCredit,
   type GallerySubmissionDetail,
 } from "../format";
@@ -120,11 +120,8 @@ export function ReviewPanel({
             <CardTitle>
               Reviewing {position} of {total}
             </CardTitle>
-            <Badge
-              variant="outline"
-              className={GALLERY_STATUS_STYLES.pending.className}
-            >
-              {GALLERY_STATUS_STYLES.pending.label}
+            <Badge tone={GALLERY_STATUS.pending.tone}>
+              {GALLERY_STATUS.pending.label}
             </Badge>
           </div>
           <div className="flex items-center gap-1">

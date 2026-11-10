@@ -24,10 +24,9 @@ import {
   LoadingState,
 } from "@/components/query-states";
 import {
-  DISABLED_BADGE_CLASS,
+  COMPACT_BADGE_CLASS,
   DISABLED_LABEL,
   formatDate,
-  PROJECT_KIND_BADGE_CLASS,
   projectKindLabel,
 } from "@/features/workshop/format";
 import { useQuery } from "@tanstack/react-query";
@@ -41,24 +40,21 @@ const CHANGE_GROUPS = [
     key: "added" as const,
     label: "Added",
     icon: Plus,
-    className: "border-green-500/20 bg-green-500/10 text-green-400",
+    tone: "success" as const,
   },
   {
     key: "updated" as const,
     label: "Updated",
     icon: RefreshCw,
-    className: "border-sky-500/20 bg-sky-500/10 text-sky-400",
+    tone: "info" as const,
   },
   {
     key: "removed" as const,
     label: "Removed",
     icon: Minus,
-    className: "border-red-500/20 bg-red-500/10 text-red-400",
+    tone: "danger" as const,
   },
 ];
-
-const ANNOUNCED_CLASS = "border-green-500/20 bg-green-500/10 text-green-400";
-const ANNOUNCING_CLASS = "border-amber-500/20 bg-amber-500/10 text-amber-400";
 
 function AnnouncementBadge({
   announcement,
@@ -69,11 +65,8 @@ function AnnouncementBadge({
   const complete = announcement.sent === announcement.parts;
   return (
     <Badge
-      variant="outline"
-      className={cn(
-        "gap-1 text-xs",
-        complete ? ANNOUNCED_CLASS : ANNOUNCING_CLASS,
-      )}
+      tone={complete ? "success" : "warning"}
+      className="gap-1 text-xs"
       title={
         announcement.presets.map((preset) => preset.name).join(", ") ||
         undefined
@@ -124,12 +117,12 @@ function ChangeRow({
           {entry.projectName}
         </span>
         {kind && (
-          <Badge variant="outline" className={PROJECT_KIND_BADGE_CLASS}>
+          <Badge tone="fuchsia" className={COMPACT_BADGE_CLASS}>
             {kind}
           </Badge>
         )}
         {!entry.required && (
-          <Badge variant="outline" className={DISABLED_BADGE_CLASS}>
+          <Badge tone="neutral" className={COMPACT_BADGE_CLASS}>
             {DISABLED_LABEL}
           </Badge>
         )}
@@ -199,10 +192,7 @@ function ReleaseDiff({ releaseId }: { releaseId: number }) {
       {groups.map((group) => (
         <div key={group.key} className="py-2">
           <div className="flex items-center gap-2 px-4 py-1.5">
-            <Badge
-              variant="outline"
-              className={cn("gap-1 text-xs", group.className)}
-            >
+            <Badge tone={group.tone} className="gap-1 text-xs">
               <group.icon className="size-3" />
               {group.label} {diff[group.key].length}
             </Badge>

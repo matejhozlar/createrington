@@ -1,4 +1,3 @@
-import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import {
   Popover,
@@ -28,13 +27,8 @@ export function DependencyCell({ mod }: { mod: AdminWorkshopMod }) {
       <PopoverTrigger asChild>
         <button type="button" className="cursor-pointer">
           <Badge
-            variant="outline"
-            className={cn(
-              "text-xs transition-colors hover:brightness-125",
-              uncovered.length > 0
-                ? "border-amber-500/20 bg-amber-500/10 text-amber-400"
-                : "border-zinc-500/20 bg-zinc-500/10 text-zinc-400",
-            )}
+            tone={uncovered.length > 0 ? "warning" : "neutral"}
+            className="text-xs transition-colors hover:brightness-125"
           >
             {uncovered.length > 0
               ? `+${uncovered.length}`
@@ -74,11 +68,11 @@ export function DependencyCell({ mod }: { mod: AdminWorkshopMod }) {
                     )}
                   </div>
                   <Badge
-                    variant="outline"
-                    className={cn(
-                      "shrink-0 text-xs",
-                      DEPENDENCY_COVERAGE_STYLES[dep.coverage]?.className,
-                    )}
+                    tone={
+                      DEPENDENCY_COVERAGE_STYLES[dep.coverage]?.tone ??
+                      "neutral"
+                    }
+                    className="shrink-0 text-xs"
                   >
                     {DEPENDENCY_COVERAGE_STYLES[dep.coverage]?.label ??
                       dep.coverage}

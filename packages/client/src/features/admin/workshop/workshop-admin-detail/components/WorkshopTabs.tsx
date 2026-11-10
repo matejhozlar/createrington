@@ -1,6 +1,6 @@
 import { useCallback, useLayoutEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
+import { Badge, type BadgeTone } from "@/components/ui/badge";
 import {
   MOD_TAB_IDS,
   STAGE_CONFIG,
@@ -16,7 +16,7 @@ const TOP_TAB_CONFIG: Record<
   {
     label: string;
     badgeTab?: WorkshopTabId;
-    badgeClassName?: string;
+    badgeTone?: BadgeTone;
   }
 > = {
   mods: { label: "Mods", badgeTab: "review" },
@@ -24,7 +24,7 @@ const TOP_TAB_CONFIG: Record<
   issues: {
     label: "Issues",
     badgeTab: "issues",
-    badgeClassName: "border-amber-500/20 bg-amber-500/10 text-amber-400",
+    badgeTone: "warning",
   },
   activity: { label: "Activity" },
   releases: { label: "Releases" },
@@ -139,7 +139,8 @@ export function WorkshopTabs({
                 {count !== undefined && count > 0 && (
                   <Badge
                     variant="outline"
-                    className={cn("text-xs", tab.badgeClassName)}
+                    tone={tab.badgeTone}
+                    className="text-xs"
                   >
                     {count.toLocaleString()}
                   </Badge>
