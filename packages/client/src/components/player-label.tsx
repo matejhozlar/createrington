@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Link } from "react-router";
-import { Loader2, UserSearch } from "lucide-react";
+import { UserSearch } from "lucide-react";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import { useAuth } from "@/contexts/auth";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { useQuery } from "@tanstack/react-query";
+import { Spinner } from "@/components/ui/spinner";
 
 interface PlayerLabelProps {
   uuid?: string | null;
@@ -136,7 +137,7 @@ function UnresolvedUuid({ uuid }: { uuid: string }) {
     >
       <span>{uuid}</span>
       {isLoading ? (
-        <Loader2 className="size-3.5 shrink-0 animate-spin" />
+        <Spinner className="size-3.5 shrink-0" />
       ) : (
         <UserSearch className="size-3.5 shrink-0 opacity-70 transition-opacity group-hover/resolve:opacity-100" />
       )}

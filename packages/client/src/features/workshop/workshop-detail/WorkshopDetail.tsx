@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loading } from "@/components/loading-spinner";
+import { LoadingState } from "@/components/query-states";
 import { NotFound } from "@/pages/not-found";
 import { loaderName, projectCategories } from "../format";
 import { PAGE_SIZE, WORDMARK_IMAGE } from "../constants";
@@ -291,7 +291,11 @@ export function WorkshopDetail() {
 
   if (workshopQuery.isLoading || !workshopQuery.data) {
     return (
-      <Loading size="large" className="py-32" text="Loading workshop..." />
+      <LoadingState
+        size="large"
+        text="Loading workshop..."
+        className="flex-none px-0 py-32"
+      />
     );
   }
 

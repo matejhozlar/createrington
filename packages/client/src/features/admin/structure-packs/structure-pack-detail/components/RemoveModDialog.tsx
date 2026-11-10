@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { AlertTriangle, CheckCircle2, Loader2, Trash2 } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -16,6 +16,7 @@ import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { trpc, queryClient } from "@/lib/trpc";
 import type { RemoveTarget } from "../types";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { Spinner } from "@/components/ui/spinner";
 
 interface PackMod {
   id: number;
@@ -158,7 +159,7 @@ export function RemoveModDialog({
 
           {checkRemoveDepsQuery.isLoading && (
             <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
-              <Loader2 className="mr-2 size-4 animate-spin" />
+              <Spinner className="mr-2 size-4" />
               Checking dependencies...
             </div>
           )}

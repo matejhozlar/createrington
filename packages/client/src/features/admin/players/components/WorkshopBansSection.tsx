@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Clock, Globe, MessageSquareOff } from "lucide-react";
-import { Loading } from "@/components/loading-spinner";
+import { LoadingState } from "@/components/query-states";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { IssueWorkshopBanModal } from "./modals/IssueWorkshopBanModal";
 import { LiftWorkshopBanModal } from "./modals/LiftWorkshopBanModal";
@@ -56,7 +56,10 @@ export function WorkshopBansSection({
       </div>
 
       {bans.isLoading ? (
-        <Loading className="py-4" text="Loading suggestion blocks..." />
+        <LoadingState
+          text="Loading suggestion blocks..."
+          className="flex-none px-0 py-4"
+        />
       ) : bans.error ? (
         <p className="py-4 text-sm text-destructive">
           Could not load suggestion blocks: {bans.error.message}

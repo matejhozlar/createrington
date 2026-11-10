@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 import { UserMinus } from "lucide-react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { Loading } from "@/components/loading-spinner";
+import { LoadingState } from "@/components/query-states";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -176,7 +176,10 @@ export function AdminParties() {
         />
 
         {statsQuery.isLoading ? (
-          <Loading size="medium" text="Loading party totals..." />
+          <LoadingState
+            text="Loading party totals..."
+            className="flex-none p-0"
+          />
         ) : statsQuery.data ? (
           <PartiesStatsCards
             stats={statsQuery.data}

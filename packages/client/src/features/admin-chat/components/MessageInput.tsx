@@ -1,10 +1,11 @@
 import { useEffect, useRef } from "react";
-import { Loader2, Send } from "lucide-react";
+import { Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { MentionMenu } from "./MentionMenu";
 import { useMentions } from "../hooks/use-mentions";
 import { readingColumnClass, type ChatLayout } from "../layout";
+import { Spinner } from "@/components/ui/spinner";
 
 interface MessageInputProps {
   value: string;
@@ -120,11 +121,7 @@ export function MessageInput({
           aria-label="Send message"
           className="mb-1"
         >
-          {sending ? (
-            <Loader2 size={14} className="animate-spin" />
-          ) : (
-            <Send size={14} />
-          )}
+          {sending ? <Spinner className="size-3.5" /> : <Send size={14} />}
         </Button>
       </div>
     </div>

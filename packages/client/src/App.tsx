@@ -16,7 +16,7 @@ import { ErrorBoundary } from "./components/error-boundary";
 import { ToastProvider } from "./components/ui/toast";
 import { AppLayout } from "./components/app-layout";
 import { SidebarProvider } from "./components/ui/sidebar";
-import { LoadingScreen } from "./components/loading-spinner";
+import { LoadingScreen } from "@/components/query-states";
 import { AdminPlayerProvider } from "./contexts/admin";
 
 // Lazy-loaded routes are code-split. Vite creates a chunk per lazy() call, so

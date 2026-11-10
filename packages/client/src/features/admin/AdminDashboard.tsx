@@ -1,7 +1,6 @@
 import { useNavigate } from "react-router";
 import { useAuth } from "@/contexts/auth";
 import { trpc } from "@/lib/trpc";
-import { Loading } from "@/components/loading-spinner";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import { LoadingState } from "@/components/query-states";
 import { StatCard } from "@/components/stat-card";
@@ -294,7 +293,11 @@ export function AdminDashboard() {
             </CardHeader>
             <CardContent>
               {recentLogsQuery.isLoading ? (
-                <Loading size="small" text="Loading activity..." />
+                <LoadingState
+                  size="small"
+                  text="Loading activity..."
+                  className="p-0"
+                />
               ) : recentLogs.length === 0 ? (
                 <p className="py-4 text-center text-sm text-muted-foreground">
                   No recent activity
@@ -344,7 +347,11 @@ export function AdminDashboard() {
             </CardHeader>
             <CardContent>
               {commandStatsQuery.isLoading ? (
-                <Loading size="small" text="Loading stats..." />
+                <LoadingState
+                  size="small"
+                  text="Loading stats..."
+                  className="p-0"
+                />
               ) : !commandStatsQuery.data?.topCommands.length ? (
                 <p className="py-4 text-center text-sm text-muted-foreground">
                   No command usage yet

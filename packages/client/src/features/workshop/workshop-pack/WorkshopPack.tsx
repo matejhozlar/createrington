@@ -12,7 +12,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loading } from "@/components/loading-spinner";
 import { LoadingState } from "@/components/query-states";
 import { NotFound } from "@/pages/not-found";
 import { CurseForgeIcon } from "@/components/icons/curseforge";
@@ -96,7 +95,11 @@ export function WorkshopPack() {
 
   if (workshopQuery.isLoading || !workshopQuery.data) {
     return (
-      <Loading size="large" className="py-32" text="Loading the pack..." />
+      <LoadingState
+        size="large"
+        text="Loading the pack..."
+        className="flex-none px-0 py-32"
+      />
     );
   }
 

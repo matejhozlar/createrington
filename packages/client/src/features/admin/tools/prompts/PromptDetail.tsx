@@ -5,7 +5,7 @@ import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MessageSquare, Lock, RefreshCw, Trash2 } from "lucide-react";
-import { playerAvatarUrl } from "@/lib/player-images";
+import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { describeEntryRules } from "./format";
@@ -192,18 +192,12 @@ export function PromptDetail() {
                 key={group.discordId}
                 className="flex gap-3 rounded-lg border border-border/60 bg-card p-3"
               >
-                {group.minecraftUuid ? (
-                  <img
-                    src={playerAvatarUrl(group.minecraftUuid)}
-                    alt={group.minecraftUsername ?? "player"}
-                    className="size-10 shrink-0 rounded bg-muted object-cover"
-                    loading="lazy"
-                  />
-                ) : (
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded bg-muted text-xs font-medium text-muted-foreground">
-                    ?
-                  </div>
-                )}
+                <MinecraftAvatar
+                  uuid={group.minecraftUuid ?? undefined}
+                  username={group.minecraftUsername ?? "?"}
+                  size={40}
+                  className="shrink-0 rounded"
+                />
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
                     <div className="flex items-baseline gap-2">

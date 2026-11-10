@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { Users, X } from "lucide-react";
 import { playerAvatarUrl } from "@/lib/player-images";
 import { usePlayerData } from "@/contexts/player-data";
@@ -9,6 +9,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { Avatar } from "./avatar";
 import { useRelativeTick } from "./hooks";
 import { formatCompactDuration } from "@createrington/shared/format";
 
@@ -31,16 +32,11 @@ function PlayerRow({
   /** True when the sidebar is in icon-collapsed mode */
   isCollapsed: boolean;
 }) {
-  const avatarUrl = playerAvatarUrl(uuid);
-  const [broken, setBroken] = useState(false);
-
   const start =
     sessionStart instanceof Date
       ? sessionStart.getTime()
       : new Date(sessionStart).getTime();
   const sessionMs = now - start;
-
-  const initials = username.charAt(0).toUpperCase();
 
   return (
     <div
@@ -58,21 +54,8 @@ function PlayerRow({
        */}
       <Tooltip>
         <TooltipTrigger asChild>
-          <div className="relative shrink-0">
-            {!broken ? (
-              <img
-                src={avatarUrl}
-                alt={username}
-                className="size-9 rounded-full object-cover ring-2 ring-sidebar ring-offset-1 ring-offset-background"
-                onError={() => setBroken(true)}
-              />
-            ) : (
-              <div className="flex size-9 items-center justify-center rounded-full bg-gradient-to-br from-chart-2 to-primary text-xs font-semibold text-white ring-2 ring-sidebar ring-offset-1 ring-offset-background">
-                {initials}
-              </div>
-            )}
-            {/* Always-green online dot: every player in this list is, by definition, online */}
-            <span className="absolute -bottom-0.5 -right-0.5 size-3 rounded-full border-2 border-background bg-green-500" />
+          <div className="shrink-0">
+            <Avatar url={playerAvatarUrl(uuid)} name={username} isOnline />
           </div>
         </TooltipTrigger>
         <TooltipContent side="right" align="center" hidden={!isCollapsed}>

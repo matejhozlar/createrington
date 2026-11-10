@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams } from "react-router";
-import { Loading } from "@/components/loading-spinner";
+import { LoadingState } from "@/components/query-states";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { trpc } from "@/lib/trpc";
 import { useServerData } from "@/contexts/server-data";
@@ -34,9 +34,11 @@ export function AdminServerDetail() {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <Loading size="large" text="Loading server data..." />
-      </div>
+      <LoadingState
+        size="large"
+        text="Loading server data..."
+        className="h-screen flex-none py-0"
+      />
     );
   }
 

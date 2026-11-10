@@ -1,6 +1,6 @@
 import type React from "react";
 import { useAuth } from "@/contexts/auth/";
-import { Loading } from "./loading-spinner";
+import { LoadingScreen } from "@/components/query-states";
 import { NotFound } from "@/pages/not-found";
 import { trpc } from "@/lib/trpc";
 import { useQuery } from "@tanstack/react-query";
@@ -24,7 +24,7 @@ export function OwnerRoute({ children }: OwnerRouteProps) {
   );
 
   if (authLoading || (user && accountQuery.isLoading)) {
-    return <Loading mode="fullscreen" size="large" text="Loading..." />;
+    return <LoadingScreen progress={false} />;
   }
 
   if (!user || !accountQuery.data?.isOwner) {

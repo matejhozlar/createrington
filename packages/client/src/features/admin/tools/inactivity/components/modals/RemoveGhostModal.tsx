@@ -1,9 +1,10 @@
 import { useEffect } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { CheckCircle2, Loader2, XCircle } from "lucide-react";
+import { CheckCircle2, XCircle } from "lucide-react";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { useMutation } from "@tanstack/react-query";
+import { Spinner } from "@/components/ui/spinner";
 
 type Ghost =
   RouterOutput["admin"]["inactivity"]["ghosts"]["list"]["items"][number];
@@ -91,7 +92,7 @@ export function RemoveGhostModal({
     >
       {verifyGhost.isPending ? (
         <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/50 p-3 text-sm">
-          <Loader2 className="size-4 shrink-0 animate-spin text-muted-foreground" />
+          <Spinner className="size-4 shrink-0 text-muted-foreground" />
           <span className="text-muted-foreground">
             Checking Discord membership...
           </span>

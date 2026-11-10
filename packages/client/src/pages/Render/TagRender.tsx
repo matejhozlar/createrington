@@ -1,4 +1,4 @@
-import { LoadingScreen } from "@/components/loading-spinner";
+import { LoadingScreen } from "@/components/query-states";
 import { PLATE_STRIP_HEIGHT } from "@/features/team-tag/plate";
 import { RenderTeamTag } from "./components/RenderTeamTag";
 import { RenderUnavailable } from "./components/RenderUnavailable";
