@@ -5,6 +5,7 @@ import { useToastActions } from "@/hooks/use-toast";
 import { trpc, queryClient } from "@/lib/trpc";
 import { AdminActionModal } from "./AdminActionModal";
 import { useMutation } from "@tanstack/react-query";
+import { Textarea } from "@/components/ui/textarea";
 
 interface RemoveStrikeModalProps {
   open: boolean;
@@ -59,13 +60,12 @@ export function RemoveStrikeModal({
     >
       <Field>
         <FieldLabel htmlFor="remove-strike-reason">Reason</FieldLabel>
-        <textarea
+        <Textarea
           id="remove-strike-reason"
           placeholder="Explain why this strike is being removed..."
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           maxLength={ADMIN_REASON_MAX_LENGTH}
-          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           rows={4}
         />
       </Field>

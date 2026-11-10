@@ -14,6 +14,7 @@ import { useToastActions } from "@/hooks/use-toast";
 import { trpc, queryClient } from "@/lib/trpc";
 import { AdminActionModal } from "./AdminActionModal";
 import { useMutation } from "@tanstack/react-query";
+import { Textarea } from "@/components/ui/textarea";
 
 interface IssueStrikeModalProps {
   open: boolean;
@@ -112,13 +113,12 @@ export function IssueStrikeModal({
 
       <Field>
         <FieldLabel htmlFor="strike-description">Description</FieldLabel>
-        <textarea
+        <Textarea
           id="strike-description"
           placeholder="Describe the violation..."
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           maxLength={STRIKE_DESCRIPTION_MAX_LENGTH}
-          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           rows={4}
         />
       </Field>

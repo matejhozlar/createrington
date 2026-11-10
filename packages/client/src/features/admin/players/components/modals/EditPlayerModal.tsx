@@ -13,6 +13,7 @@ import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { AdminActionModal } from "./AdminActionModal";
 import { useMutation } from "@tanstack/react-query";
+import { Textarea } from "@/components/ui/textarea";
 
 type PlayerDetailed = RouterOutput["admin"]["players"]["players"]["get"];
 
@@ -207,7 +208,7 @@ export function EditPlayerModal({
 
         <Field>
           <FieldLabel htmlFor="edit-reason">Reason for Update</FieldLabel>
-          <textarea
+          <Textarea
             id="edit-reason"
             placeholder="Explain why these changes are being made..."
             value={reason}
@@ -218,7 +219,6 @@ export function EditPlayerModal({
                 setErrors({ ...errors, reason: undefined });
               }
             }}
-            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-invalid:border-destructive aria-invalid:ring-destructive/20"
             rows={3}
             aria-invalid={!!errors.reason}
             disabled={updatePlayer.isPending}

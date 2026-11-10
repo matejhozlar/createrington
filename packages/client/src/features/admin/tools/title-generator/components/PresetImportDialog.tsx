@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
+import { Textarea } from "@/components/ui/textarea";
 
 export function PresetImportDialog({
   open,
@@ -73,12 +74,12 @@ export function PresetImportDialog({
             }
           }}
         />
-        <textarea
+        <Textarea
           value={text}
           onChange={(event) => setText(event.target.value)}
           placeholder='{"type":"minecraft_title_generator_preset","preset":{...}}'
           rows={8}
-          className="w-full rounded-md border border-border bg-background px-3 py-2 font-mono text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="font-mono text-xs md:text-xs"
         />
         {error && <p className="text-sm text-destructive">{error}</p>}
         <DialogFooter className="gap-2 sm:justify-between">

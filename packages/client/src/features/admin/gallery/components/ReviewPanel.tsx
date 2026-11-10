@@ -28,6 +28,7 @@ import { CreditsPicker } from "./CreditsPicker";
 import { RejectDialog } from "./RejectDialog";
 import { SubmissionImage } from "./SubmissionImage";
 import { useMutation } from "@tanstack/react-query";
+import { Textarea } from "@/components/ui/textarea";
 
 const MAX_CAPTION_LENGTH = 500;
 
@@ -175,7 +176,7 @@ export function ReviewPanel({
           <div className="flex flex-col gap-5">
             <Field>
               <FieldLabel htmlFor="gallery-caption">Caption</FieldLabel>
-              <textarea
+              <Textarea
                 id="gallery-caption"
                 value={caption}
                 maxLength={MAX_CAPTION_LENGTH}
@@ -183,7 +184,6 @@ export function ReviewPanel({
                 placeholder="What are we looking at?"
                 disabled={busy}
                 onChange={(e) => setCaption(e.target.value)}
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
               <FieldDescription>
                 Prefilled from the Discord message. Shown on the website and in

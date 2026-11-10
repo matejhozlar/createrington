@@ -4,6 +4,7 @@ import { trpc, queryClient } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { AdminActionModal } from "./AdminActionModal";
 import { useMutation } from "@tanstack/react-query";
+import { Textarea } from "@/components/ui/textarea";
 
 interface LiftWorkshopBanModalProps {
   open: boolean;
@@ -72,12 +73,11 @@ export function LiftWorkshopBanModal({
         <FieldLabel htmlFor="lift-workshop-ban-reason">
           Reason for Lifting
         </FieldLabel>
-        <textarea
+        <Textarea
           id="lift-workshop-ban-reason"
           placeholder="Enter reason for lifting the block..."
           value={reason}
           onChange={(e) => setReason(e.target.value)}
-          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           rows={4}
           maxLength={500}
         />

@@ -31,6 +31,7 @@ import {
   ENTRY_MODE_OPTIONS,
 } from "../format";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { Textarea } from "@/components/ui/textarea";
 
 // Format a camelCase config key ("serverAnnouncements") into the label
 // we show in a picker ("Server Announcements"). Same transform the
@@ -187,14 +188,13 @@ export function CreatePromptModal({ open, onClose }: Props) {
               Description{" "}
               <span className="text-muted-foreground">(optional)</span>
             </FieldLabel>
-            <textarea
+            <Textarea
               id="prompt-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Add context or examples to help players answer."
               rows={3}
               maxLength={2000}
-              className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex w-full rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
             />
           </Field>
 

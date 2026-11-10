@@ -5,6 +5,7 @@ import { trpc, queryClient } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { AdminActionModal } from "./AdminActionModal";
 import { useMutation } from "@tanstack/react-query";
+import { Textarea } from "@/components/ui/textarea";
 
 interface UnbanModalProps {
   open: boolean;
@@ -72,13 +73,12 @@ export function UnbanModal({ open, onClose, banId }: UnbanModalProps) {
 
       <Field>
         <FieldLabel htmlFor="unban-reason">Reason for Unbanning</FieldLabel>
-        <textarea
+        <Textarea
           id="unban-reason"
           placeholder="Enter reason for lifting the ban..."
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           maxLength={ADMIN_REASON_MAX_LENGTH}
-          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           rows={4}
         />
       </Field>

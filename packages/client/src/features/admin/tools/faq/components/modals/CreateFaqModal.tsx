@@ -17,6 +17,7 @@ import { CharCount } from "@/features/admin/components/CharCount";
 import { useMentionResolver } from "@/features/admin/hooks/use-mention-resolver";
 import { DiscordMarkdown } from "@/features/admin/tools/embed-builder/components/DiscordMarkdown";
 import { useMutation } from "@tanstack/react-query";
+import { Textarea } from "@/components/ui/textarea";
 
 type MatchMode = "keywords" | "regex";
 
@@ -171,14 +172,13 @@ export function CreateFaqModal({ open, onClose }: CreateFaqModalProps) {
                 }}
               />
             </div>
-            <textarea
+            <Textarea
               ref={responseRef}
               id="faq-response"
               value={response}
               onChange={(e) => setResponse(e.target.value)}
               placeholder="The auto-reply message..."
               rows={4}
-              className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex w-full rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
             />
             <div className="flex items-center justify-between">
               <FieldDescription>

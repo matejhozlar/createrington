@@ -15,6 +15,7 @@ import { useToastActions } from "@/hooks/use-toast";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { AdminActionModal } from "./AdminActionModal";
 import { useMutation } from "@tanstack/react-query";
+import { Textarea } from "@/components/ui/textarea";
 
 interface IssueBanModalProps {
   open: boolean;
@@ -191,13 +192,12 @@ export function IssueBanModal({
 
         <Field>
           <FieldLabel htmlFor="ban-reason">Reason</FieldLabel>
-          <textarea
+          <Textarea
             id="ban-reason"
             placeholder="Enter reason for ban..."
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             maxLength={BAN_REASON_MAX_LENGTH}
-            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             rows={4}
             required
           />
