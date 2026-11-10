@@ -1,4 +1,4 @@
-import { Badge } from "@/components/ui/badge";
+import { PresenceBadge } from "@/components/presence-badge";
 import { Server } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -17,11 +17,11 @@ export function ServerHeader({
   isOnline,
   isMaintenance,
 }: ServerHeaderProps) {
-  const statusLabel = isMaintenance
-    ? "Maintenance"
+  const presence = isMaintenance
+    ? "maintenance"
     : isOnline
-      ? "Online"
-      : "Offline";
+      ? "online"
+      : "offline";
 
   return (
     <div className="rounded-lg border border-border bg-card p-6">
@@ -50,18 +50,7 @@ export function ServerHeader({
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-bold">{serverName}</h1>
-            <Badge
-              variant={isOnline || isMaintenance ? "default" : "outline"}
-              className={cn(
-                isMaintenance &&
-                  "bg-amber-500/20 text-amber-500 hover:bg-amber-500/30",
-                !isMaintenance &&
-                  isOnline &&
-                  "bg-green-500/20 text-green-500 hover:bg-green-500/30",
-              )}
-            >
-              {statusLabel}
-            </Badge>
+            <PresenceBadge status={presence} />
           </div>
           <p className="text-sm text-muted-foreground">
             {ip}:{port}

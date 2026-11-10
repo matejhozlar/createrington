@@ -52,24 +52,14 @@ const columns: DataTableColumn<AdminModpackRow>[] = [
     render: (modpack) =>
       modpack.curseforgeProjectId ? (
         <>
-          <Badge
-            variant="outline"
-            className="border-green-500/20 bg-green-500/10 text-green-400"
-          >
-            Published
-          </Badge>
+          <Badge tone="success">Published</Badge>
           <CellText
             value={`#${modpack.curseforgeProjectId}`}
             className="text-xs text-muted-foreground"
           />
         </>
       ) : (
-        <Badge
-          variant="outline"
-          className="border-zinc-500/20 bg-zinc-500/10 text-zinc-400"
-        >
-          Unpublished
-        </Badge>
+        <Badge tone="neutral">Unpublished</Badge>
       ),
   },
   {

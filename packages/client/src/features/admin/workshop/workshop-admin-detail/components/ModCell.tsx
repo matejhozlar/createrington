@@ -4,9 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ProjectThumb } from "@/features/workshop/components/ProjectThumb";
 import {
-  DISABLED_BADGE_CLASS,
+  COMPACT_BADGE_CLASS,
   DISABLED_LABEL,
-  PROJECT_KIND_BADGE_CLASS,
   projectKindLabel,
 } from "@/features/workshop/format";
 
@@ -35,12 +34,12 @@ export function ModCell({
         <div className="flex min-w-0 items-center gap-1.5">
           <CellText value={name} className="min-w-0 font-medium" />
           {kind && (
-            <Badge variant="outline" className={PROJECT_KIND_BADGE_CLASS}>
+            <Badge tone="fuchsia" className={COMPACT_BADGE_CLASS}>
               {kind}
             </Badge>
           )}
           {!required && (
-            <Badge variant="outline" className={DISABLED_BADGE_CLASS}>
+            <Badge tone="neutral" className={COMPACT_BADGE_CLASS}>
               {DISABLED_LABEL}
             </Badge>
           )}

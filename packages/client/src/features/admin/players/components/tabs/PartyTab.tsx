@@ -53,14 +53,7 @@ export function PartyTab({ playerUuid }: { playerUuid: string }) {
             />
             <h3 className="text-lg font-semibold">{party.name}</h3>
             <PartyRankBadge rank={party.rank} />
-            {party.freeToJoin && (
-              <Badge
-                variant="outline"
-                className="border-green-500/20 bg-green-500/10 text-green-400"
-              >
-                Free to join
-              </Badge>
-            )}
+            {party.freeToJoin && <Badge tone="success">Free to join</Badge>}
             <Link
               to={`/admin/tools/parties?party=${party.id}`}
               className="ml-auto flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"

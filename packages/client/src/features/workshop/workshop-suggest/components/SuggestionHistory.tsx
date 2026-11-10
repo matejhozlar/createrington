@@ -63,7 +63,7 @@ function StatusBadge({ mod }: { mod: HistoryItem }) {
       ? REJECT_REASON_LABELS[mod.rejectReason]
       : style.label;
   return (
-    <Badge variant="outline" className={style.className} title={liveTitle(mod)}>
+    <Badge tone={style.tone} title={liveTitle(mod)}>
       {label}
     </Badge>
   );

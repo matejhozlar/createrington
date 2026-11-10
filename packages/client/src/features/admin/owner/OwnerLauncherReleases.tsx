@@ -20,7 +20,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -56,30 +56,15 @@ type PendingAction = { kind: "release" | "withdraw"; release: ReleaseRow };
 
 const STATUS_BADGES: Record<
   LauncherReleaseStatus,
-  { label: string; className: string }
+  { label: string; tone: BadgeTone }
 > = {
-  pending: {
-    label: "Pending",
-    className: "border-primary/20 bg-primary/10 text-primary",
-  },
-  released: {
-    label: "Released",
-    className: "border-green-500/20 bg-green-500/10 text-green-400",
-  },
-  withdrawn: {
-    label: "Withdrawn",
-    className: "border-red-500/20 bg-red-500/10 text-red-400",
-  },
-  pruned: {
-    label: "File removed",
-    className: "border-muted-foreground/40 text-muted-foreground",
-  },
+  pending: { label: "Pending", tone: "primary" },
+  released: { label: "Released", tone: "success" },
+  withdrawn: { label: "Withdrawn", tone: "danger" },
+  pruned: { label: "File removed", tone: "neutral" },
 };
 
-const REQUIRED_BADGE = {
-  label: "Required",
-  className: "border-amber-500/20 bg-amber-500/10 text-amber-400",
-} as const;
+const REQUIRED_BADGE = { label: "Required", tone: "warning" } as const;
 
 const REQUIRED_CHECKBOX = {
   id: "launcher-release-required",
@@ -345,10 +330,7 @@ export function OwnerLauncherReleases() {
       width: 120,
       skeleton: () => <BadgeCellSkeleton />,
       render: (release) => (
-        <Badge
-          variant="outline"
-          className={STATUS_BADGES[release.status].className}
-        >
+        <Badge tone={STATUS_BADGES[release.status].tone}>
           {STATUS_BADGES[release.status].label}
         </Badge>
       ),
@@ -361,9 +343,7 @@ export function OwnerLauncherReleases() {
       render: (release) =>
         release.required &&
         release.status === "released" && (
-          <Badge variant="outline" className={REQUIRED_BADGE.className}>
-            {REQUIRED_BADGE.label}
-          </Badge>
+          <Badge tone={REQUIRED_BADGE.tone}>{REQUIRED_BADGE.label}</Badge>
         ),
     },
     {

@@ -67,10 +67,7 @@ export function PackSearchResults({
                 {packCredit(row)}
               </div>
             </div>
-            <Badge
-              variant="outline"
-              className={cn("shrink-0", status.className)}
-            >
+            <Badge tone={status.tone} className="shrink-0">
               {status.label}
             </Badge>
           </>

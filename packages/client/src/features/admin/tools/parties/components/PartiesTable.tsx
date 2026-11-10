@@ -121,12 +121,7 @@ export function PartiesTable({
       skeleton: () => <BadgeCellSkeleton />,
       render: (party) =>
         party.freeToJoin ? (
-          <Badge
-            variant="outline"
-            className="border-green-500/20 bg-green-500/10 text-green-400"
-          >
-            Free to join
-          </Badge>
+          <Badge tone="success">Free to join</Badge>
         ) : (
           <Badge
             variant="outline"

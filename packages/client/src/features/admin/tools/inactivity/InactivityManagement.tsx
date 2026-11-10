@@ -53,7 +53,7 @@ import {
 } from "@/features/admin/format";
 import {
   STAT_CARDS,
-  STATUS_BADGE_CLASSES,
+  STATUS_TONES,
   STATUS_FILTER_OPTIONS,
   STATUS_LABELS,
   daysUntilDeadline,
@@ -210,9 +210,7 @@ export function InactivityManagement() {
       render: (warning) => {
         const status = deriveWarningStatus(warning, graceDays);
         return (
-          <Badge variant="outline" className={STATUS_BADGE_CLASSES[status]}>
-            {STATUS_LABELS[status]}
-          </Badge>
+          <Badge tone={STATUS_TONES[status]}>{STATUS_LABELS[status]}</Badge>
         );
       },
     },

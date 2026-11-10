@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import type { StatTone } from "@/components/stat-card";
+import type { BadgeTone } from "@/components/ui/badge";
 import { AlertTriangle, CheckCircle2, Clock, UserX } from "lucide-react";
 
 export type WarningStatusFilter =
@@ -25,17 +26,11 @@ export const STATUS_LABELS: Record<DerivedStatus, string> = {
   removed: "Removed",
 };
 
-/**
- * Tailwind class fragments applied to a Badge to render each status
- * with consistent colors. Matches the existing admin-tool color language
- * (success/warning/destructive/muted).
- */
-export const STATUS_BADGE_CLASSES: Record<DerivedStatus, string> = {
-  active: "border-yellow-500 bg-yellow-500/10 text-yellow-500",
-  expired: "border-destructive bg-destructive/10 text-destructive",
-  resolved: "border-success bg-success/10 text-success",
-  removed:
-    "border-muted-foreground bg-muted-foreground/10 text-muted-foreground",
+export const STATUS_TONES: Record<DerivedStatus, BadgeTone> = {
+  active: "warning",
+  expired: "danger",
+  resolved: "success",
+  removed: "neutral",
 };
 
 export interface StatWindows {

@@ -7,7 +7,6 @@ import {
   User,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
-import { cn } from "@/lib/utils";
 import { REQUIRED_DEPENDENCY } from "@createrington/shared/workshop";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -35,7 +34,7 @@ import {
   isHttpUrl,
   modCredit,
   MOD_STATUS_STYLES,
-  PROJECT_KIND_BADGE_CLASS,
+  COMPACT_BADGE_CLASS,
   projectKindLabel,
   REJECT_REASON_LABELS,
 } from "../../format";
@@ -134,18 +133,12 @@ export function ModDetailDialog({
                   </DialogDescription>
                   <div className="flex flex-wrap gap-1.5 pt-1">
                     {status && (
-                      <Badge
-                        variant="outline"
-                        className={cn("text-xs", status.className)}
-                      >
+                      <Badge tone={status.tone} className="text-xs">
                         {status.label}
                       </Badge>
                     )}
                     {kind && (
-                      <Badge
-                        variant="outline"
-                        className={PROJECT_KIND_BADGE_CLASS}
-                      >
+                      <Badge tone="fuchsia" className={COMPACT_BADGE_CLASS}>
                         {kind}
                       </Badge>
                     )}
@@ -227,11 +220,8 @@ export function ModDetailDialog({
                 {adminMod.status === "rejected" && adminMod.rejectReason && (
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge
-                      variant="outline"
-                      className={cn(
-                        "text-xs",
-                        MOD_STATUS_STYLES.rejected.className,
-                      )}
+                      tone={MOD_STATUS_STYLES.rejected.tone}
+                      className="text-xs"
                     >
                       {REJECT_REASON_LABELS[adminMod.rejectReason]}
                     </Badge>
@@ -280,10 +270,7 @@ export function ModDetailDialog({
                             : "Optional"}
                         </Badge>
                         {coverage && (
-                          <Badge
-                            variant="outline"
-                            className={cn("text-xs", coverage.className)}
-                          >
+                          <Badge tone={coverage.tone} className="text-xs">
                             {coverage.label}
                           </Badge>
                         )}

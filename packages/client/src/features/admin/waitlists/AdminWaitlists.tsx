@@ -16,7 +16,7 @@ import {
 import { Paginator } from "@/components/paginator";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { CellDate, CellText } from "@/components/cell-text";
 import {
   BadgeCellSkeleton,
@@ -61,6 +61,13 @@ const STATUS_LABELS: Record<WaitlistStatus, string> = {
   promoted: "Promoted",
   registered: "Registered",
   expired: "Expired",
+};
+
+const STATUS_TONES: Record<WaitlistStatus, BadgeTone> = {
+  queued: "warning",
+  promoted: "teal",
+  registered: "success",
+  expired: "neutral",
 };
 
 function hasRequeued(entry: WaitlistEntry) {
@@ -142,31 +149,6 @@ export function AdminWaitlists() {
     setDeleteTarget(entry);
   }, []);
 
-  const getStatusBadgeStyle = useCallback((status: WaitlistStatus) => {
-    switch (status) {
-      case "registered":
-        return {
-          variant: "outline" as const,
-          className: "border-success bg-success/10 text-success",
-        };
-      case "promoted":
-        return {
-          variant: "outline" as const,
-          className: "border-chart-2 bg-chart-2/10 text-chart-2",
-        };
-      case "expired":
-        return {
-          variant: "outline" as const,
-          className: "border-muted-foreground/40 text-muted-foreground",
-        };
-      default: // queued
-        return {
-          variant: "outline" as const,
-          className: "border-amber-500 bg-amber-500/10 text-amber-500",
-        };
-    }
-  }, []);
-
   const columns: DataTableColumn<WaitlistEntry>[] = [
     {
       key: "id",
@@ -198,20 +180,10 @@ export function AdminWaitlists() {
       skeleton: () => <BadgeCellSkeleton />,
       render: (entry) => (
         <div className="flex items-center gap-1.5">
-          <Badge
-            variant={getStatusBadgeStyle(entry.status).variant}
-            className={getStatusBadgeStyle(entry.status).className}
-          >
+          <Badge tone={STATUS_TONES[entry.status]}>
             {STATUS_LABELS[entry.status]}
           </Badge>
-          {entry.joinedMinecraft && (
-            <Badge
-              variant="outline"
-              className="border-success bg-success/10 text-success text-xs"
-            >
-              In-Game
-            </Badge>
-          )}
+          {entry.joinedMinecraft && <Badge tone="success">In-Game</Badge>}
         </div>
       ),
     },

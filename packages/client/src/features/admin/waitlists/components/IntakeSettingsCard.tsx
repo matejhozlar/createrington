@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/select";
 import { useToastActions } from "@/hooks/use-toast";
 import { trpc, queryClient } from "@/lib/trpc";
-import { cn } from "@/lib/utils";
 import { useQuery, useMutation } from "@tanstack/react-query";
 
 type IntakeMode = "auto" | "closed";
@@ -90,14 +89,7 @@ export function IntakeSettingsCard() {
           Intake Settings
           {data && (
             <>
-              <Badge
-                variant="outline"
-                className={cn(
-                  isOpen
-                    ? "border-success bg-success/10 text-success"
-                    : "border-amber-500 bg-amber-500/10 text-amber-500",
-                )}
-              >
+              <Badge tone={isOpen ? "success" : "warning"}>
                 {isOpen ? "Open" : "Waitlist"}
               </Badge>
               <span className="text-xs font-normal text-muted-foreground">

@@ -17,7 +17,7 @@ import { Label } from "@/components/ui/label";
 import { ProjectThumb } from "@/features/workshop/components/ProjectThumb";
 import {
   MOD_STATUS_STYLES,
-  PROJECT_KIND_BADGE_CLASS,
+  COMPACT_BADGE_CLASS,
   projectKindLabel,
 } from "@/features/workshop/format";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -134,7 +134,7 @@ export function AddModsDialog({
                 )}
                 {project.name}
                 {kind && (
-                  <Badge variant="outline" className={PROJECT_KIND_BADGE_CLASS}>
+                  <Badge tone="fuchsia" className={COMPACT_BADGE_CLASS}>
                     {kind}
                   </Badge>
                 )}
@@ -249,11 +249,8 @@ export function AddModsDialog({
               <div className="flex shrink-0 gap-1">
                 {result.rejected && (
                   <Badge
-                    variant="outline"
-                    className={cn(
-                      "text-xs",
-                      MOD_STATUS_STYLES.rejected.className,
-                    )}
+                    tone={MOD_STATUS_STYLES.rejected.tone}
+                    className="text-xs"
                   >
                     {MOD_STATUS_STYLES.rejected.label}
                   </Badge>
@@ -265,11 +262,8 @@ export function AddModsDialog({
                 )}
                 {result.inModpack && (
                   <Badge
-                    variant="outline"
-                    className={cn(
-                      "text-xs",
-                      MOD_STATUS_STYLES.in_pack.className,
-                    )}
+                    tone={MOD_STATUS_STYLES.in_pack.tone}
+                    className="text-xs"
                   >
                     In base pack
                   </Badge>

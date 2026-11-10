@@ -13,7 +13,7 @@ import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { ReviewPanel } from "./components/ReviewPanel";
 import { SettingsDialog } from "./components/SettingsDialog";
 import { SubmissionGrid } from "./components/SubmissionGrid";
-import { GALLERY_STATUS_STYLES, type GalleryStatus } from "./format";
+import { GALLERY_STATUS, type GalleryStatus } from "./format";
 import { useQuery, useMutation } from "@tanstack/react-query";
 
 const QUEUE_LIMIT = 50;
@@ -26,10 +26,10 @@ const INTAKE_FLAG = {
 } as const;
 
 const TABS: { value: GalleryStatus; label: string }[] = [
-  { value: "pending", label: GALLERY_STATUS_STYLES.pending.label },
-  { value: "approved", label: GALLERY_STATUS_STYLES.approved.label },
-  { value: "rejected", label: GALLERY_STATUS_STYLES.rejected.label },
-  { value: "withdrawn", label: GALLERY_STATUS_STYLES.withdrawn.label },
+  { value: "pending", label: GALLERY_STATUS.pending.label },
+  { value: "approved", label: GALLERY_STATUS.approved.label },
+  { value: "rejected", label: GALLERY_STATUS.rejected.label },
+  { value: "withdrawn", label: GALLERY_STATUS.withdrawn.label },
 ];
 
 const GRID_TABS = TABS.filter(

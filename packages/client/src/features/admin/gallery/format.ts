@@ -1,3 +1,4 @@
+import type { BadgeTone } from "@/components/ui/badge";
 import type { RouterOutput } from "@/lib/trpc";
 
 export type GallerySubmissionItem =
@@ -6,26 +7,14 @@ export type GallerySubmissionDetail = RouterOutput["admin"]["gallery"]["get"];
 export type GalleryStatus = GallerySubmissionItem["status"];
 export type GalleryCredit = GallerySubmissionItem["credits"][number];
 
-export const GALLERY_STATUS_STYLES: Record<
+export const GALLERY_STATUS: Record<
   GalleryStatus,
-  { label: string; className: string }
+  { label: string; tone: BadgeTone }
 > = {
-  pending: {
-    label: "Pending",
-    className: "border-yellow-500/20 bg-yellow-500/10 text-yellow-400",
-  },
-  approved: {
-    label: "Approved",
-    className: "border-green-500/20 bg-green-500/10 text-green-400",
-  },
-  rejected: {
-    label: "Rejected",
-    className: "border-red-500/20 bg-red-500/10 text-red-400",
-  },
-  withdrawn: {
-    label: "Withdrawn",
-    className: "border-zinc-500/20 bg-zinc-500/10 text-zinc-400",
-  },
+  pending: { label: "Pending", tone: "warning" },
+  approved: { label: "Approved", tone: "success" },
+  rejected: { label: "Rejected", tone: "danger" },
+  withdrawn: { label: "Withdrawn", tone: "neutral" },
 };
 
 const BYTE_UNITS = ["B", "KB", "MB", "GB"];

@@ -30,13 +30,7 @@ export function PackHeader({
   return (
     <AdminPageTitle
       title={pack.name}
-      badges={
-        pack.isActive && (
-          <Badge className="bg-green-500/20 text-green-500 hover:bg-green-500/30">
-            Active
-          </Badge>
-        )
-      }
+      badges={pack.isActive && <Badge tone="success">Active</Badge>}
       actions={
         <>
           <div className="flex h-9 items-center gap-2">

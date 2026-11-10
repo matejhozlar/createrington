@@ -9,7 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { CellDate, CellText } from "@/components/cell-text";
@@ -29,16 +29,10 @@ type PackRow = RouterOutput["owner"]["launcherPacks"]["list"]["packs"][number];
 
 const SOURCE_BADGES: Record<
   LauncherPackSource,
-  { label: string; className: string }
+  { label: string; tone: BadgeTone }
 > = {
-  curseforge: {
-    label: "CurseForge",
-    className: "border-orange-500/20 bg-orange-500/10 text-orange-400",
-  },
-  sandbox: {
-    label: "Sandbox",
-    className: "border-sky-500/20 bg-sky-500/10 text-sky-400",
-  },
+  curseforge: { label: "CurseForge", tone: "orange" },
+  sandbox: { label: "Sandbox", tone: "info" },
 };
 
 const PAGE_COPY = {
@@ -149,10 +143,7 @@ export function OwnerLauncherPacks() {
       width: 124,
       skeleton: () => <BadgeCellSkeleton />,
       render: (pack) => (
-        <Badge
-          variant="outline"
-          className={SOURCE_BADGES[pack.source].className}
-        >
+        <Badge tone={SOURCE_BADGES[pack.source].tone}>
           {SOURCE_BADGES[pack.source].label}
         </Badge>
       ),
