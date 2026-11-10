@@ -511,6 +511,7 @@ export function AdminWorkshopDetail() {
 
           <TabsContent
             value={tabGroup(activeTab)}
+            tabIndex={-1}
             className="flex flex-col gap-4"
           >
             {isModTab(activeTab) && (
@@ -521,7 +522,11 @@ export function AdminWorkshopDetail() {
               >
                 <WorkshopModTabs activeTab={activeTab} counts={counts} />
 
-                <TabsContent value={activeTab} className="flex flex-col gap-4">
+                <TabsContent
+                  value={activeTab}
+                  tabIndex={-1}
+                  className="flex flex-col gap-4"
+                >
                   {isStageTab(activeTab) && (
                     <StageTab
                       stage={activeTab}

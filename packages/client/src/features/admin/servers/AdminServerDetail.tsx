@@ -96,6 +96,7 @@ export function AdminServerDetail() {
 
           <TabsContent
             value={activeTab}
+            tabIndex={-1}
             className="rounded-lg border border-border bg-card p-6"
           >
             {activeTab === "overview" && (

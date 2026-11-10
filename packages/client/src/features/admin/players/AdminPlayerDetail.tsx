@@ -146,6 +146,7 @@ export function AdminPlayerDetail() {
 
           <TabsContent
             value={activeTab}
+            tabIndex={-1}
             className="mb-4 rounded-lg border border-border bg-card p-6"
           >
             {activeTab === "overview" && (
