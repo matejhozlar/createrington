@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loading } from "@/components/loading-spinner";
+import { LoadingState } from "@/components/query-states";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { ModDetailDialog } from "@/features/workshop/workshop-detail/components/ModDetailDialog";
@@ -424,11 +424,7 @@ export function AdminWorkshopDetail() {
   };
 
   if (workshopsQuery.isLoading) {
-    return (
-      <div className="flex flex-1 items-center justify-center">
-        <Loading size="medium" text="Loading workshop..." />
-      </div>
-    );
+    return <LoadingState text="Loading workshop..." />;
   }
 
   if (workshopsQuery.error || !workshop) {

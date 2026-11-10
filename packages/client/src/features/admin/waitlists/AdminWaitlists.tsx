@@ -1,10 +1,14 @@
 import { useCallback, useState } from "react";
-import { Loading } from "@/components/loading-spinner";
+import {
+  EmptyState,
+  ErrorState,
+  LoadingState,
+} from "@/components/query-states";
+import { StatCard } from "@/components/stat-card";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
@@ -275,74 +279,41 @@ export function AdminWaitlists() {
       />
 
       <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
-        {/* Stats Cards */}
         {statsLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <Loading size="medium" text="Loading statistics..." />
-          </div>
+          <LoadingState
+            text="Loading statistics..."
+            className="flex-none py-8"
+          />
         ) : stats ? (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card>
-              <CardContent className="flex items-start justify-between">
-                <div>
-                  <CardDescription>In Queue</CardDescription>
-                  <CardTitle className="text-2xl">{stats.queued}</CardTitle>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    {stats.total} entries total
-                  </p>
-                </div>
-                <div className="flex size-12 items-center justify-center rounded-full bg-sidebar-primary/10">
-                  <Users className="size-6 text-sidebar-primary" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="flex items-start justify-between">
-                <div>
-                  <CardDescription>Promoted</CardDescription>
-                  <CardTitle className="text-2xl">{stats.promoted}</CardTitle>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    awaiting registration
-                  </p>
-                </div>
-                <div className="flex size-12 items-center justify-center rounded-full bg-chart-2/10">
-                  <Clock className="size-6 text-chart-2" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="flex items-start justify-between">
-                <div>
-                  <CardDescription>Registered</CardDescription>
-                  <CardTitle className="text-2xl">{stats.registered}</CardTitle>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    {stats.joinedMinecraft} joined Minecraft
-                  </p>
-                </div>
-                <div className="flex size-12 items-center justify-center rounded-full bg-chart-4/10">
-                  <UserCheck className="size-6 text-chart-4" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="flex items-start justify-between">
-                <div>
-                  <CardDescription>New This Week</CardDescription>
-                  <CardTitle className="text-2xl">
-                    {stats.signups.thisWeek}
-                  </CardTitle>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    {stats.signups.today} today
-                  </p>
-                </div>
-                <div className="flex size-12 items-center justify-center rounded-full bg-chart-3/10">
-                  <UserPlus className="size-6 text-chart-3" />
-                </div>
-              </CardContent>
-            </Card>
+            <StatCard
+              label="In Queue"
+              value={stats.queued}
+              icon={Users}
+              tone="primary"
+              footer={`${stats.total} entries total`}
+            />
+            <StatCard
+              label="Promoted"
+              value={stats.promoted}
+              icon={Clock}
+              tone="chart-2"
+              footer="awaiting registration"
+            />
+            <StatCard
+              label="Registered"
+              value={stats.registered}
+              icon={UserCheck}
+              tone="chart-4"
+              footer={`${stats.joinedMinecraft} joined Minecraft`}
+            />
+            <StatCard
+              label="New This Week"
+              value={stats.signups.thisWeek}
+              icon={UserPlus}
+              tone="chart-3"
+              footer={`${stats.signups.today} today`}
+            />
           </div>
         ) : null}
 
@@ -408,27 +379,12 @@ export function AdminWaitlists() {
           </CardHeader>
 
           {error ? (
-            <CardContent className="flex flex-1 items-center justify-center py-12">
-              <div className="text-center">
-                <p className="text-destructive">{error}</p>
-                <Button
-                  onClick={() => entriesQuery.refetch()}
-                  className="mt-4"
-                  variant="outline"
-                >
-                  Try Again
-                </Button>
-              </div>
-            </CardContent>
+            <ErrorState
+              message={error}
+              onRetry={() => entriesQuery.refetch()}
+            />
           ) : !loading && entries.length === 0 ? (
-            <CardContent className="flex flex-1 items-center justify-center py-12">
-              <div className="text-center">
-                <Users className="mx-auto size-12 text-muted-foreground" />
-                <p className="mt-2 text-muted-foreground">
-                  No waitlist entries found
-                </p>
-              </div>
-            </CardContent>
+            <EmptyState icon={Users} message="No waitlist entries found" />
           ) : (
             <>
               <CardContent className="px-0">

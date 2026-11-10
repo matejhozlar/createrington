@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Loading } from "@/components/loading-spinner";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { Input } from "@/components/ui/input";
@@ -16,6 +15,7 @@ import {
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { useQuery } from "@tanstack/react-query";
+import { LoadingState } from "@/components/query-states";
 
 interface CommandOption {
   type: number;
@@ -287,9 +287,7 @@ export function CommandDocs() {
       />
 
       {isLoading ? (
-        <div className="flex flex-1 items-center justify-center">
-          <Loading text="Loading commands..." />
-        </div>
+        <LoadingState text="Loading commands..." className="py-0" />
       ) : (
         <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
           <AdminPageTitle

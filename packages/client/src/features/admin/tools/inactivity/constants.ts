@@ -1,4 +1,5 @@
 import type { LucideIcon } from "lucide-react";
+import type { StatTone } from "@/components/stat-card";
 import { AlertTriangle, CheckCircle2, Clock, UserX } from "lucide-react";
 
 export type WarningStatusFilter =
@@ -53,40 +54,35 @@ export const STAT_CARDS: {
   label: StatText;
   description: StatText;
   icon: LucideIcon;
-  iconBg: string;
-  iconColor: string;
+  tone: StatTone;
 }[] = [
   {
     key: "active",
     label: "Active Warnings",
     description: ({ graceDays }) => `In ${graceDays}-day grace period`,
     icon: Clock,
-    iconBg: "bg-yellow-500/10",
-    iconColor: "text-yellow-500",
+    tone: "warning",
   },
   {
     key: "expired",
     label: "Overdue",
     description: "Past grace, queued for removal",
     icon: AlertTriangle,
-    iconBg: "bg-destructive/10",
-    iconColor: "text-destructive",
+    tone: "destructive",
   },
   {
     key: "resolvedInRetention",
     label: ({ retentionDays }) => `Resolved (${retentionDays}d)`,
     description: "Players who returned",
     icon: CheckCircle2,
-    iconBg: "bg-success/10",
-    iconColor: "text-success",
+    tone: "success",
   },
   {
     key: "removedInRetention",
     label: ({ retentionDays }) => `Removed (${retentionDays}d)`,
     description: "Kicked after grace",
     icon: UserX,
-    iconBg: "bg-muted-foreground/10",
-    iconColor: "text-muted-foreground",
+    tone: "muted",
   },
 ];
 

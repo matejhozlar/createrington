@@ -1,6 +1,6 @@
 import { formatDate, parseDateOnly } from "@createrington/shared/format";
 import { trpc } from "@/lib/trpc";
-import { Loading } from "@/components/loading-spinner";
+import { LoadingState } from "@/components/query-states";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { ChangeTag } from "@/features/admin/components/ChangeTag";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -294,9 +294,7 @@ export function Changelog() {
     return (
       <div className="flex flex-1 flex-col gap-4">
         {HEADER}
-        <div className="flex flex-1 items-center justify-center">
-          <Loading size="medium" text="Loading changelog..." />
-        </div>
+        <LoadingState text="Loading changelog..." />
       </div>
     );
   }

@@ -1,7 +1,7 @@
 import { ExternalLink } from "lucide-react";
 import { DISCORD_INVITE_URL } from "@/lib/external-urls";
 import { NavLink } from "react-router";
-import { Loading } from "@/components/loading-spinner";
+import { LoadingState } from "@/components/query-states";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -79,11 +79,7 @@ export function ApplyToJoin() {
   const isWaitlistMode = mode === "waitlist";
 
   if (statusQuery.isLoading) {
-    return (
-      <div className="flex flex-1 items-center justify-center py-20">
-        <Loading size="medium" text="Loading..." />
-      </div>
-    );
+    return <LoadingState text="Loading..." className="py-20" />;
   }
 
   return (

@@ -28,6 +28,7 @@ import {
   toIso,
 } from "@/features/admin/format";
 import { trpc, queryClient } from "@/lib/trpc";
+import { EmptyState, ErrorState } from "@/components/query-states";
 
 export function UnlinkedMembersCard() {
   const toast = useToastActions();
@@ -186,29 +187,16 @@ export function UnlinkedMembersCard() {
       </CardHeader>
 
       {error ? (
-        <CardContent className="flex items-center justify-center py-12">
-          <div className="text-center">
-            <p className="text-destructive">{error}</p>
-            <Button
-              onClick={() => listQuery.refetch()}
-              className="mt-4"
-              variant="outline"
-            >
-              Try Again
-            </Button>
-          </div>
-        </CardContent>
+        <ErrorState message={error} onRetry={() => listQuery.refetch()} />
       ) : !loading && members.length === 0 ? (
-        <CardContent className="flex items-center justify-center py-12">
-          <div className="text-center">
-            <UserSearch className="mx-auto size-12 text-muted-foreground" />
-            <p className="mt-2 text-muted-foreground">
-              {lastRefreshedAt
-                ? "No unlinked members in the cache"
-                : "Click Refresh to populate the cache"}
-            </p>
-          </div>
-        </CardContent>
+        <EmptyState
+          icon={UserSearch}
+          message={
+            lastRefreshedAt
+              ? "No unlinked members in the cache"
+              : "Click Refresh to populate the cache"
+          }
+        />
       ) : (
         <>
           <CardContent className="px-0">

@@ -3,13 +3,11 @@ import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { Paginator } from "@/components/paginator";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
@@ -39,7 +37,12 @@ import { cn } from "@/lib/utils";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { Loading } from "@/components/loading-spinner";
+import {
+  EmptyState,
+  ErrorState,
+  LoadingState,
+} from "@/components/query-states";
+import { StatCard } from "@/components/stat-card";
 
 type Donation = RouterOutput["owner"]["donations"]["list"]["donations"][number];
 type DonationStatus = "pending" | "completed" | "refunded" | "cancelled";
@@ -174,99 +177,54 @@ export function OwnerDonations() {
       />
 
       <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
-        {/* Stats */}
         {statsQuery.isLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <Loading size="medium" text="Loading statistics..." />
-          </div>
+          <LoadingState
+            text="Loading statistics..."
+            className="flex-none py-8"
+          />
         ) : stats ? (
           <div className="grid gap-4 md:grid-cols-3">
-            <Card>
-              <CardContent className="flex items-start justify-between">
-                <div>
-                  <CardDescription>Total Raised</CardDescription>
-                  <CardTitle className="text-2xl">
-                    {formatAmount(stats.totalRaisedCents, "EUR")}
-                  </CardTitle>
-                </div>
-                <div className="flex size-12 items-center justify-center rounded-full bg-sidebar-primary/10">
-                  <Euro className="size-6 text-sidebar-primary" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="flex items-start justify-between">
-                <div>
-                  <CardDescription>Unique Donors</CardDescription>
-                  <CardTitle className="text-2xl">{stats.donorCount}</CardTitle>
-                </div>
-                <div className="flex size-12 items-center justify-center rounded-full bg-chart-2/10">
-                  <Users className="size-6 text-chart-2" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="flex items-start justify-between">
-                <div>
-                  <CardDescription>Total Donations</CardDescription>
-                  <CardTitle className="text-2xl">
-                    {stats.donationCount}
-                  </CardTitle>
-                </div>
-                <div className="flex size-12 items-center justify-center rounded-full bg-chart-3/10">
-                  <Heart className="size-6 text-chart-3" />
-                </div>
-              </CardContent>
-            </Card>
+            <StatCard
+              label="Total Raised"
+              value={formatAmount(stats.totalRaisedCents, "EUR")}
+              icon={Euro}
+              tone="primary"
+            />
+            <StatCard
+              label="Unique Donors"
+              value={stats.donorCount}
+              icon={Users}
+              tone="chart-2"
+            />
+            <StatCard
+              label="Total Donations"
+              value={stats.donationCount}
+              icon={Heart}
+              tone="chart-3"
+            />
           </div>
         ) : null}
 
-        {/* Subscription Stats */}
         {subStatsQuery.data && (
           <div className="grid gap-4 md:grid-cols-3">
-            <Card>
-              <CardContent className="flex items-start justify-between">
-                <div>
-                  <CardDescription>Monthly Recurring Revenue</CardDescription>
-                  <CardTitle className="text-2xl">
-                    {formatAmount(subStatsQuery.data.mrrCents, "EUR")}
-                  </CardTitle>
-                </div>
-                <div className="flex size-12 items-center justify-center rounded-full bg-sidebar-primary/10">
-                  <Euro className="size-6 text-sidebar-primary" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="flex items-start justify-between">
-                <div>
-                  <CardDescription>Active Subscriptions</CardDescription>
-                  <CardTitle className="text-2xl">
-                    {subStatsQuery.data.activeCount}
-                  </CardTitle>
-                </div>
-                <div className="flex size-12 items-center justify-center rounded-full bg-chart-2/10">
-                  <Repeat className="size-6 text-chart-2" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="flex items-start justify-between">
-                <div>
-                  <CardDescription>Cancelling</CardDescription>
-                  <CardTitle className="text-2xl">
-                    {subStatsQuery.data.cancellingCount}
-                  </CardTitle>
-                </div>
-                <div className="flex size-12 items-center justify-center rounded-full bg-chart-3/10">
-                  <CalendarX className="size-6 text-chart-3" />
-                </div>
-              </CardContent>
-            </Card>
+            <StatCard
+              label="Monthly Recurring Revenue"
+              value={formatAmount(subStatsQuery.data.mrrCents, "EUR")}
+              icon={Euro}
+              tone="primary"
+            />
+            <StatCard
+              label="Active Subscriptions"
+              value={subStatsQuery.data.activeCount}
+              icon={Repeat}
+              tone="chart-2"
+            />
+            <StatCard
+              label="Cancelling"
+              value={subStatsQuery.data.cancellingCount}
+              icon={CalendarX}
+              tone="chart-3"
+            />
           </div>
         )}
 
@@ -352,25 +310,9 @@ export function OwnerDonations() {
           </CardHeader>
 
           {error ? (
-            <CardContent className="flex flex-1 items-center justify-center py-12">
-              <div className="text-center">
-                <p className="text-destructive">{error}</p>
-                <Button
-                  onClick={() => listQuery.refetch()}
-                  className="mt-4"
-                  variant="outline"
-                >
-                  Try Again
-                </Button>
-              </div>
-            </CardContent>
+            <ErrorState message={error} onRetry={() => listQuery.refetch()} />
           ) : !loading && donations.length === 0 ? (
-            <CardContent className="flex flex-1 items-center justify-center py-12">
-              <div className="text-center">
-                <Heart className="mx-auto size-12 text-muted-foreground" />
-                <p className="mt-2 text-muted-foreground">No donations found</p>
-              </div>
-            </CardContent>
+            <EmptyState icon={Heart} message="No donations found" />
           ) : (
             <>
               <CardContent className="px-0">

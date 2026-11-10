@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Shield } from "lucide-react";
 import type { RouterOutput } from "@/lib/trpc";
+import { EmptyState } from "@/components/query-states";
 
 type PlayerDetailed = RouterOutput["admin"]["players"]["players"]["get"];
 
@@ -27,10 +28,7 @@ export function StrikesTab({
       </div>
 
       {player.strikes.active.length === 0 ? (
-        <div className="py-12 text-center">
-          <Shield className="mx-auto size-12 text-muted-foreground" />
-          <p className="mt-2 text-muted-foreground">No active strikes</p>
-        </div>
+        <EmptyState icon={Shield} message="No active strikes" />
       ) : (
         <div className="space-y-2">
           {player.strikes.active.map((strike) => (

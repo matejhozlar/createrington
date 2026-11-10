@@ -29,6 +29,7 @@ import {
 } from "@/features/admin/format";
 import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { RemoveGhostModal } from "./modals/RemoveGhostModal";
+import { EmptyState, ErrorState } from "@/components/query-states";
 
 type GhostMember =
   RouterOutput["admin"]["inactivity"]["ghosts"]["list"]["items"][number];
@@ -215,29 +216,16 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
         </CardHeader>
 
         {error ? (
-          <CardContent className="flex items-center justify-center py-12">
-            <div className="text-center">
-              <p className="text-destructive">{error}</p>
-              <Button
-                onClick={() => listQuery.refetch()}
-                className="mt-4"
-                variant="outline"
-              >
-                Try Again
-              </Button>
-            </div>
-          </CardContent>
+          <ErrorState message={error} onRetry={() => listQuery.refetch()} />
         ) : !loading && ghosts.length === 0 ? (
-          <CardContent className="flex items-center justify-center py-12">
-            <div className="text-center">
-              <Ghost className="mx-auto size-12 text-muted-foreground" />
-              <p className="mt-2 text-muted-foreground">
-                {lastRefreshedAt
-                  ? "No ghost members in the cache"
-                  : "Click Refresh to populate the cache"}
-              </p>
-            </div>
-          </CardContent>
+          <EmptyState
+            icon={Ghost}
+            message={
+              lastRefreshedAt
+                ? "No ghost members in the cache"
+                : "Click Refresh to populate the cache"
+            }
+          />
         ) : (
           <>
             <CardContent className="px-0">

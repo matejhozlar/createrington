@@ -6,6 +6,7 @@ import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { EmptyState, ErrorState } from "@/components/query-states";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CellDate, CellText } from "@/components/cell-text";
 import {
@@ -212,31 +213,17 @@ export function AdminWorkshop() {
           </CardHeader>
 
           {workshopsQuery.error ? (
-            <CardContent className="flex flex-1 items-center justify-center py-12">
-              <div className="text-center">
-                <p className="text-destructive">
-                  {workshopsQuery.error.message}
-                </p>
-                <Button
-                  onClick={() => workshopsQuery.refetch()}
-                  className="mt-4"
-                  variant="outline"
-                >
-                  Try Again
-                </Button>
-              </div>
-            </CardContent>
+            <ErrorState
+              message={workshopsQuery.error.message}
+              onRetry={() => workshopsQuery.refetch()}
+            />
           ) : !workshopsQuery.isLoading && workshops.length === 0 ? (
-            <CardContent className="flex flex-1 items-center justify-center py-12">
-              <div className="text-center">
-                <Hammer className="mx-auto size-12 text-muted-foreground" />
-                <p className="mt-2 text-muted-foreground">No workshops yet</p>
-                <Button onClick={openCreate} className="mt-4">
-                  <Plus className="mr-2 size-4" />
-                  Create First Workshop
-                </Button>
-              </div>
-            </CardContent>
+            <EmptyState icon={Hammer} message="No workshops yet">
+              <Button onClick={openCreate}>
+                <Plus className="mr-2 size-4" />
+                Create First Workshop
+              </Button>
+            </EmptyState>
           ) : (
             <CardContent className="px-0">
               <DataTable

@@ -44,6 +44,7 @@ import { EditFaqModal } from "./components/modals/EditFaqModal";
 import { DeleteFaqModal } from "./components/modals/DeleteFaqModal";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
+import { EmptyState, ErrorState } from "@/components/query-states";
 
 type FaqEntry = RouterOutput["admin"]["faq"]["list"]["entries"][number];
 
@@ -310,31 +311,20 @@ export function AdminFaq() {
           </CardHeader>
 
           {error ? (
-            <CardContent className="flex flex-1 items-center justify-center py-12">
-              <div className="text-center">
-                <p className="text-destructive">{error}</p>
-                <Button
-                  onClick={() => entriesQuery.refetch()}
-                  className="mt-4"
-                  variant="outline"
-                >
-                  Try Again
-                </Button>
-              </div>
-            </CardContent>
+            <ErrorState
+              message={error}
+              onRetry={() => entriesQuery.refetch()}
+            />
           ) : !loading && entries.length === 0 ? (
-            <CardContent className="flex flex-1 items-center justify-center py-12">
-              <div className="text-center">
-                <MessageCircleQuestion className="mx-auto size-12 text-muted-foreground" />
-                <p className="mt-2 text-muted-foreground">
-                  No FAQ entries found
-                </p>
-                <Button onClick={() => setCreateModal(true)} className="mt-4">
-                  <Plus className="mr-2 size-4" />
-                  Create First Entry
-                </Button>
-              </div>
-            </CardContent>
+            <EmptyState
+              icon={MessageCircleQuestion}
+              message="No FAQ entries found"
+            >
+              <Button onClick={() => setCreateModal(true)}>
+                <Plus className="mr-2 size-4" />
+                Create First Entry
+              </Button>
+            </EmptyState>
           ) : (
             <>
               <CardContent className="px-0">

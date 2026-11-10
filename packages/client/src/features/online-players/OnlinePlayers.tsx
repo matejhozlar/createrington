@@ -9,7 +9,7 @@ import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loading } from "@/components/loading-spinner";
+import { LoadingState } from "@/components/query-states";
 import {
   Search,
   Users,
@@ -286,9 +286,7 @@ export function OnlinePlayers() {
 
           {/* Player grid */}
           {playersLoading ? (
-            <div className="flex items-center justify-center py-16">
-              <Loading size="medium" text="Loading players..." />
-            </div>
+            <LoadingState text="Loading players..." className="py-16" />
           ) : playersError ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <Users className="size-12 text-muted-foreground mb-4" />

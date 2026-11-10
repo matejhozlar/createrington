@@ -19,10 +19,10 @@ import {
 } from "@/components/ui/card";
 import { ProjectThumb } from "@/features/workshop/components/ProjectThumb";
 import {
-  CardEmpty,
-  CardError,
-  CardLoading,
-} from "@/features/admin/components/CardState";
+  EmptyState,
+  ErrorState,
+  LoadingState,
+} from "@/components/query-states";
 import {
   DISABLED_BADGE_CLASS,
   DISABLED_LABEL,
@@ -244,14 +244,14 @@ export function ReleasesTab({ modpackId }: { modpackId: number }) {
       </CardHeader>
 
       {releasesQuery.isLoading ? (
-        <CardLoading text="Loading releases..." />
+        <LoadingState text="Loading releases..." />
       ) : releasesQuery.error ? (
-        <CardError
+        <ErrorState
           message={releasesQuery.error.message}
           onRetry={() => releasesQuery.refetch()}
         />
       ) : releases.length === 0 ? (
-        <CardEmpty icon={History} message="No published builds recorded yet" />
+        <EmptyState icon={History} message="No published builds recorded yet" />
       ) : (
         <CardContent className="divide-y divide-border px-0">
           {releases.map((release: Release) => {

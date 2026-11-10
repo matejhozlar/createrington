@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useParams, useNavigate, NavLink } from "react-router";
-import { Loading } from "@/components/loading-spinner";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { Button } from "@/components/ui/button";
@@ -12,6 +11,7 @@ import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { describeEntryRules } from "./format";
 import { DeletePromptModal } from "./components/DeletePromptModal";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { LoadingState } from "@/components/query-states";
 
 type ResponseRow = RouterOutput["admin"]["prompts"]["get"]["responses"][number];
 
@@ -87,11 +87,7 @@ export function PromptDetail() {
   }
 
   if (detailQuery.isLoading) {
-    return (
-      <div className="flex flex-1 items-center justify-center py-10">
-        <Loading mode="inline" size="medium" />
-      </div>
-    );
+    return <LoadingState text="Loading..." className="py-10" />;
   }
 
   if (!detailQuery.data) {

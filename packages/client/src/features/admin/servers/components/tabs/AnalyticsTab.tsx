@@ -13,11 +13,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loading } from "@/components/loading-spinner";
 import { trpc } from "@/lib/trpc";
 import { ActivityChart } from "../charts/ActivityChart";
 import { HeatmapChart } from "../charts/HeatmapChart";
 import { useQuery } from "@tanstack/react-query";
+import { LoadingState } from "@/components/query-states";
 
 interface AnalyticsTabProps {
   serverId: number;
@@ -119,9 +119,7 @@ export function AnalyticsTab({ serverId }: AnalyticsTabProps) {
         </CardHeader>
         <CardContent>
           {activityLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loading size="medium" text="Loading activity..." />
-            </div>
+            <LoadingState text="Loading activity..." />
           ) : activity.length === 0 ? (
             <p className="text-center text-sm text-muted-foreground py-8">
               No activity data for this period
@@ -142,9 +140,7 @@ export function AnalyticsTab({ serverId }: AnalyticsTabProps) {
         </CardHeader>
         <CardContent>
           {heatmapLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loading size="medium" text="Loading heatmap..." />
-            </div>
+            <LoadingState text="Loading heatmap..." />
           ) : heatmap.length === 0 ? (
             <p className="text-center text-sm text-muted-foreground py-8">
               No heatmap data for this period
