@@ -5,17 +5,9 @@ import {
   isLauncherPackSlug,
   type LauncherPackSource,
 } from "@createrington/shared/launcher";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { FormDialog } from "@/components/form-dialog";
 import { Input } from "@/components/ui/input";
 import { Field, FieldLabel } from "@/components/ui/field";
-import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -122,111 +114,96 @@ export function AddLauncherPackDialog({
   const canAdd = modpack !== null && slugValid && sourceAllowed;
 
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && close()}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Package className="size-5" />
-            Offer a modpack to the launcher
-          </DialogTitle>
-          <DialogDescription>
-            The pack shows up in every launcher's modpack list under this slug.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="flex flex-col gap-4">
-          <Field>
-            <FieldLabel htmlFor="launcher-pack-modpack">Modpack</FieldLabel>
-            <Select value={modpackId} onValueChange={pickModpack}>
-              <SelectTrigger id="launcher-pack-modpack" className="w-full">
-                <SelectValue
-                  placeholder={
-                    candidatesQuery.isLoading
-                      ? "Loading modpacks"
-                      : candidates.length === 0
-                        ? "Every modpack is already offered"
-                        : "Pick a modpack"
-                  }
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {candidates.map((row) => (
-                  <SelectItem key={row.id} value={String(row.id)}>
-                    {row.name}
-                    {row.curseforgeProjectId === null &&
-                      " (no CurseForge project)"}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
-
-          <Field>
-            <FieldLabel htmlFor="launcher-pack-slug">Slug</FieldLabel>
-            <Input
-              id="launcher-pack-slug"
-              value={slug}
-              maxLength={LAUNCHER_PACK_SLUG_MAX_LENGTH}
-              onChange={(event) => {
-                setSlugTouched(true);
-                setSlug(event.target.value.toLowerCase());
-              }}
-              placeholder="createrington-test"
-              className="font-mono"
-              aria-invalid={slug.length > 0 && !slugValid}
+    <FormDialog
+      open={open}
+      onClose={close}
+      title={
+        <span className="flex items-center gap-2">
+          <Package className="size-5" />
+          Offer a modpack to the launcher
+        </span>
+      }
+      description="The pack shows up in every launcher's modpack list under this slug."
+      confirmLabel="Offer pack"
+      onConfirm={() => {
+        if (!modpack) return;
+        addMutation.mutate({ slug, modpackId: modpack.id, source });
+      }}
+      disabled={!canAdd}
+      loading={addMutation.isPending}
+      contentClassName="sm:max-w-lg"
+    >
+      <Field>
+        <FieldLabel htmlFor="launcher-pack-modpack">Modpack</FieldLabel>
+        <Select value={modpackId} onValueChange={pickModpack}>
+          <SelectTrigger id="launcher-pack-modpack" className="w-full">
+            <SelectValue
+              placeholder={
+                candidatesQuery.isLoading
+                  ? "Loading modpacks"
+                  : candidates.length === 0
+                    ? "Every modpack is already offered"
+                    : "Pick a modpack"
+              }
             />
-            <p className="text-sm text-muted-foreground">{SLUG_HINT}</p>
-          </Field>
+          </SelectTrigger>
+          <SelectContent>
+            {candidates.map((row) => (
+              <SelectItem key={row.id} value={String(row.id)}>
+                {row.name}
+                {row.curseforgeProjectId === null && " (no CurseForge project)"}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </Field>
 
-          <Field>
-            <FieldLabel htmlFor="launcher-pack-source">
-              Releases from
-            </FieldLabel>
-            <Select
-              value={source}
-              onValueChange={(value) => setSource(value as LauncherPackSource)}
-            >
-              <SelectTrigger id="launcher-pack-source" className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {SOURCE_OPTIONS.map((option) => (
-                  <SelectItem
-                    key={option.value}
-                    value={option.value}
-                    disabled={
-                      option.value === "curseforge" &&
-                      modpack !== null &&
-                      modpack.curseforgeProjectId === null
-                    }
-                  >
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-sm text-muted-foreground">
-              {SOURCE_OPTIONS.find((option) => option.value === source)?.hint}
-            </p>
-          </Field>
-        </div>
+      <Field>
+        <FieldLabel htmlFor="launcher-pack-slug">Slug</FieldLabel>
+        <Input
+          id="launcher-pack-slug"
+          value={slug}
+          maxLength={LAUNCHER_PACK_SLUG_MAX_LENGTH}
+          onChange={(event) => {
+            setSlugTouched(true);
+            setSlug(event.target.value.toLowerCase());
+          }}
+          placeholder="createrington-test"
+          className="font-mono"
+          aria-invalid={slug.length > 0 && !slugValid}
+        />
+        <p className="text-sm text-muted-foreground">{SLUG_HINT}</p>
+      </Field>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={close}>
-            Cancel
-          </Button>
-          <Button
-            disabled={!canAdd}
-            loading={addMutation.isPending}
-            onClick={() => {
-              if (!modpack) return;
-              addMutation.mutate({ slug, modpackId: modpack.id, source });
-            }}
-          >
-            Offer pack
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      <Field>
+        <FieldLabel htmlFor="launcher-pack-source">Releases from</FieldLabel>
+        <Select
+          value={source}
+          onValueChange={(value) => setSource(value as LauncherPackSource)}
+        >
+          <SelectTrigger id="launcher-pack-source" className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {SOURCE_OPTIONS.map((option) => (
+              <SelectItem
+                key={option.value}
+                value={option.value}
+                disabled={
+                  option.value === "curseforge" &&
+                  modpack !== null &&
+                  modpack.curseforgeProjectId === null
+                }
+              >
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-sm text-muted-foreground">
+          {SOURCE_OPTIONS.find((option) => option.value === source)?.hint}
+        </p>
+      </Field>
+    </FormDialog>
   );
 }

@@ -6,7 +6,7 @@ import { Field, FieldLabel } from "@/components/ui/field";
 import { trpc, type RouterOutput, queryClient } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
-import { AdminActionModal } from "./AdminActionModal";
+import { FormDialog } from "@/components/form-dialog";
 import { useMutation } from "@tanstack/react-query";
 
 type PlayerDetailed = RouterOutput["admin"]["players"]["players"]["get"];
@@ -58,7 +58,7 @@ export function DeletePlayerModal({
 
   return (
     <>
-      <AdminActionModal
+      <FormDialog
         open={open}
         onClose={onClose}
         title="Delete Player"
@@ -106,7 +106,7 @@ export function DeletePlayerModal({
             maxLength={ADMIN_REASON_MAX_LENGTH}
           />
         </Field>
-      </AdminActionModal>
+      </FormDialog>
 
       <ConfirmDialog
         open={showConfirmDialog}

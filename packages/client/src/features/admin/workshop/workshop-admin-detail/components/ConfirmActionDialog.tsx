@@ -1,14 +1,5 @@
 import { useState } from "react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import type { WorkshopModStatus } from "@createrington/shared/db";
@@ -113,37 +104,30 @@ export function ConfirmActionDialog({
   const copy = target ? copyFor(target) : null;
 
   return (
-    <AlertDialog open={target !== null} onOpenChange={onOpenChange}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>
-            {target && copy ? copy.title(target.name) : ""}
-          </AlertDialogTitle>
-          <AlertDialogDescription>{copy?.description}</AlertDialogDescription>
-        </AlertDialogHeader>
-        <div className="flex items-center gap-2">
-          <Checkbox
-            id="confirm-action-skip"
-            checked={dontAskAgain}
-            onCheckedChange={(checked) => setDontAskAgain(checked === true)}
-          />
-          <Label
-            htmlFor="confirm-action-skip"
-            className="font-normal text-muted-foreground"
-          >
-            Don&apos;t ask again for this session
-          </Label>
-        </div>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            variant={copy?.variant}
-            onClick={() => target && onConfirm(target, dontAskAgain)}
-          >
-            Confirm
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <ConfirmDialog
+      open={target !== null}
+      onOpenChange={onOpenChange}
+      title={target && copy ? copy.title(target.name) : ""}
+      description={copy?.description}
+      confirmLabel="Confirm"
+      variant={copy?.variant}
+      onConfirm={() => {
+        if (target) onConfirm(target, dontAskAgain);
+      }}
+    >
+      <div className="flex items-center gap-2">
+        <Checkbox
+          id="confirm-action-skip"
+          checked={dontAskAgain}
+          onCheckedChange={(checked) => setDontAskAgain(checked === true)}
+        />
+        <Label
+          htmlFor="confirm-action-skip"
+          className="font-normal text-muted-foreground"
+        >
+          Don&apos;t ask again for this session
+        </Label>
+      </div>
+    </ConfirmDialog>
   );
 }

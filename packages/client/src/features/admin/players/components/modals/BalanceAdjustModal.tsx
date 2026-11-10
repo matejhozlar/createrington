@@ -13,7 +13,7 @@ import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { formatMoney } from "@/lib/format";
 import { trpc, queryClient } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
-import { AdminActionModal } from "./AdminActionModal";
+import { FormDialog } from "@/components/form-dialog";
 import { useMutation } from "@tanstack/react-query";
 
 type Mode = "add" | "remove" | "set";
@@ -119,7 +119,7 @@ export function BalanceAdjustModal({
   };
 
   return (
-    <AdminActionModal
+    <FormDialog
       open={open}
       onClose={onClose}
       title="Adjust Balance"
@@ -196,7 +196,7 @@ export function BalanceAdjustModal({
           Shown as the transaction description.
         </FieldDescription>
       </Field>
-    </AdminActionModal>
+    </FormDialog>
   );
 }
 

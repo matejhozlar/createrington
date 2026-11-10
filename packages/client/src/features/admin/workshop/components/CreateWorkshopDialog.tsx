@@ -3,14 +3,7 @@ import { useNavigate } from "react-router";
 import { trpc, queryClient } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { FormDialog } from "@/components/form-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -101,174 +94,165 @@ export function CreateWorkshopDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent onOpenAutoFocus={(event) => event.preventDefault()}>
-        <DialogHeader>
-          <DialogTitle>New Workshop</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
+    <FormDialog
+      open={open}
+      onClose={() => onOpenChange(false)}
+      title="New Workshop"
+      onConfirm={handleCreate}
+      confirmLabel="Create Draft"
+      disabled={
+        !name.trim() ||
+        !gameVersion.trim() ||
+        (modpackSel === "new" && !modpackName.trim())
+      }
+      loading={createMutation.isPending}
+      contentClassName="sm:max-w-lg"
+    >
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="workshop-name">Name</Label>
+          <Input
+            id="workshop-name"
+            placeholder="Createrington Season 3 Modpack"
+            maxLength={120}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="workshop-desc">Description</Label>
+          <Input
+            id="workshop-desc"
+            placeholder="What is this workshop about?"
+            maxLength={2000}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Modpack</Label>
+          <Select value={modpackSel} onValueChange={setModpackSel}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="new">New Modpack</SelectItem>
+              {modpacksQuery.data?.map((modpack) => (
+                <SelectItem key={modpack.id} value={String(modpack.id)}>
+                  {modpack.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        {modpackSel === "new" && (
           <div className="space-y-2">
-            <Label htmlFor="workshop-name">Name</Label>
+            <Label htmlFor="workshop-modpack-name">Modpack Name</Label>
             <Input
-              id="workshop-name"
-              placeholder="Createrington Season 3 Modpack"
+              id="workshop-modpack-name"
+              placeholder="Createrington Season 3"
               maxLength={120}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              value={modpackName}
+              onChange={(e) => setModpackName(e.target.value)}
             />
           </div>
+        )}
+        <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="workshop-desc">Description</Label>
-            <Input
-              id="workshop-desc"
-              placeholder="What is this workshop about?"
-              maxLength={2000}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
+            <Label htmlFor="workshop-version">Game Version</Label>
+            {versionsQuery.error || versionsQuery.data?.length === 0 ? (
+              <Input
+                id="workshop-version"
+                placeholder="1.21.1"
+                maxLength={20}
+                value={gameVersion}
+                onChange={(e) => setGameVersion(e.target.value)}
+              />
+            ) : (
+              <Select
+                value={gameVersion}
+                onValueChange={setGameVersion}
+                disabled={versionsQuery.isLoading}
+              >
+                <SelectTrigger id="workshop-version">
+                  <SelectValue
+                    placeholder={
+                      versionsQuery.isLoading ? "Loading..." : "Pick a version"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {versionsQuery.data?.map((version) => (
+                    <SelectItem key={version} value={version}>
+                      {version}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
           <div className="space-y-2">
-            <Label>Modpack</Label>
-            <Select value={modpackSel} onValueChange={setModpackSel}>
+            <Label>Mod Loader</Label>
+            <Select value={loaderType} onValueChange={setLoaderType}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="new">New Modpack</SelectItem>
-                {modpacksQuery.data?.map((modpack) => (
-                  <SelectItem key={modpack.id} value={String(modpack.id)}>
-                    {modpack.name}
+                {Object.entries(LOADER_NAMES).map(([id, label]) => (
+                  <SelectItem key={id} value={id}>
+                    {label}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-          {modpackSel === "new" && (
-            <div className="space-y-2">
-              <Label htmlFor="workshop-modpack-name">Modpack Name</Label>
-              <Input
-                id="workshop-modpack-name"
-                placeholder="Createrington Season 3"
-                maxLength={120}
-                value={modpackName}
-                onChange={(e) => setModpackName(e.target.value)}
-              />
-            </div>
-          )}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="workshop-version">Game Version</Label>
-              {versionsQuery.error || versionsQuery.data?.length === 0 ? (
-                <Input
-                  id="workshop-version"
-                  placeholder="1.21.1"
-                  maxLength={20}
-                  value={gameVersion}
-                  onChange={(e) => setGameVersion(e.target.value)}
-                />
-              ) : (
-                <Select
-                  value={gameVersion}
-                  onValueChange={setGameVersion}
-                  disabled={versionsQuery.isLoading}
-                >
-                  <SelectTrigger id="workshop-version">
-                    <SelectValue
-                      placeholder={
-                        versionsQuery.isLoading
-                          ? "Loading..."
-                          : "Pick a version"
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {versionsQuery.data?.map((version) => (
-                      <SelectItem key={version} value={version}>
-                        {version}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label>Mod Loader</Label>
-              <Select value={loaderType} onValueChange={setLoaderType}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(LOADER_NAMES).map(([id, label]) => (
-                    <SelectItem key={id} value={id}>
-                      {label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="workshop-max">Suggestions per Player</Label>
-              <Input
-                id="workshop-max"
-                type="number"
-                min={1}
-                max={25}
-                value={maxMods}
-                onChange={(e) => setMaxMods(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="workshop-max-upvotes">Upvotes per Player</Label>
-              <Input
-                id="workshop-max-upvotes"
-                type="number"
-                min={1}
-                max={100}
-                value={maxUpvotes}
-                onChange={(e) => setMaxUpvotes(e.target.value)}
-              />
-            </div>
-          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="workshop-basepack">
-              Base Modpack ID (Optional)
-            </Label>
+            <Label htmlFor="workshop-max">Suggestions per Player</Label>
             <Input
-              id="workshop-basepack"
+              id="workshop-max"
               type="number"
-              placeholder="Leave empty for a fresh workshop"
-              value={basePackId}
-              onChange={(e) => setBasePackId(e.target.value)}
+              min={1}
+              max={25}
+              value={maxMods}
+              onChange={(e) => setMaxMods(e.target.value)}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="workshop-forum">
-              Discord Forum Channel ID (Optional)
-            </Label>
+            <Label htmlFor="workshop-max-upvotes">Upvotes per Player</Label>
             <Input
-              id="workshop-forum"
-              placeholder="Forum for per-suggestion discussion threads"
-              value={forumChannelId}
-              onChange={(e) => setForumChannelId(e.target.value)}
+              id="workshop-max-upvotes"
+              type="number"
+              min={1}
+              max={100}
+              value={maxUpvotes}
+              onChange={(e) => setMaxUpvotes(e.target.value)}
             />
           </div>
         </div>
-        <DialogFooter>
-          <Button
-            onClick={handleCreate}
-            disabled={
-              !name.trim() ||
-              !gameVersion.trim() ||
-              (modpackSel === "new" && !modpackName.trim())
-            }
-            loading={createMutation.isPending}
-          >
-            Create Draft
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        <div className="space-y-2">
+          <Label htmlFor="workshop-basepack">Base Modpack ID (Optional)</Label>
+          <Input
+            id="workshop-basepack"
+            type="number"
+            placeholder="Leave empty for a fresh workshop"
+            value={basePackId}
+            onChange={(e) => setBasePackId(e.target.value)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="workshop-forum">
+            Discord Forum Channel ID (Optional)
+          </Label>
+          <Input
+            id="workshop-forum"
+            placeholder="Forum for per-suggestion discussion threads"
+            value={forumChannelId}
+            onChange={(e) => setForumChannelId(e.target.value)}
+          />
+        </div>
+      </div>
+    </FormDialog>
   );
 }

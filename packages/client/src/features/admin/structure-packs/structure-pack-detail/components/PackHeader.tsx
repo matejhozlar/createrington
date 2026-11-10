@@ -1,20 +1,11 @@
+import { useState } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 
 interface Pack {
   id: number;
@@ -31,9 +22,11 @@ export function PackHeader({
 }: {
   pack: Pack;
   onEdit: () => void;
-  onDelete: () => void;
+  onDelete: () => Promise<unknown>;
   onToggleEnabled: (enabled: boolean) => void;
 }) {
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+
   return (
     <AdminPageTitle
       title={pack.name}
@@ -62,32 +55,24 @@ export function PackHeader({
             Edit
           </Button>
           {!pack.isActive && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive" size="sm">
-                  <Trash2 className="size-4" />
-                  Delete
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>
-                    Delete &quot;{pack.name}&quot;?
-                  </AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will remove the pack from the rotation pool. Historical
-                    data will be preserved.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={onDelete}>
-                    Delete
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setConfirmingDelete(true)}
+            >
+              <Trash2 className="size-4" />
+              Delete
+            </Button>
           )}
+          <ConfirmDialog
+            open={confirmingDelete}
+            onOpenChange={setConfirmingDelete}
+            title={<>Delete &quot;{pack.name}&quot;?</>}
+            description="This will remove the pack from the rotation pool. Historical data will be preserved."
+            confirmLabel="Delete"
+            variant="destructive"
+            onConfirm={onDelete}
+          />
         </>
       }
     />

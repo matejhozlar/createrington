@@ -6,11 +6,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { FormDialog } from "@/components/form-dialog";
 import { Input } from "@/components/ui/input";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useToastActions } from "@/hooks/use-toast";
@@ -342,118 +341,112 @@ export function AddModDialog({
         </DialogContent>
       </Dialog>
 
-      {/* Dependency Dialog (sandbox-style) */}
-      <Dialog
+      <FormDialog
         open={selectedFile !== null}
-        onOpenChange={(next) => {
-          if (!next && !addingBatch) {
-            setSelectedFile(null);
-            setDepOverrides(null);
-          }
+        onClose={() => {
+          if (addingBatch) return;
+          setSelectedFile(null);
+          setDepOverrides(null);
         }}
+        title="Dependencies"
+        description={
+          <>
+            <span className="font-medium text-foreground">
+              {selectedFile?.displayName}
+            </span>{" "}
+            {addDepModIds.length > 0
+              ? "has dependencies that may need to be added."
+              : "has no additional dependencies."}
+          </>
+        }
+        confirmLabel={
+          <>
+            <Plus className="size-3.5" />
+            Add{selectedDeps.size > 0 ? ` ${1 + selectedDeps.size} mods` : ""}
+          </>
+        }
+        onConfirm={() => void handleBatchAdd()}
+        disabled={depsQuery.isLoading}
+        loading={addingBatch}
+        contentClassName="sm:max-w-lg"
       >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Dependencies</DialogTitle>
-            <DialogDescription>
-              <span className="font-medium text-foreground">
-                {selectedFile?.displayName}
-              </span>{" "}
-              {addDepModIds.length > 0
-                ? "has dependencies that may need to be added."
-                : "has no additional dependencies."}
-            </DialogDescription>
-          </DialogHeader>
+        <div className="max-h-80 space-y-2 overflow-y-auto">
+          {depsQuery.isLoading && addDepModIds.length > 0 && (
+            <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
+              <Spinner className="mr-2 size-4" />
+              Resolving dependencies...
+            </div>
+          )}
 
-          <div className="max-h-80 space-y-2 overflow-y-auto">
-            {depsQuery.isLoading && addDepModIds.length > 0 && (
-              <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
-                <Spinner className="mr-2 size-4" />
-                Resolving dependencies...
-              </div>
-            )}
+          {addDepModIds.length === 0 && (
+            <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
+              No dependencies required.
+            </div>
+          )}
 
-            {addDepModIds.length === 0 && (
-              <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
-                No dependencies required.
-              </div>
-            )}
+          {depsQuery.data?.map((dep) => {
+            const relType = selectedFile?.dependencies.find(
+              (d) => d.modId === dep.modId,
+            )?.relationType;
+            // relationType 3 = Required in the CurseForge API
+            const isRequired = relType === 3;
+            const isSelected = selectedDeps.has(dep.modId);
+            const canSelect = !dep.inPack && !!dep.bestFile;
 
-            {depsQuery.data?.map((dep) => {
-              const relType = selectedFile?.dependencies.find(
-                (d) => d.modId === dep.modId,
-              )?.relationType;
-              // relationType 3 = Required in the CurseForge API
-              const isRequired = relType === 3;
-              const isSelected = selectedDeps.has(dep.modId);
-              const canSelect = !dep.inPack && !!dep.bestFile;
-
-              return (
-                <div
-                  key={dep.modId}
-                  className={`flex items-center gap-3 rounded-md border p-3 text-sm${canSelect ? " hover:bg-accent" : ""}`}
-                >
-                  <div className="shrink-0">
-                    {dep.inPack ? (
-                      <CheckCircle2 className="size-4 text-green-600" />
-                    ) : canSelect ? (
-                      <Checkbox
-                        checked={isSelected}
-                        disabled={addingBatch}
-                        onCheckedChange={() =>
-                          setDepOverrides((prev) => {
-                            const current = prev ?? defaultDepSelection;
-                            const next = new Set(current);
-                            if (next.has(dep.modId)) next.delete(dep.modId);
-                            else next.add(dep.modId);
-                            return next;
-                          })
-                        }
-                      />
-                    ) : (
-                      <div className="size-4" />
+            return (
+              <div
+                key={dep.modId}
+                className={`flex items-center gap-3 rounded-md border p-3 text-sm${canSelect ? " hover:bg-accent" : ""}`}
+              >
+                <div className="shrink-0">
+                  {dep.inPack ? (
+                    <CheckCircle2 className="size-4 text-green-600" />
+                  ) : canSelect ? (
+                    <Checkbox
+                      checked={isSelected}
+                      disabled={addingBatch}
+                      onCheckedChange={() =>
+                        setDepOverrides((prev) => {
+                          const current = prev ?? defaultDepSelection;
+                          const next = new Set(current);
+                          if (next.has(dep.modId)) next.delete(dep.modId);
+                          else next.add(dep.modId);
+                          return next;
+                        })
+                      }
+                    />
+                  ) : (
+                    <div className="size-4" />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2 font-medium">
+                    <span className="truncate">{dep.modName}</span>
+                    <Badge
+                      variant={isRequired ? "default" : "secondary"}
+                      className="text-xs"
+                    >
+                      {isRequired ? "Required" : "Optional"}
+                    </Badge>
+                    {dep.inPack && (
+                      <Badge className="bg-green-600 text-xs">In pack</Badge>
                     )}
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2 font-medium">
-                      <span className="truncate">{dep.modName}</span>
-                      <Badge
-                        variant={isRequired ? "default" : "secondary"}
-                        className="text-xs"
-                      >
-                        {isRequired ? "Required" : "Optional"}
-                      </Badge>
-                      {dep.inPack && (
-                        <Badge className="bg-green-600 text-xs">In pack</Badge>
-                      )}
+                  {dep.bestFile ? (
+                    <div className="truncate text-xs text-muted-foreground">
+                      {dep.bestFile.fileName}
                     </div>
-                    {dep.bestFile ? (
-                      <div className="truncate text-xs text-muted-foreground">
-                        {dep.bestFile.fileName}
-                      </div>
-                    ) : !dep.inPack ? (
-                      <div className="text-xs text-destructive">
-                        No compatible file found
-                      </div>
-                    ) : null}
-                  </div>
+                  ) : !dep.inPack ? (
+                    <div className="text-xs text-destructive">
+                      No compatible file found
+                    </div>
+                  ) : null}
                 </div>
-              );
-            })}
-          </div>
-
-          <DialogFooter>
-            <Button
-              onClick={handleBatchAdd}
-              disabled={depsQuery.isLoading}
-              loading={addingBatch}
-            >
-              <Plus className="size-3.5" />
-              Add{selectedDeps.size > 0 ? ` ${1 + selectedDeps.size} mods` : ""}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+              </div>
+            );
+          })}
+        </div>
+      </FormDialog>
     </>
   );
 }

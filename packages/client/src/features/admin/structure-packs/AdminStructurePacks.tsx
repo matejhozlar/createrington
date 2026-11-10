@@ -33,13 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import { FormDialog } from "@/components/form-dialog";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -433,50 +427,39 @@ export function AdminStructurePacks() {
         }
       />
 
-      {/* Create Dialog */}
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Create Structure Pack</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
-              <Input
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Medieval Structures"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="description">Description (optional)</Label>
-              <Input
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="A collection of medieval-themed structure mods"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={() =>
-                createMutation.mutate({
-                  name,
-                  description: description || undefined,
-                })
-              }
-              disabled={!name.trim() || createMutation.isPending}
-            >
-              Create
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <FormDialog
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        title="Create Structure Pack"
+        confirmLabel="Create"
+        onConfirm={() =>
+          createMutation.mutate({
+            name,
+            description: description || undefined,
+          })
+        }
+        disabled={!name.trim() || createMutation.isPending}
+        contentClassName="sm:max-w-lg"
+      >
+        <div className="space-y-2">
+          <Label htmlFor="name">Name</Label>
+          <Input
+            id="name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g. Medieval Structures"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="description">Description (optional)</Label>
+          <Input
+            id="description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="A collection of medieval-themed structure mods"
+          />
+        </div>
+      </FormDialog>
     </div>
   );
 }
