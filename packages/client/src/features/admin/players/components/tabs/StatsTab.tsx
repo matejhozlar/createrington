@@ -28,7 +28,11 @@ import {
   statModName,
 } from "@createrington/shared/minecraft-stats";
 import { useQuery } from "@tanstack/react-query";
-import { EmptyState, LoadingState } from "@/components/query-states";
+import {
+  EmptyState,
+  ErrorState,
+  LoadingState,
+} from "@/components/query-states";
 
 interface StatsTabProps {
   playerId: string;
@@ -225,17 +229,7 @@ export function StatsTab({ playerId, getServerName }: StatsTabProps) {
       {loading ? (
         <LoadingState text="Loading stats..." />
       ) : error ? (
-        <div className="py-12 text-center">
-          <p className="text-destructive">{error}</p>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => statsQuery.refetch()}
-            className="mt-4"
-          >
-            Retry
-          </Button>
-        </div>
+        <ErrorState message={error} onRetry={() => statsQuery.refetch()} />
       ) : statsEntries.length === 0 ? (
         <EmptyState
           icon={BarChart3}

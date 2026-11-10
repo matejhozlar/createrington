@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Clock } from "lucide-react";
 import { trpc, type RouterOutput } from "@/lib/trpc";
-import { EmptyState } from "@/components/query-states";
+import { EmptyState, ErrorState } from "@/components/query-states";
 
 interface SessionsTabProps {
   playerId: string;
@@ -128,17 +128,7 @@ export function SessionsTab({ playerId, getServerName }: SessionsTabProps) {
       </div>
 
       {error ? (
-        <div className="py-12 text-center">
-          <p className="text-destructive">{error}</p>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => sessionsQuery.refetch()}
-            className="mt-4"
-          >
-            Retry
-          </Button>
-        </div>
+        <ErrorState message={error} onRetry={() => sessionsQuery.refetch()} />
       ) : !loading && sessions.length === 0 ? (
         <EmptyState icon={Clock} message="No sessions found" />
       ) : (
