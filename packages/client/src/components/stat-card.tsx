@@ -28,6 +28,15 @@ const iconVariants = cva(
 
 export type StatTone = NonNullable<VariantProps<typeof iconVariants>["tone"]>;
 
+export type StatCardProps = {
+  label: React.ReactNode;
+  value: React.ReactNode;
+  icon: LucideIcon;
+  tone?: StatTone;
+  footer?: React.ReactNode;
+  action?: React.ReactNode;
+};
+
 export function StatCard({
   label,
   value,
@@ -35,14 +44,7 @@ export function StatCard({
   tone,
   footer,
   action,
-}: {
-  label: React.ReactNode;
-  value: React.ReactNode;
-  icon: LucideIcon;
-  tone?: StatTone;
-  footer?: React.ReactNode;
-  action?: React.ReactNode;
-}) {
+}: StatCardProps) {
   return (
     <Card>
       <CardContent className="flex flex-col gap-4">

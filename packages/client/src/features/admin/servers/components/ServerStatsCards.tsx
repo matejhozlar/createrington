@@ -1,5 +1,5 @@
-import { Server, Users, Clock, Activity, type LucideIcon } from "lucide-react";
-import { StatCard, type StatTone } from "@/components/stat-card";
+import { Server, Users, Clock, Activity } from "lucide-react";
+import { StatCard, type StatCardProps } from "@/components/stat-card";
 
 interface ServerStatsCardsProps {
   isOnline: boolean;
@@ -9,12 +9,7 @@ interface ServerStatsCardsProps {
   avgSessionSeconds: number;
 }
 
-type Stat = {
-  label: string;
-  icon: LucideIcon;
-  tone: StatTone;
-  value: React.ReactNode;
-};
+type Stat = StatCardProps & { label: string };
 
 export function ServerStatsCards({
   isOnline,
@@ -63,8 +58,8 @@ export function ServerStatsCards({
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-      {stats.map(({ label, ...stat }) => (
-        <StatCard key={label} label={label} {...stat} />
+      {stats.map((stat) => (
+        <StatCard key={stat.label} {...stat} />
       ))}
     </div>
   );
