@@ -62,7 +62,7 @@ export function projectKindLabel(classId: number): string | null {
     : curseforgeClassLabel(classId);
 }
 
-export const COMPACT_BADGE_CLASS = "shrink-0 px-1.5 py-0 text-[10px]";
+export const COMPACT_BADGE_CLASS = "px-1.5 py-0 text-[10px]";
 
 export const DISABLED_LABEL = "Disabled";
 

@@ -66,7 +66,6 @@ function AnnouncementBadge({
   return (
     <Badge
       tone={complete ? "success" : "warning"}
-      className="gap-1 text-xs"
       title={
         announcement.presets.map((preset) => preset.name).join(", ") ||
         undefined
@@ -192,7 +191,7 @@ function ReleaseDiff({ releaseId }: { releaseId: number }) {
       {groups.map((group) => (
         <div key={group.key} className="py-2">
           <div className="flex items-center gap-2 px-4 py-1.5">
-            <Badge tone={group.tone} className="gap-1 text-xs">
+            <Badge tone={group.tone}>
               <group.icon className="size-3" />
               {group.label} {diff[group.key].length}
             </Badge>

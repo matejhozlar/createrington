@@ -137,7 +137,7 @@ function eventContext(event: WorkshopEvent): string | null {
 function EventBadge({ type }: { type: WorkshopModEventType }) {
   const { icon: Icon, tone } = EVENT_STYLES[type];
   return (
-    <Badge tone={tone} className="gap-1 text-xs">
+    <Badge tone={tone}>
       <Icon className="size-3" />
       {WORKSHOP_MOD_EVENT_TYPE_LABELS[type]}
     </Badge>
