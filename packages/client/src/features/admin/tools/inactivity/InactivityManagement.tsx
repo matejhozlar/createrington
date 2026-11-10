@@ -70,6 +70,11 @@ import { UnlinkedMembersCard } from "./components/UnlinkedMembersCard";
 
 type Warning = RouterOutput["admin"]["inactivity"]["list"]["warnings"][number];
 
+const invalidateAfterRemovalRun = () => {
+  void queryClient.invalidateQueries(trpc.admin.inactivity.pathFilter());
+  void queryClient.invalidateQueries(trpc.admin.players.pathFilter());
+};
+
 export function InactivityManagement() {
   const toast = useToastActions();
 
@@ -102,14 +107,12 @@ export function InactivityManagement() {
 
   const triggerCleanup = useMutation(
     trpc.admin.inactivity.triggerCleanup.mutationOptions({
-      onSuccess: () =>
-        void queryClient.invalidateQueries(trpc.admin.inactivity.pathFilter()),
+      onSuccess: invalidateAfterRemovalRun,
     }),
   );
   const triggerResolveRemove = useMutation(
     trpc.admin.inactivity.triggerResolveRemove.mutationOptions({
-      onSuccess: () =>
-        void queryClient.invalidateQueries(trpc.admin.inactivity.pathFilter()),
+      onSuccess: invalidateAfterRemovalRun,
     }),
   );
 
