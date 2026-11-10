@@ -10,16 +10,10 @@ type PlayerDetailed = RouterOutput["admin"]["players"]["players"]["get"];
 interface BansTabProps {
   player: PlayerDetailed;
   onIssueBan: () => void;
-  onRefresh: () => void;
   onUnban: (banId: number) => void;
 }
 
-export function BansTab({
-  player,
-  onIssueBan,
-  // onRefresh,
-  onUnban,
-}: BansTabProps) {
+export function BansTab({ player, onIssueBan, onUnban }: BansTabProps) {
   const activeBans = player.bans.active;
   const removedBans = player.bans.history.filter((b) => b.unbannedAt);
   const currentBan = player.bans.current;

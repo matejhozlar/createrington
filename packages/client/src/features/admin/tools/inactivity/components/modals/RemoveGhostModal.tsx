@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
-import { trpc, type RouterOutput } from "@/lib/trpc";
+import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { useMutation } from "@tanstack/react-query";
 
 type Ghost =
@@ -12,24 +12,34 @@ interface RemoveGhostModalProps {
   ghost: Ghost | null;
   onClose: () => void;
   canMutate: boolean;
-  onSuccess: () => void;
 }
 
 export function RemoveGhostModal({
   ghost,
   onClose,
   canMutate,
-  onSuccess,
 }: RemoveGhostModalProps) {
   const verifyGhost = useMutation(
-    trpc.admin.inactivity.ghosts.verify.mutationOptions(),
+    trpc.admin.inactivity.ghosts.verify.mutationOptions({
+      onSuccess: ({ stillGone }) => {
+        if (!stillGone)
+          void queryClient.invalidateQueries(
+            trpc.admin.inactivity.ghosts.pathFilter(),
+          );
+      },
+    }),
   );
   const removeGhost = useMutation(
     trpc.admin.inactivity.ghosts.remove.mutationOptions(
       useMutationToast({
         success: "Ghost member removed",
         error: (error) => error.message || "Failed to remove ghost",
-        onSuccess,
+        onSuccess: () => {
+          void queryClient.invalidateQueries(
+            trpc.admin.inactivity.pathFilter(),
+          );
+          void queryClient.invalidateQueries(trpc.admin.players.pathFilter());
+        },
       }),
     ),
   );

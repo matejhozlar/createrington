@@ -11,7 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToastActions } from "@/hooks/use-toast";
-import { trpc, type RouterOutput } from "@/lib/trpc";
+import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { InsertMenu } from "@/features/admin/components/InsertMenu";
 import { CharCount } from "@/features/admin/components/CharCount";
 import { useMentionResolver } from "@/features/admin/hooks/use-mention-resolver";
@@ -25,17 +25,16 @@ interface EditFaqModalProps {
   open: boolean;
   onClose: () => void;
   entry: FaqEntry;
-  onSuccess: () => void;
 }
 
-export function EditFaqModal({
-  open,
-  onClose,
-  entry,
-  onSuccess,
-}: EditFaqModalProps) {
+export function EditFaqModal({ open, onClose, entry }: EditFaqModalProps) {
   const toast = useToastActions();
-  const updateEntry = useMutation(trpc.admin.faq.update.mutationOptions());
+  const updateEntry = useMutation(
+    trpc.admin.faq.update.mutationOptions({
+      onSuccess: () =>
+        void queryClient.invalidateQueries(trpc.admin.faq.pathFilter()),
+    }),
+  );
 
   const mentionResolver = useMentionResolver();
   const responseRef = useRef<HTMLTextAreaElement>(null);
@@ -77,7 +76,7 @@ export function EditFaqModal({
       });
 
       toast.success("FAQ entry updated");
-      onSuccess();
+      onClose();
     } catch {
       toast.error("Failed to update FAQ entry");
     }

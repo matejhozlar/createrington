@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/select";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { AlertTriangle } from "lucide-react";
-import { trpc } from "@/lib/trpc";
+import { trpc, queryClient } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { AdminActionModal } from "./AdminActionModal";
@@ -21,17 +21,18 @@ interface IssueBanModalProps {
   onClose: () => void;
   playerId: string;
   playerUsername: string;
-  onSuccess: () => void;
 }
 
 type BanType = "temporary" | "permanent";
+
+const invalidatePlayers = () =>
+  void queryClient.invalidateQueries(trpc.admin.players.pathFilter());
 
 export function IssueBanModal({
   open,
   onClose,
   playerId,
   playerUsername,
-  onSuccess,
 }: IssueBanModalProps) {
   const toast = useToastActions();
   const issueTemporaryBan = useMutation(
@@ -41,6 +42,7 @@ export function IssueBanModal({
           title: "Failed to issue ban",
           description: err.message,
         }),
+        onSuccess: invalidatePlayers,
       }),
     ),
   );
@@ -51,6 +53,7 @@ export function IssueBanModal({
           title: "Failed to issue ban",
           description: err.message,
         }),
+        onSuccess: invalidatePlayers,
       }),
     ),
   );
@@ -104,7 +107,6 @@ export function IssueBanModal({
     setDurationDays(7);
     setBanType("temporary");
 
-    onSuccess();
     onClose();
   };
 

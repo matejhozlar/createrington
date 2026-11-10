@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToastActions } from "@/hooks/use-toast";
-import { trpc } from "@/lib/trpc";
+import { trpc, queryClient } from "@/lib/trpc";
 import {
   MAX_ENTRIES_PER_PLAYER,
   MIN_ENTRIES_PER_PLAYER,
@@ -46,7 +46,6 @@ function formatName(key: string): string {
 interface Props {
   open: boolean;
   onClose: () => void;
-  onSuccess: () => void;
 }
 
 // Sentinel select values: Radix Select can't hold an empty string, so
@@ -56,10 +55,13 @@ interface Props {
 const NONE = "__none__";
 const DEFAULT_CHANNEL = "__default__";
 
-export function CreatePromptModal({ open, onClose, onSuccess }: Props) {
+export function CreatePromptModal({ open, onClose }: Props) {
   const toast = useToastActions();
   const createMutation = useMutation(
-    trpc.admin.prompts.create.mutationOptions(),
+    trpc.admin.prompts.create.mutationOptions({
+      onSuccess: () =>
+        void queryClient.invalidateQueries(trpc.admin.prompts.pathFilter()),
+    }),
   );
 
   // Reuse the embed-builder endpoints: they already walk config.discord
@@ -148,7 +150,7 @@ export function CreatePromptModal({ open, onClose, onSuccess }: Props) {
       });
       toast.success("Prompt posted to Discord");
       reset();
-      onSuccess();
+      onClose();
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Something went wrong";

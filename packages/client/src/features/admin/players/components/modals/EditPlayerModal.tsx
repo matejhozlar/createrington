@@ -10,7 +10,7 @@ import {
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useToastActions } from "@/hooks/use-toast";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
-import { trpc, type RouterOutput } from "@/lib/trpc";
+import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { AdminActionModal } from "./AdminActionModal";
 import { useMutation } from "@tanstack/react-query";
 
@@ -20,20 +20,20 @@ interface EditPlayerModalProps {
   open: boolean;
   onClose: () => void;
   player: PlayerDetailed["player"];
-  onSuccess: () => void;
 }
 
 export function EditPlayerModal({
   open,
   onClose,
   player,
-  onSuccess,
 }: EditPlayerModalProps) {
   const toast = useToastActions();
   const updatePlayer = useMutation(
     trpc.admin.players.players.update.mutationOptions(
       useMutationToast({
         error: (err) => err.message || "Failed to update player",
+        onSuccess: () =>
+          void queryClient.invalidateQueries(trpc.admin.players.pathFilter()),
       }),
     ),
   );
@@ -124,7 +124,6 @@ export function EditPlayerModal({
     toast.success("Player updated");
     setReason("");
     onClose();
-    onSuccess();
   };
 
   const handleCancel = () => {

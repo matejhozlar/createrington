@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ADMIN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { useToastActions } from "@/hooks/use-toast";
-import { trpc } from "@/lib/trpc";
+import { trpc, queryClient } from "@/lib/trpc";
 import { AdminActionModal } from "./AdminActionModal";
 import { useMutation } from "@tanstack/react-query";
 
@@ -11,7 +11,6 @@ interface RemoveStrikeModalProps {
   onClose: () => void;
   playerId: string; // minecraftUuid
   strikeId: number;
-  onSuccess: () => void; // call onRefresh from parent
 }
 
 export function RemoveStrikeModal({
@@ -19,11 +18,13 @@ export function RemoveStrikeModal({
   onClose,
   playerId,
   strikeId,
-  onSuccess,
 }: RemoveStrikeModalProps) {
   const toast = useToastActions();
   const removeStrike = useMutation(
-    trpc.admin.players.strikes.remove.mutationOptions(),
+    trpc.admin.players.strikes.remove.mutationOptions({
+      onSuccess: () =>
+        void queryClient.invalidateQueries(trpc.admin.players.pathFilter()),
+    }),
   );
 
   const [reason, setReason] = useState("");
@@ -41,7 +42,6 @@ export function RemoveStrikeModal({
       toast.success("Strike removed");
       setReason("");
       onClose();
-      onSuccess();
     } catch {
       toast.error("Failed to remove strike");
     }

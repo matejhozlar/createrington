@@ -138,18 +138,6 @@ export function AdminWaitlists() {
     setDeleteTarget(entry);
   }, []);
 
-  const handlePromoteSuccess = useCallback(() => {
-    setPromoteModal({ open: false, entry: null });
-    void entriesQuery.refetch();
-    void statsQuery.refetch();
-  }, [entriesQuery, statsQuery]);
-
-  const handleDeleteSuccess = useCallback(() => {
-    setDeleteTarget(null);
-    void entriesQuery.refetch();
-    void statsQuery.refetch();
-  }, [entriesQuery, statsQuery]);
-
   const getStatusBadgeStyle = useCallback((status: WaitlistStatus) => {
     switch (status) {
       case "registered":
@@ -478,14 +466,12 @@ export function AdminWaitlists() {
           open={promoteModal.open}
           onClose={() => setPromoteModal({ open: false, entry: null })}
           entry={promoteModal.entry}
-          onSuccess={handlePromoteSuccess}
         />
       )}
 
       <DeleteWaitlistModal
         entry={deleteTarget}
         onClose={() => setDeleteTarget(null)}
-        onSuccess={handleDeleteSuccess}
       />
     </div>
   );

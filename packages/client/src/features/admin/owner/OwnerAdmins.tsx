@@ -44,11 +44,6 @@ export function OwnerAdmins() {
 
   const admins = adminsQuery.data?.admins ?? [];
 
-  const refetchAll = () => {
-    void adminsQuery.refetch();
-    void auditQuery.refetch();
-  };
-
   const columns: DataTableColumn<AdminRow>[] = [
     {
       key: "player",
@@ -157,7 +152,6 @@ export function OwnerAdmins() {
             `Promoted ${minecraftUsername ?? "user"}${discordRoleAdded ? " + Discord role" : " (Discord role failed)"}`,
           );
           setPromoteOpen(false);
-          refetchAll();
         }}
       />
 
@@ -182,7 +176,6 @@ export function OwnerAdmins() {
             `Demoted ${minecraftUsername ?? "user"} (${bits.join(", ")})`,
           );
           setDemoteTarget(null);
-          refetchAll();
         }}
       />
     </div>

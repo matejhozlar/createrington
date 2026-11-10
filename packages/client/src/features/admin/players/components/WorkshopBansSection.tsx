@@ -152,7 +152,6 @@ export function WorkshopBansSection({
         onClose={() => setIssueOpen(false)}
         discordId={discordId}
         playerUsername={playerUsername}
-        onSuccess={() => bans.refetch()}
       />
 
       {liftBanId !== null && (
@@ -160,7 +159,6 @@ export function WorkshopBansSection({
           open
           onClose={() => setLiftBanId(null)}
           banId={liftBanId}
-          onSuccess={() => bans.refetch()}
         />
       )}
     </div>

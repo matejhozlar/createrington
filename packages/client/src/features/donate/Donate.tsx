@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import { trpc } from "@/lib/trpc";
+import { trpc, queryClient } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -102,7 +102,9 @@ export function Donate() {
           description: err.message,
         }),
         onSuccess: () => {
-          void subscription.refetch();
+          void queryClient.invalidateQueries(
+            trpc.user.donations.activeSubscription.pathFilter(),
+          );
         },
       }),
     ),
@@ -120,7 +122,9 @@ export function Donate() {
           description: err.message,
         }),
         onSuccess: () => {
-          void subscription.refetch();
+          void queryClient.invalidateQueries(
+            trpc.user.donations.activeSubscription.pathFilter(),
+          );
         },
       }),
     ),

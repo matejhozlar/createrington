@@ -500,7 +500,10 @@ export function useEmbedBuilder() {
           bot,
           ...currentPayload,
         });
-        if (activePreset && shouldLink) void linksQuery.refetch();
+        if (activePreset && shouldLink)
+          void queryClient.invalidateQueries(
+            trpc.admin.embeds.presets.links.list.pathFilter(),
+          );
         toast.success(
           `${kind === "components" ? "Message" : "Embed"} sent${result.messageId ? ` (${result.messageId})` : ""}`,
         );
@@ -517,7 +520,6 @@ export function useEmbedBuilder() {
       activePreset,
       bot,
       sendEmbed,
-      linksQuery,
       toast,
       components,
     ],
@@ -792,13 +794,15 @@ export function useEmbedBuilder() {
     async (linkId: number) => {
       try {
         await unlinkMutation.mutateAsync({ id: linkId });
-        void linksQuery.refetch();
+        void queryClient.invalidateQueries(
+          trpc.admin.embeds.presets.links.list.pathFilter(),
+        );
         toast.success("Message unlinked");
       } catch {
         toast.error("Failed to unlink message");
       }
     },
-    [unlinkMutation, linksQuery, toast],
+    [unlinkMutation, toast],
   );
 
   const handleDuplicatePreset = useCallback(

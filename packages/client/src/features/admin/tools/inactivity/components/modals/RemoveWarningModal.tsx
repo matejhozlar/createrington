@@ -1,6 +1,6 @@
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
-import { trpc, type RouterOutput } from "@/lib/trpc";
+import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { useMutation } from "@tanstack/react-query";
 
 type Warning = RouterOutput["admin"]["inactivity"]["list"]["warnings"][number];
@@ -8,20 +8,23 @@ type Warning = RouterOutput["admin"]["inactivity"]["list"]["warnings"][number];
 interface RemoveWarningModalProps {
   warning: Warning | null;
   onClose: () => void;
-  onSuccess: () => void;
 }
 
 export function RemoveWarningModal({
   warning,
   onClose,
-  onSuccess,
 }: RemoveWarningModalProps) {
   const removeWarning = useMutation(
     trpc.admin.inactivity.removeManual.mutationOptions(
       useMutationToast({
         success: "Player removed",
         error: (error) => error.message || "Failed to remove player",
-        onSuccess,
+        onSuccess: () => {
+          void queryClient.invalidateQueries(
+            trpc.admin.inactivity.pathFilter(),
+          );
+          void queryClient.invalidateQueries(trpc.admin.players.pathFilter());
+        },
       }),
     ),
   );

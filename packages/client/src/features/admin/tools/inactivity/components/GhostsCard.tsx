@@ -27,7 +27,7 @@ import {
   formatRelativeDate,
   toIso,
 } from "@/features/admin/format";
-import { trpc, type RouterOutput } from "@/lib/trpc";
+import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { RemoveGhostModal } from "./modals/RemoveGhostModal";
 
 type GhostMember =
@@ -58,11 +58,13 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
   );
 
   const refreshGhosts = useMutation(
-    trpc.admin.inactivity.ghosts.refresh.mutationOptions(),
+    trpc.admin.inactivity.ghosts.refresh.mutationOptions({
+      onSuccess: () =>
+        void queryClient.invalidateQueries(
+          trpc.admin.inactivity.ghosts.pathFilter(),
+        ),
+    }),
   );
-
-  const { refetch: refetchList } = listQuery;
-  const { refetch: refetchCapabilities } = capabilitiesQuery;
 
   const ghosts = listQuery.data?.items ?? [];
   const total = listQuery.data?.pagination.total ?? 0;
@@ -87,8 +89,6 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
     try {
       const result = await refreshGhosts.mutateAsync();
       toast.success(`Cache refreshed: ${result.count} ghost(s)`);
-      void refetchList();
-      void refetchCapabilities();
     } catch (error) {
       toast.error(
         error instanceof Error
@@ -96,20 +96,7 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
           : "Failed to refresh ghost cache",
       );
     }
-  }, [refreshGhosts, toast, refetchList, refetchCapabilities]);
-
-  const handleRemoveSuccess = useCallback(() => {
-    setRemoveTarget(null);
-    void refetchList();
-    void refetchCapabilities();
-  }, [refetchList, refetchCapabilities]);
-
-  const handleRemoveClose = useCallback(() => {
-    setRemoveTarget(null);
-    // Always refetch on close: if verify evicted the user mid-dialog,
-    // they should disappear from the table immediately.
-    void refetchList();
-  }, [refetchList]);
+  }, [refreshGhosts, toast]);
 
   const columns: DataTableColumn<GhostMember>[] = [
     {
@@ -294,9 +281,8 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
 
       <RemoveGhostModal
         ghost={removeTarget}
-        onClose={handleRemoveClose}
+        onClose={() => setRemoveTarget(null)}
         canMutate={canMutate}
-        onSuccess={handleRemoveSuccess}
       />
     </>
   );

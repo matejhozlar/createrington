@@ -12,7 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToastActions } from "@/hooks/use-toast";
-import { trpc, type RouterOutput } from "@/lib/trpc";
+import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { InsertMenu } from "@/features/admin/components/InsertMenu";
 import { CharCount } from "@/features/admin/components/CharCount";
 import { useMentionResolver } from "@/features/admin/hooks/use-mention-resolver";
@@ -34,7 +34,6 @@ interface FollowupDraft {
 interface MessageDialogProps {
   open: boolean;
   onClose: () => void;
-  onSuccess: () => void;
   configId: number;
   message?: Message | null;
 }
@@ -42,7 +41,6 @@ interface MessageDialogProps {
 export function MessageDialog({
   open,
   onClose,
-  onSuccess,
   configId,
   message,
 }: MessageDialogProps) {
@@ -50,10 +48,20 @@ export function MessageDialog({
   const isEdit = !!message;
 
   const createMutation = useMutation(
-    trpc.admin.autoMessages.messages.create.mutationOptions(),
+    trpc.admin.autoMessages.messages.create.mutationOptions({
+      onSuccess: () =>
+        void queryClient.invalidateQueries(
+          trpc.admin.autoMessages.configs.pathFilter(),
+        ),
+    }),
   );
   const updateMutation = useMutation(
-    trpc.admin.autoMessages.messages.update.mutationOptions(),
+    trpc.admin.autoMessages.messages.update.mutationOptions({
+      onSuccess: () =>
+        void queryClient.invalidateQueries(
+          trpc.admin.autoMessages.configs.pathFilter(),
+        ),
+    }),
   );
 
   const mentionResolver = useMentionResolver();
@@ -138,7 +146,7 @@ export function MessageDialog({
         });
         toast.success("Message added");
       }
-      onSuccess();
+      onClose();
     } catch {
       toast.error(`Failed to ${isEdit ? "update" : "add"} message`);
     }

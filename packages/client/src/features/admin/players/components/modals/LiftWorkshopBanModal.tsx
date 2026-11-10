@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Field, FieldLabel } from "@/components/ui/field";
-import { trpc } from "@/lib/trpc";
+import { trpc, queryClient } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { AdminActionModal } from "./AdminActionModal";
 import { useMutation } from "@tanstack/react-query";
@@ -9,17 +9,22 @@ interface LiftWorkshopBanModalProps {
   open: boolean;
   onClose: () => void;
   banId: number;
-  onSuccess: () => void;
 }
 
 export function LiftWorkshopBanModal({
   open,
   onClose,
   banId,
-  onSuccess,
 }: LiftWorkshopBanModalProps) {
   const toast = useToastActions();
-  const liftBan = useMutation(trpc.admin.workshops.bans.lift.mutationOptions());
+  const liftBan = useMutation(
+    trpc.admin.workshops.bans.lift.mutationOptions({
+      onSuccess: () =>
+        void queryClient.invalidateQueries(
+          trpc.admin.workshops.bans.pathFilter(),
+        ),
+    }),
+  );
 
   const [reason, setReason] = useState("");
 
@@ -37,7 +42,6 @@ export function LiftWorkshopBanModal({
     try {
       await liftBan.mutateAsync({ banId, reason: reason.trim() });
       toast.success("Suggestion block lifted");
-      onSuccess();
       handleClose();
     } catch (error) {
       toast.error(

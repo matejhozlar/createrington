@@ -27,7 +27,7 @@ import {
   formatRelativeDate,
   toIso,
 } from "@/features/admin/format";
-import { trpc } from "@/lib/trpc";
+import { trpc, queryClient } from "@/lib/trpc";
 
 export function UnlinkedMembersCard() {
   const toast = useToastActions();
@@ -49,10 +49,13 @@ export function UnlinkedMembersCard() {
   );
 
   const refreshMembers = useMutation(
-    trpc.admin.inactivity.unlinked.refresh.mutationOptions(),
+    trpc.admin.inactivity.unlinked.refresh.mutationOptions({
+      onSuccess: () =>
+        void queryClient.invalidateQueries(
+          trpc.admin.inactivity.unlinked.pathFilter(),
+        ),
+    }),
   );
-
-  const { refetch: refetchList } = listQuery;
 
   const members = listQuery.data?.items ?? [];
   const total = listQuery.data?.pagination.total ?? 0;
@@ -74,7 +77,6 @@ export function UnlinkedMembersCard() {
     try {
       const result = await refreshMembers.mutateAsync();
       toast.success(`Cache refreshed: ${result.count} member(s)`);
-      void refetchList();
     } catch (error) {
       toast.error(
         error instanceof Error
@@ -82,7 +84,7 @@ export function UnlinkedMembersCard() {
           : "Failed to refresh unlinked member cache",
       );
     }
-  }, [refreshMembers, toast, refetchList]);
+  }, [refreshMembers, toast]);
 
   type Member = (typeof members)[number];
 

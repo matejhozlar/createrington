@@ -1,6 +1,6 @@
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
-import { trpc, type RouterOutput } from "@/lib/trpc";
+import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { useMutation } from "@tanstack/react-query";
 
 type Exemption =
@@ -9,17 +9,21 @@ type Exemption =
 interface RemoveExemptionModalProps {
   exemption: Exemption | null;
   onClose: () => void;
-  onSuccess: () => void;
 }
 
 export function RemoveExemptionModal({
   exemption,
   onClose,
-  onSuccess,
 }: RemoveExemptionModalProps) {
   const removeExemption = useMutation(
     trpc.admin.inactivity.exemptions.remove.mutationOptions(
-      useMutationToast({ success: "Exemption removed", onSuccess }),
+      useMutationToast({
+        success: "Exemption removed",
+        onSuccess: () =>
+          void queryClient.invalidateQueries(
+            trpc.admin.inactivity.exemptions.pathFilter(),
+          ),
+      }),
     ),
   );
 
