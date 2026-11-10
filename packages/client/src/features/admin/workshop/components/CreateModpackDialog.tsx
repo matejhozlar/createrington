@@ -61,43 +61,41 @@ export function CreateModpackDialog({
       loading={createMutation.isPending}
       contentClassName="sm:max-w-lg"
     >
-      <div className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="modpack-name">Name</Label>
-          <Input
-            id="modpack-name"
-            placeholder="Createrington Season 3"
-            maxLength={120}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="modpack-desc">Description</Label>
-          <Input
-            id="modpack-desc"
-            placeholder="What is this pack?"
-            maxLength={2000}
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="modpack-published">
-            Published Modpack Project ID (Optional)
-          </Label>
-          <Input
-            id="modpack-published"
-            type="number"
-            placeholder="CurseForge project the pack is published under"
-            value={publishedPackId}
-            onChange={(e) => setPublishedPackId(e.target.value)}
-          />
-          <p className="text-xs text-muted-foreground">
-            Leave empty until the pack is on CurseForge. Once set, live state is
-            derived from the published manifest.
-          </p>
-        </div>
+      <div className="space-y-2">
+        <Label htmlFor="modpack-name">Name</Label>
+        <Input
+          id="modpack-name"
+          placeholder="Createrington Season 3"
+          maxLength={120}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="modpack-desc">Description</Label>
+        <Input
+          id="modpack-desc"
+          placeholder="What is this pack?"
+          maxLength={2000}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="modpack-published">
+          Published Modpack Project ID (Optional)
+        </Label>
+        <Input
+          id="modpack-published"
+          type="number"
+          placeholder="CurseForge project the pack is published under"
+          value={publishedPackId}
+          onChange={(e) => setPublishedPackId(e.target.value)}
+        />
+        <p className="text-xs text-muted-foreground">
+          Leave empty until the pack is on CurseForge. Once set, live state is
+          derived from the published manifest.
+        </p>
       </div>
     </FormDialog>
   );

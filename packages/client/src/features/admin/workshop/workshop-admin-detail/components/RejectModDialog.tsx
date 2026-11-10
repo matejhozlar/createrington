@@ -53,35 +53,33 @@ export function RejectModDialog({
       destructive
       contentClassName="sm:max-w-lg"
     >
-      <div className="space-y-4">
-        <div className="space-y-2">
-          <Label>Reason</Label>
-          <Select
-            value={reason}
-            onValueChange={(value) => setReason(value as RejectReason)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Pick a reason" />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(REJECT_REASON_LABELS).map(([value, label]) => (
-                <SelectItem key={value} value={value}>
-                  {label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="reject-note">Note (Optional)</Label>
-          <Input
-            id="reject-note"
-            placeholder="Extra context, shown to players."
-            maxLength={500}
-            value={note}
-            onChange={(event) => setNote(event.target.value)}
-          />
-        </div>
+      <div className="space-y-2">
+        <Label>Reason</Label>
+        <Select
+          value={reason}
+          onValueChange={(value) => setReason(value as RejectReason)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Pick a reason" />
+          </SelectTrigger>
+          <SelectContent>
+            {Object.entries(REJECT_REASON_LABELS).map(([value, label]) => (
+              <SelectItem key={value} value={value}>
+                {label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="reject-note">Note (Optional)</Label>
+        <Input
+          id="reject-note"
+          placeholder="Extra context, shown to players."
+          maxLength={500}
+          value={note}
+          onChange={(event) => setNote(event.target.value)}
+        />
       </div>
     </FormDialog>
   );
