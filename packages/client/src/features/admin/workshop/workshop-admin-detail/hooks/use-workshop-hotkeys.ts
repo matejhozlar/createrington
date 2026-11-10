@@ -23,6 +23,7 @@ export function useWorkshopHotkeys(input: {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
       if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) {
         return;
       }

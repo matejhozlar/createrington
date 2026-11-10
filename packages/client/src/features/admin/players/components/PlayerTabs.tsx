@@ -8,10 +8,11 @@ import {
   ArrowLeftRight,
   FileText,
   Users,
+  type LucideIcon,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-type TabType =
+export type PlayerTabType =
   | "overview"
   | "party"
   | "sessions"
@@ -22,16 +23,7 @@ type TabType =
   | "transactions"
   | "audit";
 
-interface PlayerTabsProps {
-  activeTab: TabType;
-  onTabChange: (tab: TabType) => void;
-}
-
-const TABS: Array<{
-  id: TabType;
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
-}> = [
+const TABS: Array<{ id: PlayerTabType; label: string; icon: LucideIcon }> = [
   { id: "overview", label: "Overview", icon: Eye },
   { id: "party", label: "Party", icon: Users },
   { id: "sessions", label: "Sessions", icon: Clock },
@@ -43,34 +35,15 @@ const TABS: Array<{
   { id: "audit", label: "Audit Log", icon: FileText },
 ];
 
-export function PlayerTabs({ activeTab, onTabChange }: PlayerTabsProps) {
+export function PlayerTabs() {
   return (
-    <div className="overflow-x-auto overflow-y-hidden border-b border-border [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-      <div className="flex gap-1">
-        {TABS.map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => onTabChange(tab.id)}
-              className={cn(
-                "relative flex shrink-0 cursor-pointer items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors",
-                isActive
-                  ? "text-foreground"
-                  : "text-muted-foreground hover:text-foreground/80",
-              )}
-            >
-              <Icon className="size-3.5" />
-              {tab.label}
-              {isActive && (
-                <span className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-primary" />
-              )}
-            </button>
-          );
-        })}
-      </div>
-    </div>
+    <TabsList variant="underline">
+      {TABS.map(({ id, label, icon: Icon }) => (
+        <TabsTrigger key={id} value={id}>
+          <Icon />
+          {label}
+        </TabsTrigger>
+      ))}
+    </TabsList>
   );
 }
