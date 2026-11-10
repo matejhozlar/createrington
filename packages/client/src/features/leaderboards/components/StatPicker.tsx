@@ -38,7 +38,7 @@ function statLabel({ category, item }: Stat): string {
 
 function StatResults({ onPick }: { onPick: (stat: Stat) => void }) {
   const [query, setQuery] = useState("");
-  const debounced = useDebouncedValue(query.trim(), 200);
+  const debounced = useDebouncedValue(query.trim());
   const searching = debounced.length >= 2;
 
   const searchQuery = useQuery(

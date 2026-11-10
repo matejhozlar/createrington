@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { colorHex } from "@createrington/shared/team-tag";
-import { ChevronDown, Map as MapIcon, Search } from "lucide-react";
+import { ChevronDown, Map as MapIcon } from "lucide-react";
 import { ChoiceField } from "@/components/choice-field";
 import { LoadingState } from "@/components/query-states";
 import { TeamTagPlate } from "@/components/team-tag-plate";
@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/search-input";
 import {
   Tooltip,
   TooltipContent,
@@ -208,16 +208,12 @@ function ClaimsBrowser({
     <>
       <div className="flex flex-col gap-2">
         <div className="flex flex-wrap gap-2">
-          <div className="relative min-w-0 flex-1 basis-[240px]">
-            <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder={COPY.search}
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              className="pl-9"
-            />
-          </div>
+          <SearchInput
+            className="min-w-0 flex-1 basis-[240px]"
+            placeholder={COPY.search}
+            value={search}
+            onValueChange={setSearch}
+          />
           <Select value={partyId} onValueChange={setPartyId}>
             <SelectTrigger className="min-w-0 flex-1 basis-[180px] sm:flex-none">
               <SelectValue />

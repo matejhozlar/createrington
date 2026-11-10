@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/search-input";
 import { LoadingState } from "@/components/query-states";
 import {
   Search,
@@ -272,16 +272,12 @@ export function OnlinePlayers() {
 
           {/* Search bar */}
           {playerCount > 0 && (
-            <div className="relative max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
-              <Input
-                type="text"
-                placeholder="Search players..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
-              />
-            </div>
+            <SearchInput
+              className="max-w-sm"
+              placeholder="Search players..."
+              value={searchQuery}
+              onValueChange={setSearchQuery}
+            />
           )}
 
           {/* Player grid */}

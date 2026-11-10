@@ -14,7 +14,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Paginator } from "@/components/paginator";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/search-input";
 import { Button } from "@/components/ui/button";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { CellDate, CellText } from "@/components/cell-text";
@@ -34,7 +34,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Search,
   Filter,
   Users,
   UserPlus,
@@ -92,7 +91,7 @@ export function AdminWaitlists() {
   }>({ open: false, entry: null });
   const [deleteTarget, setDeleteTarget] = useState<WaitlistEntry | null>(null);
 
-  const debouncedSearch = useDebouncedValue(searchQuery, 1000);
+  const debouncedSearch = useDebouncedValue(searchQuery);
 
   const statsQuery = useQuery(trpc.admin.waitlists.stats.queryOptions());
   const stats = statsQuery.data ?? null;
@@ -307,16 +306,12 @@ export function AdminWaitlists() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSearch} className="flex flex-wrap gap-2">
-              <div className="relative flex-1 min-w-48">
-                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  type="text"
-                  placeholder="Search by Discord username or ID..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
+              <SearchInput
+                className="min-w-48 flex-1"
+                placeholder="Search by Discord username or ID..."
+                value={searchQuery}
+                onValueChange={setSearchQuery}
+              />
 
               <Select
                 value={statusFilter}

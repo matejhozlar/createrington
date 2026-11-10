@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { FormDialog } from "@/components/form-dialog";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/search-input";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
-import { Search, UserPlus } from "lucide-react";
+import { UserPlus } from "lucide-react";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import { trpc, queryClient } from "@/lib/trpc";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
@@ -34,7 +34,7 @@ export function PromoteDialog({
     minecraftUuid: string;
   } | null>(null);
 
-  const debouncedQuery = useDebouncedValue(query, 300);
+  const debouncedQuery = useDebouncedValue(query);
   const searchQuery = useQuery(
     trpc.owner.admins.searchPlayers.queryOptions(
       { query: debouncedQuery },
@@ -119,13 +119,11 @@ export function PromoteDialog({
             </Button>
           </div>
         ) : (
-          <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
-            <Input
+          <div>
+            <SearchInput
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onValueChange={setQuery}
               placeholder="Search by Minecraft username or Discord ID"
-              className="pl-9"
               autoFocus
             />
             {debouncedQuery.length > 0 && (

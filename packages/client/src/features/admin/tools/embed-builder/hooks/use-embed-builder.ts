@@ -265,7 +265,7 @@ export function useEmbedBuilder() {
     () => pendingDraft?.selectedCategoryId ?? null,
   );
 
-  const debouncedSearch = useDebouncedValue(search, 300);
+  const debouncedSearch = useDebouncedValue(search);
   const [lastSavedSnapshot, setLastSavedSnapshot] = useState(() => {
     if (!pendingDraft?.activePreset) return "";
     return pendingDraft.kind === "components"

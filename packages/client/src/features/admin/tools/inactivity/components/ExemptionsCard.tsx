@@ -8,6 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { SearchInput } from "@/components/search-input";
 import { Input } from "@/components/ui/input";
 import { Paginator } from "@/components/paginator";
 import {
@@ -17,7 +18,7 @@ import {
   type DataTableColumn,
 } from "@/components/data-table";
 import { CellText } from "@/components/cell-text";
-import { Plus, Search, ShieldCheck, ShieldOff } from "lucide-react";
+import { Plus, ShieldCheck, ShieldOff } from "lucide-react";
 import { keepPreviousData, useQuery, useMutation } from "@tanstack/react-query";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
@@ -37,7 +38,7 @@ export function ExemptionsCard() {
   const [page, setPage] = useState(0);
   const [limit] = useState(20);
   const [searchQuery, setSearchQuery] = useState("");
-  const debouncedSearch = useDebouncedValue(searchQuery, 500);
+  const debouncedSearch = useDebouncedValue(searchQuery);
 
   const [playerInput, setPlayerInput] = useState("");
   const [reasonInput, setReasonInput] = useState("");
@@ -80,13 +81,10 @@ export function ExemptionsCard() {
   const loadingRows = loadingRowCount(page, limit, total);
   const error = listQuery.error?.message ?? null;
 
-  const handleSearchChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      setSearchQuery(e.target.value);
-      setPage(0);
-    },
-    [],
-  );
+  const handleSearchChange = useCallback((value: string) => {
+    setSearchQuery(value);
+    setPage(0);
+  }, []);
 
   const handleAdd = useCallback(
     (e: React.FormEvent) => {
@@ -219,16 +217,12 @@ export function ExemptionsCard() {
             </Button>
           </form>
 
-          <div className="relative mt-3">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder="Search by Minecraft username..."
-              value={searchQuery}
-              onChange={handleSearchChange}
-              className="pl-9"
-            />
-          </div>
+          <SearchInput
+            className="mt-3"
+            placeholder="Search by Minecraft username..."
+            value={searchQuery}
+            onValueChange={handleSearchChange}
+          />
         </CardHeader>
 
         {error ? (

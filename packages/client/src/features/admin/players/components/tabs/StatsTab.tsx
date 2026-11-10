@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/search-input";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -86,7 +86,7 @@ export function StatsTab({ playerId, getServerName }: StatsTabProps) {
     new Set(),
   );
 
-  const debouncedSearch = useDebouncedValue(search, 300);
+  const debouncedSearch = useDebouncedValue(search);
 
   const statsQuery = useQuery(
     trpc.admin.players.minecraftStats.list.queryOptions({
@@ -239,15 +239,12 @@ export function StatsTab({ playerId, getServerName }: StatsTabProps) {
         <>
           {/* Filters */}
           <div className="flex flex-wrap items-center gap-2">
-            <div className="relative min-w-48 flex-1">
-              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                type="text"
-                placeholder="Search stats..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9"
-              />
+            <SearchInput
+              className="min-w-48 flex-1"
+              placeholder="Search stats..."
+              value={search}
+              onValueChange={setSearch}
+            >
               {search && (
                 <button
                   type="button"
@@ -257,7 +254,7 @@ export function StatsTab({ playerId, getServerName }: StatsTabProps) {
                   <X className="size-4" />
                 </button>
               )}
-            </div>
+            </SearchInput>
 
             {serverOptions.length > 1 && (
               <Select value={selectedServer} onValueChange={setSelectedServer}>

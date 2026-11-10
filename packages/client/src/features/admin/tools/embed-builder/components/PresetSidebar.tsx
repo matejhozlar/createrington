@@ -8,10 +8,10 @@ import {
   MoreHorizontal,
   Pencil,
   Plus,
-  Search,
   Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SearchInput } from "@/components/search-input";
 import { Input } from "@/components/ui/input";
 import {
   AlertDialog,
@@ -247,15 +247,13 @@ export function PresetSidebar({
           New embed
         </Button>
 
-        <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            placeholder="Search presets…"
-            onChange={(e) => setSearch(e.target.value)}
-            className="h-8 pl-8 text-[13px]"
-          />
-        </div>
+        <SearchInput
+          value={search}
+          placeholder="Search presets…"
+          onValueChange={setSearch}
+          iconClassName="left-2.5 size-3.5"
+          inputClassName="h-8 pl-8 text-[13px]"
+        />
       </div>
 
       <div className="flex-1 overflow-y-auto px-1.5 py-2">

@@ -9,7 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Paginator } from "@/components/paginator";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/search-input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CellText } from "@/components/cell-text";
@@ -36,7 +36,6 @@ import {
   Clock,
   Filter,
   RefreshCw,
-  Search,
   Trash2,
   UserCheck,
   UserX,
@@ -88,7 +87,7 @@ export function InactivityManagement() {
   const [resolveTarget, setResolveTarget] = useState<Warning | null>(null);
   const [removeTarget, setRemoveTarget] = useState<Warning | null>(null);
 
-  const debouncedSearch = useDebouncedValue(searchQuery, 500);
+  const debouncedSearch = useDebouncedValue(searchQuery);
 
   const capabilitiesQuery = useQuery(
     trpc.admin.inactivity.capabilities.queryOptions(),
@@ -129,15 +128,12 @@ export function InactivityManagement() {
   const retentionDays = capabilitiesQuery.data?.retentionDays ?? 30;
   const statWindows = { graceDays, retentionDays };
 
-  const handleSearchChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      setSearchQuery(e.target.value);
-      // Reset pagination on every keystroke so the debounced query
-      // below can't land on an out-of-range page when results shrink.
-      setPage(0);
-    },
-    [],
-  );
+  const handleSearchChange = useCallback((value: string) => {
+    setSearchQuery(value);
+    // Reset pagination on every keystroke so the debounced query
+    // below can't land on an out-of-range page when results shrink.
+    setPage(0);
+  }, []);
 
   const handleSearch = useCallback((e: React.FormEvent) => {
     e.preventDefault();
@@ -373,16 +369,12 @@ export function InactivityManagement() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSearch} className="flex flex-wrap gap-2">
-              <div className="relative flex-1 min-w-48">
-                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  type="text"
-                  placeholder="Search by username..."
-                  value={searchQuery}
-                  onChange={handleSearchChange}
-                  className="pl-9"
-                />
-              </div>
+              <SearchInput
+                className="min-w-48 flex-1"
+                placeholder="Search by username..."
+                value={searchQuery}
+                onValueChange={handleSearchChange}
+              />
 
               <Select
                 value={statusFilter}

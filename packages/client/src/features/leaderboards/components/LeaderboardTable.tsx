@@ -1,6 +1,6 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { useLocation } from "react-router";
-import { ChevronDown, Search } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import {
   formatStatCategory,
   formatStatItem,
@@ -11,7 +11,7 @@ import { trpc, type RouterOutput } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/auth";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/search-input";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import { Paginator } from "@/components/paginator";
 import {
@@ -297,7 +297,7 @@ export function LeaderboardTable() {
   const [now] = useState(Date.now);
   const [detailTab, setDetailTab] = useState<DetailTab>("records");
   const [search, setSearch] = useState(params.search);
-  const debouncedSearch = useDebouncedValue(search.trim(), 250);
+  const debouncedSearch = useDebouncedValue(search.trim());
 
   const active = BOARDS.find((b) => b.board === board) ?? BOARDS[0];
   const style = topRoleStyle(active.roleKey);
@@ -420,20 +420,17 @@ export function LeaderboardTable() {
           {board === "records" && (
             <StatPicker value={activeStat} onChange={selectStat} />
           )}
-          <div className="relative flex-1">
-            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(event) => {
-                setSearch(event.target.value);
-                params.update({ search: event.target.value.trim() });
-                setPage(0);
-              }}
-              placeholder="Search players"
-              aria-label="Search players"
-              className="pl-9"
-            />
-          </div>
+          <SearchInput
+            className="flex-1"
+            value={search}
+            onValueChange={(value) => {
+              setSearch(value);
+              params.update({ search: value.trim() });
+              setPage(0);
+            }}
+            placeholder="Search players"
+            aria-label="Search players"
+          />
         </div>
 
         {listQuery.isLoading ? (

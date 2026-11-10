@@ -132,7 +132,7 @@ export function VotesListCard() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<Status>("all");
   const [page, setPage] = useState(0);
-  const needle = useDebouncedValue(search, 300).trim();
+  const needle = useDebouncedValue(search).trim();
 
   const query = useQuery(
     trpc.admin.votes.list.queryOptions(

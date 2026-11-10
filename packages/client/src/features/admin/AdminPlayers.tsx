@@ -24,7 +24,7 @@ import {
   loadingRowCount,
   type DataTableColumn,
 } from "@/components/data-table";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/search-input";
 import { Button } from "@/components/ui/button";
 import { PresenceBadge } from "@/components/presence-badge";
 import { Badge } from "@/components/ui/badge";
@@ -35,14 +35,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Search,
-  Filter,
-  Users,
-  TrendingUp,
-  Coins,
-  UserPlus,
-} from "lucide-react";
+import { Filter, Users, TrendingUp, Coins, UserPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
@@ -100,7 +93,7 @@ export function AdminPlayers() {
   const [orderBy, setOrderBy] = useState<SortField>("lastSeen");
   const [orderDirection, setOrderDirection] = useState<"asc" | "desc">("desc");
 
-  const debouncedSearch = useDebouncedValue(searchQuery, 1000);
+  const debouncedSearch = useDebouncedValue(searchQuery);
   const searchFilters = useMemo(
     () => classifySearch(debouncedSearch),
     [debouncedSearch],
@@ -341,19 +334,15 @@ export function AdminPlayers() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSearch} className="flex flex-wrap gap-2">
-              <div className="relative flex-1 min-w-48">
-                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  type="text"
-                  placeholder="Search by username, Discord ID, or UUID..."
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    setPage(0);
-                  }}
-                  className="pl-9"
-                />
-              </div>
+              <SearchInput
+                className="min-w-48 flex-1"
+                placeholder="Search by username, Discord ID, or UUID..."
+                value={searchQuery}
+                onValueChange={(value) => {
+                  setSearchQuery(value);
+                  setPage(0);
+                }}
+              />
 
               <Select
                 value={
