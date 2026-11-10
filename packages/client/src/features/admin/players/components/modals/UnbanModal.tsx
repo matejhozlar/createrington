@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ADMIN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
 import { Field, FieldLabel } from "@/components/ui/field";
-import { trpc } from "@/lib/trpc";
+import { trpc, queryClient } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { AdminActionModal } from "./AdminActionModal";
 import { useMutation } from "@tanstack/react-query";
@@ -10,18 +10,15 @@ interface UnbanModalProps {
   open: boolean;
   onClose: () => void;
   banId: number;
-  onSuccess: () => void;
 }
 
-export function UnbanModal({
-  open,
-  onClose,
-  banId,
-  onSuccess,
-}: UnbanModalProps) {
+export function UnbanModal({ open, onClose, banId }: UnbanModalProps) {
   const toast = useToastActions();
   const unbanPlayer = useMutation(
-    trpc.admin.players.bans.unban.mutationOptions(),
+    trpc.admin.players.bans.unban.mutationOptions({
+      onSuccess: () =>
+        void queryClient.invalidateQueries(trpc.admin.players.pathFilter()),
+    }),
   );
 
   const [reason, setReason] = useState("");
@@ -41,7 +38,6 @@ export function UnbanModal({
       toast.success("Ban lifted");
 
       setReason("");
-      onSuccess();
       onClose();
     } catch (error) {
       toast.error(

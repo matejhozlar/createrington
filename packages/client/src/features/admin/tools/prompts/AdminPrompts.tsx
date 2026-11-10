@@ -251,10 +251,6 @@ export function AdminPrompts() {
       <CreatePromptModal
         open={createOpen}
         onClose={() => setCreateOpen(false)}
-        onSuccess={() => {
-          setCreateOpen(false);
-          void listQuery.refetch();
-        }}
       />
 
       <DeletePromptModal

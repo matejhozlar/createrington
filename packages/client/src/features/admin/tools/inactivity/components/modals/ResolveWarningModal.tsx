@@ -1,6 +1,6 @@
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
-import { trpc, type RouterOutput } from "@/lib/trpc";
+import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { useMutation } from "@tanstack/react-query";
 
 type Warning = RouterOutput["admin"]["inactivity"]["list"]["warnings"][number];
@@ -8,22 +8,21 @@ type Warning = RouterOutput["admin"]["inactivity"]["list"]["warnings"][number];
 interface ResolveWarningModalProps {
   warning: Warning | null;
   onClose: () => void;
-  onSuccess: () => void;
 }
 
 export function ResolveWarningModal({
   warning,
   onClose,
-  onSuccess,
 }: ResolveWarningModalProps) {
   const resolveWarning = useMutation(
     trpc.admin.inactivity.resolveManual.mutationOptions(
       useMutationToast({
         success: "Warning resolved",
         error: (error) => error.message || "Failed to resolve warning",
-        onSuccess: () => {
-          onSuccess();
-        },
+        onSuccess: () =>
+          void queryClient.invalidateQueries(
+            trpc.admin.inactivity.pathFilter(),
+          ),
       }),
     ),
   );

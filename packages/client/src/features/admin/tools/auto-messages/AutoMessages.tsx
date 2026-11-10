@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import { Loading } from "@/components/loading-spinner";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
@@ -15,7 +15,7 @@ import {
   MessageSquare,
   ArrowDown,
 } from "lucide-react";
-import { trpc, type RouterOutput } from "@/lib/trpc";
+import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { UpsertConfigDialog } from "./components/UpsertConfigDialog";
 import { MessageDialog } from "./components/MessageDialog";
@@ -64,7 +64,9 @@ export function AutoMessages() {
         onSuccess: (_data, variables) => {
           if (expandedId === variables.id) setExpandedId(null);
           setDeleteConfigTarget(null);
-          void configsQuery.refetch();
+          void queryClient.invalidateQueries(
+            trpc.admin.autoMessages.configs.pathFilter(),
+          );
         },
       }),
     ),
@@ -76,8 +78,9 @@ export function AutoMessages() {
         error: "Failed to delete message",
         onSuccess: () => {
           setDeleteMessageId(null);
-          void detailQuery.refetch();
-          void configsQuery.refetch();
+          void queryClient.invalidateQueries(
+            trpc.admin.autoMessages.configs.pathFilter(),
+          );
         },
       }),
     ),
@@ -91,18 +94,6 @@ export function AutoMessages() {
       g.channels.map((c) => [c.id, { name: c.name, category: g.category }]),
     ),
   );
-
-  const handleConfigSuccess = useCallback(() => {
-    setConfigDialog({ open: false, config: null });
-    void configsQuery.refetch();
-    if (expandedId !== null) void detailQuery.refetch();
-  }, [configsQuery, detailQuery, expandedId]);
-
-  const handleMessageSuccess = useCallback(() => {
-    setMessageDialog({ open: false, configId: 0, message: null });
-    void detailQuery.refetch();
-    void configsQuery.refetch();
-  }, [detailQuery, configsQuery]);
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -343,7 +334,6 @@ export function AutoMessages() {
         key={configDialog.config?.id ?? "new"}
         open={configDialog.open}
         onClose={() => setConfigDialog({ open: false, config: null })}
-        onSuccess={handleConfigSuccess}
         config={configDialog.config}
         channels={channels}
       />
@@ -354,7 +344,6 @@ export function AutoMessages() {
         onClose={() =>
           setMessageDialog({ open: false, configId: 0, message: null })
         }
-        onSuccess={handleMessageSuccess}
         configId={messageDialog.configId}
         message={messageDialog.message}
       />

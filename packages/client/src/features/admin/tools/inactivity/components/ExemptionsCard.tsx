@@ -26,17 +26,13 @@ import {
   formatRelativeDate,
   toIso,
 } from "@/features/admin/format";
-import { trpc, type RouterOutput } from "@/lib/trpc";
+import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { RemoveExemptionModal } from "./modals/RemoveExemptionModal";
 
 type Exemption =
   RouterOutput["admin"]["inactivity"]["exemptions"]["list"]["exemptions"][number];
 
-export function ExemptionsCard({
-  onWarningsChanged,
-}: {
-  onWarningsChanged: () => void;
-}) {
+export function ExemptionsCard() {
   const [page, setPage] = useState(0);
   const [limit] = useState(20);
   const [searchQuery, setSearchQuery] = useState("");
@@ -57,8 +53,6 @@ export function ExemptionsCard({
     ),
   );
 
-  const { refetch: refetchList } = listQuery;
-
   const addExemption = useMutation(
     trpc.admin.inactivity.exemptions.add.mutationOptions(
       useMutationToast({
@@ -66,12 +60,13 @@ export function ExemptionsCard({
           data.resolvedWarnings > 0
             ? `${data.minecraftUsername} exempted, ${data.resolvedWarnings} active warning(s) resolved`
             : `${data.minecraftUsername} exempted`,
-        onSuccess: (data) => {
+        onSuccess: () => {
           setPlayerInput("");
           setReasonInput("");
           setPage(0);
-          void refetchList();
-          if (data.resolvedWarnings > 0) onWarningsChanged();
+          void queryClient.invalidateQueries(
+            trpc.admin.inactivity.pathFilter(),
+          );
         },
       }),
     ),
@@ -101,11 +96,6 @@ export function ExemptionsCard({
     },
     [addExemption, playerInput, reasonInput],
   );
-
-  const handleRemoveSuccess = useCallback(() => {
-    setRemoveTarget(null);
-    void refetchList();
-  }, [refetchList]);
 
   const columns: DataTableColumn<Exemption>[] = [
     {
@@ -305,7 +295,6 @@ export function ExemptionsCard({
       <RemoveExemptionModal
         exemption={removeTarget}
         onClose={() => setRemoveTarget(null)}
-        onSuccess={handleRemoveSuccess}
       />
     </>
   );

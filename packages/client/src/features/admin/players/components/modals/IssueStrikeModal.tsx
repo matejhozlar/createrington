@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/select";
 import type { StrikeClassification } from "@createrington/shared/db";
 import { useToastActions } from "@/hooks/use-toast";
-import { trpc } from "@/lib/trpc";
+import { trpc, queryClient } from "@/lib/trpc";
 import { AdminActionModal } from "./AdminActionModal";
 import { useMutation } from "@tanstack/react-query";
 
@@ -19,18 +19,19 @@ interface IssueStrikeModalProps {
   open: boolean;
   onClose: () => void;
   playerId: string;
-  onSuccess: () => void;
 }
 
 export function IssueStrikeModal({
   open,
   onClose,
   playerId,
-  onSuccess,
 }: IssueStrikeModalProps) {
   const toast = useToastActions();
   const issueStrike = useMutation(
-    trpc.admin.players.strikes.issue.mutationOptions(),
+    trpc.admin.players.strikes.issue.mutationOptions({
+      onSuccess: () =>
+        void queryClient.invalidateQueries(trpc.admin.players.pathFilter()),
+    }),
   );
 
   const [classification, setClassification] =
@@ -53,7 +54,6 @@ export function IssueStrikeModal({
       setDescription("");
       setSeverity(1);
       onClose();
-      onSuccess();
     } catch {
       toast.error("Failed to issue strike");
     }

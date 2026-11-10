@@ -45,7 +45,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { keepPreviousData, useQuery, useMutation } from "@tanstack/react-query";
-import { trpc, type RouterOutput } from "@/lib/trpc";
+import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import {
   formatFullDate,
@@ -101,16 +101,17 @@ export function InactivityManagement() {
   );
 
   const triggerCleanup = useMutation(
-    trpc.admin.inactivity.triggerCleanup.mutationOptions(),
+    trpc.admin.inactivity.triggerCleanup.mutationOptions({
+      onSuccess: () =>
+        void queryClient.invalidateQueries(trpc.admin.inactivity.pathFilter()),
+    }),
   );
   const triggerResolveRemove = useMutation(
-    trpc.admin.inactivity.triggerResolveRemove.mutationOptions(),
+    trpc.admin.inactivity.triggerResolveRemove.mutationOptions({
+      onSuccess: () =>
+        void queryClient.invalidateQueries(trpc.admin.inactivity.pathFilter()),
+    }),
   );
-
-  // Destructure refetch so the callbacks below have stable deps: the
-  // full query object is a new reference on every render.
-  const { refetch: refetchList } = listQuery;
-  const { refetch: refetchStats } = statsQuery;
 
   const warnings = listQuery.data?.warnings ?? [];
   const total = listQuery.data?.pagination.total ?? 0;
@@ -139,36 +140,21 @@ export function InactivityManagement() {
     setPage(0);
   }, []);
 
-  const refreshWarnings = useCallback(() => {
-    void refetchList();
-    void refetchStats();
-  }, [refetchList, refetchStats]);
-
-  const handleSuccess = useCallback(() => {
-    setResolveTarget(null);
-    setRemoveTarget(null);
-    refreshWarnings();
-  }, [refreshWarnings]);
-
   const handleTriggerCleanup = useCallback(async () => {
     try {
       await triggerCleanup.mutateAsync();
       toast.success("Cleanup cycle completed");
-      void refetchList();
-      void refetchStats();
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Failed to run cleanup cycle",
       );
     }
-  }, [triggerCleanup, toast, refetchList, refetchStats]);
+  }, [triggerCleanup, toast]);
 
   const handleProcessOverdue = useCallback(async () => {
     try {
       await triggerResolveRemove.mutateAsync();
       toast.success("Overdue warnings processed");
-      void refetchList();
-      void refetchStats();
     } catch (error) {
       toast.error(
         error instanceof Error
@@ -176,7 +162,7 @@ export function InactivityManagement() {
           : "Failed to process overdue warnings",
       );
     }
-  }, [triggerResolveRemove, toast, refetchList, refetchStats]);
+  }, [triggerResolveRemove, toast]);
 
   const stats = useMemo(
     () => ({
@@ -514,7 +500,7 @@ export function InactivityManagement() {
           )}
         </Card>
 
-        <ExemptionsCard onWarningsChanged={refreshWarnings} />
+        <ExemptionsCard />
 
         {/* Ghost members (registered but missing from Discord) */}
         <GhostsCard canMutate={canMutate} />
@@ -527,13 +513,11 @@ export function InactivityManagement() {
       <ResolveWarningModal
         warning={resolveTarget}
         onClose={() => setResolveTarget(null)}
-        onSuccess={handleSuccess}
       />
 
       <RemoveWarningModal
         warning={removeTarget}
         onClose={() => setRemoveTarget(null)}
-        onSuccess={handleSuccess}
       />
     </div>
   );

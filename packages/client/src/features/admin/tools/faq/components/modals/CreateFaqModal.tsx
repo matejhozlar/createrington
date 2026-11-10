@@ -11,7 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToastActions } from "@/hooks/use-toast";
-import { trpc } from "@/lib/trpc";
+import { trpc, queryClient } from "@/lib/trpc";
 import { InsertMenu } from "@/features/admin/components/InsertMenu";
 import { CharCount } from "@/features/admin/components/CharCount";
 import { useMentionResolver } from "@/features/admin/hooks/use-mention-resolver";
@@ -23,16 +23,16 @@ type MatchMode = "keywords" | "regex";
 interface CreateFaqModalProps {
   open: boolean;
   onClose: () => void;
-  onSuccess: () => void;
 }
 
-export function CreateFaqModal({
-  open,
-  onClose,
-  onSuccess,
-}: CreateFaqModalProps) {
+export function CreateFaqModal({ open, onClose }: CreateFaqModalProps) {
   const toast = useToastActions();
-  const createEntry = useMutation(trpc.admin.faq.create.mutationOptions());
+  const createEntry = useMutation(
+    trpc.admin.faq.create.mutationOptions({
+      onSuccess: () =>
+        void queryClient.invalidateQueries(trpc.admin.faq.pathFilter()),
+    }),
+  );
 
   const mentionResolver = useMentionResolver();
   const responseRef = useRef<HTMLTextAreaElement>(null);
@@ -81,7 +81,7 @@ export function CreateFaqModal({
 
       toast.success("FAQ entry created");
       resetForm();
-      onSuccess();
+      onClose();
     } catch {
       toast.error("Failed to create FAQ entry");
     }

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MessageSquare, Lock, RefreshCw, Trash2 } from "lucide-react";
 import { playerAvatarUrl } from "@/lib/player-images";
-import { trpc, type RouterOutput } from "@/lib/trpc";
+import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { describeEntryRules } from "./format";
 import { DeletePromptModal } from "./components/DeletePromptModal";
@@ -76,7 +76,7 @@ export function PromptDetail() {
       useMutationToast({
         success: "Prompt closed",
         onSuccess: () => {
-          void detailQuery.refetch();
+          void queryClient.invalidateQueries(trpc.admin.prompts.pathFilter());
         },
       }),
     ),

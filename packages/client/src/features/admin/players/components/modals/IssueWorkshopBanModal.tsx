@@ -7,7 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { trpc } from "@/lib/trpc";
+import { trpc, queryClient } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { AdminActionModal } from "./AdminActionModal";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -21,7 +21,6 @@ interface IssueWorkshopBanModalProps {
   onClose: () => void;
   discordId: string;
   playerUsername: string;
-  onSuccess: () => void;
 }
 
 type BanType = "temporary" | "permanent";
@@ -31,11 +30,15 @@ export function IssueWorkshopBanModal({
   onClose,
   discordId,
   playerUsername,
-  onSuccess,
 }: IssueWorkshopBanModalProps) {
   const toast = useToastActions();
   const issueBan = useMutation(
-    trpc.admin.workshops.bans.issue.mutationOptions(),
+    trpc.admin.workshops.bans.issue.mutationOptions({
+      onSuccess: () =>
+        void queryClient.invalidateQueries(
+          trpc.admin.workshops.bans.pathFilter(),
+        ),
+    }),
   );
   const workshops = useQuery(
     trpc.admin.workshops.list.queryOptions(undefined, {
@@ -70,7 +73,6 @@ export function IssueWorkshopBanModal({
         durationDays: banType === "temporary" ? durationDays : undefined,
       });
       toast.success(`${playerUsername} can no longer submit suggestions`);
-      onSuccess();
       handleClose();
     } catch (error) {
       toast.error(

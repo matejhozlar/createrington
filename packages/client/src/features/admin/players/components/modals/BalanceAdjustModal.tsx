@@ -60,7 +60,6 @@ interface BalanceAdjustModalProps {
   playerId: string;
   playerName: string;
   currentBalance: number;
-  onSuccess: () => void;
 }
 
 export function BalanceAdjustModal({
@@ -69,7 +68,6 @@ export function BalanceAdjustModal({
   playerId,
   playerName,
   currentBalance,
-  onSuccess,
 }: BalanceAdjustModalProps) {
   const [mode, setMode] = useState<Mode>("add");
   const [amountInput, setAmountInput] = useState("");
@@ -86,14 +84,8 @@ export function BalanceAdjustModal({
           );
         },
         onSuccess: () => {
-          void queryClient.invalidateQueries(
-            trpc.admin.players.transactions.list.queryFilter({ id: playerId }),
-          );
-          void queryClient.invalidateQueries(
-            trpc.admin.players.audit.list.pathFilter(),
-          );
+          void queryClient.invalidateQueries(trpc.admin.players.pathFilter());
           onClose();
-          onSuccess();
         },
       }),
     ),

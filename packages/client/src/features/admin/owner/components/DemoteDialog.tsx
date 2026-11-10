@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Check, X } from "lucide-react";
-import { trpc } from "@/lib/trpc";
+import { trpc, queryClient } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
 
@@ -40,7 +40,10 @@ export function DemoteDialog({ admin, onClose, onSuccess }: DemoteDialogProps) {
     ),
   );
   const demoteMutation = useMutation(
-    trpc.owner.admins.demote.mutationOptions(),
+    trpc.owner.admins.demote.mutationOptions({
+      onSuccess: () =>
+        void queryClient.invalidateQueries(trpc.owner.admins.pathFilter()),
+    }),
   );
 
   const preview = previewQuery.data;

@@ -12,7 +12,7 @@ import { Field, FieldLabel } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
 import { Search, UserPlus } from "lucide-react";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
-import { trpc } from "@/lib/trpc";
+import { trpc, queryClient } from "@/lib/trpc";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useToastActions } from "@/hooks/use-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -49,7 +49,10 @@ export function PromoteDialog({
   );
 
   const promoteMutation = useMutation(
-    trpc.owner.admins.promote.mutationOptions(),
+    trpc.owner.admins.promote.mutationOptions({
+      onSuccess: () =>
+        void queryClient.invalidateQueries(trpc.owner.admins.pathFilter()),
+    }),
   );
 
   const handleClose = () => {

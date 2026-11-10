@@ -8,14 +8,12 @@ type PlayerDetailed = RouterOutput["admin"]["players"]["players"]["get"];
 interface StrikesTabProps {
   player: PlayerDetailed;
   onIssueStrike: () => void;
-  onRefresh: () => void;
   onRemoveStrike: (strikeId: number) => void;
 }
 
 export function StrikesTab({
   player,
   onIssueStrike,
-  // onRefresh,
   onRemoveStrike,
 }: StrikesTabProps) {
   return (

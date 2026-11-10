@@ -119,13 +119,6 @@ export function AdminFaq() {
     [orderBy],
   );
 
-  const handleSuccess = useCallback(() => {
-    setCreateModal(false);
-    setEditModal({ open: false, entry: null });
-    setDeleteTarget(null);
-    void entriesQuery.refetch();
-  }, [entriesQuery]);
-
   const handleRepostWelcome = useCallback(async () => {
     try {
       await repostWelcome.mutateAsync();
@@ -377,7 +370,6 @@ export function AdminFaq() {
       <CreateFaqModal
         open={createModal}
         onClose={() => setCreateModal(false)}
-        onSuccess={handleSuccess}
       />
 
       {editModal.entry !== null && (
@@ -385,14 +377,12 @@ export function AdminFaq() {
           open={editModal.open}
           onClose={() => setEditModal({ open: false, entry: null })}
           entry={editModal.entry}
-          onSuccess={handleSuccess}
         />
       )}
 
       <DeleteFaqModal
         entry={deleteTarget}
         onClose={() => setDeleteTarget(null)}
-        onSuccess={handleSuccess}
       />
     </div>
   );
