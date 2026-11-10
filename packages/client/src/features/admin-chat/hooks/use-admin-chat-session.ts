@@ -170,7 +170,7 @@ export function useAdminChatSession({
     const abort = new AbortController();
     let cancelled = false;
 
-    (async (): Promise<void> => {
+    void (async (): Promise<void> => {
       try {
         const data = await fetchChatMessages(sessionId);
         if (cancelled) return;

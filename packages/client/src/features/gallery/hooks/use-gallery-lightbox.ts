@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { trpc } from "@/lib/trpc";
+import { trpc, queryClient } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { GALLERY_PAGE_SIZE, type GalleryItem } from "../format";
 
@@ -27,7 +27,6 @@ export function useGalleryLightbox({
   pagination,
   onPageChange,
 }: UseGalleryLightboxOptions) {
-  const utils = trpc.useUtils();
   const toast = useToastActions();
   const [index, setIndex] = useState<number | null>(null);
   const [turning, setTurning] = useState<LightboxDirection | null>(null);
@@ -44,12 +43,16 @@ export function useGalleryLightbox({
   useEffect(() => {
     if (index === null) return;
     if (index === items.length - 1 && page < totalPages - 1) {
-      void utils.public.gallery.list.prefetch(listInput(page + 1));
+      void queryClient.prefetchQuery(
+        trpc.public.gallery.list.queryOptions(listInput(page + 1)),
+      );
     }
     if (index === 0 && page > 0) {
-      void utils.public.gallery.list.prefetch(listInput(page - 1));
+      void queryClient.prefetchQuery(
+        trpc.public.gallery.list.queryOptions(listInput(page - 1)),
+      );
     }
-  }, [index, items.length, page, totalPages, utils]);
+  }, [index, items.length, page, totalPages]);
 
   const open = (next: number) => {
     requestRef.current += 1;
@@ -80,7 +83,9 @@ export function useGalleryLightbox({
       setIndex(direction > 0 ? 0 : count - 1);
     };
 
-    const cached = utils.public.gallery.list.getData(listInput(targetPage));
+    const cached = queryClient.getQueryData(
+      trpc.public.gallery.list.queryKey(listInput(targetPage)),
+    );
     if (cached && cached.items.length > 0) {
       requestRef.current += 1;
       turnTo(cached.items.length);
@@ -90,10 +95,14 @@ export function useGalleryLightbox({
     const request = ++requestRef.current;
     setTurning(direction);
     try {
-      const data = await utils.public.gallery.list.fetch(listInput(targetPage));
+      const data = await queryClient.fetchQuery(
+        trpc.public.gallery.list.queryOptions(listInput(targetPage)),
+      );
       if (request !== requestRef.current) return;
       if (data.items.length === 0) {
-        await utils.public.gallery.list.invalidate();
+        await queryClient.invalidateQueries(
+          trpc.public.gallery.list.pathFilter(),
+        );
         return;
       }
       turnTo(data.items.length);

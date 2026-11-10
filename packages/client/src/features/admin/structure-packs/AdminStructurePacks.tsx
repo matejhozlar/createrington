@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
-import { trpc } from "@/lib/trpc";
+import { trpc, queryClient } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import {
@@ -15,6 +15,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/query-states";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CellDate, CellText } from "@/components/cell-text";
@@ -47,6 +48,7 @@ import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { HeaderActions } from "@/features/admin/components/HeaderActions";
 import { RotationConfig } from "./components/RotationConfig";
 import { RotationHistory } from "./components/RotationHistory";
+import { useQuery, useMutation } from "@tanstack/react-query";
 
 type StatusFilter = "all" | "enabled" | "disabled";
 type ActiveFilter = "all" | "active" | "inactive";
@@ -55,9 +57,8 @@ type ActiveFilter = "all" | "active" | "inactive";
 export function AdminStructurePacks() {
   const navigate = useNavigate();
   const toast = useToastActions();
-  const utils = trpc.useUtils();
 
-  const packsQuery = trpc.admin.structurePacks.list.useQuery();
+  const packsQuery = useQuery(trpc.admin.structurePacks.list.queryOptions());
   const packs = useMemo(() => packsQuery.data ?? [], [packsQuery.data]);
 
   const [createOpen, setCreateOpen] = useState(false);
@@ -100,20 +101,24 @@ export function AdminStructurePacks() {
     return result;
   }, [packs, searchQuery, statusFilter, activeFilter]);
 
-  const importMutation = trpc.admin.structurePacks.importPacks.useMutation(
-    useMutationToast({
-      success: (result) => {
-        const parts: string[] = [];
-        if (result.created.length > 0)
-          parts.push(`Created: ${result.created.join(", ")}`);
-        if (result.skipped.length > 0)
-          parts.push(`Skipped (already exist): ${result.skipped.join(", ")}`);
-        return parts.join(". ") || "Nothing to import";
-      },
-      onSuccess: () => {
-        utils.admin.structurePacks.list.invalidate();
-      },
-    }),
+  const importMutation = useMutation(
+    trpc.admin.structurePacks.importPacks.mutationOptions(
+      useMutationToast({
+        success: (result) => {
+          const parts: string[] = [];
+          if (result.created.length > 0)
+            parts.push(`Created: ${result.created.join(", ")}`);
+          if (result.skipped.length > 0)
+            parts.push(`Skipped (already exist): ${result.skipped.join(", ")}`);
+          return parts.join(". ") || "Nothing to import";
+        },
+        onSuccess: () => {
+          void queryClient.invalidateQueries(
+            trpc.admin.structurePacks.list.pathFilter(),
+          );
+        },
+      }),
+    ),
   );
 
   function copyPackJson(pack: (typeof packs)[number]) {
@@ -134,8 +139,10 @@ export function AdminStructurePacks() {
         },
       ],
     };
-    navigator.clipboard.writeText(JSON.stringify(exported, null, 2));
-    toast.success("Copied to clipboard");
+    navigator.clipboard.writeText(JSON.stringify(exported, null, 2)).then(
+      () => toast.success("Copied to clipboard"),
+      () => toast.error("Failed to copy to clipboard"),
+    );
   }
 
   async function handleImport() {
@@ -148,38 +155,49 @@ export function AdminStructurePacks() {
     }
   }
 
-  const createMutation = trpc.admin.structurePacks.create.useMutation(
-    useMutationToast({
-      success: "Structure pack created",
-      onSuccess: (pack) => {
-        utils.admin.structurePacks.list.invalidate();
-        setCreateOpen(false);
-        setName("");
-        setDescription("");
-        navigate(`/admin/tools/structure-packs/${pack.id}`);
-      },
-    }),
+  const createMutation = useMutation(
+    trpc.admin.structurePacks.create.mutationOptions(
+      useMutationToast({
+        success: "Structure pack created",
+        onSuccess: (pack) => {
+          void queryClient.invalidateQueries(
+            trpc.admin.structurePacks.list.pathFilter(),
+          );
+          setCreateOpen(false);
+          setName("");
+          setDescription("");
+          void navigate(`/admin/tools/structure-packs/${pack.id}`);
+        },
+      }),
+    ),
   );
 
-  const toggleEnabledMutation =
-    trpc.admin.structurePacks.toggleEnabled.useMutation(
+  const toggleEnabledMutation = useMutation(
+    trpc.admin.structurePacks.toggleEnabled.mutationOptions(
       useMutationToast({
         success: (_data, variables) =>
           variables.enabled ? "Pack enabled" : "Pack disabled",
         onSuccess: () => {
-          utils.admin.structurePacks.list.invalidate();
+          void queryClient.invalidateQueries(
+            trpc.admin.structurePacks.list.pathFilter(),
+          );
         },
       }),
-    );
+    ),
+  );
 
-  const deleteMutation = trpc.admin.structurePacks.delete.useMutation(
-    useMutationToast({
-      success: "Pack deleted",
-      onSuccess: () => {
-        utils.admin.structurePacks.list.invalidate();
-        setDeleteTarget(null);
-      },
-    }),
+  const deleteMutation = useMutation(
+    trpc.admin.structurePacks.delete.mutationOptions(
+      useMutationToast({
+        success: "Pack deleted",
+        onSuccess: () => {
+          void queryClient.invalidateQueries(
+            trpc.admin.structurePacks.list.pathFilter(),
+          );
+          setDeleteTarget(null);
+        },
+      }),
+    ),
   );
 
   type Pack = (typeof packs)[number];
@@ -367,22 +385,21 @@ export function AdminStructurePacks() {
           </CardHeader>
 
           {!packsQuery.isLoading && filteredPacks.length === 0 ? (
-            <CardContent className="flex flex-1 items-center justify-center py-12">
-              <div className="text-center">
-                <Package className="mx-auto size-12 text-muted-foreground" />
-                <p className="mt-2 text-muted-foreground">
-                  {packs.length === 0
-                    ? "No structure packs yet"
-                    : "No packs match your filters"}
-                </p>
-                {packs.length === 0 && (
-                  <Button onClick={() => setCreateOpen(true)} className="mt-4">
-                    <Plus className="mr-2 size-4" />
-                    Create First Pack
-                  </Button>
-                )}
-              </div>
-            </CardContent>
+            <EmptyState
+              icon={Package}
+              message={
+                packs.length === 0
+                  ? "No structure packs yet"
+                  : "No packs match your filters"
+              }
+            >
+              {packs.length === 0 && (
+                <Button onClick={() => setCreateOpen(true)}>
+                  <Plus className="mr-2 size-4" />
+                  Create First Pack
+                </Button>
+              )}
+            </EmptyState>
           ) : (
             <CardContent className="px-0">
               <DataTable

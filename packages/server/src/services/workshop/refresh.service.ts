@@ -1,7 +1,7 @@
 import { Q } from "@/db";
 import { refreshProjects } from "@/services/curseforge/ingest";
 import { FeatureFlags, featureFlagService } from "@/services/feature-flag";
-import { modpackService } from "@/services/modpack";
+import { modpackSyncService } from "@/services/modpack/sync.service";
 import {
   pruneStaleDependencyEdges,
   tryResolveProjectDependencies,
@@ -27,7 +27,7 @@ export class WorkshopProjectRefreshService {
   private readonly REFRESH_INTERVAL = 24 * 60 * 60 * 1000;
 
   /** Runs an immediate refresh and schedules the daily interval. */
-  async initialize(): Promise<void> {
+  initialize(): void {
     this.refresh().catch((error) => {
       logger.error("Initial workshop project refresh failed:", error);
     });
@@ -88,7 +88,7 @@ export class WorkshopProjectRefreshService {
 
       const modpacks = await Q.modpack.findAll({});
       for (const modpack of modpacks) {
-        await modpackService.tryReconcile(modpack.id);
+        await modpackSyncService.tryReconcile(modpack.id);
       }
 
       if (refreshed > 0) {
@@ -101,7 +101,7 @@ export class WorkshopProjectRefreshService {
   }
 
   /** Cancels the schedule; an in-flight refresh is allowed to finish. */
-  async shutdown(): Promise<void> {
+  shutdown(): void {
     if (this.intervalId) {
       clearInterval(this.intervalId);
       this.intervalId = undefined;

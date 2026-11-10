@@ -3,7 +3,7 @@ import { loadImage } from "@napi-rs/canvas";
 import { Q } from "@/db";
 import config from "@/config";
 import { NotFoundError } from "@/app/middleware/error-handler";
-import { modpackService } from "@/services/modpack";
+import { modpackReleaseService } from "@/services/modpack/release.service";
 import {
   CHANGELOG_ROW_HEIGHT,
   CHANGELOG_ROW_WIDTH,
@@ -100,14 +100,14 @@ async function seedHistory() {
 }
 
 function changelog(installedVersion?: string) {
-  return modpackService.getChangelogMarkdown({
+  return modpackReleaseService.getChangelogMarkdown({
     curseforgeProjectId: PACK_PROJECT_ID,
     installedVersion,
   });
 }
 
 function row(releaseFileId: number, entryProjectId: number) {
-  return modpackService.getChangelogRow({
+  return modpackReleaseService.getChangelogRow({
     curseforgeProjectId: PACK_PROJECT_ID,
     releaseFileId,
     entryProjectId,
@@ -126,7 +126,7 @@ afterEach(async () => {
   await cleanupWorkshopTestContext(ctx);
 });
 
-describe("modpackService.getChangelogMarkdown", () => {
+describe("modpackReleaseService.getChangelogMarkdown", () => {
   it("renders the newest release against the one before it, one row image per change", async () => {
     const { kept, laterAdded, newest } = await seedHistory();
 
@@ -199,7 +199,7 @@ describe("modpackService.getChangelogMarkdown", () => {
   });
 });
 
-describe("modpackService.getChangelogRow", () => {
+describe("modpackReleaseService.getChangelogRow", () => {
   it("renders a row for an entry the release changed", async () => {
     const { kept, newest } = await seedHistory();
 
@@ -227,7 +227,7 @@ describe("modpackService.getChangelogRow", () => {
       row(first.curseforgeFileId - 500, earlyAdded),
     ).rejects.toBeInstanceOf(NotFoundError);
     await expect(
-      modpackService.getChangelogRow({
+      modpackReleaseService.getChangelogRow({
         curseforgeProjectId: PACK_PROJECT_ID + 1,
         releaseFileId: newest.curseforgeFileId,
         entryProjectId: earlyAdded,

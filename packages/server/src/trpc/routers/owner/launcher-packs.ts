@@ -3,10 +3,10 @@ import { router, ownerProcedure, launcherAvailable } from "@/trpc/trpc";
 import { auditActor, id, rethrowTrpc } from "@/trpc/utils";
 import { Q } from "@/db";
 import {
-  launcherPackService,
+  launcherPackAdminService,
   type OwnedLauncherPack,
-} from "@/services/launcher/pack/launcher-pack.service";
-import { modpackService } from "@/services/modpack";
+} from "@/services/launcher/pack/pack-admin.service";
+import { modpackSyncService } from "@/services/modpack/sync.service";
 import type { LauncherPack } from "@createrington/shared/db";
 import {
   LAUNCHER_PACK_RESERVED_SLUGS,
@@ -63,7 +63,7 @@ export const ownerLauncherPacksRouter = router({
         "Every pack the launcher is offered, in list order, with the modpack it points at and its newest ready release",
     })
     .query(async () => {
-      const packs = await launcherPackService.listOwned();
+      const packs = await launcherPackAdminService.listOwned();
       return { packs: packs.map(toOwnedDto) };
     }),
 
@@ -72,7 +72,7 @@ export const ownerLauncherPacksRouter = router({
       description: "Modpacks the launcher is not offered yet, to add one from",
     })
     .query(async () => ({
-      modpacks: await launcherPackService.listCandidates(),
+      modpacks: await launcherPackAdminService.listCandidates(),
     })),
 
   add: launcherOwnerProcedure
@@ -89,9 +89,9 @@ export const ownerLauncherPacksRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       try {
-        const pack = await launcherPackService.addPack(input);
+        const pack = await launcherPackAdminService.addPack(input);
         if (pack.source === "curseforge") {
-          void modpackService.tryReconcile(pack.modpackId);
+          void modpackSyncService.tryReconcile(pack.modpackId);
         }
         await Q.admin.log.action.logAction({
           ...auditActor(ctx),
@@ -113,7 +113,7 @@ export const ownerLauncherPacksRouter = router({
     .input(z.object({ id: id(), enabled: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
       try {
-        const pack = await launcherPackService.setPackEnabled(
+        const pack = await launcherPackAdminService.setPackEnabled(
           input.id,
           input.enabled,
         );
@@ -137,7 +137,7 @@ export const ownerLauncherPacksRouter = router({
     .input(z.object({ ids: z.array(id()).min(1) }))
     .mutation(async ({ ctx, input }) => {
       try {
-        const packs = await launcherPackService.reorderPacks(input.ids);
+        const packs = await launcherPackAdminService.reorderPacks(input.ids);
         await Q.admin.log.action.logAction({
           ...auditActor(ctx),
           actionType: ACTION_REORDER,
@@ -158,7 +158,7 @@ export const ownerLauncherPacksRouter = router({
     .input(z.object({ id: id() }))
     .mutation(async ({ ctx, input }) => {
       try {
-        const pack = await launcherPackService.removePack(input.id);
+        const pack = await launcherPackAdminService.removePack(input.id);
         await Q.admin.log.action.logAction({
           ...auditActor(ctx),
           actionType: ACTION_REMOVE,

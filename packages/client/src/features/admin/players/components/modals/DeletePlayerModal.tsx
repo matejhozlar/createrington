@@ -3,10 +3,11 @@ import { ADMIN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Field, FieldLabel } from "@/components/ui/field";
-import { trpc, type RouterOutput } from "@/lib/trpc";
+import { trpc, type RouterOutput, queryClient } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { AdminActionModal } from "./AdminActionModal";
+import { useMutation } from "@tanstack/react-query";
 
 type PlayerDetailed = RouterOutput["admin"]["players"]["players"]["get"];
 
@@ -24,10 +25,11 @@ export function DeletePlayerModal({
   onSuccess,
 }: DeletePlayerModalProps) {
   const toast = useToastActions();
-  const utils = trpc.useUtils();
 
-  const deletePlayer = trpc.admin.players.players.delete.useMutation(
-    useMutationToast({ error: "Failed to delete player" }),
+  const deletePlayer = useMutation(
+    trpc.admin.players.players.delete.mutationOptions(
+      useMutationToast({ error: "Failed to delete player" }),
+    ),
   );
 
   const [reason, setReason] = useState("");
@@ -46,7 +48,9 @@ export function DeletePlayerModal({
       id: player.minecraftUuid,
       reason: reason.trim(),
     });
-    await utils.admin.players.players.list.invalidate();
+    await queryClient.invalidateQueries(
+      trpc.admin.players.players.list.pathFilter(),
+    );
     toast.success("Player deleted");
     onSuccess();
     onClose();

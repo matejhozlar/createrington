@@ -55,7 +55,7 @@ export class RotatingStatusService {
   }
 
   /** Stops the rotation timer; the last-set presence remains on the bot. */
-  async shutdown(): Promise<void> {
+  shutdown(): void {
     if (this.intervalId) {
       clearInterval(this.intervalId);
       this.intervalId = undefined;

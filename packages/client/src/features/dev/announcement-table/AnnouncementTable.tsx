@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useToastActions } from "@/hooks/use-toast";
 import { TableCard } from "./components/TableCard";
 import { parseTable } from "./parse";
+import { Textarea } from "@/components/ui/textarea";
 
 const PIXEL_RATIO = 2;
 
@@ -45,14 +46,20 @@ export function AnnouncementTable() {
   };
 
   const handleCopy = async () => {
-    const blob = await renderBlob();
-    if (!blob) return toast.error("Could not render the image");
-    await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
-    toast.success("Image copied, paste it into Discord");
+    try {
+      const blob = await renderBlob();
+      if (!blob) return toast.error("Could not render the image");
+      await navigator.clipboard.write([
+        new ClipboardItem({ [blob.type]: blob }),
+      ]);
+      toast.success("Image copied, paste it into Discord");
+    } catch {
+      toast.error("Could not copy the image");
+    }
   };
 
   const handleDownload = async () => {
-    const blob = await renderBlob();
+    const blob = await renderBlob().catch(() => null);
     if (!blob) return toast.error("Could not render the image");
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -72,12 +79,12 @@ export function AnnouncementTable() {
           </p>
         </div>
 
-        <textarea
+        <Textarea
           value={source}
           onChange={(e) => setSource(e.target.value)}
           spellCheck={false}
           rows={16}
-          className="w-full rounded-md border border-border bg-card px-3 py-2 font-mono text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="font-mono"
         />
 
         <div className="flex gap-2">

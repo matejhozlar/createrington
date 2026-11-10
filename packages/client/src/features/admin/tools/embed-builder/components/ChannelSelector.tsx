@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { trpc } from "@/lib/trpc";
+import { useQuery } from "@tanstack/react-query";
 
 function formatCategoryName(key: string): string {
   return key
@@ -30,7 +31,7 @@ interface ChannelSelectorProps {
 }
 
 export function ChannelSelector({ value, onChange }: ChannelSelectorProps) {
-  const channelsQuery = trpc.admin.embeds.channels.useQuery();
+  const channelsQuery = useQuery(trpc.admin.embeds.channels.queryOptions());
   const groups = channelsQuery.data ?? [];
 
   return (

@@ -102,7 +102,7 @@ export const DiscordRolesNamespace = {
    * }
    */
   isValid(roleId: string): roleId is DiscordRoleId {
-    return Object.values(DiscordRoles).includes(roleId as DiscordRoleId);
+    return Object.values(DiscordRoles).includes(roleId);
   },
 
   /**

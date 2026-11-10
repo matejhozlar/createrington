@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { Loading } from "@/components/loading-spinner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +27,12 @@ import {
   formatStatValue,
   statModName,
 } from "@createrington/shared/minecraft-stats";
+import { useQuery } from "@tanstack/react-query";
+import {
+  EmptyState,
+  ErrorState,
+  LoadingState,
+} from "@/components/query-states";
 
 interface StatsTabProps {
   playerId: string;
@@ -83,9 +88,11 @@ export function StatsTab({ playerId, getServerName }: StatsTabProps) {
 
   const debouncedSearch = useDebouncedValue(search, 300);
 
-  const statsQuery = trpc.admin.players.minecraftStats.list.useQuery({
-    id: playerId,
-  });
+  const statsQuery = useQuery(
+    trpc.admin.players.minecraftStats.list.queryOptions({
+      id: playerId,
+    }),
+  );
 
   const statsEntries = useMemo(
     () => statsQuery.data?.stats ?? [],
@@ -113,9 +120,7 @@ export function StatsTab({ playerId, getServerName }: StatsTabProps) {
         for (const [category, items] of Object.entries(stats)) {
           if (!items || typeof items !== "object") continue;
           if (!merged[category]) merged[category] = {};
-          for (const [key, value] of Object.entries(
-            items as Record<string, number>,
-          )) {
+          for (const [key, value] of Object.entries(items)) {
             merged[category][key] = (merged[category][key] ?? 0) + (value ?? 0);
           }
         }
@@ -222,28 +227,14 @@ export function StatsTab({ playerId, getServerName }: StatsTabProps) {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loading size="medium" text="Loading stats..." />
-        </div>
+        <LoadingState text="Loading stats..." />
       ) : error ? (
-        <div className="py-12 text-center">
-          <p className="text-destructive">{error}</p>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => statsQuery.refetch()}
-            className="mt-4"
-          >
-            Retry
-          </Button>
-        </div>
+        <ErrorState message={error} onRetry={() => statsQuery.refetch()} />
       ) : statsEntries.length === 0 ? (
-        <div className="py-12 text-center">
-          <BarChart3 className="mx-auto size-12 text-muted-foreground" />
-          <p className="mt-2 text-muted-foreground">
-            No stats recorded for this player
-          </p>
-        </div>
+        <EmptyState
+          icon={BarChart3}
+          message="No stats recorded for this player"
+        />
       ) : (
         <>
           {/* Filters */}
@@ -323,12 +314,7 @@ export function StatsTab({ playerId, getServerName }: StatsTabProps) {
 
           {/* Stats grouped by category */}
           {Object.keys(groupedStats).length === 0 ? (
-            <div className="py-12 text-center">
-              <Search className="mx-auto size-12 text-muted-foreground" />
-              <p className="mt-2 text-muted-foreground">
-                No stats match your search
-              </p>
-            </div>
+            <EmptyState icon={Search} message="No stats match your search" />
           ) : (
             <div className="flex flex-col gap-2">
               {Object.entries(groupedStats)

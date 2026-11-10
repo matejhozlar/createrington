@@ -1,11 +1,11 @@
-import { launcherPackService } from "./launcher-pack.service";
+import { launcherPackFileService } from "./pack-files.service";
 
 const REFRESH_INTERVAL_MS = 60 * 60 * 1000;
 const FIRST_RUN_DELAY_MS = 60 * 1000;
 
 /**
  * Keeps the launcher's stored pack files fresh off the request path: every
- * hour it has `launcherPackService.recheckStaleFiles` look up the manual files
+ * hour it has `launcherPackFileService.recheckStaleFiles` look up the manual files
  * and built CDN addresses that are due again, so a player's files/resolve
  * request only ever reads what is stored. The first run waits a minute after
  * startup; overlapping runs are skipped.
@@ -16,7 +16,7 @@ export class LauncherPackFileRefreshService {
   private running = false;
 
   /** Schedules the hourly recheck, the first one a minute from now. */
-  async initialize(): Promise<void> {
+  initialize(): void {
     this.firstRunId = setTimeout(() => {
       this.firstRunId = undefined;
       void this.refresh();
@@ -37,7 +37,7 @@ export class LauncherPackFileRefreshService {
     if (this.running) return 0;
     this.running = true;
     try {
-      const rechecked = await launcherPackService.recheckStaleFiles();
+      const rechecked = await launcherPackFileService.recheckStaleFiles();
       if (rechecked > 0) {
         logger.info(`Looked up ${rechecked} launcher pack file(s) again`);
       }
@@ -51,7 +51,7 @@ export class LauncherPackFileRefreshService {
   }
 
   /** Cancels the schedule; an in-flight recheck is allowed to finish. */
-  async shutdown(): Promise<void> {
+  shutdown(): void {
     if (this.firstRunId) {
       clearTimeout(this.firstRunId);
       this.firstRunId = undefined;

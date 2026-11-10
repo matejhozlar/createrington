@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams } from "react-router";
-import { Loading } from "@/components/loading-spinner";
+import { LoadingState } from "@/components/query-states";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { trpc } from "@/lib/trpc";
 import { useServerData } from "@/contexts/server-data";
@@ -12,6 +12,7 @@ import { SessionsTab } from "./components/tabs/SessionsTab";
 import { AnalyticsTab } from "./components/tabs/AnalyticsTab";
 import { MaintenanceToggle } from "./components/MaintenanceToggle";
 import { ServerManagement } from "./components/ServerManagement";
+import { useQuery } from "@tanstack/react-query";
 
 export function AdminServerDetail() {
   const { id } = useParams<{ id: string }>();
@@ -20,9 +21,11 @@ export function AdminServerDetail() {
 
   const [activeTab, setActiveTab] = useState<ServerTabType>("overview");
 
-  const serverQuery = trpc.admin.servers.get.useQuery(
-    { id: serverId },
-    { enabled: serverId > 0 },
+  const serverQuery = useQuery(
+    trpc.admin.servers.get.queryOptions(
+      { id: serverId },
+      { enabled: serverId > 0 },
+    ),
   );
 
   const serverData = serverQuery.data;
@@ -31,9 +34,11 @@ export function AdminServerDetail() {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <Loading size="large" text="Loading server data..." />
-      </div>
+      <LoadingState
+        size="large"
+        text="Loading server data..."
+        className="h-screen flex-none py-0"
+      />
     );
   }
 

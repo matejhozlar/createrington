@@ -1,6 +1,7 @@
-import { Loading } from "@/components/loading-spinner";
+import { LoadingState } from "@/components/query-states";
 import { Clock } from "lucide-react";
 import { trpc } from "@/lib/trpc";
+import { useQuery } from "@tanstack/react-query";
 
 interface CommandOption {
   type: number;
@@ -136,15 +137,12 @@ function SubcommandRow({
  * Used as guide step content: each group becomes its own step.
  */
 export function DiscordCommandsGroup({ group }: { group: string }) {
-  const { data, isLoading, isError } =
-    trpc.public.discordCommands.list.useQuery();
+  const { data, isLoading, isError } = useQuery(
+    trpc.public.discordCommands.list.queryOptions(),
+  );
 
   if (isLoading) {
-    return (
-      <div className="flex justify-center py-8">
-        <Loading text="Loading commands..." />
-      </div>
-    );
+    return <LoadingState text="Loading commands..." className="py-8" />;
   }
 
   if (isError) {

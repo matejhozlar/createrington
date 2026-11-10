@@ -52,8 +52,10 @@ export function Topbar({ builder }: TopbarProps) {
       kind === "components"
         ? JSON.stringify({ components }, null, 2)
         : JSON.stringify(externalData, null, 2);
-    navigator.clipboard.writeText(json);
-    toast.success("Copied to clipboard");
+    navigator.clipboard.writeText(json).then(
+      () => toast.success("Copied to clipboard"),
+      () => toast.error("Failed to copy to clipboard"),
+    );
   }
 
   async function handleImportJson() {
@@ -101,7 +103,7 @@ export function Topbar({ builder }: TopbarProps) {
 
   function onSaveClick() {
     if (activePreset) {
-      handleSave();
+      void handleSave();
     } else {
       setSaveOpen(true);
     }

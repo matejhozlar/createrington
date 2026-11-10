@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
@@ -27,6 +26,8 @@ import {
   formatStatItem,
   formatStatValue,
 } from "@createrington/shared/minecraft-stats";
+import { useQuery } from "@tanstack/react-query";
+import { EmptyState, ErrorState } from "@/components/query-states";
 
 const CATEGORY_KEYS = [
   "minecraft:picked_up",
@@ -55,9 +56,11 @@ export function StatSearch() {
     new Set(["minecraft:picked_up", "minecraft:crafted"]),
   );
 
-  const itemsQuery = trpc.admin.players.minecraftStats.searchItems.useQuery(
-    { query: debouncedItemInput },
-    { enabled: debouncedItemInput.length >= 2 },
+  const itemsQuery = useQuery(
+    trpc.admin.players.minecraftStats.searchItems.queryOptions(
+      { query: debouncedItemInput },
+      { enabled: debouncedItemInput.length >= 2 },
+    ),
   );
 
   const categories = useMemo(
@@ -65,9 +68,11 @@ export function StatSearch() {
     [selectedCategories],
   );
 
-  const compareQuery = trpc.admin.players.minecraftStats.compare.useQuery(
-    { item: selectedItem, categories, limit: 200 },
-    { enabled: !!selectedItem && categories.length > 0 },
+  const compareQuery = useQuery(
+    trpc.admin.players.minecraftStats.compare.queryOptions(
+      { item: selectedItem, categories, limit: 200 },
+      { enabled: !!selectedItem && categories.length > 0 },
+    ),
   );
 
   const toggleCategory = (key: string) => {
@@ -322,36 +327,20 @@ export function StatSearch() {
           </CardHeader>
 
           {!selectedItem ? (
-            <CardContent className="flex flex-1 items-center justify-center py-12">
-              <div className="text-center">
-                <BarChart3 className="mx-auto size-12 text-muted-foreground" />
-                <p className="mt-2 text-muted-foreground">
-                  Search for an item to compare stats across players
-                </p>
-              </div>
-            </CardContent>
+            <EmptyState
+              icon={BarChart3}
+              message="Search for an item to compare stats across players"
+            />
           ) : compareQuery.error ? (
-            <CardContent className="flex flex-1 items-center justify-center py-12">
-              <div className="text-center">
-                <p className="text-destructive">{compareQuery.error.message}</p>
-                <Button
-                  onClick={() => compareQuery.refetch()}
-                  className="mt-4"
-                  variant="outline"
-                >
-                  Try Again
-                </Button>
-              </div>
-            </CardContent>
+            <ErrorState
+              message={compareQuery.error.message}
+              onRetry={() => compareQuery.refetch()}
+            />
           ) : !compareQuery.isLoading && results.length === 0 ? (
-            <CardContent className="flex flex-1 items-center justify-center py-12">
-              <div className="text-center">
-                <Search className="mx-auto size-12 text-muted-foreground" />
-                <p className="mt-2 text-muted-foreground">
-                  No players found with this item
-                </p>
-              </div>
-            </CardContent>
+            <EmptyState
+              icon={Search}
+              message="No players found with this item"
+            />
           ) : (
             <CardContent className="px-0">
               <DataTable

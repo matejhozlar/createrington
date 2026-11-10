@@ -501,7 +501,7 @@ describe("openSandboxFile progress", () => {
   });
 
   it("stops watching once the caller gives up on the body", async () => {
-    const sandbox = sandboxThatSends();
+    sandboxThatSends();
     const reader = await openWatched();
     await reader.cancel();
     await vi.advanceTimersByTimeAsync(0);

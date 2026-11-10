@@ -6,6 +6,7 @@ import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { GalleryCredit } from "../format";
+import { useQuery } from "@tanstack/react-query";
 
 const MAX_CREDITS = 10;
 const RESULT_LIMIT = 8;
@@ -27,9 +28,11 @@ export function CreditsPicker({
   const debouncedQuery = useDebouncedValue(query, 300);
   const searching = debouncedQuery.trim().length > 0;
 
-  const searchQuery = trpc.public.players.list.useQuery(
-    { minecraftUsername: debouncedQuery, limit: RESULT_LIMIT, page: 0 },
-    { enabled: searching },
+  const searchQuery = useQuery(
+    trpc.public.players.list.queryOptions(
+      { minecraftUsername: debouncedQuery, limit: RESULT_LIMIT, page: 0 },
+      { enabled: searching },
+    ),
   );
 
   const taken = new Set([excludeUuid, ...value.map((c) => c.minecraftUuid)]);

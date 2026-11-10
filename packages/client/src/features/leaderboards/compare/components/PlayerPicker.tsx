@@ -17,6 +17,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/spinner";
+import { useQuery } from "@tanstack/react-query";
 
 const RIVALS = 6;
 const RIVAL_PAGE = RIVALS + 1;
@@ -70,21 +71,25 @@ function PlayerResults({
   const debounced = useDebouncedValue(query.trim(), 200);
   const searching = debounced.length > 0;
 
-  const searchQuery = trpc.public.leaderboards.list.useQuery(
-    { board: "playtime", search: debounced, limit: RESULTS },
-    {
-      enabled: searching,
-      staleTime: 60 * 1000,
-      placeholderData: (previous) => previous,
-    },
+  const searchQuery = useQuery(
+    trpc.public.leaderboards.list.queryOptions(
+      { board: "playtime", search: debounced, limit: RESULTS },
+      {
+        enabled: searching,
+        staleTime: 60 * 1000,
+        placeholderData: (previous) => previous,
+      },
+    ),
   );
-  const rivalsQuery = trpc.public.leaderboards.list.useQuery(
-    {
-      board: "playtime",
-      page: rivalRank ? Math.floor((rivalRank - 1) / RIVAL_PAGE) : 0,
-      limit: RIVAL_PAGE,
-    },
-    { enabled: !searching, staleTime: 60 * 1000 },
+  const rivalsQuery = useQuery(
+    trpc.public.leaderboards.list.queryOptions(
+      {
+        board: "playtime",
+        page: rivalRank ? Math.floor((rivalRank - 1) / RIVAL_PAGE) : 0,
+        limit: RIVAL_PAGE,
+      },
+      { enabled: !searching, staleTime: 60 * 1000 },
+    ),
   );
 
   const excluded = exclude.map((name) => name?.toLowerCase());

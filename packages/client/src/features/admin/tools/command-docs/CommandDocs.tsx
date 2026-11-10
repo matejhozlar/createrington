@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Loading } from "@/components/loading-spinner";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { Input } from "@/components/ui/input";
@@ -14,9 +13,9 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { trpc, type RouterOutput } from "@/lib/trpc";
-
-type CommandsPayload = RouterOutput["admin"]["discordCommands"]["list"];
+import { trpc } from "@/lib/trpc";
+import { useQuery } from "@tanstack/react-query";
+import { LoadingState } from "@/components/query-states";
 
 interface CommandOption {
   type: number;
@@ -244,12 +243,13 @@ function CommandCard({ command }: { command: CommandData }) {
 }
 
 export function CommandDocs() {
-  const { data, isLoading } = trpc.admin.discordCommands.list.useQuery();
+  const { data: payload, isLoading } = useQuery(
+    trpc.admin.discordCommands.list.queryOptions(),
+  );
 
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
 
-  const payload = data as CommandsPayload | undefined;
   const allCommands = (payload?.commands ?? []) as CommandData[];
 
   const filtered = allCommands.filter((cmd) => {
@@ -287,9 +287,7 @@ export function CommandDocs() {
       />
 
       {isLoading ? (
-        <div className="flex flex-1 items-center justify-center">
-          <Loading text="Loading commands..." />
-        </div>
+        <LoadingState text="Loading commands..." className="py-0" />
       ) : (
         <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
           <AdminPageTitle

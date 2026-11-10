@@ -1,6 +1,7 @@
 import { db, Q } from "@/db";
 import type { Workshop, WorkshopModStatus } from "@createrington/shared/db";
-import { getFilesDependencies, getModpackModIds } from "@/services/curseforge";
+import { getFilesDependencies } from "@/services/curseforge/files";
+import { getModpackModIds } from "@/services/curseforge/modpack-manifest";
 import { refreshProjects } from "@/services/curseforge/ingest";
 
 import {

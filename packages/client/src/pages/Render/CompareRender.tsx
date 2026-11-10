@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { formatDate } from "@createrington/shared/format";
-import { LoadingScreen } from "@/components/loading-spinner";
+import { LoadingScreen } from "@/components/query-states";
 import { formatMoney } from "@/lib/format";
 import { RenderTeamTag } from "./components/RenderTeamTag";
 import { RenderUnavailable } from "./components/RenderUnavailable";
@@ -78,8 +78,8 @@ export function CompareRender() {
 
   useEffect(() => {
     if (!data) return;
-    loadSkin(data.player1.uuid, poseLeft).then(setSkinLeft);
-    loadSkin(data.player2.uuid, poseRight).then(setSkinRight);
+    void loadSkin(data.player1.uuid, poseLeft).then(setSkinLeft);
+    void loadSkin(data.player2.uuid, poseRight).then(setSkinRight);
   }, [data, poseLeft, poseRight]);
 
   if (unavailable) return <RenderUnavailable reason={unavailable} />;

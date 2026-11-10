@@ -11,9 +11,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import { trpc } from "@/lib/trpc";
+import { trpc, queryClient } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
+import { useQuery, useMutation } from "@tanstack/react-query";
 
 const DONATION_TIERS = [
   { amountCents: 300, label: "€3" },
@@ -81,30 +82,36 @@ export function Donate() {
   const [isCustom, setIsCustom] = useState(false);
   const [customValue, setCustomValue] = useState("");
 
-  const history = trpc.user.donations.history.useQuery();
-  const subscription = trpc.user.donations.activeSubscription.useQuery();
+  const history = useQuery(trpc.user.donations.history.queryOptions());
+  const subscription = useQuery(
+    trpc.user.donations.activeSubscription.queryOptions(),
+  );
 
   const isSupporter =
     history.data?.some((d) => d.status === "completed") ?? false;
-  const cancelSubscription = trpc.user.donations.cancelSubscription.useMutation(
-    useMutationToast({
-      success: {
-        title: "Subscription cancelled",
-        description:
-          "Your subscription will end at the end of the current billing period.",
-      },
-      error: (err) => ({
-        title: "Failed to cancel subscription",
-        description: err.message,
+  const cancelSubscription = useMutation(
+    trpc.user.donations.cancelSubscription.mutationOptions(
+      useMutationToast({
+        success: {
+          title: "Subscription cancelled",
+          description:
+            "Your subscription will end at the end of the current billing period.",
+        },
+        error: (err) => ({
+          title: "Failed to cancel subscription",
+          description: err.message,
+        }),
+        onSuccess: () => {
+          void queryClient.invalidateQueries(
+            trpc.user.donations.activeSubscription.pathFilter(),
+          );
+        },
       }),
-      onSuccess: () => {
-        subscription.refetch();
-      },
-    }),
+    ),
   );
 
-  const reactivateSubscription =
-    trpc.user.donations.reactivateSubscription.useMutation(
+  const reactivateSubscription = useMutation(
+    trpc.user.donations.reactivateSubscription.mutationOptions(
       useMutationToast({
         success: {
           title: "Subscription reactivated",
@@ -115,24 +122,29 @@ export function Donate() {
           description: err.message,
         }),
         onSuccess: () => {
-          subscription.refetch();
+          void queryClient.invalidateQueries(
+            trpc.user.donations.activeSubscription.pathFilter(),
+          );
         },
       }),
-    );
+    ),
+  );
 
-  const createCheckout = trpc.user.donations.createCheckout.useMutation(
-    useMutationToast({
-      error: (err) => ({
-        title: "Failed to start checkout",
-        description: err.message,
+  const createCheckout = useMutation(
+    trpc.user.donations.createCheckout.mutationOptions(
+      useMutationToast({
+        error: (err) => ({
+          title: "Failed to start checkout",
+          description: err.message,
+        }),
+        onSuccess: ({ url }) => {
+          const { hostname } = new URL(url);
+          if (hostname !== "stripe.com" && !hostname.endsWith(".stripe.com"))
+            return;
+          window.location.href = url;
+        },
       }),
-      onSuccess: ({ url }) => {
-        const { hostname } = new URL(url);
-        if (hostname !== "stripe.com" && !hostname.endsWith(".stripe.com"))
-          return;
-        window.location.href = url;
-      },
-    }),
+    ),
   );
 
   const donationCents = isCustom

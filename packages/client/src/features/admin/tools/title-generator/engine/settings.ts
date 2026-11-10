@@ -398,6 +398,10 @@ export function exportPreset(layer: TitleLayer) {
   return { type: PRESET_TYPE, preset };
 }
 
+function stringOrEmpty(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
 export function parsePreset(json: string): Record<string, unknown> {
   let data: unknown;
   try {
@@ -443,8 +447,8 @@ export async function applyPreset(
   if (next.overlaySource === "file") next.overlaySource = "premade";
   const characterSpacing = next.characterSpacing;
 
-  const baseFont = String(preset.baseFont ?? "");
-  const fontVariant = String(preset.fontVariant ?? "");
+  const baseFont = stringOrEmpty(preset.baseFont);
+  const fontVariant = stringOrEmpty(preset.fontVariant);
   let fontId = catalog.fonts[baseFont] ? baseFont : DEFAULT_FONT;
   if (catalog.fonts[fontId].variants.includes(fontVariant))
     fontId = fontVariant;
@@ -460,7 +464,7 @@ export async function applyPreset(
   );
   if (texture) {
     next.texture = texture.id;
-    const variant = String(preset.variant ?? "");
+    const variant = stringOrEmpty(preset.variant);
     if (texture.variants?.[variant]) next.variant = variant;
   }
   if (textures.overlays.some((entry) => entry.id === preset.overlay)) {
@@ -471,7 +475,7 @@ export async function applyPreset(
   );
   if (tileable) {
     next.tileable = tileable.id;
-    const variant = String(preset.tileableVariant ?? "");
+    const variant = stringOrEmpty(preset.tileableVariant);
     if (tileable.variants?.[variant]) next.tileableVariant = variant;
     const x = Number(preset.tileableXOffset) || 0;
     const y = Number(preset.tileableYOffset) || 0;

@@ -14,7 +14,8 @@ import {
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useToastActions } from "@/hooks/use-toast";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
-import { trpc, type RouterOutput } from "@/lib/trpc";
+import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
+import { useMutation } from "@tanstack/react-query";
 
 type WaitlistEntry =
   RouterOutput["admin"]["waitlists"]["list"]["entries"][number];
@@ -22,29 +23,29 @@ type WaitlistEntry =
 interface DeleteWaitlistModalProps {
   entry: WaitlistEntry | null;
   onClose: () => void;
-  onSuccess: () => void;
 }
 
 export function DeleteWaitlistModal({
   entry,
   onClose,
-  onSuccess,
 }: DeleteWaitlistModalProps) {
   const toast = useToastActions();
 
   const [reason, setReason] = useState("");
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
-  const deleteEntry = trpc.admin.waitlists.delete.useMutation(
-    useMutationToast({
-      success: "Waitlist entry deleted",
-      error: "Failed to delete waitlist entry",
-      onSuccess: () => {
-        setReason("");
-        onSuccess();
-        onClose();
-      },
-    }),
+  const deleteEntry = useMutation(
+    trpc.admin.waitlists.delete.mutationOptions(
+      useMutationToast({
+        success: "Waitlist entry deleted",
+        error: "Failed to delete waitlist entry",
+        onSuccess: () => {
+          setReason("");
+          void queryClient.invalidateQueries(trpc.admin.waitlists.pathFilter());
+          onClose();
+        },
+      }),
+    ),
   );
 
   const handleClose = () => {

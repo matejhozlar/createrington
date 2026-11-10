@@ -21,8 +21,9 @@ import {
   type DataTableColumn,
 } from "@/components/data-table";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
-import { trpc, type RouterOutput } from "@/lib/trpc";
+import { trpc, type RouterOutput, queryClient } from "@/lib/trpc";
 import { AddLauncherPackDialog } from "./components/AddLauncherPackDialog";
+import { useQuery, useMutation } from "@tanstack/react-query";
 
 type PackRow = RouterOutput["owner"]["launcherPacks"]["list"]["packs"][number];
 
@@ -58,31 +59,40 @@ export function OwnerLauncherPacks() {
   const [adding, setAdding] = useState(false);
   const [removing, setRemoving] = useState<PackRow | null>(null);
 
-  const utils = trpc.useUtils();
-  const packsQuery = trpc.owner.launcherPacks.list.useQuery();
+  const packsQuery = useQuery(trpc.owner.launcherPacks.list.queryOptions());
   const refresh = () => {
-    void utils.owner.launcherPacks.list.invalidate();
-    void utils.owner.launcherPacks.candidates.invalidate();
+    void queryClient.invalidateQueries(
+      trpc.owner.launcherPacks.list.pathFilter(),
+    );
+    void queryClient.invalidateQueries(
+      trpc.owner.launcherPacks.candidates.pathFilter(),
+    );
   };
 
-  const enableMutation = trpc.owner.launcherPacks.setEnabled.useMutation(
-    useMutationToast({
-      success: (pack) =>
-        `${pack.enabled ? "Enabled" : "Disabled"} "${pack.slug}" in the launcher`,
-      onSuccess: refresh,
-    }),
+  const enableMutation = useMutation(
+    trpc.owner.launcherPacks.setEnabled.mutationOptions(
+      useMutationToast({
+        success: (pack) =>
+          `${pack.enabled ? "Enabled" : "Disabled"} "${pack.slug}" in the launcher`,
+        onSuccess: refresh,
+      }),
+    ),
   );
-  const reorderMutation = trpc.owner.launcherPacks.reorder.useMutation(
-    useMutationToast({
-      success: "Launcher packs reordered",
-      onSuccess: refresh,
-    }),
+  const reorderMutation = useMutation(
+    trpc.owner.launcherPacks.reorder.mutationOptions(
+      useMutationToast({
+        success: "Launcher packs reordered",
+        onSuccess: refresh,
+      }),
+    ),
   );
-  const removeMutation = trpc.owner.launcherPacks.remove.useMutation(
-    useMutationToast({
-      success: (pack) => `No longer offering "${pack.slug}"`,
-      onSuccess: refresh,
-    }),
+  const removeMutation = useMutation(
+    trpc.owner.launcherPacks.remove.mutationOptions(
+      useMutationToast({
+        success: (pack) => `No longer offering "${pack.slug}"`,
+        onSuccess: refresh,
+      }),
+    ),
   );
 
   const packs = packsQuery.data?.packs ?? [];

@@ -98,12 +98,12 @@ describe("loadAllGuildMembers", () => {
       throw rateLimited(1);
     });
 
-    const pending = loadAllGuildMembers(guild);
-    const assertion = expect(pending).rejects.toBeInstanceOf(
-      GatewayRateLimitError,
+    const outcome = loadAllGuildMembers(guild).then(
+      () => undefined,
+      (error: unknown) => error,
     );
     await vi.advanceTimersByTimeAsync(1_000);
-    await assertion;
+    expect(await outcome).toBeInstanceOf(GatewayRateLimitError);
     expect(fetchMock(guild)).toHaveBeenCalledTimes(2);
   });
 

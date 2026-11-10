@@ -21,7 +21,7 @@ import type { Request, Response } from "express";
 function makeReq({
   content,
   withImage = false,
-  minecraftUsername = "Steve" as string | null,
+  minecraftUsername = "Steve",
 }: {
   content?: string;
   withImage?: boolean;

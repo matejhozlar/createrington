@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
+import type { IntakeMode } from "@/services/settings";
 
 type FunnelStats = {
   total: number;
@@ -20,8 +21,18 @@ const ZERO_STATS: FunnelStats = {
   signups: { today: 0, thisWeek: 0, thisMonth: 0 },
 };
 
-const state = vi.hoisted(() => ({
-  intakeMode: "auto" as "auto" | "closed",
+type State = {
+  intakeMode: IntakeMode;
+  playerLimit: number;
+  playerCount: number;
+  promotedCount: number;
+  failLimitRead: boolean;
+  funnelStats: FunnelStats;
+  funnelCalls: number;
+};
+
+const state = vi.hoisted((): State => ({
+  intakeMode: "auto",
   playerLimit: 10,
   playerCount: 0,
   promotedCount: 0,

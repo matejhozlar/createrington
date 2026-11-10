@@ -12,7 +12,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
-import { trpc, type RouterOutput } from "@/lib/trpc";
+import { trpc, type RouterOutput, queryClient } from "@/lib/trpc";
+import { useQuery, useMutation } from "@tanstack/react-query";
 
 type Commands = RouterOutput["admin"]["votes"]["rewardCommands"];
 type ListKey = keyof Commands;
@@ -64,20 +65,24 @@ function isValid(commands: Commands): boolean {
 }
 
 export function RewardCommandsCard() {
-  const utils = trpc.useUtils();
-  const query = trpc.admin.votes.rewardCommands.useQuery();
-  const accountQuery = trpc.user.account.me.useQuery();
+  const query = useQuery(trpc.admin.votes.rewardCommands.queryOptions());
+  const accountQuery = useQuery(trpc.user.account.me.queryOptions());
   const isOwner = accountQuery.data?.isOwner ?? false;
   const [draft, setDraft] = useState<Commands | null>(null);
 
-  const saveMutation = trpc.owner.voteRewards.update.useMutation(
-    useMutationToast({
-      success: "Reward commands saved",
-      onSuccess: (saved) => {
-        utils.admin.votes.rewardCommands.setData(undefined, saved);
-        setDraft(null);
-      },
-    }),
+  const saveMutation = useMutation(
+    trpc.owner.voteRewards.update.mutationOptions(
+      useMutationToast({
+        success: "Reward commands saved",
+        onSuccess: (saved) => {
+          queryClient.setQueryData(
+            trpc.admin.votes.rewardCommands.queryKey(),
+            saved,
+          );
+          setDraft(null);
+        },
+      }),
+    ),
   );
 
   const shown = draft ?? query.data;

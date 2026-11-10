@@ -1,13 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import * as React from "react";
 import type { LucideIcon } from "lucide-react";
-import {
-  ArrowDown,
-  ArrowUp,
-  ArrowUpDown,
-  Loader2,
-  MoreHorizontal,
-} from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, MoreHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,6 +24,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Spinner } from "@/components/ui/spinner";
 
 const INLINE_ACTION_LIMIT = 2;
 const DEFAULT_LOADING_ROWS = 10;
@@ -127,7 +122,7 @@ function ActionButton({
       onClick={action.onClick}
     >
       {busy && spinner ? (
-        <Loader2 className="size-4 animate-spin" />
+        <Spinner className="size-4" />
       ) : (
         <action.icon className={cn("size-4", action.iconClassName)} />
       )}
@@ -163,7 +158,7 @@ function ActionMenu({
           disabled={busy}
         >
           {busy && spinner ? (
-            <Loader2 className="size-4 animate-spin" />
+            <Spinner className="size-4" />
           ) : (
             <MoreHorizontal className="size-4" />
           )}

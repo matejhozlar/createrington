@@ -211,7 +211,7 @@ function extractTargetColumns(schemaSql: string, tableName: string): string[] {
  * - null/undefined => NULL
  * - strings => '...'
  */
-function sqlLiteral(v: unknown): string {
+function sqlLiteral(v: string | number | null | undefined): string {
   if (v === null || v === undefined) return "NULL";
   const s = String(v);
   // Treat empty string as empty string (not NULL)

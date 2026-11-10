@@ -18,7 +18,7 @@ import {
 } from "@/components/data-table";
 import { RefreshCw, Search, UserSearch } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { keepPreviousData } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useMutation } from "@tanstack/react-query";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useToastActions } from "@/hooks/use-toast";
 import { CellText } from "@/components/cell-text";
@@ -27,7 +27,8 @@ import {
   formatRelativeDate,
   toIso,
 } from "@/features/admin/format";
-import { trpc } from "@/lib/trpc";
+import { trpc, queryClient } from "@/lib/trpc";
+import { EmptyState, ErrorState } from "@/components/query-states";
 
 export function UnlinkedMembersCard() {
   const toast = useToastActions();
@@ -37,18 +38,25 @@ export function UnlinkedMembersCard() {
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearch = useDebouncedValue(searchQuery, 500);
 
-  const listQuery = trpc.admin.inactivity.unlinked.list.useQuery(
-    {
-      search: debouncedSearch.trim() || undefined,
-      page,
-      limit,
-    },
-    { placeholderData: keepPreviousData },
+  const listQuery = useQuery(
+    trpc.admin.inactivity.unlinked.list.queryOptions(
+      {
+        search: debouncedSearch.trim() || undefined,
+        page,
+        limit,
+      },
+      { placeholderData: keepPreviousData },
+    ),
   );
 
-  const refreshMembers = trpc.admin.inactivity.unlinked.refresh.useMutation();
-
-  const { refetch: refetchList } = listQuery;
+  const refreshMembers = useMutation(
+    trpc.admin.inactivity.unlinked.refresh.mutationOptions({
+      onSuccess: () =>
+        void queryClient.invalidateQueries(
+          trpc.admin.inactivity.unlinked.pathFilter(),
+        ),
+    }),
+  );
 
   const members = listQuery.data?.items ?? [];
   const total = listQuery.data?.pagination.total ?? 0;
@@ -70,7 +78,6 @@ export function UnlinkedMembersCard() {
     try {
       const result = await refreshMembers.mutateAsync();
       toast.success(`Cache refreshed: ${result.count} member(s)`);
-      refetchList();
     } catch (error) {
       toast.error(
         error instanceof Error
@@ -78,7 +85,7 @@ export function UnlinkedMembersCard() {
           : "Failed to refresh unlinked member cache",
       );
     }
-  }, [refreshMembers, toast, refetchList]);
+  }, [refreshMembers, toast]);
 
   type Member = (typeof members)[number];
 
@@ -180,29 +187,16 @@ export function UnlinkedMembersCard() {
       </CardHeader>
 
       {error ? (
-        <CardContent className="flex items-center justify-center py-12">
-          <div className="text-center">
-            <p className="text-destructive">{error}</p>
-            <Button
-              onClick={() => listQuery.refetch()}
-              className="mt-4"
-              variant="outline"
-            >
-              Try Again
-            </Button>
-          </div>
-        </CardContent>
+        <ErrorState message={error} onRetry={() => listQuery.refetch()} />
       ) : !loading && members.length === 0 ? (
-        <CardContent className="flex items-center justify-center py-12">
-          <div className="text-center">
-            <UserSearch className="mx-auto size-12 text-muted-foreground" />
-            <p className="mt-2 text-muted-foreground">
-              {lastRefreshedAt
-                ? "No unlinked members in the cache"
-                : "Click Refresh to populate the cache"}
-            </p>
-          </div>
-        </CardContent>
+        <EmptyState
+          icon={UserSearch}
+          message={
+            lastRefreshedAt
+              ? "No unlinked members in the cache"
+              : "Click Refresh to populate the cache"
+          }
+        />
       ) : (
         <>
           <CardContent className="px-0">

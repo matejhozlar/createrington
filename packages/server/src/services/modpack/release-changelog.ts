@@ -8,7 +8,19 @@ import {
 } from "@/services/key-value-store";
 import type { Modpack, ModpackRelease } from "@createrington/shared/db";
 import { toChangelogInputs } from "./changelog";
-import type { ModpackReleaseDiff, ModpackReleaseDiffEntry } from "./index";
+
+export interface ModpackReleaseDiffEntry extends ReleaseModRow {
+  previousFile: ReleaseModRow | null;
+}
+
+export interface ModpackReleaseDiff {
+  release: ModpackRelease;
+  previous: ModpackRelease | null;
+  added: ModpackReleaseDiffEntry[];
+  updated: ModpackReleaseDiffEntry[];
+  removed: ModpackReleaseDiffEntry[];
+  unchanged: number;
+}
 
 const KEY_PREFIX = "modpack:changelog:v1";
 const CHANGELOG_TTL_MS = 5 * 60_000;

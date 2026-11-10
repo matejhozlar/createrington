@@ -1,6 +1,6 @@
 import type React from "react";
 import { useAuth } from "@/contexts/auth/";
-import { Loading } from "./loading-spinner";
+import { LoadingScreen } from "@/components/query-states";
 import { LoginPrompt } from "./login-prompt";
 import { NotFound } from "@/pages/not-found";
 
@@ -22,7 +22,7 @@ export function ProtectedRoute({
   const { user, loading } = useAuth();
 
   if (loading) {
-    return <Loading mode="fullscreen" size="large" text="Loading..." />;
+    return <LoadingScreen progress={false} />;
   }
 
   if (requiresAuth && !user) {

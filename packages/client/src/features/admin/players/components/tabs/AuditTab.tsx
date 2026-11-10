@@ -5,11 +5,16 @@ import {
 } from "@/components/ui/collapsible";
 import { Paginator } from "@/components/paginator";
 import { useState } from "react";
-import { Loading } from "@/components/loading-spinner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FileText } from "lucide-react";
 import { trpc } from "@/lib/trpc";
+import { useQuery } from "@tanstack/react-query";
+import {
+  EmptyState,
+  ErrorState,
+  LoadingState,
+} from "@/components/query-states";
 
 interface AuditTabProps {
   playerId: string; // minecraftUuid (route param)
@@ -19,11 +24,13 @@ export function AuditTab({ playerId }: AuditTabProps) {
   const [page, setPage] = useState(0);
   const [limit] = useState(10);
 
-  const auditQuery = trpc.admin.players.audit.list.useQuery({
-    id: playerId,
-    page,
-    limit,
-  });
+  const auditQuery = useQuery(
+    trpc.admin.players.audit.list.queryOptions({
+      id: playerId,
+      page,
+      limit,
+    }),
+  );
 
   const actions = auditQuery.data?.actions ?? [];
   const total = auditQuery.data?.pagination.total ?? 0;
@@ -72,29 +79,11 @@ export function AuditTab({ playerId }: AuditTabProps) {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loading size="medium" text="Loading audit log..." />
-        </div>
+        <LoadingState text="Loading audit log..." />
       ) : error ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="text-center">
-            <p className="text-destructive">{error}</p>
-            <Button
-              onClick={() => auditQuery.refetch()}
-              className="mt-4"
-              variant="outline"
-            >
-              Try Again
-            </Button>
-          </div>
-        </div>
+        <ErrorState message={error} onRetry={() => auditQuery.refetch()} />
       ) : actions.length === 0 ? (
-        <div className="py-12 text-center">
-          <FileText className="mx-auto size-12 text-muted-foreground" />
-          <p className="mt-2 text-muted-foreground">
-            No audit log entries found
-          </p>
-        </div>
+        <EmptyState icon={FileText} message="No audit log entries found" />
       ) : (
         <>
           {/* Actions list */}

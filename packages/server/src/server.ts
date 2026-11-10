@@ -32,7 +32,11 @@ async function start() {
 /** Gracefully tears down all services and exits */
 async function shutdown() {
   logger.info("Shutting down...");
-  await shutdownServices();
+  try {
+    await shutdownServices();
+  } catch (error) {
+    logger.error("Service shutdown failed:", error);
+  }
   process.exit(0);
 }
 
@@ -40,18 +44,18 @@ async function shutdown() {
  * Sets up process event handlers for graceful shutdown and error handling
  */
 function setupProcessHandlers(_httpServer: Server): void {
-  process.on("SIGINT", shutdown);
-  process.on("SIGTERM", shutdown);
+  process.on("SIGINT", () => void shutdown());
+  process.on("SIGTERM", () => void shutdown());
 
   process.on("unhandledRejection", (reason, promise) => {
     logger.error("Unhandled promise rejection:", reason);
     logger.error("Promise:", promise);
-    shutdown();
+    void shutdown();
   });
 
   process.on("uncaughtException", (error) => {
     logger.error("Uncaught exception:", error);
-    shutdown();
+    void shutdown();
   });
 }
 

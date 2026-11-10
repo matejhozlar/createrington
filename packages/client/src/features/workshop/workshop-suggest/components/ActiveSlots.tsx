@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { X } from "lucide-react";
-import { trpc, type RouterOutput } from "@/lib/trpc";
+import { trpc, type RouterOutput, queryClient } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/tooltip";
 import { ProjectThumb } from "../../components/ProjectThumb";
 import { MOD_STATUS_STYLES } from "../../format";
+import { useMutation } from "@tanstack/react-query";
 
 type Suggestion = RouterOutput["user"]["workshops"]["mySuggestions"][number];
 
@@ -26,27 +27,41 @@ export function ActiveSlots({
   suggestions: Suggestion[];
   isOpen: boolean;
 }) {
-  const utils = trpc.useUtils();
-
   const [confirmMod, setConfirmMod] = useState<Suggestion | null>(null);
 
   const pending = suggestions.filter((m) => m.status === "pending");
   const emptySlots = Math.max(0, workshop.maxModsPerUser - pending.length);
 
-  const removeMutation = trpc.user.workshops.removeSuggestion.useMutation(
-    useMutationToast({
-      success: "Suggestion removed",
-      onSuccess: () => {
-        utils.user.workshops.mySuggestions.invalidate({
-          workshopId: workshop.id,
-        });
-        utils.user.workshops.mySuggestionHistory.invalidate();
-        utils.user.workshops.searchProjects.invalidate();
-        utils.user.workshops.get.invalidate();
-        utils.user.workshops.list.invalidate();
-        utils.user.workshops.myUpvotes.invalidate({ workshopId: workshop.id });
-      },
-    }),
+  const removeMutation = useMutation(
+    trpc.user.workshops.removeSuggestion.mutationOptions(
+      useMutationToast({
+        success: "Suggestion removed",
+        onSuccess: () => {
+          void queryClient.invalidateQueries(
+            trpc.user.workshops.mySuggestions.queryFilter({
+              workshopId: workshop.id,
+            }),
+          );
+          void queryClient.invalidateQueries(
+            trpc.user.workshops.mySuggestionHistory.pathFilter(),
+          );
+          void queryClient.invalidateQueries(
+            trpc.user.workshops.searchProjects.pathFilter(),
+          );
+          void queryClient.invalidateQueries(
+            trpc.user.workshops.get.pathFilter(),
+          );
+          void queryClient.invalidateQueries(
+            trpc.user.workshops.list.pathFilter(),
+          );
+          void queryClient.invalidateQueries(
+            trpc.user.workshops.myUpvotes.queryFilter({
+              workshopId: workshop.id,
+            }),
+          );
+        },
+      }),
+    ),
   );
 
   return (

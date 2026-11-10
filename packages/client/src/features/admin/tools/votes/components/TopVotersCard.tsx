@@ -13,6 +13,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatRelativeDateSafe } from "@/features/admin/format";
 import { trpc, type RouterOutput } from "@/lib/trpc";
+import { useQuery } from "@tanstack/react-query";
 
 type Window = "all" | "30d";
 type TopVoter = RouterOutput["admin"]["votes"]["topVoters"][number];
@@ -73,7 +74,9 @@ const COLUMNS: DataTableColumn<TopVoter>[] = [
 
 export function TopVotersCard() {
   const [window, setWindow] = useState<Window>("all");
-  const query = trpc.admin.votes.topVoters.useQuery({ window, limit: 10 });
+  const query = useQuery(
+    trpc.admin.votes.topVoters.queryOptions({ window, limit: 10 }),
+  );
   const voters = query.data ?? [];
 
   return (

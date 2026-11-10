@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { formatDate } from "@createrington/shared/format";
-import { LoadingScreen } from "@/components/loading-spinner";
+import { LoadingScreen } from "@/components/query-states";
 import { formatMoney } from "@/lib/format";
 import { RenderTeamTag } from "./components/RenderTeamTag";
 import { RenderUnavailable } from "./components/RenderUnavailable";
@@ -57,7 +57,7 @@ export function ProfileRender() {
 
   useEffect(() => {
     if (!data) return;
-    loadSkin(data.uuid, pose).then(setSkinSrc);
+    void loadSkin(data.uuid, pose).then(setSkinSrc);
   }, [data, pose]);
 
   if (unavailable) return <RenderUnavailable reason={unavailable} />;

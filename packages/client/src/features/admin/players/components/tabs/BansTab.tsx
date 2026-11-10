@@ -4,22 +4,17 @@ import { Ban, Clock } from "lucide-react";
 import type { RouterOutput } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { WorkshopBansSection } from "../WorkshopBansSection";
+import { EmptyState } from "@/components/query-states";
 
 type PlayerDetailed = RouterOutput["admin"]["players"]["players"]["get"];
 
 interface BansTabProps {
   player: PlayerDetailed;
   onIssueBan: () => void;
-  onRefresh: () => void;
   onUnban: (banId: number) => void;
 }
 
-export function BansTab({
-  player,
-  onIssueBan,
-  // onRefresh,
-  onUnban,
-}: BansTabProps) {
+export function BansTab({ player, onIssueBan, onUnban }: BansTabProps) {
   const activeBans = player.bans.active;
   const removedBans = player.bans.history.filter((b) => b.unbannedAt);
   const currentBan = player.bans.current;
@@ -75,10 +70,7 @@ export function BansTab({
       )}
 
       {activeBans.length === 0 ? (
-        <div className="py-12 text-center">
-          <Ban className="mx-auto size-12 text-muted-foreground" />
-          <p className="mt-2 text-muted-foreground">No active bans</p>
-        </div>
+        <EmptyState icon={Ban} message="No active bans" />
       ) : (
         <div className="space-y-2">
           {activeBans.map((ban) => {

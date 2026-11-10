@@ -27,12 +27,18 @@ jobs:
         run: pnpm format:check
 
   lint:
-    runs-on: ubuntu-latest
+    runs-on: hetzner
     steps:
       - uses: actions/checkout@v4
 
       - name: Setup
         uses: ./.gitea/actions/setup
+
+      - name: Generate code
+        run: pnpm generate:ci
+
+      - name: Build server types
+        run: pnpm --filter @createrington/server build:types
 
       - name: Lint
         run: pnpm lint

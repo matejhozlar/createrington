@@ -1,5 +1,4 @@
-import { useCallback, useState } from "react";
-import { Loading } from "@/components/loading-spinner";
+import { useState } from "react";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -15,10 +14,12 @@ import {
   MessageSquare,
   ArrowDown,
 } from "lucide-react";
-import { trpc, type RouterOutput } from "@/lib/trpc";
+import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { UpsertConfigDialog } from "./components/UpsertConfigDialog";
 import { MessageDialog } from "./components/MessageDialog";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { EmptyState, LoadingState } from "@/components/query-states";
 
 type Config = RouterOutput["admin"]["autoMessages"]["configs"]["list"][number];
 type ConfigDetail = RouterOutput["admin"]["autoMessages"]["configs"]["get"];
@@ -43,35 +44,47 @@ export function AutoMessages() {
 
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
-  const configsQuery = trpc.admin.autoMessages.configs.list.useQuery();
-  const channelsQuery = trpc.admin.autoMessages.channels.useQuery();
-  const detailQuery = trpc.admin.autoMessages.configs.get.useQuery(
-    { id: expandedId! },
-    { enabled: expandedId !== null },
+  const configsQuery = useQuery(
+    trpc.admin.autoMessages.configs.list.queryOptions(),
   );
-  const deleteMutation = trpc.admin.autoMessages.configs.delete.useMutation(
-    useMutationToast({
-      success: "Config deleted",
-      error: "Failed to delete config",
-      onSuccess: (_data, variables) => {
-        if (expandedId === variables.id) setExpandedId(null);
-        setDeleteConfigTarget(null);
-        configsQuery.refetch();
-      },
-    }),
+  const channelsQuery = useQuery(
+    trpc.admin.autoMessages.channels.queryOptions(),
   );
-  const deleteMessageMutation =
-    trpc.admin.autoMessages.messages.delete.useMutation(
+  const detailQuery = useQuery(
+    trpc.admin.autoMessages.configs.get.queryOptions(
+      { id: expandedId! },
+      { enabled: expandedId !== null },
+    ),
+  );
+  const deleteMutation = useMutation(
+    trpc.admin.autoMessages.configs.delete.mutationOptions(
+      useMutationToast({
+        success: "Config deleted",
+        error: "Failed to delete config",
+        onSuccess: (_data, variables) => {
+          if (expandedId === variables.id) setExpandedId(null);
+          setDeleteConfigTarget(null);
+          void queryClient.invalidateQueries(
+            trpc.admin.autoMessages.configs.pathFilter(),
+          );
+        },
+      }),
+    ),
+  );
+  const deleteMessageMutation = useMutation(
+    trpc.admin.autoMessages.messages.delete.mutationOptions(
       useMutationToast({
         success: "Message deleted",
         error: "Failed to delete message",
         onSuccess: () => {
           setDeleteMessageId(null);
-          detailQuery.refetch();
-          configsQuery.refetch();
+          void queryClient.invalidateQueries(
+            trpc.admin.autoMessages.configs.pathFilter(),
+          );
         },
       }),
-    );
+    ),
+  );
 
   const configs = configsQuery.data ?? [];
   const channels = channelsQuery.data ?? [];
@@ -81,18 +94,6 @@ export function AutoMessages() {
       g.channels.map((c) => [c.id, { name: c.name, category: g.category }]),
     ),
   );
-
-  const handleConfigSuccess = useCallback(() => {
-    setConfigDialog({ open: false, config: null });
-    configsQuery.refetch();
-    if (expandedId !== null) detailQuery.refetch();
-  }, [configsQuery, detailQuery, expandedId]);
-
-  const handleMessageSuccess = useCallback(() => {
-    setMessageDialog({ open: false, configId: 0, message: null });
-    detailQuery.refetch();
-    configsQuery.refetch();
-  }, [detailQuery, configsQuery]);
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -118,25 +119,16 @@ export function AutoMessages() {
         />
 
         {configsQuery.isLoading ? (
-          <div className="flex flex-1 items-center justify-center py-12">
-            <Loading size="medium" text="Loading configs..." />
-          </div>
+          <LoadingState text="Loading configs..." />
         ) : configs.length === 0 ? (
-          <div className="flex flex-1 items-center justify-center py-12">
-            <div className="text-center">
-              <Timer className="mx-auto size-12 text-muted-foreground" />
-              <p className="mt-2 text-muted-foreground">
-                No auto-message configs yet
-              </p>
-              <Button
-                onClick={() => setConfigDialog({ open: true, config: null })}
-                className="mt-4"
-              >
-                <Plus className="mr-2 size-4" />
-                Create First Config
-              </Button>
-            </div>
-          </div>
+          <EmptyState icon={Timer} message="No auto-message configs yet">
+            <Button
+              onClick={() => setConfigDialog({ open: true, config: null })}
+            >
+              <Plus className="mr-2 size-4" />
+              Create First Config
+            </Button>
+          </EmptyState>
         ) : (
           <div className="flex flex-col gap-3">
             {configs.map((config) => {
@@ -233,9 +225,11 @@ export function AutoMessages() {
                       </div>
 
                       {detailQuery.isLoading ? (
-                        <div className="flex items-center justify-center py-8">
-                          <Loading size="small" text="Loading messages..." />
-                        </div>
+                        <LoadingState
+                          size="small"
+                          text="Loading messages..."
+                          className="flex-none py-8"
+                        />
                       ) : (detailQuery.data?.messages.length ?? 0) === 0 ? (
                         <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
                           <MessageSquare className="mr-2 size-4" />
@@ -333,7 +327,6 @@ export function AutoMessages() {
         key={configDialog.config?.id ?? "new"}
         open={configDialog.open}
         onClose={() => setConfigDialog({ open: false, config: null })}
-        onSuccess={handleConfigSuccess}
         config={configDialog.config}
         channels={channels}
       />
@@ -344,7 +337,6 @@ export function AutoMessages() {
         onClose={() =>
           setMessageDialog({ open: false, configId: 0, message: null })
         }
-        onSuccess={handleMessageSuccess}
         configId={messageDialog.configId}
         message={messageDialog.message}
       />

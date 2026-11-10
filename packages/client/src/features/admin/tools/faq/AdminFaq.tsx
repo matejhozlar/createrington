@@ -38,12 +38,13 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { keepPreviousData } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery } from "@tanstack/react-query";
 import { CreateFaqModal } from "./components/modals/CreateFaqModal";
 import { EditFaqModal } from "./components/modals/EditFaqModal";
 import { DeleteFaqModal } from "./components/modals/DeleteFaqModal";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
+import { EmptyState, ErrorState } from "@/components/query-states";
 
 type FaqEntry = RouterOutput["admin"]["faq"]["list"]["entries"][number];
 
@@ -71,23 +72,27 @@ export function AdminFaq() {
 
   const debouncedSearch = useDebouncedValue(searchQuery, 1000);
 
-  const repostWelcome = trpc.admin.faq.repostWelcome.useMutation();
+  const repostWelcome = useMutation(
+    trpc.admin.faq.repostWelcome.mutationOptions(),
+  );
 
-  const entriesQuery = trpc.admin.faq.list.useQuery(
-    {
-      page,
-      limit,
-      orderBy,
-      orderDirection,
-      search: debouncedSearch.trim() || undefined,
-      enabled:
-        enabledFilter === "enabled"
-          ? true
-          : enabledFilter === "disabled"
-            ? false
-            : undefined,
-    },
-    { placeholderData: keepPreviousData },
+  const entriesQuery = useQuery(
+    trpc.admin.faq.list.queryOptions(
+      {
+        page,
+        limit,
+        orderBy,
+        orderDirection,
+        search: debouncedSearch.trim() || undefined,
+        enabled:
+          enabledFilter === "enabled"
+            ? true
+            : enabledFilter === "disabled"
+              ? false
+              : undefined,
+      },
+      { placeholderData: keepPreviousData },
+    ),
   );
 
   const entries = entriesQuery.data?.entries ?? [];
@@ -114,13 +119,6 @@ export function AdminFaq() {
     },
     [orderBy],
   );
-
-  const handleSuccess = useCallback(() => {
-    setCreateModal(false);
-    setEditModal({ open: false, entry: null });
-    setDeleteTarget(null);
-    entriesQuery.refetch();
-  }, [entriesQuery]);
 
   const handleRepostWelcome = useCallback(async () => {
     try {
@@ -313,31 +311,20 @@ export function AdminFaq() {
           </CardHeader>
 
           {error ? (
-            <CardContent className="flex flex-1 items-center justify-center py-12">
-              <div className="text-center">
-                <p className="text-destructive">{error}</p>
-                <Button
-                  onClick={() => entriesQuery.refetch()}
-                  className="mt-4"
-                  variant="outline"
-                >
-                  Try Again
-                </Button>
-              </div>
-            </CardContent>
+            <ErrorState
+              message={error}
+              onRetry={() => entriesQuery.refetch()}
+            />
           ) : !loading && entries.length === 0 ? (
-            <CardContent className="flex flex-1 items-center justify-center py-12">
-              <div className="text-center">
-                <MessageCircleQuestion className="mx-auto size-12 text-muted-foreground" />
-                <p className="mt-2 text-muted-foreground">
-                  No FAQ entries found
-                </p>
-                <Button onClick={() => setCreateModal(true)} className="mt-4">
-                  <Plus className="mr-2 size-4" />
-                  Create First Entry
-                </Button>
-              </div>
-            </CardContent>
+            <EmptyState
+              icon={MessageCircleQuestion}
+              message="No FAQ entries found"
+            >
+              <Button onClick={() => setCreateModal(true)}>
+                <Plus className="mr-2 size-4" />
+                Create First Entry
+              </Button>
+            </EmptyState>
           ) : (
             <>
               <CardContent className="px-0">
@@ -373,7 +360,6 @@ export function AdminFaq() {
       <CreateFaqModal
         open={createModal}
         onClose={() => setCreateModal(false)}
-        onSuccess={handleSuccess}
       />
 
       {editModal.entry !== null && (
@@ -381,14 +367,12 @@ export function AdminFaq() {
           open={editModal.open}
           onClose={() => setEditModal({ open: false, entry: null })}
           entry={editModal.entry}
-          onSuccess={handleSuccess}
         />
       )}
 
       <DeleteFaqModal
         entry={deleteTarget}
         onClose={() => setDeleteTarget(null)}
-        onSuccess={handleSuccess}
       />
     </div>
   );

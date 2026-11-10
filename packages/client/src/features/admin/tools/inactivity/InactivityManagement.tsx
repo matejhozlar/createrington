@@ -4,7 +4,6 @@ import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
@@ -44,8 +43,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { keepPreviousData } from "@tanstack/react-query";
-import { trpc, type RouterOutput } from "@/lib/trpc";
+import { keepPreviousData, useQuery, useMutation } from "@tanstack/react-query";
+import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import {
   formatFullDate,
@@ -67,8 +66,15 @@ import { RemoveWarningModal } from "./components/modals/RemoveWarningModal";
 import { ExemptionsCard } from "./components/ExemptionsCard";
 import { GhostsCard } from "./components/GhostsCard";
 import { UnlinkedMembersCard } from "./components/UnlinkedMembersCard";
+import { EmptyState, ErrorState } from "@/components/query-states";
+import { StatCard } from "@/components/stat-card";
 
 type Warning = RouterOutput["admin"]["inactivity"]["list"]["warnings"][number];
+
+const invalidateAfterRemovalRun = () => {
+  void queryClient.invalidateQueries(trpc.admin.inactivity.pathFilter());
+  void queryClient.invalidateQueries(trpc.admin.players.pathFilter());
+};
 
 export function InactivityManagement() {
   const toast = useToastActions();
@@ -84,26 +90,32 @@ export function InactivityManagement() {
 
   const debouncedSearch = useDebouncedValue(searchQuery, 500);
 
-  const capabilitiesQuery = trpc.admin.inactivity.capabilities.useQuery();
-  const statsQuery = trpc.admin.inactivity.stats.useQuery();
-  const listQuery = trpc.admin.inactivity.list.useQuery(
-    {
-      status: statusFilter,
-      search: debouncedSearch.trim() || undefined,
-      page,
-      limit,
-    },
-    { placeholderData: keepPreviousData },
+  const capabilitiesQuery = useQuery(
+    trpc.admin.inactivity.capabilities.queryOptions(),
+  );
+  const statsQuery = useQuery(trpc.admin.inactivity.stats.queryOptions());
+  const listQuery = useQuery(
+    trpc.admin.inactivity.list.queryOptions(
+      {
+        status: statusFilter,
+        search: debouncedSearch.trim() || undefined,
+        page,
+        limit,
+      },
+      { placeholderData: keepPreviousData },
+    ),
   );
 
-  const triggerCleanup = trpc.admin.inactivity.triggerCleanup.useMutation();
-  const triggerResolveRemove =
-    trpc.admin.inactivity.triggerResolveRemove.useMutation();
-
-  // Destructure refetch so the callbacks below have stable deps: the
-  // full query object is a new reference on every render.
-  const { refetch: refetchList } = listQuery;
-  const { refetch: refetchStats } = statsQuery;
+  const triggerCleanup = useMutation(
+    trpc.admin.inactivity.triggerCleanup.mutationOptions({
+      onSuccess: invalidateAfterRemovalRun,
+    }),
+  );
+  const triggerResolveRemove = useMutation(
+    trpc.admin.inactivity.triggerResolveRemove.mutationOptions({
+      onSuccess: invalidateAfterRemovalRun,
+    }),
+  );
 
   const warnings = listQuery.data?.warnings ?? [];
   const total = listQuery.data?.pagination.total ?? 0;
@@ -132,36 +144,21 @@ export function InactivityManagement() {
     setPage(0);
   }, []);
 
-  const refreshWarnings = useCallback(() => {
-    refetchList();
-    refetchStats();
-  }, [refetchList, refetchStats]);
-
-  const handleSuccess = useCallback(() => {
-    setResolveTarget(null);
-    setRemoveTarget(null);
-    refreshWarnings();
-  }, [refreshWarnings]);
-
   const handleTriggerCleanup = useCallback(async () => {
     try {
       await triggerCleanup.mutateAsync();
       toast.success("Cleanup cycle completed");
-      refetchList();
-      refetchStats();
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Failed to run cleanup cycle",
       );
     }
-  }, [triggerCleanup, toast, refetchList, refetchStats]);
+  }, [triggerCleanup, toast]);
 
   const handleProcessOverdue = useCallback(async () => {
     try {
       await triggerResolveRemove.mutateAsync();
       toast.success("Overdue warnings processed");
-      refetchList();
-      refetchStats();
     } catch (error) {
       toast.error(
         error instanceof Error
@@ -169,7 +166,7 @@ export function InactivityManagement() {
           : "Failed to process overdue warnings",
       );
     }
-  }, [triggerResolveRemove, toast, refetchList, refetchStats]);
+  }, [triggerResolveRemove, toast]);
 
   const stats = useMemo(
     () => ({
@@ -356,31 +353,16 @@ export function InactivityManagement() {
 
         {/* Stats Cards */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {STAT_CARDS.map(
-            ({ key, label, description, icon: Icon, iconBg, iconColor }) => (
-              <Card key={key}>
-                <CardContent className="flex items-start justify-between">
-                  <div>
-                    <CardDescription>
-                      {resolveStatText(label, statWindows)}
-                    </CardDescription>
-                    <CardTitle className="text-2xl">{stats[key]}</CardTitle>
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      {resolveStatText(description, statWindows)}
-                    </p>
-                  </div>
-                  <div
-                    className={cn(
-                      "flex size-12 items-center justify-center rounded-full",
-                      iconBg,
-                    )}
-                  >
-                    <Icon className={cn("size-6", iconColor)} />
-                  </div>
-                </CardContent>
-              </Card>
-            ),
-          )}
+          {STAT_CARDS.map(({ key, label, description, icon, tone }) => (
+            <StatCard
+              key={key}
+              label={resolveStatText(label, statWindows)}
+              value={stats[key]}
+              icon={icon}
+              tone={tone}
+              footer={resolveStatText(description, statWindows)}
+            />
+          ))}
         </div>
 
         {/* Filters */}
@@ -439,25 +421,9 @@ export function InactivityManagement() {
           </CardHeader>
 
           {error ? (
-            <CardContent className="flex flex-1 items-center justify-center py-12">
-              <div className="text-center">
-                <p className="text-destructive">{error}</p>
-                <Button
-                  onClick={() => listQuery.refetch()}
-                  className="mt-4"
-                  variant="outline"
-                >
-                  Try Again
-                </Button>
-              </div>
-            </CardContent>
+            <ErrorState message={error} onRetry={() => listQuery.refetch()} />
           ) : !loading && warnings.length === 0 ? (
-            <CardContent className="flex flex-1 items-center justify-center py-12">
-              <div className="text-center">
-                <Clock className="mx-auto size-12 text-muted-foreground" />
-                <p className="mt-2 text-muted-foreground">No warnings found</p>
-              </div>
-            </CardContent>
+            <EmptyState icon={Clock} message="No warnings found" />
           ) : (
             <>
               <CardContent className="px-0">
@@ -507,7 +473,7 @@ export function InactivityManagement() {
           )}
         </Card>
 
-        <ExemptionsCard onWarningsChanged={refreshWarnings} />
+        <ExemptionsCard />
 
         {/* Ghost members (registered but missing from Discord) */}
         <GhostsCard canMutate={canMutate} />
@@ -520,13 +486,11 @@ export function InactivityManagement() {
       <ResolveWarningModal
         warning={resolveTarget}
         onClose={() => setResolveTarget(null)}
-        onSuccess={handleSuccess}
       />
 
       <RemoveWarningModal
         warning={removeTarget}
         onClose={() => setRemoveTarget(null)}
-        onSuccess={handleSuccess}
       />
     </div>
   );

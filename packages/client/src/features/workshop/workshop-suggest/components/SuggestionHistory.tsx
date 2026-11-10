@@ -4,7 +4,7 @@ import type { WorkshopModStatus } from "@createrington/shared/db";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loading } from "@/components/loading-spinner";
+import { LoadingState } from "@/components/query-states";
 import {
   Select,
   SelectContent,
@@ -24,6 +24,7 @@ import {
   formatDate,
   liveTitle,
 } from "../../format";
+import { useQuery } from "@tanstack/react-query";
 
 type HistoryItem =
   RouterOutput["user"]["workshops"]["mySuggestionHistory"][number];
@@ -74,7 +75,9 @@ export function SuggestionHistory() {
   const [shownCount, setShownCount] = useState(PAGE_SIZE);
   const [view, changeView] = useViewMode("workshop-suggest-history-view");
 
-  const historyQuery = trpc.user.workshops.mySuggestionHistory.useQuery();
+  const historyQuery = useQuery(
+    trpc.user.workshops.mySuggestionHistory.queryOptions(),
+  );
 
   const history = historyQuery.data ?? [];
   let visible =
@@ -142,11 +145,7 @@ export function SuggestionHistory() {
       </p>
 
       {historyQuery.isLoading ? (
-        <Loading
-          size="medium"
-          className="py-12"
-          text="Loading suggestions..."
-        />
+        <LoadingState text="Loading suggestions..." />
       ) : historyQuery.error ? (
         <div className="mt-4">
           <QueryErrorState

@@ -1,11 +1,12 @@
-import type {
-  DMChannel,
-  NewsChannel,
-  PrivateThreadChannel,
-  PublicThreadChannel,
-  TextChannel,
-  Channel,
-  VoiceChannel,
+import {
+  ChannelType,
+  type DMChannel,
+  type NewsChannel,
+  type PrivateThreadChannel,
+  type PublicThreadChannel,
+  type TextChannel,
+  type Channel,
+  type VoiceChannel,
 } from "discord.js";
 
 /**
@@ -39,7 +40,7 @@ export function isSendableChannel(
  * @returns True if the channel is a TextChannel
  */
 export function isTextChannel(channel: Channel | null): channel is TextChannel {
-  return channel !== null && channel.type === 0;
+  return channel !== null && channel.type === ChannelType.GuildText;
 }
 
 /**
@@ -51,7 +52,7 @@ export function isTextChannel(channel: Channel | null): channel is TextChannel {
 export function isVoiceChannel(
   channel: Channel | null,
 ): channel is VoiceChannel {
-  return channel !== null && channel.type === 2;
+  return channel !== null && channel.type === ChannelType.GuildVoice;
 }
 
 /**

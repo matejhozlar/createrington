@@ -1,7 +1,7 @@
 import type React from "react";
 import { useState } from "react";
 import { formatDate } from "@createrington/shared/format";
-import { trpc } from "@/lib/trpc";
+import { trpc, queryClient } from "@/lib/trpc";
 import { useAuth } from "@/contexts/auth";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import { Sensitive } from "@/components/sensitive";
@@ -24,6 +24,7 @@ import {
   Download,
   Trash2,
 } from "lucide-react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 
 /**
  * Parses a raw User-Agent string into a human-readable label and device icon
@@ -62,7 +63,7 @@ function formatRelative(iso: string) {
 
 /** Displays the linked Minecraft and Discord account details for the current user */
 function AccountSection() {
-  const { data, isLoading } = trpc.user.account.me.useQuery();
+  const { data, isLoading } = useQuery(trpc.user.account.me.queryOptions());
 
   if (isLoading || !data) {
     return (
@@ -164,11 +165,15 @@ function InfoItem({
 
 /** Lists all active JWT sessions with device info and per-session revoke controls */
 function SessionsSection() {
-  const { data: sessions, isLoading } = trpc.user.account.sessions.useQuery();
-  const utils = trpc.useUtils();
-  const revokeMutation = trpc.user.account.revokeSession.useMutation({
-    onSuccess: () => utils.user.account.sessions.invalidate(),
-  });
+  const { data: sessions, isLoading } = useQuery(
+    trpc.user.account.sessions.queryOptions(),
+  );
+  const revokeMutation = useMutation(
+    trpc.user.account.revokeSession.mutationOptions({
+      onSuccess: () =>
+        queryClient.invalidateQueries(trpc.user.account.sessions.pathFilter()),
+    }),
+  );
 
   if (isLoading) {
     return (
@@ -279,9 +284,8 @@ function DangerZoneRow({
 /** Fetches the current user's data export on demand and triggers a JSON file download */
 function ExportDataButton() {
   const toast = useToastActions();
-  const { isFetching, refetch } = trpc.user.account.exportData.useQuery(
-    undefined,
-    { enabled: false },
+  const { isFetching, refetch } = useQuery(
+    trpc.user.account.exportData.queryOptions(undefined, { enabled: false }),
   );
 
   const handleExport = async () => {
@@ -323,11 +327,13 @@ function DeleteAccountButton() {
   const [open, setOpen] = useState(false);
   const [confirmation, setConfirmation] = useState("");
 
-  const deleteMutation = trpc.user.account.deleteAccount.useMutation(
-    useMutationToast({
-      error: (err) => err.message || "Failed to delete account",
-      onSuccess: () => logout(),
-    }),
+  const deleteMutation = useMutation(
+    trpc.user.account.deleteAccount.mutationOptions(
+      useMutationToast({
+        error: (err) => err.message || "Failed to delete account",
+        onSuccess: () => logout(),
+      }),
+    ),
   );
 
   const isValid = confirmation === "DELETE MY ACCOUNT";

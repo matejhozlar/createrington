@@ -1,4 +1,4 @@
-import { Loader2, UserRound } from "lucide-react";
+import { UserRound } from "lucide-react";
 import {
   forwardRef,
   useEffect,
@@ -18,6 +18,7 @@ import {
   type LookAroundIdleAnimation,
 } from "../effects/idle";
 import { createEffect } from "../effects/registry";
+import { Spinner } from "@/components/ui/spinner";
 
 export type SkinViewerHandle = {
   playAnimation: () => void;
@@ -263,7 +264,7 @@ export const SkinViewer = forwardRef<SkinViewerHandle, SkinViewerProps>(
         />
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center">
-            <Loader2 className="size-6 animate-spin text-muted-foreground" />
+            <Spinner className="size-6 text-muted-foreground" />
           </div>
         )}
         {error && (

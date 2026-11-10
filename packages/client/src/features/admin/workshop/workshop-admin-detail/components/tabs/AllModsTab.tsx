@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { FilterBar } from "@/features/admin/components/FilterBar";
-import { CardEmpty, CardError } from "@/features/admin/components/CardState";
+import { EmptyState, ErrorState } from "@/components/query-states";
 import {
   MOD_STATUS_STYLES,
   projectCategories,
@@ -223,11 +223,11 @@ export function AllModsTab({
         </CardHeader>
 
         {error ? (
-          <CardError message={error} onRetry={onRetry} />
+          <ErrorState message={error} onRetry={onRetry} />
         ) : !isLoading && mods.length === 0 ? (
-          <CardEmpty icon={Lightbulb} message="No suggestions yet" />
+          <EmptyState icon={Lightbulb} message="No suggestions yet" />
         ) : !isLoading && filtered.length === 0 ? (
-          <CardEmpty icon={Search} message="No mods match your filters" />
+          <EmptyState icon={Search} message="No mods match your filters" />
         ) : (
           <CardContent className="px-0">
             <DataTable

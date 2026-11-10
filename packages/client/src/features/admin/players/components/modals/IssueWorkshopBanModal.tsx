@@ -7,9 +7,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { trpc } from "@/lib/trpc";
+import { trpc, queryClient } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { AdminActionModal } from "./AdminActionModal";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { Textarea } from "@/components/ui/textarea";
 
 const DURATIONS = [1, 3, 7, 14, 30, 60, 90];
 
@@ -20,7 +22,6 @@ interface IssueWorkshopBanModalProps {
   onClose: () => void;
   discordId: string;
   playerUsername: string;
-  onSuccess: () => void;
 }
 
 type BanType = "temporary" | "permanent";
@@ -30,13 +31,21 @@ export function IssueWorkshopBanModal({
   onClose,
   discordId,
   playerUsername,
-  onSuccess,
 }: IssueWorkshopBanModalProps) {
   const toast = useToastActions();
-  const issueBan = trpc.admin.workshops.bans.issue.useMutation();
-  const workshops = trpc.admin.workshops.list.useQuery(undefined, {
-    enabled: open,
-  });
+  const issueBan = useMutation(
+    trpc.admin.workshops.bans.issue.mutationOptions({
+      onSuccess: () =>
+        void queryClient.invalidateQueries(
+          trpc.admin.workshops.bans.pathFilter(),
+        ),
+    }),
+  );
+  const workshops = useQuery(
+    trpc.admin.workshops.list.queryOptions(undefined, {
+      enabled: open,
+    }),
+  );
 
   const [scope, setScope] = useState<string>(GLOBAL_SCOPE);
   const [banType, setBanType] = useState<BanType>("temporary");
@@ -65,7 +74,6 @@ export function IssueWorkshopBanModal({
         durationDays: banType === "temporary" ? durationDays : undefined,
       });
       toast.success(`${playerUsername} can no longer submit suggestions`);
-      onSuccess();
       handleClose();
     } catch (error) {
       toast.error(
@@ -153,12 +161,11 @@ export function IssueWorkshopBanModal({
 
       <Field>
         <FieldLabel htmlFor="workshop-ban-reason">Reason</FieldLabel>
-        <textarea
+        <Textarea
           id="workshop-ban-reason"
           placeholder="Shown to the user when they try to suggest"
           value={reason}
           onChange={(e) => setReason(e.target.value)}
-          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           rows={4}
           maxLength={500}
         />

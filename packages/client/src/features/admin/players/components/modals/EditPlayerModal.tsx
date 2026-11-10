@@ -10,8 +10,10 @@ import {
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useToastActions } from "@/hooks/use-toast";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
-import { trpc, type RouterOutput } from "@/lib/trpc";
+import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { AdminActionModal } from "./AdminActionModal";
+import { useMutation } from "@tanstack/react-query";
+import { Textarea } from "@/components/ui/textarea";
 
 type PlayerDetailed = RouterOutput["admin"]["players"]["players"]["get"];
 
@@ -19,20 +21,22 @@ interface EditPlayerModalProps {
   open: boolean;
   onClose: () => void;
   player: PlayerDetailed["player"];
-  onSuccess: () => void;
 }
 
 export function EditPlayerModal({
   open,
   onClose,
   player,
-  onSuccess,
 }: EditPlayerModalProps) {
   const toast = useToastActions();
-  const updatePlayer = trpc.admin.players.players.update.useMutation(
-    useMutationToast({
-      error: (err) => err.message || "Failed to update player",
-    }),
+  const updatePlayer = useMutation(
+    trpc.admin.players.players.update.mutationOptions(
+      useMutationToast({
+        error: (err) => err.message || "Failed to update player",
+        onSuccess: () =>
+          void queryClient.invalidateQueries(trpc.admin.players.pathFilter()),
+      }),
+    ),
   );
 
   const [minecraftUsername, setMinecraftUsername] = useState(
@@ -121,7 +125,6 @@ export function EditPlayerModal({
     toast.success("Player updated");
     setReason("");
     onClose();
-    onSuccess();
   };
 
   const handleCancel = () => {
@@ -205,7 +208,7 @@ export function EditPlayerModal({
 
         <Field>
           <FieldLabel htmlFor="edit-reason">Reason for Update</FieldLabel>
-          <textarea
+          <Textarea
             id="edit-reason"
             placeholder="Explain why these changes are being made..."
             value={reason}
@@ -216,7 +219,6 @@ export function EditPlayerModal({
                 setErrors({ ...errors, reason: undefined });
               }
             }}
-            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-invalid:border-destructive aria-invalid:ring-destructive/20"
             rows={3}
             aria-invalid={!!errors.reason}
             disabled={updatePlayer.isPending}

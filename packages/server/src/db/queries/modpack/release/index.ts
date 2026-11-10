@@ -33,7 +33,7 @@ export class ModpackReleaseQueries extends ModpackReleaseBaseQueries {
     releaseIds: number[],
   ): Promise<Array<ModpackRelease & { successorId: number }>> {
     if (releaseIds.length === 0) return [];
-    const result = await this.runQuery(
+    const result = await this.runQuery<Record<string, unknown>>(
       "list preceding releases",
       `SELECT prev.*, target.id AS successor_id
        FROM ${this.table} target

@@ -26,12 +26,12 @@ vi.mock("@/db", () => ({
 }));
 
 import { NotFoundError } from "@/app/middleware/error-handler";
-import { modpackService } from "@/services/modpack";
+import { modpackReleaseService } from "@/services/modpack/release.service";
 
 const PROJECT_ID = 1660984;
 
 function status(installedVersion?: string) {
-  return modpackService.getVersionStatus({
+  return modpackReleaseService.getVersionStatus({
     curseforgeProjectId: PROJECT_ID,
     installedVersion,
   });
@@ -46,7 +46,7 @@ beforeEach(() => {
   ];
 });
 
-describe("modpackService.getVersionStatus", () => {
+describe("modpackReleaseService.getVersionStatus", () => {
   it("reads an older recorded release as outdated", async () => {
     await expect(status("1.0.6")).resolves.toEqual({
       latest: "1.0.8",

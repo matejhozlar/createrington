@@ -1,5 +1,4 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
-import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLockBodyScroll } from "@/hooks/use-lock-body-scroll";
 import { useVisualViewport } from "@/hooks/use-visual-viewport";
@@ -11,6 +10,7 @@ import { MessageList } from "./MessageList";
 import { ModelChip } from "./ModelChip";
 import { readingColumnClass, type ChatLayout } from "../layout";
 import type { AdminChatModel, ChatMessage } from "../types";
+import { Spinner } from "@/components/ui/spinner";
 
 const DOCKED_WIDTH_REM = 24;
 const CONTENT_PADDING_X_REM = 0.75;
@@ -270,7 +270,7 @@ export function ChatPanel({
                     onClick={() => onStart()}
                     disabled={starting}
                   >
-                    {starting && <Loader2 size={14} className="animate-spin" />}
+                    {starting && <Spinner className="size-3.5" />}
                     Start new chat
                   </Button>
                 </div>

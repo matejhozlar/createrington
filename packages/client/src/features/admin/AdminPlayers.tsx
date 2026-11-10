@@ -1,11 +1,15 @@
 import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
-import { Loading } from "@/components/loading-spinner";
+import {
+  EmptyState,
+  ErrorState,
+  LoadingState,
+} from "@/components/query-states";
+import { StatCard } from "@/components/stat-card";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
   CardFooter,
@@ -41,7 +45,7 @@ import {
 import { cn } from "@/lib/utils";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { keepPreviousData } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { formatMoney } from "@/lib/format";
 import { formatRelativeDate, formatFullDate, toIso } from "./format";
@@ -101,23 +105,25 @@ export function AdminPlayers() {
     [debouncedSearch],
   );
 
-  const statsQuery = trpc.admin.players.players.stats.useQuery();
+  const statsQuery = useQuery(trpc.admin.players.players.stats.queryOptions());
 
-  const playersQuery = trpc.admin.players.players.list.useQuery(
-    {
-      page,
-      limit,
-      orderBy,
-      orderDirection,
-      ...searchFilters,
-      online: onlineFilter,
-      hasStrikes: violationFilter === "strikes" ? true : undefined,
-      hasBans: violationFilter === "bans" ? true : undefined,
-      hasViolations: violationFilter === "any" ? true : undefined,
-      includeStrikeCounts: true,
-      includeBanCounts: true,
-    },
-    { placeholderData: keepPreviousData },
+  const playersQuery = useQuery(
+    trpc.admin.players.players.list.queryOptions(
+      {
+        page,
+        limit,
+        orderBy,
+        orderDirection,
+        ...searchFilters,
+        online: onlineFilter,
+        hasStrikes: violationFilter === "strikes" ? true : undefined,
+        hasBans: violationFilter === "bans" ? true : undefined,
+        hasViolations: violationFilter === "any" ? true : undefined,
+        includeStrikeCounts: true,
+        includeBanCounts: true,
+      },
+      { placeholderData: keepPreviousData },
+    ),
   );
 
   const stats = statsQuery.data;
@@ -287,82 +293,41 @@ export function AdminPlayers() {
       />
 
       <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
-        {/* Stats Cards */}
         {statsLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <Loading size="medium" text="Loading statistics..." />
-          </div>
+          <LoadingState
+            text="Loading statistics..."
+            className="flex-none py-8"
+          />
         ) : stats ? (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {/* Total Players */}
-            <Card>
-              <CardContent className="flex items-start justify-between">
-                <div>
-                  <CardDescription>Total Players</CardDescription>
-                  <CardTitle className="text-2xl">{stats.total}</CardTitle>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    {stats.online} currently online
-                  </p>
-                </div>
-                <div className="flex size-12 items-center justify-center rounded-full bg-sidebar-primary/10">
-                  <Users className="size-6 text-sidebar-primary" />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* New This Week */}
-            <Card>
-              <CardContent className="flex items-start justify-between">
-                <div>
-                  <CardDescription>New This Week</CardDescription>
-                  <CardTitle className="text-2xl">
-                    {stats.registered.thisWeek}
-                  </CardTitle>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    {stats.registered.today} today
-                  </p>
-                </div>
-                <div className="flex size-12 items-center justify-center rounded-full bg-chart-2/10">
-                  <UserPlus className="size-6 text-chart-2" />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Total Balance */}
-            <Card>
-              <CardContent className="flex items-start justify-between">
-                <div>
-                  <CardDescription>Total Balance</CardDescription>
-                  <CardTitle className="text-2xl">
-                    {formatMoney(stats.balance.total)}
-                  </CardTitle>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    Avg: {formatMoney(stats.balance.average)}
-                  </p>
-                </div>
-                <div className="flex size-12 items-center justify-center rounded-full bg-chart-3/10">
-                  <Coins className="size-6 text-chart-3" />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Growth Rate */}
-            <Card>
-              <CardContent className="flex items-start justify-between">
-                <div>
-                  <CardDescription>Monthly Growth</CardDescription>
-                  <CardTitle className="text-2xl">
-                    {stats.registered.thisMonth}
-                  </CardTitle>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    New registrations
-                  </p>
-                </div>
-                <div className="flex size-12 items-center justify-center rounded-full bg-chart-4/10">
-                  <TrendingUp className="size-6 text-chart-4" />
-                </div>
-              </CardContent>
-            </Card>
+            <StatCard
+              label="Total Players"
+              value={stats.total}
+              icon={Users}
+              tone="primary"
+              footer={`${stats.online} currently online`}
+            />
+            <StatCard
+              label="New This Week"
+              value={stats.registered.thisWeek}
+              icon={UserPlus}
+              tone="chart-2"
+              footer={`${stats.registered.today} today`}
+            />
+            <StatCard
+              label="Total Balance"
+              value={formatMoney(stats.balance.total)}
+              icon={Coins}
+              tone="chart-3"
+              footer={`Avg: ${formatMoney(stats.balance.average)}`}
+            />
+            <StatCard
+              label="Monthly Growth"
+              value={stats.registered.thisMonth}
+              icon={TrendingUp}
+              tone="chart-4"
+              footer="New registrations"
+            />
           </div>
         ) : null}
 
@@ -454,30 +419,18 @@ export function AdminPlayers() {
           </CardHeader>
 
           {error ? (
-            <CardContent className="flex flex-1 items-center justify-center py-12">
-              <div className="text-center">
-                <p className="text-destructive">{error}</p>
-                <Button
-                  onClick={() => playersQuery.refetch()}
-                  className="mt-4"
-                  variant="outline"
-                >
-                  Try Again
-                </Button>
-              </div>
-            </CardContent>
+            <ErrorState
+              message={error}
+              onRetry={() => playersQuery.refetch()}
+            />
           ) : !loading && players.length === 0 ? (
-            <CardContent className="flex flex-1 items-center justify-center py-12">
-              <div className="text-center">
-                <Users className="mx-auto size-12 text-muted-foreground" />
-                <p className="mt-2 text-muted-foreground">No players found</p>
-                {violationFilter !== "all" && (
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Try changing the violation filter
-                  </p>
-                )}
-              </div>
-            </CardContent>
+            <EmptyState
+              icon={Users}
+              message="No players found"
+              hint={
+                violationFilter !== "all" && "Try changing the violation filter"
+              }
+            />
           ) : (
             <>
               {/* Table */}

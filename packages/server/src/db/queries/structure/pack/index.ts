@@ -64,7 +64,7 @@ export class StructurePackQueries extends StructurePackBaseQueries {
     return {
       ...this.mapRowToEntity(row),
       mods: row.mods,
-    } as StructurePackWithMods;
+    };
   }
 
   async getActive(): Promise<StructurePackWithMods | null> {
@@ -81,7 +81,7 @@ export class StructurePackQueries extends StructurePackBaseQueries {
     return {
       ...this.mapRowToEntity(row),
       mods: row.mods,
-    } as StructurePackWithMods;
+    };
   }
 
   async getEligibleForRotation(

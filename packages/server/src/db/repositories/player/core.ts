@@ -7,7 +7,6 @@ import type {
   PlayerPlaytimeSummary,
   WaitlistEntry,
 } from "@createrington/shared/db";
-import { TicketStatus } from "@/services/discord/tickets";
 import { BalanceUtils } from "../balance/utils";
 import { AdminEdit } from "@/types";
 import { BasePlayerRepository, type PlayerIdentifier } from "./base";
@@ -48,7 +47,7 @@ export class PlayerRepository extends BasePlayerRepository {
         Q.ticket.count({ creatorDiscordId: player.discordId }),
         Q.ticket.count({
           creatorDiscordId: player.discordId,
-          status: TicketStatus.OPEN,
+          status: "open",
         }),
         Q.waitlist.entry.find({ discordId: player.discordId }),
       ]);

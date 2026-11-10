@@ -45,9 +45,6 @@ vi.mock("@/db/utils", () => ({
   QueryError: class QueryError extends Error {},
 }));
 vi.mock("@/db", () => ({ Q: { player: { find: vi.fn() } } }));
-vi.mock("@/services/discord/oauth/oauth.service", () => ({
-  AuthRole: { ADMIN: "admin", USER: "user", UNVERIFIED: "unverified" },
-}));
 vi.mock("@/services/auth/token/access-cookie.service", () => ({
   accessCookieService: {
     isEnabled: () => false,
@@ -78,6 +75,10 @@ vi.mock("@/services/launcher/pack/launcher-pack.service", () => ({
     listPacks: mocks.listPacks,
     getLatestPack: mocks.getLatestPack,
     listReleases: mocks.listReleases,
+  },
+}));
+vi.mock("@/services/launcher/pack/pack-files.service", () => ({
+  launcherPackFileService: {
     resolveFiles: mocks.resolveFiles,
     openStorageFile: mocks.openStorageFile,
     openStorageSnapshot: mocks.openStorageSnapshot,

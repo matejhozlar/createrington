@@ -31,7 +31,9 @@ interface DiscordEntities {
 
 let discordEntities: DiscordEntities;
 try {
-  discordEntities = JSON.parse(fs.readFileSync(discordEntitiesPath, "utf-8"));
+  discordEntities = JSON.parse(
+    fs.readFileSync(discordEntitiesPath, "utf-8"),
+  ) as DiscordEntities;
 } catch {
   console.warn(
     "Warning: discord-entities.json not found. Run 'pnpm scrape-discord' to generate it.",
@@ -283,7 +285,7 @@ const config = {
     available: !envMode.isProductionDeployment,
     channel: (envMode.isDevDeployment
       ? "staging"
-      : "production") satisfies LauncherChannel as LauncherChannel,
+      : "production") satisfies LauncherChannel,
     publishTokenHash: env.LAUNCHER_PUBLISH_TOKEN_HASH ?? "",
     downloadHosts: (env.LAUNCHER_DOWNLOAD_HOSTS ?? "")
       .split(",")

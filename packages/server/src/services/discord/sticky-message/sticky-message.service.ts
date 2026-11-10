@@ -51,9 +51,9 @@ export class DiscordStickyMessageService {
 
     this.timers.set(
       spec.channelId,
-      setTimeout(async () => {
+      setTimeout(() => {
         this.timers.delete(spec.channelId);
-        await this.repost(spec);
+        void this.repost(spec);
       }, spec.repostDelayMs),
     );
   }
@@ -105,7 +105,7 @@ export class DiscordStickyMessageService {
   }
 
   /** Cancels pending repost timers; in-flight Discord calls are not interrupted. */
-  async shutdown(): Promise<void> {
+  shutdown(): void {
     for (const timer of this.timers.values()) {
       clearTimeout(timer);
     }

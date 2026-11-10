@@ -1,5 +1,10 @@
 import "@/logger.global";
-import { Client, GatewayIntentBits } from "discord.js";
+import {
+  ChannelType,
+  Client,
+  GatewayIntentBits,
+  type GuildBasedChannel,
+} from "discord.js";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -19,7 +24,7 @@ interface DiscordEntities {
 async function ensureDir(dirPath: string): Promise<void> {
   try {
     await fs.access(dirPath);
-  } catch (error) {
+  } catch {
     await fs.mkdir(dirPath, { recursive: true });
     console.log(`Created directory: ${dirPath}`);
   }
@@ -161,7 +166,7 @@ async function scrapeDiscordEntities(): Promise<void> {
     // ========================================================================
     console.log("\nScraping categories...");
     const categories = guild.channels.cache.filter(
-      (channel) => channel.type === 4, // ChannelType.GuildCategory
+      (channel) => channel.type === ChannelType.GuildCategory,
     );
 
     for (const category of categories.values()) {
@@ -176,15 +181,14 @@ async function scrapeDiscordEntities(): Promise<void> {
     console.log("\nScraping channels...");
 
     // Group channels by category
-    const channelsByCategory = new Map<string, any[]>();
+    const channelsByCategory = new Map<string, GuildBasedChannel[]>();
 
-    // Include text (0), voice (2), announcement (5), and forum (15) channels
     const channels = guild.channels.cache.filter(
       (channel) =>
-        channel.type === 0 ||
-        channel.type === 2 ||
-        channel.type === 5 ||
-        channel.type === 15,
+        channel.type === ChannelType.GuildText ||
+        channel.type === ChannelType.GuildVoice ||
+        channel.type === ChannelType.GuildAnnouncement ||
+        channel.type === ChannelType.GuildForum,
     );
 
     for (const channel of channels.values()) {
@@ -213,7 +217,11 @@ async function scrapeDiscordEntities(): Promise<void> {
         const cleanedName = cleanChannelName(channel.name, categoryKey);
         const channelKey = toCamelCase(cleanedName);
         const channelType =
-          channel.type === 2 ? "voice" : channel.type === 15 ? "forum" : "text";
+          channel.type === ChannelType.GuildVoice
+            ? "voice"
+            : channel.type === ChannelType.GuildForum
+              ? "forum"
+              : "text";
 
         entities.channels[categoryKey][channelKey] = channel.id;
 
@@ -262,8 +270,8 @@ async function scrapeDiscordEntities(): Promise<void> {
     console.error(error);
     process.exit(1);
   } finally {
-    client.destroy();
+    await client.destroy();
   }
 }
 
-scrapeDiscordEntities();
+void scrapeDiscordEntities();

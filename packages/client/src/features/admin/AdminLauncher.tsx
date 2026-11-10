@@ -18,8 +18,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loading } from "@/components/loading-spinner";
+import { LoadingState } from "@/components/query-states";
 import { trpc, type RouterOutput } from "@/lib/trpc";
+import { useQuery } from "@tanstack/react-query";
 
 type Release =
   RouterOutput["admin"]["launcherReleases"]["list"]["releases"][number];
@@ -60,7 +61,9 @@ function changeTag(type: string): { label: string; color: string } {
 }
 
 export function AdminLauncher() {
-  const releasesQuery = trpc.admin.launcherReleases.list.useQuery();
+  const releasesQuery = useQuery(
+    trpc.admin.launcherReleases.list.queryOptions(),
+  );
 
   const channel = releasesQuery.data?.channel;
   const [latest, ...earlier] = releasesQuery.data?.releases ?? [];
@@ -86,9 +89,7 @@ export function AdminLauncher() {
         />
 
         {releasesQuery.isLoading ? (
-          <div className="flex flex-1 items-center justify-center">
-            <Loading size="medium" text="Loading launcher versions..." />
-          </div>
+          <LoadingState text="Loading launcher versions..." />
         ) : releasesQuery.isError ? (
           <p className="py-8 text-center text-destructive">
             Failed to load launcher versions: {releasesQuery.error.message}

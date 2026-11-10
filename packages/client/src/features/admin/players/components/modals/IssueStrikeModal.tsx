@@ -11,24 +11,29 @@ import {
 } from "@/components/ui/select";
 import type { StrikeClassification } from "@createrington/shared/db";
 import { useToastActions } from "@/hooks/use-toast";
-import { trpc } from "@/lib/trpc";
+import { trpc, queryClient } from "@/lib/trpc";
 import { AdminActionModal } from "./AdminActionModal";
+import { useMutation } from "@tanstack/react-query";
+import { Textarea } from "@/components/ui/textarea";
 
 interface IssueStrikeModalProps {
   open: boolean;
   onClose: () => void;
   playerId: string;
-  onSuccess: () => void;
 }
 
 export function IssueStrikeModal({
   open,
   onClose,
   playerId,
-  onSuccess,
 }: IssueStrikeModalProps) {
   const toast = useToastActions();
-  const issueStrike = trpc.admin.players.strikes.issue.useMutation();
+  const issueStrike = useMutation(
+    trpc.admin.players.strikes.issue.mutationOptions({
+      onSuccess: () =>
+        void queryClient.invalidateQueries(trpc.admin.players.pathFilter()),
+    }),
+  );
 
   const [classification, setClassification] =
     useState<StrikeClassification>("rule_violation");
@@ -50,7 +55,6 @@ export function IssueStrikeModal({
       setDescription("");
       setSeverity(1);
       onClose();
-      onSuccess();
     } catch {
       toast.error("Failed to issue strike");
     }
@@ -109,13 +113,12 @@ export function IssueStrikeModal({
 
       <Field>
         <FieldLabel htmlFor="strike-description">Description</FieldLabel>
-        <textarea
+        <Textarea
           id="strike-description"
           placeholder="Describe the violation..."
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           maxLength={STRIKE_DESCRIPTION_MAX_LENGTH}
-          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           rows={4}
         />
       </Field>

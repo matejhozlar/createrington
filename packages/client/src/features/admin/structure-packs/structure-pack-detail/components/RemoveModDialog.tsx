@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { AlertTriangle, CheckCircle2, Loader2, Trash2 } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -13,8 +13,10 @@ import {
 } from "@/components/ui/dialog";
 import { useToastActions } from "@/hooks/use-toast";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
-import { trpc } from "@/lib/trpc";
+import { trpc, queryClient } from "@/lib/trpc";
 import type { RemoveTarget } from "../types";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { Spinner } from "@/components/ui/spinner";
 
 interface PackMod {
   id: number;
@@ -34,17 +36,17 @@ export function RemoveModDialog({
   packMods: PackMod[];
 }) {
   const toast = useToastActions();
-  const utils = trpc.useUtils();
 
   const [removeDepOverrides, setRemoveDepOverrides] =
     useState<Set<number> | null>(null);
   const [removingBatch, setRemovingBatch] = useState(false);
 
-  const checkRemoveDepsQuery =
-    trpc.admin.structurePacks.checkRemoveDeps.useQuery(
+  const checkRemoveDepsQuery = useQuery(
+    trpc.admin.structurePacks.checkRemoveDeps.queryOptions(
       { packId, modId: target?.modId ?? 0 },
       { enabled: target !== null },
-    );
+    ),
+  );
 
   const defaultRemoveSelection = useMemo(() => {
     if (!checkRemoveDepsQuery.data) return new Set<number>();
@@ -56,13 +58,19 @@ export function RemoveModDialog({
 
   const selectedRemoveDeps = removeDepOverrides ?? defaultRemoveSelection;
 
-  const removeModMutation = trpc.admin.structurePacks.removeMod.useMutation(
-    useMutationToast({
-      onSuccess: () => {
-        utils.admin.structurePacks.get.invalidate({ id: packId });
-        utils.admin.structurePacks.list.invalidate();
-      },
-    }),
+  const removeModMutation = useMutation(
+    trpc.admin.structurePacks.removeMod.mutationOptions(
+      useMutationToast({
+        onSuccess: () => {
+          void queryClient.invalidateQueries(
+            trpc.admin.structurePacks.get.queryFilter({ id: packId }),
+          );
+          void queryClient.invalidateQueries(
+            trpc.admin.structurePacks.list.pathFilter(),
+          );
+        },
+      }),
+    ),
   );
 
   const handleDialogOpenChange = (next: boolean) => {
@@ -151,7 +159,7 @@ export function RemoveModDialog({
 
           {checkRemoveDepsQuery.isLoading && (
             <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
-              <Loader2 className="mr-2 size-4 animate-spin" />
+              <Spinner className="mr-2 size-4" />
               Checking dependencies...
             </div>
           )}

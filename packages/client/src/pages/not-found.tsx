@@ -31,13 +31,13 @@ const ACTIONS: Action[] = [
     icon: ArrowLeft,
     label: "Go back",
     description: "Return to the previous page",
-    go: (navigate) => navigate(-1),
+    go: (navigate) => void navigate(-1),
   },
   {
     icon: Home,
     label: "Home",
     description: "Go to the homepage",
-    go: (navigate) => navigate("/"),
+    go: (navigate) => void navigate("/"),
   },
 ];
 

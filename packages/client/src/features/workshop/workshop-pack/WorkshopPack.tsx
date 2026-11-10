@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loading } from "@/components/loading-spinner";
+import { LoadingState } from "@/components/query-states";
 import { NotFound } from "@/pages/not-found";
 import { CurseForgeIcon } from "@/components/icons/curseforge";
 import { isHttpUrl, loaderName, projectCategories } from "../format";
@@ -26,6 +26,7 @@ import { ViewToggle } from "../components/ViewToggle";
 import { WorkshopDisabledState } from "../components/WorkshopEmptyState";
 import { WorkshopHero } from "../components/WorkshopHero";
 import { PackList } from "./components/PackList";
+import { useQuery } from "@tanstack/react-query";
 
 const FALLBACK_DESCRIPTION =
   "Everything running on the server right now: the base pack plus every mod players have voted in.";
@@ -56,15 +57,19 @@ export function WorkshopPack() {
     `${query}:${source}:${category}`,
   );
 
-  const workshopQuery = trpc.user.workshops.get.useQuery(
-    { slug: slug! },
-    { enabled: !!slug, retry: false },
+  const workshopQuery = useQuery(
+    trpc.user.workshops.get.queryOptions(
+      { slug: slug! },
+      { enabled: !!slug, retry: false },
+    ),
   );
   const workshopId = workshopQuery.data?.workshop.id;
 
-  const packQuery = trpc.user.workshops.getPack.useQuery(
-    { workshopId: workshopId! },
-    { enabled: workshopId !== undefined },
+  const packQuery = useQuery(
+    trpc.user.workshops.getPack.queryOptions(
+      { workshopId: workshopId! },
+      { enabled: workshopId !== undefined },
+    ),
   );
 
   if (workshopQuery.error?.data?.code === "NOT_FOUND") {
@@ -90,7 +95,11 @@ export function WorkshopPack() {
 
   if (workshopQuery.isLoading || !workshopQuery.data) {
     return (
-      <Loading size="large" className="py-32" text="Loading the pack..." />
+      <LoadingState
+        size="large"
+        text="Loading the pack..."
+        className="flex-none px-0 py-32"
+      />
     );
   }
 
@@ -182,7 +191,7 @@ export function WorkshopPack() {
 
         <main className="mt-10 flex flex-col gap-6">
           {packQuery.isLoading ? (
-            <Loading size="medium" className="py-16" text="Loading mods..." />
+            <LoadingState text="Loading mods..." className="py-16" />
           ) : packQuery.error ? (
             <QueryErrorState
               message={packQuery.error.message}

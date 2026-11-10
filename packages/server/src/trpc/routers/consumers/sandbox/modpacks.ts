@@ -6,8 +6,9 @@ import {
   launcherAvailable,
 } from "@/trpc/trpc";
 import { id, rethrowTrpc } from "@/trpc/utils";
-import { modpackService } from "@/services/modpack";
-import type { ModpackModListItem } from "@/services/modpack";
+import { modpackService } from "@/services/modpack/modpack.service";
+import { modpackPublishService } from "@/services/modpack/publish.service";
+import type { ModpackModListItem } from "@/services/modpack/modpack.service";
 import {
   LAUNCHER_PACK_SLUG_MAX_LENGTH,
   LAUNCHER_PACK_SLUG_PATTERN,
@@ -130,7 +131,7 @@ export const sandboxModpacksRouter = router({
     )
     .mutation(async ({ input }) => {
       try {
-        const result = await modpackService.recordPublish(input);
+        const result = await modpackPublishService.recordPublish(input);
         return {
           ingested: result.ingested,
           error: result.error,
@@ -177,7 +178,7 @@ export const sandboxModpacksRouter = router({
     )
     .mutation(async ({ input }) => {
       try {
-        const result = await modpackService.recordSnapshot(input);
+        const result = await modpackPublishService.recordSnapshot(input);
         return {
           ready: result.ready,
           error: result.error,

@@ -70,8 +70,11 @@ export class PlayerBanService {
         minecraftUsername = player.minecraftUsername;
       }
     } catch {
+      const storedName: unknown = ban.metadata?.minecraftUsername;
       minecraftUsername =
-        ban.metadata?.minecraftUsername || "Unknown (Deleted)";
+        typeof storedName === "string" && storedName
+          ? storedName
+          : "Unknown (Deleted)";
       wasDeleted = true;
     }
 
@@ -89,7 +92,7 @@ export class PlayerBanService {
     await Q.admin.log.action.create({
       adminDiscordId: "system",
       adminUsername: "System",
-      actionType: "unban_player" as string,
+      actionType: "unban_player",
       targetPlayerUuid: ban.playerMinecraftUuid,
       targetPlayerName: minecraftUsername,
       tableName: "player_ban",
@@ -196,7 +199,7 @@ export class PlayerBanService {
   }
 
   /** Clears the recurring expired-ban interval. Safe to call multiple times. */
-  async shutdown(): Promise<void> {
+  shutdown(): void {
     if (this.unbanCheckInterval) {
       clearInterval(this.unbanCheckInterval);
       this.unbanCheckInterval = null;

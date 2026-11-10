@@ -8,6 +8,7 @@ import {
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import type { Stat } from "./StatPicker";
+import { useQuery } from "@tanstack/react-query";
 
 const PREVIEW_COUNT = 12;
 
@@ -29,9 +30,11 @@ export function HeldRecords({
   onPick: (stat: Stat) => void;
 }) {
   const [showAll, setShowAll] = useState(false);
-  const recordsQuery = trpc.public.leaderboards.recordsHeld.useQuery(
-    { minecraftUuid },
-    { staleTime: 60 * 1000 },
+  const recordsQuery = useQuery(
+    trpc.public.leaderboards.recordsHeld.queryOptions(
+      { minecraftUuid },
+      { staleTime: 60 * 1000 },
+    ),
   );
 
   if (recordsQuery.isLoading) {

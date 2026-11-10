@@ -8,6 +8,7 @@ import {
   QueryBuilder,
   type OrderBy,
   type OrderDirection,
+  type OrderTerm,
   type Selected,
 } from "./query-builder";
 
@@ -125,7 +126,9 @@ export abstract class BaseQueries<
    * @returns Converted snake_case value
    */
   protected snakeToCamel(str: string): string {
-    return str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+    return str.replace(/_([a-z])/g, (_, letter: string) =>
+      letter.toUpperCase(),
+    );
   }
 
   /**
@@ -275,7 +278,7 @@ export abstract class BaseQueries<
       }
       const result: Record<string, unknown> = {};
       for (const key of availableKeys) result[key] = obj[key];
-      return result as NonNullable<TConfig["Identifier"]>;
+      return result;
     }
 
     // Filter early so an unspread user object can't smuggle arbitrary keys
@@ -317,7 +320,7 @@ export abstract class BaseQueries<
 
     const result: Record<string, unknown> = {};
     for (const key of validKeys) result[key] = obj[key];
-    return result as NonNullable<TConfig["Identifier"]>;
+    return result;
   }
 
   private isFullEntity(obj: Record<string, unknown>): boolean {
@@ -903,14 +906,16 @@ export abstract class BaseQueries<
     const query = `SELECT ${columnName} FROM ${this.table} WHERE ${whereClause} LIMIT 1`;
 
     try {
-      const result = await this.db.query(query, values);
+      const result = await this.db.query<Record<string, TConfig["Entity"][K]>>(
+        query,
+        values,
+      );
 
       if (result.rows.length === 0) {
         throw createNotFoundError(this.table, extracted);
       }
 
-      const row = result.rows[0];
-      return row[columnName] as TConfig["Entity"][K];
+      return result.rows[0][columnName];
     } catch (error) {
       logger.error(
         `Failed to pluck ${String(field)} from ${this.table}:`,
@@ -933,7 +938,7 @@ export abstract class BaseQueries<
   readonly select = new Proxy({} as Record<string, any>, {
     get: (_, field: string) => {
       return async (identifier: Record<string, unknown>) => {
-        return this.pluckField(identifier, field as keyof TConfig["Entity"]);
+        return this.pluckField(identifier, field);
       };
     },
   }) as {
@@ -1159,7 +1164,7 @@ export abstract class BaseQueries<
     orderDirection?: OrderDirection,
   ): string {
     const terms = Array.isArray(orderBy)
-      ? orderBy.map((term) => ({
+      ? orderBy.map((term: OrderTerm<TConfig["Entity"]>) => ({
           column: this.getColumnName(term.field as string),
           direction: term.direction,
         }))

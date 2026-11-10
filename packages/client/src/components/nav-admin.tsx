@@ -130,7 +130,7 @@ export function NavAdmin({ items }: { items: AdminNavItem[] }) {
   };
 
   const openHistory = () => {
-    navigate("/admin/tools/chat-history");
+    void navigate("/admin/tools/chat-history");
     if (isMobile) setOpenMobile(false);
   };
 

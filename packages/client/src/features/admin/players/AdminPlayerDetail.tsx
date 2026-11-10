@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router";
-import { Loading } from "@/components/loading-spinner";
+import { LoadingState } from "@/components/query-states";
 import { Button } from "@/components/ui/button";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { ArrowLeft } from "lucide-react";
@@ -25,6 +25,7 @@ import { DeletePlayerModal } from "./components/modals/DeletePlayerModal";
 import { EditPlayerModal } from "./components/modals/EditPlayerModal";
 import { RemoveStrikeModal } from "./components/modals/RemoveStrikeModal";
 import { trpc } from "@/lib/trpc";
+import { useQuery } from "@tanstack/react-query";
 
 type TabType =
   | "overview"
@@ -76,24 +77,21 @@ export function AdminPlayerDetail() {
     setSelectedBanId(null);
   };
 
-  const playerQuery = trpc.admin.players.players.get.useQuery(
-    { id: id! },
-    { enabled: !!id },
+  const playerQuery = useQuery(
+    trpc.admin.players.players.get.queryOptions({ id: id! }, { enabled: !!id }),
   );
 
   const player = playerQuery.data;
   const loading = playerQuery.isLoading;
   const error = playerQuery.error?.message ?? null;
 
-  const refetchPlayer = () => {
-    playerQuery.refetch();
-  };
-
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <Loading size="large" text="Loading player data..." />
-      </div>
+      <LoadingState
+        size="large"
+        text="Loading player data..."
+        className="h-screen flex-none py-0"
+      />
     );
   }
 
@@ -174,7 +172,6 @@ export function AdminPlayerDetail() {
             <StrikesTab
               player={player}
               onIssueStrike={() => setShowStrikeModal(true)}
-              onRefresh={refetchPlayer}
               onRemoveStrike={openRemoveStrikeModal}
             />
           )}
@@ -183,7 +180,6 @@ export function AdminPlayerDetail() {
             <BansTab
               player={player}
               onIssueBan={() => setShowBanModal(true)}
-              onRefresh={refetchPlayer}
               onUnban={openUnbanModal}
             />
           )}
@@ -200,7 +196,6 @@ export function AdminPlayerDetail() {
         open={showEditModal}
         onClose={() => setShowEditModal(false)}
         player={player.player}
-        onSuccess={refetchPlayer}
       />
 
       <BalanceAdjustModal
@@ -210,14 +205,12 @@ export function AdminPlayerDetail() {
         playerId={id!}
         playerName={player.player.minecraftUsername}
         currentBalance={player.balance ? parseFloat(player.balance.balance) : 0}
-        onSuccess={refetchPlayer}
       />
 
       <IssueStrikeModal
         open={showStrikeModal}
         onClose={() => setShowStrikeModal(false)}
         playerId={id!}
-        onSuccess={refetchPlayer}
       />
 
       <IssueBanModal
@@ -225,7 +218,6 @@ export function AdminPlayerDetail() {
         onClose={() => setShowBanModal(false)}
         playerId={id!}
         playerUsername={player.player.minecraftUsername}
-        onSuccess={refetchPlayer}
       />
 
       {selectedBanId !== null && (
@@ -233,7 +225,6 @@ export function AdminPlayerDetail() {
           open={showUnbanModal}
           onClose={closeUnbanModal}
           banId={selectedBanId}
-          onSuccess={refetchPlayer}
         />
       )}
 
@@ -250,7 +241,6 @@ export function AdminPlayerDetail() {
           onClose={closeRemoveStrikeModal}
           playerId={id!}
           strikeId={selectedStrikeId}
-          onSuccess={refetchPlayer}
         />
       )}
     </div>

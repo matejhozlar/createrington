@@ -7,7 +7,7 @@ import {
   Coins,
   X,
 } from "lucide-react";
-import { trpc } from "@/lib/trpc";
+import { trpc, queryClient } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { formatMoney, formatRelativeDate } from "@/lib/format";
 import { PlayerLabel } from "@/components/player-label";
@@ -27,6 +27,8 @@ import { ApproveDialog } from "./ApproveDialog";
 import { CreditsPicker } from "./CreditsPicker";
 import { RejectDialog } from "./RejectDialog";
 import { SubmissionImage } from "./SubmissionImage";
+import { useMutation } from "@tanstack/react-query";
+import { Textarea } from "@/components/ui/textarea";
 
 const MAX_CAPTION_LENGTH = 500;
 
@@ -47,7 +49,6 @@ export function ReviewPanel({
   onNext,
   onDecided,
 }: ReviewPanelProps) {
-  const utils = trpc.useUtils();
   const [caption, setCaption] = useState(item.caption ?? "");
   const [reward, setReward] = useState(String(item.reward.defaultAmount));
   const [credits, setCredits] = useState<GalleryCredit[]>(item.credits);
@@ -56,33 +57,39 @@ export function ReviewPanel({
   const [rejectKey, setRejectKey] = useState(0);
 
   const invalidate = () => {
-    utils.admin.gallery.list.invalidate();
-    utils.admin.gallery.get.invalidate({ id: item.id });
+    void queryClient.invalidateQueries(trpc.admin.gallery.list.pathFilter());
+    void queryClient.invalidateQueries(
+      trpc.admin.gallery.get.queryFilter({ id: item.id }),
+    );
   };
 
-  const approveMutation = trpc.admin.gallery.approve.useMutation(
-    useMutationToast({
-      success: (result) =>
-        result.capReached
-          ? "Approved. The weekly cap is reached, so no reward was paid"
-          : result.rewardPaid > 0
-            ? `Approved. ${formatMoney(result.rewardPaid)} paid to ${item.author.minecraftUsername}`
-            : "Approved without a reward",
-      onSuccess: () => {
-        invalidate();
-        onDecided();
-      },
-    }),
+  const approveMutation = useMutation(
+    trpc.admin.gallery.approve.mutationOptions(
+      useMutationToast({
+        success: (result) =>
+          result.capReached
+            ? "Approved. The weekly cap is reached, so no reward was paid"
+            : result.rewardPaid > 0
+              ? `Approved. ${formatMoney(result.rewardPaid)} paid to ${item.author.minecraftUsername}`
+              : "Approved without a reward",
+        onSuccess: () => {
+          invalidate();
+          onDecided();
+        },
+      }),
+    ),
   );
 
-  const rejectMutation = trpc.admin.gallery.reject.useMutation(
-    useMutationToast({
-      success: "Submission rejected",
-      onSuccess: () => {
-        invalidate();
-        onDecided();
-      },
-    }),
+  const rejectMutation = useMutation(
+    trpc.admin.gallery.reject.mutationOptions(
+      useMutationToast({
+        success: "Submission rejected",
+        onSuccess: () => {
+          invalidate();
+          onDecided();
+        },
+      }),
+    ),
   );
 
   const parsedReward = Number.parseInt(reward, 10);
@@ -169,7 +176,7 @@ export function ReviewPanel({
           <div className="flex flex-col gap-5">
             <Field>
               <FieldLabel htmlFor="gallery-caption">Caption</FieldLabel>
-              <textarea
+              <Textarea
                 id="gallery-caption"
                 value={caption}
                 maxLength={MAX_CAPTION_LENGTH}
@@ -177,7 +184,6 @@ export function ReviewPanel({
                 placeholder="What are we looking at?"
                 disabled={busy}
                 onChange={(e) => setCaption(e.target.value)}
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
               <FieldDescription>
                 Prefilled from the Discord message. Shown on the website and in

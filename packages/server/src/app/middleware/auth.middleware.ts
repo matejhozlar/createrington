@@ -3,7 +3,7 @@ import { ForbiddenError, UnauthorizedError } from "./error-handler";
 import { jwtService } from "@/services/auth/jwt";
 import { accessCookieService } from "@/services/auth/token/access-cookie.service";
 import { adminStatusService } from "@/services/auth/admin-status/admin-status.service";
-import { AuthRole } from "@/services/discord/oauth/oauth.service";
+import { AuthRole } from "@createrington/shared/auth";
 import config from "@/config";
 import { extractBearerToken } from "@/utils/bearer-token";
 
@@ -34,11 +34,11 @@ function extractAccessToken(req: Request): string | undefined {
  *
  * @throws UnauthorizedError if token is missing or invalid
  */
-export const authenticate = async (
+export const authenticate = (
   req: Request,
   res: Response,
   next: NextFunction,
-): Promise<void> => {
+): void => {
   try {
     const token = extractAccessToken(req);
 
@@ -63,11 +63,11 @@ export const authenticate = async (
  * Optional authentication - doesn't fail if no token present
  * Useful for endpoints that behave differently for authenticated users
  */
-export const optionalAuth = async (
+export const optionalAuth = (
   req: Request,
   res: Response,
   next: NextFunction,
-): Promise<void> => {
+): void => {
   try {
     const token = extractAccessToken(req);
 
@@ -179,8 +179,7 @@ export const requireTrustedOrigin = (
   next: NextFunction,
 ): void => {
   const origin =
-    safeOrigin(req.headers.origin as string | undefined) ??
-    safeOrigin(req.headers.referer as string | undefined);
+    safeOrigin(req.headers.origin) ?? safeOrigin(req.headers.referer);
 
   if (!origin) {
     logger.warn(

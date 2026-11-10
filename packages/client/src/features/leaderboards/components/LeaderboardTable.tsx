@@ -27,6 +27,7 @@ import {
 import { useBoardParams, type Board } from "../hooks/use-board-params";
 import { StatPicker, type Stat } from "./StatPicker";
 import { RowDetails, type DetailTab } from "./RowDetails";
+import { useSuspenseQuery, useQuery } from "@tanstack/react-query";
 
 type BoardPage = RouterOutput["public"]["leaderboards"]["list"];
 type BoardRow = BoardPage["rows"][number];
@@ -288,9 +289,11 @@ export function LeaderboardTable() {
   const { hash } = useLocation();
   const params = useBoardParams();
   const { board } = params;
-  const [roles] = trpc.public.leaderboards.hero.useSuspenseQuery(undefined, {
-    staleTime: 5 * 60 * 1000,
-  });
+  const { data: roles } = useSuspenseQuery(
+    trpc.public.leaderboards.hero.queryOptions(undefined, {
+      staleTime: 5 * 60 * 1000,
+    }),
+  );
   const [now] = useState(Date.now);
   const [detailTab, setDetailTab] = useState<DetailTab>("records");
   const [search, setSearch] = useState(params.search);
@@ -324,21 +327,25 @@ export function LeaderboardTable() {
     limit: PAGE_SIZE,
   };
 
-  const boardQuery = trpc.public.leaderboards.list.useQuery(
-    { board, ...pageInput },
-    {
-      staleTime: 60 * 1000,
-      placeholderData: (previous) => previous,
-      enabled: !activeStat,
-    },
+  const boardQuery = useQuery(
+    trpc.public.leaderboards.list.queryOptions(
+      { board, ...pageInput },
+      {
+        staleTime: 60 * 1000,
+        placeholderData: (previous) => previous,
+        enabled: !activeStat,
+      },
+    ),
   );
-  const statQuery = trpc.public.leaderboards.stat.useQuery(
-    { ...statKey, ...pageInput },
-    {
-      staleTime: 60 * 1000,
-      placeholderData: (previous) => previous,
-      enabled: !!activeStat,
-    },
+  const statQuery = useQuery(
+    trpc.public.leaderboards.stat.queryOptions(
+      { ...statKey, ...pageInput },
+      {
+        staleTime: 60 * 1000,
+        placeholderData: (previous) => previous,
+        enabled: !!activeStat,
+      },
+    ),
   );
   const listQuery = activeStat ? statQuery : boardQuery;
   const rows = listQuery.data?.rows ?? [];

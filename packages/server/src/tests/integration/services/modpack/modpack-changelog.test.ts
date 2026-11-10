@@ -10,11 +10,17 @@ import {
 } from "vitest";
 import { ComponentType } from "discord.js";
 
+type SendResult = {
+  success: boolean;
+  messageId: string | undefined;
+  error: string | undefined;
+};
+
 const sendMock = vi.hoisted(() =>
-  vi.fn(async (_options: unknown) => ({
-    success: true as boolean,
-    messageId: "message-1" as string | undefined,
-    error: undefined as string | undefined,
+  vi.fn(async (_options: unknown): Promise<SendResult> => ({
+    success: true,
+    messageId: "message-1",
+    error: undefined,
   })),
 );
 
@@ -28,7 +34,7 @@ vi.mock("@/services/discord/message/message.service", () => ({
 }));
 
 import { Q, db } from "@/db";
-import { modpackService } from "@/services/modpack";
+import { modpackReleaseService } from "@/services/modpack/release.service";
 import {
   announceReleaseChangelog,
   CHANGELOG_PRESET_CATEGORY,
@@ -177,7 +183,7 @@ function announce(modpack: Modpack, release: ModpackRelease, start: boolean) {
     modpack,
     releaseId: release.id,
     start,
-    loadDiff: () => modpackService.getReleaseDiff(release.id),
+    loadDiff: () => modpackReleaseService.getReleaseDiff(release.id),
   });
 }
 
@@ -298,7 +304,7 @@ describe("announceReleaseChangelog", () => {
       await Q.discord.embed.preset.message.findAll({ presetId: preset.id }),
     ).toMatchObject([{ channelId: CHANNEL_ID, messageId: "message-1" }]);
 
-    const [listed] = await modpackService.listReleases(modpack.id);
+    const [listed] = await modpackReleaseService.listReleases(modpack.id);
     expect(listed.announcement).toEqual({
       parts: 1,
       sent: 1,

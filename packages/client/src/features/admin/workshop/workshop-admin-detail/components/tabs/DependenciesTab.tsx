@@ -19,13 +19,14 @@ import {
   type DataTableColumn,
 } from "@/components/data-table";
 import { FilterBar } from "@/features/admin/components/FilterBar";
-import { CardEmpty, CardError } from "@/features/admin/components/CardState";
+import { EmptyState, ErrorState } from "@/components/query-states";
 import {
   DEPENDENCY_COVERAGE_STYLES,
   dependencyIsCovered,
 } from "@/features/workshop/format";
 import type { WorkshopDependency } from "../../types";
 import { ModCell, ModCellSkeleton } from "../ModCell";
+import { useQuery } from "@tanstack/react-query";
 
 const DEPS_PER_PAGE = 10;
 
@@ -46,9 +47,11 @@ export function DependenciesTab({
   onAddProject: (projectId: number, name: string) => void;
   busyProjectId: number | null;
 }) {
-  const depsQuery = trpc.admin.workshops.listDependencies.useQuery({
-    workshopId,
-  });
+  const depsQuery = useQuery(
+    trpc.admin.workshops.listDependencies.queryOptions({
+      workshopId,
+    }),
+  );
   const [requestedPage, setRequestedPage] = useState(0);
 
   const rows = useMemo(() => depsQuery.data ?? [], [depsQuery.data]);
@@ -194,14 +197,14 @@ export function DependenciesTab({
         </CardHeader>
 
         {depsQuery.error ? (
-          <CardError
+          <ErrorState
             message={depsQuery.error.message}
             onRetry={() => depsQuery.refetch()}
           />
         ) : !depsQuery.isLoading && rows.length === 0 ? (
-          <CardEmpty icon={Network} message="No dependencies pulled in yet" />
+          <EmptyState icon={Network} message="No dependencies pulled in yet" />
         ) : !depsQuery.isLoading && filtered.length === 0 ? (
-          <CardEmpty
+          <EmptyState
             icon={Search}
             message="No dependencies match your search"
           />

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
+import { Textarea } from "@/components/ui/textarea";
 
 const MAX_NOTE_LENGTH = 500;
 
@@ -31,14 +32,13 @@ export function RejectDialog({
     >
       <Field>
         <FieldLabel htmlFor="gallery-reject-note">Note</FieldLabel>
-        <textarea
+        <Textarea
           id="gallery-reject-note"
           value={note}
           maxLength={MAX_NOTE_LENGTH}
           rows={3}
           placeholder="Optional reason for the audit log"
           onChange={(e) => setNote(e.target.value)}
-          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
         <FieldDescription>Only visible to admins.</FieldDescription>
       </Field>

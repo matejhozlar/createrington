@@ -19,10 +19,10 @@ import {
 } from "@/components/ui/card";
 import { ProjectThumb } from "@/features/workshop/components/ProjectThumb";
 import {
-  CardEmpty,
-  CardError,
-  CardLoading,
-} from "@/features/admin/components/CardState";
+  EmptyState,
+  ErrorState,
+  LoadingState,
+} from "@/components/query-states";
 import {
   DISABLED_BADGE_CLASS,
   DISABLED_LABEL,
@@ -30,6 +30,7 @@ import {
   PROJECT_KIND_BADGE_CLASS,
   projectKindLabel,
 } from "@/features/workshop/format";
+import { useQuery } from "@tanstack/react-query";
 
 type Release = RouterOutput["admin"]["modpacks"]["listReleases"][number];
 type Diff = RouterOutput["admin"]["modpacks"]["getReleaseDiff"];
@@ -153,7 +154,9 @@ function ChangeRow({
 }
 
 function ReleaseDiff({ releaseId }: { releaseId: number }) {
-  const diffQuery = trpc.admin.modpacks.getReleaseDiff.useQuery({ releaseId });
+  const diffQuery = useQuery(
+    trpc.admin.modpacks.getReleaseDiff.queryOptions({ releaseId }),
+  );
 
   if (diffQuery.isLoading) {
     return (
@@ -221,9 +224,11 @@ function ReleaseDiff({ releaseId }: { releaseId: number }) {
 }
 
 export function ReleasesTab({ modpackId }: { modpackId: number }) {
-  const releasesQuery = trpc.admin.modpacks.listReleases.useQuery({
-    modpackId,
-  });
+  const releasesQuery = useQuery(
+    trpc.admin.modpacks.listReleases.queryOptions({
+      modpackId,
+    }),
+  );
   const [openId, setOpenId] = useState<number | null>(null);
 
   const releases = releasesQuery.data ?? [];
@@ -239,14 +244,14 @@ export function ReleasesTab({ modpackId }: { modpackId: number }) {
       </CardHeader>
 
       {releasesQuery.isLoading ? (
-        <CardLoading text="Loading releases..." />
+        <LoadingState text="Loading releases..." />
       ) : releasesQuery.error ? (
-        <CardError
+        <ErrorState
           message={releasesQuery.error.message}
           onRetry={() => releasesQuery.refetch()}
         />
       ) : releases.length === 0 ? (
-        <CardEmpty icon={History} message="No published builds recorded yet" />
+        <EmptyState icon={History} message="No published builds recorded yet" />
       ) : (
         <CardContent className="divide-y divide-border px-0">
           {releases.map((release: Release) => {

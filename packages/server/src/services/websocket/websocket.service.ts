@@ -1,5 +1,9 @@
 import type { Server as HttpServer } from "node:http";
-import { Server as SocketIOServer, Socket } from "socket.io";
+import {
+  Server as SocketIOServer,
+  type DefaultEventsMap,
+  type Socket as SocketIOSocket,
+} from "socket.io";
 import type {
   InitialDataPayload,
   InitialDataRequest,
@@ -28,6 +32,20 @@ import type { CachedMessage } from "../discord/message/cache";
 import type { SessionEndEvent, SessionStartEvent } from "../playtime";
 import { jwtService } from "@/services/auth/jwt";
 import type { JWTPayload } from "@createrington/shared/auth";
+
+type SocketData = { user?: JWTPayload };
+type SocketServer = SocketIOServer<
+  DefaultEventsMap,
+  DefaultEventsMap,
+  DefaultEventsMap,
+  SocketData
+>;
+type Socket = SocketIOSocket<
+  DefaultEventsMap,
+  DefaultEventsMap,
+  DefaultEventsMap,
+  SocketData
+>;
 
 const MAX_CONNECTIONS_PER_IP = 20;
 const EVENTS_PER_SOCKET_PER_MIN = 60;
@@ -61,7 +79,7 @@ function getSocketClientIp(socket: Socket): string {
  * services before event-driven broadcasting will fire.
  */
 export class WebSocketService {
-  private io: SocketIOServer;
+  private io: SocketServer;
   private dataProvider!: WebSocketDataProvider;
   private isInitialized = false;
   private startTime: Date;
@@ -108,7 +126,7 @@ export class WebSocketService {
           : undefined;
       if (token) {
         try {
-          socket.data.user = jwtService.verify(token) satisfies JWTPayload;
+          socket.data.user = jwtService.verify(token);
         } catch {
           // Invalid/expired token: treat as unauthenticated, don't reject.
         }
@@ -133,10 +151,10 @@ export class WebSocketService {
   }
 
   /** Wires data providers and bridges events from the message cache and every per-server playtime service. */
-  async initialize(
+  initialize(
     messageCacheService: MessageCacheService,
     playtimeManagerService: PlaytimeManagerService,
-  ): Promise<void> {
+  ): void {
     if (this.isInitialized) {
       logger.warn("WebSocketService already initialized");
       return;
@@ -161,7 +179,7 @@ export class WebSocketService {
 
       this.clientSockets.set(socket.id, new Set());
 
-      const user: JWTPayload | undefined = socket.data.user;
+      const { user } = socket.data;
       if (user?.minecraftUuid) {
         void socket.join(RoomManager.getUserRoom(user.minecraftUuid));
       }
@@ -284,9 +302,7 @@ export class WebSocketService {
       });
       return;
     }
-    this.handleInitialDataRequest(socket, request, ack).catch((error) => {
-      logger.error(`Unhandled initial data failure for ${socket.id}:`, error);
-    });
+    this.handleInitialDataRequest(socket, request, ack);
   }
 
   private async handleSubscribe(
@@ -403,11 +419,11 @@ export class WebSocketService {
     }
   }
 
-  private async handleInitialDataRequest(
+  private handleInitialDataRequest(
     socket: Socket,
     request: InitialDataRequest,
     callback?: (data: InitialDataPayload | ServerInitialDataPayload) => void,
-  ): Promise<void> {
+  ): void {
     try {
       const includeMessages = request.includeMessages ?? true;
       const messageLimit =
@@ -416,7 +432,7 @@ export class WebSocketService {
       let data: InitialDataPayload | ServerInitialDataPayload;
 
       if (request.serverId !== undefined) {
-        data = await this.dataProvider.getServerInitialData(
+        data = this.dataProvider.getServerInitialData(
           request.serverId,
           includeMessages,
           messageLimit,
@@ -426,10 +442,7 @@ export class WebSocketService {
           `Sent initial data for server ${request.serverId} to client ${socket.id}`,
         );
       } else {
-        data = await this.dataProvider.getInitialData(
-          includeMessages,
-          messageLimit,
-        );
+        data = this.dataProvider.getInitialData(includeMessages, messageLimit);
 
         logger.debug(`Sent initial data (all servers) to client ${socket.id}`);
       }
@@ -489,12 +502,9 @@ export class WebSocketService {
     logger.debug("Connected to external services");
   }
 
-  private async broadcastServerStatusUpdate(
-    serverId: number,
-    online: boolean,
-  ): Promise<void> {
+  private broadcastServerStatusUpdate(serverId: number, online: boolean): void {
     try {
-      const status = await this.dataProvider.getServerStatus(serverId);
+      const status = this.dataProvider.getServerStatus(serverId);
       status.online = online;
 
       const payload: ServerStatusUpdatePayload = {
@@ -613,7 +623,7 @@ export class WebSocketService {
   }
 
   /** Runtime snapshot: connected client count, per-room sizes, per-subscription totals, and uptime seconds. */
-  async getStats(): Promise<WebSocketStats> {
+  getStats(): WebSocketStats {
     const rooms: Record<string, number> = {};
     const subscriptions: Record<SubscriptionType, number> = {
       [SubscriptionType.ALL]: 0,
@@ -622,7 +632,7 @@ export class WebSocketService {
       [SubscriptionType.MESSAGES]: 0,
     };
 
-    const socketRooms = await this.io.sockets.adapter.rooms;
+    const socketRooms = this.io.sockets.adapter.rooms;
     for (const [roomName, socketIds] of socketRooms.entries()) {
       // Skip individual socket rooms (created by Socket.IO automatically)
       if (socketIds.size === 1 && socketIds.has(roomName)) {
@@ -665,14 +675,14 @@ export class WebSocketService {
   }
 
   /** Re-broadcasts the current status for a server; use after external state (e.g. maintenance) changes. */
-  async triggerServerStatusUpdate(serverId: number): Promise<void> {
-    const status = await this.dataProvider.getServerStatus(serverId);
-    await this.broadcastServerStatusUpdate(serverId, status.online);
+  triggerServerStatusUpdate(serverId: number): void {
+    const status = this.dataProvider.getServerStatus(serverId);
+    this.broadcastServerStatusUpdate(serverId, status.online);
   }
 
   /** Emits the complete current player list for a server; use for recovery instead of join/leave deltas. */
-  async broadcastPlayerSync(serverId: number): Promise<void> {
-    const players = await this.dataProvider.getServerPlayers(serverId);
+  broadcastPlayerSync(serverId: number): void {
+    const players = this.dataProvider.getServerPlayers(serverId);
 
     const payload: PlayersUpdatePayload = {
       serverId,

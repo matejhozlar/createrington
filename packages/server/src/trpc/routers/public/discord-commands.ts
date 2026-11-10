@@ -19,11 +19,14 @@ export interface RawCommand {
   description: string;
   category: string;
   options: unknown[];
+  defaultMemberPermissions: string | null;
+  permissions?: { requireAdmin?: boolean; requireOwner?: boolean };
+  env: string;
   cooldown?: { duration: number; type: string; message?: string };
   [key: string]: unknown;
 }
 
-interface CommandData {
+export interface DiscordCommandsDocument {
   generatedAt: string | null;
   commands: RawCommand[];
 }
@@ -42,7 +45,7 @@ export const discordCommandsRouter = router({
 
       const data = JSON.parse(
         fs.readFileSync(JSON_PATH, "utf-8"),
-      ) as CommandData;
+      ) as DiscordCommandsDocument;
 
       const playerCommands = data.commands.filter(
         (cmd) => cmd.category === "user" || cmd.category === "public",

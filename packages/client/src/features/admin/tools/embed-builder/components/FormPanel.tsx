@@ -49,6 +49,7 @@ import {
 import { InsertMenu } from "@/features/admin/components/InsertMenu";
 import { MentionAutocomplete } from "./MentionAutocomplete";
 import type { FocusTarget } from "../focus";
+import { Textarea } from "@/components/ui/textarea";
 
 const TAB_DEFS = [
   { id: "content", label: "Content" },
@@ -96,7 +97,7 @@ export function FormPanel({
   }
 
   function set(updates: Partial<EmbedData>) {
-    onChange({ ...data, ...updates } as EmbedData);
+    onChange({ ...data, ...updates });
   }
 
   const fieldsCount = data.fields.length;
@@ -406,9 +407,7 @@ function FieldsTab({ data, set, focused, setFocused }: TabProps) {
 
   function update(i: number, updates: Partial<EmbedField>) {
     set({
-      fields: fields.map((f, j) =>
-        j === i ? ({ ...f, ...updates } as EmbedField) : f,
-      ),
+      fields: fields.map((f, j) => (j === i ? { ...f, ...updates } : f)),
     });
   }
   function remove(i: number) {
@@ -614,14 +613,14 @@ function FieldRow({
             Inline
           </label>
         </div>
-        <textarea
+        <Textarea
           ref={valueRef}
           value={field.value}
           placeholder="Supports markdown and mentions"
           rows={6}
           maxLength={1024}
           onChange={(e) => onChange({ value: e.target.value })}
-          className="w-full resize-y rounded-md border border-input bg-transparent px-2.5 py-1.5 text-[13px] outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+          className="resize-y px-2.5 py-1.5 text-[13px] md:text-[13px]"
         />
       </div>
       <div className="flex shrink-0 flex-col gap-0.5">
@@ -672,15 +671,13 @@ function ButtonsTab({ data, set, focused, setFocused }: TabProps) {
 
   function setLink(i: number, updates: Partial<EmbedLinkButton>) {
     set({
-      buttons: links.map((b, j) =>
-        j === i ? ({ ...b, ...updates } as EmbedLinkButton) : b,
-      ),
+      buttons: links.map((b, j) => (j === i ? { ...b, ...updates } : b)),
     });
   }
   function setAction(i: number, updates: Partial<EmbedActionButton>) {
     set({
       actionButtons: actions.map((b, j) =>
-        j === i ? ({ ...b, ...updates } as EmbedActionButton) : b,
+        j === i ? { ...b, ...updates } : b,
       ),
     });
   }
@@ -692,7 +689,7 @@ function ButtonsTab({ data, set, focused, setFocused }: TabProps) {
   }
   function addLink() {
     if (total >= 5) return;
-    set({ buttons: [...links, { label: "", url: "" } as EmbedLinkButton] });
+    set({ buttons: [...links, { label: "", url: "" }] });
     setFocused?.(`button:link:${links.length}` as FocusTarget);
   }
   function addAction() {
@@ -706,7 +703,7 @@ function ButtonsTab({ data, set, focused, setFocused }: TabProps) {
           channelId: "",
           threadName: "{username}'s thread",
           threadMessage: "Hey {user}, this thread was created for you!",
-        } as EmbedActionButton,
+        },
       ],
     });
     setFocused?.(`button:action:${actions.length}` as FocusTarget);
@@ -987,7 +984,7 @@ function ButtonRow({
               onChange={(e) => onChangeAction({ threadName: e.target.value })}
               className="h-8 text-[13px]"
             />
-            <textarea
+            <Textarea
               value={item.btn.threadMessage}
               placeholder="Welcome message"
               rows={2}
@@ -995,7 +992,7 @@ function ButtonRow({
               onChange={(e) =>
                 onChangeAction({ threadMessage: e.target.value })
               }
-              className="w-full resize-y rounded-md border border-input bg-transparent px-2.5 py-1.5 text-[13px] outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              className="resize-y px-2.5 py-1.5 text-[13px] md:text-[13px]"
             />
           </div>
         )}

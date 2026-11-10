@@ -18,7 +18,7 @@ import {
 } from "@/components/data-table";
 import { Ghost, RefreshCw, Search, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { keepPreviousData } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useMutation } from "@tanstack/react-query";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useToastActions } from "@/hooks/use-toast";
 import { CellText } from "@/components/cell-text";
@@ -27,8 +27,9 @@ import {
   formatRelativeDate,
   toIso,
 } from "@/features/admin/format";
-import { trpc, type RouterOutput } from "@/lib/trpc";
+import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { RemoveGhostModal } from "./modals/RemoveGhostModal";
+import { EmptyState, ErrorState } from "@/components/query-states";
 
 type GhostMember =
   RouterOutput["admin"]["inactivity"]["ghosts"]["list"]["items"][number];
@@ -43,21 +44,28 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
 
   const [removeTarget, setRemoveTarget] = useState<GhostMember | null>(null);
 
-  const capabilitiesQuery =
-    trpc.admin.inactivity.ghosts.capabilities.useQuery();
-  const listQuery = trpc.admin.inactivity.ghosts.list.useQuery(
-    {
-      search: debouncedSearch.trim() || undefined,
-      page,
-      limit,
-    },
-    { placeholderData: keepPreviousData },
+  const capabilitiesQuery = useQuery(
+    trpc.admin.inactivity.ghosts.capabilities.queryOptions(),
+  );
+  const listQuery = useQuery(
+    trpc.admin.inactivity.ghosts.list.queryOptions(
+      {
+        search: debouncedSearch.trim() || undefined,
+        page,
+        limit,
+      },
+      { placeholderData: keepPreviousData },
+    ),
   );
 
-  const refreshGhosts = trpc.admin.inactivity.ghosts.refresh.useMutation();
-
-  const { refetch: refetchList } = listQuery;
-  const { refetch: refetchCapabilities } = capabilitiesQuery;
+  const refreshGhosts = useMutation(
+    trpc.admin.inactivity.ghosts.refresh.mutationOptions({
+      onSuccess: () =>
+        void queryClient.invalidateQueries(
+          trpc.admin.inactivity.ghosts.pathFilter(),
+        ),
+    }),
+  );
 
   const ghosts = listQuery.data?.items ?? [];
   const total = listQuery.data?.pagination.total ?? 0;
@@ -82,8 +90,6 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
     try {
       const result = await refreshGhosts.mutateAsync();
       toast.success(`Cache refreshed: ${result.count} ghost(s)`);
-      refetchList();
-      refetchCapabilities();
     } catch (error) {
       toast.error(
         error instanceof Error
@@ -91,20 +97,7 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
           : "Failed to refresh ghost cache",
       );
     }
-  }, [refreshGhosts, toast, refetchList, refetchCapabilities]);
-
-  const handleRemoveSuccess = useCallback(() => {
-    setRemoveTarget(null);
-    refetchList();
-    refetchCapabilities();
-  }, [refetchList, refetchCapabilities]);
-
-  const handleRemoveClose = useCallback(() => {
-    setRemoveTarget(null);
-    // Always refetch on close: if verify evicted the user mid-dialog,
-    // they should disappear from the table immediately.
-    refetchList();
-  }, [refetchList]);
+  }, [refreshGhosts, toast]);
 
   const columns: DataTableColumn<GhostMember>[] = [
     {
@@ -223,29 +216,16 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
         </CardHeader>
 
         {error ? (
-          <CardContent className="flex items-center justify-center py-12">
-            <div className="text-center">
-              <p className="text-destructive">{error}</p>
-              <Button
-                onClick={() => listQuery.refetch()}
-                className="mt-4"
-                variant="outline"
-              >
-                Try Again
-              </Button>
-            </div>
-          </CardContent>
+          <ErrorState message={error} onRetry={() => listQuery.refetch()} />
         ) : !loading && ghosts.length === 0 ? (
-          <CardContent className="flex items-center justify-center py-12">
-            <div className="text-center">
-              <Ghost className="mx-auto size-12 text-muted-foreground" />
-              <p className="mt-2 text-muted-foreground">
-                {lastRefreshedAt
-                  ? "No ghost members in the cache"
-                  : "Click Refresh to populate the cache"}
-              </p>
-            </div>
-          </CardContent>
+          <EmptyState
+            icon={Ghost}
+            message={
+              lastRefreshedAt
+                ? "No ghost members in the cache"
+                : "Click Refresh to populate the cache"
+            }
+          />
         ) : (
           <>
             <CardContent className="px-0">
@@ -289,9 +269,8 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
 
       <RemoveGhostModal
         ghost={removeTarget}
-        onClose={handleRemoveClose}
+        onClose={() => setRemoveTarget(null)}
         canMutate={canMutate}
-        onSuccess={handleRemoveSuccess}
       />
     </>
   );

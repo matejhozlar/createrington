@@ -35,7 +35,7 @@ vi.mock("@/services/mc-server/file-ops", () => ({
   fileExists: async () => false,
 }));
 
-vi.mock("@/services/curseforge", () => ({
+vi.mock("@/services/curseforge/downloads", () => ({
   getModFileDownloadUrl: async () => null,
 }));
 
@@ -169,7 +169,7 @@ describe("StructurePackRotationService", () => {
       gracePeriodMinutes: 30,
       createdAt: new Date("2026-01-01T00:00:00Z"),
       updatedAt: new Date("2026-01-01T00:00:00Z"),
-    } as StructurePackRotationConfig;
+    };
     packs = [];
     eligiblePacks = [];
     activePack = null;

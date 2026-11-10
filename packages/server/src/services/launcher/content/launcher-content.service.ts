@@ -4,20 +4,21 @@ import {
   ContentGatewayError,
 } from "@createrington/content-gateway-client";
 import { ContentGatewayPool, inContentPool } from "@/services/content-gateway";
+import { CurseForgeLoader } from "@/services/curseforge/client";
+import { LOADERLESS_CLASSES, getMods } from "@/services/curseforge/mods";
 import {
-  CurseForgeLoader,
-  LOADERLESS_CLASSES,
   getContentFiles,
   getFileChangelog,
-  getMods,
   getProjectDescription,
   listCategories,
   listProjectFiles,
   matchFingerprints,
-  resolveFileDownloads,
   searchProjects,
+} from "@/services/curseforge/content";
+import {
+  resolveFileDownloads,
   type CurseForgeFileDownload,
-} from "@/services/curseforge";
+} from "@/services/curseforge/downloads";
 import { FeatureFlags, featureFlagService } from "@/services/feature-flag";
 import {
   LAUNCHER_CONTENT_MAX_RESULTS,

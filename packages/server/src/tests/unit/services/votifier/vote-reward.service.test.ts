@@ -85,7 +85,7 @@ let send: ReturnType<
 let service: VoteRewardService;
 let commands: VoteRewardCommands;
 
-beforeEach(async () => {
+beforeEach(() => {
   vi.clearAllMocks();
   playtime = new EventEmitter();
   testPlaytime = new EventEmitter();
@@ -106,11 +106,11 @@ beforeEach(async () => {
     sweepIntervalMs: 60_000,
     commands: async () => commands,
   });
-  await service.initialize();
+  service.initialize();
 });
 
-afterEach(async () => {
-  await service.shutdown();
+afterEach(() => {
+  service.shutdown();
 });
 
 function updatedWith(id: number) {

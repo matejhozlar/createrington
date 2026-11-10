@@ -402,7 +402,7 @@ describe("LauncherAuthController", () => {
   });
 
   describe("me", () => {
-    it("returns only the player identity from the token", async () => {
+    it("returns only the player identity from the token", () => {
       const { res, json } = makeRes();
       const req = makeReq({
         launcherAuth: {
@@ -413,7 +413,7 @@ describe("LauncherAuthController", () => {
         },
       });
 
-      await LauncherAuthController.me(req, res);
+      LauncherAuthController.me(req, res);
 
       expect(json).toHaveBeenCalledWith({
         success: true,

@@ -11,13 +11,13 @@ import type { Request, Response } from "express";
  */
 export class InternalSsoExchangeController {
   static async exchange(req: Request, res: Response): Promise<void> {
-    const code = typeof req.body?.code === "string" ? req.body.code : undefined;
+    const { code } = (req.body ?? {}) as { code?: unknown };
 
-    if (!code) {
+    if (typeof code !== "string" || !code) {
       throw new BadRequestError("code is required");
     }
 
-    const payload = consumeSsoCode(code);
+    const payload = await consumeSsoCode(code);
     if (!payload) {
       throw new NotFoundError("Unknown, expired, or already-consumed code");
     }

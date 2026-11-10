@@ -2,7 +2,9 @@ import { z } from "zod";
 import { router, userProcedure, middleware } from "@/trpc/trpc";
 import { trpcError, rethrowTrpc, id } from "@/trpc/utils";
 import { createRateLimit } from "@/trpc/middleware/rate-limit";
-import { workshopService } from "@/services/workshop";
+import { workshopService } from "@/services/workshop/workshop.service";
+import { workshopModService } from "@/services/workshop/mods.service";
+import { workshopSuggestionService } from "@/services/workshop/suggestion.service";
 import { findSuggestBan } from "@/services/workshop/bans";
 import { featureFlagService, FeatureFlags } from "@/services/feature-flag";
 
@@ -99,7 +101,7 @@ export const userWorkshopsRouter = router({
         const workshop = await workshopService.getVisibleWorkshopBySlug(
           input.slug,
         );
-        const mods = await workshopService.getWorkshopMods(workshop.id);
+        const mods = await workshopModService.getWorkshopMods(workshop.id);
         return {
           workshop: redactWorkshop(workshop),
           mods: mods.map((m) => redactMod(m, ctx.user.discordId)),
@@ -114,7 +116,9 @@ export const userWorkshopsRouter = router({
     .input(z.object({ workshopModId: id() }))
     .query(async ({ ctx, input }) => {
       try {
-        const detail = await workshopService.getModDetail(input.workshopModId);
+        const detail = await workshopModService.getModDetail(
+          input.workshopModId,
+        );
         return { ...detail, mod: redactMod(detail.mod, ctx.user.discordId) };
       } catch (error) {
         rethrowTrpc(error);
@@ -132,7 +136,7 @@ export const userWorkshopsRouter = router({
     )
     .query(async ({ input }) => {
       try {
-        return await workshopService.searchProjects(
+        return await workshopSuggestionService.searchProjects(
           input.workshopId,
           input.query,
           {
@@ -149,7 +153,7 @@ export const userWorkshopsRouter = router({
     .input(z.object({ workshopId: id() }))
     .query(async ({ ctx, input }) => {
       try {
-        const mods = await workshopService.getMySuggestions(
+        const mods = await workshopModService.getMySuggestions(
           input.workshopId,
           ctx.user.discordId,
         );
@@ -180,7 +184,7 @@ export const userWorkshopsRouter = router({
     .meta({ description: "Your suggestions across all visible workshops" })
     .query(async ({ ctx }) => {
       try {
-        const mods = await workshopService.getMySuggestionHistory(
+        const mods = await workshopModService.getMySuggestionHistory(
           ctx.user.discordId,
         );
         return mods.map((m) => redactMod(m, ctx.user.discordId));
@@ -194,7 +198,7 @@ export const userWorkshopsRouter = router({
     .input(z.object({ workshopId: id() }))
     .query(async ({ ctx, input }) => {
       try {
-        return await workshopService.getMyUpvotes(
+        return await workshopSuggestionService.getMyUpvotes(
           input.workshopId,
           ctx.user.discordId,
         );
@@ -209,7 +213,7 @@ export const userWorkshopsRouter = router({
     .input(z.object({ workshopModId: id() }))
     .mutation(async ({ ctx, input }) => {
       try {
-        return await workshopService.toggleModUpvote(
+        return await workshopSuggestionService.toggleModUpvote(
           input.workshopModId,
           ctx.user.discordId,
         );
@@ -234,7 +238,7 @@ export const userWorkshopsRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       try {
-        const mod = await workshopService.suggestMod(
+        const mod = await workshopSuggestionService.suggestMod(
           input.workshopId,
           ctx.user.discordId,
           { projectId: input.projectId, note: input.note },
@@ -250,7 +254,7 @@ export const userWorkshopsRouter = router({
     .input(z.object({ workshopModId: id() }))
     .mutation(async ({ ctx, input }) => {
       try {
-        await workshopService.removeSuggestion(
+        await workshopSuggestionService.removeSuggestion(
           input.workshopModId,
           ctx.user.discordId,
         );
@@ -265,7 +269,7 @@ export const userWorkshopsRouter = router({
     .input(z.object({ workshopId: id() }))
     .query(async ({ ctx, input }) => {
       try {
-        const mods = await workshopService.getRejectedMods(input.workshopId);
+        const mods = await workshopModService.getRejectedMods(input.workshopId);
         return mods.map((m) => redactMod(m, ctx.user.discordId));
       } catch (error) {
         rethrowTrpc(error);

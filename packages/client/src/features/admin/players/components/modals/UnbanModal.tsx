@@ -1,25 +1,26 @@
 import { useState } from "react";
 import { ADMIN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
 import { Field, FieldLabel } from "@/components/ui/field";
-import { trpc } from "@/lib/trpc";
+import { trpc, queryClient } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { AdminActionModal } from "./AdminActionModal";
+import { useMutation } from "@tanstack/react-query";
+import { Textarea } from "@/components/ui/textarea";
 
 interface UnbanModalProps {
   open: boolean;
   onClose: () => void;
   banId: number;
-  onSuccess: () => void;
 }
 
-export function UnbanModal({
-  open,
-  onClose,
-  banId,
-  onSuccess,
-}: UnbanModalProps) {
+export function UnbanModal({ open, onClose, banId }: UnbanModalProps) {
   const toast = useToastActions();
-  const unbanPlayer = trpc.admin.players.bans.unban.useMutation();
+  const unbanPlayer = useMutation(
+    trpc.admin.players.bans.unban.mutationOptions({
+      onSuccess: () =>
+        void queryClient.invalidateQueries(trpc.admin.players.pathFilter()),
+    }),
+  );
 
   const [reason, setReason] = useState("");
 
@@ -38,7 +39,6 @@ export function UnbanModal({
       toast.success("Ban lifted");
 
       setReason("");
-      onSuccess();
       onClose();
     } catch (error) {
       toast.error(
@@ -73,13 +73,12 @@ export function UnbanModal({
 
       <Field>
         <FieldLabel htmlFor="unban-reason">Reason for Unbanning</FieldLabel>
-        <textarea
+        <Textarea
           id="unban-reason"
           placeholder="Enter reason for lifting the ban..."
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           maxLength={ADMIN_REASON_MAX_LENGTH}
-          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           rows={4}
         />
       </Field>

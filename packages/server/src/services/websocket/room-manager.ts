@@ -103,7 +103,7 @@ export class RoomManager {
     type: string;
     serverId?: number;
   } {
-    if (room === RoomType.GLOBAL) {
+    if (room === this.getGlobalRoom()) {
       return { type: SubscriptionType.ALL };
     }
 

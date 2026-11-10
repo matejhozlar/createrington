@@ -368,7 +368,7 @@ export function TextureTab({ layer, catalog, onChange }: LayerTabProps) {
             accept="image/png"
             className="hidden"
             onChange={(event) => {
-              uploadTexture(event.target.files?.[0]);
+              void uploadTexture(event.target.files?.[0]);
               event.target.value = "";
             }}
           />

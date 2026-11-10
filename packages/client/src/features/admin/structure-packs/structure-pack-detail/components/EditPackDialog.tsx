@@ -11,7 +11,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
-import { trpc } from "@/lib/trpc";
+import { trpc, queryClient } from "@/lib/trpc";
+import { useMutation } from "@tanstack/react-query";
 
 /**
  * Edit form for pack name and description.
@@ -31,20 +32,24 @@ export function EditPackDialog({
   initialName: string;
   initialDescription: string;
 }) {
-  const utils = trpc.useUtils();
-
   const [name, setName] = useState(initialName);
   const [description, setDescription] = useState(initialDescription);
 
-  const updateMutation = trpc.admin.structurePacks.update.useMutation(
-    useMutationToast({
-      success: "Pack updated",
-      onSuccess: () => {
-        utils.admin.structurePacks.get.invalidate({ id: packId });
-        utils.admin.structurePacks.list.invalidate();
-        onClose();
-      },
-    }),
+  const updateMutation = useMutation(
+    trpc.admin.structurePacks.update.mutationOptions(
+      useMutationToast({
+        success: "Pack updated",
+        onSuccess: () => {
+          void queryClient.invalidateQueries(
+            trpc.admin.structurePacks.get.queryFilter({ id: packId }),
+          );
+          void queryClient.invalidateQueries(
+            trpc.admin.structurePacks.list.pathFilter(),
+          );
+          onClose();
+        },
+      }),
+    ),
   );
 
   return (

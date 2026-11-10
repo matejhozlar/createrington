@@ -20,7 +20,7 @@ import { usePlayerData } from "@/contexts/player-data";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Loading } from "../loading-spinner";
+import { LoadingState } from "@/components/query-states";
 import { ChatComposer } from "./chat-composer";
 import { ChatFallback } from "./chat-fallback";
 import { MessageGroupComponent } from "./message-group";
@@ -174,10 +174,10 @@ export function ServerChat() {
       setLoading(false);
     }
 
-    init();
+    void init();
     return () => {
       cancelled = true;
-      unsubscribe(SubscriptionType.MESSAGES, serverId);
+      void unsubscribe(SubscriptionType.MESSAGES, serverId);
     };
   }, [isConnected, serverId, requestInitialData, subscribe, unsubscribe]);
 
@@ -327,9 +327,7 @@ export function ServerChat() {
           className="h-full overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border hover:[&::-webkit-scrollbar-thumb]:bg-muted-foreground/50"
         >
           {loading ? (
-            <div className="flex h-full items-center justify-center">
-              <Loading size="medium" text="Loading chat..." />
-            </div>
+            <LoadingState text="Loading chat..." className="h-full p-0" />
           ) : messageGroups.length === 0 ? (
             <div className="flex h-full items-center justify-center">
               <div className="text-center">

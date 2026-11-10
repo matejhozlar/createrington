@@ -29,11 +29,12 @@ import {
   WifiOff,
   X,
 } from "lucide-react";
-import { trpc } from "@/lib/trpc";
+import { trpc, queryClient } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { useCountdown } from "@/hooks/use-countdown";
 import { MaintenanceSettingsDialog } from "./MaintenanceSettingsDialog";
+import { useQuery, useMutation } from "@tanstack/react-query";
 
 const DEFAULT_ESTIMATED_MINUTES = 30;
 
@@ -67,7 +68,6 @@ export function MaintenanceToggle({
   const [estimatedMinutes, setEstimatedMinutes] = useState(
     String(DEFAULT_ESTIMATED_MINUTES),
   );
-  const utils = trpc.useUtils();
 
   const [minDatetime, setMinDatetime] = useState("");
 
@@ -78,9 +78,11 @@ export function MaintenanceToggle({
     setDialogOpen(open);
   };
 
-  const { data: status } = trpc.admin.servers.maintenanceStatus.useQuery(
-    { serverId },
-    { refetchInterval: 15_000 },
+  const { data: status } = useQuery(
+    trpc.admin.servers.maintenanceStatus.queryOptions(
+      { serverId },
+      { refetchInterval: 15_000 },
+    ),
   );
 
   const schedule = status?.schedule ?? null;
@@ -89,49 +91,58 @@ export function MaintenanceToggle({
   );
 
   const invalidate = () => {
-    utils.admin.servers.get.invalidate({ id: serverId });
-    utils.admin.servers.list.invalidate();
-    utils.admin.servers.maintenanceStatus.invalidate({ serverId });
+    void queryClient.invalidateQueries(
+      trpc.admin.servers.get.queryFilter({ id: serverId }),
+    );
+    void queryClient.invalidateQueries(trpc.admin.servers.list.pathFilter());
+    void queryClient.invalidateQueries(
+      trpc.admin.servers.maintenanceStatus.queryFilter({ serverId }),
+    );
   };
 
-  const toggleMutation = trpc.admin.servers.toggleMaintenance.useMutation({
-    onSuccess: (data) => {
-      if (!data.enabled) {
-        toast.success("Maintenance mode disabled");
-      } else if (data.applied) {
-        toast.success("Maintenance mode enabled");
-      } else {
-        toast.warning(
-          "Maintenance mode armed. The server is unreachable right now; it will be applied as soon as it's back online.",
-        );
-      }
-      invalidate();
-    },
-    onError: (err: { message: string }) => toast.error(err.message),
-    onSettled: () => {
-      setDialogOpen(false);
-    },
-  });
-
-  const scheduleMutation = trpc.admin.servers.scheduleMaintenance.useMutation(
-    useMutationToast({
-      success: "Maintenance scheduled",
-      onSuccess: () => {
+  const toggleMutation = useMutation(
+    trpc.admin.servers.toggleMaintenance.mutationOptions({
+      onSuccess: (data) => {
+        if (!data.enabled) {
+          toast.success("Maintenance mode disabled");
+        } else if (data.applied) {
+          toast.success("Maintenance mode enabled");
+        } else {
+          toast.warning(
+            "Maintenance mode armed. The server is unreachable right now; it will be applied as soon as it's back online.",
+          );
+        }
         invalidate();
+      },
+      onError: (err: { message: string }) => toast.error(err.message),
+      onSettled: () => {
         setDialogOpen(false);
-        setScheduledAt("");
-        setEstimatedMinutes(String(DEFAULT_ESTIMATED_MINUTES));
       },
     }),
   );
 
-  const cancelMutation =
-    trpc.admin.servers.cancelScheduledMaintenance.useMutation({
+  const scheduleMutation = useMutation(
+    trpc.admin.servers.scheduleMaintenance.mutationOptions(
+      useMutationToast({
+        success: "Maintenance scheduled",
+        onSuccess: () => {
+          invalidate();
+          setDialogOpen(false);
+          setScheduledAt("");
+          setEstimatedMinutes(String(DEFAULT_ESTIMATED_MINUTES));
+        },
+      }),
+    ),
+  );
+
+  const cancelMutation = useMutation(
+    trpc.admin.servers.cancelScheduledMaintenance.mutationOptions({
       ...useMutationToast({ success: "Scheduled maintenance cancelled" }),
       onSettled: () => {
         invalidate();
       },
-    });
+    }),
+  );
 
   function handleInstantEnable() {
     toggleMutation.mutate({ serverId, enabled: true, untilRestart });

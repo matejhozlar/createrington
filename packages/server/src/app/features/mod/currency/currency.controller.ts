@@ -89,7 +89,10 @@ export class CurrencyController {
    * caller cannot transfer from an account they don't own.
    */
   static async pay(req: Request, res: Response): Promise<void> {
-    const { toUuid: rawToUuid, amount: rawAmount } = req.body;
+    const { toUuid: rawToUuid, amount: rawAmount } = req.body as {
+      toUuid?: unknown;
+      amount?: unknown;
+    };
 
     if (rawToUuid == null || rawAmount == null) {
       throw new BadRequestError("toUuid and amount are required");
@@ -144,7 +147,15 @@ export class CurrencyController {
    */
   static async deposit(req: Request, res: Response): Promise<void> {
     const { uuid, name } = getAuthedPlayer(req);
-    const { amount: rawAmount, reason, idempotencyKey: rawKey } = req.body;
+    const {
+      amount: rawAmount,
+      reason,
+      idempotencyKey: rawKey,
+    } = req.body as {
+      amount?: unknown;
+      reason?: unknown;
+      idempotencyKey?: unknown;
+    };
 
     if (rawAmount == null) {
       throw new BadRequestError("amount is required");
@@ -210,7 +221,11 @@ export class CurrencyController {
       denomination: rawDenomination,
       count: rawCount,
       idempotencyKey: rawKey,
-    } = req.body;
+    } = req.body as {
+      denomination?: unknown;
+      count?: unknown;
+      idempotencyKey?: unknown;
+    };
 
     if (rawDenomination == null || rawCount == null) {
       throw new BadRequestError("denomination and count are required");

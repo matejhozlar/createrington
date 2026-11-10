@@ -6,8 +6,8 @@ export interface AuthContextType {
   user: User | null;
   loading: boolean;
   error: string | null;
-  login: () => void;
-  logout: () => void;
+  login: () => Promise<void>;
+  logout: () => Promise<void>;
   logoutAll: () => Promise<void>;
   refreshToken: () => Promise<void>;
 }

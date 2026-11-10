@@ -196,7 +196,7 @@ class FxLayer {
         1 / this.ratio,
       );
       ctx.globalAlpha = clamp(particle.alpha * fade, 0, 1);
-      ctx.fillStyle = particle.colors[colorIndex] as string;
+      ctx.fillStyle = particle.colors[colorIndex];
       ctx.fillRect(
         this.snap(particle.x - size / 2),
         this.snap(particle.y - size / 2),

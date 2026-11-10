@@ -17,6 +17,7 @@ import type { RoleManagementService } from "./discord/role/role-management.servi
 import type { WebSocketService } from "./websocket";
 import type { PlayerBanService } from "./player/ban";
 import type { PlayerDeletionService } from "./player/deletion";
+import type { PartyPurgeService } from "./party";
 import type { StatsImportService } from "./stats-import";
 import type { FaqService } from "./discord/faq";
 import type { PuppeteerService } from "./puppeteer";
@@ -419,6 +420,7 @@ export const Services = {
   WEBSOCKET_SERVICE: "http.webSocketService",
   PLAYER_BAN_SERVICE: "player.banService",
   PLAYER_DELETION_SERVICE: "player.deletionService",
+  PARTY_PURGE_SERVICE: "minecraft.partyPurgeService",
   STATS_IMPORT_SERVICE: "minecraft.statsImportService",
   FAQ_SERVICE: "discord.faqService",
   PUPPETEER_SERVICE: "infra.puppeteerService",
@@ -463,6 +465,7 @@ export interface ServiceTypeMap {
   [Services.WEBSOCKET_SERVICE]: WebSocketService;
   [Services.PLAYER_BAN_SERVICE]: PlayerBanService;
   [Services.PLAYER_DELETION_SERVICE]: PlayerDeletionService;
+  [Services.PARTY_PURGE_SERVICE]: PartyPurgeService;
   [Services.STATS_IMPORT_SERVICE]: StatsImportService;
   [Services.FAQ_SERVICE]: FaqService;
   [Services.PUPPETEER_SERVICE]: PuppeteerService;

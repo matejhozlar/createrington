@@ -1,8 +1,9 @@
 import { useNavigate } from "react-router";
 import { useAuth } from "@/contexts/auth";
 import { trpc } from "@/lib/trpc";
-import { Loading } from "@/components/loading-spinner";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
+import { LoadingState } from "@/components/query-states";
+import { StatCard } from "@/components/stat-card";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import {
   Card,
@@ -35,26 +36,37 @@ import {
 import { formatDate } from "@createrington/shared/format";
 
 import { formatFullDate, formatRelativeDate } from "./format";
+import { useQuery } from "@tanstack/react-query";
 
 export function AdminDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const profileQuery = trpc.admin.dashboard.profile.useQuery();
-  const playerStatsQuery = trpc.admin.players.players.stats.useQuery();
-  const serversQuery = trpc.admin.servers.list.useQuery();
-  const waitlistStatsQuery = trpc.admin.waitlists.stats.useQuery();
-  const recentBansQuery = trpc.admin.players.bans.getRecent.useQuery({
-    limit: 5,
-    activeOnly: false,
-  });
-  const recentLogsQuery = trpc.admin.logs.list.useQuery({
-    page: 0,
-    limit: 8,
-    orderBy: "performedAt",
-    orderDirection: "desc",
-  });
-  const commandStatsQuery = trpc.admin.dashboard.commandStats.useQuery();
+  const profileQuery = useQuery(trpc.admin.dashboard.profile.queryOptions());
+  const playerStatsQuery = useQuery(
+    trpc.admin.players.players.stats.queryOptions(),
+  );
+  const serversQuery = useQuery(trpc.admin.servers.list.queryOptions());
+  const waitlistStatsQuery = useQuery(
+    trpc.admin.waitlists.stats.queryOptions(),
+  );
+  const recentBansQuery = useQuery(
+    trpc.admin.players.bans.getRecent.queryOptions({
+      limit: 5,
+      activeOnly: false,
+    }),
+  );
+  const recentLogsQuery = useQuery(
+    trpc.admin.logs.list.queryOptions({
+      page: 0,
+      limit: 8,
+      orderBy: "performedAt",
+      orderDirection: "desc",
+    }),
+  );
+  const commandStatsQuery = useQuery(
+    trpc.admin.dashboard.commandStats.queryOptions(),
+  );
 
   const isLoading =
     profileQuery.isLoading ||
@@ -71,9 +83,7 @@ export function AdminDashboard() {
             { label: "Dashboard" },
           ]}
         />
-        <div className="flex flex-1 items-center justify-center">
-          <Loading size="medium" text="Loading dashboard..." />
-        </div>
+        <LoadingState text="Loading dashboard..." />
       </div>
     );
   }
@@ -199,80 +209,35 @@ export function AdminDashboard() {
           </Card>
         )}
 
-        {/* Stats Cards */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {/* Total Players */}
-          <Card>
-            <CardContent className="flex items-start justify-between">
-              <div>
-                <CardDescription>Total Players</CardDescription>
-                <CardTitle className="text-2xl">
-                  {playerStats?.total ?? 0}
-                </CardTitle>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  {playerStats?.online ?? 0} online
-                </p>
-              </div>
-              <div className="flex size-12 items-center justify-center rounded-full bg-sidebar-primary/10">
-                <Users className="size-6 text-sidebar-primary" />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Servers */}
-          <Card>
-            <CardContent className="flex items-start justify-between">
-              <div>
-                <CardDescription>Servers</CardDescription>
-                <CardTitle className="text-2xl">
-                  {serversData?.totals.onlineServers ?? 0}/
-                  {serversData?.totals.totalServers ?? 0}
-                </CardTitle>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  {serversData?.totals.totalPlayersOnline ?? 0} players online
-                </p>
-              </div>
-              <div className="flex size-12 items-center justify-center rounded-full bg-chart-2/10">
-                <Server className="size-6 text-chart-2" />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Waitlist */}
-          <Card>
-            <CardContent className="flex items-start justify-between">
-              <div>
-                <CardDescription>Waitlist Queue</CardDescription>
-                <CardTitle className="text-2xl">
-                  {waitlistStats?.queued ?? 0}
-                </CardTitle>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  {waitlistStats?.signups.thisWeek ?? 0} new this week
-                </p>
-              </div>
-              <div className="flex size-12 items-center justify-center rounded-full bg-chart-3/10">
-                <UserPlus className="size-6 text-chart-3" />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* New This Week */}
-          <Card>
-            <CardContent className="flex items-start justify-between">
-              <div>
-                <CardDescription>New This Week</CardDescription>
-                <CardTitle className="text-2xl">
-                  {playerStats?.registered.thisWeek ?? 0}
-                </CardTitle>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  {playerStats?.registered.today ?? 0} today
-                </p>
-              </div>
-              <div className="flex size-12 items-center justify-center rounded-full bg-chart-4/10">
-                <TrendingUp className="size-6 text-chart-4" />
-              </div>
-            </CardContent>
-          </Card>
+          <StatCard
+            label="Total Players"
+            value={playerStats?.total ?? 0}
+            icon={Users}
+            tone="primary"
+            footer={`${playerStats?.online ?? 0} online`}
+          />
+          <StatCard
+            label="Servers"
+            value={`${serversData?.totals.onlineServers ?? 0}/${serversData?.totals.totalServers ?? 0}`}
+            icon={Server}
+            tone="chart-2"
+            footer={`${serversData?.totals.totalPlayersOnline ?? 0} players online`}
+          />
+          <StatCard
+            label="Waitlist Queue"
+            value={waitlistStats?.queued ?? 0}
+            icon={UserPlus}
+            tone="chart-3"
+            footer={`${waitlistStats?.signups.thisWeek ?? 0} new this week`}
+          />
+          <StatCard
+            label="New This Week"
+            value={playerStats?.registered.thisWeek ?? 0}
+            icon={TrendingUp}
+            tone="chart-4"
+            footer={`${playerStats?.registered.today ?? 0} today`}
+          />
         </div>
 
         {/* Three-column: Recent Bans + Recent Activity + Top Commands */}
@@ -328,7 +293,11 @@ export function AdminDashboard() {
             </CardHeader>
             <CardContent>
               {recentLogsQuery.isLoading ? (
-                <Loading size="small" text="Loading activity..." />
+                <LoadingState
+                  size="small"
+                  text="Loading activity..."
+                  className="p-0"
+                />
               ) : recentLogs.length === 0 ? (
                 <p className="py-4 text-center text-sm text-muted-foreground">
                   No recent activity
@@ -378,7 +347,11 @@ export function AdminDashboard() {
             </CardHeader>
             <CardContent>
               {commandStatsQuery.isLoading ? (
-                <Loading size="small" text="Loading stats..." />
+                <LoadingState
+                  size="small"
+                  text="Loading stats..."
+                  className="p-0"
+                />
               ) : !commandStatsQuery.data?.topCommands.length ? (
                 <p className="py-4 text-center text-sm text-muted-foreground">
                   No command usage yet
@@ -387,7 +360,7 @@ export function AdminDashboard() {
                 <div className="space-y-3">
                   {commandStatsQuery.data.topCommands.map((cmd) => {
                     const maxCount =
-                      commandStatsQuery.data!.topCommands[0]!.count;
+                      commandStatsQuery.data.topCommands[0].count;
                     const pct = maxCount > 0 ? (cmd.count / maxCount) * 100 : 0;
                     return (
                       <div key={cmd.commandName} className="space-y-1">

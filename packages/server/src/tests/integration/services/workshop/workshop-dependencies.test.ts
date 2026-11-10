@@ -21,22 +21,36 @@ vi.mock("@/services/workshop/discord", () => ({
   healThreads: vi.fn(async () => undefined),
 }));
 
-vi.mock("@/services/curseforge", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/services/curseforge")>();
+vi.mock("@/services/curseforge/mods", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/services/curseforge/mods")>();
   return {
     ...actual,
     getMod: vi.fn(async () => {
       throw new Error("getMod must not be called in this suite");
     }),
     getMods: vi.fn(async () => []),
+    searchMods: vi.fn(async () => []),
+  };
+});
+vi.mock("@/services/curseforge/files", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/services/curseforge/files")>();
+  return { ...actual, getFilesDependencies: vi.fn(async () => []) };
+});
+vi.mock("@/services/curseforge/modpack-manifest", async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import("@/services/curseforge/modpack-manifest")
+    >();
+  return {
+    ...actual,
     getModpackManifest: vi.fn(async () => ({
       version: null,
       modIds: new Set<number>(),
       disabledModIds: new Set<number>(),
     })),
     getModpackModIds: vi.fn(async () => new Set<number>()),
-    searchMods: vi.fn(async () => []),
-    getFilesDependencies: vi.fn(async () => []),
   };
 });
 
@@ -48,7 +62,8 @@ vi.mock("@/services/curseforge/ingest", () => ({
 
 import pool, { Q } from "@/db";
 import { NotFoundError } from "@/app/middleware/error-handler";
-import { workshopService } from "@/services/workshop";
+import { workshopModService } from "@/services/workshop/mods.service";
+import { workshopReviewService } from "@/services/workshop/review.service";
 import {
   loadDependencyContext,
   pruneStaleDependencyEdges,
@@ -61,7 +76,6 @@ import {
   seedMod,
   seedPackMod,
   seedRequiredDependency,
-  makeProjectData,
 } from "@/tests/helpers/workshop";
 
 const ADMIN = "999900000000000001";
@@ -261,7 +275,7 @@ describe("getWorkshopDependencies", () => {
       relationType: 2,
     });
 
-    const rows = await workshopService.getWorkshopDependencies(workshop.id);
+    const rows = await workshopModService.getWorkshopDependencies(workshop.id);
 
     expect(rows).toHaveLength(2);
     const missing = rows.find((row) => row.curseforgeProjectId === nowhere);
@@ -292,14 +306,14 @@ describe("getWorkshopDependencies", () => {
     const workshop = await seedWorkshop(ctx);
     await seedMod(ctx, workshop, { submittedBy: USER_A });
 
-    expect(await workshopService.getWorkshopDependencies(workshop.id)).toEqual(
-      [],
-    );
+    expect(
+      await workshopModService.getWorkshopDependencies(workshop.id),
+    ).toEqual([]);
   });
 
   it("throws NotFoundError for an unknown workshop", async () => {
     await expect(
-      workshopService.getWorkshopDependencies(999_999_999),
+      workshopModService.getWorkshopDependencies(999_999_999),
     ).rejects.toThrow(NotFoundError);
   });
 });
@@ -312,11 +326,11 @@ describe("reviewMod pack rows", () => {
       submittedBy: USER_A,
     });
 
-    await workshopService.setProjectEnvironment(
+    await workshopReviewService.setProjectEnvironment(
       mod.curseforgeProjectId,
       "both",
     );
-    await workshopService.reviewMod(mod.id, "approve", ADMIN);
+    await workshopReviewService.reviewMod(mod.id, "approve", ADMIN);
 
     expect(await Q.workshop.mod.get({ id: mod.id })).toMatchObject({
       status: "next_update",
@@ -341,7 +355,7 @@ describe("reviewMod pack rows", () => {
       liveInVersion: "1.0.0",
     });
 
-    await workshopService.reviewMod(mod.id, "reject", ADMIN, {
+    await workshopReviewService.reviewMod(mod.id, "reject", ADMIN, {
       reason: "not_a_good_fit",
     });
 

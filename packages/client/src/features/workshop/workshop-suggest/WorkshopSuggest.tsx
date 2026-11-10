@@ -2,7 +2,7 @@ import { Link, useParams, useSearchParams } from "react-router";
 import { ArrowLeft } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { Badge } from "@/components/ui/badge";
-import { Loading } from "@/components/loading-spinner";
+import { LoadingState } from "@/components/query-states";
 import { NotFound } from "@/pages/not-found";
 import { loaderName } from "../format";
 import { PackStrip } from "../components/PackStrip";
@@ -12,28 +12,37 @@ import { WorkshopHero } from "../components/WorkshopHero";
 import { ActiveSlots } from "./components/ActiveSlots";
 import { ModSearch } from "./components/ModSearch";
 import { SuggestionHistory } from "./components/SuggestionHistory";
+import { useQuery } from "@tanstack/react-query";
 
 export function WorkshopSuggest() {
   const { slug } = useParams<{ slug: string }>();
   const [searchParams] = useSearchParams();
 
-  const workshopQuery = trpc.user.workshops.get.useQuery(
-    { slug: slug! },
-    { enabled: !!slug, retry: false },
+  const workshopQuery = useQuery(
+    trpc.user.workshops.get.queryOptions(
+      { slug: slug! },
+      { enabled: !!slug, retry: false },
+    ),
   );
   const workshopId = workshopQuery.data?.workshop.id;
 
-  const suggestionsQuery = trpc.user.workshops.mySuggestions.useQuery(
-    { workshopId: workshopId! },
-    { enabled: workshopId !== undefined },
+  const suggestionsQuery = useQuery(
+    trpc.user.workshops.mySuggestions.queryOptions(
+      { workshopId: workshopId! },
+      { enabled: workshopId !== undefined },
+    ),
   );
-  const packQuery = trpc.user.workshops.getPack.useQuery(
-    { workshopId: workshopId! },
-    { enabled: workshopId !== undefined },
+  const packQuery = useQuery(
+    trpc.user.workshops.getPack.queryOptions(
+      { workshopId: workshopId! },
+      { enabled: workshopId !== undefined },
+    ),
   );
-  const suggestBanQuery = trpc.user.workshops.mySuggestBan.useQuery(
-    { workshopId: workshopId! },
-    { enabled: workshopId !== undefined },
+  const suggestBanQuery = useQuery(
+    trpc.user.workshops.mySuggestBan.queryOptions(
+      { workshopId: workshopId! },
+      { enabled: workshopId !== undefined },
+    ),
   );
 
   if (workshopQuery.error?.data?.code === "NOT_FOUND") {
@@ -51,8 +60,8 @@ export function WorkshopSuggest() {
             <QueryErrorState
               message={pageError.message}
               onRetry={() => {
-                if (workshopQuery.error) workshopQuery.refetch();
-                if (suggestionsQuery.error) suggestionsQuery.refetch();
+                if (workshopQuery.error) void workshopQuery.refetch();
+                if (suggestionsQuery.error) void suggestionsQuery.refetch();
               }}
             />
           )}
@@ -68,7 +77,11 @@ export function WorkshopSuggest() {
     suggestBanQuery.isLoading
   ) {
     return (
-      <Loading size="large" className="py-32" text="Loading workshop..." />
+      <LoadingState
+        size="large"
+        text="Loading workshop..."
+        className="flex-none px-0 py-32"
+      />
     );
   }
 

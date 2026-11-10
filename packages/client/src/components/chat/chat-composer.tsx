@@ -73,7 +73,7 @@ export function ChatComposer({ serverId }: { serverId: number | null }) {
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      if (canSend && hasContent) sendMessage();
+      if (canSend && hasContent) void sendMessage();
     }
   };
 

@@ -8,16 +8,17 @@ import {
   vi,
 } from "vitest";
 import config from "@/config";
+import { getMods } from "@/services/curseforge/mods";
 import {
   getContentFiles,
   getFileChangelog,
-  getMods,
   getProjectDescription,
   listCategories,
   listProjectFiles,
   matchFingerprints,
   searchProjects,
-} from "@/services/curseforge";
+} from "@/services/curseforge/content";
+import { requestedUrl, sentJson } from "@/tests/helpers/fetch";
 
 const fetchMock = vi.fn<typeof fetch>();
 const GATEWAY = { url: "http://gateway.test:5005", token: "t".repeat(32) };
@@ -28,10 +29,6 @@ function answer(body: unknown, status = 200): Response {
     status,
     headers: { "content-type": "application/json", "x-cache": "miss" },
   });
-}
-
-function requestedUrl(call = 0): URL {
-  return new URL(String(fetchMock.mock.calls[call]?.[0]));
 }
 
 function requestedHeaders(call = 0): Headers {
@@ -84,7 +81,7 @@ describe("asking CurseForge through the content gateway", () => {
 
     await listCategories(6);
 
-    expect(requestedUrl().origin).toBe("http://gateway.test:5005");
+    expect(requestedUrl(fetchMock).origin).toBe("http://gateway.test:5005");
     expect(requestedHeaders().get("authorization")).toBe(
       `Bearer ${GATEWAY.token}`,
     );
@@ -145,7 +142,7 @@ describe("searchProjects", () => {
       pageSize: 20,
     });
 
-    const url = requestedUrl();
+    const url = requestedUrl(fetchMock);
     expect(url.pathname).toBe("/v1/curseforge/mods/search");
     expect(Object.fromEntries(url.searchParams)).toEqual({
       gameId: "432",
@@ -189,7 +186,7 @@ describe("searchProjects", () => {
       pageSize: 20,
     });
 
-    const params = requestedUrl().searchParams;
+    const params = requestedUrl(fetchMock).searchParams;
     expect(params.has("searchFilter")).toBe(false);
     expect(params.has("gameVersion")).toBe(false);
     expect(params.has("modLoaderType")).toBe(false);
@@ -212,7 +209,7 @@ describe("searchProjects", () => {
       pageSize: 20,
     });
 
-    expect(Object.fromEntries(requestedUrl().searchParams)).toEqual({
+    expect(Object.fromEntries(requestedUrl(fetchMock).searchParams)).toEqual({
       gameId: "432",
       classId: "6",
       sortField: "11",
@@ -238,7 +235,7 @@ describe("searchProjects", () => {
       pageSize: 20,
     });
 
-    const params = requestedUrl().searchParams;
+    const params = requestedUrl(fetchMock).searchParams;
     expect(params.has("categoryIds")).toBe(false);
     expect(params.get("sortField")).toBe("2");
   });
@@ -338,7 +335,7 @@ describe("listCategories", () => {
 
     const categories = await listCategories(6);
 
-    const url = requestedUrl();
+    const url = requestedUrl(fetchMock);
     expect(url.pathname).toBe("/v1/curseforge/categories");
     expect(Object.fromEntries(url.searchParams)).toEqual({
       gameId: "432",
@@ -384,7 +381,7 @@ describe("listProjectFiles", () => {
       pageSize: 10,
     });
 
-    const url = requestedUrl();
+    const url = requestedUrl(fetchMock);
     expect(url.pathname).toBe("/v1/curseforge/mods/439890/files");
     expect(Object.fromEntries(url.searchParams)).toEqual({
       index: "20",
@@ -445,9 +442,9 @@ describe("getContentFiles", () => {
     const files = await getContentFiles(ids);
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(requestedUrl().pathname).toBe("/v1/curseforge/mods/files");
+    expect(requestedUrl(fetchMock).pathname).toBe("/v1/curseforge/mods/files");
     expect(fetchMock.mock.calls[0]?.[1]?.method).toBe("POST");
-    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({
+    expect(sentJson(fetchMock)).toEqual({
       fileIds: ids,
     });
     expect(files.map((file) => file.id)).toEqual([7000001]);
@@ -496,9 +493,11 @@ describe("matchFingerprints", () => {
 
     const found = await matchFingerprints([522093599, 1]);
 
-    expect(requestedUrl().pathname).toBe("/v1/curseforge/fingerprints/432");
+    expect(requestedUrl(fetchMock).pathname).toBe(
+      "/v1/curseforge/fingerprints/432",
+    );
     expect(fetchMock.mock.calls[0]?.[1]?.method).toBe("POST");
-    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({
+    expect(sentJson(fetchMock)).toEqual({
       fingerprints: [522093599, 1],
     });
     expect(found).toHaveLength(1);
@@ -556,7 +555,7 @@ describe("getProjectDescription", () => {
 
     const description = await getProjectDescription(328085);
 
-    expect(requestedUrl().pathname).toBe(
+    expect(requestedUrl(fetchMock).pathname).toBe(
       "/v1/curseforge/mods/328085/description",
     );
     expect(description).toBe(html);
@@ -596,7 +595,7 @@ describe("getFileChangelog", () => {
 
     const changelog = await getFileChangelog(439890, 7000001);
 
-    expect(requestedUrl().pathname).toBe(
+    expect(requestedUrl(fetchMock).pathname).toBe(
       "/v1/curseforge/mods/439890/files/7000001/changelog",
     );
     expect(changelog).toBe(html);
@@ -660,7 +659,7 @@ describe("getMods", () => {
 
     const [mod] = await getMods([328085]);
 
-    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({
+    expect(sentJson(fetchMock)).toEqual({
       modIds: [328085],
     });
     expect(mod).toMatchObject({

@@ -64,14 +64,15 @@ export async function loadEventHandlers(
 
   for (const filePath of eventFiles) {
     try {
-      const eventModule = await import(pathToFileURL(filePath).href);
+      const eventModule = (await import(
+        pathToFileURL(filePath).href
+      )) as Record<string, unknown>;
 
-      const event: EventModule | undefined =
-        "default" in eventModule && isEventModule(eventModule.default)
-          ? eventModule.default
-          : isEventModule(eventModule)
-            ? eventModule
-            : undefined;
+      const event: EventModule | undefined = isEventModule(eventModule.default)
+        ? eventModule.default
+        : isEventModule(eventModule)
+          ? eventModule
+          : undefined;
 
       if (!event) {
         logger.warn(
@@ -87,23 +88,19 @@ export async function loadEventHandlers(
         continue;
       }
 
-      if (event.once) {
-        client.once(event.eventName, async (...args) => {
-          try {
-            await event.execute(client, ...args);
-          } catch (error) {
-            logger.error(`Error in ${event.eventName} (once) event:`, error);
-          }
-        });
-      } else {
-        client.on(event.eventName, async (...args) => {
-          try {
-            await event.execute(client, ...args);
-          } catch (error) {
-            logger.error(`Error in ${event.eventName} event:`, error);
-          }
-        });
-      }
+      const label = event.once
+        ? `${event.eventName} (once) event`
+        : `${event.eventName} event`;
+      const listener = (...args: ClientEvents[keyof ClientEvents]) => {
+        Promise.resolve()
+          .then(() => event.execute(client, ...args))
+          .catch((error: unknown) => {
+            logger.error(`Error in ${label}:`, error);
+          });
+      };
+
+      if (event.once) client.once(event.eventName, listener);
+      else client.on(event.eventName, listener);
 
       loadedCount++;
       logger.debug(

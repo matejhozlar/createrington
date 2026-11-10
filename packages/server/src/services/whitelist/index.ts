@@ -1,9 +1,5 @@
 import { MinecraftRconManager, WhitelistAction } from "@/utils/rcon";
-import {
-  isFileOpsAllowed,
-  writeFile,
-  deleteFile,
-} from "@/services/mc-server/file-ops";
+import { isFileOpsAllowed, writeFile } from "@/services/mc-server/file-ops";
 import { Q } from "@/db";
 
 const WHITELIST_FILE = "whitelist.json";
@@ -19,8 +15,8 @@ const WHITELIST_FILE = "whitelist.json";
  */
 export class WhitelistService {
   /**
-   * Delete and regenerate whitelist.json from non-banned registered players,
-   * then reload it via RCON.
+   * Regenerate whitelist.json from non-banned registered players, overwriting
+   * the old file in one write, then reload it via RCON.
    *
    * @param serverId - Server to resync
    * @returns The number of players written to the whitelist
@@ -34,7 +30,6 @@ export class WhitelistService {
 
     const entries = await Q.player.getWhitelistEntries();
 
-    await deleteFile(WHITELIST_FILE);
     await writeFile(WHITELIST_FILE, JSON.stringify(entries, null, 2));
 
     const rcon = MinecraftRconManager.getInstance();

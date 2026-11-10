@@ -12,9 +12,11 @@ import { Field, FieldLabel } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
 import { Search, UserPlus } from "lucide-react";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
-import { trpc } from "@/lib/trpc";
+import { trpc, queryClient } from "@/lib/trpc";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useToastActions } from "@/hooks/use-toast";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { Textarea } from "@/components/ui/textarea";
 
 interface PromoteDialogProps {
   open: boolean;
@@ -40,12 +42,19 @@ export function PromoteDialog({
   } | null>(null);
 
   const debouncedQuery = useDebouncedValue(query, 300);
-  const searchQuery = trpc.owner.admins.searchPlayers.useQuery(
-    { query: debouncedQuery },
-    { enabled: debouncedQuery.length > 0 && !selected },
+  const searchQuery = useQuery(
+    trpc.owner.admins.searchPlayers.queryOptions(
+      { query: debouncedQuery },
+      { enabled: debouncedQuery.length > 0 && !selected },
+    ),
   );
 
-  const promoteMutation = trpc.owner.admins.promote.useMutation();
+  const promoteMutation = useMutation(
+    trpc.owner.admins.promote.mutationOptions({
+      onSuccess: () =>
+        void queryClient.invalidateQueries(trpc.owner.admins.pathFilter()),
+    }),
+  );
 
   const handleClose = () => {
     setQuery("");
@@ -176,14 +185,13 @@ export function PromoteDialog({
 
           <Field>
             <FieldLabel htmlFor="promote-reason">Reason (optional)</FieldLabel>
-            <textarea
+            <Textarea
               id="promote-reason"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               placeholder="e.g. Trusted moderator, handles Discord tickets"
               maxLength={500}
               rows={3}
-              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
           </Field>
         </div>

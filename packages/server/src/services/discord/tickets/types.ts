@@ -8,13 +8,6 @@ export enum TicketType {
   REPORT = "report",
 }
 
-/** Lifecycle states a ticket can be in */
-export enum TicketStatus {
-  OPEN = "open",
-  CLOSED = "closed",
-  DELETED = "deleted",
-}
-
 /** Actions a user or moderator can perform on a ticket */
 export enum TicketUserAction {
   CREATED = "created",

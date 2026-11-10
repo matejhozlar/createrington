@@ -28,12 +28,12 @@ export class WebSocketDataProvider {
   /**
    * Get current status for all servers
    */
-  async getAllServerStatuses(): Promise<ServerStatus[]> {
+  getAllServerStatuses(): ServerStatus[] {
     const statuses: ServerStatus[] = [];
 
     for (const [serverId, _config] of Object.entries(MINECRAFT_SERVERS)) {
       const id = parseInt(serverId);
-      const status = await this.getServerStatus(id);
+      const status = this.getServerStatus(id);
       statuses.push(status);
     }
 
@@ -45,7 +45,7 @@ export class WebSocketDataProvider {
    *
    * @param serverId - Server ID
    */
-  async getServerStatus(serverId: number): Promise<ServerStatus> {
+  getServerStatus(serverId: number): ServerStatus {
     const config = MINECRAFT_SERVERS[serverId];
     if (!config) {
       throw new Error(`Server ${serverId} not found`);
@@ -81,12 +81,12 @@ export class WebSocketDataProvider {
   /**
    * Get all online players across all servers
    */
-  async getAllPlayers(): Promise<PlayerData[]> {
+  getAllPlayers(): PlayerData[] {
     const players: PlayerData[] = [];
 
     for (const [serverId] of Object.entries(MINECRAFT_SERVERS)) {
       const id = parseInt(serverId);
-      const serverPlayers = await this.getServerPlayers(id);
+      const serverPlayers = this.getServerPlayers(id);
       players.push(...serverPlayers);
     }
 
@@ -98,7 +98,7 @@ export class WebSocketDataProvider {
    *
    * @param serverId - Server ID
    */
-  async getServerPlayers(serverId: number): Promise<PlayerData[]> {
+  getServerPlayers(serverId: number): PlayerData[] {
     const playtimeService = this.playtimeManagerService.getService(serverId);
 
     if (!playtimeService) {
@@ -121,14 +121,12 @@ export class WebSocketDataProvider {
    *
    * @param limit - Maximum messages per server
    */
-  async getAllMessages(
-    limit: number = 50,
-  ): Promise<Record<number, CachedMessage[]>> {
+  getAllMessages(limit: number = 50): Record<number, CachedMessage[]> {
     const messages: Record<number, CachedMessage[]> = {};
 
     for (const [serverId] of Object.entries(MINECRAFT_SERVERS)) {
       const id = parseInt(serverId);
-      const serverMessages = await this.getServerMessages(id, limit);
+      const serverMessages = this.getServerMessages(id, limit);
       messages[id] = serverMessages;
     }
 
@@ -141,10 +139,7 @@ export class WebSocketDataProvider {
    * @param serverId - Server ID
    * @param limit - Maximum messages to return
    */
-  async getServerMessages(
-    serverId: number,
-    limit: number = 50,
-  ): Promise<CachedMessage[]> {
+  getServerMessages(serverId: number, limit: number = 50): CachedMessage[] {
     return this.messageCacheService.getRecentMessages(serverId, limit);
   }
 
@@ -154,15 +149,13 @@ export class WebSocketDataProvider {
    * @param includeMessages - Whether to include message history
    * @param messageLimit - Maximum messages per server
    */
-  async getInitialData(
+  getInitialData(
     includeMessages: boolean = true,
     messageLimit: number = 50,
-  ): Promise<InitialDataPayload> {
-    const [servers, players, messages] = await Promise.all([
-      this.getAllServerStatuses(),
-      this.getAllPlayers(),
-      includeMessages ? this.getAllMessages(messageLimit) : Promise.resolve({}),
-    ]);
+  ): InitialDataPayload {
+    const servers = this.getAllServerStatuses();
+    const players = this.getAllPlayers();
+    const messages = includeMessages ? this.getAllMessages(messageLimit) : {};
 
     return {
       servers,
@@ -179,18 +172,16 @@ export class WebSocketDataProvider {
    * @param includeMessages - Whether to include message history
    * @param messageLimit - Maximum messages to return
    */
-  async getServerInitialData(
+  getServerInitialData(
     serverId: number,
     includeMessages: boolean = true,
     messageLimit: number = 50,
-  ): Promise<ServerInitialDataPayload> {
-    const [status, players, messages] = await Promise.all([
-      this.getServerStatus(serverId),
-      this.getServerPlayers(serverId),
-      includeMessages
-        ? this.getServerMessages(serverId, messageLimit)
-        : Promise.resolve([]),
-    ]);
+  ): ServerInitialDataPayload {
+    const status = this.getServerStatus(serverId);
+    const players = this.getServerPlayers(serverId);
+    const messages = includeMessages
+      ? this.getServerMessages(serverId, messageLimit)
+      : [];
 
     return {
       serverId,

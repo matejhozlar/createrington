@@ -8,11 +8,12 @@ import {
 } from "@/components/data-table";
 import { Paginator } from "@/components/paginator";
 import { useState } from "react";
-import { keepPreviousData } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Clock } from "lucide-react";
 import { trpc, type RouterOutput } from "@/lib/trpc";
+import { EmptyState, ErrorState } from "@/components/query-states";
 
 interface SessionsTabProps {
   playerId: string;
@@ -23,13 +24,15 @@ export function SessionsTab({ playerId, getServerName }: SessionsTabProps) {
   const [page, setPage] = useState(0);
   const [limit] = useState(10);
 
-  const sessionsQuery = trpc.admin.players.sessions.list.useQuery(
-    {
-      id: playerId,
-      page,
-      limit,
-    },
-    { placeholderData: keepPreviousData },
+  const sessionsQuery = useQuery(
+    trpc.admin.players.sessions.list.queryOptions(
+      {
+        id: playerId,
+        page,
+        limit,
+      },
+      { placeholderData: keepPreviousData },
+    ),
   );
 
   const sessions = sessionsQuery.data?.sessions ?? [];
@@ -125,22 +128,9 @@ export function SessionsTab({ playerId, getServerName }: SessionsTabProps) {
       </div>
 
       {error ? (
-        <div className="py-12 text-center">
-          <p className="text-destructive">{error}</p>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => sessionsQuery.refetch()}
-            className="mt-4"
-          >
-            Retry
-          </Button>
-        </div>
+        <ErrorState message={error} onRetry={() => sessionsQuery.refetch()} />
       ) : !loading && sessions.length === 0 ? (
-        <div className="py-12 text-center">
-          <Clock className="mx-auto size-12 text-muted-foreground" />
-          <p className="mt-2 text-muted-foreground">No sessions found</p>
-        </div>
+        <EmptyState icon={Clock} message="No sessions found" />
       ) : (
         <>
           <DataTable

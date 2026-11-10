@@ -18,7 +18,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToastActions } from "@/hooks/use-toast";
-import { trpc, type RouterOutput } from "@/lib/trpc";
+import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
+import { useMutation } from "@tanstack/react-query";
 
 type Config = RouterOutput["admin"]["autoMessages"]["configs"]["list"][number];
 type ChannelGroup = RouterOutput["admin"]["autoMessages"]["channels"][number];
@@ -26,7 +27,6 @@ type ChannelGroup = RouterOutput["admin"]["autoMessages"]["channels"][number];
 interface UpsertConfigDialogProps {
   open: boolean;
   onClose: () => void;
-  onSuccess: () => void;
   config?: Config | null;
   channels: ChannelGroup[];
 }
@@ -34,15 +34,28 @@ interface UpsertConfigDialogProps {
 export function UpsertConfigDialog({
   open,
   onClose,
-  onSuccess,
   config,
   channels,
 }: UpsertConfigDialogProps) {
   const toast = useToastActions();
   const isEdit = !!config;
 
-  const createMutation = trpc.admin.autoMessages.configs.create.useMutation();
-  const updateMutation = trpc.admin.autoMessages.configs.update.useMutation();
+  const createMutation = useMutation(
+    trpc.admin.autoMessages.configs.create.mutationOptions({
+      onSuccess: () =>
+        void queryClient.invalidateQueries(
+          trpc.admin.autoMessages.configs.pathFilter(),
+        ),
+    }),
+  );
+  const updateMutation = useMutation(
+    trpc.admin.autoMessages.configs.update.mutationOptions({
+      onSuccess: () =>
+        void queryClient.invalidateQueries(
+          trpc.admin.autoMessages.configs.pathFilter(),
+        ),
+    }),
+  );
 
   const [name, setName] = useState(config?.name ?? "");
   const [channelId, setChannelId] = useState(config?.channelId ?? "");
@@ -85,7 +98,7 @@ export function UpsertConfigDialog({
         });
         toast.success("Config created");
       }
-      onSuccess();
+      onClose();
     } catch {
       toast.error(`Failed to ${isEdit ? "update" : "create"} config`);
     }

@@ -9,8 +9,7 @@
 //
 // Run: pnpm --filter @createrington/server util:render-og-structure-packs [outPath]
 
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 
 import {
   createCanvas,
@@ -18,7 +17,7 @@ import {
   type Canvas,
   type SKRSContext2D,
 } from "@napi-rs/canvas";
-import { computeBBox, fitFontSize } from "@/utils/canvas";
+import { fitFontSize } from "@/utils/canvas";
 import {
   W,
   H,
@@ -40,8 +39,6 @@ import {
   writeCard,
   type PosedFigureSpec,
 } from "./og-shared";
-
-const here = dirname(fileURLToPath(import.meta.url));
 
 // Portal palette from the packs hero CSS (OkLCH converted to sRGB).
 const blue = (a: number) => `rgba(29,132,245,${a})`;

@@ -103,7 +103,8 @@ class RefreshTokenService {
 
   /** Reads the raw refresh token from the request's cookies, or `undefined` if absent. */
   extractFromRequest(req: Request): string | undefined {
-    return req.cookies?.[this.cookieName];
+    const value: unknown = req.cookies?.[this.cookieName];
+    return typeof value === "string" ? value : undefined;
   }
 }
 

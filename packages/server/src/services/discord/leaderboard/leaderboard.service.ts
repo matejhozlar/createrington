@@ -39,16 +39,18 @@ export class LeaderboardService {
     logger.info("Running initial leaderboard refresh");
     await this.refreshAll();
 
-    this.refreshInterval = setInterval(async () => {
+    this.refreshInterval = setInterval(() => {
       logger.info("Running scheduled leaderboard refresh");
-      await this.refreshAll();
+      this.refreshAll().catch((error: unknown) => {
+        logger.error("Scheduled leaderboard refresh failed:", error);
+      });
     }, this.REFRESH_INTERVAL);
 
     logger.info("LeaderboardService initialized");
   }
 
   /** Stops the auto-refresh interval; the last-posted Discord messages stay in place. */
-  async shutdown(): Promise<void> {
+  shutdown(): void {
     if (this.refreshInterval) {
       clearInterval(this.refreshInterval);
       this.refreshInterval = undefined;

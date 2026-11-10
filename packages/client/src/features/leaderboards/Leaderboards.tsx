@@ -6,6 +6,7 @@ import { TopRoleHero } from "./components/TopRoleHero";
 import { LeaderboardTable } from "./components/LeaderboardTable";
 import { useChampionDock } from "./hooks/use-champion-dock";
 import { figureSrc, HERO_ORDER } from "./top-roles";
+import { useSuspenseQuery } from "@tanstack/react-query";
 
 const DOCK_DELAYS = [0.08, 0, 0.16];
 
@@ -15,9 +16,11 @@ const FLIGHT_LAYERS = [
 ] as const;
 
 function ChampionFlight() {
-  const [roles] = trpc.public.leaderboards.hero.useSuspenseQuery(undefined, {
-    staleTime: 5 * 60 * 1000,
-  });
+  const { data: roles } = useSuspenseQuery(
+    trpc.public.leaderboards.hero.queryOptions(undefined, {
+      staleTime: 5 * 60 * 1000,
+    }),
+  );
   useChampionDock(HERO_ORDER, DOCK_DELAYS);
 
   return FLIGHT_LAYERS.map(({ layer, className }) => (

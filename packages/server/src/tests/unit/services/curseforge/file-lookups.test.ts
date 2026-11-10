@@ -8,14 +8,16 @@ import {
   vi,
 } from "vitest";
 import config from "@/config";
+import { resolveDependencies } from "@/services/curseforge/mods";
 import {
   getFilesDependencies,
   getFilesDetails,
   getServedFileIds,
-  resolveDependencies,
-} from "@/services/curseforge";
+} from "@/services/curseforge/files";
+import { requestedUrl, sentJson } from "@/tests/helpers/fetch";
 
 const fetchMock = vi.fn<typeof fetch>();
+
 const GATEWAY = { url: "http://gateway.test:5005", token: "t".repeat(32) };
 const originalGateway = config.contentGateway;
 
@@ -101,7 +103,7 @@ describe("getFilesDetails", () => {
     const details = await getFilesDetails(ids);
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({
+    expect(sentJson(fetchMock)).toEqual({
       fileIds: ids,
     });
     expect(details.map((detail) => detail.fileId)).toEqual([7000001]);
@@ -201,10 +203,8 @@ describe("resolveDependencies", () => {
       TARGET,
     );
 
-    expect(new URL(String(fetchMock.mock.calls[0]?.[0])).pathname).toBe(
-      "/v1/curseforge/mods",
-    );
-    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({
+    expect(requestedUrl(fetchMock).pathname).toBe("/v1/curseforge/mods");
+    expect(sentJson(fetchMock)).toEqual({
       modIds: [238222, 999999999],
     });
     expect(resolved).toEqual([

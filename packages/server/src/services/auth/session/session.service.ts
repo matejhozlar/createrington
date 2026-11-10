@@ -44,7 +44,11 @@ class SessionService {
 
   private constructor() {
     this.cleanupInterval = setInterval(
-      () => this.cleanupExpired(),
+      () => {
+        this.cleanupExpired().catch((error: unknown) => {
+          logger.error("Expired auth session cleanup failed:", error);
+        });
+      },
       60 * 60 * 1000,
     );
   }

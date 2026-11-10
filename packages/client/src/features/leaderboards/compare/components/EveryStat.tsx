@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TugRow } from "./TugRow";
+import { useQuery } from "@tanstack/react-query";
 
 type Sort = "gap" | "total";
 
@@ -52,9 +53,11 @@ export function EveryStat({
   const viewKey = `${first}|${second}|${debounced}|${sort}`;
   const limit = shown.key === viewKey ? shown.limit : PAGE_STEP;
 
-  const statsQuery = trpc.public.leaderboards.headToHead.useQuery(
-    { first, second, search: debounced || undefined, sort, limit },
-    { staleTime: 60 * 1000, placeholderData: (previous) => previous },
+  const statsQuery = useQuery(
+    trpc.public.leaderboards.headToHead.queryOptions(
+      { first, second, search: debounced || undefined, sort, limit },
+      { staleTime: 60 * 1000, placeholderData: (previous) => previous },
+    ),
   );
   const rows = statsQuery.data?.rows ?? [];
   const total = statsQuery.data?.pagination.total ?? 0;

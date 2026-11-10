@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { trpc } from "@/lib/trpc";
+import { trpc, queryClient } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { modpackFormError } from "../validation";
+import { useMutation } from "@tanstack/react-query";
 
 export function CreateModpackDialog({
   open,
@@ -22,20 +23,23 @@ export function CreateModpackDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const toast = useToastActions();
-  const utils = trpc.useUtils();
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [publishedPackId, setPublishedPackId] = useState("");
 
-  const createMutation = trpc.admin.modpacks.create.useMutation(
-    useMutationToast({
-      success: (modpack) => `Modpack "${modpack.name}" created`,
-      onSuccess: () => {
-        utils.admin.modpacks.list.invalidate();
-        onOpenChange(false);
-      },
-    }),
+  const createMutation = useMutation(
+    trpc.admin.modpacks.create.mutationOptions(
+      useMutationToast({
+        success: (modpack) => `Modpack "${modpack.name}" created`,
+        onSuccess: () => {
+          void queryClient.invalidateQueries(
+            trpc.admin.modpacks.list.pathFilter(),
+          );
+          onOpenChange(false);
+        },
+      }),
+    ),
   );
 
   const handleCreate = () => {

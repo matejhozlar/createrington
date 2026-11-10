@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToastActions } from "@/hooks/use-toast";
-import { trpc } from "@/lib/trpc";
+import { trpc, queryClient } from "@/lib/trpc";
 import {
   MAX_ENTRIES_PER_PLAYER,
   MIN_ENTRIES_PER_PLAYER,
@@ -30,6 +30,8 @@ import {
   DURATION_OPTIONS,
   ENTRY_MODE_OPTIONS,
 } from "../format";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { Textarea } from "@/components/ui/textarea";
 
 // Format a camelCase config key ("serverAnnouncements") into the label
 // we show in a picker ("Server Announcements"). Same transform the
@@ -45,7 +47,6 @@ function formatName(key: string): string {
 interface Props {
   open: boolean;
   onClose: () => void;
-  onSuccess: () => void;
 }
 
 // Sentinel select values: Radix Select can't hold an empty string, so
@@ -55,14 +56,19 @@ interface Props {
 const NONE = "__none__";
 const DEFAULT_CHANNEL = "__default__";
 
-export function CreatePromptModal({ open, onClose, onSuccess }: Props) {
+export function CreatePromptModal({ open, onClose }: Props) {
   const toast = useToastActions();
-  const createMutation = trpc.admin.prompts.create.useMutation();
+  const createMutation = useMutation(
+    trpc.admin.prompts.create.mutationOptions({
+      onSuccess: () =>
+        void queryClient.invalidateQueries(trpc.admin.prompts.pathFilter()),
+    }),
+  );
 
   // Reuse the embed-builder endpoints: they already walk config.discord
   // and expose channels grouped by category plus a flat role list.
-  const channelsQuery = trpc.admin.embeds.channels.useQuery();
-  const rolesQuery = trpc.admin.embeds.roles.useQuery();
+  const channelsQuery = useQuery(trpc.admin.embeds.channels.queryOptions());
+  const rolesQuery = useQuery(trpc.admin.embeds.roles.queryOptions());
 
   const [question, setQuestion] = useState("");
   const [description, setDescription] = useState("");
@@ -145,7 +151,7 @@ export function CreatePromptModal({ open, onClose, onSuccess }: Props) {
       });
       toast.success("Prompt posted to Discord");
       reset();
-      onSuccess();
+      onClose();
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Something went wrong";
@@ -182,14 +188,13 @@ export function CreatePromptModal({ open, onClose, onSuccess }: Props) {
               Description{" "}
               <span className="text-muted-foreground">(optional)</span>
             </FieldLabel>
-            <textarea
+            <Textarea
               id="prompt-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Add context or examples to help players answer."
               rows={3}
               maxLength={2000}
-              className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex w-full rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
             />
           </Field>
 

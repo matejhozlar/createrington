@@ -24,6 +24,8 @@ import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { InsertMenu } from "@/features/admin/components/InsertMenu";
 import { MentionAutocomplete } from "./MentionAutocomplete";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { Textarea } from "@/components/ui/textarea";
 
 interface InsertableInputHandle {
   focus: () => void;
@@ -130,7 +132,7 @@ export function AIButton({ value, onApply, iconOnly }: AIButtonProps) {
   const [open, setOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<AIActionId | null>(null);
   const toast = useToastActions();
-  const assistMutation = trpc.admin.ai.assist.useMutation();
+  const assistMutation = useMutation(trpc.admin.ai.assist.mutationOptions());
 
   async function runAction(action: AIActionId) {
     if (!value.trim()) return;
@@ -278,7 +280,7 @@ export function TextField({
     >
       <div className="relative">
         {multiline ? (
-          <textarea
+          <Textarea
             ref={(el) => {
               elRef.current = el;
             }}
@@ -288,7 +290,7 @@ export function TextField({
             maxLength={max}
             placeholder={placeholder}
             onChange={onIn}
-            className="w-full resize-y rounded-md border border-input bg-transparent px-3 py-2 text-[13px] shadow-xs outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+            className="resize-y text-[13px] md:text-[13px]"
           />
         ) : (
           <Input
@@ -328,7 +330,7 @@ interface ColorPickerProps {
 
 export function ColorPicker({ value, onChange }: ColorPickerProps) {
   const [hex, setHex] = useState(() => numberToHex6(value));
-  const colorsQuery = trpc.admin.embeds.colors.useQuery();
+  const colorsQuery = useQuery(trpc.admin.embeds.colors.queryOptions());
   const colors = colorsQuery.data ?? [];
 
   const [prevValue, setPrevValue] = useState(value);

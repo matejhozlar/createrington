@@ -1,10 +1,10 @@
 import { beforeAll, afterAll } from "vitest";
 import "@/logger.global";
 
-beforeAll(async () => {
+beforeAll(() => {
   logger.info("Test suite stating...");
 });
 
-afterAll(async () => {
+afterAll(() => {
   logger.info("Test suite finished");
 });

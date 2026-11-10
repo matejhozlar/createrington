@@ -1,20 +1,22 @@
 import { useState } from "react";
 import { Coins, ExternalLink, ImageOff, Trash2 } from "lucide-react";
-import { trpc } from "@/lib/trpc";
+import { trpc, queryClient } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { formatMoney, formatRelativeDate } from "@/lib/format";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Paginator } from "@/components/paginator";
 import { PlayerLabel } from "@/components/player-label";
+import { EmptyState, ErrorState } from "@/components/query-states";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   GALLERY_STATUS_STYLES,
   type GalleryStatus,
   type GallerySubmissionItem,
 } from "../format";
+import { useQuery, useMutation } from "@tanstack/react-query";
 
 const PAGE_SIZE = 24;
 const SKELETON_COUNT = 6;
@@ -31,42 +33,39 @@ interface SubmissionGridProps {
 }
 
 export function SubmissionGrid({ status }: SubmissionGridProps) {
-  const utils = trpc.useUtils();
   const [page, setPage] = useState(0);
   const [removeTarget, setRemoveTarget] =
     useState<GallerySubmissionItem | null>(null);
 
-  const listQuery = trpc.admin.gallery.list.useQuery({
-    status,
-    page,
-    limit: PAGE_SIZE,
-  });
-
-  const removeMutation = trpc.admin.gallery.remove.useMutation(
-    useMutationToast({
-      success: "Screenshot removed from the gallery",
-      onSuccess: () => {
-        utils.admin.gallery.list.invalidate();
-        setRemoveTarget(null);
-      },
+  const listQuery = useQuery(
+    trpc.admin.gallery.list.queryOptions({
+      status,
+      page,
+      limit: PAGE_SIZE,
     }),
+  );
+
+  const removeMutation = useMutation(
+    trpc.admin.gallery.remove.mutationOptions(
+      useMutationToast({
+        success: "Screenshot removed from the gallery",
+        onSuccess: () => {
+          void queryClient.invalidateQueries(
+            trpc.admin.gallery.list.pathFilter(),
+          );
+          setRemoveTarget(null);
+        },
+      }),
+    ),
   );
 
   if (listQuery.error) {
     return (
       <Card>
-        <CardContent className="flex items-center justify-center py-12">
-          <div className="text-center">
-            <p className="text-destructive">{listQuery.error.message}</p>
-            <Button
-              onClick={() => listQuery.refetch()}
-              className="mt-4"
-              variant="outline"
-            >
-              Try Again
-            </Button>
-          </div>
-        </CardContent>
+        <ErrorState
+          message={listQuery.error.message}
+          onRetry={() => listQuery.refetch()}
+        />
       </Card>
     );
   }
@@ -77,12 +76,7 @@ export function SubmissionGrid({ status }: SubmissionGridProps) {
   if (!listQuery.isLoading && items.length === 0) {
     return (
       <Card>
-        <CardContent className="flex items-center justify-center py-12">
-          <div className="text-center">
-            <ImageOff className="mx-auto size-12 text-muted-foreground" />
-            <p className="mt-2 text-muted-foreground">{EMPTY_COPY[status]}</p>
-          </div>
-        </CardContent>
+        <EmptyState icon={ImageOff} message={EMPTY_COPY[status]} />
       </Card>
     );
   }

@@ -41,6 +41,7 @@ import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { PinnedTools } from "./components/PinnedTools";
 import { ToolCard } from "./components/ToolCard";
 import { MAX_PINNED_TOOLS, usePinnedTools } from "./hooks/use-pinned-tools";
+import { useMutation } from "@tanstack/react-query";
 
 type Tool = {
   title: string;
@@ -190,11 +191,13 @@ export function AdminTools() {
   const [category, setCategory] = useState(ALL_CATEGORY);
   const [pinned, togglePin] = usePinnedTools(TOOL_HREFS);
 
-  const refetchMutation = trpc.admin.refetchDiscordEntities.useMutation(
-    useMutationToast({
-      success: (data) =>
-        `Refreshed: ${data.roles} roles, ${data.channels} channels, ${data.categories} categories`,
-    }),
+  const refetchMutation = useMutation(
+    trpc.admin.refetchDiscordEntities.mutationOptions(
+      useMutationToast({
+        success: (data) =>
+          `Refreshed: ${data.roles} roles, ${data.channels} channels, ${data.categories} categories`,
+      }),
+    ),
   );
 
   const needle = query.trim().toLowerCase();

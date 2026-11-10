@@ -96,7 +96,7 @@ export function processDiscordTimestamps(text: string): string {
 }
 
 export function resolveAuthor(message: CachedMessage) {
-  const source = (message.source as MessageSource) ?? MessageSource.DISCORD;
+  const source = message.source ?? MessageSource.DISCORD;
   let displayName = message.authorDisplayname || message.authorUsername;
   let avatarUrl = message.authorAvatarUrl;
 

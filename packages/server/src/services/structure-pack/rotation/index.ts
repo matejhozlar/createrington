@@ -8,7 +8,7 @@ import {
   deleteFile,
   fileExists,
 } from "@/services/mc-server/file-ops";
-import { getModFileDownloadUrl } from "@/services/curseforge";
+import { getModFileDownloadUrl } from "@/services/curseforge/downloads";
 import type { StructurePackService } from "../index";
 import type { StructurePackWithMods } from "@/db/queries/structure/pack";
 import type {
@@ -143,7 +143,7 @@ export class StructurePackRotationService {
       const adjusted = new Date(nextTime.getTime() + periodIntervalMs(period));
       const adjustedDelay = adjusted.getTime() - Date.now();
       this.nextRotationTimer = setTimeout(
-        () => this.executeRotation(),
+        () => this.runScheduledRotation(),
         adjustedDelay,
       );
       logger.info(
@@ -152,10 +152,19 @@ export class StructurePackRotationService {
       return;
     }
 
-    this.nextRotationTimer = setTimeout(() => this.executeRotation(), delayMs);
+    this.nextRotationTimer = setTimeout(
+      () => this.runScheduledRotation(),
+      delayMs,
+    );
     logger.info(
       `Next structure pack rotation scheduled for ${nextTime.toISOString()}`,
     );
+  }
+
+  private runScheduledRotation(): void {
+    this.executeRotation().catch((error: unknown) => {
+      logger.error("Scheduled structure pack rotation failed:", error);
+    });
   }
 
   /**
@@ -661,9 +670,7 @@ export class StructurePackRotationService {
       incomingPackId,
       success,
       failureReason,
-      weightsSnapshot: weights
-        ? (weights as unknown as Record<string, unknown>)
-        : null,
+      weightsSnapshot: weights ?? null,
     });
   }
 }

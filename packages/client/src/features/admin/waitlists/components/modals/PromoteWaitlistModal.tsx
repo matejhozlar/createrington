@@ -8,7 +8,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToastActions } from "@/hooks/use-toast";
-import { trpc, type RouterOutput } from "@/lib/trpc";
+import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
+import { useMutation } from "@tanstack/react-query";
 
 type WaitlistEntry =
   RouterOutput["admin"]["waitlists"]["list"]["entries"][number];
@@ -17,17 +18,20 @@ interface PromoteWaitlistModalProps {
   open: boolean;
   onClose: () => void;
   entry: WaitlistEntry;
-  onSuccess: () => void;
 }
 
 export function PromoteWaitlistModal({
   open,
   onClose,
   entry,
-  onSuccess,
 }: PromoteWaitlistModalProps) {
   const toast = useToastActions();
-  const promoteEntry = trpc.admin.waitlists.promote.useMutation();
+  const promoteEntry = useMutation(
+    trpc.admin.waitlists.promote.mutationOptions({
+      onSuccess: () =>
+        void queryClient.invalidateQueries(trpc.admin.waitlists.pathFilter()),
+    }),
+  );
 
   const handleSubmit = async () => {
     try {
@@ -41,7 +45,6 @@ export function PromoteWaitlistModal({
         );
       }
       onClose();
-      onSuccess();
     } catch (error) {
       toast.error(
         error instanceof Error

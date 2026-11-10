@@ -11,9 +11,10 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { formatMoney } from "@/lib/format";
-import { trpc } from "@/lib/trpc";
+import { trpc, queryClient } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { AdminActionModal } from "./AdminActionModal";
+import { useMutation } from "@tanstack/react-query";
 
 type Mode = "add" | "remove" | "set";
 
@@ -59,7 +60,6 @@ interface BalanceAdjustModalProps {
   playerId: string;
   playerName: string;
   currentBalance: number;
-  onSuccess: () => void;
 }
 
 export function BalanceAdjustModal({
@@ -68,26 +68,27 @@ export function BalanceAdjustModal({
   playerId,
   playerName,
   currentBalance,
-  onSuccess,
 }: BalanceAdjustModalProps) {
   const [mode, setMode] = useState<Mode>("add");
   const [amountInput, setAmountInput] = useState("");
   const [reason, setReason] = useState("");
 
-  const utils = trpc.useUtils();
-  const adjust = trpc.admin.players.balance.adjust.useMutation(
-    useMutationToast({
-      success: (_, variables) => {
-        const config = MODES.find((m) => m.value === variables.mode)!;
-        return config.successMessage(formatMoney(variables.amount), playerName);
-      },
-      onSuccess: () => {
-        utils.admin.players.transactions.list.invalidate({ id: playerId });
-        utils.admin.players.audit.list.invalidate();
-        onClose();
-        onSuccess();
-      },
-    }),
+  const adjust = useMutation(
+    trpc.admin.players.balance.adjust.mutationOptions(
+      useMutationToast({
+        success: (_, variables) => {
+          const config = MODES.find((m) => m.value === variables.mode)!;
+          return config.successMessage(
+            formatMoney(variables.amount),
+            playerName,
+          );
+        },
+        onSuccess: () => {
+          void queryClient.invalidateQueries(trpc.admin.players.pathFilter());
+          onClose();
+        },
+      }),
+    ),
   );
 
   const config = MODES.find((m) => m.value === mode)!;

@@ -10,7 +10,7 @@ import {
   type DataTableAction,
   type DataTableColumn,
 } from "@/components/data-table";
-import { CardEmpty, CardError } from "@/features/admin/components/CardState";
+import { EmptyState, ErrorState } from "@/components/query-states";
 import { isHttpUrl } from "@/features/workshop/format";
 import type { ModEnvironment } from "@createrington/shared/db";
 import {
@@ -18,6 +18,7 @@ import {
   type EnvironmentDisplay,
 } from "@/features/workshop/components/EnvironmentCell";
 import type { AttentionItem } from "../../types";
+import { useMutation } from "@tanstack/react-query";
 
 type DependencyGap = Extract<
   AttentionItem["type"],
@@ -88,16 +89,18 @@ export function IssuesTab({
 }) {
   const [removeTarget, setRemoveTarget] = useState<DroppedItem | null>(null);
 
-  const removeMutation = trpc.admin.workshops.removeDroppedMember.useMutation(
-    useMutationToast({
-      success: "Removed from the pack",
-      onSuccess: () => {
-        onResolved();
-      },
-      onError: () => {
-        onResolved();
-      },
-    }),
+  const removeMutation = useMutation(
+    trpc.admin.workshops.removeDroppedMember.mutationOptions(
+      useMutationToast({
+        success: "Removed from the pack",
+        onSuccess: () => {
+          onResolved();
+        },
+        onError: () => {
+          onResolved();
+        },
+      }),
+    ),
   );
 
   const columns: DataTableColumn<AttentionItem>[] = [
@@ -192,9 +195,9 @@ export function IssuesTab({
         </CardHeader>
 
         {error ? (
-          <CardError message={error} onRetry={onRetry} />
+          <ErrorState message={error} onRetry={onRetry} />
         ) : !isLoading && items.length === 0 ? (
-          <CardEmpty icon={CircleCheck} message="Nothing needs attention" />
+          <EmptyState icon={CircleCheck} message="Nothing needs attention" />
         ) : (
           <CardContent className="px-0">
             <DataTable

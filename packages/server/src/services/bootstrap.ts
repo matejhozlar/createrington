@@ -1,4 +1,4 @@
-import { container, Services } from "./container";
+import { container, Services, ServiceState } from "./container";
 import { createApp } from "@/app";
 import http from "node:http";
 import pool from "@/db";
@@ -17,6 +17,7 @@ import { InactivityCleanupService } from "./discord/cleanup/inactivity/inactivit
 import { GhostMemberService } from "./discord/cleanup/ghost/ghost-member.service";
 import { UnlinkedMemberService } from "./discord/cleanup/unlinked/unlinked-member.service";
 import { WaitlistCleanupService } from "./waitlist/waitlist-cleanup.service";
+import { waitlistPromotionService } from "./waitlist/promotion.service";
 import { waitlistService } from "./waitlist/waitlist.service";
 import { WorkshopProjectRefreshService } from "./workshop/refresh.service";
 import { MemberCleanupService } from "./discord/cleanup/member/member-cleanup.service";
@@ -28,6 +29,7 @@ import { RoleManagementService } from "./discord/role/role-management.service";
 import { WebSocketService } from "./websocket";
 import { PlayerBanService } from "./player/ban";
 import { playerDeletionService } from "./player/deletion";
+import { isPartyPurgeAllowed, partyPurgeService } from "./party";
 import { StatsImportService, STATS_IMPORT_SERVERS } from "./stats-import";
 import { FaqService } from "./discord/faq";
 import { DiscordStickyMessageService } from "./discord/sticky-message";
@@ -38,7 +40,7 @@ import { AutoMessageService } from "./discord/auto-message";
 import { maintenanceService } from "./maintenance";
 import { MaintenanceScheduler } from "./maintenance/scheduler";
 import { releaseAnnouncementService } from "./release-announcement";
-import { launcherPackService } from "./launcher/pack/launcher-pack.service";
+import { launcherPackAdminService } from "./launcher/pack/pack-admin.service";
 import { LauncherPackFileRefreshService } from "./launcher/pack/file-refresh.service";
 import { DonationService } from "./donation/donation.service";
 import { structurePackService } from "./structure-pack";
@@ -67,14 +69,14 @@ export function registerServices(): void {
     return pool;
   });
 
-  container.register(Services.HTTP_SERVER, async () => {
+  container.register(Services.HTTP_SERVER, () => {
     logger.debug("Creating HTTP server...");
     const app = createApp();
     return http.createServer(app);
   });
 
   if (redisService.enabled) {
-    container.register(Services.REDIS, async () => {
+    container.register(Services.REDIS, () => {
       redisService.initialize();
       return redisService;
     });
@@ -84,9 +86,9 @@ export function registerServices(): void {
     );
   }
 
-  container.register(Services.PUPPETEER_SERVICE, async () => {
+  container.register(Services.PUPPETEER_SERVICE, () => {
     const service = new PuppeteerService();
-    await service.initialize();
+    service.initialize();
     return service;
   });
 
@@ -210,9 +212,9 @@ export function registerServices(): void {
 
   container.register(
     Services.MEMBER_CLEANUP_SERVICE,
-    async () => {
+    () => {
       const service = new MemberCleanupService();
-      await service.initialize();
+      service.initialize();
       return service;
     },
     { dependencies: [Services.DISCORD_MAIN_BOT] },
@@ -220,13 +222,13 @@ export function registerServices(): void {
 
   container.register(
     Services.GHOST_MEMBER_SERVICE,
-    async () => new GhostMemberService(),
+    () => new GhostMemberService(),
     { dependencies: [Services.DISCORD_MAIN_BOT, Services.DATABASE] },
   );
 
   container.register(
     Services.UNLINKED_MEMBER_SERVICE,
-    async () => new UnlinkedMemberService(),
+    () => new UnlinkedMemberService(),
     { dependencies: [Services.DISCORD_MAIN_BOT, Services.DATABASE] },
   );
 
@@ -234,9 +236,9 @@ export function registerServices(): void {
   if (config.envMode.isProductionDeployment) {
     container.register(
       Services.INACTIVITY_CLEANUP_SERVICE,
-      async () => {
+      () => {
         const service = new InactivityCleanupService();
-        await service.initialize();
+        service.initialize();
         return service;
       },
       {
@@ -252,9 +254,9 @@ export function registerServices(): void {
   if (config.launcher.available) {
     container.register(
       Services.LAUNCHER_PACK_FILE_REFRESH,
-      async () => {
+      () => {
         const service = new LauncherPackFileRefreshService();
-        await service.initialize();
+        service.initialize();
         return service;
       },
       { dependencies: [Services.DATABASE] },
@@ -263,9 +265,9 @@ export function registerServices(): void {
 
   container.register(
     Services.WORKSHOP_PROJECT_REFRESH,
-    async () => {
+    () => {
       const service = new WorkshopProjectRefreshService();
-      await service.initialize();
+      service.initialize();
       return service;
     },
     { dependencies: [Services.DATABASE, Services.DISCORD_MAIN_BOT] },
@@ -274,9 +276,9 @@ export function registerServices(): void {
   if (!config.envMode.isDev) {
     container.register(
       Services.WAITLIST_CLEANUP_SERVICE,
-      async () => {
+      () => {
         const service = new WaitlistCleanupService();
-        await service.initialize();
+        service.initialize();
         return service;
       },
       { dependencies: [Services.DATABASE, Services.DISCORD_MAIN_BOT] },
@@ -364,8 +366,8 @@ export function registerServices(): void {
 
   container.register(
     Services.PLAYER_DELETION_SERVICE,
-    async () => {
-      await playerDeletionService.initialize();
+    () => {
+      playerDeletionService.initialize();
       playerDeletionService.onDeleted(async (player) => {
         try {
           await waitlistService.expireForPlayerDeletion(player.discordId);
@@ -375,12 +377,28 @@ export function registerServices(): void {
             error,
           );
         }
-        await waitlistService.promoteEligible();
+        await waitlistPromotionService.promoteEligible();
       });
+      if (isPartyPurgeAllowed()) {
+        playerDeletionService.onDeleted((player, actor) =>
+          partyPurgeService.removePlayer(player, actor),
+        );
+      }
       return playerDeletionService;
     },
     { dependencies: [Services.DATABASE] },
   );
+
+  if (isPartyPurgeAllowed()) {
+    container.register(
+      Services.PARTY_PURGE_SERVICE,
+      () => {
+        partyPurgeService.initialize();
+        return partyPurgeService;
+      },
+      { dependencies: [Services.DATABASE, Services.HTTP_SERVER] },
+    );
+  }
 
   container.register(
     Services.PLAYTIME_MANAGER_SERVICE,
@@ -401,7 +419,7 @@ export function registerServices(): void {
           playtimeManager,
           STATS_IMPORT_SERVERS,
         );
-        await service.initialize();
+        service.initialize();
         return service;
       },
       {
@@ -417,7 +435,7 @@ export function registerServices(): void {
     async (c) => {
       const mainBot = await c.get(Services.DISCORD_MAIN_BOT);
       const service = new RoleManagementService(mainBot, 0);
-      await service.initialize();
+      service.initialize();
       return service;
     },
     { dependencies: [Services.DISCORD_MAIN_BOT] },
@@ -458,10 +476,7 @@ export function registerServices(): void {
         maxInitialMessages: 100,
       });
 
-      await websocketService.initialize(
-        messageCacheService,
-        playtimeManagerService,
-      );
+      websocketService.initialize(messageCacheService, playtimeManagerService);
 
       return websocketService;
     },
@@ -525,12 +540,12 @@ export function registerServices(): void {
       async (c) => {
         const intake = new VoteIntake(
           () =>
-            c.getState(Services.MESSAGE_SERVICE) === "ready"
+            c.getState(Services.MESSAGE_SERVICE) === ServiceState.READY
               ? c.getSync(Services.MESSAGE_SERVICE)
               : null,
           Discord.Channels.railsNSails.MINECRAFT_CHAT,
           () =>
-            c.getState(Services.VOTE_REWARD_SERVICE) === "ready"
+            c.getState(Services.VOTE_REWARD_SERVICE) === ServiceState.READY
               ? c.getSync(Services.VOTE_REWARD_SERVICE)
               : null,
         );
@@ -550,7 +565,7 @@ export function registerServices(): void {
         const service = new VoteRewardService(playtimeManager, undefined, {
           rewardServerIds: [config.servers.rails.id],
         });
-        await service.initialize();
+        service.initialize();
         return service;
       },
       {
@@ -563,34 +578,43 @@ export function registerServices(): void {
     );
   }
 
-  container.on("serviceReady", async (serviceName) => {
-    // Wire message cache into playtime manager for server shutdown detection
-    if (serviceName === Services.MESSAGE_CACHE) {
-      const playtimeManager = await container.get(
-        Services.PLAYTIME_MANAGER_SERVICE,
+  container.on("serviceReady", (serviceName) => {
+    wireReadyService(serviceName).catch((error: unknown) => {
+      logger.error(
+        `Failed to wire ${serviceName} after it became ready:`,
+        error,
       );
-      const messageCache = await container.get(Services.MESSAGE_CACHE);
-
-      playtimeManager.setupMessageCacheIntegration(messageCache);
-    }
-
-    // Wire real-time role checks to playtime events on each server
-    if (serviceName === Services.PLAYTIME_MANAGER_SERVICE) {
-      const playtimeManager = await container.get(
-        Services.PLAYTIME_MANAGER_SERVICE,
-      );
-      const roleService = await container.get(Services.ROLE_MANAGEMENT_SERVICE);
-
-      for (const [
-        serverId,
-        playtimeService,
-      ] of playtimeManager.getAllServices()) {
-        roleService.setupRealtimeRoleChecking(serverId, playtimeService);
-      }
-    }
+    });
   });
 
   logger.info(`Registered ${container.size} services`);
+}
+
+async function wireReadyService(serviceName: string): Promise<void> {
+  // Wire message cache into playtime manager for server shutdown detection
+  if (serviceName === Services.MESSAGE_CACHE) {
+    const playtimeManager = await container.get(
+      Services.PLAYTIME_MANAGER_SERVICE,
+    );
+    const messageCache = await container.get(Services.MESSAGE_CACHE);
+
+    playtimeManager.setupMessageCacheIntegration(messageCache);
+  }
+
+  // Wire real-time role checks to playtime events on each server
+  if (serviceName === Services.PLAYTIME_MANAGER_SERVICE) {
+    const playtimeManager = await container.get(
+      Services.PLAYTIME_MANAGER_SERVICE,
+    );
+    const roleService = await container.get(Services.ROLE_MANAGEMENT_SERVICE);
+
+    for (const [
+      serverId,
+      playtimeService,
+    ] of playtimeManager.getAllServices()) {
+      roleService.setupRealtimeRoleChecking(serverId, playtimeService);
+    }
+  }
 }
 
 /**
@@ -610,14 +634,16 @@ export async function initializeServices(): Promise<void> {
   await container.initializeAll();
 
   const states = container.getAllStates();
-  const ready = Object.values(states).filter((s) => s === "ready").length;
+  const ready = Object.values(states).filter(
+    (s) => s === ServiceState.READY,
+  ).length;
   const total = Object.keys(states).length;
 
   logger.info(`✓ Service initialization complete: ${ready}/${total} ready`);
 
   void releaseAnnouncementService.announceIfNew();
   if (config.launcher.available) {
-    launcherPackService
+    launcherPackAdminService
       .seedDefaultPack()
       .catch((error) => logger.warn("Launcher pack seed failed:", error));
   }

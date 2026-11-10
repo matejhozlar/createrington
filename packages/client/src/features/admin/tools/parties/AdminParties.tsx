@@ -1,6 +1,9 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
-import { Loading } from "@/components/loading-spinner";
+import { UserMinus } from "lucide-react";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { LoadingState } from "@/components/query-states";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -13,7 +16,8 @@ import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { FilterBar } from "@/features/admin/components/FilterBar";
 import { formatRelativeDateSafe } from "@/features/admin/format";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { trpc } from "@/lib/trpc";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
+import { queryClient, trpc, type RouterOutput } from "@/lib/trpc";
 import { ClaimsDialog } from "./components/ClaimsDialog";
 import { PartiesStatsCards } from "./components/PartiesStatsCards";
 import {
@@ -22,6 +26,7 @@ import {
   type PartySort,
   type PartySortKey,
 } from "./components/PartiesTable";
+import { useMutation, useQuery } from "@tanstack/react-query";
 
 const SERVER_ID = 1;
 
@@ -34,6 +39,26 @@ const PAGE_COPY = {
   empty: "No party has been synced from the server yet.",
   noMatch: "No party matches the search.",
 } as const;
+
+const PURGE_COPY = {
+  button: "Purge",
+  title: "Purge departed members?",
+  description:
+    "Syncs the parties from the server first, then removes every member who has left the server from their party in game. Party owners are never removed.",
+  confirm: "Purge",
+} as const;
+
+type PurgeResult = RouterOutput["admin"]["parties"]["purge"];
+
+function purgeMessage({ removed, failed }: PurgeResult): string {
+  const removedText =
+    removed.length === 0
+      ? "No departed members to remove."
+      : `Removed ${removed.length} departed member${removed.length === 1 ? "" : "s"} from their parties.`;
+  return failed === 0
+    ? removedText
+    : `${removedText} ${failed} could not be removed, see the server log.`;
+}
 
 const DEFAULT_SORT: PartySort = { key: "name", dir: "asc" };
 const NO_PARTIES: PartyRow[] = [];
@@ -78,10 +103,25 @@ export function AdminParties() {
   const [claimsDialog, setClaimsDialog] = useState<{
     partyId: number | null;
   } | null>(null);
+  const [purgeOpen, setPurgeOpen] = useState(false);
   const needle = useDebouncedValue(search, 300).trim().toLowerCase();
 
-  const statsQuery = trpc.admin.parties.stats.useQuery({ serverId: SERVER_ID });
-  const listQuery = trpc.admin.parties.list.useQuery({ serverId: SERVER_ID });
+  const purgeMutation = useMutation(
+    trpc.admin.parties.purge.mutationOptions(
+      useMutationToast({
+        success: purgeMessage,
+        onSuccess: () =>
+          queryClient.invalidateQueries(trpc.admin.parties.pathFilter()),
+      }),
+    ),
+  );
+
+  const statsQuery = useQuery(
+    trpc.admin.parties.stats.queryOptions({ serverId: SERVER_ID }),
+  );
+  const listQuery = useQuery(
+    trpc.admin.parties.list.queryOptions({ serverId: SERVER_ID }),
+  );
   const parties = listQuery.data ?? NO_PARTIES;
 
   const shown = useMemo(
@@ -115,6 +155,12 @@ export function AdminParties() {
       <div className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-4 px-4 pb-4">
         <AdminPageTitle
           title={PAGE_COPY.title}
+          actions={
+            <Button variant="outline" onClick={() => setPurgeOpen(true)}>
+              <UserMinus className="mr-2 size-4" />
+              {PURGE_COPY.button}
+            </Button>
+          }
           description={
             <>
               <p>{PAGE_COPY.description}</p>
@@ -130,7 +176,10 @@ export function AdminParties() {
         />
 
         {statsQuery.isLoading ? (
-          <Loading size="medium" text="Loading party totals..." />
+          <LoadingState
+            text="Loading party totals..."
+            className="flex-none p-0"
+          />
         ) : statsQuery.data ? (
           <PartiesStatsCards
             stats={statsQuery.data}
@@ -190,6 +239,16 @@ export function AdminParties() {
         }}
         serverId={SERVER_ID}
         initialPartyId={claimsDialog?.partyId ?? null}
+      />
+
+      <ConfirmDialog
+        open={purgeOpen}
+        onOpenChange={setPurgeOpen}
+        title={PURGE_COPY.title}
+        description={PURGE_COPY.description}
+        confirmLabel={PURGE_COPY.confirm}
+        variant="destructive"
+        onConfirm={() => purgeMutation.mutateAsync({ serverId: SERVER_ID })}
       />
     </div>
   );

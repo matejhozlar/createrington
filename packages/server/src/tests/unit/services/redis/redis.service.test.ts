@@ -42,7 +42,7 @@ const URL = "redis://localhost:6380";
 function connected() {
   const service = new RedisService(URL);
   service.initialize();
-  const client = clients[0]!;
+  const client = clients[0];
   client.isReady = true;
   client.emit("ready");
   return { service, client };
@@ -60,6 +60,13 @@ afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
 });
+
+function outcomeOf(promise: Promise<unknown>): Promise<unknown> {
+  return promise.then(
+    () => undefined,
+    (error: unknown) => error,
+  );
+}
 
 describe("RedisService", () => {
   it("stays off without a URL", async () => {
@@ -93,7 +100,7 @@ describe("RedisService", () => {
     await expect(service.sendCommand(["GET", "key"])).rejects.toThrow(
       "Redis is not connected",
     );
-    expect(clients[0]!.sendCommand).not.toHaveBeenCalled();
+    expect(clients[0].sendCommand).not.toHaveBeenCalled();
   });
 
   it("sends a command and answers its reply once connected", async () => {
@@ -178,14 +185,15 @@ describe("RedisService", () => {
     const { service, client } = connected();
     client.sendCommand.mockReturnValue(new Promise(() => {}));
 
-    const unanswered = expect(
-      service.sendCommand(["GET", "key"]),
-    ).rejects.toThrow("Redis did not answer within 1000 ms");
+    const unanswered = outcomeOf(service.sendCommand(["GET", "key"]));
     await vi.advanceTimersByTimeAsync(999);
     expect(logger.warn).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(1);
 
-    await unanswered;
+    expect(await unanswered).toHaveProperty(
+      "message",
+      expect.stringContaining("Redis did not answer within 1000 ms"),
+    );
     expect(logger.warn).toHaveBeenCalledTimes(1);
     expect(logger.warn).toHaveBeenCalledWith(
       expect.stringContaining("cannot be reached"),
@@ -198,11 +206,12 @@ describe("RedisService", () => {
     vi.mocked(logger.info).mockClear();
     client.sendCommand.mockReturnValueOnce(new Promise(() => {}));
 
-    const unanswered = expect(
-      service.sendCommand(["GET", "key"]),
-    ).rejects.toThrow("Redis did not answer");
+    const unanswered = outcomeOf(service.sendCommand(["GET", "key"]));
     await vi.advanceTimersByTimeAsync(1000);
-    await unanswered;
+    expect(await unanswered).toHaveProperty(
+      "message",
+      expect.stringContaining("Redis did not answer"),
+    );
 
     expect(service.isReady).toBe(false);
     await expect(service.sendCommand(["GET", "key"])).rejects.toThrow(
@@ -222,11 +231,12 @@ describe("RedisService", () => {
     const { service, client } = connected();
     client.sendCommand.mockReturnValueOnce(new Promise(() => {}));
 
-    const unanswered = expect(
-      service.sendCommand(["GET", "key"]),
-    ).rejects.toThrow("Redis did not answer");
+    const unanswered = outcomeOf(service.sendCommand(["GET", "key"]));
     await vi.advanceTimersByTimeAsync(1000);
-    await unanswered;
+    expect(await unanswered).toHaveProperty(
+      "message",
+      expect.stringContaining("Redis did not answer"),
+    );
     client.emit("ready");
 
     expect(service.isReady).toBe(true);

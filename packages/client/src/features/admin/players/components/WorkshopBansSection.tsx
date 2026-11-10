@@ -2,10 +2,11 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Clock, Globe, MessageSquareOff } from "lucide-react";
-import { Loading } from "@/components/loading-spinner";
+import { LoadingState } from "@/components/query-states";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { IssueWorkshopBanModal } from "./modals/IssueWorkshopBanModal";
 import { LiftWorkshopBanModal } from "./modals/LiftWorkshopBanModal";
+import { useQuery } from "@tanstack/react-query";
 
 type WorkshopBan =
   RouterOutput["admin"]["workshops"]["bans"]["listForUser"][number];
@@ -27,10 +28,12 @@ export function WorkshopBansSection({
   const [issueOpen, setIssueOpen] = useState(false);
   const [liftBanId, setLiftBanId] = useState<number | null>(null);
 
-  const bans = trpc.admin.workshops.bans.listForUser.useQuery({
-    discordId,
-    includeInactive: true,
-  });
+  const bans = useQuery(
+    trpc.admin.workshops.bans.listForUser.queryOptions({
+      discordId,
+      includeInactive: true,
+    }),
+  );
 
   const rows = bans.data ?? [];
   const active = rows.filter(isActive);
@@ -53,7 +56,10 @@ export function WorkshopBansSection({
       </div>
 
       {bans.isLoading ? (
-        <Loading className="py-4" text="Loading suggestion blocks..." />
+        <LoadingState
+          text="Loading suggestion blocks..."
+          className="flex-none px-0 py-4"
+        />
       ) : bans.error ? (
         <p className="py-4 text-sm text-destructive">
           Could not load suggestion blocks: {bans.error.message}
@@ -149,7 +155,6 @@ export function WorkshopBansSection({
         onClose={() => setIssueOpen(false)}
         discordId={discordId}
         playerUsername={playerUsername}
-        onSuccess={() => bans.refetch()}
       />
 
       {liftBanId !== null && (
@@ -157,7 +162,6 @@ export function WorkshopBansSection({
           open
           onClose={() => setLiftBanId(null)}
           banId={liftBanId}
-          onSuccess={() => bans.refetch()}
         />
       )}
     </div>

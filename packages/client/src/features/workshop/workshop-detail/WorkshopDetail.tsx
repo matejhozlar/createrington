@@ -1,7 +1,7 @@
 import { useMemo, useRef } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { ArrowLeft, Search } from "lucide-react";
-import { trpc } from "@/lib/trpc";
+import { trpc, queryClient } from "@/lib/trpc";
 import { useAuth } from "@/contexts/auth";
 import { useToastActions } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loading } from "@/components/loading-spinner";
+import { LoadingState } from "@/components/query-states";
 import { NotFound } from "@/pages/not-found";
 import { loaderName, projectCategories } from "../format";
 import { PAGE_SIZE, WORDMARK_IMAGE } from "../constants";
@@ -34,6 +34,7 @@ import {
 } from "./components/Leaderboard";
 import { ModDetailDialog } from "./components/ModDetailDialog";
 import { PackSearchResults } from "./components/PackSearchResults";
+import { useQuery, useMutation } from "@tanstack/react-query";
 
 type SortMode = "top" | "new" | "votes";
 
@@ -55,7 +56,6 @@ export function WorkshopDetail() {
   const { slug } = useParams<{ slug: string }>();
   const { user } = useAuth();
   const toast = useToastActions();
-  const utils = trpc.useUtils();
 
   const navigate = useNavigate();
   const pushedModRef = useRef(false);
@@ -77,90 +77,119 @@ export function WorkshopDetail() {
     `${query}:${category}:${sortMode}`,
   );
 
-  const workshopQuery = trpc.user.workshops.get.useQuery(
-    { slug: slug! },
-    { enabled: !!slug, retry: false },
+  const workshopQuery = useQuery(
+    trpc.user.workshops.get.queryOptions(
+      { slug: slug! },
+      { enabled: !!slug, retry: false },
+    ),
   );
   const workshopId = workshopQuery.data?.workshop.id;
 
-  const myUpvotesQuery = trpc.user.workshops.myUpvotes.useQuery(
-    { workshopId: workshopId! },
-    { enabled: workshopId !== undefined },
+  const myUpvotesQuery = useQuery(
+    trpc.user.workshops.myUpvotes.queryOptions(
+      { workshopId: workshopId! },
+      { enabled: workshopId !== undefined },
+    ),
   );
-  const rejectedQuery = trpc.user.workshops.listRejected.useQuery(
-    { workshopId: workshopId! },
-    { enabled: workshopId !== undefined && searching },
+  const rejectedQuery = useQuery(
+    trpc.user.workshops.listRejected.queryOptions(
+      { workshopId: workshopId! },
+      { enabled: workshopId !== undefined && searching },
+    ),
   );
-  const packQuery = trpc.user.workshops.getPack.useQuery(
-    { workshopId: workshopId! },
-    { enabled: workshopId !== undefined },
+  const packQuery = useQuery(
+    trpc.user.workshops.getPack.queryOptions(
+      { workshopId: workshopId! },
+      { enabled: workshopId !== undefined },
+    ),
   );
 
-  const upvoteMutation = trpc.user.workshops.upvoteMod.useMutation({
-    onMutate: async ({ workshopModId }) => {
-      if (!slug || workshopId === undefined) return;
-      await Promise.all([
-        utils.user.workshops.get.cancel({ slug }),
-        utils.user.workshops.myUpvotes.cancel({ workshopId }),
-      ]);
-      const previousGet = utils.user.workshops.get.getData({ slug });
-      const previousUpvotes = utils.user.workshops.myUpvotes.getData({
-        workshopId,
-      });
-      const removing = previousUpvotes?.modIds.includes(workshopModId) ?? false;
-      utils.user.workshops.get.setData(
-        { slug },
-        (data) =>
-          data && {
-            ...data,
-            mods: data.mods.map((mod) =>
-              mod.id === workshopModId
-                ? {
-                    ...mod,
-                    upvoteCount: Math.max(
-                      0,
-                      mod.upvoteCount + (removing ? -1 : 1),
-                    ),
-                  }
-                : mod,
-            ),
-          },
-      );
-      utils.user.workshops.myUpvotes.setData(
-        { workshopId },
-        (data) =>
-          data && {
-            ...data,
-            modIds: removing
-              ? data.modIds.filter((id) => id !== workshopModId)
-              : [...data.modIds, workshopModId],
-            votesRemaining: removing
-              ? Math.min(data.maxUpvotes, data.votesRemaining + 1)
-              : Math.max(0, data.votesRemaining - 1),
-          },
-      );
-      return { previousGet, previousUpvotes };
-    },
-    onError: (error, _input, context) => {
-      if (slug && context?.previousGet) {
-        utils.user.workshops.get.setData({ slug }, context.previousGet);
-      }
-      if (workshopId !== undefined && context?.previousUpvotes) {
-        utils.user.workshops.myUpvotes.setData(
-          { workshopId },
-          context.previousUpvotes,
+  const upvoteMutation = useMutation(
+    trpc.user.workshops.upvoteMod.mutationOptions({
+      onMutate: async ({ workshopModId }) => {
+        if (!slug || workshopId === undefined) return;
+        await Promise.all([
+          queryClient.cancelQueries(
+            trpc.user.workshops.get.queryFilter({ slug }),
+          ),
+          queryClient.cancelQueries(
+            trpc.user.workshops.myUpvotes.queryFilter({ workshopId }),
+          ),
+        ]);
+        const previousGet = queryClient.getQueryData(
+          trpc.user.workshops.get.queryKey({ slug }),
         );
-      }
-      toast.error(error.message);
-    },
-    onSettled: () => {
-      if (slug) utils.user.workshops.get.invalidate({ slug });
-      if (workshopId !== undefined) {
-        utils.user.workshops.myUpvotes.invalidate({ workshopId });
-      }
-      utils.user.workshops.list.invalidate();
-    },
-  });
+        const previousUpvotes = queryClient.getQueryData(
+          trpc.user.workshops.myUpvotes.queryKey({
+            workshopId,
+          }),
+        );
+        const removing =
+          previousUpvotes?.modIds.includes(workshopModId) ?? false;
+        queryClient.setQueryData(
+          trpc.user.workshops.get.queryKey({ slug }),
+          (data) =>
+            data && {
+              ...data,
+              mods: data.mods.map((mod) =>
+                mod.id === workshopModId
+                  ? {
+                      ...mod,
+                      upvoteCount: Math.max(
+                        0,
+                        mod.upvoteCount + (removing ? -1 : 1),
+                      ),
+                    }
+                  : mod,
+              ),
+            },
+        );
+        queryClient.setQueryData(
+          trpc.user.workshops.myUpvotes.queryKey({ workshopId }),
+          (data) =>
+            data && {
+              ...data,
+              modIds: removing
+                ? data.modIds.filter((id) => id !== workshopModId)
+                : [...data.modIds, workshopModId],
+              votesRemaining: removing
+                ? Math.min(data.maxUpvotes, data.votesRemaining + 1)
+                : Math.max(0, data.votesRemaining - 1),
+            },
+        );
+        return { previousGet, previousUpvotes };
+      },
+      onError: (error, _input, context) => {
+        if (slug && context?.previousGet) {
+          queryClient.setQueryData(
+            trpc.user.workshops.get.queryKey({ slug }),
+            context.previousGet,
+          );
+        }
+        if (workshopId !== undefined && context?.previousUpvotes) {
+          queryClient.setQueryData(
+            trpc.user.workshops.myUpvotes.queryKey({ workshopId }),
+            context.previousUpvotes,
+          );
+        }
+        toast.error(error.message);
+      },
+      onSettled: () => {
+        if (slug)
+          void queryClient.invalidateQueries(
+            trpc.user.workshops.get.queryFilter({ slug }),
+          );
+        if (workshopId !== undefined) {
+          void queryClient.invalidateQueries(
+            trpc.user.workshops.myUpvotes.queryFilter({ workshopId }),
+          );
+        }
+        void queryClient.invalidateQueries(
+          trpc.user.workshops.list.pathFilter(),
+        );
+      },
+    }),
+  );
 
   const allMods = workshopQuery.data?.mods;
   const upvotedModIds = myUpvotesQuery.data?.modIds;
@@ -262,7 +291,11 @@ export function WorkshopDetail() {
 
   if (workshopQuery.isLoading || !workshopQuery.data) {
     return (
-      <Loading size="large" className="py-32" text="Loading workshop..." />
+      <LoadingState
+        size="large"
+        text="Loading workshop..."
+        className="flex-none px-0 py-32"
+      />
     );
   }
 
@@ -502,7 +535,7 @@ export function WorkshopDetail() {
           if (open) return;
           if (pushedModRef.current) {
             pushedModRef.current = false;
-            navigate(-1);
+            void navigate(-1);
           } else {
             setParam("mod", "");
           }

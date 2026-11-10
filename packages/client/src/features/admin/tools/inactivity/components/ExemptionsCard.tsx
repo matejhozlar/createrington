@@ -18,7 +18,7 @@ import {
 } from "@/components/data-table";
 import { CellText } from "@/components/cell-text";
 import { Plus, Search, ShieldCheck, ShieldOff } from "lucide-react";
-import { keepPreviousData } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useMutation } from "@tanstack/react-query";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import {
@@ -26,17 +26,14 @@ import {
   formatRelativeDate,
   toIso,
 } from "@/features/admin/format";
-import { trpc, type RouterOutput } from "@/lib/trpc";
+import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { RemoveExemptionModal } from "./modals/RemoveExemptionModal";
+import { EmptyState, ErrorState } from "@/components/query-states";
 
 type Exemption =
   RouterOutput["admin"]["inactivity"]["exemptions"]["list"]["exemptions"][number];
 
-export function ExemptionsCard({
-  onWarningsChanged,
-}: {
-  onWarningsChanged: () => void;
-}) {
+export function ExemptionsCard() {
   const [page, setPage] = useState(0);
   const [limit] = useState(20);
   const [searchQuery, setSearchQuery] = useState("");
@@ -46,31 +43,34 @@ export function ExemptionsCard({
   const [reasonInput, setReasonInput] = useState("");
   const [removeTarget, setRemoveTarget] = useState<Exemption | null>(null);
 
-  const listQuery = trpc.admin.inactivity.exemptions.list.useQuery(
-    {
-      search: debouncedSearch.trim() || undefined,
-      page,
-      limit,
-    },
-    { placeholderData: keepPreviousData },
+  const listQuery = useQuery(
+    trpc.admin.inactivity.exemptions.list.queryOptions(
+      {
+        search: debouncedSearch.trim() || undefined,
+        page,
+        limit,
+      },
+      { placeholderData: keepPreviousData },
+    ),
   );
 
-  const { refetch: refetchList } = listQuery;
-
-  const addExemption = trpc.admin.inactivity.exemptions.add.useMutation(
-    useMutationToast({
-      success: (data) =>
-        data.resolvedWarnings > 0
-          ? `${data.minecraftUsername} exempted, ${data.resolvedWarnings} active warning(s) resolved`
-          : `${data.minecraftUsername} exempted`,
-      onSuccess: (data) => {
-        setPlayerInput("");
-        setReasonInput("");
-        setPage(0);
-        refetchList();
-        if (data.resolvedWarnings > 0) onWarningsChanged();
-      },
-    }),
+  const addExemption = useMutation(
+    trpc.admin.inactivity.exemptions.add.mutationOptions(
+      useMutationToast({
+        success: (data) =>
+          data.resolvedWarnings > 0
+            ? `${data.minecraftUsername} exempted, ${data.resolvedWarnings} active warning(s) resolved`
+            : `${data.minecraftUsername} exempted`,
+        onSuccess: () => {
+          setPlayerInput("");
+          setReasonInput("");
+          setPage(0);
+          void queryClient.invalidateQueries(
+            trpc.admin.inactivity.pathFilter(),
+          );
+        },
+      }),
+    ),
   );
 
   const exemptions = listQuery.data?.exemptions ?? [];
@@ -97,11 +97,6 @@ export function ExemptionsCard({
     },
     [addExemption, playerInput, reasonInput],
   );
-
-  const handleRemoveSuccess = useCallback(() => {
-    setRemoveTarget(null);
-    refetchList();
-  }, [refetchList]);
 
   const columns: DataTableColumn<Exemption>[] = [
     {
@@ -237,29 +232,16 @@ export function ExemptionsCard({
         </CardHeader>
 
         {error ? (
-          <CardContent className="flex items-center justify-center py-12">
-            <div className="text-center">
-              <p className="text-destructive">{error}</p>
-              <Button
-                onClick={() => listQuery.refetch()}
-                className="mt-4"
-                variant="outline"
-              >
-                Try Again
-              </Button>
-            </div>
-          </CardContent>
+          <ErrorState message={error} onRetry={() => listQuery.refetch()} />
         ) : !loading && exemptions.length === 0 ? (
-          <CardContent className="flex items-center justify-center py-12">
-            <div className="text-center">
-              <ShieldCheck className="mx-auto size-12 text-muted-foreground" />
-              <p className="mt-2 text-muted-foreground">
-                {debouncedSearch.trim()
-                  ? "No exempt players match your search"
-                  : "No exempt players"}
-              </p>
-            </div>
-          </CardContent>
+          <EmptyState
+            icon={ShieldCheck}
+            message={
+              debouncedSearch.trim()
+                ? "No exempt players match your search"
+                : "No exempt players"
+            }
+          />
         ) : (
           <>
             <CardContent className="px-0">
@@ -301,7 +283,6 @@ export function ExemptionsCard({
       <RemoveExemptionModal
         exemption={removeTarget}
         onClose={() => setRemoveTarget(null)}
-        onSuccess={handleRemoveSuccess}
       />
     </>
   );

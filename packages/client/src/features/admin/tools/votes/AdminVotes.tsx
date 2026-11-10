@@ -1,4 +1,4 @@
-import { Loading } from "@/components/loading-spinner";
+import { LoadingState } from "@/components/query-states";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { formatRelativeDateSafe } from "@/features/admin/format";
@@ -7,6 +7,7 @@ import { RewardCommandsCard } from "./components/RewardCommandsCard";
 import { TopVotersCard } from "./components/TopVotersCard";
 import { VoteStatsCards } from "./components/VoteStatsCards";
 import { VotesListCard } from "./components/VotesListCard";
+import { useQuery } from "@tanstack/react-query";
 
 const PAGE_COPY = {
   title: "Votes",
@@ -15,7 +16,7 @@ const PAGE_COPY = {
 } as const;
 
 export function AdminVotes() {
-  const statsQuery = trpc.admin.votes.stats.useQuery();
+  const statsQuery = useQuery(trpc.admin.votes.stats.queryOptions());
   const lastVotedAt = statsQuery.data?.lastVotedAt ?? null;
 
   return (
@@ -44,7 +45,10 @@ export function AdminVotes() {
         />
 
         {statsQuery.isLoading ? (
-          <Loading size="medium" text="Loading vote totals..." />
+          <LoadingState
+            text="Loading vote totals..."
+            className="flex-none p-0"
+          />
         ) : statsQuery.isError ? (
           <p className="text-sm text-destructive">
             Failed to load the vote totals: {statsQuery.error.message}

@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { Hammer, Pencil, Plus, Trash2 } from "lucide-react";
-import { trpc, type RouterOutput } from "@/lib/trpc";
+import { trpc, type RouterOutput, queryClient } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { EmptyState, ErrorState } from "@/components/query-states";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CellDate, CellText } from "@/components/cell-text";
 import {
@@ -21,6 +22,7 @@ import { WORKSHOP_STATUS_STYLES, loaderName } from "@/features/workshop/format";
 import { CreateWorkshopDialog } from "./components/CreateWorkshopDialog";
 import { ModpacksCard } from "./components/ModpacksCard";
 import { WorkshopSettingsDialog } from "./workshop-admin-detail/components/WorkshopSettingsDialog";
+import { useQuery, useMutation } from "@tanstack/react-query";
 
 type AdminWorkshopRow = RouterOutput["admin"]["workshops"]["list"][number];
 
@@ -43,25 +45,30 @@ type FlagName = (typeof FLAGS)[number]["name"];
 
 export function AdminWorkshop() {
   const navigate = useNavigate();
-  const utils = trpc.useUtils();
 
-  const workshopsQuery = trpc.admin.workshops.list.useQuery();
-  const flagsQuery = trpc.admin.features.list.useQuery();
+  const workshopsQuery = useQuery(trpc.admin.workshops.list.queryOptions());
+  const flagsQuery = useQuery(trpc.admin.features.list.queryOptions());
   const flagEnabled = (name: FlagName) =>
     flagsQuery.data?.find((f) => f.name === name)?.enabled ?? false;
 
-  const setFlagMutation = trpc.admin.features.set.useMutation(
-    useMutationToast({
-      success: (flag) => {
-        const label =
-          FLAGS.find((f) => f.name === flag.name)?.label ?? flag.name;
-        return `${label} ${flag.enabled ? "enabled" : "disabled"}`;
-      },
-      onSuccess: () => {
-        utils.admin.features.list.invalidate();
-        utils.user.workshops.isEnabled.invalidate();
-      },
-    }),
+  const setFlagMutation = useMutation(
+    trpc.admin.features.set.mutationOptions(
+      useMutationToast({
+        success: (flag) => {
+          const label =
+            FLAGS.find((f) => f.name === flag.name)?.label ?? flag.name;
+          return `${label} ${flag.enabled ? "enabled" : "disabled"}`;
+        },
+        onSuccess: () => {
+          void queryClient.invalidateQueries(
+            trpc.admin.features.list.pathFilter(),
+          );
+          void queryClient.invalidateQueries(
+            trpc.user.workshops.isEnabled.pathFilter(),
+          );
+        },
+      }),
+    ),
   );
 
   const [createOpen, setCreateOpen] = useState(false);
@@ -74,15 +81,21 @@ export function AdminWorkshop() {
     null,
   );
 
-  const deleteMutation = trpc.admin.workshops.delete.useMutation(
-    useMutationToast({
-      success: "Workshop deleted",
-      onSuccess: () => {
-        utils.admin.workshops.list.invalidate();
-        utils.admin.modpacks.list.invalidate();
-        setDeleteTarget(null);
-      },
-    }),
+  const deleteMutation = useMutation(
+    trpc.admin.workshops.delete.mutationOptions(
+      useMutationToast({
+        success: "Workshop deleted",
+        onSuccess: () => {
+          void queryClient.invalidateQueries(
+            trpc.admin.workshops.list.pathFilter(),
+          );
+          void queryClient.invalidateQueries(
+            trpc.admin.modpacks.list.pathFilter(),
+          );
+          setDeleteTarget(null);
+        },
+      }),
+    ),
   );
 
   const openCreate = () => {
@@ -200,31 +213,17 @@ export function AdminWorkshop() {
           </CardHeader>
 
           {workshopsQuery.error ? (
-            <CardContent className="flex flex-1 items-center justify-center py-12">
-              <div className="text-center">
-                <p className="text-destructive">
-                  {workshopsQuery.error.message}
-                </p>
-                <Button
-                  onClick={() => workshopsQuery.refetch()}
-                  className="mt-4"
-                  variant="outline"
-                >
-                  Try Again
-                </Button>
-              </div>
-            </CardContent>
+            <ErrorState
+              message={workshopsQuery.error.message}
+              onRetry={() => workshopsQuery.refetch()}
+            />
           ) : !workshopsQuery.isLoading && workshops.length === 0 ? (
-            <CardContent className="flex flex-1 items-center justify-center py-12">
-              <div className="text-center">
-                <Hammer className="mx-auto size-12 text-muted-foreground" />
-                <p className="mt-2 text-muted-foreground">No workshops yet</p>
-                <Button onClick={openCreate} className="mt-4">
-                  <Plus className="mr-2 size-4" />
-                  Create First Workshop
-                </Button>
-              </div>
-            </CardContent>
+            <EmptyState icon={Hammer} message="No workshops yet">
+              <Button onClick={openCreate}>
+                <Plus className="mr-2 size-4" />
+                Create First Workshop
+              </Button>
+            </EmptyState>
           ) : (
             <CardContent className="px-0">
               <DataTable

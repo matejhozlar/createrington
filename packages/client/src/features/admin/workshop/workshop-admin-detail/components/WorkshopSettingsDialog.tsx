@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { trpc } from "@/lib/trpc";
+import { trpc, queryClient } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { workshopFormError } from "../../validation";
+import { useQuery, useMutation } from "@tanstack/react-query";
 
 interface WorkshopSettings {
   id: number;
@@ -39,9 +40,11 @@ export function WorkshopSettingsDialog({
   hasMods: boolean;
   onSlugChange?: (slug: string) => void;
 }) {
-  const modpacksQuery = trpc.admin.modpacks.list.useQuery(undefined, {
-    enabled: open,
-  });
+  const modpacksQuery = useQuery(
+    trpc.admin.modpacks.list.queryOptions(undefined, {
+      enabled: open,
+    }),
+  );
   const modpack = modpacksQuery.data?.find(
     (row) => row.id === workshop.modpackId,
   );
@@ -86,7 +89,6 @@ function SettingsForm({
   onSlugChange?: (slug: string) => void;
 }) {
   const toast = useToastActions();
-  const utils = trpc.useUtils();
 
   const [name, setName] = useState(workshop.name);
   const [slug, setSlug] = useState(workshop.slug);
@@ -105,8 +107,12 @@ function SettingsForm({
     currentPublishedPackId ? String(currentPublishedPackId) : "",
   );
 
-  const updateMutation = trpc.admin.workshops.update.useMutation();
-  const updateModpackMutation = trpc.admin.modpacks.update.useMutation();
+  const updateMutation = useMutation(
+    trpc.admin.workshops.update.mutationOptions(),
+  );
+  const updateModpackMutation = useMutation(
+    trpc.admin.modpacks.update.mutationOptions(),
+  );
   const pending = updateMutation.isPending || updateModpackMutation.isPending;
 
   const handleSave = async () => {
@@ -149,7 +155,7 @@ function SettingsForm({
       });
 
       if (updated.slug !== workshop.slug) {
-        utils.admin.workshops.list.setData(undefined, (rows) =>
+        queryClient.setQueryData(trpc.admin.workshops.list.queryKey(), (rows) =>
           rows?.map((row) =>
             row.id === workshop.id ? { ...row, slug: updated.slug } : row,
           ),
@@ -171,12 +177,16 @@ function SettingsForm({
     }
 
     toast.success("Workshop settings saved");
-    utils.admin.workshops.list.invalidate();
-    utils.admin.modpacks.list.invalidate();
-    utils.admin.workshops.listPackMods.invalidate();
-    utils.admin.workshops.getAttention.invalidate();
-    utils.user.workshops.list.invalidate();
-    utils.user.workshops.get.invalidate();
+    void queryClient.invalidateQueries(trpc.admin.workshops.list.pathFilter());
+    void queryClient.invalidateQueries(trpc.admin.modpacks.list.pathFilter());
+    void queryClient.invalidateQueries(
+      trpc.admin.workshops.listPackMods.pathFilter(),
+    );
+    void queryClient.invalidateQueries(
+      trpc.admin.workshops.getAttention.pathFilter(),
+    );
+    void queryClient.invalidateQueries(trpc.user.workshops.list.pathFilter());
+    void queryClient.invalidateQueries(trpc.user.workshops.get.pathFilter());
     onOpenChange(false);
   };
 

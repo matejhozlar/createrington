@@ -1,13 +1,14 @@
 import { ExternalLink } from "lucide-react";
 import { DISCORD_INVITE_URL } from "@/lib/external-urls";
 import { NavLink } from "react-router";
-import { Loading } from "@/components/loading-spinner";
+import { LoadingState } from "@/components/query-states";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
 
 const OPEN_STEPS = [
   "Join our Discord server using the invite link.",
@@ -72,17 +73,13 @@ const POLICY_LINKS = [
 ];
 
 export function ApplyToJoin() {
-  const statusQuery = trpc.public.waitlists.status.useQuery();
+  const statusQuery = useQuery(trpc.public.waitlists.status.queryOptions());
 
   const mode = statusQuery.data?.mode;
   const isWaitlistMode = mode === "waitlist";
 
   if (statusQuery.isLoading) {
-    return (
-      <div className="flex flex-1 items-center justify-center py-20">
-        <Loading size="medium" text="Loading..." />
-      </div>
-    );
+    return <LoadingState text="Loading..." className="py-20" />;
   }
 
   return (

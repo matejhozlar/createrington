@@ -278,19 +278,19 @@ export class TopRoleHolderService {
     return ctx.getImageData(0, 0, image.width, image.height);
   }
 
-  private async store(key: string, body: Promise<Buffer>): Promise<void> {
+  private async store(key: string, body: Buffer): Promise<void> {
     await objectStorage.put({
       key,
-      body: await body,
+      body,
       contentType: "image/webp",
     });
   }
 
-  private async toHeroFigure(
+  private toHeroFigure(
     image: Image,
     frame: { width: number; height: number },
     offset = { x: 0, y: 0 },
-  ): Promise<Buffer> {
+  ): Buffer {
     const scale = Math.min(1, FIGURE_MAX_HEIGHT / frame.height);
     const canvas = createCanvas(
       Math.round(frame.width * scale),

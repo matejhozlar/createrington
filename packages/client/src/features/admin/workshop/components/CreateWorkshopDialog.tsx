@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { trpc } from "@/lib/trpc";
+import { trpc, queryClient } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import { LOADER_NAMES } from "@/features/workshop/format";
 import { workshopFormError } from "../validation";
+import { useQuery, useMutation } from "@tanstack/react-query";
 
 export function CreateWorkshopDialog({
   open,
@@ -32,7 +33,6 @@ export function CreateWorkshopDialog({
 }) {
   const navigate = useNavigate();
   const toast = useToastActions();
-  const utils = trpc.useUtils();
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -45,24 +45,33 @@ export function CreateWorkshopDialog({
   const [modpackSel, setModpackSel] = useState("new");
   const [modpackName, setModpackName] = useState("");
 
-  const modpacksQuery = trpc.admin.modpacks.list.useQuery(undefined, {
-    enabled: open,
-  });
-  const versionsQuery = trpc.admin.workshops.listGameVersions.useQuery(
-    undefined,
-    { enabled: open },
+  const modpacksQuery = useQuery(
+    trpc.admin.modpacks.list.queryOptions(undefined, {
+      enabled: open,
+    }),
+  );
+  const versionsQuery = useQuery(
+    trpc.admin.workshops.listGameVersions.queryOptions(undefined, {
+      enabled: open,
+    }),
   );
 
-  const createMutation = trpc.admin.workshops.create.useMutation(
-    useMutationToast({
-      success: (workshop) => `Workshop "${workshop.name}" created as draft`,
-      onSuccess: (workshop) => {
-        utils.admin.workshops.list.invalidate();
-        utils.admin.modpacks.list.invalidate();
-        onOpenChange(false);
-        navigate(`/admin/tools/workshop/${workshop.slug}`);
-      },
-    }),
+  const createMutation = useMutation(
+    trpc.admin.workshops.create.mutationOptions(
+      useMutationToast({
+        success: (workshop) => `Workshop "${workshop.name}" created as draft`,
+        onSuccess: (workshop) => {
+          void queryClient.invalidateQueries(
+            trpc.admin.workshops.list.pathFilter(),
+          );
+          void queryClient.invalidateQueries(
+            trpc.admin.modpacks.list.pathFilter(),
+          );
+          onOpenChange(false);
+          void navigate(`/admin/tools/workshop/${workshop.slug}`);
+        },
+      }),
+    ),
   );
 
   const handleCreate = () => {

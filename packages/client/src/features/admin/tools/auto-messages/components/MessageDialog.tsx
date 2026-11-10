@@ -12,11 +12,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToastActions } from "@/hooks/use-toast";
-import { trpc, type RouterOutput } from "@/lib/trpc";
+import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { InsertMenu } from "@/features/admin/components/InsertMenu";
 import { CharCount } from "@/features/admin/components/CharCount";
 import { useMentionResolver } from "@/features/admin/hooks/use-mention-resolver";
 import { DiscordMarkdown } from "@/features/admin/tools/embed-builder/components/DiscordMarkdown";
+import { useMutation } from "@tanstack/react-query";
+import { Textarea } from "@/components/ui/textarea";
 
 type Message =
   RouterOutput["admin"]["autoMessages"]["configs"]["get"]["messages"][number];
@@ -33,7 +35,6 @@ interface FollowupDraft {
 interface MessageDialogProps {
   open: boolean;
   onClose: () => void;
-  onSuccess: () => void;
   configId: number;
   message?: Message | null;
 }
@@ -41,15 +42,28 @@ interface MessageDialogProps {
 export function MessageDialog({
   open,
   onClose,
-  onSuccess,
   configId,
   message,
 }: MessageDialogProps) {
   const toast = useToastActions();
   const isEdit = !!message;
 
-  const createMutation = trpc.admin.autoMessages.messages.create.useMutation();
-  const updateMutation = trpc.admin.autoMessages.messages.update.useMutation();
+  const createMutation = useMutation(
+    trpc.admin.autoMessages.messages.create.mutationOptions({
+      onSuccess: () =>
+        void queryClient.invalidateQueries(
+          trpc.admin.autoMessages.configs.pathFilter(),
+        ),
+    }),
+  );
+  const updateMutation = useMutation(
+    trpc.admin.autoMessages.messages.update.mutationOptions({
+      onSuccess: () =>
+        void queryClient.invalidateQueries(
+          trpc.admin.autoMessages.configs.pathFilter(),
+        ),
+    }),
+  );
 
   const mentionResolver = useMentionResolver();
   const contentRef = useRef<HTMLTextAreaElement>(null);
@@ -133,7 +147,7 @@ export function MessageDialog({
         });
         toast.success("Message added");
       }
-      onSuccess();
+      onClose();
     } catch {
       toast.error(`Failed to ${isEdit ? "update" : "add"} message`);
     }
@@ -168,7 +182,7 @@ export function MessageDialog({
                 }}
               />
             </div>
-            <textarea
+            <Textarea
               ref={contentRef}
               id="msg-content"
               value={content}
@@ -176,7 +190,6 @@ export function MessageDialog({
               placeholder="The message the bot will send..."
               rows={4}
               maxLength={2000}
-              className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex w-full rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
             />
             <div className="flex items-center justify-between">
               <FieldDescription>
@@ -287,13 +300,12 @@ function FollowupRow({
       </div>
 
       <div className="space-y-2">
-        <textarea
+        <Textarea
           value={followup.content}
           onChange={(e) => onChange({ content: e.target.value })}
           placeholder={`Follow-up message content...`}
           rows={2}
           maxLength={2000}
-          className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex w-full rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
         />
         <div className="flex justify-end">
           <CharCount value={followup.content} max={2000} />

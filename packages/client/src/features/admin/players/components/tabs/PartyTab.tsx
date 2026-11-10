@@ -2,11 +2,12 @@ import { Link } from "react-router";
 import { ExternalLink, Users } from "lucide-react";
 import { colorHex } from "@createrington/shared/team-tag";
 import { Badge } from "@/components/ui/badge";
-import { Loading } from "@/components/loading-spinner";
+import { LoadingState } from "@/components/query-states";
 import { TeamTagPlate } from "@/components/team-tag-plate";
 import { trpc } from "@/lib/trpc";
 import { PartyMembersPanel } from "@/features/admin/tools/parties/components/PartyMembersPanel";
 import { PartyRankBadge } from "@/features/admin/tools/parties/components/PartyRankBadge";
+import { useQuery } from "@tanstack/react-query";
 
 const SERVER_ID = 1;
 
@@ -14,13 +15,15 @@ const SECTION_LABEL =
   "text-xs font-semibold uppercase tracking-wider text-muted-foreground";
 
 export function PartyTab({ playerUuid }: { playerUuid: string }) {
-  const statusQuery = trpc.admin.parties.playerStatus.useQuery({
-    serverId: SERVER_ID,
-    playerUuid,
-  });
+  const statusQuery = useQuery(
+    trpc.admin.parties.playerStatus.queryOptions({
+      serverId: SERVER_ID,
+      playerUuid,
+    }),
+  );
 
   if (statusQuery.isLoading) {
-    return <Loading size="small" />;
+    return <LoadingState size="small" className="flex-none p-0" />;
   }
 
   const party = statusQuery.data?.party ?? null;

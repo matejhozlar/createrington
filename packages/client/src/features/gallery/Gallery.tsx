@@ -3,23 +3,26 @@ import { trpc } from "@/lib/trpc";
 import { PageHeader } from "@/components/page-header";
 import { Paginator } from "@/components/paginator";
 import { NotFound } from "@/pages/not-found";
-import { LoadingScreen } from "@/components/loading-spinner";
+import { LoadingScreen } from "@/components/query-states";
 import { GalleryTile } from "./components/GalleryTile";
 import { GalleryLightbox } from "./components/GalleryLightbox";
 import { GalleryGridSkeleton } from "./components/GalleryGridSkeleton";
 import { GalleryEmpty } from "./components/GalleryEmpty";
 import { useGalleryLightbox } from "./hooks/use-gallery-lightbox";
 import { GALLERY_PAGE_SIZE } from "./format";
+import { useQuery } from "@tanstack/react-query";
 
 export function Gallery() {
   const [page, setPage] = useState(0);
 
-  const enabledQuery = trpc.public.gallery.isEnabled.useQuery();
+  const enabledQuery = useQuery(trpc.public.gallery.isEnabled.queryOptions());
   const enabled = enabledQuery.data?.enabled ?? false;
 
-  const listQuery = trpc.public.gallery.list.useQuery(
-    { page, limit: GALLERY_PAGE_SIZE },
-    { enabled },
+  const listQuery = useQuery(
+    trpc.public.gallery.list.queryOptions(
+      { page, limit: GALLERY_PAGE_SIZE },
+      { enabled },
+    ),
   );
 
   const items = listQuery.data?.items ?? [];

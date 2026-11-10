@@ -10,44 +10,53 @@ import {
 } from "@/components/ui/select";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { AlertTriangle } from "lucide-react";
-import { trpc } from "@/lib/trpc";
+import { trpc, queryClient } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { AdminActionModal } from "./AdminActionModal";
+import { useMutation } from "@tanstack/react-query";
+import { Textarea } from "@/components/ui/textarea";
 
 interface IssueBanModalProps {
   open: boolean;
   onClose: () => void;
   playerId: string;
   playerUsername: string;
-  onSuccess: () => void;
 }
 
 type BanType = "temporary" | "permanent";
+
+const invalidatePlayers = () =>
+  void queryClient.invalidateQueries(trpc.admin.players.pathFilter());
 
 export function IssueBanModal({
   open,
   onClose,
   playerId,
   playerUsername,
-  onSuccess,
 }: IssueBanModalProps) {
   const toast = useToastActions();
-  const issueTemporaryBan = trpc.admin.players.bans.issueTemporary.useMutation(
-    useMutationToast({
-      error: (err) => ({
-        title: "Failed to issue ban",
-        description: err.message,
+  const issueTemporaryBan = useMutation(
+    trpc.admin.players.bans.issueTemporary.mutationOptions(
+      useMutationToast({
+        error: (err) => ({
+          title: "Failed to issue ban",
+          description: err.message,
+        }),
+        onSuccess: invalidatePlayers,
       }),
-    }),
+    ),
   );
-  const issuePermanentBan = trpc.admin.players.bans.issuePermanent.useMutation(
-    useMutationToast({
-      error: (err) => ({
-        title: "Failed to issue ban",
-        description: err.message,
+  const issuePermanentBan = useMutation(
+    trpc.admin.players.bans.issuePermanent.mutationOptions(
+      useMutationToast({
+        error: (err) => ({
+          title: "Failed to issue ban",
+          description: err.message,
+        }),
+        onSuccess: invalidatePlayers,
       }),
-    }),
+    ),
   );
 
   const [banType, setBanType] = useState<BanType>("temporary");
@@ -99,7 +108,6 @@ export function IssueBanModal({
     setDurationDays(7);
     setBanType("temporary");
 
-    onSuccess();
     onClose();
   };
 
@@ -184,13 +192,12 @@ export function IssueBanModal({
 
         <Field>
           <FieldLabel htmlFor="ban-reason">Reason</FieldLabel>
-          <textarea
+          <Textarea
             id="ban-reason"
             placeholder="Enter reason for ban..."
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             maxLength={BAN_REASON_MAX_LENGTH}
-            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             rows={4}
             required
           />

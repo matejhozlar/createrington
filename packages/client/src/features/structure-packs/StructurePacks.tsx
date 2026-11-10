@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/auth";
 import { ActivePack } from "./components/ActivePack";
 import { PacksHero, type PacksHeroHandle } from "./components/hero/PacksHero";
 import { PortalZoomOverlay } from "./components/hero/PortalZoomOverlay";
+import { useQuery } from "@tanstack/react-query";
 
 const DEFAULT_BOOST_UNIT_PRICE = 50;
 
@@ -26,16 +27,19 @@ export function StructurePacks() {
   );
   const [overlayActive, setOverlayActive] = useState(false);
 
-  const { data: pool, isLoading: poolLoading } =
-    trpc.public.structurePacks.pool.useQuery();
-
-  const { data: myBoosts } = trpc.user.structurePacks.myBoosts.useQuery(
-    undefined,
-    { enabled: !!user },
+  const { data: pool, isLoading: poolLoading } = useQuery(
+    trpc.public.structurePacks.pool.queryOptions(),
   );
 
-  const { data: rotationInfo } =
-    trpc.public.structurePacks.rotationInfo.useQuery();
+  const { data: myBoosts } = useQuery(
+    trpc.user.structurePacks.myBoosts.queryOptions(undefined, {
+      enabled: !!user,
+    }),
+  );
+
+  const { data: rotationInfo } = useQuery(
+    trpc.public.structurePacks.rotationInfo.queryOptions(),
+  );
 
   const totalWeight = pool?.reduce((sum, entry) => sum + entry.weight, 0) ?? 0;
 

@@ -39,6 +39,7 @@ import {
   projectKindLabel,
   REJECT_REASON_LABELS,
 } from "../../format";
+import { useQuery } from "@tanstack/react-query";
 
 interface ProjectCategory {
   name: string;
@@ -64,13 +65,17 @@ export function ModDetailDialog({
   admin?: boolean;
 }) {
   const open = workshopModId !== null;
-  const userQuery = trpc.user.workshops.getMod.useQuery(
-    { workshopModId: workshopModId ?? 0 },
-    { enabled: open && !admin },
+  const userQuery = useQuery(
+    trpc.user.workshops.getMod.queryOptions(
+      { workshopModId: workshopModId ?? 0 },
+      { enabled: open && !admin },
+    ),
   );
-  const adminQuery = trpc.admin.workshops.getMod.useQuery(
-    { workshopModId: workshopModId ?? 0 },
-    { enabled: open && admin },
+  const adminQuery = useQuery(
+    trpc.admin.workshops.getMod.queryOptions(
+      { workshopModId: workshopModId ?? 0 },
+      { enabled: open && admin },
+    ),
   );
   const detailQuery = admin ? adminQuery : userQuery;
 
@@ -99,8 +104,8 @@ export function ModDetailDialog({
             <Button
               variant="outline"
               onClick={() => {
-                if (admin) adminQuery.refetch();
-                else userQuery.refetch();
+                if (admin) void adminQuery.refetch();
+                else void userQuery.refetch();
               }}
             >
               Try Again

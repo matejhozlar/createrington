@@ -1,16 +1,17 @@
 import { useState } from "react";
 import { useParams, useNavigate, NavLink } from "react-router";
-import { Loading } from "@/components/loading-spinner";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MessageSquare, Lock, RefreshCw, Trash2 } from "lucide-react";
-import { playerAvatarUrl } from "@/lib/player-images";
-import { trpc, type RouterOutput } from "@/lib/trpc";
+import { MinecraftAvatar } from "@/components/minecraft-avatar";
+import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { describeEntryRules } from "./format";
 import { DeletePromptModal } from "./components/DeletePromptModal";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { LoadingState } from "@/components/query-states";
 
 type ResponseRow = RouterOutput["admin"]["prompts"]["get"]["responses"][number];
 
@@ -63,18 +64,22 @@ export function PromptDetail() {
   const navigate = useNavigate();
   const [deleteOpen, setDeleteOpen] = useState(false);
 
-  const detailQuery = trpc.admin.prompts.get.useQuery(
-    { id: promptId },
-    { enabled: Number.isFinite(promptId) },
+  const detailQuery = useQuery(
+    trpc.admin.prompts.get.queryOptions(
+      { id: promptId },
+      { enabled: Number.isFinite(promptId) },
+    ),
   );
 
-  const closeMutation = trpc.admin.prompts.close.useMutation(
-    useMutationToast({
-      success: "Prompt closed",
-      onSuccess: () => {
-        void detailQuery.refetch();
-      },
-    }),
+  const closeMutation = useMutation(
+    trpc.admin.prompts.close.mutationOptions(
+      useMutationToast({
+        success: "Prompt closed",
+        onSuccess: () => {
+          void queryClient.invalidateQueries(trpc.admin.prompts.pathFilter());
+        },
+      }),
+    ),
   );
 
   if (!Number.isFinite(promptId)) {
@@ -82,11 +87,7 @@ export function PromptDetail() {
   }
 
   if (detailQuery.isLoading) {
-    return (
-      <div className="flex flex-1 items-center justify-center py-10">
-        <Loading mode="inline" size="medium" />
-      </div>
-    );
+    return <LoadingState text="Loading..." className="py-10" />;
   }
 
   if (!detailQuery.data) {
@@ -191,18 +192,12 @@ export function PromptDetail() {
                 key={group.discordId}
                 className="flex gap-3 rounded-lg border border-border/60 bg-card p-3"
               >
-                {group.minecraftUuid ? (
-                  <img
-                    src={playerAvatarUrl(group.minecraftUuid)}
-                    alt={group.minecraftUsername ?? "player"}
-                    className="size-10 shrink-0 rounded bg-muted object-cover"
-                    loading="lazy"
-                  />
-                ) : (
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded bg-muted text-xs font-medium text-muted-foreground">
-                    ?
-                  </div>
-                )}
+                <MinecraftAvatar
+                  uuid={group.minecraftUuid ?? undefined}
+                  username={group.minecraftUsername ?? "?"}
+                  size={40}
+                  className="shrink-0 rounded"
+                />
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
                     <div className="flex items-baseline gap-2">
