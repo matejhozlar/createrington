@@ -5,9 +5,9 @@ import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { ChangeTag } from "@/features/admin/components/ChangeTag";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
-import { Filter, Search } from "lucide-react";
+import { Filter } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/search-input";
 import {
   Select,
   SelectContent,
@@ -574,15 +574,12 @@ function Toolbar({
       </CardHeader>
       <CardContent>
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-          <div className="relative min-w-0 flex-1 sm:min-w-48">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(e) => onSearch(e.target.value)}
-              placeholder="Search the changelog..."
-              className="pl-9"
-            />
-          </div>
+          <SearchInput
+            className="min-w-0 flex-1 sm:min-w-48"
+            value={search}
+            onValueChange={onSearch}
+            placeholder="Search the changelog..."
+          />
 
           <Select value={packageFilter} onValueChange={onPackageFilter}>
             <SelectTrigger className="w-full sm:w-[200px]">

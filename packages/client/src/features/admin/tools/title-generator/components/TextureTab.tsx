@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
-import { ImageUp, RotateCcw, Search, Trash2 } from "lucide-react";
+import { ImageUp, RotateCcw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/search-input";
 import { useToastActions } from "@/hooks/use-toast";
 import { assetUrl, thumbnailPath, tileablePath } from "../engine/assets";
 import { loadImage, readFileAsDataUrl } from "../engine/canvas";
@@ -92,26 +92,6 @@ function gradientPreview(layer: TitleLayer) {
     j++;
   }
   return `linear-gradient(${stops.join(", ")})`;
-}
-
-function SearchInput({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <div className="relative">
-      <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-      <Input
-        value={value}
-        placeholder="Search..."
-        onChange={(event) => onChange(event.target.value)}
-        className="pl-9"
-      />
-    </div>
-  );
 }
 
 const matches = (option: AssetOption, query: string) =>
@@ -242,7 +222,11 @@ export function TextureTab({ layer, catalog, onChange }: LayerTabProps) {
         <>
           <Section title="Texture">
             {textureOptions.length > SEARCH_THRESHOLD && (
-              <SearchInput value={query} onChange={setQuery} />
+              <SearchInput
+                value={query}
+                onValueChange={setQuery}
+                placeholder="Search..."
+              />
             )}
             {textures.isLoading ? (
               <p className="text-sm text-muted-foreground">
@@ -277,7 +261,11 @@ export function TextureTab({ layer, catalog, onChange }: LayerTabProps) {
             description="A block texture repeated across the letters. Tune it on the Style tab."
           >
             {tileableOptions.length > SEARCH_THRESHOLD && (
-              <SearchInput value={query} onChange={setQuery} />
+              <SearchInput
+                value={query}
+                onValueChange={setQuery}
+                placeholder="Search..."
+              />
             )}
             <AssetGrid
               tile

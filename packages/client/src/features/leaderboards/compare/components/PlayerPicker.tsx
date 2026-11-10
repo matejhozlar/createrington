@@ -68,7 +68,7 @@ function PlayerResults({
 }) {
   const { user } = useAuth();
   const [query, setQuery] = useState("");
-  const debounced = useDebouncedValue(query.trim(), 200);
+  const debounced = useDebouncedValue(query.trim());
   const searching = debounced.length > 0;
 
   const searchQuery = useQuery(

@@ -1,7 +1,7 @@
-import { Filter, Search } from "lucide-react";
+import { Filter } from "lucide-react";
+import { SearchInput } from "@/components/search-input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Kbd } from "@/components/ui/kbd";
 import { useSearchShortcut } from "@/features/admin/hooks/use-search-shortcut";
 import { MODIFIER_KEY_LABEL } from "@/lib/platform";
@@ -41,20 +41,17 @@ export function FilterBar({
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-2">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            ref={searchRef}
-            type="text"
-            placeholder={placeholder}
-            value={search}
-            onChange={(event) => onSearchChange(event.target.value)}
-            className="pl-9 sm:pr-16"
-          />
+        <SearchInput
+          ref={searchRef}
+          placeholder={placeholder}
+          value={search}
+          onValueChange={onSearchChange}
+          inputClassName="sm:pr-16"
+        >
           <Kbd className="pointer-events-none absolute right-2.5 top-1/2 hidden -translate-y-1/2 sm:block">
             {MODIFIER_KEY_LABEL} K
           </Kbd>
-        </div>
+        </SearchInput>
         {children && <div className="flex flex-wrap gap-2">{children}</div>}
       </CardContent>
     </Card>

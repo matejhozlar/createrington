@@ -9,14 +9,14 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/search-input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Spinner } from "@/components/ui/spinner";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import { MinecraftText } from "@/components/minecraft-text";
 import { PlayerLabel } from "@/components/player-label";
-import { RefreshCw, RotateCcw, Search, X } from "lucide-react";
+import { RefreshCw, RotateCcw, X } from "lucide-react";
 import { trpc, type RouterOutput, queryClient } from "@/lib/trpc";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
@@ -161,7 +161,7 @@ function MaintenanceSettingsForm({
   );
 
   const [query, setQuery] = useState("");
-  const debouncedQuery = useDebouncedValue(query, 300);
+  const debouncedQuery = useDebouncedValue(query);
   const searchQuery = useQuery(
     trpc.public.players.list.queryOptions(
       { minecraftUsername: debouncedQuery, limit: 8, page: 0 },
@@ -330,13 +330,11 @@ function MaintenanceSettingsForm({
             ))}
           </div>
 
-          <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
-            <Input
+          <div>
+            <SearchInput
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onValueChange={setQuery}
               placeholder="Add a player by Minecraft username"
-              className="pl-9"
             />
             {debouncedQuery.trim().length > 0 && (
               <div className="mt-2 max-h-48 overflow-y-auto rounded-md border border-border">

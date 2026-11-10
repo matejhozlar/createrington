@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/card";
 import { Paginator } from "@/components/paginator";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/search-input";
 import {
   Select,
   SelectContent,
@@ -24,15 +24,7 @@ import {
   loadingRowCount,
   type DataTableColumn,
 } from "@/components/data-table";
-import {
-  Heart,
-  Users,
-  Euro,
-  Search,
-  Filter,
-  Repeat,
-  CalendarX,
-} from "lucide-react";
+import { Heart, Users, Euro, Filter, Repeat, CalendarX } from "lucide-react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
@@ -134,7 +126,7 @@ export function OwnerDonations() {
     "all",
   );
   const [typeFilter, setTypeFilter] = useState<DonationType | "all">("all");
-  const debouncedDiscordId = useDebouncedValue(discordIdInput, 1000);
+  const debouncedDiscordId = useDebouncedValue(discordIdInput);
 
   const statsQuery = useQuery(trpc.owner.donations.stats.queryOptions());
   const subStatsQuery = useQuery(
@@ -244,19 +236,15 @@ export function OwnerDonations() {
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-2">
-              <div className="relative flex-1 min-w-48">
-                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  type="text"
-                  placeholder="Search by Discord ID..."
-                  value={discordIdInput}
-                  onChange={(e) => {
-                    setDiscordIdInput(e.target.value);
-                    setPage(0);
-                  }}
-                  className="pl-9"
-                />
-              </div>
+              <SearchInput
+                className="min-w-48 flex-1"
+                placeholder="Search by Discord ID..."
+                value={discordIdInput}
+                onValueChange={(value) => {
+                  setDiscordIdInput(value);
+                  setPage(0);
+                }}
+              />
 
               <Select
                 value={statusFilter}

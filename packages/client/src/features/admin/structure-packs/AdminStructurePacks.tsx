@@ -6,7 +6,6 @@ import { useMutationToast } from "@/hooks/use-mutation-toast";
 import {
   Plus,
   Package,
-  Search,
   Filter,
   Upload,
   Copy,
@@ -35,6 +34,7 @@ import {
 } from "@/components/ui/select";
 import { FormDialog } from "@/components/form-dialog";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { SearchInput } from "@/components/search-input";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
@@ -328,16 +328,12 @@ export function AdminStructurePacks() {
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-2">
-              <div className="relative min-w-48 flex-1">
-                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  type="text"
-                  placeholder="Search by name..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
+              <SearchInput
+                className="min-w-48 flex-1"
+                placeholder="Search by name..."
+                value={searchQuery}
+                onValueChange={setSearchQuery}
+              />
 
               <Select
                 value={statusFilter}
