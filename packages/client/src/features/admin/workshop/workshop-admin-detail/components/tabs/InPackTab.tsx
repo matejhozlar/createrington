@@ -35,7 +35,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { FilterBar } from "@/features/admin/components/FilterBar";
-import { CardEmpty, CardError } from "@/features/admin/components/CardState";
+import { EmptyState, ErrorState } from "@/components/query-states";
 import {
   DISABLED_LABEL,
   formatDate,
@@ -480,16 +480,16 @@ export function InPackTab({
 
         {isCurrent ? (
           error ? (
-            <CardError message={error} onRetry={onRetry} />
+            <ErrorState message={error} onRetry={onRetry} />
           ) : !isLoading && rows.length === 0 ? (
-            <CardEmpty
+            <EmptyState
               icon={Package}
               message={
                 unlinked ? "Nothing imported yet" : "Nothing published yet"
               }
             />
           ) : !isLoading && currentFiltered.length === 0 ? (
-            <CardEmpty icon={Search} message="No mods match your search" />
+            <EmptyState icon={Search} message="No mods match your search" />
           ) : (
             <CardContent className="px-0">
               <DataTable
@@ -514,14 +514,14 @@ export function InPackTab({
             </CardContent>
           )
         ) : releaseModsQuery.error ? (
-          <CardError
+          <ErrorState
             message={releaseModsQuery.error.message}
             onRetry={() => releaseModsQuery.refetch()}
           />
         ) : !releaseModsQuery.isLoading && releaseRows.length === 0 ? (
-          <CardEmpty icon={Package} message="This release recorded no mods" />
+          <EmptyState icon={Package} message="This release recorded no mods" />
         ) : !releaseModsQuery.isLoading && releaseFiltered.length === 0 ? (
-          <CardEmpty icon={Search} message="No mods match your search" />
+          <EmptyState icon={Search} message="No mods match your search" />
         ) : (
           <CardContent className="px-0">
             <DataTable

@@ -4,7 +4,6 @@ import { trpc, type RouterOutput } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { formatMoney } from "@/lib/format";
 import { Paginator } from "@/components/paginator";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CellDate, CellText } from "@/components/cell-text";
 import {
@@ -14,6 +13,7 @@ import {
   type DataTableColumn,
 } from "@/components/data-table";
 import { ArrowLeftRight } from "lucide-react";
+import { EmptyState, ErrorState } from "@/components/query-states";
 
 interface TransactionsTabProps {
   playerId: string;
@@ -118,23 +118,9 @@ export function TransactionsTab({ playerId }: TransactionsTabProps) {
       </div>
 
       {error ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="text-center">
-            <p className="text-destructive">{error.message}</p>
-            <Button
-              onClick={() => refetch()}
-              className="mt-4"
-              variant="outline"
-            >
-              Try Again
-            </Button>
-          </div>
-        </div>
+        <ErrorState message={error.message} onRetry={() => refetch()} />
       ) : !loading && items.length === 0 ? (
-        <div className="py-12 text-center">
-          <ArrowLeftRight className="mx-auto size-12 text-muted-foreground" />
-          <p className="mt-2 text-muted-foreground">No transactions found</p>
-        </div>
+        <EmptyState icon={ArrowLeftRight} message="No transactions found" />
       ) : (
         <>
           <DataTable

@@ -6,9 +6,10 @@ import { formatMoney, formatRelativeDate } from "@/lib/format";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Paginator } from "@/components/paginator";
 import { PlayerLabel } from "@/components/player-label";
+import { EmptyState, ErrorState } from "@/components/query-states";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   GALLERY_STATUS_STYLES,
@@ -61,18 +62,10 @@ export function SubmissionGrid({ status }: SubmissionGridProps) {
   if (listQuery.error) {
     return (
       <Card>
-        <CardContent className="flex items-center justify-center py-12">
-          <div className="text-center">
-            <p className="text-destructive">{listQuery.error.message}</p>
-            <Button
-              onClick={() => listQuery.refetch()}
-              className="mt-4"
-              variant="outline"
-            >
-              Try Again
-            </Button>
-          </div>
-        </CardContent>
+        <ErrorState
+          message={listQuery.error.message}
+          onRetry={() => listQuery.refetch()}
+        />
       </Card>
     );
   }
@@ -83,12 +76,7 @@ export function SubmissionGrid({ status }: SubmissionGridProps) {
   if (!listQuery.isLoading && items.length === 0) {
     return (
       <Card>
-        <CardContent className="flex items-center justify-center py-12">
-          <div className="text-center">
-            <ImageOff className="mx-auto size-12 text-muted-foreground" />
-            <p className="mt-2 text-muted-foreground">{EMPTY_COPY[status]}</p>
-          </div>
-        </CardContent>
+        <EmptyState icon={ImageOff} message={EMPTY_COPY[status]} />
       </Card>
     );
   }

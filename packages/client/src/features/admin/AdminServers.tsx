@@ -1,14 +1,9 @@
 import { useNavigate } from "react-router";
-import { Loading } from "@/components/loading-spinner";
+import { ErrorState, LoadingState } from "@/components/query-states";
+import { StatCard } from "@/components/stat-card";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Server, Users, Clock, Activity } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -38,104 +33,56 @@ export function AdminServers() {
 
       <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
         {loading ? (
-          <div className="flex items-center justify-center py-8">
-            <Loading size="medium" text="Loading servers..." />
-          </div>
+          <LoadingState text="Loading servers..." className="flex-none py-8" />
         ) : error ? (
-          <div className="flex items-center justify-center py-8">
-            <div className="text-center">
-              <p className="text-destructive">{error}</p>
-              <Button
-                onClick={() => listQuery.refetch()}
-                className="mt-4"
-                variant="outline"
-              >
-                Try Again
-              </Button>
-            </div>
-          </div>
+          <ErrorState
+            message={error}
+            onRetry={() => listQuery.refetch()}
+            className="flex-none py-8"
+          />
         ) : (
           <>
-            {/* Stats Cards */}
             {totals && (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Card>
-                  <CardContent className="flex items-start justify-between">
-                    <div>
-                      <CardDescription>Total Servers</CardDescription>
-                      <CardTitle className="text-2xl">
-                        {totals.totalServers}
-                      </CardTitle>
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        {totals.onlineServers} online
-                      </p>
-                    </div>
-                    <div className="flex size-12 items-center justify-center rounded-full bg-sidebar-primary/10">
-                      <Server className="size-6 text-sidebar-primary" />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="flex items-start justify-between">
-                    <div>
-                      <CardDescription>Players Online</CardDescription>
-                      <CardTitle className="text-2xl">
-                        {totals.totalPlayersOnline}
-                      </CardTitle>
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        Across all servers
-                      </p>
-                    </div>
-                    <div className="flex size-12 items-center justify-center rounded-full bg-chart-2/10">
-                      <Users className="size-6 text-chart-2" />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="flex items-start justify-between">
-                    <div>
-                      <CardDescription>Total Playtime</CardDescription>
-                      <CardTitle className="text-2xl">
-                        {totals.totalHours.toLocaleString()}h
-                      </CardTitle>
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        All time
-                      </p>
-                    </div>
-                    <div className="flex size-12 items-center justify-center rounded-full bg-chart-3/10">
-                      <Clock className="size-6 text-chart-3" />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="flex items-start justify-between">
-                    <div>
-                      <CardDescription>Avg Session</CardDescription>
-                      <CardTitle className="text-2xl">
-                        {servers.length > 0
-                          ? Math.round(
-                              servers.reduce(
-                                (sum, s) => sum + s.stats.avgSessionSeconds,
-                                0,
-                              ) /
-                                servers.length /
-                                60,
-                            )
-                          : 0}
-                        m
-                      </CardTitle>
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        Average duration
-                      </p>
-                    </div>
-                    <div className="flex size-12 items-center justify-center rounded-full bg-chart-4/10">
-                      <Activity className="size-6 text-chart-4" />
-                    </div>
-                  </CardContent>
-                </Card>
+                <StatCard
+                  label="Total Servers"
+                  value={totals.totalServers}
+                  icon={Server}
+                  tone="primary"
+                  footer={`${totals.onlineServers} online`}
+                />
+                <StatCard
+                  label="Players Online"
+                  value={totals.totalPlayersOnline}
+                  icon={Users}
+                  tone="chart-2"
+                  footer="Across all servers"
+                />
+                <StatCard
+                  label="Total Playtime"
+                  value={`${totals.totalHours.toLocaleString()}h`}
+                  icon={Clock}
+                  tone="chart-3"
+                  footer="All time"
+                />
+                <StatCard
+                  label="Avg Session"
+                  value={`${
+                    servers.length > 0
+                      ? Math.round(
+                          servers.reduce(
+                            (sum, s) => sum + s.stats.avgSessionSeconds,
+                            0,
+                          ) /
+                            servers.length /
+                            60,
+                        )
+                      : 0
+                  }m`}
+                  icon={Activity}
+                  tone="chart-4"
+                  footer="Average duration"
+                />
               </div>
             )}
 

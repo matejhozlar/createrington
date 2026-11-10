@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Clock } from "lucide-react";
 import { trpc, type RouterOutput } from "@/lib/trpc";
+import { EmptyState } from "@/components/query-states";
 
 interface SessionsTabProps {
   playerId: string;
@@ -139,10 +140,7 @@ export function SessionsTab({ playerId, getServerName }: SessionsTabProps) {
           </Button>
         </div>
       ) : !loading && sessions.length === 0 ? (
-        <div className="py-12 text-center">
-          <Clock className="mx-auto size-12 text-muted-foreground" />
-          <p className="mt-2 text-muted-foreground">No sessions found</p>
-        </div>
+        <EmptyState icon={Clock} message="No sessions found" />
       ) : (
         <>
           <DataTable

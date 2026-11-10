@@ -1,12 +1,15 @@
 import { useState } from "react";
-import { Loading } from "@/components/loading-spinner";
 import { Paginator } from "@/components/paginator";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Ticket } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { useQuery } from "@tanstack/react-query";
+import {
+  EmptyState,
+  ErrorState,
+  LoadingState,
+} from "@/components/query-states";
 
 interface TicketsTabProps {
   playerId: string; // minecraftUuid (route param)
@@ -47,27 +50,11 @@ export function TicketsTab({ playerId }: TicketsTabProps) {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loading size="medium" text="Loading tickets..." />
-        </div>
+        <LoadingState text="Loading tickets..." />
       ) : error ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="text-center">
-            <p className="text-destructive">{error}</p>
-            <Button
-              onClick={() => ticketsQuery.refetch()}
-              className="mt-4"
-              variant="outline"
-            >
-              Try Again
-            </Button>
-          </div>
-        </div>
+        <ErrorState message={error} onRetry={() => ticketsQuery.refetch()} />
       ) : tickets.length === 0 ? (
-        <div className="py-12 text-center">
-          <Ticket className="mx-auto size-12 text-muted-foreground" />
-          <p className="mt-2 text-muted-foreground">No tickets found</p>
-        </div>
+        <EmptyState icon={Ticket} message="No tickets found" />
       ) : (
         <>
           {/* Tickets list */}

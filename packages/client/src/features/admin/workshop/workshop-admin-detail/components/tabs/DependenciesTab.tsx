@@ -19,7 +19,7 @@ import {
   type DataTableColumn,
 } from "@/components/data-table";
 import { FilterBar } from "@/features/admin/components/FilterBar";
-import { CardEmpty, CardError } from "@/features/admin/components/CardState";
+import { EmptyState, ErrorState } from "@/components/query-states";
 import {
   DEPENDENCY_COVERAGE_STYLES,
   dependencyIsCovered,
@@ -197,14 +197,14 @@ export function DependenciesTab({
         </CardHeader>
 
         {depsQuery.error ? (
-          <CardError
+          <ErrorState
             message={depsQuery.error.message}
             onRetry={() => depsQuery.refetch()}
           />
         ) : !depsQuery.isLoading && rows.length === 0 ? (
-          <CardEmpty icon={Network} message="No dependencies pulled in yet" />
+          <EmptyState icon={Network} message="No dependencies pulled in yet" />
         ) : !depsQuery.isLoading && filtered.length === 0 ? (
-          <CardEmpty
+          <EmptyState
             icon={Search}
             message="No dependencies match your search"
           />

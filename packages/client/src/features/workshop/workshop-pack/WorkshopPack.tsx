@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Loading } from "@/components/loading-spinner";
+import { LoadingState } from "@/components/query-states";
 import { NotFound } from "@/pages/not-found";
 import { CurseForgeIcon } from "@/components/icons/curseforge";
 import { isHttpUrl, loaderName, projectCategories } from "../format";
@@ -187,7 +188,7 @@ export function WorkshopPack() {
 
         <main className="mt-10 flex flex-col gap-6">
           {packQuery.isLoading ? (
-            <Loading size="medium" className="py-16" text="Loading mods..." />
+            <LoadingState text="Loading mods..." className="py-16" />
           ) : packQuery.error ? (
             <QueryErrorState
               message={packQuery.error.message}

@@ -5,6 +5,7 @@ import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { EmptyState, ErrorState } from "@/components/query-states";
 import {
   Card,
   CardAction,
@@ -169,25 +170,12 @@ export function ModpacksCard() {
         </CardHeader>
 
         {modpacksQuery.error ? (
-          <CardContent className="flex flex-1 items-center justify-center py-12">
-            <div className="text-center">
-              <p className="text-destructive">{modpacksQuery.error.message}</p>
-              <Button
-                onClick={() => modpacksQuery.refetch()}
-                className="mt-4"
-                variant="outline"
-              >
-                Try Again
-              </Button>
-            </div>
-          </CardContent>
+          <ErrorState
+            message={modpacksQuery.error.message}
+            onRetry={() => modpacksQuery.refetch()}
+          />
         ) : !modpacksQuery.isLoading && modpacks.length === 0 ? (
-          <CardContent className="flex flex-1 items-center justify-center py-12">
-            <div className="text-center">
-              <Package className="mx-auto size-12 text-muted-foreground" />
-              <p className="mt-2 text-muted-foreground">No modpacks yet</p>
-            </div>
-          </CardContent>
+          <EmptyState icon={Package} message="No modpacks yet" />
         ) : (
           <CardContent className="px-0">
             <DataTable

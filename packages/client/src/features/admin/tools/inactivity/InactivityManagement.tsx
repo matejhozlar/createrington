@@ -4,7 +4,6 @@ import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
@@ -67,6 +66,8 @@ import { RemoveWarningModal } from "./components/modals/RemoveWarningModal";
 import { ExemptionsCard } from "./components/ExemptionsCard";
 import { GhostsCard } from "./components/GhostsCard";
 import { UnlinkedMembersCard } from "./components/UnlinkedMembersCard";
+import { EmptyState, ErrorState } from "@/components/query-states";
+import { StatCard } from "@/components/stat-card";
 
 type Warning = RouterOutput["admin"]["inactivity"]["list"]["warnings"][number];
 
@@ -352,31 +353,16 @@ export function InactivityManagement() {
 
         {/* Stats Cards */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {STAT_CARDS.map(
-            ({ key, label, description, icon: Icon, iconBg, iconColor }) => (
-              <Card key={key}>
-                <CardContent className="flex items-start justify-between">
-                  <div>
-                    <CardDescription>
-                      {resolveStatText(label, statWindows)}
-                    </CardDescription>
-                    <CardTitle className="text-2xl">{stats[key]}</CardTitle>
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      {resolveStatText(description, statWindows)}
-                    </p>
-                  </div>
-                  <div
-                    className={cn(
-                      "flex size-12 items-center justify-center rounded-full",
-                      iconBg,
-                    )}
-                  >
-                    <Icon className={cn("size-6", iconColor)} />
-                  </div>
-                </CardContent>
-              </Card>
-            ),
-          )}
+          {STAT_CARDS.map(({ key, label, description, icon, tone }) => (
+            <StatCard
+              key={key}
+              label={resolveStatText(label, statWindows)}
+              value={stats[key]}
+              icon={icon}
+              tone={tone}
+              footer={resolveStatText(description, statWindows)}
+            />
+          ))}
         </div>
 
         {/* Filters */}
@@ -435,25 +421,9 @@ export function InactivityManagement() {
           </CardHeader>
 
           {error ? (
-            <CardContent className="flex flex-1 items-center justify-center py-12">
-              <div className="text-center">
-                <p className="text-destructive">{error}</p>
-                <Button
-                  onClick={() => listQuery.refetch()}
-                  className="mt-4"
-                  variant="outline"
-                >
-                  Try Again
-                </Button>
-              </div>
-            </CardContent>
+            <ErrorState message={error} onRetry={() => listQuery.refetch()} />
           ) : !loading && warnings.length === 0 ? (
-            <CardContent className="flex flex-1 items-center justify-center py-12">
-              <div className="text-center">
-                <Clock className="mx-auto size-12 text-muted-foreground" />
-                <p className="mt-2 text-muted-foreground">No warnings found</p>
-              </div>
-            </CardContent>
+            <EmptyState icon={Clock} message="No warnings found" />
           ) : (
             <>
               <CardContent className="px-0">

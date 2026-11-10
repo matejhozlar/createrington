@@ -44,7 +44,7 @@ import {
 import { Paginator } from "@/components/paginator";
 import { PlayerLabel } from "@/components/player-label";
 import { FilterBar } from "@/features/admin/components/FilterBar";
-import { CardEmpty, CardError } from "@/features/admin/components/CardState";
+import { EmptyState, ErrorState } from "@/components/query-states";
 import {
   MOD_STATUS_STYLES,
   REJECT_REASON_LABELS,
@@ -343,15 +343,15 @@ export function ActivityTab({
         </CardHeader>
 
         {error ? (
-          <CardError message={error} onRetry={() => eventsQuery.refetch()} />
+          <ErrorState message={error} onRetry={() => eventsQuery.refetch()} />
         ) : !loading && total === 0 ? (
           filtering ? (
-            <CardEmpty
+            <EmptyState
               icon={Search}
               message="No activity matches your filters"
             />
           ) : (
-            <CardEmpty
+            <EmptyState
               icon={History}
               message="Nothing has happened in this workshop yet"
             />

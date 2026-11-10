@@ -1,10 +1,5 @@
 import { CalendarDays, Gift, Users, Vote, type LucideIcon } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardTitle,
-} from "@/components/ui/card";
+import { StatCard, type StatTone } from "@/components/stat-card";
 import type { RouterOutput } from "@/lib/trpc";
 
 type Stats = RouterOutput["admin"]["votes"]["stats"];
@@ -16,8 +11,7 @@ const CARDS: {
   key: string;
   label: string;
   icon: LucideIcon;
-  iconBg: string;
-  iconColor: string;
+  tone: StatTone;
   value: (stats: Stats) => number;
   detail: (stats: Stats) => string;
 }[] = [
@@ -25,8 +19,7 @@ const CARDS: {
     key: "total",
     label: "Total votes",
     icon: Vote,
-    iconBg: "bg-sidebar-primary/10",
-    iconColor: "text-sidebar-primary",
+    tone: "primary",
     value: (stats) => stats.total,
     detail: (stats) =>
       stats.firstVotedAt
@@ -37,8 +30,7 @@ const CARDS: {
     key: "recent",
     label: "Last 30 days",
     icon: CalendarDays,
-    iconBg: "bg-chart-2/10",
-    iconColor: "text-chart-2",
+    tone: "chart-2",
     value: (stats) => stats.last30Days,
     detail: (stats) => `${stats.last24Hours} in the last 24 hours`,
   },
@@ -46,8 +38,7 @@ const CARDS: {
     key: "voters",
     label: "Voters",
     icon: Users,
-    iconBg: "bg-chart-3/10",
-    iconColor: "text-chart-3",
+    tone: "chart-3",
     value: (stats) => stats.voters,
     detail: (stats) =>
       stats.unlinked === 0
@@ -58,8 +49,7 @@ const CARDS: {
     key: "pending",
     label: "Pending rewards",
     icon: Gift,
-    iconBg: "bg-chart-4/10",
-    iconColor: "text-chart-4",
+    tone: "chart-4",
     value: (stats) => stats.pending,
     detail: (stats) =>
       stats.pendingPlayers === 0
@@ -71,28 +61,16 @@ const CARDS: {
 export function VoteStatsCards({ stats }: { stats: Stats }) {
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-      {CARDS.map(
-        ({ key, label, icon: Icon, iconBg, iconColor, value, detail }) => (
-          <Card key={key}>
-            <CardContent className="flex items-start justify-between">
-              <div>
-                <CardDescription>{label}</CardDescription>
-                <CardTitle className="text-2xl tabular-nums">
-                  {value(stats).toLocaleString()}
-                </CardTitle>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  {detail(stats)}
-                </p>
-              </div>
-              <div
-                className={`flex size-12 items-center justify-center rounded-full ${iconBg}`}
-              >
-                <Icon className={`size-6 ${iconColor}`} />
-              </div>
-            </CardContent>
-          </Card>
-        ),
-      )}
+      {CARDS.map(({ key, label, icon, tone, value, detail }) => (
+        <StatCard
+          key={key}
+          label={label}
+          value={value(stats).toLocaleString()}
+          icon={icon}
+          tone={tone}
+          footer={detail(stats)}
+        />
+      ))}
     </div>
   );
 }

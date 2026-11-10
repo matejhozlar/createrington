@@ -3,6 +3,7 @@ import { Settings2, Sparkles } from "lucide-react";
 import { trpc, queryClient } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { LabeledSwitch } from "@/components/labeled-switch";
+import { ErrorState } from "@/components/query-states";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -151,20 +152,10 @@ export function AdminGallery() {
           <TabsContent value="pending" className="mt-2">
             {queueQuery.error ? (
               <Card>
-                <CardContent className="flex items-center justify-center py-12">
-                  <div className="text-center">
-                    <p className="text-destructive">
-                      {queueQuery.error.message}
-                    </p>
-                    <Button
-                      onClick={() => queueQuery.refetch()}
-                      className="mt-4"
-                      variant="outline"
-                    >
-                      Try Again
-                    </Button>
-                  </div>
-                </CardContent>
+                <ErrorState
+                  message={queueQuery.error.message}
+                  onRetry={() => queueQuery.refetch()}
+                />
               </Card>
             ) : queueQuery.isLoading ? (
               <ReviewSkeleton />

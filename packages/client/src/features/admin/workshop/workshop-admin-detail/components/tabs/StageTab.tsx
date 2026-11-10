@@ -12,7 +12,7 @@ import {
 import type { ModEnvironment } from "@createrington/shared/db";
 import { PlayerLabel } from "@/components/player-label";
 import { FilterBar } from "@/features/admin/components/FilterBar";
-import { CardEmpty, CardError } from "@/features/admin/components/CardState";
+import { EmptyState, ErrorState } from "@/components/query-states";
 import { REJECT_REASON_LABELS } from "@/features/workshop/format";
 import { modReviewActions, type ModReviewHandlers } from "../../actions";
 import { STAGE_CONFIG, type StageColumn, type StageId } from "../../tabs";
@@ -213,11 +213,11 @@ export function StageTab({
         </CardHeader>
 
         {error ? (
-          <CardError message={error} onRetry={onRetry} />
+          <ErrorState message={error} onRetry={onRetry} />
         ) : !isLoading && mods.length === 0 ? (
-          <CardEmpty icon={config.emptyIcon} message={config.emptyMessage} />
+          <EmptyState icon={config.emptyIcon} message={config.emptyMessage} />
         ) : !isLoading && filtered.length === 0 ? (
-          <CardEmpty icon={Search} message="No mods match your search" />
+          <EmptyState icon={Search} message="No mods match your search" />
         ) : (
           <CardContent className="px-0">
             <DataTable

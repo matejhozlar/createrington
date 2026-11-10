@@ -20,6 +20,7 @@ import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { UpsertConfigDialog } from "./components/UpsertConfigDialog";
 import { MessageDialog } from "./components/MessageDialog";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { EmptyState, LoadingState } from "@/components/query-states";
 
 type Config = RouterOutput["admin"]["autoMessages"]["configs"]["list"][number];
 type ConfigDetail = RouterOutput["admin"]["autoMessages"]["configs"]["get"];
@@ -119,25 +120,16 @@ export function AutoMessages() {
         />
 
         {configsQuery.isLoading ? (
-          <div className="flex flex-1 items-center justify-center py-12">
-            <Loading size="medium" text="Loading configs..." />
-          </div>
+          <LoadingState text="Loading configs..." />
         ) : configs.length === 0 ? (
-          <div className="flex flex-1 items-center justify-center py-12">
-            <div className="text-center">
-              <Timer className="mx-auto size-12 text-muted-foreground" />
-              <p className="mt-2 text-muted-foreground">
-                No auto-message configs yet
-              </p>
-              <Button
-                onClick={() => setConfigDialog({ open: true, config: null })}
-                className="mt-4"
-              >
-                <Plus className="mr-2 size-4" />
-                Create First Config
-              </Button>
-            </div>
-          </div>
+          <EmptyState icon={Timer} message="No auto-message configs yet">
+            <Button
+              onClick={() => setConfigDialog({ open: true, config: null })}
+            >
+              <Plus className="mr-2 size-4" />
+              Create First Config
+            </Button>
+          </EmptyState>
         ) : (
           <div className="flex flex-col gap-3">
             {configs.map((config) => {

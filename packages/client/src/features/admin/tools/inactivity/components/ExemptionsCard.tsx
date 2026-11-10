@@ -28,6 +28,7 @@ import {
 } from "@/features/admin/format";
 import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { RemoveExemptionModal } from "./modals/RemoveExemptionModal";
+import { EmptyState, ErrorState } from "@/components/query-states";
 
 type Exemption =
   RouterOutput["admin"]["inactivity"]["exemptions"]["list"]["exemptions"][number];
@@ -231,29 +232,16 @@ export function ExemptionsCard() {
         </CardHeader>
 
         {error ? (
-          <CardContent className="flex items-center justify-center py-12">
-            <div className="text-center">
-              <p className="text-destructive">{error}</p>
-              <Button
-                onClick={() => listQuery.refetch()}
-                className="mt-4"
-                variant="outline"
-              >
-                Try Again
-              </Button>
-            </div>
-          </CardContent>
+          <ErrorState message={error} onRetry={() => listQuery.refetch()} />
         ) : !loading && exemptions.length === 0 ? (
-          <CardContent className="flex items-center justify-center py-12">
-            <div className="text-center">
-              <ShieldCheck className="mx-auto size-12 text-muted-foreground" />
-              <p className="mt-2 text-muted-foreground">
-                {debouncedSearch.trim()
-                  ? "No exempt players match your search"
-                  : "No exempt players"}
-              </p>
-            </div>
-          </CardContent>
+          <EmptyState
+            icon={ShieldCheck}
+            message={
+              debouncedSearch.trim()
+                ? "No exempt players match your search"
+                : "No exempt players"
+            }
+          />
         ) : (
           <>
             <CardContent className="px-0">

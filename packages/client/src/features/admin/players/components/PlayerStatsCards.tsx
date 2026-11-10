@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
+import { StatCard } from "@/components/stat-card";
 import { Coins, Clock, AlertTriangle, Ticket, Users } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { formatMoney } from "@/lib/format";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useQuery } from "@tanstack/react-query";
@@ -44,123 +44,55 @@ export function PlayerStatsCards({
 
   const totalOffenses = activeStrikes + activeBans;
   const allTimeOffenses = totalStrikes + totalBans;
-  const hasAnyBans = activeBans > 0;
-  const offenseColor = hasAnyBans
-    ? "red"
-    : activeStrikes > 0
-      ? "yellow"
-      : "green";
+  const offenseTone =
+    activeBans > 0 ? "destructive" : activeStrikes > 0 ? "warning" : "success";
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-      {/* Balance */}
-      <div className="rounded-lg border border-border bg-card p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-muted-foreground">Balance</p>
-            <p className="text-2xl font-semibold">{formatMoney(balance)}</p>
-          </div>
-          <div className="flex size-12 items-center justify-center rounded-full bg-chart-3/10">
-            <Coins className="size-6 text-chart-3" />
-          </div>
-        </div>
-        <Button
-          size="sm"
-          variant="outline"
-          className="mt-4 w-full"
-          onClick={onAdjustBalance}
-        >
-          Adjust Balance
-        </Button>
-      </div>
-
-      {/* Playtime */}
-      <div className="rounded-lg border border-border bg-card p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-muted-foreground">Total Playtime</p>
-            <p className="text-2xl font-semibold">{totalPlaytimeHours}h</p>
-          </div>
-          <div className="flex size-12 items-center justify-center rounded-full bg-sidebar-primary/10">
-            <Clock className="size-6 text-sidebar-primary" />
-          </div>
-        </div>
-        <p className="mt-2 text-xs text-muted-foreground">
-          {player.playtime.totalSessions} sessions
-        </p>
-      </div>
-
-      {/* Active Offenses (Strikes + Bans) */}
-      <div className="rounded-lg border border-border bg-card p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-muted-foreground">Active Offenses</p>
-            <p className="text-2xl font-semibold">{totalOffenses}</p>
-          </div>
-          <div
-            className={cn(
-              "flex size-12 items-center justify-center rounded-full",
-              offenseColor === "red" && "bg-destructive/10",
-              offenseColor === "yellow" && "bg-yellow-500/10",
-              offenseColor === "green" && "bg-green-500/10",
-            )}
+      <StatCard
+        label="Balance"
+        value={formatMoney(balance)}
+        icon={Coins}
+        tone="chart-3"
+        action={
+          <Button
+            size="sm"
+            variant="outline"
+            className="w-full"
+            onClick={onAdjustBalance}
           >
-            <AlertTriangle
-              className={cn(
-                "size-6",
-                offenseColor === "red" && "text-destructive",
-                offenseColor === "yellow" && "text-yellow-500",
-                offenseColor === "green" && "text-green-500",
-              )}
-            />
-          </div>
-        </div>
-        <p className="mt-2 text-xs text-muted-foreground">
-          {allTimeOffenses} total
-        </p>
-      </div>
-
-      {/* Tickets */}
-      <div className="rounded-lg border border-border bg-card p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-muted-foreground">Support Tickets</p>
-            <p className="text-2xl font-semibold">{player.tickets.total}</p>
-          </div>
-          <div className="flex size-12 items-center justify-center rounded-full bg-chart-4/10">
-            <Ticket className="size-6 text-chart-4" />
-          </div>
-        </div>
-        <p className="mt-2 text-xs text-muted-foreground">
-          {player.tickets.open} open
-        </p>
-      </div>
-
-      {/* Party */}
-      <div className="rounded-lg border border-border bg-card p-6">
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-sm text-muted-foreground">Party</p>
-            <p className="truncate text-2xl font-semibold">
-              {party?.name ?? "None"}
-            </p>
-          </div>
-          <div
-            className={cn(
-              "flex size-12 shrink-0 items-center justify-center rounded-full",
-              party ? "bg-chart-2/10" : "bg-muted",
-            )}
-          >
-            <Users
-              className={cn(
-                "size-6",
-                party ? "text-chart-2" : "text-muted-foreground",
-              )}
-            />
-          </div>
-        </div>
-        <p className="mt-2 text-xs text-muted-foreground">{partyDetail}</p>
-      </div>
+            Adjust Balance
+          </Button>
+        }
+      />
+      <StatCard
+        label="Total Playtime"
+        value={`${totalPlaytimeHours}h`}
+        icon={Clock}
+        tone="primary"
+        footer={`${player.playtime.totalSessions} sessions`}
+      />
+      <StatCard
+        label="Active Offenses"
+        value={totalOffenses}
+        icon={AlertTriangle}
+        tone={offenseTone}
+        footer={`${allTimeOffenses} total`}
+      />
+      <StatCard
+        label="Support Tickets"
+        value={player.tickets.total}
+        icon={Ticket}
+        tone="chart-4"
+        footer={`${player.tickets.open} open`}
+      />
+      <StatCard
+        label="Party"
+        value={party?.name ?? "None"}
+        icon={Users}
+        tone={party ? "chart-2" : "muted"}
+        footer={partyDetail}
+      />
     </div>
   );
 }

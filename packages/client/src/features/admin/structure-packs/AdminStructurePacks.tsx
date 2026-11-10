@@ -15,6 +15,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/query-states";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CellDate, CellText } from "@/components/cell-text";
@@ -384,22 +385,21 @@ export function AdminStructurePacks() {
           </CardHeader>
 
           {!packsQuery.isLoading && filteredPacks.length === 0 ? (
-            <CardContent className="flex flex-1 items-center justify-center py-12">
-              <div className="text-center">
-                <Package className="mx-auto size-12 text-muted-foreground" />
-                <p className="mt-2 text-muted-foreground">
-                  {packs.length === 0
-                    ? "No structure packs yet"
-                    : "No packs match your filters"}
-                </p>
-                {packs.length === 0 && (
-                  <Button onClick={() => setCreateOpen(true)} className="mt-4">
-                    <Plus className="mr-2 size-4" />
-                    Create First Pack
-                  </Button>
-                )}
-              </div>
-            </CardContent>
+            <EmptyState
+              icon={Package}
+              message={
+                packs.length === 0
+                  ? "No structure packs yet"
+                  : "No packs match your filters"
+              }
+            >
+              {packs.length === 0 && (
+                <Button onClick={() => setCreateOpen(true)}>
+                  <Plus className="mr-2 size-4" />
+                  Create First Pack
+                </Button>
+              )}
+            </EmptyState>
           ) : (
             <CardContent className="px-0">
               <DataTable

@@ -7,7 +7,7 @@ import {
   type LauncherReleaseStatus,
 } from "@createrington/shared/launcher";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
-import { CardError } from "@/features/admin/components/CardState";
+import { ErrorState } from "@/components/query-states";
 import {
   LAUNCHER_PLATFORM_DISPLAY,
   launcherPlatformLabel,
@@ -594,12 +594,12 @@ function ContentGatewayCard() {
         </CardAction>
       </CardHeader>
       {budgetQuery.isError ? (
-        <CardError
+        <ErrorState
           message={`Failed to load the gateway's budget: ${budgetQuery.error.message}`}
           onRetry={() => void budgetQuery.refetch()}
         />
       ) : snapshot?.source === "unavailable" ? (
-        <CardError
+        <ErrorState
           message={BUDGET_UNAVAILABLE_MESSAGE}
           onRetry={() => void budgetQuery.refetch()}
         />

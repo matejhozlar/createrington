@@ -4,7 +4,7 @@ import type { WorkshopModStatus } from "@createrington/shared/db";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loading } from "@/components/loading-spinner";
+import { LoadingState } from "@/components/query-states";
 import {
   Select,
   SelectContent,
@@ -145,11 +145,7 @@ export function SuggestionHistory() {
       </p>
 
       {historyQuery.isLoading ? (
-        <Loading
-          size="medium"
-          className="py-12"
-          text="Loading suggestions..."
-        />
+        <LoadingState text="Loading suggestions..." />
       ) : historyQuery.error ? (
         <div className="mt-4">
           <QueryErrorState
