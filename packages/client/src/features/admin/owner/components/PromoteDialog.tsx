@@ -1,12 +1,5 @@
 import { useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { FormDialog } from "@/components/form-dialog";
 import { Input } from "@/components/ui/input";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
@@ -86,129 +79,112 @@ export function PromoteDialog({
   const results = searchQuery.data?.players ?? [];
 
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <UserPlus className="size-5" />
-            Promote to admin
-          </DialogTitle>
-          <DialogDescription>
-            Writes an entry to the DB admin table and adds the Discord ADMIN
-            role. Minecraft OP is not granted — you do that manually per trust.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="flex flex-col gap-4">
-          <Field>
-            <FieldLabel>Player</FieldLabel>
-            {selected ? (
-              <div className="flex items-center justify-between rounded-md border bg-muted/50 p-2">
-                <div className="flex items-center gap-2">
-                  <MinecraftAvatar
-                    username={selected.minecraftUsername}
-                    uuid={selected.minecraftUuid}
-                    size={24}
-                  />
-                  <div className="flex flex-col">
-                    <span className="text-sm font-medium">
-                      {selected.minecraftUsername}
-                    </span>
-                    <span className="font-mono text-xs text-muted-foreground">
-                      {selected.discordId}
-                    </span>
-                  </div>
-                </div>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setSelected(null)}
-                >
-                  Change
-                </Button>
+    <FormDialog
+      open={open}
+      onClose={handleClose}
+      title={
+        <span className="flex items-center gap-2">
+          <UserPlus className="size-5" />
+          Promote to admin
+        </span>
+      }
+      description="Writes an entry to the DB admin table and adds the Discord ADMIN role. Minecraft OP is not granted — you do that manually per trust."
+      confirmLabel="Promote"
+      onConfirm={() => void handlePromote()}
+      disabled={!selected}
+      loading={promoteMutation.isPending}
+      contentClassName="sm:max-w-lg"
+    >
+      <Field>
+        <FieldLabel>Player</FieldLabel>
+        {selected ? (
+          <div className="flex items-center justify-between rounded-md border bg-muted/50 p-2">
+            <div className="flex items-center gap-2">
+              <MinecraftAvatar
+                username={selected.minecraftUsername}
+                uuid={selected.minecraftUuid}
+                size={24}
+              />
+              <div className="flex flex-col">
+                <span className="text-sm font-medium">
+                  {selected.minecraftUsername}
+                </span>
+                <span className="font-mono text-xs text-muted-foreground">
+                  {selected.discordId}
+                </span>
               </div>
-            ) : (
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
-                <Input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search by Minecraft username or Discord ID"
-                  className="pl-9"
-                  autoFocus
-                />
-                {debouncedQuery.length > 0 && (
-                  <div className="mt-2 max-h-64 overflow-y-auto rounded-md border">
-                    {searchQuery.isLoading ? (
-                      <div className="p-3 text-center text-sm text-muted-foreground">
-                        Searching…
-                      </div>
-                    ) : results.length === 0 ? (
-                      <div className="p-3 text-center text-sm text-muted-foreground">
-                        No matching non-admin players.
-                      </div>
-                    ) : (
-                      results.map((p) => (
-                        <button
-                          key={p.discordId}
-                          type="button"
-                          onClick={() =>
-                            setSelected({
-                              discordId: p.discordId,
-                              minecraftUsername: p.minecraftUsername,
-                              minecraftUuid: p.minecraftUuid,
-                            })
-                          }
-                          className="flex w-full items-center gap-2 border-b px-3 py-2 text-left last:border-b-0 hover:bg-muted/50"
-                        >
-                          <MinecraftAvatar
-                            username={p.minecraftUsername}
-                            uuid={p.minecraftUuid}
-                            size={24}
-                          />
-                          <div className="flex flex-col">
-                            <span className="text-sm font-medium">
-                              {p.minecraftUsername}
-                            </span>
-                            <span className="font-mono text-xs text-muted-foreground">
-                              {p.discordId}
-                            </span>
-                          </div>
-                        </button>
-                      ))
-                    )}
+            </div>
+            <Button size="sm" variant="ghost" onClick={() => setSelected(null)}>
+              Change
+            </Button>
+          </div>
+        ) : (
+          <div className="relative">
+            <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search by Minecraft username or Discord ID"
+              className="pl-9"
+              autoFocus
+            />
+            {debouncedQuery.length > 0 && (
+              <div className="mt-2 max-h-64 overflow-y-auto rounded-md border">
+                {searchQuery.isLoading ? (
+                  <div className="p-3 text-center text-sm text-muted-foreground">
+                    Searching…
                   </div>
+                ) : results.length === 0 ? (
+                  <div className="p-3 text-center text-sm text-muted-foreground">
+                    No matching non-admin players.
+                  </div>
+                ) : (
+                  results.map((p) => (
+                    <button
+                      key={p.discordId}
+                      type="button"
+                      onClick={() =>
+                        setSelected({
+                          discordId: p.discordId,
+                          minecraftUsername: p.minecraftUsername,
+                          minecraftUuid: p.minecraftUuid,
+                        })
+                      }
+                      className="flex w-full items-center gap-2 border-b px-3 py-2 text-left last:border-b-0 hover:bg-muted/50"
+                    >
+                      <MinecraftAvatar
+                        username={p.minecraftUsername}
+                        uuid={p.minecraftUuid}
+                        size={24}
+                      />
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium">
+                          {p.minecraftUsername}
+                        </span>
+                        <span className="font-mono text-xs text-muted-foreground">
+                          {p.discordId}
+                        </span>
+                      </div>
+                    </button>
+                  ))
                 )}
               </div>
             )}
-          </Field>
+          </div>
+        )}
+      </Field>
 
-          <Field>
-            <FieldLabel htmlFor="promote-reason">Reason (optional)</FieldLabel>
-            <Textarea
-              id="promote-reason"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="e.g. Trusted moderator, handles Discord tickets"
-              maxLength={500}
-              rows={3}
-            />
-          </Field>
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={handleClose}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handlePromote}
-            disabled={!selected}
-            loading={promoteMutation.isPending}
-          >
-            Promote
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      <Field>
+        <FieldLabel htmlFor="promote-reason">Reason (optional)</FieldLabel>
+        <Textarea
+          id="promote-reason"
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          placeholder="e.g. Trusted moderator, handles Discord tickets"
+          maxLength={500}
+          rows={3}
+        />
+      </Field>
+    </FormDialog>
   );
 }

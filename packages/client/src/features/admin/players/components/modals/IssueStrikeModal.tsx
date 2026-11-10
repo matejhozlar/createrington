@@ -12,7 +12,7 @@ import {
 import type { StrikeClassification } from "@createrington/shared/db";
 import { useToastActions } from "@/hooks/use-toast";
 import { trpc, queryClient } from "@/lib/trpc";
-import { AdminActionModal } from "./AdminActionModal";
+import { FormDialog } from "@/components/form-dialog";
 import { useMutation } from "@tanstack/react-query";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -61,7 +61,7 @@ export function IssueStrikeModal({
   };
 
   return (
-    <AdminActionModal
+    <FormDialog
       open={open}
       onClose={onClose}
       title="Issue Strike"
@@ -122,6 +122,6 @@ export function IssueStrikeModal({
           rows={4}
         />
       </Field>
-    </AdminActionModal>
+    </FormDialog>
   );
 }

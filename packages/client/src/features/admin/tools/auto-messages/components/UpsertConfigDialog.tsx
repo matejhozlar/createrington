@@ -3,13 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field, FieldLabel, FieldDescription } from "@/components/ui/field";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { FormDialog } from "@/components/form-dialog";
 import {
   Select,
   SelectContent,
@@ -69,9 +63,7 @@ export function UpsertConfigDialog({
 
   const isPending = createMutation.isPending || updateMutation.isPending;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
+  const handleSubmit = async () => {
     if (!name.trim() || !channelId) {
       toast.error("Name and channel are required");
       return;
@@ -109,118 +101,101 @@ export function UpsertConfigDialog({
     .find((c) => c.id === channelId);
 
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>
-            {isEdit ? "Edit Config" : "New Auto-Message Config"}
-          </DialogTitle>
-        </DialogHeader>
+    <FormDialog
+      open={open}
+      onClose={onClose}
+      title={isEdit ? "Edit Config" : "New Auto-Message Config"}
+      onConfirm={() => void handleSubmit()}
+      confirmLabel={isEdit ? "Save" : "Create"}
+      loading={isPending}
+      contentClassName="sm:max-w-lg"
+      asForm
+    >
+      <Field>
+        <FieldLabel htmlFor="config-name">Name</FieldLabel>
+        <Input
+          id="config-name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="e.g. Rails 'n Sails Tips"
+          maxLength={100}
+        />
+      </Field>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <Field>
-            <FieldLabel htmlFor="config-name">Name</FieldLabel>
-            <Input
-              id="config-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Rails 'n Sails Tips"
-              maxLength={100}
-            />
-          </Field>
-
-          <Field>
-            <FieldLabel>Channel</FieldLabel>
-            <Select value={channelId} onValueChange={setChannelId}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select a channel">
-                  {channelLabel
-                    ? `#${channelLabel.name} (${channelLabel.category})`
-                    : "Select a channel"}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {channels.map((group) => (
-                  <div key={group.categoryId}>
-                    <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-                      {group.category}
-                    </div>
-                    {group.channels.map((channel) => (
-                      <SelectItem key={channel.id} value={channel.id}>
-                        #{channel.name}
-                      </SelectItem>
-                    ))}
-                  </div>
+      <Field>
+        <FieldLabel>Channel</FieldLabel>
+        <Select value={channelId} onValueChange={setChannelId}>
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Select a channel">
+              {channelLabel
+                ? `#${channelLabel.name} (${channelLabel.category})`
+                : "Select a channel"}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {channels.map((group) => (
+              <div key={group.categoryId}>
+                <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                  {group.category}
+                </div>
+                {group.channels.map((channel) => (
+                  <SelectItem key={channel.id} value={channel.id}>
+                    #{channel.name}
+                  </SelectItem>
                 ))}
-              </SelectContent>
-            </Select>
-          </Field>
+              </div>
+            ))}
+          </SelectContent>
+        </Select>
+      </Field>
 
-          <Field>
-            <FieldLabel htmlFor="config-interval">
-              Interval (minutes)
-            </FieldLabel>
-            <Input
-              id="config-interval"
-              type="number"
-              min={1}
-              max={10080}
-              value={intervalMinutes}
-              onChange={(e) => setIntervalMinutes(Number(e.target.value))}
-            />
-            <FieldDescription>
-              How often a message is sent (1 min – 7 days)
-            </FieldDescription>
-          </Field>
+      <Field>
+        <FieldLabel htmlFor="config-interval">Interval (minutes)</FieldLabel>
+        <Input
+          id="config-interval"
+          type="number"
+          min={1}
+          max={10080}
+          value={intervalMinutes}
+          onChange={(e) => setIntervalMinutes(Number(e.target.value))}
+        />
+        <FieldDescription>
+          How often a message is sent (1 min – 7 days)
+        </FieldDescription>
+      </Field>
 
-          <Field>
-            <FieldLabel>Rotation Mode</FieldLabel>
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                size="sm"
-                variant={rotationMode === "sequential" ? "default" : "outline"}
-                onClick={() => setRotationMode("sequential")}
-              >
-                Sequential
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant={rotationMode === "random" ? "default" : "outline"}
-                onClick={() => setRotationMode("random")}
-              >
-                Random
-              </Button>
-            </div>
-            <FieldDescription>
-              Sequential cycles in order, random picks any message
-            </FieldDescription>
-          </Field>
+      <Field>
+        <FieldLabel>Rotation Mode</FieldLabel>
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant={rotationMode === "sequential" ? "default" : "outline"}
+            onClick={() => setRotationMode("sequential")}
+          >
+            Sequential
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={rotationMode === "random" ? "default" : "outline"}
+            onClick={() => setRotationMode("random")}
+          >
+            Random
+          </Button>
+        </div>
+        <FieldDescription>
+          Sequential cycles in order, random picks any message
+        </FieldDescription>
+      </Field>
 
-          <label className="flex cursor-pointer items-center gap-2">
-            <Checkbox
-              checked={enabled}
-              onCheckedChange={(checked) => setEnabled(checked === true)}
-            />
-            <span className="text-sm font-medium">Enabled</span>
-          </label>
-
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-              disabled={isPending}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" loading={isPending}>
-              {isEdit ? "Save" : "Create"}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+      <label className="flex cursor-pointer items-center gap-2">
+        <Checkbox
+          checked={enabled}
+          onCheckedChange={(checked) => setEnabled(checked === true)}
+        />
+        <span className="text-sm font-medium">Enabled</span>
+      </label>
+    </FormDialog>
   );
 }

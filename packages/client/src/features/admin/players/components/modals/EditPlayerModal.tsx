@@ -11,7 +11,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useToastActions } from "@/hooks/use-toast";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
-import { AdminActionModal } from "./AdminActionModal";
+import { FormDialog } from "@/components/form-dialog";
 import { useMutation } from "@tanstack/react-query";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -150,7 +150,7 @@ export function EditPlayerModal({
 
   return (
     <>
-      <AdminActionModal
+      <FormDialog
         open={open}
         onClose={handleCancel}
         title="Edit Player"
@@ -249,7 +249,7 @@ export function EditPlayerModal({
             </ul>
           </div>
         )}
-      </AdminActionModal>
+      </FormDialog>
 
       <ConfirmDialog
         open={showConfirmDialog}

@@ -3,7 +3,7 @@ import { ADMIN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { trpc, queryClient } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
-import { AdminActionModal } from "./AdminActionModal";
+import { FormDialog } from "@/components/form-dialog";
 import { useMutation } from "@tanstack/react-query";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -54,7 +54,7 @@ export function UnbanModal({ open, onClose, banId }: UnbanModalProps) {
   };
 
   return (
-    <AdminActionModal
+    <FormDialog
       open={open}
       onClose={handleClose}
       title="Unban Player"
@@ -82,6 +82,6 @@ export function UnbanModal({ open, onClose, banId }: UnbanModalProps) {
           rows={4}
         />
       </Field>
-    </AdminActionModal>
+    </FormDialog>
   );
 }

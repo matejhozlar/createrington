@@ -13,7 +13,7 @@ import { AlertTriangle } from "lucide-react";
 import { trpc, queryClient } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
-import { AdminActionModal } from "./AdminActionModal";
+import { FormDialog } from "@/components/form-dialog";
 import { useMutation } from "@tanstack/react-query";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -113,7 +113,7 @@ export function IssueBanModal({
 
   return (
     <>
-      <AdminActionModal
+      <FormDialog
         open={open}
         onClose={handleClose}
         title="Issue Ban"
@@ -202,7 +202,7 @@ export function IssueBanModal({
             required
           />
         </Field>
-      </AdminActionModal>
+      </FormDialog>
 
       <ConfirmDialog
         open={showPermanentConfirm}

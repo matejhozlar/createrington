@@ -92,7 +92,7 @@ export function StructurePackDetail() {
         <PackHeader
           pack={pack}
           onEdit={() => setEditing(true)}
-          onDelete={() => deleteMutation.mutate({ id: packId })}
+          onDelete={() => deleteMutation.mutateAsync({ id: packId })}
           onToggleEnabled={(enabled) =>
             toggleEnabledMutation.mutate({ id: packId, enabled })
           }

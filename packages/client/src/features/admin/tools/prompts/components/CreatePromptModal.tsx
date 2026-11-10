@@ -1,14 +1,7 @@
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field, FieldLabel, FieldDescription } from "@/components/ui/field";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { FormDialog } from "@/components/form-dialog";
 import {
   Select,
   SelectContent,
@@ -102,8 +95,7 @@ export function CreatePromptModal({ open, onClose }: Props) {
     onClose();
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     const trimmedQuestion = question.trim();
     if (!trimmedQuestion) {
       toast.error("Question is required");
@@ -160,195 +152,171 @@ export function CreatePromptModal({ open, onClose }: Props) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>New Player Prompt</DialogTitle>
-        </DialogHeader>
+    <FormDialog
+      open={open}
+      onClose={handleClose}
+      title="New Player Prompt"
+      onConfirm={() => void handleSubmit()}
+      confirmLabel="Post to Discord"
+      loading={createMutation.isPending}
+      contentClassName="sm:max-w-lg"
+      asForm
+    >
+      <Field>
+        <FieldLabel htmlFor="prompt-question">Question</FieldLabel>
+        <Input
+          id="prompt-question"
+          value={question}
+          onChange={(e) => setQuestion(e.target.value)}
+          placeholder="e.g. What should we focus on next month?"
+          maxLength={256}
+          autoFocus
+          required
+        />
+        <FieldDescription>
+          Shown as the heading of the Discord card.
+        </FieldDescription>
+      </Field>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <Field>
+        <FieldLabel htmlFor="prompt-description">
+          Description <span className="text-muted-foreground">(optional)</span>
+        </FieldLabel>
+        <Textarea
+          id="prompt-description"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Add context or examples to help players answer."
+          rows={3}
+          maxLength={2000}
+        />
+      </Field>
+
+      <Field>
+        <FieldLabel htmlFor="prompt-duration">Responses open for</FieldLabel>
+        <Select value={durationPreset} onValueChange={setDurationPreset}>
+          <SelectTrigger id="prompt-duration">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {DURATION_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </Field>
+
+      <Field>
+        <FieldLabel htmlFor="prompt-entry-mode">Entry mode</FieldLabel>
+        <Select
+          value={entryMode}
+          onValueChange={(v) => setEntryMode(v as PlayerPromptEntryModeValue)}
+        >
+          <SelectTrigger id="prompt-entry-mode">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {ENTRY_MODE_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <FieldDescription>{modeDescription}</FieldDescription>
+      </Field>
+
+      {isMulti && (
+        <div className="grid gap-4 sm:grid-cols-2">
           <Field>
-            <FieldLabel htmlFor="prompt-question">Question</FieldLabel>
+            <FieldLabel htmlFor="prompt-max-entries">Max entries</FieldLabel>
             <Input
-              id="prompt-question"
-              value={question}
-              onChange={(e) => setQuestion(e.target.value)}
-              placeholder="e.g. What should we focus on next month?"
-              maxLength={256}
-              autoFocus
-              required
+              id="prompt-max-entries"
+              type="number"
+              inputMode="numeric"
+              min={MIN_ENTRIES_PER_PLAYER}
+              max={MAX_ENTRIES_PER_PLAYER}
+              value={maxEntries}
+              onChange={(e) => setMaxEntries(e.target.value)}
+              placeholder="Unlimited"
             />
             <FieldDescription>
-              Shown as the heading of the Discord card.
+              Per player. Leave empty for unlimited.
             </FieldDescription>
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="prompt-description">
-              Description{" "}
-              <span className="text-muted-foreground">(optional)</span>
-            </FieldLabel>
-            <Textarea
-              id="prompt-description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Add context or examples to help players answer."
-              rows={3}
-              maxLength={2000}
-            />
-          </Field>
-
-          <Field>
-            <FieldLabel htmlFor="prompt-duration">
-              Responses open for
-            </FieldLabel>
-            <Select value={durationPreset} onValueChange={setDurationPreset}>
-              <SelectTrigger id="prompt-duration">
+            <FieldLabel htmlFor="prompt-cooldown">Cooldown</FieldLabel>
+            <Select value={cooldownPreset} onValueChange={setCooldownPreset}>
+              <SelectTrigger id="prompt-cooldown">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {DURATION_OPTIONS.map((option) => (
+                <SelectItem value={NONE}>No cooldown</SelectItem>
+                {COOLDOWN_OPTIONS.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
                     {option.label}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            <FieldDescription>
+              Wait between a player's entries.
+            </FieldDescription>
           </Field>
+        </div>
+      )}
 
-          <Field>
-            <FieldLabel htmlFor="prompt-entry-mode">Entry mode</FieldLabel>
-            <Select
-              value={entryMode}
-              onValueChange={(v) =>
-                setEntryMode(v as PlayerPromptEntryModeValue)
-              }
-            >
-              <SelectTrigger id="prompt-entry-mode">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {ENTRY_MODE_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <FieldDescription>{modeDescription}</FieldDescription>
-          </Field>
-
-          {isMulti && (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field>
-                <FieldLabel htmlFor="prompt-max-entries">
-                  Max entries
-                </FieldLabel>
-                <Input
-                  id="prompt-max-entries"
-                  type="number"
-                  inputMode="numeric"
-                  min={MIN_ENTRIES_PER_PLAYER}
-                  max={MAX_ENTRIES_PER_PLAYER}
-                  value={maxEntries}
-                  onChange={(e) => setMaxEntries(e.target.value)}
-                  placeholder="Unlimited"
-                />
-                <FieldDescription>
-                  Per player. Leave empty for unlimited.
-                </FieldDescription>
-              </Field>
-
-              <Field>
-                <FieldLabel htmlFor="prompt-cooldown">Cooldown</FieldLabel>
-                <Select
-                  value={cooldownPreset}
-                  onValueChange={setCooldownPreset}
-                >
-                  <SelectTrigger id="prompt-cooldown">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={NONE}>No cooldown</SelectItem>
-                    {COOLDOWN_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FieldDescription>
-                  Wait between a player's entries.
-                </FieldDescription>
-              </Field>
-            </div>
-          )}
-
-          <Field>
-            <FieldLabel htmlFor="prompt-channel">Channel</FieldLabel>
-            <Select value={channelId} onValueChange={setChannelId}>
-              <SelectTrigger id="prompt-channel">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={DEFAULT_CHANNEL}>
-                  Announcements (default)
-                </SelectItem>
-                {(channelsQuery.data ?? [])
-                  .filter((group) => group.channels.length > 0)
-                  .map((group) => (
-                    <SelectGroup key={group.category}>
-                      <SelectLabel>{formatName(group.category)}</SelectLabel>
-                      {group.channels.map((ch) => (
-                        <SelectItem key={ch.id} value={ch.id}>
-                          # {formatName(ch.name)}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
+      <Field>
+        <FieldLabel htmlFor="prompt-channel">Channel</FieldLabel>
+        <Select value={channelId} onValueChange={setChannelId}>
+          <SelectTrigger id="prompt-channel">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={DEFAULT_CHANNEL}>
+              Announcements (default)
+            </SelectItem>
+            {(channelsQuery.data ?? [])
+              .filter((group) => group.channels.length > 0)
+              .map((group) => (
+                <SelectGroup key={group.category}>
+                  <SelectLabel>{formatName(group.category)}</SelectLabel>
+                  {group.channels.map((ch) => (
+                    <SelectItem key={ch.id} value={ch.id}>
+                      # {formatName(ch.name)}
+                    </SelectItem>
                   ))}
-              </SelectContent>
-            </Select>
-          </Field>
+                </SelectGroup>
+              ))}
+          </SelectContent>
+        </Select>
+      </Field>
 
-          <Field>
-            <FieldLabel htmlFor="prompt-role">
-              Role to ping{" "}
-              <span className="text-muted-foreground">(optional)</span>
-            </FieldLabel>
-            <Select value={rolePingId} onValueChange={setRolePingId}>
-              <SelectTrigger id="prompt-role">
-                <SelectValue placeholder="No ping" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={NONE}>No ping</SelectItem>
-                {(rolesQuery.data ?? []).map((role) => (
-                  <SelectItem key={role.id} value={role.id}>
-                    @ {formatName(role.name)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <FieldDescription>
-              The mention is posted above the card inside Discord spoiler tags,
-              so the channel stays visually clean while the ping still fires.
-            </FieldDescription>
-          </Field>
-
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleClose}
-              disabled={createMutation.isPending}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" loading={createMutation.isPending}>
-              Post to Discord
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+      <Field>
+        <FieldLabel htmlFor="prompt-role">
+          Role to ping <span className="text-muted-foreground">(optional)</span>
+        </FieldLabel>
+        <Select value={rolePingId} onValueChange={setRolePingId}>
+          <SelectTrigger id="prompt-role">
+            <SelectValue placeholder="No ping" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={NONE}>No ping</SelectItem>
+            {(rolesQuery.data ?? []).map((role) => (
+              <SelectItem key={role.id} value={role.id}>
+                @ {formatName(role.name)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <FieldDescription>
+          The mention is posted above the card inside Discord spoiler tags, so
+          the channel stays visually clean while the ping still fires.
+        </FieldDescription>
+      </Field>
+    </FormDialog>
   );
 }
