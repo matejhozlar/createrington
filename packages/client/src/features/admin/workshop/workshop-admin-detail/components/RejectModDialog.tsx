@@ -1,13 +1,5 @@
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { FormDialog } from "@/components/form-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -41,64 +33,54 @@ export function RejectModDialog({
   const [note, setNote] = useState("");
 
   return (
-    <Dialog open={target !== null} onOpenChange={onOpenChange}>
-      <DialogContent onOpenAutoFocus={(event) => event.preventDefault()}>
-        <DialogHeader>
-          <DialogTitle>Reject {target?.name}?</DialogTitle>
-          <DialogDescription>
-            Rejecting rules this mod out of this workshop. The entry stays
-            visible with the reason, and you can re-review it later.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label>Reason</Label>
-            <Select
-              value={reason}
-              onValueChange={(value) => setReason(value as RejectReason)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Pick a reason" />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(REJECT_REASON_LABELS).map(([value, label]) => (
-                  <SelectItem key={value} value={value}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="reject-note">Note (Optional)</Label>
-            <Input
-              id="reject-note"
-              placeholder="Extra context, shown to players."
-              maxLength={500}
-              value={note}
-              onChange={(event) => setNote(event.target.value)}
-            />
-          </div>
-        </div>
-        <DialogFooter>
-          <Button
-            variant="destructive"
-            disabled={!reason}
-            loading={pending}
-            onClick={() =>
-              target &&
-              reason !== "" &&
-              onReject({
-                workshopModId: target.workshopModId,
-                reason,
-                note: note.trim() || undefined,
-              })
-            }
-          >
-            Reject
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <FormDialog
+      open={target !== null}
+      onClose={() => onOpenChange(false)}
+      title={`Reject ${target?.name ?? ""}?`}
+      description="Rejecting rules this mod out of this workshop. The entry stays visible with the reason, and you can re-review it later."
+      onConfirm={() =>
+        target &&
+        reason !== "" &&
+        onReject({
+          workshopModId: target.workshopModId,
+          reason,
+          note: note.trim() || undefined,
+        })
+      }
+      confirmLabel="Reject"
+      disabled={!reason}
+      loading={pending}
+      destructive
+      contentClassName="sm:max-w-lg"
+    >
+      <div className="space-y-2">
+        <Label>Reason</Label>
+        <Select
+          value={reason}
+          onValueChange={(value) => setReason(value as RejectReason)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Pick a reason" />
+          </SelectTrigger>
+          <SelectContent>
+            {Object.entries(REJECT_REASON_LABELS).map(([value, label]) => (
+              <SelectItem key={value} value={value}>
+                {label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="reject-note">Note (Optional)</Label>
+        <Input
+          id="reject-note"
+          placeholder="Extra context, shown to players."
+          maxLength={500}
+          value={note}
+          onChange={(event) => setNote(event.target.value)}
+        />
+      </div>
+    </FormDialog>
   );
 }

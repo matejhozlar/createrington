@@ -10,14 +10,14 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
-interface AdminActionModalProps {
+interface FormDialogProps {
   open: boolean;
   onClose: () => void;
   title: ReactNode;
   description?: ReactNode;
   children: ReactNode;
   onConfirm: () => void;
-  confirmLabel: string;
+  confirmLabel: ReactNode;
   cancelLabel?: string;
   loading?: boolean;
   disabled?: boolean;
@@ -26,7 +26,7 @@ interface AdminActionModalProps {
   asForm?: boolean;
 }
 
-export function AdminActionModal({
+export function FormDialog({
   open,
   onClose,
   title,
@@ -40,14 +40,13 @@ export function AdminActionModal({
   destructive = false,
   contentClassName,
   asForm = false,
-}: AdminActionModalProps) {
+}: FormDialogProps) {
   const fields = <div className="space-y-4">{children}</div>;
   const footer = (
     <DialogFooter>
       <Button
         type="button"
         variant="outline"
-        className="flex-1"
         onClick={onClose}
         disabled={loading}
       >
@@ -56,7 +55,6 @@ export function AdminActionModal({
       <Button
         type={asForm ? "submit" : "button"}
         variant={destructive ? "destructive" : "default"}
-        className="flex-1"
         onClick={asForm ? undefined : onConfirm}
         disabled={disabled}
         loading={loading}

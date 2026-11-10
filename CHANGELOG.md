@@ -1,3 +1,13 @@
+## v1.80.0 (2026-11-10)
+
+### @createrington/server (1.79.0 → 1.80.0)
+- [add] Post every `/issue` result to the admin notifications channel as well as the ephemeral reply, mentioning the admin who ran it and the channel it ran in, so the outcome stays visible after the ephemeral reply expires; a failed reply edit or channel post is logged and no longer stops the other from going out
+- [chore] Add unit tests for `/issue`, covering a failed reply edit and the still-working notice
+
+### @createrington/client (0.2.97 → 0.2.98)
+- [fix] Fix the workshop Add Mods dialog running edge to edge on mobile: its fixed `max-w-2xl` width overrode the dialog's side margin on small screens
+- [refactor] Share one `FormDialog` component (title, description, cancel/confirm footer, destructive styling, optional submit-on-Enter form) across the admin player, owner, structure pack, workshop, waitlist, FAQ, prompt and auto-message dialogs in place of per-dialog copies of the same markup
+
 ## v1.79.0 (2026-11-10)
 
 ### @createrington/server (1.78.1 → 1.79.0)

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { trpc, queryClient } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
-import { AdminActionModal } from "./AdminActionModal";
+import { FormDialog } from "@/components/form-dialog";
 import { useMutation } from "@tanstack/react-query";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -52,7 +52,7 @@ export function LiftWorkshopBanModal({
   };
 
   return (
-    <AdminActionModal
+    <FormDialog
       open={open}
       onClose={handleClose}
       title="Lift suggestion block"
@@ -82,6 +82,6 @@ export function LiftWorkshopBanModal({
           maxLength={500}
         />
       </Field>
-    </AdminActionModal>
+    </FormDialog>
   );
 }

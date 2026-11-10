@@ -1,13 +1,5 @@
 import { useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+import { FormDialog } from "@/components/form-dialog";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Check, X } from "lucide-react";
@@ -88,78 +80,60 @@ export function DemoteDialog({ admin, onClose, onSuccess }: DemoteDialogProps) {
   };
 
   return (
-    <Dialog
+    <FormDialog
       open={!!admin}
-      onOpenChange={(isOpen) => {
-        if (!isOpen) handleClose();
-      }}
+      onClose={handleClose}
+      title={<>Demote {displayName}</>}
+      description="This is a scorched-earth revoke — all admin state across every system is removed."
+      confirmLabel="Demote"
+      onConfirm={() => void handleDemote()}
+      loading={demoteMutation.isPending}
+      destructive
+      contentClassName="sm:max-w-lg"
     >
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Demote {displayName}</DialogTitle>
-          <DialogDescription>
-            This is a scorched-earth revoke — all admin state across every
-            system is removed.
-          </DialogDescription>
-        </DialogHeader>
+      <div className="rounded-lg border bg-muted/50 p-4">
+        {previewQuery.isLoading ? (
+          <div className="flex flex-col gap-2">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="flex h-5 items-center gap-2">
+                <Skeleton className="size-4 rounded" />
+                <Skeleton className="h-3.5 w-44" />
+              </div>
+            ))}
+          </div>
+        ) : preview ? (
+          <div className="flex flex-col gap-2">
+            {actionRow("Remove DB admin entry", preview.inDb)}
+            {actionRow("Remove Discord ADMIN role", preview.hasDiscordRole)}
+            {actionRow(
+              "Run /deop on Minecraft servers",
+              preview.serverCount > 0 && !!preview.minecraftUsername,
+              `${preview.serverCount} server${preview.serverCount !== 1 ? "s" : ""}`,
+            )}
+            {actionRow(
+              "Revoke active web sessions",
+              preview.activeSessions > 0,
+              `${preview.activeSessions} session${preview.activeSessions !== 1 ? "s" : ""}`,
+            )}
+          </div>
+        ) : (
+          <div className="text-sm text-destructive">
+            Failed to load preview.
+          </div>
+        )}
+      </div>
 
-        <div className="rounded-lg border bg-muted/50 p-4">
-          {previewQuery.isLoading ? (
-            <div className="flex flex-col gap-2">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="flex h-5 items-center gap-2">
-                  <Skeleton className="size-4 rounded" />
-                  <Skeleton className="h-3.5 w-44" />
-                </div>
-              ))}
-            </div>
-          ) : preview ? (
-            <div className="flex flex-col gap-2">
-              {actionRow("Remove DB admin entry", preview.inDb)}
-              {actionRow("Remove Discord ADMIN role", preview.hasDiscordRole)}
-              {actionRow(
-                "Run /deop on Minecraft servers",
-                preview.serverCount > 0 && !!preview.minecraftUsername,
-                `${preview.serverCount} server${preview.serverCount !== 1 ? "s" : ""}`,
-              )}
-              {actionRow(
-                "Revoke active web sessions",
-                preview.activeSessions > 0,
-                `${preview.activeSessions} session${preview.activeSessions !== 1 ? "s" : ""}`,
-              )}
-            </div>
-          ) : (
-            <div className="text-sm text-destructive">
-              Failed to load preview.
-            </div>
-          )}
-        </div>
-
-        <Field>
-          <FieldLabel htmlFor="demote-reason">Reason (optional)</FieldLabel>
-          <Textarea
-            id="demote-reason"
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            placeholder="e.g. Stepped down, inactive, trust concerns"
-            maxLength={500}
-            rows={3}
-          />
-        </Field>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={handleClose}>
-            Cancel
-          </Button>
-          <Button
-            variant="destructive"
-            onClick={() => void handleDemote()}
-            loading={demoteMutation.isPending}
-          >
-            Demote
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      <Field>
+        <FieldLabel htmlFor="demote-reason">Reason (optional)</FieldLabel>
+        <Textarea
+          id="demote-reason"
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          placeholder="e.g. Stepped down, inactive, trust concerns"
+          maxLength={500}
+          rows={3}
+        />
+      </Field>
+    </FormDialog>
   );
 }

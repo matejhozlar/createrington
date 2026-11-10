@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/select";
 import { trpc, queryClient } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
-import { AdminActionModal } from "./AdminActionModal";
+import { FormDialog } from "@/components/form-dialog";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -83,7 +83,7 @@ export function IssueWorkshopBanModal({
   };
 
   return (
-    <AdminActionModal
+    <FormDialog
       open={open}
       onClose={handleClose}
       title="Block workshop suggestions"
@@ -170,6 +170,6 @@ export function IssueWorkshopBanModal({
           maxLength={500}
         />
       </Field>
-    </AdminActionModal>
+    </FormDialog>
   );
 }

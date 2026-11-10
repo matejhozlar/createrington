@@ -1,16 +1,8 @@
 import { useState } from "react";
 import { ADMIN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field, FieldLabel } from "@/components/ui/field";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { FormDialog } from "@/components/form-dialog";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useToastActions } from "@/hooks/use-toast";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
@@ -64,95 +56,68 @@ export function DeleteWaitlistModal({
 
   return (
     <>
-      <Dialog
+      <FormDialog
         open={entry !== null}
-        onOpenChange={(open) => {
-          if (!open) handleClose();
-        }}
+        onClose={handleClose}
+        title="Delete Waitlist Entry"
+        description={
+          <>
+            This will permanently delete the waitlist entry for{" "}
+            <span className="font-semibold">{entry?.discordUsername}</span>.
+            This action cannot be undone.
+          </>
+        }
+        confirmLabel="Delete Entry"
+        onConfirm={handleDeleteClick}
+        disabled={!reason.trim() || deleteEntry.isPending}
+        destructive
+        contentClassName="sm:max-w-lg"
       >
-        <DialogContent className="border-destructive">
-          <DialogHeader>
-            <DialogTitle className="text-destructive">
-              Delete Waitlist Entry
-            </DialogTitle>
-            <DialogDescription>
-              This will permanently delete the waitlist entry for{" "}
-              <span className="font-semibold">{entry?.discordUsername}</span>.
-              This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            <div className="rounded-lg border border-border bg-muted/50 p-4">
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Entry ID:</span>
-                  <span className="font-medium">#{entry?.id}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Discord:</span>
-                  <span className="font-medium">{entry?.discordUsername}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Discord ID:</span>
-                  <span className="font-medium">{entry?.discordId}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Status:</span>
-                  <span className="font-medium">{entry?.status}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Signed up:</span>
-                  <span className="font-medium">
-                    {entry
-                      ? new Date(entry.createdAt).toLocaleDateString()
-                      : ""}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Queued:</span>
-                  <span className="font-medium">
-                    {entry ? new Date(entry.queuedAt).toLocaleDateString() : ""}
-                  </span>
-                </div>
-              </div>
+        <div className="rounded-lg border border-border bg-muted/50 p-4">
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Entry ID:</span>
+              <span className="font-medium">#{entry?.id}</span>
             </div>
-
-            <Field>
-              <FieldLabel htmlFor="delete-reason">
-                Reason for Deletion
-              </FieldLabel>
-              <Input
-                id="delete-reason"
-                type="text"
-                placeholder="Enter reason for deletion"
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                maxLength={ADMIN_REASON_MAX_LENGTH}
-              />
-            </Field>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Discord:</span>
+              <span className="font-medium">{entry?.discordUsername}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Discord ID:</span>
+              <span className="font-medium">{entry?.discordId}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Status:</span>
+              <span className="font-medium">{entry?.status}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Signed up:</span>
+              <span className="font-medium">
+                {entry ? new Date(entry.createdAt).toLocaleDateString() : ""}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Queued:</span>
+              <span className="font-medium">
+                {entry ? new Date(entry.queuedAt).toLocaleDateString() : ""}
+              </span>
+            </div>
           </div>
+        </div>
 
-          <DialogFooter>
-            <Button
-              variant="outline"
-              className="flex-1 cursor-pointer"
-              onClick={handleClose}
-              disabled={deleteEntry.isPending}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              className="flex-1 cursor-pointer"
-              onClick={handleDeleteClick}
-              disabled={!reason.trim() || deleteEntry.isPending}
-            >
-              Delete Entry
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        <Field>
+          <FieldLabel htmlFor="delete-reason">Reason for Deletion</FieldLabel>
+          <Input
+            id="delete-reason"
+            type="text"
+            placeholder="Enter reason for deletion"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            maxLength={ADMIN_REASON_MAX_LENGTH}
+          />
+        </Field>
+      </FormDialog>
 
       <ConfirmDialog
         open={showConfirmDialog}

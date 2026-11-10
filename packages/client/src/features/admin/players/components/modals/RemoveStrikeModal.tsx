@@ -3,7 +3,7 @@ import { ADMIN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { useToastActions } from "@/hooks/use-toast";
 import { trpc, queryClient } from "@/lib/trpc";
-import { AdminActionModal } from "./AdminActionModal";
+import { FormDialog } from "@/components/form-dialog";
 import { useMutation } from "@tanstack/react-query";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -49,7 +49,7 @@ export function RemoveStrikeModal({
   };
 
   return (
-    <AdminActionModal
+    <FormDialog
       open={open}
       onClose={onClose}
       title="Remove Strike"
@@ -69,6 +69,6 @@ export function RemoveStrikeModal({
           rows={4}
         />
       </Field>
-    </AdminActionModal>
+    </FormDialog>
   );
 }

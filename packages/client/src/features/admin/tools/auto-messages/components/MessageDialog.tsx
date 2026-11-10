@@ -4,13 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Field, FieldLabel, FieldDescription } from "@/components/ui/field";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { FormDialog } from "@/components/form-dialog";
 import { useToastActions } from "@/hooks/use-toast";
 import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { InsertMenu } from "@/features/admin/components/InsertMenu";
@@ -97,9 +91,7 @@ export function MessageDialog({
     setFollowups((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
+  const handleSubmit = async () => {
     if (!content.trim()) {
       toast.error("Message content is required");
       return;
@@ -154,124 +146,106 @@ export function MessageDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{isEdit ? "Edit Message" : "Add Message"}</DialogTitle>
-        </DialogHeader>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <Field>
-            <div className="flex items-center gap-1">
-              <FieldLabel htmlFor="msg-content">Message</FieldLabel>
-              <InsertMenu
-                onInsert={(mention) => {
-                  const el = contentRef.current;
-                  const pos = el?.selectionStart ?? content.length;
-                  const next =
-                    content.slice(0, pos) + mention + content.slice(pos);
-                  setContent(next);
-                  requestAnimationFrame(() => {
-                    if (el) {
-                      const newPos = pos + mention.length;
-                      el.selectionStart = newPos;
-                      el.selectionEnd = newPos;
-                      el.focus();
-                    }
-                  });
-                }}
-              />
-            </div>
-            <Textarea
-              ref={contentRef}
-              id="msg-content"
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="The message the bot will send..."
-              rows={4}
-              maxLength={2000}
-            />
-            <div className="flex items-center justify-between">
-              <FieldDescription>
-                Supports Discord markdown, mentions, and variables:{" "}
-                <code className="text-[11px]">{"{memberCount}"}</code>
-              </FieldDescription>
-              <CharCount value={content} max={2000} />
-            </div>
-            {content.trim() && (
-              <div
-                className="rounded-md p-3 text-sm"
-                style={{ backgroundColor: "#313338", color: "#DBDEE1" }}
-              >
-                <DiscordMarkdown
-                  text={content}
-                  mentionResolver={mentionResolver}
-                />
-              </div>
-            )}
-          </Field>
-
-          <label className="flex cursor-pointer items-center gap-2">
-            <Checkbox
-              checked={enabled}
-              onCheckedChange={(checked) => setEnabled(checked === true)}
-            />
-            <span className="text-sm font-medium">Enabled</span>
-          </label>
-
-          <div className="border-border border-t pt-4">
-            <div className="mb-3 flex items-center justify-between">
-              <div>
-                <h4 className="text-sm font-semibold">Follow-up Messages</h4>
-                <p className="text-muted-foreground text-xs">
-                  Sent in sequence after the primary message. Max{" "}
-                  {MAX_FOLLOWUPS}.
-                </p>
-              </div>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={addFollowup}
-                disabled={followups.length >= MAX_FOLLOWUPS || isPending}
-              >
-                <Plus className="mr-1 size-3" />
-                Add follow-up
-              </Button>
-            </div>
-
-            {followups.length > 0 && (
-              <div className="space-y-3">
-                {followups.map((followup, index) => (
-                  <FollowupRow
-                    key={index}
-                    index={index}
-                    followup={followup}
-                    mentionResolver={mentionResolver}
-                    onChange={(patch) => updateFollowup(index, patch)}
-                    onRemove={() => removeFollowup(index)}
-                  />
-                ))}
-              </div>
-            )}
+    <FormDialog
+      open={open}
+      onClose={onClose}
+      title={isEdit ? "Edit Message" : "Add Message"}
+      onConfirm={() => void handleSubmit()}
+      confirmLabel={isEdit ? "Save" : "Add"}
+      loading={isPending}
+      contentClassName="max-h-[90vh] overflow-y-auto sm:max-w-2xl"
+      asForm
+    >
+      <Field>
+        <div className="flex items-center gap-1">
+          <FieldLabel htmlFor="msg-content">Message</FieldLabel>
+          <InsertMenu
+            onInsert={(mention) => {
+              const el = contentRef.current;
+              const pos = el?.selectionStart ?? content.length;
+              const next = content.slice(0, pos) + mention + content.slice(pos);
+              setContent(next);
+              requestAnimationFrame(() => {
+                if (el) {
+                  const newPos = pos + mention.length;
+                  el.selectionStart = newPos;
+                  el.selectionEnd = newPos;
+                  el.focus();
+                }
+              });
+            }}
+          />
+        </div>
+        <Textarea
+          ref={contentRef}
+          id="msg-content"
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          placeholder="The message the bot will send..."
+          rows={4}
+          maxLength={2000}
+        />
+        <div className="flex items-center justify-between">
+          <FieldDescription>
+            Supports Discord markdown, mentions, and variables:{" "}
+            <code className="text-[11px]">{"{memberCount}"}</code>
+          </FieldDescription>
+          <CharCount value={content} max={2000} />
+        </div>
+        {content.trim() && (
+          <div
+            className="rounded-md p-3 text-sm"
+            style={{ backgroundColor: "#313338", color: "#DBDEE1" }}
+          >
+            <DiscordMarkdown text={content} mentionResolver={mentionResolver} />
           </div>
+        )}
+      </Field>
 
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-              disabled={isPending}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" loading={isPending}>
-              {isEdit ? "Save" : "Add"}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+      <label className="flex cursor-pointer items-center gap-2">
+        <Checkbox
+          checked={enabled}
+          onCheckedChange={(checked) => setEnabled(checked === true)}
+        />
+        <span className="text-sm font-medium">Enabled</span>
+      </label>
+
+      <div className="border-border border-t pt-4">
+        <div className="mb-3 flex items-center justify-between">
+          <div>
+            <h4 className="text-sm font-semibold">Follow-up Messages</h4>
+            <p className="text-muted-foreground text-xs">
+              Sent in sequence after the primary message. Max {MAX_FOLLOWUPS}.
+            </p>
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={addFollowup}
+            disabled={followups.length >= MAX_FOLLOWUPS || isPending}
+          >
+            <Plus className="mr-1 size-3" />
+            Add follow-up
+          </Button>
+        </div>
+
+        {followups.length > 0 && (
+          <div className="space-y-3">
+            {followups.map((followup, index) => (
+              <FollowupRow
+                key={index}
+                index={index}
+                followup={followup}
+                mentionResolver={mentionResolver}
+                onChange={(patch) => updateFollowup(index, patch)}
+                onRemove={() => removeFollowup(index)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </FormDialog>
   );
 }
 

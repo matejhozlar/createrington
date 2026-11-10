@@ -2,14 +2,7 @@ import { useState } from "react";
 import { trpc, queryClient } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { FormDialog } from "@/components/form-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -102,109 +95,100 @@ export function ModpackSettingsDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent onOpenAutoFocus={(event) => event.preventDefault()}>
-        <DialogHeader>
-          <DialogTitle>Modpack Settings</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="modpack-settings-name">Name</Label>
-            <Input
-              id="modpack-settings-name"
-              maxLength={120}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
+    <FormDialog
+      open={open}
+      onClose={() => onOpenChange(false)}
+      title="Modpack Settings"
+      onConfirm={handleSave}
+      confirmLabel="Save"
+      disabled={!name.trim()}
+      loading={updateMutation.isPending}
+      contentClassName="sm:max-w-lg"
+    >
+      <div className="space-y-2">
+        <Label htmlFor="modpack-settings-name">Name</Label>
+        <Input
+          id="modpack-settings-name"
+          maxLength={120}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="modpack-settings-desc">Description</Label>
+        <Input
+          id="modpack-settings-desc"
+          maxLength={2000}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="modpack-settings-published">
+          Published Modpack Project ID (Optional)
+        </Label>
+        <Input
+          id="modpack-settings-published"
+          type="number"
+          placeholder="CurseForge project the pack is published under"
+          value={publishedPackId}
+          onChange={(e) => setPublishedPackId(e.target.value)}
+        />
+        <p className="text-xs text-muted-foreground">
+          Set this once the pack is on CurseForge. It is what "Check Published
+          Pack" reads, and it applies to every workshop feeding this modpack.
+        </p>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="modpack-settings-title-image">
+          Title Image URL (Optional)
+        </Label>
+        <Input
+          id="modpack-settings-title-image"
+          inputMode="url"
+          maxLength={2048}
+          placeholder="https://assets.createrington.com/titles/..."
+          value={titleImageUrl}
+          onChange={(e) => setTitleImageUrl(e.target.value)}
+        />
+        <p className="text-xs text-muted-foreground">
+          Full-width banner at the top of this pack's changelog posts in
+          Discord. Leave empty to use a text heading instead.
+        </p>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="modpack-settings-icon">Icon URL (Optional)</Label>
+        <Input
+          id="modpack-settings-icon"
+          inputMode="url"
+          maxLength={2048}
+          placeholder="https://assets.createrington.com/icons/..."
+          value={iconUrl}
+          onChange={(e) => setIconUrl(e.target.value)}
+        />
+        <p className="text-xs text-muted-foreground">
+          Square icon the launcher shows for this pack when its releases do not
+          come from CurseForge. A published pack uses its CurseForge icon
+          instead.
+        </p>
+      </div>
+      <label className="flex cursor-pointer items-start gap-3 rounded-md border border-border bg-card p-3 hover:border-[var(--border-strong)]">
+        <Switch
+          checked={shipsServerPack}
+          onCheckedChange={setShipsServerPack}
+        />
+        <div className="space-y-0.5">
+          <div className="text-[13px] font-medium text-foreground">
+            Ships a server pack
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="modpack-settings-desc">Description</Label>
-            <Input
-              id="modpack-settings-desc"
-              maxLength={2000}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
+          <div className="text-xs text-muted-foreground">
+            Turns on by itself once a release is read together with its server
+            pack. While on, "Check Published Pack" refuses a read that finds no
+            server pack instead of marking every server-side mod as dropped.
+            Turn it off only if the pack stopped shipping one for good.
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="modpack-settings-published">
-              Published Modpack Project ID (Optional)
-            </Label>
-            <Input
-              id="modpack-settings-published"
-              type="number"
-              placeholder="CurseForge project the pack is published under"
-              value={publishedPackId}
-              onChange={(e) => setPublishedPackId(e.target.value)}
-            />
-            <p className="text-xs text-muted-foreground">
-              Set this once the pack is on CurseForge. It is what "Check
-              Published Pack" reads, and it applies to every workshop feeding
-              this modpack.
-            </p>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="modpack-settings-title-image">
-              Title Image URL (Optional)
-            </Label>
-            <Input
-              id="modpack-settings-title-image"
-              inputMode="url"
-              maxLength={2048}
-              placeholder="https://assets.createrington.com/titles/..."
-              value={titleImageUrl}
-              onChange={(e) => setTitleImageUrl(e.target.value)}
-            />
-            <p className="text-xs text-muted-foreground">
-              Full-width banner at the top of this pack's changelog posts in
-              Discord. Leave empty to use a text heading instead.
-            </p>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="modpack-settings-icon">Icon URL (Optional)</Label>
-            <Input
-              id="modpack-settings-icon"
-              inputMode="url"
-              maxLength={2048}
-              placeholder="https://assets.createrington.com/icons/..."
-              value={iconUrl}
-              onChange={(e) => setIconUrl(e.target.value)}
-            />
-            <p className="text-xs text-muted-foreground">
-              Square icon the launcher shows for this pack when its releases do
-              not come from CurseForge. A published pack uses its CurseForge
-              icon instead.
-            </p>
-          </div>
-          <label className="flex cursor-pointer items-start gap-3 rounded-md border border-border bg-card p-3 hover:border-[var(--border-strong)]">
-            <Switch
-              checked={shipsServerPack}
-              onCheckedChange={setShipsServerPack}
-            />
-            <div className="space-y-0.5">
-              <div className="text-[13px] font-medium text-foreground">
-                Ships a server pack
-              </div>
-              <div className="text-xs text-muted-foreground">
-                Turns on by itself once a release is read together with its
-                server pack. While on, "Check Published Pack" refuses a read
-                that finds no server pack instead of marking every server-side
-                mod as dropped. Turn it off only if the pack stopped shipping
-                one for good.
-              </div>
-            </div>
-          </label>
         </div>
-        <DialogFooter>
-          <Button
-            onClick={handleSave}
-            disabled={!name.trim()}
-            loading={updateMutation.isPending}
-          >
-            Save
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      </label>
+    </FormDialog>
   );
 }

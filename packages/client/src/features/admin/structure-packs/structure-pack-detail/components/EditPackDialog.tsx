@@ -1,13 +1,6 @@
 import { useState } from "react";
 import { Save } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { FormDialog } from "@/components/form-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
@@ -53,43 +46,37 @@ export function EditPackDialog({
   );
 
   return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Edit Pack</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label>Name</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label>Description</Label>
-            <Input
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            onClick={() =>
-              updateMutation.mutate({
-                id: packId,
-                name,
-                description: description || undefined,
-              })
-            }
-            disabled={!name.trim() || updateMutation.isPending}
-          >
-            <Save className="mr-1 size-3" />
-            Save
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <FormDialog
+      open
+      onClose={onClose}
+      title="Edit Pack"
+      confirmLabel={
+        <>
+          <Save className="mr-1 size-3" />
+          Save
+        </>
+      }
+      onConfirm={() =>
+        updateMutation.mutate({
+          id: packId,
+          name,
+          description: description || undefined,
+        })
+      }
+      disabled={!name.trim() || updateMutation.isPending}
+      contentClassName="sm:max-w-lg"
+    >
+      <div className="space-y-2">
+        <Label>Name</Label>
+        <Input value={name} onChange={(e) => setName(e.target.value)} />
+      </div>
+      <div className="space-y-2">
+        <Label>Description</Label>
+        <Input
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+        />
+      </div>
+    </FormDialog>
   );
 }

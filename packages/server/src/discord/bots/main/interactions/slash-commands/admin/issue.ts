@@ -5,7 +5,9 @@ import {
   MessageFlags,
   PermissionFlagsBits,
   SlashCommandBuilder,
+  channelMention,
 } from "discord.js";
+import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
 import { replyError } from "@/discord/utils/interaction-reply";
 import {
@@ -170,9 +172,30 @@ function outcomeEmbed(outcome: IssueTriageStatus | null) {
 async function reportOutcome(
   interaction: ChatInputCommandInteraction,
   sessionId: number,
+  channelId: string,
 ): Promise<void> {
   const outcome = await issueTriageService.waitForOutcome(sessionId);
-  await interaction.editReply({ embeds: [outcomeEmbed(outcome).build()] });
+  const [edited, posted] = await Promise.allSettled([
+    interaction.editReply({ embeds: [outcomeEmbed(outcome).build()] }),
+    Discord.Messages.send({
+      channelId: Discord.Channels.administration.NOTIFICATIONS,
+      content: `${Discord.Users.mention(interaction.user.id)} \`/issue\` in ${channelMention(channelId)}`,
+      embeds: outcomeEmbed(outcome).build(),
+      allowedMentions: { users: [interaction.user.id] },
+    }),
+  ]);
+  if (edited.status === "rejected") {
+    logger.warn(
+      `/issue session #${sessionId} could not update its reply:`,
+      edited.reason,
+    );
+  }
+  if (posted.status === "rejected" || !posted.value.success) {
+    logger.warn(
+      `/issue session #${sessionId} could not post to admin notifications:`,
+      posted.status === "rejected" ? posted.reason : posted.value.error,
+    );
+  }
   logger.info(
     `/issue session #${sessionId} by ${interaction.user.tag}: ${outcome?.result ?? "pending"}${
       outcome?.issue ? ` (${outcome.issue.repo}#${outcome.issue.number})` : ""
@@ -272,7 +295,7 @@ export async function execute(
     ],
   });
 
-  void reportOutcome(interaction, sessionId).catch((error) =>
+  void reportOutcome(interaction, sessionId, channel.id).catch((error) =>
     logger.error(`/issue session #${sessionId} could not report back:`, error),
   );
 }
