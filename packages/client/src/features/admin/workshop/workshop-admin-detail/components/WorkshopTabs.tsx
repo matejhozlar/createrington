@@ -1,6 +1,6 @@
 import { useCallback, useLayoutEffect, useRef } from "react";
-import { cn } from "@/lib/utils";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
+import { TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   MOD_TAB_IDS,
   STAGE_CONFIG,
@@ -40,8 +40,7 @@ const MOD_TAB_LABELS: Record<ModTabId, string> = {
   all: "All Mods",
 };
 
-const SCROLL_ROW_CLASSES =
-  "overflow-x-auto overflow-y-hidden [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
+type TabCounts = Partial<Record<WorkshopTabId, number>>;
 
 function attachWheelScroll(strip: HTMLDivElement) {
   const onWheel = (event: WheelEvent) => {
@@ -55,20 +54,6 @@ function attachWheelScroll(strip: HTMLDivElement) {
   };
   strip.addEventListener("wheel", onWheel, { passive: false });
   return () => strip.removeEventListener("wheel", onWheel);
-}
-
-function useStripRef() {
-  const ref = useRef<HTMLDivElement | null>(null);
-  const setRef = useCallback((strip: HTMLDivElement | null) => {
-    ref.current = strip;
-    if (!strip) return;
-    const detach = attachWheelScroll(strip);
-    return () => {
-      detach();
-      ref.current = null;
-    };
-  }, []);
-  return [ref, setRef] as const;
 }
 
 function revealInStrip(
@@ -86,106 +71,99 @@ function revealInStrip(
   }
 }
 
-export function WorkshopTabs({
-  activeTab,
-  onTabChange,
-  onGroupChange,
-  counts,
-}: {
-  activeTab: WorkshopTabId;
-  onTabChange: (tab: WorkshopTabId) => void;
-  onGroupChange: (group: TopTabId) => void;
-  counts: Partial<Record<WorkshopTabId, number>>;
-}) {
-  const group = tabGroup(activeTab);
-  const activeTopRef = useRef<HTMLButtonElement>(null);
-  const activeModRef = useRef<HTMLButtonElement>(null);
-  const [topStripRef, setTopStrip] = useStripRef();
-  const [modStripRef, setModStrip] = useStripRef();
+function useScrollStrip(activeTab: WorkshopTabId, counts: TabCounts) {
+  const stripRef = useRef<HTMLDivElement | null>(null);
+  const activeRef = useRef<HTMLButtonElement>(null);
+  const setStrip = useCallback((strip: HTMLDivElement | null) => {
+    stripRef.current = strip;
+    if (!strip) return;
+    const detach = attachWheelScroll(strip);
+    return () => {
+      detach();
+      stripRef.current = null;
+    };
+  }, []);
 
   const countsKey = [...MOD_TAB_IDS, "issues" as const]
     .map((id) => counts[id] ?? "")
     .join();
   useLayoutEffect(() => {
-    revealInStrip(topStripRef.current, activeTopRef.current);
-    revealInStrip(modStripRef.current, activeModRef.current);
-  }, [activeTab, countsKey, topStripRef, modStripRef]);
+    revealInStrip(stripRef.current, activeRef.current);
+  }, [activeTab, countsKey]);
+
+  return { setStrip, activeRef };
+}
+
+export function WorkshopGroupTabs({
+  activeTab,
+  counts,
+}: {
+  activeTab: WorkshopTabId;
+  counts: TabCounts;
+}) {
+  const group = tabGroup(activeTab);
+  const { setStrip, activeRef } = useScrollStrip(activeTab, counts);
 
   return (
-    <div className="flex flex-col gap-3">
-      <div
-        ref={setTopStrip}
-        className={cn("border-b border-border", SCROLL_ROW_CLASSES)}
-      >
-        <div className="flex gap-1">
-          {TOP_TAB_IDS.map((topId) => {
-            const tab = TOP_TAB_CONFIG[topId];
-            const isActive = group === topId;
-            const count = tab.badgeTab ? counts[tab.badgeTab] : undefined;
-            return (
-              <button
-                key={topId}
-                ref={isActive ? activeTopRef : undefined}
-                type="button"
-                onClick={() => onGroupChange(topId)}
-                className={cn(
-                  "relative flex shrink-0 cursor-pointer items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors",
-                  isActive
-                    ? "text-foreground"
-                    : "text-muted-foreground hover:text-foreground/80",
-                )}
-              >
-                {tab.label}
-                {count !== undefined && count > 0 && (
-                  <Badge
-                    variant="outline"
-                    tone={tab.badgeTone}
-                    className="text-xs"
-                  >
-                    {count.toLocaleString()}
-                  </Badge>
-                )}
-                {isActive && (
-                  <span className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-primary" />
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+    <TabsList ref={setStrip} variant="underline">
+      {TOP_TAB_IDS.map((topId) => {
+        const tab = TOP_TAB_CONFIG[topId];
+        const count = tab.badgeTab ? counts[tab.badgeTab] : undefined;
+        return (
+          <TabsTrigger
+            key={topId}
+            ref={group === topId ? activeRef : undefined}
+            value={topId}
+          >
+            {tab.label}
+            {count !== undefined && count > 0 && (
+              <Badge variant="outline" tone={tab.badgeTone} className="text-xs">
+                {count.toLocaleString()}
+              </Badge>
+            )}
+          </TabsTrigger>
+        );
+      })}
+    </TabsList>
+  );
+}
 
-      {group === "mods" && (
-        <div ref={setModStrip} className={SCROLL_ROW_CLASSES}>
-          <div className="inline-flex h-9 w-fit items-center justify-center rounded-lg bg-muted p-1">
-            {MOD_TAB_IDS.map((id) => {
-              const count = counts[id];
-              const isActive = activeTab === id;
-              return (
-                <button
-                  key={id}
-                  ref={isActive ? activeModRef : undefined}
-                  type="button"
-                  onClick={() => onTabChange(id)}
-                  className={cn(
-                    "inline-flex cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-2.5 py-1 text-sm font-medium text-foreground/80 transition-[color,box-shadow]",
-                    isActive && "bg-background text-foreground shadow-sm",
-                  )}
+export function WorkshopModTabs({
+  activeTab,
+  counts,
+}: {
+  activeTab: ModTabId;
+  counts: TabCounts;
+}) {
+  const { setStrip, activeRef } = useScrollStrip(activeTab, counts);
+
+  return (
+    <div
+      ref={setStrip}
+      className="overflow-x-auto overflow-y-hidden [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+    >
+      <TabsList className="text-foreground/80">
+        {MOD_TAB_IDS.map((id) => {
+          const count = counts[id];
+          return (
+            <TabsTrigger
+              key={id}
+              ref={activeTab === id ? activeRef : undefined}
+              value={id}
+            >
+              {MOD_TAB_LABELS[id]}
+              {count !== undefined && (
+                <Badge
+                  variant="outline"
+                  className="border-transparent bg-foreground/10"
                 >
-                  {MOD_TAB_LABELS[id]}
-                  {count !== undefined && (
-                    <Badge
-                      variant="outline"
-                      className="border-transparent bg-foreground/10"
-                    >
-                      {count.toLocaleString()}
-                    </Badge>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
+                  {count.toLocaleString()}
+                </Badge>
+              )}
+            </TabsTrigger>
+          );
+        })}
+      </TabsList>
     </div>
   );
 }

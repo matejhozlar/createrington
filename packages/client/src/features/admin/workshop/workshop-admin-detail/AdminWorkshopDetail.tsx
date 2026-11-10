@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { LoadingState } from "@/components/query-states";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { ModDetailDialog } from "@/features/workshop/workshop-detail/components/ModDetailDialog";
@@ -32,6 +33,7 @@ import {
   isModTab,
   isStageTab,
   isWorkshopTabId,
+  tabGroup,
   type ModTabId,
   type TopTabId,
   type WorkshopTabId,
@@ -44,7 +46,7 @@ import {
 } from "./components/ConfirmActionDialog";
 import { RejectModDialog } from "./components/RejectModDialog";
 import { WorkshopSettingsDialog } from "./components/WorkshopSettingsDialog";
-import { WorkshopTabs } from "./components/WorkshopTabs";
+import { WorkshopGroupTabs, WorkshopModTabs } from "./components/WorkshopTabs";
 import { ActivityTab } from "./components/tabs/ActivityTab";
 import { AllModsTab } from "./components/tabs/AllModsTab";
 import { DependenciesTab } from "./components/tabs/DependenciesTab";
@@ -500,107 +502,125 @@ export function AdminWorkshopDetail() {
           }
         />
 
-        <WorkshopTabs
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-          onGroupChange={openGroup}
-          counts={counts}
-        />
+        <Tabs
+          value={tabGroup(activeTab)}
+          onValueChange={(group) => openGroup(group as TopTabId)}
+          className={isModTab(activeTab) ? "gap-3" : "gap-4"}
+        >
+          <WorkshopGroupTabs activeTab={activeTab} counts={counts} />
 
-        {isStageTab(activeTab) && (
-          <StageTab
-            stage={activeTab}
-            mods={modsByStatus[STAGE_CONFIG[activeTab].status] ?? []}
-            isLoading={modsQuery.isLoading}
-            error={modsQuery.error?.message ?? null}
-            onRetry={() => modsQuery.refetch()}
-            search={search}
-            onSearchChange={handleSearchChange}
-            page={page}
-            onPageChange={setPage}
-            busyModId={busyModId}
-            onView={setDetailModId}
-            envDisplay={envDisplay}
-            onSetEnvironment={handleSetEnvironment}
-            onReview={handleReview}
-            onReject={openReject}
-          />
-        )}
+          <TabsContent
+            value={tabGroup(activeTab)}
+            className="flex flex-col gap-4"
+          >
+            {isModTab(activeTab) && (
+              <Tabs
+                value={activeTab}
+                onValueChange={(tab) => setActiveTab(tab as ModTabId)}
+                className="gap-4"
+              >
+                <WorkshopModTabs activeTab={activeTab} counts={counts} />
 
-        {activeTab === "all" && (
-          <AllModsTab
-            mods={mods}
-            isLoading={modsQuery.isLoading}
-            error={modsQuery.error?.message ?? null}
-            onRetry={() => modsQuery.refetch()}
-            search={search}
-            onSearchChange={handleSearchChange}
-            page={page}
-            onPageChange={setPage}
-            busyModId={busyModId}
-            onView={setDetailModId}
-            envDisplay={envDisplay}
-            onSetEnvironment={handleSetEnvironment}
-            onReview={handleReview}
-            onReject={openReject}
-          />
-        )}
+                <TabsContent value={activeTab} className="flex flex-col gap-4">
+                  {isStageTab(activeTab) && (
+                    <StageTab
+                      stage={activeTab}
+                      mods={modsByStatus[STAGE_CONFIG[activeTab].status] ?? []}
+                      isLoading={modsQuery.isLoading}
+                      error={modsQuery.error?.message ?? null}
+                      onRetry={() => modsQuery.refetch()}
+                      search={search}
+                      onSearchChange={handleSearchChange}
+                      page={page}
+                      onPageChange={setPage}
+                      busyModId={busyModId}
+                      onView={setDetailModId}
+                      envDisplay={envDisplay}
+                      onSetEnvironment={handleSetEnvironment}
+                      onReview={handleReview}
+                      onReject={openReject}
+                    />
+                  )}
 
-        {activeTab === "in-pack" && (
-          <InPackTab
-            workshopId={workshopId}
-            modpackId={workshop.modpackId}
-            rows={packModsQuery.data ?? []}
-            isLoading={packModsQuery.isLoading}
-            error={packModsQuery.error?.message ?? null}
-            onRetry={() => packModsQuery.refetch()}
-            search={search}
-            onSearchChange={setSearch}
-            onReconciled={invalidate}
-            envDisplay={envDisplay}
-            onSetEnvironment={handleSetEnvironment}
-          />
-        )}
+                  {activeTab === "all" && (
+                    <AllModsTab
+                      mods={mods}
+                      isLoading={modsQuery.isLoading}
+                      error={modsQuery.error?.message ?? null}
+                      onRetry={() => modsQuery.refetch()}
+                      search={search}
+                      onSearchChange={handleSearchChange}
+                      page={page}
+                      onPageChange={setPage}
+                      busyModId={busyModId}
+                      onView={setDetailModId}
+                      envDisplay={envDisplay}
+                      onSetEnvironment={handleSetEnvironment}
+                      onReview={handleReview}
+                      onReject={openReject}
+                    />
+                  )}
 
-        {activeTab === "dependencies" && (
-          <DependenciesTab
-            workshopId={workshopId}
-            search={search}
-            onSearchChange={setSearch}
-            onAddProject={addProject}
-            busyProjectId={busyProjectId}
-          />
-        )}
+                  {activeTab === "in-pack" && (
+                    <InPackTab
+                      workshopId={workshopId}
+                      modpackId={workshop.modpackId}
+                      rows={packModsQuery.data ?? []}
+                      isLoading={packModsQuery.isLoading}
+                      error={packModsQuery.error?.message ?? null}
+                      onRetry={() => packModsQuery.refetch()}
+                      search={search}
+                      onSearchChange={setSearch}
+                      onReconciled={invalidate}
+                      envDisplay={envDisplay}
+                      onSetEnvironment={handleSetEnvironment}
+                    />
+                  )}
+                </TabsContent>
+              </Tabs>
+            )}
 
-        {activeTab === "issues" && (
-          <IssuesTab
-            workshopId={workshopId}
-            items={issueItems}
-            isLoading={attentionQuery.isLoading}
-            error={attentionQuery.error?.message ?? null}
-            onRetry={() => attentionQuery.refetch()}
-            onView={setDetailModId}
-            onResolved={invalidate}
-            unresolvedCount={attentionCount ?? 0}
-            envDisplay={envDisplay}
-            onSetEnvironment={handleSetEnvironment}
-          />
-        )}
+            {activeTab === "dependencies" && (
+              <DependenciesTab
+                workshopId={workshopId}
+                search={search}
+                onSearchChange={setSearch}
+                onAddProject={addProject}
+                busyProjectId={busyProjectId}
+              />
+            )}
 
-        {activeTab === "activity" && (
-          <ActivityTab
-            workshopId={workshopId}
-            search={search}
-            onSearchChange={handleSearchChange}
-            page={page}
-            onPageChange={setPage}
-            onView={setDetailModId}
-          />
-        )}
+            {activeTab === "issues" && (
+              <IssuesTab
+                workshopId={workshopId}
+                items={issueItems}
+                isLoading={attentionQuery.isLoading}
+                error={attentionQuery.error?.message ?? null}
+                onRetry={() => attentionQuery.refetch()}
+                onView={setDetailModId}
+                onResolved={invalidate}
+                unresolvedCount={attentionCount ?? 0}
+                envDisplay={envDisplay}
+                onSetEnvironment={handleSetEnvironment}
+              />
+            )}
 
-        {activeTab === "releases" && (
-          <ReleasesTab modpackId={workshop.modpackId} />
-        )}
+            {activeTab === "activity" && (
+              <ActivityTab
+                workshopId={workshopId}
+                search={search}
+                onSearchChange={handleSearchChange}
+                page={page}
+                onPageChange={setPage}
+                onView={setDetailModId}
+              />
+            )}
+
+            {activeTab === "releases" && (
+              <ReleasesTab modpackId={workshop.modpackId} />
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
 
       <ModDetailDialog

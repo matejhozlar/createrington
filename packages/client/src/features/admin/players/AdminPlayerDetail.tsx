@@ -7,7 +7,8 @@ import { ArrowLeft } from "lucide-react";
 import { useAdminPlayers } from "@/contexts/admin";
 import { PlayerHeader } from "./components/PlayerHeader";
 import { PlayerStatsCards } from "./components/PlayerStatsCards";
-import { PlayerTabs } from "./components/PlayerTabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { PlayerTabs, type PlayerTabType } from "./components/PlayerTabs";
 import { OverviewTab } from "./components/tabs/OverviewTab";
 import { PartyTab } from "./components/tabs/PartyTab";
 import { SessionsTab } from "./components/tabs/SessionsTab";
@@ -27,24 +28,13 @@ import { RemoveStrikeModal } from "./components/modals/RemoveStrikeModal";
 import { trpc } from "@/lib/trpc";
 import { useQuery } from "@tanstack/react-query";
 
-type TabType =
-  | "overview"
-  | "party"
-  | "sessions"
-  | "stats"
-  | "tickets"
-  | "strikes"
-  | "bans"
-  | "transactions"
-  | "audit";
-
 export function AdminPlayerDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { isPlayerOnline, getPlayerServerId, getServerName } =
     useAdminPlayers();
 
-  const [activeTab, setActiveTab] = useState<TabType>("overview");
+  const [activeTab, setActiveTab] = useState<PlayerTabType>("overview");
 
   const [showBalanceModal, setShowBalanceModal] = useState(false);
   const [balanceModalKey, setBalanceModalKey] = useState(0);
@@ -147,47 +137,56 @@ export function AdminPlayerDetail() {
           }}
         />
 
-        <PlayerTabs activeTab={activeTab} onTabChange={setActiveTab} />
+        <Tabs
+          value={activeTab}
+          onValueChange={(tab) => setActiveTab(tab as PlayerTabType)}
+          className="gap-4"
+        >
+          <PlayerTabs />
 
-        <div className="mb-4 rounded-lg border border-border bg-card p-6">
-          {activeTab === "overview" && (
-            <OverviewTab player={player} getServerName={getServerName} />
-          )}
+          <TabsContent
+            value={activeTab}
+            className="mb-4 rounded-lg border border-border bg-card p-6"
+          >
+            {activeTab === "overview" && (
+              <OverviewTab player={player} getServerName={getServerName} />
+            )}
 
-          {activeTab === "party" && (
-            <PartyTab playerUuid={player.player.minecraftUuid} />
-          )}
+            {activeTab === "party" && (
+              <PartyTab playerUuid={player.player.minecraftUuid} />
+            )}
 
-          {activeTab === "sessions" && id && (
-            <SessionsTab playerId={id} getServerName={getServerName} />
-          )}
+            {activeTab === "sessions" && id && (
+              <SessionsTab playerId={id} getServerName={getServerName} />
+            )}
 
-          {activeTab === "stats" && id && (
-            <StatsTab playerId={id} getServerName={getServerName} />
-          )}
+            {activeTab === "stats" && id && (
+              <StatsTab playerId={id} getServerName={getServerName} />
+            )}
 
-          {activeTab === "tickets" && <TicketsTab playerId={id!} />}
+            {activeTab === "tickets" && <TicketsTab playerId={id!} />}
 
-          {activeTab === "strikes" && (
-            <StrikesTab
-              player={player}
-              onIssueStrike={() => setShowStrikeModal(true)}
-              onRemoveStrike={openRemoveStrikeModal}
-            />
-          )}
+            {activeTab === "strikes" && (
+              <StrikesTab
+                player={player}
+                onIssueStrike={() => setShowStrikeModal(true)}
+                onRemoveStrike={openRemoveStrikeModal}
+              />
+            )}
 
-          {activeTab === "bans" && (
-            <BansTab
-              player={player}
-              onIssueBan={() => setShowBanModal(true)}
-              onUnban={openUnbanModal}
-            />
-          )}
+            {activeTab === "bans" && (
+              <BansTab
+                player={player}
+                onIssueBan={() => setShowBanModal(true)}
+                onUnban={openUnbanModal}
+              />
+            )}
 
-          {activeTab === "transactions" && <TransactionsTab playerId={id!} />}
+            {activeTab === "transactions" && <TransactionsTab playerId={id!} />}
 
-          {activeTab === "audit" && <AuditTab playerId={id!} />}
-        </div>
+            {activeTab === "audit" && <AuditTab playerId={id!} />}
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Modals */}
