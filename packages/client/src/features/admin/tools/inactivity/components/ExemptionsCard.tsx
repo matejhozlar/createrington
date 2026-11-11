@@ -22,11 +22,8 @@ import { Plus, ShieldCheck, ShieldOff } from "lucide-react";
 import { keepPreviousData, useQuery, useMutation } from "@tanstack/react-query";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
-import {
-  formatFullDate,
-  formatRelativeDate,
-  toIso,
-} from "@/features/admin/format";
+import { formatFullDate, toIso } from "@/features/admin/format";
+import { formatRelativeDate } from "@/lib/format";
 import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { RemoveExemptionModal } from "./modals/RemoveExemptionModal";
 import { EmptyState, ErrorState } from "@/components/query-states";

@@ -1,9 +1,9 @@
 import type { PlayerObject } from "skinview3d";
 import hulkSkinUrl from "@/assets/skins/hulk.png";
 import { TeamEffect, type EffectContext } from "./core/effect";
+import { clamp } from "@/lib/math";
 import {
   bump,
-  clamp,
   easeInOutCubic,
   easeOutBack,
   easeOutCubic,

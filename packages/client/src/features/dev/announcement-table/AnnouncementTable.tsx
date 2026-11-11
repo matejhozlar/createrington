@@ -2,7 +2,9 @@ import { useMemo, useRef, useState } from "react";
 import { toBlob } from "html-to-image";
 import { Copy, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useClipboard } from "@/hooks/use-clipboard";
 import { useToastActions } from "@/hooks/use-toast";
+import { downloadBlob } from "@/lib/download";
 import { TableCard } from "./components/TableCard";
 import { parseTable } from "./parse";
 import { Textarea } from "@/components/ui/textarea";
@@ -38,6 +40,10 @@ export function AnnouncementTable() {
   const [source, setSource] = useState(EXAMPLE);
   const cardRef = useRef<HTMLDivElement>(null);
   const toast = useToastActions();
+  const { copy } = useClipboard({
+    success: "Image copied, paste it into Discord",
+    error: "Could not copy the image",
+  });
   const table = useMemo(() => parseTable(source), [source]);
 
   const renderBlob = async () => {
@@ -46,27 +52,15 @@ export function AnnouncementTable() {
   };
 
   const handleCopy = async () => {
-    try {
-      const blob = await renderBlob();
-      if (!blob) return toast.error("Could not render the image");
-      await navigator.clipboard.write([
-        new ClipboardItem({ [blob.type]: blob }),
-      ]);
-      toast.success("Image copied, paste it into Discord");
-    } catch {
-      toast.error("Could not copy the image");
-    }
+    const blob = await renderBlob().catch(() => null);
+    if (!blob) return toast.error("Could not render the image");
+    await copy(blob);
   };
 
   const handleDownload = async () => {
     const blob = await renderBlob().catch(() => null);
     if (!blob) return toast.error("Could not render the image");
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.download = fileName(table.title);
-    link.href = url;
-    link.click();
-    URL.revokeObjectURL(url);
+    downloadBlob(blob, fileName(table.title));
   };
 
   return (

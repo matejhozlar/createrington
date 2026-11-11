@@ -35,6 +35,7 @@ import {
 } from "@/components/data-table";
 import { LabeledSwitch } from "@/components/labeled-switch";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
+import { formatClockTimeWithSeconds, formatNumber } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { trpc, type RouterOutput, queryClient } from "@/lib/trpc";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -154,24 +155,26 @@ const MINUTE_SUMMARY: {
     label: "This minute",
     hint: "Calls let through, of the budget per minute over every process",
     value: (budget) =>
-      `${formatCount(budget.used)} / ${formatCount(budget.limitPerMinute)}`,
+      `${formatNumber(budget.used)} / ${formatNumber(budget.limitPerMinute)}`,
   },
   {
     label: "Withheld",
     hint: "Refused this minute, budget spent or hold on",
-    value: (budget) => formatCount(budget.withheld),
+    value: (budget) => formatNumber(budget.withheld),
     alert: (budget) => budget.withheld > 0,
   },
   {
     label: "Resets at",
     hint: "The count starts over every minute",
-    value: (budget) => formatTime(budget.resetsAt),
+    value: (budget) => formatClockTimeWithSeconds(budget.resetsAt),
   },
   {
     label: "Hold",
     hint: "No call goes out until then after a 429",
     value: (budget) =>
-      budget.heldUntil ? `Until ${formatTime(budget.heldUntil)}` : "None",
+      budget.heldUntil
+        ? `Until ${formatClockTimeWithSeconds(budget.heldUntil)}`
+        : "None",
     alert: (budget) => Boolean(budget.heldUntil),
   },
 ];
@@ -231,24 +234,12 @@ const DAY_COLUMNS: DataTableColumn<BudgetDay>[] = [
     render: (day) => (
       <span className="text-xs text-muted-foreground">
         {day.pools
-          .map((pool) => `${poolLabel(pool)} ${formatCount(pool.calls)}`)
+          .map((pool) => `${poolLabel(pool)} ${formatNumber(pool.calls)}`)
           .join(" · ")}
       </span>
     ),
   },
 ];
-
-function formatCount(value: number): string {
-  return value.toLocaleString("en-US");
-}
-
-function formatTime(value: string): string {
-  return new Date(value).toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
-}
 
 function poolLabel(pool: { consumer: string; pool: string }): string {
   return `${pool.consumer} / ${pool.pool}`;
@@ -643,7 +634,7 @@ function UpstreamBudgetPanel({
                 {loading ? (
                   <Skeleton className="h-6 w-16" />
                 ) : (
-                  formatCount(value)
+                  formatNumber(value)
                 )}
               </dd>
               <dd className="m-0 text-xs text-muted-foreground">{hint}</dd>
@@ -674,9 +665,9 @@ function UpstreamBudgetPanel({
             {budget.pools
               .map(
                 (pool) =>
-                  `${poolLabel(pool)} ${formatCount(pool.used)}` +
+                  `${poolLabel(pool)} ${formatNumber(pool.used)}` +
                   (pool.withheld > 0
-                    ? ` (${formatCount(pool.withheld)} withheld)`
+                    ? ` (${formatNumber(pool.withheld)} withheld)`
                     : ""),
               )
               .join(" · ")}
@@ -703,7 +694,7 @@ function CallCountCell({ value, alert }: { value: number; alert?: boolean }) {
         value === 0 && "text-muted-foreground",
       )}
     >
-      {formatCount(value)}
+      {formatNumber(value)}
     </span>
   );
 }

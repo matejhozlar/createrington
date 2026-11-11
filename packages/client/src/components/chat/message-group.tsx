@@ -1,13 +1,13 @@
 import { memo } from "react";
 import type { MessageSource as MessageSourceType } from "@createrington/shared/socket";
 import { MessageSource } from "@createrington/shared/socket";
+import { formatMessageTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Avatar } from "./avatar";
 import { SourceBadge } from "./source-badge";
 import { MessageRow } from "./message-row";
 import { SOURCE_CONFIG } from "./constants";
 import type { MessageGroup } from "./types";
-import { formatTime } from "./utils";
 
 export const MessageGroupComponent = memo(function MessageGroupComponent({
   group,
@@ -94,7 +94,7 @@ export const MessageGroupComponent = memo(function MessageGroupComponent({
               )}
 
             <span className="ml-auto text-[11px] text-muted-foreground/50">
-              {formatTime(group.messages[0]?.createdAt)}
+              {formatMessageTime(group.messages[0]?.createdAt)}
             </span>
           </div>
 

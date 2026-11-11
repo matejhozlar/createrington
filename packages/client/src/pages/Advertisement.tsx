@@ -2,6 +2,7 @@ import { useRef, useCallback } from "react";
 import { toPng } from "html-to-image";
 import { Download } from "lucide-react";
 import { useToastActions } from "@/hooks/use-toast";
+import { downloadUrl } from "@/lib/download";
 
 const features = [
   {
@@ -41,10 +42,7 @@ export function Advertisement() {
       return;
     }
 
-    const link = document.createElement("a");
-    link.download = "createrington-ad.png";
-    link.href = dataUrl;
-    link.click();
+    downloadUrl(dataUrl, "createrington-ad.png");
   }, [toast]);
 
   return (

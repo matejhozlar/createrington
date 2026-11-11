@@ -1,4 +1,5 @@
-import { formatDate, parseDateOnly } from "@createrington/shared/format";
+import { formatDate } from "@createrington/shared/format";
+import { formatRelativeDay } from "@/lib/format";
 import { trpc } from "@/lib/trpc";
 import { LoadingState } from "@/components/query-states";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
@@ -112,20 +113,6 @@ function versionBump(version: string): Bump {
   if (patch !== "0") return "patch";
   if (minor !== "0") return "minor";
   return "major";
-}
-
-function relativeDate(dateStr: string): string {
-  const d = parseDateOnly(dateStr);
-  const now = new Date();
-  const diff = Math.round(
-    (now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24),
-  );
-  if (diff <= 0) return "today";
-  if (diff === 1) return "yesterday";
-  if (diff < 7) return `${diff}d ago`;
-  if (diff < 30) return `${Math.floor(diff / 7)}w ago`;
-  if (diff < 365) return `${Math.floor(diff / 30)}mo ago`;
-  return `${Math.floor(diff / 365)}y ago`;
 }
 
 function shortPkg(name: string): string {
@@ -407,7 +394,7 @@ function VersionRail({
                     {s.version}
                   </span>
                   <span className="text-[11px] tabular-nums text-muted-foreground">
-                    {relativeDate(s.date)}
+                    {formatRelativeDay(s.date)}
                   </span>
                 </a>
               </li>
@@ -691,7 +678,7 @@ function ReleaseBlock({
               {formatDate(section.date)}
               <span className="font-normal text-muted-foreground">
                 {" "}
-                · {relativeDate(section.date)}
+                · {formatRelativeDay(section.date)}
               </span>
             </div>
             <div className="font-mono text-xs text-muted-foreground">

@@ -16,7 +16,8 @@ import {
   fetchChatSessions,
   type ChatHistorySession,
 } from "@/features/admin-chat/api";
-import { formatFullDate, formatRelativeDate } from "@/features/admin/format";
+import { formatFullDate } from "@/features/admin/format";
+import { formatRelativeDate } from "@/lib/format";
 
 const STATUS_VARIANT: Record<
   string,

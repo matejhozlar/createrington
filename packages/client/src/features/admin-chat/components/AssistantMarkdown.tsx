@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkBreaks from "remark-breaks";
 import { Check, Copy } from "lucide-react";
+import { useClipboard } from "@/hooks/use-clipboard";
 import { cn } from "@/lib/utils";
 
 const INTERNAL_PATH = /^\/(?![/\\])/;
@@ -14,26 +15,11 @@ interface AssistantMarkdownProps {
 
 function CodeBlock({ children }: { children?: React.ReactNode }) {
   const preRef = useRef<HTMLPreElement>(null);
-  const [copied, setCopied] = useState(false);
-  const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { copy, copied } = useClipboard({ silent: true });
 
-  useEffect(() => {
-    return () => {
-      if (resetTimer.current) clearTimeout(resetTimer.current);
-    };
-  }, []);
-
-  const handleCopy = async () => {
+  const handleCopy = () => {
     const source = preRef.current?.innerText ?? "";
-    if (!source) return;
-    try {
-      await navigator.clipboard.writeText(source);
-      setCopied(true);
-      if (resetTimer.current) clearTimeout(resetTimer.current);
-      resetTimer.current = setTimeout(() => setCopied(false), 1500);
-    } catch {
-      // navigator.clipboard rejects on unfocused tabs and revoked permissions.
-    }
+    if (source) void copy(source);
   };
 
   return (

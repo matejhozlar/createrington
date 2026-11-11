@@ -16,7 +16,7 @@ import { AtSign, Clock, Hash, Plus, Search, Shield } from "lucide-react";
 import { useMemo, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
-import { formatConfigKey as formatName } from "@/features/admin/format";
+import { camelCaseToTitle } from "@/lib/format";
 import { useQuery } from "@tanstack/react-query";
 
 type Tab = "mentions" | "timestamp";
@@ -73,7 +73,7 @@ export function InsertMenu({
       .map((group) => ({
         ...group,
         channels: group.channels.filter((ch) =>
-          formatName(ch.name).toLowerCase().includes(query),
+          camelCaseToTitle(ch.name).toLowerCase().includes(query),
         ),
       }))
       .filter((group) => group.channels.length > 0);
@@ -83,7 +83,7 @@ export function InsertMenu({
     const allRoles = rolesQuery.data ?? [];
     if (!query) return allRoles;
     return allRoles.filter((role) =>
-      formatName(role.name).toLowerCase().includes(query),
+      camelCaseToTitle(role.name).toLowerCase().includes(query),
     );
   }, [rolesQuery.data, query]);
 
@@ -196,7 +196,7 @@ export function InsertMenu({
                   {filteredChannelGroups.map((group) => (
                     <div key={group.category} className="mb-1">
                       <div className="px-2 pt-2 pb-1 text-[10px] uppercase tracking-wider text-muted-foreground">
-                        {formatName(group.category)}
+                        {camelCaseToTitle(group.category)}
                       </div>
                       {group.channels.map((ch) => (
                         <button
@@ -206,7 +206,7 @@ export function InsertMenu({
                           onClick={() => insert(`<#${ch.id}>`)}
                         >
                           <Hash className="size-3.5 text-muted-foreground" />
-                          {formatName(ch.name)}
+                          {camelCaseToTitle(ch.name)}
                         </button>
                       ))}
                     </div>
@@ -232,7 +232,7 @@ export function InsertMenu({
                       onClick={() => insert(`<@&${role.id}>`)}
                     >
                       <AtSign className="size-3.5 text-muted-foreground" />
-                      {formatName(role.name)}
+                      {camelCaseToTitle(role.name)}
                     </button>
                   ))}
                 </>

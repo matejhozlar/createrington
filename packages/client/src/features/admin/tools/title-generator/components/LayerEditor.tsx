@@ -17,7 +17,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useClipboard } from "@/hooks/use-clipboard";
 import { useToastActions } from "@/hooks/use-toast";
+import { downloadBlob } from "@/lib/download";
 import type { Catalog } from "../engine/assets";
 import {
   applyPreset,
@@ -60,6 +62,7 @@ export function LayerEditor({
   onChange: (update: LayerUpdate) => void;
 }) {
   const toast = useToastActions();
+  const { copy } = useClipboard({ success: "Preset copied to clipboard" });
   const [tab, setTab] = useState<string>("text");
   const [importOpen, setImportOpen] = useState(false);
 
@@ -74,28 +77,18 @@ export function LayerEditor({
     }
   };
 
-  const copyPreset = async () => {
+  const copyPreset = () => {
     const json = presetJson();
-    if (!json) return;
-    try {
-      await navigator.clipboard.writeText(json);
-      toast.success("Preset copied to clipboard");
-    } catch {
-      toast.error("Clipboard access was blocked by the browser");
-    }
+    if (json) void copy(json);
   };
 
   const downloadPreset = () => {
     const json = presetJson();
     if (!json) return;
-    const url = URL.createObjectURL(
+    downloadBlob(
       new Blob([json], { type: "application/json" }),
+      presetFileName(layer),
     );
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = presetFileName(layer);
-    link.click();
-    URL.revokeObjectURL(url);
   };
 
   const importPreset = async (json: string) => {

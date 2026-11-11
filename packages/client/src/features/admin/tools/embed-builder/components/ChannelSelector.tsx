@@ -8,22 +8,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { camelCaseToTitle } from "@/lib/format";
 import { trpc } from "@/lib/trpc";
 import { useQuery } from "@tanstack/react-query";
-
-function formatCategoryName(key: string): string {
-  return key
-    .replace(/([A-Z])/g, " $1")
-    .replace(/^./, (s) => s.toUpperCase())
-    .trim();
-}
-
-function formatChannelName(key: string): string {
-  return key
-    .replace(/([A-Z])/g, " $1")
-    .replace(/^./, (s) => s.toUpperCase())
-    .trim();
-}
 
 interface ChannelSelectorProps {
   value: string;
@@ -44,10 +31,10 @@ export function ChannelSelector({ value, onChange }: ChannelSelectorProps) {
         <SelectContent>
           {groups.map((group) => (
             <SelectGroup key={group.category}>
-              <SelectLabel>{formatCategoryName(group.category)}</SelectLabel>
+              <SelectLabel>{camelCaseToTitle(group.category)}</SelectLabel>
               {group.channels.map((ch) => (
                 <SelectItem key={ch.id} value={ch.id}>
-                  # {formatChannelName(ch.name)}
+                  # {camelCaseToTitle(ch.name)}
                 </SelectItem>
               ))}
             </SelectGroup>

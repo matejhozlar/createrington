@@ -17,10 +17,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
-import {
-  formatFullDateSafe,
-  formatRelativeDate,
-} from "@/features/admin/format";
+import { formatFullDateSafe } from "@/features/admin/format";
+import { formatRelativeDate } from "@/lib/format";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

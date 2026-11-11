@@ -5,9 +5,9 @@ import {
 } from "skinview3d";
 import { Euler, Vector3 } from "three";
 import { TeamEffect, type EffectContext } from "./core/effect";
+import { clamp } from "@/lib/math";
 import {
   bump,
-  clamp,
   damp,
   easeInBack,
   easeInOutCubic,

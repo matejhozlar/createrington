@@ -45,11 +45,8 @@ import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { keepPreviousData, useQuery, useMutation } from "@tanstack/react-query";
 import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
-import {
-  formatFullDate,
-  formatRelativeDate,
-  toIso,
-} from "@/features/admin/format";
+import { formatFullDate, toIso } from "@/features/admin/format";
+import { formatRelativeDate } from "@/lib/format";
 import {
   STAT_CARDS,
   STATUS_TONES,

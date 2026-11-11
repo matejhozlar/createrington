@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Copy } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useToastActions } from "@/hooks/use-toast";
+import { useClipboard } from "@/hooks/use-clipboard";
 import {
   Tooltip,
   TooltipContent,
@@ -46,22 +46,13 @@ export function CellText({
   copy?: boolean;
   className?: string;
 }) {
-  const toast = useToastActions();
+  const { copy: copyToClipboard } = useClipboard();
   const textRef = React.useRef<HTMLSpanElement>(null);
   const [clipped, setClipped] = React.useState(false);
 
   const measure = () => {
     const el = textRef.current;
     if (el) setClipped(el.scrollWidth > el.clientWidth);
-  };
-
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(value);
-      toast.success("Copied to clipboard");
-    } catch {
-      toast.error("Failed to copy to clipboard");
-    }
   };
 
   const showValue = clipped || display !== undefined;
@@ -72,7 +63,7 @@ export function CellText({
         {copy ? (
           <button
             type="button"
-            onClick={handleCopy}
+            onClick={() => void copyToClipboard(value)}
             onMouseEnter={measure}
             className={cn(
               "group/copy flex min-w-0 max-w-full cursor-pointer items-center gap-1 transition-colors hover:text-foreground",

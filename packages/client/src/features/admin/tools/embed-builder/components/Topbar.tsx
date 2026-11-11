@@ -14,6 +14,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useClipboard } from "@/hooks/use-clipboard";
 import { useToastActions } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import {
@@ -44,6 +45,7 @@ export function Topbar({ builder }: TopbarProps) {
     externalData,
   } = builder;
   const toast = useToastActions();
+  const { copy } = useClipboard();
   const [sendOpen, setSendOpen] = useState(false);
   const [saveOpen, setSaveOpen] = useState(false);
 
@@ -52,10 +54,7 @@ export function Topbar({ builder }: TopbarProps) {
       kind === "components"
         ? JSON.stringify({ components }, null, 2)
         : JSON.stringify(externalData, null, 2);
-    navigator.clipboard.writeText(json).then(
-      () => toast.success("Copied to clipboard"),
-      () => toast.error("Failed to copy to clipboard"),
-    );
+    void copy(json);
   }
 
   async function handleImportJson() {

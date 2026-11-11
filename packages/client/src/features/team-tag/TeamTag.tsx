@@ -8,7 +8,7 @@ import {
 import { designCode, type PlateDesign } from "@createrington/shared/team-tag";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/auth";
-import { useToastActions } from "@/hooks/use-toast";
+import { useClipboard } from "@/hooks/use-clipboard";
 import { playerAvatarUrl } from "@/lib/player-images";
 import { cn } from "@/lib/utils";
 import { ColoursStep } from "./components/ColoursStep";
@@ -55,7 +55,7 @@ function readHead(image: HTMLImageElement | null): Bitmap | undefined {
 
 export function TeamTag() {
   const { user } = useAuth();
-  const toast = useToastActions();
+  const { copy } = useClipboard();
   const { assets, failed } = usePlateAssets();
   const { draft, update, load } = usePlateDraft();
   const { settings, update: updateSettings } = usePreviewSettings();
@@ -101,15 +101,6 @@ export function TeamTag() {
     [load, goTo],
   );
   useSharedDesign(loadAndSend);
-
-  const copy = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      toast.success("Copied to clipboard");
-    } catch {
-      toast.error("Clipboard access was blocked by the browser");
-    }
-  };
 
   const copyCode = () => code && copy(code);
 

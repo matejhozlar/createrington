@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToastActions } from "@/hooks/use-toast";
+import { camelCaseToTitle } from "@/lib/format";
 import { trpc, queryClient } from "@/lib/trpc";
 import {
   MAX_ENTRIES_PER_PLAYER,
@@ -25,17 +26,6 @@ import {
 } from "../format";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Textarea } from "@/components/ui/textarea";
-
-// Format a camelCase config key ("serverAnnouncements") into the label
-// we show in a picker ("Server Announcements"). Same transform the
-// embed-builder pickers use, mirrored here to avoid cross-feature
-// imports from a modal primitive.
-function formatName(key: string): string {
-  return key
-    .replace(/([A-Z])/g, " $1")
-    .replace(/^./, (s) => s.toUpperCase())
-    .trim();
-}
 
 interface Props {
   open: boolean;
@@ -283,10 +273,10 @@ export function CreatePromptModal({ open, onClose }: Props) {
               .filter((group) => group.channels.length > 0)
               .map((group) => (
                 <SelectGroup key={group.category}>
-                  <SelectLabel>{formatName(group.category)}</SelectLabel>
+                  <SelectLabel>{camelCaseToTitle(group.category)}</SelectLabel>
                   {group.channels.map((ch) => (
                     <SelectItem key={ch.id} value={ch.id}>
-                      # {formatName(ch.name)}
+                      # {camelCaseToTitle(ch.name)}
                     </SelectItem>
                   ))}
                 </SelectGroup>
@@ -307,7 +297,7 @@ export function CreatePromptModal({ open, onClose }: Props) {
             <SelectItem value={NONE}>No ping</SelectItem>
             {(rolesQuery.data ?? []).map((role) => (
               <SelectItem key={role.id} value={role.id}>
-                @ {formatName(role.name)}
+                @ {camelCaseToTitle(role.name)}
               </SelectItem>
             ))}
           </SelectContent>

@@ -1,8 +1,8 @@
 import { PlayerAnimation, type PlayerObject } from "skinview3d";
 import { TeamEffect, type EffectContext } from "./core/effect";
+import { clamp } from "@/lib/math";
 import {
   bump,
-  clamp,
   damp,
   easeInCubic,
   easeInOutCubic,
