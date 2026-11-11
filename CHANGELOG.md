@@ -1,3 +1,29 @@
+## v1.80.1 (2026-11-11)
+
+### @createrington/server (1.80.0 → 1.80.1)
+- [fix] Fix rejected admin chat stream requests reaching the widget as a generic 500: the upstream status and body (404 session not found, 401, 403 kill switch, ...) are now forwarded as-is, and the upstream request is aborted when the browser disconnects, including before claude-automation has answered
+- [add] Log the Minecraft username and UUID of a launcher sign-in that is rejected with a 403, so support can tell which account was refused
+- [chore] Replace axios with `fetch` in the Discord OAuth service, the `/issue` triage client and the admin chat proxy through new `utils/http.ts` helpers (`fetchJson`, `HttpStatusError`, `withQuery`, `readBody`, `describeHttpError`), and drop the `axios` dependency; timeouts are unchanged, and the chat proxy now forwards only single string query values upstream
+- [chore] Prune 32 of the 38 pnpm security overrides that upstream ranges already satisfy; no resolved version changes and `pnpm audit` reports the same result
+- [chore] Add unit tests for the HTTP helpers, the Discord OAuth service, the admin chat proxy, the issue triage client and the rejected launcher sign-in log
+
+### @createrington/client (0.2.98 → 0.2.99)
+- [add] Make the embed builder usable on phones and tablets: presets open in a left drawer when the builder is too narrow for the rail, the layout switches on the builder's own width via container queries, touch screens get finger-sized controls, field and button rows stack their actions under the inputs on narrow screens, the tab strip scrolls and keeps the active tab in view, and the page no longer scrolls twice under the mobile app bar
+- [add] Focus the matching field when the image, thumbnail or footer is clicked in the embed preview, and wrap long words in the preview instead of overlapping the next inline field
+- [fix] Fix chat images, GIFs and videos overflowing the message column on phones and giving the chat a sideways scroll; media is now capped at the column width or 24rem, whichever is smaller
+- [fix] Fix the gallery not landing at the top on iOS after a page change; the scroll is now immediate instead of a smooth scroll racing the skeleton swap
+- [fix] Fix the cramped field spacing in the embed builder's Save as new preset dialog
+- [refactor] Render the player, server and workshop admin detail tab strips through a shared underline `Tabs` variant with proper tab roles and arrow-key navigation, keeping the tab panels out of the tab order
+- [refactor] Give `Badge` tones and add a shared `PresenceBadge`, replacing hand-written status colours across the admin pages
+- [refactor] Share one `SearchInput` across every search field with a single 300 ms debounce default (the CurseForge searches keep their own delay)
+- [refactor] Consolidate formatters into `lib/format.ts`, `clamp` into `lib/math.ts`, downloads into `lib/download.ts` and clipboard writes into a `use-clipboard` hook that awaits the write and toasts on failure; the Settings session list now shows relative dates and the title generator size uses the shared byte formatter
+- [refactor] Handle a 401 in one place: `retryAfterRefresh` in the token manager refreshes the access token, retries once or dispatches `auth:session-expired`, and is used by both the tRPC link and the ky client, which had drifted apart
+- [refactor] Move every routed page and the server chat into `features/`, `NotFound` into `components/`, `AdminPlayers` next to the player detail page, and rename context hooks to `use-*.ts`; ESLint now forbids shared code from importing features
+- [refactor] Split the embed builder into one file per form tab and per preset sidebar part, and move validation, drafts, embed data and preset actions out of the main hook
+- [refactor] Declare the home page's static content as typed constants above the component
+- [remove] Remove the scoped `@radix-ui/react-*` packages (every primitive now comes from `radix-ui`) and the unused `sass` dependency
+- [chore] Add a Vitest setup for the client with unit tests for the token manager and the embed builder's validation, drafts and embed data; the root `test:unit` and the CI `test-unit` job now run client tests too
+
 ## v1.80.0 (2026-11-10)
 
 ### @createrington/server (1.79.0 → 1.80.0)
