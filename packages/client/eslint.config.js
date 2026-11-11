@@ -40,4 +40,27 @@ export default defineConfig([
       "@typescript-eslint/unbound-method": "off",
     },
   },
+  {
+    files: [
+      "src/components/**",
+      "src/hooks/**",
+      "src/lib/**",
+      "src/contexts/**",
+      "src/services/**",
+    ],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              regex: "^(@/|(\\.\\./)+)(features|pages)/",
+              message:
+                "Shared code must not import from features or pages. Move the shared part down into components, hooks or lib.",
+            },
+          ],
+        },
+      ],
+    },
+  },
 ]);
