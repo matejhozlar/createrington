@@ -10,7 +10,7 @@ import { PlayerDataProvider } from "./contexts/player-data";
 import { ProtectedRoute } from "./components/protected-route";
 import { OwnerRoute } from "./components/owner-route";
 import { LAUNCHER_ENABLED } from "./lib/launcher";
-import { Home } from "./pages/Home/Home";
+import { Home } from "./features/home/Home";
 import { NotFound } from "./components/not-found";
 import { ErrorBoundary } from "./components/error-boundary";
 import { ToastProvider } from "./components/ui/toast";
@@ -26,27 +26,27 @@ import { AdminPlayerProvider } from "./contexts/admin";
 
 // Puppeteer render targets (bot-only, not in user navigation)
 const CompareRender = lazyNamed(
-  () => import("./pages/Render/CompareRender"),
+  () => import("./features/render/CompareRender"),
   "CompareRender",
 );
 const ProfileRender = lazyNamed(
-  () => import("./pages/Render/ProfileRender"),
+  () => import("./features/render/ProfileRender"),
   "ProfileRender",
 );
 const ActivityRender = lazyNamed(
-  () => import("./pages/Render/ActivityRender"),
+  () => import("./features/render/ActivityRender"),
   "ActivityRender",
 );
 const TopRender = lazyNamed(
-  () => import("./pages/Render/TopRender"),
+  () => import("./features/render/TopRender"),
   "TopRender",
 );
 const TagRender = lazyNamed(
-  () => import("./pages/Render/TagRender"),
+  () => import("./features/render/TagRender"),
   "TagRender",
 );
 const RecordsRender = lazyNamed(
-  () => import("./pages/Render/RecordsRender"),
+  () => import("./features/render/RecordsRender"),
   "RecordsRender",
 );
 
@@ -92,7 +92,7 @@ const GuideDetail = lazyNamed(
   "GuideDetail",
 );
 const ApplyToJoin = lazyNamed(
-  () => import("./pages/ApplyToJoin/ApplyToJoin"),
+  () => import("./features/apply-to-join/ApplyToJoin"),
   "ApplyToJoin",
 );
 const Donate = lazyNamed(() => import("./features/donate/Donate"), "Donate");
@@ -104,13 +104,16 @@ const DonationCancel = lazyNamed(
   () => import("./features/donate/DonationCancel"),
   "DonationCancel",
 );
-const BlueMap = lazyNamed(() => import("./pages/BlueMap/BlueMap"), "BlueMap");
+const BlueMap = lazyNamed(
+  () => import("./features/bluemap/BlueMap"),
+  "BlueMap",
+);
 const OnlinePlayers = lazyNamed(
   () => import("./features/online-players/OnlinePlayers"),
   "OnlinePlayers",
 );
 const Advertisement = lazyNamed(
-  () => import("./pages/Advertisement"),
+  () => import("./features/advertisement/Advertisement"),
   "Advertisement",
 );
 const AnnouncementTable = import.meta.env.DEV
@@ -122,7 +125,7 @@ const AnnouncementTable = import.meta.env.DEV
 
 // Protected user pages
 const Settings = lazyNamed(
-  () => import("./pages/Settings/Settings"),
+  () => import("./features/settings/Settings"),
   "Settings",
 );
 const StructurePacks = lazyNamed(

@@ -12,8 +12,7 @@ pnpm lint:client
 
 | Path              | Contents                                                   |
 | ----------------- | ---------------------------------------------------------- |
-| `src/features/`   | Feature areas (workshop, admin, donate, ...)               |
-| `src/pages/`      | Top-level routed pages                                     |
+| `src/features/`   | Every routed page and feature area (home, admin, chat...)  |
 | `src/components/` | Shared components, including the Shadcn/ui primitives      |
 | `src/contexts/`   | Auth, WebSocket, server data, player data, toast providers |
 | `src/services/`   | tRPC client, REST client (`ky`), token manager             |
