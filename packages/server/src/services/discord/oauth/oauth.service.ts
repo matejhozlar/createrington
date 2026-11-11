@@ -1,8 +1,9 @@
 import appConfig from "@/config";
 import { AuthRole } from "@createrington/shared/auth";
 import { Q } from "@/db";
-import { safeAxiosError } from "@/utils/axios-error";
-import axios from "axios";
+import { describeHttpError, fetchJson } from "@/utils/http";
+
+const FORM_HEADERS = { "Content-Type": "application/x-www-form-urlencoded" };
 
 interface DiscordTokenResponse {
   access_token: string;
@@ -107,26 +108,25 @@ export class DiscordOAuthService {
     redirectUriOverride?: string,
   ): Promise<DiscordTokenResponse> {
     try {
-      const response = await axios.post<DiscordTokenResponse>(
+      const tokens = await fetchJson<DiscordTokenResponse>(
         "https://discord.com/api/oauth2/token",
-        new URLSearchParams({
-          client_id: this.config.clientId,
-          client_secret: this.config.clientSecret,
-          grant_type: "authorization_code",
-          code,
-          redirect_uri: redirectUriOverride ?? this.config.redirectUri,
-        }),
         {
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
+          method: "POST",
+          headers: FORM_HEADERS,
+          body: new URLSearchParams({
+            client_id: this.config.clientId,
+            client_secret: this.config.clientSecret,
+            grant_type: "authorization_code",
+            code,
+            redirect_uri: redirectUriOverride ?? this.config.redirectUri,
+          }),
         },
       );
 
       logger.info("Successfully exchanged OAuth code for token");
-      return response.data;
+      return tokens;
     } catch (error) {
-      logger.error("Failed to exchange OAuth code:", safeAxiosError(error));
+      logger.error("Failed to exchange OAuth code:", describeHttpError(error));
       throw new Error("Failed to exchange authorization code");
     }
   }
@@ -134,7 +134,7 @@ export class DiscordOAuthService {
   /** Fetches the authenticated user's Discord profile (`/users/@me`). */
   async getUser(accessToken: string): Promise<DiscordUser> {
     try {
-      const response = await axios.get<DiscordUser>(
+      const user = await fetchJson<DiscordUser>(
         "https://discord.com/api/users/@me",
         {
           headers: {
@@ -143,10 +143,10 @@ export class DiscordOAuthService {
         },
       );
 
-      logger.info(`Fetched Discord user ${response.data.id}`);
-      return response.data;
+      logger.info(`Fetched Discord user ${user.id}`);
+      return user;
     } catch (error) {
-      logger.error("Failed to fetch Discord user:", safeAxiosError(error));
+      logger.error("Failed to fetch Discord user:", describeHttpError(error));
       throw new Error("Failed to fetch user information");
     }
   }
@@ -218,25 +218,24 @@ export class DiscordOAuthService {
   /** Exchanges a Discord refresh token for a fresh access/refresh token pair. */
   async refresh(refreshToken: string): Promise<DiscordTokenResponse> {
     try {
-      const response = await axios.post<DiscordTokenResponse>(
+      const tokens = await fetchJson<DiscordTokenResponse>(
         "https://discord.com/api/oauth2/token",
-        new URLSearchParams({
-          client_id: this.config.clientId,
-          client_secret: this.config.clientSecret,
-          grant_type: "refresh_token",
-          refresh_token: refreshToken,
-        }),
         {
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
+          method: "POST",
+          headers: FORM_HEADERS,
+          body: new URLSearchParams({
+            client_id: this.config.clientId,
+            client_secret: this.config.clientSecret,
+            grant_type: "refresh_token",
+            refresh_token: refreshToken,
+          }),
         },
       );
 
       logger.info("Successfully refreshed OAuth token");
-      return response.data;
+      return tokens;
     } catch (error) {
-      logger.error("Failed to refresh OAuth token:", safeAxiosError(error));
+      logger.error("Failed to refresh OAuth token:", describeHttpError(error));
       throw new Error("Failed to refresh access token");
     }
   }
@@ -244,23 +243,19 @@ export class DiscordOAuthService {
   /** Invalidates a Discord access or refresh token (called on logout). */
   async revoke(token: string): Promise<void> {
     try {
-      await axios.post(
-        "https://discord.com/api/oauth2/token/revoke",
-        new URLSearchParams({
+      await fetchJson("https://discord.com/api/oauth2/token/revoke", {
+        method: "POST",
+        headers: FORM_HEADERS,
+        body: new URLSearchParams({
           client_id: this.config.clientId,
           client_secret: this.config.clientSecret,
           token,
         }),
-        {
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
-        },
-      );
+      });
 
       logger.info("Successfully revoked OAuth token");
     } catch (error) {
-      logger.error("Failed to revoke OAuth token:", safeAxiosError(error));
+      logger.error("Failed to revoke OAuth token:", describeHttpError(error));
       throw new Error("Failed to revoke token");
     }
   }

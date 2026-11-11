@@ -1,6 +1,5 @@
-import axios, { AxiosError } from "axios";
 import { env } from "@/config/env/env.config";
-import { safeAxiosError } from "@/utils/axios-error";
+import { describeHttpError, fetchJson, HttpStatusError } from "@/utils/http";
 
 const REQUEST_TIMEOUT_MS = 15_000;
 const POLL_INTERVAL_MS = 5_000;
@@ -44,8 +43,6 @@ export class IssueTriageError extends Error {
  * CLAUDE_API_URL and ADMIN_CHAT_SECRET.
  */
 export class IssueTriageService {
-  private readonly client = axios.create({ timeout: REQUEST_TIMEOUT_MS });
-
   /** Whether the app is configured to reach claude-automation. */
   isConfigured(): boolean {
     return Boolean(env.CLAUDE_API_URL && env.ADMIN_CHAT_SECRET);
@@ -57,14 +54,18 @@ export class IssueTriageService {
       throw new IssueTriageError("not_configured");
     }
     try {
-      const response = await this.client.post<{ sessionId: number }>(
+      const response = await fetchJson<{ sessionId: number }>(
         `${env.CLAUDE_API_URL}/api/triage`,
-        request,
-        { headers: this.headers() },
+        {
+          method: "POST",
+          headers: this.headers(),
+          body: JSON.stringify(request),
+          signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        },
       );
-      return { sessionId: response.data.sessionId };
+      return { sessionId: response.sessionId };
     } catch (error) {
-      if (error instanceof AxiosError && error.response?.status === 429) {
+      if (error instanceof HttpStatusError && error.status === 429) {
         throw new IssueTriageError("busy");
       }
       throw new IssueTriageError("failed");
@@ -73,11 +74,13 @@ export class IssueTriageService {
 
   /** Current state of a triage session. */
   async status(sessionId: number): Promise<IssueTriageStatus> {
-    const response = await this.client.get<IssueTriageStatus>(
+    return fetchJson<IssueTriageStatus>(
       `${env.CLAUDE_API_URL}/api/triage/${sessionId}`,
-      { headers: this.headers() },
+      {
+        headers: this.headers(),
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      },
     );
-    return response.data;
   }
 
   /**
@@ -99,7 +102,7 @@ export class IssueTriageService {
           return current;
         }
       } catch (error) {
-        if (error instanceof AxiosError && error.response?.status === 404) {
+        if (error instanceof HttpStatusError && error.status === 404) {
           return {
             status: "failed",
             result: "orphaned",
@@ -111,7 +114,7 @@ export class IssueTriageService {
           pollErrorLogged = true;
           logger.warn(
             `Issue triage session #${sessionId} status poll failed:`,
-            safeAxiosError(error),
+            describeHttpError(error),
           );
         }
       }
