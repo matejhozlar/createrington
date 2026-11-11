@@ -6,7 +6,7 @@ import type { inferRouterOutputs } from "@trpc/server";
 import { HTTPError } from "ky";
 import {
   getAccessToken,
-  refreshAccessToken,
+  retryAfterRefresh,
 } from "@/services/auth/token-manager";
 
 export type RouterOutput = inferRouterOutputs<AppRouter>;
@@ -43,28 +43,17 @@ const trpcClient = createTRPCClient<AppRouter>({
         return token ? { Authorization: `Bearer ${token}` } : {};
       },
       async fetch(url, options) {
-        let response = await fetch(url, {
-          ...options,
-          credentials: "include",
-        });
+        const send = (headers?: HeadersInit) =>
+          fetch(url, { ...options, headers, credentials: "include" });
 
-        // On 401 → attempt silent refresh → retry
-        if (response.status === 401) {
-          const result = await refreshAccessToken();
-          if (result) {
+        return retryAfterRefresh(
+          await send(options?.headers),
+          (accessToken) => {
             const headers = new Headers(options?.headers);
-            headers.set("Authorization", `Bearer ${result.accessToken}`);
-            response = await fetch(url, {
-              ...options,
-              headers,
-              credentials: "include",
-            });
-          } else {
-            window.dispatchEvent(new CustomEvent("auth:session-expired"));
-          }
-        }
-
-        return response;
+            headers.set("Authorization", `Bearer ${accessToken}`);
+            return send(headers);
+          },
+        );
       },
     }),
   ],

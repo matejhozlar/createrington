@@ -1,7 +1,7 @@
 import ky, { type KyInstance, type Options } from "ky";
 import {
   getAccessToken,
-  refreshAccessToken,
+  retryAfterRefresh,
 } from "@/services/auth/token-manager";
 
 interface ApiErrorResponse {
@@ -86,26 +86,10 @@ class ApiClient {
               console.log(`[API] ✓ ${response.status} ${response.url}`);
             }
 
-            // On 401: attempt silent refresh and retry original request.
-            if (response.status === 401) {
-              // Don't retry the refresh endpoint itself: avoids infinite loops.
-              if (request.url.includes("/api/auth/refresh")) {
-                return response;
-              }
-
-              const result = await refreshAccessToken();
-              if (result) {
-                request.headers.set(
-                  "Authorization",
-                  `Bearer ${result.accessToken}`,
-                );
-                return ky(request, { ...options, hooks: {} });
-              }
-
-              window.dispatchEvent(new CustomEvent("auth:session-expired"));
-            }
-
-            return response;
+            return retryAfterRefresh(response, (accessToken) => {
+              request.headers.set("Authorization", `Bearer ${accessToken}`);
+              return ky(request, { ...options, hooks: {} });
+            });
           },
         ],
       },
