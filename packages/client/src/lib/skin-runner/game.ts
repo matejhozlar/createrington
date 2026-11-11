@@ -21,7 +21,8 @@ import {
   type Sprite,
   type Sprites,
 } from "./sprites";
-import { clamp, pick, rand, smoothstep } from "./util";
+import { clamp } from "@/lib/math";
+import { pick, rand, smoothstep } from "./util";
 
 export type RunnerState = "loading" | "idle" | "running" | "dead";
 

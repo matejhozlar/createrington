@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  GALLERY_STATUS_STYLES,
+  GALLERY_STATUS,
   type GalleryStatus,
   type GallerySubmissionItem,
 } from "../format";
@@ -148,7 +148,7 @@ function SubmissionCard({
   item: GallerySubmissionItem;
   onRemove?: () => void;
 }) {
-  const style = GALLERY_STATUS_STYLES[item.status];
+  const status = GALLERY_STATUS[item.status];
   const reviewedAt = item.reviewedAt ? new Date(item.reviewedAt) : null;
 
   return (
@@ -167,10 +167,10 @@ function SubmissionCard({
           <ImageOff className="size-8 text-muted-foreground" />
         )}
         <Badge
-          variant="outline"
-          className={`absolute left-3 top-3 bg-background/80 backdrop-blur ${style.className}`}
+          tone={status.tone}
+          className="absolute left-3 top-3 backdrop-blur"
         >
-          {style.label}
+          {status.label}
         </Badge>
       </div>
 

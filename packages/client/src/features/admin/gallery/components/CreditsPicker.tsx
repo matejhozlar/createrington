@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { Search, X } from "lucide-react";
+import { X } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
+import { SearchInput } from "@/components/search-input";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import type { GalleryCredit } from "../format";
 import { useQuery } from "@tanstack/react-query";
 
@@ -25,7 +25,7 @@ export function CreditsPicker({
   disabled,
 }: CreditsPickerProps) {
   const [query, setQuery] = useState("");
-  const debouncedQuery = useDebouncedValue(query, 300);
+  const debouncedQuery = useDebouncedValue(query);
   const searching = debouncedQuery.trim().length > 0;
 
   const searchQuery = useQuery(
@@ -81,19 +81,16 @@ export function CreditsPicker({
         </div>
       )}
 
-      <div className="relative">
-        <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
-        <Input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder={
-            full
-              ? `Up to ${MAX_CREDITS} players`
-              : "Credit another builder by username"
-          }
-          disabled={disabled || full}
-          className="pl-9"
-        />
+      <SearchInput
+        value={query}
+        onValueChange={setQuery}
+        placeholder={
+          full
+            ? `Up to ${MAX_CREDITS} players`
+            : "Credit another builder by username"
+        }
+        disabled={disabled || full}
+      >
         {searching && !full && (
           <div className="absolute z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-md border border-border bg-popover shadow-md">
             {searchQuery.isLoading ? (
@@ -131,7 +128,7 @@ export function CreditsPicker({
             )}
           </div>
         )}
-      </div>
+      </SearchInput>
     </div>
   );
 }

@@ -3,7 +3,7 @@ import { ArrowLeft } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { Badge } from "@/components/ui/badge";
 import { LoadingState } from "@/components/query-states";
-import { NotFound } from "@/pages/not-found";
+import { NotFound } from "@/components/not-found";
 import { loaderName } from "../format";
 import { PackStrip } from "../components/PackStrip";
 import { QueryErrorState } from "../components/QueryErrorState";

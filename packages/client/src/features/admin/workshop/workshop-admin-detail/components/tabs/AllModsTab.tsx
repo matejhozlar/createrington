@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { Heart, Lightbulb, Search } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Paginator } from "@/components/paginator";
 import { CellDate } from "@/components/cell-text";
@@ -168,7 +167,7 @@ export function AllModsTab({
       render: (mod) => {
         const status = MOD_STATUS_STYLES[mod.status];
         return status ? (
-          <Badge variant="outline" className={cn("text-xs", status.className)}>
+          <Badge tone={status.tone} className="text-xs">
             {status.tableLabel}
           </Badge>
         ) : null;

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Search, X } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import {
   CURSEFORGE_CLASSES,
   curseforgeClassLabelPlural,
@@ -12,12 +12,13 @@ import { useToastActions } from "@/hooks/use-toast";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { Badge } from "@/components/ui/badge";
 import { FormDialog } from "@/components/form-dialog";
+import { SearchInput } from "@/components/search-input";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ProjectThumb } from "@/features/workshop/components/ProjectThumb";
 import {
   MOD_STATUS_STYLES,
-  PROJECT_KIND_BADGE_CLASS,
+  COMPACT_BADGE_CLASS,
   projectKindLabel,
 } from "@/features/workshop/format";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -134,7 +135,7 @@ export function AddModsDialog({
                 )}
                 {project.name}
                 {kind && (
-                  <Badge variant="outline" className={PROJECT_KIND_BADGE_CLASS}>
+                  <Badge tone="fuchsia" className={COMPACT_BADGE_CLASS}>
                     {kind}
                   </Badge>
                 )}
@@ -178,15 +179,11 @@ export function AddModsDialog({
         </div>
       )}
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          className="pl-9"
-          placeholder="Search CurseForge..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
-      </div>
+      <SearchInput
+        placeholder="Search CurseForge..."
+        value={searchQuery}
+        onValueChange={setSearchQuery}
+      />
 
       <div className="max-h-72 space-y-2 overflow-y-auto">
         {searchResults.isLoading && debouncedSearch.length >= 2 && (
@@ -249,11 +246,8 @@ export function AddModsDialog({
               <div className="flex shrink-0 gap-1">
                 {result.rejected && (
                   <Badge
-                    variant="outline"
-                    className={cn(
-                      "text-xs",
-                      MOD_STATUS_STYLES.rejected.className,
-                    )}
+                    tone={MOD_STATUS_STYLES.rejected.tone}
+                    className="text-xs"
                   >
                     {MOD_STATUS_STYLES.rejected.label}
                   </Badge>
@@ -265,11 +259,8 @@ export function AddModsDialog({
                 )}
                 {result.inModpack && (
                   <Badge
-                    variant="outline"
-                    className={cn(
-                      "text-xs",
-                      MOD_STATUS_STYLES.in_pack.className,
-                    )}
+                    tone={MOD_STATUS_STYLES.in_pack.tone}
+                    className="text-xs"
                   >
                     In base pack
                   </Badge>

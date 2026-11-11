@@ -57,10 +57,7 @@ export function SessionsTab({ playerId, getServerName }: SessionsTabProps) {
             className="font-medium"
           />
           {!session.sessionEnd && (
-            <Badge
-              variant="default"
-              className="shrink-0 bg-green-500/20 text-green-500"
-            >
+            <Badge tone="success" className="shrink-0">
               Active
             </Badge>
           )}

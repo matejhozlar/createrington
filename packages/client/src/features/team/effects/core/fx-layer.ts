@@ -1,4 +1,5 @@
-import { clamp, lerp, prefersReducedMotion } from "./math";
+import { clamp } from "@/lib/math";
+import { lerp, prefersReducedMotion } from "./math";
 
 export type ParticleInit = {
   x: number;

@@ -87,13 +87,8 @@ export function BansTab({ player, onIssueBan, onUnban }: BansTabProps) {
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <Badge
-                      variant={
-                        ban.banType === "permanent" ? "destructive" : "default"
-                      }
-                      className={cn(
-                        ban.banType === "temporary" &&
-                          "bg-orange-500/20 text-orange-500 hover:bg-orange-500/30",
-                      )}
+                      variant="destructive"
+                      tone={ban.banType === "temporary" ? "orange" : undefined}
                     >
                       {ban.banType === "permanent" ? "Permanent" : "Temporary"}
                     </Badge>

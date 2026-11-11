@@ -101,10 +101,7 @@ export function ActiveSlots({
                 </span>
               )}
               <span className="ml-auto flex shrink-0 items-center gap-2">
-                <Badge
-                  variant="outline"
-                  className={MOD_STATUS_STYLES.pending.className}
-                >
+                <Badge tone={MOD_STATUS_STYLES.pending.tone}>
                   {MOD_STATUS_STYLES.pending.label}
                 </Badge>
                 {isOpen && (

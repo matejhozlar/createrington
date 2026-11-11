@@ -1,10 +1,9 @@
 import { useState } from "react";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/search-input";
 import { Badge } from "@/components/ui/badge";
 import {
-  Search,
   ShieldAlert,
   Crown,
   Clock,
@@ -68,10 +67,7 @@ function getDisplayCategory(cmd: CommandData): string {
 function PermissionBadge({ command }: { command: CommandData }) {
   if (command.permissions?.requireOwner) {
     return (
-      <Badge
-        variant="outline"
-        className="gap-1 border-amber-500/30 text-amber-400"
-      >
+      <Badge tone="warning">
         <Crown className="size-3" />
         Owner
       </Badge>
@@ -79,7 +75,7 @@ function PermissionBadge({ command }: { command: CommandData }) {
   }
   if (command.permissions?.requireAdmin) {
     return (
-      <Badge variant="outline" className="gap-1 border-red-500/30 text-red-400">
+      <Badge tone="danger">
         <ShieldAlert className="size-3" />
         Admin
       </Badge>
@@ -307,15 +303,12 @@ export function CommandDocs() {
           />
 
           <div className="flex flex-wrap items-center gap-2">
-            <div className="relative w-full max-w-xs sm:flex-1">
-              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search commands..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9"
-              />
-            </div>
+            <SearchInput
+              className="w-full max-w-xs sm:flex-1"
+              placeholder="Search commands..."
+              value={search}
+              onValueChange={setSearch}
+            />
 
             <div className="flex flex-wrap gap-1">
               <button

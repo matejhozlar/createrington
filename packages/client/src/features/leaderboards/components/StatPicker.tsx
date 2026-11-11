@@ -5,6 +5,7 @@ import {
   formatStatItem,
   statModName,
 } from "@createrington/shared/minecraft-stats";
+import { formatNumber } from "@/lib/format";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
@@ -38,7 +39,7 @@ function statLabel({ category, item }: Stat): string {
 
 function StatResults({ onPick }: { onPick: (stat: Stat) => void }) {
   const [query, setQuery] = useState("");
-  const debounced = useDebouncedValue(query.trim(), 200);
+  const debounced = useDebouncedValue(query.trim());
   const searching = debounced.length >= 2;
 
   const searchQuery = useQuery(
@@ -91,7 +92,7 @@ function StatResults({ onPick }: { onPick: (stat: Stat) => void }) {
                 </span>
               </span>
               <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-                {stat.holders.toLocaleString("en-US")}{" "}
+                {formatNumber(stat.holders)}{" "}
                 {stat.holders === 1 ? "player" : "players"}
               </span>
             </CommandItem>

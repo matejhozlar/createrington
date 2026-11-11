@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { Network, PackagePlus, Search } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { Badge } from "@/components/ui/badge";
 import { Paginator } from "@/components/paginator";
@@ -149,7 +148,7 @@ export function DependenciesTab({
       render: (row) => {
         const style = DEPENDENCY_COVERAGE_STYLES[row.coverage];
         return style ? (
-          <Badge variant="outline" className={cn("text-xs", style.className)}>
+          <Badge tone={style.tone} className="text-xs">
             {style.label}
           </Badge>
         ) : null;

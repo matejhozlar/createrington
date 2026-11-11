@@ -2,13 +2,14 @@ import { TRPCClientError, createTRPCClient, httpBatchLink } from "@trpc/client";
 import { createTRPCOptionsProxy } from "@trpc/tanstack-react-query";
 import { QueryClient } from "@tanstack/react-query";
 import type { AppRouter } from "@createrington/server/trpc";
-import type { inferRouterOutputs } from "@trpc/server";
+import type { inferRouterInputs, inferRouterOutputs } from "@trpc/server";
 import { HTTPError } from "ky";
 import {
   getAccessToken,
-  refreshAccessToken,
+  retryAfterRefresh,
 } from "@/services/auth/token-manager";
 
+export type RouterInput = inferRouterInputs<AppRouter>;
 export type RouterOutput = inferRouterOutputs<AppRouter>;
 
 const MAX_QUERY_RETRIES = 3;
@@ -43,28 +44,17 @@ const trpcClient = createTRPCClient<AppRouter>({
         return token ? { Authorization: `Bearer ${token}` } : {};
       },
       async fetch(url, options) {
-        let response = await fetch(url, {
-          ...options,
-          credentials: "include",
-        });
+        const send = (headers?: HeadersInit) =>
+          fetch(url, { ...options, headers, credentials: "include" });
 
-        // On 401 → attempt silent refresh → retry
-        if (response.status === 401) {
-          const result = await refreshAccessToken();
-          if (result) {
+        return retryAfterRefresh(
+          await send(options?.headers),
+          (accessToken) => {
             const headers = new Headers(options?.headers);
-            headers.set("Authorization", `Bearer ${result.accessToken}`);
-            response = await fetch(url, {
-              ...options,
-              headers,
-              credentials: "include",
-            });
-          } else {
-            window.dispatchEvent(new CustomEvent("auth:session-expired"));
-          }
-        }
-
-        return response;
+            headers.set("Authorization", `Bearer ${accessToken}`);
+            return send(headers);
+          },
+        );
       },
     }),
   ],

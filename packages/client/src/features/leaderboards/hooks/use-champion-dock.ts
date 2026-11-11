@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { clamp } from "@/lib/math";
 
 const LAND_AT = 0.3;
 const STAGGER = 0.16;
@@ -35,10 +36,6 @@ interface FlightNodes {
 interface FlightLayout {
   origin: DOMRect;
   target: DOMRect;
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
 }
 
 function easeInOut(t: number): number {

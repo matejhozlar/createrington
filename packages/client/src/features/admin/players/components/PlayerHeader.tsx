@@ -1,8 +1,8 @@
 import { Button } from "@/components/ui/button";
+import { PresenceBadge } from "@/components/presence-badge";
 import { Badge } from "@/components/ui/badge";
 import { CellText } from "@/components/cell-text";
 import { Edit, Trash2, MapPin } from "lucide-react";
-import { cn } from "@/lib/utils";
 import type { RouterOutput } from "@/lib/trpc";
 import { playerPoseUrl } from "@/lib/player-images";
 import { formatDimension, tpCommand } from "@/lib/minecraft";
@@ -48,16 +48,10 @@ export function PlayerHeader({
               <h1 className="text-xl font-bold leading-tight">
                 {player.minecraftUsername}
               </h1>
-              <Badge
-                variant={isOnline ? "default" : "outline"}
-                className={cn(
-                  "text-[10px] px-1.5 py-0",
-                  isOnline &&
-                    "bg-green-500/20 text-green-500 hover:bg-green-500/30",
-                )}
-              >
-                {isOnline ? "Online" : "Offline"}
-              </Badge>
+              <PresenceBadge
+                status={isOnline ? "online" : "offline"}
+                className="px-1.5 py-0 text-[10px]"
+              />
               {isOnline && currentServerName && (
                 <span className="text-xs text-muted-foreground">
                   on{" "}

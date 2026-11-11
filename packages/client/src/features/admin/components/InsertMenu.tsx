@@ -16,7 +16,7 @@ import { AtSign, Clock, Hash, Plus, Search, Shield } from "lucide-react";
 import { useMemo, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
-import { formatConfigKey as formatName } from "@/features/admin/format";
+import { camelCaseToTitle } from "@/lib/format";
 import { useQuery } from "@tanstack/react-query";
 
 type Tab = "mentions" | "timestamp";
@@ -73,7 +73,7 @@ export function InsertMenu({
       .map((group) => ({
         ...group,
         channels: group.channels.filter((ch) =>
-          formatName(ch.name).toLowerCase().includes(query),
+          camelCaseToTitle(ch.name).toLowerCase().includes(query),
         ),
       }))
       .filter((group) => group.channels.length > 0);
@@ -83,7 +83,7 @@ export function InsertMenu({
     const allRoles = rolesQuery.data ?? [];
     if (!query) return allRoles;
     return allRoles.filter((role) =>
-      formatName(role.name).toLowerCase().includes(query),
+      camelCaseToTitle(role.name).toLowerCase().includes(query),
     );
   }, [rolesQuery.data, query]);
 
@@ -126,7 +126,7 @@ export function InsertMenu({
               variant="ghost"
               size="sm"
               className={cn(
-                "size-5 p-0 text-muted-foreground hover:text-foreground",
+                "size-5 p-0 text-muted-foreground hover:text-foreground pointer-coarse:size-8",
                 triggerClassName,
               )}
               aria-label="Insert"
@@ -138,7 +138,7 @@ export function InsertMenu({
         <TooltipContent side={tooltipSide}>Insert</TooltipContent>
       </Tooltip>
 
-      <DialogContent className="max-w-md gap-0 p-0">
+      <DialogContent className="gap-0 p-0 sm:max-w-md">
         <DialogHeader className="border-b border-border px-5 py-4">
           <DialogTitle className="text-base">Insert</DialogTitle>
           <DialogDescription>
@@ -180,7 +180,7 @@ export function InsertMenu({
               />
             </div>
 
-            <div className="max-h-[420px] overflow-y-auto px-2 py-2">
+            <div className="max-h-[min(420px,45svh)] overflow-y-auto px-2 py-2">
               {!hasMentionResults && (
                 <div className="px-2 py-8 text-center text-sm text-muted-foreground">
                   No matches
@@ -196,7 +196,7 @@ export function InsertMenu({
                   {filteredChannelGroups.map((group) => (
                     <div key={group.category} className="mb-1">
                       <div className="px-2 pt-2 pb-1 text-[10px] uppercase tracking-wider text-muted-foreground">
-                        {formatName(group.category)}
+                        {camelCaseToTitle(group.category)}
                       </div>
                       {group.channels.map((ch) => (
                         <button
@@ -206,7 +206,7 @@ export function InsertMenu({
                           onClick={() => insert(`<#${ch.id}>`)}
                         >
                           <Hash className="size-3.5 text-muted-foreground" />
-                          {formatName(ch.name)}
+                          {camelCaseToTitle(ch.name)}
                         </button>
                       ))}
                     </div>
@@ -232,7 +232,7 @@ export function InsertMenu({
                       onClick={() => insert(`<@&${role.id}>`)}
                     >
                       <AtSign className="size-3.5 text-muted-foreground" />
-                      {formatName(role.name)}
+                      {camelCaseToTitle(role.name)}
                     </button>
                   ))}
                 </>
@@ -256,7 +256,7 @@ export function InsertMenu({
               />
             </div>
 
-            <div className="max-h-[360px] overflow-y-auto p-2">
+            <div className="max-h-[min(360px,40svh)] overflow-y-auto p-2">
               <SectionLabel>Format</SectionLabel>
               {TIMESTAMP_FORMATS.map(({ label, format, example }) => (
                 <button
@@ -280,7 +280,7 @@ export function InsertMenu({
 }
 
 const rowClass =
-  "flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-sm hover:bg-accent";
+  "flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-sm hover:bg-accent pointer-coarse:py-2.5";
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (

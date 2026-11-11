@@ -1,5 +1,6 @@
 import { PlayerAnimation, type PlayerObject } from "skinview3d";
-import { bump, clamp, easeInOutCubic, easeOutBack, span } from "./core/math";
+import { clamp } from "@/lib/math";
+import { bump, easeInOutCubic, easeOutBack, span } from "./core/math";
 import {
   applyJoints,
   joints,

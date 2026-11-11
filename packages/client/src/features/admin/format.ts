@@ -1,14 +1,5 @@
 import { formatRelativeDate } from "@/lib/format";
 
-export { formatRelativeDate };
-
-export function formatConfigKey(key: string): string {
-  return key
-    .replace(/([A-Z])/g, " $1")
-    .replace(/^./, (s) => s.toUpperCase())
-    .trim();
-}
-
 export function toIso(value: string | Date): string {
   return typeof value === "string" ? value : new Date(value).toISOString();
 }

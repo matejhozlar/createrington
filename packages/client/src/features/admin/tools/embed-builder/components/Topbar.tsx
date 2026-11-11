@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Copy, Save, Send, Upload } from "lucide-react";
+import { Copy, PanelLeft, Save, Send, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Breadcrumb,
@@ -14,6 +14,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useClipboard } from "@/hooks/use-clipboard";
 import { useToastActions } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import {
@@ -26,9 +27,10 @@ import { SaveAsNewModal } from "./SaveAsNewModal";
 
 interface TopbarProps {
   builder: UseEmbedBuilder;
+  onOpenPresets: () => void;
 }
 
-export function Topbar({ builder }: TopbarProps) {
+export function Topbar({ builder, onOpenPresets }: TopbarProps) {
   const {
     kind,
     components,
@@ -44,6 +46,7 @@ export function Topbar({ builder }: TopbarProps) {
     externalData,
   } = builder;
   const toast = useToastActions();
+  const { copy } = useClipboard();
   const [sendOpen, setSendOpen] = useState(false);
   const [saveOpen, setSaveOpen] = useState(false);
 
@@ -52,10 +55,7 @@ export function Topbar({ builder }: TopbarProps) {
       kind === "components"
         ? JSON.stringify({ components }, null, 2)
         : JSON.stringify(externalData, null, 2);
-    navigator.clipboard.writeText(json).then(
-      () => toast.success("Copied to clipboard"),
-      () => toast.error("Failed to copy to clipboard"),
-    );
+    void copy(json);
   }
 
   async function handleImportJson() {
@@ -101,6 +101,8 @@ export function Topbar({ builder }: TopbarProps) {
     ? isPending || !isDirty
     : isPending || !hasContent;
 
+  const saveLabel = activePreset ? "Save" : "Save as new";
+
   function onSaveClick() {
     if (activePreset) {
       void handleSave();
@@ -112,7 +114,19 @@ export function Topbar({ builder }: TopbarProps) {
   return (
     <>
       <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border bg-sidebar px-3 sm:px-4">
-        <Breadcrumb className="hidden min-w-0 sm:block">
+        <div className="shrink-0 @3xl:hidden">
+          <Button
+            onClick={onOpenPresets}
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground"
+            aria-label="Open presets"
+          >
+            <PanelLeft className="size-4" />
+          </Button>
+        </div>
+
+        <Breadcrumb className="hidden min-w-0 @3xl:block">
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink href="/admin/dashboard">Admin</BreadcrumbLink>
@@ -157,6 +171,7 @@ export function Topbar({ builder }: TopbarProps) {
                 variant="ghost"
                 size="icon"
                 className="text-muted-foreground"
+                aria-label="Copy as JSON"
               >
                 <Copy className="size-4" />
               </Button>
@@ -170,6 +185,7 @@ export function Topbar({ builder }: TopbarProps) {
                 variant="ghost"
                 size="icon"
                 className="text-muted-foreground"
+                aria-label="Import from clipboard"
               >
                 <Upload className="size-4" />
               </Button>
@@ -183,17 +199,19 @@ export function Topbar({ builder }: TopbarProps) {
             loading={isPending}
             variant="outline"
             className="ml-1"
+            aria-label={saveLabel}
           >
-            <Save className="mr-1.5 size-4" />
-            {activePreset ? "Save" : "Save as new"}
+            <Save className="size-4 @xl:mr-1.5" />
+            <span className="hidden @xl:inline">{saveLabel}</span>
           </Button>
           <Button
             onClick={() => setSendOpen(true)}
             disabled={!hasContent}
             className="bg-primary text-primary-foreground hover:bg-primary/90"
+            aria-label="Send"
           >
-            <Send className="mr-1.5 size-4" />
-            Send
+            <Send className="size-4 @xl:mr-1.5" />
+            <span className="hidden @xl:inline">Send</span>
           </Button>
         </div>
       </header>

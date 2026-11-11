@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Paginator } from "@/components/paginator";
 import { Badge } from "@/components/ui/badge";
 import { Ticket } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -76,13 +75,14 @@ export function TicketsTab({ playerId }: TicketsTabProps) {
                         </p>
 
                         <Badge
-                          variant={isOpen(t) ? "default" : "outline"}
-                          className={cn(
-                            isOpen(t) &&
-                              "bg-green-500/20 text-green-500 hover:bg-green-500/30",
-                            isClosed(t) &&
-                              "bg-muted text-muted-foreground hover:bg-muted",
-                          )}
+                          variant="outline"
+                          tone={
+                            isOpen(t)
+                              ? "success"
+                              : isClosed(t)
+                                ? "neutral"
+                                : undefined
+                          }
                         >
                           {statusText}
                         </Badge>

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ArrowLeft, CheckCircle2, Plus, Search } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -10,7 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { FormDialog } from "@/components/form-dialog";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/search-input";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useToastActions } from "@/hooks/use-toast";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
@@ -188,15 +188,11 @@ export function AddModDialog({
 
           {selectedModId === null ? (
             <div className="space-y-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  className="pl-9"
-                  placeholder="Search CurseForge mods..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
+              <SearchInput
+                placeholder="Search CurseForge mods..."
+                value={searchQuery}
+                onValueChange={setSearchQuery}
+              />
 
               {searchModsQuery.data && searchModsQuery.data.length > 0 && (
                 <p className="text-xs text-muted-foreground">

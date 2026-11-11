@@ -1,6 +1,6 @@
 {
   "name": "@createrington/server",
-  "version": "1.80.0",
+  "version": "1.80.1",
   "description": "",
   "private": true,
   "license": "UNLICENSED",
@@ -102,7 +102,6 @@
     "@napi-rs/canvas": "^0.1.100",
     "@redis/client": "^6.3.0",
     "@trpc/server": "^11.24.0",
-    "axios": "^1.20.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "createrington-skin-api": "^2.16.0",

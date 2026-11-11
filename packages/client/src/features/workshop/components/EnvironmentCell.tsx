@@ -50,10 +50,7 @@ export function EnvironmentCell({
           className="cursor-pointer"
           title={environmentTitle(shown, shownSource)}
         >
-          <Badge
-            variant="outline"
-            className={cn("pointer-events-none text-xs", style.className)}
-          >
+          <Badge tone={style.tone} className="pointer-events-none text-xs">
             {style.label}
           </Badge>
         </button>

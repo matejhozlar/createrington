@@ -2,7 +2,7 @@ import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { PageHeader } from "@/components/page-header";
 import { Paginator } from "@/components/paginator";
-import { NotFound } from "@/pages/not-found";
+import { NotFound } from "@/components/not-found";
 import { LoadingScreen } from "@/components/query-states";
 import { GalleryTile } from "./components/GalleryTile";
 import { GalleryLightbox } from "./components/GalleryLightbox";
@@ -51,7 +51,7 @@ export function Gallery() {
   const changePage = (next: number) => {
     setPage(next);
     lightbox.close();
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo({ top: 0 });
   };
 
   return (

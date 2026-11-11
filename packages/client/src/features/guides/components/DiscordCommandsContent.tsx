@@ -1,3 +1,4 @@
+import { formatCompactDuration } from "@createrington/shared/format";
 import { LoadingState } from "@/components/query-states";
 import { Clock } from "lucide-react";
 import { trpc } from "@/lib/trpc";
@@ -29,11 +30,6 @@ function buildSyntax(name: string, options: CommandOption[]): string {
   return params ? `/${name} ${params}` : `/${name}`;
 }
 
-function formatCooldown(seconds: number): string {
-  if (seconds < 60) return `${seconds}s`;
-  return `${Math.floor(seconds / 60)}m`;
-}
-
 function CommandEntry({ command }: { command: CommandData }) {
   const subs = command.options.filter((o) => o.type === 1 || o.type === 2);
   const topOpts = command.options.filter((o) => o.type !== 1 && o.type !== 2);
@@ -48,7 +44,7 @@ function CommandEntry({ command }: { command: CommandData }) {
         {command.cooldown && (
           <span className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
             <Clock className="size-3" />
-            {formatCooldown(command.cooldown.duration)}
+            {formatCompactDuration(command.cooldown.duration)}
           </span>
         )}
       </div>

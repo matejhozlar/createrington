@@ -11,6 +11,7 @@ import {
   WORKSHOP_MOD_STATUSES,
   WORKSHOP_MOD_STATUS_LABELS,
 } from "@createrington/shared/workshop";
+import type { BadgeTone } from "@/components/ui/badge";
 
 export { WORKSHOP_MOD_REJECT_REASON_LABELS as REJECT_REASON_LABELS } from "@createrington/shared/workshop";
 export { formatDate } from "@createrington/shared/format";
@@ -61,11 +62,7 @@ export function projectKindLabel(classId: number): string | null {
     : curseforgeClassLabel(classId);
 }
 
-export const PROJECT_KIND_BADGE_CLASS =
-  "shrink-0 border-fuchsia-500/20 bg-fuchsia-500/10 px-1.5 py-0 text-[10px] text-fuchsia-400";
-
-export const DISABLED_BADGE_CLASS =
-  "shrink-0 border-zinc-500/20 bg-zinc-500/10 px-1.5 py-0 text-[10px] text-zinc-400";
+export const COMPACT_BADGE_CLASS = "px-1.5 py-0 text-[10px]";
 
 export const DISABLED_LABEL = "Disabled";
 
@@ -73,13 +70,13 @@ export function modCredit(submitterName: string | null) {
   return { verb: "Suggested by", name: submitterName ?? "a player" };
 }
 
-const MOD_STATUS_CLASSES: Record<WorkshopModStatus, string> = {
-  pending: "border-primary/20 bg-primary/10 text-primary",
-  approved: "border-sky-500/20 bg-sky-500/10 text-sky-400",
-  testing: "border-amber-500/20 bg-amber-500/10 text-amber-400",
-  next_update: "border-violet-500/20 bg-violet-500/10 text-violet-400",
-  in_pack: "border-green-500/20 bg-green-500/10 text-green-400",
-  rejected: "border-red-500/20 bg-red-500/10 text-red-400",
+const MOD_STATUS_TONES: Record<WorkshopModStatus, BadgeTone> = {
+  pending: "primary",
+  approved: "info",
+  testing: "warning",
+  next_update: "violet",
+  in_pack: "success",
+  rejected: "danger",
 };
 
 const MOD_STATUS_TABLE_LABELS: Record<WorkshopModStatus, string> = {
@@ -97,12 +94,12 @@ export const MOD_STATUS_STYLES = Object.fromEntries(
     {
       label: WORKSHOP_MOD_STATUS_LABELS[status],
       tableLabel: MOD_STATUS_TABLE_LABELS[status],
-      className: MOD_STATUS_CLASSES[status],
+      tone: MOD_STATUS_TONES[status],
     },
   ]),
 ) as Record<
   WorkshopModStatus,
-  { label: string; tableLabel: string; className: string }
+  { label: string; tableLabel: string; tone: BadgeTone }
 >;
 
 // liveInVersion comes from the project's pack row, so it describes this
@@ -116,11 +113,11 @@ export function liveTitle(mod: {
     : undefined;
 }
 
-const MOD_ENVIRONMENT_CLASSES: Record<ModEnvironment, string> = {
-  client: "border-sky-500/20 bg-sky-500/10 text-sky-400",
-  server: "border-orange-500/20 bg-orange-500/10 text-orange-400",
-  both: "border-teal-500/20 bg-teal-500/10 text-teal-400",
-  unspecified: "border-red-500/20 bg-red-500/10 text-red-400",
+const MOD_ENVIRONMENT_TONES: Record<ModEnvironment, BadgeTone> = {
+  client: "info",
+  server: "orange",
+  both: "teal",
+  unspecified: "danger",
 };
 
 export const MOD_ENVIRONMENT_STYLES = Object.fromEntries(
@@ -128,10 +125,10 @@ export const MOD_ENVIRONMENT_STYLES = Object.fromEntries(
     environment,
     {
       label: MOD_ENVIRONMENT_LABELS[environment],
-      className: MOD_ENVIRONMENT_CLASSES[environment],
+      tone: MOD_ENVIRONMENT_TONES[environment],
     },
   ]),
-) as Record<ModEnvironment, { label: string; className: string }>;
+) as Record<ModEnvironment, { label: string; tone: BadgeTone }>;
 
 export function environmentTitle(
   environment: ModEnvironment,
@@ -152,27 +149,27 @@ export function environmentTitle(
 
 export const DEPENDENCY_COVERAGE_STYLES: Record<
   string,
-  { label: string; className: string }
+  { label: string; tone: BadgeTone }
 > = {
   published: {
     label: "In the pack",
-    className: "border-green-500/20 bg-green-500/10 text-green-400",
+    tone: "success",
   },
   staged: {
     label: "Coming next update",
-    className: "border-violet-500/20 bg-violet-500/10 text-violet-400",
+    tone: "violet",
   },
   in_review: {
     label: "In review",
-    className: "border-primary/20 bg-primary/10 text-primary",
+    tone: "primary",
   },
   rejected: {
     label: "Ruled out",
-    className: "border-red-500/20 bg-red-500/10 text-red-400",
+    tone: "danger",
   },
   missing: {
     label: "Not in the workshop",
-    className: "border-zinc-500/20 bg-zinc-500/10 text-zinc-400",
+    tone: "neutral",
   },
 };
 
@@ -182,22 +179,22 @@ export function dependencyIsCovered(coverage: string): boolean {
 
 export const WORKSHOP_STATUS_STYLES: Record<
   string,
-  { label: string; className: string }
+  { label: string; tone: BadgeTone }
 > = {
   draft: {
     label: "Draft",
-    className: "border-yellow-500/20 bg-yellow-500/10 text-yellow-400",
+    tone: "warning",
   },
   open: {
     label: "Open",
-    className: "border-green-500/20 bg-green-500/10 text-green-400",
+    tone: "success",
   },
   closed: {
     label: "Closed",
-    className: "border-zinc-500/20 bg-zinc-500/10 text-zinc-400",
+    tone: "neutral",
   },
   archived: {
     label: "Archived",
-    className: "border-red-500/20 bg-red-500/10 text-red-400",
+    tone: "danger",
   },
 };

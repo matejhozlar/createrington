@@ -56,12 +56,9 @@ const COPY = {
 } as const;
 
 const STATUS_BADGES = {
-  paid: { label: "Paid", className: "bg-green-500/20 text-green-500" },
-  pending: { label: "Pending", className: "bg-chart-4/20 text-chart-4" },
-  unlinked: {
-    label: "Unregistered",
-    className: "bg-muted text-muted-foreground",
-  },
+  paid: { label: "Paid", tone: "success" },
+  pending: { label: "Pending", tone: "violet" },
+  unlinked: { label: "Unregistered", tone: "neutral" },
 } as const;
 
 function statusOf(vote: VoteRow): keyof typeof STATUS_BADGES {
@@ -106,7 +103,7 @@ const COLUMNS: DataTableColumn<VoteRow>[] = [
     render: (vote) => {
       const badge = STATUS_BADGES[statusOf(vote)];
       const element = (
-        <Badge className={badge.className}>
+        <Badge tone={badge.tone}>
           <span className="truncate">{badge.label}</span>
         </Badge>
       );
@@ -135,7 +132,7 @@ export function VotesListCard() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<Status>("all");
   const [page, setPage] = useState(0);
-  const needle = useDebouncedValue(search, 300).trim();
+  const needle = useDebouncedValue(search).trim();
 
   const query = useQuery(
     trpc.admin.votes.list.queryOptions(

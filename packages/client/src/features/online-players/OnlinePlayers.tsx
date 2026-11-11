@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/search-input";
 import { LoadingState } from "@/components/query-states";
 import {
   Search,
@@ -216,8 +216,8 @@ export function OnlinePlayers() {
         <div className="relative max-w-7xl mx-auto">
           <div className="flex items-center gap-3 mb-4">
             <Badge
-              className={`gap-1.5 px-3 py-1 text-sm ${isOnline ? "bg-green-500/20 text-green-400 border-green-500/30" : "bg-destructive/20 text-destructive border-destructive/30"}`}
-              variant="outline"
+              tone={isOnline ? "success" : "danger"}
+              className="gap-1.5 px-3 py-1 text-sm"
             >
               {isOnline ? (
                 <Signal className="size-3.5" />
@@ -272,16 +272,12 @@ export function OnlinePlayers() {
 
           {/* Search bar */}
           {playerCount > 0 && (
-            <div className="relative max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
-              <Input
-                type="text"
-                placeholder="Search players..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
-              />
-            </div>
+            <SearchInput
+              className="max-w-sm"
+              placeholder="Search players..."
+              value={searchQuery}
+              onValueChange={setSearchQuery}
+            />
           )}
 
           {/* Player grid */}

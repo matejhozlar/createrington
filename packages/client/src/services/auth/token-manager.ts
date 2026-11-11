@@ -6,6 +6,8 @@
  * The refresh token lives in an httpOnly cookie managed by the server.
  */
 
+const REFRESH_PATH = "/api/auth/refresh";
+
 let accessToken: string | null = null;
 
 /** Shared promise to deduplicate concurrent refresh requests */
@@ -52,9 +54,26 @@ export async function refreshAccessToken(): Promise<RefreshResult | null> {
   }
 }
 
+export async function retryAfterRefresh(
+  response: Response,
+  retry: (accessToken: string) => Promise<Response>,
+): Promise<Response> {
+  if (response.status !== 401 || response.url.includes(REFRESH_PATH)) {
+    return response;
+  }
+
+  const result = await refreshAccessToken();
+  if (!result) {
+    window.dispatchEvent(new CustomEvent("auth:session-expired"));
+    return response;
+  }
+
+  return retry(result.accessToken);
+}
+
 async function doRefresh(): Promise<RefreshResult | null> {
   try {
-    const response = await fetch("/api/auth/refresh", {
+    const response = await fetch(REFRESH_PATH, {
       method: "POST",
       credentials: "include",
     });

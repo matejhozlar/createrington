@@ -14,9 +14,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Paginator } from "@/components/paginator";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/search-input";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { CellDate, CellText } from "@/components/cell-text";
 import {
   BadgeCellSkeleton,
@@ -34,7 +34,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Search,
   Filter,
   Users,
   UserPlus,
@@ -63,6 +62,13 @@ const STATUS_LABELS: Record<WaitlistStatus, string> = {
   expired: "Expired",
 };
 
+const STATUS_TONES: Record<WaitlistStatus, BadgeTone> = {
+  queued: "warning",
+  promoted: "teal",
+  registered: "success",
+  expired: "neutral",
+};
+
 function hasRequeued(entry: WaitlistEntry) {
   return (
     new Date(entry.createdAt).getTime() !== new Date(entry.queuedAt).getTime()
@@ -85,7 +91,7 @@ export function AdminWaitlists() {
   }>({ open: false, entry: null });
   const [deleteTarget, setDeleteTarget] = useState<WaitlistEntry | null>(null);
 
-  const debouncedSearch = useDebouncedValue(searchQuery, 1000);
+  const debouncedSearch = useDebouncedValue(searchQuery);
 
   const statsQuery = useQuery(trpc.admin.waitlists.stats.queryOptions());
   const stats = statsQuery.data ?? null;
@@ -142,31 +148,6 @@ export function AdminWaitlists() {
     setDeleteTarget(entry);
   }, []);
 
-  const getStatusBadgeStyle = useCallback((status: WaitlistStatus) => {
-    switch (status) {
-      case "registered":
-        return {
-          variant: "outline" as const,
-          className: "border-success bg-success/10 text-success",
-        };
-      case "promoted":
-        return {
-          variant: "outline" as const,
-          className: "border-chart-2 bg-chart-2/10 text-chart-2",
-        };
-      case "expired":
-        return {
-          variant: "outline" as const,
-          className: "border-muted-foreground/40 text-muted-foreground",
-        };
-      default: // queued
-        return {
-          variant: "outline" as const,
-          className: "border-amber-500 bg-amber-500/10 text-amber-500",
-        };
-    }
-  }, []);
-
   const columns: DataTableColumn<WaitlistEntry>[] = [
     {
       key: "id",
@@ -198,20 +179,10 @@ export function AdminWaitlists() {
       skeleton: () => <BadgeCellSkeleton />,
       render: (entry) => (
         <div className="flex items-center gap-1.5">
-          <Badge
-            variant={getStatusBadgeStyle(entry.status).variant}
-            className={getStatusBadgeStyle(entry.status).className}
-          >
+          <Badge tone={STATUS_TONES[entry.status]}>
             {STATUS_LABELS[entry.status]}
           </Badge>
-          {entry.joinedMinecraft && (
-            <Badge
-              variant="outline"
-              className="border-success bg-success/10 text-success text-xs"
-            >
-              In-Game
-            </Badge>
-          )}
+          {entry.joinedMinecraft && <Badge tone="success">In-Game</Badge>}
         </div>
       ),
     },
@@ -335,16 +306,12 @@ export function AdminWaitlists() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSearch} className="flex flex-wrap gap-2">
-              <div className="relative flex-1 min-w-48">
-                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  type="text"
-                  placeholder="Search by Discord username or ID..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
+              <SearchInput
+                className="min-w-48 flex-1"
+                placeholder="Search by Discord username or ID..."
+                value={searchQuery}
+                onValueChange={setSearchQuery}
+              />
 
               <Select
                 value={statusFilter}

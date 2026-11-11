@@ -16,17 +16,11 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Link2, RefreshCw, Unlink } from "lucide-react";
+import { camelCaseToTitle } from "@/lib/format";
 import type { UseEmbedBuilder } from "../hooks/use-embed-builder";
 
 interface LinkedMessagesProps {
   builder: UseEmbedBuilder;
-}
-
-function formatChannelName(key: string): string {
-  return key
-    .replace(/([A-Z])/g, " $1")
-    .replace(/^./, (s) => s.toUpperCase())
-    .trim();
 }
 
 export function LinkedMessages({ builder }: LinkedMessagesProps) {
@@ -65,7 +59,7 @@ export function LinkedMessages({ builder }: LinkedMessagesProps) {
                 {channelName ? (
                   <>
                     <span className="font-medium text-foreground">
-                      #{formatChannelName(channelName)}
+                      #{camelCaseToTitle(channelName)}
                     </span>
                     {" — "}
                   </>
@@ -79,7 +73,7 @@ export function LinkedMessages({ builder }: LinkedMessagesProps) {
                       type="button"
                       variant="ghost"
                       size="sm"
-                      className="size-6 cursor-pointer p-0 text-muted-foreground hover:text-foreground"
+                      className="size-6 cursor-pointer p-0 text-muted-foreground hover:text-foreground pointer-coarse:size-9"
                       disabled={updateLinkPending}
                       onClick={() => handleUpdateLink(link.id)}
                     >
@@ -96,7 +90,7 @@ export function LinkedMessages({ builder }: LinkedMessagesProps) {
                       type="button"
                       variant="ghost"
                       size="sm"
-                      className="size-6 cursor-pointer p-0 text-muted-foreground hover:text-destructive"
+                      className="size-6 cursor-pointer p-0 text-muted-foreground hover:text-destructive pointer-coarse:size-9"
                       onClick={() =>
                         setUnlinkTarget({
                           id: link.id,
@@ -134,7 +128,7 @@ export function LinkedMessages({ builder }: LinkedMessagesProps) {
                   {" "}
                   Currently linked in{" "}
                   <span className="font-medium text-foreground">
-                    #{formatChannelName(unlinkTarget.channelName)}
+                    #{camelCaseToTitle(unlinkTarget.channelName)}
                   </span>
                   .
                 </>

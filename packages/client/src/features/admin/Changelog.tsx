@@ -1,13 +1,14 @@
-import { formatDate, parseDateOnly } from "@createrington/shared/format";
+import { formatDate } from "@createrington/shared/format";
+import { formatRelativeDay } from "@/lib/format";
 import { trpc } from "@/lib/trpc";
 import { LoadingState } from "@/components/query-states";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { ChangeTag } from "@/features/admin/components/ChangeTag";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
-import { Filter, Search } from "lucide-react";
+import { Filter } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/search-input";
 import {
   Select,
   SelectContent,
@@ -112,20 +113,6 @@ function versionBump(version: string): Bump {
   if (patch !== "0") return "patch";
   if (minor !== "0") return "minor";
   return "major";
-}
-
-function relativeDate(dateStr: string): string {
-  const d = parseDateOnly(dateStr);
-  const now = new Date();
-  const diff = Math.round(
-    (now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24),
-  );
-  if (diff <= 0) return "today";
-  if (diff === 1) return "yesterday";
-  if (diff < 7) return `${diff}d ago`;
-  if (diff < 30) return `${Math.floor(diff / 7)}w ago`;
-  if (diff < 365) return `${Math.floor(diff / 30)}mo ago`;
-  return `${Math.floor(diff / 365)}y ago`;
 }
 
 function shortPkg(name: string): string {
@@ -407,7 +394,7 @@ function VersionRail({
                     {s.version}
                   </span>
                   <span className="text-[11px] tabular-nums text-muted-foreground">
-                    {relativeDate(s.date)}
+                    {formatRelativeDay(s.date)}
                   </span>
                 </a>
               </li>
@@ -574,15 +561,12 @@ function Toolbar({
       </CardHeader>
       <CardContent>
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-          <div className="relative min-w-0 flex-1 sm:min-w-48">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(e) => onSearch(e.target.value)}
-              placeholder="Search the changelog..."
-              className="pl-9"
-            />
-          </div>
+          <SearchInput
+            className="min-w-0 flex-1 sm:min-w-48"
+            value={search}
+            onValueChange={onSearch}
+            placeholder="Search the changelog..."
+          />
 
           <Select value={packageFilter} onValueChange={onPackageFilter}>
             <SelectTrigger className="w-full sm:w-[200px]">
@@ -694,7 +678,7 @@ function ReleaseBlock({
               {formatDate(section.date)}
               <span className="font-normal text-muted-foreground">
                 {" "}
-                · {relativeDate(section.date)}
+                · {formatRelativeDay(section.date)}
               </span>
             </div>
             <div className="font-mono text-xs text-muted-foreground">

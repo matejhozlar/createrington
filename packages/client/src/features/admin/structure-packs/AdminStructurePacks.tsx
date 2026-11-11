@@ -2,11 +2,11 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { trpc, queryClient } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
+import { useClipboard } from "@/hooks/use-clipboard";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import {
   Plus,
   Package,
-  Search,
   Filter,
   Upload,
   Copy,
@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/select";
 import { FormDialog } from "@/components/form-dialog";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { SearchInput } from "@/components/search-input";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
@@ -51,6 +52,7 @@ type ActiveFilter = "all" | "active" | "inactive";
 export function AdminStructurePacks() {
   const navigate = useNavigate();
   const toast = useToastActions();
+  const { copy } = useClipboard();
 
   const packsQuery = useQuery(trpc.admin.structurePacks.list.queryOptions());
   const packs = useMemo(() => packsQuery.data ?? [], [packsQuery.data]);
@@ -133,10 +135,7 @@ export function AdminStructurePacks() {
         },
       ],
     };
-    navigator.clipboard.writeText(JSON.stringify(exported, null, 2)).then(
-      () => toast.success("Copied to clipboard"),
-      () => toast.error("Failed to copy to clipboard"),
-    );
+    void copy(JSON.stringify(exported, null, 2));
   }
 
   async function handleImport() {
@@ -207,7 +206,7 @@ export function AdminStructurePacks() {
           <div className="flex min-w-0 items-center gap-2">
             <CellText value={pack.name} className="font-medium" />
             {pack.isActive && (
-              <Badge className="shrink-0 bg-green-500/20 text-green-500 hover:bg-green-500/30">
+              <Badge tone="success" className="shrink-0">
                 Active
               </Badge>
             )}
@@ -328,16 +327,12 @@ export function AdminStructurePacks() {
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-2">
-              <div className="relative min-w-48 flex-1">
-                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  type="text"
-                  placeholder="Search by name..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
+              <SearchInput
+                className="min-w-48 flex-1"
+                placeholder="Search by name..."
+                value={searchQuery}
+                onValueChange={setSearchQuery}
+              />
 
               <Select
                 value={statusFilter}

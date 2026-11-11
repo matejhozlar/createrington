@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/card";
 import { Paginator } from "@/components/paginator";
 import { EmptyState, ErrorState } from "@/components/query-states";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/search-input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -35,7 +35,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Filter, FileText, Info } from "lucide-react";
+import { Filter, FileText, Info } from "lucide-react";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { trpc } from "@/lib/trpc";
@@ -76,7 +76,7 @@ export function AdminLogs() {
   const [orderBy, setOrderBy] = useState<SortField>("performedAt");
   const [orderDirection, setOrderDirection] = useState<"asc" | "desc">("desc");
 
-  const debouncedSearch = useDebouncedValue(searchQuery, 1000);
+  const debouncedSearch = useDebouncedValue(searchQuery);
 
   const adminsQuery = useQuery(trpc.admin.logs.admins.queryOptions());
   const adminList = adminsQuery.data ?? [];
@@ -231,16 +231,12 @@ export function AdminLogs() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSearch} className="flex flex-wrap gap-2">
-              <div className="relative flex-1 min-w-48">
-                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  type="text"
-                  placeholder="Search logs..."
-                  value={searchQuery}
-                  onChange={(e) => handleSearchChange(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
+              <SearchInput
+                className="min-w-48 flex-1"
+                placeholder="Search logs..."
+                value={searchQuery}
+                onValueChange={handleSearchChange}
+              />
 
               <Select
                 value={adminFilter ?? "all"}

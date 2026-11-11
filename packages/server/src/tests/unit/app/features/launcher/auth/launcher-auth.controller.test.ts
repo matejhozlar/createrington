@@ -176,6 +176,7 @@ describe("LauncherAuthController", () => {
       });
       mocks.findPlayer.mockResolvedValue(null);
       const { res } = makeRes({ username: "Stranger", serverId });
+      const logged = vi.spyOn(logger, "info").mockImplementation(() => logger);
 
       const error = await captureError(
         LauncherAuthController.verify(makeReq(), res),
@@ -184,6 +185,27 @@ describe("LauncherAuthController", () => {
       expect(error.statusCode).toBe(403);
       expect(error.code).toBe("NOT_A_MEMBER");
       expect(mocks.createSession).not.toHaveBeenCalled();
+      expect(logged).toHaveBeenCalledWith(
+        `Launcher sign-in rejected for Stranger (${PLAYER.minecraftUuid}): This Minecraft account is not a Createrington member`,
+      );
+      logged.mockRestore();
+    });
+
+    it("logs the Mojang-verified name, not the one the client sent", async () => {
+      const serverId = (await issueLauncherChallenge())!;
+      mocks.verifyMojangJoin.mockResolvedValue({
+        uuid: PLAYER.minecraftUuid,
+        username: "Stranger",
+      });
+      mocks.findPlayer.mockResolvedValue(null);
+      const { res } = makeRes({ username: "sTRANGER", serverId });
+      const logged = vi.spyOn(logger, "info").mockImplementation(() => logger);
+
+      await captureError(LauncherAuthController.verify(makeReq(), res));
+
+      expect(logged).toHaveBeenCalledTimes(1);
+      expect(logged.mock.calls[0]?.[0]).toContain("for Stranger (");
+      logged.mockRestore();
     });
 
     it("rejects a forged claim that Mojang does not confirm", async () => {
@@ -244,6 +266,7 @@ describe("LauncherAuthController", () => {
       mocks.findPlayer.mockResolvedValue(PLAYER);
       mocks.isPlayerBanned.mockResolvedValue(true);
       const { res } = makeRes({ username: PLAYER.minecraftUsername, serverId });
+      const logged = vi.spyOn(logger, "info").mockImplementation(() => logger);
 
       const error = await captureError(
         LauncherAuthController.verify(makeReq(), res),
@@ -252,6 +275,10 @@ describe("LauncherAuthController", () => {
       expect(error.statusCode).toBe(403);
       expect(error.code).toBe("BANNED");
       expect(mocks.createSession).not.toHaveBeenCalled();
+      expect(logged).toHaveBeenCalledWith(
+        `Launcher sign-in rejected for ${PLAYER.minecraftUsername} (${PLAYER.minecraftUuid}): This player is banned`,
+      );
+      logged.mockRestore();
     });
 
     it("reports a Mojang outage as 503 and still burns the challenge", async () => {

@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Search } from "lucide-react";
 import {
   formatStatCategory,
   formatStatItem,
@@ -10,7 +9,7 @@ import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/search-input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TugRow } from "./TugRow";
 import { useQuery } from "@tanstack/react-query";
@@ -49,7 +48,7 @@ export function EveryStat({
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<Sort>("gap");
   const [shown, setShown] = useState({ key: "", limit: PAGE_STEP });
-  const debounced = useDebouncedValue(search.trim(), 250);
+  const debounced = useDebouncedValue(search.trim());
   const viewKey = `${first}|${second}|${debounced}|${sort}`;
   const limit = shown.key === viewKey ? shown.limit : PAGE_STEP;
 
@@ -68,19 +67,13 @@ export function EveryStat({
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <h2 className="text-lg font-bold md:text-[22px]">Every stat</h2>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <div className="relative sm:w-80">
-            <Search
-              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
-              aria-hidden
-            />
-            <Input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search stats, e.g. diamond"
-              aria-label="Search stats"
-              className="pl-9"
-            />
-          </div>
+          <SearchInput
+            className="sm:w-80"
+            value={search}
+            onValueChange={setSearch}
+            placeholder="Search stats, e.g. diamond"
+            aria-label="Search stats"
+          />
           <Tabs
             value={sort}
             onValueChange={(value) => isSort(value) && setSort(value)}

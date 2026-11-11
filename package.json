@@ -1,6 +1,6 @@
 {
   "name": "createrington",
-  "version": "1.80.0",
+  "version": "1.80.1",
   "private": true,
   "license": "UNLICENSED",
   "type": "module",
@@ -33,7 +33,7 @@
     "lint:client": "pnpm --filter @createrington/client lint",
     "knip": "knip --no-gitignore",
     "test": "pnpm --filter @createrington/server test",
-    "test:unit": "pnpm --filter @createrington/server test:unit",
+    "test:unit": "pnpm --filter @createrington/server --filter @createrington/client test:unit",
     "test:types": "pnpm --filter @createrington/server test:types",
     "test:integration": "pnpm --filter @createrington/server test:integration",
     "deploy-commands": "pnpm --filter @createrington/server util:deploy-commands",

@@ -102,6 +102,9 @@ jobs:
       - name: Run server unit tests
         run: pnpm --filter @createrington/server test:unit
 
+      - name: Run client unit tests
+        run: pnpm --filter @createrington/client test:unit
+
   # test-integration:
   #   runs-on: ubuntu-latest
   #   services:

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
-import { useToastActions } from "@/hooks/use-toast";
+import { useClipboard } from "@/hooks/use-clipboard";
 import { SkinApiPromo } from "@/components/skin-api-promo";
 import {
   HEADLINE_METRICS,
@@ -104,7 +104,7 @@ function useContender(username: string | null, enabled: boolean) {
 }
 
 export function Compare() {
-  const toast = useToastActions();
+  const { copy } = useClipboard();
   const { sides, pick, swap } = useCompareParams();
   const [now] = useState(Date.now);
   const [day] = useState(() => new Date().toISOString().slice(0, 10));
@@ -196,12 +196,7 @@ export function Compare() {
       );
     }
     if (action === "swap") swap();
-    if (action === "copy") {
-      navigator.clipboard.writeText(window.location.href).then(
-        () => toast.success("Copied to clipboard"),
-        () => toast.error("Failed to copy to clipboard"),
-      );
-    }
+    if (action === "copy") void copy(window.location.href);
   };
 
   return (

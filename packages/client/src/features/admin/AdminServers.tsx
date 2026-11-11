@@ -3,7 +3,7 @@ import { ErrorState, LoadingState } from "@/components/query-states";
 import { StatCard } from "@/components/stat-card";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { PresenceBadge } from "@/components/presence-badge";
 import { Progress } from "@/components/ui/progress";
 import { Server, Users, Clock, Activity } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -96,11 +96,11 @@ export function AdminServers() {
                 const livePlayerCount =
                   liveData?.playerCount ?? server.playerCount;
 
-                const statusLabel = isMaintenance
-                  ? "Maintenance"
+                const presence = isMaintenance
+                  ? "maintenance"
                   : isOnline
-                    ? "Online"
-                    : "Offline";
+                    ? "online"
+                    : "offline";
 
                 return (
                   <Card
@@ -141,20 +141,7 @@ export function AdminServers() {
                             </p>
                           </div>
                         </div>
-                        <Badge
-                          variant={
-                            isOnline || isMaintenance ? "default" : "outline"
-                          }
-                          className={cn(
-                            isMaintenance &&
-                              "bg-amber-500/20 text-amber-500 hover:bg-amber-500/30",
-                            !isMaintenance &&
-                              isOnline &&
-                              "bg-green-500/20 text-green-500 hover:bg-green-500/30",
-                          )}
-                        >
-                          {statusLabel}
-                        </Badge>
+                        <PresenceBadge status={presence} />
                       </div>
 
                       {/* Player count bar */}

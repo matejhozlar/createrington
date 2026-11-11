@@ -1,12 +1,12 @@
 import { useMemo } from "react";
-import { PlateCanvas } from "@/features/team-tag/components/PlateCanvas";
-import { usePlateAssets } from "@/features/team-tag/hooks/use-plate-assets";
+import { PlateCanvas } from "./PlateCanvas";
+import { usePlateAssets } from "../hooks/use-plate-assets";
 import {
   parsePlateCode,
   PLATE_STRIP_HEIGHT,
   PLATE_STRIP_WIDTH,
-} from "@/features/team-tag/plate";
-import { useToastActions } from "@/hooks/use-toast";
+} from "../plate";
+import { useClipboard } from "@/hooks/use-clipboard";
 import { cn } from "@/lib/utils";
 
 export function TeamTagPlate({
@@ -20,7 +20,7 @@ export function TeamTagPlate({
 }) {
   const design = useMemo(() => parsePlateCode(code), [code]);
   const { assets } = usePlateAssets();
-  const toast = useToastActions();
+  const { copy } = useClipboard();
 
   if (!design || !code) return null;
   if (!assets) {
@@ -36,19 +36,10 @@ export function TeamTagPlate({
     );
   }
 
-  const copyCode = async () => {
-    try {
-      await navigator.clipboard.writeText(code);
-      toast.success("Copied to clipboard");
-    } catch {
-      toast.error("Failed to copy to clipboard");
-    }
-  };
-
   return (
     <button
       type="button"
-      onClick={copyCode}
+      onClick={() => void copy(code)}
       aria-label={`Copy the ${design.tag} design code`}
       className={cn("block cursor-pointer", className)}
     >

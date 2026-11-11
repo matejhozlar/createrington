@@ -6,6 +6,7 @@ import { trpc } from "@/lib/trpc";
 import { useServerData } from "@/contexts/server-data";
 import { ServerHeader } from "./components/ServerHeader";
 import { ServerStatsCards } from "./components/ServerStatsCards";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { ServerTabs, type ServerTabType } from "./components/ServerTabs";
 import { OverviewTab } from "./components/tabs/OverviewTab";
 import { SessionsTab } from "./components/tabs/SessionsTab";
@@ -86,21 +87,31 @@ export function AdminServerDetail() {
 
         <MaintenanceToggle serverId={serverId} isMaintenance={isMaintenance} />
 
-        <ServerTabs activeTab={activeTab} onTabChange={setActiveTab} />
+        <Tabs
+          value={activeTab}
+          onValueChange={(tab) => setActiveTab(tab as ServerTabType)}
+          className="gap-4"
+        >
+          <ServerTabs />
 
-        <div className="rounded-lg border border-border bg-card p-6">
-          {activeTab === "overview" && (
-            <OverviewTab serverId={serverId} serverData={serverData} />
-          )}
+          <TabsContent
+            value={activeTab}
+            tabIndex={-1}
+            className="rounded-lg border border-border bg-card p-6"
+          >
+            {activeTab === "overview" && (
+              <OverviewTab serverId={serverId} serverData={serverData} />
+            )}
 
-          {activeTab === "management" && (
-            <ServerManagement serverId={serverId} />
-          )}
+            {activeTab === "management" && (
+              <ServerManagement serverId={serverId} />
+            )}
 
-          {activeTab === "sessions" && <SessionsTab serverId={serverId} />}
+            {activeTab === "sessions" && <SessionsTab serverId={serverId} />}
 
-          {activeTab === "analytics" && <AnalyticsTab serverId={serverId} />}
-        </div>
+            {activeTab === "analytics" && <AnalyticsTab serverId={serverId} />}
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

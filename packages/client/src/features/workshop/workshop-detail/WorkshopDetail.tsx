@@ -1,12 +1,12 @@
 import { useMemo, useRef } from "react";
 import { Link, useNavigate, useParams } from "react-router";
-import { ArrowLeft, Search } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { trpc, queryClient } from "@/lib/trpc";
 import { useAuth } from "@/contexts/auth";
 import { useToastActions } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/search-input";
 import {
   Select,
   SelectContent,
@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { LoadingState } from "@/components/query-states";
-import { NotFound } from "@/pages/not-found";
+import { NotFound } from "@/components/not-found";
 import { loaderName, projectCategories } from "../format";
 import { PAGE_SIZE, WORDMARK_IMAGE } from "../constants";
 import { useFilterParams } from "../hooks/use-filter-params";
@@ -414,15 +414,15 @@ export function WorkshopDetail() {
           </div>
 
           <div className="-mt-2 flex flex-wrap items-center gap-2.5">
-            <div className="relative w-full min-w-0 flex-none sm:max-w-[420px] sm:min-w-[200px] sm:flex-1">
-              <Search className="pointer-events-none absolute top-1/2 left-2.5 size-[15px] -translate-y-1/2 text-muted-foreground" />
-              <Input
-                ref={searchInputRef}
-                value={searchInput}
-                onChange={(event) => setSearchInput(event.target.value)}
-                placeholder="Search all suggestions..."
-                className="h-9 rounded-lg bg-white/[0.03] pr-8 pl-8 text-[13px]"
-              />
+            <SearchInput
+              ref={searchInputRef}
+              className="w-full min-w-0 flex-none sm:max-w-[420px] sm:min-w-[200px] sm:flex-1"
+              value={searchInput}
+              onValueChange={setSearchInput}
+              placeholder="Search all suggestions..."
+              iconClassName="left-2.5 size-[15px]"
+              inputClassName="h-9 rounded-lg bg-white/[0.03] pr-8 pl-8 text-[13px]"
+            >
               {searchInput && (
                 <ClearButton
                   className="right-1"
@@ -430,7 +430,7 @@ export function WorkshopDetail() {
                   onClick={() => setSearchInput("")}
                 />
               )}
-            </div>
+            </SearchInput>
             <span className="hidden flex-1 sm:block" />
             <Select
               value={category}

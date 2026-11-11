@@ -1,3 +1,5 @@
+import { clamp } from "@/lib/math";
+
 export type Rgb = readonly [number, number, number];
 
 export function mix(a: Rgb, b: Rgb, t: number): string {
@@ -12,10 +14,6 @@ export function rgb([r, g, b]: Rgb): string {
 export function hash(n: number, seed: number): number {
   const x = Math.sin(n * 12.9898 + seed * 78.233) * 43758.5453;
   return x - Math.floor(x);
-}
-
-export function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
 }
 
 export function smoothstep(

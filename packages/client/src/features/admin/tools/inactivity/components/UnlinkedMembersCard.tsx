@@ -8,7 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/search-input";
 import { Paginator } from "@/components/paginator";
 import {
   DataTable,
@@ -16,17 +16,14 @@ import {
   TwoLineCellSkeleton,
   type DataTableColumn,
 } from "@/components/data-table";
-import { RefreshCw, Search, UserSearch } from "lucide-react";
+import { RefreshCw, UserSearch } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { keepPreviousData, useQuery, useMutation } from "@tanstack/react-query";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useToastActions } from "@/hooks/use-toast";
 import { CellText } from "@/components/cell-text";
-import {
-  formatFullDate,
-  formatRelativeDate,
-  toIso,
-} from "@/features/admin/format";
+import { formatFullDate, toIso } from "@/features/admin/format";
+import { formatRelativeDate } from "@/lib/format";
 import { trpc, queryClient } from "@/lib/trpc";
 import { EmptyState, ErrorState } from "@/components/query-states";
 
@@ -36,7 +33,7 @@ export function UnlinkedMembersCard() {
   const [page, setPage] = useState(0);
   const [limit] = useState(20);
   const [searchQuery, setSearchQuery] = useState("");
-  const debouncedSearch = useDebouncedValue(searchQuery, 500);
+  const debouncedSearch = useDebouncedValue(searchQuery);
 
   const listQuery = useQuery(
     trpc.admin.inactivity.unlinked.list.queryOptions(
@@ -66,13 +63,10 @@ export function UnlinkedMembersCard() {
   const loadingRows = loadingRowCount(page, limit, total);
   const error = listQuery.error?.message ?? null;
 
-  const handleSearchChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      setSearchQuery(e.target.value);
-      setPage(0);
-    },
-    [],
-  );
+  const handleSearchChange = useCallback((value: string) => {
+    setSearchQuery(value);
+    setPage(0);
+  }, []);
 
   const handleRefresh = useCallback(async () => {
     try {
@@ -174,16 +168,12 @@ export function UnlinkedMembersCard() {
           </div>
         </div>
 
-        <div className="relative mt-3">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            type="text"
-            placeholder="Search by name or username..."
-            value={searchQuery}
-            onChange={handleSearchChange}
-            className="pl-9"
-          />
-        </div>
+        <SearchInput
+          className="mt-3"
+          placeholder="Search by name or username..."
+          value={searchQuery}
+          onValueChange={handleSearchChange}
+        />
       </CardHeader>
 
       {error ? (

@@ -20,7 +20,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -35,6 +35,7 @@ import {
 } from "@/components/data-table";
 import { LabeledSwitch } from "@/components/labeled-switch";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
+import { formatClockTimeWithSeconds, formatNumber } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { trpc, type RouterOutput, queryClient } from "@/lib/trpc";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -56,30 +57,15 @@ type PendingAction = { kind: "release" | "withdraw"; release: ReleaseRow };
 
 const STATUS_BADGES: Record<
   LauncherReleaseStatus,
-  { label: string; className: string }
+  { label: string; tone: BadgeTone }
 > = {
-  pending: {
-    label: "Pending",
-    className: "border-primary/20 bg-primary/10 text-primary",
-  },
-  released: {
-    label: "Released",
-    className: "border-green-500/20 bg-green-500/10 text-green-400",
-  },
-  withdrawn: {
-    label: "Withdrawn",
-    className: "border-red-500/20 bg-red-500/10 text-red-400",
-  },
-  pruned: {
-    label: "File removed",
-    className: "border-muted-foreground/40 text-muted-foreground",
-  },
+  pending: { label: "Pending", tone: "primary" },
+  released: { label: "Released", tone: "success" },
+  withdrawn: { label: "Withdrawn", tone: "danger" },
+  pruned: { label: "File removed", tone: "neutral" },
 };
 
-const REQUIRED_BADGE = {
-  label: "Required",
-  className: "border-amber-500/20 bg-amber-500/10 text-amber-400",
-} as const;
+const REQUIRED_BADGE = { label: "Required", tone: "warning" } as const;
 
 const REQUIRED_CHECKBOX = {
   id: "launcher-release-required",
@@ -169,24 +155,26 @@ const MINUTE_SUMMARY: {
     label: "This minute",
     hint: "Calls let through, of the budget per minute over every process",
     value: (budget) =>
-      `${formatCount(budget.used)} / ${formatCount(budget.limitPerMinute)}`,
+      `${formatNumber(budget.used)} / ${formatNumber(budget.limitPerMinute)}`,
   },
   {
     label: "Withheld",
     hint: "Refused this minute, budget spent or hold on",
-    value: (budget) => formatCount(budget.withheld),
+    value: (budget) => formatNumber(budget.withheld),
     alert: (budget) => budget.withheld > 0,
   },
   {
     label: "Resets at",
     hint: "The count starts over every minute",
-    value: (budget) => formatTime(budget.resetsAt),
+    value: (budget) => formatClockTimeWithSeconds(budget.resetsAt),
   },
   {
     label: "Hold",
     hint: "No call goes out until then after a 429",
     value: (budget) =>
-      budget.heldUntil ? `Until ${formatTime(budget.heldUntil)}` : "None",
+      budget.heldUntil
+        ? `Until ${formatClockTimeWithSeconds(budget.heldUntil)}`
+        : "None",
     alert: (budget) => Boolean(budget.heldUntil),
   },
 ];
@@ -246,24 +234,12 @@ const DAY_COLUMNS: DataTableColumn<BudgetDay>[] = [
     render: (day) => (
       <span className="text-xs text-muted-foreground">
         {day.pools
-          .map((pool) => `${poolLabel(pool)} ${formatCount(pool.calls)}`)
+          .map((pool) => `${poolLabel(pool)} ${formatNumber(pool.calls)}`)
           .join(" · ")}
       </span>
     ),
   },
 ];
-
-function formatCount(value: number): string {
-  return value.toLocaleString("en-US");
-}
-
-function formatTime(value: string): string {
-  return new Date(value).toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
-}
 
 function poolLabel(pool: { consumer: string; pool: string }): string {
   return `${pool.consumer} / ${pool.pool}`;
@@ -345,10 +321,7 @@ export function OwnerLauncherReleases() {
       width: 120,
       skeleton: () => <BadgeCellSkeleton />,
       render: (release) => (
-        <Badge
-          variant="outline"
-          className={STATUS_BADGES[release.status].className}
-        >
+        <Badge tone={STATUS_BADGES[release.status].tone}>
           {STATUS_BADGES[release.status].label}
         </Badge>
       ),
@@ -361,9 +334,7 @@ export function OwnerLauncherReleases() {
       render: (release) =>
         release.required &&
         release.status === "released" && (
-          <Badge variant="outline" className={REQUIRED_BADGE.className}>
-            {REQUIRED_BADGE.label}
-          </Badge>
+          <Badge tone={REQUIRED_BADGE.tone}>{REQUIRED_BADGE.label}</Badge>
         ),
     },
     {
@@ -663,7 +634,7 @@ function UpstreamBudgetPanel({
                 {loading ? (
                   <Skeleton className="h-6 w-16" />
                 ) : (
-                  formatCount(value)
+                  formatNumber(value)
                 )}
               </dd>
               <dd className="m-0 text-xs text-muted-foreground">{hint}</dd>
@@ -694,9 +665,9 @@ function UpstreamBudgetPanel({
             {budget.pools
               .map(
                 (pool) =>
-                  `${poolLabel(pool)} ${formatCount(pool.used)}` +
+                  `${poolLabel(pool)} ${formatNumber(pool.used)}` +
                   (pool.withheld > 0
-                    ? ` (${formatCount(pool.withheld)} withheld)`
+                    ? ` (${formatNumber(pool.withheld)} withheld)`
                     : ""),
               )
               .join(" · ")}
@@ -723,7 +694,7 @@ function CallCountCell({ value, alert }: { value: number; alert?: boolean }) {
         value === 0 && "text-muted-foreground",
       )}
     >
-      {formatCount(value)}
+      {formatNumber(value)}
     </span>
   );
 }

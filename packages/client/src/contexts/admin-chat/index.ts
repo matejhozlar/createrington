@@ -1,1 +1,1 @@
-export { useAdminChat } from "./useAdminChat";
+export { useAdminChat } from "./use-admin-chat";

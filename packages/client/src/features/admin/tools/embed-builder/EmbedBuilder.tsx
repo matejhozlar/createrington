@@ -1,4 +1,11 @@
 import { useEffect, useState } from "react";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { useToastActions } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import {
@@ -122,6 +129,7 @@ export function EmbedBuilder() {
   const builder = useEmbedBuilder();
   const toast = useToastActions();
   const [focused, setFocused] = useState<FocusTarget | null>(null);
+  const [presetsOpen, setPresetsOpen] = useState(false);
 
   // Click handlers for the preview's "+ add field" and "+ add button"
   // affordances. We handle them here (not via a focus-driven useEffect)
@@ -212,17 +220,38 @@ export function EmbedBuilder() {
   const externalData = builder.externalData;
 
   return (
-    <div className="flex h-svh min-h-0 flex-col">
-      <Topbar builder={builder} />
+    <div className="@container flex h-[calc(100svh-var(--mobile-nav-height))] min-h-0 flex-col">
+      <Topbar builder={builder} onOpenPresets={() => setPresetsOpen(true)} />
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
-        <div className="hidden md:flex">
+        <div className="hidden @3xl:flex">
           <PresetSidebar builder={builder} />
         </div>
 
-        <main className="flex min-w-0 flex-1 flex-col overflow-y-auto bg-background p-4 md:p-6 lg:flex-row lg:overflow-hidden lg:p-0">
-          <section className="flex flex-1 flex-col gap-3 lg:overflow-y-auto lg:p-6">
-            <div className="flex items-center justify-between">
+        <Sheet open={presetsOpen} onOpenChange={setPresetsOpen}>
+          <SheetContent
+            side="left"
+            showCloseButton={false}
+            className="w-[85vw] max-w-[320px] gap-0 p-0"
+          >
+            <SheetHeader className="sr-only">
+              <SheetTitle>Presets</SheetTitle>
+              <SheetDescription>
+                Browse, load and organize embed presets.
+              </SheetDescription>
+            </SheetHeader>
+            <PresetSidebar
+              builder={builder}
+              forceExpanded
+              className="min-h-0 w-full flex-1 border-r-0"
+              onNavigate={() => setPresetsOpen(false)}
+            />
+          </SheetContent>
+        </Sheet>
+
+        <main className="flex min-w-0 flex-1 flex-col overflow-y-auto bg-card @3xl:flex-row @3xl:overflow-hidden">
+          <section className="flex flex-col gap-3 bg-background p-4 @3xl:flex-1 @3xl:overflow-y-auto @3xl:p-6">
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
               <ModeToggle
                 kind={builder.kind}
                 onChange={builder.setKind}
@@ -246,7 +275,7 @@ export function EmbedBuilder() {
             )}
           </section>
 
-          <aside className="flex w-full shrink-0 flex-col border-t border-border bg-card lg:w-[380px] lg:border-l lg:border-t-0">
+          <aside className="flex w-full shrink-0 flex-col border-t border-border bg-card @3xl:w-[380px] @3xl:border-l @3xl:border-t-0">
             {builder.kind === "components" ? (
               <ComponentTreeEditor builder={builder} />
             ) : (
@@ -287,7 +316,7 @@ function ModeToggle({
           disabled={disabled && kind !== k}
           onClick={() => onChange(k)}
           className={cn(
-            "rounded px-2.5 py-1 text-xs font-medium transition-colors",
+            "rounded px-2.5 py-1 text-xs font-medium transition-colors pointer-coarse:py-2",
             kind === k
               ? "bg-accent text-foreground"
               : "text-muted-foreground hover:text-foreground",

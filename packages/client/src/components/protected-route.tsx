@@ -2,7 +2,7 @@ import type React from "react";
 import { useAuth } from "@/contexts/auth/";
 import { LoadingScreen } from "@/components/query-states";
 import { LoginPrompt } from "./login-prompt";
-import { NotFound } from "@/pages/not-found";
+import { NotFound } from "@/components/not-found";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;

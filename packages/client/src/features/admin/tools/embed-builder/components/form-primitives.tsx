@@ -27,6 +27,9 @@ import { MentionAutocomplete } from "./MentionAutocomplete";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Textarea } from "@/components/ui/textarea";
 
+export const COMPACT_BUTTON =
+  "h-7 px-2 text-[11px] pointer-coarse:h-9 pointer-coarse:px-3 pointer-coarse:text-xs";
+
 interface InsertableInputHandle {
   focus: () => void;
   insertAtCursor: (text: string) => void;
@@ -162,7 +165,7 @@ export function AIButton({ value, onApply, iconOnly }: AIButtonProps) {
               <button
                 type="button"
                 aria-label="AI assist"
-                className="flex size-7 items-center justify-center rounded-md text-primary transition-colors hover:bg-primary/10"
+                className="flex size-7 items-center justify-center rounded-md text-primary transition-colors hover:bg-primary/10 pointer-coarse:size-9"
               >
                 <Sparkles className="size-3.5" />
               </button>
@@ -175,7 +178,7 @@ export function AIButton({ value, onApply, iconOnly }: AIButtonProps) {
           <button
             type="button"
             title="AI assist"
-            className="inline-flex items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary transition-colors hover:bg-primary/20"
+            className="inline-flex items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary transition-colors hover:bg-primary/20 pointer-coarse:px-3 pointer-coarse:py-1.5 pointer-coarse:text-xs"
           >
             <Sparkles className="size-3" />
             AI
@@ -199,7 +202,7 @@ export function AIButton({ value, onApply, iconOnly }: AIButtonProps) {
               type="button"
               disabled={!value || isLoading}
               onClick={() => runAction(a.id)}
-              className="flex w-full items-center justify-between rounded-sm px-2 py-1.5 text-left text-xs hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex w-full items-center justify-between rounded-sm px-2 py-1.5 text-left text-xs hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50 pointer-coarse:py-2.5"
             >
               <span className="font-medium text-foreground">{a.label}</span>
               <span className="text-[11px] text-muted-foreground">
@@ -271,7 +274,7 @@ export function TextField({
       max={max}
       right={
         (mentions || ai) && (
-          <div className="flex items-center gap-0.5">
+          <div className="flex items-center gap-0.5 pointer-coarse:gap-1.5">
             {mentions && <InsertMenu onInsert={insert} />}
             {ai && <AIButton value={v} onApply={onChange} />}
           </div>
@@ -354,7 +357,8 @@ export function ColorPicker({ value, onChange }: ColorPickerProps) {
           variant="ghost"
           size="sm"
           className={cn(
-            "h-6 px-2 text-[11px] text-muted-foreground",
+            COMPACT_BUTTON,
+            "h-6 text-muted-foreground",
             value === undefined && "invisible",
           )}
           onClick={() => onChange(undefined)}
@@ -375,7 +379,7 @@ export function ColorPicker({ value, onChange }: ColorPickerProps) {
               title={c.name}
               onClick={() => onChange(selected ? undefined : c.value)}
               className={cn(
-                "size-[26px] rounded-md border-2 border-transparent transition-transform hover:scale-110",
+                "size-[26px] rounded-md border-2 border-transparent transition-transform hover:scale-110 pointer-coarse:size-8",
                 selected &&
                   "ring-2 ring-primary ring-offset-2 ring-offset-card",
               )}
@@ -385,7 +389,7 @@ export function ColorPicker({ value, onChange }: ColorPickerProps) {
         })}
         <label
           title="Pick any color"
-          className="relative inline-flex size-[26px] cursor-pointer items-center justify-center rounded-md border-2 border-transparent transition-transform hover:scale-110"
+          className="relative inline-flex size-[26px] cursor-pointer items-center justify-center rounded-md border-2 border-transparent transition-transform hover:scale-110 pointer-coarse:size-8"
           style={{
             background:
               "conic-gradient(from 0deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000)",
@@ -413,6 +417,119 @@ export function ColorPicker({ value, onChange }: ColorPickerProps) {
         </div>
       </div>
     </Field>
+  );
+}
+
+export function Divider() {
+  return <div className="-mx-4 h-px bg-border" />;
+}
+
+export function SectionHead({
+  title,
+  count,
+  right,
+}: {
+  title: string;
+  count?: string;
+  right?: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <h3 className="flex items-center gap-2 text-[13px] font-semibold text-foreground">
+        {title}
+        {count && (
+          <span className="text-[11px] font-normal text-muted-foreground">
+            {count}
+          </span>
+        )}
+      </h3>
+      {right}
+    </div>
+  );
+}
+
+export function EmptyState({
+  title,
+  hint,
+  actions,
+}: {
+  title: string;
+  hint: React.ReactNode;
+  actions?: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-2 rounded-md border border-dashed border-border bg-card/50 p-6 text-center">
+      <div className="text-[14px] font-medium text-foreground">{title}</div>
+      <div className="mx-auto max-w-[280px] text-xs leading-relaxed text-muted-foreground">
+        {hint}
+      </div>
+      {actions && <div className="flex justify-center pt-1">{actions}</div>}
+    </div>
+  );
+}
+
+export function Segmented({
+  value,
+  options,
+  onChange,
+}: {
+  value: string;
+  options: { value: string; label: string }[];
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div className="inline-flex items-center rounded-md border border-border bg-muted/30 p-0.5">
+      {options.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          onClick={() => onChange(o.value)}
+          className={cn(
+            "rounded-sm px-2.5 py-1 text-[11px] font-medium transition-colors pointer-coarse:px-3 pointer-coarse:py-2 pointer-coarse:text-xs",
+            value === o.value
+              ? "bg-card text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export function RowIconButton({
+  title,
+  onClick,
+  disabled,
+  destructive,
+  children,
+}: {
+  title: string;
+  onClick: () => void;
+  disabled?: boolean;
+  destructive?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          onClick={onClick}
+          disabled={disabled}
+          className={cn(
+            "flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors pointer-coarse:size-9",
+            "hover:bg-accent hover:text-foreground",
+            destructive && "hover:bg-destructive/10 hover:text-destructive",
+            disabled && "pointer-events-none opacity-30",
+          )}
+        >
+          {children}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="left">{title}</TooltipContent>
+    </Tooltip>
   );
 }
 

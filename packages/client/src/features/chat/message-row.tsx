@@ -1,9 +1,10 @@
 import { memo, useState } from "react";
 import type { CachedMessage } from "@createrington/shared/socket";
+import { formatMessageTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { ChatMarkdown } from "./chat-markdown";
 import { ImageFullscreen, MessageImageGrid } from "./message-images";
-import { formatTime, transformWaypoints } from "./utils";
+import { transformWaypoints } from "./utils";
 
 export const MessageRow = memo(function MessageRow({
   message,
@@ -43,7 +44,7 @@ export const MessageRow = memo(function MessageRow({
       >
         {!isFirst && !isImageOnly && (
           <span className="absolute right-0 top-0 opacity-0 text-[11px] text-muted-foreground/60 transition-opacity duration-150 group-hover:opacity-100">
-            {formatTime(message.createdAt)}
+            {formatMessageTime(message.createdAt)}
             {message.editedAt && (
               <span className="ml-1 opacity-60">(edited)</span>
             )}
@@ -66,7 +67,7 @@ export const MessageRow = memo(function MessageRow({
 
         {needsInlineTimestamp && (
           <span className="mt-1 block text-[11px] text-muted-foreground/50">
-            {formatTime(message.createdAt)}
+            {formatMessageTime(message.createdAt)}
             {message.editedAt && (
               <span className="ml-1 opacity-60">(edited)</span>
             )}
@@ -93,7 +94,7 @@ export const MessageRow = memo(function MessageRow({
                 loop
                 muted
                 playsInline
-                className="mt-2 max-h-64 max-w-sm rounded"
+                className="mt-2 max-h-64 max-w-[min(100%,24rem)] rounded"
                 onLoadedData={onImageLoad}
               />
             ) : (
@@ -101,7 +102,7 @@ export const MessageRow = memo(function MessageRow({
                 key={i}
                 src={mediaUrl}
                 alt={embed.title || ""}
-                className="mt-2 max-h-64 max-w-sm rounded object-contain"
+                className="mt-2 max-h-64 max-w-[min(100%,24rem)] rounded object-contain"
                 onLoad={onImageLoad}
               />
             );
@@ -192,7 +193,7 @@ export const MessageRow = memo(function MessageRow({
                 <img
                   src={embed.image.url}
                   alt=""
-                  className="mt-2 max-h-64 max-w-sm rounded object-contain"
+                  className="mt-2 max-h-64 max-w-[min(100%,24rem)] rounded object-contain"
                 />
               )}
 

@@ -104,7 +104,7 @@ export function AdminParties() {
     partyId: number | null;
   } | null>(null);
   const [purgeOpen, setPurgeOpen] = useState(false);
-  const needle = useDebouncedValue(search, 300).trim().toLowerCase();
+  const needle = useDebouncedValue(search).trim().toLowerCase();
 
   const purgeMutation = useMutation(
     trpc.admin.parties.purge.mutationOptions(

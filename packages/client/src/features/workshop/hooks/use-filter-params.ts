@@ -36,7 +36,7 @@ export function useFilterParams() {
   const [searchInput, setSearchInput] = useState(
     () => searchParams.get("q") ?? "",
   );
-  const debouncedSearch = useDebouncedValue(searchInput, 250);
+  const debouncedSearch = useDebouncedValue(searchInput);
   const query = debouncedSearch.trim().toLowerCase();
 
   useEffect(() => {
