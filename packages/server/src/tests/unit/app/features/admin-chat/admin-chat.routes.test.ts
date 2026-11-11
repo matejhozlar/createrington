@@ -251,7 +251,8 @@ describe("admin chat stream", () => {
     expect(rest).toBe("data: last\n\n");
   });
 
-  it("closes the upstream connection when the client disconnects", async () => {
+  it("closes the upstream connection quietly when the client disconnects", async () => {
+    const logged = vi.spyOn(logger, "error").mockImplementation(() => logger);
     let upstreamClosed: () => void = () => {};
     const closed = new Promise<void>((resolve) => {
       upstreamClosed = resolve;
@@ -270,5 +271,37 @@ describe("admin chat stream", () => {
     controller.abort();
 
     await expect(closed).resolves.toBeUndefined();
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(logged).not.toHaveBeenCalled();
+    logged.mockRestore();
+  });
+
+  it("closes the upstream connection when the client leaves before the upstream answers", async () => {
+    const logged = vi.spyOn(logger, "error").mockImplementation(() => logger);
+    let upstreamClosed: () => void = () => {};
+    const closed = new Promise<void>((resolve) => {
+      upstreamClosed = resolve;
+    });
+    let upstreamReached: () => void = () => {};
+    const reached = new Promise<void>((resolve) => {
+      upstreamReached = resolve;
+    });
+    respond = (_req, res) => {
+      res.on("close", upstreamClosed);
+      upstreamReached();
+    };
+
+    const controller = new AbortController();
+    const pending = chat("/stream?sessionId=9", {
+      signal: controller.signal,
+    }).catch(() => null);
+    await reached;
+    controller.abort();
+    await pending;
+
+    await expect(closed).resolves.toBeUndefined();
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(logged).not.toHaveBeenCalled();
+    logged.mockRestore();
   });
 });

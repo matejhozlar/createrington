@@ -331,13 +331,22 @@ router.get(
     // the upstream rejects (404 session not found, 401 bad secret, etc.)
     // we want to surface the real status to the browser, not a 200 with
     // no body.
-    const upstream = await fetch(
-      withQuery(`${base}/api/chat/stream`, {
-        username: adminUsername(req),
-        sessionId,
-      }),
-      { headers: claudeHeaders() },
-    );
+    const disconnect = new AbortController();
+    res.on("close", () => disconnect.abort());
+
+    let upstream;
+    try {
+      upstream = await fetch(
+        withQuery(`${base}/api/chat/stream`, {
+          username: adminUsername(req),
+          sessionId,
+        }),
+        { headers: claudeHeaders(), signal: disconnect.signal },
+      );
+    } catch (error) {
+      if (disconnect.signal.aborted) return;
+      throw error;
+    }
     if (!upstream.ok) {
       res
         .status(upstream.status)
@@ -360,6 +369,7 @@ router.get(
     // If the upstream drops (restart, network blip) mid-stream, close our
     // side cleanly instead of leaving Express in an undefined state.
     stream.on("error", (err) => {
+      if (disconnect.signal.aborted) return;
       logger.error(
         "[admin-chat] upstream stream error:",
         describeHttpError(err),
@@ -367,9 +377,6 @@ router.get(
       res.end();
     });
     stream.pipe(res);
-    req.on("close", () => {
-      stream.destroy();
-    });
   }),
 );
 
