@@ -8,6 +8,7 @@ import { MessageSquare, Lock, RefreshCw, Trash2 } from "lucide-react";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import { trpc, queryClient, type RouterOutput } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
+import { formatDateTime } from "@/lib/format";
 import { describeEntryRules } from "./format";
 import { DeletePromptModal } from "./components/DeletePromptModal";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -22,10 +23,6 @@ interface ResponderGroup {
   entries: ResponseRow[];
 }
 
-function formatTime(date: Date | string): string {
-  return new Date(date).toLocaleString();
-}
-
 // The list is ordered by the newer of submitted/updated, so an edited answer
 // sorts to the top; label it with the edit time rather than the original
 // submission it would otherwise contradict.
@@ -33,8 +30,8 @@ function formatEntryTime(entry: ResponseRow): string {
   const submitted = new Date(entry.submittedAt).getTime();
   const updated = new Date(entry.updatedAt).getTime();
   return updated > submitted
-    ? `edited ${formatTime(entry.updatedAt)}`
-    : formatTime(entry.submittedAt);
+    ? `edited ${formatDateTime(entry.updatedAt)}`
+    : formatDateTime(entry.submittedAt);
 }
 
 function groupByResponder(responses: ResponseRow[]): ResponderGroup[] {
@@ -140,9 +137,9 @@ export function PromptDetail() {
             <>
               {prompt.description && <p>{prompt.description}</p>}
               <p className="text-xs">
-                Created {formatTime(prompt.createdAt)} by{" "}
+                Created {formatDateTime(prompt.createdAt)} by{" "}
                 <span className="font-medium">{authorLabel}</span> • Closes{" "}
-                {formatTime(prompt.endsAt)} • {countLabel}
+                {formatDateTime(prompt.endsAt)} • {countLabel}
               </p>
               <p className="text-xs text-muted-foreground/80">
                 {describeEntryRules(prompt)}

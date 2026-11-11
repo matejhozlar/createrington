@@ -3,9 +3,9 @@ import {
   type PlayerObject,
   type SkinViewer,
 } from "skinview3d";
+import { clamp } from "@/lib/math";
 import {
   bump,
-  clamp,
   clamp01,
   damp,
   easeInOutCubic,

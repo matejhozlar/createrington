@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { trpc, queryClient } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
+import { useClipboard } from "@/hooks/use-clipboard";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import {
   Plus,
@@ -51,6 +52,7 @@ type ActiveFilter = "all" | "active" | "inactive";
 export function AdminStructurePacks() {
   const navigate = useNavigate();
   const toast = useToastActions();
+  const { copy } = useClipboard();
 
   const packsQuery = useQuery(trpc.admin.structurePacks.list.queryOptions());
   const packs = useMemo(() => packsQuery.data ?? [], [packsQuery.data]);
@@ -133,10 +135,7 @@ export function AdminStructurePacks() {
         },
       ],
     };
-    navigator.clipboard.writeText(JSON.stringify(exported, null, 2)).then(
-      () => toast.success("Copied to clipboard"),
-      () => toast.error("Failed to copy to clipboard"),
-    );
+    void copy(JSON.stringify(exported, null, 2));
   }
 
   async function handleImport() {

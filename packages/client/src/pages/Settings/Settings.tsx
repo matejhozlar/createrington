@@ -1,6 +1,8 @@
 import type React from "react";
 import { useState } from "react";
 import { formatDate } from "@createrington/shared/format";
+import { downloadBlob } from "@/lib/download";
+import { formatRelativeDate } from "@/lib/format";
 import { trpc, queryClient } from "@/lib/trpc";
 import { useAuth } from "@/contexts/auth";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
@@ -47,18 +49,6 @@ function parseUserAgent(ua: string | null): {
     label: `${browser}${os ? ` — ${os}` : ""}`,
     icon: isMobile ? Smartphone : Monitor,
   };
-}
-
-/** Formats an ISO date string as a relative time label (e.g. "3h ago", "Just now") */
-function formatRelative(iso: string) {
-  const diff = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diff / 60_000);
-  if (mins < 1) return "Just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
 }
 
 /** Displays the linked Minecraft and Discord account details for the current user */
@@ -239,7 +229,7 @@ function SessionsSection() {
                         />
                       </span>
                     )}
-                    Last active: {formatRelative(session.lastUsedAt)}
+                    Last active: {formatRelativeDate(session.lastUsedAt)}
                   </p>
                 </div>
                 <Button
@@ -298,12 +288,10 @@ function ExportDataButton() {
       const blob = new Blob([JSON.stringify(result.data, null, 2)], {
         type: "application/json",
       });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `createrington-data-export-${new Date().toISOString().slice(0, 10)}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
+      downloadBlob(
+        blob,
+        `createrington-data-export-${new Date().toISOString().slice(0, 10)}.json`,
+      );
     }
   };
 

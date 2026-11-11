@@ -1,4 +1,5 @@
 import type { PlayerPromptEntryModeValue } from "@createrington/shared/player-prompt";
+import { pluralize } from "@/lib/format";
 
 export const DURATION_OPTIONS = [
   { value: "10m", label: "10 minutes", ms: 10 * 60 * 1000 },
@@ -41,31 +42,27 @@ interface EntryRules {
   cooldownSeconds: number | null;
 }
 
-function unit(value: number, name: string): string {
-  return `${value} ${name}${value === 1 ? "" : "s"}`;
-}
-
 // Mirrors the server's formatSeconds so the admin panel and the Discord card
 // describe the same cooldown identically.
 function formatCooldown(seconds: number): string {
-  if (seconds < 60) return unit(seconds, "second");
+  if (seconds < 60) return pluralize(seconds, "second");
 
   const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return unit(minutes, "minute");
+  if (minutes < 60) return pluralize(minutes, "minute");
 
   const hours = Math.floor(minutes / 60);
   if (hours < 24) {
     const remainingMinutes = minutes % 60;
     return remainingMinutes === 0
-      ? unit(hours, "hour")
-      : `${unit(hours, "hour")} and ${unit(remainingMinutes, "minute")}`;
+      ? pluralize(hours, "hour")
+      : `${pluralize(hours, "hour")} and ${pluralize(remainingMinutes, "minute")}`;
   }
 
   const days = Math.floor(hours / 24);
   const remainingHours = hours % 24;
   return remainingHours === 0
-    ? unit(days, "day")
-    : `${unit(days, "day")} and ${unit(remainingHours, "hour")}`;
+    ? pluralize(days, "day")
+    : `${pluralize(days, "day")} and ${pluralize(remainingHours, "hour")}`;
 }
 
 export function describeEntryRules(rules: EntryRules): string {

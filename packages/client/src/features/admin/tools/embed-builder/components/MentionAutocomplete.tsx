@@ -9,7 +9,7 @@ import {
 import { AtSign, Hash } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
-import { formatConfigKey as formatName } from "@/features/admin/format";
+import { camelCaseToTitle } from "@/lib/format";
 import { useQuery } from "@tanstack/react-query";
 
 type TriggerChar = "@" | "#" | ":";
@@ -125,7 +125,7 @@ export function MentionAutocomplete({
     if (active.trigger === "#") {
       for (const group of channelsQuery.data ?? []) {
         for (const ch of group.channels) {
-          const label = formatName(ch.name);
+          const label = camelCaseToTitle(ch.name);
           if (!match(label)) continue;
           out.push({
             key: `ch:${ch.id}`,
@@ -173,7 +173,7 @@ export function MentionAutocomplete({
       if (out.length >= MAX_RESULTS) return out;
     }
     for (const role of rolesQuery.data ?? []) {
-      const label = formatName(role.name);
+      const label = camelCaseToTitle(role.name);
       if (!match(label)) continue;
       out.push({
         key: `role:${role.id}`,

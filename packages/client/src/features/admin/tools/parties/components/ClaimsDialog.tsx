@@ -26,7 +26,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { formatRelativeDateSafe } from "@/features/admin/format";
-import { useToastActions } from "@/hooks/use-toast";
+import { useClipboard } from "@/hooks/use-clipboard";
+import { pluralize } from "@/lib/format";
 import {
   DIMENSIONS,
   chunkBluemapUrl,
@@ -60,7 +61,6 @@ const COPY = {
   openMap: "Open on BlueMap",
   copyTeleport: "Copy teleport command",
   copied: "Teleport command copied",
-  copyFailed: "Failed to copy to clipboard",
 } as const;
 
 const ALL = "all";
@@ -68,10 +68,6 @@ const NO_PARTY = "none";
 const NO_PARTY_SWATCH = "#9ca3af";
 
 type Coordinates = { chunkX: number; chunkZ: number } | null;
-
-function formatCount(count: number, noun: string): string {
-  return `${count} ${noun}${count === 1 ? "" : "s"}`;
-}
 
 function blockCenterChunk(block: ClaimBlock): { x: number; z: number } {
   return {
@@ -245,7 +241,7 @@ function ClaimsBrowser({
           <p className="text-xs text-muted-foreground">
             {coordinates
               ? COPY.coordinateHint
-              : `${formatCount(shown.length, "block")} · ${formatCount(shownChunks, "chunk")} · synced ${formatRelativeDateSafe(query.data.syncedAt)}`}
+              : `${pluralize(shown.length, "block")} · ${pluralize(shownChunks, "chunk")} · synced ${formatRelativeDateSafe(query.data.syncedAt)}`}
           </p>
         </div>
       </div>
@@ -289,20 +285,13 @@ function ClaimBlockRow({
   highlight: Coordinates;
   onToggle: () => void;
 }) {
-  const toast = useToastActions();
+  const { copy } = useClipboard({ success: COPY.copied });
   const swatch = block.party
     ? `#${colorHex(block.party.color)}`
     : NO_PARTY_SWATCH;
 
-  const copyTeleport = async (x: number, z: number) => {
-    try {
-      await navigator.clipboard.writeText(
-        chunkTpCommand(block.dimension, x, z),
-      );
-      toast.success(COPY.copied);
-    } catch {
-      toast.error(COPY.copyFailed);
-    }
+  const copyTeleport = (x: number, z: number) => {
+    void copy(chunkTpCommand(block.dimension, x, z));
   };
 
   return (
@@ -336,14 +325,14 @@ function ClaimBlockRow({
               {blockCenterLabel(block)}
             </p>
             <p className="truncate text-xs text-muted-foreground tabular-nums sm:hidden">
-              {formatCount(block.chunkCount, "chunk")} · {blockSizeLabel(block)}
+              {pluralize(block.chunkCount, "chunk")} · {blockSizeLabel(block)}
               {block.forceloadCount > 0 &&
                 ` · ${block.forceloadCount} forceloaded`}
             </p>
           </div>
           <div className="hidden flex-col items-end tabular-nums sm:flex">
             <span className="text-sm">
-              {formatCount(block.chunkCount, "chunk")}
+              {pluralize(block.chunkCount, "chunk")}
             </span>
             <span className="text-xs text-muted-foreground">
               {blockSizeLabel(block)}

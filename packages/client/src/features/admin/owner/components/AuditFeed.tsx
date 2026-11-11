@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { UserMinus, UserPlus } from "lucide-react";
-import { formatRelativeDate } from "@/features/admin/format";
+import { formatRelativeDate } from "@/lib/format";
 
 interface AuditEntry {
   id: number;

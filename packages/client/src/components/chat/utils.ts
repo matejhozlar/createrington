@@ -21,29 +21,6 @@ export function transformWaypoints(text: string): string {
   );
 }
 
-export function formatTime(raw: Date | string | undefined): string {
-  if (!raw) return "";
-  const d = raw instanceof Date ? raw : new Date(raw);
-  const now = new Date();
-  const diffMs = now.getTime() - d.getTime();
-  const diffMinutes = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMs / 3600000);
-  const diffDays = Math.floor(diffMs / 86400000);
-
-  if (diffMinutes < 1) return "just now";
-  if (diffMinutes < 60) return `${diffMinutes}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays === 1) return "yesterday";
-  if (diffDays < 7) return d.toLocaleDateString("en-US", { weekday: "short" });
-
-  const isSameYear = d.getFullYear() === now.getFullYear();
-  return d.toLocaleDateString("en-US", {
-    day: "numeric",
-    month: "short",
-    ...(isSameYear ? {} : { year: "numeric" }),
-  });
-}
-
 // Mentions are resolved server-side in MessageCacheService; this only handles <t:...> timestamps.
 export function processDiscordTimestamps(text: string): string {
   return text.replace(

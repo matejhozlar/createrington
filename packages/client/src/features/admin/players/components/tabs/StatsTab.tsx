@@ -18,6 +18,7 @@ import {
   Search,
   X,
 } from "lucide-react";
+import { formatNumber } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
@@ -348,7 +349,7 @@ export function StatsTab({ playerId, getServerName }: StatsTabProps) {
                         </div>
                         {category !== MIXED_UNIT_CATEGORY && (
                           <span className="text-sm text-muted-foreground">
-                            {totalValue.toLocaleString("en-US")} total
+                            {formatNumber(totalValue)} total
                           </span>
                         )}
                       </button>

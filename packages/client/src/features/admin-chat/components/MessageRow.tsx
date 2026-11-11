@@ -1,7 +1,9 @@
-import { memo, useState } from "react";
+import { memo } from "react";
 import { Check, Copy } from "lucide-react";
 import { useAuth } from "@/contexts/auth";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
+import { useClipboard } from "@/hooks/use-clipboard";
+import { formatClockTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { coerceAction, parseActionsFromMessage } from "../actions";
 import { ActionCard } from "./ActionCard";
@@ -19,18 +21,6 @@ interface MessageRowProps {
   isGroupStart: boolean;
 }
 
-function formatTime(iso: string): string {
-  try {
-    const d = new Date(iso);
-    return d.toLocaleTimeString(undefined, {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  } catch {
-    return "";
-  }
-}
-
 export const MessageRow = memo(function MessageRow({
   message,
   navigate,
@@ -42,7 +32,7 @@ export const MessageRow = memo(function MessageRow({
   const isProgress = message.kind === "progress";
   const isStreaming = message.kind === "streaming";
   const isUser = message.role === "user";
-  const [copied, setCopied] = useState(false);
+  const { copy, copied } = useClipboard({ silent: true });
 
   // Legacy fence-parsed actions: kept as a transitional fallback for
   // messages written before MCP migration. Don't run the parser on
@@ -54,21 +44,13 @@ export const MessageRow = memo(function MessageRow({
       : { content: message.content, actions: [] };
   const persistedActions = message.actions ?? [];
 
-  const handleCopy = async (
-    e: React.MouseEvent<HTMLButtonElement>,
-  ): Promise<void> => {
+  const handleCopy = (e: React.MouseEvent<HTMLButtonElement>): void => {
     // Release focus so the hover-to-reveal meta row (which also opens
     // on focus-within for keyboard users) fades back out once the
     // cursor leaves. Without this, focus lingers on the copy button
     // after click and the row stays pinned open.
     e.currentTarget.blur();
-    try {
-      await navigator.clipboard.writeText(content);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1500);
-    } catch {
-      // clipboard may be unavailable (insecure context): silent no-op
-    }
+    void copy(content);
   };
 
   const showMeta = !isStreaming && !isAck && !isProgress && content.length > 0;
@@ -136,7 +118,7 @@ export const MessageRow = memo(function MessageRow({
             isUser ? "flex-row-reverse pr-8" : "pl-8",
           )}
         >
-          <span>{formatTime(message.createdAt)}</span>
+          <span>{formatClockTime(message.createdAt)}</span>
           <button
             type="button"
             onClick={(e) => void handleCopy(e)}

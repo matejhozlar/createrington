@@ -10,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { clamp } from "@/lib/math";
 import { cn } from "@/lib/utils";
 import type { BlendMode } from "../engine/types";
 
@@ -75,7 +76,6 @@ export function SliderField({
   onChange: (value: number) => void;
 }) {
   const id = useId();
-  const clamp = (next: number) => Math.min(max, Math.max(min, next));
   return (
     <div className="flex flex-col gap-1.5">
       <Label htmlFor={id} className="text-sm font-medium">
@@ -102,7 +102,7 @@ export function SliderField({
             value={value}
             onChange={(event) => {
               const next = Number(event.target.value);
-              if (Number.isFinite(next)) onChange(clamp(next));
+              if (Number.isFinite(next)) onChange(clamp(next, min, max));
             }}
             className={cn("tabular-nums", suffix && "pr-7")}
           />

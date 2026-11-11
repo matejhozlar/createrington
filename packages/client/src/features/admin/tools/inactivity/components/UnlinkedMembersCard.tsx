@@ -22,11 +22,8 @@ import { keepPreviousData, useQuery, useMutation } from "@tanstack/react-query";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useToastActions } from "@/hooks/use-toast";
 import { CellText } from "@/components/cell-text";
-import {
-  formatFullDate,
-  formatRelativeDate,
-  toIso,
-} from "@/features/admin/format";
+import { formatFullDate, toIso } from "@/features/admin/format";
+import { formatRelativeDate } from "@/lib/format";
 import { trpc, queryClient } from "@/lib/trpc";
 import { EmptyState, ErrorState } from "@/components/query-states";
 

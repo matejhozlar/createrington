@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/auth";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { SearchInput } from "@/components/search-input";
+import { formatNumber } from "@/lib/format";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import { Paginator } from "@/components/paginator";
 import {
@@ -394,7 +395,7 @@ export function LeaderboardTable() {
         {activeStat
           ? statDescription(activeStat)
           : active.board === "records" && contestedKeys > 0
-            ? `Who holds the most #1 placements across ${contestedKeys.toLocaleString("en-US")} contested stats. Open a player to see which.`
+            ? `Who holds the most #1 placements across ${formatNumber(contestedKeys)} contested stats. Open a player to see which.`
             : style.boardDescription}
       </p>
 

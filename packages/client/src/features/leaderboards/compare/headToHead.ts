@@ -1,5 +1,6 @@
 import { KNOWN_POSES, type KnownPose } from "createrington-skin-api";
 import { formatMoney } from "@createrington/shared/format";
+import { formatNumber } from "@/lib/format";
 import type { RouterOutput } from "@/lib/trpc";
 
 export type ComparedPlayer =
@@ -59,7 +60,7 @@ export const HEADLINE_METRICS: HeadlineMetric[] = [
     label: "Playtime",
     value: (player) => player.playtimeSeconds,
     display: (player) =>
-      `${Math.floor(player.playtimeSeconds / 3600).toLocaleString("en-US")}h`,
+      `${formatNumber(Math.floor(player.playtimeSeconds / 3600))}h`,
   },
   {
     label: "Balance",
@@ -69,18 +70,18 @@ export const HEADLINE_METRICS: HeadlineMetric[] = [
   {
     label: "Records held",
     value: (player) => player.records,
-    display: (player) => player.records.toLocaleString("en-US"),
+    display: (player) => formatNumber(player.records),
   },
   {
     label: "Sessions",
     value: (player) => player.sessions,
-    display: (player) => player.sessions.toLocaleString("en-US"),
+    display: (player) => formatNumber(player.sessions),
   },
   {
     label: "Current streak",
     value: (player) => player.streak,
     display: (player) =>
-      `${player.streak.toLocaleString("en-US")} ${player.streak === 1 ? "day" : "days"}`,
+      `${formatNumber(player.streak)} ${player.streak === 1 ? "day" : "days"}`,
   },
   {
     label: "Member since",

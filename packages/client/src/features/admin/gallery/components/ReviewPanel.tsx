@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { trpc, queryClient } from "@/lib/trpc";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
-import { formatMoney, formatRelativeDate } from "@/lib/format";
+import { formatBytes, formatMoney, formatRelativeDate } from "@/lib/format";
 import { PlayerLabel } from "@/components/player-label";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
-  formatBytes,
   formatDimensions,
   GALLERY_STATUS,
   type GalleryCredit,

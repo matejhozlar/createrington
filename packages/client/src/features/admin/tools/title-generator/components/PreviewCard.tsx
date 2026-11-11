@@ -3,7 +3,9 @@ import { Copy, Download, Image as ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
-import { useToastActions } from "@/hooks/use-toast";
+import { useClipboard } from "@/hooks/use-clipboard";
+import { downloadBlob } from "@/lib/download";
+import { formatBytes } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 const CHECKERBOARD: React.CSSProperties = {
@@ -23,12 +25,6 @@ function toBlob(canvas: HTMLCanvasElement) {
   );
 }
 
-function formatBytes(bytes: number) {
-  return bytes > 1048576
-    ? `${(bytes / 1048576).toFixed(2)} MB`
-    : `${Math.round(bytes / 1024)} KB`;
-}
-
 export function PreviewCard({
   output,
   current,
@@ -44,7 +40,9 @@ export function PreviewCard({
   loading: boolean;
   fileName: string;
 }) {
-  const toast = useToastActions();
+  const { copy: copyToClipboard } = useClipboard({
+    success: "Title copied to clipboard",
+  });
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [blob, setBlob] = useState<{
     source: HTMLCanvasElement;
@@ -74,26 +72,12 @@ export function PreviewCard({
   const currentBlob =
     current && blob && blob.source === output ? blob.blob : null;
 
-  const copy = async () => {
-    if (!currentBlob) return;
-    try {
-      await navigator.clipboard.write([
-        new ClipboardItem({ "image/png": currentBlob }),
-      ]);
-      toast.success("Title copied to clipboard");
-    } catch {
-      toast.error("Clipboard access was blocked by the browser");
-    }
+  const copy = () => {
+    if (currentBlob) void copyToClipboard(currentBlob);
   };
 
   const download = () => {
-    if (!currentBlob) return;
-    const url = URL.createObjectURL(currentBlob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `${fileName}.png`;
-    link.click();
-    URL.revokeObjectURL(url);
+    if (currentBlob) downloadBlob(currentBlob, `${fileName}.png`);
   };
 
   return (

@@ -35,7 +35,8 @@ import {
 
 import { formatDate } from "@createrington/shared/format";
 
-import { formatFullDate, formatRelativeDate } from "./format";
+import { formatRelativeDate } from "@/lib/format";
+import { formatFullDate } from "./format";
 import { useQuery } from "@tanstack/react-query";
 
 export function AdminDashboard() {
