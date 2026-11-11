@@ -94,7 +94,7 @@ export const MessageRow = memo(function MessageRow({
                 loop
                 muted
                 playsInline
-                className="mt-2 max-h-64 max-w-sm rounded"
+                className="mt-2 max-h-64 max-w-[min(100%,24rem)] rounded"
                 onLoadedData={onImageLoad}
               />
             ) : (
@@ -102,7 +102,7 @@ export const MessageRow = memo(function MessageRow({
                 key={i}
                 src={mediaUrl}
                 alt={embed.title || ""}
-                className="mt-2 max-h-64 max-w-sm rounded object-contain"
+                className="mt-2 max-h-64 max-w-[min(100%,24rem)] rounded object-contain"
                 onLoad={onImageLoad}
               />
             );
@@ -193,7 +193,7 @@ export const MessageRow = memo(function MessageRow({
                 <img
                   src={embed.image.url}
                   alt=""
-                  className="mt-2 max-h-64 max-w-sm rounded object-contain"
+                  className="mt-2 max-h-64 max-w-[min(100%,24rem)] rounded object-contain"
                 />
               )}
 
