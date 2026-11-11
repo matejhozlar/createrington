@@ -39,7 +39,7 @@ export function saveDraft(state: DraftState): void {
   try {
     localStorage.setItem(DRAFT_KEY, JSON.stringify(state));
   } catch {
-    // Storage full or unavailable, silently ignore
+    return;
   }
 }
 
@@ -47,7 +47,7 @@ export function clearDraft(): void {
   try {
     localStorage.removeItem(DRAFT_KEY);
   } catch {
-    // Silently ignore
+    return;
   }
 }
 

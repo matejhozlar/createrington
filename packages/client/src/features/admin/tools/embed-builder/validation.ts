@@ -26,11 +26,6 @@ function checkComponentButton(button: ComponentButton): string | null {
   return null;
 }
 
-/**
- * Walk a Components V2 tree for empty required fields the Zod schema would
- * reject, returning a friendly message so the user sees that instead of a raw
- * tRPC validation error. Mirrors the classic path's incomplete-field check.
- */
 function findComponentIssue(nodes: ComponentNode[]): string | null {
   const attachment = findAttachmentRef(nodes);
   if (attachment) {

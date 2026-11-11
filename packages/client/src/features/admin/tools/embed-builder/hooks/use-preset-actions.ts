@@ -61,7 +61,6 @@ export function usePresetActions({
       const baseName = preset.name.replace(/ \(copy(?: \d+)?\)$/, "");
       let copyName = `${baseName} (copy)`;
 
-      // Check for existing copies and increment
       const existing = await queryClient.fetchQuery(
         trpc.admin.embeds.presets.list.queryOptions({
           search: baseName,
