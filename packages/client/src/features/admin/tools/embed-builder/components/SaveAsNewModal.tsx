@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -130,13 +131,8 @@ function SaveAsNewForm({ builder, onClose }: SaveAsNewFormProps) {
         onSubmit={onSubmit}
         className="space-y-4 py-2"
       >
-        <div className="space-y-1.5">
-          <label
-            htmlFor="preset-name"
-            className="text-[13px] font-medium text-foreground"
-          >
-            Preset name
-          </label>
+        <Field>
+          <FieldLabel htmlFor="preset-name">Preset name</FieldLabel>
           <Input
             id="preset-name"
             autoFocus
@@ -145,14 +141,12 @@ function SaveAsNewForm({ builder, onClose }: SaveAsNewFormProps) {
             placeholder="e.g. Welcome message"
             maxLength={100}
           />
-        </div>
+        </Field>
 
-        <div className="space-y-1.5">
-          <label className="text-[13px] font-medium text-foreground">
-            Category
-          </label>
+        <Field>
+          <FieldLabel htmlFor="preset-category">Category</FieldLabel>
           <Select value={categoryValue} onValueChange={setCategoryValue}>
-            <SelectTrigger className="w-full">
+            <SelectTrigger id="preset-category" className="w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -177,10 +171,9 @@ function SaveAsNewForm({ builder, onClose }: SaveAsNewFormProps) {
               onChange={(e) => setNewCategoryName(e.target.value)}
               placeholder="New category name"
               maxLength={50}
-              className="mt-2"
             />
           )}
-        </div>
+        </Field>
       </form>
 
       <DialogFooter>
