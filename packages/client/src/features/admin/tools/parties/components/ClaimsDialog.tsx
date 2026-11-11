@@ -3,7 +3,7 @@ import { colorHex } from "@createrington/shared/team-tag";
 import { ChevronDown, Map as MapIcon } from "lucide-react";
 import { ChoiceField } from "@/components/choice-field";
 import { LoadingState } from "@/components/query-states";
-import { TeamTagPlate } from "@/components/team-tag-plate";
+import { TeamTagPlate } from "@/features/team-tag/components/TeamTagPlate";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,

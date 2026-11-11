@@ -1,7 +1,7 @@
 import type React from "react";
 import { useAuth } from "@/contexts/auth/";
 import { LoadingScreen } from "@/components/query-states";
-import { NotFound } from "@/pages/not-found";
+import { NotFound } from "@/components/not-found";
 import { trpc } from "@/lib/trpc";
 import { useQuery } from "@tanstack/react-query";
 

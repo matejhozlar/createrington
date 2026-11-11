@@ -7,7 +7,7 @@ import {
   type DataTableColumn,
 } from "@/components/data-table";
 import { PlayerLabel } from "@/components/player-label";
-import { TeamTagPlate } from "@/components/team-tag-plate";
+import { TeamTagPlate } from "@/features/team-tag/components/TeamTagPlate";
 import type { RouterOutput } from "@/lib/trpc";
 import { PartyMembersPanel } from "./PartyMembersPanel";
 
