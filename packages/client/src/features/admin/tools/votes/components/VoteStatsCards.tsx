@@ -1,11 +1,9 @@
 import { CalendarDays, Gift, Users, Vote, type LucideIcon } from "lucide-react";
 import { StatCard, type StatTone } from "@/components/stat-card";
+import { pluralize } from "@/lib/format";
 import type { RouterOutput } from "@/lib/trpc";
 
 type Stats = RouterOutput["admin"]["votes"]["stats"];
-
-const plural = (count: number, word: string) =>
-  `${count} ${word}${count === 1 ? "" : "s"}`;
 
 const CARDS: {
   key: string;
@@ -43,7 +41,7 @@ const CARDS: {
     detail: (stats) =>
       stats.unlinked === 0
         ? "No vote is waiting for a registration"
-        : `${plural(stats.unlinked, "vote")} waiting for the name to register`,
+        : `${pluralize(stats.unlinked, "vote")} waiting for the name to register`,
   },
   {
     key: "pending",
@@ -54,7 +52,7 @@ const CARDS: {
     detail: (stats) =>
       stats.pendingPlayers === 0
         ? "Every voter is paid"
-        : `${plural(stats.pendingPlayers, "player")} waiting for their next join`,
+        : `${pluralize(stats.pendingPlayers, "player")} waiting for their next join`,
   },
 ];
 
