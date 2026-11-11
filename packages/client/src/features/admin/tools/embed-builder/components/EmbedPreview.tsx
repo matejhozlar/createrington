@@ -44,7 +44,7 @@ export function EmbedPreview({
   return (
     <div
       style={{ backgroundColor: "#313338" }}
-      className="rounded-lg p-4 font-sans text-sm"
+      className="rounded-lg p-4 font-sans text-sm wrap-anywhere"
     >
       <div className="mb-1 flex items-start gap-3">
         <img
@@ -448,13 +448,13 @@ function Empty({
       }}
       title={label}
       className={cn(
-        "group/empty relative cursor-pointer rounded border border-dashed text-xs italic transition-opacity",
+        "group/empty relative cursor-pointer rounded border border-dashed px-2 py-1 text-xs italic transition-opacity pointer-coarse:py-2",
         inline ? "inline-block" : "block",
         subtle ? "opacity-40" : "opacity-55",
         "hover:opacity-100",
         className,
       )}
-      style={{ borderColor: "#4E5058", color: "#949BA4", padding: "4px 8px" }}
+      style={{ borderColor: "#4E5058", color: "#949BA4" }}
     >
       {children}
     </div>

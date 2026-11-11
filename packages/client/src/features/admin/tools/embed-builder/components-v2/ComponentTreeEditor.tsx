@@ -671,7 +671,7 @@ function IconButton({
       variant="ghost"
       size="icon"
       className={cn(
-        "size-6 text-muted-foreground",
+        "size-6 text-muted-foreground pointer-coarse:size-9",
         destructive && "hover:text-destructive",
       )}
       onClick={onClick}

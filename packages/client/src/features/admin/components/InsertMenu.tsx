@@ -126,7 +126,7 @@ export function InsertMenu({
               variant="ghost"
               size="sm"
               className={cn(
-                "size-5 p-0 text-muted-foreground hover:text-foreground",
+                "size-5 p-0 text-muted-foreground hover:text-foreground pointer-coarse:size-8",
                 triggerClassName,
               )}
               aria-label="Insert"
@@ -138,7 +138,7 @@ export function InsertMenu({
         <TooltipContent side={tooltipSide}>Insert</TooltipContent>
       </Tooltip>
 
-      <DialogContent className="max-w-md gap-0 p-0">
+      <DialogContent className="gap-0 p-0 sm:max-w-md">
         <DialogHeader className="border-b border-border px-5 py-4">
           <DialogTitle className="text-base">Insert</DialogTitle>
           <DialogDescription>
@@ -180,7 +180,7 @@ export function InsertMenu({
               />
             </div>
 
-            <div className="max-h-[420px] overflow-y-auto px-2 py-2">
+            <div className="max-h-[min(420px,45svh)] overflow-y-auto px-2 py-2">
               {!hasMentionResults && (
                 <div className="px-2 py-8 text-center text-sm text-muted-foreground">
                   No matches
@@ -256,7 +256,7 @@ export function InsertMenu({
               />
             </div>
 
-            <div className="max-h-[360px] overflow-y-auto p-2">
+            <div className="max-h-[min(360px,40svh)] overflow-y-auto p-2">
               <SectionLabel>Format</SectionLabel>
               {TIMESTAMP_FORMATS.map(({ label, format, example }) => (
                 <button
@@ -280,7 +280,7 @@ export function InsertMenu({
 }
 
 const rowClass =
-  "flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-sm hover:bg-accent";
+  "flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-sm hover:bg-accent pointer-coarse:py-2.5";
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (

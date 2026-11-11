@@ -1,7 +1,9 @@
 import { useEffect, useRef } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
+  COMPACT_BUTTON,
   ColorPicker,
   TextField,
   type InsertableInputHandle,
@@ -90,7 +92,7 @@ export function ContentTab({ data, set, focused, setFocused }: TabProps) {
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 px-2 text-[11px] text-destructive"
+              className={cn(COMPACT_BUTTON, "text-destructive")}
               onClick={() => {
                 setFocused?.(null);
                 set({
@@ -106,7 +108,7 @@ export function ContentTab({ data, set, focused, setFocused }: TabProps) {
             <Button
               variant="outline"
               size="sm"
-              className="h-7 px-2 text-[11px]"
+              className={COMPACT_BUTTON}
               onClick={() => set({ author: "" })}
             >
               <Plus className="mr-1 size-3" />

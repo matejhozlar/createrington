@@ -1,8 +1,15 @@
+import { useEffect, useRef } from "react";
 import { Switch } from "@/components/ui/switch";
-import { TextField } from "../form-primitives";
+import { TextField, type InsertableInputHandle } from "../form-primitives";
 import type { TabProps } from "./types";
 
-export function FooterTab({ data, set }: TabProps) {
+export function FooterTab({ data, set, focused }: TabProps) {
+  const footerRef = useRef<InsertableInputHandle | null>(null);
+
+  useEffect(() => {
+    if (focused === "footer") footerRef.current?.focus();
+  }, [focused]);
+
   return (
     <>
       <TextField
@@ -12,6 +19,7 @@ export function FooterTab({ data, set }: TabProps) {
         max={2048}
         placeholder="Footer text"
         mentions
+        inputRef={footerRef}
       />
 
       <label className="flex cursor-pointer items-start gap-3 rounded-md border border-border bg-card p-3 hover:border-[var(--border-strong)]">

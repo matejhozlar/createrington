@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import type { EmbedData } from "@createrington/shared/api/embed";
 import type { FocusTarget } from "../focus";
@@ -53,6 +53,18 @@ export function FormPanel({
     }
   }
 
+  const stripRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const strip = stripRef.current;
+    const active = strip?.querySelector<HTMLElement>(`[data-tab="${tab}"]`);
+    if (!strip || !active) return;
+    const left = active.offsetLeft;
+    const right = left + active.offsetWidth;
+    if (left < strip.scrollLeft) strip.scrollLeft = left;
+    else if (right > strip.scrollLeft + strip.clientWidth)
+      strip.scrollLeft = right - strip.clientWidth;
+  }, [tab]);
+
   function set(updates: Partial<EmbedData>) {
     onChange({ ...data, ...updates });
   }
@@ -62,8 +74,14 @@ export function FormPanel({
     (data.buttons?.length ?? 0) + (data.actionButtons?.length ?? 0);
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="sticky top-0 z-10 flex shrink-0 items-center gap-1 border-b border-border bg-card px-2">
+    <div
+      className="flex h-full min-h-0 flex-col"
+      onBlur={() => setFocused(null)}
+    >
+      <div
+        ref={stripRef}
+        className="sticky top-0 z-10 flex shrink-0 items-center gap-1 overflow-x-auto overflow-y-hidden bg-card px-2 shadow-[inset_0_-1px_0_var(--border)] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
         {TAB_DEFS.map((t) => {
           const count =
             t.id === "fields"
@@ -76,9 +94,10 @@ export function FormPanel({
             <button
               key={t.id}
               type="button"
+              data-tab={t.id}
               onClick={() => setTab(t.id)}
               className={cn(
-                "relative inline-flex items-center gap-1.5 px-3 py-2.5 text-[13px] font-medium transition-colors",
+                "relative inline-flex shrink-0 items-center gap-1.5 px-3 py-2.5 text-[13px] font-medium transition-colors",
                 active
                   ? "text-foreground"
                   : "text-muted-foreground hover:text-foreground",
@@ -98,7 +117,7 @@ export function FormPanel({
                 </span>
               )}
               {active && (
-                <span className="absolute inset-x-0 -bottom-px h-0.5 bg-primary" />
+                <span className="absolute inset-x-0 bottom-0 h-0.5 bg-primary" />
               )}
             </button>
           );
@@ -114,7 +133,9 @@ export function FormPanel({
             setFocused={setFocused}
           />
         )}
-        {tab === "media" && <MediaTab data={data} set={set} />}
+        {tab === "media" && (
+          <MediaTab data={data} set={set} focused={focused} />
+        )}
         {tab === "fields" && (
           <FieldsTab
             data={data}
@@ -131,7 +152,9 @@ export function FormPanel({
             setFocused={setFocused}
           />
         )}
-        {tab === "footer" && <FooterTab data={data} set={set} />}
+        {tab === "footer" && (
+          <FooterTab data={data} set={set} focused={focused} />
+        )}
       </div>
     </div>
   );

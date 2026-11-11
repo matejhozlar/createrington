@@ -19,6 +19,7 @@ import { MentionAutocomplete } from "../MentionAutocomplete";
 import type { FocusTarget } from "../../focus";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  COMPACT_BUTTON,
   SectionHead,
   EmptyState,
   Segmented,
@@ -133,7 +134,7 @@ export function ButtonsTab({ data, set, focused, setFocused }: TabProps) {
             <Button
               variant="outline"
               size="sm"
-              className="h-7 px-2 text-[11px]"
+              className={COMPACT_BUTTON}
               disabled={total >= 5}
               onClick={addLink}
             >
@@ -143,7 +144,7 @@ export function ButtonsTab({ data, set, focused, setFocused }: TabProps) {
             <Button
               variant="outline"
               size="sm"
-              className="h-7 px-2 text-[11px]"
+              className={COMPACT_BUTTON}
               disabled={total >= 5}
               onClick={addAction}
             >
@@ -165,7 +166,7 @@ export function ButtonsTab({ data, set, focused, setFocused }: TabProps) {
             </>
           }
           actions={
-            <div className="flex gap-2">
+            <div className="flex flex-wrap justify-center gap-2">
               <Button variant="outline" size="sm" onClick={addLink}>
                 Add link button
               </Button>
@@ -273,7 +274,7 @@ function ButtonRow({
         transition,
       }}
       className={cn(
-        "flex gap-1 rounded-md border border-border bg-card p-2 transition-shadow",
+        "flex gap-1 rounded-md border border-border bg-card p-2 transition-shadow max-sm:flex-wrap",
         "hover:border-[var(--border-strong)] hover:shadow-sm",
         isDragging && "z-10 shadow-lg",
       )}
@@ -285,12 +286,12 @@ function ButtonRow({
         aria-label="Drag handle"
         {...attributes}
         {...listeners}
-        className="mt-1 flex size-6 shrink-0 cursor-grab items-center justify-center text-muted-foreground touch-none active:cursor-grabbing"
+        className="mt-1 flex size-6 shrink-0 cursor-grab items-center justify-center text-muted-foreground touch-none active:cursor-grabbing max-sm:order-2 max-sm:mt-0 pointer-coarse:size-9"
       >
         <GripVertical className="size-4" />
       </button>
-      <div className="min-w-0 flex-1 space-y-1.5">
-        <div className="flex items-center gap-1.5">
+      <div className="min-w-0 flex-1 space-y-1.5 max-sm:order-1 max-sm:basis-full">
+        <div className="flex items-center gap-1.5 max-sm:flex-wrap">
           <Segmented
             value={item.kind}
             options={[
@@ -299,7 +300,7 @@ function ButtonRow({
             ]}
             onChange={(v) => onMigrate(v as "link" | "action")}
           />
-          <div className="relative">
+          <div className="relative max-sm:min-w-0 max-sm:flex-1">
             <Input
               ref={emojiRef}
               value={emoji}
@@ -307,7 +308,7 @@ function ButtonRow({
               maxLength={64}
               title="A unicode emoji, or type : to pick a bot emoji"
               onChange={(e) => setEmoji(e.target.value)}
-              className="h-8 w-16 text-center text-[13px]"
+              className="h-8 w-16 text-center text-[13px] max-sm:w-full"
             />
             <MentionAutocomplete
               inputRef={emojiRef}
@@ -326,7 +327,7 @@ function ButtonRow({
                 ? onChangeLink({ label: e.target.value })
                 : onChangeAction({ label: e.target.value })
             }
-            className="h-8 flex-1 text-[13px]"
+            className="h-8 flex-1 text-[13px] max-sm:basis-full"
           />
         </div>
 
@@ -366,7 +367,7 @@ function ButtonRow({
         )}
       </div>
 
-      <div className="flex shrink-0 flex-col gap-0.5">
+      <div className="flex shrink-0 flex-col gap-0.5 max-sm:order-3 max-sm:ml-auto max-sm:flex-row">
         <RowIconButton title="Delete" onClick={onRemove} destructive>
           <Trash2 className="size-3.5" />
         </RowIconButton>
