@@ -51,7 +51,7 @@ export function Gallery() {
   const changePage = (next: number) => {
     setPage(next);
     lightbox.close();
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo({ top: 0 });
   };
 
   return (
