@@ -26,7 +26,7 @@
     },
     "packages/client": {
       "entry": ["src/components/ui/*.tsx"],
-      "project": ["src/**/*.{ts,tsx,css,scss,sass}"]
+      "project": ["src/**/*.{ts,tsx,css}"]
     },
     "packages/shared": {
       "entry": ["src/index.ts", "src/db/**/*.ts"],

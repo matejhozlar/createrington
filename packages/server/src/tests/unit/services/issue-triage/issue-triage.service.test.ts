@@ -1,15 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { AxiosError, AxiosHeaders } from "axios";
+import { requestedUrl, sentJson } from "@/tests/helpers/fetch";
 
-const client = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn() }));
-
-vi.mock("axios", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("axios")>();
-  return {
-    ...actual,
-    default: { ...actual.default, create: () => client },
-  };
-});
+const fetchMock = vi.fn<typeof fetch>();
 
 vi.mock("@/config/env/env.config", () => ({
   env: {
@@ -21,14 +13,8 @@ vi.mock("@/config/env/env.config", () => ({
 const { issueTriageService } =
   await import("@/services/issue-triage/issue-triage.service");
 
-function httpError(status: number): AxiosError {
-  return new AxiosError("request failed", undefined, undefined, undefined, {
-    status,
-    statusText: "",
-    headers: {},
-    config: { headers: new AxiosHeaders() },
-    data: {},
-  });
+function json(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), { status });
 }
 
 const running = {
@@ -41,11 +27,13 @@ const running = {
 describe("IssueTriageService.waitForOutcome", () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    client.get.mockReset();
+    fetchMock.mockReset();
+    vi.stubGlobal("fetch", fetchMock);
   });
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.unstubAllGlobals();
   });
 
   it("returns the settled status once the session finishes", async () => {
@@ -60,9 +48,9 @@ describe("IssueTriageService.waitForOutcome", () => {
       },
       reason: null,
     };
-    client.get
-      .mockResolvedValueOnce({ data: running })
-      .mockResolvedValueOnce({ data: filed });
+    fetchMock
+      .mockResolvedValueOnce(json(running))
+      .mockResolvedValueOnce(json(filed));
 
     const outcome = issueTriageService.waitForOutcome(7, 60_000);
     await vi.advanceTimersByTimeAsync(10_000);
@@ -71,7 +59,7 @@ describe("IssueTriageService.waitForOutcome", () => {
   });
 
   it("settles as orphaned when claude-automation no longer knows the session", async () => {
-    client.get.mockRejectedValueOnce(httpError(404));
+    fetchMock.mockResolvedValueOnce(json({}, 404));
 
     const outcome = issueTriageService.waitForOutcome(7, 60_000);
     await vi.advanceTimersByTimeAsync(5_000);
@@ -84,14 +72,74 @@ describe("IssueTriageService.waitForOutcome", () => {
 
   it("logs the first failing poll once and keeps polling", async () => {
     const warn = vi.spyOn(logger, "warn").mockImplementation(() => logger);
-    client.get.mockRejectedValue(httpError(401));
+    fetchMock.mockImplementation(async () => json({}, 401));
 
     const outcome = issueTriageService.waitForOutcome(7, 20_000);
     await vi.advanceTimersByTimeAsync(20_000);
 
     await expect(outcome).resolves.toBeNull();
-    expect(client.get).toHaveBeenCalledTimes(4);
+    expect(fetchMock).toHaveBeenCalledTimes(4);
     expect(warn).toHaveBeenCalledTimes(1);
     warn.mockRestore();
+  });
+});
+
+describe("IssueTriageService.start", () => {
+  const request = {
+    transcript: "the map is down",
+    messageCount: 1,
+    requestedBy: "matej",
+    sourceLabel: "#support",
+  };
+
+  beforeEach(() => {
+    fetchMock.mockReset();
+    vi.stubGlobal("fetch", fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("posts the request with the shared secret and returns the session id", async () => {
+    fetchMock.mockResolvedValueOnce(json({ sessionId: 12 }));
+
+    await expect(issueTriageService.start(request)).resolves.toEqual({
+      sessionId: 12,
+    });
+
+    expect(requestedUrl(fetchMock).href).toBe(
+      "http://claude-automation.test/api/triage",
+    );
+    expect(sentJson(fetchMock)).toEqual(request);
+    const init = fetchMock.mock.calls[0]?.[1];
+    expect(init?.method).toBe("POST");
+    expect(new Headers(init?.headers).get("X-Admin-Chat-Secret")).toBe(
+      "s".repeat(32),
+    );
+  });
+
+  it("reports busy when claude-automation answers 429", async () => {
+    fetchMock.mockResolvedValueOnce(json({}, 429));
+
+    await expect(issueTriageService.start(request)).rejects.toMatchObject({
+      kind: "busy",
+    });
+  });
+
+  it("reports failed for any other upstream status", async () => {
+    fetchMock.mockResolvedValueOnce(json({}, 500));
+
+    await expect(issueTriageService.start(request)).rejects.toMatchObject({
+      kind: "failed",
+    });
+  });
+
+  it("reports failed when the request never gets an answer", async () => {
+    fetchMock.mockRejectedValueOnce(new TypeError("fetch failed"));
+
+    await expect(issueTriageService.start(request)).rejects.toMatchObject({
+      kind: "failed",
+    });
   });
 });

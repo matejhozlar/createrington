@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from "express";
-import axios, { AxiosError } from "axios";
-import type { Readable } from "node:stream";
+import { Readable } from "node:stream";
+import type { ReadableStream as NodeReadableStream } from "node:stream/web";
 import { z } from "zod";
 import {
   asyncHandler,
@@ -10,7 +10,13 @@ import {
   InternalServerError,
 } from "@/app/middleware";
 import { env, envMode } from "@/config/env/env.config";
-import { safeAxiosError } from "@/utils/axios-error";
+import {
+  describeHttpError,
+  fetchJson,
+  HttpStatusError,
+  readBody,
+  withQuery,
+} from "@/utils/http";
 
 /**
  * Admin chat proxy routes. Forwards to claude-automation's chat endpoints
@@ -29,8 +35,6 @@ const ENVIRONMENT = envMode.isDevDeployment ? "dev" : "prod";
 // Upstream LLM calls can hang on network glitches, cap every outbound
 // request so a stuck claude-automation can't pile up Express connections.
 const UPSTREAM_TIMEOUT_MS = 30000;
-
-const claudeClient = axios.create({ timeout: UPSTREAM_TIMEOUT_MS });
 
 const pageContextValueSchema = z.union([
   z.string().max(2000),
@@ -69,6 +73,26 @@ function claudeHeaders(): Record<string, string> {
   return headers;
 }
 
+function claudeGet(url: string): Promise<unknown> {
+  return fetchJson(url, {
+    headers: claudeHeaders(),
+    signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+  });
+}
+
+function claudePost(url: string, body: object): Promise<unknown> {
+  return fetchJson(url, {
+    method: "POST",
+    headers: claudeHeaders(),
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+  });
+}
+
+function queryString(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined;
+}
+
 function requireUpstream(res: Response): string | null {
   if (!env.CLAUDE_API_URL) {
     res.status(503).json({ error: "admin chat not configured" });
@@ -84,14 +108,12 @@ function adminUsername(req: Request): string {
 
 /**
  * Forward an upstream error response verbatim so the widget sees the real
- * status + body (e.g. 403 when the kill switch is off). Non-axios errors
- * bubble up to the app-wide error handler.
+ * status + body (e.g. 403 when the kill switch is off). Anything else
+ * (network failure, timeout) bubbles up to the app-wide error handler.
  */
 function forwardUpstreamError(err: unknown, res: Response): void {
-  if (err instanceof AxiosError && err.response) {
-    res
-      .status(err.response.status)
-      .json(err.response.data ?? { error: err.message });
+  if (err instanceof HttpStatusError) {
+    res.status(err.status).json(err.body ?? { error: err.message });
     return;
   }
   throw new InternalServerError("Upstream chat request failed");
@@ -105,11 +127,14 @@ router.get(
     const base = requireUpstream(res);
     if (!base) return;
     try {
-      const r = await claudeClient.get(`${base}/api/chat/enabled`, {
-        params: { repo: REPO, environment: ENVIRONMENT },
-        headers: claudeHeaders(),
-      });
-      res.json(r.data);
+      res.json(
+        await claudeGet(
+          withQuery(`${base}/api/chat/enabled`, {
+            repo: REPO,
+            environment: ENVIRONMENT,
+          }),
+        ),
+      );
     } catch (error) {
       forwardUpstreamError(error, res);
     }
@@ -124,10 +149,7 @@ router.get(
     const base = requireUpstream(res);
     if (!base) return;
     try {
-      const r = await claudeClient.get(`${base}/api/chat/repos`, {
-        headers: claudeHeaders(),
-      });
-      res.json(r.data);
+      res.json(await claudeGet(`${base}/api/chat/repos`));
     } catch (error) {
       forwardUpstreamError(error, res);
     }
@@ -142,14 +164,14 @@ router.get(
     const base = requireUpstream(res);
     if (!base) return;
     try {
-      const r = await claudeClient.get(`${base}/api/chat/session`, {
-        params: {
-          username: adminUsername(req),
-          environment: ENVIRONMENT,
-        },
-        headers: claudeHeaders(),
-      });
-      res.json(r.data);
+      res.json(
+        await claudeGet(
+          withQuery(`${base}/api/chat/session`, {
+            username: adminUsername(req),
+            environment: ENVIRONMENT,
+          }),
+        ),
+      );
     } catch (error) {
       forwardUpstreamError(error, res);
     }
@@ -163,18 +185,17 @@ router.get(
   asyncHandler(async (req: Request, res: Response) => {
     const base = requireUpstream(res);
     if (!base) return;
-    const { limit, cursor } = req.query;
     try {
-      const r = await claudeClient.get(`${base}/api/chat/sessions`, {
-        params: {
-          username: adminUsername(req),
-          environment: ENVIRONMENT,
-          ...(limit !== undefined && { limit }),
-          ...(cursor !== undefined && { cursor }),
-        },
-        headers: claudeHeaders(),
-      });
-      res.json(r.data);
+      res.json(
+        await claudeGet(
+          withQuery(`${base}/api/chat/sessions`, {
+            username: adminUsername(req),
+            environment: ENVIRONMENT,
+            limit: queryString(req.query.limit),
+            cursor: queryString(req.query.cursor),
+          }),
+        ),
+      );
     } catch (error) {
       forwardUpstreamError(error, res);
     }
@@ -188,20 +209,20 @@ router.get(
   asyncHandler(async (req: Request, res: Response) => {
     const base = requireUpstream(res);
     if (!base) return;
-    const { sessionId, afterId } = req.query;
+    const sessionId = queryString(req.query.sessionId);
     if (!sessionId) {
       throw new BadRequestError("sessionId is required");
     }
     try {
-      const r = await claudeClient.get(`${base}/api/chat/messages`, {
-        params: {
-          username: adminUsername(req),
-          sessionId,
-          ...(afterId !== undefined && { afterId }),
-        },
-        headers: claudeHeaders(),
-      });
-      res.json(r.data);
+      res.json(
+        await claudeGet(
+          withQuery(`${base}/api/chat/messages`, {
+            username: adminUsername(req),
+            sessionId,
+            afterId: queryString(req.query.afterId),
+          }),
+        ),
+      );
     } catch (error) {
       forwardUpstreamError(error, res);
     }
@@ -221,18 +242,15 @@ router.post(
     }
     const { pageContext, model } = parsed.data;
     try {
-      const r = await claudeClient.post(
-        `${base}/api/chat/start`,
-        {
+      res.json(
+        await claudePost(`${base}/api/chat/start`, {
           username: adminUsername(req),
           repo: REPO,
           environment: ENVIRONMENT,
           ...(pageContext !== undefined && { pageContext }),
           ...(model !== undefined && { model }),
-        },
-        { headers: claudeHeaders() },
+        }),
       );
-      res.json(r.data);
     } catch (error) {
       forwardUpstreamError(error, res);
     }
@@ -252,17 +270,14 @@ router.post(
     }
     const { sessionId, message, pageContext } = parsed.data;
     try {
-      const r = await claudeClient.post(
-        `${base}/api/chat/send`,
-        {
+      res.json(
+        await claudePost(`${base}/api/chat/send`, {
           username: adminUsername(req),
           sessionId,
           message,
           ...(pageContext !== undefined && { pageContext }),
-        },
-        { headers: claudeHeaders() },
+        }),
       );
-      res.json(r.data);
     } catch (error) {
       forwardUpstreamError(error, res);
     }
@@ -281,12 +296,12 @@ router.post(
       throw new BadRequestError("sessionId is required");
     }
     try {
-      const r = await claudeClient.post(
-        `${base}/api/chat/end`,
-        { username: adminUsername(req), sessionId },
-        { headers: claudeHeaders() },
+      res.json(
+        await claudePost(`${base}/api/chat/end`, {
+          username: adminUsername(req),
+          sessionId,
+        }),
       );
-      res.json(r.data);
     } catch (error) {
       forwardUpstreamError(error, res);
     }
@@ -294,9 +309,9 @@ router.post(
 );
 
 /**
- * SSE passthrough to claude-automation's /api/chat/stream. Axios streaming
- * responses are piped through so the widget sees events frame-by-frame.
- * The 30s UPSTREAM_TIMEOUT_MS on claudeClient does not apply here: the
+ * SSE passthrough to claude-automation's /api/chat/stream. The upstream
+ * body is piped through so the widget sees events frame-by-frame.
+ * The 30s UPSTREAM_TIMEOUT_MS of the other routes does not apply here: the
  * stream is long-lived, bounded by the upstream's 20s ping keeping it alive
  * plus the admin eventually closing the drawer.
  */
@@ -316,23 +331,30 @@ router.get(
     // the upstream rejects (404 session not found, 401 bad secret, etc.)
     // we want to surface the real status to the browser, not a 200 with
     // no body.
+    const disconnect = new AbortController();
+    res.on("close", () => disconnect.abort());
+
     let upstream;
     try {
-      upstream = await axios.get(`${base}/api/chat/stream`, {
-        params: { username: adminUsername(req), sessionId },
-        headers: claudeHeaders(),
-        responseType: "stream",
-        // Disable axios timeout for the long-lived stream.
-        timeout: 0,
-      });
+      upstream = await fetch(
+        withQuery(`${base}/api/chat/stream`, {
+          username: adminUsername(req),
+          sessionId,
+        }),
+        { headers: claudeHeaders(), signal: disconnect.signal },
+      );
     } catch (error) {
-      if (error instanceof AxiosError && error.response) {
-        res
-          .status(error.response.status)
-          .json(error.response.data ?? { error: "upstream error" });
-        return;
-      }
+      if (disconnect.signal.aborted) return;
       throw error;
+    }
+    if (!upstream.ok) {
+      res
+        .status(upstream.status)
+        .json((await readBody(upstream)) ?? { error: "upstream error" });
+      return;
+    }
+    if (!upstream.body) {
+      throw new InternalServerError("Upstream chat request failed");
     }
 
     res.setHeader("Content-Type", "text/event-stream");
@@ -341,17 +363,20 @@ router.get(
     res.setHeader("X-Accel-Buffering", "no");
     res.flushHeaders?.();
 
-    const stream = upstream.data as Readable;
+    const stream = Readable.fromWeb(
+      upstream.body as NodeReadableStream<Uint8Array>,
+    );
     // If the upstream drops (restart, network blip) mid-stream, close our
     // side cleanly instead of leaving Express in an undefined state.
     stream.on("error", (err) => {
-      logger.error("[admin-chat] upstream stream error:", safeAxiosError(err));
+      if (disconnect.signal.aborted) return;
+      logger.error(
+        "[admin-chat] upstream stream error:",
+        describeHttpError(err),
+      );
       res.end();
     });
     stream.pipe(res);
-    req.on("close", () => {
-      stream.destroy();
-    });
   }),
 );
 

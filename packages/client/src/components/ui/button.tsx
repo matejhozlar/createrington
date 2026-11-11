@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import * as React from "react";
-import { Slot } from "@radix-ui/react-slot";
+import { Slot } from "radix-ui";
 import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";
@@ -63,7 +63,7 @@ const Button = React.forwardRef<
   ) => {
     if (asChild) {
       return (
-        <Slot
+        <Slot.Root
           data-slot="button"
           data-variant={variant}
           data-size={size}
@@ -72,7 +72,7 @@ const Button = React.forwardRef<
           {...props}
         >
           {children}
-        </Slot>
+        </Slot.Root>
       );
     }
 
