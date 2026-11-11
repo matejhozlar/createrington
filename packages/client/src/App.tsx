@@ -147,11 +147,8 @@ const WorkshopPack = lazyNamed(
 );
 
 // Server pages
-const ServerChat = lazyNamed(() => import("./components/chat"), "ServerChat");
-const ChatRedirect = lazyNamed(
-  () => import("./components/chat"),
-  "ChatRedirect",
-);
+const ServerChat = lazyNamed(() => import("./features/chat"), "ServerChat");
+const ChatRedirect = lazyNamed(() => import("./features/chat"), "ChatRedirect");
 
 // Admin feature
 const AdminLogs = lazyNamed(
