@@ -1,4 +1,4 @@
 export * from "./AdminPlayerProvider";
 export * from "./context";
 export * from "./types";
-export * from "./useAdminPlayers";
+export * from "./use-admin-players";

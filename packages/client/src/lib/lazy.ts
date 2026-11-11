@@ -6,7 +6,7 @@ import { lazy } from "react";
  * import("./Foo"))` would need a `.then((m) => ({ default: m.Foo }))` tail at
  * every call site; this helper encapsulates that shape.
  *
- *     const Home = lazyNamed(() => import("./pages/Home/Home"), "Home");
+ *     const Home = lazyNamed(() => import("./features/home/Home"), "Home");
  */
 export function lazyNamed<
   N extends string,

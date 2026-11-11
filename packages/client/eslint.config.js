@@ -54,9 +54,9 @@ export default defineConfig([
         {
           patterns: [
             {
-              regex: "^(@/|(\\.\\./)+)(features|pages)/",
+              regex: "^(@/|(\\.\\./)+)features/",
               message:
-                "Shared code must not import from features or pages. Move the shared part down into components, hooks or lib.",
+                "Shared code must not import from features. Move the shared part down into components, hooks or lib.",
             },
           ],
         },
