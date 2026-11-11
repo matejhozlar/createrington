@@ -21,7 +21,7 @@ export function ComponentsPreview({ components }: ComponentsPreviewProps) {
   return (
     <div
       style={{ backgroundColor: "#313338" }}
-      className="rounded-lg p-4 font-sans text-sm"
+      className="rounded-lg p-4 font-sans text-sm wrap-anywhere"
     >
       <div className="flex items-start gap-3">
         <img

@@ -75,7 +75,7 @@ export function CategorySection({
           <button
             type="button"
             className={cn(
-              "flex flex-1 items-center gap-1 rounded-md px-2 py-1.5 text-[13px] hover:bg-accent",
+              "flex flex-1 items-center gap-1 rounded-md px-2 py-1.5 text-[13px] hover:bg-accent pointer-coarse:py-2.5",
               isUncategorized && "text-muted-foreground",
             )}
           >
@@ -97,7 +97,7 @@ export function CategorySection({
               <Button
                 variant="ghost"
                 size="sm"
-                className="size-6 shrink-0 p-0 text-muted-foreground"
+                className="size-6 shrink-0 p-0 text-muted-foreground pointer-coarse:size-9"
               >
                 <MoreHorizontal className="size-3.5" />
               </Button>

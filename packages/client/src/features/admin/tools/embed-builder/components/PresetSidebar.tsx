@@ -184,7 +184,7 @@ export function PresetSidebar({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="size-6"
+                  className="size-6 pointer-coarse:size-9"
                   onClick={() => {
                     setShowNewCategory(true);
                     setNewCategoryName("");

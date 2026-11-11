@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import type { EmbedField } from "@createrington/shared/api/embed";
 import {
   AIButton,
+  COMPACT_BUTTON,
   SectionHead,
   EmptyState,
   RowIconButton,
@@ -81,7 +82,7 @@ export function FieldsTab({ data, set, focused, setFocused }: TabProps) {
           <Button
             variant="outline"
             size="sm"
-            className="h-7 px-2 text-[11px]"
+            className={COMPACT_BUTTON}
             disabled={fields.length >= 25}
             onClick={add}
           >
@@ -190,7 +191,7 @@ function FieldRow({
         transition,
       }}
       className={cn(
-        "flex gap-1 rounded-md border border-border bg-card p-2 transition-shadow",
+        "flex gap-1 rounded-md border border-border bg-card p-2 transition-shadow max-sm:flex-wrap",
         "hover:border-[var(--border-strong)] hover:shadow-sm",
         isDragging && "z-10 shadow-lg",
       )}
@@ -202,11 +203,11 @@ function FieldRow({
         aria-label="Drag handle"
         {...attributes}
         {...listeners}
-        className="mt-1 flex size-6 shrink-0 cursor-grab items-center justify-center text-muted-foreground touch-none active:cursor-grabbing"
+        className="mt-1 flex size-6 shrink-0 cursor-grab items-center justify-center text-muted-foreground touch-none active:cursor-grabbing max-sm:order-2 max-sm:mt-0 pointer-coarse:size-9"
       >
         <GripVertical className="size-4" />
       </button>
-      <div className="min-w-0 flex-1 space-y-1.5">
+      <div className="min-w-0 flex-1 space-y-1.5 max-sm:order-1 max-sm:basis-full">
         <div className="flex items-center gap-1.5">
           <Input
             ref={nameRef}
@@ -218,7 +219,7 @@ function FieldRow({
           />
           <label
             className={cn(
-              "inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-medium transition-colors",
+              "inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-medium transition-colors pointer-coarse:px-3 pointer-coarse:py-2 pointer-coarse:text-xs",
               field.inline
                 ? "border-[var(--border-strong)] bg-accent text-foreground"
                 : "text-muted-foreground hover:text-foreground",
@@ -244,7 +245,7 @@ function FieldRow({
           className="resize-y px-2.5 py-1.5 text-[13px] md:text-[13px]"
         />
       </div>
-      <div className="flex shrink-0 flex-col gap-0.5">
+      <div className="flex shrink-0 flex-col gap-0.5 max-sm:order-3 max-sm:ml-auto max-sm:flex-row max-sm:gap-0">
         <RowIconButton
           title="Move up"
           disabled={index === 0}
@@ -267,7 +268,7 @@ function FieldRow({
         </RowIconButton>
         <InsertMenu
           onInsert={insertIntoValue}
-          triggerClassName="size-7 text-muted-foreground hover:bg-accent hover:text-foreground"
+          triggerClassName="size-7 text-muted-foreground hover:bg-accent hover:text-foreground pointer-coarse:size-9"
           tooltipSide="left"
         />
         <AIButton

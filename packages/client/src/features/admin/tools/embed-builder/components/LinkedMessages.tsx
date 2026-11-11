@@ -73,7 +73,7 @@ export function LinkedMessages({ builder }: LinkedMessagesProps) {
                       type="button"
                       variant="ghost"
                       size="sm"
-                      className="size-6 cursor-pointer p-0 text-muted-foreground hover:text-foreground"
+                      className="size-6 cursor-pointer p-0 text-muted-foreground hover:text-foreground pointer-coarse:size-9"
                       disabled={updateLinkPending}
                       onClick={() => handleUpdateLink(link.id)}
                     >
@@ -90,7 +90,7 @@ export function LinkedMessages({ builder }: LinkedMessagesProps) {
                       type="button"
                       variant="ghost"
                       size="sm"
-                      className="size-6 cursor-pointer p-0 text-muted-foreground hover:text-destructive"
+                      className="size-6 cursor-pointer p-0 text-muted-foreground hover:text-destructive pointer-coarse:size-9"
                       onClick={() =>
                         setUnlinkTarget({
                           id: link.id,

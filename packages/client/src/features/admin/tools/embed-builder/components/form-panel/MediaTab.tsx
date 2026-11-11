@@ -1,9 +1,19 @@
+import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Field, Divider } from "../form-primitives";
+import { cn } from "@/lib/utils";
+import { COMPACT_BUTTON, Field, Divider } from "../form-primitives";
 import type { TabProps } from "./types";
 
-export function MediaTab({ data, set }: TabProps) {
+export function MediaTab({ data, set, focused }: TabProps) {
+  const imageRef = useRef<HTMLInputElement | null>(null);
+  const thumbnailRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (focused === "imageUrl") imageRef.current?.focus();
+    else if (focused === "thumbnailUrl") thumbnailRef.current?.focus();
+  }, [focused]);
+
   return (
     <>
       <Field
@@ -13,7 +23,7 @@ export function MediaTab({ data, set }: TabProps) {
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 px-2 text-[11px] text-destructive"
+              className={cn(COMPACT_BUTTON, "h-6 text-destructive")}
               onClick={() => set({ imageUrl: undefined })}
             >
               Remove
@@ -35,6 +45,7 @@ export function MediaTab({ data, set }: TabProps) {
           </div>
         )}
         <Input
+          ref={imageRef}
           value={data.imageUrl ?? ""}
           onChange={(e) => set({ imageUrl: e.target.value || undefined })}
           placeholder="https://..."
@@ -51,7 +62,7 @@ export function MediaTab({ data, set }: TabProps) {
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 px-2 text-[11px] text-destructive"
+              className={cn(COMPACT_BUTTON, "h-6 text-destructive")}
               onClick={() => set({ thumbnailUrl: undefined })}
             >
               Remove
@@ -73,6 +84,7 @@ export function MediaTab({ data, set }: TabProps) {
           </div>
         )}
         <Input
+          ref={thumbnailRef}
           value={data.thumbnailUrl ?? ""}
           onChange={(e) => set({ thumbnailUrl: e.target.value || undefined })}
           placeholder="https://..."
