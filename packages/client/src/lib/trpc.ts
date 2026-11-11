@@ -2,13 +2,14 @@ import { TRPCClientError, createTRPCClient, httpBatchLink } from "@trpc/client";
 import { createTRPCOptionsProxy } from "@trpc/tanstack-react-query";
 import { QueryClient } from "@tanstack/react-query";
 import type { AppRouter } from "@createrington/server/trpc";
-import type { inferRouterOutputs } from "@trpc/server";
+import type { inferRouterInputs, inferRouterOutputs } from "@trpc/server";
 import { HTTPError } from "ky";
 import {
   getAccessToken,
   retryAfterRefresh,
 } from "@/services/auth/token-manager";
 
+export type RouterInput = inferRouterInputs<AppRouter>;
 export type RouterOutput = inferRouterOutputs<AppRouter>;
 
 const MAX_QUERY_RETRIES = 3;

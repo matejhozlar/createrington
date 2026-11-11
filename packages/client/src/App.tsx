@@ -171,7 +171,7 @@ const AdminPlayerDetail = lazyNamed(
   "AdminPlayerDetail",
 );
 const AdminPlayers = lazyNamed(
-  () => import("./features/admin/AdminPlayers"),
+  () => import("./features/admin/players/AdminPlayers"),
   "AdminPlayers",
 );
 const AdminWaitlists = lazyNamed(

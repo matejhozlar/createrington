@@ -416,4 +416,117 @@ export function ColorPicker({ value, onChange }: ColorPickerProps) {
   );
 }
 
+export function Divider() {
+  return <div className="-mx-4 h-px bg-border" />;
+}
+
+export function SectionHead({
+  title,
+  count,
+  right,
+}: {
+  title: string;
+  count?: string;
+  right?: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <h3 className="flex items-center gap-2 text-[13px] font-semibold text-foreground">
+        {title}
+        {count && (
+          <span className="text-[11px] font-normal text-muted-foreground">
+            {count}
+          </span>
+        )}
+      </h3>
+      {right}
+    </div>
+  );
+}
+
+export function EmptyState({
+  title,
+  hint,
+  actions,
+}: {
+  title: string;
+  hint: React.ReactNode;
+  actions?: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-2 rounded-md border border-dashed border-border bg-card/50 p-6 text-center">
+      <div className="text-[14px] font-medium text-foreground">{title}</div>
+      <div className="mx-auto max-w-[280px] text-xs leading-relaxed text-muted-foreground">
+        {hint}
+      </div>
+      {actions && <div className="flex justify-center pt-1">{actions}</div>}
+    </div>
+  );
+}
+
+export function Segmented({
+  value,
+  options,
+  onChange,
+}: {
+  value: string;
+  options: { value: string; label: string }[];
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div className="inline-flex items-center rounded-md border border-border bg-muted/30 p-0.5">
+      {options.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          onClick={() => onChange(o.value)}
+          className={cn(
+            "rounded-sm px-2.5 py-1 text-[11px] font-medium transition-colors",
+            value === o.value
+              ? "bg-card text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export function RowIconButton({
+  title,
+  onClick,
+  disabled,
+  destructive,
+  children,
+}: {
+  title: string;
+  onClick: () => void;
+  disabled?: boolean;
+  destructive?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          onClick={onClick}
+          disabled={disabled}
+          className={cn(
+            "flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors",
+            "hover:bg-accent hover:text-foreground",
+            destructive && "hover:bg-destructive/10 hover:text-destructive",
+            disabled && "pointer-events-none opacity-30",
+          )}
+        >
+          {children}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="left">{title}</TooltipContent>
+    </Tooltip>
+  );
+}
+
 export type { InsertableInputHandle };
