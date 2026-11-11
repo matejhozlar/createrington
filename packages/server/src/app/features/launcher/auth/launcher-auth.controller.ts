@@ -127,7 +127,17 @@ export class LauncherAuthController {
       });
     }
 
-    const player = await requireActivePlayer(profile.uuid);
+    let player;
+    try {
+      player = await requireActivePlayer(profile.uuid);
+    } catch (error) {
+      if (error instanceof AppError && error.statusCode === 403) {
+        logger.info(
+          `Launcher sign-in rejected for ${profile.username} (${profile.uuid}): ${error.message}`,
+        );
+      }
+      throw error;
+    }
 
     const session = await launcherSessionService.createSession({
       minecraftUuid: player.minecraftUuid,
