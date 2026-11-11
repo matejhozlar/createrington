@@ -1,11 +1,11 @@
 import { useMemo } from "react";
-import { PlateCanvas } from "@/features/team-tag/components/PlateCanvas";
-import { usePlateAssets } from "@/features/team-tag/hooks/use-plate-assets";
+import { PlateCanvas } from "./PlateCanvas";
+import { usePlateAssets } from "../hooks/use-plate-assets";
 import {
   parsePlateCode,
   PLATE_STRIP_HEIGHT,
   PLATE_STRIP_WIDTH,
-} from "@/features/team-tag/plate";
+} from "../plate";
 import { useClipboard } from "@/hooks/use-clipboard";
 import { cn } from "@/lib/utils";
 

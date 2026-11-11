@@ -11,7 +11,7 @@ import { ProtectedRoute } from "./components/protected-route";
 import { OwnerRoute } from "./components/owner-route";
 import { LAUNCHER_ENABLED } from "./lib/launcher";
 import { Home } from "./pages/Home/Home";
-import { NotFound } from "./pages/not-found";
+import { NotFound } from "./components/not-found";
 import { ErrorBoundary } from "./components/error-boundary";
 import { ToastProvider } from "./components/ui/toast";
 import { AppLayout } from "./components/app-layout";

@@ -3,7 +3,7 @@ import { ExternalLink, Users } from "lucide-react";
 import { colorHex } from "@createrington/shared/team-tag";
 import { Badge } from "@/components/ui/badge";
 import { LoadingState } from "@/components/query-states";
-import { TeamTagPlate } from "@/components/team-tag-plate";
+import { TeamTagPlate } from "@/features/team-tag/components/TeamTagPlate";
 import { trpc } from "@/lib/trpc";
 import { PartyMembersPanel } from "@/features/admin/tools/parties/components/PartyMembersPanel";
 import { PartyRankBadge } from "@/features/admin/tools/parties/components/PartyRankBadge";
