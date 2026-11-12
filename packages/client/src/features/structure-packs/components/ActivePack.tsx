@@ -4,6 +4,7 @@ import { trpc } from "@/lib/trpc";
 import { useCountdown } from "@/hooks/use-countdown";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorState } from "@/components/query-states";
 import { cn } from "@/lib/utils";
 import { CURSEFORGE_MODPACK_URL } from "@/lib/external-urls";
 import { FloatingDust } from "./FloatingDust";
@@ -57,9 +58,12 @@ interface ActivePackProps {
 }
 
 export function ActivePack({ onOpenPortal }: ActivePackProps) {
-  const { data: activePack, isLoading } = useQuery(
-    trpc.public.structurePacks.current.queryOptions(),
-  );
+  const {
+    data: activePack,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery(trpc.public.structurePacks.current.queryOptions());
 
   const { data: rotationInfo } = useQuery(
     trpc.public.structurePacks.rotationInfo.queryOptions(),
@@ -70,6 +74,19 @@ export function ActivePack({ onOpenPortal }: ActivePackProps) {
 
   if (isLoading) {
     return <ActivePackLoading />;
+  }
+
+  if (isError && !activePack) {
+    return (
+      <>
+        <h2 className={HEADING_CLASSES}>Active Dimension</h2>
+        <ErrorState
+          bordered
+          message="Couldn't load the active dimension."
+          onRetry={() => void refetch()}
+        />
+      </>
+    );
   }
 
   if (!activePack) {

@@ -7,6 +7,7 @@ import {
 } from "@createrington/shared/minecraft-stats";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
+import { ErrorState } from "@/components/query-states";
 import type { Stat } from "./StatPicker";
 import { useQuery } from "@tanstack/react-query";
 
@@ -47,6 +48,16 @@ export function HeldRecords({
           />
         ))}
       </div>
+    );
+  }
+
+  if (recordsQuery.isError && !recordsQuery.data) {
+    return (
+      <ErrorState
+        compact
+        message="Couldn't load the records."
+        onRetry={() => void recordsQuery.refetch()}
+      />
     );
   }
 

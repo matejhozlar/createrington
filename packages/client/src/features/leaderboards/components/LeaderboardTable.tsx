@@ -8,6 +8,7 @@ import {
   statModName,
 } from "@createrington/shared/minecraft-stats";
 import { trpc, type RouterOutput } from "@/lib/trpc";
+import { ErrorState } from "@/components/query-states";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/auth";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
@@ -436,6 +437,12 @@ export function LeaderboardTable() {
 
         {listQuery.isLoading ? (
           <RowsSkeleton />
+        ) : listQuery.isError && !listQuery.data ? (
+          <ErrorState
+            compact
+            message="Couldn't load the leaderboard."
+            onRetry={() => void listQuery.refetch()}
+          />
         ) : rows.length === 0 ? (
           <p className="px-3 py-10 text-center text-sm text-muted-foreground">
             {debouncedSearch

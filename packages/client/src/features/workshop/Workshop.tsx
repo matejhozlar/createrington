@@ -4,11 +4,10 @@ import { trpc, type RouterOutput } from "@/lib/trpc";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { LoadingState } from "@/components/query-states";
+import { ErrorState, LoadingState } from "@/components/query-states";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import { PackStrip } from "./components/PackStrip";
 import { ProjectThumb } from "./components/ProjectThumb";
-import { QueryErrorState } from "./components/QueryErrorState";
 import {
   WorkshopDisabledState,
   WorkshopEmptyState,
@@ -63,7 +62,8 @@ export function Workshop() {
             ) : workshopsQuery.error?.data?.code === "FORBIDDEN" ? (
               <WorkshopDisabledState />
             ) : workshopsQuery.error ? (
-              <QueryErrorState
+              <ErrorState
+                bordered
                 message={workshopsQuery.error.message}
                 onRetry={() => workshopsQuery.refetch()}
               />

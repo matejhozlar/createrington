@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/auth";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import { Sensitive } from "@/components/sensitive";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorState } from "@/components/query-states";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -53,7 +54,26 @@ function parseUserAgent(ua: string | null): {
 
 /** Displays the linked Minecraft and Discord account details for the current user */
 function AccountSection() {
-  const { data, isLoading } = useQuery(trpc.user.account.me.queryOptions());
+  const { data, isLoading, isError, refetch } = useQuery(
+    trpc.user.account.me.queryOptions(),
+  );
+
+  if (isError && !data) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Account</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ErrorState
+            compact
+            message="Couldn't load your account."
+            onRetry={() => void refetch()}
+          />
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (isLoading || !data) {
     return (
@@ -155,9 +175,12 @@ function InfoItem({
 
 /** Lists all active JWT sessions with device info and per-session revoke controls */
 function SessionsSection() {
-  const { data: sessions, isLoading } = useQuery(
-    trpc.user.account.sessions.queryOptions(),
-  );
+  const {
+    data: sessions,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery(trpc.user.account.sessions.queryOptions());
   const revokeMutation = useMutation(
     trpc.user.account.revokeSession.mutationOptions({
       onSuccess: () =>
@@ -203,7 +226,13 @@ function SessionsSection() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        {!sessions || sessions.length === 0 ? (
+        {isError && !sessions ? (
+          <ErrorState
+            compact
+            message="Couldn't load your sessions."
+            onRetry={() => void refetch()}
+          />
+        ) : !sessions || sessions.length === 0 ? (
           <p className="text-sm text-muted-foreground">No active sessions</p>
         ) : (
           sessions.map((session) => {

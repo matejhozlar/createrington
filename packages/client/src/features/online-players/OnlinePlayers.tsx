@@ -7,9 +7,8 @@ import { useAuth } from "@/contexts/auth";
 import { cn } from "@/lib/utils";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { SearchInput } from "@/components/search-input";
-import { LoadingState } from "@/components/query-states";
+import { ErrorState, LoadingState } from "@/components/query-states";
 import {
   Search,
   Users,
@@ -284,17 +283,11 @@ export function OnlinePlayers() {
           {playersLoading ? (
             <LoadingState text="Loading players..." className="py-16" />
           ) : playersError ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <Users className="size-12 text-muted-foreground mb-4" />
-              <p className="text-destructive">{playersError.message}</p>
-              <Button
-                onClick={() => refresh()}
-                className="mt-4"
-                variant="outline"
-              >
-                Try Again
-              </Button>
-            </div>
+            <ErrorState
+              message={playersError.message}
+              onRetry={() => refresh()}
+              className="py-16"
+            />
           ) : sortedPlayers.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
               {sortedPlayers.map((player, i) => (

@@ -111,17 +111,39 @@ export function LoadingState({
 export function ErrorState({
   message,
   onRetry,
+  bordered = false,
+  compact = false,
   className,
 }: {
   message: string;
   onRetry: () => void;
+  bordered?: boolean;
+  compact?: boolean;
   className?: string;
 }) {
   return (
-    <StateFrame className={className}>
-      <div className="text-center">
-        <p className="text-destructive">{message}</p>
-        <Button onClick={onRetry} className="mt-4" variant="outline">
+    <StateFrame
+      className={cn(
+        bordered &&
+          "flex-none rounded-xl border border-dashed border-[var(--border-strong)]",
+        compact ? "py-6" : bordered && "py-16",
+        className,
+      )}
+    >
+      <div className="flex flex-col items-center gap-4 text-center">
+        <p
+          className={cn(
+            "text-destructive",
+            (bordered || compact) && "max-w-[420px] text-sm",
+          )}
+        >
+          {message}
+        </p>
+        <Button
+          onClick={onRetry}
+          variant="outline"
+          size={compact ? "sm" : "default"}
+        >
           Try Again
         </Button>
       </div>

@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { LoadingState } from "@/components/query-states";
+import { ErrorState, LoadingState } from "@/components/query-states";
 import { NotFound } from "@/components/not-found";
 import { loaderName, projectCategories } from "../format";
 import { PAGE_SIZE, WORDMARK_IMAGE } from "../constants";
@@ -23,7 +23,6 @@ import { usePagination } from "../hooks/use-pagination";
 import { useViewMode } from "../hooks/use-view-mode";
 import { ClearButton } from "../components/ClearButton";
 import { PackStrip } from "../components/PackStrip";
-import { QueryErrorState } from "../components/QueryErrorState";
 import { WorkshopDisabledState } from "../components/WorkshopEmptyState";
 import { ViewToggle } from "../components/ViewToggle";
 import { WorkshopHero } from "../components/WorkshopHero";
@@ -279,7 +278,8 @@ export function WorkshopDetail() {
           {workshopQuery.error.data?.code === "FORBIDDEN" ? (
             <WorkshopDisabledState />
           ) : (
-            <QueryErrorState
+            <ErrorState
+              bordered
               message={workshopQuery.error.message}
               onRetry={() => workshopQuery.refetch()}
             />
@@ -384,7 +384,8 @@ export function WorkshopDetail() {
 
         <main className="mt-10 flex flex-col gap-6">
           {packQuery.error ? (
-            <QueryErrorState
+            <ErrorState
+              bordered
               compact
               message={packQuery.error.message}
               onRetry={() => packQuery.refetch()}
@@ -467,7 +468,8 @@ export function WorkshopDetail() {
           </div>
 
           {searching && rejectedQuery.error && (
-            <QueryErrorState
+            <ErrorState
+              bordered
               compact
               message={rejectedQuery.error.message}
               onRetry={() => rejectedQuery.refetch()}

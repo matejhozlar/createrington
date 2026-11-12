@@ -226,13 +226,20 @@ export function Home() {
   const { servers } = useServerData();
   const server = servers.find((s) => s.serverId === serverId);
 
-  const { data: playerCount, isLoading: isLoadingPlayers } = useQuery(
-    trpc.public.players.count.queryOptions({}),
-  );
+  const {
+    data: playerCount,
+    isLoading: isLoadingPlayers,
+    isError: playersFailed,
+  } = useQuery(trpc.public.players.count.queryOptions({}));
 
-  const { data: playtimeData, isLoading: isLoadingPlaytime } = useQuery(
-    trpc.public.metrics.playtime.getTotalHours.queryOptions({}),
-  );
+  const {
+    data: playtimeData,
+    isLoading: isLoadingPlaytime,
+    isError: playtimeFailed,
+  } = useQuery(trpc.public.metrics.playtime.getTotalHours.queryOptions({}));
+
+  const playersUnavailable = playersFailed && !playerCount;
+  const playtimeUnavailable = playtimeFailed && !playtimeData;
 
   const serverMetrics = [
     {
@@ -243,19 +250,29 @@ export function Home() {
     },
     {
       icon: TrendingUp,
-      value: isLoadingPlayers ? "..." : (playerCount?.count ?? "N/A"),
+      value: isLoadingPlayers
+        ? "..."
+        : playersUnavailable
+          ? "–"
+          : (playerCount?.count ?? "N/A"),
       title: "Total Players",
-      description: "Registered community members",
+      description: playersUnavailable
+        ? "Couldn't load right now"
+        : "Registered community members",
     },
     {
       icon: Clock,
       value: isLoadingPlaytime ? (
         <Spinner className="mx-auto size-10 text-primary" />
+      ) : playtimeUnavailable ? (
+        "–"
       ) : (
         (playtimeData?.totalHours ?? "N/A")
       ),
       title: "Hours Played",
-      description: "Total playtime across all seasons",
+      description: playtimeUnavailable
+        ? "Couldn't load right now"
+        : "Total playtime across all seasons",
     },
   ];
 

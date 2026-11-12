@@ -4,7 +4,7 @@ import type { WorkshopModStatus } from "@createrington/shared/db";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { LoadingState } from "@/components/query-states";
+import { ErrorState, LoadingState } from "@/components/query-states";
 import {
   Select,
   SelectContent,
@@ -15,7 +15,6 @@ import {
 import { PAGE_SIZE } from "../../constants";
 import { useViewMode } from "../../hooks/use-view-mode";
 import { ProjectThumb } from "../../components/ProjectThumb";
-import { QueryErrorState } from "../../components/QueryErrorState";
 import { SocialLinks } from "../../components/SocialLinks";
 import { ViewToggle } from "../../components/ViewToggle";
 import {
@@ -148,7 +147,8 @@ export function SuggestionHistory() {
         <LoadingState text="Loading suggestions..." />
       ) : historyQuery.error ? (
         <div className="mt-4">
-          <QueryErrorState
+          <ErrorState
+            bordered
             compact
             message={historyQuery.error.message}
             onRetry={() => historyQuery.refetch()}

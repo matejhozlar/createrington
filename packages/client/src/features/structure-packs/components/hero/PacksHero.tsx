@@ -39,9 +39,12 @@ export const PacksHero = forwardRef<PacksHeroHandle, PacksHeroProps>(
     const mobileAmbientRef = useRef<HTMLDivElement | null>(null);
     const idleGlow = !portalHidden;
 
-    const { data: pool, isLoading: poolLoading } = useQuery(
-      trpc.public.structurePacks.pool.queryOptions(),
-    );
+    const {
+      data: pool,
+      isLoading: poolLoading,
+      isError: poolError,
+    } = useQuery(trpc.public.structurePacks.pool.queryOptions());
+    const poolFailed = poolError && !pool;
 
     const { data: rotationInfo } = useQuery(
       trpc.public.structurePacks.rotationInfo.queryOptions(),
@@ -192,6 +195,7 @@ export const PacksHero = forwardRef<PacksHeroHandle, PacksHeroProps>(
               poolCount={pool?.length ?? 0}
               totalBoosts={totalBoosts}
               poolLoading={poolLoading}
+              poolFailed={poolFailed}
               onPrimary={enterPortal}
               onSecondary={() => scrollTo(activePackRef)}
             />
@@ -216,7 +220,11 @@ export const PacksHero = forwardRef<PacksHeroHandle, PacksHeroProps>(
               />
             </div>
             <div className="w-full max-w-[360px]">
-              <LeadingPeek pool={pool} isLoading={poolLoading} />
+              <LeadingPeek
+                pool={pool}
+                isLoading={poolLoading}
+                isError={poolFailed}
+              />
             </div>
           </div>
         </div>
@@ -239,6 +247,7 @@ interface HeroCopyProps {
   poolCount: number;
   totalBoosts: number;
   poolLoading: boolean;
+  poolFailed: boolean;
   onPrimary: () => void;
   onSecondary: () => void;
 }
@@ -248,6 +257,7 @@ function HeroCopy({
   poolCount,
   totalBoosts,
   poolLoading,
+  poolFailed,
   onPrimary,
   onSecondary,
 }: HeroCopyProps) {
@@ -278,12 +288,14 @@ function HeroCopy({
         <Stat
           icon={Package}
           label="Dimensions in pool"
-          value={poolLoading ? null : `${poolCount} themed`}
+          value={poolLoading ? null : poolFailed ? "–" : `${poolCount} themed`}
         />
         <Stat
           icon={Rocket}
           label="Boosts spent"
-          value={poolLoading ? null : `${totalBoosts} this cycle`}
+          value={
+            poolLoading ? null : poolFailed ? "–" : `${totalBoosts} this cycle`
+          }
           mono
         />
       </div>
@@ -355,9 +367,10 @@ interface PoolEntry {
 interface LeadingPeekProps {
   pool: PoolEntry[] | undefined;
   isLoading: boolean;
+  isError: boolean;
 }
 
-function LeadingPeek({ pool, isLoading }: LeadingPeekProps) {
+function LeadingPeek({ pool, isLoading, isError }: LeadingPeekProps) {
   const totalWeight = pool?.reduce((sum, entry) => sum + entry.weight, 0) ?? 0;
 
   const sorted = useMemo(() => {
@@ -384,7 +397,11 @@ function LeadingPeek({ pool, isLoading }: LeadingPeekProps) {
         <TrendingUp className="size-3.5 text-primary" />
       </div>
 
-      {isLoading || !leader ? (
+      {isError ? (
+        <p className="text-sm text-muted-foreground">
+          Couldn't load the vote right now.
+        </p>
+      ) : isLoading || !leader ? (
         <>
           <div className="mb-3 flex items-baseline justify-between gap-3">
             <Skeleton className="h-7 w-32" />

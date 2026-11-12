@@ -10,6 +10,7 @@ import { trpc } from "@/lib/trpc";
 import { REQUIRED_DEPENDENCY } from "@createrington/shared/workshop";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ErrorState } from "@/components/query-states";
 import {
   Carousel,
   CarouselContent,
@@ -96,20 +97,14 @@ export function ModDetailDialog({
         onOpenAutoFocus={(event) => event.preventDefault()}
       >
         {detailQuery.error ? (
-          <div className="flex flex-col items-center gap-4 py-10 text-center">
-            <p className="text-sm text-destructive">
-              {detailQuery.error.message}
-            </p>
-            <Button
-              variant="outline"
-              onClick={() => {
-                if (admin) void adminQuery.refetch();
-                else void userQuery.refetch();
-              }}
-            >
-              Try Again
-            </Button>
-          </div>
+          <ErrorState
+            compact
+            message={detailQuery.error.message}
+            onRetry={() => {
+              if (admin) void adminQuery.refetch();
+              else void userQuery.refetch();
+            }}
+          />
         ) : detailQuery.isLoading || !data || !project ? (
           <div className="space-y-4">
             <Skeleton className="h-16 w-full" />

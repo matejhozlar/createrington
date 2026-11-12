@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { LoadingState } from "@/components/query-states";
+import { ErrorState, LoadingState } from "@/components/query-states";
 import { NotFound } from "@/components/not-found";
 import { CurseForgeIcon } from "@/components/icons/curseforge";
 import { isHttpUrl, loaderName, projectCategories } from "../format";
@@ -21,7 +21,6 @@ import { useFilterParams } from "../hooks/use-filter-params";
 import { usePagination } from "../hooks/use-pagination";
 import { useViewMode } from "../hooks/use-view-mode";
 import { ClearButton } from "../components/ClearButton";
-import { QueryErrorState } from "../components/QueryErrorState";
 import { ViewToggle } from "../components/ViewToggle";
 import { WorkshopDisabledState } from "../components/WorkshopEmptyState";
 import { WorkshopHero } from "../components/WorkshopHero";
@@ -83,7 +82,8 @@ export function WorkshopPack() {
           {workshopQuery.error.data?.code === "FORBIDDEN" ? (
             <WorkshopDisabledState />
           ) : (
-            <QueryErrorState
+            <ErrorState
+              bordered
               message={workshopQuery.error.message}
               onRetry={() => workshopQuery.refetch()}
             />
@@ -193,7 +193,8 @@ export function WorkshopPack() {
           {packQuery.isLoading ? (
             <LoadingState text="Loading mods..." className="py-16" />
           ) : packQuery.error ? (
-            <QueryErrorState
+            <ErrorState
+              bordered
               message={packQuery.error.message}
               onRetry={() => packQuery.refetch()}
             />
