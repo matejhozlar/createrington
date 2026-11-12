@@ -40,10 +40,7 @@ export const serverStatsProcedures = {
             totalHours: Math.floor(
               Number(serverStats.totalSeconds || 0) / 3600,
             ),
-            totalSessions:
-              Number(serverStats.totalSeconds || 0) > 0
-                ? Number(serverStats.totalPlayers || 0)
-                : 0,
+            totalSessions: serverStats.totalSessions,
             avgSessionSeconds: Number(serverStats.avgSessionSeconds) || 0,
           },
         });
