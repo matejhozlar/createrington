@@ -9,6 +9,7 @@ import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { Button } from "@/components/ui/button";
+import { ErrorState } from "@/components/query-states";
 import { SearchInput } from "@/components/search-input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TugRow } from "./TugRow";
@@ -92,6 +93,12 @@ export function EveryStat({
       <div className="rounded-xl border bg-card px-4 py-1 md:px-5">
         {statsQuery.isLoading ? (
           <RowsSkeleton />
+        ) : statsQuery.isError && !statsQuery.data ? (
+          <ErrorState
+            compact
+            message="Couldn't load the stats."
+            onRetry={() => void statsQuery.refetch()}
+          />
         ) : rows.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted-foreground">
             {debounced

@@ -27,9 +27,12 @@ export function StructurePacks() {
   );
   const [overlayActive, setOverlayActive] = useState(false);
 
-  const { data: pool, isLoading: poolLoading } = useQuery(
-    trpc.public.structurePacks.pool.queryOptions(),
-  );
+  const {
+    data: pool,
+    isLoading: poolLoading,
+    isError: poolError,
+    refetch: refetchPool,
+  } = useQuery(trpc.public.structurePacks.pool.queryOptions());
 
   const { data: myBoosts } = useQuery(
     trpc.user.structurePacks.myBoosts.queryOptions(undefined, {
@@ -105,6 +108,8 @@ export function StructurePacks() {
         getSourceRect={getZoomSource}
         pool={pool}
         isLoading={poolLoading}
+        isError={poolError && !pool}
+        onRetry={() => void refetchPool()}
         totalWeight={totalWeight}
         myBoostMap={myBoostMap}
         boostUnitPrice={

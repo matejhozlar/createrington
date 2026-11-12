@@ -10,6 +10,7 @@ import {
   X,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorState } from "@/components/query-states";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/auth";
 import { useCountdown } from "@/hooks/use-countdown";
@@ -46,6 +47,8 @@ interface PortalZoomOverlayProps {
   getSourceRect: (() => DOMRect) | null;
   pool: PoolEntry[] | undefined;
   isLoading: boolean;
+  isError: boolean;
+  onRetry: () => void;
   totalWeight: number;
   myBoostMap: Map<number, number>;
   boostUnitPrice: number;
@@ -87,6 +90,8 @@ export function PortalZoomOverlay({
   getSourceRect,
   pool,
   isLoading,
+  isError,
+  onRetry,
   totalWeight,
   myBoostMap,
   boostUnitPrice,
@@ -287,6 +292,8 @@ export function PortalZoomOverlay({
           <OverlayBody
             pool={pool}
             isLoading={isLoading}
+            isError={isError}
+            onRetry={onRetry}
             totalWeight={totalWeight}
             myBoostMap={myBoostMap}
             boostUnitPrice={boostUnitPrice}
@@ -401,6 +408,8 @@ function MiniStat({ label, value, mono, accent }: MiniStatProps) {
 interface OverlayBodyProps {
   pool: PoolEntry[] | undefined;
   isLoading: boolean;
+  isError: boolean;
+  onRetry: () => void;
   totalWeight: number;
   myBoostMap: Map<number, number>;
   boostUnitPrice: number;
@@ -411,6 +420,8 @@ interface OverlayBodyProps {
 function OverlayBody({
   pool,
   isLoading,
+  isError,
+  onRetry,
   totalWeight,
   myBoostMap,
   boostUnitPrice,
@@ -432,6 +443,12 @@ function OverlayBody({
             <Skeleton key={i} className="h-[168px] w-full rounded-xl" />
           ))}
         </div>
+      ) : isError ? (
+        <ErrorState
+          bordered
+          message="Couldn't load the dimensions."
+          onRetry={onRetry}
+        />
       ) : sortedPool.length === 0 ? (
         <div className="rounded-xl border border-white/10 bg-white/[0.02] p-10 text-center text-white/50">
           <Package className="mx-auto mb-2 size-8 opacity-50" />

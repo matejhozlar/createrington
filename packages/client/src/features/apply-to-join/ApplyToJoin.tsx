@@ -1,7 +1,7 @@
 import { ExternalLink } from "lucide-react";
 import { DISCORD_INVITE_URL } from "@/lib/external-urls";
 import { NavLink } from "react-router";
-import { LoadingState } from "@/components/query-states";
+import { ErrorState, LoadingState } from "@/components/query-states";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -80,6 +80,16 @@ export function ApplyToJoin() {
 
   if (statusQuery.isLoading) {
     return <LoadingState text="Loading..." className="py-20" />;
+  }
+
+  if (statusQuery.isError && !statusQuery.data) {
+    return (
+      <ErrorState
+        message="Couldn't load the application status."
+        onRetry={() => void statusQuery.refetch()}
+        className="py-20"
+      />
+    );
   }
 
   return (

@@ -2,11 +2,10 @@ import { Link, useParams, useSearchParams } from "react-router";
 import { ArrowLeft } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { Badge } from "@/components/ui/badge";
-import { LoadingState } from "@/components/query-states";
+import { ErrorState, LoadingState } from "@/components/query-states";
 import { NotFound } from "@/components/not-found";
 import { loaderName } from "../format";
 import { PackStrip } from "../components/PackStrip";
-import { QueryErrorState } from "../components/QueryErrorState";
 import { WorkshopDisabledState } from "../components/WorkshopEmptyState";
 import { WorkshopHero } from "../components/WorkshopHero";
 import { ActiveSlots } from "./components/ActiveSlots";
@@ -57,7 +56,8 @@ export function WorkshopSuggest() {
           {pageError.data?.code === "FORBIDDEN" ? (
             <WorkshopDisabledState />
           ) : (
-            <QueryErrorState
+            <ErrorState
+              bordered
               message={pageError.message}
               onRetry={() => {
                 if (workshopQuery.error) void workshopQuery.refetch();
@@ -120,7 +120,8 @@ export function WorkshopSuggest() {
 
         {packQuery.error ? (
           <div className="mt-7">
-            <QueryErrorState
+            <ErrorState
+              bordered
               compact
               message={packQuery.error.message}
               onRetry={() => packQuery.refetch()}
