@@ -56,7 +56,7 @@ export async function execute(
 
     const embed = EmbedPresets.plain({
       title: "💰 Your Balance",
-      description: `$${BalanceUtils.formatWithCommas(balance.balance)}`,
+      description: BalanceUtils.formatMoney(balance.balance),
     });
 
     await interaction.reply({

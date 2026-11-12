@@ -1,9 +1,8 @@
 import { balanceRepo, player } from "@/db";
-import { BalanceUtils } from "@/db/repositories/balance/utils";
 import { EmbedPresets } from "@/discord/embeds";
 import { replyError } from "@/discord/utils/interaction-reply";
 import { CooldownType } from "@/discord/utils/cooldown";
-import { formatBalance } from "@/utils/format";
+import { formatMoney } from "@createrington/shared/format";
 import {
   type ChatInputCommandInteraction,
   MessageFlags,
@@ -23,12 +22,12 @@ export const data = new SlashCommandBuilder()
       .setDescription("The player to send money to")
       .setRequired(true),
   )
-  .addNumberOption((option) =>
+  .addIntegerOption((option) =>
     option
       .setName("amount")
-      .setDescription("Amount to send (e.g., 10)")
+      .setDescription("Whole dollars to send (e.g., 10)")
       .setRequired(true)
-      .setMinValue(0.001),
+      .setMinValue(1),
   )
   .addStringOption((option) =>
     option
@@ -59,11 +58,10 @@ export const cooldown = {
  * 2. Extract the recipient user and amount from command options
  * 3. Validate that sender and recipient are different users
  * 4. Validate that both users are registered in the system
- * 5. Validate the amount (positive, max 3 decimals)
- * 6. Check if sender has sufficient balance
- * 7. Execute the transfer using the balance repository
- * 8. Display success message with transaction details
- * 9. Handle and report any errors that occur during the process
+ * 5. Check if sender has sufficient balance
+ * 6. Execute the transfer using the balance repository
+ * 7. Display success message with transaction details
+ * 8. Handle and report any errors that occur during the process
  *
  * @param interaction - The chat input command interaction
  * @returns Promise resolving when the command execution is completed
@@ -71,7 +69,7 @@ export const cooldown = {
 export async function execute(interaction: ChatInputCommandInteraction) {
   const sender = interaction.user;
   const recipient = interaction.options.getUser("recipient", true);
-  const amount = interaction.options.getNumber("amount", true);
+  const amount = interaction.options.getInteger("amount", true);
   const note = interaction.options.getString("note") || undefined;
 
   if (sender.id === recipient.id) {
@@ -93,19 +91,6 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   }
 
   try {
-    try {
-      BalanceUtils.validate(amount);
-    } catch (error) {
-      await replyError(
-        interaction,
-        "Invalid Amount",
-        error instanceof Error
-          ? error.message
-          : "Amount must have at most 3 decimals!",
-      );
-      return;
-    }
-
     const senderPlayer = await player.find({ discordId: sender.id });
 
     if (!senderPlayer) {
@@ -137,8 +122,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         interaction,
         "Insufficient Balance",
         `You don't have enough money to complete this transfer.\n\n` +
-          `**Your Balance:** $${BalanceUtils.format(BalanceUtils.toStorage(senderBalance))}\n` +
-          `**Required:** $${BalanceUtils.format(BalanceUtils.toStorage(amount))}`,
+          `**Your Balance:** ${formatMoney(senderBalance)}\n` +
+          `**Required:** ${formatMoney(amount)}`,
       );
       return;
     }
@@ -152,12 +137,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     const embed = EmbedPresets.success(
       "Transfer Complete",
-      `You sent **${formatBalance(BalanceUtils.format(BalanceUtils.toStorage(amount)))}** to ${recipient.tag}`,
-    ).field(
-      "Your New Balance",
-      `${formatBalance(BalanceUtils.format(BalanceUtils.toStorage(result.senderBalance)))}`,
-      true,
-    );
+      `You sent **${formatMoney(amount)}** to ${recipient.tag}`,
+    ).field("Your New Balance", formatMoney(result.senderBalance), true);
 
     if (note) {
       embed.field("Note", note, false);
