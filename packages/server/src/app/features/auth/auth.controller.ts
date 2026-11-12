@@ -272,8 +272,6 @@ export class AuthController {
   static async logout(req: Request, res: Response): Promise<void> {
     const rawToken = refreshTokenService.extractFromRequest(req);
 
-    // Fall back to the session row when there's no Bearer token (the
-    // client never sends one to /logout).
     let identity = req.user?.username;
     if (!identity && rawToken) {
       const session = await Q.auth.session.findByTokenHash(
