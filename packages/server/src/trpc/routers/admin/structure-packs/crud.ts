@@ -1,10 +1,10 @@
 import { z } from "zod";
 import { adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
-import { httpUrlSchema } from "@createrington/shared/api/embed";
+import { structurePackImportSchema } from "@createrington/shared/structure-pack";
+import { ConflictError } from "@/app/middleware/error-handler";
 import { structurePackService } from "@/services/structure-pack";
 import { auditActor, assertPatchNotEmpty } from "@/trpc/utils";
-import { modFileName } from "./helpers";
 
 export const structurePackCrudProcedures = {
   list: adminProcedure
@@ -99,64 +99,36 @@ export const structurePackCrudProcedures = {
 
   importPacks: adminProcedure
     .meta({ description: "Import structure packs from exported JSON" })
-    .input(
-      z.object({
-        structurePacks: z.array(
-          z.object({
-            name: z.string().min(1).max(100),
-            description: z.string().max(500).nullish(),
-            enabled: z.boolean().optional().default(true),
-            mods: z.array(
-              z.object({
-                curseforgeModId: z.number().int().positive(),
-                curseforgeFileId: z.number().int().positive(),
-                fileName: modFileName,
-                modName: z.string().min(1),
-                modUrl: httpUrlSchema.nullish(),
-                thumbnailUrl: z.string().url().nullish(),
-              }),
-            ),
-          }),
-        ),
-      }),
-    )
+    .input(structurePackImportSchema)
     .mutation(async ({ input, ctx }) => {
       const created: string[] = [];
       const skipped: string[] = [];
+      const failed: string[] = [];
 
       for (const packData of input.structurePacks) {
         try {
-          const pack = await structurePackService.createPack(
-            packData.name,
-            packData.description ?? undefined,
-            { enabled: false },
-          );
-
-          await structurePackService.addMods(
-            pack.id,
-            packData.mods.map((mod) => ({
-              curseforgeModId: mod.curseforgeModId,
-              curseforgeFileId: mod.curseforgeFileId,
-              fileName: mod.fileName,
-              modName: mod.modName,
-              modUrl: mod.modUrl ?? undefined,
-              thumbnailUrl: mod.thumbnailUrl ?? undefined,
-            })),
-          );
-
+          await structurePackService.importPack(packData);
           created.push(packData.name);
-        } catch {
-          skipped.push(packData.name);
+        } catch (error) {
+          if (error instanceof ConflictError) {
+            skipped.push(packData.name);
+            continue;
+          }
+          logger.error(
+            `Failed to import structure pack "${packData.name}":`,
+            error,
+          );
+          failed.push(packData.name);
         }
       }
 
       await Q.admin.log.action.logAction({
         ...auditActor(ctx),
         actionType: "structure_pack_import",
-        description: `Imported ${created.length} structure packs (${skipped.length} skipped)`,
-        metadata: { created, skipped },
+        description: `Imported ${created.length} structure packs (${skipped.length} skipped, ${failed.length} failed)`,
+        metadata: { created, skipped, failed },
       });
 
-      return { created, skipped };
+      return { created, skipped, failed };
     }),
 };

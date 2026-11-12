@@ -10,7 +10,8 @@ import {
 } from "@/services/curseforge/mods";
 import { getFilesDependencies } from "@/services/curseforge/files";
 import { auditActor } from "@/trpc/utils";
-import { modFileName, getRotationService } from "./helpers";
+import { getRotationService } from "./helpers";
+import { structurePackModFileName } from "@createrington/shared/structure-pack";
 
 export const structurePackModProcedures = {
   addMod: adminProcedure
@@ -20,7 +21,7 @@ export const structurePackModProcedures = {
         packId: z.coerce.number().int().positive(),
         curseforgeModId: z.number().int().positive(),
         curseforgeFileId: z.number().int().positive(),
-        fileName: modFileName,
+        fileName: structurePackModFileName,
         modName: z.string().min(1),
         modUrl: httpUrlSchema.optional(),
         thumbnailUrl: z.string().url().optional(),

@@ -13,7 +13,6 @@ import { FormDialog } from "@/components/form-dialog";
 import { SearchInput } from "@/components/search-input";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useToastActions } from "@/hooks/use-toast";
-import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { trpc, queryClient } from "@/lib/trpc";
 import { REQUIRED_DEPENDENCY } from "@createrington/shared/workshop";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -96,18 +95,16 @@ export function AddModDialog({
   const selectedDeps = depOverrides ?? defaultDepSelection;
 
   const addModMutation = useMutation(
-    trpc.admin.structurePacks.addMod.mutationOptions(
-      useMutationToast({
-        onSuccess: () => {
-          void queryClient.invalidateQueries(
-            trpc.admin.structurePacks.get.queryFilter({ id: packId }),
-          );
-          void queryClient.invalidateQueries(
-            trpc.admin.structurePacks.list.pathFilter(),
-          );
-        },
-      }),
-    ),
+    trpc.admin.structurePacks.addMod.mutationOptions({
+      onSuccess: () => {
+        void queryClient.invalidateQueries(
+          trpc.admin.structurePacks.get.queryFilter({ id: packId }),
+        );
+        void queryClient.invalidateQueries(
+          trpc.admin.structurePacks.list.pathFilter(),
+        );
+      },
+    }),
   );
 
   const handleDialogOpenChange = (next: boolean) => {
@@ -120,13 +117,6 @@ export function AddModDialog({
     onOpenChange(next);
   };
 
-  /**
-   * Adds the selected mod and any checked dependencies to the pack in sequence.
-   *
-   * The primary mod is added first, then each selected dependency is added
-   * individually. Failures on individual deps are swallowed so the remaining
-   * mods still get added.
-   */
   const handleBatchAdd = async () => {
     if (!selectedFile || !selectedModId) return;
     setAddingBatch(true);
@@ -135,19 +125,29 @@ export function AddModDialog({
         (m) => m.id === selectedModId,
       );
 
-      await addModMutation.mutateAsync({
-        packId,
-        curseforgeModId: selectedModId,
-        curseforgeFileId: selectedFile.id,
-        fileName: selectedFile.fileName,
-        modName: searchMod?.name ?? selectedFile.displayName,
-        modUrl: searchMod?.url,
-        thumbnailUrl: searchMod?.thumbnailUrl,
-      });
+      try {
+        await addModMutation.mutateAsync({
+          packId,
+          curseforgeModId: selectedModId,
+          curseforgeFileId: selectedFile.id,
+          fileName: selectedFile.fileName,
+          modName: searchMod?.name ?? selectedFile.displayName,
+          modUrl: searchMod?.url,
+          thumbnailUrl: searchMod?.thumbnailUrl,
+        });
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Failed to add mod",
+        );
+        return;
+      }
 
-      for (const depModId of selectedDeps) {
+      const deps = [...selectedDeps].flatMap((depModId) => {
         const dep = depsQuery.data?.find((d) => d.modId === depModId);
-        if (!dep?.bestFile) continue;
+        return dep?.bestFile ? [{ ...dep, bestFile: dep.bestFile }] : [];
+      });
+      const failures: string[] = [];
+      for (const dep of deps) {
         try {
           await addModMutation.mutateAsync({
             packId,
@@ -158,13 +158,20 @@ export function AddModDialog({
             modUrl: dep.modUrl,
             thumbnailUrl: dep.thumbnailUrl,
           });
-        } catch {
-          // Continue adding remaining deps even if one fails
+        } catch (error) {
+          failures.push(
+            `${dep.modName}: ${error instanceof Error ? error.message : "Failed to add mod"}`,
+          );
         }
       }
 
-      const count = 1 + selectedDeps.size;
-      toast.success(`Added ${count} mod${count !== 1 ? "s" : ""} to pack`);
+      const total = 1 + deps.length;
+      const added = total - failures.length;
+      if (failures.length === 0) {
+        toast.success(`Added ${total} mod${total !== 1 ? "s" : ""} to pack`);
+      } else {
+        toast.warning(failures.join("; "), `Added ${added} of ${total} mods`);
+      }
       setSelectedFile(null);
       setSelectedModId(null);
       setDepOverrides(null);

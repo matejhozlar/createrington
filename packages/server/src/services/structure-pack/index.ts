@@ -1,4 +1,4 @@
-import { Q } from "@/db";
+import { Q, db } from "@/db";
 import {
   BadRequestError,
   NotFoundError,
@@ -10,6 +10,7 @@ import type {
   StructurePackModCreate,
 } from "@createrington/shared/db";
 import type { StructurePackWithMods } from "@/db/queries/structure/pack";
+import type { StructurePackImportEntry } from "@createrington/shared/structure-pack";
 
 export class StructurePackService {
   async createPack(
@@ -27,6 +28,36 @@ export class StructurePackService {
       name,
       description,
       ...(options.enabled !== undefined && { enabled: options.enabled }),
+    });
+  }
+
+  async importPack(entry: StructurePackImportEntry): Promise<StructurePack> {
+    const existing = await Q.structure.pack.find({ name: entry.name });
+    if (existing && !existing.deletedAt) {
+      throw new ConflictError(
+        `A structure pack named "${entry.name}" already exists`,
+      );
+    }
+    return db.inTransaction(async (tx) => {
+      const pack = await tx.structure.pack.createAndReturn({
+        name: entry.name,
+        description: entry.description ?? undefined,
+        enabled: false,
+      });
+      if (entry.mods.length > 0) {
+        await tx.structure.pack.mod.createMany(
+          entry.mods.map((mod) => ({
+            packId: pack.id,
+            curseforgeModId: mod.curseforgeModId,
+            curseforgeFileId: mod.curseforgeFileId,
+            fileName: mod.fileName,
+            modName: mod.modName,
+            modUrl: mod.modUrl ?? undefined,
+            thumbnailUrl: mod.thumbnailUrl ?? undefined,
+          })),
+        );
+      }
+      return pack;
     });
   }
 

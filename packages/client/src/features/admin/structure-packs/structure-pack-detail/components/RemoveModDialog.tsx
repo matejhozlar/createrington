@@ -4,7 +4,6 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { FormDialog } from "@/components/form-dialog";
 import { useToastActions } from "@/hooks/use-toast";
-import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { trpc, queryClient } from "@/lib/trpc";
 import type { RemoveTarget } from "../types";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -13,6 +12,7 @@ import { Spinner } from "@/components/ui/spinner";
 interface PackMod {
   id: number;
   curseforgeModId: number;
+  modName: string;
 }
 
 export function RemoveModDialog({
@@ -51,18 +51,16 @@ export function RemoveModDialog({
   const selectedRemoveDeps = removeDepOverrides ?? defaultRemoveSelection;
 
   const removeModMutation = useMutation(
-    trpc.admin.structurePacks.removeMod.mutationOptions(
-      useMutationToast({
-        onSuccess: () => {
-          void queryClient.invalidateQueries(
-            trpc.admin.structurePacks.get.queryFilter({ id: packId }),
-          );
-          void queryClient.invalidateQueries(
-            trpc.admin.structurePacks.list.pathFilter(),
-          );
-        },
-      }),
-    ),
+    trpc.admin.structurePacks.removeMod.mutationOptions({
+      onSuccess: () => {
+        void queryClient.invalidateQueries(
+          trpc.admin.structurePacks.get.queryFilter({ id: packId }),
+        );
+        void queryClient.invalidateQueries(
+          trpc.admin.structurePacks.list.pathFilter(),
+        );
+      },
+    }),
   );
 
   const handleClose = () => {
@@ -71,36 +69,47 @@ export function RemoveModDialog({
     onOpenChange(false);
   };
 
-  /**
-   * Removes the targeted mod and any checked safe dependencies from the pack.
-   *
-   * Dependencies are removed first so the target mod's removal doesn't cause
-   * constraint issues. Failures on individual dep removals are swallowed.
-   */
   const handleBatchRemove = async () => {
     if (!target) return;
     setRemovingBatch(true);
     try {
-      for (const depModId of selectedRemoveDeps) {
-        const packMod = packMods.find((m) => m.curseforgeModId === depModId);
-        if (!packMod) continue;
+      const deps = packMods.filter((m) =>
+        selectedRemoveDeps.has(m.curseforgeModId),
+      );
+      const failures: string[] = [];
+      for (const dep of deps) {
         try {
-          await removeModMutation.mutateAsync({
-            packId,
-            modId: packMod.id,
-          });
-        } catch {
-          // Swallow individual dep failures so other removals still run
+          await removeModMutation.mutateAsync({ packId, modId: dep.id });
+        } catch (error) {
+          failures.push(
+            `${dep.modName}: ${error instanceof Error ? error.message : "Failed to remove mod"}`,
+          );
         }
       }
 
-      await removeModMutation.mutateAsync({
-        packId,
-        modId: target.modId,
-      });
+      try {
+        await removeModMutation.mutateAsync({ packId, modId: target.modId });
+      } catch (error) {
+        failures.push(
+          error instanceof Error ? error.message : "Failed to remove mod",
+        );
+      }
 
-      const count = 1 + selectedRemoveDeps.size;
-      toast.success(`Removed ${count} mod${count !== 1 ? "s" : ""} from pack`);
+      const total = 1 + deps.length;
+      const removed = total - failures.length;
+      if (failures.length === 0) {
+        toast.success(
+          `Removed ${total} mod${total !== 1 ? "s" : ""} from pack`,
+        );
+      } else if (removed === 0) {
+        toast.error(failures.join("; "));
+        return;
+      } else {
+        toast.warning(
+          failures.join("; "),
+          `Removed ${removed} of ${total} mods`,
+        );
+      }
       setRemoveDepOverrides(null);
       onOpenChange(false);
     } finally {
