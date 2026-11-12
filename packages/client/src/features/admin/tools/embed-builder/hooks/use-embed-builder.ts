@@ -66,12 +66,9 @@ export function useEmbedBuilder() {
   );
 
   const debouncedSearch = useDebouncedValue(search);
-  const [lastSavedSnapshot, setLastSavedSnapshot] = useState(() => {
-    if (!pendingDraft?.activePreset) return "";
-    return pendingDraft.kind === "components"
-      ? JSON.stringify({ components: pendingDraft.components })
-      : JSON.stringify(pendingDraft.data);
-  });
+  const [lastSavedSnapshot, setLastSavedSnapshot] = useState(
+    () => pendingDraft?.savedSnapshot ?? "",
+  );
 
   const externalData = useMemo(() => toExternalData(data), [data]);
 
@@ -129,6 +126,7 @@ export function useEmbedBuilder() {
           channelId,
           activePreset,
           selectedCategoryId,
+          savedSnapshot: lastSavedSnapshot,
         });
       } else {
         clearDraft();
@@ -145,6 +143,7 @@ export function useEmbedBuilder() {
     activePreset,
     selectedCategoryId,
     hasContent,
+    lastSavedSnapshot,
   ]);
 
   const categoriesQuery = useQuery(
@@ -229,10 +228,10 @@ export function useEmbedBuilder() {
   );
 
   const handleSend = useCallback(
-    async (opts?: { linkToPreset?: boolean }) => {
+    async (opts?: { linkToPreset?: boolean }): Promise<boolean> => {
       if (!channelId) {
         toast.error("Please select a target channel");
-        return;
+        return false;
       }
       if (!hasContent) {
         toast.error(
@@ -240,13 +239,13 @@ export function useEmbedBuilder() {
             ? "Add at least one component"
             : "Message must have content, a title, a description, or at least one field",
         );
-        return;
+        return false;
       }
 
       const issue = findPayloadIssue(kind, data.fields, components);
       if (issue) {
         toast.error(issue);
-        return;
+        return false;
       }
 
       const shouldLink = opts?.linkToPreset ?? true;
@@ -259,7 +258,7 @@ export function useEmbedBuilder() {
         toast.error(
           "Save as a preset first — action buttons need a preset to function.",
         );
-        return;
+        return false;
       }
 
       // Action buttons always need the presetId to encode in their custom ID
@@ -283,8 +282,10 @@ export function useEmbedBuilder() {
         toast.success(
           `${kind === "components" ? "Message" : "Embed"} sent${result.messageId ? ` (${result.messageId})` : ""}`,
         );
+        return true;
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "Failed to send");
+        return false;
       }
     },
     [
@@ -476,13 +477,13 @@ export function useEmbedBuilder() {
     clearDraft();
   }, []);
 
-  const handleUpdateAll = useCallback(async () => {
-    if (!activePreset) return;
+  const handleUpdateAll = useCallback(async (): Promise<boolean> => {
+    if (!activePreset) return false;
 
     const issue = findPayloadIssue(kind, data.fields, components);
     if (issue) {
       toast.error(issue);
-      return;
+      return false;
     }
 
     try {
@@ -502,10 +503,12 @@ export function useEmbedBuilder() {
           `Updated ${result.updated} linked message${result.updated === 1 ? "" : "s"}`,
         );
       }
+      return true;
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Failed to update all",
       );
+      return false;
     }
   }, [
     activePreset,

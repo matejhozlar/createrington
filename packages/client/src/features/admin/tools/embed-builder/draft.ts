@@ -21,6 +21,7 @@ interface DraftState {
   channelId: string;
   activePreset: ActivePreset | null;
   selectedCategoryId: number | null;
+  savedSnapshot?: string;
 }
 
 export function loadDraft(): DraftState | null {
