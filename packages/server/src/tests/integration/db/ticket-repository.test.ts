@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, afterAll } from "vitest";
-import { Q } from "@/db";
+import { db, Q } from "@/db";
 import { TicketRepository } from "@/db/repositories/ticket";
 import { UniqueViolationError } from "@/db/utils/errors";
 import { TicketType, TicketUserAction } from "@/services/discord/tickets";
@@ -54,5 +54,69 @@ describe("TicketRepository ticket numbers", () => {
 
     expect(error).toBeInstanceOf(UniqueViolationError);
     expect(await Q.ticket.find({ channelId: `${CHANNEL_PREFIX}b` })).toBeNull();
+  });
+});
+
+describe("TicketRepository lifecycle", () => {
+  const STAFF = "900000000000000778";
+
+  async function actionTypes(ticketId: number) {
+    const actions = await Q.ticket.action.findAll(
+      { ticketId },
+      { orderBy: "id" },
+    );
+    return actions.map((action) => action.actionType);
+  }
+
+  it("records an audit action for every close, reopen and delete", async () => {
+    const ticket = await createTicket(await repository.allocateNumber(), "a");
+
+    const closed = await repository.close(ticket.id, STAFF);
+    expect(closed).toMatchObject({
+      status: "closed",
+      closedByDiscordId: STAFF,
+    });
+
+    const reopened = await repository.reopen(ticket.id, STAFF);
+    expect(reopened).toMatchObject({ status: "open", closedByDiscordId: null });
+
+    const deleted = await repository.delete(ticket.id, STAFF);
+    expect(deleted.status).toBe("deleted");
+
+    expect(await actionTypes(ticket.id)).toEqual([
+      TicketUserAction.CREATED,
+      TicketUserAction.CLOSED,
+      TicketUserAction.REOPENED,
+      TicketUserAction.DELETED,
+    ]);
+  });
+
+  it("makes a close wait for a concurrent transition and then see its result", async () => {
+    const ticket = await createTicket(await repository.allocateNumber(), "a");
+    let closing: Promise<unknown> = Promise.resolve();
+
+    await db.inTransaction(async (tx) => {
+      await tx.ticket.getForUpdate(ticket.id);
+      closing = repository.close(ticket.id, STAFF).catch((e: unknown) => e);
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      await tx.ticket.update({ id: ticket.id }, { status: "closed" });
+    });
+
+    const error = await closing;
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toMatch(/already closed/);
+    expect(await actionTypes(ticket.id)).toEqual([TicketUserAction.CREATED]);
+  });
+
+  it("leaves the ticket open when the CLOSED audit row cannot be written", async () => {
+    const ticket = await createTicket(await repository.allocateNumber(), "a");
+
+    const error = await repository
+      .close(ticket.id, null as unknown as string)
+      .catch((e) => e);
+
+    expect(error).toBeInstanceOf(Error);
+    expect((await Q.ticket.get({ id: ticket.id })).status).toBe("open");
+    expect(await actionTypes(ticket.id)).toEqual([TicketUserAction.CREATED]);
   });
 });
