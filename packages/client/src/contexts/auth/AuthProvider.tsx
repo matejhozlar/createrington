@@ -3,10 +3,10 @@ import { useEffect, useState, useCallback } from "react";
 import type { User, AuthContextType } from "./types";
 import { AuthContext } from "./context";
 import {
-  getAccessToken,
   setAccessToken,
   refreshAccessToken,
 } from "@/services/auth/token-manager";
+import { api } from "@/services/api/client";
 import { writePlayerHint } from "@/lib/skin-runner/player-hint";
 import { toast } from "sonner";
 
@@ -110,40 +110,32 @@ export function AuthProvider({ children }: AuthProviderProps) {
       });
   }, []);
 
+  const clearSession = useCallback(() => {
+    setAccessToken(null);
+    writePlayerHint(null);
+    setUser(null);
+    setError(null);
+  }, []);
+
   const logout = useCallback(async () => {
     try {
-      await fetch("/api/auth/logout", {
-        method: "POST",
-        credentials: "include",
-      });
+      await api.post("api/auth/logout");
     } catch (error) {
       if (import.meta.env.DEV) console.error("Logout error:", error);
     } finally {
-      setAccessToken(null);
-      writePlayerHint(null);
-      setUser(null);
-      setError(null);
+      clearSession();
     }
-  }, []);
+  }, [clearSession]);
 
   const logoutAll = useCallback(async () => {
     try {
-      const token = getAccessToken();
-
-      await fetch("/api/auth/logout-all", {
-        method: "POST",
-        credentials: "include",
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
+      await api.post("api/auth/logout-all");
     } catch (error) {
-      if (import.meta.env.DEV) console.error("Logout-all error:", error);
-    } finally {
-      setAccessToken(null);
-      writePlayerHint(null);
-      setUser(null);
-      setError(null);
+      toast.error("Could not log out of all sessions. Please try again.");
+      throw error;
     }
-  }, []);
+    clearSession();
+  }, [clearSession]);
 
   /**
    * Silently refresh the access token using the httpOnly refresh cookie.
