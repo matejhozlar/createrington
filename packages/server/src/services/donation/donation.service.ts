@@ -73,7 +73,7 @@ export class DonationService {
     return { sessionId: session.id, url: session.url! };
   }
 
-  /** Active monthly subscription details fetched live from Stripe, or null if there is none. */
+  /** Active monthly subscription details fetched live from Stripe, or null if there is none; throws when Stripe cannot be reached. */
   async getActiveSubscription(discordId: string): Promise<{
     subscriptionId: string;
     amountCents: number;
@@ -99,8 +99,18 @@ export class DonationService {
         currentPeriodEnd: periodEnd,
         cancelAtPeriodEnd: sub.cancel_at_period_end,
       };
-    } catch {
-      return null;
+    } catch (error) {
+      if (
+        error instanceof Stripe.errors.StripeError &&
+        error.code === "resource_missing"
+      ) {
+        return null;
+      }
+      logger.error(
+        `Failed to look up Stripe subscription ${donation.stripeSubscriptionId} for discord ${discordId}:`,
+        error,
+      );
+      throw error;
     }
   }
 
@@ -232,7 +242,6 @@ export class DonationService {
         stripeSubscriptionId: (session.subscription as string) ?? undefined,
         status: "completed",
         completedAt: new Date(),
-        supporterRoleGranted: true,
       });
     } catch (error) {
       if (
@@ -251,7 +260,9 @@ export class DonationService {
       `Donation completed: ${session.id}, €${(donation.amountCents / 100).toFixed(2)} from discord ${discordId}`,
     );
 
-    await this.grantSupporterRole(discordId);
+    if (await this.grantSupporterRole(discordId)) {
+      await donationRepo.markSupporterRoleGranted(donation.id);
+    }
   }
 
   /** Webhook: logs `cancel_at_period_end` transitions for audit; no state mutation. */
@@ -273,10 +284,10 @@ export class DonationService {
     );
   }
 
-  private async grantSupporterRole(discordId: string): Promise<void> {
+  private async grantSupporterRole(discordId: string): Promise<boolean> {
     if (!DiscordRoles.SUPPORTER) {
       logger.warn("No 'SUPPORTER' role configured, skipping role assignment");
-      return;
+      return false;
     }
 
     try {
@@ -285,7 +296,7 @@ export class DonationService {
       );
       if (!guild) {
         logger.warn("Guild not in cache, cannot assign supporter role");
-        return;
+        return false;
       }
 
       const member = await guild.members.fetch(discordId).catch(() => null);
@@ -293,16 +304,18 @@ export class DonationService {
         logger.warn(
           `Member ${discordId} not in guild, cannot assign supporter role`,
         );
-        return;
+        return false;
       }
 
-      await RoleManager.assign(
+      const granted = await RoleManager.assign(
         member,
         DiscordRoles.SUPPORTER,
         "Donation supporter",
       );
+      return granted === true;
     } catch (error) {
       logger.error(`Failed to grant supporter role to ${discordId}:`, error);
+      return false;
     }
   }
 

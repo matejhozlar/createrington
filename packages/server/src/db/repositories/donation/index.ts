@@ -20,6 +20,11 @@ export class DonationRepository {
     );
   }
 
+  /** Record that the supporter role was assigned for this donation. */
+  async markSupporterRoleGranted(id: number): Promise<void> {
+    await Q.donation.update({ id }, { supporterRoleGranted: true });
+  }
+
   /** Look up a donation by its Stripe checkout session ID, or null. */
   async findBySessionId(stripeSessionId: string): Promise<Donation | null> {
     return Q.donation.find({ stripeSessionId });

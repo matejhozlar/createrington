@@ -213,6 +213,22 @@ export function Donate() {
           </div>
         )}
 
+        {subscription.isError && (
+          <div className="flex items-center justify-between gap-4 rounded-xl border border-border bg-card p-5">
+            <p className="text-sm text-muted-foreground">
+              Couldn't check your monthly subscription right now.
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void subscription.refetch()}
+              loading={subscription.isFetching}
+            >
+              Try again
+            </Button>
+          </div>
+        )}
+
         {/* Supporter thank you */}
         {isSupporter && (
           <div className="rounded-xl border border-primary/20 bg-primary/5 p-5">
