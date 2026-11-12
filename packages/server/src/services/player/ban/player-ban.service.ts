@@ -59,24 +59,9 @@ export class PlayerBanService {
   }
 
   private async processExpiredBan(ban: PlayerBan): Promise<void> {
-    let minecraftUsername = "Unknown";
-    let wasDeleted = false;
-
-    try {
-      const player = await Q.player.find({
-        minecraftUuid: ban.playerMinecraftUuid,
-      });
-      if (player) {
-        minecraftUsername = player.minecraftUsername;
-      }
-    } catch {
-      const storedName: unknown = ban.metadata?.minecraftUsername;
-      minecraftUsername =
-        typeof storedName === "string" && storedName
-          ? storedName
-          : "Unknown (Deleted)";
-      wasDeleted = true;
-    }
+    const { minecraftUsername } = await Q.player.get({
+      minecraftUuid: ban.playerMinecraftUuid,
+    });
 
     const updatedBan = await Q.player.ban.updateAndReturn(
       { id: ban.id },
@@ -109,22 +94,20 @@ export class PlayerBanService {
       },
     });
 
-    if (!wasDeleted && minecraftUsername !== "Unknown") {
-      try {
-        await minecraftRcon.pardonAll(minecraftUsername);
-        logger.info(
-          `Auto-pardoned ${minecraftUsername} on all Minecraft servers (ban #${ban.id})`,
-        );
-      } catch (error) {
-        logger.error(
-          `Failed to pardon ${minecraftUsername} on Minecraft servers:`,
-          error,
-        );
-      }
+    try {
+      await minecraftRcon.pardonAll(minecraftUsername);
+      logger.info(
+        `Auto-pardoned ${minecraftUsername} on all Minecraft servers (ban #${ban.id})`,
+      );
+    } catch (error) {
+      logger.error(
+        `Failed to pardon ${minecraftUsername} on Minecraft servers:`,
+        error,
+      );
     }
 
     try {
-      await this.notifyAutoUnban(updatedBan, minecraftUsername, wasDeleted);
+      await this.notifyAutoUnban(updatedBan, minecraftUsername);
     } catch (error) {
       logger.error("Failed to send auto-unban notification:", error);
     }
@@ -135,7 +118,6 @@ export class PlayerBanService {
   private async notifyAutoUnban(
     ban: PlayerBan,
     minecraftUsername: string,
-    wasDeleted: boolean,
   ): Promise<void> {
     const embed = EmbedPresets.plain({
       title: "✅ Player Auto-Unbanned (Expired)",
@@ -144,10 +126,7 @@ export class PlayerBanService {
         `**Original ban reason**: ${ban.reason}`,
         `**Banned at**: ${discordTimestamp(ban.bannedAt, "F")}`,
         `**Ban duration**: ${this.calculateDuration(ban.bannedAt, ban.expiresAt!)}`,
-        wasDeleted ? `\n⚠️ *Player data was previously deleted*` : "",
-      ]
-        .filter(Boolean)
-        .join("\n"),
+      ].join("\n"),
       color: EmbedColors.Success,
     });
 

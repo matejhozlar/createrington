@@ -7,7 +7,6 @@ const { Q, bans, rcon, revokeAllForUser, revokeAllForPlayer, deletePlayer } =
     Q: {
       player: {
         get: vi.fn(),
-        find: vi.fn(),
         ban: { get: vi.fn() },
       },
     },
@@ -81,7 +80,6 @@ const caller = bansRouter.createCaller({
 beforeEach(() => {
   vi.clearAllMocks();
   Q.player.get.mockResolvedValue(PLAYER);
-  Q.player.find.mockResolvedValue(PLAYER);
   Q.player.ban.get.mockResolvedValue({
     id: 1,
     reason: "griefing",
@@ -244,18 +242,20 @@ describe("admin.players.bans.unban", () => {
     );
   });
 
-  it("lifts the ban without an in-game step when the player row is gone", async () => {
-    Q.player.find.mockResolvedValue(null);
-
+  it("pardons the banned player in game and lifts the ban", async () => {
     await caller.unban(input);
 
+    expect(Q.player.get).toHaveBeenCalledWith({
+      minecraftUuid: PLAYER.minecraftUuid,
+    });
+    expect(rcon.pardonAll).toHaveBeenCalledWith(PLAYER.minecraftUsername);
     expect(bans.unban).toHaveBeenCalledWith(
       1,
       "100000000000000009",
       "admin",
       "appeal accepted",
-      undefined,
+      expect.any(Function),
     );
-    expect(rcon.pardonAll).not.toHaveBeenCalled();
+    expect(rcon.banAll).not.toHaveBeenCalled();
   });
 });

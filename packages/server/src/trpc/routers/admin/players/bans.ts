@@ -321,52 +321,30 @@ export const bansRouter = router({
     .mutation(async ({ input, ctx }) => {
       const existingBan = await Q.player.ban.get({ id: input.banId });
 
-      let minecraftUsername = "Unknown";
-      let wasDeleted = false;
+      const { minecraftUsername } = await Q.player.get({
+        minecraftUuid: existingBan.playerMinecraftUuid,
+      });
 
-      try {
-        const player = await Q.player.find({
-          minecraftUuid: existingBan.playerMinecraftUuid,
-        });
-        if (player) {
-          minecraftUsername = player.minecraftUsername;
-        }
-      } catch {
-        const storedName: unknown = existingBan.metadata?.minecraftUsername;
-        minecraftUsername =
-          typeof storedName === "string" && storedName
-            ? storedName
-            : "Unknown (Deleted)";
-        wasDeleted = true;
-      }
-
-      const pardonInGame = !wasDeleted && minecraftUsername !== "Unknown";
-      const unban = (beforeCommit?: () => Promise<void>) =>
-        playerService.bans.unban(
-          input.banId,
-          ctx.user.discordId,
-          ctx.user.minecraftUsername,
-          input.reason,
-          beforeCommit,
-        );
-
-      const ban = pardonInGame
-        ? await recordWithInGame(
-            "pardon",
-            {
-              apply: () => minecraftRcon.pardonAll(minecraftUsername),
-              undo: () =>
-                minecraftRcon.banAll(
-                  minecraftUsername,
-                  inGameBanReason(existingBan.reason, existingBan.expiresAt),
-                ),
-            },
-            unban,
-          )
-        : await unban();
-      if (pardonInGame) {
-        logger.info(`Pardoned ${minecraftUsername} on all Minecraft servers`);
-      }
+      const ban = await recordWithInGame(
+        "pardon",
+        {
+          apply: () => minecraftRcon.pardonAll(minecraftUsername),
+          undo: () =>
+            minecraftRcon.banAll(
+              minecraftUsername,
+              inGameBanReason(existingBan.reason, existingBan.expiresAt),
+            ),
+        },
+        (beforeCommit) =>
+          playerService.bans.unban(
+            input.banId,
+            ctx.user.discordId,
+            ctx.user.minecraftUsername,
+            input.reason,
+            beforeCommit,
+          ),
+      );
+      logger.info(`Pardoned ${minecraftUsername} on all Minecraft servers`);
 
       try {
         const embed = EmbedPresets.plain({
@@ -376,12 +354,7 @@ export const bansRouter = router({
             `**Unbanned by**: <@${ctx.user.discordId}>`,
             `**Reason**: ${input.reason}`,
             `**Original ban reason**: ${existingBan.reason}`,
-            wasDeleted
-              ? `\n\u26A0\uFE0F *Player data was previously deleted (permanent ban)*`
-              : "",
-          ]
-            .filter(Boolean)
-            .join("\n"),
+          ].join("\n"),
           color: EmbedColors.Success,
         });
 

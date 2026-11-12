@@ -172,18 +172,9 @@ export class PlayerBanRepository extends BasePlayerRepository {
       throw new Error(`Ban #${banId} has already been lifted`);
     }
 
-    // Try to get player info (will fail if permanent ban already processed)
-    let playerName = "Unknown (Deleted)";
-    try {
-      const player = await Q.player.find({
-        minecraftUuid: ban.playerMinecraftUuid,
-      });
-      if (player) {
-        playerName = player.minecraftUsername;
-      }
-    } catch {
-      // Player was deleted due to permanent ban
-    }
+    const { minecraftUsername: playerName } = await Q.player.get({
+      minecraftUuid: ban.playerMinecraftUuid,
+    });
 
     return await db.inTransaction(async (tx) => {
       const updatedBan = await tx.player.ban.updateAndReturn(
