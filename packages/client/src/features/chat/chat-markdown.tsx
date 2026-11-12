@@ -56,37 +56,25 @@ function buildComponents(variant: ChatMarkdownVariant): Components {
         </a>
       );
     },
-    code: ({
-      inline,
-      children,
-    }: {
-      inline?: boolean;
-      children?: React.ReactNode;
-    }) =>
-      inline ? (
-        <code
-          className={cn(
-            "rounded font-mono",
-            isTitle
-              ? "bg-sidebar-accent px-1.5 py-0.5 text-xs text-primary font-semibold"
-              : isEmbed
-                ? "bg-sidebar-accent px-1.5 py-0.5 text-xs text-muted-foreground"
-                : "bg-sidebar-accent px-1.5 py-0.5 text-sm text-foreground",
-          )}
-        >
-          {children}
-        </code>
-      ) : (
-        <code
-          className={cn("block font-mono", isEmbed ? "text-xs" : "text-sm")}
-        >
-          {children}
-        </code>
-      ),
+    code: ({ children }) => (
+      <code
+        className={cn(
+          "rounded bg-sidebar-accent px-1.5 py-0.5 font-mono",
+          isTitle
+            ? "text-xs text-primary font-semibold"
+            : isEmbed
+              ? "text-xs text-muted-foreground"
+              : "text-sm text-foreground",
+        )}
+      >
+        {children}
+      </code>
+    ),
     pre: ({ children }) => (
       <pre
         className={cn(
           "my-1.5 overflow-x-auto rounded-lg p-3",
+          "[&>code]:block [&>code]:rounded-none [&>code]:bg-transparent [&>code]:p-0 [&>code]:font-normal [&>code]:text-inherit",
           isEmbed ? "bg-sidebar p-2 text-xs" : "bg-sidebar-accent text-sm",
         )}
       >
