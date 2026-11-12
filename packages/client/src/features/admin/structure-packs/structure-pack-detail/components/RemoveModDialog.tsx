@@ -91,7 +91,7 @@ export function RemoveModDialog({
         await removeModMutation.mutateAsync({ packId, modId: target.modId });
       } catch (error) {
         failures.push(
-          error instanceof Error ? error.message : "Failed to remove mod",
+          `${target.modName}: ${error instanceof Error ? error.message : "Failed to remove mod"}`,
         );
       }
 
