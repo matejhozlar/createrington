@@ -581,3 +581,32 @@ describe("PlaytimeRepository (integration)", () => {
     });
   });
 });
+
+describe("PlayerPlaytimeSummaryQueries.getServerStats (integration)", () => {
+  it("counts sessions separately from players", async () => {
+    await Q.player.playtime.summary.create({
+      playerMinecraftUuid: STEVE,
+      serverId,
+      totalSeconds: 3600n,
+      totalSessions: 3,
+    });
+    await Q.player.playtime.summary.create({
+      playerMinecraftUuid: ALEX,
+      serverId,
+      totalSeconds: 1800n,
+      totalSessions: 5,
+    });
+
+    const stats = await Q.player.playtime.summary.getServerStats(serverId);
+
+    expect(stats.totalPlayers).toBe(2);
+    expect(stats.totalSeconds).toBe(5400);
+    expect(stats.totalSessions).toBe(8);
+  });
+
+  it("reports zero sessions for a server without playtime", async () => {
+    const stats = await Q.player.playtime.summary.getServerStats(serverId);
+
+    expect(stats.totalSessions).toBe(0);
+  });
+});

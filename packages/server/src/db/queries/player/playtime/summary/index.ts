@@ -23,12 +23,14 @@ export type LeaderboardEntry = {
 export type ServerStats = {
   totalPlayers: number;
   totalSeconds: number;
+  totalSessions: number;
   avgSessionSeconds: number;
 };
 
 type ServerStatsRow = {
   total_players: number;
   total_seconds: number;
+  total_sessions: number;
   avg_session_seconds: number;
 };
 
@@ -252,6 +254,7 @@ export class PlayerPlaytimeSummaryQueries extends PlayerPlaytimeSummaryBaseQueri
       SELECT
         COUNT(*)::int as total_players,
         COALESCE(SUM(total_seconds), 0)::float8 as total_seconds,
+        COALESCE(SUM(total_sessions), 0)::int as total_sessions,
         COALESCE(AVG(avg_session_seconds), 0)::float8 as avg_session_seconds
       FROM ${this.table}
       WHERE server_id = $1`;
