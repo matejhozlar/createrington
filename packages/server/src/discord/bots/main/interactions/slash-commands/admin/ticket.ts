@@ -160,7 +160,7 @@ export async function execute(
       }
 
       await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-      await ticketService.closeTicket(ticket.id, interaction.user.id, false);
+      await ticketService.closeTicket(ticket.id, interaction.user.id);
 
       const embed = EmbedPresets.success(
         "Ticket Closed",

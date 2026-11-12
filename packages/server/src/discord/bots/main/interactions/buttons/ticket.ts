@@ -164,49 +164,26 @@ async function handleTranscript(
   await interaction.deferUpdate();
 
   try {
-    const ticket = await Q.ticket.get({ id: ticketId });
+    const { generated } = await ticketService.ensureTranscript(ticketId);
+    await ticketService.sendTranscript(ticketId, interaction.user.id);
 
-    if (ticket.metadata?.transcriptPath) {
-      await ticketService.sendTranscript(ticketId, interaction.user.id);
+    const channel = Discord.Channels.mention(
+      TicketSystemIds.TRANSCRIPT_CHANNEL,
+    );
+    const embed = generated
+      ? EmbedPresets.success(
+          "Transcript generated",
+          `Transcript has been generated and sent to ${channel}`,
+        )
+      : EmbedPresets.success(
+          "Transcript sent",
+          `Transcript has been sent to ${channel}`,
+        );
 
-      const embed = EmbedPresets.success(
-        "Transcript sent",
-        `Transcript has been sent to ${Discord.Channels.mention(
-          TicketSystemIds.TRANSCRIPT_CHANNEL,
-        )}`,
-      );
-
-      await interaction.followUp({
-        embeds: [embed.build()],
-        flags: MessageFlags.Ephemeral,
-      });
-    } else {
-      const transcriptPath = await ticketService["generateTranscript"](ticket);
-
-      await Q.ticket.updateAndReturn(
-        { id: ticketId },
-        {
-          metadata: {
-            ...ticket.metadata,
-            transcriptPath,
-          },
-        },
-      );
-
-      await ticketService.sendTranscript(ticketId, interaction.user.id);
-
-      const embed = EmbedPresets.success(
-        "Transcript generated",
-        `Transcript has been generated and sent to ${Discord.Channels.mention(
-          TicketSystemIds.TRANSCRIPT_CHANNEL,
-        )}`,
-      );
-
-      await interaction.followUp({
-        embeds: [embed.build()],
-        flags: MessageFlags.Ephemeral,
-      });
-    }
+    await interaction.followUp({
+      embeds: [embed.build()],
+      flags: MessageFlags.Ephemeral,
+    });
   } catch (error) {
     logger.error("Failed to handle transcript:", error);
 
@@ -328,7 +305,7 @@ async function handleConfirmClose(
   const ticketService = await getService(Services.TICKET_SERVICE);
   await interaction.deferUpdate();
 
-  await ticketService.closeTicket(ticketId, interaction.user.id, false);
+  await ticketService.closeTicket(ticketId, interaction.user.id);
 
   await interaction.message.delete().catch((error) => {
     logger.error("Failed to delete confirmation message:", error);
@@ -381,6 +358,8 @@ async function handleReopen(
     return;
 
   const ticketService = await getService(Services.TICKET_SERVICE);
+  await interaction.deferUpdate();
+
   await ticketService.reopenTicket(ticketId, interaction.user.id);
 }
 

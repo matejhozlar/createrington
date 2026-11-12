@@ -4,6 +4,8 @@ import {
   ChannelType,
   OverwriteType,
   PermissionFlagsBits,
+  type PermissionOverwriteOptions,
+  type PermissionsString,
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
@@ -24,6 +26,18 @@ import { isSendableChannel } from "@/discord/utils/channel-guard";
 // Lazy-imported to avoid React 19/18 conflict at startup
 // discord-html-transcripts requires react-dom/static (React 19) but the workspace pins React 18
 const loadTranscripts = () => import("discord-html-transcripts");
+
+const PARTICIPANT_PERMISSIONS = [
+  "ViewChannel",
+  "SendMessages",
+  "ReadMessageHistory",
+  "AttachFiles",
+  "EmbedLinks",
+] as const satisfies readonly PermissionsString[];
+
+const PARTICIPANT_OVERWRITE: PermissionOverwriteOptions = Object.fromEntries(
+  PARTICIPANT_PERMISSIONS.map((permission) => [permission, true]),
+);
 
 interface CreateTicketResult {
   ticket: Ticket;
@@ -109,24 +123,11 @@ export class TicketService {
       },
       {
         id: creatorId,
-        allow: [
-          PermissionFlagsBits.ViewChannel,
-          PermissionFlagsBits.SendMessages,
-          PermissionFlagsBits.ReadMessageHistory,
-          PermissionFlagsBits.AttachFiles,
-          PermissionFlagsBits.EmbedLinks,
-        ],
+        allow: [...PARTICIPANT_PERMISSIONS],
       },
       ...allowedRoleIds.map((roleId) => ({
         id: roleId,
-        allow: [
-          PermissionFlagsBits.ViewChannel,
-          PermissionFlagsBits.SendMessages,
-          PermissionFlagsBits.ReadMessageHistory,
-          PermissionFlagsBits.AttachFiles,
-          PermissionFlagsBits.EmbedLinks,
-          PermissionFlagsBits.ManageMessages,
-        ],
+        allow: [...PARTICIPANT_PERMISSIONS, "ManageMessages" as const],
       })),
     ];
 
@@ -177,37 +178,20 @@ export class TicketService {
   }
 
   /**
-   * Close an active ticket: optionally write a transcript, mark the row
-   * closed, lock the channel for the creator, drop everyone added to it
-   * afterwards, and post the closure embed. Throws if the ticket is already
-   * closed.
+   * Close an active ticket: mark the row closed, lock the channel for the
+   * creator, drop everyone added to it afterwards, and post the closure
+   * embed. Throws if the ticket is already closed.
    */
-  async closeTicket(
-    ticketId: number,
-    closedBy: string,
-    generateTranscript: boolean = false,
-  ): Promise<Ticket> {
-    const ticket = await Q.ticket.get({ id: ticketId });
+  async closeTicket(ticketId: number, closedBy: string): Promise<Ticket> {
+    const updatedTicket = await this.repository.close(ticketId, closedBy);
 
-    if (ticket.status === "closed") {
-      throw new Error(`Ticket #${ticket.ticketNumber} is already closed`);
-    }
-
-    let transcriptPath: string | undefined;
-
-    if (generateTranscript) {
-      transcriptPath = await this.generateTranscript(ticket);
-    }
-
-    const updatedTicket = await this.repository.close(ticketId, {
-      closedByDiscordId: closedBy,
-      transcriptPath,
-    });
-
-    await this.lockTicketChannel(ticket.channelId, ticket.creatorDiscordId);
+    await this.lockTicketChannel(
+      updatedTicket.channelId,
+      updatedTicket.creatorDiscordId,
+    );
 
     const closeMessageId = await this.sendClosureMessage(
-      ticket.channelId,
+      updatedTicket.channelId,
       updatedTicket,
       closedBy,
     );
@@ -231,7 +215,6 @@ export class TicketService {
         return;
       }
 
-      await this.bot.guilds.fetch(config.discord.guild.id);
       const textChannel = channel as TextChannel;
 
       await textChannel.permissionOverwrites.edit(
@@ -365,13 +348,10 @@ export class TicketService {
         return;
       }
 
-      await textChannel.permissionOverwrites.edit(member, {
-        ViewChannel: true,
-        SendMessages: true,
-        ReadMessageHistory: true,
-        AttachFiles: true,
-        EmbedLinks: true,
-      });
+      await textChannel.permissionOverwrites.edit(
+        member,
+        PARTICIPANT_OVERWRITE,
+      );
 
       logger.debug(
         `Unlocked ticket channel ${channelId} for creator ${creatorId}`,
@@ -428,13 +408,10 @@ export class TicketService {
           continue;
         }
 
-        await textChannel.permissionOverwrites.edit(member, {
-          ViewChannel: true,
-          SendMessages: true,
-          ReadMessageHistory: true,
-          AttachFiles: true,
-          EmbedLinks: true,
-        });
+        await textChannel.permissionOverwrites.edit(
+          member,
+          PARTICIPANT_OVERWRITE,
+        );
 
         logger.debug(`Added ${discordId} to ticket channel ${channelId}`);
         results.set(discordId, { added: true });
@@ -500,6 +477,26 @@ export class TicketService {
     await this.repository.delete(ticketId, deletedBy);
   }
 
+  /**
+   * Return the ticket's stored transcript path, generating and storing a new
+   * transcript first when it has none. `generated` says which happened.
+   */
+  async ensureTranscript(
+    ticketId: number,
+  ): Promise<{ transcriptPath: string; generated: boolean }> {
+    const ticket = await Q.ticket.get({ id: ticketId });
+    const stored: unknown = ticket.metadata?.transcriptPath;
+
+    if (typeof stored === "string" && stored) {
+      return { transcriptPath: stored, generated: false };
+    }
+
+    const transcriptPath = await this.generateTranscript(ticket);
+    await this.repository.updateMetadata(ticketId, { transcriptPath });
+
+    return { transcriptPath, generated: true };
+  }
+
   private async generateTranscript(ticket: Ticket): Promise<string> {
     try {
       const channel = await this.bot.channels.fetch(ticket.channelId);
@@ -508,16 +505,16 @@ export class TicketService {
         throw new Error("Channel not found or is not text-based");
       }
 
+      const filename = `ticket-${ticket.ticketNumber}-${Date.now()}.html`;
       const { createTranscript, ExportReturnType } = await loadTranscripts();
       const transcript = await createTranscript(channel as TextBasedChannel, {
         limit: -1,
         returnType: ExportReturnType.Buffer,
-        filename: `ticket-${ticket.ticketNumber}-${Date.now()}.html`,
+        filename,
         saveImages: true,
         poweredBy: false,
       });
 
-      const filename = `ticket-${ticket.ticketNumber}-${Date.now()}.html`;
       const filepath = path.join(this.transcriptDir, filename);
 
       await fs.writeFile(filepath, transcript);
@@ -593,6 +590,10 @@ export class TicketService {
       files: [attachment],
     });
 
+    if (!message.success || !message.messageId) {
+      throw new Error(message.error ?? "Failed to send transcript");
+    }
+
     await this.repository.logAction({
       ticketId,
       actionType: TicketUserAction.TRANSCRIPT_GENERATED,
@@ -607,7 +608,7 @@ export class TicketService {
       `Sent transcript for ticket #${ticket.ticketNumber} to transcript channel`,
     );
 
-    return message.messageId!;
+    return message.messageId;
   }
 
   /** True if the user currently has any non-closed ticket. */

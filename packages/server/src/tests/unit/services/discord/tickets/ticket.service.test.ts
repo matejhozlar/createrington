@@ -12,9 +12,18 @@ const repository = vi.hoisted(() => ({
   updateMetadata: vi.fn(),
 }));
 const sendMessage = vi.hoisted(() => vi.fn());
+const writeFile = vi.hoisted(() => vi.fn(async () => undefined));
+const createTranscript = vi.hoisted(() =>
+  vi.fn(async () => Buffer.from("<html></html>")),
+);
 
 vi.mock("node:fs/promises", () => ({
-  default: { mkdir: vi.fn(async () => undefined) },
+  default: { mkdir: vi.fn(async () => undefined), writeFile },
+}));
+
+vi.mock("discord-html-transcripts", () => ({
+  createTranscript,
+  ExportReturnType: { Buffer: "buffer" },
 }));
 
 vi.mock("@/config", () => ({
@@ -187,5 +196,56 @@ describe("TicketService.closeTicket", () => {
 
     expect([...cache.keys()]).toEqual(["owner-1", "guest-1"]);
     expect(sendMessage).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("TicketService.ensureTranscript", () => {
+  const ticket = {
+    id: 7,
+    ticketNumber: 12,
+    status: "closed",
+    channelId: "channel-1",
+    creatorDiscordId: "owner-1",
+  };
+
+  beforeEach(() => {
+    ticketGet.mockReset();
+    repository.updateMetadata.mockReset();
+    createTranscript.mockClear();
+    writeFile.mockClear();
+  });
+
+  it("returns the stored transcript without generating a new one", async () => {
+    ticketGet.mockResolvedValue({
+      ...ticket,
+      metadata: { transcriptPath: "storage/transcripts/ticket-12-1.html" },
+    });
+    const service = new TicketService(fakeBot({}).client);
+
+    const result = await service.ensureTranscript(7);
+
+    expect(result).toEqual({
+      transcriptPath: "storage/transcripts/ticket-12-1.html",
+      generated: false,
+    });
+    expect(createTranscript).not.toHaveBeenCalled();
+    expect(repository.updateMetadata).not.toHaveBeenCalled();
+  });
+
+  it("generates, writes and stores a transcript when the ticket has none", async () => {
+    ticketGet.mockResolvedValue({ ...ticket, metadata: {} });
+    const service = new TicketService(fakeBot({}).client);
+
+    const result = await service.ensureTranscript(7);
+
+    expect(result.generated).toBe(true);
+    expect(result.transcriptPath).toMatch(/ticket-12-\d+\.html$/);
+    expect(writeFile).toHaveBeenCalledWith(
+      result.transcriptPath,
+      expect.any(Buffer),
+    );
+    expect(repository.updateMetadata).toHaveBeenCalledWith(7, {
+      transcriptPath: result.transcriptPath,
+    });
   });
 });

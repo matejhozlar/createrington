@@ -7,11 +7,6 @@ import type {
 } from "@/generated/db";
 import { db, Q } from "@/db";
 
-interface TicketCloseData {
-  closedByDiscordId: string;
-  transcriptPath?: string;
-}
-
 /**
  * Ticket lifecycle and read access. Owns create/close/reopen/delete
  * transitions, the matching ticket_action audit entries, and the user-facing
@@ -57,101 +52,104 @@ export class TicketRepository {
     return ticket;
   }
 
-  /** Mark a ticket CLOSED, attach the transcript URL, log the action. Throws if already closed. */
-  async close(ticketId: number, data: TicketCloseData): Promise<Ticket> {
-    const ticket = await Q.ticket.get({ id: ticketId });
+  /** Mark a ticket CLOSED and log the action in one transaction. Throws if already closed. */
+  async close(ticketId: number, closedBy: string): Promise<Ticket> {
+    const ticket = await db.inTransaction(async (tx) => {
+      const current = await tx.ticket.get({ id: ticketId });
 
-    if (ticket.status === "closed") {
-      throw new Error(`Ticket #${ticket.ticketNumber} is already closed`);
-    }
+      if (current.status === "closed") {
+        throw new Error(`Ticket #${current.ticketNumber} is already closed`);
+      }
 
-    const updatedTicket = await Q.ticket.updateAndReturn(
-      { id: ticketId },
-      {
-        status: "closed",
-        closedAt: new Date(),
-        closedByDiscordId: data.closedByDiscordId,
-        metadata: {
-          ...ticket.metadata,
-          transcriptUrl: data.transcriptPath,
+      const updated = await tx.ticket.updateAndReturn(
+        { id: ticketId },
+        {
+          status: "closed",
+          closedAt: new Date(),
+          closedByDiscordId: closedBy,
         },
-      },
-    );
+      );
 
-    await this.logAction({
-      ticketId,
-      actionType: TicketUserAction.CLOSED,
-      performedByDiscordId: data.closedByDiscordId,
-      metadata: {
-        transcriptUrl: data.transcriptPath,
-      },
+      await tx.ticket.action.create({
+        ticketId,
+        actionType: TicketUserAction.CLOSED,
+        performedByDiscordId: closedBy,
+      });
+
+      return updated;
     });
 
     logger.info(
-      `Closed ticket #${ticket.ticketNumber} (ID: ${ticketId}) by user ${data.closedByDiscordId}`,
+      `Closed ticket #${ticket.ticketNumber} (ID: ${ticketId}) by user ${closedBy}`,
     );
 
-    return updatedTicket;
+    return ticket;
   }
 
-  /** Move a CLOSED ticket back to OPEN and clear close fields. Throws if it isn't closed. */
+  /** Move a CLOSED ticket back to OPEN and log the action in one transaction. Throws if it isn't closed. */
   async reopen(ticketId: number, reopenedBy: string): Promise<Ticket> {
-    const ticket = await Q.ticket.get({ id: ticketId });
+    const ticket = await db.inTransaction(async (tx) => {
+      const current = await tx.ticket.get({ id: ticketId });
 
-    if (ticket.status !== "closed") {
-      throw new Error(`Ticket #${ticket.ticketNumber} is not closed`);
-    }
+      if (current.status !== "closed") {
+        throw new Error(`Ticket #${current.ticketNumber} is not closed`);
+      }
 
-    const updatedTicket = await Q.ticket.updateAndReturn(
-      {
-        id: ticketId,
-      },
-      {
-        status: "open",
-        closedAt: null,
-        closedByDiscordId: null,
-      },
-    );
+      const updated = await tx.ticket.updateAndReturn(
+        { id: ticketId },
+        {
+          status: "open",
+          closedAt: null,
+          closedByDiscordId: null,
+        },
+      );
 
-    await this.logAction({
-      ticketId,
-      actionType: TicketUserAction.REOPENED,
-      performedByDiscordId: reopenedBy,
+      await tx.ticket.action.create({
+        ticketId,
+        actionType: TicketUserAction.REOPENED,
+        performedByDiscordId: reopenedBy,
+      });
+
+      return updated;
     });
 
     logger.info(
       `Reopened ticket #${ticket.ticketNumber} (ID: ${ticketId}) by user ${reopenedBy}`,
     );
 
-    return updatedTicket;
+    return ticket;
   }
 
-  /** Soft-delete a ticket (status DELETED, deletedAt set); the row is retained for audit. */
+  /** Soft-delete a ticket (status DELETED, deletedAt set) and log the action in one transaction; the row is retained for audit. */
   async delete(ticketId: number, deletedBy: string): Promise<Ticket> {
-    const ticket = await Q.ticket.get({ id: ticketId });
+    const deletedAt = new Date();
 
-    await this.logAction({
-      ticketId,
-      actionType: TicketUserAction.DELETED,
-      performedByDiscordId: deletedBy,
-      metadata: {
-        deletedAt: new Date().toISOString(),
-      },
+    const ticket = await db.inTransaction(async (tx) => {
+      const updated = await tx.ticket.updateAndReturn(
+        { id: ticketId },
+        {
+          status: "deleted",
+          deletedAt,
+        },
+      );
+
+      await tx.ticket.action.create({
+        ticketId,
+        actionType: TicketUserAction.DELETED,
+        performedByDiscordId: deletedBy,
+        metadata: {
+          deletedAt: deletedAt.toISOString(),
+        },
+      });
+
+      return updated;
     });
-
-    const updatedTicket = await Q.ticket.updateAndReturn(
-      { id: ticketId },
-      {
-        status: "deleted",
-        deletedAt: new Date(),
-      },
-    );
 
     logger.info(
       `Deleted ticket #${ticket.ticketNumber} (ID: ${ticketId}) by user ${deletedBy}`,
     );
 
-    return updatedTicket;
+    return ticket;
   }
 
   /** Shallow-merge into the ticket's metadata JSON blob. */
