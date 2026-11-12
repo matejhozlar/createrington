@@ -43,6 +43,7 @@ import { AdminPageTitle } from "@/features/admin/components/AdminPageTitle";
 import { HeaderActions } from "@/features/admin/components/HeaderActions";
 import { RotationConfig } from "./components/RotationConfig";
 import { RotationHistory } from "./components/RotationHistory";
+import { structurePackImportSchema } from "@createrington/shared/structure-pack";
 import { useQuery, useMutation } from "@tanstack/react-query";
 
 type StatusFilter = "all" | "enabled" | "disabled";
@@ -106,6 +107,8 @@ export function AdminStructurePacks() {
             parts.push(`Created: ${result.created.join(", ")}`);
           if (result.skipped.length > 0)
             parts.push(`Skipped (already exist): ${result.skipped.join(", ")}`);
+          if (result.failed.length > 0)
+            parts.push(`Failed: ${result.failed.join(", ")}`);
           return parts.join(". ") || "Nothing to import";
         },
         onSuccess: () => {
@@ -139,13 +142,22 @@ export function AdminStructurePacks() {
   }
 
   async function handleImport() {
+    let raw: unknown;
     try {
-      const text = await navigator.clipboard.readText();
-      const data = JSON.parse(text);
-      importMutation.mutate(data);
+      raw = JSON.parse(await navigator.clipboard.readText());
     } catch {
       toast.error("Could not read clipboard or invalid JSON");
+      return;
     }
+    const parsed = structurePackImportSchema.safeParse(raw);
+    if (!parsed.success) {
+      toast.error(
+        parsed.error.issues[0]?.message ?? "Not a structure pack export",
+        "Invalid structure pack JSON",
+      );
+      return;
+    }
+    importMutation.mutate(parsed.data);
   }
 
   const createMutation = useMutation(

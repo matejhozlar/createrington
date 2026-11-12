@@ -18,7 +18,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useToastActions } from "@/hooks/use-toast";
 import type { UseEmbedBuilder } from "../hooks/use-embed-builder";
 
 const NEW_CATEGORY_VALUE = "__new__";
@@ -70,7 +69,6 @@ function SaveAsNewForm({ builder, onClose }: SaveAsNewFormProps) {
     handleCreateCategory,
     isPending,
   } = builder;
-  const toast = useToastActions();
 
   const categories = categoriesQuery.data ?? [];
 
@@ -98,30 +96,16 @@ function SaveAsNewForm({ builder, onClose }: SaveAsNewFormProps) {
 
     let categoryId: number | null = null;
     if (isCreatingNew) {
-      try {
-        setCreating(true);
-        const created = await handleCreateCategory(trimmedNewCategory);
-        categoryId = created?.id ?? null;
-        if (!categoryId) {
-          setCreating(false);
-          return;
-        }
-      } catch {
-        setCreating(false);
-        toast.error("Failed to create category");
-        return;
-      }
+      setCreating(true);
+      const created = await handleCreateCategory(trimmedNewCategory);
       setCreating(false);
+      if (!created) return;
+      categoryId = created.id;
     } else if (categoryValue !== UNCATEGORIZED_VALUE) {
       categoryId = Number(categoryValue);
     }
 
-    try {
-      const ok = await handleSave({ name: trimmedName, categoryId });
-      if (ok) onClose();
-    } catch {
-      toast.error("Failed to save preset");
-    }
+    if (await handleSave({ name: trimmedName, categoryId })) onClose();
   }
 
   return (

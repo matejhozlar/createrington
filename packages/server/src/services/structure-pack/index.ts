@@ -1,4 +1,4 @@
-import { Q } from "@/db";
+import { Q, db } from "@/db";
 import {
   BadRequestError,
   NotFoundError,
@@ -10,6 +10,7 @@ import type {
   StructurePackModCreate,
 } from "@createrington/shared/db";
 import type { StructurePackWithMods } from "@/db/queries/structure/pack";
+import type { StructurePackImportEntry } from "@createrington/shared/structure-pack";
 
 export class StructurePackService {
   async createPack(
@@ -17,16 +18,36 @@ export class StructurePackService {
     description?: string,
     options: { enabled?: boolean } = {},
   ): Promise<StructurePack> {
-    const existing = await Q.structure.pack.find({ name });
-    if (existing && !existing.deletedAt) {
-      throw new ConflictError(
-        `A structure pack named "${name}" already exists`,
-      );
-    }
+    await this.assertNameAvailable(name);
     return Q.structure.pack.createAndReturn({
       name,
       description,
       ...(options.enabled !== undefined && { enabled: options.enabled }),
+    });
+  }
+
+  async importPack(entry: StructurePackImportEntry): Promise<StructurePack> {
+    await this.assertNameAvailable(entry.name);
+    return db.inTransaction(async (tx) => {
+      const pack = await tx.structure.pack.createAndReturn({
+        name: entry.name,
+        description: entry.description ?? undefined,
+        enabled: false,
+      });
+      if (entry.mods.length > 0) {
+        await tx.structure.pack.mod.createMany(
+          entry.mods.map((mod) => ({
+            packId: pack.id,
+            curseforgeModId: mod.curseforgeModId,
+            curseforgeFileId: mod.curseforgeFileId,
+            fileName: mod.fileName,
+            modName: mod.modName,
+            modUrl: mod.modUrl ?? undefined,
+            thumbnailUrl: mod.thumbnailUrl ?? undefined,
+          })),
+        );
+      }
+      return pack;
     });
   }
 
@@ -36,12 +57,7 @@ export class StructurePackService {
   ): Promise<StructurePack> {
     const pack = await this.ensurePackExists(id);
     if (data.name && data.name !== pack.name) {
-      const existing = await Q.structure.pack.find({ name: data.name });
-      if (existing && !existing.deletedAt) {
-        throw new ConflictError(
-          `A structure pack named "${data.name}" already exists`,
-        );
-      }
+      await this.assertNameAvailable(data.name);
     }
     return Q.structure.pack.updateAndReturn({ id }, data);
   }
@@ -115,6 +131,15 @@ export class StructurePackService {
     return Q.structure.pack.getEligibleForRotation(
       excludeActive ? active?.id : undefined,
     );
+  }
+
+  private async assertNameAvailable(name: string): Promise<void> {
+    const existing = await Q.structure.pack.find({ name });
+    if (existing && !existing.deletedAt) {
+      throw new ConflictError(
+        `A structure pack named "${name}" already exists`,
+      );
+    }
   }
 
   private async ensurePackExists(id: number): Promise<StructurePack> {

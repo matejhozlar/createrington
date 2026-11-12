@@ -67,13 +67,11 @@ export function SendModal({ open, onOpenChange, builder }: SendModalProps) {
   }, [bot, emojisQuery.data, kind, components, externalData]);
 
   async function onSend() {
-    await handleSend({ linkToPreset });
-    onOpenChange(false);
+    if (await handleSend({ linkToPreset })) onOpenChange(false);
   }
 
   async function onUpdateAll() {
-    await handleUpdateAll();
-    onOpenChange(false);
+    if (await handleUpdateAll()) onOpenChange(false);
   }
 
   return (
