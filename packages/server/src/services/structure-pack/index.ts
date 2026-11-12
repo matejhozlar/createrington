@@ -18,12 +18,7 @@ export class StructurePackService {
     description?: string,
     options: { enabled?: boolean } = {},
   ): Promise<StructurePack> {
-    const existing = await Q.structure.pack.find({ name });
-    if (existing && !existing.deletedAt) {
-      throw new ConflictError(
-        `A structure pack named "${name}" already exists`,
-      );
-    }
+    await this.assertNameAvailable(name);
     return Q.structure.pack.createAndReturn({
       name,
       description,
@@ -32,12 +27,7 @@ export class StructurePackService {
   }
 
   async importPack(entry: StructurePackImportEntry): Promise<StructurePack> {
-    const existing = await Q.structure.pack.find({ name: entry.name });
-    if (existing && !existing.deletedAt) {
-      throw new ConflictError(
-        `A structure pack named "${entry.name}" already exists`,
-      );
-    }
+    await this.assertNameAvailable(entry.name);
     return db.inTransaction(async (tx) => {
       const pack = await tx.structure.pack.createAndReturn({
         name: entry.name,
@@ -67,12 +57,7 @@ export class StructurePackService {
   ): Promise<StructurePack> {
     const pack = await this.ensurePackExists(id);
     if (data.name && data.name !== pack.name) {
-      const existing = await Q.structure.pack.find({ name: data.name });
-      if (existing && !existing.deletedAt) {
-        throw new ConflictError(
-          `A structure pack named "${data.name}" already exists`,
-        );
-      }
+      await this.assertNameAvailable(data.name);
     }
     return Q.structure.pack.updateAndReturn({ id }, data);
   }
@@ -146,6 +131,15 @@ export class StructurePackService {
     return Q.structure.pack.getEligibleForRotation(
       excludeActive ? active?.id : undefined,
     );
+  }
+
+  private async assertNameAvailable(name: string): Promise<void> {
+    const existing = await Q.structure.pack.find({ name });
+    if (existing && !existing.deletedAt) {
+      throw new ConflictError(
+        `A structure pack named "${name}" already exists`,
+      );
+    }
   }
 
   private async ensurePackExists(id: number): Promise<StructurePack> {
