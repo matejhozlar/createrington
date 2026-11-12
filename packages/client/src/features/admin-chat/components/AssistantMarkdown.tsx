@@ -26,7 +26,7 @@ function CodeBlock({ children }: { children?: React.ReactNode }) {
     <div className="relative">
       <pre
         ref={preRef}
-        className="my-1 overflow-x-auto whitespace-pre rounded-md bg-background p-2 pr-9 font-mono text-xs"
+        className="my-1 overflow-x-auto whitespace-pre rounded-md bg-background p-2 pr-9 font-mono text-xs [&>code]:rounded-none [&>code]:p-0"
       >
         {children}
       </pre>
@@ -53,22 +53,16 @@ function CodeBlock({ children }: { children?: React.ReactNode }) {
 const REMARK_PLUGINS = [remarkGfm, remarkBreaks];
 
 const STATIC_COMPONENTS: Components = {
-  code: ({
-    inline,
-    className,
-    children,
-  }: {
-    inline?: boolean;
-    className?: string;
-    children?: React.ReactNode;
-  }) =>
-    inline ? (
-      <code className="rounded bg-background px-1 py-0.5 font-mono text-xs">
-        {children}
-      </code>
-    ) : (
-      <code className={className}>{children}</code>
-    ),
+  code: ({ className, children }) => (
+    <code
+      className={cn(
+        "rounded bg-background px-1 py-0.5 font-mono text-xs",
+        className,
+      )}
+    >
+      {children}
+    </code>
+  ),
   pre: ({ children }) => <CodeBlock>{children}</CodeBlock>,
   table: ({ children }) => (
     <div className="my-1.5 overflow-x-auto">
