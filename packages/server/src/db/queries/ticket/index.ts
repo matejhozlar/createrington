@@ -1,5 +1,7 @@
 import type { Pool, PoolClient } from "pg";
 import { TicketBaseQueries } from "@/generated/db/ticket.queries";
+import type { Ticket, TicketRow } from "@createrington/shared/db/ticket.types";
+import { createNotFoundError } from "@/db/utils/query-helpers";
 
 /**
  * Custom queries for ticket table
@@ -133,5 +135,33 @@ export class TicketQueries extends TicketBaseQueries {
       query,
     );
     return parseInt(result.rows[0].ticket_number, 10);
+  }
+
+  /**
+   * Reads a ticket under a row lock (SELECT ... FOR UPDATE). Must be called on
+   * a transaction-bound instance; the lock is held until the surrounding
+   * transaction ends, so a concurrent status change of the same ticket blocks
+   * here and observes the committed status rather than a stale one.
+   *
+   * @throws NotFoundError when the id does not exist
+   */
+  async getForUpdate(id: number): Promise<Ticket> {
+    const query = `
+      SELECT *
+      FROM ${this.table}
+      WHERE id = $1
+      FOR UPDATE`;
+
+    const result = await this.runQuery<TicketRow>(
+      "get ticket for update",
+      query,
+      [id],
+    );
+
+    const row = result.rows[0];
+    if (!row) {
+      throw createNotFoundError(this.table, { id });
+    }
+    return this.mapRowToEntity(row);
   }
 }

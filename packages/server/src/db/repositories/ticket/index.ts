@@ -10,8 +10,10 @@ import { db, Q } from "@/db";
 /**
  * Ticket lifecycle and read access. Owns create/close/reopen/delete
  * transitions, the matching ticket_action audit entries, and the user-facing
- * and admin-facing query surface. Lifecycle methods always pair the
- * status change with a logAction() write so the audit trail stays complete.
+ * and admin-facing query surface. Each lifecycle transition writes its status
+ * change and its audit row in one transaction, and close/reopen read the
+ * ticket under a row lock so concurrent transitions cannot both pass the
+ * status check.
  */
 export class TicketRepository {
   /** Consume the ticket number sequence and return the allocated number. */
@@ -55,7 +57,7 @@ export class TicketRepository {
   /** Mark a ticket CLOSED and log the action in one transaction. Throws if already closed. */
   async close(ticketId: number, closedBy: string): Promise<Ticket> {
     const ticket = await db.inTransaction(async (tx) => {
-      const current = await tx.ticket.get({ id: ticketId });
+      const current = await tx.ticket.getForUpdate(ticketId);
 
       if (current.status === "closed") {
         throw new Error(`Ticket #${current.ticketNumber} is already closed`);
@@ -89,7 +91,7 @@ export class TicketRepository {
   /** Move a CLOSED ticket back to OPEN and log the action in one transaction. Throws if it isn't closed. */
   async reopen(ticketId: number, reopenedBy: string): Promise<Ticket> {
     const ticket = await db.inTransaction(async (tx) => {
-      const current = await tx.ticket.get({ id: ticketId });
+      const current = await tx.ticket.getForUpdate(ticketId);
 
       if (current.status !== "closed") {
         throw new Error(`Ticket #${current.ticketNumber} is not closed`);

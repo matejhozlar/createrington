@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, afterAll } from "vitest";
-import { Q } from "@/db";
+import { db, Q } from "@/db";
 import { TicketRepository } from "@/db/repositories/ticket";
 import { UniqueViolationError } from "@/db/utils/errors";
 import { TicketType, TicketUserAction } from "@/services/discord/tickets";
@@ -89,6 +89,23 @@ describe("TicketRepository lifecycle", () => {
       TicketUserAction.REOPENED,
       TicketUserAction.DELETED,
     ]);
+  });
+
+  it("makes a close wait for a concurrent transition and then see its result", async () => {
+    const ticket = await createTicket(await repository.allocateNumber(), "a");
+    let closing: Promise<unknown> = Promise.resolve();
+
+    await db.inTransaction(async (tx) => {
+      await tx.ticket.getForUpdate(ticket.id);
+      closing = repository.close(ticket.id, STAFF).catch((e: unknown) => e);
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      await tx.ticket.update({ id: ticket.id }, { status: "closed" });
+    });
+
+    const error = await closing;
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toMatch(/already closed/);
+    expect(await actionTypes(ticket.id)).toEqual([TicketUserAction.CREATED]);
   });
 
   it("leaves the ticket open when the CLOSED audit row cannot be written", async () => {
