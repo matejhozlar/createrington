@@ -524,6 +524,7 @@ function AppContent() {
                       )}
                       <Route path="changelog" element={<Changelog />} />
                       <Route path="logs" element={<AdminLogs />} />
+                      <Route path="*" element={<NotFound />} />
                     </Routes>
                   </ErrorBoundary>
                 </AdminPlayerProvider>
