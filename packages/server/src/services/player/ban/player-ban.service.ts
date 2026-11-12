@@ -5,10 +5,6 @@ import { Discord } from "@/discord/constants";
 import { EmbedColors, EmbedPresets } from "@/discord/embeds";
 import type { Client } from "discord.js";
 import type { PlayerBan } from "@createrington/shared/db";
-import {
-  bannedPlayerLabel,
-  resolveBannedPlayer,
-} from "@/db/repositories/player/ban/banned-player";
 
 /**
  * Auto-unbans expired temporary bans on a recurring interval (5 min). On each
@@ -63,11 +59,9 @@ export class PlayerBanService {
   }
 
   private async processExpiredBan(ban: PlayerBan): Promise<void> {
-    const bannedPlayer = resolveBannedPlayer(
-      ban,
-      await Q.player.find({ minecraftUuid: ban.playerMinecraftUuid }),
-    );
-    const minecraftUsername = bannedPlayerLabel(bannedPlayer);
+    const { minecraftUsername } = await Q.player.get({
+      minecraftUuid: ban.playerMinecraftUuid,
+    });
 
     const updatedBan = await Q.player.ban.updateAndReturn(
       { id: ban.id },
@@ -100,26 +94,20 @@ export class PlayerBanService {
       },
     });
 
-    if (bannedPlayer.name) {
-      try {
-        await minecraftRcon.pardonAll(bannedPlayer.name);
-        logger.info(
-          `Auto-pardoned ${minecraftUsername} on all Minecraft servers (ban #${ban.id})`,
-        );
-      } catch (error) {
-        logger.error(
-          `Failed to pardon ${minecraftUsername} on Minecraft servers:`,
-          error,
-        );
-      }
+    try {
+      await minecraftRcon.pardonAll(minecraftUsername);
+      logger.info(
+        `Auto-pardoned ${minecraftUsername} on all Minecraft servers (ban #${ban.id})`,
+      );
+    } catch (error) {
+      logger.error(
+        `Failed to pardon ${minecraftUsername} on Minecraft servers:`,
+        error,
+      );
     }
 
     try {
-      await this.notifyAutoUnban(
-        updatedBan,
-        minecraftUsername,
-        bannedPlayer.wasDeleted,
-      );
+      await this.notifyAutoUnban(updatedBan, minecraftUsername);
     } catch (error) {
       logger.error("Failed to send auto-unban notification:", error);
     }
@@ -130,7 +118,6 @@ export class PlayerBanService {
   private async notifyAutoUnban(
     ban: PlayerBan,
     minecraftUsername: string,
-    wasDeleted: boolean,
   ): Promise<void> {
     const embed = EmbedPresets.plain({
       title: "✅ Player Auto-Unbanned (Expired)",
@@ -139,10 +126,7 @@ export class PlayerBanService {
         `**Original ban reason**: ${ban.reason}`,
         `**Banned at**: ${discordTimestamp(ban.bannedAt, "F")}`,
         `**Ban duration**: ${this.calculateDuration(ban.bannedAt, ban.expiresAt!)}`,
-        wasDeleted ? `\n⚠️ *Player data was previously deleted*` : "",
-      ]
-        .filter(Boolean)
-        .join("\n"),
+      ].join("\n"),
       color: EmbedColors.Success,
     });
 

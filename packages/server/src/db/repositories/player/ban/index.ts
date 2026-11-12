@@ -4,7 +4,6 @@ import type { PlayerBan, BanType } from "@createrington/shared/db";
 import { AdminEdit } from "@/types";
 import { BasePlayerRepository, type PlayerIdentifier } from "../base";
 import type { BanStatistics } from "@/db/queries/player/ban";
-import { bannedPlayerLabel, resolveBannedPlayer } from "./banned-player";
 
 /**
  * Player ban lifecycle: issuing temporary or permanent bans, unbanning,
@@ -173,12 +172,9 @@ export class PlayerBanRepository extends BasePlayerRepository {
       throw new Error(`Ban #${banId} has already been lifted`);
     }
 
-    const playerName = bannedPlayerLabel(
-      resolveBannedPlayer(
-        ban,
-        await Q.player.find({ minecraftUuid: ban.playerMinecraftUuid }),
-      ),
-    );
+    const { minecraftUsername: playerName } = await Q.player.get({
+      minecraftUuid: ban.playerMinecraftUuid,
+    });
 
     return await db.inTransaction(async (tx) => {
       const updatedBan = await tx.player.ban.updateAndReturn(
