@@ -132,11 +132,6 @@ export function InactivityManagement() {
     setPage(0);
   }, []);
 
-  const handleSearch = useCallback((e: React.FormEvent) => {
-    e.preventDefault();
-    setPage(0);
-  }, []);
-
   const handleTriggerCleanup = useCallback(async () => {
     try {
       await triggerCleanup.mutateAsync();
@@ -365,7 +360,7 @@ export function InactivityManagement() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSearch} className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2">
               <SearchInput
                 className="min-w-48 flex-1"
                 placeholder="Search by username..."
@@ -391,11 +386,7 @@ export function InactivityManagement() {
                   ))}
                 </SelectContent>
               </Select>
-
-              <Button type="submit" className="min-w-[85px]">
-                Search
-              </Button>
-            </form>
+            </div>
           </CardContent>
         </Card>
 

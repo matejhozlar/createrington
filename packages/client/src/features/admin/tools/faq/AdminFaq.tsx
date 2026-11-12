@@ -101,11 +101,6 @@ export function AdminFaq() {
   const loadingRows = loadingRowCount(page, limit, total);
   const error = entriesQuery.error?.message ?? null;
 
-  const handleSearch = useCallback((e: React.FormEvent) => {
-    e.preventDefault();
-    setPage(0);
-  }, []);
-
   const handleSort = useCallback(
     (field: SortField) => {
       if (orderBy === field) {
@@ -267,12 +262,15 @@ export function AdminFaq() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSearch} className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2">
               <SearchInput
                 className="min-w-48 flex-1"
                 placeholder="Search by title..."
                 value={searchQuery}
-                onValueChange={setSearchQuery}
+                onValueChange={(value) => {
+                  setSearchQuery(value);
+                  setPage(0);
+                }}
               />
 
               <Select
@@ -291,11 +289,7 @@ export function AdminFaq() {
                   <SelectItem value="disabled">Disabled</SelectItem>
                 </SelectContent>
               </Select>
-
-              <Button type="submit" className="min-w-[85px]">
-                Search
-              </Button>
-            </form>
+            </div>
           </CardContent>
         </Card>
 

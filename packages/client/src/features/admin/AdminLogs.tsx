@@ -10,7 +10,6 @@ import {
 import { Paginator } from "@/components/paginator";
 import { EmptyState, ErrorState } from "@/components/query-states";
 import { SearchInput } from "@/components/search-input";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CellDate, CellText } from "@/components/cell-text";
@@ -101,11 +100,6 @@ export function AdminLogs() {
   const loading = logsQuery.isLoading || logsQuery.isPlaceholderData;
   const loadingRows = loadingRowCount(page, limit, total);
   const error = logsQuery.error?.message ?? null;
-
-  const handleSearch = useCallback((e: React.FormEvent) => {
-    e.preventDefault();
-    setPage(0);
-  }, []);
 
   const handleSearchChange = useCallback((value: string) => {
     setSearchQuery(value);
@@ -230,7 +224,7 @@ export function AdminLogs() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSearch} className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2">
               <SearchInput
                 className="min-w-48 flex-1"
                 placeholder="Search logs..."
@@ -257,11 +251,7 @@ export function AdminLogs() {
                   ))}
                 </SelectContent>
               </Select>
-
-              <Button type="submit" className="min-w-[85px]">
-                Search
-              </Button>
-            </form>
+            </div>
           </CardContent>
         </Card>
 

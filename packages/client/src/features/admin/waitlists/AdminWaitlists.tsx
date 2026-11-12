@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/card";
 import { Paginator } from "@/components/paginator";
 import { SearchInput } from "@/components/search-input";
-import { Button } from "@/components/ui/button";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { CellDate, CellText } from "@/components/cell-text";
 import {
@@ -121,11 +120,6 @@ export function AdminWaitlists() {
   const loading = entriesQuery.isLoading || entriesQuery.isPlaceholderData;
   const loadingRows = loadingRowCount(page, limit, total);
   const error = entriesQuery.error?.message ?? null;
-
-  const handleSearch = useCallback((e: React.FormEvent) => {
-    e.preventDefault();
-    setPage(0);
-  }, []);
 
   const handleSort = useCallback(
     (field: SortField) => {
@@ -305,12 +299,15 @@ export function AdminWaitlists() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSearch} className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2">
               <SearchInput
                 className="min-w-48 flex-1"
                 placeholder="Search by Discord username or ID..."
                 value={searchQuery}
-                onValueChange={setSearchQuery}
+                onValueChange={(value) => {
+                  setSearchQuery(value);
+                  setPage(0);
+                }}
               />
 
               <Select
@@ -331,11 +328,7 @@ export function AdminWaitlists() {
                   <SelectItem value="expired">Expired</SelectItem>
                 </SelectContent>
               </Select>
-
-              <Button type="submit" className="min-w-[85px]">
-                Search
-              </Button>
-            </form>
+            </div>
           </CardContent>
         </Card>
 
