@@ -2,21 +2,31 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 type BeforeCommit = (() => Promise<void>) | undefined;
 
-const { Q, bans, rcon, revokeAllForUser, revokeAllForPlayer, deletePlayer } =
-  vi.hoisted(() => ({
-    Q: {
-      player: {
-        get: vi.fn(),
-        find: vi.fn(),
-        ban: { get: vi.fn() },
-      },
+const {
+  Q,
+  bans,
+  rcon,
+  revokeAllForUser,
+  revokeAllForPlayer,
+  deletePlayer,
+  plainEmbed,
+} = vi.hoisted(() => ({
+  Q: {
+    player: {
+      get: vi.fn(),
+      find: vi.fn(),
+      ban: { get: vi.fn() },
     },
-    bans: { issueTemporary: vi.fn(), createPermanent: vi.fn(), unban: vi.fn() },
-    rcon: { banAll: vi.fn(), pardonAll: vi.fn(), whitelistAll: vi.fn() },
-    revokeAllForUser: vi.fn(),
-    revokeAllForPlayer: vi.fn(),
-    deletePlayer: vi.fn(),
-  }));
+  },
+  bans: { issueTemporary: vi.fn(), createPermanent: vi.fn(), unban: vi.fn() },
+  rcon: { banAll: vi.fn(), pardonAll: vi.fn(), whitelistAll: vi.fn() },
+  revokeAllForUser: vi.fn(),
+  revokeAllForPlayer: vi.fn(),
+  deletePlayer: vi.fn(),
+  plainEmbed: vi.fn((_options: { description: string }) => ({
+    build: () => [],
+  })),
+}));
 
 vi.mock("@/db", () => ({ Q }));
 vi.mock("@/services/player", () => ({ playerService: { bans } }));
@@ -50,7 +60,7 @@ vi.mock("@/discord/constants", () => ({
 }));
 vi.mock("@/discord/embeds", () => ({
   EmbedColors: { Success: 0 },
-  EmbedPresets: { plain: () => ({ build: () => [] }) },
+  EmbedPresets: { plain: plainEmbed },
 }));
 
 import { bansRouter } from "@/trpc/routers/admin/players/bans";
@@ -244,7 +254,25 @@ describe("admin.players.bans.unban", () => {
     );
   });
 
-  it("lifts the ban without an in-game step when the player row is gone", async () => {
+  it("pardons a deleted player in game under the username stored on the ban", async () => {
+    Q.player.find.mockResolvedValue(null);
+    Q.player.ban.get.mockResolvedValue({
+      id: 1,
+      reason: "griefing",
+      expiresAt: null,
+      playerMinecraftUuid: PLAYER.minecraftUuid,
+      metadata: { minecraftUsername: "old_steve" },
+    });
+
+    await caller.unban(input);
+
+    expect(rcon.pardonAll).toHaveBeenCalledWith("old_steve");
+    const [{ description }] = plainEmbed.mock.lastCall!;
+    expect(description).toContain("**Player**: old_steve");
+    expect(description).toContain("Player data was previously deleted");
+  });
+
+  it("lifts the ban without an in-game step when no username is known", async () => {
     Q.player.find.mockResolvedValue(null);
 
     await caller.unban(input);

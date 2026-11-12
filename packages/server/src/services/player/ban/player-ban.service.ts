@@ -5,6 +5,10 @@ import { Discord } from "@/discord/constants";
 import { EmbedColors, EmbedPresets } from "@/discord/embeds";
 import type { Client } from "discord.js";
 import type { PlayerBan } from "@createrington/shared/db";
+import {
+  bannedPlayerLabel,
+  resolveBannedPlayer,
+} from "@/db/repositories/player/ban/banned-player";
 
 /**
  * Auto-unbans expired temporary bans on a recurring interval (5 min). On each
@@ -59,24 +63,11 @@ export class PlayerBanService {
   }
 
   private async processExpiredBan(ban: PlayerBan): Promise<void> {
-    let minecraftUsername = "Unknown";
-    let wasDeleted = false;
-
-    try {
-      const player = await Q.player.find({
-        minecraftUuid: ban.playerMinecraftUuid,
-      });
-      if (player) {
-        minecraftUsername = player.minecraftUsername;
-      }
-    } catch {
-      const storedName: unknown = ban.metadata?.minecraftUsername;
-      minecraftUsername =
-        typeof storedName === "string" && storedName
-          ? storedName
-          : "Unknown (Deleted)";
-      wasDeleted = true;
-    }
+    const bannedPlayer = resolveBannedPlayer(
+      ban,
+      await Q.player.find({ minecraftUuid: ban.playerMinecraftUuid }),
+    );
+    const minecraftUsername = bannedPlayerLabel(bannedPlayer);
 
     const updatedBan = await Q.player.ban.updateAndReturn(
       { id: ban.id },
@@ -109,9 +100,9 @@ export class PlayerBanService {
       },
     });
 
-    if (!wasDeleted && minecraftUsername !== "Unknown") {
+    if (bannedPlayer.name) {
       try {
-        await minecraftRcon.pardonAll(minecraftUsername);
+        await minecraftRcon.pardonAll(bannedPlayer.name);
         logger.info(
           `Auto-pardoned ${minecraftUsername} on all Minecraft servers (ban #${ban.id})`,
         );
@@ -124,7 +115,11 @@ export class PlayerBanService {
     }
 
     try {
-      await this.notifyAutoUnban(updatedBan, minecraftUsername, wasDeleted);
+      await this.notifyAutoUnban(
+        updatedBan,
+        minecraftUsername,
+        bannedPlayer.wasDeleted,
+      );
     } catch (error) {
       logger.error("Failed to send auto-unban notification:", error);
     }
