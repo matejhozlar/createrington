@@ -79,10 +79,7 @@ export async function execute(
       });
     } else {
       // Text fallback if Puppeteer is unavailable
-      const networth = details.balance
-        ? BalanceUtils.fromStorage(details.balance.balance)
-        : 0;
-      const networthStr = networth.toFixed(3).replace(/\.?0+$/, "") || "0";
+      const networth = BalanceUtils.formatMoney(details.balance?.balance ?? 0n);
 
       const pt = formatPlaytime(details.playtime.totalSeconds);
       const sessions = details.playtime.totalSessions.toLocaleString();
@@ -91,7 +88,7 @@ export async function execute(
       const embed = EmbedPresets.info(`${username}'s Profile`)
         .thumbnail(playerAvatarUrl(details.player.minecraftUuid))
         .field("Status", statusStr, true)
-        .field("Networth", `$${networthStr}`, true)
+        .field("Networth", networth, true)
         .field("\u200b", "\u200b")
         .field("Playtime", pt, true)
         .field("Sessions", sessions, true)

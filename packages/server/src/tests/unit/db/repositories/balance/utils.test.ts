@@ -98,16 +98,20 @@ describe("BalanceUtils.format", () => {
   });
 });
 
-describe("BalanceUtils.formatTrimmed", () => {
-  it("strips trailing zeros", () => {
-    expect(BalanceUtils.formatTrimmed(1500n)).toBe("1.5");
-    expect(BalanceUtils.formatTrimmed(1000n)).toBe("1");
-    expect(BalanceUtils.formatTrimmed(1234n)).toBe("1.234");
-    expect(BalanceUtils.formatTrimmed(1230n)).toBe("1.23");
+describe("BalanceUtils.formatMoney", () => {
+  it("formats whole dollars with a sign and thousands separators", () => {
+    expect(BalanceUtils.formatMoney(0n)).toBe("$0");
+    expect(BalanceUtils.formatMoney(50_000n)).toBe("$50");
+    expect(BalanceUtils.formatMoney(1_250_000_000n)).toBe("$1,250,000");
   });
 
-  it("returns '0' for a zero balance", () => {
-    expect(BalanceUtils.formatTrimmed(0n)).toBe("0");
+  it("keeps cents instead of flooring them away", () => {
+    expect(BalanceUtils.formatMoney(500n)).toBe("$0.50");
+    expect(BalanceUtils.formatMoney(1_234_560n)).toBe("$1,234.56");
+  });
+
+  it("puts the minus before the dollar sign for debits", () => {
+    expect(BalanceUtils.formatMoney(-5_000n)).toBe("-$5");
   });
 });
 

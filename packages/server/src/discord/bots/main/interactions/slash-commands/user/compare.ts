@@ -106,12 +106,8 @@ export async function execute(
       });
     } else {
       // Text fallback if Puppeteer is unavailable
-      const computeNetworth = (details: typeof details1): string => {
-        const cash = details.balance
-          ? BalanceUtils.fromStorage(details.balance.balance)
-          : 0;
-        return cash.toFixed(3).replace(/\.?0+$/, "") || "0";
-      };
+      const computeNetworth = (details: typeof details1): string =>
+        BalanceUtils.formatMoney(details.balance?.balance ?? 0n);
 
       const nw1 = computeNetworth(details1);
       const nw2 = computeNetworth(details2);
@@ -123,7 +119,7 @@ export async function execute(
       const sessions2 = details2.playtime.totalSessions.toLocaleString();
 
       const embed = EmbedPresets.info(`${name1} vs ${name2}`)
-        .field("Networth", `${name1}: $${nw1}\n${name2}: $${nw2}`, true)
+        .field("Networth", `${name1}: ${nw1}\n${name2}: ${nw2}`, true)
         .field("Playtime", `${name1}: ${pt1}\n${name2}: ${pt2}`, true)
         .field("\u200b", "\u200b") // line break
         .field(

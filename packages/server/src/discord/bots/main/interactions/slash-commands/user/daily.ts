@@ -3,6 +3,7 @@ import { replyError } from "@/discord/utils/interaction-reply";
 import { CooldownType } from "@/discord/utils/cooldown";
 import { rewardService } from "@/services/reward";
 import { discordTimestamp } from "@/utils/format";
+import { formatMoney } from "@createrington/shared/format";
 import {
   type ChatInputCommandInteraction,
   MessageFlags,
@@ -88,9 +89,9 @@ export async function execute(
 
     const embed = EmbedPresets.success(
       "💰 Daily Reward Claimed!",
-      `You received **$${result.amount}**`,
+      `You received **${formatMoney(result.amount ?? 0)}**`,
     )
-      .field("New Balance", `$${result.newBalance}`, true)
+      .field("New Balance", formatMoney(result.newBalance ?? 0), true)
       .timestamp();
 
     if (result.nextClaimTime) {

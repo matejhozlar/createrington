@@ -412,10 +412,10 @@
           "type": 6
         },
         {
-          "min_value": 0.001,
-          "type": 10,
+          "min_value": 1,
+          "type": 4,
           "name": "amount",
-          "description": "Amount to send (e.g., 10)",
+          "description": "Whole dollars to send (e.g., 10)",
           "required": true
         },
         {

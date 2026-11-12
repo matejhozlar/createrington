@@ -1,3 +1,5 @@
+import { formatMoney } from "@createrington/shared/format";
+
 /**
  * Conversion and validation helpers for player balances. Balances are stored
  * as bigint with 3 implicit decimal places (1.000 = 1000 in storage). All
@@ -54,11 +56,9 @@ export class BalanceUtils {
     return value.toFixed(decimals);
   }
 
-  /** Format with trailing zeros stripped (1500n -> "1.5", 1234n -> "1.234"). */
-  static formatTrimmed(amount: bigint): string {
-    const value = this.fromStorage(amount);
-    const formatted = value.toFixed(3);
-    return formatted.replace(/\.?0+$/, "") || "0";
+  /** Format a storage bigint as player-facing money (1_250_000n -> "$1,250"). */
+  static formatMoney(amount: bigint): string {
+    return formatMoney(this.fromStorage(amount));
   }
 
   /** Format with thousands separators (1500000n -> "1,500.000"). */

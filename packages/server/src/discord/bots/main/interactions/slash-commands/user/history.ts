@@ -95,11 +95,11 @@ export async function execute(
     const lines = transactions.map((tx) => {
       const isPositive = tx.amount >= 0n;
       const sign = isPositive ? "+" : "";
-      const amount = BalanceUtils.formatTrimmed(tx.amount);
+      const amount = BalanceUtils.formatMoney(tx.amount);
       const label = typeLabels[tx.transactionType] ?? tx.transactionType;
       const desc = tx.description ? ` - ${tx.description}` : "";
 
-      return `${discordTimestamp(tx.createdAt, "R")} **${sign}$${amount}** ${label}${desc}`;
+      return `${discordTimestamp(tx.createdAt, "R")} **${sign}${amount}** ${label}${desc}`;
     });
 
     const embed = EmbedPresets.info("Transaction History", lines.join("\n"));
