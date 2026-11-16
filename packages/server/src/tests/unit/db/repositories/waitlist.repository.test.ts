@@ -1,34 +1,12 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import type { IntakeMode } from "@/services/settings";
 
-type FunnelStats = {
-  total: number;
-  queued: number;
-  promoted: number;
-  registered: number;
-  expired: number;
-  joinedMinecraft: number;
-  signups: { today: number; thisWeek: number; thisMonth: number };
-};
-
-const ZERO_STATS: FunnelStats = {
-  total: 0,
-  queued: 0,
-  promoted: 0,
-  registered: 0,
-  expired: 0,
-  joinedMinecraft: 0,
-  signups: { today: 0, thisWeek: 0, thisMonth: 0 },
-};
-
 type State = {
   intakeMode: IntakeMode;
   playerLimit: number;
   playerCount: number;
   promotedCount: number;
   failLimitRead: boolean;
-  funnelStats: FunnelStats;
-  funnelCalls: number;
 };
 
 const state = vi.hoisted((): State => ({
@@ -37,8 +15,6 @@ const state = vi.hoisted((): State => ({
   playerCount: 0,
   promotedCount: 0,
   failLimitRead: false,
-  funnelStats: {} as FunnelStats,
-  funnelCalls: 0,
 }));
 
 vi.mock("@/db", () => ({
@@ -49,10 +25,6 @@ vi.mock("@/db", () => ({
       entry: {
         count: async (filters: { status?: string } = {}) =>
           filters.status === "promoted" ? state.promotedCount : 0,
-        getFunnelStats: async () => {
-          state.funnelCalls += 1;
-          return state.funnelStats;
-        },
       },
     },
   },
@@ -94,8 +66,6 @@ beforeEach(() => {
   state.playerCount = 0;
   state.promotedCount = 0;
   state.failLimitRead = false;
-  state.funnelStats = ZERO_STATS;
-  state.funnelCalls = 0;
 });
 
 describe("WaitlistRepository.getFreeSlots", () => {
@@ -134,24 +104,5 @@ describe("WaitlistRepository.getFreeSlots", () => {
     const repo = new WaitlistRepository();
     await expect(repo.getFreeSlots()).rejects.toThrow("settings unavailable");
     expect(await repo.hasCapacity()).toBe(false);
-  });
-});
-
-describe("WaitlistRepository.getStats", () => {
-  it("returns the funnel counts unchanged, from a single query", async () => {
-    state.funnelStats = {
-      total: 4,
-      queued: 1,
-      promoted: 1,
-      registered: 1,
-      expired: 1,
-      joinedMinecraft: 1,
-      signups: { today: 1, thisWeek: 2, thisMonth: 3 },
-    };
-
-    const stats = await new WaitlistRepository().getStats();
-
-    expect(stats).toEqual(state.funnelStats);
-    expect(state.funnelCalls).toBe(1);
   });
 });

@@ -15,7 +15,7 @@ vi.mock("@/app/middleware", async () => ({
 }));
 
 vi.mock("@/db", () => ({
-  R: { balanceRepo: { transfer: transferMock } },
+  balanceRepo: { transfer: transferMock },
 }));
 
 vi.mock("@/services/reward/reward.service", () => ({ rewardService: {} }));

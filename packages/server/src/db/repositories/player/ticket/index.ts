@@ -34,12 +34,4 @@ export class PlayerTicketRepository extends BasePlayerRepository {
     ]);
     return { tickets, total };
   }
-
-  /** Total ticket count created by the player. */
-  async count(identifier: PlayerIdentifier): Promise<number> {
-    const uuid = await this.resolvePlayerUuid(identifier);
-    const player = await Q.player.get({ minecraftUuid: uuid });
-
-    return await Q.ticket.count({ creatorDiscordId: player.discordId });
-  }
 }

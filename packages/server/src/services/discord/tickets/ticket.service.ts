@@ -12,12 +12,11 @@ import {
   type TextBasedChannel,
   AttachmentBuilder,
 } from "discord.js";
-import { TicketRepository } from "@/db/repositories/ticket";
 import type { Ticket } from "@/generated/db";
 import { type CreateTicketOptions, TicketUserAction } from "./";
 import { getTicketTypeConfig, TicketSystemIds } from "./";
 import { Discord } from "@/discord/constants";
-import { Q } from "@/db";
+import { Q, ticketRepo } from "@/db";
 import config from "@/config";
 import { EmbedPresets } from "@/discord/embeds";
 import path from "node:path";
@@ -56,10 +55,7 @@ interface CreateTicketResult {
  */
 export class TicketService {
   private readonly transcriptDir: string;
-  constructor(
-    private readonly bot: Client,
-    private readonly repository: TicketRepository = new TicketRepository(),
-  ) {
+  constructor(private readonly bot: Client) {
     this.transcriptDir = path.join(config.storage.path, "transcripts");
     void this.ensureTranscriptDir();
   }
@@ -80,7 +76,7 @@ export class TicketService {
   async createTicket(
     options: CreateTicketOptions,
   ): Promise<CreateTicketResult> {
-    const ticketNumber = await this.repository.allocateNumber();
+    const ticketNumber = await Q.ticket.allocateNumber();
     const config = getTicketTypeConfig(options.type);
 
     const channel = await this.createTicketChannel(
@@ -90,7 +86,7 @@ export class TicketService {
       config.allowedRoleIds,
     );
 
-    const ticket = await this.repository.create({
+    const ticket = await ticketRepo.create({
       ticketNumber,
       type: options.type,
       creatorDiscordId: options.creatorId,
@@ -183,7 +179,7 @@ export class TicketService {
    * embed. Throws if the ticket is already closed.
    */
   async closeTicket(ticketId: number, closedBy: string): Promise<Ticket> {
-    const updatedTicket = await this.repository.close(ticketId, closedBy);
+    const updatedTicket = await ticketRepo.close(ticketId, closedBy);
 
     await this.lockTicketChannel(
       updatedTicket.channelId,
@@ -197,7 +193,7 @@ export class TicketService {
     );
 
     if (closeMessageId) {
-      await this.repository.updateMetadata(ticketId, {
+      await ticketRepo.updateMetadata(ticketId, {
         closeMessageId,
       });
     }
@@ -295,7 +291,7 @@ export class TicketService {
    * action buttons.
    */
   async reopenTicket(ticketId: number, reopenedBy: string): Promise<Ticket> {
-    const ticket = await this.repository.reopen(ticketId, reopenedBy);
+    const ticket = await ticketRepo.reopen(ticketId, reopenedBy);
 
     const closeMessageId: unknown = ticket.metadata?.closeMessageId;
     if (typeof closeMessageId === "string" && closeMessageId) {
@@ -469,7 +465,7 @@ export class TicketService {
 
   /** Permanently delete a ticket and its Discord channel. Cannot be undone. */
   async deleteTicket(ticketId: number, deletedBy: string): Promise<void> {
-    await this.repository.delete(ticketId, deletedBy);
+    await ticketRepo.delete(ticketId, deletedBy);
   }
 
   /**
@@ -487,7 +483,7 @@ export class TicketService {
     }
 
     const transcriptPath = await this.generateTranscript(ticket);
-    await this.repository.updateMetadata(ticketId, { transcriptPath });
+    await ticketRepo.updateMetadata(ticketId, { transcriptPath });
 
     return { transcriptPath, generated: true };
   }
@@ -589,7 +585,7 @@ export class TicketService {
       throw new Error(message.error ?? "Failed to send transcript");
     }
 
-    await this.repository.logAction({
+    await Q.ticket.action.create({
       ticketId,
       actionType: TicketUserAction.TRANSCRIPT_GENERATED,
       performedByDiscordId: generatedBy,
@@ -608,6 +604,6 @@ export class TicketService {
 
   /** True if the user currently has any non-closed ticket. */
   async hasOpenTicket(discordId: string): Promise<boolean> {
-    return this.repository.hasOpen(discordId);
+    return ticketRepo.hasOpen(discordId);
   }
 }

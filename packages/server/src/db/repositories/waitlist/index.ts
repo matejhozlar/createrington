@@ -1,10 +1,8 @@
 import { db, Q } from "@/db";
-import type { WaitlistFunnelStats } from "@/db/queries/waitlist/entry";
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
 import { ButtonPresets } from "@/discord/embeds/presets/buttons";
 import { ActionRowBuilder, type ButtonBuilder } from "discord.js";
-import type { WaitlistEntry } from "@createrington/shared/db";
 import { settings } from "@/services/settings";
 import { DatabaseTable } from "@/generated/db";
 import { AdminEdit } from "@/types";
@@ -14,8 +12,8 @@ const CAPACITY_MEMO_TTL_MS = 5_000;
 /**
  * Waitlist persistence and reporting. Entries are Discord-born (created by
  * the Join Waitlist button in a member's verification channel), so every
- * row carries a discordId. This repository owns capacity checks, admin
- * stats, the admin-channel progress embed, and audited deletion; queue
+ * row carries a discordId. This repository owns capacity checks, the
+ * admin-channel progress embed, and audited deletion; queue
  * orchestration (promotion, pings, channel lifecycle) lives in the waitlist
  * service. Capacity reads fall closed when the player-count probe fails.
  */
@@ -76,11 +74,6 @@ export class WaitlistRepository {
     );
 
     return free;
-  }
-
-  /** Fetch a single waitlist entry by ID for the admin panel detail view. */
-  async getDetailed(entryId: number): Promise<WaitlistEntry> {
-    return await Q.waitlist.entry.get({ id: entryId });
   }
 
   /** Hard-delete a waitlist entry and write the matching admin_log_action in one transaction. */
@@ -190,14 +183,5 @@ export class WaitlistRepository {
     await Q.waitlist.entry.update({ id: entry.id }, { joinedMinecraft: true });
 
     await this.updateProgressEmbed(entry.id);
-  }
-
-  /**
-   * Dashboard stats: status breakdowns, milestone progress counts, and
-   * first-time signups per window. One aggregate query, so the counts are a
-   * consistent snapshot.
-   */
-  async getStats(): Promise<WaitlistFunnelStats> {
-    return await Q.waitlist.entry.getFunnelStats();
   }
 }

@@ -10,7 +10,7 @@ import {
 } from "discord.js";
 import type { Workshop } from "@createrington/shared/db";
 import config from "@/config";
-import { player, Q } from "@/db";
+import { Q } from "@/db";
 import { AppError } from "@/app/middleware/error-handler";
 import { EmbedPresets } from "@/discord/embeds";
 import { replyError } from "@/discord/utils/interaction-reply";
@@ -137,7 +137,7 @@ export async function execute(
     return;
   }
 
-  const suggester = await player.find({ discordId: interaction.user.id });
+  const suggester = await Q.player.find({ discordId: interaction.user.id });
   if (!suggester) {
     await replyError(
       interaction,

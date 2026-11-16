@@ -4,7 +4,7 @@ import {
   STRIKE_DESCRIPTION_MAX_LENGTH,
 } from "@createrington/shared/admin-reason";
 import { router, adminProcedure } from "@/trpc/trpc";
-import { playerService } from "@/services/player";
+import { playerStrikeRepo } from "@/db";
 import { parsePlayerId } from "@/trpc/utils";
 
 /** Admin strikes router: list, issue, and remove player strikes. */
@@ -24,8 +24,8 @@ export const strikesRouter = router({
       const identifier = parsePlayerId(input.id);
 
       const [strikes, statistics] = await Promise.all([
-        playerService.strikes.get(identifier, input.activeOnly),
-        playerService.strikes.getStatistics(identifier),
+        playerStrikeRepo.getHistory(identifier, input.activeOnly),
+        playerStrikeRepo.getStatistics(identifier),
       ]);
 
       return { strikes, statistics };
@@ -70,7 +70,7 @@ export const strikesRouter = router({
     .mutation(async ({ input, ctx }) => {
       const identifier = parsePlayerId(input.id);
 
-      const strike = await playerService.strikes.issue(
+      const strike = await playerStrikeRepo.issue(
         identifier,
         {
           classification: input.classification,
@@ -99,7 +99,7 @@ export const strikesRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      const strike = await playerService.strikes.remove(
+      const strike = await playerStrikeRepo.remove(
         input.strikeId,
         ctx.user.discordId,
         ctx.user.minecraftUsername,

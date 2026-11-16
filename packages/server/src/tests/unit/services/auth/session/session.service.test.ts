@@ -97,7 +97,7 @@ vi.mock("@/db", () => {
     },
   };
   return {
-    auth,
+    Q: { auth },
     db: {
       inTransaction: async <T>(fn: (tx: { auth: typeof auth }) => Promise<T>) =>
         fn({ auth }),

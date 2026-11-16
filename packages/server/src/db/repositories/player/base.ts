@@ -1,4 +1,4 @@
-import { player } from "@/db";
+import { Q } from "@/db";
 import type { Player } from "@createrington/shared/db";
 
 export type PlayerIdentifier =
@@ -10,7 +10,7 @@ export type PlayerIdentifier =
 
 /**
  * Abstract base for player-scoped repositories. Provides shared identifier
- * resolution (resolvePlayerUuid, getPlayer) so subclasses can accept any
+ * resolution (resolvePlayerUuid) so subclasses can accept any
  * PlayerIdentifier shape without each duplicating the lookup.
  */
 export abstract class BasePlayerRepository {
@@ -21,15 +21,7 @@ export abstract class BasePlayerRepository {
     if ("minecraftUuid" in identifier && identifier.minecraftUuid) {
       return identifier.minecraftUuid;
     }
-    const result = await player.get(identifier);
+    const result = await Q.player.get(identifier);
     return result.minecraftUuid;
-  }
-
-  protected async getPlayer(identifier: PlayerIdentifier): Promise<Player> {
-    if (typeof identifier === "object" && "minecraftUsername" in identifier) {
-      return identifier as Player;
-    }
-    const uuid = await this.resolvePlayerUuid(identifier);
-    return await player.get({ minecraftUuid: uuid });
   }
 }

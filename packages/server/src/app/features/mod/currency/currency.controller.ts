@@ -3,7 +3,7 @@ import {
   getAuthedPlayer,
   respondSuccess,
 } from "@/app/middleware";
-import { R } from "@/db";
+import { Q, balanceRepo } from "@/db";
 import { BalanceTransactionType } from "@/db/repositories/balance";
 import { dailyRewardService } from "@/services/reward/daily-reward.service";
 import { formatDuration } from "@/utils/format";
@@ -71,7 +71,7 @@ export class CurrencyController {
   static async getBalance(req: Request, res: Response): Promise<void> {
     const { uuid, name } = getAuthedPlayer(req);
 
-    const balance = await R.balanceRepo.getAmount(uuid);
+    const balance = await balanceRepo.getAmount(uuid);
 
     respondSuccess(res, {
       message: `Balance retrieved for player ${name}`,
@@ -104,7 +104,7 @@ export class CurrencyController {
     const { uuid: senderUuid } = getAuthedPlayer(req);
 
     try {
-      const result = await R.balanceRepo.transfer(senderUuid, toUuid, amount);
+      const result = await balanceRepo.transfer(senderUuid, toUuid, amount);
 
       respondSuccess(res, {
         message: `Transferred ${amount} from ${senderUuid} to ${toUuid}`,
@@ -173,7 +173,7 @@ export class CurrencyController {
       },
       async (tx) => {
         try {
-          const newBalance = await R.balanceRepo.add(
+          const newBalance = await balanceRepo.add(
             uuid,
             amount,
             description,
@@ -262,7 +262,7 @@ export class CurrencyController {
       },
       async (tx) => {
         try {
-          const newBalance = await R.balanceRepo.deduct(
+          const newBalance = await balanceRepo.deduct(
             uuid,
             totalAmount,
             `Withdraw ${count}x${denomination}`,
@@ -303,7 +303,7 @@ export class CurrencyController {
    * Returns top 10 players by balance.
    */
   static async getTop(_req: Request, res: Response): Promise<void> {
-    const top = await R.balanceRepo.getTop(10);
+    const top = await Q.player.balance.getTop(10);
 
     respondSuccess(res, {
       message: `Top ${top.length} players retrieved`,
@@ -354,7 +354,7 @@ export class CurrencyController {
     );
     const offset = (page - 1) * perPage;
 
-    const transactions = await R.balanceRepo.getFormattedHistory(
+    const transactions = await balanceRepo.getFormattedHistory(
       uuid,
       perPage,
       offset,

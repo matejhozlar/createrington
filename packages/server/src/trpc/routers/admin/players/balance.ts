@@ -1,8 +1,7 @@
 import { z } from "zod";
 import { ADMIN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
 import { router, adminProcedure } from "@/trpc/trpc";
-import { playerService } from "@/services/player";
-import { balanceRepo } from "@/db";
+import { balanceRepo, playerBalanceRepo, playerRepo } from "@/db";
 import { parsePlayerId, rethrowTrpc, trpcError } from "@/trpc/utils";
 
 const BALANCE_ADJUST_MODES = ["add", "remove", "set"] as const;
@@ -26,7 +25,7 @@ export const balanceRouter = router({
     .query(async ({ input }) => {
       const identifier = parsePlayerId(input.id);
 
-      const balanceInfo = await playerService.core.getBalanceInfo(
+      const balanceInfo = await playerRepo.getBalanceInfo(
         identifier,
         input.limit,
       );
@@ -128,7 +127,7 @@ export const balanceRouter = router({
         throw trpcError.badRequest("Amount cannot be zero");
       }
 
-      const results = await playerService.balance.bulkAdjust(
+      const results = await playerBalanceRepo.bulkAdjust(
         input.playerUuids,
         input.amount,
         ctx.user.discordId,

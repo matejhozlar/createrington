@@ -8,7 +8,6 @@ import { formatMoney } from "@createrington/shared/format";
  */
 export class BalanceUtils {
   private static readonly PRECISION = 1_000;
-  private static readonly PRECISION_BIGINT = BigInt(this.PRECISION);
 
   private static readonly MAX_BALANCE = 9_223_372_036_854_775n;
   private static readonly MAX_BALANCE_BIG_INT = this.MAX_BALANCE;

@@ -2,16 +2,6 @@ import type { Pool, PoolClient } from "pg";
 import { PlayerPlaytimeHourlyBaseQueries } from "@/generated/db/player_playtime_hourly.queries";
 import { splitPeriod } from "../split";
 
-type PlayerHourlyPatternRow = {
-  hour_of_day: number;
-  total_seconds: number;
-};
-
-export type PlayerHourlyPattern = {
-  hourOfDay: number;
-  totalSeconds: number;
-};
-
 type ServerHeatMapRow = {
   day: Date;
   hour: number;
@@ -30,7 +20,6 @@ export type ServerHeatMap = {
  * Custom queries for player_playtime_hourly table
  *
  * - Session aggregation: splits sessions across hour boundaries via upsert
- * - Player activity patterns: hourly playtime distribution (0-23)
  * - Server heatmap: day x hour grid of activity metrics
  */
 export class PlayerPlaytimeHourlyQueries extends PlayerPlaytimeHourlyBaseQueries {
@@ -71,42 +60,6 @@ export class PlayerPlaytimeHourlyQueries extends PlayerPlaytimeHourlyBaseQueries
         [playerMinecraftUuid, serverId, bucket, share],
       );
     }
-  }
-
-  /**
-   * Retrieves a player's activity pattern aggregated by hour of the day
-   *
-   * Analyzes when a player is most active by grouping their playtime
-   * across all days into 24 hourly buckets (0-23). Useful for identifying
-   * peak playing hours and activity patterns
-   *
-   * @param playerMinecraftUuid - The Minecraft UUID of the player
-   * @param serverId - The ID of the server to analyze activity for
-   * @returns Array of hourly activity records with total seconds played per hour
-   */
-  async getPlayerHourlyPattern(
-    playerMinecraftUuid: string,
-    serverId: number,
-  ): Promise<PlayerHourlyPattern[]> {
-    const query = `
-      SELECT
-        EXTRACT(HOUR FROM play_hour)::int as hour_of_day,
-        SUM(seconds_played)::float8 as total_seconds
-      FROM ${this.table}
-      WHERE player_minecraft_uuid = $1
-        AND server_id = $2
-      GROUP BY EXTRACT(HOUR FROM play_hour)
-      ORDER BY hour_of_day`;
-
-    const result = await this.runQuery<PlayerHourlyPatternRow>(
-      "get player hourly pattern",
-      query,
-      [playerMinecraftUuid, serverId],
-    );
-
-    return this.mapRowsToEntities<PlayerHourlyPatternRow, PlayerHourlyPattern>(
-      result.rows,
-    );
   }
 
   /**

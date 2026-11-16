@@ -345,9 +345,8 @@ export function registerServices(): void {
 
   container.register(
     Services.PLAYER_BAN_SERVICE,
-    async (c) => {
-      const mainBot = await c.get(Services.DISCORD_MAIN_BOT);
-      const service = new PlayerBanService(mainBot);
+    async () => {
+      const service = new PlayerBanService();
       await service.initialize();
       return service;
     },

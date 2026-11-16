@@ -1,4 +1,4 @@
-import { balanceRepo, player } from "@/db";
+import { Q, balanceRepo } from "@/db";
 import { BalanceUtils } from "@/db/repositories/balance/utils";
 import { EmbedPresets } from "@/discord/embeds";
 import { replyError } from "@/discord/utils/interaction-reply";
@@ -64,7 +64,7 @@ export async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
   try {
-    const playerEntry = await player.find({ discordId: interaction.user.id });
+    const playerEntry = await Q.player.find({ discordId: interaction.user.id });
 
     if (!playerEntry) {
       await replyError(

@@ -2,11 +2,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import Stripe from "stripe";
 import type { Client } from "discord.js";
 
-const { donationRepo } = vi.hoisted(() => ({
-  donationRepo: {
-    findBySessionId: vi.fn(),
-    create: vi.fn(),
-    markSupporterRoleGranted: vi.fn(),
+const { donation } = vi.hoisted(() => ({
+  donation: {
+    find: vi.fn(),
+    createAndReturn: vi.fn(),
+    update: vi.fn(),
     findActiveSubscription: vi.fn(),
   },
 }));
@@ -18,7 +18,7 @@ vi.mock("@/config", () => ({
   },
 }));
 
-vi.mock("@/db", () => ({ donationRepo }));
+vi.mock("@/db", () => ({ Q: { donation } }));
 
 vi.mock("@/discord/constants/roles", () => ({
   DiscordRolesNamespace: { SUPPORTER: "supporter-role" },
@@ -51,48 +51,51 @@ const GUILD = {
 
 describe("DonationService.handleSessionCompleted", () => {
   beforeEach(() => {
-    donationRepo.findBySessionId.mockReset().mockResolvedValue(null);
-    donationRepo.create.mockReset();
-    donationRepo.markSupporterRoleGranted.mockReset();
+    donation.find.mockReset().mockResolvedValue(null);
+    donation.createAndReturn.mockReset();
+    donation.update.mockReset();
     vi.mocked(RoleManager.assign).mockReset();
   });
 
   it("records the donation and marks the supporter role once it is granted", async () => {
-    donationRepo.create.mockResolvedValue({ id: 7, amountCents: 500 });
+    donation.createAndReturn.mockResolvedValue({ id: 7, amountCents: 500 });
     vi.mocked(RoleManager.assign).mockResolvedValue(true);
     const { donations } = service(GUILD);
 
     await donations.handleSessionCompleted(SESSION);
 
-    expect(donationRepo.create).toHaveBeenCalledWith(
+    expect(donation.createAndReturn).toHaveBeenCalledWith(
       expect.not.objectContaining({ supporterRoleGranted: true }),
     );
-    expect(donationRepo.markSupporterRoleGranted).toHaveBeenCalledWith(7);
+    expect(donation.update).toHaveBeenCalledWith(
+      { id: 7 },
+      { supporterRoleGranted: true },
+    );
   });
 
   it("leaves the supporter role unmarked when the grant fails", async () => {
-    donationRepo.create.mockResolvedValue({ id: 7, amountCents: 500 });
+    donation.createAndReturn.mockResolvedValue({ id: 7, amountCents: 500 });
     vi.mocked(RoleManager.assign).mockResolvedValue(false);
     const { donations } = service(GUILD);
 
     await donations.handleSessionCompleted(SESSION);
 
-    expect(donationRepo.create).toHaveBeenCalledOnce();
-    expect(donationRepo.markSupporterRoleGranted).not.toHaveBeenCalled();
+    expect(donation.createAndReturn).toHaveBeenCalledOnce();
+    expect(donation.update).not.toHaveBeenCalled();
   });
 
   it("leaves the supporter role unmarked when the guild is unavailable", async () => {
-    donationRepo.create.mockResolvedValue({ id: 7, amountCents: 500 });
+    donation.createAndReturn.mockResolvedValue({ id: 7, amountCents: 500 });
     const { donations, getGuild } = service();
 
     await donations.handleSessionCompleted(SESSION);
 
     expect(getGuild).toHaveBeenCalledWith("guild-1");
-    expect(donationRepo.markSupporterRoleGranted).not.toHaveBeenCalled();
+    expect(donation.update).not.toHaveBeenCalled();
   });
 
   it("treats a concurrent duplicate insert as a replay", async () => {
-    donationRepo.create.mockRejectedValue(
+    donation.createAndReturn.mockRejectedValue(
       new UniqueViolationError(
         "duplicate key",
         "donation_stripe_session_id_unique",
@@ -107,7 +110,7 @@ describe("DonationService.handleSessionCompleted", () => {
   });
 
   it("rethrows any other unique violation", async () => {
-    donationRepo.create.mockRejectedValue(
+    donation.createAndReturn.mockRejectedValue(
       new UniqueViolationError("duplicate key", "some_other_unique"),
     );
     const { donations } = service();
@@ -130,7 +133,7 @@ describe("DonationService.getActiveSubscription", () => {
   }
 
   beforeEach(() => {
-    donationRepo.findActiveSubscription
+    donation.findActiveSubscription
       .mockReset()
       .mockResolvedValue({ stripeSubscriptionId: "sub_1", amountCents: 500 });
   });

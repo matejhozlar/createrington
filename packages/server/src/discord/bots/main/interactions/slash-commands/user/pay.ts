@@ -1,4 +1,4 @@
-import { balanceRepo, player } from "@/db";
+import { Q, balanceRepo } from "@/db";
 import { EmbedPresets } from "@/discord/embeds";
 import { replyError } from "@/discord/utils/interaction-reply";
 import { CooldownType } from "@/discord/utils/cooldown";
@@ -91,7 +91,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   }
 
   try {
-    const senderPlayer = await player.find({ discordId: sender.id });
+    const senderPlayer = await Q.player.find({ discordId: sender.id });
 
     if (!senderPlayer) {
       await replyError(
@@ -102,7 +102,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       return;
     }
 
-    const recipientPlayer = await player.find({ discordId: recipient.id });
+    const recipientPlayer = await Q.player.find({ discordId: recipient.id });
 
     if (!recipientPlayer) {
       await replyError(

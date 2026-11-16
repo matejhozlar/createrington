@@ -1,4 +1,4 @@
-import { auth, db } from "@/db";
+import { Q, db } from "@/db";
 import { refreshTokenService } from "@/services/auth/token/refresh-token.service";
 import type { AuthSessionRow } from "@createrington/shared/db/auth_session.types";
 
@@ -66,7 +66,7 @@ class SessionService {
     const tokenHash = refreshTokenService.hash(rawToken);
     const expiresAt = refreshTokenService.getExpiresAt();
 
-    await auth.session.insertSession({
+    await Q.auth.session.insertSession({
       discordId: params.discordId,
       discordUsername: params.username,
       discordAvatar: params.avatar ?? null,
@@ -105,7 +105,7 @@ class SessionService {
       const result = await recent.promise;
       if (!result) return null;
 
-      const successor = await auth.session.findByTokenHash(
+      const successor = await Q.auth.session.findByTokenHash(
         refreshTokenService.hash(result.rawToken),
       );
       if (!successor) return null;
@@ -153,7 +153,7 @@ class SessionService {
     ip?: string,
     userAgent?: string,
   ): Promise<RotateResult | null> {
-    const session = await auth.session.findByTokenHash(tokenHash);
+    const session = await Q.auth.session.findByTokenHash(tokenHash);
 
     // Unknown token
     if (!session) {
@@ -172,7 +172,7 @@ class SessionService {
       logger.debug(
         `Refresh token expired for user ${session.discord_id}, revoking`,
       );
-      await auth.session.revokeById(session.id);
+      await Q.auth.session.revokeById(session.id);
       return null;
     }
 
@@ -216,24 +216,24 @@ class SessionService {
     logger.warn(
       `Refresh token theft detected for user ${session.discord_id}, revoking family ${session.family_id}`,
     );
-    await auth.session.revokeByFamily(session.family_id);
+    await Q.auth.session.revokeByFamily(session.family_id);
   }
 
   /** Revokes the single session identified by the given raw refresh token (normal logout). */
   async revokeByToken(rawToken: string): Promise<void> {
     const tokenHash = refreshTokenService.hash(rawToken);
-    await auth.session.revokeByTokenHash(tokenHash);
+    await Q.auth.session.revokeByTokenHash(tokenHash);
   }
 
   /** Revokes every active session for the given user (logout-all or forced sign-out). */
   async revokeAllForUser(discordId: string): Promise<void> {
-    await auth.session.revokeAllForUser(discordId);
+    await Q.auth.session.revokeAllForUser(discordId);
     logger.info(`Revoked all sessions for user ${discordId}`);
   }
 
   /** Deletes expired sessions from the database; invoked hourly, also safe to call on demand. */
   async cleanupExpired(): Promise<void> {
-    const deleted = await auth.session.deleteExpired();
+    const deleted = await Q.auth.session.deleteExpired();
     if (deleted > 0) {
       logger.info(`Cleaned up ${deleted} expired auth sessions`);
     }

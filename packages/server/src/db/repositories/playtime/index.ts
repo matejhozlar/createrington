@@ -2,12 +2,10 @@ import { db, Q, waitlistRepo } from "@/db";
 import { calendarDay } from "@/db/utils";
 import type { DatabaseQueries } from "@/generated/db";
 import type { ServerActivity } from "@/db/queries/player/playtime/daily";
-import type { ServerHeatMap } from "@/db/queries/player/playtime/hourly";
 import type {
   LeaderboardEntry,
   ServerStats,
 } from "@/db/queries/player/playtime/summary";
-import type { OpenSessionEntry } from "@/db/queries/player/session";
 import type { Player, PlayerSession } from "@/generated/db";
 import { PlaytimeService } from "@/services/playtime";
 import type {
@@ -313,29 +311,6 @@ export class PlaytimeRepository {
     }
   }
 
-  /** All currently open sessions, optionally filtered to one server. */
-  async getActiveSessions(serverId?: number): Promise<PlayerSession[]> {
-    try {
-      return await Q.player.session.findAll({
-        ...(serverId && { serverId }),
-        sessionEnd: null,
-      });
-    } catch (error) {
-      logger.error("Failed to get active sessions:", error);
-      throw error;
-    }
-  }
-
-  /** Open sessions on a server with usernames, for restoring the in-memory tracker after a restart. */
-  async getOpenSessions(serverId: number): Promise<OpenSessionEntry[]> {
-    try {
-      return await Q.player.session.findOpenWithUsername(serverId);
-    } catch (error) {
-      logger.error("Failed to get open sessions:", error);
-      throw error;
-    }
-  }
-
   /**
    * Compare stored summary totals against the vanilla play_time stat
    * imported from the game server and overwrite drifted totals with the stat
@@ -460,19 +435,6 @@ export class PlaytimeRepository {
       );
     } catch (error) {
       logger.error("Failed to get server activity:", error);
-      throw error;
-    }
-  }
-
-  /** Heatmap buckets grouped by day-of-week and hour-of-day over the trailing N days. */
-  async getServerHeatmap(
-    serverId: number,
-    days: number = 30,
-  ): Promise<ServerHeatMap[]> {
-    try {
-      return await Q.player.playtime.hourly.getServerHeatmap(serverId, days);
-    } catch (error) {
-      logger.error("Failed to get server heatmap:", error);
       throw error;
     }
   }

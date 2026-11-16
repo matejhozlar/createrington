@@ -1,4 +1,4 @@
-import { player } from "@/db";
+import { Q } from "@/db";
 import { ButtonPresets } from "@/discord/embeds/presets/buttons";
 import { CooldownType } from "@/discord/utils/cooldown";
 import { replyError } from "@/discord/utils/interaction-reply";
@@ -23,7 +23,7 @@ export const cooldown = {
 export async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
-  const voter = await player.find({ discordId: interaction.user.id });
+  const voter = await Q.player.find({ discordId: interaction.user.id });
   if (!voter) {
     await replyError(
       interaction,

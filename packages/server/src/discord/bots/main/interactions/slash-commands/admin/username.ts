@@ -1,4 +1,4 @@
-import { player } from "@/db";
+import { Q } from "@/db";
 import { EmbedPresets } from "@/discord/embeds";
 import { replyError } from "@/discord/utils/interaction-reply";
 import {
@@ -45,7 +45,7 @@ export async function execute(
   const user = interaction.options.getUser("user", true);
 
   try {
-    const username = await player.select.minecraftUsername({
+    const username = await Q.player.select.minecraftUsername({
       discordId: user.id,
     });
 

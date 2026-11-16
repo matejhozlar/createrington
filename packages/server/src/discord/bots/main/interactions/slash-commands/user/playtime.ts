@@ -1,4 +1,4 @@
-import { player } from "@/db";
+import { Q } from "@/db";
 import type { PlayerPlaytimeBreakdown } from "@/db/queries/player/playtime/summary";
 import { EmbedPresets } from "@/discord/embeds";
 import { replyError } from "@/discord/utils/interaction-reply";
@@ -52,9 +52,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   const targetUser = userOption || interaction.user;
 
   try {
-    const playerEntry = await player.get({ discordId: targetUser.id });
+    const playerEntry = await Q.player.get({ discordId: targetUser.id });
     const breakdown: PlayerPlaytimeBreakdown =
-      await player.playtime.summary.getBreakdown(playerEntry.minecraftUuid);
+      await Q.player.playtime.summary.getBreakdown(playerEntry.minecraftUuid);
 
     const topServers = breakdown.servers.slice(0, 5);
     const serverList = topServers

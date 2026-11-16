@@ -8,7 +8,7 @@ import type { StrikeStatistics } from "@/db/queries/player/strike";
 import { BasePlayerRepository, type PlayerIdentifier } from "../base";
 
 /**
- * Player strike lifecycle: issue, pardon, history, and active-count batching.
+ * Player strike lifecycle: issue, pardon, and per-player history and statistics.
  * Each mutation writes a paired admin_log_action entry in the same DB
  * transaction.
  */
@@ -136,30 +136,9 @@ export class PlayerStrikeRepository extends BasePlayerRepository {
     return await Q.player.strike.getStrikeHistory(uuid, !activeOnly);
   }
 
-  /** Alias of getHistory(). */
-  async get(
-    identifier: PlayerIdentifier,
-    activeOnly: boolean = false,
-  ): Promise<PlayerStrike[]> {
-    return this.getHistory(identifier, activeOnly);
-  }
-
-  /** Batched UUID -> active strike count map, for list views. */
-  async getActiveStrikeCounts(
-    playerUuids: string[],
-  ): Promise<Record<string, number>> {
-    return await Q.player.strike.getActiveStrikeCounts(playerUuids);
-  }
-
   /** Aggregate strike statistics for a single player. */
   async getStatistics(identifier: PlayerIdentifier): Promise<StrikeStatistics> {
     const uuid = await this.resolvePlayerUuid(identifier);
     return await Q.player.strike.getPlayerStatistics(uuid);
-  }
-
-  /** Number of strikes currently active (not removed) for the player. */
-  async countActive(identifier: PlayerIdentifier): Promise<number> {
-    const uuid = await this.resolvePlayerUuid(identifier);
-    return await Q.player.strike.countActiveStrikes(uuid);
   }
 }

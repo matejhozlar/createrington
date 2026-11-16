@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
-import { playerService } from "@/services/player";
+import { playerSessionRepo } from "@/db";
 import { parsePlayerId, paginationInput, buildPagination } from "@/trpc/utils";
 
 /** Admin sessions router: paginated session history for a player. */
@@ -21,7 +21,7 @@ export const sessionsRouter = router({
       const identifier = parsePlayerId(input.id);
 
       const { sessions, total: totalSessions } =
-        await playerService.sessions.getHistoryPage(
+        await playerSessionRepo.getHistoryPage(
           identifier,
           input.serverId,
           input.limit,

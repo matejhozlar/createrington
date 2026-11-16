@@ -1,5 +1,5 @@
 import config from "@/config";
-import { R } from "@/db";
+import { playtimeRepo } from "@/db";
 import { formatPlaytime } from "@createrington/shared/format";
 
 export interface StatusConfig {
@@ -27,7 +27,7 @@ export function buildMainBotStatuses(): StatusConfig[] {
         const endOfDay = new Date();
         endOfDay.setHours(23, 59, 59, 999);
 
-        const top = await R.playtimeRepo.getTopPlayersByDateRange(
+        const top = await playtimeRepo.getTopPlayersByDateRange(
           config.servers.rails.id,
           startOfDay,
           endOfDay,

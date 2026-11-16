@@ -49,38 +49,4 @@ describe("DiscordTopRoleReignQueries (integration)", () => {
       reign(ROLE_A, BOB, daysAgo(10), daysAgo(3)),
     ).resolves.toBeUndefined();
   });
-
-  it("returns the longest reign per role, counting an open reign up to now", async () => {
-    await reign(ROLE_A, ALICE, daysAgo(30), daysAgo(20));
-    await reign(ROLE_A, BOB, daysAgo(20), daysAgo(5));
-    await reign(ROLE_A, ALICE, daysAgo(5), null);
-    await reign(ROLE_B, ALICE, daysAgo(40), daysAgo(38));
-    await reign(ROLE_B, BOB, daysAgo(38), null);
-
-    const longest = (await reigns.getLongest()).filter((row) =>
-      [ROLE_A, ROLE_B].includes(row.roleKey),
-    );
-
-    expect(
-      longest.map(({ roleKey, minecraftUuid, endedAt }) => ({
-        roleKey,
-        minecraftUuid,
-        open: endedAt === null,
-      })),
-    ).toEqual([
-      { roleKey: ROLE_A, minecraftUuid: BOB, open: false },
-      { roleKey: ROLE_B, minecraftUuid: BOB, open: true },
-    ]);
-  });
-
-  it("breaks a tie in favour of the earlier reign", async () => {
-    await reign(ROLE_A, ALICE, daysAgo(20), daysAgo(10));
-    await reign(ROLE_A, BOB, daysAgo(10), daysAgo(0));
-
-    const [longest] = (await reigns.getLongest()).filter(
-      (row) => row.roleKey === ROLE_A,
-    );
-
-    expect(longest.minecraftUuid).toBe(ALICE);
-  });
 });

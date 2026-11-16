@@ -17,8 +17,7 @@ const { Q, bans, rcon, revokeAllForUser, revokeAllForPlayer, deletePlayer } =
     deletePlayer: vi.fn(),
   }));
 
-vi.mock("@/db", () => ({ Q }));
-vi.mock("@/services/player", () => ({ playerService: { bans } }));
+vi.mock("@/db", () => ({ Q, playerBanRepo: bans }));
 vi.mock("@/services/player/deletion", () => ({
   playerDeletionService: { delete: deletePlayer },
 }));

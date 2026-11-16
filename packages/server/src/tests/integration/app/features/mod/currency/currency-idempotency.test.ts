@@ -7,7 +7,7 @@ import {
   afterAll,
   vi,
 } from "vitest";
-import { R, Q } from "@/db";
+import { Q, balanceRepo } from "@/db";
 import { BalanceTransactionType } from "@/db/repositories/balance";
 import {
   AppError,
@@ -29,19 +29,23 @@ import {
 const ALICE = "11111111-1111-1111-1111-111111111111";
 const KEY = "0f6a7b1c-5d4e-4f3a-9b2c-1d0e9f8a7b6c";
 
+function rawBalance(minecraftUuid: string): Promise<bigint> {
+  return Q.player.balance.select.balance({ minecraftUuid });
+}
+
 async function seedAlice(initialBalance: number): Promise<void> {
   await Q.player.create({
     minecraftUuid: ALICE,
     minecraftUsername: "alice",
     discordId: "100",
   });
-  await R.balanceRepo.create(ALICE, initialBalance);
+  await balanceRepo.create(ALICE, initialBalance);
 }
 
 function withdrawRequest(amount: number, key?: string) {
   const operation = vi.fn<IdempotentOperation>(async (tx) => {
     try {
-      const newBalance = await R.balanceRepo.deduct(
+      const newBalance = await balanceRepo.deduct(
         ALICE,
         amount,
         `Withdraw ${amount}`,
@@ -83,7 +87,7 @@ function withdrawRequest(amount: number, key?: string) {
 }
 
 async function withdrawLedger() {
-  const history = await R.balanceRepo.getHistory(ALICE);
+  const history = await balanceRepo.getHistory(ALICE);
   return history.filter(
     (t) => t.transactionType === BalanceTransactionType.WITHDRAW,
   );
@@ -148,7 +152,7 @@ describe("runIdempotent (integration)", () => {
     expect(operation).toHaveBeenCalledTimes(2);
     expect(first.replayed).toBe(false);
     expect(second.replayed).toBe(false);
-    expect(await R.balanceRepo.getRaw(ALICE)).toBe(80_000n);
+    expect(await rawBalance(ALICE)).toBe(80_000n);
     expect(await withdrawLedger()).toHaveLength(2);
   });
 
@@ -171,7 +175,7 @@ describe("runIdempotent (integration)", () => {
       data: { withdrawn: 10, new_balance: 90 },
     });
 
-    expect(await R.balanceRepo.getRaw(ALICE)).toBe(90_000n);
+    expect(await rawBalance(ALICE)).toBe(90_000n);
 
     const ledger = await withdrawLedger();
     expect(ledger).toHaveLength(1);
@@ -191,7 +195,7 @@ describe("runIdempotent (integration)", () => {
       expect(outcome.body).toEqual(outcomes[0].body);
     }
 
-    expect(await R.balanceRepo.getRaw(ALICE)).toBe(90_000n);
+    expect(await rawBalance(ALICE)).toBe(90_000n);
     expect(await withdrawLedger()).toHaveLength(1);
   });
 
@@ -203,7 +207,7 @@ describe("runIdempotent (integration)", () => {
     await expect(run()).rejects.toThrow(ConflictError);
 
     expect(operation).not.toHaveBeenCalled();
-    expect(await R.balanceRepo.getRaw(ALICE)).toBe(90_000n);
+    expect(await rawBalance(ALICE)).toBe(90_000n);
     expect(await withdrawLedger()).toHaveLength(1);
   });
 
@@ -225,7 +229,7 @@ describe("runIdempotent (integration)", () => {
     expect(second.statusCode).toBe(400);
     expect(second.body).toEqual(first.body);
 
-    expect(await R.balanceRepo.getRaw(ALICE)).toBe(5_000n);
+    expect(await rawBalance(ALICE)).toBe(5_000n);
     expect(await withdrawLedger()).toHaveLength(0);
   });
 
@@ -264,7 +268,7 @@ describe("runIdempotent (integration)", () => {
   it("rolls back writes made before an operational failure and still memoizes it", async () => {
     await seedAlice(100);
     const operation = vi.fn<IdempotentOperation>(async (tx) => {
-      await R.balanceRepo.add(
+      await balanceRepo.add(
         ALICE,
         5,
         "credited before rejection",
@@ -289,8 +293,8 @@ describe("runIdempotent (integration)", () => {
     expect(second.replayed).toBe(true);
     expect(second.body).toEqual(first.body);
 
-    expect(await R.balanceRepo.getRaw(ALICE)).toBe(100_000n);
-    const history = await R.balanceRepo.getHistory(ALICE);
+    expect(await rawBalance(ALICE)).toBe(100_000n);
+    const history = await balanceRepo.getHistory(ALICE);
     expect(
       history.filter(
         (t) => t.transactionType === BalanceTransactionType.DEPOSIT,
@@ -312,7 +316,7 @@ describe("runIdempotent (integration)", () => {
     await expect(run()).rejects.toThrow(ConflictError);
 
     expect(operation).toHaveBeenCalledTimes(1);
-    expect(await R.balanceRepo.getRaw(ALICE)).toBe(90_000n);
+    expect(await rawBalance(ALICE)).toBe(90_000n);
   });
 
   it("does not memoize unexpected failures, so a retry runs the operation again", async () => {
@@ -354,7 +358,7 @@ describe("runIdempotent (integration)", () => {
 
     expect(operation).toHaveBeenCalledTimes(2);
     expect(again.replayed).toBe(false);
-    expect(await R.balanceRepo.getRaw(ALICE)).toBe(80_000n);
+    expect(await rawBalance(ALICE)).toBe(80_000n);
     expect(await withdrawLedger()).toHaveLength(2);
   });
 

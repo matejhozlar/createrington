@@ -19,15 +19,4 @@ export class DiscordTopRoleReignQueries extends DiscordTopRoleReignBaseQueries {
     const [open] = await this.findAll({ roleKey, endedAt: null }, { limit: 1 });
     return open ?? null;
   }
-
-  /** Longest reign per role, an open reign counting up to now; ties go to the earlier reign. */
-  async getLongest(): Promise<DiscordTopRoleReign[]> {
-    const result = await this.runQuery(
-      "list longest reign per role",
-      `SELECT DISTINCT ON (role_key) *
-       FROM ${this.table}
-       ORDER BY role_key, COALESCE(ended_at, now()) - started_at DESC, started_at`,
-    );
-    return this.mapRowsToEntities(result.rows);
-  }
 }

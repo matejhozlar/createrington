@@ -9,9 +9,10 @@ const { balanceRepo, bulkAdjust } = vi.hoisted(() => ({
   bulkAdjust: vi.fn(),
 }));
 
-vi.mock("@/db", () => ({ balanceRepo }));
-vi.mock("@/services/player", () => ({
-  playerService: { balance: { bulkAdjust } },
+vi.mock("@/db", () => ({
+  balanceRepo,
+  playerBalanceRepo: { bulkAdjust },
+  playerRepo: {},
 }));
 vi.mock("@/services/auth/admin-status/admin-status.service", () => ({
   adminStatusService: { isAdmin: vi.fn().mockResolvedValue(true) },

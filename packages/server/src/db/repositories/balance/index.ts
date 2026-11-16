@@ -35,13 +35,11 @@ export enum BalanceTransactionType {
   ADMIN_DEDUCT = "admin_deduct",
   ADMIN_SET = "admin_set",
   PURCHASE = "purchase",
-  SALE = "sale",
   REWARD = "reward",
   REFUND = "refund",
   GALLERY_REWARD = "gallery_reward",
   CRYPTO_BUY = "crypto_buy",
   CRYPTO_SELL = "crypto_sell",
-  OTHER = "other",
 }
 
 /**
@@ -74,18 +72,18 @@ export class BalanceRepository {
     if ("minecraftUuid" in identifier && identifier.minecraftUuid) {
       return identifier.minecraftUuid;
     }
-    const player = await (tx ?? db).player.get(identifier);
+    const player = await (tx ?? Q).player.get(identifier);
     return player.minecraftUuid;
   }
 
   private async resolvePlayer(identifier: PlayerIdentifier): Promise<Player> {
     if (typeof identifier === "string") {
-      return db.player.get({ minecraftUuid: identifier });
+      return Q.player.get({ minecraftUuid: identifier });
     }
     if ("minecraftUuid" in identifier && identifier.minecraftUuid) {
-      return db.player.get({ minecraftUuid: identifier.minecraftUuid });
+      return Q.player.get({ minecraftUuid: identifier.minecraftUuid });
     }
-    return db.player.get(identifier);
+    return Q.player.get(identifier);
   }
 
   private async logTransaction(
@@ -119,27 +117,13 @@ export class BalanceRepository {
     );
   }
 
-  /** Get the full balance entity (raw bigint balance plus metadata). */
-  async get(identifier: PlayerIdentifier): Promise<PlayerBalance> {
-    const uuid = await this.resolvePlayerUuid(identifier);
-    return await db.player.balance.get({ minecraftUuid: uuid });
-  }
-
   /** Get the balance as a decimal number (e.g. 1.5). */
   async getAmount(identifier: PlayerIdentifier): Promise<number> {
     const uuid = await this.resolvePlayerUuid(identifier);
-    const balanceBigInt = await db.player.balance.select.balance({
+    const balanceBigInt = await Q.player.balance.select.balance({
       minecraftUuid: uuid,
     });
     return BalanceUtils.fromStorage(balanceBigInt);
-  }
-
-  /** Get the raw storage bigint (e.g. 1500n for $1.500), not user-facing. */
-  async getRaw(identifier: PlayerIdentifier): Promise<bigint> {
-    const uuid = await this.resolvePlayerUuid(identifier);
-    return await db.player.balance.select.balance({
-      minecraftUuid: uuid,
-    });
   }
 
   /** Returns true if the player's balance is at least the given decimal amount. */
@@ -148,18 +132,11 @@ export class BalanceRepository {
     amount: number,
   ): Promise<boolean> {
     const uuid = await this.resolvePlayerUuid(identifier);
-    const balance = await db.player.balance.select.balance({
+    const balance = await Q.player.balance.select.balance({
       minecraftUuid: uuid,
     });
     const required = BalanceUtils.toStorage(amount);
     return balance >= required;
-  }
-
-  /** Top N players by balance, sorted balance DESC. */
-  async getTop(
-    limit: number = 10,
-  ): Promise<Array<{ name: string; balance: number }>> {
-    return Q.player.balance.getTop(limit);
   }
 
   /**
@@ -375,28 +352,6 @@ export class BalanceRepository {
         type,
         { metadata: options.metadata, idempotencyKey: options.idempotencyKey },
       );
-      return BalanceUtils.fromStorage(after);
-    });
-  }
-
-  /**
-   * Set a player's balance to an absolute amount. The transaction log records
-   * the signed delta from the previous balance, not the new absolute value.
-   * Pass options.tx to join an existing outer transaction.
-   */
-  async set(
-    identifier: PlayerIdentifier,
-    amount: number,
-    reason: string,
-    type: BalanceTransactionType,
-    options: Omit<BalanceMutationOptions, "idempotencyKey"> = {},
-  ): Promise<number> {
-    const uuid = await this.resolvePlayerUuid(identifier, options.tx);
-
-    return await (options.tx ?? db).inTransaction(async (tx) => {
-      const { after } = await this.setLocked(tx, uuid, amount, reason, type, {
-        metadata: options.metadata,
-      });
       return BalanceUtils.fromStorage(after);
     });
   }
@@ -658,7 +613,7 @@ export class BalanceRepository {
   ): Promise<PlayerBalanceTransaction[]> {
     const uuid = await this.resolvePlayerUuid(identifier);
 
-    return await db.player.balance.transaction.findAll(
+    return await Q.player.balance.transaction.findAll(
       { playerMinecraftUuid: uuid },
       {
         limit,

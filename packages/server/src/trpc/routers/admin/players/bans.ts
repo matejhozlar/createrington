@@ -1,9 +1,8 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
-import { playerService } from "@/services/player";
 import { playerDeletionService } from "@/services/player/deletion";
-import { Q } from "@/db";
+import { Q, playerBanRepo } from "@/db";
 import {
   ADMIN_REASON_MAX_LENGTH,
   BAN_REASON_MAX_LENGTH,
@@ -71,9 +70,9 @@ export const bansRouter = router({
       const identifier = parsePlayerId(input.id);
 
       const [bans, statistics, currentBan] = await Promise.all([
-        playerService.bans.getHistory(identifier, input.includeUnbanned),
-        playerService.bans.getStatistics(identifier),
-        playerService.bans.getCurrent(identifier),
+        playerBanRepo.getHistory(identifier, input.includeUnbanned),
+        playerBanRepo.getStatistics(identifier),
+        playerBanRepo.getCurrent(identifier),
       ]);
 
       return { bans, statistics, current: currentBan };
@@ -121,7 +120,7 @@ export const bansRouter = router({
           undo: () => minecraftRcon.pardonAll(player.minecraftUsername),
         },
         (applyInGame) =>
-          playerService.bans.issueTemporary(
+          playerBanRepo.issueTemporary(
             identifier,
             {
               reason: input.reason,
@@ -242,7 +241,7 @@ export const bansRouter = router({
             removeFromWhitelist: false,
             serverId: input.serverId,
             beforeDelete: async (tx, deletedPlayer) => {
-              ban = await playerService.bans.createPermanent(
+              ban = await playerBanRepo.createPermanent(
                 tx,
                 deletedPlayer,
                 {
@@ -336,7 +335,7 @@ export const bansRouter = router({
             ),
         },
         (beforeCommit) =>
-          playerService.bans.unban(
+          playerBanRepo.unban(
             input.banId,
             ctx.user.discordId,
             ctx.user.minecraftUsername,
@@ -381,10 +380,7 @@ export const bansRouter = router({
       }),
     )
     .query(async ({ input }) => {
-      const bans = await playerService.bans.getRecent(
-        input.limit,
-        input.activeOnly,
-      );
+      const bans = await Q.player.ban.getRecent(input.limit, input.activeOnly);
 
       return { bans };
     }),
