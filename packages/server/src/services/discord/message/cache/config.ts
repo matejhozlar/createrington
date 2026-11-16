@@ -16,8 +16,4 @@ export const MESSAGE_CACHE_CONFIG: MessageCacheServiceConfig = {
     },
   ],
   loadHistoryOnStartup: true,
-  botConfig: {
-    createringtonBotId: config.discord.bots.main.id,
-    createringtonWebhookId: config.discord.bots.main.webhook?.id,
-  },
 };

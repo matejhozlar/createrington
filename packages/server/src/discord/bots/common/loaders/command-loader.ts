@@ -9,10 +9,6 @@ import {
 } from "discord.js";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import {
-  commandRegistry,
-  type CommandEnv,
-} from "@/discord/bots/main/command-registry";
 
 const isDev = config.envMode.isDev;
 
@@ -30,10 +26,6 @@ export interface CommandModule {
     requireAdmin?: boolean;
     /** Requires owner role to execute */
     requireOwner?: boolean;
-    /** Custom permission check function */
-    customCheck?: (
-      interaction: ChatInputCommandInteraction,
-    ) => Promise<boolean>;
   };
 
   // Cooldown configuration
@@ -41,32 +33,7 @@ export interface CommandModule {
     duration: number; // in seconds
     type: CooldownType;
     message?: string; // Custom cooldown message
-    bypassRoles?: string[]; // Role IDs that bypass cooldown
-    bypassUsers?: string[]; // User IDs that bypass cooldown
   };
-}
-
-/**
- * Checks if a command should be loaded in the current environment
- *
- * @param commandName - The name of the command to check
- * @returns True if the command should be loaded
- * @private
- */
-function shouldLoadCommand(commandName: string): boolean {
-  const env: CommandEnv | undefined = commandRegistry[commandName];
-
-  if (!env) {
-    logger.warn(
-      `Command "${commandName}" not found in registry, loading anyway`,
-    );
-    return true;
-  }
-
-  // In development, load everything (including WIP commands)
-  // In production, skip dev-only commands
-  if (isDev) return true;
-  return env !== "dev";
 }
 
 /**
@@ -98,7 +65,7 @@ function collectCommandFiles(dir: string): string[] {
  * Loads Discord command handlers from a directory tree
  *
  * Scans all subdirectories for command files, validates each module,
- * and returns a collection filtered by the command registry environment.
+ * and returns a collection of the valid ones.
  *
  * @param commandsPath - Absolute path to the slash-commands directory
  * @returns Promise resolving to a Collection of command handlers keyed by command name
@@ -133,13 +100,6 @@ export async function loadCommandHandlers(
 
       if (!commandModule.data.name) {
         logger.warn(`Skipped ${file}: command has no name`);
-        continue;
-      }
-
-      if (!shouldLoadCommand(commandModule.data.name)) {
-        logger.warn(
-          `Skipped command "${commandModule.data.name}": not enabled in ${isDev ? "dev" : "prod"}`,
-        );
         continue;
       }
 

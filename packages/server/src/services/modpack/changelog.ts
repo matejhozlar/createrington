@@ -1,8 +1,6 @@
 import { Q, db } from "@/db";
 import { escapeLike } from "@/db/utils";
 import { UniqueViolationError } from "@/db/utils/errors";
-import { getService, Services } from "@/services";
-import { DiscordMessageService } from "@/services/discord/message/message.service";
 import { FeatureFlags, featureFlagService } from "@/services/feature-flag";
 import { Discord } from "@/discord/constants";
 import {
@@ -131,8 +129,6 @@ async function run({
     existing.length > 0 ? existing : await createParts(diff.release, parts);
   if (rows === null) return;
 
-  const client = await getService(Services.DISCORD_MAIN_BOT);
-  const messages = DiscordMessageService.getInstance(client);
   let sent = 0;
   for (const row of rows) {
     if (row.messageId !== null) continue;
@@ -150,7 +146,7 @@ async function run({
       break;
     }
     const pings = row.part === 1 && !pingedButUnrecorded.has(row.id);
-    const result = await messages.send({
+    const result = await Discord.Messages.send({
       channelId: row.channelId,
       components: built.components,
       flags: built.flags,

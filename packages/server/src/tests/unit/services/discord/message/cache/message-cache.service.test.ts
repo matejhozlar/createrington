@@ -91,7 +91,6 @@ async function startService(
   const service = new MessageCacheService(bot as unknown as Client, {
     servers: [{ serverId: SERVER_ID, channelId: CHANNEL_ID }],
     loadHistoryOnStartup: history.length > 0,
-    botConfig: { createringtonBotId: "relay" },
   });
   await service.initialize();
   return { bot, service };

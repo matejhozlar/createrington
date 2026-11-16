@@ -1,3 +1,4 @@
+import { Discord } from "@/discord/constants";
 import { z } from "zod";
 import { adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
@@ -6,12 +7,7 @@ import {
   embedBotSchema,
   messagePayloadSchema,
 } from "@createrington/shared/api/embed";
-import {
-  getMessageService,
-  buildMessage,
-  payloadToStorage,
-  toEditOptions,
-} from "./helpers";
+import { buildMessage, payloadToStorage, toEditOptions } from "./helpers";
 
 export const embedLinkedMessageProcedures = {
   updateAll: adminProcedure
@@ -41,13 +37,11 @@ export const embedLinkedMessageProcedures = {
         .where({ presetId: input.presetId })
         .all();
 
-      const messageService = getMessageService(input.bot);
-
       let updated = 0;
       const errors: string[] = [];
 
       for (const link of links) {
-        const result = await messageService.edit(
+        const result = await Discord.Messages.edit(
           toEditOptions(built, link.channelId, link.messageId),
         );
 
@@ -91,9 +85,7 @@ export const embedLinkedMessageProcedures = {
         throw trpcError.badRequest(built.error);
       }
 
-      const messageService = getMessageService(input.bot);
-
-      const result = await messageService.edit(
+      const result = await Discord.Messages.edit(
         toEditOptions(built, link.channelId, link.messageId),
       );
 

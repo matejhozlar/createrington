@@ -5,12 +5,10 @@ import type {
   Collection,
   Interaction,
   ModalSubmitInteraction,
-  Role,
 } from "discord.js";
 import { MessageFlags } from "discord.js";
 import { cooldownManager } from "@/discord/utils/cooldown";
 import { EmbedPresets } from "@/discord/embeds";
-import { replyError } from "@/discord/utils/interaction-reply";
 import { Q } from "@/db";
 
 import { requireAdmin, requireOwner } from "@/discord/utils/admin-guard";
@@ -78,42 +76,6 @@ function formatCooldown(seconds: number): string {
 }
 
 /**
- * Checks if a usr can bypass the cooldown for a command
- *
- * Users can bypass cooldowns if:
- * - The command has no cooldown configured
- * - Their user ID is in the command's bypassUsers list
- * - They have a role that's in the command's bypassRoles list
- *
- * @param interaction - The chat input interaction
- * @param command - The command module being executed
- * @returns True if the user can bypass the cooldown, false otherwise
- */
-function canBypassCooldown(
-  interaction: ChatInputCommandInteraction,
-  command: CommandModule,
-): boolean {
-  if (!command.cooldown) return true;
-
-  if (command.cooldown.bypassUsers?.includes(interaction.user.id)) {
-    return true;
-  }
-
-  if (interaction.guild && command.cooldown.bypassRoles) {
-    const member = interaction.member;
-    if (member && "roles" in member) {
-      const memberRoles = member.roles as { cache: Collection<string, Role> };
-      const hasRole = command.cooldown.bypassRoles.some((roleId) =>
-        memberRoles.cache.has(roleId),
-      );
-      if (hasRole) return true;
-    }
-  }
-
-  return false;
-}
-
-/**
  * Checks command permissions before execution
  *
  * @param interaction - The chat input interaction
@@ -124,42 +86,8 @@ async function checkPermission(
   interaction: ChatInputCommandInteraction,
   command: CommandModule,
 ): Promise<boolean> {
-  if (!command.permissions) return true;
-
-  if (command.permissions.requireOwner) {
-    const hasPermission = await requireOwner(interaction);
-    if (!hasPermission) {
-      return false;
-    }
-  } else if (command.permissions.requireAdmin) {
-    const hasPermission = await requireAdmin(interaction);
-    if (!hasPermission) {
-      return false;
-    }
-  }
-
-  if (command.permissions.customCheck) {
-    try {
-      const hasPermission = await command.permissions.customCheck(interaction);
-      if (!hasPermission) {
-        return false;
-      }
-    } catch (error) {
-      logger.error(
-        `Error in custom permission check for ${interaction.commandName}`,
-        error,
-      );
-
-      await replyError(
-        interaction,
-        "Permission Check Failed",
-        "An error ocurred while checking permissions",
-      );
-
-      return false;
-    }
-  }
-
+  if (command.permissions?.requireOwner) return requireOwner(interaction);
+  if (command.permissions?.requireAdmin) return requireAdmin(interaction);
   return true;
 }
 
@@ -168,8 +96,8 @@ async function checkPermission(
  *
  * Process:
  * 1. Retrieves the command handler
- * 2. Checks permissions (admin, custom checks)
- * 3. Checks if the command is on cooldown (unless user can bypass)
+ * 2. Checks permissions (admin, owner)
+ * 3. Checks if the command is on cooldown
  * 4. Starts the cooldown before executing, so a slow command cannot be re-run while it is still running
  * 5. Executes the command
  * 6. Handles errors with ephemeral error messages
@@ -201,23 +129,16 @@ async function handleChatCommands(
     return;
   }
 
-  if (command.cooldown && !canBypassCooldown(interaction, command)) {
-    const cooldownContext = {
-      userId: interaction.user.id,
-      channelId: interaction.channelId,
-      guildId: interaction.guildId,
-    };
+  if (command.cooldown) {
     const cooldownRemaining = cooldownManager.check(
       interaction.commandName,
-      command.cooldown,
-      cooldownContext,
+      interaction.user.id,
     );
 
     if (cooldownRemaining !== null) {
       const expiresAt = cooldownManager.getExpiry(
         interaction.commandName,
-        command.cooldown.type,
-        cooldownContext,
+        interaction.user.id,
       );
 
       const unixExpiresAt = expiresAt ? Math.floor(expiresAt / 1000) : null;
@@ -255,8 +176,8 @@ async function handleChatCommands(
 
     cooldownManager.set(
       interaction.commandName,
-      command.cooldown,
-      cooldownContext,
+      interaction.user.id,
+      command.cooldown.duration,
     );
   }
 

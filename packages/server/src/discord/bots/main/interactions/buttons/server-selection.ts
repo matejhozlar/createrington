@@ -15,11 +15,6 @@ import { replyError } from "@/discord/utils/interaction-reply";
 export const pattern = "server-select:*";
 
 /**
- * Whether these buttons should be handled in production only
- */
-export const prodOnly = false;
-
-/**
  * Parses the server selection button customId (format: server-select:serverId)
  *
  * @param customId - The button's customId string

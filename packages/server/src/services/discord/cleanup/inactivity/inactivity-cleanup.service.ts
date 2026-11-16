@@ -1,8 +1,7 @@
 import { Q } from "@/db";
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
-import { getServiceSync, Services } from "@/services";
-import { DiscordMessageService } from "@/services/discord/message/message.service";
+import type { DiscordMessageService } from "@/services/discord/message/message.service";
 import { removeInactiveWarning } from "./remove-warning";
 import {
   INACTIVITY_CHECK_INTERVAL_MS,
@@ -152,10 +151,7 @@ export class InactivityCleanupService {
         deadlineDate,
       });
 
-      const mainBot = getServiceSync(Services.DISCORD_MAIN_BOT);
-      const messageService = DiscordMessageService.getInstance(mainBot);
-
-      const result = await messageService.send({
+      const result = await Discord.Messages.send({
         channelId: Discord.Channels.createringtonOfficial.ANNOUNCEMENTS,
         embeds: embed.build(),
       });
@@ -228,8 +224,7 @@ export class InactivityCleanupService {
 
       let messageService: DiscordMessageService | null = null;
       try {
-        const mainBot = getServiceSync(Services.DISCORD_MAIN_BOT);
-        messageService = DiscordMessageService.getInstance(mainBot);
+        messageService = Discord.Messages;
       } catch (error) {
         logger.error(
           "Discord message service unavailable, skipping inactivity removal notifications:",

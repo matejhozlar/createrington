@@ -21,7 +21,6 @@ export interface RawCommand {
   options: unknown[];
   defaultMemberPermissions: string | null;
   permissions?: { requireAdmin?: boolean; requireOwner?: boolean };
-  env: string;
   cooldown?: { duration: number; type: string; message?: string };
   [key: string]: unknown;
 }

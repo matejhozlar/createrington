@@ -13,7 +13,7 @@ import {
   AttachmentBuilder,
 } from "discord.js";
 import { TicketRepository } from "@/db/repositories/ticket";
-import type { Ticket, TicketIdentifier } from "@/generated/db";
+import type { Ticket } from "@/generated/db";
 import { type CreateTicketOptions, TicketUserAction } from "./";
 import { getTicketTypeConfig, TicketSystemIds } from "./";
 import { Discord } from "@/discord/constants";
@@ -287,11 +287,6 @@ export class TicketService {
           .setStyle(ButtonStyle.Danger),
       ),
     ];
-  }
-
-  /** Look up a ticket by any supported identifier, or null if not found. */
-  async find(identifier: TicketIdentifier): Promise<Ticket | null> {
-    return await Q.ticket.find(identifier);
   }
 
   /**

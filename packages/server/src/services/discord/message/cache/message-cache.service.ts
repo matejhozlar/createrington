@@ -8,7 +8,6 @@ import type {
   ParsedEmbed,
   ServerCacheConfig,
   SystemMessageData,
-  WebMessageData,
 } from "./types";
 import { MessageSource } from "./types";
 import type {
@@ -318,13 +317,11 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
       return MessageSource.WEB;
     }
 
-    const isCreateringtonBot =
-      message.author.id === this.config.botConfig.createringtonBotId;
     const isCreateringtonTag =
       message.author.tag.startsWith("Createrington#") ||
       message.author.tag === "Createrington";
 
-    if (isCreateringtonBot || isCreateringtonTag) {
+    if (isCreateringtonTag) {
       if (message.embeds.length > 0) {
         return MessageSource.SYSTEM;
       }
@@ -353,12 +350,6 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
       title: embed.title || undefined,
       description: embed.description || undefined,
     };
-  }
-
-  // TODO: implement when web messages are added
-  private parseWebData(_message: Message): WebMessageData | undefined {
-    // TODO: Implement web message detection
-    return undefined;
   }
 
   private parseEmbeds(embeds: Embed[]): ParsedEmbed[] {
@@ -521,9 +512,6 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
       case MessageSource.SYSTEM:
         cached.systemData = this.parseSystemData(message);
         break;
-      case MessageSource.WEB:
-        cached.webData = this.parseWebData(message);
-        break;
     }
 
     return cached;
@@ -585,63 +573,8 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
     return messages;
   }
 
-  /** Single cached message by id, or undefined if not in the buffer. */
-  getMessage(serverId: number, messageId: string): CachedMessage | undefined {
-    const cache = this.cache.get(serverId);
-    if (!cache) {
-      return;
-    }
-
-    return cache.find((m) => m.messageId === messageId);
-  }
-
   /** Most recent `count` messages for a server, newest first. */
   getRecentMessages(serverId: number, count: number): CachedMessage[] {
     return this.getMessages(serverId, { limit: count });
-  }
-
-  /** Per-server counts, oldest/newest timestamps, and breakdown by source. */
-  getStats(): Record<
-    number,
-    {
-      messageCount: number;
-      oldestMessage?: Date | string;
-      newestMessage?: Date | string;
-      bySource: Record<MessageSource, number>;
-    }
-  > {
-    const stats: ReturnType<MessageCacheService["getStats"]> = {};
-
-    for (const [serverId, cache] of this.cache) {
-      const bySource: Record<MessageSource, number> = {
-        [MessageSource.SYSTEM]: 0,
-        [MessageSource.DISCORD]: 0,
-        [MessageSource.MINECRAFT]: 0,
-        [MessageSource.WEB]: 0,
-      };
-
-      cache.forEach((msg) => {
-        bySource[msg.source]++;
-      });
-
-      stats[serverId] = {
-        messageCount: cache.length,
-        oldestMessage: cache.length > 0 ? cache[0].createdAt : undefined,
-        newestMessage:
-          cache.length > 0 ? cache[cache.length - 1].createdAt : undefined,
-        bySource,
-      };
-    }
-
-    return stats;
-  }
-
-  /** Empty the in-memory buffer for a single server. */
-  clearCache(serverId: number): void {
-    const cache = this.cache.get(serverId);
-    if (cache) {
-      cache.length = 0;
-    }
-    logger.info(`Cleared cache for server ${serverId}`);
   }
 }

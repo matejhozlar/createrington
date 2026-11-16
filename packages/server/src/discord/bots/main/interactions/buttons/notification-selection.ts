@@ -15,11 +15,6 @@ import { replyError } from "@/discord/utils/interaction-reply";
 export const pattern = "notification-select:*";
 
 /**
- * Whether these buttons should be handled in production only
- */
-export const prodOnly = false;
-
-/**
  * Parses the notification selection button customId (format: notification-select:notificationId)
  */
 function parseCustomId(customId: string): { notificationId: string } | null {

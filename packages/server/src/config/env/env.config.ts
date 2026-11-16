@@ -95,7 +95,6 @@ const envSchema = z
     DISCORD_GUILD_ID: discordId("Guild ID"),
     DISCORD_MAIN_BOT_TOKEN: discordToken("Main bot token"),
     DISCORD_MAIN_BOT_ID: discordId("Main bot ID"),
-    DISCORD_MAIN_BOT_WEBHOOK_ID: discordId("Main bot webhook ID"),
     // OAuth2 client secret of the main bot's Discord application. User login
     // runs against that application, so DISCORD_MAIN_BOT_ID doubles as the
     // OAuth client ID.

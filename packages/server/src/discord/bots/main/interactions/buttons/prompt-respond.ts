@@ -19,8 +19,6 @@ import {
  */
 export const pattern = "prompt:respond:*";
 
-export const prodOnly = false;
-
 function parseCustomId(customId: string): { promptId: number } | null {
   const [, , rawId] = customId.split(":");
   if (!rawId) return null;

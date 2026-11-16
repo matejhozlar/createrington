@@ -7,8 +7,6 @@ import { ROLE_PANEL_BUTTON_PREFIX } from "../../config/role-panel";
 
 export const pattern = `${ROLE_PANEL_BUTTON_PREFIX}:*`;
 
-export const prodOnly = false;
-
 export async function execute(interaction: ButtonInteraction): Promise<void> {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 

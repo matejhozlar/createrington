@@ -1,6 +1,5 @@
 import { createEmbed } from "../embed-builder";
 import { EmbedColors } from "../colors";
-import { Discord } from "@/discord/constants";
 import type { ColorResolvable } from "discord.js";
 
 /** Reusable embed presets for common response patterns (success, error, info, loading) */
@@ -23,23 +22,6 @@ export const CommonEmbedPresets = {
     if (description) {
       embed.description(description);
     }
-
-    return embed;
-  },
-
-  /** Creates a red error embed with an admin contact prompt appended */
-  errorWithAdmin(title: string, description?: string) {
-    const embed = createEmbed().title(`❌ ${title}`).color(EmbedColors.Error);
-
-    const fullDescription = description
-      ? `${description}\n\n If this issue persists, please contact ${Discord.Roles.mention(
-          Discord.Roles.ADMIN,
-        )}`
-      : `If this issue persists, please contact ${Discord.Roles.mention(
-          Discord.Roles.ADMIN,
-        )}`;
-
-    embed.description(fullDescription);
 
     return embed;
   },

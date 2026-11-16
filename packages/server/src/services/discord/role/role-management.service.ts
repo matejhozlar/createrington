@@ -495,18 +495,4 @@ export class RoleManagementService {
 
     return results;
   }
-
-  /** Runs the realtime rule set against a single player on demand (e.g. admin command), bypassing the playtime-event trigger. */
-  async checkPlayer(discordId: string): Promise<void> {
-    const player = await Q.player.find({ discordId });
-    if (!player) return;
-
-    const rules = getRealtimeRoleRules();
-    await this.roleAssignmentService.processRoleHierarchy(player, rules);
-  }
-
-  /** Runs the full daily sweep immediately, independent of the scheduler. Useful for admin commands and tests. */
-  async triggerManualDailyCheck(): Promise<void> {
-    await this.runDailyCheck();
-  }
 }

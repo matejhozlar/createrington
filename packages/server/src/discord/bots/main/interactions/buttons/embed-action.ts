@@ -10,8 +10,6 @@ import type { EmbedActionButton } from "@createrington/shared/api/embed";
  */
 export const pattern = "embed-action:*";
 
-export const prodOnly = false;
-
 // Per-user cooldown: userId -> last click timestamp
 const cooldowns = new Map<string, number>();
 const COOLDOWN_MS = 10_000; // 10 seconds between thread creations per user

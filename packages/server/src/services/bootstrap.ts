@@ -5,7 +5,7 @@ import pool from "@/db";
 import { mainBot } from "@/discord/bots/main/client";
 import config from "@/config";
 import { setupMainBotHandlers } from "@/discord/bots/main/setup";
-import { createDiscordMessageService } from "./discord/message";
+import { DiscordMessageService } from "./discord/message";
 import { Discord } from "@/discord/constants";
 import {
   MESSAGE_CACHE_CONFIG,
@@ -123,7 +123,7 @@ export function registerServices(): void {
     Services.MESSAGE_SERVICE,
     async (c) => {
       const mainBot = await c.get(Services.DISCORD_MAIN_BOT);
-      const service = createDiscordMessageService(mainBot);
+      const service = new DiscordMessageService(mainBot);
 
       Discord._setMessageService(service);
 

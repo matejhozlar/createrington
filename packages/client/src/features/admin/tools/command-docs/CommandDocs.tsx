@@ -35,7 +35,6 @@ interface CommandData {
   defaultMemberPermissions: string | null;
   permissions?: { requireAdmin?: boolean; requireOwner?: boolean };
   cooldown?: { duration: number; type: string; message?: string };
-  env: string;
 }
 
 const OPTION_TYPE_LABELS: Record<number, string> = {

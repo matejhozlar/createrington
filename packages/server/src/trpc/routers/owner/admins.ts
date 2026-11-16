@@ -154,7 +154,7 @@ export const ownerAdminsRouter = router({
               Discord.Roles.ADMIN,
               input.reason ?? `Promoted by ${ctx.user.minecraftUsername}`,
             );
-            discordRoleAdded = result === true;
+            discordRoleAdded = result;
           }
         }
       } catch (error) {
@@ -223,7 +223,7 @@ export const ownerAdminsRouter = router({
               Discord.Roles.ADMIN,
               input.reason ?? `Demoted by ${ctx.user.minecraftUsername}`,
             );
-            discordRoleRemoved = result === true;
+            discordRoleRemoved = result;
           }
         }
       } catch (error) {

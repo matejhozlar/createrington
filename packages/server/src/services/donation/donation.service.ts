@@ -307,12 +307,11 @@ export class DonationService {
         return false;
       }
 
-      const granted = await RoleManager.assign(
+      return await RoleManager.assign(
         member,
         DiscordRoles.SUPPORTER,
         "Donation supporter",
       );
-      return granted === true;
     } catch (error) {
       logger.error(`Failed to grant supporter role to ${discordId}:`, error);
       return false;

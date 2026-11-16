@@ -11,11 +11,6 @@ import { type ButtonInteraction, MessageFlags } from "discord.js";
 export const pattern = "leaderboard:*";
 
 /**
- * Whether these buttons should be handled in production only
- */
-export const prodOnly = false;
-
-/**
  * Parses the leaderboard button customId (format: leaderboard:action:type)
  *
  * @param customId - The button's customId string
