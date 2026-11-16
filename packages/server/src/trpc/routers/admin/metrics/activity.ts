@@ -1,5 +1,5 @@
 import { router, adminProcedure } from "@/trpc/trpc";
-import { metricsService } from "@/services/metrics";
+import { Q } from "@/db";
 import { dateRangeWithMonthGranularity, optionalDateRange } from "./schemas";
 
 /** Admin activity metrics: active players and session length */
@@ -10,7 +10,7 @@ export const activityMetricsRouter = router({
     })
     .input(dateRangeWithMonthGranularity)
     .query(async ({ input }) => {
-      return await metricsService.activity.getActivePlayers(
+      return await Q.player.session.getActivePlayerCounts(
         input.start,
         input.end,
         input.granularity,
@@ -21,7 +21,7 @@ export const activityMetricsRouter = router({
     .meta({ description: "Get average session length in seconds" })
     .input(optionalDateRange)
     .query(async ({ input }) => {
-      return await metricsService.activity.getAverageSessionLength(
+      return await Q.player.session.getAverageSessionLength(
         input.start,
         input.end,
       );

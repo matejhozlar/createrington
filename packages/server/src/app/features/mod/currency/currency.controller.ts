@@ -5,7 +5,7 @@ import {
 } from "@/app/middleware";
 import { R } from "@/db";
 import { BalanceTransactionType } from "@/db/repositories/balance";
-import { rewardService } from "@/services/reward/reward.service";
+import { dailyRewardService } from "@/services/reward/daily-reward.service";
 import { formatDuration } from "@/utils/format";
 import { MC_UUID_REGEX } from "@/utils/zod-schemas";
 import type { Request, Response } from "express";
@@ -319,7 +319,7 @@ export class CurrencyController {
   static async claimDaily(req: Request, res: Response): Promise<void> {
     const { uuid, name } = getAuthedPlayer(req);
 
-    const result = await rewardService.daily.claim({ minecraftUuid: uuid });
+    const result = await dailyRewardService.claim({ minecraftUuid: uuid });
 
     if (!result.success) {
       const playerMessage = result.nextClaimTime

@@ -15,9 +15,7 @@ export const playtimeRouter = router({
       }),
     )
     .query(async ({ input }) => {
-      const totalHours = await metricsService.playtime.getTotalHours(
-        input.serverId,
-      );
+      const totalHours = await metricsService.getTotalHours(input.serverId);
 
       return {
         serverId: input.serverId ?? null,
@@ -31,7 +29,6 @@ export const playtimeRouter = router({
         "Returns a breakdown of total playtime hours per live server, plus the hours archived from retired seasons and the combined total. Useful for comparing activity across servers",
     })
     .query(async () => {
-      const breakdown = await metricsService.playtime.getTotalHoursBreakdown();
-      return breakdown;
+      return await metricsService.getHoursBreakdown();
     }),
 });

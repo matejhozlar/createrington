@@ -1,7 +1,7 @@
 import { EmbedPresets } from "@/discord/embeds";
 import { replyError } from "@/discord/utils/interaction-reply";
 import { CooldownType } from "@/discord/utils/cooldown";
-import { rewardService } from "@/services/reward";
+import { dailyRewardService } from "@/services/reward/daily-reward.service";
 import { discordTimestamp } from "@/utils/format";
 import { formatMoney } from "@createrington/shared/format";
 import {
@@ -51,7 +51,7 @@ export async function execute(
   const discordId = interaction.user.id;
 
   try {
-    const eligibility = await rewardService.daily.checkEligibility({
+    const eligibility = await dailyRewardService.checkEligibility({
       discordId,
     });
 
@@ -76,7 +76,7 @@ export async function execute(
       return;
     }
 
-    const result = await rewardService.daily.claim({ discordId });
+    const result = await dailyRewardService.claim({ discordId });
 
     if (!result.success) {
       await replyError(
