@@ -5,6 +5,7 @@ import { BalanceUtils } from "@/db/repositories/balance/utils";
 import { UniqueViolationError } from "@/db/utils/errors";
 
 const REWARD_TYPE = "daily";
+const ALREADY_CLAIMED = "Already claimed for this period";
 
 const DAILY_REWARD = {
   amount: 20,
@@ -57,7 +58,7 @@ export class DailyRewardService {
 
       return {
         eligible: false,
-        reason: `You can claim again at ${nextClaimTime.toLocaleString()}`,
+        reason: ALREADY_CLAIMED,
         nextClaimTime,
         lastClaimTime,
       };
@@ -119,14 +120,14 @@ export class DailyRewardService {
         const eligibility = await this.checkEligibility(identifier);
         return {
           success: false,
-          error: eligibility.reason ?? "Already claimed for this period",
+          error: eligibility.reason ?? ALREADY_CLAIMED,
           nextClaimTime: eligibility.nextClaimTime,
         };
       }
       logger.error("Failed to claim daily reward:", error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: "Failed to claim daily reward",
       };
     }
   }

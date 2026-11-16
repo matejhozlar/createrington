@@ -110,8 +110,12 @@ describe("DailyRewardService.checkEligibility", () => {
 
     const result = await dailyReward().checkEligibility(PLAYER);
 
-    expect(result.eligible).toBe(false);
-    expect(result.nextClaimTime).toEqual(new Date("2026-11-09T00:00:00Z"));
+    expect(result).toEqual({
+      eligible: false,
+      reason: "Already claimed for this period",
+      nextClaimTime: new Date("2026-11-09T00:00:00Z"),
+      lastClaimTime: new Date("2026-11-08T00:00:01Z"),
+    });
   });
 
   it("looks up the latest claim of this reward type for the player", async () => {
@@ -220,13 +224,13 @@ describe("DailyRewardService.claim", () => {
     expect(addBalance).not.toHaveBeenCalled();
   });
 
-  it("reports a failed credit as an unsuccessful claim", async () => {
+  it("reports a failed credit as an unsuccessful claim without leaking the cause", async () => {
     vi.setSystemTime(new Date("2026-11-08T12:00:00Z"));
     addBalance.mockRejectedValue(new Error("balance would overflow"));
 
     await expect(dailyReward().claim(PLAYER)).resolves.toEqual({
       success: false,
-      error: "balance would overflow",
+      error: "Failed to claim daily reward",
     });
   });
 });
