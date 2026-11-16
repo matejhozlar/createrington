@@ -3,10 +3,12 @@ import { Ban, Download, Rocket } from "lucide-react";
 import { formatDate } from "@createrington/shared/format";
 import {
   LAUNCHER_PLATFORMS,
+  LAUNCHER_RELEASE_STATUSES,
   type LauncherPlatform,
   type LauncherReleaseStatus,
 } from "@createrington/shared/launcher";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
+import { FilterBar } from "@/features/admin/components/FilterBar";
 import { ErrorState } from "@/components/query-states";
 import {
   LAUNCHER_PLATFORM_DISPLAY,
@@ -17,12 +19,20 @@ import {
   CardAction,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CellDate, CellText } from "@/components/cell-text";
@@ -30,15 +40,18 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import {
   BadgeCellSkeleton,
   DataTable,
+  loadingRowCount,
   type DataTableAction,
   type DataTableColumn,
 } from "@/components/data-table";
 import { LabeledSwitch } from "@/components/labeled-switch";
+import { Paginator } from "@/components/paginator";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { formatClockTimeWithSeconds, formatNumber } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { trpc, type RouterOutput, queryClient } from "@/lib/trpc";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useMutation } from "@tanstack/react-query";
 
 type ReleaseRow =
   RouterOutput["owner"]["launcherReleases"]["list"]["releases"][number];
@@ -55,6 +68,10 @@ type DayCount = Exclude<keyof DayPool, "consumer" | "pool">;
 
 type PendingAction = { kind: "release" | "withdraw"; release: ReleaseRow };
 
+type StatusFilter = LauncherReleaseStatus | "all";
+
+const PAGE_SIZE = 20;
+
 const STATUS_BADGES: Record<
   LauncherReleaseStatus,
   { label: string; tone: BadgeTone }
@@ -64,6 +81,20 @@ const STATUS_BADGES: Record<
   withdrawn: { label: "Withdrawn", tone: "danger" },
   pruned: { label: "File removed", tone: "neutral" },
 };
+
+const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
+  { value: "all", label: "All statuses" },
+  ...LAUNCHER_RELEASE_STATUSES.map((value) => ({
+    value,
+    label: STATUS_BADGES[value].label,
+  })),
+];
+
+const LIST_COPY = {
+  search: "Search by version...",
+  empty: (platform: string) => `No ${platform} version has been published yet.`,
+  noMatch: (platform: string) => `No ${platform} version matches the filters.`,
+} as const;
 
 const REQUIRED_BADGE = { label: "Required", tone: "warning" } as const;
 
@@ -268,9 +299,22 @@ export function OwnerLauncherReleases() {
   const [platform, setPlatform] = useState<LauncherPlatform>(
     LAUNCHER_PLATFORMS[0],
   );
+  const [status, setStatus] = useState<StatusFilter>("all");
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(0);
+  const needle = useDebouncedValue(search).trim();
 
   const releasesQuery = useQuery(
-    trpc.owner.launcherReleases.list.queryOptions(),
+    trpc.owner.launcherReleases.list.queryOptions(
+      {
+        platform,
+        status: status === "all" ? undefined : status,
+        search: needle || undefined,
+        page,
+        limit: PAGE_SIZE,
+      },
+      { placeholderData: keepPreviousData },
+    ),
   );
 
   const refresh = () =>
@@ -300,10 +344,13 @@ export function OwnerLauncherReleases() {
   const releases = releasesQuery.data?.releases ?? [];
   const channel = releasesQuery.data?.channel;
   const enabled = releasesQuery.data?.enabled ?? true;
+  const total = releasesQuery.data?.pagination.total ?? 0;
+  const totalPages = releasesQuery.data?.pagination.totalPages ?? 0;
+  const loading = releasesQuery.isLoading || releasesQuery.isPlaceholderData;
+  const filtered = status !== "all" || needle !== "";
   const tabs = LAUNCHER_PLATFORMS.map((value) => ({
     value,
     ...LAUNCHER_PLATFORM_DISPLAY[value],
-    rows: releases.filter((release) => release.platform === value),
   }));
 
   const columns: DataTableColumn<ReleaseRow>[] = [
@@ -417,8 +464,37 @@ export function OwnerLauncherReleases() {
       />
 
       <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
-        <Card>
-          <CardHeader>
+        <FilterBar
+          search={search}
+          onSearchChange={(value) => {
+            setSearch(value);
+            setPage(0);
+          }}
+          placeholder={LIST_COPY.search}
+          activeCount={(search ? 1 : 0) + (status !== "all" ? 1 : 0)}
+        >
+          <Select
+            value={status}
+            onValueChange={(value) => {
+              setStatus(value as StatusFilter);
+              setPage(0);
+            }}
+          >
+            <SelectTrigger className="min-w-[160px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {STATUS_FILTERS.map(({ value, label }) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </FilterBar>
+
+        <Card className="gap-0">
+          <CardHeader className="pb-6">
             <CardTitle>
               Launcher releases
               {channel && ` (${CHANNEL_LABELS[channel]})`}
@@ -437,40 +513,54 @@ export function OwnerLauncherReleases() {
             ) : (
               <Tabs
                 value={platform}
-                onValueChange={(value) =>
-                  setPlatform(value as LauncherPlatform)
-                }
+                onValueChange={(value) => {
+                  setPlatform(value as LauncherPlatform);
+                  setPage(0);
+                }}
               >
                 <TabsList className="mx-6">
-                  {tabs.map(({ value, label, icon: Icon, rows }) => (
+                  {tabs.map(({ value, label, icon: Icon }) => (
                     <TabsTrigger key={value} value={value}>
                       <Icon aria-hidden />
                       {label}
-                      {!releasesQuery.isLoading && ` (${rows.length})`}
                     </TabsTrigger>
                   ))}
                 </TabsList>
-                {tabs.map(({ value, label, rows }) => (
-                  <TabsContent key={value} value={value}>
-                    {!releasesQuery.isLoading && rows.length === 0 ? (
-                      <p className="py-8 text-center text-muted-foreground">
-                        No {label} version has been published yet.
-                      </p>
-                    ) : (
-                      <DataTable
-                        columns={columns}
-                        rows={rows}
-                        loading={releasesQuery.isLoading}
-                        rowKey={(release) => release.id}
-                        actions={rowActions}
-                        actionSlots={2}
-                      />
-                    )}
-                  </TabsContent>
-                ))}
+                <TabsContent value={platform}>
+                  {!loading && releases.length === 0 ? (
+                    <p className="px-6 py-8 text-center text-muted-foreground">
+                      {(filtered ? LIST_COPY.noMatch : LIST_COPY.empty)(
+                        launcherPlatformLabel(platform),
+                      )}
+                    </p>
+                  ) : (
+                    <DataTable
+                      columns={columns}
+                      rows={releases}
+                      loading={loading}
+                      loadingRows={loadingRowCount(page, PAGE_SIZE, total)}
+                      rowKey={(release) => release.id}
+                      actions={rowActions}
+                      actionSlots={2}
+                    />
+                  )}
+                </TabsContent>
               </Tabs>
             )}
           </CardContent>
+          {total > 0 && !releasesQuery.isError && (
+            <CardFooter className="border-t">
+              <Paginator
+                page={page}
+                limit={PAGE_SIZE}
+                total={total}
+                totalPages={totalPages}
+                onPageChange={setPage}
+                itemLabel="release"
+                className="w-full"
+              />
+            </CardFooter>
+          )}
         </Card>
 
         <ContentGatewayCard />
