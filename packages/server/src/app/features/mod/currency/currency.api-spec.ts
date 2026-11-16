@@ -1,4 +1,4 @@
-import { defineApiSpec } from "@/scripts/api/spec-types";
+import { defineApiSpec } from "../shared/api-spec";
 
 export default defineApiSpec({
   name: "Currency",

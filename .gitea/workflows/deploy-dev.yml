@@ -64,7 +64,6 @@ jobs:
             export DB_PORT="$DEPLOY_DB_PORT"
             pnpm generate:ci
             pnpm generate-command-docs:json
-            pnpm generate-api-docs
             pnpm deploy-commands
           '
 

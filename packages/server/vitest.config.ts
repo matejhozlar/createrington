@@ -17,18 +17,6 @@ export default defineConfig({
     cache: {
       dir: path.resolve(__dirname, "../../node_modules/.vitest"),
     },
-    coverage: {
-      provider: "v8",
-      reporter: ["text", "json", "html"],
-      exclude: [
-        "node_modules/",
-        "dist/",
-        "tests/",
-        "**/*.d.ts",
-        "**/*.config.ts",
-        "**/types.ts",
-      ],
-    },
     testTimeout: 10000,
     fileParallelism: false,
   },

@@ -241,7 +241,7 @@ Slash commands like `/profile`, `/top`, `/activity`, `/compare`, and `/records` 
 <br><sub><b>/top</b></sub>
 </td>
 <td width="33%" align="center">
-<img src="screenshots/render-activty.webp" alt="/activity card" width="100%">
+<img src="screenshots/render-activity.webp" alt="/activity card" width="100%">
 <br><sub><b>/activity</b></sub>
 </td>
 <td width="33%" align="center">
