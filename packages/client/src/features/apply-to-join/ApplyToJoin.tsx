@@ -1,5 +1,5 @@
 import { ExternalLink } from "lucide-react";
-import { DISCORD_INVITE_URL } from "@/lib/external-urls";
+import { DISCORD_INVITE_URL } from "@/lib/externalUrls";
 import { NavLink } from "react-router";
 import { ErrorState, LoadingState } from "@/components/query-states";
 import { PageHeader } from "@/components/page-header";

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { useAuth } from "@/contexts/auth";
 import { useAdminChat } from "@/contexts/admin-chat";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/use-is-mobile";
 import { ChatPanel } from "./components/ChatPanel";
 import { ChatToggle } from "./components/ChatToggle";
 import { useAdminChatSession } from "./hooks/use-admin-chat-session";

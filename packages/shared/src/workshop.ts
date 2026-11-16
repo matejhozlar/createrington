@@ -1,7 +1,6 @@
 import { z } from "zod";
 
 // CurseForge file dependency relationTypes
-export const OPTIONAL_DEPENDENCY = 2;
 export const REQUIRED_DEPENDENCY = 3;
 
 export const CURSEFORGE_CLASSES = {

@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Spinner } from "@/components/ui/spinner";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
-import { MinecraftText } from "@/components/minecraft-text";
+import { MinecraftText } from "./MinecraftText";
 import { PlayerLabel } from "@/components/player-label";
 import { RefreshCw, RotateCcw, X } from "lucide-react";
 import { trpc, type RouterOutput, queryClient } from "@/lib/trpc";

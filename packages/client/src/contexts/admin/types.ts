@@ -1,4 +1,4 @@
-export interface AdminPlayerContextType {
+export interface AdminPlayersContextType {
   getServerName: (serverId: number) => string;
   isPlayerOnline: (minecraftUuid: string) => boolean;
   getPlayerServerId: (minecraftUuid: string) => number | null;

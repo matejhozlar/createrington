@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import {
   SKIN_API_DOCS_URL,
   SKIN_API_REQUEST_INVITE_URL,
-} from "@/lib/external-urls";
+} from "@/lib/externalUrls";
 import { cn } from "@/lib/utils";
 
 const FIGURES = [

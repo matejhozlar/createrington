@@ -1,7 +1,7 @@
 import { Coins, Crown, MoonStar, type LucideIcon } from "lucide-react";
 import { formatCompactMoney, formatMoney } from "@createrington/shared/format";
 import { formatNumber } from "@/lib/format";
-import { playerPoseUrl } from "@/lib/player-images";
+import { playerPoseUrl } from "@/lib/playerImages";
 import type { Board } from "./hooks/use-board-params";
 
 export type TopRoleMetric = "playtime" | "balance" | "records";

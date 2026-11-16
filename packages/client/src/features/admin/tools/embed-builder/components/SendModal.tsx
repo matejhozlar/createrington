@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Send, RefreshCw, AlertTriangle } from "lucide-react";
 import { trpc } from "@/lib/trpc";
-import { CUSTOM_EMOJI_SOURCE } from "@/lib/discord-emoji";
+import { CUSTOM_EMOJI_SOURCE } from "@/lib/discordEmoji";
 import { ChannelSelector } from "./ChannelSelector";
 import { BotSelector } from "./BotSelector";
 import type { UseEmbedBuilder } from "../hooks/use-embed-builder";

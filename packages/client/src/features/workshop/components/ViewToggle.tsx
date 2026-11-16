@@ -1,5 +1,5 @@
 import { AlignJustify, LayoutGrid } from "lucide-react";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/use-is-mobile";
 import { cn } from "@/lib/utils";
 
 export type ViewMode = "list" | "grid";

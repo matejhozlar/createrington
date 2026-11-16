@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/query-states";
 import { cn } from "@/lib/utils";
-import { CURSEFORGE_MODPACK_URL } from "@/lib/external-urls";
+import { CURSEFORGE_MODPACK_URL } from "@/lib/externalUrls";
 import { FloatingDust } from "./FloatingDust";
 import { useQuery } from "@tanstack/react-query";
 

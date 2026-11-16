@@ -6,7 +6,7 @@ import { formatRelativeDate } from "@/lib/format";
 import { trpc, queryClient } from "@/lib/trpc";
 import { useAuth } from "@/contexts/auth";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
-import { Sensitive } from "@/components/sensitive";
+import { Sensitive } from "./components/Sensitive";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/query-states";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

@@ -14,15 +14,7 @@ export interface JWTPayload {
   minecraftUsername: string;
 }
 
-export interface AuthResponse {
+export interface RefreshResponse {
   accessToken: string;
-  user: {
-    discordId: string;
-    username: string;
-    avatar?: string;
-    role: AuthRole;
-    isAdmin: boolean;
-    minecraftUuid: string;
-    minecraftUsername: string;
-  };
+  user: JWTPayload;
 }

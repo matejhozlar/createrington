@@ -2,7 +2,7 @@ export interface OpenDrawerOptions {
   expanded?: boolean;
 }
 
-export interface AdminChatContextValue {
+export interface AdminChatContextType {
   enabled: boolean;
   bubbleVisible: boolean;
   drawerOpen: boolean;

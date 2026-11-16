@@ -17,7 +17,7 @@ import { ToastProvider } from "./components/ui/toast";
 import { AppLayout } from "./components/app-layout";
 import { SidebarProvider } from "./components/ui/sidebar";
 import { LoadingScreen } from "@/components/query-states";
-import { AdminPlayerProvider } from "./contexts/admin";
+import { AdminPlayersProvider } from "./contexts/admin";
 
 // Lazy-loaded routes are code-split. Vite creates a chunk per lazy() call, so
 // a logged-out visitor hitting `/` never downloads the admin or
@@ -446,7 +446,7 @@ function AppContent() {
             path="/admin/*"
             element={
               <ProtectedRoute requiresAdmin>
-                <AdminPlayerProvider>
+                <AdminPlayersProvider>
                   <ErrorBoundary>
                     <Routes>
                       <Route path="dashboard" element={<AdminDashboard />} />
@@ -527,7 +527,7 @@ function AppContent() {
                       <Route path="*" element={<NotFound />} />
                     </Routes>
                   </ErrorBoundary>
-                </AdminPlayerProvider>
+                </AdminPlayersProvider>
               </ProtectedRoute>
             }
           />

@@ -106,20 +106,6 @@ class ApiClient {
       return envApiUrl || "/";
     }
 
-    if (!envApiUrl) {
-      if (import.meta.env.DEV) {
-        console.warn(
-          "[API Client] Production mode but VITE_API_URL not set. API calls may fail.",
-        );
-      }
-    }
-
-    if (import.meta.env.DEV) {
-      console.log(
-        `[API Client] Production mode: API URL = ${envApiUrl || "not set"}`,
-      );
-    }
-
     return envApiUrl || "";
   }
 
@@ -143,71 +129,6 @@ class ApiClient {
       .post(endpoint, {
         json: data,
         ...options,
-      })
-      .json<T>();
-  }
-
-  async put<T>(
-    endpoint: string,
-    data?: Record<string, unknown>,
-    options?: Options,
-  ): Promise<T> {
-    return this.client
-      .put(endpoint, {
-        json: data,
-        ...options,
-      })
-      .json<T>();
-  }
-
-  async patch<T>(
-    endpoint: string,
-    data?: Record<string, unknown>,
-    options?: Options,
-  ): Promise<T> {
-    return this.client
-      .patch(endpoint, {
-        json: data,
-        ...options,
-      })
-      .json<T>();
-  }
-
-  async delete<T>(
-    endpoint: string,
-    data?: Record<string, unknown>,
-    options?: Options,
-  ): Promise<T> {
-    return this.client
-      .delete(endpoint, {
-        json: data,
-        ...options,
-      })
-      .json<T>();
-  }
-
-  async upload<T>(
-    endpoint: string,
-    file: File | File[],
-    additionalData?: Record<string, string | number | boolean>,
-  ): Promise<T> {
-    const formData = new FormData();
-
-    if (Array.isArray(file)) {
-      file.forEach((f) => formData.append("files", f));
-    } else {
-      formData.append("file", file);
-    }
-
-    if (additionalData) {
-      Object.entries(additionalData).forEach(([key, value]) => {
-        formData.append(key, String(value));
-      });
-    }
-
-    return this.client
-      .post(endpoint, {
-        body: formData,
       })
       .json<T>();
   }

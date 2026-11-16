@@ -6,18 +6,14 @@ import { NotFound } from "@/components/not-found";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiresAuth?: boolean;
   requiresAdmin?: boolean;
   promptLogin?: boolean;
-  fallback?: React.ReactNode;
 }
 
 export function ProtectedRoute({
   children,
-  requiresAuth = true,
   requiresAdmin = false,
   promptLogin = false,
-  fallback,
 }: ProtectedRouteProps) {
   const { user, loading } = useAuth();
 
@@ -25,23 +21,12 @@ export function ProtectedRoute({
     return <LoadingScreen progress={false} />;
   }
 
-  if (requiresAuth && !user) {
-    if (promptLogin) {
-      return <LoginPrompt />;
-    }
-    return fallback || <NotFound />;
+  if (!user) {
+    return promptLogin ? <LoginPrompt /> : <NotFound />;
   }
 
-  if (requiresAdmin && user && !user.isAdmin) {
-    return (
-      fallback || (
-        <div style={{ padding: "2rem", textAlign: "center" }}>
-          <h2>Admin Access Required</h2>
-          <p>You don't have permission to access this page</p>
-          <a href="/">Go Home</a>
-        </div>
-      )
-    );
+  if (requiresAdmin && !user.isAdmin) {
+    return <NotFound />;
   }
 
   return <>{children}</>;

@@ -5,6 +5,7 @@ import { AuthContext } from "./context";
 import {
   setAccessToken,
   refreshAccessToken,
+  SESSION_EXPIRED_EVENT,
 } from "@/services/auth/token-manager";
 import { api } from "@/services/api/client";
 import { writePlayerHint } from "@/lib/skin-runner/player-hint";
@@ -136,10 +137,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     return refreshAccessToken()
       .then((result) => {
         if (result) {
-          setUser({
-            ...result.user,
-            minecraftUsername: result.user.minecraftUsername,
-          } as User);
+          setUser(result.user);
         } else {
           // No valid refresh cookie: user is logged out
           setAccessToken(null);
@@ -220,9 +218,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       void logout();
     };
 
-    window.addEventListener("auth:session-expired", handleSessionExpired);
+    window.addEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired);
     return () =>
-      window.removeEventListener("auth:session-expired", handleSessionExpired);
+      window.removeEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired);
   }, [logout]);
 
   const value: AuthContextType = {

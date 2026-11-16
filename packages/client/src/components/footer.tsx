@@ -8,7 +8,7 @@ import {
   CURSEFORGE_MODPACK_URL,
   DISCORD_INVITE_URL,
   SKIN_API_URL,
-} from "@/lib/external-urls";
+} from "@/lib/externalUrls";
 import { useQuery } from "@tanstack/react-query";
 
 const SOCIAL_LINKS = [

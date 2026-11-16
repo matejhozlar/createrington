@@ -1,4 +1,3 @@
-"use client";
 import * as React from "react";
 import { X } from "lucide-react";
 import {
@@ -36,7 +35,7 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/use-is-mobile";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth";
 import { ServerStatus } from "./server-status";
@@ -225,8 +224,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     ],
   };
 
-  const filteredNavMain = data.navMain;
-
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
@@ -253,7 +250,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
       <SidebarContent>
         <NavMain
-          items={filteredNavMain}
+          items={data.navMain}
           prepend={
             isOwner || user?.isAdmin ? (
               <>

@@ -1,4 +1,4 @@
-import type { CamelCaseKeys } from "../";
+import type { CamelCaseKeys } from "../types";
 import type { FilterValue } from "./base.types";
 
 /**

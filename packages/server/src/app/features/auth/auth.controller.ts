@@ -32,7 +32,11 @@ import {
 import { verifyDevLoginToken } from "@/services/auth/dev-login/hmac";
 import config from "@/config";
 import { Q } from "@/db";
-import { AuthRole, type JWTPayload } from "@createrington/shared/auth";
+import {
+  AuthRole,
+  type JWTPayload,
+  type RefreshResponse,
+} from "@createrington/shared/auth";
 
 function deriveRole(currentRole: AuthRole, isAdmin: boolean): AuthRole {
   if (currentRole === AuthRole.UNVERIFIED) return AuthRole.UNVERIFIED;
@@ -225,21 +229,8 @@ export class AuthController {
     refreshTokenService.setCookie(res, result.rawToken);
     accessCookieService.setCookie(res, accessToken);
 
-    res.json({
-      success: true,
-      data: {
-        accessToken,
-        user: {
-          discordId: payload.discordId,
-          username: payload.username,
-          avatar: payload.avatar,
-          role: payload.role,
-          isAdmin: payload.isAdmin,
-          minecraftUuid: payload.minecraftUuid,
-          minecraftUsername: payload.minecraftUsername,
-        },
-      },
-    });
+    const data: RefreshResponse = { accessToken, user: payload };
+    res.json({ success: true, data });
   }
 
   /**

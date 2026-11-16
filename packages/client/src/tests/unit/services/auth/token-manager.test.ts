@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   getAccessToken,
   retryAfterRefresh,
+  SESSION_EXPIRED_EVENT,
   setAccessToken,
 } from "@/services/auth/token-manager";
 
@@ -27,7 +28,7 @@ describe("retryAfterRefresh", () => {
 
   beforeEach(() => {
     const target = new EventTarget();
-    target.addEventListener("auth:session-expired", sessionExpired);
+    target.addEventListener(SESSION_EXPIRED_EVENT, sessionExpired);
     vi.stubGlobal("window", target);
     vi.stubGlobal("fetch", fetchMock);
     setAccessToken("stale-token");

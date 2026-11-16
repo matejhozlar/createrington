@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from "react";
 import { Users, X } from "lucide-react";
-import { playerAvatarUrl } from "@/lib/player-images";
+import { playerAvatarUrl } from "@/lib/playerImages";
 import { usePlayerData } from "@/contexts/player-data";
 import { useSidebar } from "@/components/ui/sidebar";
 import {
