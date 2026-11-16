@@ -409,8 +409,11 @@ describe("announceReleaseChangelog", () => {
       expect(message.lead).toEqual([]);
       expect(message.allowedMentions).toBeUndefined();
       expect(message.types[0]).toBe(ComponentType.MediaGallery);
-      expect(message.texts.join("\n")).not.toContain("## Vitest Pack");
-      expect(message.texts.join("\n")).not.toContain("(continued)");
+      expect(
+        message.texts.every(
+          (content) => content.startsWith("### ") || content.startsWith("**["),
+        ),
+      ).toBe(true);
     }
   });
 
@@ -609,9 +612,10 @@ describe("announceReleaseChangelog", () => {
 
     const [message] = sentMessages();
     expect(message.types[0]).toBe(ComponentType.MediaGallery);
-    expect(message.texts[0].startsWith("**9.1.0**\n-# Minecraft 1.21.1")).toBe(
-      true,
+    expect(message.texts[0]).toBe(
+      "**9.1.0**\n" +
+        "-# Minecraft 1.21.1 · NeoForge 21.1.172 · 1 mod · Published <t:1893456000:R>\n" +
+        "Changes since 9.0.0: **1 added** · **0 updated** · **0 removed** · 0 unchanged",
     );
-    expect(message.texts[0]).not.toContain("## ");
   });
 });

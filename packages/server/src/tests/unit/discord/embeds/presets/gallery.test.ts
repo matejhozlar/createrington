@@ -8,6 +8,8 @@ function text(embed: { build: () => { data: { description?: string } } }) {
 describe("GalleryEmbedPresets.intakeNotice", () => {
   it("drops the reward sentence when the reward is switched off", () => {
     expect(text(GalleryEmbedPresets.intakeNotice(50))).toMatch(/earn \*\*\$50/);
-    expect(text(GalleryEmbedPresets.intakeNotice(0))).not.toMatch(/earn/i);
+    expect(text(GalleryEmbedPresets.intakeNotice(0))).toContain(
+      "Admins review each one. Approved screenshots are published on the website with credit to you.\n\n",
+    );
   });
 });

@@ -45,19 +45,11 @@ import {
   type ServerStatusResponse,
 } from "@/app/features/servers/servers.controller";
 import { ServerState } from "@/services/playtime/types";
-import type { Request, Response } from "express";
-
-type MockRes = Response & {
-  json: ReturnType<typeof vi.fn>;
-  setHeader: ReturnType<typeof vi.fn>;
-};
-
-function makeRes(): MockRes {
-  return { json: vi.fn(), setHeader: vi.fn() } as unknown as MockRes;
-}
+import type { Request } from "express";
+import { fakeReq, fakeRes, type FakeRes } from "@/tests/helpers/http";
 
 function makeReq(query: Record<string, unknown> = {}): Request {
-  return { query } as unknown as Request;
+  return fakeReq({ query });
 }
 
 function makePlaytimeService(
@@ -91,7 +83,7 @@ function mockManager(
   });
 }
 
-function responseBody(res: MockRes): ServerStatusResponse {
+function responseBody(res: FakeRes): ServerStatusResponse {
   return res.json.mock.calls[0][0] as ServerStatusResponse;
 }
 
@@ -103,7 +95,7 @@ beforeEach(() => {
 describe("ServersController.getStatus", () => {
   it("returns every configured server with player counts and a total", async () => {
     mockManager({ 1: makePlaytimeService(3), 2: makePlaytimeService(1) });
-    const res = makeRes();
+    const res = fakeRes();
 
     await ServersController.getStatus(makeReq(), res);
 
@@ -140,14 +132,14 @@ describe("ServersController.getStatus", () => {
     const rails = makePlaytimeService(3);
     mockManager({ 1: rails });
 
-    await ServersController.getStatus(makeReq({ server: "rails" }), makeRes());
+    await ServersController.getStatus(makeReq({ server: "rails" }), fakeRes());
 
     expect(rails.getActiveSessions).not.toHaveBeenCalled();
   });
 
   it("narrows the list to a single server by slug", async () => {
     mockManager({ 1: makePlaytimeService(3), 2: makePlaytimeService(1) });
-    const res = makeRes();
+    const res = fakeRes();
 
     await ServersController.getStatus(makeReq({ server: "test" }), res);
 
@@ -159,7 +151,7 @@ describe("ServersController.getStatus", () => {
 
   it("treats an empty server filter as no filter", async () => {
     mockManager({ 1: makePlaytimeService(1), 2: makePlaytimeService(1) });
-    const res = makeRes();
+    const res = fakeRes();
 
     await ServersController.getStatus(makeReq({ server: "" }), res);
 
@@ -171,7 +163,7 @@ describe("ServersController.getStatus", () => {
       1: makePlaytimeService(2, ServerState.OFFLINE),
       2: makePlaytimeService(0, ServerState.UNKNOWN),
     });
-    const res = makeRes();
+    const res = fakeRes();
 
     await ServersController.getStatus(makeReq(), res);
 
@@ -188,7 +180,7 @@ describe("ServersController.getStatus", () => {
 
   it("reports unknown status with zero players when no playtime service exists", async () => {
     mockManager({ 1: makePlaytimeService(2) });
-    const res = makeRes();
+    const res = fakeRes();
 
     await ServersController.getStatus(makeReq(), res);
 
@@ -205,7 +197,7 @@ describe("ServersController.getStatus", () => {
     getServiceMock.mockRejectedValue(
       new Error("No PlaytimeServices initialized"),
     );
-    const res = makeRes();
+    const res = fakeRes();
 
     await ServersController.getStatus(makeReq(), res);
 
@@ -220,7 +212,7 @@ describe("ServersController.getStatus", () => {
   it("reflects the maintenance flag per server", async () => {
     mockManager({ 1: makePlaytimeService(1), 2: makePlaytimeService(1) });
     isInMaintenanceMock.mockImplementation((id: number) => id === 1);
-    const res = makeRes();
+    const res = fakeRes();
 
     await ServersController.getStatus(makeReq(), res);
 
@@ -233,18 +225,18 @@ describe("ServersController.getStatus", () => {
     await expect(
       ServersController.getStatus(
         makeReq({ server: "Rails N Sails" }),
-        makeRes(),
+        fakeRes(),
       ),
     ).rejects.toBeInstanceOf(BadRequestError);
     await expect(
-      ServersController.getStatus(makeReq({ server: ["a", "b"] }), makeRes()),
+      ServersController.getStatus(makeReq({ server: ["a", "b"] }), fakeRes()),
     ).rejects.toBeInstanceOf(BadRequestError);
     expect(getServiceMock).not.toHaveBeenCalled();
   });
 
   it("returns 404 for an unknown server slug", async () => {
     await expect(
-      ServersController.getStatus(makeReq({ server: "nope" }), makeRes()),
+      ServersController.getStatus(makeReq({ server: "nope" }), fakeRes()),
     ).rejects.toBeInstanceOf(NotFoundError);
     expect(getServiceMock).not.toHaveBeenCalled();
   });

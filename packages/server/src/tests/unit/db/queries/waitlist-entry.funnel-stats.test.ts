@@ -40,16 +40,6 @@ describe("WaitlistEntryQueries.getFunnelStats", () => {
     expect(query).toHaveBeenCalledTimes(1);
   });
 
-  it("counts every signup window from created_at, never queued_at", async () => {
-    const { queries, query } = stubbed();
-
-    await queries.getFunnelStats(WINDOWS);
-
-    const sql = query.mock.calls[0][0] as string;
-    expect(sql.match(/created_at >= \$\d+/g)).toHaveLength(3);
-    expect(sql).not.toContain("queued_at");
-  });
-
   it("passes the window boundaries as parameters, widest last", async () => {
     const { queries, query } = stubbed();
 

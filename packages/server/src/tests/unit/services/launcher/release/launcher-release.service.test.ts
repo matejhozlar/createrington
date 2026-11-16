@@ -18,9 +18,9 @@ vi.mock("@/config", () => ({
   },
 }));
 vi.mock("@/db", () => ({ Q: { launcher: { release } } }));
-vi.mock("@/db/utils", () => ({
-  UniqueViolationError: class UniqueViolationError extends Error {},
-}));
+vi.mock("@/db/utils", async () =>
+  (await import("@/tests/helpers/mocks/db-utils")).dbUtilsMock(),
+);
 
 import { launcherReleaseService } from "@/services/launcher/release/launcher-release.service";
 

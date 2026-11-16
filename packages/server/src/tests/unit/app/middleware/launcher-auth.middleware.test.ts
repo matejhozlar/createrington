@@ -17,12 +17,9 @@ vi.mock("@/config", () => ({
     },
   },
 }));
-vi.mock("@/db/utils", () => ({
-  DatabaseError: class DatabaseError extends Error {},
-  NotFoundError: class NotFoundError extends Error {},
-  ConstraintViolationError: class ConstraintViolationError extends Error {},
-  QueryError: class QueryError extends Error {},
-}));
+vi.mock("@/db/utils", async () =>
+  (await import("@/tests/helpers/mocks/db-utils")).dbUtilsMock(),
+);
 
 import { errorHandler } from "@/app/middleware/error-handler";
 import { authenticateLauncher } from "@/app/middleware/launcher-auth.middleware";
@@ -36,6 +33,7 @@ import {
   denyLauncherPlayer,
 } from "@/services/auth/launcher/launcher-token-denylist";
 import type { NextFunction, Request, Response } from "express";
+import { fakeReq } from "@/tests/helpers/http";
 
 const PLAYER = {
   minecraftUuid: "069a79f4-44e9-4726-a5be-fca90e38aaf5",
@@ -44,11 +42,11 @@ const PLAYER = {
 };
 
 function makeReq(authorization?: string): Request {
-  return {
+  return fakeReq({
     headers: authorization ? { authorization } : {},
     path: "/api/launcher/auth/me",
     method: "GET",
-  } as unknown as Request;
+  });
 }
 
 async function run(authorization?: string) {

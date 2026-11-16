@@ -29,26 +29,20 @@ vi.mock("@/services/launcher/release/launcher-release.service", () => ({
   launcherReleaseService: { isEnabled },
 }));
 
-import { AuthRole } from "@createrington/shared/auth";
 import type { LauncherRelease } from "@createrington/shared/db/launcher_release.types";
 import { ilikeContains } from "@/db/utils";
 import { ownerLauncherReleasesRouter } from "@/trpc/routers/owner/launcher-releases";
-import type { Context } from "@/trpc/context";
+import { adminContext } from "@/tests/helpers/trpc";
 
 const WINDOWS = "windows-x86_64";
 
-const owner = ownerLauncherReleasesRouter.createCaller({
-  user: {
+const owner = ownerLauncherReleasesRouter.createCaller(
+  adminContext({
     discordId: OWNER_ID,
     username: "owner",
     minecraftUsername: "Owner",
-    minecraftUuid: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
-    role: AuthRole.ADMIN,
-    isAdmin: true,
-  },
-  service: null,
-  ip: "127.0.0.1",
-} satisfies Context);
+  }),
+);
 
 function release(overrides: Partial<LauncherRelease> = {}): LauncherRelease {
   return {

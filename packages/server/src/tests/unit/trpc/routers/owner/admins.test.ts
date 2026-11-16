@@ -73,9 +73,8 @@ vi.mock("@/services/playtime/config", () => ({
 }));
 
 import { TRPCError } from "@trpc/server";
-import { AuthRole } from "@createrington/shared/auth";
 import { ownerAdminsRouter } from "@/trpc/routers/owner/admins";
-import type { Context } from "@/trpc/context";
+import { adminContext } from "@/tests/helpers/trpc";
 
 const TARGET_ID = "100000000000000001";
 const TARGET = {
@@ -85,18 +84,13 @@ const TARGET = {
 };
 
 function callerFor(discordId: string) {
-  return ownerAdminsRouter.createCaller({
-    user: {
+  return ownerAdminsRouter.createCaller(
+    adminContext({
       discordId,
       username: "owner",
       minecraftUsername: "Owner",
-      minecraftUuid: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
-      role: AuthRole.ADMIN,
-      isAdmin: true,
-    },
-    service: null,
-    ip: "127.0.0.1",
-  } satisfies Context);
+    }),
+  );
 }
 
 const owner = callerFor(OWNER_ID);

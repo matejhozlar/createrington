@@ -24,9 +24,9 @@ const env = vi.hoisted(() => ({
 vi.mock("@/config", () => ({
   default: { envMode: { isProd: false, isDev: false } },
 }));
-vi.mock("@/db/utils", () => ({
-  DatabaseError: class DatabaseError extends Error {},
-}));
+vi.mock("@/db/utils", async () =>
+  (await import("@/tests/helpers/mocks/db-utils")).dbUtilsMock(),
+);
 vi.mock("@/config/env/env.config", () => ({
   env,
   envMode: { isDevDeployment: true },

@@ -21,28 +21,11 @@ vi.mock("@/services/modpack/release.service", () => ({
 
 import { BadRequestError, NotFoundError } from "@/app/middleware/error-handler";
 import { ModpacksController } from "@/app/features/modpacks/modpacks.controller";
-import type { Request, Response } from "express";
-
-type MockRes = Response & {
-  send: ReturnType<typeof vi.fn>;
-  setHeader: ReturnType<typeof vi.fn>;
-  type: ReturnType<typeof vi.fn>;
-  json: ReturnType<typeof vi.fn>;
-};
-
-function makeRes(): MockRes {
-  const res = {
-    send: vi.fn(),
-    setHeader: vi.fn(),
-    type: vi.fn(),
-    json: vi.fn(),
-  };
-  res.type.mockReturnValue(res);
-  return res as unknown as MockRes;
-}
+import type { Request } from "express";
+import { fakeReq, fakeRes } from "@/tests/helpers/http";
 
 function makeReq(params: Record<string, unknown>): Request {
-  return { params } as unknown as Request;
+  return fakeReq({ params });
 }
 
 const PNG = Buffer.from("png");
@@ -61,7 +44,7 @@ beforeEach(() => {
 
 describe("ModpacksController.getChangelog", () => {
   it("sends the changelog as cacheable plain-text Markdown", async () => {
-    const res = makeRes();
+    const res = fakeRes();
 
     await ModpacksController.getChangelog(
       makeReq({ project: "1660984", version: "1.0.5" }),
@@ -84,7 +67,7 @@ describe("ModpacksController.getChangelog", () => {
     for (const version of ["  1.0.5 ", undefined, "   ", "9".repeat(65)]) {
       await ModpacksController.getChangelog(
         makeReq({ project: "1", version }),
-        makeRes(),
+        fakeRes(),
       );
     }
 
@@ -109,7 +92,7 @@ describe("ModpacksController.getChangelog", () => {
       "2147483648",
     ]) {
       await expect(
-        ModpacksController.getChangelog(makeReq({ project }), makeRes()),
+        ModpacksController.getChangelog(makeReq({ project }), fakeRes()),
       ).rejects.toBeInstanceOf(BadRequestError);
     }
     expect(getChangelogMarkdownMock).not.toHaveBeenCalled();
@@ -119,14 +102,14 @@ describe("ModpacksController.getChangelog", () => {
     getChangelogMarkdownMock.mockRejectedValue(new NotFoundError("nope"));
 
     await expect(
-      ModpacksController.getChangelog(makeReq({ project: "42" }), makeRes()),
+      ModpacksController.getChangelog(makeReq({ project: "42" }), fakeRes()),
     ).rejects.toBeInstanceOf(NotFoundError);
   });
 });
 
 describe("ModpacksController.getChangelogRow", () => {
   it("sends the row as a PNG cacheable for a day", async () => {
-    const res = makeRes();
+    const res = fakeRes();
 
     await ModpacksController.getChangelogRow(
       makeReq({ project: "1660984", release: "8840313", mod: "328085" }),
@@ -148,7 +131,7 @@ describe("ModpacksController.getChangelogRow", () => {
 
   it("caches a row drawn with a placeholder icon for a minute only", async () => {
     getChangelogRowMock.mockResolvedValue({ png: PNG, complete: false });
-    const res = makeRes();
+    const res = fakeRes();
 
     await ModpacksController.getChangelogRow(
       makeReq({ project: "1", release: "2", mod: "3" }),
@@ -168,7 +151,7 @@ describe("ModpacksController.getChangelogRow", () => {
       { project: "1", release: "2", mod: "3.5" },
     ]) {
       await expect(
-        ModpacksController.getChangelogRow(makeReq(params), makeRes()),
+        ModpacksController.getChangelogRow(makeReq(params), fakeRes()),
       ).rejects.toBeInstanceOf(BadRequestError);
     }
     expect(getChangelogRowMock).not.toHaveBeenCalled();
@@ -177,7 +160,7 @@ describe("ModpacksController.getChangelogRow", () => {
 
 describe("ModpacksController.getVersionStatus", () => {
   it("sends the status as cacheable JSON", async () => {
-    const res = makeRes();
+    const res = fakeRes();
 
     await ModpacksController.getVersionStatus(
       makeReq({ project: "1660984", version: "1.0.6" }),
@@ -203,7 +186,7 @@ describe("ModpacksController.getVersionStatus", () => {
     for (const version of ["  1.0.6 ", "   ", "9".repeat(65)]) {
       await ModpacksController.getVersionStatus(
         makeReq({ project: "1", version }),
-        makeRes(),
+        fakeRes(),
       );
     }
 
@@ -221,7 +204,7 @@ describe("ModpacksController.getVersionStatus", () => {
       await expect(
         ModpacksController.getVersionStatus(
           makeReq({ project, version: "1.0.6" }),
-          makeRes(),
+          fakeRes(),
         ),
       ).rejects.toBeInstanceOf(BadRequestError);
     }
@@ -234,7 +217,7 @@ describe("ModpacksController.getVersionStatus", () => {
     await expect(
       ModpacksController.getVersionStatus(
         makeReq({ project: "42", version: "1.0.6" }),
-        makeRes(),
+        fakeRes(),
       ),
     ).rejects.toBeInstanceOf(NotFoundError);
   });

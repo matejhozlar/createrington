@@ -31,19 +31,14 @@ vi.mock("@/app/features/mod/currency/currency.idempotency", async () => ({
 import { BadRequestError } from "@/app/middleware/error-handler";
 import { CurrencyController } from "@/app/features/mod/currency/currency.controller";
 import { hashRequest } from "@/app/features/mod/currency/currency.idempotency";
-import type { Request, Response } from "express";
+import type { Request } from "express";
+import { fakeReq, fakeRes } from "@/tests/helpers/http";
 
 const SENDER_UUID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const RECIPIENT_UUID = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 
 function makeReq(body: unknown): Request {
-  return { body, modAuth: { uuid: SENDER_UUID } } as unknown as Request;
-}
-
-function makeRes(): Response & { json: ReturnType<typeof vi.fn> } {
-  const res = { json: vi.fn(), status: vi.fn() };
-  res.status.mockReturnValue(res);
-  return res as unknown as Response & { json: ReturnType<typeof vi.fn> };
+  return fakeReq({ body, modAuth: { uuid: SENDER_UUID } });
 }
 
 beforeEach(() => {
@@ -59,7 +54,7 @@ describe("CurrencyController.pay", () => {
     ["a number", 42],
   ])("rejects %s as toUuid", async (_label, toUuid) => {
     await expect(
-      CurrencyController.pay(makeReq({ toUuid, amount: 5 }), makeRes()),
+      CurrencyController.pay(makeReq({ toUuid, amount: 5 }), fakeRes()),
     ).rejects.toBeInstanceOf(BadRequestError);
     expect(transferMock).not.toHaveBeenCalled();
   });
@@ -69,7 +64,7 @@ describe("CurrencyController.pay", () => {
 
     await CurrencyController.pay(
       makeReq({ toUuid: RECIPIENT_UUID.toUpperCase(), amount: 5 }),
-      makeRes(),
+      fakeRes(),
     );
 
     expect(transferMock).toHaveBeenCalledWith(SENDER_UUID, RECIPIENT_UUID, 5);
@@ -80,7 +75,7 @@ describe("CurrencyController.pay", () => {
 
     const error = await CurrencyController.pay(
       makeReq({ toUuid: RECIPIENT_UUID, amount: 5 }),
-      makeRes(),
+      fakeRes(),
     ).catch((e: unknown) => e);
 
     expect(error).toBeInstanceOf(BadRequestError);
@@ -97,7 +92,7 @@ describe("CurrencyController.deposit", () => {
     ["an over-long string", "x".repeat(201)],
   ])("rejects %s as reason", async (_label, reason) => {
     await expect(
-      CurrencyController.deposit(makeReq({ amount: 5, reason }), makeRes()),
+      CurrencyController.deposit(makeReq({ amount: 5, reason }), fakeRes()),
     ).rejects.toBeInstanceOf(BadRequestError);
     expect(runIdempotentMock).not.toHaveBeenCalled();
   });
@@ -113,7 +108,7 @@ describe("CurrencyController.deposit", () => {
 
       await CurrencyController.deposit(
         makeReq({ amount: 5, reason }),
-        makeRes(),
+        fakeRes(),
       );
 
       const [operation] = runIdempotentMock.mock.calls[0];

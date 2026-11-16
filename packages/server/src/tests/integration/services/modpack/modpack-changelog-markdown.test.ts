@@ -140,7 +140,7 @@ describe("modpackReleaseService.getChangelogMarkdown", () => {
     expect(markdown).toContain(
       `### Updated (1)\n[![](${ROWS}/${newest.curseforgeFileId}/${kept}.png)](https://www.curseforge.com/minecraft/mc-mods/changelog-mod-0)`,
     );
-    expect(markdown).not.toContain("Your version");
+    expect(markdown.split("\n---\n")).toHaveLength(1);
   });
 
   it("renders the same markdown from the stored changelog as from a fresh one", async () => {
@@ -171,11 +171,11 @@ describe("modpackReleaseService.getChangelogMarkdown", () => {
   it("renders the newest release only when the player is current or the version is unknown", async () => {
     await seedHistory();
 
-    for (const version of ["1.2.0", "0.9.0", undefined]) {
-      const markdown = await changelog(version);
-      expect(markdown).toContain("## What's new in 1.2.0");
-      expect(markdown).not.toContain("Your version");
-      expect(markdown).not.toContain("You're on");
+    const newestOnly = await changelog();
+    expect(newestOnly.split("\n---\n")).toHaveLength(1);
+    expect(newestOnly.startsWith("## What's new in 1.2.0\n")).toBe(true);
+    for (const version of ["1.2.0", "0.9.0"]) {
+      expect(await changelog(version)).toBe(newestOnly);
     }
   });
 
@@ -186,8 +186,9 @@ describe("modpackReleaseService.getChangelogMarkdown", () => {
 
     const markdown = await changelog("1.0.0");
 
-    expect(markdown).toContain("first recorded release");
-    expect(markdown).not.toContain("### Added");
+    expect(markdown).toBe(
+      "## What's new in 1.0.0\n%#AAAAAA%1 Jan 2030 · first recorded release%#%\n",
+    );
   });
 
   it("throws NotFoundError for an unknown project or a pack without releases", async () => {

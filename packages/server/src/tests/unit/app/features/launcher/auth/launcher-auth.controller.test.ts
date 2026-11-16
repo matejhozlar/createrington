@@ -20,12 +20,9 @@ vi.mock("@/db", () => ({
     },
   },
 }));
-vi.mock("@/db/utils", () => ({
-  DatabaseError: class DatabaseError extends Error {},
-  NotFoundError: class NotFoundError extends Error {},
-  ConstraintViolationError: class ConstraintViolationError extends Error {},
-  QueryError: class QueryError extends Error {},
-}));
+vi.mock("@/db/utils", async () =>
+  (await import("@/tests/helpers/mocks/db-utils")).dbUtilsMock(),
+);
 vi.mock("@/config", () => ({
   default: {
     envMode: { isProd: false, isDev: false },
@@ -54,7 +51,8 @@ import {
   __resetLauncherChallengesForTests,
   issueLauncherChallenge,
 } from "@/services/auth/launcher/challenge-store";
-import type { Request, Response } from "express";
+import type { Request } from "express";
+import { fakeReq, fakeRes } from "@/tests/helpers/http";
 
 const PLAYER = {
   id: 1,
@@ -72,20 +70,16 @@ const SESSION = {
 };
 
 function makeReq(extra: Partial<Request> = {}): Request {
-  return {
+  return fakeReq({
     headers: { "user-agent": "createrington-launcher/0.1.2" },
     ip: "203.0.113.7",
     ...extra,
-  } as unknown as Request;
+  });
 }
 
 function makeRes(body: unknown = {}) {
-  const json = vi.fn();
-  const res = {
-    locals: { validated: { params: {}, query: {}, body } },
-    json,
-  } as unknown as Response;
-  return { res, json };
+  const res = fakeRes({ validated: { params: {}, query: {}, body } });
+  return { res, json: res.json };
 }
 
 async function captureError(promise: Promise<void>) {

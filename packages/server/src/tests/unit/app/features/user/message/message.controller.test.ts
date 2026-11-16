@@ -16,7 +16,8 @@ vi.mock("@/services/discord/message/cache", () => ({
 }));
 
 import { MessageController } from "@/app/features/user/message/message.controller";
-import type { Request, Response } from "express";
+import type { Request } from "express";
+import { fakeReq, fakeRes } from "@/tests/helpers/http";
 
 function makeReq({
   content,
@@ -27,7 +28,7 @@ function makeReq({
   withImage?: boolean;
   minecraftUsername?: string | null;
 } = {}): Request {
-  return {
+  return fakeReq({
     body: { serverId: "1", content },
     file: withImage
       ? {
@@ -38,13 +39,7 @@ function makeReq({
         }
       : undefined,
     user: { minecraftUsername },
-  } as unknown as Request;
-}
-
-function makeRes(): Response {
-  const res = { status: vi.fn(), json: vi.fn() };
-  res.status.mockReturnValue(res);
-  return res as unknown as Response;
+  });
 }
 
 function sentContent(): string | undefined {
@@ -60,7 +55,7 @@ describe("MessageController.sendMessage", () => {
   it("prefixes text messages with the sender's name", async () => {
     await MessageController.sendMessage(
       makeReq({ content: " hello " }),
-      makeRes(),
+      fakeRes(),
     );
 
     expect(sentContent()).toBe("**<Steve>**: hello");
@@ -69,7 +64,7 @@ describe("MessageController.sendMessage", () => {
   it("prefixes image-only messages with the sender's name", async () => {
     await MessageController.sendMessage(
       makeReq({ withImage: true }),
-      makeRes(),
+      fakeRes(),
     );
 
     expect(sentContent()).toBe("**<Steve>**:");
@@ -79,7 +74,7 @@ describe("MessageController.sendMessage", () => {
   it("falls back to Web User when the account has no Minecraft username", async () => {
     await MessageController.sendMessage(
       makeReq({ withImage: true, minecraftUsername: null }),
-      makeRes(),
+      fakeRes(),
     );
 
     expect(sentContent()).toBe("**<Web User>**:");
@@ -92,7 +87,7 @@ describe("MessageController.sendMessage", () => {
     });
 
     await expect(
-      MessageController.sendMessage(makeReq({ content: "hi" }), makeRes()),
+      MessageController.sendMessage(makeReq({ content: "hi" }), fakeRes()),
     ).rejects.toMatchObject({
       statusCode: 400,
       message: "Failed to send message",

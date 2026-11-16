@@ -41,8 +41,7 @@ vi.mock("@/trpc/middleware/rate-limit", async () => {
 });
 
 import { userWorkshopsRouter } from "@/trpc/routers/user/workshops";
-import { AuthRole } from "@createrington/shared/auth";
-import type { Context } from "@/trpc/context";
+import { userContext } from "@/tests/helpers/trpc";
 
 const VIEWER_ID = "100000000000000001";
 const OTHER_ID = "100000000000000002";
@@ -62,11 +61,9 @@ function makeMod(submittedBy: string) {
   };
 }
 
-const caller = userWorkshopsRouter.createCaller({
-  user: { discordId: VIEWER_ID, role: AuthRole.USER, isAdmin: false },
-  service: null,
-  ip: "127.0.0.1",
-} as unknown as Context);
+const caller = userWorkshopsRouter.createCaller(
+  userContext({ discordId: VIEWER_ID }),
+);
 
 beforeEach(() => {
   workshopServiceMock.getVisibleWorkshopBySlug.mockResolvedValue({

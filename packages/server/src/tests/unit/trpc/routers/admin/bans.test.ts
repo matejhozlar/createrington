@@ -53,9 +53,8 @@ vi.mock("@/discord/embeds", () => ({
 }));
 
 import { bansRouter } from "@/trpc/routers/admin/players/bans";
-import { AuthRole } from "@createrington/shared/auth";
 import { BAN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
-import type { Context } from "@/trpc/context";
+import { adminContext } from "@/tests/helpers/trpc";
 
 const EXPIRES_AT = new Date("2026-11-01T00:00:00.000Z");
 
@@ -65,17 +64,9 @@ const PLAYER = {
   minecraftUuid: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
 };
 
-const caller = bansRouter.createCaller({
-  user: {
-    discordId: "100000000000000009",
-    minecraftUsername: "admin",
-    minecraftUuid: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
-    role: AuthRole.ADMIN,
-    isAdmin: true,
-  },
-  service: null,
-  ip: "127.0.0.1",
-} as unknown as Context);
+const caller = bansRouter.createCaller(
+  adminContext({ minecraftUsername: "admin" }),
+);
 
 beforeEach(() => {
   vi.clearAllMocks();

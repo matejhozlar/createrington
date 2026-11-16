@@ -25,21 +25,15 @@ vi.mock("@/config", () => ({
 }));
 
 vi.mock("@/db", () => ({ Q: { player: { find: vi.fn() } } }));
-vi.mock("@/db/utils", () => ({
-  DatabaseError: class DatabaseError extends Error {},
-  NotFoundError: class NotFoundError extends Error {},
-  ConstraintViolationError: class ConstraintViolationError extends Error {},
-  QueryError: class QueryError extends Error {},
-}));
-vi.mock("@/services/auth/token/access-cookie.service", () => ({
-  accessCookieService: {
-    isEnabled: () => false,
-    extractFromRequest: () => undefined,
-  },
-}));
-vi.mock("@/services/auth/admin-status/admin-status.service", () => ({
-  adminStatusService: { isAdmin: vi.fn(async () => false) },
-}));
+vi.mock("@/db/utils", async () =>
+  (await import("@/tests/helpers/mocks/db-utils")).dbUtilsMock(),
+);
+vi.mock("@/services/auth/token/access-cookie.service", async () =>
+  (await import("@/tests/helpers/mocks/auth")).authMocks.accessCookie(),
+);
+vi.mock("@/services/auth/admin-status/admin-status.service", async () =>
+  (await import("@/tests/helpers/mocks/auth")).authMocks.adminStatus(),
+);
 
 import { authenticate } from "@/app/middleware/auth.middleware";
 import { authenticateLauncher } from "@/app/middleware/launcher-auth.middleware";
@@ -52,6 +46,7 @@ import {
 } from "@/services/auth/launcher/launcher-jwt.service";
 import { AuthRole } from "@createrington/shared/auth";
 import type { NextFunction, Request, Response } from "express";
+import { fakeReq, fakeRes } from "@/tests/helpers/http";
 
 const PLAYER = {
   minecraftUuid: "069a79f4-44e9-4726-a5be-fca90e38aaf5",
@@ -68,10 +63,7 @@ const WEB_USER = {
 };
 
 function makeReq(token: string): Request {
-  return {
-    headers: { authorization: `Bearer ${token}` },
-    cookies: {},
-  } as unknown as Request;
+  return fakeReq({ headers: { authorization: `Bearer ${token}` } });
 }
 
 async function run(
@@ -83,7 +75,7 @@ async function run(
   req: Request,
 ): Promise<unknown> {
   let outcome: unknown = "not-called";
-  await middleware(req, {} as Response, (err?: unknown) => {
+  await middleware(req, fakeRes(), (err?: unknown) => {
     outcome = err ?? "passed";
   });
   return outcome;
