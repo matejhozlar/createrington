@@ -86,11 +86,7 @@ export function registerServices(): void {
     );
   }
 
-  container.register(Services.PUPPETEER_SERVICE, () => {
-    const service = new PuppeteerService();
-    service.initialize();
-    return service;
-  });
+  container.register(Services.PUPPETEER_SERVICE, () => new PuppeteerService());
 
   if (config.ai.enabled) {
     container.register(Services.AI_SERVICE, () => {

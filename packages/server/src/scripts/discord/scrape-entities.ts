@@ -8,7 +8,7 @@ import {
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { env } from "@/config/env/env.config";
+import config from "@/config";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -130,11 +130,11 @@ async function scrapeDiscordEntities(): Promise<void> {
 
   try {
     // Login to Discord
-    await client.login(env.DISCORD_MAIN_BOT_TOKEN);
+    await client.login(config.discord.bots.main.token);
     console.log(`✓ Logged in as ${client.user?.tag}\n`);
 
     // Get the guild
-    const guild = await client.guilds.fetch(env.DISCORD_GUILD_ID);
+    const guild = await client.guilds.fetch(config.discord.guild.id);
     console.log(`✓ Connected to guild: ${guild.name}\n`);
 
     // Fetch all channels, roles, and categories

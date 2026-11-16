@@ -30,8 +30,6 @@ declare global {
     interface Request {
       /** Web JWT payload, set by authenticate/optionalAuth middleware */
       user?: JWTPayload;
-      /** Resolved client IP address */
-      clientIp?: string;
       /**
        * Mod JWT payload
        * Set by verifyModJwt middleware

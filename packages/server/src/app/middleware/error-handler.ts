@@ -235,10 +235,6 @@ export function errorHandler(
     statusCode = err.status;
     message = REQUEST_BODY_ERROR_MESSAGES[err.type] ?? err.message;
     isOperational = true;
-  } else if (err.name === "ValidationError") {
-    statusCode = 400;
-    message = err.message;
-    isOperational = true;
   } else {
     message = config.envMode.isDev ? err.message : "Internal Server Error";
   }

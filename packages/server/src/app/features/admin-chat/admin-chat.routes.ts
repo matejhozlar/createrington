@@ -9,7 +9,7 @@ import {
   BadRequestError,
   InternalServerError,
 } from "@/app/middleware";
-import { env, envMode } from "@/config/env/env.config";
+import config from "@/config";
 import {
   describeHttpError,
   fetchJson,
@@ -30,7 +30,7 @@ const router = Router();
 const REPO = "Createrington/app";
 // Both deployments run with NODE_ENV=production. Dev vs prod is determined
 // by the WEBSITE_URL (dev.* subdomain or localhost) via envMode.isDevDeployment.
-const ENVIRONMENT = envMode.isDevDeployment ? "dev" : "prod";
+const ENVIRONMENT = config.envMode.isDevDeployment ? "dev" : "prod";
 
 // Upstream LLM calls can hang on network glitches, cap every outbound
 // request so a stuck claude-automation can't pile up Express connections.
@@ -67,8 +67,8 @@ function claudeHeaders(): Record<string, string> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };
-  if (env.ADMIN_CHAT_SECRET) {
-    headers["X-Admin-Chat-Secret"] = env.ADMIN_CHAT_SECRET;
+  if (config.adminChat.secret) {
+    headers["X-Admin-Chat-Secret"] = config.adminChat.secret;
   }
   return headers;
 }
@@ -94,11 +94,11 @@ function queryString(value: unknown): string | undefined {
 }
 
 function requireUpstream(res: Response): string | null {
-  if (!env.CLAUDE_API_URL) {
+  if (!config.adminChat.url) {
     res.status(503).json({ error: "admin chat not configured" });
     return null;
   }
-  return env.CLAUDE_API_URL;
+  return config.adminChat.url;
 }
 
 function adminUsername(req: Request): string {

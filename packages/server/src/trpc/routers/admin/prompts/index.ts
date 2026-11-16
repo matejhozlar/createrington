@@ -80,14 +80,9 @@ export const adminPromptsRouter = router({
       }),
     )
     .query(async ({ input }) => {
-      const offset = input.page * input.limit;
-      const rows = await Q.player.prompt.listWithResponseCount({
-        limit: input.limit,
-        offset,
-        status: input.status,
-      });
-      const total = await Q.player.prompt.count(
-        input.status ? { status: input.status } : {},
+      const { rows, total } = await Q.player.prompt.listWithResponseCount(
+        { status: input.status },
+        { limit: input.limit, offset: input.page * input.limit },
       );
       return {
         items: rows,

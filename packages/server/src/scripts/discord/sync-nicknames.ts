@@ -9,7 +9,7 @@
 import "@/logger.global";
 import { Q } from "@/db";
 import { Client, GatewayIntentBits } from "discord.js";
-import { env } from "@/config/env/env.config";
+import config from "@/config";
 import { loadAllGuildMembers } from "@/discord/utils/guild-members";
 import { DiscordApiQueue } from "./api-queue";
 
@@ -22,10 +22,10 @@ async function syncNicknames(): Promise<void> {
   });
 
   try {
-    await client.login(env.DISCORD_MAIN_BOT_TOKEN);
+    await client.login(config.discord.bots.main.token);
     console.log(`✓ Logged in as ${client.user?.tag}`);
 
-    const guild = await client.guilds.fetch(env.DISCORD_GUILD_ID);
+    const guild = await client.guilds.fetch(config.discord.guild.id);
     console.log(`✓ Connected to guild: ${guild.name}\n`);
 
     // Fetch all registered players from DB

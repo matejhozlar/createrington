@@ -141,7 +141,7 @@ export class LauncherAuthController {
 
     const session = await launcherSessionService.createSession({
       minecraftUuid: player.minecraftUuid,
-      ip: req.clientIp || req.ip,
+      ip: req.ip,
       userAgent: req.headers["user-agent"],
     });
 
@@ -177,7 +177,7 @@ export class LauncherAuthController {
 
     const refreshToken = await launcherSessionService.rotateSession(
       session,
-      req.clientIp || req.ip,
+      req.ip,
       req.headers["user-agent"],
     );
 

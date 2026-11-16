@@ -57,9 +57,7 @@ function deriveCookieName(base: string): string {
 
 // Resolved against CWD so relative paths work predictably across the
 // dev server (runs from repo root) and prod (runs from /opt/...).
-// Empty string when validation is skipped (generate scripts, unit tests)
-// since no consumer that needs the path runs in those modes.
-const storagePath = env.STORAGE_PATH ? path.resolve(env.STORAGE_PATH) : "";
+const storagePath = path.resolve(env.STORAGE_PATH);
 
 const ASSETS_BASE_URL = "https://assets.createrington.com";
 const ASSETS_VERSION = 2;
@@ -73,18 +71,11 @@ const config = {
 
   meta: {
     name: "Createrington",
-    version: "1.21.1",
-    author: {
-      name: "saunhardy",
-      email: "matejhozlarzadek8ii@gmail.com",
-      discord: "matejhoz",
-    },
     links: {
       discordInvite: "https://discord.gg/mtF6MDHj4Z",
       website: env.WEBSITE_URL,
       adminPanel: env.ADMIN_PANEL_URL,
       map: env.MAP_URL,
-      assets: env.ASSETS_URL,
       vote: "https://www.createmodservers.com/server/createrington/vote",
     },
   },
@@ -116,21 +107,13 @@ const config = {
         domain: env.COOKIE_DOMAIN || undefined,
       },
       sso: {
-        callbackUrl: env.SSO_CALLBACK_URL ?? "",
-        // Defensive `??` because in VALIDATION_MODE=generation (used by tests
-        // and codegen) env vars bypass zod and arrive as raw process.env values
-        // (undefined when unset).
-        corsOrigins: (env.SSO_CORS_ORIGINS ?? "")
-          .split(",")
+        callbackUrl: env.SSO_CALLBACK_URL,
+        corsOrigins: env.SSO_CORS_ORIGINS.split(",")
           .map((s) => s.trim())
           .filter(Boolean),
-        codeExchangeOrigins: (env.SSO_CODE_EXCHANGE_ORIGINS ?? "")
-          .split(",")
+        codeExchangeOrigins: env.SSO_CODE_EXCHANGE_ORIGINS.split(",")
           .map((s) => s.trim())
           .filter(Boolean),
-      },
-      allowedServerIps: {
-        local: env.LOCAL_SERVER_IP_ADDRESS,
       },
       owner: {
         discordId: env.OWNER_DISCORD_ID,
@@ -166,10 +149,6 @@ const config = {
       // its row locks. Protects against code paths that BEGIN but forget
       // to COMMIT/ROLLBACK on an error.
       idle_in_transaction_session_timeout: 60_000,
-    },
-    monitoring: {
-      intervalMs: 60_000,
-      warnUtilizationPercent: 80,
     },
   },
 
@@ -284,8 +263,7 @@ const config = {
       ? "staging"
       : "production") satisfies LauncherChannel,
     publishTokenHash: env.LAUNCHER_PUBLISH_TOKEN_HASH ?? "",
-    downloadHosts: (env.LAUNCHER_DOWNLOAD_HOSTS ?? "")
-      .split(",")
+    downloadHosts: env.LAUNCHER_DOWNLOAD_HOSTS.split(",")
       .map((host) => host.trim().toLowerCase())
       .filter((host) => host.length > 0),
     packFiles: {
@@ -337,6 +315,11 @@ const config = {
 
   sandbox: {
     serviceToken: env.SANDBOX_SERVICE_TOKEN ?? null,
+  },
+
+  adminChat: {
+    url: env.CLAUDE_API_URL,
+    secret: env.ADMIN_CHAT_SECRET,
   },
 
   email: {

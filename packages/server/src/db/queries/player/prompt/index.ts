@@ -14,60 +14,63 @@ export class PlayerPromptQueries extends PlayerPromptBaseQueries {
   }
 
   /**
-   * List prompts with derived entry and unique-responder counts.
+   * List prompts with derived entry and unique-responder counts, with the
+   * total matching count.
    *
    * Used by the admin UI's list page. Ordered newest first so the most
    * recently created prompt sits at the top.
    */
-  async listWithResponseCount(options: {
-    limit: number;
-    offset: number;
-    status?: "active" | "closed";
-  }): Promise<
-    Array<PlayerPrompt & { responseCount: number; responderCount: number }>
-  > {
-    const conditions: string[] = [];
-    const params: unknown[] = [];
-    if (options.status) {
-      params.push(options.status);
-      conditions.push(`p.status = $${params.length}`);
-    }
-    const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+  async listWithResponseCount(
+    filters: { status?: PlayerPrompt["status"] },
+    options: { limit: number; offset: number },
+  ): Promise<{
+    rows: Array<
+      PlayerPrompt & { responseCount: number; responderCount: number }
+    >;
+    total: number;
+  }> {
+    const { whereClause, params } = this.buildFilterClause(filters);
 
-    params.push(options.limit);
-    const limitParam = `$${params.length}`;
-    params.push(options.offset);
-    const offsetParam = `$${params.length}`;
-
-    const query = `
-      SELECT
-        p.*,
-        COALESCE(r.response_count, 0)::int AS response_count,
-        COALESCE(r.responder_count, 0)::int AS responder_count
-      FROM ${this.table} p
-      LEFT JOIN (
-        SELECT
-          prompt_id,
-          COUNT(*)::int AS response_count,
-          COUNT(DISTINCT discord_id)::int AS responder_count
-        FROM player_prompt_response
-        GROUP BY prompt_id
-      ) r ON r.prompt_id = p.id
-      ${where}
-      ORDER BY p.created_at DESC
-      LIMIT ${limitParam} OFFSET ${offsetParam}`;
-
-    const result = await this.runQuery<
-      Record<string, unknown> & {
-        response_count: number;
-        responder_count: number;
-      }
-    >("list prompts with response count", query, params);
-    return result.rows.map((row) => ({
-      ...this.mapRowToEntity(row as never),
-      responseCount: row.response_count,
-      responderCount: row.responder_count,
-    }));
+    const [result, count] = await Promise.all([
+      this.runQuery<
+        Record<string, unknown> & {
+          response_count: number;
+          responder_count: number;
+        }
+      >(
+        "list prompts with response count",
+        `SELECT
+           p.*,
+           COALESCE(r.response_count, 0)::int AS response_count,
+           COALESCE(r.responder_count, 0)::int AS responder_count
+         FROM ${this.table} p
+         LEFT JOIN (
+           SELECT
+             prompt_id,
+             COUNT(*)::int AS response_count,
+             COUNT(DISTINCT discord_id)::int AS responder_count
+           FROM player_prompt_response
+           GROUP BY prompt_id
+         ) r ON r.prompt_id = p.id
+         WHERE ${whereClause}
+         ORDER BY p.created_at DESC
+         LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+        [...params, options.limit, options.offset],
+      ),
+      this.runQuery<{ total: string }>(
+        "count prompts",
+        `SELECT COUNT(*) AS total FROM ${this.table} WHERE ${whereClause}`,
+        params,
+      ),
+    ]);
+    return {
+      rows: result.rows.map((row) => ({
+        ...this.mapRowToEntity(row as never),
+        responseCount: row.response_count,
+        responderCount: row.responder_count,
+      })),
+      total: Number(count.rows[0]?.total ?? 0),
+    };
   }
 
   /**

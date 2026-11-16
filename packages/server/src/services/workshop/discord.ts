@@ -48,17 +48,6 @@ const REVIEW_MESSAGES: Record<
 const PACK_DROP_OUT_MESSAGE =
   "↩️ **Dropped from the latest pack update.** Back to coming next update while the team looks into it.";
 
-const CLOSE_ON_STATUS: Record<
-  Exclude<WorkshopModStatus, "pending">,
-  boolean
-> = {
-  approved: true,
-  testing: true,
-  next_update: true,
-  in_pack: true,
-  rejected: true,
-};
-
 const REJECT_REASON_TAGS: Record<
   WorkshopModRejectReason,
   { name: string; emoji: string }
@@ -95,7 +84,7 @@ function tagNameFor(status: WorkshopModStatus): string | null {
 }
 
 function closesThread(status: WorkshopModStatus): boolean {
-  return status !== "pending" && CLOSE_ON_STATUS[status];
+  return status !== "pending";
 }
 
 function auditReason(modId: number, status: WorkshopModStatus): string {

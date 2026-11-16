@@ -46,6 +46,23 @@ export default defineConfig([
     },
   },
   {
+    files: ["src/**/*.ts"],
+    ignores: ["src/config/**"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@/config/env/*", "**/config/env/*"],
+              message: "Read environment values through config (@/config).",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ["src/tests/**/*.ts"],
     plugins: { vitest },
     languageOptions: {

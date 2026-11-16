@@ -32,17 +32,13 @@ const DOWNLOAD_IDLE_TIMEOUT_MS = 30_000;
 const DOWNLOAD_MIN_TOTAL_TIMEOUT_MS = 30 * 60_000;
 const DOWNLOAD_MIN_BYTES_PER_SECOND = 32 * 1024;
 const STORAGE_FILES_PATH = "/api/launcher/packs/files";
-const WEBSITE_FALLBACK_URL = "https://createrington.com";
 
 function internalUrl(): string | null {
   return config.launcher.packFiles.internalUrl;
 }
 
 function storageUrl(path: string): string {
-  const website = (config.meta.links.website ?? WEBSITE_FALLBACK_URL).replace(
-    /\/+$/,
-    "",
-  );
+  const website = config.meta.links.website.replace(/\/+$/, "");
   return `${website}${STORAGE_FILES_PATH}/${path}`;
 }
 

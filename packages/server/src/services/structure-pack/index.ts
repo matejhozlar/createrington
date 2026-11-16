@@ -126,13 +126,6 @@ export class StructurePackService {
     return Q.structure.pack.getActive();
   }
 
-  async getEligiblePacks(excludeActive = true): Promise<StructurePack[]> {
-    const active = await Q.structure.pack.getActive();
-    return Q.structure.pack.getEligibleForRotation(
-      excludeActive ? active?.id : undefined,
-    );
-  }
-
   private async assertNameAvailable(name: string): Promise<void> {
     const existing = await Q.structure.pack.find({ name });
     if (existing && !existing.deletedAt) {

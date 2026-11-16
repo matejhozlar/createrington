@@ -132,7 +132,7 @@ export class AuthController {
         discordId: user.discordId,
         username: user.username,
         avatar: user.avatar,
-        ip: req.clientIp || req.ip,
+        ip: req.ip,
         userAgent: req.headers["user-agent"],
       });
 
@@ -197,7 +197,7 @@ export class AuthController {
 
     const result = await sessionService.rotateToken(
       rawToken,
-      req.clientIp || req.ip,
+      req.ip,
       req.headers["user-agent"],
     );
 
@@ -561,7 +561,7 @@ export class AuthController {
         discordId: user.discordId,
         username: user.username,
         avatar: user.avatar,
-        ip: req.clientIp || req.ip,
+        ip: req.ip,
         userAgent: req.headers["user-agent"],
       });
 

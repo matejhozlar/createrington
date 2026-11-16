@@ -16,21 +16,20 @@ import {
 import type { AddressInfo } from "node:net";
 import type { NextFunction, Request, Response } from "express";
 
-const env = vi.hoisted(() => ({
-  CLAUDE_API_URL: "",
-  ADMIN_CHAT_SECRET: "s".repeat(32),
+const adminChat = vi.hoisted(() => ({
+  url: "",
+  secret: "s".repeat(32),
 }));
 
 vi.mock("@/config", () => ({
-  default: { envMode: { isProd: false, isDev: false } },
+  default: {
+    envMode: { isProd: false, isDev: false, isDevDeployment: true },
+    adminChat,
+  },
 }));
 vi.mock("@/db/utils", async () =>
   (await import("@/tests/helpers/mocks/db-utils")).dbUtilsMock(),
 );
-vi.mock("@/config/env/env.config", () => ({
-  env,
-  envMode: { isDevDeployment: true },
-}));
 vi.mock("@/app/middleware", async () => ({
   ...(await vi.importActual("@/app/middleware/error-handler")),
   ...(await vi.importActual("@/app/middleware/async-handler")),
@@ -116,7 +115,7 @@ afterAll(async () => {
 
 beforeEach(() => {
   seen = [];
-  env.CLAUDE_API_URL = upstreamUrl;
+  adminChat.url = upstreamUrl;
   respond = answerJson(200, { ok: true });
 });
 
@@ -134,7 +133,7 @@ function postJson(path: string, body: unknown): Promise<globalThis.Response> {
 
 describe("admin chat proxy", () => {
   it("answers 503 when claude-automation is not configured", async () => {
-    env.CLAUDE_API_URL = "";
+    adminChat.url = "";
 
     const res = await chat("/enabled");
 
@@ -204,7 +203,7 @@ describe("admin chat proxy", () => {
 
   it("answers 500 when claude-automation cannot be reached", async () => {
     const unused = createServer();
-    env.CLAUDE_API_URL = await listen(unused);
+    adminChat.url = await listen(unused);
     await close(unused);
 
     const res = await chat("/enabled");

@@ -56,7 +56,6 @@ export const curseforgeMocks: Record<
     resolveFileDownloads: vi.fn(async () => new Map()),
   }),
   ingest: () => ({
-    ingestProject: vi.fn(),
     ingestProjects: vi.fn(),
     ingestProjectsWhere: vi.fn(async () => 0),
     refreshProjects: vi.fn(async () => 0),

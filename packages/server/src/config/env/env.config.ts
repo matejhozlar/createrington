@@ -183,7 +183,6 @@ const envSchema = z
     RAILS_N_SAILS_SERVER_PORT: port("Rails 'n Sails server port").default(
       26980,
     ),
-    LOCAL_SERVER_IP_ADDRESS: ipv4("Local server IP").default("127.0.0.1"),
     PLAYER_LIMIT: z.coerce
       .number()
       .int()
@@ -214,7 +213,6 @@ const envSchema = z
     // URLs
     WEBSITE_URL: z.string().url("Website URL must be a valid URL"),
     ADMIN_PANEL_URL: z.string().url("Admin panel URL must be a valid URL"),
-    ASSETS_URL: z.string().url("Assets URL must be a valid URL"),
     MAP_URL: z.string().url("Map URL must be a valid URL"),
     DEV_CLIENT_ORIGIN: z.string().url().default("http://localhost:3000"),
 
@@ -406,6 +404,19 @@ const envSchema = z
  */
 export type Env = z.infer<typeof envSchema>;
 
+type RequiredKey = {
+  [K in keyof Env]-?: undefined extends z.input<typeof envSchema>[K]
+    ? never
+    : K;
+}[keyof Env];
+
+/**
+ * What VALIDATION_MODE=generation (codegen and tests) actually holds: every
+ * variable with a default or marked optional is as typed, while the required
+ * ones without a default may be missing.
+ */
+type GenerationEnv = Omit<Env, RequiredKey> & Partial<Pick<Env, RequiredKey>>;
+
 /**
  * Flag for running only validation of env variables
  * Exits the process on success
@@ -413,18 +424,37 @@ export type Env = z.infer<typeof envSchema>;
 const isValidateOnly = process.argv.includes("--validate-only");
 
 /**
+ * Parses each variable on its own, without the cross-field checks: a missing
+ * or malformed value falls back to the field's default, or is left out when
+ * the field has none.
+ */
+function parseForGeneration(): GenerationEnv {
+  const parsed: Record<string, unknown> = {};
+  for (const [key, schema] of Object.entries(envSchema.shape)) {
+    const result = schema.safeParse(process.env[key]);
+    parsed[key] = result.success
+      ? result.data
+      : schema.safeParse(undefined).data;
+  }
+  return parsed as GenerationEnv;
+}
+
+/**
  * Validates environment variables against the defined schema
  *
  * Parses process.env and ensures all required environment variables are present
  * and valid according to the schema. If validation fails, it logs detailed error
- * messages and exits the process.
+ * messages and exits the process. VALIDATION_MODE=generation skips validation
+ * and returns the per-field parse instead.
  *
  * @returns Validated and type-safe environment configuration object
  * @throws Exits process with code 1 if validation fails
  */
 function validateEnv(): Env {
   if (process.env.VALIDATION_MODE === "generation") {
-    return process.env as unknown as Env;
+    // The cast only claims the required variables without a default: nothing
+    // that reads them runs in generation mode, every other field is as typed.
+    return parseForGeneration() as Env;
   }
 
   try {
@@ -452,8 +482,8 @@ function validateEnv(): Env {
 /**
  * Pre-validated environment configuration object
  *
- * This object is created at module load time and provides type-safe access
- * to validated environment variables throughout the application
+ * Created at module load time. Only `config/` reads it; everything else goes
+ * through the config object (enforced by the server ESLint config).
  */
 export const env = validateEnv();
 
