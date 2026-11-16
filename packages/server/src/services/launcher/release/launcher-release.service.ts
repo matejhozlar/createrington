@@ -243,14 +243,6 @@ class LauncherReleaseService {
     return minimumVersion !== null && isNewerVersion(minimumVersion, version);
   }
 
-  /** Every stored release of this environment, newest publish first. */
-  async list(): Promise<LauncherRelease[]> {
-    return await Q.launcher.release.findAll(undefined, {
-      orderBy: "createdAt",
-      orderDirection: "desc",
-    });
-  }
-
   /** Every version of this environment that was released and never withdrawn, also once pruned, highest version first. */
   async listReleased(): Promise<LauncherRelease[]> {
     const released = await Q.launcher.release.findAll({

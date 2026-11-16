@@ -1,11 +1,24 @@
 import { z } from "zod";
 import { router, ownerProcedure, launcherAvailable } from "@/trpc/trpc";
-import { id, rethrowTrpc } from "@/trpc/utils";
+import { id, paginateQuery, paginationInput, rethrowTrpc } from "@/trpc/utils";
 import config from "@/config";
+import { Q } from "@/db";
+import { ilikeContains } from "@/db/utils";
 import { launcherReleaseService } from "@/services/launcher/release/launcher-release.service";
+import {
+  LAUNCHER_PLATFORMS,
+  LAUNCHER_RELEASE_STATUSES,
+} from "@createrington/shared/launcher";
 import type { LauncherRelease } from "@createrington/shared/db/launcher_release.types";
 
 const launcherOwnerProcedure = ownerProcedure.use(launcherAvailable);
+
+const listInput = z.object({
+  platform: z.enum(LAUNCHER_PLATFORMS),
+  status: z.enum(LAUNCHER_RELEASE_STATUSES).optional(),
+  search: z.string().trim().max(64).optional(),
+  ...paginationInput(),
+});
 
 const idInput = z.object({ id: id() });
 const releaseInput = idInput.extend({ required: z.boolean().default(false) });
@@ -31,14 +44,25 @@ export const ownerLauncherReleasesRouter = router({
   list: launcherOwnerProcedure
     .meta({
       description:
-        "List the launcher releases stored for this environment's channel, newest first",
+        "List one page of a platform's launcher releases stored for this environment's channel, newest first, with optional status and version filters",
     })
-    .query(async () => {
-      const releases = await launcherReleaseService.list();
+    .input(listInput)
+    .query(async ({ input }) => {
+      const { rows, pagination } = await paginateQuery(
+        Q.launcher.release,
+        {
+          platform: input.platform,
+          status: input.status,
+          version: input.search ? ilikeContains(input.search) : undefined,
+        },
+        input,
+        { orderBy: "createdAt", orderDirection: "desc" },
+      );
       return {
         channel: config.launcher.channel,
         enabled: launcherReleaseService.isEnabled(),
-        releases: releases.map(toDto),
+        releases: rows.map(toDto),
+        pagination,
       };
     }),
 
