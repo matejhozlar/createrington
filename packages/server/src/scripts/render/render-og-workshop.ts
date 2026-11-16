@@ -18,23 +18,19 @@ import {
   type Canvas,
   type SKRSContext2D,
 } from "@napi-rs/canvas";
-import { fitFontSize } from "@/utils/canvas";
 import {
   W,
   H,
   BG_BOT,
   AMBER,
-  FOREGROUND,
-  MUTED,
-  TEXT_X,
   registerBrandFonts,
-  roundRectPath,
   paintEllipseGradient,
-  paintWordmark,
-  wrapText,
+  paintHeadlineCopy,
+  type HeadlineCopy,
 } from "@/utils/og-card";
 import {
   ASSETS,
+  TEAM,
   paintPosedFigure,
   writeCard,
   type PosedFigureSpec,
@@ -68,16 +64,14 @@ const CHEST_LID_RISE = 72;
 // The_BigShot weighs his next suggestion.
 const FIGURES: readonly PosedFigureSpec[] = [
   {
-    username: "The_BigShot",
-    uuid: "4cada83a-c012-4a31-8d80-942f3f79e8a1",
+    ...TEAM.The_BigShot,
     pose: "ponder",
     height: 205,
     centerX: 723,
     groundY: 610,
   },
   {
-    username: "diablothe2nd",
-    uuid: "8cca5cab-b782-452b-a8b9-8bb4ae0f6d0f",
+    ...TEAM.diablothe2nd,
     pose: "point",
     height: 222,
     centerX: 836,
@@ -85,8 +79,7 @@ const FIGURES: readonly PosedFigureSpec[] = [
     mirror: true,
   },
   {
-    username: "Tetsuoken",
-    uuid: "32ff995f-cf92-417b-b745-891738346120",
+    ...TEAM.Tetsuoken,
     pose: "cheer",
     height: 210,
     centerX: 1140,
@@ -198,6 +191,15 @@ const CHEST_LID_UNDERSIDE: readonly string[] = [
   "duuuuuuuuuud",
   "dddddddddddd",
 ];
+
+const COPY: HeadlineCopy = {
+  lead: "What ships next?",
+  accent: "You decide.",
+  sub: "Suggest mods, upvote your favorites, and build the next modpack together.",
+  subWidth: 470,
+  url: "createrington.com/workshop",
+  headWidth: 520,
+};
 
 function drawPixelMap(
   ctx: SKRSContext2D,
@@ -541,68 +543,6 @@ function paintHearts(ctx: SKRSContext2D): void {
   }
 }
 
-async function paintCopy(ctx: SKRSContext2D): Promise<void> {
-  await paintWordmark(ctx);
-
-  const maxTextWidth = 520;
-  ctx.textBaseline = "alphabetic";
-
-  const headFont = (s: number) => `700 ${s}px Outfit`;
-  ctx.letterSpacing = "-1.4px";
-  const headSize = fitFontSize(
-    ctx,
-    "What ships next?",
-    headFont,
-    [72, 66, 60],
-    maxTextWidth,
-  );
-  const line1Y = 286;
-  const line2Y = line1Y + headSize + 6;
-
-  ctx.font = headFont(headSize);
-  ctx.fillStyle = FOREGROUND;
-  ctx.fillText("What ships next?", TEXT_X, line1Y);
-  ctx.fillStyle = AMBER;
-  ctx.fillText("You decide.", TEXT_X, line2Y);
-  ctx.letterSpacing = "0px";
-
-  const subFont = "400 22px Outfit";
-  const subLines = wrapText(
-    ctx,
-    "Suggest mods, upvote your favorites, and build the next modpack together.",
-    subFont,
-    470,
-  );
-  ctx.font = subFont;
-  ctx.fillStyle = MUTED;
-  let subY = line2Y + 52;
-  for (const line of subLines) {
-    ctx.fillText(line, TEXT_X, subY);
-    subY += 31;
-  }
-
-  const chipY = subY + 4;
-  const chipH = 44;
-  const padX = 20;
-  const url = "createrington.com/workshop";
-  ctx.font = "600 22px Outfit";
-  const urlW = ctx.measureText(url).width;
-  const chipW = padX * 2 + urlW;
-
-  ctx.fillStyle = "rgba(255,185,0,0.10)";
-  roundRectPath(ctx, TEXT_X, chipY, chipW, chipH, 11);
-  ctx.fill();
-  ctx.strokeStyle = "rgba(255,185,0,0.40)";
-  ctx.lineWidth = 1;
-  roundRectPath(ctx, TEXT_X + 0.5, chipY + 0.5, chipW - 1, chipH - 1, 11);
-  ctx.stroke();
-
-  ctx.fillStyle = AMBER;
-  ctx.textBaseline = "middle";
-  ctx.fillText(url, TEXT_X + padX, chipY + chipH / 2 + 1);
-  ctx.textBaseline = "alphabetic";
-}
-
 async function main(): Promise<void> {
   const outPath = process.argv[2] ?? join(ASSETS, "og", "workshop.png");
 
@@ -614,7 +554,7 @@ async function main(): Promise<void> {
     await paintFigures(ctx);
     await paintModLogos(ctx);
     paintHearts(ctx);
-    await paintCopy(ctx);
+    await paintHeadlineCopy(ctx, COPY);
   });
 }
 

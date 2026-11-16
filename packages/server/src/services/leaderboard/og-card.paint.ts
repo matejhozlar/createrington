@@ -2,7 +2,6 @@ import type { Image, SKRSContext2D } from "@napi-rs/canvas";
 import { formatCompactMoney } from "@createrington/shared/format";
 import { fitFontSize } from "@/utils/canvas";
 import {
-  AMBER,
   BG_BOT,
   drawImageCover,
   FOREGROUND,
@@ -11,12 +10,10 @@ import {
   MUTED,
   paintEllipseGradient,
   paintFigure,
-  paintUrlChip,
-  paintWordmark,
   roundRectPath,
-  TEXT_X,
   W,
-  wrapText,
+  paintHeadlineCopy,
+  type HeadlineCopy,
 } from "@/utils/og-card";
 import type { TopRoleMetric } from "@/services/discord/role/top-role-holder.service";
 
@@ -63,6 +60,16 @@ const SLOTS = [
 ] as const;
 
 const rgba = (rgb: string, alpha: number) => `rgba(${rgb},${alpha})`;
+
+const COPY: HeadlineCopy = {
+  lead: "Three titles.",
+  accent: "One holder each.",
+  sub: "Most hours, most records, deepest pockets. Awarded again every midnight UTC.",
+  subWidth: 440,
+  url: "createrington.com/leaderboards",
+  headSizes: [68, 62, 56],
+  headWidth: 480,
+};
 
 function formatMetric(metric: TopRoleMetric, value: number): string {
   switch (metric) {
@@ -224,47 +231,6 @@ function paintCaptions(ctx: SKRSContext2D, slots: (CardSlot | null)[]): void {
   });
 }
 
-async function paintCopy(ctx: SKRSContext2D): Promise<void> {
-  await paintWordmark(ctx);
-
-  ctx.textBaseline = "alphabetic";
-  const headFont = (size: number) => `700 ${size}px Outfit`;
-  ctx.letterSpacing = "-1.4px";
-  const headSize = fitFontSize(
-    ctx,
-    "One holder each.",
-    headFont,
-    [68, 62, 56],
-    480,
-  );
-  const line1Y = 286;
-  const line2Y = line1Y + headSize + 6;
-
-  ctx.font = headFont(headSize);
-  ctx.fillStyle = FOREGROUND;
-  ctx.fillText("Three titles.", TEXT_X, line1Y);
-  ctx.fillStyle = AMBER;
-  ctx.fillText("One holder each.", TEXT_X, line2Y);
-  ctx.letterSpacing = "0px";
-
-  const subFont = "400 22px Outfit";
-  const subLines = wrapText(
-    ctx,
-    "Most hours, most records, deepest pockets. Awarded again every midnight UTC.",
-    subFont,
-    440,
-  );
-  ctx.font = subFont;
-  ctx.fillStyle = MUTED;
-  let subY = line2Y + 52;
-  for (const line of subLines) {
-    ctx.fillText(line, TEXT_X, subY);
-    subY += 31;
-  }
-
-  paintUrlChip(ctx, "createrington.com/leaderboards", TEXT_X, subY + 4);
-}
-
 export async function paintLeaderboardsCard(
   ctx: SKRSContext2D,
   slots: (CardSlot | null)[],
@@ -273,5 +239,5 @@ export async function paintLeaderboardsCard(
   paintSlotGlows(ctx, slots);
   paintFigures(ctx, slots);
   paintCaptions(ctx, slots);
-  await paintCopy(ctx);
+  await paintHeadlineCopy(ctx, COPY);
 }

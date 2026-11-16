@@ -21,7 +21,7 @@ import {
 } from "@napi-rs/canvas";
 import { computeBBox } from "@/utils/canvas";
 import { drawImageCover } from "@/utils/og-card";
-import { ASSETS, getPoseFigure } from "./og-shared";
+import { ASSETS, TEAM, getPoseFigure } from "./og-shared";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(here, "..", "..", "..", "..", "..");
@@ -87,52 +87,45 @@ interface Admin {
 
 const ADMINS: readonly Admin[] = [
   {
-    username: "diablothe2nd",
-    uuid: "8cca5cab-b782-452b-a8b9-8bb4ae0f6d0f",
+    ...TEAM.diablothe2nd,
     pose: "gaze",
     row: "back",
     centerX: 32,
   },
   {
-    username: "Tetsuoken",
-    uuid: "32ff995f-cf92-417b-b745-891738346120",
+    ...TEAM.Tetsuoken,
     pose: "ponder",
     row: "back",
     centerX: 132,
     mirror: true,
   },
   {
-    username: "Saidai_V",
-    uuid: "2d6b2f99-34ae-4c25-acda-dca5e5def564",
+    ...TEAM.Saidai_V,
     pose: "snagged",
     row: "back",
     centerX: 82,
   },
   {
-    username: "Cailin05",
-    uuid: "aee71815-6420-444c-a245-9047c41f4a39",
+    ...TEAM.Cailin05,
     pose: "engineer",
     row: "middle",
     centerX: 32,
   },
   {
-    username: "The_BigShot",
-    uuid: "4cada83a-c012-4a31-8d80-942f3f79e8a1",
+    ...TEAM.The_BigShot,
     pose: "crossed",
     row: "middle",
     centerX: 132,
     mirror: true,
   },
   {
-    username: "saunhardy",
-    uuid: "091b900c-4174-478c-900c-a0fe5a31a329",
+    ...TEAM.saunhardy,
     pose: "confidence",
     row: "front",
     centerX: 68,
   },
   {
-    username: "Agent772",
-    uuid: "3e0db446-147a-4692-87fd-c3facc4341db",
+    ...TEAM.Agent772,
     pose: "relaxed",
     row: "front",
     centerX: 122,
