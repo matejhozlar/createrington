@@ -105,16 +105,11 @@ describe("ModpackChangelogComponentPresets.release", () => {
 
     const nodes = children(messages[0]);
     const [header] = texts(nodes);
-    expect(header).toContain("## Rails n Sails 1.3.0");
-    expect(header).toContain("Minecraft 1.21.1");
-    expect(header).toContain("NeoForge 21.1.172");
-    expect(header).toContain("214 mods");
-    expect(header).toContain("Changes since 1.2.0");
-    expect(header).toContain("**2 added**");
-    expect(header).toContain("**1 updated**");
-    expect(header).toContain("**1 removed**");
-    expect(header).toContain("200 unchanged");
-    expect(header).not.toContain("Part ");
+    expect(header).toBe(
+      "## Rails n Sails 1.3.0\n" +
+        "-# Minecraft 1.21.1 · NeoForge 21.1.172 · 214 mods · Published <t:1893456000:R>\n" +
+        "Changes since 1.2.0: **2 added** · **1 updated** · **1 removed** · 200 unchanged",
+    );
 
     expect(headings(nodes)).toEqual([
       "### Added (2)",
@@ -156,12 +151,19 @@ describe("ModpackChangelogComponentPresets.release", () => {
       const nodes = children(message);
       if (index === 0) {
         const [header] = texts(nodes);
-        expect(header).toContain("## Rails n Sails 1.3.0");
-        expect(header).toContain("**40 added**");
-        expect(header).not.toContain("Part ");
+        expect(header).toBe(
+          "## Rails n Sails 1.3.0\n" +
+            "-# Minecraft 1.21.1 · NeoForge 21.1.172 · 214 mods · Published <t:1893456000:R>\n" +
+            "Changes since 1.2.0: **40 added** · **30 updated** · **5 removed** · 200 unchanged",
+        );
       } else {
         expect(nodes[0]).toEqual(SPACER);
-        expect(texts(nodes).join("\n")).not.toContain("## Rails n Sails");
+        expect(
+          texts(nodes).every(
+            (content) =>
+              content.startsWith("### ") || content.startsWith("**["),
+          ),
+        ).toBe(true);
       }
       expect(hasDownloadRow(nodes)).toBe(index === messages.length - 1);
       entriesSeen += sections(nodes).length;
@@ -320,8 +322,11 @@ describe("ModpackChangelogComponentPresets.release", () => {
       ],
     });
     if (header.type !== "text") throw new Error("expected the header text");
-    expect(header.content.startsWith("**1.3.0**\n-# ")).toBe(true);
-    expect(header.content).not.toContain("## ");
+    expect(header.content).toBe(
+      "**1.3.0**\n" +
+        "-# Minecraft 1.21.1 · NeoForge 21.1.172 · 214 mods · Published <t:1893456000:R>\n" +
+        "Changes since 1.2.0: **40 added** · **0 updated** · **0 removed** · 200 unchanged",
+    );
     for (const message of messages.slice(1)) {
       expect(validateComponentsV2(message)).toBeNull();
       expect(children(message)[0]).toEqual(SPACER);

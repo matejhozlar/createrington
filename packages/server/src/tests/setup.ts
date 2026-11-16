@@ -1,10 +1,8 @@
-import { beforeAll, afterAll } from "vitest";
-import "@/logger.global";
+import { vi } from "vitest";
+import { silentLogger } from "@/tests/helpers/silent-logger";
 
-beforeAll(() => {
-  logger.info("Test suite stating...");
-});
+vi.mock("@/logger.global", async () => ({
+  default: (await import("@/tests/helpers/silent-logger")).silentLogger,
+}));
 
-afterAll(() => {
-  logger.info("Test suite finished");
-});
+globalThis.logger = silentLogger;

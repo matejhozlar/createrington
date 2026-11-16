@@ -305,8 +305,9 @@ describe("PlayerPromptService.submitResponse", () => {
       responseText: "last one",
     });
 
-    expect(message).toContain("That was your last entry");
-    expect(message).not.toContain("entries left");
+    expect(message).toBe(
+      "Entry #2 recorded. That was your last entry on this prompt.",
+    );
   });
 
   it("points at the next allowed time when a cooldown is configured", async () => {

@@ -179,6 +179,8 @@ describe("/skin style option", () => {
     expect(sent).toEqual([
       expect.objectContaining({ kind: "error", title: "Render Error" }),
     ]);
-    expect(sent[0]?.description).not.toContain("upstream");
+    expect(sent[0]?.description).toBe(
+      "Could not render the **Wave** pose for Steve. Please try again later.",
+    );
   });
 });

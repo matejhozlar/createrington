@@ -112,20 +112,10 @@ vi.mock("@/services/player/deletion", () => ({ playerDeletionService: {} }));
 vi.mock("@/services", () => ({ getService: vi.fn(), Services: {} }));
 
 import { accountRouter } from "@/trpc/routers/user/account";
-import { AuthRole } from "@createrington/shared/auth";
-import type { Context } from "@/trpc/context";
+import { userContext } from "@/tests/helpers/trpc";
 
 function callerFor(discordId: string) {
-  return accountRouter.createCaller({
-    user: {
-      discordId,
-      minecraftUuid: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-      role: AuthRole.USER,
-      isAdmin: false,
-    },
-    service: null,
-    ip: "127.0.0.1",
-  } as unknown as Context);
+  return accountRouter.createCaller(userContext({ discordId }));
 }
 
 describe("user.account.exportData", () => {

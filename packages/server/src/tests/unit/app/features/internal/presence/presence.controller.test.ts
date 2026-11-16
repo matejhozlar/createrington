@@ -24,7 +24,7 @@ import {
   HeartbeatBodySchema,
   PresenceBodySchema,
 } from "@/app/features/mod/presence/presence.schemas";
-import type { Request, Response } from "express";
+import { fakeReq, fakeRes } from "@/tests/helpers/http";
 
 const TEST_SERVER_ID = 7;
 const PLAYER_UUID = "11111111-2222-3333-4444-555555555555";
@@ -36,23 +36,14 @@ async function loadController() {
   return module.InternalPresenceController;
 }
 
-const req = {} as Request;
-
-function makeRes(body: unknown): Response & { json: ReturnType<typeof vi.fn> } {
-  return {
-    json: vi.fn(),
-    locals: { validated: { body } },
-  } as unknown as Response & {
-    json: ReturnType<typeof vi.fn>;
-  };
-}
+const req = fakeReq();
 
 function presenceRes(body: Record<string, unknown>) {
-  return makeRes(PresenceBodySchema.parse(body));
+  return fakeRes({ validated: { body: PresenceBodySchema.parse(body) } });
 }
 
 function heartbeatRes(body: Record<string, unknown>) {
-  return makeRes(HeartbeatBodySchema.parse(body));
+  return fakeRes({ validated: { body: HeartbeatBodySchema.parse(body) } });
 }
 
 function makePlaytimeManager() {

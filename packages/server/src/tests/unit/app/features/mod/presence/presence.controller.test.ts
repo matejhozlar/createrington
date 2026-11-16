@@ -31,37 +31,29 @@ import {
   HeartbeatBodySchema,
   PresenceBodySchema,
 } from "@/app/features/mod/presence/presence.schemas";
-import type { Request, Response } from "express";
+import type { Request } from "express";
+import { fakeReq, fakeRes, type FakeRes } from "@/tests/helpers/http";
 
 const PLAYER_UUID = "11111111-2222-3333-4444-555555555555";
 const OTHER_UUID = "99999999-8888-7777-6666-555555555555";
 
-type TestRes = Response & { json: ReturnType<typeof vi.fn> };
-
-function makeRes(body: unknown): TestRes {
-  return {
-    json: vi.fn(),
-    locals: { validated: { body } },
-  } as unknown as TestRes;
-}
-
 function presence(
   body: Record<string, unknown>,
   modAuth: Record<string, unknown> = {},
-): [Request, TestRes] {
+): [Request, FakeRes] {
   return [
-    { modAuth } as unknown as Request,
-    makeRes(PresenceBodySchema.parse(body)),
+    fakeReq({ modAuth }),
+    fakeRes({ validated: { body: PresenceBodySchema.parse(body) } }),
   ];
 }
 
 function heartbeat(
   body: Record<string, unknown>,
   modAuth: Record<string, unknown> = {},
-): [Request, TestRes] {
+): [Request, FakeRes] {
   return [
-    { modAuth } as unknown as Request,
-    makeRes(HeartbeatBodySchema.parse(body)),
+    fakeReq({ modAuth }),
+    fakeRes({ validated: { body: HeartbeatBodySchema.parse(body) } }),
   ];
 }
 

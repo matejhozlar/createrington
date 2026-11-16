@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import type { NextFunction, Request, Response } from "express";
+import type { NextFunction, Request } from "express";
+import { fakeReq, fakeRes } from "@/tests/helpers/http";
 
 const { isUpdateRequired } = vi.hoisted(() => ({
   isUpdateRequired: vi.fn(),
@@ -16,14 +17,14 @@ function makeReq(headers: Record<string, string>): Request {
   const lower = Object.fromEntries(
     Object.entries(headers).map(([name, value]) => [name.toLowerCase(), value]),
   );
-  return { get: (name: string) => lower[name.toLowerCase()] } as Request;
+  return fakeReq({ get: (name: string) => lower[name.toLowerCase()] });
 }
 
 async function run(headers: Record<string, string>) {
   const next = vi.fn<(error?: unknown) => void>();
   await requireSupportedLauncher(
     makeReq(headers),
-    {} as Response,
+    fakeRes(),
     next as NextFunction,
   );
   expect(next).toHaveBeenCalledTimes(1);

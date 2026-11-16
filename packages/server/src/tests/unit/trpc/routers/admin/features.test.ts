@@ -17,22 +17,10 @@ vi.mock("@/services/auth/admin-status/admin-status.service", () => ({
 }));
 
 import { TRPCError } from "@trpc/server";
-import { AuthRole } from "@createrington/shared/auth";
 import { adminFeaturesRouter } from "@/trpc/routers/admin/features";
-import type { Context } from "@/trpc/context";
+import { adminContext } from "@/tests/helpers/trpc";
 
-const caller = adminFeaturesRouter.createCaller({
-  user: {
-    discordId: "100000000000000009",
-    username: "admin",
-    minecraftUsername: "Admin",
-    minecraftUuid: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
-    role: AuthRole.ADMIN,
-    isAdmin: true,
-  },
-  service: null,
-  ip: "127.0.0.1",
-} satisfies Context);
+const caller = adminFeaturesRouter.createCaller(adminContext());
 
 async function rejection(call: Promise<unknown>): Promise<TRPCError> {
   try {

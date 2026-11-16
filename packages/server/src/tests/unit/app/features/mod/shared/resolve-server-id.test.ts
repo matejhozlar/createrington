@@ -23,9 +23,10 @@ import {
 } from "@/app/middleware/error-handler";
 import { resolveServerId } from "@/app/features/mod/shared/resolve-server-id";
 import type { Request } from "express";
+import { fakeReq } from "@/tests/helpers/http";
 
 function makeReq(body: unknown, serverIp?: string): Request {
-  return { body, serverIp } as unknown as Request;
+  return fakeReq({ body, serverIp });
 }
 
 describe("resolveServerId", () => {

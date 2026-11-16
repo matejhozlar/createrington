@@ -14,12 +14,9 @@ import type { Server } from "node:http";
 vi.mock("@/config", () => ({
   default: { envMode: { isProd: false, isDev: false } },
 }));
-vi.mock("@/db/utils", () => ({
-  DatabaseError: class DatabaseError extends Error {},
-  NotFoundError: class NotFoundError extends Error {},
-  ConstraintViolationError: class ConstraintViolationError extends Error {},
-  QueryError: class QueryError extends Error {},
-}));
+vi.mock("@/db/utils", async () =>
+  (await import("@/tests/helpers/mocks/db-utils")).dbUtilsMock(),
+);
 
 import { AppError, errorHandler } from "@/app/middleware/error-handler";
 
