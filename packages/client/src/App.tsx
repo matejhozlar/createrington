@@ -579,8 +579,8 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <WebSocketProvider>
-          <ServerDataProvider autoSubscribe>
-            <PlayerDataProvider autoSubscribe>
+          <ServerDataProvider>
+            <PlayerDataProvider>
               <ToastProvider>
                 <BrowserRouter>
                   <ScrollToTop />

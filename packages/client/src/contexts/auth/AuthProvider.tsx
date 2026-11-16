@@ -23,15 +23,9 @@ const AUTH_ERROR_MESSAGES: Record<string, string> = {
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(() => {
-    const urlError = new URLSearchParams(window.location.search).get("error");
-    if (!urlError) return null;
-    return AUTH_ERROR_MESSAGES[urlError] ?? AUTH_ERROR_MESSAGES.auth_failed;
-  });
 
   const login = useCallback(async () => {
     try {
-      setError(null);
       const response = await fetch("/api/auth/discord");
       const data = await response.json();
 
@@ -53,11 +47,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         window.location.href = data.data.url;
       } else {
-        setError("Failed to initiate login");
         toast.error("Could not start login. Please try again.");
       }
     } catch (error) {
-      setError("Failed to connect to authentication server");
       toast.error("Could not reach the authentication server.");
       if (import.meta.env.DEV) console.error("Login error:", error);
     }
@@ -114,7 +106,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setAccessToken(null);
     writePlayerHint(null);
     setUser(null);
-    setError(null);
   }, []);
 
   const logout = useCallback(async () => {
@@ -237,11 +228,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const value: AuthContextType = {
     user,
     loading,
-    error,
     login,
     logout,
     logoutAll,
-    refreshToken: silentRefresh,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

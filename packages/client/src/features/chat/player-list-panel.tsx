@@ -26,17 +26,13 @@ function PlayerRow({
 }: {
   uuid: string;
   username: string;
-  sessionStart: Date | string;
+  sessionStart: Date;
   /** Current timestamp snapshot from the parent's tick: pure state, no Date.now() here */
   now: number;
   /** True when the sidebar is in icon-collapsed mode */
   isCollapsed: boolean;
 }) {
-  const start =
-    sessionStart instanceof Date
-      ? sessionStart.getTime()
-      : new Date(sessionStart).getTime();
-  const sessionMs = now - start;
+  const sessionMs = now - sessionStart.getTime();
 
   return (
     <div

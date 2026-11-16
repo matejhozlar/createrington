@@ -24,7 +24,7 @@ export interface ServerStatus {
   scheduledMaintenance: ScheduledMaintenance | null;
   playerCount: number;
   maxPlayers: number;
-  lastUpdate: Date | string;
+  lastUpdate: string;
 }
 
 /**
@@ -34,7 +34,7 @@ export interface PlayerData {
   uuid: string;
   username: string;
   serverId: number;
-  sessionStart: Date | string;
+  sessionStart: string;
   sessionDuration: number; // seconds
 }
 
@@ -45,7 +45,7 @@ export interface InitialDataPayload {
   servers: ServerStatus[];
   players: PlayerData[];
   messages: Record<number, CachedMessage[]>; // serverId -> messages
-  timestamp: Date | string;
+  timestamp: string;
 }
 
 /**
@@ -56,7 +56,7 @@ export interface ServerInitialDataPayload {
   status: ServerStatus;
   players: PlayerData[];
   messages: CachedMessage[];
-  timestamp: Date | string;
+  timestamp: string;
 }
 
 /**
@@ -70,7 +70,7 @@ export interface ServerStatusUpdatePayload {
   scheduledMaintenance: ScheduledMaintenance | null;
   playerCount: number;
   maxPlayers: number;
-  timestamp: Date | string;
+  timestamp: string;
 }
 
 /**
@@ -81,7 +81,7 @@ export interface PlayersUpdatePayload {
   type: "join" | "leave" | "sync";
   players?: PlayerData[]; // For sync
   player?: PlayerData; // For join/leave
-  timestamp: Date | string;
+  timestamp: string;
 }
 
 /**
@@ -92,7 +92,7 @@ export interface MessageUpdatePayload {
   type: "new" | "update" | "delete";
   message?: CachedMessage; // For new/update
   messageId?: string; // For delete
-  timestamp: Date | string;
+  timestamp: string;
 }
 
 /**

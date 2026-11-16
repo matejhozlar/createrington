@@ -421,7 +421,7 @@ export class WebSocketService {
         scheduledMaintenance: status.scheduledMaintenance,
         playerCount: status.playerCount,
         maxPlayers: status.maxPlayers,
-        timestamp: new Date(),
+        timestamp: new Date().toISOString(),
       };
 
       this.emitToServerRooms(
@@ -452,10 +452,10 @@ export class WebSocketService {
         uuid: event.uuid,
         username: event.username,
         serverId: event.serverId,
-        sessionStart: event.sessionStart,
+        sessionStart: event.sessionStart.toISOString(),
         sessionDuration,
       },
-      timestamp: new Date(),
+      timestamp: new Date().toISOString(),
     };
 
     this.emitToServerRooms(
@@ -483,7 +483,7 @@ export class WebSocketService {
       type,
       message,
       messageId,
-      timestamp: new Date(),
+      timestamp: new Date().toISOString(),
     };
 
     this.emitToServerRooms(

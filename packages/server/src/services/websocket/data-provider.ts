@@ -74,7 +74,7 @@ export class WebSocketDataProvider {
         : null,
       playerCount: activeSessions.length,
       maxPlayers: config.maxPlayers,
-      lastUpdate: new Date(),
+      lastUpdate: new Date().toISOString(),
     };
   }
 
@@ -111,7 +111,7 @@ export class WebSocketDataProvider {
       uuid: session.uuid,
       username: session.username,
       serverId: session.serverId,
-      sessionStart: session.sessionStart,
+      sessionStart: session.sessionStart.toISOString(),
       sessionDuration: playtimeService.getSessionDuration(session) || 0,
     }));
   }
@@ -161,7 +161,7 @@ export class WebSocketDataProvider {
       servers,
       players,
       messages,
-      timestamp: new Date(),
+      timestamp: new Date().toISOString(),
     };
   }
 
@@ -188,7 +188,7 @@ export class WebSocketDataProvider {
       status,
       players,
       messages,
-      timestamp: new Date(),
+      timestamp: new Date().toISOString(),
     };
   }
 }
