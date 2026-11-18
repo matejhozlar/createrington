@@ -3,9 +3,9 @@ import { z } from "zod";
 import { KNOWN_POSES, type KnownPose } from "createrington-skin-api";
 import type { Request, Response } from "express";
 import { route } from "@/app/middleware/compose";
-import { BadRequestError, NotFoundError } from "@/app/middleware/error-handler";
+import { BadRequestError, NotFoundError } from "@/errors";
 import { skinPoseLimiter } from "@/app/middleware/rate-limit.middleware";
-import { idToObject } from "@/app/utils/helpers";
+import { idToObject } from "@/utils/player-identifier";
 import { Q } from "@/db";
 import {
   AVATAR_DEFAULT_SIZE,

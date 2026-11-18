@@ -2,7 +2,7 @@ import { Q, waitlistRepo } from "@/db";
 import { Discord } from "@/discord/constants";
 import { RegistrationComponentPresets } from "@/discord/components/presets/registration";
 import { createVerificationChannel } from "@/discord/bots/main/registration/verification-channel";
-import { BadRequestError } from "@/app/middleware/error-handler";
+import { BadRequestError } from "@/errors";
 import type { WaitlistEntry } from "@createrington/shared/db";
 import type { GuildMember } from "discord.js";
 import { getGuild, lookupChannel, lookupMember } from "./discord-lookup";

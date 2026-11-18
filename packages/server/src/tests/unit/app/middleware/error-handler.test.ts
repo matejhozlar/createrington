@@ -18,7 +18,8 @@ vi.mock("@/db/utils", async () =>
   (await import("@/tests/helpers/mocks/db-utils")).dbUtilsMock(),
 );
 
-import { AppError, errorHandler } from "@/app/middleware/error-handler";
+import { errorHandler } from "@/app/middleware/error-handler";
+import { AppError } from "@/errors";
 
 let server: Server;
 let baseUrl: string;

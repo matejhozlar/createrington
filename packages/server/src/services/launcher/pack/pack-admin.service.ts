@@ -1,4 +1,4 @@
-import { BadRequestError, ConflictError } from "@/app/middleware/error-handler";
+import { BadRequestError, ConflictError } from "@/errors";
 import config from "@/config";
 import { db, Q } from "@/db";
 import { UniqueViolationError } from "@/db/utils";

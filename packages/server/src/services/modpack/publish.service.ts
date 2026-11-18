@@ -1,5 +1,5 @@
 import { Q, db } from "@/db";
-import { BadRequestError, NotFoundError } from "@/app/middleware/error-handler";
+import { BadRequestError, NotFoundError } from "@/errors";
 import { UniqueViolationError } from "@/db/utils/errors";
 import type {
   Modpack,

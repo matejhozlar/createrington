@@ -1,4 +1,4 @@
-import { BadRequestError } from "@/app/middleware";
+import { BadRequestError } from "@/errors";
 import { modpackReleaseService } from "@/services/modpack/release.service";
 import type { Request, Response } from "express";
 

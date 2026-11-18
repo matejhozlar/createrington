@@ -1,5 +1,5 @@
 import { Q, waitlistRepo } from "@/db";
-import { BadRequestError } from "@/app/middleware/error-handler";
+import { BadRequestError } from "@/errors";
 import { UniqueViolationError } from "@/db/utils/errors";
 import type { WaitlistEntry } from "@createrington/shared/db";
 import { lookupChannel } from "./discord-lookup";

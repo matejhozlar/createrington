@@ -10,7 +10,7 @@ vi.mock("@/services/launcher/release/launcher-release.service", () => ({
   launcherReleaseService: { isUpdateRequired },
 }));
 
-import { AppError } from "@/app/middleware/error-handler";
+import { AppError } from "@/errors";
 import { requireSupportedLauncher } from "@/app/middleware/launcher-version.middleware";
 
 function makeReq(headers: Record<string, string>): Request {

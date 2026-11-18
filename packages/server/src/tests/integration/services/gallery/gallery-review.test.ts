@@ -51,11 +51,7 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import sharp from "sharp";
 import pool, { balanceRepo, Q } from "@/db";
-import {
-  BadRequestError,
-  ConflictError,
-  NotFoundError,
-} from "@/app/middleware/error-handler";
+import { BadRequestError, ConflictError, NotFoundError } from "@/errors";
 import { settings } from "@/services/settings";
 import { objectStorage } from "@/services/storage";
 import {

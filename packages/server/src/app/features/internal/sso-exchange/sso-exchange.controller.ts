@@ -1,4 +1,4 @@
-import { BadRequestError, NotFoundError } from "@/app/middleware";
+import { BadRequestError, NotFoundError } from "@/errors";
 import { consumeSsoCode } from "@/services/auth/sso/code-store";
 import type { Request, Response } from "express";
 

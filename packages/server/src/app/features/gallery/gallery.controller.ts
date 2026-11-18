@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import { NotFoundError } from "@/app/middleware";
+import { NotFoundError } from "@/errors";
 import { Q } from "@/db";
 import { container, Services } from "@/services/container";
 

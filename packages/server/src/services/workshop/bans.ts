@@ -4,7 +4,7 @@ import {
   ConflictError,
   ForbiddenError,
   NotFoundError,
-} from "@/app/middleware/error-handler";
+} from "@/errors";
 import type { BanType, WorkshopBan } from "@createrington/shared/db";
 import type { WorkshopBanWithScope } from "@/db/queries/workshop/ban";
 import { DatabaseTable } from "@/generated/db";

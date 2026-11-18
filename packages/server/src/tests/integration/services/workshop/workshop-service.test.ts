@@ -29,7 +29,7 @@ vi.mock("@/services/curseforge/ingest", async () =>
 );
 
 import pool, { Q } from "@/db";
-import { NotFoundError } from "@/app/middleware/error-handler";
+import { NotFoundError } from "@/errors";
 import { workshopService } from "@/services/workshop/workshop.service";
 import { workshopSuggestionService } from "@/services/workshop/suggestion.service";
 import { workshopReviewService } from "@/services/workshop/review.service";

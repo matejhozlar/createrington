@@ -31,7 +31,6 @@ vi.mock("@/db/utils", async () =>
   (await import("@/tests/helpers/mocks/db-utils")).dbUtilsMock(),
 );
 vi.mock("@/app/middleware", async () => ({
-  ...(await vi.importActual("@/app/middleware/error-handler")),
   ...(await vi.importActual("@/app/middleware/async-handler")),
   authenticate: (req: Request, _res: Response, next: NextFunction) => {
     req.user = { minecraftUsername: "matej" } as Request["user"];

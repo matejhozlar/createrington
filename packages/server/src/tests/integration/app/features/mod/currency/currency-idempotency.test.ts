@@ -9,11 +9,7 @@ import {
 } from "vitest";
 import { Q, balanceRepo } from "@/db";
 import { BalanceTransactionType } from "@/db/repositories/balance";
-import {
-  AppError,
-  BadRequestError,
-  ConflictError,
-} from "@/app/middleware/error-handler";
+import { AppError, BadRequestError, ConflictError } from "@/errors";
 import {
   hashRequest,
   parseIdempotencyKey,

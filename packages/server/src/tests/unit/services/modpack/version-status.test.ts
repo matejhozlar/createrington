@@ -25,7 +25,7 @@ vi.mock("@/db", () => ({
   },
 }));
 
-import { NotFoundError } from "@/app/middleware/error-handler";
+import { NotFoundError } from "@/errors";
 import { modpackReleaseService } from "@/services/modpack/release.service";
 
 const PROJECT_ID = 1660984;

@@ -1,9 +1,5 @@
-import {
-  BadRequestError,
-  ForbiddenError,
-  getValidated,
-  InternalServerError,
-} from "@/app/middleware";
+import { getValidated } from "@/app/middleware";
+import { BadRequestError, ForbiddenError, InternalServerError } from "@/errors";
 import { getService, Services } from "@/services";
 import type {
   HeartbeatPlayer,

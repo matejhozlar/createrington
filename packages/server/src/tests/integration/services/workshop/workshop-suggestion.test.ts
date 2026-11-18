@@ -34,7 +34,7 @@ import {
   ConflictError,
   ForbiddenError,
   NotFoundError,
-} from "@/app/middleware/error-handler";
+} from "@/errors";
 import { workshopSuggestionService } from "@/services/workshop/suggestion.service";
 import { workshopReviewService } from "@/services/workshop/review.service";
 import { issueBan, liftBan } from "@/services/workshop/bans";

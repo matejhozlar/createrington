@@ -1,4 +1,4 @@
-import { AppError } from "@/app/middleware/error-handler";
+import { AppError } from "@/errors";
 import {
   CURSEFORGE_MINECRAFT_GAME_ID,
   ContentGatewayError,

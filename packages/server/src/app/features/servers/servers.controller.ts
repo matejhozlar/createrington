@@ -1,4 +1,4 @@
-import { BadRequestError, NotFoundError } from "@/app/middleware";
+import { BadRequestError, NotFoundError } from "@/errors";
 import { getService, Services } from "@/services";
 import { MINECRAFT_SERVERS } from "@/services/playtime/config";
 import {

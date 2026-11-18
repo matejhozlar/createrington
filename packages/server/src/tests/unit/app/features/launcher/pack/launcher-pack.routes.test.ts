@@ -80,7 +80,8 @@ vi.mock("@/services/launcher/pack/pack-files.service", () => ({
 }));
 
 import express from "express";
-import { AppError, errorHandler } from "@/app/middleware/error-handler";
+import { errorHandler } from "@/app/middleware/error-handler";
+import { AppError } from "@/errors";
 import launcherPackRoutes from "@/app/features/launcher/pack/launcher-pack.routes";
 import { launcherJwtService } from "@/services/auth/launcher/launcher-jwt.service";
 import { MemoryKeyValueStore } from "@/services/key-value-store";

@@ -1,5 +1,5 @@
 import { Q } from "@/db";
-import { NotFoundError } from "@/app/middleware/error-handler";
+import { NotFoundError } from "@/errors";
 import type { Modpack, ModpackRelease } from "@createrington/shared/db";
 import type { ReleaseModRow } from "@/db/queries/modpack/release/mod";
 import type { ReleaseAnnouncementRow } from "@/db/queries/modpack/release/announcement";

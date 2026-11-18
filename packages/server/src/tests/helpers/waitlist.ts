@@ -120,7 +120,7 @@ export const waitlistMocks: Record<
   | "registrationPresets"
   | "waitlistPresets"
   | "verificationChannel"
-  | "errorHandler",
+  | "appErrors",
   MockFactory
 > = {
   errors: () => ({
@@ -246,7 +246,7 @@ export const waitlistMocks: Record<
   verificationChannel: () => ({
     createVerificationChannel: vi.fn(),
   }),
-  errorHandler: () => ({
+  appErrors: () => ({
     BadRequestError: class BadRequestError extends Error {},
   }),
 };

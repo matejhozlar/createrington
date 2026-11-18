@@ -1,6 +1,6 @@
 import config from "@/config";
 import type { NextFunction, Request, Response } from "express";
-import { UnauthorizedError } from "./error-handler";
+import { UnauthorizedError } from "@/errors";
 import { timingSafeEqualStrings } from "@/utils/timing-safe-equal";
 
 export const verifyInternalSecret = (

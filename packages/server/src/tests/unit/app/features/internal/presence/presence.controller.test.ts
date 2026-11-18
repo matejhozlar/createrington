@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("@/app/middleware", async () => ({
-  ...(await vi.importActual("@/app/middleware/error-handler")),
   ...(await vi.importActual("@/app/middleware/validation.middleware")),
 }));
 

@@ -1,9 +1,5 @@
 import { Q, db } from "@/db";
-import {
-  BadRequestError,
-  ConflictError,
-  NotFoundError,
-} from "@/app/middleware/error-handler";
+import { BadRequestError, ConflictError, NotFoundError } from "@/errors";
 import type {
   ModpackMod,
   Workshop,

@@ -1,4 +1,5 @@
-import { BadRequestError, messageSendLimiter, route } from "@/app/middleware";
+import { messageSendLimiter, route } from "@/app/middleware";
+import { BadRequestError } from "@/errors";
 import { Router } from "express";
 import multer from "multer";
 import { MessageController } from "./message.controller";

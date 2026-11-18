@@ -1,4 +1,4 @@
-import { BadRequestError, NotFoundError } from "@/app/middleware";
+import { BadRequestError, NotFoundError } from "@/errors";
 import { getService, Services } from "@/services";
 import { MESSAGE_CACHE_CONFIG } from "@/services/discord/message/cache";
 import { AttachmentBuilder } from "discord.js";

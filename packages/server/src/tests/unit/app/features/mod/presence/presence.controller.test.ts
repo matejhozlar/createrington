@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("@/app/middleware", async () => ({
-  ...(await vi.importActual("@/app/middleware/error-handler")),
   ...(await vi.importActual("@/app/middleware/validation.middleware")),
 }));
 
@@ -22,10 +21,7 @@ vi.mock("@/app/features/mod/shared/resolve-server-id", () => ({
   resolveServerId: () => 1,
 }));
 
-import {
-  BadRequestError,
-  ForbiddenError,
-} from "@/app/middleware/error-handler";
+import { BadRequestError, ForbiddenError } from "@/errors";
 import { PresenceController } from "@/app/features/mod/presence/presence.controller";
 import {
   HeartbeatBodySchema,

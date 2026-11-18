@@ -8,7 +8,7 @@ import {
   trpcError,
   auditActor,
 } from "@/trpc/utils";
-import { idToObject } from "@/app/utils/helpers";
+import { idToObject } from "@/utils/player-identifier";
 import { mcUuid } from "@/utils/zod-schemas";
 
 export const exemptionsRouter = router({

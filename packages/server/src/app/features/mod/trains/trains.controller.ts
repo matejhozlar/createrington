@@ -1,4 +1,5 @@
-import { BadRequestError, respondSuccess } from "@/app/middleware";
+import { respondSuccess } from "@/app/middleware";
+import { BadRequestError } from "@/errors";
 import { Q } from "@/db";
 import { Discord } from "@/discord/constants";
 import { createEmbed } from "@/discord/embeds";

@@ -11,7 +11,7 @@ import {
 import type { Workshop } from "@createrington/shared/db";
 import config from "@/config";
 import { Q } from "@/db";
-import { AppError } from "@/app/middleware/error-handler";
+import { AppError } from "@/errors";
 import { EmbedPresets } from "@/discord/embeds";
 import { replyError } from "@/discord/utils/interaction-reply";
 import { findModBySlug } from "@/services/curseforge/mods";

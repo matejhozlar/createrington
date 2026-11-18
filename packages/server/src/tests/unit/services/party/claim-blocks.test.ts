@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   groupClaimBlocks,
   type ClaimChunk,
-} from "@/app/features/mod/parties/claim-blocks";
+} from "@/services/party/claim-blocks";
 
 const OWNER = "3f2504e0-4f89-11d3-9a0c-0305e82c3501";
 const OTHER = "3f2504e0-4f89-11d3-9a0c-0305e82c3502";

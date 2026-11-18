@@ -7,7 +7,7 @@ import {
   BadRequestError,
   TooManyRequestsError,
   UnauthorizedError,
-} from "@/app/middleware";
+} from "@/errors";
 import { jwtService } from "@/services/auth/jwt/jwt.service";
 import { refreshTokenService } from "@/services/auth/token/refresh-token.service";
 import { accessCookieService } from "@/services/auth/token/access-cookie.service";

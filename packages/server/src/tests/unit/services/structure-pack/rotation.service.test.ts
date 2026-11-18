@@ -120,7 +120,7 @@ vi.mock("@/db", () => {
 });
 
 import { StructurePackRotationService } from "@/services/structure-pack/rotation";
-import { BadRequestError } from "@/app/middleware/error-handler";
+import { BadRequestError } from "@/errors";
 import type { StructurePackService } from "@/services/structure-pack";
 
 function makePack(id: number, overrides: Partial<StructurePack> = {}) {

@@ -45,7 +45,7 @@ vi.mock("@/services/launcher/pack/sandbox-files", async () =>
 );
 
 import pool, { Q } from "@/db";
-import { ConflictError, NotFoundError } from "@/app/middleware/error-handler";
+import { ConflictError, NotFoundError } from "@/errors";
 import { modpackAdminService } from "@/services/modpack/admin.service";
 import { workshopAdminService } from "@/services/workshop/admin.service";
 import {

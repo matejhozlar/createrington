@@ -2,7 +2,7 @@ import type { CreateExpressContextOptions } from "@trpc/server/adapters/express"
 import config from "@/config";
 import { jwtService } from "@/services/auth/jwt";
 import type { JWTPayload } from "@createrington/shared/auth";
-import { extractBearerToken } from "@/utils/bearer-token";
+import { extractBearerToken } from "@/app/utils/bearer-token";
 import { timingSafeEqualStrings } from "@/utils/timing-safe-equal";
 
 export interface Context {

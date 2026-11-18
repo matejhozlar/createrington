@@ -7,7 +7,7 @@ import {
   replacePartyClaims,
   replacePartyState,
   type PartyClaimsResult,
-} from "./parties.service";
+} from "@/services/party/party-state";
 
 export class PartiesController {
   static async sync(req: Request, res: Response): Promise<void> {

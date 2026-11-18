@@ -6,7 +6,6 @@ const { transferMock, runIdempotentMock } = vi.hoisted(() => ({
 }));
 
 vi.mock("@/app/middleware", async () => ({
-  ...(await vi.importActual<object>("@/app/middleware/error-handler")),
   ...(await vi.importActual<object>("@/app/middleware/api-envelope")),
   getAuthedPlayer: (req: { modAuth: { uuid: string } }) => ({
     uuid: req.modAuth.uuid,
@@ -28,7 +27,7 @@ vi.mock("@/app/features/mod/currency/currency.idempotency", async () => ({
   sendOutcome: vi.fn(),
 }));
 
-import { BadRequestError } from "@/app/middleware/error-handler";
+import { BadRequestError } from "@/errors";
 import { CurrencyController } from "@/app/features/mod/currency/currency.controller";
 import { hashRequest } from "@/app/features/mod/currency/currency.idempotency";
 import type { Request } from "express";

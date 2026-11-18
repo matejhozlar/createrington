@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { groupClaimBlocks } from "@/app/features/mod/parties/claim-blocks";
+import { groupClaimBlocks } from "@/services/party/claim-blocks";
 import { Q } from "@/db";
 import { isPartyPurgeAllowed, partyPurgeService } from "@/services/party";
 import { adminProcedure, router } from "@/trpc/trpc";

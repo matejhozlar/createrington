@@ -8,11 +8,7 @@ import {
   type LauncherSessionData,
   type LauncherSuccessResponse,
 } from "@createrington/shared/launcher";
-import {
-  AppError,
-  TooManyRequestsError,
-  UnauthorizedError,
-} from "@/app/middleware/error-handler";
+import { AppError, TooManyRequestsError, UnauthorizedError } from "@/errors";
 import { getValidated } from "@/app/middleware/validation.middleware";
 import { Q } from "@/db";
 import {

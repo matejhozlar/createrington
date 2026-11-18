@@ -2,7 +2,7 @@ import { z } from "zod";
 import { adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
 import { structurePackImportSchema } from "@createrington/shared/structure-pack";
-import { ConflictError } from "@/app/middleware/error-handler";
+import { ConflictError } from "@/errors";
 import { structurePackService } from "@/services/structure-pack";
 import { auditActor, assertPatchNotEmpty } from "@/trpc/utils";
 

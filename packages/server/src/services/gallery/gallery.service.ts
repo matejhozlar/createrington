@@ -1,11 +1,7 @@
 import { randomBytes } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
-import {
-  BadRequestError,
-  ConflictError,
-  NotFoundError,
-} from "@/app/middleware/error-handler";
+import { BadRequestError, ConflictError, NotFoundError } from "@/errors";
 import { balanceRepo, db, Q } from "@/db";
 import { BalanceTransactionType } from "@/db/repositories/balance";
 import { UniqueViolationError, translateDbError } from "@/db/utils/errors";

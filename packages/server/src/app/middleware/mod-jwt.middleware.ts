@@ -1,8 +1,8 @@
 import config from "@/config";
 import { Q } from "@/db";
-import { UnauthorizedError } from "./error-handler";
+import { UnauthorizedError } from "@/errors";
 import { asyncHandler } from "./async-handler";
-import { extractBearerToken } from "@/utils/bearer-token";
+import { extractBearerToken } from "@/app/utils/bearer-token";
 import type { NextFunction, Request, RequestHandler, Response } from "express";
 import jwt from "jsonwebtoken";
 

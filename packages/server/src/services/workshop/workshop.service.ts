@@ -1,5 +1,5 @@
 import { Q } from "@/db";
-import { BadRequestError, NotFoundError } from "@/app/middleware/error-handler";
+import { BadRequestError, NotFoundError } from "@/errors";
 import type { WorkshopModEventListItem } from "@/db/queries/workshop/mod/event";
 import type {
   Workshop,

@@ -1,11 +1,11 @@
 import type { NextFunction, Request, Response } from "express";
-import { ForbiddenError, UnauthorizedError } from "./error-handler";
+import { ForbiddenError, UnauthorizedError } from "@/errors";
 import { jwtService } from "@/services/auth/jwt";
 import { accessCookieService } from "@/services/auth/token/access-cookie.service";
 import { adminStatusService } from "@/services/auth/admin-status/admin-status.service";
 import { AuthRole } from "@createrington/shared/auth";
 import config from "@/config";
-import { extractBearerToken } from "@/utils/bearer-token";
+import { extractBearerToken } from "@/app/utils/bearer-token";
 
 function extractAccessToken(req: Request): string | undefined {
   const headerToken = extractBearerToken(req);
