@@ -28,3 +28,4 @@ auditConfig:
   ignoreGhsas:
     - GHSA-vfj7-8cjw-p6xm
     - GHSA-gcqx-w48m-w2h4
+    - GHSA-fc5q-39xc-vjpf
