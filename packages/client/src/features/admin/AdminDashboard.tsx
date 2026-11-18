@@ -93,11 +93,12 @@ export function AdminDashboard() {
     );
   }
 
-  const coreError =
-    profileQuery.error ??
-    playerStatsQuery.error ??
-    serversQuery.error ??
-    waitlistStatsQuery.error;
+  const coreError = [
+    profileQuery,
+    playerStatsQuery,
+    serversQuery,
+    waitlistStatsQuery,
+  ].find((query) => query.isError && query.data === undefined)?.error;
 
   if (coreError) {
     return (
