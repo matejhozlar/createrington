@@ -2,14 +2,13 @@ import type { Request, Response } from "express";
 import {
   LauncherAuthErrorCode,
   type LauncherChallengeData,
-  type LauncherLogoutResponse,
   type LauncherMeData,
   type LauncherPlayer,
   type LauncherSessionData,
-  type LauncherSuccessResponse,
 } from "@createrington/shared/launcher";
 import { AppError, TooManyRequestsError, UnauthorizedError } from "@/errors";
 import { getValidated } from "@/app/middleware/validation.middleware";
+import { respondSuccess } from "@/app/middleware/api-envelope";
 import { Q } from "@/db";
 import {
   CHALLENGE_TTL_SECONDS,
@@ -38,25 +37,22 @@ function invalidRefreshToken(): UnauthorizedError {
   });
 }
 
-function sessionResponse(
+function sessionData(
   player: LauncherPlayer,
   refreshToken: string,
   familyId: string,
-): LauncherSuccessResponse<LauncherSessionData> {
+): LauncherSessionData {
   return {
-    success: true,
-    data: {
-      accessToken: launcherJwtService.generate({
-        minecraftUuid: player.minecraftUuid,
-        minecraftUsername: player.minecraftUsername,
-        familyId,
-      }),
-      expiresIn: LAUNCHER_ACCESS_TOKEN_TTL_SECONDS,
-      refreshToken,
-      player: {
-        minecraftUuid: player.minecraftUuid,
-        minecraftUsername: player.minecraftUsername,
-      },
+    accessToken: launcherJwtService.generate({
+      minecraftUuid: player.minecraftUuid,
+      minecraftUsername: player.minecraftUsername,
+      familyId,
+    }),
+    expiresIn: LAUNCHER_ACCESS_TOKEN_TTL_SECONDS,
+    refreshToken,
+    player: {
+      minecraftUuid: player.minecraftUuid,
+      minecraftUsername: player.minecraftUsername,
     },
   };
 }
@@ -89,11 +85,9 @@ export class LauncherAuthController {
       throw new TooManyRequestsError("Too many pending sign-in attempts");
     }
 
-    const body: LauncherSuccessResponse<LauncherChallengeData> = {
-      success: true,
+    respondSuccess<LauncherChallengeData>(res, {
       data: { serverId, expiresIn: CHALLENGE_TTL_SECONDS },
-    };
-    res.json(body);
+    });
   }
 
   static async verify(req: Request, res: Response): Promise<void> {
@@ -145,7 +139,9 @@ export class LauncherAuthController {
       `Player ${player.minecraftUsername} (${player.minecraftUuid}) signed in via launcher`,
     );
 
-    res.json(sessionResponse(player, session.refreshToken, session.familyId));
+    respondSuccess(res, {
+      data: sessionData(player, session.refreshToken, session.familyId),
+    });
   }
 
   static async refresh(req: Request, res: Response): Promise<void> {
@@ -181,7 +177,9 @@ export class LauncherAuthController {
       throw invalidRefreshToken();
     }
 
-    res.json(sessionResponse(player, refreshToken, session.familyId));
+    respondSuccess(res, {
+      data: sessionData(player, refreshToken, session.familyId),
+    });
   }
 
   static async logout(_req: Request, res: Response): Promise<void> {
@@ -189,11 +187,7 @@ export class LauncherAuthController {
 
     await launcherSessionService.revokeByToken(body.refreshToken);
 
-    const response: LauncherLogoutResponse = {
-      success: true,
-      message: "Logged out successfully",
-    };
-    res.json(response);
+    respondSuccess(res, { message: "Logged out successfully" });
   }
 
   static me(req: Request, res: Response): void {
@@ -203,15 +197,13 @@ export class LauncherAuthController {
       });
     }
 
-    const body: LauncherSuccessResponse<LauncherMeData> = {
-      success: true,
+    respondSuccess<LauncherMeData>(res, {
       data: {
         player: {
           minecraftUuid: req.launcherAuth.minecraftUuid,
           minecraftUsername: req.launcherAuth.minecraftUsername,
         },
       },
-    };
-    res.json(body);
+    });
   }
 }

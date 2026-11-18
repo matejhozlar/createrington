@@ -1,6 +1,5 @@
 export * from "./api-envelope";
 export * from "./error-handler";
-export * from "./async-handler";
 export * from "./auth.middleware";
 export * from "./compose";
 export * from "./mod-jwt.middleware";
@@ -10,5 +9,4 @@ export * from "./server-ip.middleware";
 export * from "./validation.middleware";
 export * from "./rate-limit.middleware";
 export * from "./request-logger.middleware";
-export * from "./sync-secret.middleware";
-export * from "./internal-secret.middleware";
+export * from "./header-secret.middleware";

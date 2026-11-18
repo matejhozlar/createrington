@@ -2,7 +2,11 @@ import { BadRequestError, InternalServerError } from "@/errors";
 import { getServerByIp, isValidServerId } from "@/services/playtime/config";
 import type { Request } from "express";
 
-export function resolveServerId(req: Request, context: string): number {
+export function resolveServerId(
+  req: Request,
+  bodyServerId: number | null | undefined,
+  context: string,
+): number {
   const serverIp = req.serverIp;
   if (!serverIp) {
     throw new InternalServerError(
@@ -11,33 +15,23 @@ export function resolveServerId(req: Request, context: string): number {
   }
 
   const ipServer = getServerByIp(serverIp);
-  const bodyServerId = (req.body as { serverId?: unknown })?.serverId;
 
   if (bodyServerId !== undefined && bodyServerId !== null) {
-    const parsed =
-      typeof bodyServerId === "number"
-        ? bodyServerId
-        : typeof bodyServerId === "string"
-          ? parseInt(bodyServerId, 10)
-          : NaN;
-    if (!Number.isInteger(parsed)) {
-      throw new BadRequestError("Invalid serverId format");
-    }
-    if (!isValidServerId(parsed)) {
+    if (!isValidServerId(bodyServerId)) {
       logger.warn(
-        `${context} rejected: unknown serverId ${parsed} (server IP: ${serverIp})`,
+        `${context} rejected: unknown serverId ${bodyServerId} (server IP: ${serverIp})`,
       );
       throw new BadRequestError("Unknown serverId");
     }
-    if (ipServer && ipServer.serverId !== parsed) {
+    if (ipServer && ipServer.serverId !== bodyServerId) {
       logger.warn(
-        `${context} rejected: serverId ${parsed} does not match server ${ipServer.serverId} resolved from IP ${serverIp}`,
+        `${context} rejected: serverId ${bodyServerId} does not match server ${ipServer.serverId} resolved from IP ${serverIp}`,
       );
       throw new BadRequestError(
         "serverId does not match the originating server",
       );
     }
-    return parsed;
+    return bodyServerId;
   }
 
   if (!ipServer) {

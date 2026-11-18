@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { customRoute, route } from "@/app/middleware/compose";
+import { route } from "@/app/middleware/compose";
 import { authenticateLauncher } from "@/app/middleware/launcher-auth.middleware";
 import { launcherAuthLimiter } from "@/app/middleware/rate-limit.middleware";
 import { validate } from "@/app/middleware/validation.middleware";
@@ -40,7 +40,7 @@ router.post(
 );
 router.get(
   "/me",
-  ...customRoute([authenticateLauncher], LauncherAuthController.me),
+  ...route("public", authenticateLauncher, LauncherAuthController.me),
 );
 
 export default router;

@@ -1,9 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("@/app/middleware", async () => ({
-  ...(await vi.importActual("@/app/middleware/validation.middleware")),
-}));
-
 const { getServiceMock, findServerMock, createServerMock } = vi.hoisted(() => ({
   getServiceMock: vi.fn(),
   findServerMock: vi.fn(),

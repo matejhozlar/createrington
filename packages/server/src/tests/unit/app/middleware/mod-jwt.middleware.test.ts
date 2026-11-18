@@ -25,6 +25,7 @@ import {
   verifyModJWT,
 } from "@/app/middleware/mod-jwt.middleware";
 import type { Request, NextFunction } from "express";
+import { UnauthorizedError } from "@/errors";
 import { fakeReq, fakeRes } from "@/tests/helpers/http";
 
 const MOD_SECRET = "test-mod-secret-please-do-not-use-in-prod";
@@ -226,18 +227,15 @@ describe("requireKnownPlayer", () => {
     findMock.mockResolvedValueOnce(null);
     findMock.mockResolvedValueOnce(null);
 
-    const run = async () => {
-      const { next, errors } = collectNext();
-      await (requireKnownPlayer as (...a: unknown[]) => Promise<void>)(
+    const run = () =>
+      (requireKnownPlayer as (...a: unknown[]) => Promise<void>)(
         reqWithUuid("u-missing"),
         {},
-        next,
+        collectNext().next,
       );
-      return errors;
-    };
 
-    expect(await run()).toHaveLength(1);
-    expect(await run()).toHaveLength(1);
+    await expect(run()).rejects.toBeInstanceOf(UnauthorizedError);
+    await expect(run()).rejects.toBeInstanceOf(UnauthorizedError);
 
     expect(findMock).toHaveBeenCalledTimes(2);
   });
@@ -270,15 +268,17 @@ describe("requireKnownPlayer", () => {
   });
 
   it("rejects when req.modAuth.uuid is missing", async () => {
-    const { next, errors } = collectNext();
+    const { next, called } = collectNext();
 
-    await (requireKnownPlayer as (...a: unknown[]) => Promise<void>)(
-      reqWithUuid(undefined),
-      {},
-      next,
-    );
+    await expect(
+      (requireKnownPlayer as (...a: unknown[]) => Promise<void>)(
+        reqWithUuid(undefined),
+        {},
+        next,
+      ),
+    ).rejects.toBeInstanceOf(UnauthorizedError);
 
     expect(findMock).not.toHaveBeenCalled();
-    expect(errors).toHaveLength(1);
+    expect(called()).toBe(false);
   });
 });

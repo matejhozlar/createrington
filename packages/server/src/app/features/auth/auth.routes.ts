@@ -5,7 +5,6 @@ import {
   optionalAuth,
   requireTrustedOrigin,
 } from "@/app/middleware/auth.middleware";
-import { asyncHandler } from "@/app/middleware/async-handler";
 import config from "@/config";
 
 const router = Router();
@@ -33,8 +32,7 @@ router.post(
 router.post(
   "/logout",
   requireTrustedOrigin,
-  asyncHandler(optionalAuth),
-  asyncHandler(AuthController.logout),
+  ...route("public", optionalAuth, AuthController.logout),
 );
 
 router.get("/me", ...route("user", AuthController.getCurrentUser));

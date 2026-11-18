@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { customRoute } from "@/app/middleware/compose";
+import { route } from "@/app/middleware/compose";
 import {
   requireDirectRequest,
   verifyLauncherPublishToken,
@@ -10,14 +10,17 @@ import { LauncherReleaseController } from "./launcher-release.controller";
 import {
   AvailableReleasesBodySchema,
   PublishReleaseBodySchema,
+  UpdateCheckParamsSchema,
 } from "./launcher-release.schemas";
 
 export const launcherUpdateCheckRoutes = Router();
 
 launcherUpdateCheckRoutes.get(
   "/updates/:platform/:currentVersion",
-  ...customRoute(
-    [launcherUpdateCheckLimiter],
+  ...route(
+    "public",
+    launcherUpdateCheckLimiter,
+    validate({ params: UpdateCheckParamsSchema }),
     LauncherReleaseController.checkForUpdate,
   ),
 );
@@ -26,24 +29,22 @@ export const launcherPublishRoutes = Router();
 
 launcherPublishRoutes.post(
   "/releases",
-  ...customRoute(
-    [
-      requireDirectRequest,
-      verifyLauncherPublishToken,
-      validate({ body: PublishReleaseBodySchema }),
-    ],
+  ...route(
+    "public",
+    requireDirectRequest,
+    verifyLauncherPublishToken,
+    validate({ body: PublishReleaseBodySchema }),
     LauncherReleaseController.publish,
   ),
 );
 
 launcherPublishRoutes.put(
   "/releases/available",
-  ...customRoute(
-    [
-      requireDirectRequest,
-      verifyLauncherPublishToken,
-      validate({ body: AvailableReleasesBodySchema }),
-    ],
+  ...route(
+    "public",
+    requireDirectRequest,
+    verifyLauncherPublishToken,
+    validate({ body: AvailableReleasesBodySchema }),
     LauncherReleaseController.setAvailable,
   ),
 );

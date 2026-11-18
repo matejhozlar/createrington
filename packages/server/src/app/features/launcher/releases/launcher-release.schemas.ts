@@ -24,3 +24,10 @@ export const AvailableReleasesBodySchema = z.object({
 });
 
 export type AvailableReleasesBody = z.infer<typeof AvailableReleasesBodySchema>;
+
+export const UpdateCheckParamsSchema = z.object({
+  platform: z.string(),
+  currentVersion: z.string(),
+});
+
+export type UpdateCheckParams = z.infer<typeof UpdateCheckParamsSchema>;

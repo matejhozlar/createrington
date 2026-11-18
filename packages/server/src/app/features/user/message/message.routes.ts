@@ -1,4 +1,5 @@
-import { messageSendLimiter, route } from "@/app/middleware";
+import { messageSendLimiter, route, validate } from "@/app/middleware";
+import { SendMessageBodySchema } from "@createrington/shared/api";
 import { BadRequestError } from "@/errors";
 import { Router } from "express";
 import multer from "multer";
@@ -29,6 +30,7 @@ router.post(
     "user",
     messageSendLimiter,
     upload.single("image"),
+    validate({ body: SendMessageBodySchema }),
     MessageController.sendMessage,
   ),
 );

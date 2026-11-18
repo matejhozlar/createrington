@@ -15,10 +15,45 @@ vi.mock("@/services/modpack/release.service", () => ({
   },
 }));
 
-import { BadRequestError, NotFoundError } from "@/errors";
+import { ZodError } from "zod";
+import { NotFoundError } from "@/errors";
+import { validate } from "@/app/middleware/validation.middleware";
 import { ModpacksController } from "@/app/features/modpacks/modpacks.controller";
-import type { Request } from "express";
-import { fakeReq, fakeRes } from "@/tests/helpers/http";
+import {
+  ChangelogRowParamsSchema,
+  ProjectVersionParamsSchema,
+} from "@/app/features/modpacks/modpacks.schemas";
+import type { Request, Response } from "express";
+import { fakeReq, fakeRes, runHandlers } from "@/tests/helpers/http";
+
+const projectVersion = validate({ params: ProjectVersionParamsSchema });
+
+function getChangelog(req: Request, res: Response): Promise<void> {
+  return runHandlers(
+    [projectVersion, ModpacksController.getChangelog],
+    req,
+    res,
+  );
+}
+
+function getVersionStatus(req: Request, res: Response): Promise<void> {
+  return runHandlers(
+    [projectVersion, ModpacksController.getVersionStatus],
+    req,
+    res,
+  );
+}
+
+function getChangelogRow(req: Request, res: Response): Promise<void> {
+  return runHandlers(
+    [
+      validate({ params: ChangelogRowParamsSchema }),
+      ModpacksController.getChangelogRow,
+    ],
+    req,
+    res,
+  );
+}
 
 function makeReq(params: Record<string, unknown>): Request {
   return fakeReq({ params });
@@ -42,10 +77,7 @@ describe("ModpacksController.getChangelog", () => {
   it("sends the changelog as cacheable plain-text Markdown", async () => {
     const res = fakeRes();
 
-    await ModpacksController.getChangelog(
-      makeReq({ project: "1660984", version: "1.0.5" }),
-      res,
-    );
+    await getChangelog(makeReq({ project: "1660984", version: "1.0.5" }), res);
 
     expect(getChangelogMarkdownMock).toHaveBeenCalledWith({
       curseforgeProjectId: 1660984,
@@ -61,10 +93,7 @@ describe("ModpacksController.getChangelog", () => {
 
   it("trims the version and ignores a missing, blank or overlong one", async () => {
     for (const version of ["  1.0.5 ", undefined, "   ", "9".repeat(65)]) {
-      await ModpacksController.getChangelog(
-        makeReq({ project: "1", version }),
-        fakeRes(),
-      );
+      await getChangelog(makeReq({ project: "1", version }), fakeRes());
     }
 
     expect(
@@ -88,8 +117,8 @@ describe("ModpacksController.getChangelog", () => {
       "2147483648",
     ]) {
       await expect(
-        ModpacksController.getChangelog(makeReq({ project }), fakeRes()),
-      ).rejects.toBeInstanceOf(BadRequestError);
+        getChangelog(makeReq({ project }), fakeRes()),
+      ).rejects.toBeInstanceOf(ZodError);
     }
     expect(getChangelogMarkdownMock).not.toHaveBeenCalled();
   });
@@ -98,7 +127,7 @@ describe("ModpacksController.getChangelog", () => {
     getChangelogMarkdownMock.mockRejectedValue(new NotFoundError("nope"));
 
     await expect(
-      ModpacksController.getChangelog(makeReq({ project: "42" }), fakeRes()),
+      getChangelog(makeReq({ project: "42" }), fakeRes()),
     ).rejects.toBeInstanceOf(NotFoundError);
   });
 });
@@ -107,7 +136,7 @@ describe("ModpacksController.getChangelogRow", () => {
   it("sends the row as a PNG cacheable for a day", async () => {
     const res = fakeRes();
 
-    await ModpacksController.getChangelogRow(
+    await getChangelogRow(
       makeReq({ project: "1660984", release: "8840313", mod: "328085" }),
       res,
     );
@@ -129,7 +158,7 @@ describe("ModpacksController.getChangelogRow", () => {
     getChangelogRowMock.mockResolvedValue({ png: PNG, complete: false });
     const res = fakeRes();
 
-    await ModpacksController.getChangelogRow(
+    await getChangelogRow(
       makeReq({ project: "1", release: "2", mod: "3" }),
       res,
     );
@@ -147,8 +176,8 @@ describe("ModpacksController.getChangelogRow", () => {
       { project: "1", release: "2", mod: "3.5" },
     ]) {
       await expect(
-        ModpacksController.getChangelogRow(makeReq(params), fakeRes()),
-      ).rejects.toBeInstanceOf(BadRequestError);
+        getChangelogRow(makeReq(params), fakeRes()),
+      ).rejects.toBeInstanceOf(ZodError);
     }
     expect(getChangelogRowMock).not.toHaveBeenCalled();
   });
@@ -158,7 +187,7 @@ describe("ModpacksController.getVersionStatus", () => {
   it("sends the status as cacheable JSON", async () => {
     const res = fakeRes();
 
-    await ModpacksController.getVersionStatus(
+    await getVersionStatus(
       makeReq({ project: "1660984", version: "1.0.6" }),
       res,
     );
@@ -180,10 +209,7 @@ describe("ModpacksController.getVersionStatus", () => {
 
   it("trims the version and ignores a whitespace-only or overlong one", async () => {
     for (const version of ["  1.0.6 ", "   ", "9".repeat(65)]) {
-      await ModpacksController.getVersionStatus(
-        makeReq({ project: "1", version }),
-        fakeRes(),
-      );
+      await getVersionStatus(makeReq({ project: "1", version }), fakeRes());
     }
 
     expect(getVersionStatusMock.mock.calls.map(([options]) => options)).toEqual(
@@ -198,11 +224,8 @@ describe("ModpacksController.getVersionStatus", () => {
   it("rejects a malformed project id before loading anything", async () => {
     for (const project of [undefined, "", "0", "12ab", "2147483648"]) {
       await expect(
-        ModpacksController.getVersionStatus(
-          makeReq({ project, version: "1.0.6" }),
-          fakeRes(),
-        ),
-      ).rejects.toBeInstanceOf(BadRequestError);
+        getVersionStatus(makeReq({ project, version: "1.0.6" }), fakeRes()),
+      ).rejects.toBeInstanceOf(ZodError);
     }
     expect(getVersionStatusMock).not.toHaveBeenCalled();
   });
@@ -211,10 +234,7 @@ describe("ModpacksController.getVersionStatus", () => {
     getVersionStatusMock.mockRejectedValue(new NotFoundError("nope"));
 
     await expect(
-      ModpacksController.getVersionStatus(
-        makeReq({ project: "42", version: "1.0.6" }),
-        fakeRes(),
-      ),
+      getVersionStatus(makeReq({ project: "42", version: "1.0.6" }), fakeRes()),
     ).rejects.toBeInstanceOf(NotFoundError);
   });
 });

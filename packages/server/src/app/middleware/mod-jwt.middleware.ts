@@ -1,7 +1,6 @@
 import config from "@/config";
 import { Q } from "@/db";
 import { UnauthorizedError } from "@/errors";
-import { asyncHandler } from "./async-handler";
 import { extractBearerToken } from "@/app/utils/bearer-token";
 import type { NextFunction, Request, RequestHandler, Response } from "express";
 import jwt from "jsonwebtoken";
@@ -88,24 +87,26 @@ export function __resetPlayerExistsCacheForTests(): void {
   playerExistsCache.clear();
 }
 
-export const requireKnownPlayer: RequestHandler = asyncHandler(
-  async (req: Request, _res: Response, next: NextFunction) => {
-    const uuid = req.modAuth?.uuid;
-    if (!uuid) {
-      throw new UnauthorizedError("Mod authentication required");
-    }
-    if (isPlayerCached(uuid)) {
-      next();
-      return;
-    }
-    const player = await Q.player.find({ minecraftUuid: uuid });
-    if (!player) {
-      throw new UnauthorizedError("Unknown player");
-    }
-    rememberPlayer(uuid);
+export const requireKnownPlayer: RequestHandler = async (
+  req: Request,
+  _res: Response,
+  next: NextFunction,
+) => {
+  const uuid = req.modAuth?.uuid;
+  if (!uuid) {
+    throw new UnauthorizedError("Mod authentication required");
+  }
+  if (isPlayerCached(uuid)) {
     next();
-  },
-);
+    return;
+  }
+  const player = await Q.player.find({ minecraftUuid: uuid });
+  if (!player) {
+    throw new UnauthorizedError("Unknown player");
+  }
+  rememberPlayer(uuid);
+  next();
+};
 
 export function getAuthedPlayer(req: Request): { uuid: string; name: string } {
   const uuid = req.modAuth?.uuid;

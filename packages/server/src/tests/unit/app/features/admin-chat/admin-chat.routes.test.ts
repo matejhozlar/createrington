@@ -30,8 +30,8 @@ vi.mock("@/config", () => ({
 vi.mock("@/db/utils", async () =>
   (await import("@/tests/helpers/mocks/db-utils")).dbUtilsMock(),
 );
-vi.mock("@/app/middleware", async () => ({
-  ...(await vi.importActual("@/app/middleware/async-handler")),
+vi.mock("@/app/middleware/auth.middleware", () => ({
+  requireUser: (_req: Request, _res: Response, next: NextFunction) => next(),
   authenticate: (req: Request, _res: Response, next: NextFunction) => {
     req.user = { minecraftUsername: "matej" } as Request["user"];
     next();
@@ -189,14 +189,39 @@ describe("admin chat proxy", () => {
     expect(seen).toHaveLength(0);
   });
 
-  it("passes an upstream error status and body through", async () => {
+  it("rejects an end request without a numeric session id before calling upstream", async () => {
+    const res = await postJson("/end", { sessionId: "9" });
+
+    expect(res.status).toBe(400);
+    await expect(res.json()).resolves.toMatchObject({
+      message: "sessionId is required",
+    });
+    expect(seen).toHaveLength(0);
+  });
+
+  it("starts a session from an empty body", async () => {
+    const res = await chat("/start", { method: "POST" });
+
+    expect(res.status).toBe(200);
+    expect(seen[0]).toMatchObject({
+      path: "/api/chat/start",
+      body: {
+        username: "matej",
+        repo: "Createrington/app",
+        environment: "dev",
+      },
+    });
+  });
+
+  it("answers with the upstream status and its error as the message", async () => {
     respond = answerJson(403, { error: "admin chat is switched off" });
 
     const res = await chat("/enabled");
 
     expect(res.status).toBe(403);
-    await expect(res.json()).resolves.toEqual({
-      error: "admin chat is switched off",
+    await expect(res.json()).resolves.toMatchObject({
+      success: false,
+      message: "admin chat is switched off",
     });
   });
 
@@ -212,13 +237,16 @@ describe("admin chat proxy", () => {
 });
 
 describe("admin chat stream", () => {
-  it("passes an upstream rejection through with its status and body", async () => {
+  it("answers an upstream rejection with its status and error message", async () => {
     respond = answerJson(404, { error: "session not found" });
 
     const res = await chat("/stream?sessionId=9");
 
     expect(res.status).toBe(404);
-    await expect(res.json()).resolves.toEqual({ error: "session not found" });
+    await expect(res.json()).resolves.toMatchObject({
+      success: false,
+      message: "session not found",
+    });
     expect(seen[0]?.query).toEqual({ username: "matej", sessionId: "9" });
   });
 

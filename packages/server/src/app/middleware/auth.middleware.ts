@@ -4,8 +4,8 @@ import { jwtService } from "@/services/auth/jwt";
 import { accessCookieService } from "@/services/auth/token/access-cookie.service";
 import { adminStatusService } from "@/services/auth/admin-status/admin-status.service";
 import { AuthRole } from "@createrington/shared/auth";
-import config from "@/config";
 import { extractBearerToken } from "@/app/utils/bearer-token";
+import { allowedOrigins } from "@/app/utils/allowed-origins";
 
 function extractAccessToken(req: Request): string | undefined {
   const headerToken = extractBearerToken(req);
@@ -117,15 +117,6 @@ function safeOrigin(raw: string | undefined): string | undefined {
   }
 }
 
-let cachedAllowedAuthOrigins: string[] | undefined;
-function allowedAuthOrigins(): string[] {
-  if (cachedAllowedAuthOrigins) return cachedAllowedAuthOrigins;
-  cachedAllowedAuthOrigins = config.envMode.isProd
-    ? [config.meta.links.website, ...config.app.auth.sso.corsOrigins]
-    : [config.app.devClientOrigin];
-  return cachedAllowedAuthOrigins;
-}
-
 export const requireTrustedOrigin = (
   req: Request,
   _res: Response,
@@ -141,7 +132,7 @@ export const requireTrustedOrigin = (
     throw new ForbiddenError("Missing origin");
   }
 
-  if (!allowedAuthOrigins().includes(origin)) {
+  if (!allowedOrigins().includes(origin)) {
     logger.warn(
       `[origin] rejected ${req.method} ${req.path}: untrusted origin ${origin}`,
     );

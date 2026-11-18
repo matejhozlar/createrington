@@ -1,5 +1,5 @@
 import {
-  customRoute,
+  route,
   validate,
   verifyModJWT,
   verifyServerIP,
@@ -12,16 +12,22 @@ const router = Router();
 
 router.post(
   "/",
-  ...customRoute(
-    [verifyServerIP, verifyModJWT, validate({ body: PresenceBodySchema })],
+  ...route(
+    "public",
+    verifyServerIP,
+    verifyModJWT,
+    validate({ body: PresenceBodySchema }),
     PresenceController.updatePresence,
   ),
 );
 
 router.post(
   "/heartbeat",
-  ...customRoute(
-    [verifyServerIP, verifyModJWT, validate({ body: HeartbeatBodySchema })],
+  ...route(
+    "public",
+    verifyServerIP,
+    verifyModJWT,
+    validate({ body: HeartbeatBodySchema }),
     PresenceController.heartbeat,
   ),
 );

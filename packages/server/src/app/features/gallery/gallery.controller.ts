@@ -1,4 +1,6 @@
 import type { Request, Response } from "express";
+import { getValidated } from "@/app/middleware/validation.middleware";
+import type { GallerySubmissionParams } from "./gallery.schemas";
 import { NotFoundError } from "@/errors";
 import { Q } from "@/db";
 import { container, Services } from "@/services/container";
@@ -6,11 +8,10 @@ import { container, Services } from "@/services/container";
 const ORIGINAL_CACHE_CONTROL = "private, max-age=300";
 
 export class GalleryController {
-  static async original(req: Request, res: Response): Promise<void> {
-    const id = Number.parseInt(String(req.params.id), 10);
-    if (!Number.isInteger(id) || id <= 0) {
-      throw new NotFoundError("Gallery submission not found");
-    }
+  static async original(_req: Request, res: Response): Promise<void> {
+    const {
+      params: { id },
+    } = getValidated<{ params: GallerySubmissionParams }>(res);
 
     const submission = await Q.gallery.submission.find({ id });
     if (

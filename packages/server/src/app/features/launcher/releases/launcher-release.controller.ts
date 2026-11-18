@@ -1,9 +1,11 @@
 import type { Request, Response } from "express";
 import { getValidated } from "@/app/middleware/validation.middleware";
+import { respondSuccess } from "@/app/middleware/api-envelope";
 import { launcherReleaseService } from "@/services/launcher/release/launcher-release.service";
 import type {
   AvailableReleasesBody,
   PublishReleaseBody,
+  UpdateCheckParams,
 } from "./launcher-release.schemas";
 
 export class LauncherReleaseController {
@@ -12,8 +14,8 @@ export class LauncherReleaseController {
 
     const release = await launcherReleaseService.publish(body);
 
-    res.status(201).json({
-      success: true,
+    respondSuccess(res, {
+      status: 201,
       data: {
         id: release.id,
         version: release.version,
@@ -31,8 +33,7 @@ export class LauncherReleaseController {
       body.versions,
     );
 
-    res.json({
-      success: true,
+    respondSuccess(res, {
       data: {
         pruned: pruned.map((release) => ({
           id: release.id,
@@ -43,13 +44,12 @@ export class LauncherReleaseController {
     });
   }
 
-  static async checkForUpdate(req: Request, res: Response): Promise<void> {
-    const platform = String(req.params.platform ?? "");
-    const currentVersion = String(req.params.currentVersion ?? "");
+  static async checkForUpdate(_req: Request, res: Response): Promise<void> {
+    const { params } = getValidated<{ params: UpdateCheckParams }>(res);
 
     const update = await launcherReleaseService.checkForUpdate(
-      platform,
-      currentVersion,
+      params.platform,
+      params.currentVersion,
     );
 
     if (!update) {

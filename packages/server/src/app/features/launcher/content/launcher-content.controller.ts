@@ -9,9 +9,9 @@ import type {
   LauncherContentProjectData,
   LauncherContentProjectsData,
   LauncherContentSearchData,
-  LauncherSuccessResponse,
 } from "@createrington/shared/launcher";
 import { getValidated } from "@/app/middleware/validation.middleware";
+import { respondSuccess } from "@/app/middleware/api-envelope";
 import { launcherContentService } from "@/services/launcher/content/launcher-content.service";
 import { buildPagination } from "@/trpc/utils";
 import type {
@@ -34,60 +34,50 @@ export class LauncherContentController {
       categoryIds,
     });
 
-    const body: LauncherSuccessResponse<LauncherContentSearchData> = {
-      success: true,
+    respondSuccess<LauncherContentSearchData>(res, {
       data: {
         projects,
         pagination: buildPagination(query.page, query.limit, total),
       },
-    };
-    res.json(body);
+    });
   }
 
   static async categories(_req: Request, res: Response): Promise<void> {
     const { query } = getValidated<{ query: ListCategoriesQuery }>(res);
 
-    const body: LauncherSuccessResponse<LauncherContentCategoriesData> = {
-      success: true,
+    respondSuccess<LauncherContentCategoriesData>(res, {
       data: {
         categories: await launcherContentService.listCategories(query.kind),
       },
-    };
-    res.json(body);
+    });
   }
 
   static async projects(_req: Request, res: Response): Promise<void> {
     const { body } = getValidated<{ body: GetProjectsBody }>(res);
 
-    const response: LauncherSuccessResponse<LauncherContentProjectsData> = {
-      success: true,
+    respondSuccess<LauncherContentProjectsData>(res, {
       data: await launcherContentService.getProjects(body.projectIds),
-    };
-    res.json(response);
+    });
   }
 
   static async project(_req: Request, res: Response): Promise<void> {
     const { params } = getValidated<{ params: ContentIdParams }>(res);
 
-    const body: LauncherSuccessResponse<LauncherContentProjectData> = {
-      success: true,
+    respondSuccess<LauncherContentProjectData>(res, {
       data: {
         project: await launcherContentService.getProjectDetails(params.id),
       },
-    };
-    res.json(body);
+    });
   }
 
   static async fingerprints(_req: Request, res: Response): Promise<void> {
     const { body } = getValidated<{ body: IdentifyFingerprintsBody }>(res);
 
-    const response: LauncherSuccessResponse<LauncherContentFingerprintsData> = {
-      success: true,
+    respondSuccess<LauncherContentFingerprintsData>(res, {
       data: await launcherContentService.identifyFingerprints(
         body.fingerprints,
       ),
-    };
-    res.json(response);
+    });
   }
 
   static async files(_req: Request, res: Response): Promise<void> {
@@ -100,34 +90,28 @@ export class LauncherContentController {
       query,
     );
 
-    const body: LauncherSuccessResponse<LauncherContentFilesData> = {
-      success: true,
+    respondSuccess<LauncherContentFilesData>(res, {
       data: {
         files,
         pagination: buildPagination(query.page, query.limit, total),
       },
-    };
-    res.json(body);
+    });
   }
 
   static async file(_req: Request, res: Response): Promise<void> {
     const { params } = getValidated<{ params: ContentIdParams }>(res);
 
-    const body: LauncherSuccessResponse<LauncherContentFileData> = {
-      success: true,
+    respondSuccess<LauncherContentFileData>(res, {
       data: { file: await launcherContentService.getFile(params.id) },
-    };
-    res.json(body);
+    });
   }
 
   static async filesById(_req: Request, res: Response): Promise<void> {
     const { body } = getValidated<{ body: GetFilesBody }>(res);
 
-    const response: LauncherSuccessResponse<LauncherContentFileBatchData> = {
-      success: true,
+    respondSuccess<LauncherContentFileBatchData>(res, {
       data: await launcherContentService.getFiles(body.fileIds),
-    };
-    res.json(response);
+    });
   }
 
   static async fileChangelog(_req: Request, res: Response): Promise<void> {
@@ -136,15 +120,13 @@ export class LauncherContentController {
       query: FileChangelogQuery;
     }>(res);
 
-    const body: LauncherSuccessResponse<LauncherContentChangelogData> = {
-      success: true,
+    respondSuccess<LauncherContentChangelogData>(res, {
       data: {
         changelog: await launcherContentService.getFileChangelog(
           params.id,
           query.projectId,
         ),
       },
-    };
-    res.json(body);
+    });
   }
 }
