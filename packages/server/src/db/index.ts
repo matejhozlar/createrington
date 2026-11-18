@@ -1,10 +1,10 @@
 /**
  * Database layer entry point
  *
- * Initializes the PostgreSQL connection pool and exposes three access patterns:
+ * Initializes the PostgreSQL connection pool and exposes:
  * - `db` -- DatabaseQueries instance with transaction support
  * - `Q` -- singleton query instances for direct table access
- * - `R` -- repository singletons for complex business logic
+ * - `xRepo` -- named repository singletons for transactional business logic
  */
 
 import pg from "pg";
@@ -55,28 +55,19 @@ export const db = new DatabaseQueries(pool);
 /** Pre-built query instances sharing the pool -- use for non-transactional reads/writes */
 export const Q = createQueryInstances(pool);
 
-export const {
-  player,
-  discord,
-  waitlist,
-  admin,
-  auth,
-  server,
-  leaderboard,
-  faq,
-} = Q;
-
-export * from "./queries";
-
 export const waitlistRepo = new repositories.WaitlistRepository();
 
 export const playtimeRepo = new repositories.PlaytimeRepository();
 
 export const balanceRepo = new repositories.BalanceRepository();
 
-export const donationRepo = new repositories.DonationRepository();
+export const ticketRepo = new repositories.TicketRepository();
+
+export const playerRepo = new repositories.PlayerRepository();
 
 export const playerStrikeRepo = new repositories.PlayerStrikeRepository();
+
+export const playerBanRepo = new repositories.PlayerBanRepository();
 
 export const playerSessionRepo = new repositories.PlayerSessionRepository();
 
@@ -85,21 +76,5 @@ export const playerBalanceRepo = new repositories.PlayerBalanceRepository();
 export const playerTicketRepo = new repositories.PlayerTicketRepository();
 
 export const playerAuditRepo = new repositories.PlayerAuditRepository();
-
-export const playerRepo = new repositories.PlayerRepository();
-
-/** Convenience aggregate of all repository singletons */
-export const R = {
-  waitlistRepo,
-  playtimeRepo,
-  balanceRepo,
-  donationRepo,
-  playerRepo,
-  playerAuditRepo,
-  playerBalanceRepo,
-  playerSessionRepo,
-  playerTicketRepo,
-  playerStrikeRepo,
-};
 
 export default pool;

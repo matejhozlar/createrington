@@ -9,11 +9,6 @@ import theBigShotSkin from "@/assets/skins/team/the-bigshot.png";
 export type TeamTier = "owner" | "dev-admin" | "admin";
 
 export type HoverAnimation =
-  | "walking"
-  | "wave"
-  | "running"
-  | "flying"
-  | "hit"
   | "jetpack"
   | "flashlight"
   | "moonwalk"

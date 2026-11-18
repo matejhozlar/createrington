@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { router, userProcedure } from "@/trpc/trpc";
 import { trpcError } from "@/trpc/utils";
-import { donationRepo } from "@/db";
+import { Q } from "@/db";
 import { getService, Services } from "@/services";
 import config from "@/config";
 
@@ -116,7 +116,10 @@ export const userDonationsRouter = router({
         "Get the authenticated user's donation history, most recent first",
     })
     .query(async ({ ctx }) => {
-      const donations = await donationRepo.findByDiscordId(ctx.user.discordId);
+      const donations = await Q.donation.findAll(
+        { playerDiscordId: ctx.user.discordId },
+        { orderBy: "createdAt", orderDirection: "desc" },
+      );
 
       return donations.map((d) => ({
         id: d.id,

@@ -1,5 +1,3 @@
-import { getServiceSync, Services } from "@/services";
-import { DiscordMessageService } from "@/services/discord/message/message.service";
 import {
   ActionRowBuilder,
   ButtonBuilder,
@@ -8,7 +6,6 @@ import {
   MessageFlags,
 } from "discord.js";
 import {
-  type EmbedBot,
   type EmbedData,
   type MessagePayload,
   type PresetKind,
@@ -30,15 +27,6 @@ export const embedSendLimit = createRateLimit({
   windowMs: 60 * 60 * 1000,
   key: (ctx) => ctx.user!.discordId,
 });
-
-const BOT_SERVICES = {
-  main: Services.DISCORD_MAIN_BOT,
-} as const satisfies Record<EmbedBot, string>;
-
-export function getMessageService(bot: EmbedBot = "main") {
-  const client = getServiceSync(BOT_SERVICES[bot]);
-  return DiscordMessageService.getInstance(client);
-}
 
 export function hasEmbedContent(data: EmbedData): boolean {
   return !!(

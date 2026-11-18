@@ -19,7 +19,7 @@ export const waitlistsRouter = router({
       description: "Get overall waitlist statistics for the admin dashboard.",
     })
     .query(async () => {
-      return await waitlistRepo.getStats();
+      return await Q.waitlist.entry.getFunnelStats();
     }),
 
   list: adminProcedure
@@ -66,7 +66,7 @@ export const waitlistsRouter = router({
     })
     .input(z.object({ id: z.number().int().positive() }))
     .query(async ({ input }) => {
-      const entry = await waitlistRepo.getDetailed(input.id);
+      const entry = await Q.waitlist.entry.get({ id: input.id });
 
       return { entry };
     }),

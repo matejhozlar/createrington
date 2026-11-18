@@ -1,5 +1,5 @@
 import { router, adminProcedure } from "@/trpc/trpc";
-import { metricsService } from "@/services/metrics";
+import { Q } from "@/db";
 import { z } from "zod";
 import { dateRangeWithGranularity } from "./schemas";
 
@@ -9,7 +9,7 @@ export const moderationMetricsRouter = router({
     .meta({ description: "Get ban counts grouped by time period" })
     .input(dateRangeWithGranularity)
     .query(async ({ input }) => {
-      return await metricsService.moderation.getBansByPeriod(
+      return await Q.player.ban.getCountsByPeriod(
         input.start,
         input.end,
         input.granularity,
@@ -23,7 +23,7 @@ export const moderationMetricsRouter = router({
     })
     .input(dateRangeWithGranularity)
     .query(async ({ input }) => {
-      return await metricsService.moderation.getStrikesByPeriod(
+      return await Q.player.strike.getCountsByPeriod(
         input.start,
         input.end,
         input.granularity,
@@ -33,7 +33,7 @@ export const moderationMetricsRouter = router({
   getStrikeSeverityDistribution: adminProcedure
     .meta({ description: "Get severity distribution for active strikes" })
     .query(async () => {
-      return await metricsService.moderation.getStrikeSeverityDistribution();
+      return await Q.player.strike.getSeverityDistribution();
     }),
 
   getTicketOverview: adminProcedure
@@ -42,14 +42,14 @@ export const moderationMetricsRouter = router({
         "Get ticket overview: total, open, closed, average resolution time",
     })
     .query(async () => {
-      return await metricsService.moderation.getTicketOverview();
+      return await Q.ticket.getOverview();
     }),
 
   getTicketVolume: adminProcedure
     .meta({ description: "Get ticket volume grouped by time period" })
     .input(dateRangeWithGranularity)
     .query(async ({ input }) => {
-      return await metricsService.moderation.getTicketVolume(
+      return await Q.ticket.getVolumeByPeriod(
         input.start,
         input.end,
         input.granularity,
@@ -60,6 +60,6 @@ export const moderationMetricsRouter = router({
     .meta({ description: "Get top moderators ranked by ban count" })
     .input(z.object({ limit: z.number().int().min(1).max(100).default(10) }))
     .query(async ({ input }) => {
-      return await metricsService.moderation.getTopModerators(input.limit);
+      return await Q.player.ban.getModeratorActivity(input.limit);
     }),
 });

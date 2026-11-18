@@ -1,6 +1,5 @@
 import type { Express } from "express";
 import config from "@/config";
-import { env } from "@/config/env/env.config";
 import authRoutes from "./auth/auth.routes";
 import donationRoutes from "./donation/donation.routes";
 import skinRoutes from "./skin/skin.routes";
@@ -54,7 +53,7 @@ export function registerRoutes(app: Express): void {
   // Admin chat proxy, only active when the upstream URL is configured.
   // Routes gate on requireAdmin internally; the secret (if set) is injected
   // into outbound calls so it never touches the browser.
-  if (env.CLAUDE_API_URL) {
+  if (config.adminChat.url) {
     app.use(`${API_PREFIX}/claude-chat`, adminChatRoutes);
     logger.info("Admin chat proxy routes registered");
   }

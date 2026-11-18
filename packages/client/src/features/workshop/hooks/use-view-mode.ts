@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/use-is-mobile";
 import type { ViewMode } from "../components/ViewToggle";
 
 export function useViewMode(storageKey: string) {

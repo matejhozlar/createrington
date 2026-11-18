@@ -6,12 +6,9 @@
  */
 
 import "./logger.global";
-import { env } from "@/config/env/env.config";
+import config from "@/config";
 import { initializeServices, shutdownServices } from "@/services/bootstrap";
-import type { Server } from "node:http";
 import { container, Services } from "@/services";
-
-const PORT = env.PORT;
 
 /** Bootstraps services and starts listening for HTTP requests */
 async function start() {
@@ -19,9 +16,9 @@ async function start() {
     await initializeServices();
 
     const httpServer = await container.get(Services.HTTP_SERVER);
-    setupProcessHandlers(httpServer);
-    httpServer.listen(PORT, () => {
-      logger.info(`✓ Server running on port ${PORT}`);
+    setupProcessHandlers();
+    httpServer.listen(config.app.port, () => {
+      logger.info(`✓ Server running on port ${config.app.port}`);
     });
   } catch (error) {
     logger.error("Failed to start:", error);
@@ -43,7 +40,7 @@ async function shutdown() {
 /**
  * Sets up process event handlers for graceful shutdown and error handling
  */
-function setupProcessHandlers(_httpServer: Server): void {
+function setupProcessHandlers(): void {
   process.on("SIGINT", () => void shutdown());
   process.on("SIGTERM", () => void shutdown());
 

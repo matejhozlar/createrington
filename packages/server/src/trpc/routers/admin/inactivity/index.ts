@@ -9,10 +9,9 @@ import {
   auditActor,
 } from "@/trpc/utils";
 import config from "@/config";
-import { getService, getServiceSync, Services } from "@/services";
+import { getService, Services } from "@/services";
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
-import { DiscordMessageService } from "@/services/discord/message/message.service";
 import { removeInactiveWarning } from "@/services/discord/cleanup/inactivity/remove-warning";
 import type { InactivityCleanupService } from "@/services/discord/cleanup/inactivity/inactivity-cleanup.service";
 import {
@@ -179,10 +178,7 @@ export const inactivityRouter = router({
           removedAt: new Date(),
         });
 
-        const mainBot = getServiceSync(Services.DISCORD_MAIN_BOT);
-        const messageService = DiscordMessageService.getInstance(mainBot);
-
-        await messageService.send({
+        await Discord.Messages.send({
           channelId: Discord.Channels.administration.NOTIFICATIONS,
           embeds: embed.build(),
         });

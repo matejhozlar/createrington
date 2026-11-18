@@ -70,11 +70,6 @@ async function respondDenied(
 export const pattern = "ticket:*";
 
 /**
- * Whether these buttons should be handled in production only
- */
-export const prodOnly = false;
-
-/**
  * Main button interaction handler for ticket system buttons
  *
  * Parses the button custom ID and routes to appropriate handler based on action type

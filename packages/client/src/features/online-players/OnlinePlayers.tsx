@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router";
 import { formatCompactDuration } from "@createrington/shared/format";
-import { usePlayerData } from "@/contexts/player-data";
+import { usePlayerData, type OnlinePlayer } from "@/contexts/player-data";
 import { useServerData } from "@/contexts/server-data";
 import { useAuth } from "@/contexts/auth";
 import { cn } from "@/lib/utils";
@@ -18,18 +18,13 @@ import {
   Signal,
   WifiOff,
 } from "lucide-react";
-import type { PlayerData } from "@createrington/shared/socket";
 
-function getSessionSeconds(player: PlayerData): number {
-  const start =
-    player.sessionStart instanceof Date
-      ? player.sessionStart.getTime()
-      : new Date(player.sessionStart).getTime();
-  return Math.max(0, (Date.now() - start) / 1000);
+function getSessionSeconds(player: OnlinePlayer): number {
+  return Math.max(0, (Date.now() - player.sessionStart.getTime()) / 1000);
 }
 
 /** Live-ticking session timer for a single player */
-function SessionTimer({ player }: { player: PlayerData }) {
+function SessionTimer({ player }: { player: OnlinePlayer }) {
   const [seconds, setSeconds] = useState(() => getSessionSeconds(player));
 
   useEffect(() => {
@@ -77,7 +72,7 @@ function PlayerCard({
   index,
   onClick,
 }: {
-  player: PlayerData;
+  player: OnlinePlayer;
   index: number;
   onClick?: () => void;
 }) {
@@ -160,17 +155,9 @@ export function OnlinePlayers() {
   // Sort by session duration (longest first)
   const sortedPlayers = useMemo(
     () =>
-      [...filteredPlayers].sort((a, b) => {
-        const aStart =
-          a.sessionStart instanceof Date
-            ? a.sessionStart.getTime()
-            : new Date(a.sessionStart).getTime();
-        const bStart =
-          b.sessionStart instanceof Date
-            ? b.sessionStart.getTime()
-            : new Date(b.sessionStart).getTime();
-        return aStart - bStart;
-      }),
+      [...filteredPlayers].sort(
+        (a, b) => a.sessionStart.getTime() - b.sessionStart.getTime(),
+      ),
     [filteredPlayers],
   );
 

@@ -15,11 +15,6 @@ import {
  */
 export const pattern = "departed:*";
 
-/**
- * Whether these buttons should be handled in production only
- */
-export const prodOnly = false;
-
 export const permissionDeniedMessage = "You must be an admin to do that.";
 
 /**

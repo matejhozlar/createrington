@@ -3,7 +3,7 @@ import {
   type AutocompleteInteraction,
   type ChatInputCommandInteraction,
 } from "discord.js";
-import { player, Q } from "@/db";
+import { Q } from "@/db";
 import {
   buildWorkshopPickerSuggestModal,
   buildWorkshopSuggestModal,
@@ -54,7 +54,7 @@ export async function execute(
     return;
   }
 
-  const suggester = await player.find({ discordId: interaction.user.id });
+  const suggester = await Q.player.find({ discordId: interaction.user.id });
   if (!suggester) {
     await replyError(
       interaction,

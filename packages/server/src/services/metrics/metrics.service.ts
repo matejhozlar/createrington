@@ -1,59 +1,60 @@
-import { PlaytimeMetrics } from "./domains/playtime.metrics";
-import { EconomyMetrics } from "./domains/economy.metrics";
-import { ActivityMetrics } from "./domains/activity.metrics";
-import { ModerationMetrics } from "./domains/moderation.metrics";
-import { GrowthMetrics } from "./domains/growth.metrics";
+import { Q } from "@/db";
+import type { ServerHoursBreakdown } from "@/db/queries/player/playtime/summary";
+
+type Granularity = "day" | "week" | "month";
+
+export interface PlaytimeHoursBreakdown extends ServerHoursBreakdown {
+  archivedHours: number;
+}
 
 /**
- * Aggregate entry point for the five metric domains (playtime, economy, activity,
- * moderation, growth), each lazily constructed on first access. Pure DB layer:
- * no async init, no service-container dependencies; safe to construct eagerly.
+ * Metrics that combine several queries or derive values from them. Single-query
+ * metrics are read straight from `Q` by their routers. Stateless DB layer: no
+ * async init and no service-container dependencies.
  */
 export class MetricsService {
-  private _playtime?: PlaytimeMetrics;
-  private _economy?: EconomyMetrics;
-  private _activity?: ActivityMetrics;
-  private _moderation?: ModerationMetrics;
-  private _growth?: GrowthMetrics;
+  /** Rounded hours played on one server, or across all servers plus retired seasons when `serverId` is omitted. */
+  async getTotalHours(serverId?: number): Promise<number> {
+    const liveHours = await Q.player.playtime.summary.getTotalHours(serverId);
+    if (serverId !== undefined) return liveHours;
 
-  /** Playtime metrics: total hours, per-server breakdowns. */
-  get playtime(): PlaytimeMetrics {
-    if (!this._playtime) {
-      this._playtime = new PlaytimeMetrics();
-    }
-    return this._playtime;
+    const archivedHours = await Q.playtime.archive.getTotalHours();
+    return liveHours + archivedHours;
   }
 
-  /** Economy metrics: balance circulation, distribution, transaction volume. */
-  get economy(): EconomyMetrics {
-    if (!this._economy) {
-      this._economy = new EconomyMetrics();
-    }
-    return this._economy;
+  /** Hours per live server, the retired-season hours, and the combined total. */
+  async getHoursBreakdown(): Promise<PlaytimeHoursBreakdown> {
+    const [breakdown, archivedHours] = await Promise.all([
+      Q.player.playtime.summary.getTotalHoursBreakdown(),
+      Q.playtime.archive.getTotalHours(),
+    ]);
+
+    return {
+      byServer: breakdown.byServer,
+      archivedHours,
+      total: breakdown.total + archivedHours,
+    };
   }
 
-  /** Activity metrics: active players, peak concurrent, session length, retention. */
-  get activity(): ActivityMetrics {
-    if (!this._activity) {
-      this._activity = new ActivityMetrics();
-    }
-    return this._activity;
+  /** Total balance in circulation, holder count, and the average balance per holder. */
+  async getEconomyOverview() {
+    const { totalBalance, playerCount } =
+      await Q.player.balance.getTotalInCirculation();
+    return {
+      totalBalance,
+      playerCount,
+      averageBalance: playerCount > 0 ? totalBalance / playerCount : 0,
+    };
   }
 
-  /** Moderation metrics: bans, strikes, tickets, moderator leaderboard. */
-  get moderation(): ModerationMetrics {
-    if (!this._moderation) {
-      this._moderation = new ModerationMetrics();
-    }
-    return this._moderation;
-  }
+  /** Discord member joins and leaves bucketed by period. */
+  async getDiscordGrowth(start: Date, end: Date, granularity: Granularity) {
+    const [joins, leaves] = await Promise.all([
+      Q.discord.guild.member.join.getJoinsByPeriod(start, end, granularity),
+      Q.discord.guild.member.leave.getLeavesByPeriod(start, end, granularity),
+    ]);
 
-  /** Growth metrics: registrations, waitlist funnel, Discord member trends. */
-  get growth(): GrowthMetrics {
-    if (!this._growth) {
-      this._growth = new GrowthMetrics();
-    }
-    return this._growth;
+    return { joins, leaves };
   }
 }
 

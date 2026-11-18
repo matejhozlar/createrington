@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { PopoverAnchor } from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/spinner";
-import { playerPoseUrl } from "@/lib/player-images";
+import { playerPoseUrl } from "@/lib/playerImages";
 import { HERO_BACKDROP } from "../../top-roles";
 import { RANK_LABELS, SIDE_COLORS, type ComparedPlayer } from "../headToHead";
 import type { Side } from "../hooks/use-compare-params";

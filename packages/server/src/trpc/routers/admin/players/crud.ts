@@ -1,9 +1,8 @@
 import { z } from "zod";
 import { ADMIN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
 import { router, adminProcedure } from "@/trpc/trpc";
-import { playerService } from "@/services/player";
 import { playerDeletionService } from "@/services/player/deletion";
-import { Q } from "@/db";
+import { Q, playerBanRepo, playerRepo, playerStrikeRepo } from "@/db";
 import { ilikeContains } from "@/db/utils";
 import { BalanceUtils } from "@/db/repositories/balance/utils";
 import {
@@ -25,7 +24,7 @@ export const playersRouter = router({
       description: "Get overall player statistics for the admin dashboard.",
     })
     .query(async () => {
-      return await playerService.core.getStats();
+      return await playerRepo.getStats();
     }),
 
   list: adminProcedure
@@ -93,10 +92,10 @@ export const playersRouter = router({
 
         const [strikeCounts, banCounts] = await Promise.all([
           input.includeStrikeCounts
-            ? playerService.strikes.getActiveStrikeCounts(playerUuids)
+            ? Q.player.strike.getActiveStrikeCounts(playerUuids)
             : Promise.resolve({} as Record<string, number>),
           input.includeBanCounts
-            ? playerService.bans.getActiveBanCounts(playerUuids)
+            ? Q.player.ban.getActiveBanCounts(playerUuids)
             : Promise.resolve({} as Record<string, number>),
         ]);
 
@@ -122,7 +121,14 @@ export const playersRouter = router({
     .input(z.object({ id: z.string().min(1) }))
     .query(async ({ input }) => {
       const identifier = parsePlayerId(input.id);
-      const playerData = await playerService.getComprehensive(identifier);
+      const [playerData, strikes, banHistory, currentBan] = await Promise.all([
+        playerRepo.getDetailed(identifier),
+        playerStrikeRepo.getHistory(identifier),
+        playerBanRepo.getHistory(identifier),
+        playerBanRepo.getCurrent(identifier),
+      ]);
+      const activeStrikes = strikes.filter((s) => !s.removed);
+      const activeBans = banHistory.filter((b) => !b.unbanned);
 
       return {
         player: playerData.player,
@@ -146,8 +152,19 @@ export const playersRouter = router({
         },
         tickets: playerData.tickets,
         waitlist: playerData.waitlist,
-        strikes: playerData.strikes,
-        bans: playerData.bans,
+        strikes: {
+          all: strikes,
+          active: activeStrikes,
+          activeCount: activeStrikes.length,
+          totalCount: strikes.length,
+        },
+        bans: {
+          current: currentBan,
+          history: banHistory,
+          active: activeBans,
+          activeCount: activeBans.length,
+          totalCount: banHistory.length,
+        },
       };
     }),
 
@@ -181,7 +198,7 @@ export const playersRouter = router({
         updates.minecraftUsername = input.minecraftUsername;
       if (input.discordId) updates.discordId = input.discordId;
 
-      const updatedPlayer = await playerService.core.adminUpdate(
+      const updatedPlayer = await playerRepo.adminUpdate(
         identifier,
         updates,
         ctx.user.discordId,

@@ -39,7 +39,7 @@ function toAppProject(slug: string, modpack: Modpack): LauncherPackProject {
     summary: modpack.description,
     author: null,
     iconUrl: modpack.iconUrl,
-    url: config.meta.links.website ?? APP_PROJECT_FALLBACK_URL,
+    url: config.meta.links.website,
   };
 }
 
@@ -49,8 +49,6 @@ const ZIP_SERVED_BY: Record<LauncherPackSource, LauncherPackFileSource> = {
 };
 
 const PROJECT_LOOKUP_RETRY_MS = 60 * 1000;
-
-const APP_PROJECT_FALLBACK_URL = "https://createrington.com";
 
 export const PACK_ORDER = {
   orderBy: "position",

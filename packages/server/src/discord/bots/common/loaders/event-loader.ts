@@ -14,8 +14,6 @@ export interface EventModule<
 > {
   /** The Discord event name */
   eventName: K;
-  /** Whether the event should fire only once */
-  once?: boolean;
   /** Whether this event should only be registered in production */
   prodOnly?: boolean;
   /** The event handler function */
@@ -44,7 +42,6 @@ function isEventModule(module: unknown): module is EventModule {
  * Loads Discord event handlers from a directory
  *
  * Recursively scans the events directory and registers all event handlers.
- * Supports both one-time (once) and recurring (on) event listeners.
  *
  * @param client - The Discord client instance
  * @param eventsPath - Absolute path to the events directory
@@ -64,17 +61,9 @@ export async function loadEventHandlers(
 
   for (const filePath of eventFiles) {
     try {
-      const eventModule = (await import(
-        pathToFileURL(filePath).href
-      )) as Record<string, unknown>;
+      const event = (await import(pathToFileURL(filePath).href)) as unknown;
 
-      const event: EventModule | undefined = isEventModule(eventModule.default)
-        ? eventModule.default
-        : isEventModule(eventModule)
-          ? eventModule
-          : undefined;
-
-      if (!event) {
+      if (!isEventModule(event)) {
         logger.warn(
           `Skipped ${filePath}: not a valid EventModule (missing eventName or execute)`,
         );
@@ -88,25 +77,19 @@ export async function loadEventHandlers(
         continue;
       }
 
-      const label = event.once
-        ? `${event.eventName} (once) event`
-        : `${event.eventName} event`;
       const listener = (...args: ClientEvents[keyof ClientEvents]) => {
         Promise.resolve()
           .then(() => event.execute(client, ...args))
           .catch((error: unknown) => {
-            logger.error(`Error in ${label}:`, error);
+            logger.error(`Error in ${event.eventName} event:`, error);
           });
       };
 
-      if (event.once) client.once(event.eventName, listener);
-      else client.on(event.eventName, listener);
+      client.on(event.eventName, listener);
 
       loadedCount++;
       logger.debug(
-        `Registered ${event.once ? "once" : "on"} event: ${
-          event.eventName
-        } (${path.basename(filePath)})`,
+        `Registered event: ${event.eventName} (${path.basename(filePath)})`,
       );
     } catch (error) {
       logger.error(`Failed to load event ${filePath}:`, error);

@@ -33,13 +33,9 @@ vi.mock("@/config", () => ({
   },
 }));
 
-vi.mock("@/db", () => ({ Q: { ticket: { get: ticketGet } } }));
-
-vi.mock("@/db/repositories/ticket", () => ({
-  TicketRepository: class {
-    close = repository.close;
-    updateMetadata = repository.updateMetadata;
-  },
+vi.mock("@/db", () => ({
+  Q: { ticket: { get: ticketGet } },
+  ticketRepo: repository,
 }));
 
 vi.mock("@/discord/constants", () => ({

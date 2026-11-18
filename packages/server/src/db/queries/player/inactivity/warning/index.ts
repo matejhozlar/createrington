@@ -97,46 +97,6 @@ export class PlayerInactivityWarningQueries extends PlayerInactivityWarningBaseQ
   }
 
   /**
-   * Find all active warnings (not resolved, not removed) joined with player data.
-   */
-  async findActiveWarnings(): Promise<ActiveWarning[]> {
-    const query = `
-      SELECT
-        w.id,
-        w.player_minecraft_uuid,
-        w.warned_at,
-        w.warning_message_id,
-        p.minecraft_username,
-        p.discord_id,
-        p.last_seen
-      FROM player_inactivity_warning w
-      INNER JOIN player p ON p.minecraft_uuid = w.player_minecraft_uuid
-      WHERE w.resolved_at IS NULL
-        AND w.removed_at IS NULL
-      ORDER BY w.warned_at ASC`;
-
-    const result = await this.db.query<{
-      id: number;
-      player_minecraft_uuid: string;
-      warned_at: Date;
-      warning_message_id: string | null;
-      minecraft_username: string;
-      discord_id: string;
-      last_seen: Date;
-    }>(query);
-
-    return result.rows.map((row) => ({
-      id: row.id,
-      playerMinecraftUuid: row.player_minecraft_uuid,
-      warnedAt: row.warned_at,
-      warningMessageId: row.warning_message_id,
-      minecraftUsername: row.minecraft_username,
-      discordId: row.discord_id,
-      lastSeen: row.last_seen,
-    }));
-  }
-
-  /**
    * Find active warnings whose grace period has expired.
    * Admins and exempted players are excluded defensively: even if a
    * warning row predates the exclusions in `findInactivePlayers`, it will

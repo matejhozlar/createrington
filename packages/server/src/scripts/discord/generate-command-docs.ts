@@ -1,6 +1,5 @@
 import "@/logger.global";
 import type { CommandModule } from "@/discord/bots/common/loaders/command-loader";
-import { commandRegistry } from "@/discord/bots/main/command-registry";
 import fs from "node:fs";
 import fsp from "node:fs/promises";
 import path from "node:path";
@@ -88,7 +87,6 @@ interface CommandData {
     type: string;
     message?: string;
   };
-  env: string;
 }
 
 /** Recursively collect all .ts files from a directory */
@@ -230,7 +228,7 @@ function renderCommand(cmd: CommandData): string {
   lines.push(cmd.description);
   lines.push("");
   lines.push(
-    `**Permission:** ${formatPermission(cmd)} · **Cooldown:** ${formatCooldown(cmd)} · **Env:** ${cmd.env}`,
+    `**Permission:** ${formatPermission(cmd)} · **Cooldown:** ${formatCooldown(cmd)}`,
   );
   lines.push("");
 
@@ -279,7 +277,6 @@ async function main(): Promise<void> {
 
       const json = mod.data.toJSON();
       const category = getCategory(filePath);
-      const env = commandRegistry[mod.data.name] ?? "unregistered";
 
       commands.push({
         name: json.name,
@@ -300,7 +297,6 @@ async function main(): Promise<void> {
               message: mod.cooldown.message,
             }
           : undefined,
-        env: env === "both" ? "prod" : env,
       });
 
       console.log(`  Loaded /${json.name} (${category})`);

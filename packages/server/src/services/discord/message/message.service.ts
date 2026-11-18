@@ -1,52 +1,33 @@
 import config from "@/config";
 import { isSendableChannel } from "@/discord/utils/channel-guard";
-import {
+import type {
   Client,
-  EmbedBuilder,
   Message,
-  type MessageCreateOptions,
-  type MessageEditOptions,
+  MessageCreateOptions,
+  MessageEditOptions,
   TextChannel,
 } from "discord.js";
 import type {
   DeleteMessageOptions,
   EditMessageOptions,
-  ReplyMessageOptions,
   SendMessageOptions,
   SendMessageResult,
-  FetchChannelOptions,
   FetchMessageOptions,
 } from "./types";
 
 /**
- * Unified Discord messaging surface for a single bot client.
+ * Unified Discord messaging surface for the bot client.
  *
- * Wraps send/edit/delete/reply/fetch plus a `withLoading` helper that posts
- * a placeholder message and rewrites it once the wrapped operation resolves
- * or throws. Per-client singleton (keyed by Discord.js `Client` instance) so
- * the main bot and any auxiliary bots each get their own service. The guild
- * id is resolved once from config since the deployment targets one server,
- * and `allowedMentions` defaults to `{ parse: [] }` so arbitrary content
- * cannot ping @everyone, roles, or users unless the caller opts in.
+ * Wraps send/edit/delete/fetch for messages in the configured guild. Created
+ * once in bootstrap and reached through `Discord.Messages`. `allowedMentions`
+ * defaults to `{ parse: [] }` so arbitrary content cannot ping @everyone,
+ * roles, or users unless the caller opts in.
  */
 export class DiscordMessageService {
-  private static instance: DiscordMessageService;
   private readonly guildId: string;
-  private static instances = new Map<Client, DiscordMessageService>();
 
-  private constructor(private client: Client) {
+  constructor(private client: Client) {
     this.guildId = config.discord.guild.id;
-  }
-
-  /** Per-client singleton accessor; creates the instance on first call. */
-  public static getInstance(client: Client): DiscordMessageService {
-    if (!DiscordMessageService.instances.has(client)) {
-      DiscordMessageService.instances.set(
-        client,
-        new DiscordMessageService(client),
-      );
-    }
-    return DiscordMessageService.instances.get(client)!;
   }
 
   private async fetchSendableChannel(
@@ -217,56 +198,6 @@ export class DiscordMessageService {
     }
   }
 
-  /**
-   * Post a reply to an existing message. Mentions are suppressed by default.
-   * Returns `{ success: false, error }` on failure rather than throwing.
-   */
-  async reply(options: ReplyMessageOptions): Promise<SendMessageResult> {
-    try {
-      const channel = await this.fetchSendableChannel(options.channelId);
-
-      if (!channel) {
-        return {
-          success: false,
-          error: "Channel not found or not sendable",
-        };
-      }
-
-      const message = await channel.messages.fetch(options.messageId);
-
-      if (!message) {
-        return {
-          success: false,
-          error: "Message not found",
-        };
-      }
-
-      const replyMessage = await message.reply({
-        content: options.content,
-        embeds: options.embeds ? [options.embeds] : undefined,
-        components: options.components,
-        files: options.files,
-        allowedMentions: { parse: [] },
-      });
-
-      logger.info(
-        `Replied to message ${options.messageId} in channel ${options.channelId}`,
-      );
-
-      return {
-        success: true,
-        messageId: replyMessage.id,
-        message: replyMessage,
-      };
-    } catch (error) {
-      logger.error("Failed to reply to message:", error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-      };
-    }
-  }
-
   /** Fetch a message by id. Returns `{ success: false, error }` if the channel or message is gone. */
   async fetchMessage(
     options: FetchMessageOptions,
@@ -304,94 +235,4 @@ export class DiscordMessageService {
       };
     }
   }
-
-  /** Fetch a sendable text channel by id. Returns `{ success: false, error }` if unavailable. */
-  async fetchChannel(
-    options: FetchChannelOptions,
-  ): Promise<
-    { success: true; channel: TextChannel } | { success: false; error: string }
-  > {
-    try {
-      const channel = await this.fetchSendableChannel(options.channelId);
-
-      if (!channel) {
-        return {
-          success: false,
-          error: "Channel not found or not sendable",
-        };
-      }
-
-      return {
-        success: true,
-        channel,
-      };
-    } catch (error) {
-      logger.error("Failed to fetch channel:", error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-      };
-    }
-  }
-
-  /**
-   * Post a loading placeholder, run `operation`, then rewrite the placeholder
-   * with the `onSuccess` / `onError` payload. The wrapped error is re-thrown
-   * after the placeholder is updated, so callers can still try/catch.
-   */
-  async withLoading<T>(
-    channelId: string,
-    operation: () => Promise<T>,
-    options: {
-      loadingMessage?: string;
-      onSuccess?: (result: T) => {
-        content?: string;
-        embeds?: EmbedBuilder;
-      };
-      onError?: (error: Error) => {
-        content?: string;
-        embeds?: EmbedBuilder;
-      };
-    },
-  ): Promise<T> {
-    const loadingResult = await this.send({
-      channelId,
-      content: options.loadingMessage || "⏳ Processing...",
-    });
-
-    try {
-      const result = await operation();
-
-      if (
-        loadingResult.success &&
-        loadingResult.messageId &&
-        options.onSuccess
-      ) {
-        const successOptions = options.onSuccess(result);
-        await this.edit({
-          channelId,
-          messageId: loadingResult.messageId,
-          content: successOptions.content,
-          embeds: successOptions.embeds,
-        });
-      }
-
-      return result;
-    } catch (error) {
-      if (loadingResult.success && loadingResult.messageId && options.onError) {
-        const errorOptions = options.onError(error as Error);
-        await this.edit({
-          channelId,
-          messageId: loadingResult.messageId,
-          content: errorOptions.content,
-          embeds: errorOptions.embeds,
-        });
-      }
-      throw error;
-    }
-  }
 }
-
-export const createDiscordMessageService = (
-  client: Client,
-): DiscordMessageService => DiscordMessageService.getInstance(client);

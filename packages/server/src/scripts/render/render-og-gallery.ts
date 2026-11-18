@@ -10,24 +10,20 @@
 import { join } from "node:path";
 
 import { loadImage, type SKRSContext2D } from "@napi-rs/canvas";
-import { fitFontSize } from "@/utils/canvas";
 import {
   W,
   H,
   BG_BOT,
-  AMBER,
-  FOREGROUND,
-  MUTED,
-  TEXT_X,
   registerBrandFonts,
   roundRectPath,
   drawImageCover,
   paintEllipseGradient,
-  paintWordmark,
-  wrapText,
+  paintHeadlineCopy,
+  type HeadlineCopy,
 } from "@/utils/og-card";
 import {
   ASSETS,
+  TEAM,
   paintPosedFigure,
   writeCard,
   type PosedFigureSpec,
@@ -84,16 +80,14 @@ const FRAMES: readonly FrameSpec[] = [
 // Two players in front of the wall, taking it in.
 const FIGURES: readonly PosedFigureSpec[] = [
   {
-    username: "The_BigShot",
-    uuid: "4cada83a-c012-4a31-8d80-942f3f79e8a1",
+    ...TEAM.The_BigShot,
     pose: "gaze",
     height: 178,
     centerX: 786,
     groundY: 596,
   },
   {
-    username: "Cailin05",
-    uuid: "aee71815-6420-444c-a245-9047c41f4a39",
+    ...TEAM.Cailin05,
     pose: "ponder",
     height: 172,
     centerX: 1046,
@@ -101,6 +95,14 @@ const FIGURES: readonly PosedFigureSpec[] = [
     mirror: true,
   },
 ];
+
+const COPY: HeadlineCopy = {
+  lead: "The server,",
+  accent: "through their eyes.",
+  sub: "Builds, views and moments captured by the players of Createrington.",
+  subWidth: 450,
+  url: "createrington.com/gallery",
+};
 
 // The page hero treatment from PageHeader: grayscale-50 over the metro build,
 // a black/50 overlay, and the bottom fade into the page background.
@@ -209,68 +211,6 @@ async function paintFigures(ctx: SKRSContext2D): Promise<void> {
   }
 }
 
-async function paintCopy(ctx: SKRSContext2D): Promise<void> {
-  await paintWordmark(ctx);
-
-  const maxTextWidth = 500;
-  ctx.textBaseline = "alphabetic";
-
-  const headFont = (s: number) => `700 ${s}px Outfit`;
-  ctx.letterSpacing = "-1.4px";
-  const headSize = fitFontSize(
-    ctx,
-    "through their eyes.",
-    headFont,
-    [72, 66, 60],
-    maxTextWidth,
-  );
-  const line1Y = 286;
-  const line2Y = line1Y + headSize + 6;
-
-  ctx.font = headFont(headSize);
-  ctx.fillStyle = FOREGROUND;
-  ctx.fillText("The server,", TEXT_X, line1Y);
-  ctx.fillStyle = AMBER;
-  ctx.fillText("through their eyes.", TEXT_X, line2Y);
-  ctx.letterSpacing = "0px";
-
-  const subFont = "400 22px Outfit";
-  const subLines = wrapText(
-    ctx,
-    "Builds, views and moments captured by the players of Createrington.",
-    subFont,
-    450,
-  );
-  ctx.font = subFont;
-  ctx.fillStyle = MUTED;
-  let subY = line2Y + 52;
-  for (const line of subLines) {
-    ctx.fillText(line, TEXT_X, subY);
-    subY += 31;
-  }
-
-  const chipY = subY + 4;
-  const chipH = 44;
-  const padX = 20;
-  const url = "createrington.com/gallery";
-  ctx.font = "600 22px Outfit";
-  const urlW = ctx.measureText(url).width;
-  const chipW = padX * 2 + urlW;
-
-  ctx.fillStyle = "rgba(255,185,0,0.10)";
-  roundRectPath(ctx, TEXT_X, chipY, chipW, chipH, 11);
-  ctx.fill();
-  ctx.strokeStyle = "rgba(255,185,0,0.40)";
-  ctx.lineWidth = 1;
-  roundRectPath(ctx, TEXT_X + 0.5, chipY + 0.5, chipW - 1, chipH - 1, 11);
-  ctx.stroke();
-
-  ctx.fillStyle = AMBER;
-  ctx.textBaseline = "middle";
-  ctx.fillText(url, TEXT_X + padX, chipY + chipH / 2 + 1);
-  ctx.textBaseline = "alphabetic";
-}
-
 async function main(): Promise<void> {
   const outPath = process.argv[2] ?? join(ASSETS, "og", "gallery.png");
 
@@ -280,7 +220,7 @@ async function main(): Promise<void> {
     paintWallLight(ctx);
     await paintFrames(ctx);
     await paintFigures(ctx);
-    await paintCopy(ctx);
+    await paintHeadlineCopy(ctx, COPY);
   });
 }
 

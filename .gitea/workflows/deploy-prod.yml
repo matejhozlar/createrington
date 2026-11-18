@@ -86,7 +86,6 @@ jobs:
             pnpm scrape-discord
             pnpm generate:ci
             pnpm generate-command-docs:json
-            pnpm generate-api-docs
             pnpm deploy-commands
           '
 

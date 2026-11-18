@@ -6,7 +6,6 @@ import { FaqEmbedPresets } from "./faq";
 import { GalleryEmbedPresets } from "./gallery";
 import { GhostEmbedPresets } from "./ghost";
 import { InactivityEmbedPresets } from "./inactivity";
-import { ProgressEmbedPresets } from "./progress";
 import { RegistrationEmbedPresets } from "./registration";
 import { TicketEmbedPresets } from "./ticket";
 import { WaitlistEmbedPresets } from "./waitlist";
@@ -18,7 +17,6 @@ export const EmbedPresets = {
   commands: CommandEmbedPresets,
   waitlist: WaitlistEmbedPresets,
   registration: RegistrationEmbedPresets,
-  progress: ProgressEmbedPresets,
   ticket: TicketEmbedPresets,
   departed: DepartedEmbedPresets,
   faq: FaqEmbedPresets,

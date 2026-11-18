@@ -1,5 +1,5 @@
 import { randomPose, type KnownPose } from "createrington-skin-api";
-import { playerPoseUrl } from "@/lib/player-images";
+import { playerPoseUrl } from "@/lib/playerImages";
 
 export { randomPose };
 export type { KnownPose };

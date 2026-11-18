@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/use-is-mobile";
 import { SkinViewer, type SkinViewerHandle } from "./SkinViewer";
 import type { TeamMember } from "../data";
 import { TIER_CONFIG } from "../data";

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { adminProcedure } from "@/trpc/trpc";
-import { Q, R } from "@/db";
+import { Q, playtimeRepo } from "@/db";
 import { getService, Services } from "@/services";
 import { MINECRAFT_SERVERS, getServerById } from "@/services/playtime/config";
 import { buildPagination, paginationInput, trpcError } from "@/trpc/utils";
@@ -77,7 +77,7 @@ export const serverStatsProcedures = {
 
       const service = manager.getService(input.id);
       const status = buildServerStatus(input.id, serverConfig, service);
-      const { summary, leaderboard } = await R.playtimeRepo.getServerStats(
+      const { summary, leaderboard } = await playtimeRepo.getServerStats(
         input.id,
       );
 
@@ -113,7 +113,7 @@ export const serverStatsProcedures = {
         );
       }
 
-      const activity = await R.playtimeRepo.getServerActivity(
+      const activity = await playtimeRepo.getServerActivity(
         input.serverId,
         input.days,
       );
@@ -160,7 +160,7 @@ export const serverStatsProcedures = {
         );
       }
 
-      const heatmapData = await R.playtimeRepo.getServerHeatmap(
+      const heatmapData = await Q.player.playtime.hourly.getServerHeatmap(
         input.serverId,
         input.days,
       );

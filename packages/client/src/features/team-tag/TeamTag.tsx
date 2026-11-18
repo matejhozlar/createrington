@@ -9,7 +9,7 @@ import { designCode, type PlateDesign } from "@createrington/shared/team-tag";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/auth";
 import { useClipboard } from "@/hooks/use-clipboard";
-import { playerAvatarUrl } from "@/lib/player-images";
+import { playerAvatarUrl } from "@/lib/playerImages";
 import { cn } from "@/lib/utils";
 import { ColoursStep } from "./components/ColoursStep";
 import { HeroBackdrop } from "./components/HeroBackdrop";

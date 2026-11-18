@@ -32,7 +32,7 @@ import {
   Zap,
 } from "lucide-react";
 import { useServerData } from "@/contexts/server-data";
-import { CURSEFORGE_MODPACK_URL } from "@/lib/external-urls";
+import { CURSEFORGE_MODPACK_URL } from "@/lib/externalUrls";
 import { trpc } from "@/lib/trpc";
 import { Spinner } from "@/components/ui/spinner";
 import { SkinApiPromo } from "@/components/skin-api-promo";

@@ -1,4 +1,4 @@
-import { playtimeRepo } from "@/db";
+import { Q, playtimeRepo } from "@/db";
 import { MINECRAFT_SERVERS } from "./config";
 import { getPlaytimeForwarder } from "./forwarder.service";
 import { PlaytimeService } from "./playtime.service";
@@ -131,7 +131,7 @@ export class PlaytimeManagerService {
     serverId: number,
     options: BringUpOptions,
   ): Promise<PlaytimeService> {
-    const openSessions = await playtimeRepo.getOpenSessions(serverId);
+    const openSessions = await Q.player.session.findOpenWithUsername(serverId);
 
     const service = new PlaytimeService({ serverId });
     service.hydrate(openSessions);
@@ -187,17 +187,6 @@ export class PlaytimeManagerService {
   /** Returns a shallow copy of the server-id to PlaytimeService map. */
   getAllServices(): Map<number, PlaytimeService> {
     return new Map(this.playtimeServices);
-  }
-
-  /** True if at least one PlaytimeService is initialized. */
-  isInitialized(): boolean {
-    return this.playtimeServices.size > 0;
-  }
-
-  /** True if the named server's PlaytimeService reports ONLINE. False if offline or unknown. */
-  isServerOnline(serverId: number): boolean {
-    const service = this.playtimeServices.get(serverId);
-    return service?.isOnline() ?? false;
   }
 
   /** Current ServerState for `serverId`, or undefined if no service exists for it. */

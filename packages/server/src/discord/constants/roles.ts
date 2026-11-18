@@ -85,42 +85,4 @@ export const DiscordRolesNamespace = {
   mention(roleId: DiscordRoleId): string {
     return `<@&${roleId}>`;
   },
-
-  /**
-   * Validates whether a given string is a configured Discord role ID
-   *
-   * Type guard function that checks if the provided ID exists in the role
-   * configuration. Useful for runtime validation of role IDs from external sources.
-   *
-   * @param roleId - The role ID string to validate
-   * @returns True if the ID exists in the role configuration, false otherwise
-   *
-   * @example
-   * if (isValidRole(someId)) {
-   *   // TypeScript now knows someId is a DiscordRoleId
-   *   console.log(getRoleName(someId));
-   * }
-   */
-  isValid(roleId: string): roleId is DiscordRoleId {
-    return Object.values(DiscordRoles).includes(roleId);
-  },
-
-  /**
-   * Retrieves the human-readable SCREAMING_SNAKE_CASE name for a given Discord role ID
-   *
-   * Performs a reverse lookup to find the configuration key name associated with
-   * the provided role ID. Useful for logging, debugging, and error messages.
-   *
-   * @param id - The Discord role ID to look up
-   * @returns The SCREAMING_SNAKE_CASE key name of the role, or "Unknown role" if not found
-   *
-   * @example
-   * getRoleName(DiscordRoles.ADMIN_ROLE) // Returns "ADMIN_ROLE"
-   */
-  getRoleName(id: DiscordRoleId): string {
-    const entry = Object.entries(DiscordRoles).find(
-      ([_, roleId]) => roleId === id,
-    );
-    return entry ? entry[0] : "Unknown role";
-  },
 } as const;

@@ -19,8 +19,8 @@ export type ButtonHandler = (interaction: ButtonInteraction) => Promise<void>;
 /**
  * Button module structure with pattern matching support
  *
- * Defines the structure of button handler modules. Supports exact matches,
- * wildcard patterns, and regex patterns for flexible customId matching
+ * Defines the structure of button handler modules. Supports exact matches
+ * and wildcard patterns for customId matching
  */
 export interface ButtonModule {
   /**
@@ -28,23 +28,14 @@ export interface ButtonModule {
    * Can be:
    * - Exact string: "help-button"
    * - Prefix pattern: "waitlist:*"
-   * - Regex: /^ticket-(\d+)$/
    */
-  pattern: string | RegExp;
+  pattern: string;
   /**
    * Handler function for this button
    *
    * Called when a button interaction's customId matches the pattern
    */
   execute: ButtonHandler;
-  /**
-   * Whether this button should only work in production
-   *
-   * If set to true, the button handler will not be loaded in development mode
-   *
-   * @default false
-   */
-  prodOnly: boolean;
   /**
    * Permission check
    *
@@ -68,35 +59,30 @@ export interface ButtonModule {
 /**
  * Checks if a customId matches a pattern
  *
- * Supports exact string matching, wildcard patterns (using *), and regex patterns
+ * Supports exact string matching and wildcard patterns (using *)
  *
- * @param customId - The button's customId to checl
- * @param pattern - Pattern to match against (string with optional wildcards or RegExp)
+ * @param customId - The button's customId to check
+ * @param pattern - Pattern to match against (string with optional wildcards)
  * @returns True if the customId matches the pattern, false otherwise
  * @private
  */
-function matchesPattern(customId: string, pattern: string | RegExp): boolean {
-  if (typeof pattern === "string") {
-    if (!pattern.includes("*")) {
-      return customId === pattern;
-    }
-
-    const regexPattern = pattern
-      .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-      .replace(/\\\*/g, ".*");
-
-    return new RegExp(`^${regexPattern}$`).test(customId);
+function matchesPattern(customId: string, pattern: string): boolean {
+  if (!pattern.includes("*")) {
+    return customId === pattern;
   }
 
-  return pattern.test(customId);
+  const regexPattern = pattern
+    .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    .replace(/\\\*/g, ".*");
+
+  return new RegExp(`^${regexPattern}$`).test(customId);
 }
 
 /**
  * Loads button handlers
  *
  * Scans the buttons directory, imports all button handler modules, validates them,
- * and returns a collection of loaded handlers. Automatically filters out production
- * buttons in development mode
+ * and returns a collection of loaded handlers
  *
  * @returns Promise resolving to a Collection of button handlers, keyed by filename
  *
@@ -104,7 +90,6 @@ function matchesPattern(customId: string, pattern: string | RegExp): boolean {
  * - In development mode, loads `.ts` files
  * - In production mode, loads `.js` files
  * - Skips files missing required exports (`pattern` or `execute`)
- * - Skips production-only buttons when running in development
  * - Logs warnings for invalid or skipped button files
  */
 export async function loadButtonHandlers(
@@ -135,13 +120,6 @@ export async function loadButtonHandlers(
 
       if (typeof buttonModule.execute !== "function") {
         logger.warn(`Skipped ${file}: 'execute' is not a function`);
-        continue;
-      }
-
-      const isProdOnly = buttonModule.prodOnly === true;
-
-      if (isDev && isProdOnly) {
-        logger.warn(`Skipped loading production only button handler: ${file}`);
         continue;
       }
 

@@ -3,10 +3,12 @@ import { requestedUrl, sentJson } from "@/tests/helpers/fetch";
 
 const fetchMock = vi.fn<typeof fetch>();
 
-vi.mock("@/config/env/env.config", () => ({
-  env: {
-    CLAUDE_API_URL: "http://claude-automation.test",
-    ADMIN_CHAT_SECRET: "s".repeat(32),
+vi.mock("@/config", () => ({
+  default: {
+    adminChat: {
+      url: "http://claude-automation.test",
+      secret: "s".repeat(32),
+    },
   },
 }));
 

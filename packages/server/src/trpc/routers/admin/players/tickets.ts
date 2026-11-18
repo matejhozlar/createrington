@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
-import { playerService } from "@/services/player";
+import { playerTicketRepo } from "@/db";
 import { parsePlayerId, paginationInput, buildPagination } from "@/trpc/utils";
 
 /** Admin tickets router: paginated ticket list for a player. */
@@ -16,7 +16,7 @@ export const ticketsRouter = router({
     .query(async ({ input }) => {
       const identifier = parsePlayerId(input.id);
 
-      const { tickets, total } = await playerService.tickets.getPage(
+      const { tickets, total } = await playerTicketRepo.getPage(
         identifier,
         input.limit,
         input.page * input.limit,

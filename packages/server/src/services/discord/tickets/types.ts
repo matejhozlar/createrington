@@ -52,30 +52,6 @@ export const TicketButtonGenerator = {
   create(type: TicketType): string {
     return `${TicketButtonIds.CREATE_PREFIX}${type}`;
   },
-
-  close(ticketId: number): string {
-    return `${TicketButtonIds.CLOSE}${ticketId}`;
-  },
-
-  confirmClose(ticketId: number): string {
-    return `${TicketButtonIds.CONFIRM_CLOSE}${ticketId}`;
-  },
-
-  cancelClose(ticketId: number): string {
-    return `${TicketButtonIds.CANCEL_CLOSE}${ticketId}`;
-  },
-
-  reopen(ticketId: number): string {
-    return `${TicketButtonIds.REOPEN}${ticketId}`;
-  },
-
-  delete(ticketId: number): string {
-    return `${TicketButtonIds.DELETE}${ticketId}`;
-  },
-
-  transcript(ticketId: number): string {
-    return `${TicketButtonIds.TRANSCRIPT}${ticketId}`;
-  },
 };
 
 /** Parses a button custom ID into action type and ticket/type identifier */

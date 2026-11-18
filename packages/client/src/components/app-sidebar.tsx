@@ -1,4 +1,3 @@
-"use client";
 import * as React from "react";
 import { X } from "lucide-react";
 import {
@@ -36,7 +35,7 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/use-is-mobile";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth";
 import { ServerStatus } from "./server-status";
@@ -53,7 +52,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { toggleSidebar } = useSidebar();
   const isMobile = useIsMobile();
 
-  const { stats: playerStats } = usePlayerData();
+  const { players: onlinePlayers } = usePlayerData();
 
   // Fire for any authenticated user so the owner can recover their own
   // panel even if they're momentarily not in the admin table (SQL reset,
@@ -181,7 +180,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         title: "Players",
         url: "/online-players",
         icon: UsersIcon,
-        badge: playerStats.total > 0 ? playerStats.total : undefined,
+        badge: onlinePlayers.length > 0 ? onlinePlayers.length : undefined,
       },
       {
         title: "Map",
@@ -225,8 +224,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     ],
   };
 
-  const filteredNavMain = data.navMain;
-
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
@@ -253,7 +250,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
       <SidebarContent>
         <NavMain
-          items={filteredNavMain}
+          items={data.navMain}
           prepend={
             isOwner || user?.isAdmin ? (
               <>

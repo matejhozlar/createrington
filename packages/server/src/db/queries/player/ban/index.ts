@@ -1,6 +1,6 @@
 import type { Pool, PoolClient } from "pg";
 import { PlayerBanBaseQueries } from "@/generated/db/player_ban.queries";
-import type { PlayerBan, BanType } from "@createrington/shared/db";
+import type { PlayerBan } from "@createrington/shared/db";
 import { DatabaseTable } from "@/generated/db";
 
 export interface BanStatistics {
@@ -246,68 +246,6 @@ export class PlayerBanQueries extends PlayerBanBaseQueries {
 
     const result = await this.runQuery<PlayerBan>("get expired bans", query);
     return this.mapRowsToEntities(result.rows);
-  }
-
-  /** How many temporary bans have run out without being lifted yet. */
-  async countExpiredBans(): Promise<number> {
-    const result = await this.runQuery<{ count: string }>(
-      "count expired bans",
-      `SELECT COUNT(*) AS count FROM ${this.table} WHERE ${EXPIRED_BAN_WHERE}`,
-    );
-    return Number(result.rows[0]?.count ?? 0);
-  }
-
-  /**
-   * Get all bans by type
-   *
-   * @param banType - Type of ban to retrieve
-   * @param activeOnly - Whether to only include active bans
-   * @returns Promise resolving to array of bans
-   */
-  async getByType(
-    banType: BanType,
-    activeOnly: boolean = true,
-  ): Promise<PlayerBan[]> {
-    if (activeOnly) {
-      const query = `
-        SELECT * FROM ${this.table}
-        WHERE ban_type = $1
-          AND unbanned = false
-          AND (
-            expires_at IS NULL OR
-            expires_at > NOW()
-          )
-        ORDER BY banned_at DESC`;
-
-      const result = await this.runQuery<PlayerBan>("get bans by type", query, [
-        banType,
-      ]);
-      return this.mapRowsToEntities(result.rows);
-    }
-
-    return await this.findAll(
-      { banType },
-      {
-        orderBy: DatabaseTable.PLAYER_BAN.CAMEL_FIELDS.BANNED_AT,
-        orderDirection: "desc",
-      },
-    );
-  }
-
-  /**
-   * Get all bans issued by a specific admin
-   *
-   * @param adminDiscordId - Discord ID of the admin
-   * @returns Promise resolving to array of bans
-   */
-  async getByAdmin(adminDiscordId: string): Promise<PlayerBan[]> {
-    return await this.findAll(
-      { bannedByDiscordId: adminDiscordId },
-      {
-        orderBy: DatabaseTable.PLAYER_BAN.CAMEL_FIELDS.BANNED_AT,
-        orderDirection: "desc",
-      },
-    );
   }
 
   /**

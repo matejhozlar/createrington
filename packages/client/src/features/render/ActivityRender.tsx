@@ -1,6 +1,6 @@
 import { formatPlaytime } from "@createrington/shared/format";
 import { LoadingScreen } from "@/components/query-states";
-import { playerAvatarUrl } from "@/lib/player-images";
+import { playerAvatarUrl } from "@/lib/playerImages";
 import { RenderTeamTag } from "./components/RenderTeamTag";
 import { RenderUnavailable } from "./components/RenderUnavailable";
 import {

@@ -1,7 +1,5 @@
 import type {
-  ActionRowBuilder,
   AttachmentBuilder,
-  ButtonBuilder,
   EmbedBuilder,
   Message,
   MessageCreateOptions,
@@ -73,24 +71,6 @@ export interface DeleteMessageOptions {
 }
 
 /**
- * Options for replying to a message
- */
-export interface ReplyMessageOptions {
-  /** Discord channel ID containing the message */
-  channelId: string;
-  /** Discord message ID to reply to */
-  messageId: string;
-  /** Optional content */
-  content?: string;
-  /** Optional embed to include in the reply */
-  embeds?: EmbedBuilder;
-  /** Optional components (buttons, select menus) to attach */
-  components?: ActionRowBuilder<ButtonBuilder>[];
-  /** Optional file attachments to include */
-  files?: AttachmentBuilder[];
-}
-
-/**
  * Options for fetching a message
  */
 export interface FetchMessageOptions {
@@ -101,15 +81,7 @@ export interface FetchMessageOptions {
 }
 
 /**
- * Options for fetching a channel
- */
-export interface FetchChannelOptions {
-  /** Discord channel ID to fetch */
-  channelId: string;
-}
-
-/**
- * Result of a message operation (send, edit, reply)
+ * Result of a message operation (send, edit)
  */
 export interface SendMessageResult {
   /** Whether the operation was successful */

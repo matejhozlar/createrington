@@ -9,7 +9,7 @@ import {
   type Image,
   type SKRSContext2D,
 } from "@napi-rs/canvas";
-import { computeBBox } from "@/utils/canvas";
+import { computeBBox, fitFontSize } from "@/utils/canvas";
 
 export const W = 1200;
 export const H = 630;
@@ -157,6 +157,66 @@ export function paintUrlChip(
   ctx.textBaseline = "middle";
   ctx.fillText(url, x + padX, y + chipH / 2 + 1);
   ctx.textBaseline = "alphabetic";
+}
+
+export interface HeadlineCopy {
+  lead: string;
+  accent: string;
+  accentTail?: string;
+  sub: string;
+  subWidth: number;
+  url: string;
+  headSizes?: readonly number[];
+  headWidth?: number;
+}
+
+export async function paintHeadlineCopy(
+  ctx: SKRSContext2D,
+  copy: HeadlineCopy,
+): Promise<void> {
+  await paintWordmark(ctx);
+
+  ctx.textBaseline = "alphabetic";
+  const headFont = (size: number) => `700 ${size}px Outfit`;
+  const headSizes = copy.headSizes ?? [72, 66, 60];
+  const headWidth = copy.headWidth ?? 500;
+  ctx.letterSpacing = "-1.4px";
+  const headSize = Math.min(
+    fitFontSize(ctx, copy.lead, headFont, headSizes, headWidth),
+    fitFontSize(
+      ctx,
+      copy.accent + (copy.accentTail ?? ""),
+      headFont,
+      headSizes,
+      headWidth,
+    ),
+  );
+  const line1Y = 286;
+  const line2Y = line1Y + headSize + 6;
+
+  ctx.font = headFont(headSize);
+  ctx.fillStyle = FOREGROUND;
+  ctx.fillText(copy.lead, TEXT_X, line1Y);
+  ctx.fillStyle = AMBER;
+  ctx.fillText(copy.accent, TEXT_X, line2Y);
+  if (copy.accentTail) {
+    const accentWidth = ctx.measureText(copy.accent).width;
+    ctx.fillStyle = FOREGROUND;
+    ctx.fillText(copy.accentTail, TEXT_X + accentWidth, line2Y);
+  }
+  ctx.letterSpacing = "0px";
+
+  const subFont = "400 22px Outfit";
+  const subLines = wrapText(ctx, copy.sub, subFont, copy.subWidth);
+  ctx.font = subFont;
+  ctx.fillStyle = MUTED;
+  let subY = line2Y + 52;
+  for (const line of subLines) {
+    ctx.fillText(line, TEXT_X, subY);
+    subY += 31;
+  }
+
+  paintUrlChip(ctx, copy.url, TEXT_X, subY + 4);
 }
 
 export interface FigurePlacement {

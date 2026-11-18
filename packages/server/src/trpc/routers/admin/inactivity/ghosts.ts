@@ -10,10 +10,9 @@ import {
 } from "@/trpc/utils";
 import config from "@/config";
 import { discordId } from "@/utils/zod-schemas";
-import { getService, getServiceSync, Services } from "@/services";
+import { getService, Services } from "@/services";
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
-import { DiscordMessageService } from "@/services/discord/message/message.service";
 import type { GhostMemberService } from "@/services/discord/cleanup/ghost/ghost-member.service";
 
 /**
@@ -150,10 +149,7 @@ export const ghostsRouter = router({
           removedAt: new Date(),
         });
 
-        const mainBot = getServiceSync(Services.DISCORD_MAIN_BOT);
-        const messageService = DiscordMessageService.getInstance(mainBot);
-
-        await messageService.send({
+        await Discord.Messages.send({
           channelId: Discord.Channels.administration.NOTIFICATIONS,
           embeds: embed.build(),
         });

@@ -1,10 +1,5 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import type React from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { io, Socket } from "socket.io-client";
 import type {
   InitialDataPayload,
@@ -13,8 +8,8 @@ import type {
 } from "@createrington/shared/socket";
 import { SocketEvent } from "@createrington/shared/socket";
 import type {
-  WebSocketConfig,
   ConnectionState,
+  SubscriptionResult,
   WebSocketContextType,
 } from "./types";
 import { WebSocketContext } from "./context";
@@ -23,19 +18,18 @@ import { getAccessToken } from "@/services/auth/token-manager";
 
 interface WebSocketProviderProps {
   children: React.ReactNode;
-  config?: WebSocketConfig;
 }
 
-function createSocket(config: WebSocketConfig): Socket {
-  return io(config.url || window.location.origin, {
-    path: config.path || "/socket.io",
-    transports: config.transports || ["websocket", "polling"],
+function createSocket(): Socket {
+  return io(window.location.origin, {
+    path: "/socket.io",
+    transports: ["websocket", "polling"],
     autoConnect: false,
     reconnection: true,
     reconnectionAttempts: Infinity,
-    reconnectionDelay: config.reconnectionDelay ?? 1000,
-    reconnectionDelayMax: config.reconnectionDelayMax ?? 30000,
-    timeout: config.timeout || 10000,
+    reconnectionDelay: 1000,
+    reconnectionDelayMax: 30000,
+    timeout: 10000,
     auth: (cb) => {
       const token = getAccessToken();
       cb(token ? { token } : {});
@@ -43,18 +37,13 @@ function createSocket(config: WebSocketConfig): Socket {
   });
 }
 
-export function WebSocketProvider({
-  children,
-  config = {},
-}: WebSocketProviderProps) {
+export function WebSocketProvider({ children }: WebSocketProviderProps) {
   const { user, loading: authLoading } = useAuth();
-  const autoConnect = config.autoConnect !== false;
 
-  const [socket] = useState(() => createSocket(config));
-  const [connectionState, setConnectionState] = useState<ConnectionState>(
-    autoConnect ? "connecting" : "disconnected",
-  );
-  const [error, setError] = useState<Error | null>(null);
+  const [socket] = useState(createSocket);
+  const [connectionState, setConnectionState] =
+    useState<ConnectionState>("connecting");
+  const snapshotRef = useRef<Promise<InitialDataPayload | null> | null>(null);
   const rejectedRetryRef = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined,
   );
@@ -66,17 +55,17 @@ export function WebSocketProvider({
 
   useEffect(() => {
     const handleConnect = () => {
+      snapshotRef.current = null;
       setConnectionState("connected");
-      setError(null);
     };
     const handleDisconnect = (reason: Socket.DisconnectReason) => {
+      snapshotRef.current = null;
       if (import.meta.env.DEV) console.log("WebSocket disconnected:", reason);
       setConnectionState(socket.active ? "reconnecting" : "disconnected");
     };
     const handleConnectError = (err: Error) => {
       if (import.meta.env.DEV)
         console.error("WebSocket connection error:", err);
-      setError(err);
       if (socket.active) {
         setConnectionState("reconnecting");
         return;
@@ -105,7 +94,7 @@ export function WebSocketProvider({
   }, [socket, cancelRejectedRetry]);
 
   useEffect(() => {
-    if (!autoConnect || authLoading) return;
+    if (authLoading) return;
 
     socket.connect();
 
@@ -113,7 +102,7 @@ export function WebSocketProvider({
       cancelRejectedRetry();
       socket.disconnect();
     };
-  }, [socket, autoConnect, authLoading, cancelRejectedRetry]);
+  }, [socket, authLoading, cancelRejectedRetry]);
 
   const lastIdentityRef = useRef<string | null | undefined>(undefined);
   useEffect(() => {
@@ -127,10 +116,9 @@ export function WebSocketProvider({
     if (lastIdentityRef.current === identity) return;
     lastIdentityRef.current = identity;
 
-    if (!autoConnect) return;
     cancelRejectedRetry();
     socket.disconnect().connect();
-  }, [socket, authLoading, user?.discordId, autoConnect, cancelRejectedRetry]);
+  }, [socket, authLoading, user?.discordId, cancelRejectedRetry]);
 
   useEffect(() => {
     const retryNow = () => {
@@ -148,18 +136,6 @@ export function WebSocketProvider({
     };
   }, [socket]);
 
-  const connect = useCallback(() => {
-    if (socket.connected) return;
-    cancelRejectedRetry();
-    setConnectionState("connecting");
-    socket.connect();
-  }, [socket, cancelRejectedRetry]);
-
-  const disconnect = useCallback(() => {
-    cancelRejectedRetry();
-    socket.disconnect();
-  }, [socket, cancelRejectedRetry]);
-
   const on = useCallback(
     (event: string, callback: (data: unknown) => void) => {
       socket.on(event, callback);
@@ -170,37 +146,11 @@ export function WebSocketProvider({
     [socket],
   );
 
-  const off = useCallback(
-    (event: string, callback: (data: unknown) => void) => {
-      socket.off(event, callback);
-    },
-    [socket],
-  );
-
-  const emit = useCallback(
-    (event: string, data?: unknown, callback?: (response: unknown) => void) => {
-      if (!socket.connected) {
-        if (import.meta.env.DEV)
-          console.warn("Cannot emit: WebSocket not connected");
-        return false;
-      }
-
-      if (callback) {
-        socket.emit(event, data, callback);
-      } else {
-        socket.emit(event, data);
-      }
-
-      return true;
-    },
-    [socket],
-  );
-
   const subscribe = useCallback(
     (
       type: SubscriptionType,
       serverId?: number,
-    ): Promise<{ success: boolean; error?: string }> => {
+    ): Promise<SubscriptionResult> => {
       return new Promise((resolve) => {
         if (!socket.connected) {
           resolve({ success: false, error: "Not connected" });
@@ -210,7 +160,7 @@ export function WebSocketProvider({
         socket.emit(
           SocketEvent.SUBSCRIBE,
           { type, serverId },
-          (response: { success: boolean; error?: string }) => {
+          (response: SubscriptionResult) => {
             if (import.meta.env.DEV) {
               if (response.success) {
                 console.log(
@@ -235,7 +185,7 @@ export function WebSocketProvider({
     (
       type: SubscriptionType,
       serverId?: number,
-    ): Promise<{ success: boolean; error?: string }> => {
+    ): Promise<SubscriptionResult> => {
       return new Promise((resolve) => {
         if (!socket.connected) {
           resolve({ success: false, error: "Not connected" });
@@ -245,7 +195,7 @@ export function WebSocketProvider({
         socket.emit(
           SocketEvent.UNSUBSCRIBE,
           { type, serverId },
-          (response: { success: boolean; error?: string }) => {
+          (response: SubscriptionResult) => {
             if (import.meta.env.DEV) {
               if (response.success) {
                 console.log(
@@ -300,35 +250,41 @@ export function WebSocketProvider({
     [socket],
   );
 
+  const requestSnapshot = useCallback(
+    (fresh = false): Promise<InitialDataPayload | null> => {
+      if (fresh || !snapshotRef.current) {
+        snapshotRef.current = requestInitialData(undefined, {
+          includeMessages: false,
+        }).then((data) => (data && "servers" in data ? data : null));
+      }
+      return snapshotRef.current;
+    },
+    [requestInitialData],
+  );
+
   const value: WebSocketContextType = useMemo(
     () => ({
-      socket,
       connectionState,
-      error,
       isConnected: connectionState === "connected",
-      connect,
-      disconnect,
       on,
-      off,
-      emit,
       subscribe,
       unsubscribe,
       requestInitialData,
+      requestSnapshot,
     }),
     [
-      socket,
       connectionState,
-      error,
-      connect,
-      disconnect,
       on,
-      off,
-      emit,
       subscribe,
       unsubscribe,
       requestInitialData,
+      requestSnapshot,
     ],
   );
 
-  return React.createElement(WebSocketContext.Provider, { value }, children);
+  return (
+    <WebSocketContext.Provider value={value}>
+      {children}
+    </WebSocketContext.Provider>
+  );
 }

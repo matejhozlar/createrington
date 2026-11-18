@@ -22,24 +22,17 @@ vi.mock("@/db/repositories/balance", () => ({
   BalanceTransactionType: { REWARD: "reward" },
 }));
 
-import { DailyReward } from "@/services/reward/rewards/daily.reward";
-import { RewardType, type RewardConfig } from "@/services/reward/types";
+import { DailyRewardService } from "@/services/reward/daily-reward.service";
 import { translateDbError } from "@/db/utils/errors";
 
 const UUID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const PLAYER = { minecraftUuid: UUID };
 const TX = { reward: { claim: { create: createClaim } } };
 
-function dailyReward(overrides: Partial<RewardConfig> = {}): DailyReward {
-  return new DailyReward({
-    type: RewardType.DAILY,
-    amount: 20,
-    label: "Daily Reward",
-    description: "",
-    resetHour: 0,
-    enabled: true,
-    ...overrides,
-  });
+function dailyReward(
+  overrides: Partial<{ amount: number; resetHour: number }> = {},
+): DailyRewardService {
+  return new DailyRewardService({ amount: 20, resetHour: 0, ...overrides });
 }
 
 function lastClaimAt(iso: string): void {
@@ -63,7 +56,7 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe("DailyReward.getNextClaimTime", () => {
+describe("DailyRewardService.getNextClaimTime", () => {
   it.each([
     [
       "before the reset hour",
@@ -92,7 +85,7 @@ describe("DailyReward.getNextClaimTime", () => {
   });
 });
 
-describe("DailyReward.checkEligibility", () => {
+describe("DailyRewardService.checkEligibility", () => {
   it("lets a player who never claimed claim", async () => {
     vi.setSystemTime(new Date("2026-11-08T12:00:00Z"));
 
@@ -117,8 +110,12 @@ describe("DailyReward.checkEligibility", () => {
 
     const result = await dailyReward().checkEligibility(PLAYER);
 
-    expect(result.eligible).toBe(false);
-    expect(result.nextClaimTime).toEqual(new Date("2026-11-09T00:00:00Z"));
+    expect(result).toEqual({
+      eligible: false,
+      reason: "Already claimed for this period",
+      nextClaimTime: new Date("2026-11-09T00:00:00Z"),
+      lastClaimTime: new Date("2026-11-08T00:00:01Z"),
+    });
   });
 
   it("looks up the latest claim of this reward type for the player", async () => {
@@ -127,7 +124,7 @@ describe("DailyReward.checkEligibility", () => {
     await dailyReward().checkEligibility(PLAYER);
 
     expect(findAllClaims).toHaveBeenCalledWith(
-      { playerMinecraftUuid: UUID, rewardType: RewardType.DAILY },
+      { playerMinecraftUuid: UUID, rewardType: "daily" },
       expect.objectContaining({ limit: 1, orderDirection: "desc" }),
     );
   });
@@ -155,7 +152,7 @@ describe("DailyReward.checkEligibility", () => {
   });
 });
 
-describe("DailyReward.claim", () => {
+describe("DailyRewardService.claim", () => {
   it("records the claim, then credits the configured amount, in one transaction", async () => {
     vi.setSystemTime(new Date("2026-11-08T12:00:00Z"));
 
@@ -170,17 +167,17 @@ describe("DailyReward.claim", () => {
     expect(inTransaction).toHaveBeenCalledTimes(1);
     expect(createClaim).toHaveBeenCalledWith({
       playerMinecraftUuid: UUID,
-      rewardType: RewardType.DAILY,
+      rewardType: "daily",
       claimPeriodKey: "2026-11-08",
       amount: 20_000n,
-      metadata: { rewardType: RewardType.DAILY },
+      metadata: { rewardType: "daily" },
     });
     expect(addBalance).toHaveBeenCalledWith(
       UUID,
       20,
       "Daily reward claimed",
       "reward",
-      { metadata: { rewardType: RewardType.DAILY }, tx: TX },
+      { metadata: { rewardType: "daily" }, tx: TX },
     );
     expect(createClaim.mock.invocationCallOrder[0]).toBeLessThan(
       addBalance.mock.invocationCallOrder[0],
@@ -227,13 +224,13 @@ describe("DailyReward.claim", () => {
     expect(addBalance).not.toHaveBeenCalled();
   });
 
-  it("reports a failed credit as an unsuccessful claim", async () => {
+  it("reports a failed credit as an unsuccessful claim without leaking the cause", async () => {
     vi.setSystemTime(new Date("2026-11-08T12:00:00Z"));
     addBalance.mockRejectedValue(new Error("balance would overflow"));
 
     await expect(dailyReward().claim(PLAYER)).resolves.toEqual({
       success: false,
-      error: "balance would overflow",
+      error: "Failed to claim daily reward",
     });
   });
 });

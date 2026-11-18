@@ -5,7 +5,7 @@ import pool from "@/db";
 import { mainBot } from "@/discord/bots/main/client";
 import config from "@/config";
 import { setupMainBotHandlers } from "@/discord/bots/main/setup";
-import { createDiscordMessageService } from "./discord/message";
+import { DiscordMessageService } from "./discord/message";
 import { Discord } from "@/discord/constants";
 import {
   MESSAGE_CACHE_CONFIG,
@@ -86,11 +86,7 @@ export function registerServices(): void {
     );
   }
 
-  container.register(Services.PUPPETEER_SERVICE, () => {
-    const service = new PuppeteerService();
-    service.initialize();
-    return service;
-  });
+  container.register(Services.PUPPETEER_SERVICE, () => new PuppeteerService());
 
   if (config.ai.enabled) {
     container.register(Services.AI_SERVICE, () => {
@@ -123,7 +119,7 @@ export function registerServices(): void {
     Services.MESSAGE_SERVICE,
     async (c) => {
       const mainBot = await c.get(Services.DISCORD_MAIN_BOT);
-      const service = createDiscordMessageService(mainBot);
+      const service = new DiscordMessageService(mainBot);
 
       Discord._setMessageService(service);
 
@@ -349,9 +345,8 @@ export function registerServices(): void {
 
   container.register(
     Services.PLAYER_BAN_SERVICE,
-    async (c) => {
-      const mainBot = await c.get(Services.DISCORD_MAIN_BOT);
-      const service = new PlayerBanService(mainBot);
+    async () => {
+      const service = new PlayerBanService();
       await service.initialize();
       return service;
     },

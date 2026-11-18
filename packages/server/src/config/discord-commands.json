@@ -42,8 +42,7 @@
       "defaultMemberPermissions": "8",
       "permissions": {
         "requireAdmin": true
-      },
-      "env": "prod"
+      }
     },
     {
       "name": "issue",
@@ -75,8 +74,7 @@
       "defaultMemberPermissions": "8",
       "permissions": {
         "requireAdmin": true
-      },
-      "env": "prod"
+      }
     },
     {
       "name": "leaderboard",
@@ -147,8 +145,7 @@
       "defaultMemberPermissions": "8",
       "permissions": {
         "requireAdmin": true
-      },
-      "env": "prod"
+      }
     },
     {
       "name": "message",
@@ -165,8 +162,7 @@
       "defaultMemberPermissions": "8",
       "permissions": {
         "requireAdmin": true
-      },
-      "env": "prod"
+      }
     },
     {
       "name": "purge",
@@ -191,8 +187,7 @@
       "defaultMemberPermissions": "8",
       "permissions": {
         "requireAdmin": true
-      },
-      "env": "prod"
+      }
     },
     {
       "name": "ticket",
@@ -260,8 +255,7 @@
         "duration": 5,
         "type": "user",
         "message": "Please wait before using the ticket command again!"
-      },
-      "env": "prod"
+      }
     },
     {
       "name": "username",
@@ -278,8 +272,7 @@
       "defaultMemberPermissions": "8",
       "permissions": {
         "requireAdmin": true
-      },
-      "env": "prod"
+      }
     },
     {
       "name": "activity",
@@ -298,8 +291,7 @@
         "duration": 5,
         "type": "user",
         "message": "Please wait before viewing activity again!"
-      },
-      "env": "prod"
+      }
     },
     {
       "name": "compare",
@@ -324,8 +316,7 @@
         "duration": 5,
         "type": "user",
         "message": "Please wait before comparing again!"
-      },
-      "env": "prod"
+      }
     },
     {
       "name": "daily",
@@ -337,8 +328,7 @@
         "duration": 10,
         "type": "user",
         "message": "Please wait before trying to claim your daily reward again!"
-      },
-      "env": "prod"
+      }
     },
     {
       "name": "history",
@@ -350,8 +340,7 @@
         "duration": 5,
         "type": "user",
         "message": "Please wait before checking history again!"
-      },
-      "env": "prod"
+      }
     },
     {
       "name": "list",
@@ -371,8 +360,7 @@
           "required": true
         }
       ],
-      "defaultMemberPermissions": null,
-      "env": "prod"
+      "defaultMemberPermissions": null
     },
     {
       "name": "map",
@@ -384,8 +372,7 @@
         "duration": 5,
         "type": "user",
         "message": "Please wait a moment before requesting the map link again!"
-      },
-      "env": "prod"
+      }
     },
     {
       "name": "money",
@@ -397,8 +384,7 @@
         "duration": 5,
         "type": "user",
         "message": "Please wait before checking your balance again!"
-      },
-      "env": "prod"
+      }
     },
     {
       "name": "pay",
@@ -431,8 +417,7 @@
         "duration": 3,
         "type": "user",
         "message": "Please wait before sending money again!"
-      },
-      "env": "prod"
+      }
     },
     {
       "name": "ping",
@@ -444,8 +429,7 @@
         "duration": 5,
         "type": "user",
         "message": "Please wait before checking ping again!"
-      },
-      "env": "prod"
+      }
     },
     {
       "name": "playtime",
@@ -464,8 +448,7 @@
         "duration": 5,
         "type": "user",
         "message": "Please wait before checking playtime again!"
-      },
-      "env": "prod"
+      }
     },
     {
       "name": "profile",
@@ -484,8 +467,7 @@
         "duration": 5,
         "type": "user",
         "message": "Please wait before viewing profiles again!"
-      },
-      "env": "prod"
+      }
     },
     {
       "name": "records",
@@ -497,8 +479,7 @@
         "duration": 10,
         "type": "user",
         "message": "Please wait before checking the records again!"
-      },
-      "env": "prod"
+      }
     },
     {
       "name": "seen",
@@ -517,8 +498,7 @@
         "duration": 5,
         "type": "user",
         "message": "Please wait before checking again!"
-      },
-      "env": "prod"
+      }
     },
     {
       "name": "skin",
@@ -560,8 +540,7 @@
         "duration": 5,
         "type": "user",
         "message": "Please wait before checking skins again!"
-      },
-      "env": "prod"
+      }
     },
     {
       "name": "status",
@@ -573,8 +552,7 @@
         "duration": 10,
         "type": "user",
         "message": "Please wait before checking status again!"
-      },
-      "env": "prod"
+      }
     },
     {
       "name": "suggest",
@@ -594,8 +572,7 @@
         "duration": 5,
         "type": "user",
         "message": "Please wait a moment before suggesting again!"
-      },
-      "env": "prod"
+      }
     },
     {
       "name": "tag",
@@ -648,8 +625,7 @@
         "duration": 5,
         "type": "user",
         "message": "Please wait before rendering team tags again!"
-      },
-      "env": "prod"
+      }
     },
     {
       "name": "top",
@@ -713,8 +689,7 @@
         "duration": 5,
         "type": "user",
         "message": "Please wait before checking stats again!"
-      },
-      "env": "prod"
+      }
     },
     {
       "name": "vote",
@@ -726,8 +701,7 @@
         "duration": 5,
         "type": "user",
         "message": "Please wait a moment before requesting another vote link!"
-      },
-      "env": "prod"
+      }
     },
     {
       "name": "register",
@@ -746,8 +720,7 @@
         "duration": 60,
         "type": "user",
         "message": "Please wait before trying to register again!"
-      },
-      "env": "prod"
+      }
     },
     {
       "name": "command-docs-panel",
@@ -764,8 +737,7 @@
       "defaultMemberPermissions": "8",
       "permissions": {
         "requireOwner": true
-      },
-      "env": "prod"
+      }
     },
     {
       "name": "donate-panel",
@@ -782,8 +754,7 @@
       "defaultMemberPermissions": "8",
       "permissions": {
         "requireOwner": true
-      },
-      "env": "prod"
+      }
     },
     {
       "name": "force-inactivity-cleanup",
@@ -793,8 +764,7 @@
       "defaultMemberPermissions": "8",
       "permissions": {
         "requireOwner": true
-      },
-      "env": "prod"
+      }
     },
     {
       "name": "force-update",
@@ -832,8 +802,7 @@
       "defaultMemberPermissions": "8",
       "permissions": {
         "requireOwner": true
-      },
-      "env": "prod"
+      }
     },
     {
       "name": "notification-panel",
@@ -850,8 +819,7 @@
       "defaultMemberPermissions": "8",
       "permissions": {
         "requireOwner": true
-      },
-      "env": "prod"
+      }
     },
     {
       "name": "role-panel",
@@ -935,8 +903,7 @@
       "defaultMemberPermissions": "8",
       "permissions": {
         "requireOwner": true
-      },
-      "env": "prod"
+      }
     },
     {
       "name": "server-panel",
@@ -953,8 +920,7 @@
       "defaultMemberPermissions": "8",
       "permissions": {
         "requireOwner": true
-      },
-      "env": "prod"
+      }
     },
     {
       "name": "ticket-panel",
@@ -964,8 +930,7 @@
       "defaultMemberPermissions": "8",
       "permissions": {
         "requireOwner": true
-      },
-      "env": "prod"
+      }
     }
   ]
 }

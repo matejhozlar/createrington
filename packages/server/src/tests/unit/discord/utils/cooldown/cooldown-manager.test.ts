@@ -1,27 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import {
-  CooldownManager,
-  CooldownType,
-  type CooldownContext,
-} from "@/discord/utils/cooldown/cooldown-manager";
+import { CooldownManager } from "@/discord/utils/cooldown/cooldown-manager";
 
-const ctxA: CooldownContext = {
-  userId: "user-A",
-  channelId: "channel-1",
-  guildId: "guild-1",
-};
-
-const ctxB: CooldownContext = {
-  userId: "user-B",
-  channelId: "channel-2",
-  guildId: "guild-1",
-};
-
-const ctxNoGuild: CooldownContext = {
-  userId: "user-A",
-  channelId: "channel-1",
-  guildId: null,
-};
+const userA = "user-A";
+const userB = "user-B";
 
 describe("CooldownManager", () => {
   let manager: CooldownManager;
@@ -35,114 +16,59 @@ describe("CooldownManager", () => {
     vi.useRealTimers();
   });
 
-  describe("USER scope", () => {
-    const cfg = { duration: 10, type: CooldownType.USER };
-
+  describe("check", () => {
     it("returns null for an unset cooldown", () => {
-      expect(manager.check("ping", cfg, ctxA)).toBeNull();
+      expect(manager.check("ping", userA)).toBeNull();
     });
 
     it("returns remaining seconds when active", () => {
-      manager.set("ping", cfg, ctxA);
-      expect(manager.check("ping", cfg, ctxA)).toBe(10);
+      manager.set("ping", userA, 10);
+      expect(manager.check("ping", userA)).toBe(10);
     });
 
     it("counts down as time passes", () => {
-      manager.set("ping", cfg, ctxA);
+      manager.set("ping", userA, 10);
       vi.advanceTimersByTime(3000);
-      expect(manager.check("ping", cfg, ctxA)).toBe(7);
+      expect(manager.check("ping", userA)).toBe(7);
     });
 
     it("returns null after the cooldown expires", () => {
-      manager.set("ping", cfg, ctxA);
+      manager.set("ping", userA, 10);
       vi.advanceTimersByTime(10_000);
-      expect(manager.check("ping", cfg, ctxA)).toBeNull();
+      expect(manager.check("ping", userA)).toBeNull();
     });
 
     it("isolates cooldowns per user", () => {
-      manager.set("ping", cfg, ctxA);
-      expect(manager.check("ping", cfg, ctxB)).toBeNull();
-    });
-  });
-
-  describe("GLOBAL scope", () => {
-    const cfg = { duration: 5, type: CooldownType.GLOBAL };
-
-    it("blocks every user once set", () => {
-      manager.set("announce", cfg, ctxA);
-      expect(manager.check("announce", cfg, ctxA)).toBe(5);
-      expect(manager.check("announce", cfg, ctxB)).toBe(5);
-    });
-  });
-
-  describe("CHANNEL scope", () => {
-    const cfg = { duration: 5, type: CooldownType.CHANNEL };
-
-    it("isolates cooldowns per channel", () => {
-      manager.set("spam", cfg, ctxA); // channel-1
-      expect(manager.check("spam", cfg, ctxA)).toBe(5);
-      expect(manager.check("spam", cfg, ctxB)).toBeNull(); // channel-2
-    });
-
-    it("shares the cooldown across users in the same channel", () => {
-      manager.set("spam", cfg, ctxA);
-      const otherUserSameChannel: CooldownContext = {
-        ...ctxA,
-        userId: "user-other",
-      };
-      expect(manager.check("spam", cfg, otherUserSameChannel)).toBe(5);
-    });
-  });
-
-  describe("GUILD scope", () => {
-    const cfg = { duration: 5, type: CooldownType.GUILD };
-
-    it("isolates per guild and shares across users in the same guild", () => {
-      manager.set("daily", cfg, ctxA); // guild-1
-      expect(manager.check("daily", cfg, ctxB)).toBe(5); // guild-1, different user
-    });
-
-    it("falls back to per-user keying when guildId is null", () => {
-      manager.set("daily", cfg, ctxNoGuild);
-      // Same user no guild → still on cooldown
-      expect(manager.check("daily", cfg, ctxNoGuild)).toBe(5);
-      // Different user no guild → independent
-      const otherNoGuild: CooldownContext = { ...ctxNoGuild, userId: "other" };
-      expect(manager.check("daily", cfg, otherNoGuild)).toBeNull();
+      manager.set("ping", userA, 10);
+      expect(manager.check("ping", userB)).toBeNull();
     });
   });
 
   describe("getExpiry", () => {
-    const cfg = { duration: 10, type: CooldownType.USER };
-
     it("returns null when no cooldown is set", () => {
-      expect(manager.getExpiry("ping", CooldownType.USER, ctxA)).toBeNull();
+      expect(manager.getExpiry("ping", userA)).toBeNull();
     });
 
     it("returns the absolute expiry timestamp in ms", () => {
       const now = Date.now();
-      manager.set("ping", cfg, ctxA);
-      expect(manager.getExpiry("ping", CooldownType.USER, ctxA)).toBe(
-        now + 10_000,
-      );
+      manager.set("ping", userA, 10);
+      expect(manager.getExpiry("ping", userA)).toBe(now + 10_000);
     });
 
     it("returns null after expiry", () => {
-      manager.set("ping", cfg, ctxA);
+      manager.set("ping", userA, 10);
       vi.advanceTimersByTime(10_000);
-      expect(manager.getExpiry("ping", CooldownType.USER, ctxA)).toBeNull();
+      expect(manager.getExpiry("ping", userA)).toBeNull();
     });
   });
 
   describe("resetCommand", () => {
-    const cfg = { duration: 60, type: CooldownType.USER };
-
     it("clears every cooldown for the named command", () => {
-      manager.set("ping", cfg, ctxA);
-      manager.set("ping", cfg, ctxB);
+      manager.set("ping", userA, 60);
+      manager.set("ping", userB, 60);
       expect(manager.resetCommand("ping")).toBe(true);
-      expect(manager.check("ping", cfg, ctxA)).toBeNull();
-      expect(manager.check("ping", cfg, ctxB)).toBeNull();
+      expect(manager.check("ping", userA)).toBeNull();
+      expect(manager.check("ping", userB)).toBeNull();
     });
 
     it("returns false when the command had no cooldowns", () => {
@@ -152,17 +78,16 @@ describe("CooldownManager", () => {
 
   describe("resetUser", () => {
     it("clears every per-user cooldown across commands and returns the count", () => {
-      const userCfg = { duration: 60, type: CooldownType.USER };
-      manager.set("ping", userCfg, ctxA);
-      manager.set("daily", userCfg, ctxA);
-      manager.set("ping", userCfg, ctxB); // different user, should remain
+      manager.set("ping", userA, 60);
+      manager.set("daily", userA, 60);
+      manager.set("ping", userB, 60);
 
       const count = manager.resetUser("user-A");
 
       expect(count).toBe(2);
-      expect(manager.check("ping", userCfg, ctxA)).toBeNull();
-      expect(manager.check("daily", userCfg, ctxA)).toBeNull();
-      expect(manager.check("ping", userCfg, ctxB)).not.toBeNull();
+      expect(manager.check("ping", userA)).toBeNull();
+      expect(manager.check("daily", userA)).toBeNull();
+      expect(manager.check("ping", userB)).not.toBeNull();
     });
 
     it("returns 0 when the user has no cooldowns", () => {
@@ -179,10 +104,9 @@ describe("CooldownManager", () => {
     });
 
     it("aggregates across commands and entries", () => {
-      const cfg = { duration: 60, type: CooldownType.USER };
-      manager.set("ping", cfg, ctxA);
-      manager.set("ping", cfg, ctxB);
-      manager.set("daily", cfg, ctxA);
+      manager.set("ping", userA, 60);
+      manager.set("ping", userB, 60);
+      manager.set("daily", userA, 60);
 
       const stats = manager.getStats();
       expect(stats.totalCooldowns).toBe(3);
@@ -193,8 +117,7 @@ describe("CooldownManager", () => {
 
   describe("automatic expiry via setTimeout", () => {
     it("removes the entry once the timer fires", () => {
-      const cfg = { duration: 5, type: CooldownType.USER };
-      manager.set("ping", cfg, ctxA);
+      manager.set("ping", userA, 5);
       expect(manager.getStats().totalCooldowns).toBe(1);
 
       vi.advanceTimersByTime(5000);
@@ -204,38 +127,35 @@ describe("CooldownManager", () => {
     });
 
     it("keeps a newer cooldown when an earlier timer for the same key fires", () => {
-      const cfg = { duration: 10, type: CooldownType.USER };
-      manager.set("ping", cfg, ctxA);
+      manager.set("ping", userA, 10);
       vi.advanceTimersByTime(4000);
-      manager.set("ping", cfg, ctxA);
+      manager.set("ping", userA, 10);
 
       vi.advanceTimersByTime(6000);
 
-      expect(manager.check("ping", cfg, ctxA)).toBe(4);
+      expect(manager.check("ping", userA)).toBe(4);
     });
 
     it("keeps other users' cooldowns when a timer from before resetCommand fires", () => {
-      const cfg = { duration: 10, type: CooldownType.USER };
-      manager.set("ping", cfg, ctxA);
+      manager.set("ping", userA, 10);
       manager.resetCommand("ping");
       vi.advanceTimersByTime(4000);
-      manager.set("ping", cfg, ctxB);
+      manager.set("ping", userB, 10);
 
       vi.advanceTimersByTime(6000);
 
-      expect(manager.check("ping", cfg, ctxB)).toBe(4);
+      expect(manager.check("ping", userB)).toBe(4);
     });
 
     it("keeps other users' cooldowns when a timer from before resetUser fires", () => {
-      const cfg = { duration: 10, type: CooldownType.USER };
-      manager.set("ping", cfg, ctxA);
+      manager.set("ping", userA, 10);
       manager.resetUser("user-A");
       vi.advanceTimersByTime(4000);
-      manager.set("ping", cfg, ctxB);
+      manager.set("ping", userB, 10);
 
       vi.advanceTimersByTime(6000);
 
-      expect(manager.check("ping", cfg, ctxB)).toBe(4);
+      expect(manager.check("ping", userB)).toBe(4);
     });
   });
 });

@@ -571,16 +571,6 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
     return Array.from(this.activeSessions.values());
   }
 
-  /** True if the player has a tracked in-memory session on this server. */
-  public isPlayerOnline(uuid: string): boolean {
-    return this.activeSessions.has(uuid);
-  }
-
-  /** Returns the tracked session for the given UUID, or undefined if none. */
-  public getSession(uuid: string): ActiveSession | undefined {
-    return this.activeSessions.get(uuid);
-  }
-
   /** Number of tracked in-memory sessions on this server. */
   public getOnlineCount(): number {
     return this.activeSessions.size;

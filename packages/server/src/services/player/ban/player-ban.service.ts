@@ -3,20 +3,17 @@ import { minecraftRcon } from "@/utils/rcon";
 import { discordTimestamp } from "@/utils/format";
 import { Discord } from "@/discord/constants";
 import { EmbedColors, EmbedPresets } from "@/discord/embeds";
-import type { Client } from "discord.js";
 import type { PlayerBan } from "@createrington/shared/db";
 
 /**
  * Auto-unbans expired temporary bans on a recurring interval (5 min). On each
  * tick it updates the DB row, pardons the player on every Minecraft server via
- * RCON, writes an admin-log entry, and posts a Discord notification. Requires
- * a Discord client and is driven by `initialize()` / `shutdown()`.
+ * RCON, writes an admin-log entry, and posts a Discord notification. Driven
+ * by `initialize()` / `shutdown()`.
  */
 export class PlayerBanService {
   private unbanCheckInterval: NodeJS.Timeout | null = null;
   private readonly CHECK_INTERVAL = 5 * 60 * 1000;
-
-  constructor(private readonly discordClient: Client) {}
 
   /** Runs an immediate expired-ban sweep, then arms the 5-minute interval. */
   async initialize(): Promise<void> {
@@ -150,31 +147,6 @@ export class PlayerBanService {
     }
 
     return `${hours} hour${hours !== 1 ? "s" : ""}`;
-  }
-
-  /** Triggers an immediate expired-ban sweep outside the recurring interval. */
-  async checkNow(): Promise<void> {
-    logger.info("Manual check for expired bans triggered");
-    await this.checkExpiredBans();
-  }
-
-  /** Returns runtime stats: running flag, interval, next check ISO string, and pending expired-ban count. */
-  async getStats(): Promise<{
-    isRunning: boolean;
-    checkInterval: number;
-    nextCheck: string;
-    expiredBansCount: number;
-  }> {
-    const expiredBansCount = await Q.player.ban.countExpiredBans();
-
-    return {
-      isRunning: this.unbanCheckInterval !== null,
-      checkInterval: this.CHECK_INTERVAL,
-      nextCheck: this.unbanCheckInterval
-        ? new Date(Date.now() + this.CHECK_INTERVAL).toISOString()
-        : "Not running",
-      expiredBansCount,
-    };
   }
 
   /** Clears the recurring expired-ban interval. Safe to call multiple times. */

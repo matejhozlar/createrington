@@ -8,7 +8,7 @@ import {
 import { useAuth } from "@/contexts/auth";
 import { api } from "@/services/api/client";
 import { AdminChatContext } from "./context";
-import type { AdminChatContextValue, OpenDrawerOptions } from "./types";
+import type { AdminChatContextType, OpenDrawerOptions } from "./types";
 
 const BUBBLE_KEY = "admin-chat:bubble-visible";
 // Inlined here (rather than imported from features/admin-chat/api) so this
@@ -109,7 +109,7 @@ export function AdminChatProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("keydown", handler);
   }, [enabled]);
 
-  const value = useMemo<AdminChatContextValue>(
+  const value = useMemo<AdminChatContextType>(
     () => ({
       enabled,
       bubbleVisible,

@@ -37,17 +37,4 @@ export class PlayerSessionRepository extends BasePlayerRepository {
     ]);
     return { sessions, total };
   }
-
-  /** Total session count for a player, optionally scoped to a server. */
-  async count(
-    identifier: PlayerIdentifier,
-    serverId?: number,
-  ): Promise<number> {
-    const uuid = await this.resolvePlayerUuid(identifier);
-
-    return await Q.player.session.count({
-      playerMinecraftUuid: uuid,
-      ...(serverId && { serverId }),
-    });
-  }
 }

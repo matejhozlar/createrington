@@ -1,4 +1,4 @@
-import { mcHeadsSkin } from "@/lib/external-urls";
+import { mcHeadsSkin } from "@/lib/externalUrls";
 import { STEVE_SKIN_DATA_URI } from "./steve";
 
 export type SkinModel = "classic" | "slim";

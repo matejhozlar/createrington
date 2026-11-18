@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { router, ownerProcedure } from "@/trpc/trpc";
-import { Q, donationRepo } from "@/db";
+import { Q } from "@/db";
 import { getService, Services } from "@/services";
 import config from "@/config";
 import { paginateQuery, paginationInput } from "@/trpc/utils";
@@ -13,7 +13,7 @@ export const ownerDonationsRouter = router({
         "Get aggregate donation statistics: total raised, unique donor count, and total donation count",
     })
     .query(async () => {
-      return donationRepo.getStats();
+      return Q.donation.getCompletedStats();
     }),
 
   subscriptionStats: ownerProcedure

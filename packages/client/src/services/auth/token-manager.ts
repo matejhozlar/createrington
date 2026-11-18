@@ -6,25 +6,16 @@
  * The refresh token lives in an httpOnly cookie managed by the server.
  */
 
+import type { RefreshResponse } from "@createrington/shared/auth";
+
 const REFRESH_PATH = "/api/auth/refresh";
+
+export const SESSION_EXPIRED_EVENT = "auth:session-expired";
 
 let accessToken: string | null = null;
 
 /** Shared promise to deduplicate concurrent refresh requests */
-let refreshPromise: Promise<RefreshResult | null> | null = null;
-
-interface RefreshResult {
-  accessToken: string;
-  user: {
-    discordId: string;
-    username: string;
-    avatar?: string;
-    role: string;
-    isAdmin: boolean;
-    minecraftUuid: string;
-    minecraftUsername: string;
-  };
-}
+let refreshPromise: Promise<RefreshResponse | null> | null = null;
 
 export function getAccessToken(): string | null {
   return accessToken;
@@ -39,7 +30,7 @@ export function setAccessToken(token: string | null): void {
  * Returns the new access token + user data, or null if refresh fails.
  * Uses a shared promise to deduplicate concurrent refresh calls.
  */
-export async function refreshAccessToken(): Promise<RefreshResult | null> {
+export async function refreshAccessToken(): Promise<RefreshResponse | null> {
   // Deduplicate: if a refresh is already in-flight, wait for it
   if (refreshPromise) {
     return refreshPromise;
@@ -64,14 +55,14 @@ export async function retryAfterRefresh(
 
   const result = await refreshAccessToken();
   if (!result) {
-    window.dispatchEvent(new CustomEvent("auth:session-expired"));
+    window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT));
     return response;
   }
 
   return retry(result.accessToken);
 }
 
-async function doRefresh(): Promise<RefreshResult | null> {
+async function doRefresh(): Promise<RefreshResponse | null> {
   try {
     const response = await fetch(REFRESH_PATH, {
       method: "POST",
@@ -83,14 +74,14 @@ async function doRefresh(): Promise<RefreshResult | null> {
       return null;
     }
 
-    const data = await response.json();
+    const data = (await response.json()) as {
+      success?: boolean;
+      data?: RefreshResponse;
+    };
 
     if (data.success && data.data?.accessToken) {
       accessToken = data.data.accessToken;
-      return {
-        accessToken: data.data.accessToken,
-        user: data.data.user,
-      };
+      return data.data;
     }
 
     accessToken = null;

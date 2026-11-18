@@ -16,7 +16,8 @@ import type {
   EndpointSpec,
   FieldSpec,
   FieldType,
-} from "./spec-types";
+} from "@/app/features/mod/shared/api-spec";
+import { MOD_SPECS } from "@/app/features/mod/shared/mod-specs";
 
 // ---------------------------------------------------------------------------
 // Paths
@@ -36,17 +37,6 @@ const OUTPUT_BASE = path.join(
   "api",
 );
 const BASE_PACKAGE = "com.saunhardy.createrington.api";
-
-// ---------------------------------------------------------------------------
-// Spec registry: import all mod specs
-// ---------------------------------------------------------------------------
-
-const MOD_SPECS: ApiModuleSpec[] = [
-  (await import("@/app/features/mod/currency/currency.api-spec")).default,
-  (await import("@/app/features/mod/parties/parties.api-spec")).default,
-  (await import("@/app/features/mod/presence/presence.api-spec")).default,
-  (await import("@/app/features/mod/trains/trains.api-spec")).default,
-];
 
 // ---------------------------------------------------------------------------
 // Java type mapping
@@ -222,7 +212,7 @@ function generateRecordFile(
   return lines.join("\n");
 }
 
-function generateEndpointsFile(specs: ApiModuleSpec[]): string {
+function generateEndpointsFile(specs: readonly ApiModuleSpec[]): string {
   const lines: string[] = [];
 
   lines.push(`package ${BASE_PACKAGE};`);

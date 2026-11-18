@@ -1,13 +1,14 @@
 import { db, Q } from "@/db";
 import { DatabaseTable, type DatabaseQueries } from "@/generated/db";
-import type { PlayerBan, BanType } from "@createrington/shared/db";
+import type { PlayerBan } from "@createrington/shared/db";
 import { AdminEdit } from "@/types";
 import { BasePlayerRepository, type PlayerIdentifier } from "../base";
 import type { BanStatistics } from "@/db/queries/player/ban";
 
 /**
- * Player ban lifecycle: issuing temporary or permanent bans, unbanning,
- * querying history and statistics, and sweeping expired temporary bans.
+ * Player ban lifecycle: issuing temporary or permanent bans, unbanning, and
+ * querying a player's history and statistics. The expired-ban sweep lives in
+ * PlayerBanService.
  * Every mutation writes a paired admin_log_action entry inside the same DB
  * transaction. Permanent bans cascade-delete the player row.
  */
@@ -217,12 +218,6 @@ export class PlayerBanRepository extends BasePlayerRepository {
     });
   }
 
-  /** True if the player has an active (not unbanned, not expired) ban. */
-  async isBanned(identifier: PlayerIdentifier): Promise<boolean> {
-    const uuid = await this.resolvePlayerUuid(identifier);
-    return await Q.player.ban.isPlayerBanned(uuid);
-  }
-
   /** The player's currently active ban row, or null. */
   async getCurrent(identifier: PlayerIdentifier): Promise<PlayerBan | null> {
     const uuid = await this.resolvePlayerUuid(identifier);
@@ -242,70 +237,5 @@ export class PlayerBanRepository extends BasePlayerRepository {
   async getStatistics(identifier: PlayerIdentifier): Promise<BanStatistics> {
     const uuid = await this.resolvePlayerUuid(identifier);
     return await Q.player.ban.getPlayerStatistics(uuid);
-  }
-
-  /** Batched UUID -> active ban count map, for list views. */
-  async getActiveBanCounts(
-    playerUuids: string[],
-  ): Promise<Record<string, number>> {
-    return await Q.player.ban.getActiveBanCounts(playerUuids);
-  }
-
-  /** All bans of a given type; pass activeOnly=false to include lifted/expired. */
-  async getByType(
-    banType: BanType,
-    activeOnly: boolean = true,
-  ): Promise<PlayerBan[]> {
-    return await Q.player.ban.getByType(banType, activeOnly);
-  }
-
-  /** All bans issued by a specific admin. */
-  async getByAdmin(adminDiscordId: string): Promise<PlayerBan[]> {
-    return await Q.player.ban.getByAdmin(adminDiscordId);
-  }
-
-  /** Recently issued bans across all players. */
-  async getRecent(
-    limit: number = 50,
-    activeOnly: boolean = true,
-  ): Promise<PlayerBan[]> {
-    return await Q.player.ban.getRecent(limit, activeOnly);
-  }
-
-  /** Temporary bans whose expiresAt has passed but are still marked active. */
-  async getExpired(): Promise<PlayerBan[]> {
-    return await Q.player.ban.getExpiredBans();
-  }
-
-  /**
-   * Auto-unban every expired temporary ban (designed for periodic cron use).
-   * Per-ban failures are logged and skipped so one bad row never aborts the
-   * sweep. Returns the count successfully cleaned.
-   */
-  async cleanupExpired(systemUsername: string = "System"): Promise<number> {
-    const expiredBans = await this.getExpired();
-
-    if (expiredBans.length === 0) {
-      return 0;
-    }
-
-    let cleanedCount = 0;
-
-    for (const ban of expiredBans) {
-      try {
-        await this.unban(
-          ban.id,
-          "system",
-          systemUsername,
-          "Automatic unban - temporary ban expired",
-        );
-        cleanedCount++;
-      } catch (error) {
-        logger.error(`Failed to cleanup expired ban #${ban.id}:`, error);
-      }
-    }
-
-    logger.info(`Cleaned up ${cleanedCount} expired ban(s)`);
-    return cleanedCount;
   }
 }

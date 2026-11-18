@@ -201,11 +201,9 @@ export class GalleryService {
       await this.removeOriginal(submission.originalPath);
     }
 
-    if (pending.length > 0) {
-      logger.info(
-        `Gallery: withdrew ${pending.length} pending submission(s) after message ${messageId} was deleted`,
-      );
-    }
+    logger.info(
+      `Gallery: withdrew ${pending.length} pending submission(s) after message ${messageId} was deleted`,
+    );
 
     return pending.length;
   }

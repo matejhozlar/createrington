@@ -6,7 +6,7 @@ import { ForbiddenError } from "./error-handler";
  * Allowed Minecraft server IPs
  */
 const ALLOWED_IPS = {
-  development: () => ["127.0.0.1", "::1", "localhost"],
+  development: () => ["127.0.0.1", "::1"],
   production: () => [config.servers.rails.ip],
 };
 
@@ -51,10 +51,6 @@ function getClientIp(req: Request): string {
 function normalizeIp(ip: string): string {
   if (ip.startsWith("::ffff:")) {
     return ip.substring(7);
-  }
-
-  if (ip === ":1") {
-    return "127.0.0.1";
   }
 
   return ip;

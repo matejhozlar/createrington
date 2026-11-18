@@ -29,10 +29,6 @@ vi.mock("@/services", async (importOriginal) => {
   return { ...actual, getService: vi.fn(async () => ({})) };
 });
 
-vi.mock("@/services/discord/message/message.service", () => ({
-  DiscordMessageService: { getInstance: () => ({ send: sendMock }) },
-}));
-
 import { Q, db } from "@/db";
 import { modpackReleaseService } from "@/services/modpack/release.service";
 import {
@@ -203,6 +199,9 @@ async function trackPresets(): Promise<void> {
 }
 
 beforeAll(async () => {
+  Discord._setMessageService({ send: sendMock } as unknown as Parameters<
+    typeof Discord._setMessageService
+  >[0]);
   const flag = await Q.feature.flag.find({
     name: FeatureFlags.modpackChangelog,
   });

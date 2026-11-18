@@ -76,13 +76,6 @@ export class PuppeteerService {
   private launching: Promise<Browser> | null = null;
   private readonly pages = new Semaphore(MAX_CONCURRENT_PAGES);
 
-  /** No-op aside from logging; the browser launches lazily on the first `screenshot()` or `withPage()` call. */
-  initialize(): void {
-    logger.info(
-      "PuppeteerService initialized (browser will launch on first use)",
-    );
-  }
-
   /** Closes the browser process if one is running; safe to call when no browser was launched. */
   async shutdown(): Promise<void> {
     if (this.browser) {
@@ -99,7 +92,7 @@ export class PuppeteerService {
    * Queues behind other pages once `MAX_CONCURRENT_PAGES` are open.
    */
   async screenshot(options: ScreenshotOptions): Promise<ScreenshotResult> {
-    return this.pages.run(() => this.capture(options));
+    return this.withPage((page) => this.capture(page, options));
   }
 
   /** Runs `fn` against a fresh page; the page is closed whether the callback resolves or throws. Shares the page cap with `screenshot()`. */
@@ -118,7 +111,10 @@ export class PuppeteerService {
     });
   }
 
-  private async capture(options: ScreenshotOptions): Promise<ScreenshotResult> {
+  private async capture(
+    page: Page,
+    options: ScreenshotOptions,
+  ): Promise<ScreenshotResult> {
     const {
       url,
       extraHeaders,
@@ -135,94 +131,84 @@ export class PuppeteerService {
       omitBackground = false,
     } = options;
 
-    const browser = await this.getBrowser();
-    let page: Page | null = null;
+    await page.setViewport({ width: viewportWidth, height: viewportHeight });
 
-    try {
-      page = await browser.newPage();
-      await page.setViewport({ width: viewportWidth, height: viewportHeight });
+    if (extraHeaders) {
+      await setSameOriginHeaders(page, url, extraHeaders);
+    }
 
-      if (extraHeaders) {
-        await setSameOriginHeaders(page, url, extraHeaders);
-      }
+    await page.goto(url, {
+      waitUntil: "domcontentloaded",
+      timeout,
+    });
 
-      await page.goto(url, {
-        waitUntil: "domcontentloaded",
-        timeout,
-      });
+    if (waitForSelector) {
+      const awaited = abortSelector
+        ? `${waitForSelector}, ${abortSelector}`
+        : waitForSelector;
+      const matched = await page.waitForSelector(awaited, { timeout });
+      const aborted =
+        abortSelector !== undefined &&
+        (await matched?.evaluate(
+          (element, selector) => element.matches(selector),
+          abortSelector,
+        ));
 
-      if (waitForSelector) {
-        const awaited = abortSelector
-          ? `${waitForSelector}, ${abortSelector}`
-          : waitForSelector;
-        const matched = await page.waitForSelector(awaited, { timeout });
-        const aborted =
-          abortSelector !== undefined &&
-          (await matched?.evaluate(
-            (element, selector) => element.matches(selector),
-            abortSelector,
-          ));
-
-        if (aborted) {
-          throw new Error(`Page rendered its abort selector: ${abortSelector}`);
-        }
-      }
-
-      if (waitForAssets) {
-        const assetWait = page.evaluate(async () => {
-          await document.fonts.ready;
-          await Promise.all(
-            Array.from(document.images).map((img) =>
-              img.complete
-                ? Promise.resolve()
-                : new Promise<void>((resolve) => {
-                    img.addEventListener("load", () => resolve(), {
-                      once: true,
-                    });
-                    img.addEventListener("error", () => resolve(), {
-                      once: true,
-                    });
-                  }),
-            ),
-          );
-        });
-        const ceiling = new Promise<void>((resolve) =>
-          setTimeout(resolve, 10_000),
-        );
-        await Promise.race([assetWait, ceiling]);
-      }
-
-      if (settleDelay > 0) {
-        await new Promise((resolve) => setTimeout(resolve, settleDelay));
-      }
-
-      const screenshotOpts: Parameters<Page["screenshot"]>[0] = {
-        type: format,
-        omitBackground,
-        ...(format !== "png" && quality != null ? { quality } : {}),
-      };
-
-      let buffer: Buffer;
-
-      if (elementSelector) {
-        const element = await page.$(elementSelector);
-        if (!element) {
-          throw new Error(`Element not found for selector: ${elementSelector}`);
-        }
-        buffer = (await element.screenshot(screenshotOpts)) as Buffer;
-      } else {
-        buffer = (await page.screenshot({
-          ...screenshotOpts,
-          fullPage: true,
-        })) as Buffer;
-      }
-
-      return { buffer, format };
-    } finally {
-      if (page) {
-        await page.close().catch(() => {});
+      if (aborted) {
+        throw new Error(`Page rendered its abort selector: ${abortSelector}`);
       }
     }
+
+    if (waitForAssets) {
+      const assetWait = page.evaluate(async () => {
+        await document.fonts.ready;
+        await Promise.all(
+          Array.from(document.images).map((img) =>
+            img.complete
+              ? Promise.resolve()
+              : new Promise<void>((resolve) => {
+                  img.addEventListener("load", () => resolve(), {
+                    once: true,
+                  });
+                  img.addEventListener("error", () => resolve(), {
+                    once: true,
+                  });
+                }),
+          ),
+        );
+      });
+      const ceiling = new Promise<void>((resolve) =>
+        setTimeout(resolve, 10_000),
+      );
+      await Promise.race([assetWait, ceiling]);
+    }
+
+    if (settleDelay > 0) {
+      await new Promise((resolve) => setTimeout(resolve, settleDelay));
+    }
+
+    const screenshotOpts: Parameters<Page["screenshot"]>[0] = {
+      type: format,
+      omitBackground,
+      ...(format !== "png" && quality != null ? { quality } : {}),
+    };
+
+    let buffer: Buffer;
+
+    if (elementSelector) {
+      const element = await page.$(elementSelector);
+      if (!element) {
+        throw new Error(`Element not found for selector: ${elementSelector}`);
+      }
+      buffer = (await element.screenshot(screenshotOpts)) as Buffer;
+    } else {
+      buffer = (await page.screenshot({
+        ...screenshotOpts,
+        fullPage: true,
+      })) as Buffer;
+    }
+
+    return { buffer, format };
   }
 
   private async getBrowser(): Promise<Browser> {

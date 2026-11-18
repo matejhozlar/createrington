@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { CUSTOM_EMOJI_SOURCE, customEmojiUrl } from "@/lib/discord-emoji";
+import { CUSTOM_EMOJI_SOURCE, customEmojiUrl } from "@/lib/discordEmoji";
 
 /**
  * Parses Discord-flavored markdown into React elements.

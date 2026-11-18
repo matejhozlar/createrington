@@ -31,7 +31,7 @@ vi.mock("@/services/curseforge/ingest", async () =>
 import pool, { Q } from "@/db";
 import { BadRequestError, ConflictError } from "@/app/middleware/error-handler";
 import { workshopAdminService } from "@/services/workshop/admin.service";
-import { ingestProject, ingestProjects } from "@/services/curseforge/ingest";
+import { ingestProjects } from "@/services/curseforge/ingest";
 import {
   createWorkshopTestContext,
   cleanupWorkshopTestContext,
@@ -51,10 +51,6 @@ const ctx = createWorkshopTestContext(990_000_000);
 
 beforeAll(async () => {
   await pool.query("SELECT 1");
-  vi.mocked(ingestProject).mockImplementation(async (projectId: number) => ({
-    entity: await Q.curseforge.project.get({ id: projectId }),
-    data: makeProjectData(projectId),
-  }));
   vi.mocked(ingestProjects).mockImplementation(
     async (projectIds: number[]) =>
       new Map(projectIds.map((id) => [id, makeProjectData(id)])),

@@ -1,4 +1,4 @@
-import { env } from "@/config/env/env.config";
+import config from "@/config";
 import { describeHttpError, fetchJson, HttpStatusError } from "@/utils/http";
 
 const REQUEST_TIMEOUT_MS = 15_000;
@@ -40,12 +40,12 @@ export class IssueTriageError extends Error {
  * Client for claude-automation's Discord issue triage sessions. A session
  * reads a channel transcript, picks the Createrington repository the problem
  * belongs to, checks for duplicates and files the issue. Stateless; requires
- * CLAUDE_API_URL and ADMIN_CHAT_SECRET.
+ * `config.adminChat` (CLAUDE_API_URL and ADMIN_CHAT_SECRET).
  */
 export class IssueTriageService {
   /** Whether the app is configured to reach claude-automation. */
   isConfigured(): boolean {
-    return Boolean(env.CLAUDE_API_URL && env.ADMIN_CHAT_SECRET);
+    return Boolean(config.adminChat.url && config.adminChat.secret);
   }
 
   /** Starts a triage session; throws IssueTriageError on refusal or failure. */
@@ -55,7 +55,7 @@ export class IssueTriageService {
     }
     try {
       const response = await fetchJson<{ sessionId: number }>(
-        `${env.CLAUDE_API_URL}/api/triage`,
+        `${config.adminChat.url}/api/triage`,
         {
           method: "POST",
           headers: this.headers(),
@@ -75,7 +75,7 @@ export class IssueTriageService {
   /** Current state of a triage session. */
   async status(sessionId: number): Promise<IssueTriageStatus> {
     return fetchJson<IssueTriageStatus>(
-      `${env.CLAUDE_API_URL}/api/triage/${sessionId}`,
+      `${config.adminChat.url}/api/triage/${sessionId}`,
       {
         headers: this.headers(),
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
@@ -125,7 +125,7 @@ export class IssueTriageService {
   private headers(): Record<string, string> {
     return {
       "Content-Type": "application/json",
-      "X-Admin-Chat-Secret": env.ADMIN_CHAT_SECRET ?? "",
+      "X-Admin-Chat-Secret": config.adminChat.secret ?? "",
     };
   }
 }

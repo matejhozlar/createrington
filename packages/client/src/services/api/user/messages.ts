@@ -24,10 +24,11 @@ export const messagesApi = {
       formData.append("image", image);
     }
 
-    const data = await api
-      .getClient()
-      .post("api/messages", { body: formData })
-      .json<SendMessageResponse>();
+    const data = await api.post<SendMessageResponse>(
+      "api/messages",
+      undefined,
+      { body: formData },
+    );
 
     return data.data;
   },

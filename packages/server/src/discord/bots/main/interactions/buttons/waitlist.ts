@@ -18,8 +18,6 @@ import { MessageFlags, type ButtonInteraction } from "discord.js";
  */
 export const pattern = "waitlist:*";
 
-export const prodOnly = false;
-
 async function renderCurrentState(
   interaction: ButtonInteraction,
 ): Promise<void> {

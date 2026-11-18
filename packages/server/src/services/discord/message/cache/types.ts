@@ -4,7 +4,6 @@ import type {
   ParsedAttachment,
   MinecraftMessageData,
   SystemMessageData,
-  WebMessageData,
 } from "@createrington/shared/socket";
 import { MessageSource } from "@createrington/shared/socket";
 
@@ -28,11 +27,6 @@ export interface MessageCacheServiceConfig {
   servers: ServerCacheConfig[];
   /** Whether to load historical data on startup */
   loadHistoryOnStartup?: boolean;
-  /** Bot data */
-  botConfig: {
-    createringtonBotId: string;
-    createringtonWebhookId?: string;
-  };
 }
 
 /**
@@ -57,7 +51,6 @@ export type {
   ParsedAttachment,
   MinecraftMessageData,
   SystemMessageData,
-  WebMessageData,
 };
 
 export { MessageSource };

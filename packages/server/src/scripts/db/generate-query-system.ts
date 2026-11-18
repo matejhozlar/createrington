@@ -1,7 +1,7 @@
 import "@/logger.global";
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 /**
  * Database type generation orchestrator
  *
@@ -436,75 +436,4 @@ function generateSharedFiles(
   const actualQueriesBarrelFile = path.join(actualQueriesDir, "index.ts");
   writeFile(actualQueriesBarrelFile, generateActualQueriesBarrel(hierarchy));
   generatedFiles.push(getRelativePath(projectRoot, actualQueriesBarrelFile));
-}
-
-/**
- * Auto-execute when run directly (not imported)
- *
- * Detects if this file is being executed directly (vs imported) and
- * runs the generation process with CLI-friendly output formatting,
- * progress indicators, and proper error handling.
- *
- * @remarks
- * CLI output format:
- * - Progress indicators during generation
- * - Summary statistics on completion
- * - List of scaffolded files for user action
- * - Error messages on failure
- * - Proper exit codes (0 success, 1 error)
- *
- * Exit codes:
- * - 0: Generation completed successfully
- * - 1: Error occurred during generation
- *
- * @example
- * ```bash
- * # Run directly
- * pnpm generate
- *
- * # Output:
- * # 📡 Connecting to database...
- * # ✅ Found 25 tables
- * # Built hierarchy with 8 root nodes
- * #
- * # ✅ Generated 127 files
- * # 📝 Scaffolded 3 new query files
- * # 📊 Total tables: 25
- * # 🔄 Schema changes: 5
- * #
- * # 📂 Scaffolded files (edit these in src/db/queries/):
- * #    - src/db/queries/user/profiles/index.ts
- * #    - src/db/queries/admin/log/actions/index.ts
- * #    - src/db/queries/player/balance/index.ts
- * ```
- */
-if (
-  process.argv[1] &&
-  import.meta.url === pathToFileURL(process.argv[1]).href
-) {
-  generate()
-    .then((result) => {
-      console.log(`[generate] Generated ${result.files.length} files`);
-      console.log(
-        `[generate] Scaffolded ${result.scaffolds.length} new query files`,
-      );
-      console.log(`[generate] Total tables: ${result.tablesFound}`);
-
-      if (result.scaffolds.length > 0) {
-        console.log(
-          "[generate] Scaffolded files (edit these in src/db/queries/):",
-        );
-        result.scaffolds.forEach((file) =>
-          console.log(`[generate]   - ${file}`),
-        );
-      }
-    })
-    .catch((error: unknown) => {
-      console.error(
-        "[generate] Error:",
-        error instanceof Error ? error.message : error,
-      );
-      console.error(error);
-      process.exit(1);
-    });
 }

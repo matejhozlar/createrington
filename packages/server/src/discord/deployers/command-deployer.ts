@@ -9,43 +9,15 @@ import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import type { CommandModule } from "../bots/common/loaders/command-loader";
-import {
-  commandRegistry,
-  type CommandEnv,
-} from "../bots/main/command-registry";
 
 const BOT_TOKEN = config.discord.bots.main.token;
 const BOT_ID = config.discord.bots.main.id;
 const GUILD_ID = config.discord.guild.id;
-const isDev = config.envMode.isDev;
 
 /**
  * Discord REST API client configured with bot token
  */
 const rest = new REST({ version: "10" }).setToken(BOT_TOKEN);
-
-/**
- * Checks if a command should be deployed in the current environment
- *
- * @param commandName - The name of the command to check
- * @returns True if the command should be deployed
- * @private
- */
-function shouldDeployCommand(commandName: string): boolean {
-  const env: CommandEnv | undefined = commandRegistry[commandName];
-
-  if (!env) {
-    logger.warn(
-      `Command "${commandName}" not found in registry, deploying anyway`,
-    );
-    return true;
-  }
-
-  // In development, deploy everything (including WIP commands)
-  // In production, skip dev-only commands
-  if (isDev) return true;
-  return env !== "dev";
-}
 
 /**
  * Recursively collects all command files from a directory tree
@@ -117,15 +89,6 @@ async function loadCommandData(): Promise<
 
       if (typeof commandModule.data.toJSON !== "function") {
         logger.warn(`Skipped ${file}: 'data' does not have toJSON method`);
-        continue;
-      }
-
-      const commandName = commandModule.data.name;
-
-      if (!shouldDeployCommand(commandName)) {
-        logger.warn(
-          `Skipped deploying "${commandName}": not enabled in ${isDev ? "dev" : "prod"}`,
-        );
         continue;
       }
 

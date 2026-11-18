@@ -17,24 +17,19 @@ import {
   type Canvas,
   type SKRSContext2D,
 } from "@napi-rs/canvas";
-import { fitFontSize } from "@/utils/canvas";
 import {
   W,
   H,
   BG_BOT,
-  AMBER,
-  FOREGROUND,
-  MUTED,
-  TEXT_X,
   registerBrandFonts,
-  roundRectPath,
   drawImageCover,
   paintEllipseGradient,
-  paintWordmark,
-  wrapText,
+  paintHeadlineCopy,
+  type HeadlineCopy,
 } from "@/utils/og-card";
 import {
   ASSETS,
+  TEAM,
   paintPosedFigure,
   writeCard,
   type PosedFigureSpec,
@@ -57,8 +52,7 @@ const PORTAL_FRAME = 0;
 // point pose is mirrored so the raised arm points at the portal.
 const FIGURES: readonly PosedFigureSpec[] = [
   {
-    username: "Agent772",
-    uuid: "3e0db446-147a-4692-87fd-c3facc4341db",
+    ...TEAM.Agent772,
     pose: "point",
     height: 212,
     centerX: 747,
@@ -66,16 +60,14 @@ const FIGURES: readonly PosedFigureSpec[] = [
     mirror: true,
   },
   {
-    username: "Cailin05",
-    uuid: "aee71815-6420-444c-a245-9047c41f4a39",
+    ...TEAM.Cailin05,
     pose: "cheer",
     height: 204,
     centerX: 1040,
     groundY: 606,
   },
   {
-    username: "saunhardy",
-    uuid: "091b900c-4174-478c-900c-a0fe5a31a329",
+    ...TEAM.saunhardy,
     pose: "confidence",
     height: 218,
     centerX: 892,
@@ -118,6 +110,16 @@ const OBSIDIAN_SPECKS: readonly (readonly [number, number, number, string])[] =
 
 const isInterior = (r: number, c: number) =>
   r >= 1 && r <= 3 && c >= 1 && c <= 2;
+
+const COPY: HeadlineCopy = {
+  lead: "Shape the",
+  accent: "next world",
+  accentTail: ".",
+  sub: "Spend in-game currency to boost the themed dimension you want next. Weighted voting decides what appears through the portal.",
+  subWidth: 470,
+  url: "createrington.com/structure-packs",
+  headWidth: 520,
+};
 
 function mulberry32(seed: number): () => number {
   return () => {
@@ -332,71 +334,6 @@ async function paintFigures(ctx: SKRSContext2D): Promise<void> {
   }
 }
 
-async function paintCopy(ctx: SKRSContext2D): Promise<void> {
-  await paintWordmark(ctx);
-
-  const maxTextWidth = 520;
-  ctx.textBaseline = "alphabetic";
-
-  const headFont = (s: number) => `700 ${s}px Outfit`;
-  ctx.letterSpacing = "-1.4px";
-  const headSize = fitFontSize(
-    ctx,
-    "next world.",
-    headFont,
-    [72, 66, 60],
-    maxTextWidth,
-  );
-  const line1Y = 286;
-  const line2Y = line1Y + headSize + 6;
-
-  ctx.font = headFont(headSize);
-  ctx.fillStyle = FOREGROUND;
-  ctx.fillText("Shape the", TEXT_X, line1Y);
-  ctx.fillStyle = AMBER;
-  ctx.fillText("next world", TEXT_X, line2Y);
-  const nwW = ctx.measureText("next world").width;
-  ctx.fillStyle = FOREGROUND;
-  ctx.fillText(".", TEXT_X + nwW, line2Y);
-  ctx.letterSpacing = "0px";
-
-  const subFont = "400 22px Outfit";
-  const subLines = wrapText(
-    ctx,
-    "Spend in-game currency to boost the themed dimension you want next. Weighted voting decides what appears through the portal.",
-    subFont,
-    470,
-  );
-  ctx.font = subFont;
-  ctx.fillStyle = MUTED;
-  let subY = line2Y + 52;
-  for (const line of subLines) {
-    ctx.fillText(line, TEXT_X, subY);
-    subY += 31;
-  }
-
-  const chipY = subY + 4;
-  const chipH = 44;
-  const padX = 20;
-  const url = "createrington.com/structure-packs";
-  ctx.font = "600 22px Outfit";
-  const urlW = ctx.measureText(url).width;
-  const chipW = padX * 2 + urlW;
-
-  ctx.fillStyle = "rgba(255,185,0,0.10)";
-  roundRectPath(ctx, TEXT_X, chipY, chipW, chipH, 11);
-  ctx.fill();
-  ctx.strokeStyle = "rgba(255,185,0,0.40)";
-  ctx.lineWidth = 1;
-  roundRectPath(ctx, TEXT_X + 0.5, chipY + 0.5, chipW - 1, chipH - 1, 11);
-  ctx.stroke();
-
-  ctx.fillStyle = AMBER;
-  ctx.textBaseline = "middle";
-  ctx.fillText(url, TEXT_X + padX, chipY + chipH / 2 + 1);
-  ctx.textBaseline = "alphabetic";
-}
-
 async function main(): Promise<void> {
   const outPath = process.argv[2] ?? join(ASSETS, "og", "structure-packs.png");
 
@@ -406,7 +343,7 @@ async function main(): Promise<void> {
     paintDust(ctx);
     await paintPortal(ctx);
     await paintFigures(ctx);
-    await paintCopy(ctx);
+    await paintHeadlineCopy(ctx, COPY);
     paintGrain(ctx);
   });
 }

@@ -1,4 +1,5 @@
 import { router, adminProcedure } from "@/trpc/trpc";
+import { Q } from "@/db";
 import { metricsService } from "@/services/metrics";
 import { dateRangeWithGranularity } from "./schemas";
 
@@ -7,14 +8,14 @@ export const growthMetricsRouter = router({
   getOverview: adminProcedure
     .meta({ description: "Get growth overview with total player count" })
     .query(async () => {
-      return await metricsService.growth.getOverview();
+      return { totalPlayers: await Q.player.count() };
     }),
 
   getRegistrations: adminProcedure
     .meta({ description: "Get player registrations grouped by time period" })
     .input(dateRangeWithGranularity)
     .query(async ({ input }) => {
-      return await metricsService.growth.getRegistrations(
+      return await Q.player.getRegistrationsByPeriod(
         input.start,
         input.end,
         input.granularity,
@@ -24,7 +25,7 @@ export const growthMetricsRouter = router({
   getWaitlistFunnel: adminProcedure
     .meta({ description: "Get waitlist funnel statistics" })
     .query(async () => {
-      return await metricsService.growth.getWaitlistFunnel();
+      return await Q.waitlist.entry.getFunnelStats();
     }),
 
   getDiscordGrowth: adminProcedure
@@ -33,7 +34,7 @@ export const growthMetricsRouter = router({
     })
     .input(dateRangeWithGranularity)
     .query(async ({ input }) => {
-      return await metricsService.growth.getDiscordGrowth(
+      return await metricsService.getDiscordGrowth(
         input.start,
         input.end,
         input.granularity,

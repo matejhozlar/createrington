@@ -1,3 +1,4 @@
+import { Discord } from "@/discord/constants";
 import { z } from "zod";
 import { adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
@@ -10,7 +11,6 @@ import {
 } from "@createrington/shared/api/embed";
 import {
   embedSendLimit,
-  getMessageService,
   buildMessage,
   payloadToStorage,
   toSendOptions,
@@ -99,9 +99,9 @@ export const embedCrudProcedures = {
         throw trpcError.badRequest(built.error);
       }
 
-      const messageService = getMessageService(input.bot);
-
-      const result = await messageService.send(toSendOptions(built, channelId));
+      const result = await Discord.Messages.send(
+        toSendOptions(built, channelId),
+      );
 
       if (!result.success) {
         throw trpcError.internal(result.error ?? "Failed to send message");
@@ -154,9 +154,7 @@ export const embedCrudProcedures = {
         throw trpcError.badRequest(built.error);
       }
 
-      const messageService = getMessageService(input.bot);
-
-      const result = await messageService.edit(
+      const result = await Discord.Messages.edit(
         toEditOptions(built, channelId, messageId),
       );
 
@@ -196,9 +194,7 @@ export const embedCrudProcedures = {
       }),
     )
     .query(async ({ input }) => {
-      const messageService = getMessageService(input.bot);
-
-      const result = await messageService.fetchMessage({
+      const result = await Discord.Messages.fetchMessage({
         channelId: input.channelId,
         messageId: input.messageId,
       });

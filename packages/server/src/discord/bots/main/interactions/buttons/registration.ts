@@ -15,11 +15,6 @@ import {
 export const pattern = "registration:*";
 
 /**
- * Whether these buttons should be handled in production only
- */
-export const prodOnly = false;
-
-/**
  * Parses the registration button customId (format: registration:action)
  *
  * @param customId - The button's customId string

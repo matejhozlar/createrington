@@ -11,25 +11,21 @@
 import { join } from "node:path";
 
 import { loadImage, type SKRSContext2D } from "@napi-rs/canvas";
-import { computeBBox, fitFontSize } from "@/utils/canvas";
+import { computeBBox } from "@/utils/canvas";
 import {
   W,
   H,
   BG_BOT,
-  AMBER,
-  FOREGROUND,
-  MUTED,
-  TEXT_X,
   registerBrandFonts,
   drawImageCover,
   paintEllipseGradient,
   paintFigure,
-  paintUrlChip,
-  paintWordmark,
-  wrapText,
+  paintHeadlineCopy,
+  type HeadlineCopy,
 } from "@/utils/og-card";
 import {
   ASSETS,
+  TEAM,
   getPoseFigure,
   writeCard,
   type PoseFigureRequest,
@@ -57,64 +53,65 @@ interface MemberSpec extends PoseFigureRequest {
 // Left to right as on the page. A lower groundY stands further back and is
 // painted first: five share the floor with the owner out front, and the two
 // at 478 look over the front row's shoulders.
-const TEAM: readonly MemberSpec[] = [
+const MEMBERS: readonly MemberSpec[] = [
   {
-    username: "Tetsuoken",
-    uuid: "32ff995f-cf92-417b-b745-891738346120",
+    ...TEAM.Tetsuoken,
     pose: "wave",
     tier: "admin",
     centerX: 636,
     groundY: 598,
   },
   {
-    username: "Saidai_V",
-    uuid: "2d6b2f99-34ae-4c25-acda-dca5e5def564",
+    ...TEAM.Saidai_V,
     pose: "cute",
     tier: "admin",
     centerX: 826,
     groundY: 478,
   },
   {
-    username: "Agent772",
-    uuid: "3e0db446-147a-4692-87fd-c3facc4341db",
+    ...TEAM.Agent772,
     pose: "engineer",
     tier: "dev-admin",
     centerX: 752,
     groundY: 608,
   },
   {
-    username: "saunhardy",
-    uuid: "091b900c-4174-478c-900c-a0fe5a31a329",
+    ...TEAM.saunhardy,
     pose: "confidence",
     tier: "owner",
     centerX: 900,
     groundY: 618,
   },
   {
-    username: "The_BigShot",
-    uuid: "4cada83a-c012-4a31-8d80-942f3f79e8a1",
+    ...TEAM.The_BigShot,
     pose: "crossed",
     tier: "dev-admin",
     centerX: 1014,
     groundY: 608,
   },
   {
-    username: "diablothe2nd",
-    uuid: "8cca5cab-b782-452b-a8b9-8bb4ae0f6d0f",
+    ...TEAM.diablothe2nd,
     pose: "gaze",
     tier: "admin",
     centerX: 986,
     groundY: 478,
   },
   {
-    username: "Cailin05",
-    uuid: "aee71815-6420-444c-a245-9047c41f4a39",
+    ...TEAM.Cailin05,
     pose: "cheer",
     tier: "admin",
     centerX: 1110,
     groundY: 598,
   },
 ];
+
+const COPY: HeadlineCopy = {
+  lead: "Meet the people",
+  accent: "behind the server.",
+  sub: "The owner, developers and admins who keep Createrington running.",
+  subWidth: 380,
+  url: "createrington.com/team",
+};
 
 // The page hero treatment from PageHeader: grayscale-50 over the gondola
 // station, a black/50 overlay, and the bottom fade into the page background.
@@ -156,7 +153,7 @@ async function paintTeam(ctx: SKRSContext2D): Promise<void> {
     [1, "rgba(255,214,150,0)"],
   ]);
 
-  const backToFront = [...TEAM].sort((a, b) => a.groundY - b.groundY);
+  const backToFront = [...MEMBERS].sort((a, b) => a.groundY - b.groundY);
   for (const member of backToFront) {
     const img = await getPoseFigure({ ...member, style: "cel" });
     const bbox = computeBBox(img);
@@ -180,49 +177,6 @@ async function paintTeam(ctx: SKRSContext2D): Promise<void> {
   }
 }
 
-async function paintCopy(ctx: SKRSContext2D): Promise<void> {
-  await paintWordmark(ctx);
-
-  const maxTextWidth = 500;
-  ctx.textBaseline = "alphabetic";
-
-  const headFont = (s: number) => `700 ${s}px Outfit`;
-  ctx.letterSpacing = "-1.4px";
-  const headSize = fitFontSize(
-    ctx,
-    "behind the server.",
-    headFont,
-    [72, 66, 60],
-    maxTextWidth,
-  );
-  const line1Y = 286;
-  const line2Y = line1Y + headSize + 6;
-
-  ctx.font = headFont(headSize);
-  ctx.fillStyle = FOREGROUND;
-  ctx.fillText("Meet the people", TEXT_X, line1Y);
-  ctx.fillStyle = AMBER;
-  ctx.fillText("behind the server.", TEXT_X, line2Y);
-  ctx.letterSpacing = "0px";
-
-  const subFont = "400 22px Outfit";
-  const subLines = wrapText(
-    ctx,
-    "The owner, developers and admins who keep Createrington running.",
-    subFont,
-    380,
-  );
-  ctx.font = subFont;
-  ctx.fillStyle = MUTED;
-  let subY = line2Y + 52;
-  for (const line of subLines) {
-    ctx.fillText(line, TEXT_X, subY);
-    subY += 31;
-  }
-
-  paintUrlChip(ctx, "createrington.com/team", TEXT_X, subY + 4);
-}
-
 async function main(): Promise<void> {
   const outPath = process.argv[2] ?? join(ASSETS, "og", "team.png");
 
@@ -230,7 +184,7 @@ async function main(): Promise<void> {
   await writeCard(outPath, async (ctx) => {
     await paintBackdrop(ctx);
     await paintTeam(ctx);
-    await paintCopy(ctx);
+    await paintHeadlineCopy(ctx, COPY);
   });
 }
 

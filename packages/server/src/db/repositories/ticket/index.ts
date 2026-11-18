@@ -1,26 +1,16 @@
-import { TicketUserAction } from "@/services/discord/tickets";
-import type {
-  Ticket,
-  TicketAction,
-  TicketActionCreate,
-  TicketCreate,
-} from "@/generated/db";
+import { TicketUserAction } from "@/services/discord/tickets/types";
+import type { Ticket, TicketCreate } from "@/generated/db";
 import { db, Q } from "@/db";
 
 /**
- * Ticket lifecycle and read access. Owns create/close/reopen/delete
- * transitions, the matching ticket_action audit entries, and the user-facing
- * and admin-facing query surface. Each lifecycle transition writes its status
+ * Ticket lifecycle. Owns create/close/reopen/delete transitions, the
+ * matching ticket_action audit entries, metadata merges, and the open-ticket
+ * check. Each lifecycle transition writes its status
  * change and its audit row in one transaction, and close/reopen read the
  * ticket under a row lock so concurrent transitions cannot both pass the
  * status check.
  */
 export class TicketRepository {
-  /** Consume the ticket number sequence and return the allocated number. */
-  async allocateNumber(): Promise<number> {
-    return await Q.ticket.allocateNumber();
-  }
-
   /** Create an OPEN ticket and log the CREATED action in one transaction. */
   async create(data: TicketCreate): Promise<Ticket> {
     const ticket = await db.inTransaction(async (tx) => {
@@ -170,11 +160,6 @@ export class TicketRepository {
         },
       },
     );
-  }
-
-  /** Append a row to the ticket_action audit table. */
-  async logAction(data: TicketActionCreate): Promise<TicketAction> {
-    return await Q.ticket.action.createAndReturn(data);
   }
 
   /** True if the user has at least one OPEN ticket. */

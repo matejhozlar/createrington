@@ -20,6 +20,10 @@ const STEVE = "11111111-2222-3333-4444-555555555555";
 const T0 = new Date("2026-09-14T10:00:00Z");
 const ticks = (playedSeconds: number) => playedSeconds * 20;
 
+function sessionOf(service: PlaytimeService, uuid: string) {
+  return service.getActiveSessions().find((session) => session.uuid === uuid);
+}
+
 beforeEach(() => {
   vi.useFakeTimers();
   vi.setSystemTime(T0);
@@ -51,7 +55,7 @@ describe("PlaytimeRepository.connectToService", () => {
       playTimeTicks: ticks(1000),
     });
     await repo.flush(1000);
-    expect(service.getSession(STEVE)?.sessionId).toBe(42);
+    expect(sessionOf(service, STEVE)?.sessionId).toBe(42);
 
     vi.setSystemTime(new Date(T0.getTime() + 60_000));
     service.reconcileWithHeartbeat([
@@ -60,7 +64,7 @@ describe("PlaytimeRepository.connectToService", () => {
     await repo.flush(1000);
 
     expect(progressSpy).toHaveBeenCalledTimes(1);
-    expect(service.getSession(STEVE)).toMatchObject({
+    expect(sessionOf(service, STEVE)).toMatchObject({
       creditedUntil: T0,
       lastPlayTicks: ticks(1000),
       activeSeconds: 0,

@@ -9,9 +9,9 @@ const { connectMock, getOpenSessionsMock, flushMock, forwarderConnectMock } =
   }));
 
 vi.mock("@/db", () => ({
+  Q: { player: { session: { findOpenWithUsername: getOpenSessionsMock } } },
   playtimeRepo: {
     connectToService: connectMock,
-    getOpenSessions: getOpenSessionsMock,
     flush: flushMock,
   },
 }));
@@ -27,6 +27,10 @@ import { PlaytimeService } from "@/services/playtime/playtime.service";
 
 const SERVER_ID = 7;
 const PLAYER_UUID = "11111111-2222-3333-4444-555555555555";
+
+function sessionOf(service: PlaytimeService, uuid: string) {
+  return service.getActiveSessions().find((session) => session.uuid === uuid);
+}
 
 let manager: PlaytimeManagerService;
 
@@ -117,8 +121,8 @@ describe("PlaytimeManagerService.ensureService", () => {
 
     const service = await manager.ensureService(SERVER_ID);
 
-    expect(service.isPlayerOnline(PLAYER_UUID)).toBe(true);
-    expect(service.getSession(PLAYER_UUID)?.sessionId).toBe(42);
+    expect(sessionOf(service, PLAYER_UUID)).toBeDefined();
+    expect(sessionOf(service, PLAYER_UUID)?.sessionId).toBe(42);
   });
 
   it("retries the bring-up after a failed attempt", async () => {

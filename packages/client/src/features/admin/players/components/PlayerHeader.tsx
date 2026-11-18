@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { CellText } from "@/components/cell-text";
 import { Edit, Trash2, MapPin } from "lucide-react";
 import type { RouterOutput } from "@/lib/trpc";
-import { playerPoseUrl } from "@/lib/player-images";
+import { playerPoseUrl } from "@/lib/playerImages";
 import { formatDimension, tpCommand } from "@/lib/minecraft";
 
 type PlayerDetail =

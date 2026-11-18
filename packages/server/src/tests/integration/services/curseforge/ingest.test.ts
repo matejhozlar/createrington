@@ -13,7 +13,6 @@ vi.mock("@/services/curseforge/mods", async (importOriginal) => {
     await importOriginal<typeof import("@/services/curseforge/mods")>();
   return {
     ...actual,
-    getMod: vi.fn(),
     getMods: vi.fn(async () => []),
   };
 });
@@ -23,11 +22,9 @@ import { CurseForgeClass } from "@/services/curseforge/client";
 import {
   classEnvironmentHint,
   deriveEnvironmentHint,
-  getMod,
   getMods,
 } from "@/services/curseforge/mods";
 import {
-  ingestProject,
   ingestProjects,
   ingestProjectsWhere,
   refreshProjects,
@@ -248,14 +245,14 @@ describe("environment hints on ingest", () => {
     });
   });
 
-  it("applies hints through the single-project ingest as well", async () => {
+  it("applies a hint to an existing unclassified row on ingest", async () => {
     const projectId = claimProjectId();
     await seedRow(projectId);
-    vi.mocked(getMod).mockResolvedValue(
+    vi.mocked(getMods).mockResolvedValue([
       makeProjectData(projectId, { environmentHint: "both" }),
-    );
+    ]);
 
-    await ingestProject(projectId);
+    await ingestProjects([projectId]);
 
     expect(await Q.curseforge.project.get({ id: projectId })).toMatchObject({
       environment: "both",

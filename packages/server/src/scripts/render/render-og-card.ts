@@ -31,9 +31,10 @@ import {
   registerBrandFonts,
   roundRectPath,
   drawImageCover,
+  paintUrlChip,
   paintWordmark,
 } from "@/utils/og-card";
-import { ASSETS, getPoseFigure, writeCard } from "./og-shared";
+import { ASSETS, TEAM, getPoseFigure, writeCard } from "./og-shared";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(here, "..", "..", "..", "..", "..");
@@ -90,35 +91,29 @@ interface TeamMember {
 
 // Rendered as a small lineup under the link. Poses are skin-api poses chosen
 // to read as a tidy standing row.
-const TEAM: readonly TeamMember[] = [
+const LINEUP: readonly TeamMember[] = [
   {
-    username: "saunhardy",
-    uuid: "091b900c-4174-478c-900c-a0fe5a31a329",
+    ...TEAM.saunhardy,
     pose: "confidence",
   },
   {
-    username: "Agent772",
-    uuid: "3e0db446-147a-4692-87fd-c3facc4341db",
+    ...TEAM.Agent772,
     pose: "point",
   },
   {
-    username: "The_BigShot",
-    uuid: "4cada83a-c012-4a31-8d80-942f3f79e8a1",
+    ...TEAM.The_BigShot,
     pose: "gaze",
   },
   {
-    username: "diablothe2nd",
-    uuid: "8cca5cab-b782-452b-a8b9-8bb4ae0f6d0f",
+    ...TEAM.diablothe2nd,
     pose: "wave",
   },
   {
-    username: "Tetsuoken",
-    uuid: "32ff995f-cf92-417b-b745-891738346120",
+    ...TEAM.Tetsuoken,
     pose: "relaxed",
   },
   {
-    username: "Cailin05",
-    uuid: "aee71815-6420-444c-a245-9047c41f4a39",
+    ...TEAM.Cailin05,
     pose: "ponder",
   },
 ];
@@ -288,33 +283,14 @@ async function paintText(ctx: SKRSContext2D): Promise<void> {
   ctx.fillStyle = MUTED;
   ctx.fillText("A Create-powered Minecraft server.", TEXT_X, subY);
 
-  // CTA chip: the domain.
-  const chipY = subY + 22;
-  const chipH = 44;
-  const padX = 20;
-  const rest = "createrington.com";
-  ctx.font = `600 22px Outfit`;
-  const restW = ctx.measureText(rest).width;
-  const chipW = padX * 2 + restW;
-
-  ctx.fillStyle = "rgba(255,185,0,0.10)";
-  roundRectPath(ctx, TEXT_X, chipY, chipW, chipH, 11);
-  ctx.fill();
-  ctx.strokeStyle = "rgba(255,185,0,0.40)";
-  ctx.lineWidth = 1;
-  roundRectPath(ctx, TEXT_X + 0.5, chipY + 0.5, chipW - 1, chipH - 1, 11);
-  ctx.stroke();
-
-  ctx.fillStyle = AMBER;
-  ctx.textBaseline = "middle";
-  ctx.fillText(rest, TEXT_X + padX, chipY + chipH / 2 + 1);
+  paintUrlChip(ctx, "createrington.com", TEXT_X, subY + 22);
 }
 
 // Draws the team lineup under the link. Bottom-aligns each posed figure to a
 // shared ground line and rim-lights it in the brand amber.
 async function paintTeam(ctx: SKRSContext2D): Promise<void> {
   const loaded = await Promise.all(
-    TEAM.map(async (m) => {
+    LINEUP.map(async (m) => {
       const img = await getTeamFigure(m);
       const bbox = computeBBox(img);
       if (!bbox) throw new Error(`Empty figure render for ${m.username}`);
