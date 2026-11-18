@@ -9,7 +9,11 @@ import { MessageInput } from "./MessageInput";
 import { MessageList } from "./MessageList";
 import { ModelChip } from "./ModelChip";
 import { readingColumnClass, type ChatLayout } from "../layout";
-import type { AdminChatModel, ChatMessage } from "../types";
+import {
+  DEFAULT_ADMIN_CHAT_MODEL,
+  type AdminChatModel,
+  type ChatMessage,
+} from "../types";
 import { Spinner } from "@/components/ui/spinner";
 
 const DOCKED_WIDTH_REM = 24;
@@ -59,8 +63,6 @@ interface ChatPanelProps {
   sessionId: number | null;
   sessionActive: boolean;
   activeModel: AdminChatModel | null;
-  selectedModel: AdminChatModel;
-  onSelectModel: (model: AdminChatModel) => void;
   starting: boolean;
   sending: boolean;
   awaitingReply: boolean;
@@ -83,8 +85,6 @@ export function ChatPanel({
   sessionId,
   sessionActive,
   activeModel,
-  selectedModel,
-  onSelectModel,
   starting,
   sending,
   awaitingReply,
@@ -215,13 +215,7 @@ export function ChatPanel({
         />
 
         {showEmpty ? (
-          <EmptyState
-            layout={layout}
-            starting={starting}
-            onStart={onStart}
-            selectedModel={selectedModel}
-            onSelectModel={onSelectModel}
-          />
+          <EmptyState layout={layout} starting={starting} onStart={onStart} />
         ) : (
           <>
             <MessageList
@@ -235,7 +229,7 @@ export function ChatPanel({
                 {activeModel && (
                   <div className="border-t border-border/60 px-3 pt-2">
                     <div className={cn("flex justify-end", column)}>
-                      <ModelChip value={activeModel} readOnly />
+                      <ModelChip value={activeModel} />
                     </div>
                   </div>
                 )}
@@ -259,11 +253,7 @@ export function ChatPanel({
                     <span className="text-xs text-muted-foreground">
                       Session ended
                     </span>
-                    <ModelChip
-                      value={selectedModel}
-                      onChange={onSelectModel}
-                      disabled={starting}
-                    />
+                    <ModelChip value={DEFAULT_ADMIN_CHAT_MODEL} />
                   </div>
                   <Button
                     size="sm"
