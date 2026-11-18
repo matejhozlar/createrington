@@ -2,6 +2,7 @@ import { Q } from "@/db";
 import { BalanceUtils } from "@/db/repositories/balance/utils";
 import { EmbedPresets } from "@/discord/embeds";
 import { CooldownType } from "@/discord/utils/cooldown";
+import { replyError } from "@/discord/utils/interaction-reply";
 import {
   type ChatInputCommandInteraction,
   MessageFlags,
@@ -23,14 +24,23 @@ export async function execute(
 ): Promise<void> {
   const discordId = interaction.user.id;
 
-  const player = await Q.player.get({ discordId });
-  const balance = await Q.player.balance.get({
+  const player = await Q.player.find({ discordId });
+  if (!player) {
+    await replyError(
+      interaction,
+      "Not Registered",
+      "You must be registered to have a balance. Use `/register` to get started.",
+    );
+    return;
+  }
+
+  const balance = await Q.player.balance.find({
     minecraftUuid: player.minecraftUuid,
   });
 
   const embed = EmbedPresets.plain({
     title: "💰 Your Balance",
-    description: BalanceUtils.formatMoney(balance.balance),
+    description: BalanceUtils.formatMoney(balance?.balance ?? 0n),
   });
 
   await interaction.reply({
