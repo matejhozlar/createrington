@@ -11,29 +11,11 @@ import { Spinner } from "@/components/ui/spinner";
 interface PlayerLabelProps {
   uuid?: string | null;
   name?: string | null;
-  /**
-   * Fallback identifier for the admin link when no UUID is known, e.g. a
-   * Discord id. The admin player page resolves any player identifier.
-   */
   playerId?: string | null;
-  /** Avatar pixel size. Defaults to 24. */
   size?: number;
-  /**
-   * Whether the label should link to the player detail page. Defaults to
-   * true when an identifier is present. Set to false for cases where the
-   * player is known by UUID but not resolvable in this app's player DB.
-   */
   linkable?: boolean;
 }
 
-/**
- * Player label with avatar + username that links to the admin player page
- * for admin viewers. Renders a non-interactive label otherwise.
- *
- * When the caller has no resolved username and falls back to passing the
- * raw UUID as `name`, the label becomes a click-to-resolve button that
- * looks the username up via Mojang on demand.
- */
 export function PlayerLabel({
   uuid,
   name,

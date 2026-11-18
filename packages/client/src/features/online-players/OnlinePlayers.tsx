@@ -23,7 +23,6 @@ function getSessionSeconds(player: OnlinePlayer): number {
   return Math.max(0, (Date.now() - player.sessionStart.getTime()) / 1000);
 }
 
-/** Live-ticking session timer for a single player */
 function SessionTimer({ player }: { player: OnlinePlayer }) {
   const [seconds, setSeconds] = useState(() => getSessionSeconds(player));
 
@@ -41,7 +40,6 @@ function SessionTimer({ player }: { player: OnlinePlayer }) {
   );
 }
 
-/** Stat card used in the overview strip */
 function StatBlock({
   icon,
   value,
@@ -66,7 +64,6 @@ function StatBlock({
   );
 }
 
-/** Individual player card */
 function PlayerCard({
   player,
   index,
@@ -90,7 +87,6 @@ function PlayerCard({
         animation: `fade-in-up 0.4s ease-out ${index * 40}ms both`,
       }}
     >
-      {/* Online pulse indicator */}
       <div className="absolute top-3 right-3">
         <span className="relative flex size-2.5">
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-60" />
@@ -98,7 +94,6 @@ function PlayerCard({
         </span>
       </div>
 
-      {/* Avatar */}
       <div className="relative shrink-0">
         <MinecraftAvatar
           username={player.username}
@@ -108,7 +103,6 @@ function PlayerCard({
         />
       </div>
 
-      {/* Info */}
       <div className="min-w-0 flex-1">
         <p className="truncate text-base font-semibold text-foreground group-hover:text-primary transition-colors duration-300">
           {player.username}
@@ -123,7 +117,6 @@ function PlayerCard({
 }
 
 export function OnlinePlayers() {
-  // TODO: When converting to multiple servers, update this to use the selected server
   const serverId = 1;
 
   const { user } = useAuth();
@@ -152,7 +145,6 @@ export function OnlinePlayers() {
     return serverPlayers.filter((p) => p.username.toLowerCase().includes(q));
   }, [serverPlayers, searchQuery]);
 
-  // Sort by session duration (longest first)
   const sortedPlayers = useMemo(
     () =>
       [...filteredPlayers].sort(
@@ -161,7 +153,6 @@ export function OnlinePlayers() {
     [filteredPlayers],
   );
 
-  // Live-updating average session time
   const computeAvg = useCallback(() => {
     if (serverPlayers.length === 0) return 0;
     const total = serverPlayers.reduce(
@@ -187,7 +178,6 @@ export function OnlinePlayers() {
 
   return (
     <div>
-      {/* Hero header */}
       <header className="relative w-full overflow-hidden py-12 md:py-16 px-5 md:px-8">
         <div className="absolute inset-0">
           <img
@@ -237,7 +227,6 @@ export function OnlinePlayers() {
 
       <section className="px-5 md:px-8 pb-16">
         <div className="max-w-7xl mx-auto space-y-8">
-          {/* Stats strip */}
           <div className="flex flex-wrap gap-x-8 gap-y-4 rounded-xl border border-border bg-card/60 backdrop-blur-sm p-5">
             <StatBlock
               icon={<Users className="size-5 text-primary" />}
@@ -256,7 +245,6 @@ export function OnlinePlayers() {
             />
           </div>
 
-          {/* Search bar */}
           {playerCount > 0 && (
             <SearchInput
               className="max-w-sm"
@@ -266,7 +254,6 @@ export function OnlinePlayers() {
             />
           )}
 
-          {/* Player grid */}
           {playersLoading ? (
             <LoadingState text="Loading players..." className="py-16" />
           ) : playersError ? (
@@ -323,7 +310,6 @@ export function OnlinePlayers() {
             </div>
           )}
 
-          {/* Result count when searching */}
           {searchQuery.trim() && sortedPlayers.length > 0 && (
             <p className="text-sm text-muted-foreground">
               Showing {sortedPlayers.length} of {playerCount} online player

@@ -156,7 +156,6 @@ export function OwnerDonations() {
 
   return (
     <div className="flex flex-1 flex-col gap-4">
-      {/* Header */}
       <AdminPageHeader
         trail={[
           { label: "Home", href: "/" },
@@ -217,7 +216,6 @@ export function OwnerDonations() {
           </div>
         )}
 
-        {/* Filters */}
         <Card className="gap-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
@@ -285,7 +283,6 @@ export function OwnerDonations() {
           </CardContent>
         </Card>
 
-        {/* Donations Table */}
         <Card className="gap-0">
           <CardHeader className="border-b gap-0">
             <CardTitle>

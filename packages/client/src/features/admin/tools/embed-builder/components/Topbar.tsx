@@ -75,9 +75,6 @@ export function Topbar({ builder, onOpenPresets }: TopbarProps) {
       return;
     }
 
-    // Try components first: its schema requires a non-empty `components` array,
-    // so an embed JSON won't false-match it (embedDataSchema is all-optional and
-    // would accept almost anything). Matching either format switches the mode.
     const componentsResult = componentsDataSchema.safeParse(raw);
     if (componentsResult.success) {
       handleImportComponents(componentsResult.data.components);

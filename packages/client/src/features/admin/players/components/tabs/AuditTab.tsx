@@ -17,7 +17,7 @@ import {
 } from "@/components/query-states";
 
 interface AuditTabProps {
-  playerId: string; // minecraftUuid (route param)
+  playerId: string;
 }
 
 export function AuditTab({ playerId }: AuditTabProps) {
@@ -86,7 +86,6 @@ export function AuditTab({ playerId }: AuditTabProps) {
         <EmptyState icon={FileText} message="No audit log entries found" />
       ) : (
         <>
-          {/* Actions list */}
           <div className="space-y-2">
             {actions.map((action) => (
               <div

@@ -2,9 +2,6 @@ import { useContext } from "react";
 import { AdminPlayersContext } from "./context";
 import type { AdminPlayersContextType } from "./types";
 
-/**
- * Hook to access admin player context
- */
 export const useAdminPlayers = (): AdminPlayersContextType => {
   const context = useContext(AdminPlayersContext);
 

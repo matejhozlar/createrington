@@ -27,7 +27,6 @@ export function MentionMenu({
           type="button"
           role="option"
           aria-selected={i === activeIndex}
-          // Prevent the textarea from losing focus before the click handler fires.
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => onSelect(repo)}
           onMouseEnter={() => onHover(i)}

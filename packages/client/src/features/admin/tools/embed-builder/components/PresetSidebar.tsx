@@ -70,9 +70,7 @@ export function PresetSidebar({
     if (forceExpanded) return;
     try {
       localStorage.setItem(RAIL_COLLAPSED_KEY, collapsed ? "1" : "0");
-    } catch {
-      // Storage unavailable, silently ignore.
-    }
+    } catch {}
   }, [collapsed, forceExpanded]);
 
   const isSearching = !!search;

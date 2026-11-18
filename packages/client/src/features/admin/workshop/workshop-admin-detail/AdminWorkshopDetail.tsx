@@ -206,8 +206,6 @@ export function AdminWorkshopDetail() {
           setRejectTarget(null);
           void invalidate();
         },
-        // A refused review means the grid allowed a click the server would not,
-        // so refetch to bring the stale rows up to date
         onError: () => {
           void invalidate();
         },
@@ -254,8 +252,6 @@ export function AdminWorkshopDetail() {
           await invalidate();
           clearEnvPending(variables.curseforgeProjectId, variables.environment);
         },
-        // A failed re-flag falls back to the value the server still holds, so a
-        // row that already resolved once keeps its place instead of vanishing
         onError: (_err, variables) => {
           clearEnvPending(variables.curseforgeProjectId, variables.environment);
           setLingeringEnvItems((current) =>
@@ -314,7 +310,6 @@ export function AdminWorkshopDetail() {
     ];
   }, [attentionQuery.data, lingeringEnvItems]);
 
-  // Confirmed values for lingering rows, then in-flight clicks on top
   const envDisplay: EnvironmentDisplay = useMemo(() => {
     const merged = new Map<number, ModEnvironment>();
     for (const lingering of lingeringEnvItems) {
@@ -355,8 +350,6 @@ export function AdminWorkshopDetail() {
     projectId: number,
     environment: ModEnvironment,
   ) => {
-    // Entries start at the value the server still holds; the mutation's
-    // outcome is what promotes or removes them
     if (activeTab === "issues") {
       setLingeringEnvItems((current) => {
         if (current.some((l) => l.item.curseforgeProjectId === projectId)) {
@@ -419,9 +412,7 @@ export function AdminWorkshopDetail() {
       setSkipConfirms(true);
       try {
         sessionStorage.setItem(SKIP_CONFIRM_SESSION_KEY, "1");
-      } catch {
-        // storage unavailable, the in-memory flag still covers this page
-      }
+      } catch {}
     }
   };
 

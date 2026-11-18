@@ -16,14 +16,11 @@ export class FlashlightAimAnimation extends PlayerAnimation {
     const t = Math.min(this.progress / AIM_DURATION, 1);
     const e = easeOutCubic(t);
 
-    // Right arm extends forward-down (holding flashlight)
     player.skin.rightArm.rotation.x = -0.9 * e;
     player.skin.rightArm.rotation.z = 0.15 * e;
 
-    // Head looks slightly down toward the beam target
     player.skin.head.rotation.x = 0.2 * e;
 
-    // Body turns slightly
     player.skin.body.rotation.y = -0.1 * e;
   }
 }
@@ -85,17 +82,14 @@ export class FlashlightEffect {
       overlay.height = h;
     }
 
-    // Beam extension progress
     const elapsed = now - this.startTime;
     const extendT = Math.min(elapsed / BEAM_EXTEND_DURATION, 1);
     const extendEased = easeInOutCubic(extendT);
 
-    // Source: character's right hand area
     const srcRect = this.sourceElement.getBoundingClientRect();
     const sx = srcRect.left + srcRect.width * 0.35;
     const sy = srcRect.top + srcRect.height * 0.5;
 
-    // Target: Apply link in footer
     const applyLink = document.querySelector<HTMLAnchorElement>(
       'footer a[href="/apply-to-join"]',
     );
@@ -105,35 +99,27 @@ export class FlashlightEffect {
     }
 
     const tgtRect = applyLink.getBoundingClientRect();
-    // Offset to compensate for cone+blur shifting the visual center right-up
     const tx = tgtRect.left + tgtRect.width / 2 - 10;
     const ty = tgtRect.top + tgtRect.height / 2 + 8;
 
-    // Interpolate beam endpoint from source toward target
     const beamX = sx + (tx - sx) * extendEased;
     const beamY = sy + (ty - sy) * extendEased;
 
     ctx.clearRect(0, 0, w, h);
 
-    // Dark overlay
     ctx.globalCompositeOperation = "source-over";
     ctx.filter = "none";
     ctx.fillStyle = `rgba(0, 0, 0, ${OVERLAY_OPACITY})`;
     ctx.fillRect(0, 0, w, h);
 
-    // Cut out beam cone
     this.drawBeamCutout(ctx, sx, sy, beamX, beamY, extendEased);
 
-    // Spotlight circle where beam currently ends
     this.drawSpotCircle(ctx, beamX, beamY, extendEased);
-
-    // Scroll (synced to beam extension)
 
     if (extendT < 1 && tgtRect.top > h * 0.7) {
       window.scrollBy({ top: SCROLL_PX_PER_FRAME, behavior: "instant" });
     }
 
-    // Glow on Apply link once beam has reached it
     if (extendT > 0.95 && ty > 0 && ty < h) {
       applyLink.style.textShadow =
         "0 0 10px rgba(255,255,255,0.9), 0 0 25px rgba(255,255,255,0.5)";
@@ -143,7 +129,6 @@ export class FlashlightEffect {
     this.animationId = requestAnimationFrame(this.render);
   };
 
-  /** Cuts a soft-edged cone out of the dark overlay. */
   private drawBeamCutout(
     ctx: CanvasRenderingContext2D,
     sx: number,
@@ -181,7 +166,6 @@ export class FlashlightEffect {
     ctx.restore();
   }
 
-  /** Bright spot where the beam currently ends. */
   private drawSpotCircle(
     ctx: CanvasRenderingContext2D,
     x: number,
@@ -216,7 +200,6 @@ export class FlashlightEffect {
       this.animationId = null;
     }
 
-    // Remove glow from Apply link
     const applyLink = document.querySelector<HTMLAnchorElement>(
       'footer a[href="/apply-to-join"]',
     );

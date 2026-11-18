@@ -15,7 +15,6 @@ import {
 type Rotation =
   RouterOutput["admin"]["structurePacks"]["rotationHistory"]["data"][number];
 
-/** Paginated table of past structure pack rotation events with success/failure status */
 export function RotationHistory() {
   const [page, setPage] = useState(0);
   const limit = 10;

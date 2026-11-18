@@ -6,12 +6,6 @@ import { Kbd } from "@/components/ui/kbd";
 import { useSearchShortcut } from "@/features/admin/hooks/use-search-shortcut";
 import { MODIFIER_KEY_LABEL } from "@/lib/platform";
 
-/**
- * Standard admin filters card: a search input with optional extra controls
- * rendered after it. Ctrl+K (or Cmd+K) focuses the search from anywhere on
- * the page and Escape blurs it; the shortcut hint hides on small screens.
- * `activeCount` renders the active-filter badge next to the title.
- */
 export function FilterBar({
   search,
   onSearchChange,

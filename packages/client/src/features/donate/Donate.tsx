@@ -173,7 +173,6 @@ export function Donate() {
       />
 
       <div className="max-w-2xl mx-auto px-5 pb-16 space-y-10">
-        {/* Active subscription banner */}
         {subscription.data && (
           <div className="rounded-xl border border-border bg-card p-5 space-y-3">
             <div className="flex items-start justify-between gap-4">
@@ -229,7 +228,6 @@ export function Donate() {
           </div>
         )}
 
-        {/* Supporter thank you */}
         {isSupporter && (
           <div className="rounded-xl border border-primary/20 bg-primary/5 p-5">
             <div className="flex items-center gap-3">
@@ -241,7 +239,6 @@ export function Donate() {
           </div>
         )}
 
-        {/* Donation type toggle */}
         <div className="flex gap-2 p-1 bg-muted rounded-lg w-fit">
           <button
             type="button"
@@ -271,7 +268,6 @@ export function Donate() {
           </button>
         </div>
 
-        {/* Amount tiers */}
         <div className="grid grid-cols-3 gap-3">
           {DONATION_TIERS.map((tier) => {
             const isSelected = !isCustom && selectedCents === tier.amountCents;
@@ -336,7 +332,6 @@ export function Donate() {
 
         <Separator />
 
-        {/* Perks */}
         <div className="space-y-3">
           <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
             What you get
@@ -367,7 +362,6 @@ export function Donate() {
           on our servers.
         </p>
 
-        {/* Donation history */}
         {history.data && history.data.length > 0 && (
           <>
             <Separator />
@@ -422,7 +416,6 @@ export function Donate() {
 
         <Separator />
 
-        {/* FAQ */}
         <div className="space-y-3">
           <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
             Frequently asked questions

@@ -39,10 +39,6 @@ export function Authorize() {
   );
   const [submitting, setSubmitting] = useState<"approve" | "deny" | null>(null);
 
-  // Logged-out users go through the normal Createrington login and return
-  // here (the state query is preserved across the round trip), then see
-  // consent. Skip the round-trip when there's no state: the request is already
-  // invalid, so logging in would only land them on the error card.
   useEffect(() => {
     if (!loading && !user && state) void login();
   }, [loading, user, login, state]);
@@ -87,8 +83,6 @@ export function Authorize() {
     [state],
   );
 
-  // A missing state param is an invalid request; surface the error card
-  // immediately rather than spinning on auth or a fetch that never runs.
   const showError = !state || status === "error";
 
   if (!showError && (loading || !user || status === "loading")) {

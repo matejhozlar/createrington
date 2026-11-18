@@ -66,12 +66,10 @@ export function ActivityRender() {
       id="activity-container"
       className="relative w-[900px] h-[500px] overflow-hidden bg-background text-foreground flex flex-col"
     >
-      {/* Background grid */}
       <div className="absolute inset-0 pointer-events-none render-bg-grid" />
       <div className="absolute -left-16 top-12 w-[320px] h-[320px] rounded-full blur-[120px] opacity-20 pointer-events-none bg-emerald-500" />
       <div className="absolute -right-16 -bottom-8 w-[280px] h-[280px] rounded-full blur-[120px] opacity-10 pointer-events-none bg-chart-3" />
 
-      {/* Header */}
       <div className="flex items-center gap-4 px-8 pt-5 z-10">
         <div className="flex-1 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
         <img
@@ -82,7 +80,6 @@ export function ActivityRender() {
         <div className="flex-1 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
       </div>
 
-      {/* Player info row */}
       <div className="flex items-center gap-6 px-8 pt-5 pb-2 z-10">
         <img
           src={avatarSrc}
@@ -125,9 +122,7 @@ export function ActivityRender() {
         </div>
       </div>
 
-      {/* Heatmap */}
       <div className="flex-1 flex flex-col justify-center px-8 z-10">
-        {/* Month labels */}
         <div className="relative h-5 ml-[36px]">
           {monthLabels.map((m, i) => (
             <span
@@ -140,7 +135,6 @@ export function ActivityRender() {
           ))}
         </div>
 
-        {/* Grid rows */}
         {HEATMAP_DAY_LABELS.map((label, row) => (
           <div key={row} className="flex items-center gap-[3px] mb-[3px]">
             <div className="w-[33px] text-right text-[11px] text-muted-foreground pr-2 shrink-0">
@@ -164,7 +158,6 @@ export function ActivityRender() {
         ))}
       </div>
 
-      {/* Footer: legend + branding */}
       <div className="flex items-center justify-between px-8 pb-4 z-10">
         <div className="flex items-center gap-2.5">
           {LEVEL_COLORS.map((color, i) => (

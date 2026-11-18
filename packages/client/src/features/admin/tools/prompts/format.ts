@@ -42,8 +42,6 @@ interface EntryRules {
   cooldownSeconds: number | null;
 }
 
-// Mirrors the server's formatSeconds so the admin panel and the Discord card
-// describe the same cooldown identically.
 function formatCooldown(seconds: number): string {
   if (seconds < 60) return pluralize(seconds, "second");
 

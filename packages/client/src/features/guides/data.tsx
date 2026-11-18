@@ -7,7 +7,6 @@ import {
   FolderInput,
   Puzzle,
   MessageSquare,
-  // Compass, // TODO: re-enable when Getting Started guide is added back
   TriangleAlert,
 } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";

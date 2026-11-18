@@ -127,8 +127,6 @@ export function InactivityManagement() {
 
   const handleSearchChange = useCallback((value: string) => {
     setSearchQuery(value);
-    // Reset pagination on every keystroke so the debounced query
-    // below can't land on an out-of-range page when results shrink.
     setPage(0);
   }, []);
 
@@ -261,7 +259,6 @@ export function InactivityManagement() {
 
   return (
     <div className="flex flex-1 flex-col gap-4">
-      {/* Header */}
       <AdminPageHeader
         trail={[
           { label: "Admin", href: "/admin/dashboard" },
@@ -337,7 +334,6 @@ export function InactivityManagement() {
           </Card>
         )}
 
-        {/* Stats Cards */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {STAT_CARDS.map(({ key, label, description, icon, tone }) => (
             <StatCard
@@ -351,7 +347,6 @@ export function InactivityManagement() {
           ))}
         </div>
 
-        {/* Filters */}
         <Card className="gap-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
@@ -390,7 +385,6 @@ export function InactivityManagement() {
           </CardContent>
         </Card>
 
-        {/* Warnings Table */}
         <Card className="gap-0">
           <CardHeader className="border-b gap-0">
             <CardTitle>
@@ -453,14 +447,11 @@ export function InactivityManagement() {
 
         <ExemptionsCard />
 
-        {/* Ghost members (registered but missing from Discord) */}
         <GhostsCard canMutate={canMutate} />
 
-        {/* Unlinked members (present on Discord but missing from the database) */}
         <UnlinkedMembersCard />
       </div>
 
-      {/* Modals */}
       <ResolveWarningModal
         warning={resolveTarget}
         onClose={() => setResolveTarget(null)}

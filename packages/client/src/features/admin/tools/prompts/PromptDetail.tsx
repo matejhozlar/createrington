@@ -23,9 +23,6 @@ interface ResponderGroup {
   entries: ResponseRow[];
 }
 
-// The list is ordered by the newer of submitted/updated, so an edited answer
-// sorts to the top; label it with the edit time rather than the original
-// submission it would otherwise contradict.
 function formatEntryTime(entry: ResponseRow): string {
   const submitted = new Date(entry.submittedAt).getTime();
   const updated = new Date(entry.updatedAt).getTime();

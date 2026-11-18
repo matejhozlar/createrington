@@ -44,7 +44,6 @@ export function BansTab({ player, onIssueBan, onUnban }: BansTabProps) {
         </Button>
       </div>
 
-      {/* Current Active Ban Warning */}
       {currentBan && !isExpired(currentBan.expiresAt) && (
         <div className="rounded-lg border border-destructive bg-destructive/10 p-4">
           <div className="flex items-start justify-between">

@@ -11,9 +11,6 @@ import { AdminChatContext } from "./context";
 import type { AdminChatContextType, OpenDrawerOptions } from "./types";
 
 const BUBBLE_KEY = "admin-chat:bubble-visible";
-// Inlined here (rather than imported from features/admin-chat/api) so this
-// provider stays outside the lazy admin-chat chunk: the rest of admin-chat
-// is still split.
 const ENABLED_ENDPOINT = "api/claude-chat/enabled";
 
 interface PanelState {
@@ -50,8 +47,6 @@ export function AdminChatProvider({ children }: { children: ReactNode }) {
   );
   const [panel, setPanel] = useState<PanelState>(PANEL_CLOSED);
 
-  // Server kill-switch: only fetched for admins. Non-admins keep the
-  // initial `false`, so no setState is needed in the early-return branch.
   useEffect(() => {
     if (!isAdmin) return;
     let cancelled = false;
@@ -68,9 +63,7 @@ export function AdminChatProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     try {
       localStorage.setItem(BUBBLE_KEY, bubbleVisible ? "1" : "0");
-    } catch {
-      // Non-fatal: state still works within this tab.
-    }
+    } catch {}
   }, [bubbleVisible]);
 
   const openDrawer = useCallback((options?: OpenDrawerOptions) => {
@@ -91,8 +84,6 @@ export function AdminChatProvider({ children }: { children: ReactNode }) {
     setPanel((prev) => (prev.open ? { ...prev, expanded } : prev));
   }, []);
 
-  // Ctrl/Cmd+I summons the assistant as the expanded modal, or dismisses
-  // it when it is already open. The launcher bubble is left untouched.
   useEffect(() => {
     if (!enabled) return;
     const handler = (e: KeyboardEvent): void => {

@@ -81,14 +81,6 @@ export const STAT_CARDS: {
   },
 ];
 
-/**
- * Derives the display status of a warning from its timestamps.
- * Matches the backend status semantics in the query layer.
- *
- * @param warning - Warning row with timestamps
- * @param graceDays - Grace window in days (should come from the
- *   `capabilities` query so the UI tracks the server-side constant)
- */
 export function deriveWarningStatus(
   warning: {
     warnedAt: string | Date;
@@ -105,10 +97,6 @@ export function deriveWarningStatus(
   return Date.now() - warnedAtMs < graceMs ? "active" : "expired";
 }
 
-/**
- * Returns the number of days remaining in the grace period (negative if
- * already expired). Used for the "X days left" display on active rows.
- */
 export function daysUntilDeadline(
   warnedAt: string | Date,
   graceDays = 14,

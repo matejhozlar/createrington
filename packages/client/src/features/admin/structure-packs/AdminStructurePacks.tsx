@@ -49,7 +49,6 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 type StatusFilter = "all" | "enabled" | "disabled";
 type ActiveFilter = "all" | "active" | "inactive";
 
-/** Admin page for managing structure packs and their weekly rotation schedule */
 export function AdminStructurePacks() {
   const navigate = useNavigate();
   const toast = useToastActions();
@@ -307,13 +306,11 @@ export function AdminStructurePacks() {
       <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
         <AdminPageTitle title="Structure Packs" />
 
-        {/* Rotation Settings & History */}
         <div className="grid gap-4 lg:grid-cols-2">
           <RotationConfig />
           <RotationHistory />
         </div>
 
-        {/* Filters */}
         <Card className="gap-2">
           <CardHeader>
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -377,7 +374,6 @@ export function AdminStructurePacks() {
           </CardContent>
         </Card>
 
-        {/* Packs Table */}
         <Card className="gap-0">
           <CardHeader className="gap-0 border-b">
             <CardTitle>

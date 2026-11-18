@@ -35,7 +35,6 @@ function statusBadge(status: string): React.JSX.Element {
   return <Badge variant={meta.variant}>{meta.label}</Badge>;
 }
 
-// Upstream stores titles as "Page: <location>". Strip the prefix.
 function displayTitle(raw: string): string {
   const trimmed = raw.trim();
   if (trimmed.startsWith("Page:")) return trimmed.slice(5).trim() || "General";
@@ -85,7 +84,6 @@ export function AdminChatHistory() {
       setSessions((prev) => [...prev, ...page.sessions]);
       setNextCursor(page.nextCursor);
     } catch (error) {
-      // Inline error: don't clobber the whole list on a pagination failure.
       setLoadMoreError(
         error instanceof Error ? error.message : "Failed to load more",
       );

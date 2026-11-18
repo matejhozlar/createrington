@@ -81,7 +81,6 @@ export function ServerChat() {
     new Set(),
   );
 
-  /** Controls the player-list slide-over panel */
   const [playerListOpen, setPlayerListOpen] = useState(false);
 
   const isAtBottomRef = useRef(true);
@@ -90,8 +89,6 @@ export function ServerChat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
-  // Single tick instance for the whole chat: re-renders timestamps every 60s
-  // without each MessageRow running its own independent interval
   const tick = useRelativeTick();
 
   const handleScroll = useCallback(() => {
@@ -105,7 +102,6 @@ export function ServerChat() {
     if (atBottom) setUnreadCount(0);
   }, []);
 
-  // Sort messages chronologically, then group
   const { groups: messageGroups, sorted } = useMemo(() => {
     const sorted = [...messages].sort((a, b) => {
       return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
@@ -181,11 +177,6 @@ export function ServerChat() {
     };
   }, [isConnected, serverId, requestInitialData, subscribe, unsubscribe]);
 
-  // Pin the scroll to the bottom on the first render after loading resolves.
-  // useLayoutEffect runs synchronously after DOM mutations but before the
-  // browser paints, so the user never sees the messages at scrollTop=0 before
-  // a delayed scroll jumps them down. (The previous setTimeout-based approach
-  // caused a visible top→bottom flicker on route entry.)
   useLayoutEffect(() => {
     if (loading) return;
     const el = messagesContainerRef.current;
@@ -219,7 +210,6 @@ export function ServerChat() {
     return unsub;
   }, [isConnected, serverId, on, upsertMessage, removeMessage]);
 
-  // Track new messages and update unread count
   useEffect(() => {
     const previousId = lastMessageIdRef.current;
     const latestId = sorted[sorted.length - 1]?.messageId ?? null;
@@ -250,7 +240,6 @@ export function ServerChat() {
 
   return (
     <div className="flex h-[calc(100dvh-var(--mobile-nav-height))] flex-col bg-card/50 select-none">
-      {/* Player-list slide-over: only rendered on desktop (md+) */}
       {!isMobile && serverId && (
         <PlayerListPanel
           open={playerListOpen}
@@ -259,9 +248,7 @@ export function ServerChat() {
         />
       )}
 
-      {/* Header */}
       <div className="flex items-center justify-between border-b border-border bg-sidebar px-6 py-4">
-        {/* Left side: server name + status */}
         <div>
           <h1 className="text-lg font-semibold text-foreground">
             {server.serverName}
@@ -281,7 +268,6 @@ export function ServerChat() {
           </p>
         </div>
 
-        {/* Right side: player-list toggle + WebSocket connection status */}
         <div className="flex items-center gap-2">
           {!isMobile && (
             <Button
@@ -319,7 +305,6 @@ export function ServerChat() {
         </div>
       </div>
 
-      {/* Messages */}
       <div className="relative min-h-0 flex-1 overflow-hidden">
         <div
           ref={messagesContainerRef}
@@ -375,7 +360,6 @@ export function ServerChat() {
           )}
         </div>
 
-        {/* Scroll-to-bottom: single consolidated button */}
         {showScrollButton && (
           <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2">
             <button

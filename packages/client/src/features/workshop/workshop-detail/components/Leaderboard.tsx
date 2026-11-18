@@ -63,12 +63,10 @@ export function Leaderboard({
   const previousCountsRef = useRef<Map<number, number> | null>(null);
   const disableTimerRef = useRef<number | undefined>(undefined);
 
-  // enableAnimations is a no-op until the controller lands; the dep re-runs this
   useLayoutEffect(() => {
     enableAnimations(false);
   }, [enableAnimations]);
 
-  // Only vote changes animate; disable() has side effects, so call it rarely
   useLayoutEffect(() => {
     const counts = new Map(allMods.map((mod) => [mod.id, mod.upvoteCount]));
     const previous = previousCountsRef.current;

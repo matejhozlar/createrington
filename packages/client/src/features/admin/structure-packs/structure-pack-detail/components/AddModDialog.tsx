@@ -75,7 +75,6 @@ export function AddModDialog({
     ),
   );
 
-  // Default selection: required deps not yet in pack
   const defaultDepSelection = useMemo(() => {
     if (!depsQuery.data || !selectedFile) return new Set<number>();
     const set = new Set<number>();
@@ -183,7 +182,6 @@ export function AddModDialog({
 
   return (
     <>
-      {/* Search & File Picker */}
       <Dialog
         open={open && selectedFile === null}
         onOpenChange={handleDialogOpenChange}
@@ -391,7 +389,6 @@ export function AddModDialog({
             const relType = selectedFile?.dependencies.find(
               (d) => d.modId === dep.modId,
             )?.relationType;
-            // relationType 3 = Required in the CurseForge API
             const isRequired = relType === 3;
             const isSelected = selectedDeps.has(dep.modId);
             const canSelect = !dep.inPack && !!dep.bestFile;

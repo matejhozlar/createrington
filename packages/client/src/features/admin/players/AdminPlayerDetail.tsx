@@ -190,7 +190,6 @@ export function AdminPlayerDetail() {
         </Tabs>
       </div>
 
-      {/* Modals */}
       <EditPlayerModal
         key={player.player.minecraftUuid}
         open={showEditModal}

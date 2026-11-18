@@ -81,7 +81,6 @@ export function PackSearchResults({
             </div>
           );
         }
-        // Div, not <a>: the credit's PlayerLabel can itself be a link
         const open = () =>
           window.open(row.project.websiteUrl!, "_blank", "noopener,noreferrer");
         return (

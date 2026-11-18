@@ -54,17 +54,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   const { players: onlinePlayers } = usePlayerData();
 
-  // Fire for any authenticated user so the owner can recover their own
-  // panel even if they're momentarily not in the admin table (SQL reset,
-  // bootstrap, etc.).
   const accountQuery = useQuery(
     trpc.user.account.me.queryOptions(undefined, {
       enabled: !!user,
     }),
   );
-  // Gate on `user` as well: React Query keeps the previous result in the
-  // cache after the query is disabled on logout, which would otherwise
-  // leave the owner nav visible until the cache is cleared.
   const isOwner = !!user && (accountQuery.data?.isOwner ?? false);
 
   const workshopEnabledQuery = useQuery(

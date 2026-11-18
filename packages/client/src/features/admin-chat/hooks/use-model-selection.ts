@@ -40,9 +40,7 @@ export function useModelSelection(
       if (!key || typeof window === "undefined") return;
       try {
         window.localStorage.setItem(key, next);
-      } catch {
-        // localStorage can throw in private mode / quota - best-effort only.
-      }
+      } catch {}
     },
     [username],
   );

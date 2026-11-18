@@ -35,16 +35,12 @@ const PERIODS = [
 
 const DAYS_OF_MONTH = Array.from({ length: 28 }, (_, i) => i + 1);
 
-/** Admin panel card for viewing and updating the structure pack rotation schedule and weighting parameters. */
 export function RotationConfig() {
   const configQuery = useQuery(
     trpc.admin.structurePacks.rotationConfig.get.queryOptions(),
   );
   const config = configQuery.data;
 
-  // Local state is null until the user edits a field; the resolved `current*`
-  // values below fall back to the server config so the form always reflects
-  // the saved state before any edits are made.
   const [enabled, setEnabled] = useState<boolean | null>(null);
   const [period, setPeriod] = useState<string | null>(null);
   const [dayOfWeek, setDayOfWeek] = useState<number | null>(null);
@@ -187,7 +183,6 @@ export function RotationConfig() {
           </div>
         </label>
 
-        {/* Schedule section */}
         <div>
           <h3 className="mb-2 text-sm font-medium text-muted-foreground">
             Schedule
@@ -288,7 +283,6 @@ export function RotationConfig() {
           </div>
         </div>
 
-        {/* Weighting section */}
         <div>
           <h3 className="mb-2 text-sm font-medium text-muted-foreground">
             Weighting

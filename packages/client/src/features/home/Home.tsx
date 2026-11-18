@@ -221,7 +221,6 @@ export function Home() {
   const [firstHeroLoaded, setFirstHeroLoaded] = useState(false);
   const revealRemainingHeroes = () => setFirstHeroLoaded(true);
 
-  // TODO: When converting to multiple servers, update this to use the selected server
   const serverId = 1;
   const { servers } = useServerData();
   const server = servers.find((s) => s.serverId === serverId);
@@ -278,7 +277,6 @@ export function Home() {
 
   return (
     <div>
-      {/* New Hero Section */}
       <section className="relative w-full overflow-hidden">
         <Carousel
           opts={{ loop: true }}
@@ -308,7 +306,6 @@ export function Home() {
 
         <div className="py-12 px-5 md:px-8">
           <div className="relative h-full flex flex-col max-w-7xl mx-auto">
-            {/* Server Logo and Status */}
             <div className="flex items-center justify-between gap-2 ">
               <img
                 src="/assets/logo/rails-n-sails-logo.webp"
@@ -331,7 +328,6 @@ export function Home() {
 
             <div className="flex-1 flex items-end min-h-148">
               <div className="space-y-6 pt-12">
-                {/* Tagline */}
                 <h1 className="max-w-4xl text-5xl md:text-5xl lg:text-6xl font-bold text-white drop-shadow-lg">
                   Build <span className="text-primary">Big</span>. Automate{" "}
                   <span className="text-primary">Everything</span>.
@@ -344,7 +340,6 @@ export function Home() {
                   airships, every idea has a place here.
                 </p>
 
-                {/* CTA */}
                 <div className="flex flex-wrap gap-x-4 gap-y-2">
                   {!user ? (
                     <Button size="lg" className="text-lg" asChild>
@@ -376,7 +371,6 @@ export function Home() {
         </div>
       </section>
 
-      {/* Features Section */}
       <section className="relative -mt-px py-12 px-5 md:px-8 bg-background">
         <div className="max-w-7xl mx-auto">
           <div
@@ -398,7 +392,6 @@ export function Home() {
               <Card key={index} className="overflow-hidden border-border pt-0">
                 <div className="p-2">
                   <div className="relative aspect-video">
-                    {/* Background Image */}
                     <div
                       className="absolute inset-0 bg-cover bg-center rounded-lg"
                       style={{
@@ -406,10 +399,8 @@ export function Home() {
                       }}
                     />
 
-                    {/* Dark Overlay */}
                     <div className="absolute inset-0 bg-black/70 rounded-lg" />
 
-                    {/* Feature Icon */}
                     <div className="absolute top-2 left-2">
                       <img
                         src={feature.icon}
@@ -433,7 +424,6 @@ export function Home() {
         </div>
       </section>
 
-      {/* Server Metrics Section */}
       <section id="learn-more" className="py-16 px-5 md:px-8 bg-zinc-950">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col gap-3 items-center mb-12">
@@ -477,7 +467,6 @@ export function Home() {
         </div>
       </section>
 
-      {/* Modpack Section */}
       <section className="py-16 px-5 md:px-8 bg-background">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-12">
@@ -509,7 +498,6 @@ export function Home() {
               const IconComponent = category.icon;
               return (
                 <div key={categoryIndex} className="flex flex-col gap-4">
-                  {/* Category Header */}
                   <div className="flex items-center gap-2">
                     <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center">
                       <IconComponent className="size-5 text-primary" />
@@ -520,7 +508,6 @@ export function Home() {
                     </h3>
                   </div>
 
-                  {/* Mods List */}
                   <div className="flex flex-col gap-3">
                     {category.mods.map((mod, modIndex) => (
                       <a
@@ -551,11 +538,9 @@ export function Home() {
         </div>
       </section>
 
-      {/* Economy Features Section */}
       <section className="py-16 px-5 md:px-8 bg-zinc-950">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-16">
-            {/* Left Side - Content */}
             <div className="flex-1 flex flex-col gap-8">
               <div className="flex flex-col gap-3">
                 <h2 className="text-4xl md:text-5xl font-semibold text-foreground">
@@ -568,7 +553,6 @@ export function Home() {
                 </p>
               </div>
 
-              {/* Features Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-8">
                 {ECONOMY_FEATURES.map((feature, index) => {
                   const IconComponent = feature.icon;
@@ -593,7 +577,6 @@ export function Home() {
               </div>
             </div>
 
-            {/* Right Side - Image */}
             <div className="w-full flex-1">
               <div className="relative w-full aspect-square">
                 <img
@@ -609,7 +592,6 @@ export function Home() {
 
       <SkinApiPromo />
 
-      {/* Call to Action Section */}
       <section className="bg-muted py-16 px-5 md:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="flex w-full flex-col items-center justify-between gap-8 text-center md:flex-row md:text-left">

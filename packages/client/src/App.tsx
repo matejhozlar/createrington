@@ -19,12 +19,6 @@ import { SidebarProvider } from "./components/ui/sidebar";
 import { LoadingScreen } from "@/components/query-states";
 import { AdminPlayersProvider } from "./contexts/admin";
 
-// Lazy-loaded routes are code-split. Vite creates a chunk per lazy() call, so
-// a logged-out visitor hitting `/` never downloads the admin or
-// puppeteer-render bundles. `Home` stays eagerly imported above so the
-// first-paint experience has no Suspense fallback.
-
-// Puppeteer render targets (bot-only, not in user navigation)
 const CompareRender = lazyNamed(
   () => import("./features/render/CompareRender"),
   "CompareRender",
@@ -50,13 +44,11 @@ const RecordsRender = lazyNamed(
   "RecordsRender",
 );
 
-// SSO consent screen (standalone, no app shell)
 const Authorize = lazyNamed(
   () => import("./features/auth/Authorize"),
   "Authorize",
 );
 
-// Public / informational pages
 const Rules = lazyNamed(() => import("./features/rules/Rules"), "Rules");
 const PrivacyPolicy = lazyNamed(
   () => import("./features/legal/PrivacyPolicy"),
@@ -123,7 +115,6 @@ const AnnouncementTable = import.meta.env.DEV
     )
   : null;
 
-// Protected user pages
 const Settings = lazyNamed(
   () => import("./features/settings/Settings"),
   "Settings",
@@ -149,11 +140,9 @@ const WorkshopPack = lazyNamed(
   "WorkshopPack",
 );
 
-// Server pages
 const ServerChat = lazyNamed(() => import("./features/chat"), "ServerChat");
 const ChatRedirect = lazyNamed(() => import("./features/chat"), "ChatRedirect");
 
-// Admin feature
 const AdminLogs = lazyNamed(
   () => import("./features/admin/AdminLogs"),
   "AdminLogs",
@@ -288,7 +277,6 @@ const OwnerAdmins = lazyNamed(
   "OwnerAdmins",
 );
 
-// Admin chat widget: gated on isAdmin below so non-admins never download it.
 const AdminChat = lazyNamed(() => import("./features/admin-chat"), "AdminChat");
 const AdminChatProvider = lazy(() =>
   import("./contexts/admin-chat/AdminChatProvider").then((m) => ({
@@ -296,7 +284,6 @@ const AdminChatProvider = lazy(() =>
   })),
 );
 
-/** Scrolls the window to the top whenever the route pathname changes. */
 function ScrollToTop() {
   const { pathname } = useLocation();
 
@@ -307,9 +294,6 @@ function ScrollToTop() {
   return null;
 }
 
-// Admin chat renders globally but only for admins. Gating here (instead of
-// the component returning null) means non-admins never download the chat
-// bundle at all.
 function AdminChatGate() {
   const { user } = useAuth();
   if (!user?.isAdmin) return null;
@@ -335,12 +319,10 @@ function AdminChatBoundary({ children }: { children: ReactNode }) {
   );
 }
 
-/** Declares the full client-side route tree, including public, protected, and admin routes. */
 function AppContent() {
   return (
     <Suspense fallback={<LoadingScreen text="Loading..." />}>
       <Routes>
-        {/* Standalone full-screen route (no sidebar/footer), temporary */}
         <Route path="/ad" element={<Advertisement />} />
         {AnnouncementTable && (
           <Route
@@ -349,10 +331,8 @@ function AppContent() {
           />
         )}
 
-        {/* SSO consent screen (standalone, no sidebar/footer) */}
         <Route path="/authorize" element={<Authorize />} />
 
-        {/* Puppeteer render routes (no layout, screenshot targets) */}
         <Route path="/render/compare" element={<CompareRender />} />
         <Route path="/render/profile" element={<ProfileRender />} />
         <Route path="/render/activity" element={<ActivityRender />} />
@@ -437,11 +417,9 @@ function AppContent() {
             }
           />
 
-          {/* Full-screen Routes (no footer) */}
           <Route path="/chat" element={<ChatRedirect />} />
           <Route path="/chat/:serverSlug" element={<ServerChat />} />
 
-          {/* Admin Routes (no footer) */}
           <Route
             path="/admin/*"
             element={
@@ -532,7 +510,6 @@ function AppContent() {
             }
           />
 
-          {/* Owner-only Routes */}
           <Route
             path="/owner/*"
             element={
@@ -560,7 +537,6 @@ function AppContent() {
             }
           />
 
-          {/* 404 Route */}
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>
@@ -568,12 +544,6 @@ function AppContent() {
   );
 }
 
-/**
- * Root application component.
- *
- * Establishes the full provider hierarchy required across the app:
- * QueryClient → Auth → WebSocket → ServerData → PlayerData → Toast → Router
- */
 function App() {
   return (
     <QueryClientProvider client={queryClient}>

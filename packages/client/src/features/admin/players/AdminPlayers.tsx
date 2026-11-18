@@ -150,7 +150,6 @@ export function AdminPlayers() {
       return { count: 0, color: null, hasIssues: false };
     }
 
-    // Any bans (with or without strikes) → red; strikes-only → yellow.
     if (banCount > 0) {
       return { count: totalCount, color: "red" as const, hasIssues: true };
     }
@@ -262,7 +261,6 @@ export function AdminPlayers() {
 
   return (
     <div className="flex flex-1 flex-col gap-4">
-      {/* Header */}
       <AdminPageHeader
         trail={[
           { label: "Admin", href: "/admin/dashboard" },
@@ -309,7 +307,6 @@ export function AdminPlayers() {
           </div>
         ) : null}
 
-        {/* Filters & Search */}
         <Card className="gap-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
@@ -382,7 +379,6 @@ export function AdminPlayers() {
           </CardContent>
         </Card>
 
-        {/* Players Table */}
         <Card className="gap-0">
           <CardHeader className="border-b gap-0">
             <CardTitle>Players ({total.toLocaleString()})</CardTitle>
@@ -403,7 +399,6 @@ export function AdminPlayers() {
             />
           ) : (
             <>
-              {/* Table */}
               <CardContent className="px-0">
                 <DataTable
                   columns={columns}

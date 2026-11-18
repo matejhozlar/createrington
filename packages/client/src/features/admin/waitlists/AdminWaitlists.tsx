@@ -235,7 +235,6 @@ export function AdminWaitlists() {
 
   return (
     <div className="flex flex-1 flex-col gap-4">
-      {/* Header */}
       <AdminPageHeader
         trail={[
           { label: "Admin", href: "/admin/dashboard" },
@@ -282,10 +281,8 @@ export function AdminWaitlists() {
           </div>
         ) : null}
 
-        {/* Intake Settings */}
         <IntakeSettingsCard />
 
-        {/* Filters & Search */}
         <Card className="gap-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
@@ -332,7 +329,6 @@ export function AdminWaitlists() {
           </CardContent>
         </Card>
 
-        {/* Waitlist Table */}
         <Card className="gap-0">
           <CardHeader className="border-b gap-0">
             <CardTitle>Waitlist Entries ({total.toLocaleString()})</CardTitle>
@@ -376,7 +372,6 @@ export function AdminWaitlists() {
         </Card>
       </div>
 
-      {/* Modals */}
       {promoteModal.entry !== null && (
         <PromoteWaitlistModal
           open={promoteModal.open}

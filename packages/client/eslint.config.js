@@ -26,6 +26,7 @@ export default defineConfig([
       },
     },
     rules: {
+      "no-empty": ["error", { allowEmptyCatch: true }],
       "@typescript-eslint/no-misused-promises": [
         "error",
         { checksVoidReturn: { attributes: false } },

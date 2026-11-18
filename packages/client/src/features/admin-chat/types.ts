@@ -1,11 +1,5 @@
 import type { ChatActionRecord } from "./actions";
 
-/**
- * Models the admin can pin a chat session to. Must stay in sync with the
- * server-side allowlists (claude-automation `chat.routes.ts` worker, app
- * `admin-chat.routes.ts` proxy). Admin chat runs on the current Opus only;
- * claude-automation pins the effort.
- */
 export const ADMIN_CHAT_MODELS = ["claude-opus-5-5"] as const;
 export type AdminChatModel = (typeof ADMIN_CHAT_MODELS)[number];
 export const DEFAULT_ADMIN_CHAT_MODEL: AdminChatModel = "claude-opus-5-5";
@@ -36,11 +30,6 @@ export interface ChatMessage {
   actions?: ChatActionRecord[];
 }
 
-/**
- * pageContext passed to the proxy on every start/send. Gives Claude enough
- * to say "you're already on /admin/players, click the Ban button on the
- * row" instead of guessing where features live.
- */
 export interface PageContext {
   type: "admin-chat" | "admin" | "page";
   owner: "Createrington";
@@ -59,8 +48,6 @@ export interface RepoSuggestion {
 }
 
 export interface MentionState {
-  /** Index of the `@` trigger in the input string. */
   start: number;
-  /** Text typed after `@`, before the cursor. */
   query: string;
 }

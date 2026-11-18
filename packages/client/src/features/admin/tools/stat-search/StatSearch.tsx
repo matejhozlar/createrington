@@ -41,7 +41,6 @@ const CATEGORY_KEYS = [
   "minecraft:custom",
 ] as const;
 
-/** Minimum total count before a zero-in-one-category row is highlighted */
 const SUSPICIOUS_THRESHOLD = 10;
 
 export function StatSearch() {
@@ -174,7 +173,6 @@ export function StatSearch() {
 
   return (
     <div className="flex flex-1 flex-col gap-4">
-      {/* Header */}
       <AdminPageHeader
         trail={[
           { label: "Admin", href: "/admin/dashboard" },
@@ -184,7 +182,6 @@ export function StatSearch() {
       />
 
       <div className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-4 px-4 pb-4">
-        {/* Search Controls */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
@@ -197,7 +194,6 @@ export function StatSearch() {
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
-            {/* Item search */}
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-muted-foreground">
                 Item
@@ -212,7 +208,6 @@ export function StatSearch() {
                   }}
                   onFocus={() => setShowSuggestions(true)}
                   onBlur={() => {
-                    // Delay to allow click on suggestion
                     setTimeout(() => setShowSuggestions(false), 200);
                   }}
                   inputClassName="pr-9"
@@ -227,7 +222,6 @@ export function StatSearch() {
                     </button>
                   )}
 
-                  {/* Autocomplete dropdown */}
                   {showSuggestions &&
                     debouncedItemInput.length >= 2 &&
                     itemsQuery.data &&
@@ -268,7 +262,6 @@ export function StatSearch() {
               )}
             </div>
 
-            {/* Category toggles */}
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-muted-foreground">
                 Categories to compare
@@ -295,7 +288,6 @@ export function StatSearch() {
               </div>
             </div>
 
-            {/* Active search summary */}
             {selectedItem && categories.length > 0 && (
               <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                 <span>Comparing</span>
@@ -319,7 +311,6 @@ export function StatSearch() {
           </CardContent>
         </Card>
 
-        {/* Results */}
         <Card className="gap-0">
           <CardHeader className="gap-0 border-b">
             <CardTitle>Results</CardTitle>

@@ -12,7 +12,6 @@ const AT_BOTTOM_PX = 4;
 
 interface MessageListProps {
   messages: ChatMessage[];
-  /** Whether a send is in-flight but no assistant content has arrived yet. */
   awaitingReply: boolean;
   navigate: (to: string) => void;
   layout: ChatLayout;
@@ -31,11 +30,6 @@ function pinToBottom(
   pinnedTop.current = el.scrollTop === before ? null : el.scrollTop;
 }
 
-/**
- * Scrollable message list with auto-scroll on new content. If the admin
- * has scrolled up to read history, new messages don't yank them down;
- * instead a "jump to latest" pill appears.
- */
 export const MessageList = memo(function MessageList({
   messages,
   awaitingReply,
@@ -68,8 +62,6 @@ export const MessageList = memo(function MessageList({
     el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   };
 
-  // Track whether the user is near the bottom. 64px tolerance so a small
-  // drift (e.g. an expanding code block) doesn't flip to "scrolled up".
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -130,7 +122,6 @@ export const MessageList = memo(function MessageList({
     if (el && atBottomRef.current) pinToBottom(el, pinnedTopRef);
   }, [layout]);
 
-  // On first mount, snap to bottom without animation.
   useEffect(() => {
     scrollToBottom("auto");
   }, []);

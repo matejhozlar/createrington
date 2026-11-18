@@ -110,9 +110,7 @@ function readPending(key: string): string | null {
 function clearPending(key: string): void {
   try {
     sessionStorage.removeItem(key);
-  } catch {
-    // ignore
-  }
+  } catch {}
 }
 
 function applyInsertedComponents(
@@ -131,10 +129,6 @@ export function EmbedBuilder() {
   const [focused, setFocused] = useState<FocusTarget | null>(null);
   const [presetsOpen, setPresetsOpen] = useState(false);
 
-  // Click handlers for the preview's "+ add field" and "+ add button"
-  // affordances. We handle them here (not via a focus-driven useEffect)
-  // so each click is an explicit, non-batched mutation tied to the user
-  // action.
   const handleEdit = (target: FocusTarget) => {
     if (target === "fields:add") {
       if (builder.data.fields.length >= 25) return;

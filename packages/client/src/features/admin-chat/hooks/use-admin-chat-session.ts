@@ -24,11 +24,6 @@ interface UseAdminChatSessionArgs {
 interface UseAdminChatSessionResult {
   sessionId: number | null;
   sessionActive: boolean;
-  /**
-   * The model the active (or last) session is pinned to. `null` for legacy
-   * sessions pinned to a model the picker no longer offers, or created before
-   * the picker landed; we don't surface those as an explicit value.
-   */
   activeModel: AdminChatModel | null;
   messages: ChatMessage[];
   starting: boolean;
@@ -39,11 +34,6 @@ interface UseAdminChatSessionResult {
   end: () => Promise<void>;
 }
 
-/**
- * Encapsulates the admin-chat session lifecycle: feature-flag/session
- * bootstrap, history load, SSE subscription, optimistic send, and
- * end-session. Keeps AdminChat.tsx a thin shell.
- */
 export function useAdminChatSession({
   isAdmin,
   open,
@@ -57,7 +47,6 @@ export function useAdminChatSession({
   const [sending, setSending] = useState(false);
   const [awaitingReply, setAwaitingReply] = useState(false);
 
-  /** Snapshot of the admin's current page, sent with every start/send. */
   const pageContext = useCallback(
     (type: PageContext["type"]): PageContext => ({
       type,
@@ -72,17 +61,12 @@ export function useAdminChatSession({
     [location.pathname, location.search],
   );
 
-  // Check for existing session on drawer open
   useEffect(() => {
     if (!open || !isAdmin) return;
     fetchSessionStatus()
       .then((data) => {
         const nextId = data.active ? data.sessionId : data.lastSessionId;
         if (!nextId) return;
-        // Only tear down message state when the session ID is actually
-        // changing: reopening the drawer on the same session would
-        // otherwise flicker between empty → messages as the stream
-        // refills.
         setSessionId((prev) => {
           if (prev !== nextId) setMessages([]);
           return nextId;
@@ -94,12 +78,6 @@ export function useAdminChatSession({
       .catch(console.error);
   }, [open, isAdmin]);
 
-  /**
-   * Merge one or a batch of incoming messages into state by id. Streaming
-   * rows update in place (same id, growing content); new rows append.
-   * Also swaps out optimistic user messages (id < 0) once the server's
-   * copy of the same content arrives.
-   */
   const mergeMessages = useCallback((incoming: ChatMessage[]): void => {
     if (incoming.length === 0) return;
     setMessages((prev) => {
@@ -107,10 +85,6 @@ export function useAdminChatSession({
         prev.map((m) => [m.id, m] as const),
       );
       for (const m of incoming) {
-        // SSE message events don't include the actions relation (Prisma
-        // update() returns only scalar fields); history load does. When
-        // overwriting a message, preserve whatever actions we had if the
-        // incoming copy doesn't carry its own.
         const prior = byId.get(m.id);
         const next: ChatMessage = m.actions
           ? m
@@ -139,17 +113,11 @@ export function useAdminChatSession({
       });
       return merged;
     });
-    // Any assistant content arriving clears the awaiting flag.
     if (incoming.some((m) => m.role === "assistant" && m.content.length > 0)) {
       setAwaitingReply(false);
     }
   }, []);
 
-  /**
-   * Append a live MCP-tool action record to its parent message (by
-   * chatMessageId). Dedupes by record id so an SSE event that races a
-   * history refetch doesn't double-render a card.
-   */
   const attachAction = useCallback((record: ChatActionRecord): void => {
     setMessages((prev) => {
       let changed = false;
@@ -164,7 +132,6 @@ export function useAdminChatSession({
     });
   }, []);
 
-  // Load history once + open the SSE stream.
   useEffect(() => {
     if (!sessionId || !open) return;
     const abort = new AbortController();
@@ -178,9 +145,7 @@ export function useAdminChatSession({
         if (data.sessionActive !== undefined) {
           setSessionActive(data.sessionActive);
         }
-      } catch {
-        // Non-fatal: live stream will still surface new messages.
-      }
+      } catch {}
 
       if (cancelled) return;
       try {
@@ -221,8 +186,6 @@ export function useAdminChatSession({
         setActiveModel(isAdminChatModel(data.model) ? data.model : null);
         setMessages([]);
         if (prefillMessage) {
-          // Optimistic user bubble + fire-and-forget send. The new SSE
-          // stream opened by the sessionId effect will pick up the reply.
           const trimmed = prefillMessage.trim();
           if (trimmed) {
             const optimisticId = -Date.now();
@@ -259,12 +222,6 @@ export function useAdminChatSession({
       const trimmed = message.trim();
       if (!trimmed || !sessionId) return;
       setSending(true);
-      // Add the optimistic bubble BEFORE the POST. With SSE the real
-      // message can arrive before the POST's await resolves; if we added
-      // optimistic after, the SSE dedup pass has nothing to dedup against
-      // and both end up in state. Negative id so it can't collide with a
-      // DB sequence; mergeMessages swaps it out when the server copy
-      // arrives with the same content.
       const optimisticId = -Date.now();
       setMessages((prev) => [
         ...prev,
@@ -286,8 +243,6 @@ export function useAdminChatSession({
         });
       } catch (error) {
         console.error("[admin-chat] Failed to send message:", error);
-        // POST failed: drop the optimistic so the admin doesn't see a
-        // ghost message that never actually reached the backend.
         setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
         setAwaitingReply(false);
       } finally {

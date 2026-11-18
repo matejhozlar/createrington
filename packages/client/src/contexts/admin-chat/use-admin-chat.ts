@@ -2,7 +2,6 @@ import { useContext } from "react";
 import { AdminChatContext } from "./context";
 import type { AdminChatContextType } from "./types";
 
-// Safe defaults for the window before the lazy-loaded provider mounts.
 const NO_PROVIDER_DEFAULT: AdminChatContextType = {
   enabled: false,
   bubbleVisible: false,
