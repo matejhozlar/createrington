@@ -1,6 +1,6 @@
 import { initTRPC } from "@trpc/server";
 import type { Context } from "./context";
-import { trpcError } from "@/trpc/utils";
+import { mapDomainError, trpcError } from "@/trpc/utils";
 import { AuthRole } from "@createrington/shared/auth";
 import { adminStatusService } from "@/services/auth/admin-status/admin-status.service";
 import { httpLogger, colorDuration } from "@/http-logger";
@@ -38,7 +38,18 @@ const loggingMiddleware = middleware(async ({ ctx, path, type, next }) => {
   return result;
 });
 
-const baseProcedure = t.procedure.use(loggingMiddleware);
+const domainErrorMiddleware = middleware(async ({ next }) => {
+  const result = await next();
+  if (!result.ok) {
+    const mapped = mapDomainError(result.error);
+    if (mapped) throw mapped;
+  }
+  return result;
+});
+
+const baseProcedure = t.procedure
+  .use(loggingMiddleware)
+  .use(domainErrorMiddleware);
 
 export const publicProcedure = baseProcedure;
 

@@ -3,11 +3,12 @@ import { TRPCError } from "@trpc/server";
 
 vi.mock("@/db", () => ({}));
 
-import { AppError } from "@/errors";
+import { AppError, NotFoundError } from "@/errors";
+import { NotFoundError as DbNotFoundError } from "@/db/utils/errors";
 import {
   findOrThrow,
   paginateQuery,
-  rethrowTrpc,
+  mapDomainError,
   sortDirection,
 } from "@/trpc/utils";
 
@@ -122,18 +123,49 @@ describe("paginateQuery", () => {
   });
 });
 
-describe("rethrowTrpc", () => {
-  it("maps a 503 AppError to SERVICE_UNAVAILABLE", () => {
-    const error = new AppError("CurseForge is holding this server off", 503);
+describe("mapDomainError", () => {
+  const wrapped = (cause: Error) =>
+    new TRPCError({ code: "INTERNAL_SERVER_ERROR", cause });
 
-    expect(() => rethrowTrpc(error)).toThrow(
-      expect.objectContaining({ code: "SERVICE_UNAVAILABLE", cause: error }),
-    );
+  it("maps an AppError to the code of its status", () => {
+    const cause = new AppError("CurseForge is holding this server off", 503);
+
+    expect(mapDomainError(wrapped(cause))).toMatchObject({
+      code: "SERVICE_UNAVAILABLE",
+      message: "CurseForge is holding this server off",
+      cause,
+    });
   });
 
-  it("passes an error that is no AppError through unchanged", () => {
-    const error = new Error("boom");
+  it("maps an AppError NotFoundError to NOT_FOUND", () => {
+    expect(
+      mapDomainError(wrapped(new NotFoundError("Player not found"))),
+    ).toMatchObject({ code: "NOT_FOUND", message: "Player not found" });
+  });
 
-    expect(() => rethrowTrpc(error)).toThrow(error);
+  it("maps a missing database row to NOT_FOUND", () => {
+    const cause = new DbNotFoundError("Player", { id: 7 });
+
+    expect(mapDomainError(wrapped(cause))).toMatchObject({
+      code: "NOT_FOUND",
+      message: cause.message,
+    });
+  });
+
+  it("leaves an AppError without a client status as an internal error", () => {
+    expect(mapDomainError(wrapped(new AppError("broken", 500)))).toBeNull();
+  });
+
+  it("leaves an unknown error as an internal error", () => {
+    expect(mapDomainError(wrapped(new Error("boom")))).toBeNull();
+  });
+
+  it("leaves a TRPCError a procedure threw on purpose alone", () => {
+    const error = new TRPCError({
+      code: "CONFLICT",
+      cause: new AppError("ignored", 404),
+    });
+
+    expect(mapDomainError(error)).toBeNull();
   });
 });

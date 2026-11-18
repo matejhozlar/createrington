@@ -2,7 +2,7 @@ import { z } from "zod";
 import { ADMIN_REASON_MAX_LENGTH } from "@createrington/shared/admin-reason";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { balanceRepo, playerBalanceRepo, playerRepo } from "@/db";
-import { parsePlayerId, rethrowTrpc, trpcError } from "@/trpc/utils";
+import { parsePlayerId, trpcError } from "@/trpc/utils";
 
 const BALANCE_ADJUST_MODES = ["add", "remove", "set"] as const;
 const MAX_ADJUSTMENT = 1_000_000_000;
@@ -99,7 +99,7 @@ export const balanceRouter = router({
             "The player doesn't have enough balance to remove that much",
           );
         }
-        rethrowTrpc(err);
+        throw err;
       }
     }),
 

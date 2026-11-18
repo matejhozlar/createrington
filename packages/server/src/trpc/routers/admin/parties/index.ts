@@ -3,7 +3,7 @@ import { groupClaimBlocks } from "@/services/party/claim-blocks";
 import { Q } from "@/db";
 import { isPartyPurgeAllowed, partyPurgeService } from "@/services/party";
 import { adminProcedure, router } from "@/trpc/trpc";
-import { findOrThrow, id, rethrowTrpc, trpcError } from "@/trpc/utils";
+import { findOrThrow, id, trpcError } from "@/trpc/utils";
 import { mcUuid } from "@/utils/zod-schemas";
 
 export const adminPartiesRouter = router({
@@ -115,13 +115,9 @@ export const adminPartiesRouter = router({
           "Purging parties only runs on the production deployment, which owns the Minecraft server",
         );
       }
-      try {
-        return await partyPurgeService.purge(input.serverId, {
-          discordId: ctx.user.discordId,
-          username: ctx.user.minecraftUsername,
-        });
-      } catch (error) {
-        rethrowTrpc(error);
-      }
+      return await partyPurgeService.purge(input.serverId, {
+        discordId: ctx.user.discordId,
+        username: ctx.user.minecraftUsername,
+      });
     }),
 });

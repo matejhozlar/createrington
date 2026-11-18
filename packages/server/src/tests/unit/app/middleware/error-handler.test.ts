@@ -20,6 +20,7 @@ vi.mock("@/db/utils", async () =>
 
 import { errorHandler } from "@/app/middleware/error-handler";
 import { AppError } from "@/errors";
+import { DatabaseError, NotFoundError as DbNotFoundError } from "@/db/utils";
 
 let server: Server;
 let baseUrl: string;
@@ -187,5 +188,47 @@ describe("errorHandler with request body errors", () => {
         query: { apiKey: "[REDACTED]", page: "2" },
       }),
     );
+  });
+});
+
+describe("errorHandler with database errors", () => {
+  async function answer(error: Error) {
+    const app = express();
+    app.get("/db", () => {
+      throw error;
+    });
+    app.use(errorHandler);
+    const local = app.listen(0);
+    await new Promise<void>((resolve) => local.once("listening", resolve));
+    const res = await fetch(
+      `http://127.0.0.1:${(local.address() as AddressInfo).port}/db`,
+    );
+    await new Promise<void>((resolve) => local.close(() => resolve()));
+    return { status: res.status, json: await res.json() };
+  }
+
+  it("answers 404 for a missing row and logs it as a client error", async () => {
+    const errorLog = vi.spyOn(logger, "error");
+    const warnLog = vi.spyOn(logger, "warn").mockImplementation(() => logger);
+
+    const error = new DbNotFoundError("Player", { id: 7 });
+
+    const { status, json } = await answer(error);
+
+    expect(status).toBe(404);
+    expect(json).toEqual(errorBody(404, error.message));
+    expect(errorLog).not.toHaveBeenCalled();
+    expect(warnLog).toHaveBeenCalledWith(
+      "Client Error:",
+      expect.objectContaining({ statusCode: 404 }),
+    );
+  });
+
+  it("answers 500 for any other database error", async () => {
+    vi.spyOn(logger, "error").mockImplementation(() => logger);
+
+    const { status } = await answer(new DatabaseError("connection reset"));
+
+    expect(status).toBe(500);
   });
 });

@@ -4,12 +4,7 @@ import { router, adminProcedure } from "@/trpc/trpc";
 import { Q, waitlistRepo } from "@/db";
 import { waitlistPromotionService } from "@/services/waitlist/promotion.service";
 import { ilikeContains } from "@/db/utils";
-import {
-  paginationInput,
-  paginateQuery,
-  sortDirection,
-  rethrowTrpc,
-} from "@/trpc/utils";
+import { paginationInput, paginateQuery, sortDirection } from "@/trpc/utils";
 import type { WaitlistEntryFilters } from "@createrington/shared/db";
 
 export const waitlistsRouter = router({
@@ -77,14 +72,10 @@ export const waitlistsRouter = router({
     })
     .input(z.object({ id: z.number().int().positive() }))
     .mutation(async ({ input, ctx }) => {
-      try {
-        return await waitlistPromotionService.promote(
-          input.id,
-          ctx.user.discordId,
-        );
-      } catch (error) {
-        rethrowTrpc(error);
-      }
+      return await waitlistPromotionService.promote(
+        input.id,
+        ctx.user.discordId,
+      );
     }),
 
   delete: adminProcedure

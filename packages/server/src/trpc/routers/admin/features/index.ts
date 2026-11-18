@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
-import { auditActor, rethrowTrpc, trpcError } from "@/trpc/utils";
+import { auditActor, trpcError } from "@/trpc/utils";
 import {
   featureFlagService,
   FeatureFlags,
@@ -33,21 +33,17 @@ export const adminFeaturesRouter = router({
         throw trpcError.forbidden("Only the owner can change this feature");
       }
 
-      try {
-        const flag = await featureFlagService.setEnabled(
-          input.name,
-          input.enabled,
-          input.description,
-        );
-        await Q.admin.log.action.logAction({
-          ...auditActor(ctx),
-          actionType: "feature_flag_set",
-          description: `${input.enabled ? "Enabled" : "Disabled"} feature "${input.name}"`,
-          metadata: { name: input.name, enabled: input.enabled },
-        });
-        return flag;
-      } catch (error) {
-        rethrowTrpc(error);
-      }
+      const flag = await featureFlagService.setEnabled(
+        input.name,
+        input.enabled,
+        input.description,
+      );
+      await Q.admin.log.action.logAction({
+        ...auditActor(ctx),
+        actionType: "feature_flag_set",
+        description: `${input.enabled ? "Enabled" : "Disabled"} feature "${input.name}"`,
+        metadata: { name: input.name, enabled: input.enabled },
+      });
+      return flag;
     }),
 });

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { router, userProcedure, middleware } from "@/trpc/trpc";
-import { trpcError, rethrowTrpc, id } from "@/trpc/utils";
+import { trpcError, id } from "@/trpc/utils";
 import { createRateLimit } from "@/trpc/middleware/rate-limit";
 import { workshopService } from "@/services/workshop/workshop.service";
 import { workshopModService } from "@/services/workshop/mods.service";
@@ -97,32 +97,22 @@ export const userWorkshopsRouter = router({
     .meta({ description: "Get a workshop with its visible mods by slug" })
     .input(z.object({ slug: z.string().min(1).max(100) }))
     .query(async ({ ctx, input }) => {
-      try {
-        const workshop = await workshopService.getVisibleWorkshopBySlug(
-          input.slug,
-        );
-        const mods = await workshopModService.getWorkshopMods(workshop.id);
-        return {
-          workshop: redactWorkshop(workshop),
-          mods: mods.map((m) => redactMod(m, ctx.user.discordId)),
-        };
-      } catch (error) {
-        rethrowTrpc(error);
-      }
+      const workshop = await workshopService.getVisibleWorkshopBySlug(
+        input.slug,
+      );
+      const mods = await workshopModService.getWorkshopMods(workshop.id);
+      return {
+        workshop: redactWorkshop(workshop),
+        mods: mods.map((m) => redactMod(m, ctx.user.discordId)),
+      };
     }),
 
   getMod: workshopProcedure
     .meta({ description: "Get a mod with its full project detail" })
     .input(z.object({ workshopModId: id() }))
     .query(async ({ ctx, input }) => {
-      try {
-        const detail = await workshopModService.getModDetail(
-          input.workshopModId,
-        );
-        return { ...detail, mod: redactMod(detail.mod, ctx.user.discordId) };
-      } catch (error) {
-        rethrowTrpc(error);
-      }
+      const detail = await workshopModService.getModDetail(input.workshopModId);
+      return { ...detail, mod: redactMod(detail.mod, ctx.user.discordId) };
     }),
 
   searchProjects: workshopProcedure
@@ -135,76 +125,56 @@ export const userWorkshopsRouter = router({
       }),
     )
     .query(async ({ input }) => {
-      try {
-        return await workshopSuggestionService.searchProjects(
-          input.workshopId,
-          input.query,
-          {
-            userVisible: true,
-          },
-        );
-      } catch (error) {
-        rethrowTrpc(error);
-      }
+      return await workshopSuggestionService.searchProjects(
+        input.workshopId,
+        input.query,
+        {
+          userVisible: true,
+        },
+      );
     }),
 
   mySuggestions: workshopProcedure
     .meta({ description: "Your own suggestions in a workshop, all statuses" })
     .input(z.object({ workshopId: id() }))
     .query(async ({ ctx, input }) => {
-      try {
-        const mods = await workshopModService.getMySuggestions(
-          input.workshopId,
-          ctx.user.discordId,
-        );
-        return mods.map((m) => redactMod(m, ctx.user.discordId));
-      } catch (error) {
-        rethrowTrpc(error);
-      }
+      const mods = await workshopModService.getMySuggestions(
+        input.workshopId,
+        ctx.user.discordId,
+      );
+      return mods.map((m) => redactMod(m, ctx.user.discordId));
     }),
 
   mySuggestBan: workshopProcedure
     .meta({ description: "Active block on your own suggestions, if any" })
     .input(z.object({ workshopId: id() }))
     .query(async ({ ctx, input }) => {
-      try {
-        const ban = await findSuggestBan(ctx.user.discordId, input.workshopId);
-        if (!ban) return null;
-        return {
-          global: ban.workshopId === null,
-          reason: ban.reason,
-          expiresAt: ban.expiresAt,
-        };
-      } catch (error) {
-        rethrowTrpc(error);
-      }
+      const ban = await findSuggestBan(ctx.user.discordId, input.workshopId);
+      if (!ban) return null;
+      return {
+        global: ban.workshopId === null,
+        reason: ban.reason,
+        expiresAt: ban.expiresAt,
+      };
     }),
 
   mySuggestionHistory: workshopProcedure
     .meta({ description: "Your suggestions across all visible workshops" })
     .query(async ({ ctx }) => {
-      try {
-        const mods = await workshopModService.getMySuggestionHistory(
-          ctx.user.discordId,
-        );
-        return mods.map((m) => redactMod(m, ctx.user.discordId));
-      } catch (error) {
-        rethrowTrpc(error);
-      }
+      const mods = await workshopModService.getMySuggestionHistory(
+        ctx.user.discordId,
+      );
+      return mods.map((m) => redactMod(m, ctx.user.discordId));
     }),
 
   myUpvotes: workshopProcedure
     .meta({ description: "IDs of mods you have upvoted" })
     .input(z.object({ workshopId: id() }))
     .query(async ({ ctx, input }) => {
-      try {
-        return await workshopSuggestionService.getMyUpvotes(
-          input.workshopId,
-          ctx.user.discordId,
-        );
-      } catch (error) {
-        rethrowTrpc(error);
-      }
+      return await workshopSuggestionService.getMyUpvotes(
+        input.workshopId,
+        ctx.user.discordId,
+      );
     }),
 
   upvoteMod: workshopProcedure
@@ -212,14 +182,10 @@ export const userWorkshopsRouter = router({
     .meta({ description: "Toggle your upvote on a mod" })
     .input(z.object({ workshopModId: id() }))
     .mutation(async ({ ctx, input }) => {
-      try {
-        return await workshopSuggestionService.toggleModUpvote(
-          input.workshopModId,
-          ctx.user.discordId,
-        );
-      } catch (error) {
-        rethrowTrpc(error);
-      }
+      return await workshopSuggestionService.toggleModUpvote(
+        input.workshopModId,
+        ctx.user.discordId,
+      );
     }),
 
   suggestMod: workshopProcedure
@@ -237,43 +203,31 @@ export const userWorkshopsRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      try {
-        const mod = await workshopSuggestionService.suggestMod(
-          input.workshopId,
-          ctx.user.discordId,
-          { projectId: input.projectId, note: input.note },
-        );
-        return redactMod(mod, ctx.user.discordId);
-      } catch (error) {
-        rethrowTrpc(error);
-      }
+      const mod = await workshopSuggestionService.suggestMod(
+        input.workshopId,
+        ctx.user.discordId,
+        { projectId: input.projectId, note: input.note },
+      );
+      return redactMod(mod, ctx.user.discordId);
     }),
 
   removeSuggestion: workshopProcedure
     .meta({ description: "Remove your own pending suggestion" })
     .input(z.object({ workshopModId: id() }))
     .mutation(async ({ ctx, input }) => {
-      try {
-        await workshopSuggestionService.removeSuggestion(
-          input.workshopModId,
-          ctx.user.discordId,
-        );
-        return { removed: true };
-      } catch (error) {
-        rethrowTrpc(error);
-      }
+      await workshopSuggestionService.removeSuggestion(
+        input.workshopModId,
+        ctx.user.discordId,
+      );
+      return { removed: true };
     }),
 
   listRejected: workshopProcedure
     .meta({ description: "Mods ruled out of a workshop, with reasons" })
     .input(z.object({ workshopId: id() }))
     .query(async ({ ctx, input }) => {
-      try {
-        const mods = await workshopModService.getRejectedMods(input.workshopId);
-        return mods.map((m) => redactMod(m, ctx.user.discordId));
-      } catch (error) {
-        rethrowTrpc(error);
-      }
+      const mods = await workshopModService.getRejectedMods(input.workshopId);
+      return mods.map((m) => redactMod(m, ctx.user.discordId));
     }),
 
   getPack: workshopProcedure
@@ -283,12 +237,8 @@ export const userWorkshopsRouter = router({
     })
     .input(z.object({ workshopId: id() }))
     .query(async ({ input }) => {
-      try {
-        return await workshopService.getPack(input.workshopId, {
-          userVisible: true,
-        });
-      } catch (error) {
-        rethrowTrpc(error);
-      }
+      return await workshopService.getPack(input.workshopId, {
+        userVisible: true,
+      });
     }),
 });

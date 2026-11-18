@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { idToObject } from "@/utils/player-identifier";
 import { AppError } from "@/errors";
+import { NotFoundError as DbNotFoundError } from "@/db/utils/errors";
 import type { OrderBy, OrderDirection } from "@/db/queries/query-builder";
 
 type TrpcCode = ConstructorParameters<typeof TRPCError>[0]["code"];
@@ -42,15 +43,24 @@ const APP_ERROR_TO_TRPC_CODE: Record<number, TrpcCode> = {
   503: "SERVICE_UNAVAILABLE",
 };
 
-export function rethrowTrpc(err: unknown): never {
-  if (err instanceof AppError) {
-    throw new TRPCError({
-      code: APP_ERROR_TO_TRPC_CODE[err.statusCode] ?? "INTERNAL_SERVER_ERROR",
-      message: err.message,
-      cause: err,
-    });
-  }
-  throw err;
+function domainErrorCode(cause: unknown): TrpcCode | undefined {
+  if (cause instanceof AppError)
+    return APP_ERROR_TO_TRPC_CODE[cause.statusCode];
+  if (cause instanceof DbNotFoundError) return "NOT_FOUND";
+  return undefined;
+}
+
+export function mapDomainError(error: TRPCError): TRPCError | null {
+  if (error.code !== "INTERNAL_SERVER_ERROR") return null;
+  const code = domainErrorCode(error.cause);
+  if (!code) return null;
+  const mapped = new TRPCError({
+    code,
+    message: error.message,
+    cause: error.cause,
+  });
+  mapped.stack = error.stack;
+  return mapped;
 }
 
 export function parsePlayerId(id: string) {

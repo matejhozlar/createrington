@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
-import { auditActor, id, rethrowTrpc } from "@/trpc/utils";
+import { auditActor, id } from "@/trpc/utils";
 import { workshopModService } from "@/services/workshop/mods.service";
 import { workshopReviewService } from "@/services/workshop/review.service";
 import type { WorkshopModListItem } from "@/services/workshop/mods.service";
@@ -129,17 +129,10 @@ export const sandboxModsRouter = router({
     })
     .input(z.object({ workshopId: id() }))
     .query(async ({ input }) => {
-      try {
-        const items = await workshopModService.getWorkshopMods(
-          input.workshopId,
-          {
-            statuses: [...SANDBOX_MOD_STATUSES],
-          },
-        );
-        return { mods: items.map(toSandboxMod) };
-      } catch (error) {
-        rethrowTrpc(error);
-      }
+      const items = await workshopModService.getWorkshopMods(input.workshopId, {
+        statuses: [...SANDBOX_MOD_STATUSES],
+      });
+      return { mods: items.map(toSandboxMod) };
     }),
 
   review: adminProcedure
@@ -154,23 +147,15 @@ export const sandboxModsRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      try {
-        const mod = await workshopReviewService.reviewMod(
-          input.workshopModId,
-          input.action,
-          ctx.user.discordId,
-          { allowedFrom: [...SANDBOX_MOD_STATUSES] },
-        );
-        await logModReview(
-          { ...auditActor(ctx), source: "sandbox" },
-          input,
-          mod,
-        );
-        const item = await workshopModService.getWorkshopModListItem(mod.id);
-        return { mod: toSandboxMod(item) };
-      } catch (error) {
-        rethrowTrpc(error);
-      }
+      const mod = await workshopReviewService.reviewMod(
+        input.workshopModId,
+        input.action,
+        ctx.user.discordId,
+        { allowedFrom: [...SANDBOX_MOD_STATUSES] },
+      );
+      await logModReview({ ...auditActor(ctx), source: "sandbox" }, input, mod);
+      const item = await workshopModService.getWorkshopModListItem(mod.id);
+      return { mod: toSandboxMod(item) };
     }),
 
   setEnvironment: adminProcedure
@@ -185,26 +170,22 @@ export const sandboxModsRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      try {
-        const project = await workshopReviewService.setProjectEnvironment(
-          input.curseforgeProjectId,
-          input.environment,
-        );
-        await logProjectEnvironment(
-          { ...auditActor(ctx), source: "sandbox" },
-          project,
-          input.environment,
-        );
-        return {
-          project: {
-            id: project.id,
-            environment: project.environment,
-            environmentSource: project.environmentSource,
-          },
-        };
-      } catch (error) {
-        rethrowTrpc(error);
-      }
+      const project = await workshopReviewService.setProjectEnvironment(
+        input.curseforgeProjectId,
+        input.environment,
+      );
+      await logProjectEnvironment(
+        { ...auditActor(ctx), source: "sandbox" },
+        project,
+        input.environment,
+      );
+      return {
+        project: {
+          id: project.id,
+          environment: project.environment,
+          environmentSource: project.environmentSource,
+        },
+      };
     }),
 
   setRequired: adminProcedure
@@ -214,23 +195,19 @@ export const sandboxModsRouter = router({
     })
     .input(z.object({ workshopModId: id(), required: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
-      try {
-        const { mod, changed } = await workshopReviewService.setModRequired(
-          input.workshopModId,
-          input.required,
+      const { mod, changed } = await workshopReviewService.setModRequired(
+        input.workshopModId,
+        input.required,
+      );
+      const item = await workshopModService.getWorkshopModListItem(mod.id);
+      if (changed) {
+        await logModRequired(
+          { ...auditActor(ctx), source: "sandbox" },
+          mod,
+          item.project.name,
         );
-        const item = await workshopModService.getWorkshopModListItem(mod.id);
-        if (changed) {
-          await logModRequired(
-            { ...auditActor(ctx), source: "sandbox" },
-            mod,
-            item.project.name,
-          );
-        }
-        return { mod: toSandboxMod(item) };
-      } catch (error) {
-        rethrowTrpc(error);
       }
+      return { mod: toSandboxMod(item) };
     }),
 
   setFile: adminProcedure
@@ -240,22 +217,18 @@ export const sandboxModsRouter = router({
     })
     .input(z.object({ workshopModId: id(), fileId: id().nullable() }))
     .mutation(async ({ ctx, input }) => {
-      try {
-        const { mod, changed } = await workshopReviewService.setModFile(
-          input.workshopModId,
-          input.fileId,
+      const { mod, changed } = await workshopReviewService.setModFile(
+        input.workshopModId,
+        input.fileId,
+      );
+      const item = await workshopModService.getWorkshopModListItem(mod.id);
+      if (changed) {
+        await logModFile(
+          { ...auditActor(ctx), source: "sandbox" },
+          mod,
+          item.project.name,
         );
-        const item = await workshopModService.getWorkshopModListItem(mod.id);
-        if (changed) {
-          await logModFile(
-            { ...auditActor(ctx), source: "sandbox" },
-            mod,
-            item.project.name,
-          );
-        }
-        return { mod: toSandboxMod(item) };
-      } catch (error) {
-        rethrowTrpc(error);
       }
+      return { mod: toSandboxMod(item) };
     }),
 });
