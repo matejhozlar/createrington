@@ -37,6 +37,7 @@ export function AdminServerDetail() {
   const serverData = serverQuery.data;
   const loading = serverQuery.isLoading;
   const error = serverQuery.error?.message ?? null;
+  const notFound = serverQuery.error?.data?.code === "NOT_FOUND";
 
   if (loading) {
     return (
@@ -48,7 +49,7 @@ export function AdminServerDetail() {
     );
   }
 
-  if (error) {
+  if (error && !notFound) {
     return (
       <ErrorState
         message={error}
