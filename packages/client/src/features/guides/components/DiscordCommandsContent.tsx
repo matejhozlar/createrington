@@ -36,7 +36,6 @@ function CommandEntry({ command }: { command: CommandData }) {
 
   return (
     <div className="rounded-lg border border-border bg-card/50 p-4">
-      {/* Header: syntax + cooldown */}
       <div className="flex items-center justify-between gap-3">
         <code className="text-sm font-bold text-primary">
           {buildSyntax(command.name, command.options)}
@@ -49,12 +48,10 @@ function CommandEntry({ command }: { command: CommandData }) {
         )}
       </div>
 
-      {/* Description */}
       <p className="text-sm text-muted-foreground mt-1.5">
         {command.description}
       </p>
 
-      {/* Top-level options */}
       {topOpts.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mt-3">
           {topOpts.map((o) => (
@@ -70,12 +67,10 @@ function CommandEntry({ command }: { command: CommandData }) {
         </div>
       )}
 
-      {/* Subcommands */}
       {subs.length > 0 && (
         <div className="mt-3 flex flex-col gap-1.5">
           {subs.map((sub) =>
             sub.type === 2 ? (
-              // Subcommand group
               (sub.options ?? [])
                 .filter((s) => s.type === 1)
                 .map((s) => (
@@ -128,10 +123,6 @@ function SubcommandRow({
   );
 }
 
-/**
- * Renders commands for a specific group name.
- * Used as guide step content: each group becomes its own step.
- */
 export function DiscordCommandsGroup({ group }: { group: string }) {
   const { data, isLoading, isError } = useQuery(
     trpc.public.discordCommands.list.queryOptions(),

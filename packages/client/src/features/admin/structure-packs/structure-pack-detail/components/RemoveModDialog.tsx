@@ -21,7 +21,6 @@ export function RemoveModDialog({
   packId,
   packMods,
 }: {
-  /** The mod to remove, or null to keep the dialog closed */
   target: RemoveTarget | null;
   onOpenChange: (open: boolean) => void;
   packId: number;
@@ -139,7 +138,6 @@ export function RemoveModDialog({
       contentClassName="sm:max-w-lg"
     >
       <div className="max-h-80 space-y-2 overflow-y-auto">
-        {/* Target mod, always removed */}
         <div className="flex items-center gap-3 rounded-md border border-destructive/50 bg-destructive/5 p-3 text-sm">
           <Trash2 className="size-4 shrink-0 text-destructive" />
           <div className="min-w-0 flex-1">
@@ -150,7 +148,6 @@ export function RemoveModDialog({
           </div>
         </div>
 
-        {/* Dependents warning: other pack mods that need this mod */}
         {checkRemoveDepsQuery.data &&
           checkRemoveDepsQuery.data.dependents.length > 0 && (
             <div className="flex items-start gap-3 rounded-md border border-yellow-500/50 bg-yellow-500/5 p-3 text-sm">

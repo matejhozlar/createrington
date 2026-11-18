@@ -39,8 +39,6 @@ export function MessageInput({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>): void => {
-    // When the mention menu is open, arrow keys + Enter/Tab drive it
-    // instead of navigating the textarea / submitting the message.
     if (mentions.mention && mentions.matches.length > 0) {
       if (e.key === "ArrowDown") {
         e.preventDefault();

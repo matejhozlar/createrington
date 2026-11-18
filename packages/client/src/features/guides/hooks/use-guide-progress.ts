@@ -17,9 +17,7 @@ export function useGuideProgress(slug: string) {
       setCurrentStepState(step);
       try {
         localStorage.setItem(`${STORAGE_PREFIX}${slug}`, String(step));
-      } catch {
-        // storage full or unavailable
-      }
+      } catch {}
     },
     [slug],
   );
@@ -28,9 +26,7 @@ export function useGuideProgress(slug: string) {
     setCurrentStepState(0);
     try {
       localStorage.removeItem(`${STORAGE_PREFIX}${slug}`);
-    } catch {
-      // ignore
-    }
+    } catch {}
   }, [slug]);
 
   return { currentStep, setCurrentStep, clearProgress } as const;

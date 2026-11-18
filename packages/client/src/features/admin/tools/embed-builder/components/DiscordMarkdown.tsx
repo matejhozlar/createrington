@@ -1,27 +1,6 @@
 import type { ReactNode } from "react";
 import { CUSTOM_EMOJI_SOURCE, customEmojiUrl } from "@/lib/discordEmoji";
 
-/**
- * Parses Discord-flavored markdown into React elements.
- *
- * Supported syntax (same subset Discord renders in embeds):
- *   ```lang\ncode\n```   - code block
- *   `code`               - inline code
- *   > line               - blockquote
- *   [text](url)          - link
- *   ***bold italic***    - bold + italic
- *   **bold**             - bold
- *   __underline__        - underline
- *   *italic* / _italic_  - italic
- *   ~~strikethrough~~    - strikethrough
- *   ||spoiler||          - spoiler (revealed text)
- *   <:name:id>           - custom emoji (image from the Discord CDN)
- *   # / ## / ### heading - heading (Discord supports up to h3 in embeds)
- *   - item / * item     - unordered list
- *   1. item              - ordered list
- *     - sub item         - nested list (indent 2+ spaces)
- */
-
 export interface MentionResolver {
   channels: Map<string, string>;
   roles: Map<string, string>;
@@ -46,8 +25,6 @@ const INLINE_RULES: Array<{
   pattern: RegExp;
   parse: (match: RegExpMatchArray) => InlineToken;
 }> = [
-  // Order matters: more specific patterns first
-  // Discord timestamps: <t:UNIX:FORMAT> or <t:UNIX>
   {
     pattern: /^<t:(\d+)(?::([tTdDfFR]))?>/,
     parse: (m) => ({
@@ -65,7 +42,6 @@ const INLINE_RULES: Array<{
       animated: m[1] === "a",
     }),
   },
-  // Discord mentions: <#channelId>, <@&roleId>
   {
     pattern: /^<#(\d+)>/,
     parse: (m) => ({ type: "channel_mention", id: m[1] }),
@@ -196,7 +172,6 @@ function tokeniseInline(text: string): InlineToken[] {
     }
 
     if (!matched) {
-      // Consume one character as plain text
       const last = tokens[tokens.length - 1];
       if (last?.type === "text") {
         last.content += remaining[0];
@@ -339,15 +314,14 @@ export function DiscordMarkdown({
   while (i < lines.length) {
     const line = lines[i];
 
-    // Code block: ```lang\n...\n```
     if (line.startsWith("```")) {
       const codeLines: string[] = [];
-      i++; // skip opening ```
+      i++;
       while (i < lines.length && !lines[i].startsWith("```")) {
         codeLines.push(lines[i]);
         i++;
       }
-      i++; // skip closing ```
+      i++;
       blocks.push(
         <pre
           key={blocks.length}
@@ -360,7 +334,6 @@ export function DiscordMarkdown({
       continue;
     }
 
-    // Heading: # / ## / ###
     const headingMatch = line.match(/^(#{1,3})\s+(.+)$/);
     if (headingMatch) {
       const level = headingMatch[1].length;
@@ -382,7 +355,6 @@ export function DiscordMarkdown({
       continue;
     }
 
-    // Blockquote: > text (collect consecutive > lines)
     if (line.startsWith("> ") || line === ">") {
       const quoteLines: string[] = [];
       while (
@@ -408,7 +380,6 @@ export function DiscordMarkdown({
       continue;
     }
 
-    // Unordered list: - item or * item (collect consecutive lines, with optional nested sub-items)
     if (/^[-*]\s+/.test(line)) {
       const items: { text: string; subItems: string[] }[] = [];
       while (i < lines.length) {
@@ -447,7 +418,6 @@ export function DiscordMarkdown({
       continue;
     }
 
-    // Ordered list: 1. item, 2. item, etc. (with optional nested sub-items)
     if (/^\d+\.\s+/.test(line)) {
       const items: { text: string; subItems: string[] }[] = [];
       while (i < lines.length) {
@@ -486,14 +456,12 @@ export function DiscordMarkdown({
       continue;
     }
 
-    // Empty line → small spacer
     if (line.trim() === "") {
       blocks.push(<div key={blocks.length} className="h-1" />);
       i++;
       continue;
     }
 
-    // Normal line with inline markdown
     blocks.push(
       <div key={blocks.length}>{renderInline(line, mentionResolver)}</div>,
     );

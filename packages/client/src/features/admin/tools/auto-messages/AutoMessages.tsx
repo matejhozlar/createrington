@@ -140,7 +140,6 @@ export function AutoMessages() {
                   key={config.id}
                   className="rounded-lg border border-border bg-card"
                 >
-                  {/* Config header */}
                   <div
                     className="flex cursor-pointer items-center gap-3 p-4 transition-colors hover:bg-sidebar-accent/30"
                     onClick={() => setExpandedId(isExpanded ? null : config.id)}
@@ -204,7 +203,6 @@ export function AutoMessages() {
                     </div>
                   </div>
 
-                  {/* Expanded messages list */}
                   {isExpanded && (
                     <div className="border-t border-border">
                       <div className="flex items-center justify-between p-4 pb-2">

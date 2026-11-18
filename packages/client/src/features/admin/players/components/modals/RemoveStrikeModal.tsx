@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 interface RemoveStrikeModalProps {
   open: boolean;
   onClose: () => void;
-  playerId: string; // minecraftUuid
+  playerId: string;
   strikeId: number;
 }
 

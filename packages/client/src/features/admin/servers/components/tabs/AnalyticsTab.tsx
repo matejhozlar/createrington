@@ -56,7 +56,6 @@ export function AnalyticsTab({ serverId }: AnalyticsTabProps) {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Time Range Selector */}
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">Analytics</h3>
         <Select
@@ -76,7 +75,6 @@ export function AnalyticsTab({ serverId }: AnalyticsTabProps) {
         </Select>
       </div>
 
-      {/* Summary Cards */}
       {summary && (
         <div className="grid gap-4 md:grid-cols-3">
           <Card>
@@ -109,7 +107,6 @@ export function AnalyticsTab({ serverId }: AnalyticsTabProps) {
         </div>
       )}
 
-      {/* Activity Chart */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Daily Activity</CardTitle>
@@ -130,7 +127,6 @@ export function AnalyticsTab({ serverId }: AnalyticsTabProps) {
         </CardContent>
       </Card>
 
-      {/* Heatmap */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Activity Heatmap</CardTitle>

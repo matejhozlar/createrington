@@ -41,7 +41,6 @@ import { trpc } from "@/lib/trpc";
 
 type SortField = "performedAt" | "actionType" | "adminUsername";
 
-/** Build a human-readable description for an audit log entry */
 function getDescription(action: {
   description: string | null;
   targetPlayerName: string | null;
@@ -201,7 +200,6 @@ export function AdminLogs() {
 
   return (
     <div className="flex flex-1 flex-col gap-4">
-      {/* Header */}
       <AdminPageHeader
         trail={[
           { label: "Admin", href: "/admin/dashboard" },
@@ -210,7 +208,6 @@ export function AdminLogs() {
       />
 
       <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
-        {/* Filters & Search */}
         <Card className="gap-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
@@ -255,7 +252,6 @@ export function AdminLogs() {
           </CardContent>
         </Card>
 
-        {/* Logs Table */}
         <Card className="gap-0">
           <CardHeader className="border-b gap-0">
             <CardTitle>Audit Logs ({total.toLocaleString()})</CardTitle>
@@ -307,7 +303,6 @@ export function AdminLogs() {
         </Card>
       </div>
 
-      {/* Metadata Dialog */}
       <Dialog
         open={metadataAction !== null}
         onOpenChange={(open) => {

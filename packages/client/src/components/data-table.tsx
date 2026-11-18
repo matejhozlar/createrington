@@ -278,8 +278,6 @@ export function DataTable<T>({
   const flexMinWidths = columns
     .filter((column) => !column.width)
     .map((column) => column.minWidth ?? FLEX_COLUMN_MIN_WIDTH);
-  // Flexible columns split the remainder equally under table-fixed, so the
-  // scroll threshold must fit every flexible column at the largest min.
   const minWidth =
     fixedWidth +
     (flexMinWidths.length > 0

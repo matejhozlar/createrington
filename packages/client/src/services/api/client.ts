@@ -10,17 +10,6 @@ interface ApiErrorResponse {
   [key: string]: unknown;
 }
 
-/**
- * Base API client configuration
- *
- * Features:
- * - Automatic JSON parsing
- * - Request/response interceptors
- * - Authentication header injection (in-memory token)
- * - Automatic 401 → silent refresh → retry
- * - Request timeout (30s default)
- * - Retry on network failures (3 attempts)
- */
 class ApiClient {
   private client: KyInstance;
 
@@ -64,9 +53,7 @@ class ApiClient {
                 const errorBody = await response.json<ApiErrorResponse>();
                 error.message = errorBody.message || error.message;
                 (error as Error & { code?: string }).code = errorBody.code;
-              } catch {
-                // Body is not JSON, use default message
-              }
+              } catch {}
             }
 
             if (import.meta.env.DEV) {
@@ -133,7 +120,6 @@ class ApiClient {
       .json<T>();
   }
 
-  /** Get raw response: useful for downloads or blobs. */
   async getRaw(
     endpoint: string,
     params?: Record<string, string | number | boolean>,
@@ -167,7 +153,6 @@ class ApiClient {
     );
   }
 
-  /** Get the underlying Ky instance for advanced usage. */
   getClient(): KyInstance {
     return this.client;
   }

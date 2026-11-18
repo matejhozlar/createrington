@@ -32,10 +32,6 @@ interface Props {
   onClose: () => void;
 }
 
-// Sentinel select values: Radix Select can't hold an empty string, so
-// reserved tokens stand in for "nothing selected" (no role ping, no
-// cooldown) and "fall back to the server default (announcements)", and
-// are translated back at submit.
 const NONE = "__none__";
 const DEFAULT_CHANNEL = "__default__";
 
@@ -48,8 +44,6 @@ export function CreatePromptModal({ open, onClose }: Props) {
     }),
   );
 
-  // Reuse the embed-builder endpoints: they already walk config.discord
-  // and expose channels grouped by category plus a flat role list.
   const channelsQuery = useQuery(trpc.admin.embeds.channels.queryOptions());
   const rolesQuery = useQuery(trpc.admin.embeds.roles.queryOptions());
 

@@ -31,14 +31,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const data = await response.json();
 
       if (data.success && data.data?.url) {
-        // Save state for CSRF verification
         if (data.data.state) {
           sessionStorage.setItem("oauth_state", data.data.state);
         }
 
-        // Save current path (including query and hash) so we can redirect back
-        // after login. The query matters for deep links like
-        // /authorize?state=..., the hash for /admin/changelog#v1.66.0
         sessionStorage.setItem(
           "oauth_redirect",
           window.location.pathname +
@@ -57,7 +53,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, []);
 
   const handleCallback = useCallback((code: string, state?: string) => {
-    // Verify state parameter for CSRF protection
     const savedState = sessionStorage.getItem("oauth_state");
     if (state && savedState && state !== savedState) {
       sessionStorage.removeItem("oauth_state");
@@ -76,7 +71,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
       .then((response) => response.json())
       .then((data) => {
         if (data.success && data.data?.accessToken) {
-          // Access token lives in memory only: refresh token stays in an httpOnly cookie.
           setAccessToken(data.data.accessToken);
           setUser(data.data.user);
 
@@ -88,8 +82,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
           return;
         }
 
-        // The error toast is shown on the next page load by the URL-error
-        // effect below, since this redirect unloads the current document.
         const reason =
           data.error?.code === "UNVERIFIED" ? "unverified" : "auth_failed";
         window.location.href = `/?error=${reason}`;
@@ -129,17 +121,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
     clearSession();
   }, [clearSession]);
 
-  /**
-   * Silently refresh the access token using the httpOnly refresh cookie.
-   * On mount, this replaces the old getCurrentUser() + localStorage approach.
-   */
   const silentRefresh = useCallback(() => {
     return refreshAccessToken()
       .then((result) => {
         if (result) {
           setUser(result.user);
         } else {
-          // No valid refresh cookie: user is logged out
           setAccessToken(null);
           setUser(null);
         }
@@ -151,7 +138,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
       });
   }, []);
 
-  // On mount: handle OAuth callback if present in the URL, otherwise silent refresh.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const code = params.get("code");
@@ -177,7 +163,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
         toast.error(message);
       }
 
-      // Strip the error param so a refresh doesn't re-trigger the toast.
       const url = new URL(window.location.href);
       url.searchParams.delete("error");
       window.history.replaceState({}, "", url);
@@ -190,7 +175,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, [handleCallback, silentRefresh]);
 
-  // Refresh ~2 minutes before the 15-minute access token expires.
   useEffect(() => {
     if (!user) return;
 
@@ -198,7 +182,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       () => {
         void silentRefresh();
       },
-      13 * 60 * 1000, // 13 minutes
+      13 * 60 * 1000,
     );
 
     return () => clearInterval(refreshInterval);
@@ -212,7 +196,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
     });
   }, [user]);
 
-  // Listen for session-expired events dispatched by the API client / tRPC.
   useEffect(() => {
     const handleSessionExpired = () => {
       void logout();

@@ -1,14 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import { HeaderActions } from "@/features/admin/components/HeaderActions";
 
-/**
- * Standard admin page title: the h1 that opens a page's content area, with an
- * optional leading icon, inline badges, description block, and trailing action
- * group. Only the heading and the actions share a row, so the actions drop to
- * their own line as soon as the heading no longer fits its natural width
- * beside them, rather than squeezing it into a narrow column. The description
- * spans the full width beneath both.
- */
 export function AdminPageTitle({
   title,
   icon: Icon,

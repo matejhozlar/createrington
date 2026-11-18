@@ -30,7 +30,6 @@ export function PlayerHeader({
   return (
     <div className="overflow-hidden rounded-lg border border-border bg-card">
       <div className="flex">
-        {/* Full body skin */}
         <div className="relative hidden w-36 shrink-0 items-center justify-center border-r border-border py-4 sm:flex">
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-sidebar-primary/8 via-transparent to-transparent" />
           <img
@@ -40,9 +39,7 @@ export function PlayerHeader({
           />
         </div>
 
-        {/* Info section */}
         <div className="flex min-w-0 flex-1 flex-col gap-3 p-5">
-          {/* Row 1: Name + status + actions */}
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-xl font-bold leading-tight">
@@ -82,13 +79,11 @@ export function PlayerHeader({
             </div>
           </div>
 
-          {/* Row 2: Copyable identifiers */}
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <CopyField label="UUID" value={player.minecraftUuid} />
             <CopyField label="Discord" value={player.discordId} />
           </div>
 
-          {/* Row 2.5: Logout position (offline only) */}
           {!isOnline &&
             player.logoutX != null &&
             player.logoutY != null &&
@@ -101,7 +96,6 @@ export function PlayerHeader({
               />
             )}
 
-          {/* Row 3: Dates */}
           <div className="flex items-center gap-x-3 text-[11px] text-muted-foreground/70">
             <span>
               Registered{" "}

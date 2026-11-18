@@ -1,6 +1,3 @@
-// TODO: Refactor to dynamically open the map for a configured server.
-// TODO: Add backend routes to provide the map link per server.
-
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MapPinOff } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -10,7 +7,6 @@ const IS_SAME_ORIGIN =
   new URL(BLUEMAP_URL, window.location.href).origin === window.location.origin;
 
 export function BlueMap() {
-  // Computed once so our own replaceState below doesn't reload the iframe.
   const iframeSrc = useMemo(() => `${BLUEMAP_URL}${window.location.hash}`, []);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const syncRef = useRef<{
@@ -55,9 +51,7 @@ export function BlueMap() {
         "hashchange",
         syncRef.current.handler,
       );
-    } catch {
-      // child window already torn down
-    }
+    } catch {}
     syncRef.current = null;
   };
 
@@ -79,14 +73,9 @@ export function BlueMap() {
       };
       sync();
       child.addEventListener("hashchange", sync);
-      // BlueMap updates its hash via history.replaceState, which doesn't fire
-      // hashchange; poll as the actual sync mechanism, keep the listener as
-      // a no-cost fallback for any future BlueMap that does fire it.
       const interval = setInterval(sync, 400);
       syncRef.current = { child, handler: sync, interval };
-    } catch {
-      // cross-origin BLUEMAP_URL (dev pointing at prod); sync degrades
-    }
+    } catch {}
   };
 
   useEffect(() => detachSync, []);

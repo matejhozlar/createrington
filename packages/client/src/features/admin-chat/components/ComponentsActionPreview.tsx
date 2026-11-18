@@ -10,11 +10,6 @@ interface ComponentsActionPreviewProps {
   components: ComponentNode[];
 }
 
-/**
- * Compact Components V2 preview rendered inside an admin-chat ActionCard.
- * Mirrors EmbedActionPreview's lightweight fidelity: enough for the admin
- * to decide whether to Apply, not a pixel-perfect render of the builder.
- */
 export function ComponentsActionPreview({
   components,
 }: ComponentsActionPreviewProps): React.JSX.Element {

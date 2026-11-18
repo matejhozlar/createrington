@@ -31,11 +31,6 @@ import { usePresetActions } from "./use-preset-actions";
 export function useEmbedBuilder() {
   const toast = useToastActions();
 
-  // Load any persisted draft once on mount and seed each piece of state
-  // from it. Stored as state (not a ref) so the useState initializers
-  // below can read it without triggering the "no ref reads during render"
-  // rule. Never updated after mount: a ref further down handles the
-  // one-shot "draft restored" toast.
   const [pendingDraft] = useState(loadDraft);
   const [kind, setKind] = useState<PresetKind>(
     () => pendingDraft?.kind ?? "embed",
@@ -113,7 +108,6 @@ export function useEmbedBuilder() {
     toast.info("Draft restored from your last session");
   }, [pendingDraft, toast]);
 
-  // Auto-save draft to localStorage (debounced).
   useEffect(() => {
     const id = window.setTimeout(() => {
       if (hasContent || activePreset) {
@@ -202,7 +196,6 @@ export function useEmbedBuilder() {
         const prevExternal = toExternalData(prev);
         const next =
           typeof updater === "function" ? updater(prevExternal) : updater;
-        // Preserve _ids on fields that match by index (for edits that don't change field count)
         const fields: EmbedFieldInternal[] = next.fields.map((f, i) => {
           const existing = prev.fields[i];
           if (
@@ -261,7 +254,6 @@ export function useEmbedBuilder() {
         return false;
       }
 
-      // Action buttons always need the presetId to encode in their custom ID
       const presetId = hasActionButtons
         ? activePreset!.id
         : shouldLink
@@ -569,7 +561,6 @@ export function useEmbedBuilder() {
   });
 
   return {
-    // State
     kind,
     setKind,
     components,
@@ -592,13 +583,11 @@ export function useEmbedBuilder() {
     hasContent,
     isPending,
 
-    // Queries
     categoriesQuery,
     presetsQuery,
     linksQuery,
     channelMap,
 
-    // Handlers
     handleSend,
     handleSave,
     handleLoadPreset,
@@ -610,7 +599,6 @@ export function useEmbedBuilder() {
     handleUnlink,
     ...presetActions,
 
-    // Mutation state
     updateAllPending: updateAllMutation.isPending,
     updateLinkPending: updateLinkMutation.isPending,
   };

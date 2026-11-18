@@ -24,7 +24,6 @@ interface CompareData {
   player2: PlayerData;
 }
 
-/** Returns 1 if a > b, 2 if b > a, 0 if equal */
 function winner(a: number, b: number): 0 | 1 | 2 {
   if (a > b) return 1;
   if (b > a) return 2;
@@ -96,7 +95,6 @@ export function CompareRender() {
   );
   const playtimeWin = winner(left.playtimeSeconds, right.playtimeSeconds);
   const sessionsWin = winner(left.sessions, right.sessions);
-  // Earlier join date is "better"
   const memberWin = winner(
     new Date(right.memberSince).getTime(),
     new Date(left.memberSince).getTime(),
@@ -107,13 +105,10 @@ export function CompareRender() {
       id="compare-container"
       className="relative w-[900px] h-[500px] overflow-hidden bg-background text-foreground flex flex-col"
     >
-      {/* Background grid */}
       <div className="absolute inset-0 pointer-events-none render-bg-grid" />
-      {/* Background glows */}
       <div className="absolute -left-20 top-8 w-[350px] h-[350px] rounded-full blur-[120px] opacity-20 pointer-events-none bg-chart-1" />
       <div className="absolute -right-20 bottom-8 w-[350px] h-[350px] rounded-full blur-[120px] opacity-20 pointer-events-none bg-chart-5" />
 
-      {/* Header */}
       <div className="flex items-center gap-4 px-8 pt-5 z-10">
         <div className="flex-1 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
         <img
@@ -124,9 +119,7 @@ export function CompareRender() {
         <div className="flex-1 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
       </div>
 
-      {/* Body */}
       <div className="flex-1 flex items-center justify-center px-6 pt-2 z-10">
-        {/* Player 1 */}
         <div className="flex flex-col items-center w-[200px] shrink-0">
           <div className="relative h-[300px] flex items-end justify-center">
             <div className="absolute bottom-0 w-40 h-40 rounded-full blur-[60px] opacity-40 bg-chart-1" />
@@ -144,7 +137,6 @@ export function CompareRender() {
           </div>
         </div>
 
-        {/* Stats center */}
         <div className="flex-1 flex flex-col items-center gap-3 px-2">
           <span className="text-2xl font-bold tracking-[0.15em] text-foreground/10">
             VS
@@ -177,7 +169,6 @@ export function CompareRender() {
           </div>
         </div>
 
-        {/* Player 2 */}
         <div className="flex flex-col items-center w-[200px] shrink-0">
           <div className="relative h-[300px] flex items-end justify-center">
             <div className="absolute bottom-0 w-40 h-40 rounded-full blur-[60px] opacity-40 bg-chart-5" />
@@ -196,7 +187,6 @@ export function CompareRender() {
         </div>
       </div>
 
-      {/* Footer */}
       <div className="pb-3.5 text-center z-10">
         <span className="text-[11px] font-semibold tracking-[0.3em] uppercase text-foreground/15">
           createrington.com

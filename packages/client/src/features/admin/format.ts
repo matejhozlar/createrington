@@ -15,9 +15,6 @@ export function formatFullDate(dateStr: string): string {
   });
 }
 
-// Mod-synced timestamps occasionally arrive as 0/epoch when the upstream
-// value is unset. Treat anything before 2001 as "no real timestamp" so the
-// UI doesn't render "1 Jan 1970".
 function isMeaningfulDate(date: Date): boolean {
   return !Number.isNaN(date.getTime()) && date.getUTCFullYear() >= 2001;
 }

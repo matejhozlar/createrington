@@ -11,7 +11,7 @@ import {
 } from "@/components/query-states";
 
 interface TicketsTabProps {
-  playerId: string; // minecraftUuid (route param)
+  playerId: string;
 }
 
 export function TicketsTab({ playerId }: TicketsTabProps) {
@@ -56,7 +56,6 @@ export function TicketsTab({ playerId }: TicketsTabProps) {
         <EmptyState icon={Ticket} message="No tickets found" />
       ) : (
         <>
-          {/* Tickets list */}
           <div className="space-y-2">
             {tickets.map((t) => {
               const statusText = String(t.status ?? "unknown");
@@ -95,18 +94,12 @@ export function TicketsTab({ playerId }: TicketsTabProps) {
                         {t.channelId ? <> • Channel {t.channelId}</> : null}
                       </p>
 
-                      {/* Optional: show transcript path if present (metadata) */}
                       {t.metadata?.transcriptPath ? (
                         <p className="mt-2 text-xs text-muted-foreground">
                           Transcript: {t.metadata.transcriptPath}
                         </p>
                       ) : null}
                     </div>
-
-                    {/* Placeholder for future actions */}
-                    {/* <Button size="sm" variant="outline" className="cursor-pointer">
-                      View
-                    </Button> */}
                   </div>
                 </div>
               );

@@ -17,7 +17,6 @@ import {
   MOD_ENVIRONMENT_STYLES,
 } from "@/features/workshop/format";
 
-/** Values shown ahead of the server, keyed by CurseForge project id */
 export type EnvironmentDisplay = Map<number, ModEnvironment>;
 
 export function EnvironmentCell({

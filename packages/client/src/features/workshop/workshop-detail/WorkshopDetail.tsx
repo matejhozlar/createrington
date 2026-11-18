@@ -253,7 +253,6 @@ export function WorkshopDetail() {
     query,
   ]);
 
-  // Suggestion-origin members already surface via their approved suggestion row
   const packMatches = useMemo(() => {
     if (!searching || sortMode === "votes") return [];
     return (packRows ?? []).filter(

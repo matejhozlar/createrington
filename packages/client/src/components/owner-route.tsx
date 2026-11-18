@@ -9,12 +9,6 @@ interface OwnerRouteProps {
   children: React.ReactNode;
 }
 
-/**
- * Route guard for the `/owner/*` scope. Requires the authenticated user's
- * Discord ID to match the server-configured owner. The owner flag is
- * fetched via `user.account.me` so there's no dependency on adding it to
- * the JWT.
- */
 export function OwnerRoute({ children }: OwnerRouteProps) {
   const { user, loading: authLoading } = useAuth();
   const accountQuery = useQuery(

@@ -23,7 +23,6 @@ export function AdminServers() {
 
   return (
     <div className="flex flex-1 flex-col gap-4">
-      {/* Header */}
       <AdminPageHeader
         trail={[
           { label: "Admin", href: "/admin/dashboard" },
@@ -86,7 +85,6 @@ export function AdminServers() {
               </div>
             )}
 
-            {/* Server Cards Grid */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {servers.map((server) => {
                 const liveData = getServer(server.serverId);
@@ -144,7 +142,6 @@ export function AdminServers() {
                         <PresenceBadge status={presence} />
                       </div>
 
-                      {/* Player count bar */}
                       <div>
                         <div className="mb-1 flex items-center justify-between text-sm">
                           <span className="text-muted-foreground">Players</span>
@@ -168,7 +165,6 @@ export function AdminServers() {
                         />
                       </div>
 
-                      {/* Stats row */}
                       <div className="grid grid-cols-3 gap-2 text-center text-sm">
                         <div>
                           <p className="text-muted-foreground">Unique</p>

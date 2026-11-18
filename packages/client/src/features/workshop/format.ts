@@ -102,8 +102,6 @@ export const MOD_STATUS_STYLES = Object.fromEntries(
   { label: string; tableLabel: string; tone: BadgeTone }
 >;
 
-// liveInVersion comes from the project's pack row, so it describes this
-// suggestion only once the suggestion itself is the one that shipped
 export function liveTitle(mod: {
   status: WorkshopModStatus;
   liveInVersion?: string | null;

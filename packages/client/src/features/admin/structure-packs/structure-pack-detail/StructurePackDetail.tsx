@@ -12,7 +12,6 @@ import { RemoveModDialog } from "./components/RemoveModDialog";
 import type { RemoveTarget } from "./types";
 import { useQuery, useMutation } from "@tanstack/react-query";
 
-/** Detail view for a single structure pack: displays pack metadata, mod list, and dialogs for adding/removing mods with dependency resolution */
 export function StructurePackDetail() {
   const { id } = useParams<{ id: string }>();
   const packId = parseInt(id ?? "0", 10);

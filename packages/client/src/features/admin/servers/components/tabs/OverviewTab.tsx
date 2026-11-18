@@ -93,7 +93,6 @@ export function OverviewTab({ serverId, serverData }: OverviewTabProps) {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Online Players */}
       <div>
         <h3 className="mb-3 text-lg font-semibold">
           Online Players ({onlinePlayers.length})
@@ -111,7 +110,6 @@ export function OverviewTab({ serverId, serverData }: OverviewTabProps) {
         )}
       </div>
 
-      {/* Leaderboard */}
       <div>
         <h3 className="mb-3 text-lg font-semibold">Top Players</h3>
         {leaderboard.length === 0 ? (

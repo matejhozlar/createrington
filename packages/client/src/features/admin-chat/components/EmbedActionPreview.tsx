@@ -8,12 +8,6 @@ function numberToHex(color: number): string {
   return `#${color.toString(16).padStart(6, "0")}`;
 }
 
-/**
- * Compact Discord-style preview rendered inside an admin-chat ActionCard.
- * Deliberately narrower and lighter than the full EmbedBuilder preview:
- * the drawer is ~400px wide and we only need enough fidelity that the
- * admin can decide whether to Apply without round-tripping to the builder.
- */
 export function EmbedActionPreview({
   embed,
 }: EmbedActionPreviewProps): React.JSX.Element {

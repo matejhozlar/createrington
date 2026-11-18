@@ -4,10 +4,6 @@ import type {
 } from "@createrington/shared/api";
 import { api } from "../client";
 
-/**
- * Message API endpoints
- * Endpoints for sending messages to Minecraft servers via Discord
- */
 export const messagesApi = {
   async send(
     body: SendMessageBody,

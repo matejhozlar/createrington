@@ -79,7 +79,7 @@ interface ServerStatusSingleProps {
   isCollapsed: boolean;
 }
 
-const MAINTENANCE_VISIBLE_MS = 6 * 60 * 60 * 1000; // 6 hours
+const MAINTENANCE_VISIBLE_MS = 6 * 60 * 60 * 1000;
 
 function useIsWithinWindow(schedule: ScheduledMaintenance | null): boolean {
   const scheduledAtMs =
@@ -99,10 +99,8 @@ function useIsWithinWindow(schedule: ScheduledMaintenance | null): boolean {
     const check = () =>
       setWithin(scheduledAtMs - Date.now() <= MAINTENANCE_VISIBLE_MS);
 
-    // Deferred seed: keeps `within` fresh when the schedule changes without
-    // waiting a full minute for the interval tick.
     const seed = setTimeout(check, 0);
-    const id = setInterval(check, 60_000); // recheck every minute
+    const id = setInterval(check, 60_000);
     return () => {
       clearTimeout(seed);
       clearInterval(id);
@@ -129,7 +127,6 @@ function ServerStatusSingle({ server, isCollapsed }: ServerStatusSingleProps) {
   return (
     <>
       <div className="flex items-center min-h-6 gap-3">
-        {/* Indicator Light */}
         <div
           className={cn("size-3 shrink-0 rounded-full", {
             "bg-amber-500 shadow shadow-amber-500 animate-pulse":
@@ -144,7 +141,6 @@ function ServerStatusSingle({ server, isCollapsed }: ServerStatusSingleProps) {
           })}
         />
 
-        {/* Status Title */}
         {!isCollapsed && (
           <span
             className={cn("text-base font-semibold whitespace-nowrap", {
@@ -159,7 +155,6 @@ function ServerStatusSingle({ server, isCollapsed }: ServerStatusSingleProps) {
         )}
       </div>
 
-      {/* Player Count */}
       {server.online && !server.maintenance && (
         <div
           className={cn(
@@ -194,7 +189,6 @@ function ServerStatusMultiple({
 }: ServerStatusMultipleProps) {
   return (
     <>
-      {/* Icon and Title */}
       <div className="flex items-center min-h-6 gap-3">
         <Server className={cn("size-5 text-primary")} />
 
@@ -208,7 +202,6 @@ function ServerStatusMultiple({
           "pl-8": !isCollapsed,
         })}
       >
-        {/* Server Count */}
         <div
           className={cn("flex items-center whitespace-nowrap text-sm", {
             "justify-between": !isCollapsed,
@@ -224,7 +217,6 @@ function ServerStatusMultiple({
           </span>
         </div>
 
-        {/* Player Count */}
         <div className="flex items-center justify-between whitespace-nowrap text-sm">
           {!isCollapsed && (
             <span className="text-muted-foreground truncate">Players:</span>

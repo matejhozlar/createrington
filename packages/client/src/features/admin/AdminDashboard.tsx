@@ -158,7 +158,6 @@ export function AdminDashboard() {
 
   return (
     <div className="flex flex-1 flex-col gap-4">
-      {/* Header */}
       <AdminPageHeader
         trail={[
           { label: "Admin", href: "/admin/dashboard" },
@@ -167,7 +166,6 @@ export function AdminDashboard() {
       />
 
       <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
-        {/* Admin Profile Card */}
         {user && (
           <Card>
             <CardContent className="flex items-center justify-between">
@@ -241,9 +239,7 @@ export function AdminDashboard() {
           />
         </div>
 
-        {/* Three-column: Recent Bans + Recent Activity + Top Commands */}
         <div className="grid gap-4 lg:grid-cols-3">
-          {/* Recent Bans */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="flex items-center gap-2 text-base">
@@ -276,7 +272,6 @@ export function AdminDashboard() {
             </CardContent>
           </Card>
 
-          {/* Recent Activity */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="flex items-center gap-2 text-base">
@@ -335,7 +330,6 @@ export function AdminDashboard() {
             </CardContent>
           </Card>
 
-          {/* Top Commands */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
@@ -387,9 +381,7 @@ export function AdminDashboard() {
           </Card>
         </div>
 
-        {/* Two-column: Server Overview + Waitlist Summary */}
         <div className="grid gap-4 lg:grid-cols-2">
-          {/* Server Overview */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="flex items-center gap-2 text-base">
@@ -443,7 +435,6 @@ export function AdminDashboard() {
             </CardContent>
           </Card>
 
-          {/* Waitlist Summary */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">

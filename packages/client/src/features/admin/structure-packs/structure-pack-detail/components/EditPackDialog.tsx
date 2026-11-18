@@ -7,13 +7,6 @@ import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { trpc, queryClient } from "@/lib/trpc";
 import { useMutation } from "@tanstack/react-query";
 
-/**
- * Edit form for pack name and description.
- *
- * Mount this conditionally (`{editing && <EditPackDialog .../>}`) so the form
- * state resets automatically every time the dialog is opened. Initial values
- * are captured via `useState` on mount.
- */
 export function EditPackDialog({
   onClose,
   packId,

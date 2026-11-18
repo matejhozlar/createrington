@@ -178,7 +178,6 @@ export function MaintenanceToggle({
     />
   );
 
-  // State B: Scheduled (not yet active)
   if (schedule?.status === "scheduled") {
     return (
       <div className="flex items-center justify-between rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
@@ -229,7 +228,6 @@ export function MaintenanceToggle({
     );
   }
 
-  // State C: Active maintenance
   if (isMaintenance || status?.enabled) {
     const pending = status?.pendingApply ?? false;
     const detail = pending
@@ -297,7 +295,6 @@ export function MaintenanceToggle({
     );
   }
 
-  // State A: No maintenance, no schedule
   return (
     <div className="flex items-center justify-between rounded-lg border border-border bg-card p-4">
       <div className="flex items-center gap-3">

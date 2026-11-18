@@ -98,12 +98,6 @@ interface StreamHandlers {
   onError?: () => void;
 }
 
-/**
- * Open an SSE stream through the proxy. EventSource cannot attach a Bearer
- * token, so we drive ky directly: this gets us shared auth-header injection
- * and 401 silent refresh, while letting us disable timeout/retry which would
- * otherwise kill a long-lived stream. The SSE frame parser stays manual.
- */
 export async function runStream(
   sessionId: number,
   handlers: StreamHandlers,
@@ -159,9 +153,7 @@ export async function runStream(
         } else if (event === "session_ended") {
           handlers.onSessionEnded();
         }
-      } catch {
-        // Ignore malformed frame: next one will probably be fine.
-      }
+      } catch {}
     }
   }
 }

@@ -17,11 +17,6 @@ import {
 import { EmbedActionPreview } from "./EmbedActionPreview";
 import { ComponentsActionPreview } from "./ComponentsActionPreview";
 
-/**
- * Apply a highlight action to the current document. Scrolls the element
- * into view and flashes an outline via .ac-highlighted for ttlMs (default
- * 3s). Returns true if the selector matched an element.
- */
 function applyHighlight(action: HighlightAction): boolean {
   try {
     const el = document.querySelector(action.selector);
@@ -36,12 +31,6 @@ function applyHighlight(action: HighlightAction): boolean {
   }
 }
 
-/**
- * Apply an insert_embed action. If the user is already on the embed
- * builder, dispatches INSERT_EMBED_EVENT so it can apply immediately.
- * Otherwise stashes the embed in sessionStorage under PENDING_EMBED_KEY
- * and navigates there: the builder picks it up on mount.
- */
 function applyInsertEmbed(
   action: InsertEmbedAction,
   navigate: (to: string) => void,
@@ -58,18 +47,10 @@ function applyInsertEmbed(
   }
   try {
     sessionStorage.setItem(PENDING_EMBED_KEY, serialized);
-  } catch {
-    // Best-effort: if storage is unavailable, navigation alone still lets
-    // the admin reapply from chat history.
-  }
+  } catch {}
   navigate("/admin/tools/embed-builder");
 }
 
-/**
- * Apply an insert_components action. Same dispatch/stash pattern as
- * applyInsertEmbed, keyed for Components V2 so the builder switches into
- * components mode and loads the tree.
- */
 function applyInsertComponents(
   action: InsertComponentsAction,
   navigate: (to: string) => void,
@@ -86,15 +67,12 @@ function applyInsertComponents(
   }
   try {
     sessionStorage.setItem(PENDING_COMPONENTS_KEY, serialized);
-  } catch {
-    // Best-effort: navigation alone still lets the admin reapply from history.
-  }
+  } catch {}
   navigate("/admin/tools/embed-builder");
 }
 
 interface ActionCardProps {
   action: AdminChatAction;
-  /** Unique-per-session key for persisting applied state across polls. */
   storageKey: string;
   navigate: (to: string) => void;
 }
@@ -111,9 +89,7 @@ export function ActionCard({
       try {
         const v = sessionStorage.getItem(persistKey);
         if (v === "applied" || v === "dismissed") return v;
-      } catch {
-        // ignore
-      }
+      } catch {}
       return "pending";
     },
   );
@@ -123,9 +99,7 @@ export function ActionCard({
       setState(next);
       try {
         sessionStorage.setItem(persistKey, next);
-      } catch {
-        // ignore
-      }
+      } catch {}
     },
     [persistKey],
   );

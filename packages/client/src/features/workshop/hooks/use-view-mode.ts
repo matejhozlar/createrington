@@ -15,9 +15,7 @@ export function useViewMode(storageKey: string) {
   const changeView = (next: ViewMode) => {
     try {
       localStorage.setItem(storageKey, next);
-    } catch {
-      /* storage-blocked contexts keep in-memory switching */
-    }
+    } catch {}
     setView(next);
   };
 

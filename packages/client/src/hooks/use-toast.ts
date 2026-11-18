@@ -1,10 +1,6 @@
 import { useMemo } from "react";
 import { toast } from "sonner";
 
-/**
- * Convenience hook with pre-configured toast methods.
- * Powered by sonner, no provider context needed.
- */
 export function useToastActions() {
   return useMemo(
     () => ({

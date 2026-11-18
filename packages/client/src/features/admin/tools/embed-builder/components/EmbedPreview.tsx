@@ -70,7 +70,6 @@ export function EmbedPreview({
             </span>
           </div>
 
-          {/* Plain message content */}
           {data.content ? (
             <Hover
               editable={editable}
@@ -95,7 +94,6 @@ export function EmbedPreview({
             </Empty>
           ) : null}
 
-          {/* Embed body */}
           {(hasEmbed || (editable && !hasEmbed)) && (
             <div
               className="grid overflow-hidden rounded"
@@ -106,7 +104,6 @@ export function EmbedPreview({
               }}
             >
               <div className="flex min-w-0 flex-col gap-2 p-4">
-                {/* Author */}
                 {data.author ? (
                   <Hover
                     editable={editable}
@@ -136,7 +133,6 @@ export function EmbedPreview({
                   </Empty>
                 ) : null}
 
-                {/* Title */}
                 {data.title ? (
                   <Hover
                     editable={editable}
@@ -156,7 +152,6 @@ export function EmbedPreview({
                   </Empty>
                 ) : null}
 
-                {/* Description */}
                 {data.description ? (
                   <Hover
                     editable={editable}
@@ -179,7 +174,6 @@ export function EmbedPreview({
                   </Empty>
                 ) : null}
 
-                {/* Fields */}
                 {data.fields.length > 0 && (
                   <div
                     className="grid gap-2"
@@ -228,7 +222,6 @@ export function EmbedPreview({
                   </Empty>
                 )}
 
-                {/* Image */}
                 {data.imageUrl ? (
                   <Hover
                     editable={editable}
@@ -255,7 +248,6 @@ export function EmbedPreview({
                   </Empty>
                 ) : null}
 
-                {/* Footer */}
                 {data.footer || data.timestamp ? (
                   <Hover
                     editable={editable}
@@ -284,7 +276,6 @@ export function EmbedPreview({
                 ) : null}
               </div>
 
-              {/* Thumbnail */}
               {data.thumbnailUrl ? (
                 <div className="p-4 pl-0">
                   <Hover
@@ -306,7 +297,6 @@ export function EmbedPreview({
             </div>
           )}
 
-          {/* Buttons */}
           {(hasButtons || (editable && canAddButton)) && (
             <div className="mt-2 flex flex-wrap gap-2">
               {linkButtons.map((b, i) => (

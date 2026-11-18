@@ -13,11 +13,7 @@ import type { ChatMessage } from "../types";
 interface MessageRowProps {
   message: ChatMessage;
   navigate: (to: string) => void;
-  /** True when this message is the last in a same-author run: the avatar
-   * only renders on this one to tighten grouped bubbles. */
   showAvatar: boolean;
-  /** True when the previous message had a different author. Adds extra
-   * breathing room above to visually separate turns. */
   isGroupStart: boolean;
 }
 
@@ -34,10 +30,6 @@ export const MessageRow = memo(function MessageRow({
   const isUser = message.role === "user";
   const { copy, copied } = useClipboard({ silent: true });
 
-  // Legacy fence-parsed actions: kept as a transitional fallback for
-  // messages written before MCP migration. Don't run the parser on
-  // half-streaming content; wait until the stream settles so the fence
-  // isn't truncated.
   const { content, actions: fenceActions } =
     !isUser && !isStreaming
       ? parseActionsFromMessage(message.content)
@@ -45,10 +37,6 @@ export const MessageRow = memo(function MessageRow({
   const persistedActions = message.actions ?? [];
 
   const handleCopy = (e: React.MouseEvent<HTMLButtonElement>): void => {
-    // Release focus so the hover-to-reveal meta row (which also opens
-    // on focus-within for keyboard users) fades back out once the
-    // cursor leaves. Without this, focus lingers on the copy button
-    // after click and the row stays pinned open.
     e.currentTarget.blur();
     void copy(content);
   };

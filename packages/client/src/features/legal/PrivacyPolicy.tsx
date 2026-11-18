@@ -241,7 +241,6 @@ const sections = [
           request, we will remove your personal data from our systems within a
           reasonable timeframe.
         </p>
-        {/* TODO: Add link to data deletion request form once implemented */}
         <p className="mt-2">
           To request data deletion, contact us at{" "}
           <a

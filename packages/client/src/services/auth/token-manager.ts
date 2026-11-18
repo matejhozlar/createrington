@@ -1,11 +1,3 @@
-/**
- * In-memory access token storage + silent refresh logic.
- *
- * The access token is kept in a module-scoped variable (NOT localStorage)
- * so it cannot be read by XSS scripts accessing the Storage API.
- * The refresh token lives in an httpOnly cookie managed by the server.
- */
-
 import type { RefreshResponse } from "@createrington/shared/auth";
 
 const REFRESH_PATH = "/api/auth/refresh";
@@ -14,7 +6,6 @@ export const SESSION_EXPIRED_EVENT = "auth:session-expired";
 
 let accessToken: string | null = null;
 
-/** Shared promise to deduplicate concurrent refresh requests */
 let refreshPromise: Promise<RefreshResponse | null> | null = null;
 
 export function getAccessToken(): string | null {
@@ -25,13 +16,7 @@ export function setAccessToken(token: string | null): void {
   accessToken = token;
 }
 
-/**
- * Attempt to refresh the access token using the httpOnly refresh cookie.
- * Returns the new access token + user data, or null if refresh fails.
- * Uses a shared promise to deduplicate concurrent refresh calls.
- */
 export async function refreshAccessToken(): Promise<RefreshResponse | null> {
-  // Deduplicate: if a refresh is already in-flight, wait for it
   if (refreshPromise) {
     return refreshPromise;
   }
