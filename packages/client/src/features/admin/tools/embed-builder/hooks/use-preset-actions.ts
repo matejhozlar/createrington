@@ -7,7 +7,8 @@ import type {
   PresetKind,
 } from "@createrington/shared/api/embed";
 import { useToastActions } from "@/hooks/use-toast";
-import { trpc, queryClient, type RouterInput } from "@/lib/trpc";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
+import { trpc, queryClient } from "@/lib/trpc";
 import {
   normalizeLoadedEmbed,
   toExternalData,
@@ -19,9 +20,15 @@ interface UsePresetActionsOptions {
   setActivePreset: (preset: ActivePreset | null) => void;
   setSelectedCategoryId: (categoryId: number | null) => void;
   resetBuilder: () => void;
-  createPreset: (
-    input: RouterInput["admin"]["embeds"]["presets"]["create"],
-  ) => Promise<unknown>;
+}
+
+function invalidatePresetLists() {
+  void queryClient.invalidateQueries(
+    trpc.admin.embeds.presets.list.pathFilter(),
+  );
+  void queryClient.invalidateQueries(
+    trpc.admin.embeds.presets.categories.list.pathFilter(),
+  );
 }
 
 export function usePresetActions({
@@ -29,24 +36,60 @@ export function usePresetActions({
   setActivePreset,
   setSelectedCategoryId,
   resetBuilder,
-  createPreset,
 }: UsePresetActionsOptions) {
   const toast = useToastActions();
 
+  const duplicatePresetMutation = useMutation(
+    trpc.admin.embeds.presets.create.mutationOptions(
+      useMutationToast({
+        success: (created) => `Duplicated as "${created.name}"`,
+        onSuccess: invalidatePresetLists,
+      }),
+    ),
+  );
   const deletePresetMutation = useMutation(
-    trpc.admin.embeds.presets.delete.mutationOptions(),
+    trpc.admin.embeds.presets.delete.mutationOptions(useMutationToast()),
   );
   const createCategoryMutation = useMutation(
-    trpc.admin.embeds.presets.categories.create.mutationOptions(),
+    trpc.admin.embeds.presets.categories.create.mutationOptions(
+      useMutationToast({
+        success: (_, variables) => `Category "${variables.name}" created`,
+        onSuccess: () =>
+          void queryClient.invalidateQueries(
+            trpc.admin.embeds.presets.categories.list.pathFilter(),
+          ),
+      }),
+    ),
   );
   const updateCategoryMutation = useMutation(
-    trpc.admin.embeds.presets.categories.update.mutationOptions(),
+    trpc.admin.embeds.presets.categories.update.mutationOptions(
+      useMutationToast({
+        success: "Category updated",
+        onSuccess: () =>
+          void queryClient.invalidateQueries(
+            trpc.admin.embeds.presets.categories.list.pathFilter(),
+          ),
+      }),
+    ),
   );
   const deleteCategoryMutation = useMutation(
-    trpc.admin.embeds.presets.categories.delete.mutationOptions(),
+    trpc.admin.embeds.presets.categories.delete.mutationOptions(
+      useMutationToast(),
+    ),
   );
   const setCategoryMutation = useMutation(
-    trpc.admin.embeds.presets.setCategory.mutationOptions(),
+    trpc.admin.embeds.presets.setCategory.mutationOptions(
+      useMutationToast({
+        success: "Preset moved",
+        onSuccess: (_, { presetId, categoryId }) => {
+          invalidatePresetLists();
+          if (activePreset?.id === presetId) {
+            setActivePreset({ ...activePreset, categoryId });
+            setSelectedCategoryId(categoryId);
+          }
+        },
+      }),
+    ),
   );
 
   const handleDuplicatePreset = useCallback(
@@ -91,45 +134,27 @@ export function usePresetActions({
               ),
             };
 
-      try {
-        await createPreset({
-          name: copyName,
-          categoryId: preset.categoryId ?? null,
-          ...payload,
-        });
-        void queryClient.invalidateQueries(
-          trpc.admin.embeds.presets.list.pathFilter(),
-        );
-        void queryClient.invalidateQueries(
-          trpc.admin.embeds.presets.categories.list.pathFilter(),
-        );
-        toast.success(`Duplicated as "${copyName}"`);
-      } catch (error) {
-        toast.error(
-          error instanceof Error ? error.message : "Failed to duplicate preset",
-        );
-      }
+      duplicatePresetMutation.mutate({
+        name: copyName,
+        categoryId: preset.categoryId ?? null,
+        ...payload,
+      });
     },
-    [createPreset, toast],
+    [duplicatePresetMutation],
   );
 
   const handleDeletePreset = useCallback(
     async (id: number, name: string) => {
       try {
         await deletePresetMutation.mutateAsync({ id });
-        toast.success(`Preset "${name}" deleted`);
-        if (activePreset?.id === id) {
-          resetBuilder();
-        }
-        void queryClient.invalidateQueries(
-          trpc.admin.embeds.presets.list.pathFilter(),
-        );
-        void queryClient.invalidateQueries(
-          trpc.admin.embeds.presets.categories.list.pathFilter(),
-        );
       } catch {
-        toast.error("Failed to delete preset");
+        return;
       }
+      toast.success(`Preset "${name}" deleted`);
+      if (activePreset?.id === id) {
+        resetBuilder();
+      }
+      invalidatePresetLists();
     },
     [deletePresetMutation, activePreset, resetBuilder, toast],
   );
@@ -137,57 +162,33 @@ export function usePresetActions({
   const handleCreateCategory = useCallback(
     async (name: string) => {
       try {
-        const created = await createCategoryMutation.mutateAsync({ name });
-        void queryClient.invalidateQueries(
-          trpc.admin.embeds.presets.categories.list.pathFilter(),
-        );
-        toast.success(`Category "${name}" created`);
-        return created;
-      } catch (error) {
-        toast.error(
-          error instanceof Error ? error.message : "Failed to create category",
-        );
+        return await createCategoryMutation.mutateAsync({ name });
+      } catch {
         return null;
       }
     },
-    [createCategoryMutation, toast],
+    [createCategoryMutation],
   );
 
   const handleUpdateCategory = useCallback(
-    async (id: number, updates: { name?: string; sortOrder?: number }) => {
-      try {
-        await updateCategoryMutation.mutateAsync({ id, ...updates });
-        void queryClient.invalidateQueries(
-          trpc.admin.embeds.presets.categories.list.pathFilter(),
-        );
-        toast.success("Category updated");
-      } catch (error) {
-        toast.error(
-          error instanceof Error ? error.message : "Failed to update category",
-        );
-      }
-    },
-    [updateCategoryMutation, toast],
+    (id: number, updates: { name?: string; sortOrder?: number }) =>
+      updateCategoryMutation.mutate({ id, ...updates }),
+    [updateCategoryMutation],
   );
 
   const handleDeleteCategory = useCallback(
     async (id: number, name: string) => {
       try {
         await deleteCategoryMutation.mutateAsync({ id });
-        void queryClient.invalidateQueries(
-          trpc.admin.embeds.presets.categories.list.pathFilter(),
-        );
-        void queryClient.invalidateQueries(
-          trpc.admin.embeds.presets.list.pathFilter(),
-        );
-        if (activePreset?.categoryId === id) {
-          setActivePreset({ ...activePreset, categoryId: null });
-          setSelectedCategoryId(null);
-        }
-        toast.success(`Category "${name}" deleted`);
       } catch {
-        toast.error("Failed to delete category");
+        return;
       }
+      invalidatePresetLists();
+      if (activePreset?.categoryId === id) {
+        setActivePreset({ ...activePreset, categoryId: null });
+        setSelectedCategoryId(null);
+      }
+      toast.success(`Category "${name}" deleted`);
     },
     [
       deleteCategoryMutation,
@@ -199,31 +200,9 @@ export function usePresetActions({
   );
 
   const handleSetPresetCategory = useCallback(
-    async (presetId: number, categoryId: number | null) => {
-      try {
-        await setCategoryMutation.mutateAsync({ presetId, categoryId });
-        void queryClient.invalidateQueries(
-          trpc.admin.embeds.presets.list.pathFilter(),
-        );
-        void queryClient.invalidateQueries(
-          trpc.admin.embeds.presets.categories.list.pathFilter(),
-        );
-        if (activePreset?.id === presetId) {
-          setActivePreset({ ...activePreset, categoryId });
-          setSelectedCategoryId(categoryId);
-        }
-        toast.success("Preset moved");
-      } catch {
-        toast.error("Failed to move preset");
-      }
-    },
-    [
-      setCategoryMutation,
-      activePreset,
-      setActivePreset,
-      setSelectedCategoryId,
-      toast,
-    ],
+    (presetId: number, categoryId: number | null) =>
+      setCategoryMutation.mutate({ presetId, categoryId }),
+    [setCategoryMutation],
   );
 
   return {

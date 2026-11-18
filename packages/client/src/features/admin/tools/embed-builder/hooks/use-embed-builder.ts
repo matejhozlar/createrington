@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { trpc, queryClient } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { embedBotSchema } from "@createrington/shared/api/embed";
 import type {
@@ -170,21 +171,64 @@ export function useEmbedBuilder() {
     return map;
   }, [channelsQuery.data]);
 
-  const sendEmbed = useMutation(trpc.admin.embeds.send.mutationOptions());
+  const sendEmbed = useMutation(
+    trpc.admin.embeds.send.mutationOptions(
+      useMutationToast({
+        success: (result, variables) =>
+          `${variables.kind === "components" ? "Message" : "Embed"} sent${result.messageId ? ` (${result.messageId})` : ""}`,
+      }),
+    ),
+  );
   const createPreset = useMutation(
-    trpc.admin.embeds.presets.create.mutationOptions(),
+    trpc.admin.embeds.presets.create.mutationOptions(
+      useMutationToast({
+        success: (created) => `Preset "${created.name}" created`,
+      }),
+    ),
   );
   const updatePreset = useMutation(
-    trpc.admin.embeds.presets.update.mutationOptions(),
+    trpc.admin.embeds.presets.update.mutationOptions(
+      useMutationToast({
+        success: (_, variables) => {
+          const name = variables.name ?? activePreset?.name;
+          return name ? `Preset "${name}" updated` : "Preset updated";
+        },
+      }),
+    ),
   );
   const unlinkMutation = useMutation(
-    trpc.admin.embeds.presets.links.delete.mutationOptions(),
+    trpc.admin.embeds.presets.links.delete.mutationOptions(
+      useMutationToast({
+        success: "Message unlinked",
+        onSuccess: () =>
+          void queryClient.invalidateQueries(
+            trpc.admin.embeds.presets.links.list.pathFilter(),
+          ),
+      }),
+    ),
   );
   const updateAllMutation = useMutation(
-    trpc.admin.embeds.updateAll.mutationOptions(),
+    trpc.admin.embeds.updateAll.mutationOptions(
+      useMutationToast({
+        onSuccess: (result) => {
+          if (result.failed > 0) {
+            toast.warning(
+              `Updated ${result.updated}, failed ${result.failed}`,
+              "Partial update",
+            );
+          } else {
+            toast.success(
+              `Updated ${result.updated} linked message${result.updated === 1 ? "" : "s"}`,
+            );
+          }
+        },
+      }),
+    ),
   );
   const updateLinkMutation = useMutation(
-    trpc.admin.embeds.updateLink.mutationOptions(),
+    trpc.admin.embeds.updateLink.mutationOptions(
+      useMutationToast({ success: "Linked message updated" }),
+    ),
   );
 
   const isPending =
@@ -261,24 +305,20 @@ export function useEmbedBuilder() {
           : undefined;
 
       try {
-        const result = await sendEmbed.mutateAsync({
+        await sendEmbed.mutateAsync({
           channelId,
           presetId,
           bot,
           ...currentPayload,
         });
-        if (activePreset && shouldLink)
-          void queryClient.invalidateQueries(
-            trpc.admin.embeds.presets.links.list.pathFilter(),
-          );
-        toast.success(
-          `${kind === "components" ? "Message" : "Embed"} sent${result.messageId ? ` (${result.messageId})` : ""}`,
-        );
-        return true;
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Failed to send");
+      } catch {
         return false;
       }
+      if (activePreset && shouldLink)
+        void queryClient.invalidateQueries(
+          trpc.admin.embeds.presets.links.list.pathFilter(),
+        );
+      return true;
     },
     [
       channelId,
@@ -306,41 +346,35 @@ export function useEmbedBuilder() {
       }
 
       if (activePreset) {
+        const updates: {
+          id: number;
+          name?: string;
+          payload: MessagePayload;
+        } = {
+          id: activePreset.id,
+          payload: currentPayload,
+        };
+        if (presetName.trim() && presetName.trim() !== activePreset.name) {
+          updates.name = presetName.trim();
+        }
         try {
-          const updates: {
-            id: number;
-            name?: string;
-            payload: MessagePayload;
-          } = {
-            id: activePreset.id,
-            payload: currentPayload,
-          };
-          if (presetName.trim() && presetName.trim() !== activePreset.name) {
-            updates.name = presetName.trim();
-          }
           await updatePreset.mutateAsync(updates);
-          setLastSavedSnapshot(serializedData);
-          clearDraft();
-          if (updates.name) {
-            setActivePreset({
-              ...activePreset,
-              name: updates.name,
-              categoryId: activePreset.categoryId,
-            });
-          }
-          void queryClient.invalidateQueries(
-            trpc.admin.embeds.presets.list.pathFilter(),
-          );
-          toast.success(
-            `Preset "${updates.name ?? activePreset.name}" updated`,
-          );
-          return true;
-        } catch (error) {
-          toast.error(
-            error instanceof Error ? error.message : "Failed to update preset",
-          );
+        } catch {
           return false;
         }
+        setLastSavedSnapshot(serializedData);
+        clearDraft();
+        if (updates.name) {
+          setActivePreset({
+            ...activePreset,
+            name: updates.name,
+            categoryId: activePreset.categoryId,
+          });
+        }
+        void queryClient.invalidateQueries(
+          trpc.admin.embeds.presets.list.pathFilter(),
+        );
+        return true;
       } else {
         const name = (opts?.name ?? presetName).trim();
         const categoryId =
@@ -349,35 +383,32 @@ export function useEmbedBuilder() {
           toast.error("Enter a preset name to save");
           return false;
         }
+        let created;
         try {
-          const created = await createPreset.mutateAsync({
+          created = await createPreset.mutateAsync({
             name,
             categoryId,
             ...currentPayload,
           });
-          setLastSavedSnapshot(serializedData);
-          clearDraft();
-          void queryClient.invalidateQueries(
-            trpc.admin.embeds.presets.list.pathFilter(),
-          );
-          void queryClient.invalidateQueries(
-            trpc.admin.embeds.presets.categories.list.pathFilter(),
-          );
-          setActivePreset({
-            id: created.id,
-            name: created.name,
-            categoryId: created.categoryId ?? null,
-          });
-          setPresetName(created.name);
-          setSelectedCategoryId(created.categoryId ?? null);
-          toast.success(`Preset "${name}" created`);
-          return true;
-        } catch (error) {
-          toast.error(
-            error instanceof Error ? error.message : "Failed to save preset",
-          );
+        } catch {
           return false;
         }
+        setLastSavedSnapshot(serializedData);
+        clearDraft();
+        void queryClient.invalidateQueries(
+          trpc.admin.embeds.presets.list.pathFilter(),
+        );
+        void queryClient.invalidateQueries(
+          trpc.admin.embeds.presets.categories.list.pathFilter(),
+        );
+        setActivePreset({
+          id: created.id,
+          name: created.name,
+          categoryId: created.categoryId ?? null,
+        });
+        setPresetName(created.name);
+        setSelectedCategoryId(created.categoryId ?? null);
+        return true;
       }
     },
     [
@@ -479,29 +510,16 @@ export function useEmbedBuilder() {
     }
 
     try {
-      const result = await updateAllMutation.mutateAsync({
+      await updateAllMutation.mutateAsync({
         presetId: activePreset.id,
         bot,
         ...currentPayload,
       });
-      setLastSavedSnapshot(serializedData);
-      if (result.failed > 0) {
-        toast.warning(
-          `Updated ${result.updated}, failed ${result.failed}`,
-          "Partial update",
-        );
-      } else {
-        toast.success(
-          `Updated ${result.updated} linked message${result.updated === 1 ? "" : "s"}`,
-        );
-      }
-      return true;
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to update all",
-      );
+    } catch {
       return false;
     }
+    setLastSavedSnapshot(serializedData);
+    return true;
   }, [
     activePreset,
     kind,
@@ -515,41 +533,24 @@ export function useEmbedBuilder() {
   ]);
 
   const handleUpdateLink = useCallback(
-    async (linkId: number) => {
+    (linkId: number) => {
       const issue = findPayloadIssue(kind, data.fields, components);
       if (issue) {
         toast.error(issue);
         return;
       }
-      try {
-        await updateLinkMutation.mutateAsync({
-          linkId,
-          bot,
-          ...currentPayload,
-        });
-        toast.success("Linked message updated");
-      } catch (error) {
-        toast.error(
-          error instanceof Error ? error.message : "Failed to update message",
-        );
-      }
+      updateLinkMutation.mutate({
+        linkId,
+        bot,
+        ...currentPayload,
+      });
     },
     [kind, data, components, currentPayload, bot, updateLinkMutation, toast],
   );
 
   const handleUnlink = useCallback(
-    async (linkId: number) => {
-      try {
-        await unlinkMutation.mutateAsync({ id: linkId });
-        void queryClient.invalidateQueries(
-          trpc.admin.embeds.presets.links.list.pathFilter(),
-        );
-        toast.success("Message unlinked");
-      } catch {
-        toast.error("Failed to unlink message");
-      }
-    },
-    [unlinkMutation, toast],
+    (linkId: number) => unlinkMutation.mutate({ id: linkId }),
+    [unlinkMutation],
   );
 
   const presetActions = usePresetActions({
@@ -557,7 +558,6 @@ export function useEmbedBuilder() {
     setActivePreset,
     setSelectedCategoryId,
     resetBuilder: handleNewEmbed,
-    createPreset: createPreset.mutateAsync,
   });
 
   return {

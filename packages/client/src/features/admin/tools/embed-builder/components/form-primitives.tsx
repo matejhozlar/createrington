@@ -19,7 +19,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useToastActions } from "@/hooks/use-toast";
+import { useMutationToast } from "@/hooks/use-mutation-toast";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { InsertMenu } from "@/features/admin/components/InsertMenu";
@@ -133,28 +133,24 @@ interface AIButtonProps {
 
 export function AIButton({ value, onApply, iconOnly }: AIButtonProps) {
   const [open, setOpen] = useState(false);
-  const [pendingAction, setPendingAction] = useState<AIActionId | null>(null);
-  const toast = useToastActions();
-  const assistMutation = useMutation(trpc.admin.ai.assist.mutationOptions());
+  const assistMutation = useMutation(
+    trpc.admin.ai.assist.mutationOptions(
+      useMutationToast({
+        onSuccess: (result) => {
+          onApply(result.text);
+          setOpen(false);
+        },
+      }),
+    ),
+  );
 
-  async function runAction(action: AIActionId) {
+  function runAction(action: AIActionId) {
     if (!value.trim()) return;
-    setPendingAction(action);
-    try {
-      const result = await assistMutation.mutateAsync({
-        action,
-        text: value,
-      });
-      onApply(result.text);
-      setOpen(false);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "AI assist failed");
-    } finally {
-      setPendingAction(null);
-    }
+    assistMutation.mutate({ action, text: value });
   }
 
   const isLoading = assistMutation.isPending;
+  const pendingAction = isLoading ? assistMutation.variables?.action : null;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
